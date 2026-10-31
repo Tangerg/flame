@@ -29,68 +29,104 @@ type ClientComponent struct {
 	SettingsIntent extension.SettingsIntent
 }
 
-func (b *Builder) AdmitComponent(value ClientComponent) error {
-	if err := value.ID.Validate(); err != nil {
+// componentPlacement is what one host placement admits: the contexts it renders
+// in (nil admits any), the renderer selector kinds it targets (none forbids a
+// selector), and whether it may carry view material.
+type componentPlacement struct {
+	scopes    []extension.ComponentScope
+	selectors []extension.RendererSelectorKind
+	material  bool
+	refusal   string
+}
+
+var componentPlacements = map[extension.ComponentPlacement]componentPlacement{
+	extension.ComponentPlacementExport: {
+		refusal: "exported component cannot declare host placement metadata",
+	},
+	extension.ComponentPlacementWorkspaceView: {
+		scopes: []extension.ComponentScope{
+			extension.ComponentScopeInstallation, extension.ComponentScopeWorkspace,
+			extension.ComponentScopeSession, extension.ComponentScopeClient,
+		},
+		material: true,
+		refusal:  "workspace component has a renderer target",
+	},
+	extension.ComponentPlacementSettingsPane: {
+		scopes: []extension.ComponentScope{
+			extension.ComponentScopeClient, extension.ComponentScopeWorkspace, extension.ComponentScopeInstallation,
+		},
+		material: true,
+		refusal:  "settings component requires client, workspace or installation context",
+	},
+	extension.ComponentPlacementClientEffect: {
+		scopes:  []extension.ComponentScope{extension.ComponentScopeClient},
+		refusal: "client effect requires client context without view metadata",
+	},
+	extension.ComponentPlacementSessionAction: {
+		scopes:  []extension.ComponentScope{extension.ComponentScopeSession},
+		refusal: "session action requires session context",
+	},
+	extension.ComponentPlacementFileRenderer: {
+		scopes:    []extension.ComponentScope{extension.ComponentScopeFile},
+		selectors: []extension.RendererSelectorKind{extension.RendererFileExtension},
+		refusal:   "file component requires an exact extension selector",
+	},
+	extension.ComponentPlacementToolResultRenderer: {
+		scopes:    []extension.ComponentScope{extension.ComponentScopeToolResult},
+		selectors: []extension.RendererSelectorKind{extension.RendererToolName, extension.RendererResultShape},
+		refusal:   "tool result component requires an exact selector",
+	},
+}
+
+func (p componentPlacement) admits(value ClientComponent) bool {
+	if p.scopes != nil && !slices.Contains(p.scopes, value.Scope) {
+		return false
+	}
+	if value.Material != "" && !p.material {
+		return false
+	}
+	if value.Selector == nil {
+		return len(p.selectors) == 0
+	}
+	return slices.Contains(p.selectors, value.Selector.Kind) && value.Selector.exact()
+}
+
+// validate checks what the component declares about itself; the builder checks
+// it against the rest of the declaration.
+func (c ClientComponent) validate() error {
+	if err := c.ID.Validate(); err != nil {
 		return err
 	}
-	if value.Contribution != "" {
-		if err := value.Contribution.Validate(); err != nil {
+	if c.Contribution != "" {
+		if err := c.Contribution.Validate(); err != nil {
 			return err
 		}
 	}
-	if value.SettingsIntent != "" && (value.Placement != extension.ComponentPlacementSettingsPane || !value.SettingsIntent.Valid()) {
-		return refuse(DiagnosticInvalidDeclaration, "invalid settings intent for component %q", value.ID)
+	if c.SettingsIntent != "" && (c.Placement != extension.ComponentPlacementSettingsPane || !c.SettingsIntent.Valid()) {
+		return refuse(DiagnosticInvalidDeclaration, "invalid settings intent for component %q", c.ID)
 	}
-	if value.Title == "" || len(value.Title) > MaxPresentationTitleBytes || !utf8.ValidString(value.Title) || !value.Scope.Valid() || !ValidResourcePath(value.Entry) || !strings.HasPrefix(value.Entry, Namespace+"/") || !strings.HasSuffix(value.Entry, ".js") || !componentExport.MatchString(value.Export) {
-		return refuse(DiagnosticInvalidDeclaration, "invalid component %q", value.ID)
+	if c.Title == "" || len(c.Title) > MaxPresentationTitleBytes || !utf8.ValidString(c.Title) || !c.Scope.Valid() {
+		return refuse(DiagnosticInvalidDeclaration, "invalid component %q", c.ID)
 	}
-	switch value.Placement {
-	case extension.ComponentPlacementExport:
-		if value.Selector != nil || value.Material != "" {
-			return refuse(DiagnosticInvalidDeclaration, "exported component cannot declare host placement metadata")
-		}
-	case extension.ComponentPlacementWorkspaceView:
-		if (value.Scope == extension.ComponentScopeFile || value.Scope == extension.ComponentScopeToolResult) || value.Selector != nil {
-			return refuse(DiagnosticInvalidDeclaration, "workspace component has a renderer target")
-		}
-	case extension.ComponentPlacementSettingsPane:
-		if (value.Scope != extension.ComponentScopeClient && value.Scope != extension.ComponentScopeWorkspace && value.Scope != extension.ComponentScopeInstallation) || value.Selector != nil {
-			return refuse(DiagnosticInvalidDeclaration, "settings component requires client, workspace or installation context")
-		}
-	case extension.ComponentPlacementClientEffect:
-		if value.Scope != extension.ComponentScopeClient || value.Material != "" || value.Selector != nil {
-			return refuse(DiagnosticInvalidDeclaration, "client effect requires client context without view metadata")
-		}
-	case extension.ComponentPlacementSessionAction:
-		if value.Scope != extension.ComponentScopeSession || value.Material != "" || value.Selector != nil {
-			return refuse(DiagnosticInvalidDeclaration, "session action requires session context")
-		}
-	case extension.ComponentPlacementFileRenderer:
-		if value.Scope != extension.ComponentScopeFile || value.Material != "" || value.Selector == nil || value.Selector.Kind != extension.RendererFileExtension || value.Selector.Shape != "" || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !fileExtensionPattern.MatchString(value.Selector.Name) {
-			return refuse(DiagnosticInvalidDeclaration, "file component requires an exact extension selector")
-		}
-	case extension.ComponentPlacementToolResultRenderer:
-		if value.Scope != extension.ComponentScopeToolResult || value.Material != "" || value.Selector == nil {
-			return refuse(DiagnosticInvalidDeclaration, "tool result component requires an exact selector")
-		}
-		switch value.Selector.Kind {
-		case extension.RendererToolName:
-			if value.Selector.Shape != "" || value.Selector.Name == "" || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !utf8.ValidString(value.Selector.Name) || strings.ContainsAny(value.Selector.Name, " \t\r\n") {
-				return refuse(DiagnosticInvalidDeclaration, "invalid tool result name")
-			}
-		case extension.RendererResultShape:
-			if value.Selector.Name != "" || !value.Selector.Shape.Valid() {
-				return refuse(DiagnosticInvalidDeclaration, "invalid tool result shape")
-			}
-		default:
-			return refuse(DiagnosticInvalidDeclaration, "invalid tool result selector")
-		}
-	default:
+	if !ValidResourcePath(c.Entry) || !strings.HasPrefix(c.Entry, Namespace+"/") || !strings.HasSuffix(c.Entry, ".js") || !componentExport.MatchString(c.Export) {
+		return refuse(DiagnosticInvalidDeclaration, "invalid component %q entry", c.ID)
+	}
+	placement, known := componentPlacements[c.Placement]
+	if !known {
 		return refuse(DiagnosticInvalidDeclaration, "unsupported component placement")
 	}
+	if !placement.admits(c) {
+		return refuse(DiagnosticInvalidDeclaration, "%s", placement.refusal)
+	}
+	if c.Material != "" && !identity.ValidDeclarationID(c.Material) {
+		return refuse(DiagnosticInvalidDeclaration, "invalid component material %q", c.Material)
+	}
+	return nil
+}
 
-	if value.Material != "" && !identity.ValidDeclarationID(value.Material) {
-		return refuse(DiagnosticInvalidDeclaration, "invalid component material %q", value.Material)
+func (b *Builder) AdmitComponent(value ClientComponent) error {
+	if err := value.validate(); err != nil {
+		return err
 	}
 	if slices.ContainsFunc(b.declaration.Components, func(current ClientComponent) bool { return current.ID == value.ID }) {
 		return refuse(DiagnosticInvalidDeclaration, "duplicate component %q", value.ID)

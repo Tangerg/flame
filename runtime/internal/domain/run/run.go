@@ -208,9 +208,6 @@ func (r Run) validate() error {
 	if err := r.modelSelection.ValidateExact(); err != nil {
 		return fmt.Errorf("run: %w", err)
 	}
-	if _, _, err := goalref.ParseOptionalIncarnation(r.goalIncarnationID.String()); err != nil {
-		return fmt.Errorf("run: %w", err)
-	}
 	if r.lineage.IsChild() && r.goalIncarnationID.String() != "" {
 		return errors.New("run: child carries a root Goal incarnation")
 	}

@@ -146,11 +146,10 @@
 29 runtime/internal/delivery/method.go:MethodMeta.validateOperationPolicy
 23 runtime/internal/delivery/registry.go:paginationOf
 24 runtime/internal/domain/integration/plugin/command.go:RestoreCommand
-62 runtime/internal/domain/integration/plugin/components.go:Builder.AdmitComponent
 24 runtime/internal/domain/integration/plugin/installation.go:Restore
 21 runtime/internal/domain/integration/plugin/release.go:NewRelease
 29 runtime/internal/domain/modelref/endpoint.go:RestoreEndpointObservation
-27 runtime/internal/domain/run/run.go:Run.validate
+26 runtime/internal/domain/run/run.go:Run.validate
 24 runtime/internal/domain/run/transcript/body.go:ToolCallBody.validate
 21 runtime/internal/infra/filesystem/fileobservation/paths_darwin.go:pathHints.run
 25 runtime/internal/infra/filesystem/skillauthoring/lifecycle.go:Store.moveLifecycle
