@@ -81,17 +81,17 @@ type app struct {
 	palette          *pickerDialog[commandPaletteItem]
 	search           *searchPrompt
 	shortcuts        *shortcutGuide
+	queueEditor      *queueEditor
 	models           *pickerDialog[protocol.Model]
 	workspaceChoices *pickerDialog[workspaceChoice]
 
-	transcript  *transcriptView
-	brand       *brandBanner
-	header      *sessionHeader
-	activity    *activityView
-	queueView   *queueView
-	queueDrawer *queueDrawer
-	status      *statusView
-	settings    settings.Config
+	transcript *transcriptView
+	brand      *brandBanner
+	header     *sessionHeader
+	activity   *activityView
+	queueView  *queueView
+	status     *statusView
+	settings   settings.Config
 
 	options        authoring.RunOptions
 	composer       composerContent
@@ -292,7 +292,10 @@ func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.M
 	a.wireTranscript(a.transcript)
 	a.shell.Focus(true)
 	a.stack.SetBase(a.shell)
-	a.buildQueueDrawer(theme, glyphs, editorKeys)
+	a.queueEditor = newQueueEditor(queueEditorConfig{
+		queue: a.queue, session: &a.session, run: a, view: a.queueView, prompt: a.prompt,
+		stack: &a.stack, theme: theme, glyphs: glyphs, keys: editorKeys, clip: a.loop.Clipboard(),
+	})
 	a.prompts = newInterruptPrompts(interruptPromptsConfig{
 		run: a, editContext: a.openContextEditor, remember: func() settings.RememberPreference { return a.settings.Approval.Remember },
 		stack: &a.stack, theme: theme, glyphs: glyphs, syntax: a.syntax,
@@ -514,7 +517,7 @@ func (a *app) sendNextQueuedIfBusy() {
 	if index >= len(state.Entries) || state.Entries[index].Held {
 		return
 	}
-	if err := a.sendQueuedNow(state.Entries[index].ID); err != nil {
+	if err := a.queueEditor.sendQueuedNow(state.Entries[index].ID); err != nil {
 		a.message(err.Error())
 	}
 }

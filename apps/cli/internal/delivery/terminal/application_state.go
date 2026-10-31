@@ -3,7 +3,6 @@ package terminal
 import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 )
 
@@ -60,5 +59,4 @@ type dialogState struct {
 	sessionDeleteDialog *kit.Dialog
 	confirmationDialog  *kit.Dialog
 	activeContextEditor *contextEditorSession
-	queueDialog         *headless.Dialog
 }

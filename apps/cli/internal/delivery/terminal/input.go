@@ -53,7 +53,7 @@ func (a *app) handleConfiguredAction(event input.Event, action keymap.Action) bo
 		a.handleCancelGesture()
 		return true
 	}
-	if action == cancelRun && a.dialogs.queueDialog != nil && a.dialogs.queueDialog.Open() && !a.queueDrawer.Editing() {
+	if action == cancelRun && a.queueEditor.closable() {
 		a.cancel()
 		return true
 	}
@@ -274,7 +274,7 @@ func (a *app) handleSessionAction(action keymap.Action) bool {
 		a.search.show()
 		return true
 	case manageQueue:
-		a.ShowQueue()
+		a.queueEditor.ShowQueue()
 		return true
 	case toggleDetails:
 		a.ToggleToolDetails()

@@ -33,7 +33,7 @@ func builtinCommands() []localCommand {
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "find", Title: "find text in the live transcript", Arguments: extensions.RequiredArguments}, Run: func(a *app, query string) error { a.Find(query); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "next", Title: "step to the next search match"}, Run: func(a *app, _ string) error { a.NextMatch(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "previous", Title: "step to the previous search match", Aliases: []string{"prev"}}, Run: func(a *app, _ string) error { a.PreviousMatch(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "queue", Title: "manage follow-ups waiting behind the current run"}, Run: func(a *app, _ string) error { a.ShowQueue(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "queue", Title: "manage follow-ups waiting behind the current run"}, Run: func(a *app, _ string) error { a.queueEditor.ShowQueue(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "details", Title: "expand or collapse tool output and diffs"}, Run: func(a *app, _ string) error { a.ToggleToolDetails(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "view", Title: "open the selected transcript entry in the full reader"}, Available: availableWithReadableSelection, Run: func(a *app, _ string) error { a.OpenReader(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "copy-last", Title: "copy the latest durable assistant response"}, Run: func(a *app, _ string) error { return a.copyLastAssistant() }},

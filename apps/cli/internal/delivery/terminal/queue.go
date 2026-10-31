@@ -8,10 +8,8 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
-	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/core/text"
 )
 
@@ -278,23 +276,6 @@ func (a *app) finishAuthoringSettlementRecovery() {
 	}
 }
 
-func (a *app) syncQueue() authoring.QueueSnapshot {
-	snapshot := a.queue.Snapshot(a.session.current.ID)
-	a.queueView.Set(snapshot)
-	a.prompt.SetQueued(len(snapshot.Entries))
-	if a.queueDrawer != nil {
-		a.queueDrawer.Set(snapshot)
-	}
-	if a.dialogs.queueDialog != nil {
-		a.dialogs.queueDialog.SetTitle("Queue · " + countedNoun(len(snapshot.Entries), "prompt"))
-		a.dialogs.queueDialog.SetDescription(fmt.Sprintf("Manage %s waiting behind the current turn", countedNoun(len(snapshot.Entries), "prompt")))
-		if len(snapshot.Entries) == 0 && a.dialogs.queueDialog.Open() {
-			a.dialogs.queueDialog.Dismiss()
-		}
-	}
-	return snapshot
-}
-
 func pendingRunByCommandID(pending []workbench.PendingRun, commandID authoring.CommandID) (workbench.PendingRun, bool) {
 	for _, candidate := range pending {
 		if candidate.Command.CommandID == commandID {
@@ -304,121 +285,20 @@ func pendingRunByCommandID(pending []workbench.PendingRun, commandID authoring.C
 	return workbench.PendingRun{}, false
 }
 
-func (a *app) ShowQueue() {
-	snapshot := a.syncQueue()
-	if len(snapshot.Entries) == 0 {
-		a.message("queue is empty")
-		return
-	}
-	a.queueDrawer.ResetNotice()
-	a.queueDrawer.lifecycle.renew()
-	a.dialogs.queueDialog.Show()
-	a.message(fmt.Sprintf("queue · %d waiting", len(snapshot.Entries)))
-}
-
-func (a *app) buildQueueDrawer(theme kit.Theme, glyphs kit.Glyphs, keys *keymap.Map) {
-	drawer := newQueueDrawer(theme, glyphs, keys, a.loop.Clipboard())
-	dialog := headless.NewDialog(headless.DialogConfig{Stack: &a.stack, Title: "Queue", Content: drawer})
-	drawer.SetActions(queueDrawerActions{
-		BeginEdit:  a.holdQueuedPrompt,
-		SaveEdit:   a.saveQueuedPrompt,
-		CancelEdit: a.releaseQueuedPrompt,
-		Remove:     a.removeQueuedPrompt,
-		Move:       a.moveQueuedPrompt,
-		SendNow:    a.sendQueuedNow,
-		Dismiss:    dialog.Dismiss,
-	})
-	drawer.lifecycle.bind(dialog.Open)
-	a.queueDrawer = drawer
-	a.dialogs.queueDialog = dialog
-}
-
-func (a *app) holdQueuedPrompt(entry authoring.QueueEntry) error {
-	if entry.SessionID != a.session.current.ID {
-		return errors.New("queued prompt belongs to another session")
-	}
-	if dispatching, ok := a.queue.Dispatching(entry.SessionID); ok && dispatching.ID == entry.ID {
-		return errQueuedPromptDispatching
-	}
-	if err := a.queue.Hold(entry.SessionID, entry.ID); err != nil {
-		return err
-	}
-	a.syncQueue()
-	return nil
-}
-
-func (a *app) saveQueuedPrompt(entry authoring.QueueEntry, message authoring.Message, sendNow bool) error {
-	if entry.SessionID != a.session.current.ID {
-		return errors.New("queued prompt belongs to another session")
-	}
-	if dispatching, ok := a.queue.Dispatching(entry.SessionID); ok && dispatching.ID == entry.ID {
-		return errQueuedPromptDispatching
-	}
-	if err := a.queue.Update(entry.SessionID, entry.ID, message); err != nil {
-		return err
-	}
-	a.syncQueue()
-	if sendNow {
-		return a.sendQueuedNow(entry.ID)
-	}
-	a.drainQueue()
-	return nil
-}
-
-func (a *app) releaseQueuedPrompt(entry authoring.QueueEntry) error {
-	if err := a.queue.Release(entry.SessionID, entry.ID); err != nil {
-		return err
-	}
-	if entry.SessionID != a.session.current.ID {
-		return nil
-	}
-	a.syncQueue()
-	a.drainQueue()
-	return nil
-}
-
-func (a *app) removeQueuedPrompt(id authoring.QueueEntryID) error {
-	if entry, ok := a.queue.Dispatching(a.session.current.ID); ok && id == entry.ID {
-		return errQueuedPromptDispatching
-	}
-	if _, err := a.queue.Remove(a.session.current.ID, id); err != nil {
-		return err
-	}
-	snapshot := a.syncQueue()
-	if len(snapshot.Entries) == 0 {
-		a.message("queue is empty")
-	}
-	return nil
-}
-
-func (a *app) moveQueuedPrompt(id authoring.QueueEntryID, offset int) error {
-	if entry, ok := a.queue.Dispatching(a.session.current.ID); ok && id == entry.ID {
-		return errQueuedPromptDispatching
-	}
-	if err := a.queue.Move(a.session.current.ID, id, offset); err != nil {
-		return err
-	}
-	a.syncQueue()
-	return nil
-}
-
-// sendQueuedNow persists priority in the queue before touching the active run.
-// Cancellation and dispatch therefore remain resumable if either runtime control
-// call is delayed or fails: the promoted entry is still the next FIFO item.
-func (a *app) sendQueuedNow(id authoring.QueueEntryID) error {
-	if entry, ok := a.queue.Dispatching(a.session.current.ID); ok && id == entry.ID {
-		return errQueuedPromptDispatching
-	}
+// queueSendBlocked reports why a queued prompt cannot be promoted now.
+func (a *app) queueSendBlocked() error {
 	if a.operations.Active(sessionChangeOperation) {
 		return errors.New("wait for the current session change to finish")
 	}
 	if !a.execution.blocksAdmission() && a.runtimeChangeBlocksRunAdmission() {
 		return errors.New("wait for the pending runtime change before sending a queued prompt")
 	}
-	if err := a.queue.Promote(a.session.current.ID, id); err != nil {
-		return err
-	}
-	a.syncQueue()
+	return nil
+}
+
+// dispatchPromoted sends the promoted entry: an active Run is canceled first,
+// and an idle session dispatches it at once.
+func (a *app) dispatchPromoted() error {
 	if a.execution.blocksAdmission() {
 		a.cancel()
 		return nil
@@ -427,4 +307,8 @@ func (a *app) sendQueuedNow(id authoring.QueueEntryID) error {
 		return errors.New("queued prompt could not be dispatched")
 	}
 	return nil
+}
+
+func (a *app) syncQueue() authoring.QueueSnapshot {
+	return a.queueEditor.sync()
 }

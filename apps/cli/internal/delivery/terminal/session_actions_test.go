@@ -18,7 +18,9 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/core/program"
 	"github.com/Tangerg/oolong/core/programtest"
 )
 
@@ -651,20 +653,7 @@ func TestProjectionRetirementRejectsAPresentedConfirmationCallback(t *testing.T)
 		reader: testReaderSurface(t, operations), prompts: testInterruptPrompts(t),
 	}
 	application.stack.SetBase(transcript)
-	application.search = newSearchPrompt(&application.stack, transcript.theme, transcript.glyphs, func(string) {})
-	application.palette = newPickerDialog(pickerDialogConfig[commandPaletteItem]{
-		stack: &application.stack, theme: transcript.theme, glyphs: transcript.glyphs,
-		label: func(commandPaletteItem) string { return "" }, detail: func(commandPaletteItem) string { return "" }, choose: func(commandPaletteItem) {},
-	})
-	application.workspaceChoices = newPickerDialog(pickerDialogConfig[workspaceChoice]{
-		stack: &application.stack, theme: transcript.theme, glyphs: transcript.glyphs,
-		label: func(workspaceChoice) string { return "" }, detail: func(workspaceChoice) string { return "" }, choose: func(workspaceChoice) {},
-	})
-	application.models = newPickerDialog(pickerDialogConfig[protocol.Model]{
-		stack: &application.stack, theme: transcript.theme, glyphs: transcript.glyphs,
-		label: func(protocol.Model) string { return "" }, detail: func(protocol.Model) string { return "" }, choose: func(protocol.Model) {},
-	})
-	application.timeline = newTimelineDialog(&application.stack, transcript.theme, transcript.glyphs, func(timelineEntry) {}, func(timelineEntry) {})
+	withModalOwners(t, application)
 	calls := 0
 	application.confirmAction("Retired confirmation", "Run the retired action?", "Run", func() { calls++ })
 	drawRoot(t, application, 96, 28)
@@ -996,5 +985,30 @@ func steerReplayTestProfile(t *testing.T, workspace string) runtimefixture.Profi
 		discovery.Capabilities.Limits.RunReplay.MaxEvents = 128
 		discovery.Capabilities.Limits.RuntimeSubscription.MaxTopics = 1
 		discovery.Capabilities.Limits.RuntimeSubscription.MaxWatches = 1
+	})
+}
+
+// withModalOwners gives a hand-built app the modal owners session retirement
+// dismisses.
+func withModalOwners(t *testing.T, application *app) {
+	t.Helper()
+	theme, glyphs := application.transcript.theme, application.transcript.glyphs
+	application.search = newSearchPrompt(&application.stack, theme, glyphs, func(string) {})
+	application.timeline = newTimelineDialog(&application.stack, theme, glyphs, func(timelineEntry) {}, func(timelineEntry) {})
+	application.palette = newPickerDialog(pickerDialogConfig[commandPaletteItem]{
+		stack: &application.stack, theme: theme, glyphs: glyphs,
+		label: func(commandPaletteItem) string { return "" }, detail: func(commandPaletteItem) string { return "" }, choose: func(commandPaletteItem) {},
+	})
+	application.workspaceChoices = newPickerDialog(pickerDialogConfig[workspaceChoice]{
+		stack: &application.stack, theme: theme, glyphs: glyphs,
+		label: func(workspaceChoice) string { return "" }, detail: func(workspaceChoice) string { return "" }, choose: func(workspaceChoice) {},
+	})
+	application.models = newPickerDialog(pickerDialogConfig[protocol.Model]{
+		stack: &application.stack, theme: theme, glyphs: glyphs,
+		label: func(protocol.Model) string { return "" }, detail: func(protocol.Model) string { return "" }, choose: func(protocol.Model) {},
+	})
+	application.queueEditor = newQueueEditor(queueEditorConfig{
+		session: &application.session, run: application, stack: &application.stack, theme: theme, glyphs: glyphs,
+		keys: headless.DefaultEditorKeys(), clip: (&program.Runtime{}).Clipboard(),
 	})
 }

@@ -54,7 +54,7 @@ func (a *app) retireSessionContext() {
 	a.workspaceChoices.dialog.Dismiss()
 	a.dismissModelPicker()
 	a.dialogs.sessionDialog.Dismiss()
-	a.dialogs.queueDialog.Dismiss()
+	a.queueEditor.dialog.Dismiss()
 	if a.dialogs.sessionRenameDialog != nil {
 		a.dialogs.sessionRenameDialog.Controller().Dismiss()
 		a.dialogs.sessionRenameDialog = nil
