@@ -3,7 +3,7 @@ module github.com/Tangerg/flame/apps/desktop
 go 1.27.3
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261031.audit-fix.2
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261031.module-path.1
 	github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1
 	github.com/Tangerg/qimu v0.1.0-quality.20261031.module-path.1
 	github.com/wailsapp/wails/v3 v3.0.0

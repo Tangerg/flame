@@ -68,7 +68,7 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261031.audit-fix.2
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261031.module-path.1
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/qimu v0.1.0-quality.20261031.module-path.1
 	github.com/Tangerg/scope/core v0.58.0
