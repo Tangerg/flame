@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -11,7 +12,7 @@ import (
 )
 
 type endpointReader interface {
-	PageEndpointInvocations(context.Context, string, int64, string, int) ([]modelref.EndpointObservation, error)
+	PageEndpointInvocations(context.Context, string, *modelref.InvocationPageAnchor, int) ([]modelref.EndpointObservation, error)
 }
 
 type EndpointObservations struct{ reader endpointReader }
@@ -34,23 +35,26 @@ func (r *EndpointObservations) List(ctx context.Context, parent, cursor string, 
 	if err != nil {
 		return zero, err
 	}
-	var before int64
-	var beforeID string
+	var before *modelref.InvocationPageAnchor
 	if len(anchor) > 0 {
 		if len(anchor) != 2 {
 			return zero, pagination.ErrInvalidCursor
 		}
-		before, err = strconv.ParseInt(anchor[0], 10, 64)
-		if err != nil || anchor[1] == "" {
+		stamp, err := strconv.ParseInt(anchor[0], 10, 64)
+		if err != nil {
 			return zero, pagination.ErrInvalidCursor
 		}
-		beforeID = anchor[1]
+		position, err := modelref.NewInvocationPageAnchor(time.Unix(0, stamp), anchor[1])
+		if err != nil {
+			return zero, pagination.ErrInvalidCursor
+		}
+		before = &position
 	}
 	size, err := limit.Resolve(100)
 	if err != nil {
 		return zero, err
 	}
-	rows, err := r.reader.PageEndpointInvocations(ctx, parent, before, beforeID, size+1)
+	rows, err := r.reader.PageEndpointInvocations(ctx, parent, before, size+1)
 	if err != nil {
 		return zero, err
 	}

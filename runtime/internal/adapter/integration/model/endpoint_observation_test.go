@@ -42,7 +42,7 @@ func TestEndpointRecordsOneFailureForInvalidResponse(t *testing.T) {
 	if response != invalid || !errors.Is(err, cause) || !errors.Is(err, chat.ErrInvalidResponse) {
 		t.Fatalf("invalid response evidence changed: %+v, %v", response, err)
 	}
-	rows, err := store.PageEndpointInvocations(t.Context(), "invalid-response", 0, "", 10)
+	rows, err := store.PageEndpointInvocations(t.Context(), "invalid-response", nil, 10)
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("endpoint observation: %+v, %v", rows, err)
 	}
@@ -82,7 +82,7 @@ func TestEndpointRetainsGenerationWhenCatalogCannotPriceUsage(t *testing.T) {
 	if callErr == nil || got != response || calls != 1 {
 		t.Fatalf("pricing failure lost generation or repeated inference: %+v, %v, calls=%d", got, callErr, calls)
 	}
-	rows, err := db.ModelInvocations.PageEndpointInvocations(t.Context(), "pricing-failure", 0, "", 10)
+	rows, err := db.ModelInvocations.PageEndpointInvocations(t.Context(), "pricing-failure", nil, 10)
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("endpoint observation: %+v, %v", rows, err)
 	}
@@ -131,7 +131,7 @@ func TestEndpointStreamRecordsCompletionAndConsumerStopWithoutPromotion(t *testi
 			t.Fatal(err)
 		}
 		sequence := stream.Stream(ctx, request)
-		if rows, err := store.PageEndpointInvocations(t.Context(), id, 0, "", 10); err != nil || len(rows) != 0 {
+		if rows, err := store.PageEndpointInvocations(t.Context(), id, nil, 10); err != nil || len(rows) != 0 {
 			t.Fatal("unconsumed iterator published endpoint work")
 		}
 		for delta, err := range sequence {
@@ -145,7 +145,7 @@ func TestEndpointStreamRecordsCompletionAndConsumerStopWithoutPromotion(t *testi
 				break
 			}
 		}
-		rows, err := store.PageEndpointInvocations(t.Context(), id, 0, "", 10)
+		rows, err := store.PageEndpointInvocations(t.Context(), id, nil, 10)
 		if err != nil || len(rows) != 1 {
 			t.Fatalf("endpoint observation: %+v, %v", rows, err)
 		}

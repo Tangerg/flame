@@ -149,7 +149,7 @@ func TestSelectedModelCallsHaveIndependentRoutesBudgetsAndDurableEvidence(t *tes
 			}
 			defer db.Close()
 			store := db.ModelInvocations
-			rows, err := store.PageEndpointInvocations(t.Context(), "original-plugin-operation", 0, "", 10)
+			rows, err := store.PageEndpointInvocations(t.Context(), "original-plugin-operation", nil, 10)
 			if err != nil || len(rows) != 3 {
 				t.Fatalf("durable independent endpoints: %+v %v", rows, err)
 			}

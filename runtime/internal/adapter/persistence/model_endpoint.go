@@ -187,12 +187,12 @@ func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, inv
 	return nil
 }
 
-func (m *ModelInvocationStore) PageEndpointInvocations(ctx context.Context, parent string, before int64, beforeID string, limit int) ([]modelref.EndpointObservation, error) {
+func (m *ModelInvocationStore) PageEndpointInvocations(ctx context.Context, parent string, before *modelref.InvocationPageAnchor, limit int) ([]modelref.EndpointObservation, error) {
 	query := `SELECT ` + endpointObservationColumns + ` FROM model_invocations WHERE endpoint_json IS NOT NULL AND (json_extract(endpoint_json,'$.caller.id')=? OR json_extract(endpoint_json,'$.caller.parent')=?)`
 	args := []any{parent, parent}
-	if beforeID != "" {
+	if before != nil {
 		query += ` AND (started_at,call_id)<(?,?)`
-		args = append(args, before, beforeID)
+		args = append(args, before.StartedAt().UnixNano(), before.ID())
 	}
 	query += ` ORDER BY started_at DESC,call_id DESC LIMIT ?`
 	args = append(args, limit)

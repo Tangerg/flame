@@ -54,7 +54,7 @@ func TestObservedEmbedderJournalsEndpointEvidenceThroughSharedOwner(t *testing.T
 	if len(vectors) != 2 || len(vectors[0]) != 2 {
 		t.Fatalf("embedding vectors lost shape: %+v", vectors)
 	}
-	rows, err := store.PageEndpointInvocations(t.Context(), "embed-call", 0, "", 10)
+	rows, err := store.PageEndpointInvocations(t.Context(), "embed-call", nil, 10)
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("embedding endpoint evidence: %+v %v", rows, err)
 	}
@@ -92,7 +92,7 @@ func TestEmbeddingRetainsPhysicalEvidenceWhenPricingFails(t *testing.T) {
 	if vectors, err := subject.Embed(ctx, []string{"alpha"}); vectors != nil || !errors.Is(err, cause) {
 		t.Fatalf("pricing failure became success: %+v, %v", vectors, err)
 	}
-	rows, err := db.ModelInvocations.PageEndpointInvocations(t.Context(), "embed-pricing", 0, "", 10)
+	rows, err := db.ModelInvocations.PageEndpointInvocations(t.Context(), "embed-pricing", nil, 10)
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("embedding endpoint observation: %+v, %v", rows, err)
 	}
@@ -129,7 +129,7 @@ func TestEmbeddingRefusesUnrepresentableIndexCoordinatesAndRetainsEvidence(t *te
 			if err == nil || vectors != nil {
 				t.Fatalf("unrepresentable index vector escaped: %v, %v", vectors, err)
 			}
-			rows, err := db.ModelInvocations.PageEndpointInvocations(t.Context(), invocationID, 0, "", 10)
+			rows, err := db.ModelInvocations.PageEndpointInvocations(t.Context(), invocationID, nil, 10)
 			if err != nil || len(rows) != 1 {
 				t.Fatalf("physical evidence: %+v, %v", rows, err)
 			}

@@ -75,7 +75,7 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 	if err != nil || !found || source.Snapshot().Cost.OptionalUSD() == nil || *source.Snapshot().Cost.OptionalUSD() != 1.5 {
 		t.Fatalf("restart lost captured source price: %+v %v", source, err)
 	}
-	rows, err := store.PageEndpointInvocations(t.Context(), "original-endpoint-parent", 0, "", 10)
+	rows, err := store.PageEndpointInvocations(t.Context(), "original-endpoint-parent", nil, 10)
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("persisted inner evidence: %+v, %v", rows, err)
 	}

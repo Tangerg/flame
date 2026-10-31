@@ -43,7 +43,7 @@ func TestUnobservedEndpointReopensUnknownWithoutReplayingCallingIdentity(t *test
 	if err := store.ReconcileEndpointInvocations(t.Context(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
-	rows, err := store.PageEndpointInvocations(t.Context(), "model-operation", 0, "", 10)
+	rows, err := store.PageEndpointInvocations(t.Context(), "model-operation", nil, 10)
 	if err != nil || len(rows) != 1 || rows[0].State() != modelref.InvocationUnknown || rows[0].Response() != nil || rows[0].Snapshot().Failure == "" {
 		t.Fatalf("restart promoted unknown request: %+v, %v", rows, err)
 	}
@@ -89,7 +89,7 @@ func TestSessionEndpointDeletionIsAtomicAndRetainsUnrelatedEvidence(t *testing.T
 	if err := newSessionStore(db).Delete(t.Context(), invocation.SessionID); err != nil {
 		t.Fatal(err)
 	}
-	if rows, err := store.PageEndpointInvocations(t.Context(), invocation.Caller.ID, 0, "", 10); err != nil || len(rows) != 0 {
+	if rows, err := store.PageEndpointInvocations(t.Context(), invocation.Caller.ID, nil, 10); err != nil || len(rows) != 0 {
 		t.Fatalf("deleted Session retained endpoints: %v %v", rows, err)
 	}
 	for _, caller := range []string{"utility_other", "utility_global"} {

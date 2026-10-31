@@ -439,3 +439,21 @@ func cloneEndpointRecord(record EndpointRecord) EndpointRecord {
 func cloneEmbeddingRequest(r *embedding.Request) *embedding.Request {
 	return &embedding.Request{Texts: slices.Clone(r.Texts), Options: r.Options.Clone()}
 }
+
+// InvocationPageAnchor is the (start time, invocation identity) position a
+// newest-first page of endpoint invocations ended at; a missing anchor is the
+// first page.
+type InvocationPageAnchor struct {
+	startedAt time.Time
+	id        string
+}
+
+func NewInvocationPageAnchor(startedAt time.Time, id string) (InvocationPageAnchor, error) {
+	if err := ValidateInvocationID(id); err != nil {
+		return InvocationPageAnchor{}, err
+	}
+	return InvocationPageAnchor{startedAt: startedAt.UTC(), id: id}, nil
+}
+
+func (a InvocationPageAnchor) StartedAt() time.Time { return a.startedAt }
+func (a InvocationPageAnchor) ID() string           { return a.id }
