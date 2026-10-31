@@ -543,18 +543,11 @@ func (r *reducer) completeTool(ref *openTool, e ToolCallFinished) ([]ProjectionE
 // The model completion supplies both durable consumption and its progress
 // projection. Segment termination cannot replace or erase that consumption.
 func (r *reducer) modelUsageProgress(e ModelCallCompleted) ([]ProjectionEvent, error) {
-	current, err := r.metrics()
+	accrued, err := r.accrued.AccrueModelCall(e.Model, e.ReportedUsage, e.Cost)
 	if err != nil {
 		return nil, err
 	}
-	next, err := current.AccrueModelCall(e.Model, e.ReportedUsage, e.Cost)
-	if err != nil {
-		return nil, err
-	}
-	r.step = next.Steps()
-	if usage, known := next.Usage(); known {
-		r.usage = new(usage)
-	}
+	r.accrued = accrued
 	metrics, err := r.metrics()
 	if err != nil {
 		return nil, err
@@ -569,7 +562,7 @@ func (r *reducer) modelUsageProgress(e ModelCallCompleted) ([]ProjectionEvent, e
 		contextTokens := e.ContextTokens
 		progress.ContextTokens = &contextTokens
 	}
-	step := r.step
+	step := r.accrued.Steps()
 	progress.Step = &step
 	return []ProjectionEvent{SegmentProgressed{Progress: progress}}, nil
 }

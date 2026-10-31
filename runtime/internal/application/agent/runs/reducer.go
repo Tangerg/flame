@@ -10,7 +10,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
@@ -52,14 +51,9 @@ type reducer struct {
 	cfg     reducerConfig
 	resume  *resumeBinding
 	itemIDs segmentItemIdentities
-	// step is the latest cumulative accounted model-call count reported by the
-	// executor. Tool events never
-	// infer it.
-	step int
-	// usage is the latest authoritative cumulative Run accounting reported by
-	// the executor. Nil means this segment has not advanced the committed
-	// accrual the opened Run brought in.
-	usage           *accounting.Usage
+	// accrued is the Run's consumption through its latest model call; only this
+	// reducer advances it. The segment's active duration joins at metrics().
+	accrued         run.Metrics
 	contextTokens   int64
 	segmentDuration time.Duration
 	userInput       []transcript.ContentBlock
@@ -121,7 +115,7 @@ func newReducer(cfg reducerConfig) *reducer {
 	return &reducer{
 		cfg: cfg, resume: resume, itemIDs: newSegmentItemIdentities(cfg.Opened.ActiveSegmentID()),
 		userInput: transcript.CloneContent(cfg.UserInput),
-		step:      cfg.Opened.Metrics().Steps(), contextTokens: cfg.Opened.ContextTokens(),
+		accrued:   cfg.Opened.Metrics(), contextTokens: cfg.Opened.ContextTokens(),
 		modelCalls: make(map[string]modelCall), toolCallIDs: make(map[string]struct{}),
 		toolPositions: make(map[toolPosition]string), tools: newOpenTools(),
 	}

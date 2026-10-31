@@ -1289,8 +1289,8 @@ func TestReducerRejectsMalformedToolArguments(t *testing.T) {
 		if !errors.Is(err, errExecutorContract) || !errors.Is(err, tool.ErrInvalidArguments) {
 			t.Fatalf("tool start error = %v, want executor protocol + invalid arguments", err)
 		}
-		if reducer.tools.count() != 0 || reducer.step != 0 {
-			t.Fatalf("malformed start mutated reducer: tools=%d step=%d", reducer.tools.count(), reducer.step)
+		if reducer.tools.count() != 0 || reducer.accrued.Steps() != 0 {
+			t.Fatalf("malformed start mutated reducer: tools=%d step=%d", reducer.tools.count(), reducer.accrued.Steps())
 		}
 	})
 

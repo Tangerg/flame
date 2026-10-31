@@ -61,10 +61,7 @@ func (r *reducer) progressedRun(updatedAt time.Time) (run.Run, error) {
 // metrics projects consumption accrued from individual calls onto the opened Run.
 // Active duration joins it only at the segment boundary.
 func (r *reducer) metrics() (run.Metrics, error) {
-	usage, reported := r.cfg.Opened.Metrics().Usage()
-	if r.usage != nil {
-		usage, reported = r.usage.Clone(), true
-	}
+	usage, reported := r.accrued.Usage()
 	var usageRef *accounting.Usage
 	if reported {
 		usageRef = &usage
@@ -73,7 +70,7 @@ func (r *reducer) metrics() (run.Metrics, error) {
 	if r.segmentDuration < 0 || (r.segmentDuration > 0 && activeDuration > time.Duration(math.MaxInt64)-r.segmentDuration) {
 		return run.Metrics{}, errors.New("segment active duration is invalid or overflows")
 	}
-	return run.NewMetrics(usageRef, r.step, activeDuration+r.segmentDuration)
+	return run.NewMetrics(usageRef, r.accrued.Steps(), activeDuration+r.segmentDuration)
 }
 
 // cancelDetail gives a Canceled ending the reason its cancel request stated.
