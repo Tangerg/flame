@@ -1,8 +1,12 @@
-import { type ApprovalSubject, type ToolRef } from "@flame/runtime-client/wire";
 import { type ApprovalRuleDecision } from "@/foundation/protocolValues.generated";
 
 import { createDataQuery, createParameterizedDataQuery } from "@/extensions/dataQuery";
-import { type ApprovalModeResult, type RememberScope } from "@/features/agent/domain/hitl";
+import {
+  type ApprovalModeResult,
+  type ApprovalSubject,
+  type ApprovalToolRef,
+  type RememberScope,
+} from "@/features/agent/domain/hitl";
 export interface ApprovalRulesQuery {
   sessionId?: string;
 }
@@ -10,7 +14,7 @@ export interface ApprovalRulesQuery {
 export interface ApprovalRuleSummary {
   id: string;
   scope: RememberScope;
-  tool: ToolRef;
+  tool: ApprovalToolRef;
   modelName: string;
   stale: boolean;
   subject: ApprovalSubject;
