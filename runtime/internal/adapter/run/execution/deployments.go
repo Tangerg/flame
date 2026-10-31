@@ -323,10 +323,13 @@ func (i *interactionDeploymentBuilder) layerIdentity(
 	if depth == 0 {
 		return domaintool.GroupRoot, i.rootManifest, interactionDefinitionName, interactionDefinitionDescription
 	}
-	return domaintool.GroupDelegated,
-		i.delegatedManifest,
-		"flame.runtime.interaction.delegate.depth" + strconv.Itoa(depth),
-		"Run one isolated delegated Flame interaction."
+	return domaintool.GroupDelegated, i.delegatedManifest, delegatedDefinitionName(depth), delegatedDefinitionDescription
+}
+
+// delegatedDefinitionName names the interaction at one delegation depth; each
+// depth is a distinct agent definition under the root interaction's name.
+func delegatedDefinitionName(depth int) string {
+	return fmt.Sprintf("%s.delegate.depth%d", interactionDefinitionName, depth)
 }
 
 func (i *interactionDeploymentBuilder) delegateLayer(

@@ -35,6 +35,7 @@ import (
 const (
 	interactionDefinitionName        = "flame.runtime.interaction"
 	interactionDefinitionDescription = "Run one model-directed Flame interaction over a frozen working context."
+	delegatedDefinitionDescription   = "Run one isolated delegated Flame interaction."
 	interactionEventBuffer           = 64
 	interactionReleaseReason         = "runtime released execution resources"
 	defaultUnknownEffectPollInterval = time.Second

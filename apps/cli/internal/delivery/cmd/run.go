@@ -312,17 +312,17 @@ func readPrompt(cmd *cobra.Command, args []string) (string, error) {
 // readPipedPrompt reads stdin when it is not a terminal. A terminal is left alone: a
 // prompt-less `flame run` should say so, not sit there looking hung.
 func readPipedPrompt(ctx context.Context, in io.Reader) (_ string, err error) {
-	reader, closeReader, err := promptReader(ctx, in)
-	if err != nil || reader == nil {
+	source, piped, err := pipedPromptSource(ctx, in)
+	if err != nil || !piped {
 		return "", err
 	}
 	defer func() {
-		err = errors.Join(err, closeReader())
+		err = errors.Join(err, source.close())
 		if cause := context.Cause(ctx); cause != nil && !errors.Is(err, cause) {
 			err = errors.Join(cause, err)
 		}
 	}()
-	b, err := io.ReadAll(io.LimitReader(reader, authoring.MaxMessageTextBytes+1))
+	b, err := io.ReadAll(io.LimitReader(source.reader, authoring.MaxMessageTextBytes+1))
 	if cause := context.Cause(ctx); cause != nil {
 		return "", errors.Join(cause, err)
 	}
