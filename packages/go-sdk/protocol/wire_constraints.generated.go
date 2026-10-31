@@ -2416,7 +2416,7 @@ func (r RunProtocolProfile) validateWire() error {
 	return collectWireViolations("RunProtocolProfile",
 		uniqueItems("requiredFeatures", r.RequiredFeatures),
 		uniqueItems("interruptTypes", r.InterruptTypes),
-		closedEnumItems("requiredFeatures", r.RequiredFeatures, []string{"subagents"}),
+		closedEnumItems("requiredFeatures", r.RequiredFeatures, []string{"childRuns"}),
 		closedEnumItems("interruptTypes", r.InterruptTypes, []string{"approval", "question"}),
 	)
 }

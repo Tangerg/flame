@@ -17,7 +17,7 @@ func TestProblemOwnsAndPresentsRecoveryMetadata(t *testing.T) {
 		},
 		{
 			Type:                 protocol.ErrCapabilityNotNeg.Error(),
-			RequiredCapabilities: []protocol.CapabilityRequirement{{Type: protocol.RequirementFeature, Name: "subagents"}},
+			RequiredCapabilities: []protocol.CapabilityRequirement{{Type: protocol.RequirementFeature, Name: "childRuns"}},
 		},
 		{
 			Type:      protocol.ErrSessionHasActiveRun.Error(),
@@ -25,7 +25,7 @@ func TestProblemOwnsAndPresentsRecoveryMetadata(t *testing.T) {
 		},
 		{
 			Type:   protocol.ErrInvalidParams.Error(),
-			Errors: []protocol.FieldError{{Field: "features", Detail: "subagents is absent"}},
+			Errors: []protocol.FieldError{{Field: "features", Detail: "childRuns is absent"}},
 		},
 	}
 	var rendered []string
@@ -33,7 +33,7 @@ func TestProblemOwnsAndPresentsRecoveryMetadata(t *testing.T) {
 		rendered = append(rendered, String(problem))
 	}
 	presentation := strings.Join(rendered, " ")
-	for _, want := range []string{"additional declarations required", "retry after 2s", "docs.example", "feature:subagents", "run_1 (waiting)", "features: subagents is absent"} {
+	for _, want := range []string{"additional declarations required", "retry after 2s", "docs.example", "feature:childRuns", "run_1 (waiting)", "features: childRuns is absent"} {
 		if !strings.Contains(presentation, want) {
 			t.Fatalf("String() omitted %q: %s", want, presentation)
 		}
@@ -45,8 +45,8 @@ func TestProblemOwnsAndPresentsRecoveryMetadata(t *testing.T) {
 	capabilitiesClone.RequiredCapabilities[0].Name = "mutated"
 	activeRunClone.ActiveRun.RunID = "run_2"
 	fieldsClone.Errors[0].Detail = "mutated"
-	if Equal(problems[1], capabilitiesClone) || problems[1].RequiredCapabilities[0].Name != "subagents" ||
-		problems[2].ActiveRun.RunID != "run_1" || problems[3].Errors[0].Detail != "subagents is absent" {
+	if Equal(problems[1], capabilitiesClone) || problems[1].RequiredCapabilities[0].Name != "childRuns" ||
+		problems[2].ActiveRun.RunID != "run_1" || problems[3].Errors[0].Detail != "childRuns is absent" {
 		t.Fatalf("Clone retained caller-owned state: sources=%+v", problems)
 	}
 	if !Equal(problems[0], Clone(problems[0])) || Clone(nil) != nil || !Equal(nil, nil) {

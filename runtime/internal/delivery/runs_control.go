@@ -21,7 +21,7 @@ func (s *Handler) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (
 	result, err := s.runs.Cancel(ctx, runs.CancelCommand{
 		RunID:         in.RunID,
 		Reason:        in.Reason,
-		AllowChildRun: s.requestCanUseFeature(ctx, protocol.FeatureSubagents),
+		AllowChildRun: s.requestCanUseFeature(ctx, protocol.FeatureChildRuns),
 	})
 	_, settlementFailed := errors.AsType[*runs.CancellationSettlementError](err)
 	switch {
@@ -38,7 +38,7 @@ func (s *Handler) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (
 	case errors.Is(err, runs.ErrChildRunNotAllowed):
 		return nil, NewCapabilityGapError(protocol.CapabilityRequirement{
 			Type: protocol.RequirementFeature,
-			Name: protocol.FeatureSubagents,
+			Name: protocol.FeatureChildRuns,
 		})
 	case err != nil:
 		return nil, err

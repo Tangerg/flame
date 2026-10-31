@@ -312,7 +312,7 @@ describe("the published JSON Schema bundle", () => {
         requiredCapabilities: [],
       }),
     ).toBe(false);
-    const repeatedRequirement = { type: "feature", name: "subagents" };
+    const repeatedRequirement = { type: "feature", name: "childRuns" };
     expect(
       problem?.({
         type: "capability_not_negotiated",

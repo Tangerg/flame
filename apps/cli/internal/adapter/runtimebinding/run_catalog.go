@@ -40,7 +40,7 @@ func (r *Connection) ListRuns(ctx context.Context, query conversation.RunQuery) 
 		return conversation.RunPage{}, err
 	}
 	if query.IncludeDescendants {
-		if err := r.requireFeature(protocol.FeatureSubagents); err != nil {
+		if err := r.requireFeature(protocol.FeatureChildRuns); err != nil {
 			return conversation.RunPage{}, err
 		}
 	}

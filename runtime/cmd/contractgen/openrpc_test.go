@@ -16,7 +16,7 @@ func TestTrajectoryCapabilityPublicationsFollowRegistry(t *testing.T) {
 	set := testWalkWireTypes(t, registry, shapes)
 	want := []capabilityRow{{
 		When:     []conditionRow{{Field: "includeDescendants", Operator: "present"}},
-		Requires: []string{protocol.FeatureSubagents},
+		Requires: []string{protocol.FeatureChildRuns},
 	}}
 	method := openRPCMethod(t, newOpenRPC(registry, shapes, set), delivery.SessionsTrajectory.String())
 	if !reflect.DeepEqual(method.Capabilities, want) {

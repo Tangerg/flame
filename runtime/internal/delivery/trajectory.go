@@ -17,7 +17,7 @@ func registerSessionTrajectory(registry *Registry) {
 		Errors:       []string{protocol.ErrSessionNotFound.Error()},
 		CapabilityRules: []CapabilityRule{{
 			When:     []FieldCondition{{Field: "includeDescendants", Operator: OperatorPresent}},
-			Requires: []string{protocol.FeatureSubagents},
+			Requires: []string{protocol.FeatureChildRuns},
 		}},
 	}, func(service interface {
 		ListSessionTrajectory(context.Context, protocol.ListSessionTrajectoryRequest) (*protocol.Page[protocol.TrajectoryEntry], error)

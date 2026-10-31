@@ -155,7 +155,7 @@ func registerRuns(registry *Registry) {
 		return service.GetRunAcceptance(ctx, request)
 	})
 
-	// Only a request that asks for descendants needs features.subagents; the
+	// Only a request that asks for descendants needs features.childRuns; the
 	// default page of root runs is always available. The condition treats
 	// `includeDescendants: false` as "not asking", so an explicit false and an
 	// absent field behave alike — while an explicit true is refused rather than
@@ -164,7 +164,7 @@ func registerRuns(registry *Registry) {
 		Name: RunsList, GoName: "ListRuns",
 		CapabilityRules: []CapabilityRule{{
 			When:     []FieldCondition{{Field: "includeDescendants", Operator: OperatorPresent}},
-			Requires: []string{protocol.FeatureSubagents},
+			Requires: []string{protocol.FeatureChildRuns},
 		}},
 	}, func(service interface {
 		ListRuns(context.Context, protocol.ListRunsRequest) (*protocol.Page[protocol.RunRef], error)

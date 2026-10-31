@@ -4,7 +4,7 @@ import { type ClientCapabilities, type RequestMeta } from "@flame/runtime-client
 export const CLIENT_CAPABILITIES: ClientCapabilities = {
   features: {
     multimodal: { enabled: true },
-    subagents: { enabled: true },
+    childRuns: { enabled: true },
   },
   interruptTypes: ["approval", "question"],
 };

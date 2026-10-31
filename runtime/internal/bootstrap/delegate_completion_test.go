@@ -44,7 +44,7 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 	options := delivery.Options{RequestMeta: protocol.RequestMeta{
 		ProtocolVersion: protocol.Version,
 		ClientCapabilities: &protocol.ClientCapabilities{
-			Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}},
+			Features: map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}},
 		},
 	}}
 	host, _, _ := openProtocolRuntimeWithStores(t, model)

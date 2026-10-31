@@ -38,7 +38,7 @@ func snapshotProfile(t *testing.T, features ...string) Profile {
 	t.Helper()
 	advertised := make(map[string]protocol.FeatureCapability, len(features))
 	for _, feature := range features {
-		advertised[feature] = protocol.FeatureCapability{Enabled: true, ClientOptIn: feature == protocol.FeatureSubagents}
+		advertised[feature] = protocol.FeatureCapability{Enabled: true, ClientOptIn: feature == protocol.FeatureChildRuns}
 	}
 	return profileWithFeatures(t, advertised)
 }
@@ -51,7 +51,7 @@ func TestSessionMaterialSnapshotFollowsTheNegotiatedTopology(t *testing.T) {
 			}
 			profile := snapshotProfile(t)
 			if enabled {
-				profile = snapshotProfile(t, protocol.FeatureSubagents)
+				profile = snapshotProfile(t, protocol.FeatureChildRuns)
 			}
 			runtime := &Connection{snapshot: stub, profile: profile, meta: requestMeta("test")}
 			if _, err := runtime.GetSession(t.Context(), "ses_1"); err != nil {

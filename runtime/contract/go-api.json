@@ -5302,6 +5302,11 @@
           "value": "\"checkpoints\""
         },
         {
+          "name": "FeatureChildRuns",
+          "type": "untyped string",
+          "value": "\"childRuns\""
+        },
+        {
           "name": "FeatureCompaction",
           "type": "untyped string",
           "value": "\"compaction\""
@@ -5365,11 +5370,6 @@
           "name": "FeatureSkills",
           "type": "untyped string",
           "value": "\"skills\""
-        },
-        {
-          "name": "FeatureSubagents",
-          "type": "untyped string",
-          "value": "\"subagents\""
         },
         {
           "name": "FeedbackNegative",
@@ -6362,9 +6362,9 @@
           "value": "\"steer\""
         },
         {
-          "name": "RunProtocolFeatureSubagents",
+          "name": "RunProtocolFeatureChildRuns",
           "type": "RunProtocolFeature",
-          "value": "\"subagents\""
+          "value": "\"childRuns\""
         },
         {
           "name": "RunStatusFinished",

@@ -82,7 +82,7 @@ func TestSessionExportImportPreservesUnresolvedEffectsAsHistory(t *testing.T) {
 	source, sourceRuntime := rollbackHarness(t)
 	destination, destinationRuntime := rollbackHarness(t)
 	ctx := WithRequestMeta(t.Context(), protocol.RequestMeta{ClientCapabilities: &protocol.ClientCapabilities{
-		Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}},
+		Features: map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}},
 	}})
 	ses, err := insertSessionFixture(ctx, sourceRuntime.sess, "Unconfirmed external results", t.TempDir())
 	if err != nil {

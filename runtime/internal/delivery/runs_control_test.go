@@ -51,7 +51,7 @@ func TestCancelRunPassesNegotiatedChildAuthorityWithoutBlockingARoot(t *testing.
 	useCases := &cancelRunUseCaseStub{result: runs.CancelResult{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "ses_1", State: run.Finished, Ending: run.Canceled{}})}}
 	server := &Handler{runs: useCases}
 	ctx := withClientCapabilities(protocol.ClientCapabilities{
-		Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}},
+		Features: map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}},
 	})
 
 	result, err := server.CancelRun(ctx, protocol.CancelRunRequest{RunID: "run_1"})
@@ -59,7 +59,7 @@ func TestCancelRunPassesNegotiatedChildAuthorityWithoutBlockingARoot(t *testing.
 		t.Fatalf("CancelRun(root) = (%+v, %v), want a successful root cancellation", result, err)
 	}
 	if !useCases.command.AllowChildRun {
-		t.Fatal("negotiated subagents did not authorize exact child cancellation")
+		t.Fatal("negotiated childRuns did not authorize exact child cancellation")
 	}
 }
 
@@ -92,8 +92,8 @@ func TestCancelRunNamesTheCapabilityNeededForAChild(t *testing.T) {
 	gap, ok := errors.AsType[*CapabilityGapError](err)
 	if !ok || len(gap.Requirements) != 1 ||
 		gap.Requirements[0].Type != protocol.RequirementFeature ||
-		gap.Requirements[0].Name != protocol.FeatureSubagents {
-		t.Fatalf("capability gap = %+v, want feature/subagents", gap)
+		gap.Requirements[0].Name != protocol.FeatureChildRuns {
+		t.Fatalf("capability gap = %+v, want feature/childRuns", gap)
 	}
 }
 

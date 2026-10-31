@@ -127,7 +127,7 @@ func TestRunsListRejectsAnInvalidStatusBeforeOpeningTheRuntime(t *testing.T) {
 func TestRunsListRejectsDescendantsBeforeCallingAnUnnegotiatedRuntime(t *testing.T) {
 	t.Parallel()
 	profile := commandRuntimeProfile(t, func(discovery *protocol.DiscoverResponse, client *protocol.ClientCapabilities) {
-		discovery.Capabilities.Features[protocol.FeatureSubagents] = protocol.FeatureCapability{
+		discovery.Capabilities.Features[protocol.FeatureChildRuns] = protocol.FeatureCapability{
 			ClientOptIn: true,
 		}
 	})
@@ -139,7 +139,7 @@ func TestRunsListRejectsDescendantsBeforeCallingAnUnnegotiatedRuntime(t *testing
 	command.SetOut(&strings.Builder{})
 	command.SetErr(&strings.Builder{})
 	command.SetArgs([]string{"--include-descendants"})
-	if err := command.ExecuteContext(t.Context()); err == nil || !strings.Contains(err.Error(), "subagents") {
+	if err := command.ExecuteContext(t.Context()); err == nil || !strings.Contains(err.Error(), "childRuns") {
 		t.Fatalf("runs list error = %v", err)
 	}
 	if len(runtime.queries) != 0 {
@@ -317,10 +317,10 @@ func TestRunIDCompletionIncludesDescendants(t *testing.T) {
 	}
 }
 
-func TestRunIDCompletionFallsBackToRootsWithoutSubagents(t *testing.T) {
+func TestRunIDCompletionFallsBackToRootsWithoutChildRuns(t *testing.T) {
 	t.Parallel()
 	profile := commandRuntimeProfile(t, func(discovery *protocol.DiscoverResponse, client *protocol.ClientCapabilities) {
-		discovery.Capabilities.Features[protocol.FeatureSubagents] = protocol.FeatureCapability{
+		discovery.Capabilities.Features[protocol.FeatureChildRuns] = protocol.FeatureCapability{
 			ClientOptIn: true,
 		}
 	})

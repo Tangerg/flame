@@ -12,37 +12,37 @@ func TestMissingFeatureRequirementsHonorsServerSupportAndClientOptIn(t *testing.
 		FeatureSkills: {
 			Enabled: true,
 		},
-		FeatureSubagents: {
+		FeatureChildRuns: {
 			Enabled: true, ClientOptIn: true, RequiredByRunProtocol: true,
 		},
 	}
-	wantSubagents := []CapabilityRequirement{{
-		Type: RequirementFeature, Name: FeatureSubagents,
+	wantChildRuns := []CapabilityRequirement{{
+		Type: RequirementFeature, Name: FeatureChildRuns,
 	}}
 
 	if got := MissingFeatureRequirements(advertised, nil, FeatureSkills); len(got) != 0 {
 		t.Fatalf("stable server feature gaps = %v, want none", got)
 	}
-	if got := MissingFeatureRequirements(advertised, nil, FeatureSubagents); !slices.Equal(got, wantSubagents) {
-		t.Fatalf("missing client opt-in gaps = %v, want %v", got, wantSubagents)
+	if got := MissingFeatureRequirements(advertised, nil, FeatureChildRuns); !slices.Equal(got, wantChildRuns) {
+		t.Fatalf("missing client opt-in gaps = %v, want %v", got, wantChildRuns)
 	}
 	client := &ClientCapabilities{Features: map[string]FeaturePreference{
-		FeatureSubagents: {Enabled: true},
+		FeatureChildRuns: {Enabled: true},
 	}}
-	if got := MissingFeatureRequirements(advertised, client, FeatureSubagents); len(got) != 0 {
-		t.Fatalf("negotiated subagents gaps = %v, want none", got)
+	if got := MissingFeatureRequirements(advertised, client, FeatureChildRuns); len(got) != 0 {
+		t.Fatalf("negotiated childRuns gaps = %v, want none", got)
 	}
-	if got := MissingFeatureRequirements(nil, client, FeatureSubagents); !slices.Equal(got, wantSubagents) {
-		t.Fatalf("unsupported server feature gaps = %v, want %v", got, wantSubagents)
+	if got := MissingFeatureRequirements(nil, client, FeatureChildRuns); !slices.Equal(got, wantChildRuns) {
+		t.Fatalf("unsupported server feature gaps = %v, want %v", got, wantChildRuns)
 	}
 }
 
 func TestMissingFeatureRequirementsIsOrderedAndUnique(t *testing.T) {
 	t.Parallel()
 
-	got := MissingFeatureRequirements(nil, nil, FeatureSubagents, FeatureSkills, FeatureSubagents)
+	got := MissingFeatureRequirements(nil, nil, FeatureChildRuns, FeatureSkills, FeatureChildRuns)
 	want := []CapabilityRequirement{
-		{Type: RequirementFeature, Name: FeatureSubagents},
+		{Type: RequirementFeature, Name: FeatureChildRuns},
 		{Type: RequirementFeature, Name: FeatureSkills},
 	}
 	if !slices.Equal(got, want) {

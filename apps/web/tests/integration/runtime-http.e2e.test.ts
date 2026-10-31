@@ -988,7 +988,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
         protocolVersion: PROTOCOL_VERSION,
         clientInfo: { name: "shared-client-e2e", version: "1" },
         clientCapabilities: {
-          features: { subagents: { enabled: true } },
+          features: { childRuns: { enabled: true } },
           interruptTypes: ["approval", "question"],
         },
       }),

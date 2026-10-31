@@ -9755,7 +9755,7 @@
     "RunProtocolFeature": {
       "type": "string",
       "enum": [
-        "subagents"
+        "childRuns"
       ]
     },
     "RunProtocolProfile": {

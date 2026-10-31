@@ -141,7 +141,7 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 		t.Fatalf("child evidence without capability = %v, %v", response, err)
 	}
 	options := protocol.CallOptions{RequestMeta: protocol.RequestMeta{ClientCapabilities: &protocol.ClientCapabilities{
-		Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}},
+		Features: map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}},
 	}}}
 	page, err := rt.ListSessionTrajectory(t.Context(), protocol.ListSessionTrajectoryRequest{SessionID: ses.ID}, options)
 	if err != nil {

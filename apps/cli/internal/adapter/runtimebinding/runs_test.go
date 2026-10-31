@@ -603,7 +603,7 @@ func TestCancelRunProjectsChildAndSurvivingRootAtomically(t *testing.T) {
 				Status: protocol.RunStatusWaiting, CreatedAt: time.Unix(1, 0).UTC(),
 			},
 			ProtocolProfile: &protocol.RunProtocolProfile{
-				RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
+				RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureChildRuns},
 				InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval},
 			},
 		}

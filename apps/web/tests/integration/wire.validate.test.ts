@@ -773,7 +773,7 @@ describe("the generated wire checks", () => {
       path: "ProblemData.requiredCapabilities",
       detail: "expected at least 1 item(s)",
     });
-    const repeatedRequirement = { type: "feature", name: "subagents" };
+    const repeatedRequirement = { type: "feature", name: "childRuns" };
     expect(
       validateWire("ProblemData", {
         type: "capability_not_negotiated",

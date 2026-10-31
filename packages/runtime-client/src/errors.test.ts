@@ -9,7 +9,7 @@ describe("typed RPC problems", () => {
       message: "capability_not_negotiated",
       data: {
         type: "capability_not_negotiated",
-        requiredCapabilities: [{ type: "feature", name: "subagents" }],
+        requiredCapabilities: [{ type: "feature", name: "childRuns" }],
       },
     });
 
@@ -17,7 +17,7 @@ describe("typed RPC problems", () => {
     if (!isErrorType(error, "capability_not_negotiated")) {
       throw new Error("expected a capability problem");
     }
-    expect(error.data.requiredCapabilities).toEqual([{ type: "feature", name: "subagents" }]);
+    expect(error.data.requiredCapabilities).toEqual([{ type: "feature", name: "childRuns" }]);
   });
 
   it("does not classify unrelated problems by code or message", () => {

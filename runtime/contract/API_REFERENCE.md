@@ -12,11 +12,11 @@ Protocol `2026-10-30.2` · 105 methods
 | method | operation | response | retry | run replay cursor | pagination | materializes | features | documented errors |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `runtime.discover` | query | unary | none | none | none | — | — | — |
-| `sessions.trajectory` | query | unary | none | none | cursor | `runs.list`, `items.list`, `modelInvocations.list`, `modelInvocations.endpoints` | `subagents` | `session_not_found`, `capability_not_negotiated` |
+| `sessions.trajectory` | query | unary | none | none | cursor | `runs.list`, `items.list`, `modelInvocations.list`, `modelInvocations.endpoints` | `childRuns` | `session_not_found`, `capability_not_negotiated` |
 | `sessions.exportTrajectory` | query | unary | none | none | none | `sessions.get`, `runs.list`, `items.list`, `modelInvocations.list`, `plan.get` | `sessionExport` | `session_not_found`, `session_busy`, `export_too_large`, `capability_not_negotiated` |
 | `sessions.list` | query | unary | none | none | cursor | — | — | — |
 | `sessions.get` | query | unary | none | none | none | — | — | `session_not_found` |
-| `sessions.snapshot` | query | unary | none | none | none | `items.list`, `runs.list`, `interrupts.list`, `plan.get`, `goals.get` | `subagents` | `session_not_found`, `capability_not_negotiated` |
+| `sessions.snapshot` | query | unary | none | none | none | `items.list`, `runs.list`, `interrupts.list`, `plan.get`, `goals.get` | `childRuns` | `session_not_found`, `capability_not_negotiated` |
 | `sessions.create` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `workspace_unavailable` |
 | `sessions.update` | command | unary | replayResponse | none | none | — | `relocate`, `isolation` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `revision_conflict`, `workspace_unavailable`, `capability_not_negotiated` |
 | `sessions.delete` | command | unary | replayResponse | none | none | — | — | `session_not_found` |
@@ -33,10 +33,10 @@ Protocol `2026-10-30.2` · 105 methods
 | `runs.steer` | command | unary | ownerRun | none | none | — | — | `run_not_found`, `run_not_root`, `run_waiting`, `run_finished`, `stale_segment` |
 | `runs.get` | query | unary | none | none | none | — | — | `run_not_found`, `capability_not_negotiated` |
 | `runs.getAcceptance` | query | unary | none | none | none | — | — | — |
-| `runs.list` | query | unary | none | none | cursor | — | `subagents` | `capability_not_negotiated` |
+| `runs.list` | query | unary | none | none | cursor | — | `childRuns` | `capability_not_negotiated` |
 | `interrupts.list` | query | unary | none | none | cursor | — | — | `run_not_root`, `capability_not_negotiated` |
 | `plan.get` | query | unary | none | none | none | — | `plan` | `session_not_found`, `capability_not_negotiated` |
-| `items.list` | query | unary | none | none | cursor | — | `subagents` | `session_not_found`, `run_not_found`, `capability_not_negotiated` |
+| `items.list` | query | unary | none | none | cursor | — | `childRuns` | `session_not_found`, `run_not_found`, `capability_not_negotiated` |
 | `workspaces.resolve` | query | unary | none | none | none | — | — | `workspace_unavailable` |
 | `workspaces.list` | query | unary | none | none | none | — | — | — |
 | `workspace.changes.list` | query | unary | none | none | none | — | `git` | `workspace_unavailable`, `vcs_unavailable`, `capability_not_negotiated` |
@@ -1252,18 +1252,18 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 
 | method | when | requires |
 | --- | --- | --- |
-| `sessions.trajectory` | `includeDescendants` present | `subagents` |
+| `sessions.trajectory` | `includeDescendants` present | `childRuns` |
 | `sessions.exportTrajectory` | always | `sessionExport` |
-| `sessions.snapshot` | `includeDescendants` present | `subagents` |
+| `sessions.snapshot` | `includeDescendants` present | `childRuns` |
 | `sessions.update` | `workspace` present | `relocate` |
 | `sessions.update` | `isolated` present | `isolation` |
 | `sessions.rollback` | `restoreType` == `files` | `checkpoints` |
 | `sessions.rollback` | `restoreType` == `both` | `checkpoints` |
 | `sessions.export` | always | `sessionExport` |
 | `sessions.import` | always | `sessionExport` |
-| `runs.list` | `includeDescendants` present | `subagents` |
+| `runs.list` | `includeDescendants` present | `childRuns` |
 | `plan.get` | always | `plan` |
-| `items.list` | `scope.includeDescendants` present | `subagents` |
+| `items.list` | `scope.includeDescendants` present | `childRuns` |
 | `workspace.changes.list` | always | `git` |
 | `workspace.diff.get` | always | `git` |
 | `runtime.subscribe` | `watches` present | `fileWatch` |

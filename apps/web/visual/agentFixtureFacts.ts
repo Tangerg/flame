@@ -16,7 +16,7 @@ export const VISUAL_RUNTIME_FEATURES = [
   "skills",
   "plugins",
   "relocate",
-  "subagents",
+  "childRuns",
   "sessionExport",
 ] as const;
 

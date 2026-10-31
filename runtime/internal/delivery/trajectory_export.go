@@ -43,7 +43,7 @@ func (s *Handler) ExportTrajectory(ctx context.Context, request protocol.ExportT
 	}
 	for _, run := range result.Evidence.Snapshot.Runs {
 		if run.Lineage().IsChild() {
-			if err := s.requireFeature(ctx, protocol.FeatureSubagents); err != nil {
+			if err := s.requireFeature(ctx, protocol.FeatureChildRuns); err != nil {
 				return nil, err
 			}
 			break

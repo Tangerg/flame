@@ -39,7 +39,7 @@ type RunSummary struct {
 	// O(1) routing from any child to the run that owns the subscription. They are
 	// all-or-none with SpawnedByItemID — a run either carries all three or is a
 	// root. Creating or directly addressing such a child requires
-	// features.subagents; durable history retains the edges unchanged.
+	// features.childRuns; durable history retains the edges unchanged.
 	ParentRunID string `json:"parentRunId,omitempty"`
 	RootRunID   string `json:"rootRunId,omitempty"`
 	// Model is the model id this run ran against (Model.id). Admission resolves
@@ -93,7 +93,7 @@ type RunRef struct {
 type RunProtocolFeature string
 
 const (
-	RunProtocolFeatureSubagents = RunProtocolFeature(FeatureSubagents)
+	RunProtocolFeatureChildRuns = RunProtocolFeature(FeatureChildRuns)
 )
 
 // RunProtocolProfile is the client-observable protocol contract frozen when a run

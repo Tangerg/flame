@@ -176,7 +176,7 @@ func TestGetRunResolvesARunWithoutItsSession(t *testing.T) {
 	}
 }
 
-func TestChildRunReadsRequireNegotiatedSubagents(t *testing.T) {
+func TestChildRunReadsRequireNegotiatedChildRuns(t *testing.T) {
 	s, rt := rollbackHarness(t)
 	putTestSession(t, rt)
 	putRun(t, rt, "ses_1", "run_root", 10, 1)
@@ -209,7 +209,7 @@ func TestChildRunReadsRequireNegotiatedSubagents(t *testing.T) {
 	}
 
 	optedIn := withClientCapabilities(protocol.ClientCapabilities{
-		Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}},
+		Features: map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}},
 	})
 	child, err := s.GetRun(optedIn, protocol.GetRunRequest{RunID: "run_child"})
 	if err != nil || child.ID != "run_child" || child.RootRunID != "run_root" {
@@ -244,7 +244,7 @@ func assertSubagentCapabilityGap(t *testing.T, operationName string, err error) 
 	}
 	want := protocol.CapabilityRequirement{
 		Type: protocol.RequirementFeature,
-		Name: protocol.FeatureSubagents,
+		Name: protocol.FeatureChildRuns,
 	}
 	if len(gap.Requirements) != 1 || gap.Requirements[0] != want {
 		t.Fatalf("%s requirements = %+v, want [%+v]", operationName, gap.Requirements, want)
@@ -416,7 +416,7 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 		Interrupts: reader, Runs: rootRunReader{root}, Transcript: oneItemReader{item: approvalItem},
 	})}
 	ctx := withClientCapabilities(protocol.ClientCapabilities{
-		Features:       map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}},
+		Features:       map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}},
 		InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval},
 	})
 

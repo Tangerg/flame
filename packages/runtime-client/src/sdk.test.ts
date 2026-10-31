@@ -179,7 +179,7 @@ describe("createFlameClient", () => {
       runtimeTopics: [],
       streamingMethods: [],
       features: {
-        subagents: {
+        childRuns: {
           enabled: true,
           clientOptIn: true,
           requiredByRunProtocol: true,
@@ -213,7 +213,7 @@ describe("createFlameClient", () => {
           protocolVersion: PROTOCOL_VERSION,
           clientInfo: { name: "test", version: "0" },
           clientCapabilities: {
-            features: { subagents: { enabled: reads === 1 } },
+            features: { childRuns: { enabled: reads === 1 } },
           },
         };
       },
@@ -225,7 +225,7 @@ describe("createFlameClient", () => {
     expect(req.params).toMatchObject({
       _meta: {
         clientCapabilities: {
-          features: { subagents: { enabled: true } },
+          features: { childRuns: { enabled: true } },
         },
       },
     });

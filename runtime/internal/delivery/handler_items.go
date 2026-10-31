@@ -64,7 +64,7 @@ func (s *Handler) ListItems(ctx context.Context, in protocol.ListItemsRequest) (
 		case !found:
 			return nil, protocol.ErrRunNotFound
 		case run.Lineage().IsChild():
-			if requireFeatureErr := s.requireFeature(ctx, protocol.FeatureSubagents); requireFeatureErr != nil {
+			if requireFeatureErr := s.requireFeature(ctx, protocol.FeatureChildRuns); requireFeatureErr != nil {
 				return nil, requireFeatureErr
 			}
 		}

@@ -52,7 +52,7 @@ func TestRunCatalogMapsQueriesAndProjectsPages(t *testing.T) {
 	}
 	runtime := &Connection{
 		runCatalog: stub, meta: requestMeta("test"),
-		profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{protocol.FeatureSubagents: {
+		profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{protocol.FeatureChildRuns: {
 			Enabled: true, ClientOptIn: true,
 		},
 		}),
@@ -115,7 +115,7 @@ func TestRunCatalogRejectsOversizedCursorsAtTheAdapterBoundary(t *testing.T) {
 	requireRuntimeContractViolation(t, err)
 }
 
-func TestRunCatalogRejectsDescendantQueryWithoutNegotiatedSubagents(t *testing.T) {
+func TestRunCatalogRejectsDescendantQueryWithoutNegotiatedChildRuns(t *testing.T) {
 	t.Parallel()
 	called := false
 	runtime := &Connection{runCatalog: runCatalogBindingStub{
@@ -130,7 +130,7 @@ func TestRunCatalogRejectsDescendantQueryWithoutNegotiatedSubagents(t *testing.T
 		t.Fatalf("ListRuns error = %v, want ErrIncompatibleRuntime", err)
 	}
 	if called {
-		t.Fatal("descendant query reached the binding without negotiated subagents")
+		t.Fatal("descendant query reached the binding without negotiated childRuns")
 	}
 }
 

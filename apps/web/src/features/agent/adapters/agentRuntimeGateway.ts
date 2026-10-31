@@ -104,7 +104,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     const client = this.runtimeClient();
     const generation = this.#generation;
     const sid = asSessionId(sessionId);
-    const includeDescendants = this.runtime.capabilities.hasCapability("subagents");
+    const includeDescendants = this.runtime.capabilities.hasCapability("childRuns");
     try {
       let snapshot = await client.sessions.snapshot(sid, includeDescendants, signal);
       const commands = await client.runs.recoverCommands(signal);

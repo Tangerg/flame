@@ -334,7 +334,7 @@ func capabilitiesFor(
 		// store, which needs the git binary — same gate as the git feature.
 		features.git, protocol.FeatureMultimodal: true, protocol.FeatureRelocate: true, protocol.FeatureIsolation: // An isolated Session jails its shells; without a backend for that
 		// jail the policy cannot be honored, so the surface is not offered.
-		features.isolation, protocol.FeaturePlan: true, protocol.FeatureCompaction: true, protocol.FeatureGoals: true, protocol.FeatureSubagents: true,
+		features.isolation, protocol.FeaturePlan: true, protocol.FeatureCompaction: true, protocol.FeatureGoals: true, protocol.FeatureChildRuns: true,
 		}),
 	}
 }

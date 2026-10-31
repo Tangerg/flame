@@ -54,7 +54,7 @@ type trajectoryCapabilityTarget struct {
 func (s *trajectoryCapabilityTarget) Discover(context.Context) (*protocol.DiscoverResponse, error) {
 	return &protocol.DiscoverResponse{Capabilities: protocol.ServerCapabilities{
 		Features: map[string]protocol.FeatureCapability{
-			protocol.FeatureSubagents: {Enabled: s.enabled, ClientOptIn: true},
+			protocol.FeatureChildRuns: {Enabled: s.enabled, ClientOptIn: true},
 		},
 	}}, nil
 }
@@ -74,7 +74,7 @@ func TestTrajectoryEndpointAdmitsOnlyNegotiatedDescendantRequests(t *testing.T) 
 					request := protocol.ListSessionTrajectoryRequest{SessionID: "ses_1", IncludeDescendants: descendants}
 					result := endpoint.Invoke(t.Context(), SessionsTrajectory, request, Options{RequestMeta: protocol.RequestMeta{
 						ClientCapabilities: &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{
-							protocol.FeatureSubagents: {Enabled: supported},
+							protocol.FeatureChildRuns: {Enabled: supported},
 						}},
 					}})
 					if descendants && (!enabled || !supported) {

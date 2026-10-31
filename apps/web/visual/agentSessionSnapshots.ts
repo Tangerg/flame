@@ -72,7 +72,7 @@ const METRICS = {
 
 const PROFILE: RunProtocolProfile = {
   interruptTypes: ["approval"],
-  requiredFeatures: ["subagents"],
+  requiredFeatures: ["childRuns"],
 };
 
 export type RuntimeAgentSessionSnapshot = Omit<

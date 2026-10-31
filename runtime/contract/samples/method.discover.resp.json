@@ -67,7 +67,7 @@
         "clientOptIn": false,
         "requiredByRunProtocol": false
       },
-      "subagents": {
+      "childRuns": {
         "enabled": false,
         "clientOptIn": true,
         "requiredByRunProtocol": true

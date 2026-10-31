@@ -1757,7 +1757,7 @@ export interface RunProgress {
   usage?: Usage;
 }
 
-export type RunProtocolFeature = "subagents";
+export type RunProtocolFeature = "childRuns";
 
 export interface RunProtocolProfile {
   interruptTypes: InterruptType[];
@@ -2418,7 +2418,7 @@ export const WIRE_ENUMS = {
   RunAcceptanceType: ["notRecorded", "accepted", "retired"],
   RunCommandOperation: ["start", "resume", "steer"],
   RunOutcomeType: ["completed", "timedOut", "failed", "canceled", "lost"],
-  RunProtocolFeature: ["subagents"],
+  RunProtocolFeature: ["childRuns"],
   RunReplayScope: ["runtimeInstanceRootSegment"],
   RunStatus: ["running", "waiting", "finished"],
   RuntimeEventType: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "resync"],

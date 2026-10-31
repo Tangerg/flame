@@ -75,7 +75,7 @@ func TestTrajectoryComponentReadsInstalledBytesAndCanonicalHistory(t *testing.T)
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Inspection", Workspace: &protocol.WorkspaceRef{Path: cfg.defaultWorkspacePath}}, "session").(*protocol.Session)
 	meta := protocol.RequestMeta{
 		ProtocolVersion:    protocol.Version,
-		ClientCapabilities: &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}}},
+		ClientCapabilities: &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}}},
 	}
 	started, events, err := r.api.StartRun(delivery.WithRequestMeta(t.Context(), meta), protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Record an observation."}}})
 	if err != nil {

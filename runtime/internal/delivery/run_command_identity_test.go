@@ -55,7 +55,7 @@ func TestResumeFingerprintCoversMeaningAndCanonicalSets(t *testing.T) {
 		}
 	}
 	changedCapabilities := *capabilities
-	changedCapabilities.Features = map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}}
+	changedCapabilities.Features = map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}}
 	if digest, err := runCommandFingerprint(RunsResume, request, &changedCapabilities); err != nil || digest == fingerprint {
 		t.Fatalf("admission context missing from identity: %q,%v", digest, err)
 	}

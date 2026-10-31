@@ -28,7 +28,7 @@ func (s *Handler) GetRun(ctx context.Context, in protocol.GetRunRequest) (*proto
 		return nil, protocol.ErrRunNotFound
 	}
 	if run.Lineage().IsChild() {
-		if err := s.requireFeature(ctx, protocol.FeatureSubagents); err != nil {
+		if err := s.requireFeature(ctx, protocol.FeatureChildRuns); err != nil {
 			return nil, err
 		}
 	}

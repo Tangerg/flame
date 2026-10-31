@@ -12,20 +12,20 @@ import (
 func TestRuntimeProfilePreservesDiscoveryAndNegotiatesWithProtocolRules(t *testing.T) {
 	t.Parallel()
 	discovery := compatibleDiscovery()
-	discovery.Capabilities.Features = map[string]protocol.FeatureCapability{protocol.FeatureMCP: {Enabled: true}, protocol.FeatureSubagents: {Enabled: true, ClientOptIn: true, RequiredByRunProtocol: true}, protocol.FeatureGoals: {}}
+	discovery.Capabilities.Features = map[string]protocol.FeatureCapability{protocol.FeatureMCP: {Enabled: true}, protocol.FeatureChildRuns: {Enabled: true, ClientOptIn: true, RequiredByRunProtocol: true}, protocol.FeatureGoals: {}}
 	for _, enabled := range []bool{false, true} {
-		client := &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: enabled}}}
+		client := &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: enabled}}}
 		profile := requireProfile(t, discovery, client)
 		if !reflect.DeepEqual(profile.Discovery(), *discovery) || !reflect.DeepEqual(profile.ClientCapabilities(), client) {
 			t.Fatal("profile changed discovery or client capability values")
 		}
 		if !profile.Supports(protocol.FeatureMCP) || profile.Supports(protocol.FeatureGoals) ||
-			profile.Supports(protocol.FeatureSubagents) != enabled || !profile.supportsRuntimeTopic(protocol.TopicFilesChanged) {
+			profile.Supports(protocol.FeatureChildRuns) != enabled || !profile.supportsRuntimeTopic(protocol.TopicFilesChanged) {
 			t.Fatal("profile did not preserve the protocol capability agreement")
 		}
 		wantNames := []string{protocol.FeatureMCP}
 		if enabled {
-			wantNames = append(wantNames, protocol.FeatureSubagents)
+			wantNames = []string{protocol.FeatureChildRuns, protocol.FeatureMCP}
 		}
 		if !reflect.DeepEqual(profile.AvailableFeatureNames(), wantNames) {
 			t.Fatalf("available features = %v, want %v", profile.AvailableFeatureNames(), wantNames)
@@ -47,7 +47,7 @@ func TestRuntimeProfileProtectsRetainedProtocolValues(t *testing.T) {
 		d.Capabilities.StreamingMethods[0] = "mutated"
 		d.Capabilities.Features[protocol.FeaturePlan] = protocol.FeatureCapability{}
 		*d.Capabilities.Limits.MaxConcurrentRuns = 99
-		c.Features[protocol.FeatureSubagents] = protocol.FeaturePreference{}
+		c.Features[protocol.FeatureChildRuns] = protocol.FeaturePreference{}
 		c.InterruptTypes[0] = "mutated"
 		c.ExcludedEphemeralEvents[0] = protocol.SuppressibleRunSegmentProgress
 	}

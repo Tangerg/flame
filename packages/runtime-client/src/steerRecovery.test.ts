@@ -164,7 +164,7 @@ describe("cold original steer recovery", () => {
   it("retries only the persisted body and Segment under the same key after a pure not-recorded query", async () => {
     const f = fixture();
     const requestMeta: RequestMeta = {
-      clientCapabilities: { features: { subagents: { enabled: true } } },
+      clientCapabilities: { features: { childRuns: { enabled: true } } },
     };
     const originalMeta = structuredClone(requestMeta);
     const call = vi.fn(async (method: string) => {
@@ -180,7 +180,7 @@ describe("cold original steer recovery", () => {
     );
     await expect(pending).rejects.toBeInstanceOf(RpcTransportError);
     first.journal.dispose();
-    requestMeta.clientCapabilities!.features!.subagents!.enabled = false;
+    requestMeta.clientCapabilities!.features!.childRuns!.enabled = false;
     const replay = vi.fn(async (method: string, _params: unknown, _options?: RpcCallOptions) =>
       method === "runs.getAcceptance"
         ? { type: "notRecorded", candidateUserItemId: "item_original" }

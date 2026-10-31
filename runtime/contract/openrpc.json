@@ -105,7 +105,7 @@
       "x-flame-replayCursor": "none",
       "x-flame-pagination": "cursor",
       "x-flame-features": [
-        "subagents"
+        "childRuns"
       ],
       "x-flame-capabilityRules": [
         {
@@ -116,7 +116,7 @@
             }
           ],
           "requires": [
-            "subagents"
+            "childRuns"
           ]
         }
       ],
@@ -384,7 +384,7 @@
       "x-flame-replayCursor": "none",
       "x-flame-pagination": "none",
       "x-flame-features": [
-        "subagents"
+        "childRuns"
       ],
       "x-flame-capabilityRules": [
         {
@@ -395,7 +395,7 @@
             }
           ],
           "requires": [
-            "subagents"
+            "childRuns"
           ]
         }
       ],
@@ -1928,7 +1928,7 @@
       "x-flame-replayCursor": "none",
       "x-flame-pagination": "cursor",
       "x-flame-features": [
-        "subagents"
+        "childRuns"
       ],
       "x-flame-capabilityRules": [
         {
@@ -1939,7 +1939,7 @@
             }
           ],
           "requires": [
-            "subagents"
+            "childRuns"
           ]
         }
       ],
@@ -2175,7 +2175,7 @@
       "x-flame-replayCursor": "none",
       "x-flame-pagination": "cursor",
       "x-flame-features": [
-        "subagents"
+        "childRuns"
       ],
       "x-flame-capabilityRules": [
         {
@@ -2186,7 +2186,7 @@
             }
           ],
           "requires": [
-            "subagents"
+            "childRuns"
           ]
         }
       ],

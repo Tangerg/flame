@@ -21,7 +21,7 @@ import (
 //
 // A declared capability this build cannot honor is a refusal, never a silent drop.
 // Dropping it is the failure mode the contract names explicitly: a client that
-// asked for subagents and received an ordinary run would fold a stream believing
+// asked for childRuns and received an ordinary run would fold a stream believing
 // child events could appear in it, and a client whose interrupt type was quietly
 // discarded would be handed a wait it never said it could answer.
 //
@@ -53,7 +53,7 @@ func (s *Handler) negotiateCapabilities(ctx context.Context) (run.Capabilities, 
 		// and a feature invisible in the stream demands nothing of it.
 		if published.RequiredByRunProtocol {
 			switch key {
-			case protocol.FeatureSubagents:
+			case protocol.FeatureChildRuns:
 				capabilities.ChildRuns = true
 			default:
 				return run.Capabilities{}, fmt.Errorf(
@@ -112,7 +112,7 @@ func capabilityGap(missing run.Capabilities) *CapabilityGapError {
 		1+len(missing.InterruptKinds))
 	if missing.ChildRuns {
 		requirements = append(requirements, protocol.CapabilityRequirement{
-			Type: protocol.RequirementFeature, Name: protocol.FeatureSubagents,
+			Type: protocol.RequirementFeature, Name: protocol.FeatureChildRuns,
 		})
 	}
 	for _, kind := range missing.InterruptKinds {

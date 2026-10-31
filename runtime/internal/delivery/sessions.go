@@ -44,7 +44,7 @@ func registerSessions(registry *Registry) {
 		Materializes: []Name{ItemsList, RunsList, InterruptsList, planGet, goalsGet},
 		CapabilityRules: []CapabilityRule{{
 			When:     []FieldCondition{{Field: "includeDescendants", Operator: OperatorPresent}},
-			Requires: []string{protocol.FeatureSubagents},
+			Requires: []string{protocol.FeatureChildRuns},
 		}},
 	}, func(service interface {
 		GetSessionSnapshot(context.Context, protocol.GetSessionSnapshotRequest) (*protocol.SessionSnapshot, error)

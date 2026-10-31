@@ -17,7 +17,7 @@ func TestCapabilitiesAdvertiseOnlyProducedRunEvents(t *testing.T) {
 	if !slices.Equal(caps.RunEvents, want) {
 		t.Fatalf("events = %v, want %v", caps.RunEvents, want)
 	}
-	if !caps.Features["subagents"].Enabled {
+	if !caps.Features["childRuns"].Enabled {
 		t.Fatalf("produced subagent Run trees were not advertised: %+v", caps.Features)
 	}
 	// Memory and schedules are first-party plugins discovered through the generic

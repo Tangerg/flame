@@ -427,7 +427,7 @@ func TestProjectChildRunPreservesLineage(t *testing.T) {
 		ActiveSegmentID: "seg_child",
 		ContextTokens:   32_768,
 		ProtocolProfile: &protocol.RunProtocolProfile{
-			RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
+			RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureChildRuns},
 			InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
 		},
 	})
@@ -439,7 +439,7 @@ func TestProjectChildRunPreservesLineage(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantProfile := &protocol.RunProtocolProfile{
-		RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
+		RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureChildRuns},
 		InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
 	}
 	if projected.Lineage != want || projected.ReasoningEffort != "xhigh" || projected.ContextTokens != 32_768 ||

@@ -424,7 +424,7 @@ func TestOutputCollectionWireConstraints(t *testing.T) {
 	}
 	assertConstraintField(t, capability.validateWire(), "ProblemData", "requiredCapabilities")
 
-	duplicate := CapabilityRequirement{Type: RequirementFeature, Name: "subagents"}
+	duplicate := CapabilityRequirement{Type: RequirementFeature, Name: "childRuns"}
 	capability.RequiredCapabilities = []CapabilityRequirement{duplicate, duplicate}
 	assertConstraintField(t, capability.validateWire(), "ProblemData", "requiredCapabilities")
 }
@@ -639,7 +639,7 @@ func TestApprovalSubjectWireRequiresExplicitMatchType(t *testing.T) {
 func TestProblemDataWireUnion(t *testing.T) {
 	t.Parallel()
 
-	validCapability := []CapabilityRequirement{{Type: RequirementFeature, Name: "subagents"}}
+	validCapability := []CapabilityRequirement{{Type: RequirementFeature, Name: "childRuns"}}
 	tests := []struct {
 		name    string
 		problem ProblemData
@@ -784,7 +784,7 @@ func TestRunProtocolProfileWireConstraints(t *testing.T) {
 	t.Parallel()
 
 	valid := RunProtocolProfile{
-		RequiredFeatures: []RunProtocolFeature{RunProtocolFeatureSubagents},
+		RequiredFeatures: []RunProtocolFeature{RunProtocolFeatureChildRuns},
 		InterruptTypes:   []InterruptType{InterruptApproval, InterruptQuestion},
 	}
 	if err := valid.validateWire(); err != nil {
@@ -792,7 +792,7 @@ func TestRunProtocolProfileWireConstraints(t *testing.T) {
 	}
 
 	repeatedFeature := valid
-	repeatedFeature.RequiredFeatures = append(repeatedFeature.RequiredFeatures, RunProtocolFeatureSubagents)
+	repeatedFeature.RequiredFeatures = append(repeatedFeature.RequiredFeatures, RunProtocolFeatureChildRuns)
 	assertConstraintField(t, repeatedFeature.validateWire(), "RunProtocolProfile", "requiredFeatures")
 
 	repeatedInterrupt := valid

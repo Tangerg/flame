@@ -21,7 +21,7 @@ func runCommandFingerprint(name Name, parameters any, capabilities *protocol.Cli
 	if capabilities != nil {
 		identity.InterruptTypes = slices.Clone(capabilities.InterruptTypes)
 		slices.Sort(identity.InterruptTypes)
-		identity.ChildRuns = capabilities.Features[protocol.FeatureSubagents].Enabled
+		identity.ChildRuns = capabilities.Features[protocol.FeatureChildRuns].Enabled
 	}
 	return operationFingerprint(name, identity)
 }

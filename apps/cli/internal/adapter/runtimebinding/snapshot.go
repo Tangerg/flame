@@ -27,7 +27,7 @@ type coldRead struct {
 // snapshot, which carries the Session it was read from.
 func (r *Connection) GetSession(ctx context.Context, sessionID string) (conversation.SessionSnapshot, error) {
 	request := protocol.GetSessionSnapshotRequest{
-		SessionID: sessionID, IncludeDescendants: r.profile.Supports(protocol.FeatureSubagents),
+		SessionID: sessionID, IncludeDescendants: r.profile.Supports(protocol.FeatureChildRuns),
 	}
 	if err := protocol.ValidateWireTree(request); err != nil {
 		return conversation.SessionSnapshot{}, fmt.Errorf("get session: %w", err)

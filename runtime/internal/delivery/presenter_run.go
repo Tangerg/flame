@@ -86,7 +86,7 @@ func presentRunProtocolProfile(capabilities rundomain.Capabilities) protocol.Run
 		InterruptTypes:   make([]protocol.InterruptType, 0, len(capabilities.InterruptKinds)),
 	}
 	if capabilities.ChildRuns {
-		out.RequiredFeatures = append(out.RequiredFeatures, protocol.RunProtocolFeatureSubagents)
+		out.RequiredFeatures = append(out.RequiredFeatures, protocol.RunProtocolFeatureChildRuns)
 	}
 	for _, kind := range capabilities.InterruptKinds {
 		out.InterruptTypes = append(out.InterruptTypes, presentInterruptType(kind))

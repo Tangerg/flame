@@ -36,7 +36,7 @@ func TestRunJSONPreservesNegotiatedProtocolProfile(t *testing.T) {
 		ContextTokens: 32_768,
 		Lineage:       conversation.RootRunLineage(),
 		ProtocolProfile: &protocol.RunProtocolProfile{
-			RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
+			RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureChildRuns},
 			InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
 		},
 	}
@@ -46,7 +46,7 @@ func TestRunJSONPreservesNegotiatedProtocolProfile(t *testing.T) {
 	}
 	for _, want := range []string{
 		`"reasoningEffort":"xhigh"`, `"contextTokens":32768`, `"protocolProfile"`,
-		`"requiredFeatures":["subagents"]`, `"interruptTypes":["approval","question"]`,
+		`"requiredFeatures":["childRuns"]`, `"interruptTypes":["approval","question"]`,
 	} {
 		if !strings.Contains(output.String(), want) {
 			t.Errorf("run JSON omitted %s: %s", want, output.String())

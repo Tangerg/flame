@@ -3538,7 +3538,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     }, []),
     anyOf([fields({}, ["step"]), fields({}, ["usage"]), fields({}, ["contextTokens"]), fields({}, ["activity"])]),
   ]),
-  RunProtocolFeature: enumOf(["subagents"]),
+  RunProtocolFeature: enumOf(["childRuns"]),
   RunProtocolProfile: object({
     interruptTypes: allOf([array(ref(() => CHECKS.InterruptType)), uniqueItems()]),
     requiredFeatures: allOf([array(ref(() => CHECKS.RunProtocolFeature)), uniqueItems()]),

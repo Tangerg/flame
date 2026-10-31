@@ -173,7 +173,7 @@ const FEATURES = [
   "sessionExport",
   "relocate",
   "isolation",
-  "subagents",
+  "childRuns",
 ] as const;
 
 /** One capability key discovery may advertise. */
@@ -1218,13 +1218,13 @@ export const WIRE_CAPABILITY_POLICY: {
   readonly [M in WireMethodName]?: readonly WireCapabilityRule[];
 } = {
   "sessions.trajectory": [
-    { when: [{ field: "includeDescendants", operator: "present" }], requires: ["subagents"] },
+    { when: [{ field: "includeDescendants", operator: "present" }], requires: ["childRuns"] },
   ],
   "sessions.exportTrajectory": [
     { requires: ["sessionExport"] },
   ],
   "sessions.snapshot": [
-    { when: [{ field: "includeDescendants", operator: "present" }], requires: ["subagents"] },
+    { when: [{ field: "includeDescendants", operator: "present" }], requires: ["childRuns"] },
   ],
   "sessions.update": [
     { when: [{ field: "workspace", operator: "present" }], requires: ["relocate"] },
@@ -1241,13 +1241,13 @@ export const WIRE_CAPABILITY_POLICY: {
     { requires: ["sessionExport"] },
   ],
   "runs.list": [
-    { when: [{ field: "includeDescendants", operator: "present" }], requires: ["subagents"] },
+    { when: [{ field: "includeDescendants", operator: "present" }], requires: ["childRuns"] },
   ],
   "plan.get": [
     { requires: ["plan"] },
   ],
   "items.list": [
-    { when: [{ field: "scope.includeDescendants", operator: "present" }], requires: ["subagents"] },
+    { when: [{ field: "scope.includeDescendants", operator: "present" }], requires: ["childRuns"] },
   ],
   "workspace.changes.list": [
     { requires: ["git"] },

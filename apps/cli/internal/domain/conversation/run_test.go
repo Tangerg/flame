@@ -12,7 +12,7 @@ func TestRunProjectionOwnsItsNegotiatedContract(t *testing.T) {
 	running := runningRun("seg_1")
 	running.CreatedAt = time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
 	running.ProtocolProfile = &protocol.RunProtocolProfile{
-		RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
+		RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureChildRuns},
 		InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
 	}
 	if err := running.Validate(); err != nil {

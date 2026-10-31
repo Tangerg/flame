@@ -1162,7 +1162,7 @@ document with `schemaVersion` (`protocol.SessionTrajectoryVersion`) and a collec
 all root and child Runs, Items, retained conversation messages, offloaded Tool bodies,
 current Plan, logical model attempts, Session-associated physical model endpoints,
 Tool attempts, and matching user feedback. Child evidence
-requires negotiated `subagents`; the export never silently omits it. The existing
+requires negotiated `childRuns`; the export never silently omits it. The existing
 `sessions.export` / `sessions.import` portable artifact keeps its own version and
 separate import contract.
 

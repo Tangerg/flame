@@ -28,7 +28,7 @@ const (
 	FeatureSessionExport = "sessionExport"
 	FeatureRelocate      = "relocate"
 	FeatureIsolation     = "isolation"
-	FeatureSubagents     = "subagents"
+	FeatureChildRuns     = "childRuns"
 )
 
 // Feature is one entry of the published capability vocabulary: the key, plus the
@@ -75,12 +75,12 @@ var features = mustFeatures([]Feature{
 	{Key: FeatureSessionExport},
 	{Key: FeatureRelocate},
 	{Key: FeatureIsolation},
-	// Subagents is the one feature that reshapes a Run's authoritative stream:
+	// ChildRuns is the one feature that reshapes a Run's authoritative stream:
 	// child runs, child lineage on every summary, and the `suspended` segment
 	// outcome only exist for a Run whose profile carries it. A subscriber that does
 	// not understand them cannot follow such a Run at all, which is why it is
 	// opt-in AND frozen onto the Run.
-	{Key: FeatureSubagents, ClientOptIn: true, RequiredByRunProtocol: true},
+	{Key: FeatureChildRuns, ClientOptIn: true, RequiredByRunProtocol: true},
 })
 
 // Features returns a snapshot of the published capability vocabulary.

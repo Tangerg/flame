@@ -142,7 +142,7 @@ describe.each(["start", "resume"] as const)("file-backed cold original %s", (ope
     const originalMeta: RequestMeta = {
       clientCapabilities: {
         interruptTypes: ["approval", "question"],
-        features: { subagents: { enabled: true } },
+        features: { childRuns: { enabled: true } },
       },
     };
     const expectedMeta = structuredClone(originalMeta);
@@ -156,7 +156,7 @@ describe.each(["start", "resume"] as const)("file-backed cold original %s", (ope
     const mutation =
       operation === "start" ? first.methods.runs.start(start) : first.methods.runs.resume(resume);
     await expect(mutation).rejects.toBeInstanceOf(RpcTransportError);
-    originalMeta.clientCapabilities!.features!.subagents!.enabled = false;
+    originalMeta.clientCapabilities!.features!.childRuns!.enabled = false;
     first.journal.dispose();
     const call = vi.fn(async (method: string, _params: unknown, options?: RpcCallOptions) => {
       if (method === "runs.getAcceptance") return { type: "notRecorded" };

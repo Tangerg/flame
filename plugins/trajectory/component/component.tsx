@@ -92,7 +92,7 @@ export function Trajectory({ context }: { context: ComponentContext }) {
               await context.track(() =>
                 context.runtime.runtime.discover(signal),
               )
-            ).capabilities.features?.subagents?.enabled,
+            ).capabilities.features?.childRuns?.enabled,
           );
         signal.throwIfAborted();
         const page = await context.track(() =>

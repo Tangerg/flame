@@ -225,7 +225,7 @@ func portableCapabilitiesFromArtifact(path string, profile *protocol.RunProtocol
 	var out run.Capabilities
 	for _, feature := range profile.RequiredFeatures {
 		switch feature {
-		case protocol.RunProtocolFeatureSubagents:
+		case protocol.RunProtocolFeatureChildRuns:
 			out.ChildRuns = true
 		default:
 			return nil, invalidArtifact(path+".requiredFeatures", "unknown value %q", feature)

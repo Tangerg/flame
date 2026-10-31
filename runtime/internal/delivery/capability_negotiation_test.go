@@ -51,11 +51,11 @@ func TestStartRunRefusesCapabilitiesThisBuildDoesNotHave(t *testing.T) {
 	}
 }
 
-func TestNegotiationMapsSubagentsToChildRunPolicy(t *testing.T) {
+func TestNegotiationMapsChildRunsFeatureToRunPolicy(t *testing.T) {
 	s, _ := rollbackHarness(t)
 
 	capabilities, err := s.negotiateCapabilities(withClientCapabilities(protocol.ClientCapabilities{
-		Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}},
+		Features: map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}},
 	}))
 	if err != nil {
 		t.Fatalf("negotiate: %v", err)
@@ -64,22 +64,22 @@ func TestNegotiationMapsSubagentsToChildRunPolicy(t *testing.T) {
 		t.Fatalf("capabilities = %+v, want child runs enabled", capabilities)
 	}
 	wire := presentRunProtocolProfile(capabilities)
-	want := []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents}
+	want := []protocol.RunProtocolFeature{protocol.RunProtocolFeatureChildRuns}
 	if !slices.Equal(wire.RequiredFeatures, want) {
 		t.Fatalf("wire requiredFeatures = %v, want %v", wire.RequiredFeatures, want)
 	}
 }
 
-func TestCapabilitiesAdvertiseNegotiableSubagents(t *testing.T) {
+func TestCapabilitiesAdvertiseNegotiableChildRuns(t *testing.T) {
 	s, _ := rollbackHarness(t)
 
-	feature, ok := s.capabilities().Features[protocol.FeatureSubagents]
+	feature, ok := s.capabilities().Features[protocol.FeatureChildRuns]
 	if !ok {
-		t.Fatal("capabilities omit features.subagents")
+		t.Fatal("capabilities omit features.childRuns")
 	}
 	if !feature.Enabled || !feature.ClientOptIn ||
 		!feature.RequiredByRunProtocol {
-		t.Fatalf("features.subagents = %+v, want enabled opt-in Run protocol feature", feature)
+		t.Fatalf("features.childRuns = %+v, want enabled opt-in Run protocol feature", feature)
 	}
 }
 
@@ -114,7 +114,7 @@ func TestNegotiationDeclinedFeatureIsNotARefusal(t *testing.T) {
 	s, _ := rollbackHarness(t)
 
 	capabilities, err := s.negotiateCapabilities(withClientCapabilities(protocol.ClientCapabilities{
-		Features:       map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: false}, protocol.FeatureMultimodal: {Enabled: true}},
+		Features:       map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: false}, protocol.FeatureMultimodal: {Enabled: true}},
 		InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
 	}))
 	if err != nil {
@@ -123,7 +123,7 @@ func TestNegotiationDeclinedFeatureIsNotARefusal(t *testing.T) {
 	// multimodal is advertised but does not reshape the run's stream, so it is not
 	// part of what a later subscriber has to understand.
 	if capabilities.ChildRuns {
-		t.Fatal("declined subagents unexpectedly enabled child runs")
+		t.Fatal("declined childRuns unexpectedly enabled child runs")
 	}
 	want := []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion}
 	if len(capabilities.InterruptKinds) != len(want) {

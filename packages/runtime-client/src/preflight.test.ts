@@ -67,15 +67,15 @@ describe("the capability preflight", () => {
   it.each(["runs.list", "sessions.trajectory"] as const)(
     "%s requires subagent opt-in only when descendants are requested",
     (method) => {
-      const subagents = advertising({ subagents: true }, ["subagents"]);
+      const childRuns = advertising({ childRuns: true }, ["childRuns"]);
       const params = { includeDescendants: true };
 
-      expect(unnegotiated(method, {}, subagents)).toEqual([]);
-      expect(unnegotiated(method, { includeDescendants: false }, subagents)).toEqual([]);
-      expect(unnegotiated(method, params, subagents)).toEqual(["subagents"]);
+      expect(unnegotiated(method, {}, childRuns)).toEqual([]);
+      expect(unnegotiated(method, { includeDescendants: false }, childRuns)).toEqual([]);
+      expect(unnegotiated(method, params, childRuns)).toEqual(["childRuns"]);
       expect(
-        unnegotiated(method, params, subagents, {
-          features: { subagents: { enabled: true } },
+        unnegotiated(method, params, childRuns, {
+          features: { childRuns: { enabled: true } },
         }),
       ).toEqual([]);
     },

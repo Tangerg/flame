@@ -194,21 +194,21 @@ func TestCapabilityGateOnlyBitesTheGatedRequest(t *testing.T) {
 		features: map[string]bool{"checkpoints": true},
 		want:     "",
 	}, {
-		name:   "listing root runs needs no subagents",
+		name:   "listing root runs needs no childRuns",
 		method: "runs.list", params: `{}`,
-		features: map[string]bool{"subagents": false},
+		features: map[string]bool{"childRuns": false},
 		want:     "",
 	}, {
 		// The whole point of the rule: the contract forbids reading an explicit true
 		// as false, because the page would come back looking complete.
-		name:   "asking for descendants needs subagents",
+		name:   "asking for descendants needs childRuns",
 		method: "runs.list", params: `{"includeDescendants":true}`,
-		features: map[string]bool{"subagents": false},
+		features: map[string]bool{"childRuns": false},
 		want:     "capability_not_negotiated",
 	}, {
 		name:   "server support does not replace client opt-in",
 		method: "runs.list", params: `{"includeDescendants":true}`,
-		features: map[string]bool{"subagents": true},
+		features: map[string]bool{"childRuns": true},
 		want:     "capability_not_negotiated",
 	}, {
 		name:   "client opt-in and server support authorize descendants",
@@ -217,16 +217,16 @@ func TestCapabilityGateOnlyBitesTheGatedRequest(t *testing.T) {
 			"includeDescendants": true,
 			"_meta": {
 				"clientCapabilities": {
-					"features": {"subagents": {"enabled": true}}
+					"features": {"childRuns": {"enabled": true}}
 				}
 			}
 		}`,
-		features: map[string]bool{"subagents": true},
+		features: map[string]bool{"childRuns": true},
 		want:     "",
 	}, {
 		name:   "an explicit false is not a request for descendants",
 		method: "runs.list", params: `{"includeDescendants":false}`,
-		features: map[string]bool{"subagents": false},
+		features: map[string]bool{"childRuns": false},
 		want:     "",
 	}}
 
