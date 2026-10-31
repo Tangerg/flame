@@ -254,7 +254,7 @@ func TestJournalRetentionBoundsUnresolvedEffectEvidence(t *testing.T) {
 			name: "diagnostics",
 			config: run.UnresolvedEffectConfig{
 				ProcessID: strings.Repeat("p", 512), EffectID: strings.Repeat("e", 512), Cause: strings.Repeat("c", 512),
-				Reason: strings.Repeat("r", 4096), Detail: strings.Repeat("d", 4096),
+				Reason: run.Diagnostic(errors.New(strings.Repeat("r", 8192))), Detail: run.Diagnostic(errors.New(strings.Repeat("d", 8192))),
 			},
 		},
 	} {
