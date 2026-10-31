@@ -535,11 +535,11 @@ Required compaction resolves its current lifecycle Hook policy before calling th
 Working-tree checkpoints are scoped by both Session and canonical workspace identity. A Session relocation may retain independent history for each workspace, but a Run checkpoint can only restore the exact workspace that produced it; the storage adapter verifies the complete persisted identity before any Git mutation.
 
 Session import replaces history without importing working-tree boundaries. The
-Session use case retires its prior checkpoints and isolated copy before committing
-the replacement, even when the archive retains the same Run identities. A failed
-retirement refuses the replacement; a later storage failure can leave the original
-history without these optional resources. No file restore can claim that the old
-boundary describes an imported Run.
+replacement commits a resource retirement in the same transaction, so the prior
+checkpoints and isolated copy belong to a retired generation even when the archive
+retains the same Run identities. Until every cleanup succeeds the retirement keeps
+the Session fenced, and its next exclusive admission retries the cleanup. No file
+restore can claim that an old boundary describes an imported Run.
 
 Process-local notifications carry no product truth. They wake consumers, which reread durable projections.
 

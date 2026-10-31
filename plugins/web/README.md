@@ -45,10 +45,10 @@ execution, waiting recovery and accounting retain their core owners.
 Migration: remove `online.jinaApiKey` / `online.tavilyApiKey` from Runtime YAML and
 configure this installed package's secret inputs. The former
 `FLAME_JINA_API_KEY` / `FLAME_TAVILY_API_KEY` overlays no longer create core tools
-or seed plugin values. Current tools have installed MCP identities. Historical
-built-in web references and normalized result schemas remain readable; there is
-no old executable, alias or automatic retargeting. Finish waiting work captured
-by an older build with that original build.
+or seed plugin values. Current tools have installed MCP identities. A built-in
+web reference recorded by an older build names no current built-in and does not
+decode; there is no old executable, alias or automatic retargeting. Finish work
+captured by an older build with that original build.
 
 HTTP requests use the installed package's `http-allowed-hosts` input, a JSON
 array such as `["api.example.com", "*.example.org"]`. This host-supplied grant

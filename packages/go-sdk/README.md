@@ -5,25 +5,29 @@ It consumes the independent Qimu module. It has no dependency on Runtime,
 products, first-party plugins or repository tooling,
 including in tests and development commands.
 
-| Package                                                                                | Owner                                                                 |
-| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `client`                                                                               | Remote HTTP/SSE lifecycle and generated typed operations              |
-| `protocol`                                                                             | Runtime wire values, complete tree admission and strict RPC envelopes |
-| `extension`                                                                            | Invocation scopes and installed client contribution metadata          |
-| `plugin`                                                                               | Flame model roles, tool authoring and product receipt contracts       |
-| `plugin/memory`                                                                        | Published Memory consumer contract                                    |
-| `plugin/skilllearning`                                                                 | Skill learning advice and bounded call-scoped source/model contracts  |
-| `plugin/codeintel`                                                                     | Versioned source transformations and diagnostic consumer contract     |
-| `plugin/modelprovider`                                                                 | Installed chat, token counting, model facts and embedding adapters    |
-| `hook`                                                                                 | Portable lifecycle events, rules and bounded command material         |
-| `plugin/hookprovider`                                                                  | Installed rule sources and original command outcomes                  |
-| `plugin/sqlite`                                                                        | Atomic plugin mutations and durable receipts                          |
-| `model`                                                                                | Provider/model selection, generation values and token estimates       |
-| `model/catalog`                                                                        | Translation of Scope's released model catalog                         |
-| `identity`                                                                             | Shared resource identities, canonical digests and lexical constraints |
-| `filesystem`                                                                           | File admission, path identity, directory resolution and leases        |
-| `pagination`                                                                           | Page limits and bounded opaque cursors                                |
-| `capture`, `exactint`, `httpresponse`, `httporigin`, `instant`, `procgroup`, `sandbox` | Focused technical guarantees used across owners                       |
+| Package                                                                                | Owner                                                                                |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `client`                                                                               | Remote HTTP/SSE lifecycle and generated typed operations                             |
+| `protocol`                                                                             | Runtime wire values, complete tree admission and strict RPC envelopes                |
+| `extension`                                                                            | Invocation scopes and installed client contribution metadata                         |
+| `builtin`                                                                              | Runtime built-in identities, arguments and normalized result values                  |
+| `question`                                                                             | Runtime's ordered answer space and field-specific validation                         |
+| `hook`                                                                                 | Portable lifecycle events, rules and bounded command material                        |
+| `plugin`                                                                               | Flame model roles, tool authoring and product receipt contracts                      |
+| `plugin/backend`, `plugin/process`                                                     | Package backend process entry and the environment the Runtime binds for it           |
+| `plugin/memory`, `plugin/schedule`                                                     | Published Memory and Schedule consumer contracts                                     |
+| `plugin/skilllearning`                                                                 | Skill learning advice and bounded call-scoped source/model contracts                 |
+| `plugin/codeintel`                                                                     | Versioned source transformations and diagnostic consumer contract                    |
+| `plugin/modelprovider`                                                                 | Installed chat, token counting, model facts and embedding adapters                   |
+| `plugin/hookprovider`                                                                  | Installed rule sources and original command outcomes                                 |
+| `plugin/sqlite`                                                                        | Atomic plugin mutations and durable receipts                                         |
+| `model`                                                                                | Provider/model selection, generation values and token estimates                      |
+| `model/catalog`                                                                        | Translation of Scope's released model catalog                                        |
+| `identity`                                                                             | Shared resource identities, canonical digests and lexical constraints                |
+| `filesystem`, `filesystem/commit`                                                      | File admission, path identity, directory resolution, leases and publication evidence |
+| `pagination`                                                                           | Page limits and bounded opaque cursors                                               |
+| `timezone`                                                                             | The host's IANA time zone for values recorded on a person's behalf                   |
+| `capture`, `exactint`, `httpresponse`, `httporigin`, `instant`, `procgroup`, `sandbox` | Focused technical guarantees used across owners                                      |
 
 `builtin` declares Runtime's built-in tool names, shell arguments and normalized
 transcript results. Runtime produces those values and generates their schemas
@@ -52,23 +56,6 @@ admission. A `resultShape` selector carries a typed `shape`; `toolName` and
 projects this value union into Go validation, schema and TypeScript. Rebuild
 plugin declarations and clients together; the former result-shape `name` field
 is refused without conversion.
-
-| Package                                                     | Owner                                                                 |
-| ----------------------------------------------------------- | --------------------------------------------------------------------- |
-| `client`                                                    | Remote HTTP/SSE lifecycle and generated typed operations              |
-| `protocol`                                                  | Runtime wire values, complete tree admission and strict RPC envelopes |
-| `extension`                                                 | Flame invocation origins and installation/call scope policy           |
-| `plugin`                                                    | Flame model roles, tool authoring and product receipt contracts       |
-| `plugin/memory`                                             | Published Memory consumer contract                                    |
-| `plugin/sqlite`                                             | Atomic plugin mutations and durable receipts                          |
-| `model`                                                     | Provider/model selection, generation values and token estimates       |
-| `question`                                                  | Runtime's ordered answer space and field-specific validation          |
-| `builtin`                                                   | Runtime built-in identities, arguments and normalized result values   |
-| `model/catalog`                                             | Translation of Scope's released model catalog                         |
-| `identity`                                                  | Shared resource identities, canonical digests and lexical constraints |
-| `filesystem`                                                | File admission, path identity, directory resolution and leases        |
-| `pagination`                                                | Page limits and bounded opaque cursors                                |
-| `capture`, `exactint`, `httpresponse`, `instant`, `sandbox` | Focused technical guarantees used across owners                       |
 
 `cmd/flame-sdk` generates Flame model-role contracts and projects Flame backend
 policy. Runtime's `cmd/pluginpack` translates Flame declarations into Qimu releases;
