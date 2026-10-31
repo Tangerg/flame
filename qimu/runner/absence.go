@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 // AbsenceRequest names the original authority and creation epoch of an attempt

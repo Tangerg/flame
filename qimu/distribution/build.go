@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 // Build computes the artifact inventory from the declared source files, then

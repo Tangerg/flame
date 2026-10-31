@@ -10,8 +10,8 @@ import (
 
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func TestGeneratedCapabilityMatchesTheActualMethodOwner(t *testing.T) {

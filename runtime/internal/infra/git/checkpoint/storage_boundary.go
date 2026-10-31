@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/flame/qimu/cancellation"
+	"github.com/Tangerg/qimu/cancellation"
 )
 
 // A checkpoint cannot archive or restore its own mutable Git metadata. This

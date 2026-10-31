@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Tangerg/flame/qimu/control"
+	"github.com/Tangerg/qimu/control"
 )
 
 func main() {

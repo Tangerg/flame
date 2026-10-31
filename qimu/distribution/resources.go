@@ -5,8 +5,8 @@ import (
 	"errors"
 	"slices"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 // Resources exposes only a unit's declared immutable files. Reads return

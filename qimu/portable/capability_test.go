@@ -5,7 +5,7 @@ import (
 	json "encoding/json/v2"
 	"testing"
 
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func TestCapabilityDecodingRequiresDeclaredPrimitiveFields(t *testing.T) {

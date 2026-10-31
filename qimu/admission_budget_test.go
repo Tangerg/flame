@@ -10,9 +10,9 @@ import (
 	"testing"
 	"weak"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/integrity"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 func TestPreparationCapacityRetainsTheOriginalAdmission(t *testing.T) {

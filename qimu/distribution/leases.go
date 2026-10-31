@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 func (s *Store) InstallDirectory(ctx context.Context, directory string) (Release, error) {

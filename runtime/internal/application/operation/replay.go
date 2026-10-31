@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 	"github.com/samber/lo"
 	"slices"

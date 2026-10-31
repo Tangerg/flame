@@ -11,8 +11,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Tangerg/flame/qimu/integrity"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

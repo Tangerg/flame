@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Tangerg/flame/qimu/contractgen"
+	"github.com/Tangerg/qimu/contractgen"
 )
 
 func main() {

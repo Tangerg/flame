@@ -12,9 +12,9 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/control"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/control"
+	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 func main() {

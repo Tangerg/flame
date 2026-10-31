@@ -13,8 +13,8 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
 	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 func TestStoredTextRemainsReadableAndReindexUsesOneDurablePublication(t *testing.T) {

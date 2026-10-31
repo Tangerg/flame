@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 // RealmCredential stores only an authentication verifier. It is not release,

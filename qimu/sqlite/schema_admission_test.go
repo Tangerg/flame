@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 func TestWALAdmissionKeepsCallerCancellationBeforeSchemaInitialization(t *testing.T) {

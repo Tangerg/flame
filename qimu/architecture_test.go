@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-const modulePath = "github.com/Tangerg/flame/qimu"
+const modulePath = "github.com/Tangerg/qimu"
 
 func TestFrameworkSourceTestsAndCommandsDoNotImportConsumers(t *testing.T) {
 	err := filepath.WalkDir(".", func(path string, entry fs.DirEntry, err error) error {

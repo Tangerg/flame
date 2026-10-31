@@ -17,7 +17,7 @@ func BuildRuntimeCompanions(ctx context.Context, executable, directory, runner s
 		return fmt.Errorf("locate first-party test sources")
 	}
 	repository := filepath.Clean(filepath.Join(filepath.Dir(file), "../../../.."))
-	build := exec.CommandContext(ctx, filepath.Join(runtime.GOROOT(), "bin", "go"), "build", "-mod=readonly", "-o", runner, "github.com/Tangerg/flame/qimu/runner/cmd/qimu-runner")
+	build := exec.CommandContext(ctx, filepath.Join(runtime.GOROOT(), "bin", "go"), "build", "-mod=readonly", "-o", runner, "github.com/Tangerg/qimu/runner/cmd/qimu-runner")
 	build.Dir = filepath.Join(repository, "apps", "cli")
 	build.Stdout, build.Stderr = os.Stdout, os.Stderr
 	if err := build.Run(); err != nil {

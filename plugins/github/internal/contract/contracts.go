@@ -1,12 +1,12 @@
 package contract
 
-//go:generate sh -c "go run github.com/Tangerg/flame/plugins/github/backend/cmd/contracts | go run github.com/Tangerg/flame/qimu/cmd/qimu contract --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
+//go:generate sh -c "go run github.com/Tangerg/flame/plugins/github/backend/cmd/contracts | go run github.com/Tangerg/qimu/cmd/qimu contract --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
 
 import (
 	published "github.com/Tangerg/flame/plugins/github/contracts"
 	"github.com/Tangerg/flame/plugins/github/internal/wire"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
-	"github.com/Tangerg/flame/qimu/portable"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/portable"
 )
 
 type Contracts struct {

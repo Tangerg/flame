@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/integrity"
-	"github.com/Tangerg/flame/qimu/process"
-	"github.com/Tangerg/flame/qimu/runner"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/qimu/process"
+	"github.com/Tangerg/qimu/runner"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // A restart can replace the endpoint between two successful control calls.

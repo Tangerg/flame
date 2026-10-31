@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func TestGeneratedCapabilityMatchesTheActualMethodOwner(t *testing.T) {

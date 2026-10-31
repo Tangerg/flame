@@ -5,9 +5,9 @@ import (
 	"errors"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/qimu/cancellation"
-	"github.com/Tangerg/flame/qimu/integrity"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"

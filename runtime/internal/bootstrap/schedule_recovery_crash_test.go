@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/qimu"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
-	"github.com/Tangerg/flame/qimu/runner"
+	"github.com/Tangerg/qimu"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/runner"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"

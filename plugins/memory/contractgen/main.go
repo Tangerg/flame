@@ -10,8 +10,8 @@ import (
 
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
-	"github.com/Tangerg/flame/qimu/portable"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func main() {

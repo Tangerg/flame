@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 type Dependency struct {

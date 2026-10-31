@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"

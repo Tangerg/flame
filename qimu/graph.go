@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 func (h *Host) unitLocked(ref UnitRef) (Unit, *installed, error) {

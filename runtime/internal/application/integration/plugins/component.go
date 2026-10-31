@@ -3,7 +3,7 @@ package plugins
 import (
 	"strings"
 
-	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 

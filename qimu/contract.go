@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/Tangerg/flame/qimu/integrity"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/portable"
 )
 
 type ContractKind string

@@ -10,7 +10,7 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu/integrity"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

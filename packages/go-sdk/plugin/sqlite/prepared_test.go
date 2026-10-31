@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
-	"github.com/Tangerg/flame/qimu/portable"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 func TestPreparedCommandRetainsUnknownAdmissionAcrossRestart(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

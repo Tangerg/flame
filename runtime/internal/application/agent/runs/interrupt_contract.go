@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"

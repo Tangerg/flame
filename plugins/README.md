@@ -84,7 +84,7 @@ activation without changing an existing binding. Failed setup retires callbacks,
 session and leased executable without changing desired enablement. The inspection
 query resolves current metadata and does not activate code.
 
-Go backend authors import `github.com/Tangerg/flame/qimu/mcp` as `qimumcp` and
+Go backend authors import `github.com/Tangerg/qimu/mcp` as `qimumcp` and
 register `qimumcp.Backend.OnSetup` before `Publish`. `qimumcp.Setup.Contributions`
 returns detached named bindings; an optional absence has an empty list. Return a
 closer for acquired resources and honor the setup lifetime's cancellation. It is

@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/qimu"
 )
 
 // ReleaseRealmUse settles an original delegated use after Host reconstruction.

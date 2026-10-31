@@ -16,8 +16,8 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
 	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func TestNativeExecutionConfinesEffectsAndReplaysTheOriginalOutcomeAfterReopen(t *testing.T) {

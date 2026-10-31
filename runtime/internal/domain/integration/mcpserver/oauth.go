@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 var ErrOAuthSessionSuperseded = errors.New("mcp: oauth session superseded")

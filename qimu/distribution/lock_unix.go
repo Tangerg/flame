@@ -7,7 +7,7 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/qimu"
 )
 
 // Lock the actual directory inode, not a replaceable child lock-file name.

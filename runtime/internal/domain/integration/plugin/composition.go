@@ -5,8 +5,8 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/portable"
 )
 
 type CompositionMember struct {

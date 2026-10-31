@@ -4,14 +4,14 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"errors"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )

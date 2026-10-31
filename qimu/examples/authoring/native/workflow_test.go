@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/examples/document"
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/examples/document"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 func authorContext(t *testing.T) context.Context {

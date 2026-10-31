@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/qimu"
 )
 
 func TestMultiPointCaptureValidatesItsWholeReadSet(t *testing.T) {

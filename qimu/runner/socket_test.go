@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/qimu"
 )
 
 func TestInvalidSocketAddressNeverCreatesOrReconnectsAnAuthority(t *testing.T) {

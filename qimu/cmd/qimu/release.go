@@ -11,8 +11,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Tangerg/flame/qimu/distribution"
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu/distribution"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 func runPackage(args []string, output io.Writer) (err error) {

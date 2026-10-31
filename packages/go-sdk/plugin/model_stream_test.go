@@ -3,7 +3,7 @@ package plugin
 import (
 	"context"
 	"errors"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"iter"
 	"strings"
 	"sync/atomic"

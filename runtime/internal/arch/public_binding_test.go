@@ -35,15 +35,15 @@ import (
 
 flameruntime "github.com/Tangerg/flame/runtime"
 runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
-"github.com/Tangerg/flame/qimu/portable"
-"github.com/Tangerg/flame/qimu/jsonvalue"
+"github.com/Tangerg/qimu/portable"
+"github.com/Tangerg/qimu/jsonvalue"
 "github.com/Tangerg/flame/packages/local-runtime"
 modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-qimumcp "github.com/Tangerg/flame/qimu/mcp"
+qimumcp "github.com/Tangerg/qimu/mcp"
 pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-sqlitebase "github.com/Tangerg/flame/qimu/sqlite"
+sqlitebase "github.com/Tangerg/qimu/sqlite"
 "github.com/Tangerg/flame/packages/go-sdk/protocol"
 "github.com/Tangerg/scope/core/chat"
 )
@@ -173,7 +173,7 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
 	writeConsumerFile(t, filepath.Join(directory, "go.work"), workspace)
 	dependencies := exec.CommandContext(t.Context(), "go", "list", "-deps", runtimeModulePath)
 	dependencies.Dir = directory
-	dependencies.Env = append(os.Environ(), "GOWORK="+filepath.Join(directory, "go.work"), "GOPROXY=off", "GONOPROXY=none", "GONOSUMDB=github.com/Tangerg/flame", "GOTOOLCHAIN=auto")
+	dependencies.Env = append(os.Environ(), "GOWORK="+filepath.Join(directory, "go.work"), "GOPROXY=off", "GONOPROXY=none", "GONOSUMDB=github.com/Tangerg/flame,github.com/Tangerg/qimu", "GOTOOLCHAIN=auto")
 	output, err := dependencies.CombinedOutput()
 	if err != nil {
 		t.Fatalf("load external Runtime build closure: %v\n%s", err, output)
@@ -185,7 +185,7 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
 	}
 	command := exec.CommandContext(t.Context(), "go", "test", "./...")
 	command.Dir = directory
-	command.Env = append(os.Environ(), "GOWORK="+filepath.Join(directory, "go.work"), "GOPROXY=off", "GONOPROXY=none", "GONOSUMDB=github.com/Tangerg/flame", "GOTOOLCHAIN=auto")
+	command.Env = append(os.Environ(), "GOWORK="+filepath.Join(directory, "go.work"), "GOPROXY=off", "GONOPROXY=none", "GONOSUMDB=github.com/Tangerg/flame,github.com/Tangerg/qimu", "GOTOOLCHAIN=auto")
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("compile external Runtime consumer: %v\n%s", err, output)
 	}

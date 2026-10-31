@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // trustStore records which project roots are trusted to run their project-scope

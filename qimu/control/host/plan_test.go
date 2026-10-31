@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/qimu"
-	controlhost "github.com/Tangerg/flame/qimu/control/host"
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu"
+	controlhost "github.com/Tangerg/qimu/control/host"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 func TestBridgeFreshPlanPreservesPreparationPremises(t *testing.T) {

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Tangerg/flame/qimu/cancellation"
+	"github.com/Tangerg/qimu/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 )
 

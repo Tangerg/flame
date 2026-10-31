@@ -2,7 +2,7 @@ package testsupport
 
 import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func ScheduleInvocation() portable.Invocation {

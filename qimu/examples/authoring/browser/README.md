@@ -77,7 +77,7 @@ reported as equivalent.
 For an independent author exercise, copy this directory into a new npm project,
 install packed release artifacts for `@qimu/sdk` and `@qimu/browser`, create an
 independent lock and build the fixture with `go install
-github.com/Tangerg/flame/qimu/examples/authoring/cmd/authorhost@<release>`. Use
+github.com/Tangerg/qimu/examples/authoring/cmd/authorhost@<release>`. Use
 `GOWORK=off` and the public module artifact. The committed generated contract
 projection is sufficient; this npm author project does not need a Go compiler.
 When regenerating that projection, invoke the fixture from the exact same

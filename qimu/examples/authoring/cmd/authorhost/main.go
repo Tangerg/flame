@@ -21,12 +21,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/control"
-	controlhost "github.com/Tangerg/flame/qimu/control/host"
-	"github.com/Tangerg/flame/qimu/examples/document"
-	"github.com/Tangerg/flame/qimu/integrity"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/control"
+	controlhost "github.com/Tangerg/qimu/control/host"
+	"github.com/Tangerg/qimu/examples/document"
+	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 type AuthorPackage struct {

@@ -10,7 +10,7 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/modelrouter/internal/contract"
 	routing "github.com/Tangerg/flame/plugins/modelrouter/internal/domain"
 	"github.com/Tangerg/flame/plugins/modelrouter/internal/wire"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

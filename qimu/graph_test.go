@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/qimu"
 )
 
 func optionalExport(t *testing.T, host *qimu.Host, contract qimu.Contract[string], id string) qimu.ExportRef {

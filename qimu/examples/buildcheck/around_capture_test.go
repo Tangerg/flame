@@ -7,9 +7,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/examples/buildcheck"
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/examples/buildcheck"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 func TestAroundContinuationKeepsItsOriginalRemainderAfterPointChanges(t *testing.T) {

@@ -60,7 +60,7 @@ is refused without conversion.
 `cmd/flame-sdk` generates Flame model-role contracts and projects Flame backend
 policy. Runtime's `cmd/pluginpack` translates Flame declarations into Qimu releases;
 Qimu owns their archive format, validation and immutable content. Generic capability generation is
-`go run github.com/Tangerg/flame/qimu/cmd/qimu contract --feature ...`.
+`go run github.com/Tangerg/qimu/cmd/qimu contract --feature ...`.
 Qimu owns SQLite transactions, cancellation, Portable contracts, exact JSON, MCP backend authoring, callback and
 stream transport, and their Go/TypeScript protocol projection. Consumers import
 those packages directly; this SDK does not re-export the old generic API.

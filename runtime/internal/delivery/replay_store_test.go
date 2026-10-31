@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 )
 

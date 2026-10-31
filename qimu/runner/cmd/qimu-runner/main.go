@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/Tangerg/flame/qimu/runner"
+	"github.com/Tangerg/qimu/runner"
 )
 
 func main() {

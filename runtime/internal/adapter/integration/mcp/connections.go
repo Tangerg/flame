@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/qimu/cancellation"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/qimu/cancellation"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/go-sdk/auth"

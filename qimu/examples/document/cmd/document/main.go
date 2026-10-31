@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/qimu/examples/document"
+	"github.com/Tangerg/qimu/examples/document"
 )
 
 func main() {

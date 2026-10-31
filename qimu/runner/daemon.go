@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/qimu"
 )
 
 // DaemonConfig identifies a separately packaged runner executable and its

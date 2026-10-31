@@ -10,11 +10,11 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/Tangerg/flame/qimu"
-	controlhost "github.com/Tangerg/flame/qimu/control/host"
-	"github.com/Tangerg/flame/qimu/distribution"
-	"github.com/Tangerg/flame/qimu/integrity"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu"
+	controlhost "github.com/Tangerg/qimu/control/host"
+	"github.com/Tangerg/qimu/distribution"
+	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 type Config struct {

@@ -7,8 +7,8 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
-	"github.com/Tangerg/flame/qimu/portable"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/portable"
 )
 
 type TextEmbeddings struct {

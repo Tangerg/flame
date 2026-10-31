@@ -5,7 +5,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 // Length framing preserves field boundaries, including empty fields and UTF-8 bytes.

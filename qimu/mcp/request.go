@@ -3,7 +3,7 @@ package mcp
 import (
 	"context"
 
-	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

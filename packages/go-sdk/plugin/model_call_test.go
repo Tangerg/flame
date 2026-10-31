@@ -4,7 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"iter"
 	"net/http"
 	"reflect"
@@ -13,7 +13,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )

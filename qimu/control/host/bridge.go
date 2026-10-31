@@ -14,11 +14,11 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/control"
-	"github.com/Tangerg/flame/qimu/integrity"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/control"
+	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 type ModuleSource interface {

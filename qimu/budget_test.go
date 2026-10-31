@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/qimu"
 )
 
 func TestLifetimeWorkCapacityDoesNotCancelAcceptedWork(t *testing.T) {

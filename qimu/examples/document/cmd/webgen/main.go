@@ -6,9 +6,9 @@ import (
 	"os"
 	"reflect"
 
-	"github.com/Tangerg/flame/qimu/control"
-	controlhost "github.com/Tangerg/flame/qimu/control/host"
-	"github.com/Tangerg/flame/qimu/examples/document"
+	"github.com/Tangerg/qimu/control"
+	controlhost "github.com/Tangerg/qimu/control/host"
+	"github.com/Tangerg/qimu/examples/document"
 )
 
 func main() {

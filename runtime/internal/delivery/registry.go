@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/samber/lo"
 )
 

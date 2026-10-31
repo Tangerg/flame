@@ -6,7 +6,7 @@ import (
 	json "encoding/json/v2"
 	"fmt"
 
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // acceptedContinuationStore persists the Run-owned binding that lets boot recovery

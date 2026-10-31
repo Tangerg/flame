@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/qimu"
 )
 
 func TestDatabaseAuthoritiesInOneDirectoryRemainIndependent(t *testing.T) {

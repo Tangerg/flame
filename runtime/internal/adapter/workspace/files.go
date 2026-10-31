@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/flame/qimu/cancellation"
+	"github.com/Tangerg/qimu/cancellation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 )

@@ -6,11 +6,11 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/qimu"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/qimu/integrity"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )

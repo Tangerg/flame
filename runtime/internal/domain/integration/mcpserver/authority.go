@@ -2,7 +2,7 @@ package mcpserver
 
 import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 // AuthorityFingerprint excludes credentials and connection lifecycle settings:

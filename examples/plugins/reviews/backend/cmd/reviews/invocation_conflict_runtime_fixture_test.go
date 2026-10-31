@@ -4,7 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"fmt"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -15,8 +15,8 @@ import (
 	"testing"
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

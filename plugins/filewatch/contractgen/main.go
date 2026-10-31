@@ -8,8 +8,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
 	"github.com/Tangerg/flame/plugins/filewatch/internal/wire"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
-	"github.com/Tangerg/flame/qimu/portable"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func main() {

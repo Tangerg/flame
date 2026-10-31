@@ -2,7 +2,7 @@ package execution
 
 import (
 	"context"
-	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/qimu"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"

@@ -7,8 +7,8 @@ import (
 	"sync/atomic"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 // PluginCallbackCaller binds background work to setup's activation and nested

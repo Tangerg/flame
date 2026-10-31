@@ -12,8 +12,8 @@ import (
 	"sync"
 
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 )
 

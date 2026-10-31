@@ -13,7 +13,7 @@ import (
 
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 	flameruntime "github.com/Tangerg/flame/runtime"
 )
 

@@ -14,7 +14,7 @@ import (
 const (
 	runtimeModulePath      = "github.com/Tangerg/flame/runtime"
 	sdkModulePath          = "github.com/Tangerg/flame/packages/go-sdk"
-	qimuModulePath         = "github.com/Tangerg/flame/qimu"
+	qimuModulePath         = "github.com/Tangerg/qimu"
 	localRuntimeModulePath = "github.com/Tangerg/flame/packages/local-runtime"
 )
 

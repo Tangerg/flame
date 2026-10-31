@@ -9,7 +9,7 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"path/filepath"
 
-	"github.com/Tangerg/flame/qimu/process"
+	"github.com/Tangerg/qimu/process"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"

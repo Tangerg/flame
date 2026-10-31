@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/qimu/portable"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 )
 

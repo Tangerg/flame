@@ -8,8 +8,8 @@ import (
 	jsonv2 "encoding/json/v2"
 	"errors"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 var _ qimu.InstallationStore = (*Store)(nil)

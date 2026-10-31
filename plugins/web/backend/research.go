@@ -8,7 +8,7 @@ import (
 
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
 	"github.com/Tangerg/flame/plugins/web/internal/wire"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/scope/tools/web"
 )
 

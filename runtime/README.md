@@ -381,7 +381,7 @@ call-bound `next` and preserve canonical response/chunk evidence. Tool proposals
 may transform arguments while execution retains Tool identity, schema and approval.
 See the [public authoring contracts](../packages/go-sdk/plugin/README.md).
 
-`qimumcp.Callbacks` from `github.com/Tangerg/flame/qimu/mcp` owns one lifecycle-bound loopback link. Bootstrap publishes
+`qimumcp.Callbacks` from `github.com/Tangerg/qimu/mcp` owns one lifecycle-bound loopback link. Bootstrap publishes
 canonical RPC once before backends can receive its reference. Nested operations
 inherit captured caller/actor authority and cancellation; each HTTP request owns
 its own transport metadata. Closing or replacing a session revokes its references,

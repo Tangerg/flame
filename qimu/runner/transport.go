@@ -14,7 +14,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/qimu"
 )
 
 const maxControlBytes = 4 << 20

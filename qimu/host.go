@@ -10,7 +10,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 type CommitState string

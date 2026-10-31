@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 	"time"
 )
 

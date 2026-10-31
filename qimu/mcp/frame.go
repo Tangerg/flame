@@ -7,8 +7,8 @@ import (
 	"math"
 	"strings"
 
-	"github.com/Tangerg/flame/qimu/jsonvalue"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/go-sdk/jsonrpc"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )

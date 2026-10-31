@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 )
 
 // The accepted provider and complete callable contract are captured once for all

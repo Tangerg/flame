@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 type PointOrdering string

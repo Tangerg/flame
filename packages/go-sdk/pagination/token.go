@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 var ErrTokenTooLarge = errors.New("opaque token exceeds maximum encoded size")

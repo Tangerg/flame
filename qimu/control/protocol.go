@@ -3,8 +3,8 @@
 package control
 
 import (
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 const Protocol = "io.github.tangerg.qimu/control/1"

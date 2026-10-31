@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/httpresponse"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 
 	"github.com/Tangerg/scope/tools/web"
 	"github.com/Tangerg/scope/tools/web/jina"

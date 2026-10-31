@@ -12,7 +12,7 @@ import (
 	scheduleapp "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	scheduledomain "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/samber/lo"
 )

@@ -5,7 +5,7 @@ import (
 	json "encoding/json/v2"
 	"testing"
 
-	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 // TestNumbersKeepEveryLiteralItDecoded pins the reason this option exists: the

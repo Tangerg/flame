@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Tangerg/flame/qimu/control"
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu/control"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 // Populate every actual source field, including fields added by a future Qimu

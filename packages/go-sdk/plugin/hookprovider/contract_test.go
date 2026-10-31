@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 func TestContractCarriesBoundedOriginalHookMaterial(t *testing.T) {

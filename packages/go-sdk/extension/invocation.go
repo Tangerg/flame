@@ -3,7 +3,7 @@ package extension
 import (
 	"errors"
 
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 )
 
 // Flame owns the closed product origin and target vocabulary.

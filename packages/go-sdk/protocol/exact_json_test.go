@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 func TestTypedWireDecoderPreservesOpaqueNumericEvidence(t *testing.T) {

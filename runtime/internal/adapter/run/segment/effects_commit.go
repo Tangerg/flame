@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"

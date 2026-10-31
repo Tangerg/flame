@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/control"
-	controlhost "github.com/Tangerg/flame/qimu/control/host"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/control"
+	controlhost "github.com/Tangerg/qimu/control/host"
 )
 
 type HTTPConfig struct {

@@ -2,7 +2,7 @@ package main
 
 import (
 	"errors"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 
 	processsandbox "github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"

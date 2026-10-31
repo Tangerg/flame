@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	controlhost "github.com/Tangerg/flame/qimu/control/host"
+	controlhost "github.com/Tangerg/qimu/control/host"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 )
 

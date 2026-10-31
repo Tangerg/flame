@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/control"
-	controlhost "github.com/Tangerg/flame/qimu/control/host"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/control"
+	controlhost "github.com/Tangerg/qimu/control/host"
 	app "github.com/Tangerg/flame/runtime/internal/application/integration/pluginbrowser"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"

@@ -10,14 +10,14 @@ import (
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/sqlite"
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	processsandbox "github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
 	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	toolshell "github.com/Tangerg/scope/tools/shell"
 )
 

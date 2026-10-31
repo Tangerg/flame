@@ -12,8 +12,8 @@ This guide uses the following package names:
 | Name        | Import                                               | Responsibility                                                            |
 | ----------- | ---------------------------------------------------- | ------------------------------------------------------------------------- |
 | `plugin`    | `github.com/Tangerg/flame/packages/go-sdk/plugin`    | Flame model, Tool and product receipt contracts                           |
-| `qimumcp`   | `github.com/Tangerg/flame/qimu/mcp`                  | Typed methods, MCP backend/setup, callbacks, streams and generic receipts |
-| `portable`  | `github.com/Tangerg/flame/qimu/portable`             | Immutable method, capability and value-point contracts                    |
+| `qimumcp`   | `github.com/Tangerg/qimu/mcp`                  | Typed methods, MCP backend/setup, callbacks, streams and generic receipts |
+| `portable`  | `github.com/Tangerg/qimu/portable`             | Immutable method, capability and value-point contracts                    |
 | `extension` | `github.com/Tangerg/flame/packages/go-sdk/extension` | Flame invocation origins and call/installation scope policy               |
 
 Use the ordinary MCP SDK server and transport. Qimu's process driver and runner
@@ -107,7 +107,7 @@ protocols are refused without negotiation or a fallback. Flame's package metadat
 uses the separate `plugin.DeclarationProtocol`. Keep old data separately and
 complete old waiting work with its original binary.
 
-`github.com/Tangerg/flame/qimu/portable` owns immutable callable contracts
+`github.com/Tangerg/qimu/portable` owns immutable callable contracts
 independently of transport. `portable.AdmitMethod` admits local method metadata;
 typed methods, live bindings, callbacks and generation consume that owner. It
 provides exact schemas, validation and canonical identity. Descriptors are
@@ -120,7 +120,7 @@ projections must be regenerated together when ownership changes.
 `portable.NewCapability` groups the exact required method descriptors
 under the consumer's semantic reference, composition rule and scope meaning.
 Pipe its capability descriptor JSON into
-`go run github.com/Tangerg/flame/qimu/cmd/qimu contract`
+`go run github.com/Tangerg/qimu/cmd/qimu contract`
 with `--feature - --out <contracts-directory> --ts <typescript-directory>`.
 It emits canonical `capability.generated.json`, standard self-contained Schema,
 operation references, reference prose and TypeScript input/output maps with a
@@ -235,7 +235,7 @@ return the owner's original outcome according to that operation's contract;
 different input with the same identity must be refused. Retention, capacity and
 transaction boundaries belong to the business owner.
 
-`github.com/Tangerg/flame/qimu/jsonvalue` owns the immutable admitted JSON.
+`github.com/Tangerg/qimu/jsonvalue` owns the immutable admitted JSON.
 Its standard-library parser normalizes object ordering, whitespace and string
 spelling while preserving numeric lexemes and array order. Structs, maps and raw
 objects agree when they encode the same request. A raw `1.0` remains distinct

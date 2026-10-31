@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // errWorkspaceMutationPending reports that an unfinished rollback still owns the

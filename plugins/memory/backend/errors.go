@@ -9,7 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 )
 
 // errorCodes is ordered: an error joining several causes takes the first

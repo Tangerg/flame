@@ -7,7 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/backend"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

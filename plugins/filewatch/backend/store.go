@@ -9,7 +9,7 @@ import (
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 const (

@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func main() {

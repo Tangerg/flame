@@ -9,7 +9,7 @@ import (
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	modelcatalog "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 	modelsapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	catalog "github.com/Tangerg/scope/models/catalog"

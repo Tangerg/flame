@@ -19,7 +19,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 )
 
 // The backend is independently exportable; its captured wire fixture must not

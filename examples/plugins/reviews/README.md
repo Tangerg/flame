@@ -11,7 +11,7 @@ Skill. It runs through Flame's existing installation-origin MCP connection,
 deferred Tool discovery, approval Interrupt, Run execution and result storage.
 It declares an ordinary React board bound to the same operations.
 
-The backend uses `github.com/Tangerg/flame/qimu/mcp` for generic typed MCP
+The backend uses `github.com/Tangerg/qimu/mcp` for generic typed MCP
 bindings and `github.com/Tangerg/flame/packages/go-sdk/plugin` for Flame Tools
 and product contracts.
 Its typed list and update operations share the same private use cases and receipt
@@ -34,7 +34,7 @@ The Status and Outcome types publish their closed vocabularies to Scope's schema
 derivation. From `backend`, `go generate ./contract` projects the same methods into
 `package/io.github.tangerg.flame/contracts/{capability.generated.json,schema.json,methods.generated.json,API_REFERENCE.md}`
 and `component/methods.generated.ts` through the public
-`github.com/Tangerg/flame/qimu/cmd/qimu contract` command.
+`github.com/Tangerg/qimu/cmd/qimu contract` command.
 Do not edit those generated files or maintain a second input/output schema.
 The canonical capability descriptor supplies the same contract for live export
 resolution, original-binding restoration and the generated TypeScript token.
@@ -151,7 +151,7 @@ separate contracts; a backend test does not execute the board.
 
 Runtime supplies its calling-owner context, including its canonical logical Tool
 call ID, in MCP request metadata under the compiled `qimumcp.InvocationMetadataKey`
-from `github.com/Tangerg/flame/qimu/mcp`. The backend never derives this identity
+from `github.com/Tangerg/qimu/mcp`. The backend never derives this identity
 from the provider's ToolCall ID, review revision, or user arguments. This metadata
 is a projection of execution identity, not a credential or approval grant.
 

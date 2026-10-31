@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 func launchFixture(t *testing.T, id string, epoch uint64, directory string) LaunchRequest {

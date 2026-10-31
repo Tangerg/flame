@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/go-sdk/auth"

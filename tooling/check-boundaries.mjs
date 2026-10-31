@@ -70,7 +70,7 @@ const dependencies = (member, tests = false) =>
       return { path, module };
     });
 const sdk = "github.com/Tangerg/flame/packages/go-sdk";
-const qimu = "github.com/Tangerg/flame/qimu";
+const qimu = "github.com/Tangerg/qimu";
 for (const { path, module } of dependencies("packages/go-sdk", true))
   if (
     module.startsWith("github.com/Tangerg/flame/") &&

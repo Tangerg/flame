@@ -7,8 +7,8 @@ import (
 	"testing"
 	"weak"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 type retainedPayload struct{ bytes [1 << 20]byte }

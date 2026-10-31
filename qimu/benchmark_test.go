@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 func benchmarkGraph(b *testing.B, count int) (*qimu.Host, qimu.BindingSnapshot, qimu.ScopeGrant) {

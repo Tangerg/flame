@@ -1,7 +1,7 @@
 package protocol
 
 import (
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 	"time"
 )
 

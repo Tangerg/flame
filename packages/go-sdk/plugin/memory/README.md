@@ -12,8 +12,8 @@ The workspace coordinator runs this before generating backend package resources.
 Generated files are projections, never independently edited definitions.
 
 Implementations parse `CapabilityJSON` through `portable.ParseCapability` from
-`github.com/Tangerg/flame/qimu/portable` and bind their own codecs with
-`qimumcp.ImplementMethod` from `github.com/Tangerg/flame/qimu/mcp`.
+`github.com/Tangerg/qimu/portable` and bind their own codecs with
+`qimumcp.ImplementMethod` from `github.com/Tangerg/qimu/mcp`.
 The first-party backend uses this same
 path. Changing an implementation's module namespace cannot change the contract's
 identity. Invalid input is refused before business execution; invalid output

@@ -3,7 +3,7 @@ package filewatch
 import (
 	json "encoding/json/v2"
 	"errors"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 	"slices"
 	"time"
 

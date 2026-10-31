@@ -4,7 +4,7 @@ import (
 	"context"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"

@@ -15,7 +15,7 @@ import (
 	"reflect"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/go-sdk/jsonrpc"
 	"github.com/Tangerg/sse"
 	"golang.org/x/text/encoding"

@@ -10,7 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu/sqlite"
 	skillspec "github.com/Tangerg/scope/skills"
 )
 

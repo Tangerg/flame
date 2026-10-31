@@ -8,7 +8,7 @@ import (
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 )
 
 // errorCodes is ordered: an error joining several causes takes the first

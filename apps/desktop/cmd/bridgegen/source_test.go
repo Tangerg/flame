@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/apps/desktop/internal/bridge"
-	"github.com/Tangerg/flame/qimu/contractgen"
+	"github.com/Tangerg/qimu/contractgen"
 )
 
 func fixtureGraph(t *testing.T) *schemaGraph {

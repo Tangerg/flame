@@ -37,7 +37,7 @@ try {
     [
       "qimu-runner",
       "runtime",
-      "github.com/Tangerg/flame/qimu/runner/cmd/qimu-runner",
+      "github.com/Tangerg/qimu/runner/cmd/qimu-runner",
     ],
     ["flame-runtime", "runtime", "./cmd/flame-runtime"],
     ["flame", "apps/cli", "."],

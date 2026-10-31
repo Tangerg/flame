@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/qimu/contractgen"
+	"github.com/Tangerg/qimu/contractgen"
 )
 
 // The canonical sample index, projected for the side that cannot read Go.

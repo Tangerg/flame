@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 

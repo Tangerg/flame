@@ -11,7 +11,7 @@ import (
 	"log/slog"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"go.opentelemetry.io/otel/trace"
 )

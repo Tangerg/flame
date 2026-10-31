@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	routing "github.com/Tangerg/flame/plugins/modelrouter/internal/domain"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func classify(err error) string {

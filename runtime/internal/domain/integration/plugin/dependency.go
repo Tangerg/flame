@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 // Dependency names the exact release an execution admitted from one

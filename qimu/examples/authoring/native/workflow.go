@@ -9,8 +9,8 @@ import (
 	"os"
 	"slices"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/examples/document"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/examples/document"
 )
 
 const Installation qimu.InstallationID = "authored-document"

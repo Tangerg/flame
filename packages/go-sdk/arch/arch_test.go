@@ -13,7 +13,7 @@ import (
 )
 
 const sdkModulePath = "github.com/Tangerg/flame/packages/go-sdk"
-const qimuModulePath = "github.com/Tangerg/flame/qimu"
+const qimuModulePath = "github.com/Tangerg/qimu"
 
 // moduleRoot resolves this module from its manifest; it never guesses a checkout layout.
 func moduleRoot(t *testing.T) string {

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/models/catalog"
 )

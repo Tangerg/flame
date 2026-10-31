@@ -12,8 +12,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
-	"github.com/Tangerg/flame/qimu/cancellation"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 // hooksRelPath is the cascade filename. Global lives at ~/.flame/hooks.json; a

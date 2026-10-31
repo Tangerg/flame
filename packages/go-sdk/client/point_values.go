@@ -7,8 +7,8 @@ import (
 	"reflect"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/scope/core/jsonschema"
 	"github.com/samber/lo"
 )

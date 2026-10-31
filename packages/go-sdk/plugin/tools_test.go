@@ -1,13 +1,13 @@
 package plugin
 
 import (
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func TestInvocationIdentityComesOnlyFromHostMetadata(t *testing.T) {

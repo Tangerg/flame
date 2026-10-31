@@ -1,4 +1,4 @@
-module github.com/Tangerg/flame/qimu
+module github.com/Tangerg/qimu
 
 go 1.27.3
 

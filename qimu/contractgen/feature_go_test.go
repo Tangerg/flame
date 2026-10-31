@@ -8,7 +8,7 @@ import (
 	"go/types"
 	"testing"
 
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func TestGoProjectionPreservesPublishedStringEnumOwnership(t *testing.T) {

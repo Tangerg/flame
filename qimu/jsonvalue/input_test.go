@@ -5,7 +5,7 @@ import (
 	json "encoding/json/v2"
 	"testing"
 
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 func TestObjectRepresentationCannotChangeRequestIdentity(t *testing.T) {

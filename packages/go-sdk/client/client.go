@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 var ErrClosed = errors.New("runtime client: closed")

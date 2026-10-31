@@ -11,14 +11,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/integrity"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
-	"github.com/Tangerg/flame/qimu/mcp"
-	"github.com/Tangerg/flame/qimu/portable"
-	"github.com/Tangerg/flame/qimu/process"
-	"github.com/Tangerg/flame/qimu/runner"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/qimu/process"
+	"github.com/Tangerg/qimu/runner"
+	"github.com/Tangerg/qimu/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

@@ -170,7 +170,7 @@ export async function generate(repository = root) {
     go(
       [
         "run",
-        "github.com/Tangerg/flame/qimu/cmd/qimu",
+        "github.com/Tangerg/qimu/cmd/qimu",
         "contract",
         "--feature",
         memory,
@@ -219,7 +219,7 @@ export async function generate(repository = root) {
       go(
         [
           "run",
-          "github.com/Tangerg/flame/qimu/cmd/qimu",
+          "github.com/Tangerg/qimu/cmd/qimu",
           "contract",
           "--feature",
           descriptor,
@@ -279,7 +279,7 @@ export async function generate(repository = root) {
     go(
       [
         "run",
-        "github.com/Tangerg/flame/qimu/cmd/qimu",
+        "github.com/Tangerg/qimu/cmd/qimu",
         "contract",
         "--feature",
         "usagereports/contracts/capability.json",
@@ -568,7 +568,7 @@ export function proxyEnvironment(proxy, { offline = false } = {}) {
     ...process.env,
     GOTOOLCHAIN: "local",
     GONOPROXY: "none",
-    GONOSUMDB: "github.com/Tangerg/flame",
+    GONOSUMDB: "github.com/Tangerg/flame,github.com/Tangerg/qimu",
     GOPROXY:
       pathToFileURL(proxy).href +
       (offline ? ",off" : ",https://proxy.golang.org"),

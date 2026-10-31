@@ -6,9 +6,9 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/control"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/control"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // Publish retains the original operation before asking the sole Host catalog

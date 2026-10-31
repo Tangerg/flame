@@ -9,9 +9,9 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/control"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/control"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // Prove acknowledges an actual original exit only after its evidence and every

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/process"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/process"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"

@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Tangerg/flame/qimu/cancellation"
+	"github.com/Tangerg/qimu/cancellation"
 	"golang.org/x/sys/unix"
 )
 

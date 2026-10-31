@@ -5,9 +5,9 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/control"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/control"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 func (b *Bridge) Snapshot(ctx context.Context, token string, names []string) (control.Snapshot, error) {

@@ -9,10 +9,10 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/Tangerg/flame/qimu"
-	controlhost "github.com/Tangerg/flame/qimu/control/host"
-	"github.com/Tangerg/flame/qimu/distribution"
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu"
+	controlhost "github.com/Tangerg/qimu/control/host"
+	"github.com/Tangerg/qimu/distribution"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 var ErrSourceChanged = errors.New("document: source revision changed")

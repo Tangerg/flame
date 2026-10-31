@@ -137,7 +137,7 @@ func prepareRunner(executable string) error {
 	if err != nil {
 		return err
 	}
-	command := exec.Command(filepath.Join(goruntime.GOROOT(), "bin", "go"), "build", "-mod=readonly", "-o", runner, "github.com/Tangerg/flame/qimu/runner/cmd/qimu-runner")
+	command := exec.Command(filepath.Join(goruntime.GOROOT(), "bin", "go"), "build", "-mod=readonly", "-o", runner, "github.com/Tangerg/qimu/runner/cmd/qimu-runner")
 	command.Dir = filepath.Join(filepath.Dir(file), "../..")
 	command.Stdout, command.Stderr = os.Stdout, os.Stderr
 	return command.Run()

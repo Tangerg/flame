@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func classify(err error) string {

@@ -7,7 +7,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/qimu/cancellation"
+	"github.com/Tangerg/qimu/cancellation"
 	"github.com/sourcegraph/jsonrpc2"
 )
 

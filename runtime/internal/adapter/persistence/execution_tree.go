@@ -9,7 +9,7 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 var errExecutionTreeConflict = errors.New("sqlite: execution tree writer or content conflict")

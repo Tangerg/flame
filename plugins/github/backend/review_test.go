@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 )
 
 const pullJSON = `{"number":42,"title":"Review this change","body":null,"state":"open","html_url":"https://github.com/owner/repo/pull/42","user":{"login":"author"},"draft":true,"head":{"label":"contributor:topic","ref":"topic","sha":"head-sha","repo":null},"base":{"label":"owner:main","ref":"main","sha":"base-sha","repo":{"full_name":"owner/repo"}},"updated_at":"2026-10-20T00:00:00Z","merged_at":null,"mergeable":null,"mergeable_state":"unknown","additions":2,"deletions":1,"changed_files":2}`

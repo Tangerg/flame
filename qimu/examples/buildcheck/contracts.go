@@ -7,7 +7,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/qimu"
 )
 
 var ErrStaleRevision = errors.New("buildcheck: source revision changed")

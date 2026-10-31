@@ -6,10 +6,10 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/Tangerg/flame/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
-	"github.com/Tangerg/flame/qimu/portable"
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // PreparedCommand is a projection of a durable private command admission.

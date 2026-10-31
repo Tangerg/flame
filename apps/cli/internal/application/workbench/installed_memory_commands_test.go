@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 )
 
 const memoryID = "01980000-0000-7000-8000-000000000001"

@@ -7,7 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 const (

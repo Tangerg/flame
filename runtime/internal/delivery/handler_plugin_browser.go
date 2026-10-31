@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/control"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/control"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/pluginbrowser"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )

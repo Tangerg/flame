@@ -7,9 +7,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/qimu"
-	"github.com/Tangerg/flame/qimu/contractgen"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/contractgen"
+	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 //go:generate go run ../cmd/controlgen -out ../sdk/src/protocol.generated.ts

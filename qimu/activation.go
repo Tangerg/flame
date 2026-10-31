@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/qimu/integrity"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 // Activate prepares the exact graph outside admission. Its accepted attempts

@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/qimu/mcp"
 )
 
 func main() {

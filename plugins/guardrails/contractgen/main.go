@@ -10,8 +10,8 @@ import (
 
 	guardrail "github.com/Tangerg/flame/plugins/guardrails/internal/domain"
 	"github.com/Tangerg/flame/plugins/guardrails/internal/wire"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
-	"github.com/Tangerg/flame/qimu/portable"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func main() {

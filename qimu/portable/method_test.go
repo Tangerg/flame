@@ -5,8 +5,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/Tangerg/flame/qimu/jsonvalue"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func TestMethodOwnsStructuralAdmissionAndImmutableIdentity(t *testing.T) {

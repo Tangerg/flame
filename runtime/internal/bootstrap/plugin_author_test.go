@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )

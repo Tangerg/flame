@@ -6,7 +6,7 @@ import (
 	"errors"
 	"slices"
 
-	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/qimu"
 )
 
 type Engine struct {

@@ -384,8 +384,8 @@
       "imports": [
         "context",
         "github.com/Tangerg/flame/packages/go-sdk/protocol",
-        "github.com/Tangerg/flame/qimu/mcp",
-        "github.com/Tangerg/flame/qimu/portable",
+        "github.com/Tangerg/qimu/mcp",
+        "github.com/Tangerg/qimu/portable",
         "iter"
       ],
       "variables": [
@@ -1076,7 +1076,7 @@
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/extension",
       "imports": [
-        "github.com/Tangerg/flame/qimu/portable"
+        "github.com/Tangerg/qimu/portable"
       ],
       "constants": [
         {
@@ -1891,7 +1891,7 @@
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/identity",
       "imports": [
-        "github.com/Tangerg/flame/qimu/integrity"
+        "github.com/Tangerg/qimu/integrity"
       ],
       "constants": [
         {
@@ -2464,9 +2464,9 @@
       "imports": [
         "context",
         "github.com/Tangerg/flame/packages/go-sdk/model",
-        "github.com/Tangerg/flame/qimu/jsonvalue",
-        "github.com/Tangerg/flame/qimu/mcp",
-        "github.com/Tangerg/flame/qimu/portable",
+        "github.com/Tangerg/qimu/jsonvalue",
+        "github.com/Tangerg/qimu/mcp",
+        "github.com/Tangerg/qimu/portable",
         "github.com/Tangerg/go-sdk/mcp",
         "github.com/Tangerg/scope/core/chat",
         "github.com/Tangerg/scope/core/tool",
@@ -2962,9 +2962,9 @@
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/codeintel",
       "imports": [
-        "github.com/Tangerg/flame/qimu/integrity",
-        "github.com/Tangerg/flame/qimu/mcp",
-        "github.com/Tangerg/flame/qimu/portable"
+        "github.com/Tangerg/qimu/integrity",
+        "github.com/Tangerg/qimu/mcp",
+        "github.com/Tangerg/qimu/portable"
       ],
       "constants": [
         {
@@ -3111,8 +3111,8 @@
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider",
       "imports": [
         "github.com/Tangerg/flame/packages/go-sdk/hook",
-        "github.com/Tangerg/flame/qimu/mcp",
-        "github.com/Tangerg/flame/qimu/portable"
+        "github.com/Tangerg/qimu/mcp",
+        "github.com/Tangerg/qimu/portable"
       ],
       "constants": [
         {
@@ -3828,8 +3828,8 @@
       "imports": [
         "encoding/json/jsontext",
         "fmt",
-        "github.com/Tangerg/flame/qimu/mcp",
-        "github.com/Tangerg/flame/qimu/portable",
+        "github.com/Tangerg/qimu/mcp",
+        "github.com/Tangerg/qimu/portable",
         "github.com/Tangerg/scope/core/chat",
         "github.com/Tangerg/scope/core/embedding",
         "github.com/Tangerg/scope/models/catalog"
@@ -4680,8 +4680,8 @@
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning",
       "imports": [
-        "github.com/Tangerg/flame/qimu/mcp",
-        "github.com/Tangerg/flame/qimu/portable",
+        "github.com/Tangerg/qimu/mcp",
+        "github.com/Tangerg/qimu/portable",
         "time"
       ],
       "constants": [
@@ -4877,8 +4877,8 @@
       "imports": [
         "context",
         "database/sql",
-        "github.com/Tangerg/flame/qimu/jsonvalue",
-        "github.com/Tangerg/flame/qimu/mcp",
+        "github.com/Tangerg/qimu/jsonvalue",
+        "github.com/Tangerg/qimu/mcp",
         "github.com/Tangerg/go-sdk/mcp"
       ],
       "constants": [
@@ -4976,7 +4976,7 @@
         "encoding/json/jsontext",
         "github.com/Tangerg/flame/packages/go-sdk/builtin",
         "github.com/Tangerg/flame/packages/go-sdk/extension",
-        "github.com/Tangerg/flame/qimu/portable",
+        "github.com/Tangerg/qimu/portable",
         "github.com/Tangerg/go-sdk/jsonrpc",
         "time"
       ],

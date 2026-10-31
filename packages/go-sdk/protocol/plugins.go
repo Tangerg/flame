@@ -2,7 +2,7 @@ package protocol
 
 import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 )
 
 // PluginCommandRequest addresses original routing without another copy of input.

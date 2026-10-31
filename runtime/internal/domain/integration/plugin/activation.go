@@ -3,8 +3,8 @@ package plugin
 import (
 	"slices"
 
-	"github.com/Tangerg/flame/qimu/integrity"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 // Activation is an immutable projection of a session-owned binding graph. Its

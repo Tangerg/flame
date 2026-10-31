@@ -16,8 +16,8 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
-	"github.com/Tangerg/flame/qimu/portable"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func TestPluginRequestEntrancesShareLocalInputAdmission(t *testing.T) {

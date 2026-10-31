@@ -13,8 +13,8 @@ import (
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
 	"github.com/Tangerg/flame/plugins/filewatch/internal/wire"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/google/uuid"
 )
 

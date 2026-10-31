@@ -7,7 +7,7 @@ import (
 	"fmt"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
-	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/scope/core/chat"
 )

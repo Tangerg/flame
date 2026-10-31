@@ -14,7 +14,7 @@ import (
 	"testing"
 
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 )
 
 type roundTrip func(*http.Request) (*http.Response, error)

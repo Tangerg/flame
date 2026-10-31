@@ -8,7 +8,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/Tangerg/flame/qimu/examples/buildcheck"
+	"github.com/Tangerg/qimu/examples/buildcheck"
 )
 
 func main() {

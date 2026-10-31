@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 type runHost struct{ client *runtimeclient.Client }

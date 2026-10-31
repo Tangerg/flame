@@ -6,7 +6,7 @@ defines its services, contribution Points, Events, selection rules, permissions 
 business records. Qimu owns installation admission, exact implementation bindings,
 execution lifetimes and the evidence required to release their protections.
 
-The Go module is `github.com/Tangerg/flame/qimu`. It builds independently of Flame's
+The Go module is `github.com/Tangerg/qimu`. It builds independently of Flame's
 Runtime and SDK modules. Flame is a consumer of these public APIs. Qimu does not
 require Dougong. The portable schema and MCP adapters use the dependencies declared
 in this module's `go.mod`.

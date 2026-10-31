@@ -16,7 +16,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/codeintel"
 	"github.com/Tangerg/flame/packages/go-sdk/procgroup"
-	"github.com/Tangerg/flame/qimu/cancellation"
+	"github.com/Tangerg/qimu/cancellation"
 )
 
 var errFormattedTooLarge = errors.New("code intelligence: formatted output exceeds document capacity")

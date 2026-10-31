@@ -7,7 +7,7 @@ import (
 	"iter"
 	"slices"
 
-	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/qimu"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"

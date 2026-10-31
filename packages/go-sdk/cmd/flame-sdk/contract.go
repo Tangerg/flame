@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/qimu/portable"
 	"os"
 )
 

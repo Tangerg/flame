@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/Tangerg/flame/qimu/integrity"
-	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 type authorityIdentity struct{ marker byte }
