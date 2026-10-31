@@ -14,7 +14,7 @@ import (
 const statusWaitingForAnswers = "waiting for your answers"
 
 func (l *sessionLifecycle) restore(snapshot conversation.SessionSnapshot) {
-	if err := l.runs.conversation().RestoreSnapshot(snapshot); err != nil {
+	if err := l.runs.restoreSnapshot(snapshot); err != nil {
 		l.runs.fail(err)
 		return
 	}

@@ -70,6 +70,14 @@ func (r *runs) blocksAdmission() bool { return r.execution.blocksAdmission() }
 
 func (r *runs) following() bool { return r.execution.following }
 
+// restoreSnapshot rebuilds the observed projection from a Session read.
+func (r *runs) restoreSnapshot(snapshot conversation.SessionSnapshot) error {
+	return r.execution.conversation.RestoreSnapshot(snapshot)
+}
+
+// clearPresentation forgets the retained presentation of finished Runs.
+func (r *runs) clearPresentation() { r.execution.conversation.ClearPresentation() }
+
 func (r *runs) cancelPending() bool { return r.execution.pendingCancel != nil }
 
 // adoptProjection makes conversation the observed projection, as a snapshot

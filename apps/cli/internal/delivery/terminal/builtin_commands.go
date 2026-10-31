@@ -24,10 +24,10 @@ const (
 func builtinCommands() []localCommand {
 	return slices.Concat(
 		commandGroup(commandCategoryApplication,
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "quit", Title: "leave flame", Aliases: []string{"exit"}}, Run: func(a *app, _ string) error { a.Quit(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "quit", Title: "leave flame", Aliases: []string{"exit"}}, Run: func(a *app, _ string) error { a.loop.Quit(); return nil }},
 		),
 		commandGroup(commandCategoryTranscript,
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "help", Title: "show commands available in this session"}, Run: func(a *app, _ string) error { a.ShowHelp(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "help", Title: "show commands available in this session"}, Run: func(a *app, _ string) error { a.showCommandPalette(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "shortcuts", Title: "show all keyboard shortcuts"}, Run: func(a *app, _ string) error { a.ShowShortcuts(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "clear", Title: "release the live transcript"}, Available: availableWithoutActiveRun, Run: func(a *app, _ string) error { a.Clear(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "find", Title: "find text in the live transcript", Arguments: extensions.RequiredArguments}, Run: func(a *app, query string) error { a.search.find(query); return nil }},
@@ -52,9 +52,9 @@ func builtinCommands() []localCommand {
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "import", Title: "import and open a runtime-native JSON session artifact", Arguments: extensions.RequiredArguments}, Available: availableWithSessionTransfer, Run: func(a *app, path string) error { return a.lifecycle.prepareSessionImport(path) }},
 		),
 		commandGroup(commandCategoryComposer,
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "attach", Title: "attach a local file to the next prompt", Arguments: extensions.RequiredArguments}, Run: func(a *app, path string) error { return a.AttachFile(path) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "detach", Title: "remove an attachment by name, number, or all", Arguments: extensions.RequiredArguments}, Run: func(a *app, value string) error { return a.DetachFile(value) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "attachments", Title: "show files attached to the next prompt", Aliases: []string{"files"}}, Run: func(a *app, _ string) error { a.ShowAttachments(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "attach", Title: "attach a local file to the next prompt", Arguments: extensions.RequiredArguments}, Run: func(a *app, path string) error { return a.composer.addAttachment(path) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "detach", Title: "remove an attachment by name, number, or all", Arguments: extensions.RequiredArguments}, Run: func(a *app, value string) error { return a.composer.removeAttachment(value) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "attachments", Title: "show files attached to the next prompt", Aliases: []string{"files"}}, Run: func(a *app, _ string) error { a.composer.showAttachments(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "stash", Title: "stash the current prompt and clear the composer"}, Available: availableWithDraft, Run: func(a *app, _ string) error { return a.composer.stashPrompt() }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "stashes", Title: "list saved prompt stashes"}, Run: func(a *app, _ string) error { a.composer.showPromptStashes(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "stash-apply", Title: "apply a prompt stash by id or unique prefix", Arguments: extensions.RequiredArguments}, Available: availableWithEmptyDraft, Run: func(a *app, id string) error { return a.composer.applyPromptStash(id) }},
@@ -312,7 +312,7 @@ func (a *app) Clear() {
 		a.status.doing = "the active run owns the transcript"
 		return
 	}
-	a.runs.conversation().ClearPresentation()
+	a.runs.clearPresentation()
 	a.transcript.Reset()
 	a.activity.Reset()
 	a.status.Reset()
@@ -320,20 +320,10 @@ func (a *app) Clear() {
 	a.header.SetUsage(a.runs.conversation().Usage())
 }
 
-func (a *app) Quit() { a.loop.Quit() }
-
-func (a *app) ShowHelp() { a.showCommandPalette() }
-
 func (a *app) ShowShortcuts() {
 	a.shortcuts.show()
 	a.status.note("keyboard shortcuts")
 }
-
-func (a *app) AttachFile(path string) error { return a.composer.addAttachment(path) }
-
-func (a *app) DetachFile(value string) error { return a.composer.removeAttachment(value) }
-
-func (a *app) ShowAttachments() { a.composer.showAttachments() }
 
 func (a *app) ToggleToolDetails() {
 	a.transcript.ToggleDetails()
