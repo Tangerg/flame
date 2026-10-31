@@ -5,8 +5,10 @@
 package transcript
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"time"
 
@@ -36,17 +38,16 @@ var (
 
 // RunNode is one run's position in a session's timeline.
 type RunNode struct {
-	ID              string
-	SpawnedByItemID string    // non-empty: a child Run
-	RootRunID       string    // non-empty: the root that owns this child Run
-	CreatedAt       time.Time // wall-clock Run order
-	MessageMark     run.MessageMark
-	Terminal        bool // whether the complete root tree can become portable
+	ID          string
+	Lineage     run.Lineage
+	CreatedAt   time.Time
+	MessageMark run.MessageMark
+	Terminal    bool // whether the complete root tree can become portable
 }
 
 // IsRoot reports whether the Run opens an execution rather than representing a
 // delegated child.
-func (r RunNode) IsRoot() bool { return r.SpawnedByItemID == "" }
+func (r RunNode) IsRoot() bool { return r.Lineage.IsRoot() }
 
 // Timeline is the domain view of a session's run log. It owns boundary math for
 // fork/rollback: callers lift source records into [RunNode] values, then
@@ -57,9 +58,8 @@ type Timeline []RunNode
 func TimelineFromRuns(runs []run.Run) Timeline {
 	nodes := make(Timeline, len(runs))
 	for i, current := range runs {
-		lineage := current.Lineage()
 		nodes[i] = RunNode{
-			ID: current.ID(), SpawnedByItemID: lineage.SpawnedByItemID, RootRunID: lineage.RootRunID,
+			ID: current.ID(), Lineage: current.Lineage(),
 			CreatedAt: current.CreatedAt(), MessageMark: current.MessageMark(),
 			Terminal: current.State().IsTerminal(),
 		}
@@ -121,7 +121,7 @@ func (b Boundary) DroppedRunIDs() []string {
 }
 
 // BoundaryAt computes the inclusive-keep split of this timeline at runID. It
-// orders a copy by CreatedAt and leaves the timeline untouched. runID==""
+// orders a copy tree by tree and leaves the timeline untouched. runID==""
 // drops every run (KeepMessageMark 0 — clear to empty). A non-root runID is
 // [ErrNotRoot] and an unknown one is [ErrRunNotFound]: this is the rollback
 // split, and rollback addresses root Runs only. Fork cuts a portable prefix that
@@ -156,12 +156,6 @@ func (t Timeline) PortableBoundaryAt(runID string) (PortableBoundary, error) {
 		}
 		end := start + 1
 		for end < len(nodes) && !nodes[end].IsRoot() {
-			if nodes[end].RootRunID != nodes[start].ID {
-				return PortableBoundary{}, fmt.Errorf(
-					"timeline child Run %q belongs to root %q, not preceding root %q",
-					nodes[end].ID, nodes[end].RootRunID, nodes[start].ID,
-				)
-			}
 			end++
 		}
 		complete := true
@@ -201,24 +195,36 @@ func (t Timeline) PortableBoundaryAt(runID string) (PortableBoundary, error) {
 	}, nil
 }
 
+// ordered lays the timeline out tree by tree: roots in creation order, each
+// followed by its own children in creation order. Ordering every Run by time
+// alone would let a child whose clock ties or precedes another root's land in
+// the wrong tree. Run identity breaks ties so the order is total.
 func (t Timeline) ordered() ([]RunNode, error) {
-	nodes := slices.Clone([]RunNode(t))
-	for index, node := range nodes {
-		if err := identity.ValidateRun(node.ID); err != nil {
+	byTime := func(a, b RunNode) int { return cmp.Or(a.CreatedAt.Compare(b.CreatedAt), cmp.Compare(a.ID, b.ID)) }
+	var roots []RunNode
+	children := make(map[string][]RunNode)
+	for index, node := range t {
+		if err := node.Lineage.Validate(node.ID); err != nil {
 			return nil, fmt.Errorf("timeline Run[%d]: %w", index, err)
 		}
-		if node.SpawnedByItemID != "" {
-			if err := identity.ValidateItem(node.SpawnedByItemID); err != nil {
-				return nil, fmt.Errorf("timeline Run[%d] lineage: %w", index, err)
-			}
-			if err := identity.ValidateRun(node.RootRunID); err != nil {
-				return nil, fmt.Errorf("timeline Run[%d] root lineage: %w", index, err)
-			}
-		} else if node.RootRunID != "" {
-			return nil, fmt.Errorf("timeline root Run[%d] carries child root lineage %q", index, node.RootRunID)
+		if node.IsRoot() {
+			roots = append(roots, node)
+		} else {
+			children[node.Lineage.RootRunID] = append(children[node.Lineage.RootRunID], node)
 		}
 	}
-	slices.SortStableFunc(nodes, func(a, b RunNode) int { return a.CreatedAt.Compare(b.CreatedAt) })
+	slices.SortFunc(roots, byTime)
+	nodes := make([]RunNode, 0, len(t))
+	for _, root := range roots {
+		tree := children[root.ID]
+		slices.SortFunc(tree, byTime)
+		nodes = append(append(nodes, root), tree...)
+		delete(children, root.ID)
+	}
+	if len(children) > 0 {
+		orphan := children[slices.Min(slices.Collect(maps.Keys(children)))][0]
+		return nil, fmt.Errorf("timeline child Run %q has no root %q", orphan.ID, orphan.Lineage.RootRunID)
+	}
 	return nodes, nil
 }
 

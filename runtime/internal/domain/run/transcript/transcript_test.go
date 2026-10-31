@@ -16,7 +16,7 @@ func root(id string, atUnix int64, mark int) transcript.RunNode {
 
 func sub(id, spawnedByItem, rootRunID string, atUnix int64, mark int) transcript.RunNode {
 	return transcript.RunNode{
-		ID: id, SpawnedByItemID: spawnedByItem, RootRunID: rootRunID,
+		ID: id, Lineage: run.Lineage{SpawnedByItemID: spawnedByItem, ParentRunID: rootRunID, RootRunID: rootRunID},
 		CreatedAt: time.Unix(atUnix, 0).UTC(), MessageMark: run.MessageMarkAt(mark),
 	}
 }
@@ -92,9 +92,9 @@ func TestBoundaryAt(t *testing.T) {
 func TestPortableBoundaryAtKeepsOnlyCompleteRunTrees(t *testing.T) {
 	nodes := transcript.Timeline{
 		{ID: "run_1", CreatedAt: time.Unix(1, 0), MessageMark: run.MessageMarkAt(4), Terminal: true},
-		{ID: "run_1_child", SpawnedByItemID: "item_1", RootRunID: "run_1", CreatedAt: time.Unix(2, 0), MessageMark: run.MessageMarkAt(-1), Terminal: true},
+		{ID: "run_1_child", Lineage: run.Lineage{SpawnedByItemID: "item_1", ParentRunID: "run_1", RootRunID: "run_1"}, CreatedAt: time.Unix(2, 0), MessageMark: run.MessageMarkAt(-1), Terminal: true},
 		{ID: "run_2", CreatedAt: time.Unix(3, 0), MessageMark: run.MessageMarkAt(-1)},
-		{ID: "run_2_child", SpawnedByItemID: "item_2", RootRunID: "run_2", CreatedAt: time.Unix(4, 0), MessageMark: run.MessageMarkAt(-1), Terminal: true},
+		{ID: "run_2_child", Lineage: run.Lineage{SpawnedByItemID: "item_2", ParentRunID: "run_2", RootRunID: "run_2"}, CreatedAt: time.Unix(4, 0), MessageMark: run.MessageMarkAt(-1), Terminal: true},
 	}
 
 	boundary, err := nodes.PortableBoundaryAt("")
@@ -122,9 +122,27 @@ func TestPortableBoundaryAtKeepsOnlyCompleteRunTrees(t *testing.T) {
 func TestPortableBoundaryAtRejectsAChildOutsideItsRootTree(t *testing.T) {
 	nodes := transcript.Timeline{
 		{ID: "run_1", CreatedAt: time.Unix(1, 0), MessageMark: run.MessageMarkAt(2), Terminal: true},
-		{ID: "run_child", SpawnedByItemID: "item_1", RootRunID: "run_other", CreatedAt: time.Unix(2, 0), MessageMark: run.MessageMarkAt(4), Terminal: true},
+		{ID: "run_child", Lineage: run.Lineage{SpawnedByItemID: "item_1", ParentRunID: "run_other", RootRunID: "run_other"}, CreatedAt: time.Unix(2, 0), MessageMark: run.MessageMarkAt(4), Terminal: true},
 	}
 	if _, err := nodes.PortableBoundaryAt(""); err == nil {
 		t.Fatal("PortableBoundaryAt accepted a child from another Run tree")
+	}
+}
+
+// TestTimelineKeepsEachChildInItsOwnTree pins tree ordering: a child whose
+// clock ties or precedes a later root still belongs to its own root's tree.
+func TestTimelineKeepsEachChildInItsOwnTree(t *testing.T) {
+	nodes := transcript.Timeline{
+		root("run_2", 5, 6),
+		sub("run_1_child", "item_1", "run_1", 5, -1),
+		root("run_1", 1, 4),
+		sub("run_2_child", "item_2", "run_2", 4, -1),
+	}
+	boundary, err := nodes.BoundaryAt("run_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if boundary.KeepRunID != "run_1" || !slices.Equal(runIDs(boundary.Dropped), []string{"run_2", "run_2_child"}) {
+		t.Fatalf("boundary = %+v, want run_2 and its own child dropped", boundary)
 	}
 }
