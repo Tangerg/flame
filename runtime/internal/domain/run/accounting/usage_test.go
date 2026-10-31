@@ -189,3 +189,12 @@ func TestCostRejectsAmountsThatAreNotFiniteAndNonNegative(t *testing.T) {
 		t.Fatalf("CostFromOptional(nil) = %+v, %v, want unpriced", cost, err)
 	}
 }
+
+func TestUsageRefusesAnEmptyAttribution(t *testing.T) {
+	if err := (Usage{ByModel: map[string]Totals{}}).Validate(); err == nil {
+		t.Fatal("an empty per-model breakdown validated; it cannot be told from an unattributed usage")
+	}
+	if err := (Usage{}).Validate(); err != nil {
+		t.Fatalf("unattributed usage: %v", err)
+	}
+}

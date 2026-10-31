@@ -70,9 +70,10 @@ func (t Totals) Add(other Totals) (Totals, error) {
 	return Totals{Tokens: tokens, Cost: cost}, nil
 }
 
-// Usage is cumulative accounting for a Run. Total remains authoritative when
-// a provider cannot attribute usage to individual models; ByModel is the
-// optional breakdown and never replaces the total.
+// Usage is cumulative accounting for a Run. Total remains authoritative;
+// ByModel is the per-model breakdown, nil when usage cannot be attributed to
+// models and otherwise naming every reported model. An empty breakdown is not a
+// state: persisted and wire forms cannot tell it from an unattributed one.
 type Usage struct {
 	Total   Totals
 	ByModel map[string]Totals
@@ -88,6 +89,9 @@ func (u Usage) Clone() Usage {
 func (u Usage) Validate() error {
 	if err := u.Total.Validate(); err != nil {
 		return fmt.Errorf("accounting: total usage: %w", err)
+	}
+	if u.ByModel != nil && len(u.ByModel) == 0 {
+		return errors.New("accounting: an attributed usage names no model")
 	}
 	models := make([]string, 0, len(u.ByModel))
 	for model := range u.ByModel {
@@ -126,8 +130,7 @@ func (u Usage) ValidateAdvanceFrom(previous Usage) error {
 	return nil
 }
 
-// Equal reports whether two snapshots contain the same cumulative fact. Nil
-// and empty per-model maps are the same set.
+// Equal reports whether two snapshots contain the same cumulative fact.
 func (u Usage) Equal(other Usage) bool {
 	if !u.Total.Equal(other.Total) || len(u.ByModel) != len(other.ByModel) {
 		return false
