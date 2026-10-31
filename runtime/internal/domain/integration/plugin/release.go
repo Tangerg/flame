@@ -428,6 +428,10 @@ func (b *Builder) Declaration() (Declaration, error) {
 
 func (b *Builder) release() Release { return Release{declaration: b.declaration} }
 
+// managedNodeLaunchVariables steer how Node loads code; a managed backend's
+// launch policy owns them, so a user input may not supply them.
+var managedNodeLaunchVariables = []string{"NODE_OPTIONS", "NODE_PATH", "NODE_REPL_EXTERNAL_MODULE"}
+
 // binding names the configuration slot an input fills on its server, in the
 // canonical case of the target, so two spellings cannot fill one slot.
 func (i Input) binding(server Server) (string, error) {
@@ -438,7 +442,7 @@ func (i Input) binding(server Server) (string, error) {
 			return "", refuse(DiagnosticInvalidDependencies, "input %q binds an environment variable of a non-stdio server", i.ID)
 		}
 		_, managed := server.Startup.(ManagedBackend)
-		if managed && slices.Contains([]string{"NODE_OPTIONS", "NODE_PATH", "NODE_REPL_EXTERNAL_MODULE"}, strings.ToUpper(key)) {
+		if managed && slices.Contains(managedNodeLaunchVariables, strings.ToUpper(key)) {
 			return "", refuse(DiagnosticInvalidDependencies, "input %q replaces managed node launch policy", i.ID)
 		}
 		if err := validatePackageEnvironment(map[string]string{key: ""}); err != nil {
