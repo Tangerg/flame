@@ -216,7 +216,7 @@ func receiptFault(stage string, response []byte) ([]byte, error) {
 		}
 		result = encoded.JSON()
 	case "conflict":
-		encoded, err := qimumcp.EncodeReply(pluginsdk.ToolReceipt{}, portable.ErrInvocationConflict, func(error) string { return "command_conflict" })
+		encoded, err := qimumcp.EncodeReply(pluginsdk.ToolReceipt{}, portable.ErrInvocationConflict, nil)
 		if err != nil {
 			return nil, err
 		}

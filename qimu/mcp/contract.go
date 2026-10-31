@@ -82,14 +82,14 @@ func (m *Method[P, R]) Descriptor() portable.MethodDescriptor { return m.contrac
 
 // Raw input admission precedes typed business execution. Re-encoding the decoded
 // value would erase missing required members by inserting their Go zero values.
-func (m *Method[P, R]) RegisterServer(backend *Backend, classify func(error) string, handler func(context.Context, *sdk.ServerSession, Command[P]) (R, error)) error {
+func (m *Method[P, R]) RegisterServer(backend *Backend, classify Classifier, handler func(context.Context, *sdk.ServerSession, Command[P]) (R, error)) error {
 	if backend == nil || handler == nil {
 		return errors.New("plugin: backend and method handler are required")
 	}
 	return backend.register(m.bind(classify, handler))
 }
 
-func (m *Method[P, R]) bind(classify func(error) string, handler func(context.Context, *sdk.ServerSession, Command[P]) (R, error)) boundMethod {
+func (m *Method[P, R]) bind(classify Classifier, handler func(context.Context, *sdk.ServerSession, Command[P]) (R, error)) boundMethod {
 	return boundMethod{contract: m.contract, validate: validateMethodInput[P](m.contract), invoke: func(ctx context.Context, session *sdk.ServerSession, wire *invokeParams) (*methodResult[jsontext.Value], error) {
 		ctx, command, err := admitCommand[P](ctx, m.contract, wire)
 		if err != nil {

@@ -2,24 +2,22 @@ package main
 
 import (
 	"errors"
+
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
-	"github.com/Tangerg/qimu/portable"
 )
 
-func classify(err error) string {
+func classify(err error) (string, bool) {
 	if errors.Is(err, errStored) {
-		return ""
+		return "", false
 	}
 	switch {
 	case errors.Is(err, filewatch.ErrInvalid):
-		return "invalid_trigger"
+		return "invalid_trigger", true
 	case errors.Is(err, filewatch.ErrRevision):
-		return "revision_conflict"
+		return "revision_conflict", true
 	case errors.Is(err, filewatch.ErrNotFound):
-		return "observation_not_found"
-	case errors.Is(err, portable.ErrInvocationConflict):
-		return "command_conflict"
+		return "observation_not_found", true
 	default:
-		return ""
+		return "", false
 	}
 }

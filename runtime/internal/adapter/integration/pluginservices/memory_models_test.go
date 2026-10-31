@@ -229,7 +229,7 @@ func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := method.RegisterServer(binding, func(error) string { return "model" }, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.CallbackRef]) (string, error) {
+	if err := method.RegisterServer(binding, func(error) (string, bool) { return "model", true }, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.CallbackRef]) (string, error) {
 		response, err := pluginsdk.CallModel(ctx, command.Input, "original-model-call", testModelRequest())
 		if err != nil {
 			return "", err

@@ -2,13 +2,13 @@ package main
 
 import (
 	"errors"
+
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
-	"github.com/Tangerg/qimu/portable"
 )
 
-func classify(err error) string {
+func classify(err error) (string, bool) {
 	if errors.Is(err, errStoredDocument) {
-		return ""
+		return "", false
 	}
 	for _, failure := range []struct {
 		cause error
@@ -18,11 +18,10 @@ func classify(err error) string {
 		{knowledge.ErrCapacity, "capacity"}, {knowledge.ErrNotFound, "not_found"},
 		{knowledge.ErrRetired, "retired_document"},
 		{knowledge.ErrInvalidIndex, "invalid_index"}, {knowledge.ErrEmbeddingSpace, "embedding_space_changed"},
-		{portable.ErrInvocationConflict, "command_conflict"},
 	} {
 		if errors.Is(err, failure.cause) {
-			return failure.code
+			return failure.code, true
 		}
 	}
-	return ""
+	return "", false
 }

@@ -30,7 +30,7 @@ func readTool[P, R any](name, description string, read func(context.Context, P) 
 		kind, message := tool.FailureKindFailed, "web: read failed"
 		if refusal, known := errors.AsType[*portable.Refusal](err); known {
 			kind, message = tool.FailureKindRejected, refusal.Message
-		} else if classify(err) != "" {
+		} else if _, refused := classify(err); refused {
 			kind, message = tool.FailureKindRejected, err.Error()
 		}
 		// Cache publication cannot create an unknown remote mutation outcome.

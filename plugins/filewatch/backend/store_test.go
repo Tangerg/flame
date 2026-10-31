@@ -172,7 +172,7 @@ func TestCorruptCaptureIsNotAKnownBusinessRefusal(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = s.pending(t.Context())
-	if err == nil || classify(err) != "" {
+	if _, refused := classify(err); err == nil || refused {
 		t.Fatalf("corruption became a completed refusal: %v", err)
 	}
 }

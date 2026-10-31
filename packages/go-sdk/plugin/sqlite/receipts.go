@@ -19,7 +19,7 @@ const CommandsSchema = `CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY
 
 var ErrCommandUnconfirmed = errors.New("managed plugin: command outcome is unconfirmed")
 
-func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, admitted jsonvalue.Value, classify func(error) string, handler func(context.Context, P) (R, error)) (R, error) {
+func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, admitted jsonvalue.Value, classify qimumcp.Classifier, handler func(context.Context, P) (R, error)) (R, error) {
 	var zero R
 	if err := validateCommandIdentity(db, method, id); err != nil {
 		return zero, err
@@ -82,7 +82,7 @@ func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, admit
 	return qimumcp.DecodeReply[R](reply)
 }
 
-func RegisterCommand[P, R any](server *qimumcp.Backend, db *sql.DB, method *qimumcp.Method[P, R], classify func(error) string, handler func(context.Context, *sdk.ServerSession, P) (R, error)) error {
+func RegisterCommand[P, R any](server *qimumcp.Backend, db *sql.DB, method *qimumcp.Method[P, R], classify qimumcp.Classifier, handler func(context.Context, *sdk.ServerSession, P) (R, error)) error {
 	if method == nil || method.Descriptor().Kind != portable.Mutation {
 		return errors.New("managed plugin: command method is required")
 	}
@@ -117,12 +117,7 @@ func RegisterReceipts(server *qimumcp.Backend, db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	return method.RegisterServer(server, func(err error) string {
-		if errors.Is(err, portable.ErrInvocationConflict) {
-			return "command_conflict"
-		}
-		return ""
-	}, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (qimumcp.Receipt, error) {
+	return method.RegisterServer(server, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (qimumcp.Receipt, error) {
 		return ReadReceipt(ctx, db, command.Input)
 	})
 }

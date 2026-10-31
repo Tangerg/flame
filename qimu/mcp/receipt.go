@@ -54,7 +54,7 @@ type Receipt struct {
 
 // Encoding seals a classified outcome before the business owner commits it.
 // An unclassified error remains uncertain and cannot become durable refusal evidence.
-func EncodeReply[T any](value T, err error, classify func(error) string) (jsonvalue.Value, error) {
+func EncodeReply[T any](value T, err error, classify Classifier) (jsonvalue.Value, error) {
 	outcome, err := reply(value, err, classify)
 	if err != nil {
 		return jsonvalue.Value{}, err

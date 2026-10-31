@@ -141,7 +141,7 @@ func registerWrite[P, R any](backend *qimumcp.Backend, tools *[]tool.Tool, recei
 }
 
 func writeFailure(err error) error {
-	if err == nil || classify(err) == "" {
+	if _, refused := classify(err); err == nil || !refused {
 		return err
 	}
 	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: chat.NewTextToolOutput(err.Error()), Cause: err})

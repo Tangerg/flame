@@ -230,7 +230,7 @@ func commandFailure(name string, cause error) error {
 	}
 	err := fmt.Errorf("%s: %w", name, cause)
 	_, receipted := errors.AsType[*portable.Refusal](err)
-	if errors.Is(err, scheduleapp.ErrRefused) || receipted || classify(cause) != "" {
+	if _, refused := classify(cause); errors.Is(err, scheduleapp.ErrRefused) || receipted || refused {
 		return pluginsdk.DefiniteToolFailure(err)
 	}
 	return err

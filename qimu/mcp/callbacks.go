@@ -68,7 +68,7 @@ func bindCallbackMetadata(ctx context.Context, metadata sdk.Meta) (context.Conte
 // handler owns its business behavior, effect identities and resource budget.
 type Callback struct{ method boundMethod }
 
-func NewCallback[P, R any](method *Method[P, R], classify func(error) string, handler func(context.Context, Command[P]) (R, error)) (Callback, error) {
+func NewCallback[P, R any](method *Method[P, R], classify Classifier, handler func(context.Context, Command[P]) (R, error)) (Callback, error) {
 	if method == nil || handler == nil {
 		return Callback{}, errors.New("plugin: callback method and handler are required")
 	}

@@ -158,6 +158,10 @@ export function callbackFetch(
   }) as typeof fetch;
 }
 
+// The refusal code every method reports when a command identity is reused with
+// different input; the Go framework names the same code.
+export const invocationConflictCode = "command_conflict";
+
 export class Refusal extends Error {
   constructor(
     readonly code: string,

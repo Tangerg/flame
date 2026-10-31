@@ -3,6 +3,7 @@ import { Temporal } from "@js-temporal/polyfill";
 import {
   Capability,
   Refusal,
+  invocationConflictCode,
   canonicalJSON,
   decodeReply,
   digestJSON,
@@ -101,7 +102,7 @@ function admitHeader(value: unknown): void {
 }
 function conflict(): never {
   throw new Refusal(
-    "command_conflict",
+    invocationConflictCode,
     "original command identity binds different input",
   );
 }

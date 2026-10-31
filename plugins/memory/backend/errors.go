@@ -19,7 +19,6 @@ var errorCodes = []struct {
 	cause error
 }{
 	{"workspace", app.ErrWorkspaceUnavailable},
-	{"command_conflict", portable.ErrInvocationConflict},
 	{"not_found", memory.ErrNotFound},
 	{"not_visible", memory.ErrNotVisible},
 	{"not_pending", memory.ErrNotPending},
@@ -41,16 +40,16 @@ func codedCause(code string) error {
 	return nil
 }
 
-func classify(err error) string {
+func classify(err error) (string, bool) {
 	if failure, ok := errors.AsType[*portable.Refusal](err); ok {
 		if codedCause(failure.Code) != nil {
-			return failure.Code
+			return failure.Code, true
 		}
 	}
 	for _, entry := range errorCodes {
 		if errors.Is(err, entry.cause) {
-			return entry.code
+			return entry.code, true
 		}
 	}
-	return ""
+	return "", false
 }

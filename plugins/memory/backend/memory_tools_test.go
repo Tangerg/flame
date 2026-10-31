@@ -286,7 +286,7 @@ func TestMemoryInputRefusalHasAReceiptAndCorruptStateIsNotARefusal(t *testing.T)
 		t.Fatalf("input refusal became an unknown outcome: %+v, %v", output, err)
 	}
 	_, corrupt := memory.RestoreItem(memory.ItemSnapshot{})
-	if corrupt == nil || classify(corrupt) != "" {
+	if _, refused := classify(corrupt); corrupt == nil || refused {
 		t.Fatalf("corrupt stored state became a business refusal: %v", corrupt)
 	}
 }

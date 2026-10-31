@@ -11,6 +11,10 @@ import (
 	"github.com/Tangerg/qimu/portable"
 )
 
+// modelInputCode reports a model selection the model contract rejects; it has
+// no single sentinel, so the table cannot name it.
+const modelInputCode = "model_input"
+
 // errorCodes is ordered: an error joining several causes takes the first
 // code listed, so classification never depends on map iteration.
 var errorCodes = []struct {
@@ -18,7 +22,6 @@ var errorCodes = []struct {
 	cause error
 }{
 	{"workspace", app.ErrWorkspaceUnavailable},
-	{"command_conflict", portable.ErrInvocationConflict},
 	{"not_found", schedule.ErrNotFound},
 	{"revision", schedule.ErrRevisionConflict},
 	{"cursor", pagination.ErrInvalidCursor},
@@ -39,21 +42,21 @@ func codedCause(code string) error {
 	return nil
 }
 
-func classify(err error) string {
+func classify(err error) (string, bool) {
 	if modelchoice.IsInvalid(err) {
-		return "model_input"
+		return modelInputCode, true
 	}
 	if failure, ok := errors.AsType[*portable.Refusal](err); ok {
-		if codedCause(failure.Code) != nil || failure.Code == "model_input" {
-			return failure.Code
+		if codedCause(failure.Code) != nil || failure.Code == modelInputCode {
+			return failure.Code, true
 		}
 	}
 	for _, entry := range errorCodes {
 		if errors.Is(err, entry.cause) {
-			return entry.code
+			return entry.code, true
 		}
 	}
-	return ""
+	return "", false
 }
 
 func decodeError(err error) error {

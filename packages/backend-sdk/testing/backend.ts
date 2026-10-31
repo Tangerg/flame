@@ -6,6 +6,7 @@ import {
   Capability,
   Method,
   Refusal,
+  invocationConflictCode,
   callHost,
   parseJSON,
   stringifyJSON,
@@ -64,7 +65,10 @@ backend.implement(
         previous.method !== "fixture.write" ||
         previous.digest !== context.inputDigest
       )
-        throw new Refusal("command_conflict", "original command input differs");
+        throw new Refusal(
+          invocationConflictCode,
+          "original command input differs",
+        );
       return (previous.reply as { value: unknown }).value;
     }
     const output = await result(context, input);
@@ -115,14 +119,14 @@ backend.receipts((_context, input) => {
   const receipt = receipts.get(input.id);
   if (!receipt) return { found: false };
   if (receipt.method !== input.method || receipt.digest !== input.inputDigest)
-    throw new Refusal("command_conflict", "receipt identity differs");
+    throw new Refusal(invocationConflictCode, "receipt identity differs");
   return { found: true, reply: receipt.reply };
 });
 toolReceipts(backend, (_context, input) => {
   const receipt = receipts.get(input.id);
   if (!receipt) return { found: false };
   if (receipt.method !== input.method || receipt.digest !== input.inputDigest)
-    throw new Refusal("command_conflict", "Tool receipt identity differs");
+    throw new Refusal(invocationConflictCode, "Tool receipt identity differs");
   return { found: true, output: (receipt.reply as { value: string }).value };
 });
 backend.bindCapability("fixture", contract);

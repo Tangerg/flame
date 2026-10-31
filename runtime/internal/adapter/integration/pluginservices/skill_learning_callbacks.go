@@ -32,7 +32,7 @@ func (a *learningAdmission) model(id string, input jsonvalue.Value) error {
 	defer a.mu.Unlock()
 	if original, found := a.modelCalls[id]; found {
 		if original != input {
-			return &portable.Refusal{Code: "command_conflict", Message: portable.ErrInvocationConflict.Error()}
+			return &portable.Refusal{Code: portable.InvocationConflictCode, Message: portable.ErrInvocationConflict.Error()}
 		}
 		return &portable.Refusal{Code: "model_redelivery", Message: "skill learning: original model invocation cannot be redelivered"}
 	}

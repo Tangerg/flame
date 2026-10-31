@@ -24,12 +24,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	known := errors.New("business conflict")
-	classify := func(err error) string {
-		if errors.Is(err, known) {
-			return "conflict"
-		}
-		return ""
-	}
+	classify := func(err error) (string, bool) { return "conflict", errors.Is(err, known) }
 	handler := func(ctx context.Context, input string) (string, error) {
 		if _, err := sqlite.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`); err != nil {
 			return "", err

@@ -32,7 +32,7 @@ func (a *memoryModelAdmission) admit(id, method string, input jsonvalue.Value) e
 	defer a.mu.Unlock()
 	if original, found := a.invocations[id]; found {
 		if original != (memoryModelInvocation{method: method, input: input}) {
-			return &portable.Refusal{Code: "command_conflict", Message: portable.ErrInvocationConflict.Error()}
+			return &portable.Refusal{Code: portable.InvocationConflictCode, Message: portable.ErrInvocationConflict.Error()}
 		}
 		return &portable.Refusal{Code: "model_redelivery", Message: "memory: original model invocation cannot be redelivered"}
 	}

@@ -29,6 +29,7 @@ export {
 } from "./backend.ts";
 export {
   Refusal,
+  invocationConflictCode,
   decodeReply,
   callHost,
   type CallbackRef,

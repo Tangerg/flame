@@ -2,24 +2,22 @@ package main
 
 import (
 	"errors"
+
 	routing "github.com/Tangerg/flame/plugins/modelrouter/internal/domain"
-	"github.com/Tangerg/qimu/portable"
 )
 
-func classify(err error) string {
+func classify(err error) (string, bool) {
 	if errors.Is(err, errStoredPolicy) {
-		return ""
+		return "", false
 	}
 	switch {
 	case errors.Is(err, routing.ErrInvalidPolicy):
-		return "invalid_policy"
+		return "invalid_policy", true
 	case errors.Is(err, routing.ErrRevisionConflict):
-		return "revision_conflict"
+		return "revision_conflict", true
 	case errors.Is(err, routing.ErrRevisionLimit):
-		return "revision_limit"
-	case errors.Is(err, portable.ErrInvocationConflict):
-		return "command_conflict"
+		return "revision_limit", true
 	default:
-		return ""
+		return "", false
 	}
 }

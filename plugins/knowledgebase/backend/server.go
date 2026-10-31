@@ -100,7 +100,7 @@ func newServer(library *library) (*sdk.Server, error) {
 }
 
 func modelResult[T any](value T, err error) (T, error) {
-	if err == nil || classify(err) == "" {
+	if _, refused := classify(err); err == nil || !refused {
 		return value, err
 	}
 	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: chat.NewTextToolOutput(err.Error()), Cause: err})

@@ -7,20 +7,20 @@ import (
 	"github.com/Tangerg/scope/tools/web"
 )
 
-func classify(err error) string {
+func classify(err error) (string, bool) {
 	if errors.Is(err, errStoredSnapshot) {
-		return ""
+		return "", false
 	}
 	switch {
 	case errors.Is(err, capture.ErrDocument):
-		return "invalid_document"
+		return "invalid_document", true
 	case errors.Is(err, capture.ErrRange):
-		return "invalid_page_range"
+		return "invalid_page_range", true
 	case errors.Is(err, capture.ErrNotFound):
-		return "snapshot_not_found"
+		return "snapshot_not_found", true
 	case errors.Is(err, web.ErrUnsupportedFilter), errors.Is(err, web.ErrUnsupportedFormat):
-		return "unsupported_request"
+		return "unsupported_request", true
 	default:
-		return ""
+		return "", false
 	}
 }

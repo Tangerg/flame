@@ -2,26 +2,24 @@ package main
 
 import (
 	"errors"
+
 	guardrail "github.com/Tangerg/flame/plugins/guardrails/internal/domain"
-	"github.com/Tangerg/qimu/portable"
 )
 
-func classify(err error) string {
+func classify(err error) (string, bool) {
 	if errors.Is(err, errStoredPolicy) {
-		return ""
+		return "", false
 	}
 	switch {
 	case errors.Is(err, guardrail.ErrInvalidPolicy):
-		return "invalid_policy"
+		return "invalid_policy", true
 	case errors.Is(err, guardrail.ErrRevisionConflict):
-		return "revision_conflict"
+		return "revision_conflict", true
 	case errors.Is(err, guardrail.ErrRevisionLimit):
-		return "revision_limit"
+		return "revision_limit", true
 	case errors.Is(err, guardrail.ErrProtectedContent):
-		return "protected_content"
-	case errors.Is(err, portable.ErrInvocationConflict):
-		return "command_conflict"
+		return "protected_content", true
 	default:
-		return ""
+		return "", false
 	}
 }

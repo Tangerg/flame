@@ -361,8 +361,8 @@ func unexpectedManualRun(context.Context, wire.ItemInput) (scheduleapp.RunRefere
 func TestClassifyPicksTheFirstListedCauseOfAJoinedError(t *testing.T) {
 	joined := errors.Join(scheduledomain.ErrRevisionConflict, scheduledomain.ErrNotFound)
 	for range 64 {
-		if got := classify(joined); got != "not_found" {
-			t.Fatalf("classify(joined) = %q, want the earlier-listed not_found", got)
+		if got, refused := classify(joined); !refused || got != "not_found" {
+			t.Fatalf("classify(joined) = %q, %v, want the earlier-listed not_found", got, refused)
 		}
 	}
 }

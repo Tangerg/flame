@@ -39,9 +39,6 @@ func toolReceipt(ctx context.Context, db *sql.DB, input qimumcp.ReceiptRequest) 
 	}
 	_, err = qimumcp.DecodeReply[jsontext.Value](receipt.Reply)
 	if err != nil {
-		if classify(err) == "" {
-			return pluginsdk.ToolReceipt{}, err
-		}
 		failure, known := toolcontract.ClassifyFailure(commandFailure(remote, decodeError(err)))
 		if !known {
 			return pluginsdk.ToolReceipt{}, err

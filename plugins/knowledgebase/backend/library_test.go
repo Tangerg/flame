@@ -109,7 +109,8 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	if _, err := reopened.db.ExecContext(t.Context(), `UPDATE documents SET snapshot='{"content":{}}'`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := library.list(t.Context()); err == nil || classify(err) != "" {
+	_, err = library.list(t.Context())
+	if _, refused := classify(err); err == nil || refused {
 		t.Fatalf("corruption became a business refusal: %v", err)
 	}
 }

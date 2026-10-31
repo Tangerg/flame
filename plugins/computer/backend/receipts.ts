@@ -2,6 +2,7 @@ import { DatabaseSync, type SQLOutputValue } from "node:sqlite";
 import { isAbsolute } from "node:path";
 import {
   Refusal,
+  invocationConflictCode,
   canonicalJSON,
   digestJSON,
   parseJSON,
@@ -72,7 +73,7 @@ const columns =
 
 function conflict(): never {
   throw new Refusal(
-    "command_conflict",
+    invocationConflictCode,
     "original computer command identity binds different evidence",
   );
 }

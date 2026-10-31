@@ -5,6 +5,7 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
+	"fmt"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -55,11 +56,8 @@ func TestMethodsPreserveKnownRefusalsAndUnknownFailures(t *testing.T) {
 		for _, cause := range []error{refused, storage} {
 			t.Run(cause.Error()+"/"+operation.name, func(t *testing.T) {
 				session := methodSession(t, func(server *Backend) error {
-					classify := func(err error) string {
-						if errors.Is(err, refused) {
-							return "revisionConflict"
-						}
-						return ""
+					classify := func(err error) (string, bool) {
+						return "revisionConflict", errors.Is(err, refused)
 					}
 					return testMethod[string, string](t, "flame.test/failure", operation.kind).RegisterServer(server, classify, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) { return "", cause })
 				}, "flame.test/failure")
@@ -316,5 +314,21 @@ func TestCommandIDSchemaMatchesValidation(t *testing.T) {
 		if admitted := schema.Validate(encoded) == nil; admitted != valid {
 			t.Errorf("CommandID(%q): schema admits %t, Validate admits %t", id, admitted, valid)
 		}
+	}
+}
+
+func TestReplyRejectsARefusalWithoutCode(t *testing.T) {
+	if _, err := reply("", errors.New("refused"), func(error) (string, bool) { return "", true }); err == nil {
+		t.Fatal("an uncoded refusal was encoded")
+	}
+}
+
+func TestReplyReportsInvocationConflictsWithoutAClassifier(t *testing.T) {
+	result, err := reply("", fmt.Errorf("stored command: %w", portable.ErrInvocationConflict), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := result.value("conflict"); !errors.Is(err, portable.ErrInvocationConflict) {
+		t.Fatalf("decoded conflict = %v, want ErrInvocationConflict", err)
 	}
 }

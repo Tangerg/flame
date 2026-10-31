@@ -14,24 +14,20 @@ import (
 	"github.com/Tangerg/scope/core/tool"
 )
 
-func classify(err error) string {
+func classify(err error) (string, bool) {
 	if refusal, known := errors.AsType[*portable.Refusal](err); known {
-		return refusal.Code
-	}
-	if errors.Is(err, portable.ErrInvocationConflict) {
-		return "command_conflict"
+		return refusal.Code, true
 	}
 	if errors.Is(err, errResource) {
-		return "invalid_resource"
+		return "invalid_resource", true
 	}
-	return ""
+	return "", false
 }
 
 func toolQuery[P, R any](name, description string, call func(context.Context, P) (R, error)) (tool.Tool, error) {
 	return tool.NewFunc(tool.FuncConfig{Name: name, Description: description}, func(ctx context.Context, input P) (R, error) {
 		result, err := call(ctx, input)
-		_, known := errors.AsType[*portable.Refusal](err)
-		if err == nil || !known && classify(err) == "" {
+		if _, refused := classify(err); err == nil || !refused {
 			return result, err
 		}
 		failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: chat.NewTextToolOutput(err.Error()), Cause: err})

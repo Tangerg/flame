@@ -131,23 +131,28 @@ func (r *methodResult[T]) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// Classifier names the business refusal err is. refused is false for every
+// error whose effect may have happened; a nil Classifier refuses nothing beyond
+// the invocation conflicts every method reports.
+type Classifier func(err error) (code string, refused bool)
+
 // Only an explicitly classified business refusal is a known outcome. Storage,
 // transport and unrecognized failures remain protocol errors; encoding them as
 // refusals would falsely claim that a possibly committed effect did not happen.
-func reply[T any](value T, err error, classify func(error) string) (*methodResult[T], error) {
+func reply[T any](value T, err error, classify Classifier) (*methodResult[T], error) {
 	if err != nil {
 		if failure, ok := errors.AsType[*portable.Refusal](err); ok && failure.Code != "" && utf8.ValidString(failure.Code) && utf8.ValidString(failure.Message) {
 			copy := *failure
 			return &methodResult[T]{Failure: &copy}, nil
 		}
-		code := ""
-		if classify != nil {
-			code = classify(err)
+		code, refused := portable.InvocationConflictCode, errors.Is(err, portable.ErrInvocationConflict)
+		if !refused && classify != nil {
+			code, refused = classify(err)
 		}
-		if code == "" {
+		if !refused {
 			return nil, err
 		}
-		if !utf8.ValidString(code) || !utf8.ValidString(err.Error()) {
+		if code == "" || !utf8.ValidString(code) || !utf8.ValidString(err.Error()) {
 			return nil, errors.Join(err, errors.New("plugin: invalid business refusal"))
 		}
 		return &methodResult[T]{Failure: &portable.Refusal{Code: code, Message: err.Error()}}, nil

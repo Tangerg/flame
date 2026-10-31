@@ -2,6 +2,7 @@ import { DatabaseSync, type SQLOutputValue } from "node:sqlite";
 import { isAbsolute } from "node:path";
 import {
   Refusal,
+  invocationConflictCode,
   canonicalJSON,
   decodeReply,
   digestJSON,
@@ -66,7 +67,7 @@ function json(value: SQLOutputValue | undefined): unknown {
 }
 function conflict(): never {
   throw new Refusal(
-    "command_conflict",
+    invocationConflictCode,
     "original command identity binds different evidence",
   );
 }
