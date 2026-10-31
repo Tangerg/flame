@@ -134,16 +134,27 @@ func (c *contextEditor) Handle(event input.Event) bool {
 
 func (c *contextEditor) Focus(has bool) { c.composer.Focus(has) }
 
-func (a *app) openContextEditor(request contextEditorRequest) *contextEditorSession {
-	if a.dialogs.activeContextEditor != nil {
-		a.dialogs.activeContextEditor.Dismiss()
+// contextEditing opens one multiline editor at a time; opening another
+// dismisses the open one.
+type contextEditing struct {
+	stack     *headless.Stack
+	theme     kit.Theme
+	glyphs    kit.Glyphs
+	clipboard headless.Clipboard
+	notify    func(string)
+	active    *contextEditorSession
+}
+
+func (e *contextEditing) open(request contextEditorRequest) *contextEditorSession {
+	if e.active != nil {
+		e.active.Dismiss()
 	}
-	editor := newContextEditor(a.transcript.theme, a.loop.Clipboard(), request.Content, request.Placeholder)
+	editor := newContextEditor(e.theme, e.clipboard, request.Content, request.Placeholder)
 	var dialog *kit.Dialog
 	session := &contextEditorSession{editor: editor}
 	session.dismissed = func() {
-		if a.dialogs.activeContextEditor == session {
-			a.dialogs.activeContextEditor = nil
+		if e.active == session {
+			e.active = nil
 		}
 		if request.Dismissed != nil {
 			request.Dismissed()
@@ -151,7 +162,7 @@ func (a *app) openContextEditor(request contextEditorRequest) *contextEditorSess
 	}
 	editor.cancel = session.Dismiss
 	editor.save = func(value string) {
-		if editor.phase == contextSaving || session.closed || a.dialogs.activeContextEditor != session {
+		if editor.phase == contextSaving || session.closed || e.active != session {
 			return
 		}
 		enter := func(phase contextSavePhase, failure string) {
@@ -162,7 +173,7 @@ func (a *app) openContextEditor(request contextEditorRequest) *contextEditorSess
 		}
 		enter(contextSaving, "")
 		complete := func(err error) bool {
-			if session.closed || a.dialogs.activeContextEditor != session {
+			if session.closed || e.active != session {
 				return false
 			}
 			if err != nil {
@@ -178,24 +189,24 @@ func (a *app) openContextEditor(request contextEditorRequest) *contextEditorSess
 		}
 		if err := request.Save(value, complete); err != nil {
 			complete(err)
-			a.message(request.Title + ": " + err.Error())
+			e.notify(request.Title + ": " + err.Error())
 		}
 	}
 	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
+		Stack: e.stack, Theme: e.theme, Glyphs: e.glyphs,
 		Title: request.Title, Description: request.Description, Body: editor,
 		Where: layout.Placement{Width: 100, Height: 24}, Keys: editor.keys,
 		Hints: []keymap.Action{saveContextDocument, cancelContextDocument},
 	})
 	session.dialog = dialog
-	a.dialogs.activeContextEditor = session
+	e.active = session
 	dialog.Controller().Show()
 	return session
 }
 
-func (a *app) dismissContextEditor() {
-	if a.dialogs.activeContextEditor != nil {
-		a.dialogs.activeContextEditor.Dismiss()
+func (e *contextEditing) dismiss() {
+	if e.active != nil {
+		e.active.Dismiss()
 	}
 }
 

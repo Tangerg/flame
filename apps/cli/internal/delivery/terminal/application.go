@@ -64,7 +64,7 @@ type app struct {
 	tasks            taskRunner
 	runs             *runs
 	steering         *steerDesk
-	dialogs          dialogState
+	contextEditors   *contextEditing
 	reader           *readerSurface
 	prompts          *interruptPrompts
 	confirm          *confirmPrompt
@@ -303,8 +303,9 @@ func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.M
 		queue: a.queue, session: &a.lifecycle.state, run: a.runs, view: a.queueView, prompt: a.prompt,
 		stack: &a.stack, theme: theme, glyphs: glyphs, keys: editorKeys, clip: a.loop.Clipboard(),
 	})
+	a.contextEditors = &contextEditing{stack: &a.stack, theme: theme, glyphs: glyphs, clipboard: a.loop.Clipboard(), notify: a.message}
 	a.prompts = newInterruptPrompts(interruptPromptsConfig{
-		run: a.runs, editContext: a.openContextEditor, remember: func() settings.RememberPreference { return a.settings.Approval.Remember },
+		run: a.runs, editContext: a.contextEditors.open, remember: func() settings.RememberPreference { return a.settings.Approval.Remember },
 		stack: &a.stack, theme: theme, glyphs: glyphs, syntax: a.syntax,
 		wheel: a.loop.Environment().Wheel(), clipboard: a.loop.Clipboard(),
 	})
@@ -509,3 +510,5 @@ func (a *app) appendNote(label, body string) {
 func (a *app) dismissModelPicker() { a.screens.options.dismissModelPicker() }
 
 func (a *app) refreshModelPicker() { a.screens.options.refreshModelPicker() }
+
+func (a *app) dismissContextEditor() { a.contextEditors.dismiss() }

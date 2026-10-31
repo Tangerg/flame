@@ -47,10 +47,3 @@ func (r *runs) runAdmissionBlocked() bool {
 func (r *runs) runtimeChangeBlocksRunAdmission() bool {
 	return r.session.invalidated || r.tasks.operations.BlocksRunAdmission()
 }
-
-// dialogState owns transient modal presentation. Keeping it separate from the
-// application root makes it impossible to mistake dialog drafts, selections,
-// or readers for durable Runtime state.
-type dialogState struct {
-	activeContextEditor *contextEditorSession
-}

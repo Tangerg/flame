@@ -996,6 +996,7 @@ func withModalOwners(t *testing.T, application *app) {
 	t.Helper()
 	theme, glyphs := application.transcript.theme, application.transcript.glyphs
 	application.confirm = &confirmPrompt{stack: &application.stack, theme: theme, glyphs: glyphs, session: &application.lifecycle.state}
+	application.contextEditors = &contextEditing{stack: &application.stack, theme: theme, glyphs: glyphs, notify: func(string) {}}
 	application.sessions = newSessionBrowser(sessionBrowserConfig{browser: sessionBrowser{
 		stack: &application.stack, theme: theme, glyphs: glyphs, session: &application.lifecycle.state,
 	}, switchTo: func(string) {}})
