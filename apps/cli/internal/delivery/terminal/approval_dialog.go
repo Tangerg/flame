@@ -1,16 +1,11 @@
 package terminal
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"slices"
 	"strings"
 
-	runworkflow "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
-	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
-	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/components/headless"
@@ -88,37 +83,21 @@ func (a *approvalPane) Focus(has bool) {
 	}
 }
 
-func (a *app) buildApprovalDialog(theme kit.Theme, glyphs kit.Glyphs) {
-	a.dialogs.approvalPane = approvalPane{
-		theme: theme, glyphs: glyphs, detail: kit.NewParagraph("", theme.Text),
-	}
-	a.dialogs.approvalPane.scroll.Wheel(a.loop.Environment().Wheel())
-	a.dialogs.approvalPane.view = kit.Transcript{
-		Content: &a.dialogs.approvalPane.preview, Scroll: &a.dialogs.approvalPane.scroll,
-		Theme: theme, Glyphs: glyphs,
-	}
-	a.setApprovalForm(approvalAllowOnce)
-	a.dialogs.approvalDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Tool approval", Body: &a.dialogs.approvalPane,
-		Where: layout.Placement{Width: 88, Height: 24},
-	})
-}
-
-func (a *app) setApprovalForm(initial approvalAction) {
-	review := a.dialogs.interruptReview
-	approval := a.dialogs.approval
-	draft := a.dialogs.approvalDraft
+func (p *interruptPrompts) setApprovalForm(initial approvalAction) {
+	review := p.review
+	approval := p.approval
+	draft := p.approvalDraft
 	if draft == nil {
 		draft = &approvalDecisionDraft{}
-		a.dialogs.approvalDraft = draft
+		p.approvalDraft = draft
 	}
-	rememberable := a.dialogs.approval == nil || a.dialogs.approval.Rememberable
+	rememberable := p.approval == nil || p.approval.Rememberable
 	choiceValue, ok := initial.Normalize(rememberable)
 	if !ok {
-		a.dialogs.approvalDraft = nil
-		a.dialogs.approvalForm = nil
-		a.dialogs.approvalPane.form = nil
-		a.message("invalid approval action")
+		p.approvalDraft = nil
+		p.approvalForm = nil
+		p.approvalPane.form = nil
+		p.run.message("invalid approval action")
 		return
 	}
 	draft.choice = choiceValue
@@ -131,44 +110,44 @@ func (a *app) setApprovalForm(initial approvalAction) {
 		Label: "Denial feedback (optional)", Placeholder: "Explain what should change before retrying",
 		Value: headless.Bind(&draft.reason),
 	})
-	reason.Clipboard = a.loop.Clipboard()
+	reason.Clipboard = p.clipboard
 	keys := headless.DefaultFormKeys()
-	a.dialogs.approvalForm = headless.NewForm(choice, reason)
-	a.dialogs.approvalForm.Keys = keys
-	a.dialogs.approvalForm.Done = func() {
-		if a.dialogs.interruptReview == review && a.dialogs.approval == approval && a.dialogs.approvalDraft == draft {
-			a.answerApproval(draft.choice)
+	p.approvalForm = headless.NewForm(choice, reason)
+	p.approvalForm.Keys = keys
+	p.approvalForm.Done = func() {
+		if p.review == review && p.approval == approval && p.approvalDraft == draft {
+			p.answerApproval(draft.choice)
 		}
 	}
-	a.dialogs.approvalForm.GaveUp = func() {
-		if a.dialogs.interruptReview == review && a.dialogs.approval == approval && a.dialogs.approvalDraft == draft {
-			a.backOrCancelApproval()
+	p.approvalForm.GaveUp = func() {
+		if p.review == review && p.approval == approval && p.approvalDraft == draft {
+			p.backOrCancelApproval()
 		}
 	}
 	dressed := kit.NewForm(kit.FormConfig{
-		Theme: a.dialogs.approvalPane.theme, Glyphs: a.dialogs.approvalPane.glyphs, Controller: a.dialogs.approvalForm,
+		Theme: p.approvalPane.theme, Glyphs: p.approvalPane.glyphs, Controller: p.approvalForm,
 		Hints: []keymap.Action{headless.Submit, headless.Cancel},
 	})
-	a.dialogs.approvalPane.form = dressed
+	p.approvalPane.form = dressed
 }
 
-func (a *app) openApproval(approval conversation.Approval) {
+func (p *interruptPrompts) openApproval(approval conversation.Approval) {
 	cloned := approval.Clone()
-	a.dialogs.approval = &cloned
-	a.dialogs.approvalDraft = &approvalDecisionDraft{}
-	a.dialogs.approvalArguments = editableApprovalArguments(approval.Tool)
-	a.dialogs.approvalOverride = nil
-	initial := defaultApprovalAction(a.settings.Approval.Remember)
-	if answer, ok := a.dialogs.interruptReview.CurrentAnswer().(conversation.ApprovalAnswer); ok {
+	p.approval = &cloned
+	p.approvalDraft = &approvalDecisionDraft{}
+	p.approvalArguments = editableApprovalArguments(approval.Tool)
+	p.approvalOverride = nil
+	initial := defaultApprovalAction(p.remember())
+	if answer, ok := p.review.CurrentAnswer().(conversation.ApprovalAnswer); ok {
 		initial = approvalActionFromAnswer(answer)
-		a.dialogs.approvalDraft.reason = answer.Reason
+		p.approvalDraft.reason = answer.Reason
 		if answer.ArgumentOverride != nil {
-			a.dialogs.approvalOverride = answer.ArgumentOverride.Clone()
-			a.dialogs.approvalArguments = prettyJSON(a.dialogs.approvalOverride.JSON())
+			p.approvalOverride = answer.ArgumentOverride.Clone()
+			p.approvalArguments = prettyJSON(p.approvalOverride.JSON())
 		}
 	}
-	a.setApprovalForm(initial)
-	a.dialogs.approvalPane.title = approval.Title
+	p.setApprovalForm(initial)
+	p.approvalPane.title = approval.Title
 	call := approval.Tool.Clone()
 	if strings.TrimSpace(call.Diff) == "" {
 		call.Diff = approval.Diff
@@ -180,194 +159,152 @@ func (a *app) openApproval(approval conversation.Approval) {
 			Sections: []toolSection{{Title: "Presentation error", Style: toolSectionParagraph, Text: err.Error()}},
 		}
 	}
-	a.dialogs.approvalSections = slices.Clone(presentation.Sections)
-	details := []string{a.dialogs.interruptReview.SubmissionFailure(), approval.Detail, presentation.Label}
+	p.approvalSections = slices.Clone(presentation.Sections)
+	details := []string{p.review.SubmissionFailure(), approval.Detail, presentation.Label}
 	if approval.Risk != "" {
 		details = append(details, "risk: "+string(approval.Risk))
 	}
 	if approval.RuleHint != "" {
 		details = append(details, "rule: "+approval.RuleHint)
 	}
-	a.dialogs.approvalPane.detail.SetText([]text.Line{text.Of(strings.Join(nonEmptyStrings(details), "\n"), a.dialogs.approvalPane.theme.Text)})
-	a.setApprovalPreview(a.approvalPreviewSections())
-	a.dialogs.approvalDialog.Controller().SetDescription(approval.Title)
-	a.dialogs.approvalDialog.Show()
+	p.approvalPane.detail.SetText([]text.Line{text.Of(strings.Join(nonEmptyStrings(details), "\n"), p.approvalPane.theme.Text)})
+	p.setApprovalPreview(p.approvalPreviewSections())
+	p.approvalDialog.Controller().SetDescription(approval.Title)
+	p.approvalDialog.Show()
 }
 
-func (a *app) setApprovalPreview(sections []toolSection) {
-	a.dialogs.approvalPane.preview = headless.Transcript{}
-	a.dialogs.approvalPane.view.Content = &a.dialogs.approvalPane.preview
+func (p *interruptPrompts) setApprovalPreview(sections []toolSection) {
+	p.approvalPane.preview = headless.Transcript{}
+	p.approvalPane.view.Content = &p.approvalPane.preview
 	presentation := blockPresentation{
-		Theme: a.dialogs.approvalPane.theme, Glyphs: a.dialogs.approvalPane.glyphs, Syntax: a.syntax,
+		Theme: p.approvalPane.theme, Glyphs: p.approvalPane.glyphs, Syntax: p.syntax,
 	}
 	blockCount := 0
 	for _, section := range sections {
 		for _, block := range renderToolSections(presentation, []toolSection{section}, false) {
-			id := a.dialogs.approvalPane.preview.Append(newReaderSectionBlock(a.dialogs.approvalPane.theme, section.Title, block))
-			a.dialogs.approvalPane.preview.Finish(id)
+			id := p.approvalPane.preview.Append(newReaderSectionBlock(p.approvalPane.theme, section.Title, block))
+			p.approvalPane.preview.Finish(id)
 			blockCount++
 		}
 	}
 	if blockCount == 0 {
-		id := a.dialogs.approvalPane.preview.Append(&kit.Entry{Theme: a.dialogs.approvalPane.theme, Body: "This request has no additional preview."})
-		a.dialogs.approvalPane.preview.Finish(id)
+		id := p.approvalPane.preview.Append(&kit.Entry{Theme: p.approvalPane.theme, Body: "This request has no additional preview."})
+		p.approvalPane.preview.Finish(id)
 	}
-	a.dialogs.approvalPane.scroll = headless.Scroll{}
-	a.dialogs.approvalPane.scroll.Wheel(a.loop.Environment().Wheel())
-	a.dialogs.approvalPane.scroll.ToTop()
-	a.dialogs.approvalPane.view.Scroll = &a.dialogs.approvalPane.scroll
+	p.approvalPane.scroll = headless.Scroll{}
+	p.approvalPane.scroll.Wheel(p.wheel)
+	p.approvalPane.scroll.ToTop()
+	p.approvalPane.view.Scroll = &p.approvalPane.scroll
 }
 
-func (a *app) openInterrupts(interrupts []conversation.Interrupt) {
-	if a.dialogs.interruptReview != nil {
-		a.fail(errors.New("runtime opened interrupts while another set is active"))
-		return
+// open starts reviewing the interrupts a waiting Run raised; it reports
+// whether a review opened.
+func (p *interruptPrompts) open(interrupts []conversation.Interrupt) bool {
+	if p.review != nil {
+		p.run.fail(errors.New("runtime opened interrupts while another set is active"))
+		return false
 	}
 	review, err := newInterruptReview(interrupts)
 	if err != nil {
-		a.fail(fmt.Errorf("runtime interrupts: %w", err))
-		return
+		p.run.fail(fmt.Errorf("runtime interrupts: %w", err))
+		return false
 	}
-	a.dialogs.interruptReview = review
-	a.openCurrentInterrupt()
-	a.raiseAttention(interruptAttention(interrupts))
+	p.review = review
+	p.openCurrentInterrupt()
+	return true
 }
 
-func (a *app) openCurrentInterrupt() {
-	if a.dialogs.interruptReview == nil {
+func (p *interruptPrompts) openCurrentInterrupt() {
+	if p.review == nil {
 		return
 	}
-	if a.dialogs.interruptReview.Reviewing() {
-		a.openInterruptSummary()
+	if p.review.Reviewing() {
+		p.openInterruptSummary()
 		return
 	}
-	interrupt, ok := a.dialogs.interruptReview.Current()
+	interrupt, ok := p.review.Current()
 	if !ok {
-		a.fail(errors.New("interrupt review has no current item"))
+		p.run.fail(errors.New("interrupt review has no current item"))
 		return
 	}
 	switch item := interrupt.(type) {
 	case conversation.Approval:
-		a.openApproval(item)
+		p.openApproval(item)
 	case conversation.Question:
-		a.openQuestion(item)
+		p.openQuestion(item)
 	default:
-		a.fail(errors.New("runtime returned an unknown interrupt"))
+		p.run.fail(errors.New("runtime returned an unknown interrupt"))
 	}
 }
 
-func (a *app) answerApproval(action approvalAction) {
-	approval := a.dialogs.approval
-	draft := a.dialogs.approvalDraft
+func (p *interruptPrompts) answerApproval(action approvalAction) {
+	approval := p.approval
+	draft := p.approvalDraft
 	if approval == nil || draft == nil {
 		return
 	}
 	if action == approvalEditArgs {
-		a.openApprovalArgumentEditor()
+		p.openApprovalArgumentEditor()
 		return
 	}
-	decision, ok := draft.answer(action, a.dialogs.approvalOverride)
+	decision, ok := draft.answer(action, p.approvalOverride)
 	if !ok {
-		a.fail(fmt.Errorf("approval action %q is unsupported", action))
+		p.run.fail(fmt.Errorf("approval action %q is unsupported", action))
 		return
 	}
-	a.submitApproval(decision)
+	p.submitApproval(decision)
 }
 
-func (a *app) submitApproval(decision conversation.ApprovalAnswer) {
-	if a.dialogs.interruptReview == nil {
+func (p *interruptPrompts) submitApproval(decision conversation.ApprovalAnswer) {
+	if p.review == nil {
 		return
 	}
-	if err := a.dialogs.interruptReview.Record(decision); err != nil {
-		a.fail(fmt.Errorf("record approval: %w", err))
+	if err := p.review.Record(decision); err != nil {
+		p.run.fail(fmt.Errorf("record approval: %w", err))
 		return
 	}
-	a.clearApprovalProjection()
-	a.dialogs.approvalDialog.Dismiss()
-	a.advanceInterruptReview()
+	p.clearApprovalProjection()
+	p.approvalDialog.Dismiss()
+	p.advanceInterruptReview()
 }
 
-func (a *app) backOrCancelApproval() {
-	if a.backInterrupt() {
+func (p *interruptPrompts) backOrCancelApproval() {
+	if p.backInterrupt() {
 		return
 	}
-	a.answerApproval(approvalDenyOnce)
+	p.answerApproval(approvalDenyOnce)
 }
 
-func (a *app) advanceInterruptReview() {
-	if a.dialogs.interruptReview == nil {
+func (p *interruptPrompts) advanceInterruptReview() {
+	if p.review == nil {
 		return
 	}
-	if a.dialogs.interruptReview.Advance() || a.dialogs.interruptReview.Reviewing() {
-		a.openCurrentInterrupt()
+	if p.review.Advance() || p.review.Reviewing() {
+		p.openCurrentInterrupt()
 		return
 	}
-	a.resumeInterrupts()
+	p.run.resumeInterrupts(p.review)
 }
 
-func (a *app) backInterrupt() bool {
-	if a.dialogs.interruptReview == nil || !a.dialogs.interruptReview.Back() {
+func (p *interruptPrompts) backInterrupt() bool {
+	if p.review == nil || !p.review.Back() {
 		return false
 	}
-	if a.dialogs.approval != nil {
-		a.clearApprovalProjection()
-		a.dialogs.approvalDialog.Dismiss()
+	if p.approval != nil {
+		p.clearApprovalProjection()
+		p.approvalDialog.Dismiss()
 	}
-	if a.dialogs.questionnaire != nil {
-		a.dialogs.questionnaire = nil
-		a.dialogs.questionDialog.Controller().Dismiss()
-		a.dialogs.questionDialog = nil
+	if p.questionnaire != nil {
+		p.questionnaire = nil
+		p.questionDialog.Controller().Dismiss()
+		p.questionDialog = nil
 	}
-	if a.dialogs.reviewDialog != nil {
-		a.dialogs.reviewDialog.Controller().Dismiss()
-		a.dialogs.reviewDialog = nil
+	if p.reviewDialog != nil {
+		p.reviewDialog.Controller().Dismiss()
+		p.reviewDialog = nil
 	}
-	a.openCurrentInterrupt()
+	p.openCurrentInterrupt()
 	return true
-}
-
-func (a *app) resumeInterrupts() {
-	if a.dialogs.interruptReview == nil {
-		return
-	}
-	answers, err := a.dialogs.interruptReview.Responses()
-	if err != nil {
-		a.fail(fmt.Errorf("commit interrupt review: %w", err))
-		return
-	}
-	runID := a.execution.conversation.RunID()
-	review := a.dialogs.interruptReview
-	if err := a.execution.conversation.ValidateInterruptReview(runID, review.Items()); err != nil {
-		failure := fmt.Errorf("resume blocked: %w", err)
-		review.ReportSubmissionFailure(failure)
-		a.fail(failure)
-		return
-	}
-	commandID := mutation.NewCommandID()
-	command := conversation.ResumeRun{CommandID: commandID, RunID: runID, Answers: answers}
-	replayGuard, err := a.replayPolicy.NewGuard()
-	if err != nil {
-		failure := fmt.Errorf("resume blocked: %w", err)
-		review.ReportSubmissionFailure(failure)
-		a.fail(failure)
-		return
-	}
-	if a.workbench != nil {
-		pending := workbench.PendingResume{
-			Command: command.Clone(), Interrupts: review.Items(), Replay: replayGuard,
-		}
-		if err := a.workbench.StagePendingResume(a.session.current.ID, pending, nil); err != nil {
-			failure := fmt.Errorf("resume blocked: save interrupt decisions: %w", err)
-			review.ReportSubmissionFailure(failure)
-			a.message(failure.Error())
-			a.status.note("resume blocked · review preserved")
-			if reopenErr := a.reopenCompletedInterruptReview(review); reopenErr != nil {
-				a.fail(errors.Join(failure, reopenErr))
-			}
-			return
-		}
-	}
-	a.deliverInterruptResume(review, command)
 }
 
 // reopenCompletedInterruptReview restores the UI owner of a completed HITL
@@ -375,146 +312,33 @@ func (a *app) resumeInterrupts() {
 // definitively refused. A multi-item draft returns to its review summary; a
 // single-item draft returns to the answered interrupt so the user can retry
 // or revise it.
-func (a *app) reopenCompletedInterruptReview(review *interruptReview) error {
-	if review == nil || a.dialogs.interruptReview != review {
+func (p *interruptPrompts) reopenCompletedInterruptReview(review *interruptReview) error {
+	if review == nil || p.review != review {
 		return errors.New("completed interrupt review is no longer active")
 	}
 	if !review.completed() {
 		return errors.New("interrupt review is not complete")
 	}
 	if review.Reviewing() {
-		a.openInterruptSummary()
+		p.openInterruptSummary()
 		return nil
 	}
 	if !review.Back() {
 		return errors.New("interrupt review cannot return to its submitted answer")
 	}
-	a.openCurrentInterrupt()
+	p.openCurrentInterrupt()
 	return nil
 }
 
-func (a *app) deliverInterruptResume(
-	review *interruptReview,
-	command conversation.ResumeRun,
-) {
-	pending, ok := a.workbench.PendingResume(a.session.current.ID)
-	if !ok || pending.Command.CommandID != command.CommandID {
-		a.fail(errors.New("submitted resume is absent from the durable outbox"))
-		return
-	}
-	a.status.active("resuming")
-	a.syncAnimation()
-	a.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
-		stream, err := runworkflow.OpenPendingResume(ctx, a.runtime, a.workbench, pending, a.replayPolicy)
-		if err != nil {
-			if _, accepted := conversation.AcceptedMutationReceipt(err); accepted {
-				return conversation.SegmentStream{}, err
-			}
-			return conversation.SegmentStream{}, &resumeRunCallError{err: err}
-		}
-		if err := stream.ValidateResume(command.RunID, command.Message); err != nil {
-			return conversation.SegmentStream{}, conversation.NewAcceptedMutationError(stream, fmt.Errorf("resume run: %w", err))
-		}
-		return stream, nil
-	}, streamOpeningObserver{
-		persistent: true,
-		accepted: func(opened conversation.SegmentStream) streamOpeningDisposition {
-			a.dialogs.interruptReview = nil
-			a.settleAcknowledgedResume(command.CommandID)
-			if a.execution.conversation.RunID() != opened.RunID {
-				a.followRecoveredSession()
-				return rejectOpenedStream
-			}
-			return followOpenedStream
-		},
-		rejected: func(failure error) error {
-			if _, retired := errors.AsType[*conversation.RetiredOpeningError](failure); retired {
-				a.dialogs.interruptReview = nil
-				a.settleAcknowledgedResume(command.CommandID)
-				return failure
-			}
-			if _, accepted := conversation.AcceptedMutationReceipt(failure); accepted {
-				a.dialogs.interruptReview = nil
-				a.cancelRuntimePreservingFailure(conversation.CancelRun{
-					RunID: command.RunID, Reason: "runtime returned an invalid resume receipt",
-				})
-				return failure
-			}
-			return a.restoreRejectedInterruptReview(review, command, failure)
-		},
-	})
-}
-
-func (a *app) settleAcknowledgedResume(commandID authoring.CommandID) {
-	if err := a.retireAcknowledgedResume(commandID); err != nil {
-		a.reportWorkbenchIssue(workbenchResumeOutbox, err)
-		a.message("could not settle acknowledged interrupt decisions: " + err.Error())
-		a.retryAuthoringSettlement(
-			resumeSettlementOperation,
-			func() error { return a.retireAcknowledgedResume(commandID) },
-			func() { a.reportWorkbenchIssue(workbenchResumeOutbox, nil) },
-		)
-		return
-	}
-	a.reportWorkbenchIssue(workbenchResumeOutbox, nil)
-}
-
-func (a *app) retireAcknowledgedResume(commandID authoring.CommandID) error {
-	if _, ok := a.workbench.PendingResume(a.session.current.ID); !ok {
-		return nil
-	}
-	// The store claims the identity under its own lock, so re-deciding it here
-	// would both restate the rule and read it a moment before the claim.
-	return a.workbench.AcknowledgePendingResume(a.session.current.ID, commandID)
-}
-
-func (a *app) restoreRejectedInterruptReview(review *interruptReview, command conversation.ResumeRun, failure error) error {
-	callFailure, refused := errors.AsType[*resumeRunCallError](failure)
-	if !refused || mutation.OutcomeUnknown(callFailure.err) || a.dialogs.interruptReview != review ||
-		a.execution.conversation.Phase() != conversation.Waiting || a.execution.conversation.RunID() != command.RunID {
-		return failure
-	}
-	if a.workbench != nil {
-		if err := a.workbench.RejectPendingResume(a.session.current.ID, command.CommandID); err != nil {
-			return errors.Join(failure, fmt.Errorf("release refused interrupt decisions: %w", err))
-		}
-	}
-	a.execution.following = false
-	if a.session.invalidated {
-		a.status.note("resume refused · refreshing session")
-		a.refreshInvalidatedSession(false)
-		return nil
-	}
-	a.status.note("resume refused · review preserved")
-	review.ReportSubmissionFailure(fmt.Errorf("resume refused: %w", callFailure.err))
-	if err := a.reopenCompletedInterruptReview(review); err != nil {
-		return errors.Join(failure, err)
-	}
-	return nil
-}
-
-func (a *app) abortInterrupts(reason string) {
-	a.clearApprovalProjection()
-	a.dialogs.questionnaire = nil
-	a.dialogs.interruptReview = nil
-	if a.dialogs.reviewDialog != nil {
-		a.dialogs.reviewDialog.Controller().Dismiss()
-		a.dialogs.reviewDialog = nil
-	}
-	if runID := a.execution.conversation.RunID(); runID != "" {
-		a.cancelRuntime(conversation.CancelRun{RunID: runID, Reason: reason})
-	}
-}
-
-func (a *app) clearApprovalProjection() {
-	a.dialogs.approval = nil
-	a.dialogs.approvalDraft = nil
-	a.dialogs.approvalArguments = ""
-	a.dialogs.approvalOverride = nil
-	a.dialogs.approvalSections = nil
-	a.dismissApprovalEditor()
-	a.dialogs.approvalForm = nil
-	a.dialogs.approvalPane.form = nil
+func (p *interruptPrompts) clearApprovalProjection() {
+	p.approval = nil
+	p.approvalDraft = nil
+	p.approvalArguments = ""
+	p.approvalOverride = nil
+	p.approvalSections = nil
+	p.dismissApprovalEditor()
+	p.approvalForm = nil
+	p.approvalPane.form = nil
 }
 
 func nonEmptyStrings(values []string) []string {

@@ -130,7 +130,7 @@ func (a *app) reconcileRunSnapshot(snapshot conversation.SessionSnapshot, stream
 		a.showRecoveredRunStatus("reconnected", active)
 	case conversation.Waiting:
 		a.execution.following = false
-		if a.dialogs.interruptReview == nil {
+		if a.prompts.review == nil {
 			a.openInterrupts(projection.conversation.Interrupts())
 		}
 		a.observeCurrentRunStatus()
@@ -162,7 +162,7 @@ func (a *app) restoreActivity(snapshot conversation.SessionSnapshot) {
 	a.prompt.SetBusy(a.execution.conversation.Busy())
 	switch a.execution.conversation.Phase() {
 	case conversation.Waiting:
-		if a.dialogs.interruptReview == nil {
+		if a.prompts.review == nil {
 			a.openInterrupts(a.execution.conversation.Interrupts())
 		}
 		a.observeCurrentRunStatus()

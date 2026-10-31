@@ -236,63 +236,63 @@ func (q *questionResponse) multipleValues(choices []questionChoice, custom strin
 	return values, nil
 }
 
-func (a *app) openQuestion(question conversation.Question) {
-	review, err := newQuestionnaire(question, a.dialogs.interruptReview.CurrentAnswer())
+func (p *interruptPrompts) openQuestion(question conversation.Question) {
+	review, err := newQuestionnaire(question, p.review.CurrentAnswer())
 	if err != nil {
-		a.fail(err)
+		p.run.fail(err)
 		return
 	}
-	a.dialogs.questionnaire = review
-	a.openQuestionField()
+	p.questionnaire = review
+	p.openQuestionField()
 }
 
-func (a *app) openQuestionField() {
-	review := a.dialogs.questionnaire
+func (p *interruptPrompts) openQuestionField() {
+	review := p.questionnaire
 	index, _, ok := review.Current()
 	if !ok {
-		a.fail(errors.New("questionnaire has no current field"))
+		p.run.fail(errors.New("questionnaire has no current field"))
 		return
 	}
 	response := review.response(index)
 	if response == nil {
-		a.fail(errors.New("questionnaire has no response for the current field"))
+		p.run.fail(errors.New("questionnaire has no response for the current field"))
 		return
 	}
-	fields, err := a.buildQuestionFields(response)
+	fields, err := p.buildQuestionFields(response)
 	if err != nil {
-		a.fail(err)
+		p.run.fail(err)
 		return
 	}
 	response.confirmed = false
-	a.showQuestionDialog(review, fields)
+	p.showQuestionDialog(review, fields)
 }
 
-func (a *app) buildQuestionFields(response *questionResponse) ([]headless.Field, error) {
+func (p *interruptPrompts) buildQuestionFields(response *questionResponse) ([]headless.Field, error) {
 	specification := response.field
 	label := questionFieldLabel(specification)
 	switch specification.Kind {
 	case conversation.QuestionText:
-		return []headless.Field{a.buildQuestionText(&response.text, label, "Leave empty to skip this field", func(value string) error {
+		return []headless.Field{p.buildQuestionText(&response.text, label, "Leave empty to skip this field", func(value string) error {
 			return response.contract.ValidateField(response.index, textQuestionValues(value))
 		})}, nil
 	case conversation.QuestionSingle:
-		fields := []headless.Field{a.buildQuestionSingle(response, specification, label)}
-		return a.appendCustomQuestionField(fields, response), nil
+		fields := []headless.Field{p.buildQuestionSingle(response, specification, label)}
+		return p.appendCustomQuestionField(fields, response), nil
 	case conversation.QuestionMulti:
-		fields := []headless.Field{a.buildQuestionMulti(response, specification, label)}
-		return a.appendCustomQuestionField(fields, response), nil
+		fields := []headless.Field{p.buildQuestionMulti(response, specification, label)}
+		return p.appendCustomQuestionField(fields, response), nil
 	default:
 		return nil, errors.New("runtime returned an unsupported question field kind")
 	}
 }
 
-func (a *app) buildQuestionText(value *string, label, placeholder string, check func(string) error) headless.Field {
+func (p *interruptPrompts) buildQuestionText(value *string, label, placeholder string, check func(string) error) headless.Field {
 	field := headless.NewText(headless.TextConfig{Label: label, Placeholder: placeholder, Value: headless.Bind(value), Check: check})
-	field.Clipboard = a.loop.Clipboard()
+	field.Clipboard = p.clipboard
 	return field
 }
 
-func (a *app) buildQuestionSingle(response *questionResponse, specification conversation.QuestionField, label string) headless.Field {
+func (p *interruptPrompts) buildQuestionSingle(response *questionResponse, specification conversation.QuestionField, label string) headless.Field {
 	options := append(questionOptions(specification), headless.Option[questionChoice]{Label: "Skip this field", Value: skippedQuestionChoice()})
 	field := headless.NewSelect(headless.SelectConfig[questionChoice]{
 		Label: label, Value: headless.Bind(&response.single), Rows: min(len(options), 5),
@@ -302,7 +302,7 @@ func (a *app) buildQuestionSingle(response *questionResponse, specification conv
 	return field
 }
 
-func (a *app) buildQuestionMulti(response *questionResponse, specification conversation.QuestionField, label string) headless.Field {
+func (p *interruptPrompts) buildQuestionMulti(response *questionResponse, specification conversation.QuestionField, label string) headless.Field {
 	options := questionOptions(specification)
 	field := headless.NewMultiSelect(headless.MultiSelectConfig[questionChoice]{
 		Label: label, Value: headless.Bind(&response.multiple), Rows: min(len(options), 5),
@@ -318,7 +318,7 @@ func (a *app) buildQuestionMulti(response *questionResponse, specification conve
 	return field
 }
 
-func (a *app) appendCustomQuestionField(fields []headless.Field, response *questionResponse) []headless.Field {
+func (p *interruptPrompts) appendCustomQuestionField(fields []headless.Field, response *questionResponse) []headless.Field {
 	if !response.field.AllowCustom {
 		return fields
 	}
@@ -330,7 +330,7 @@ func (a *app) appendCustomQuestionField(fields []headless.Field, response *quest
 		_, err := response.values()
 		return err
 	}
-	return append(fields, a.buildQuestionText(&response.custom, "Custom answer", placeholder, check))
+	return append(fields, p.buildQuestionText(&response.custom, "Custom answer", placeholder, check))
 }
 
 func questionFieldLabel(specification conversation.QuestionField) string {
@@ -352,23 +352,23 @@ func (q *questionResponse) choosesCustom() bool {
 	return false
 }
 
-func (a *app) showQuestionDialog(review *questionnaire, fields []headless.Field) {
+func (p *interruptPrompts) showQuestionDialog(review *questionnaire, fields []headless.Field) {
 	form := headless.NewForm(fields...)
 	var dialog *kit.Dialog
 	form.Done = func() {
-		if a.dialogs.questionnaire == review && a.dialogs.questionDialog == dialog {
-			a.advanceQuestionnaire()
+		if p.questionnaire == review && p.questionDialog == dialog {
+			p.advanceQuestionnaire()
 		}
 	}
 	form.GaveUp = func() {
-		if a.dialogs.questionnaire == review && a.dialogs.questionDialog == dialog {
-			a.backOrCancelQuestionnaire()
+		if p.questionnaire == review && p.questionDialog == dialog {
+			p.backOrCancelQuestionnaire()
 		}
 	}
 	dressed := kit.NewForm(kit.FormConfig{
-		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs, Controller: form,
+		Theme: p.theme, Glyphs: p.glyphs, Controller: form,
 		Title: strings.Join(nonEmptyStrings([]string{
-			a.dialogs.interruptReview.SubmissionFailure(), review.question.Detail,
+			p.review.SubmissionFailure(), review.question.Detail,
 		}), " · "),
 		Hints: []keymap.Action{headless.Submit, headless.Cancel},
 	})
@@ -377,74 +377,74 @@ func (a *app) showQuestionDialog(review *questionnaire, fields []headless.Field)
 		title += " · empty skips"
 	}
 	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
+		Stack: p.stack, Theme: p.theme, Glyphs: p.glyphs,
 		Title: title, Body: dressed,
 		Where: layout.Placement{Width: 88, Height: formDialogHeight(dressed.HeightForWidth(80), len(fields), 18)},
 	})
-	a.dialogs.questionDialog = dialog
+	p.questionDialog = dialog
 	dialog.Controller().Show()
 }
 
-func (a *app) advanceQuestionnaire() {
-	review := a.dialogs.questionnaire
+func (p *interruptPrompts) advanceQuestionnaire() {
+	review := p.questionnaire
 	if review == nil {
 		return
 	}
 	if err := review.ConfirmCurrent(); err != nil {
-		a.fail(err)
+		p.run.fail(err)
 		return
 	}
-	a.dialogs.questionDialog.Controller().Dismiss()
-	a.dialogs.questionDialog = nil
+	p.questionDialog.Controller().Dismiss()
+	p.questionDialog = nil
 	if review.Advance() {
-		a.openQuestionField()
+		p.openQuestionField()
 		return
 	}
-	a.finishQuestionnaire(false)
+	p.finishQuestionnaire(false)
 }
 
-func (a *app) backOrCancelQuestionnaire() {
-	review := a.dialogs.questionnaire
+func (p *interruptPrompts) backOrCancelQuestionnaire() {
+	review := p.questionnaire
 	if review == nil {
 		return
 	}
-	a.dialogs.questionDialog.Controller().Dismiss()
-	a.dialogs.questionDialog = nil
+	p.questionDialog.Controller().Dismiss()
+	p.questionDialog = nil
 	if review.Back() {
-		a.openQuestionField()
+		p.openQuestionField()
 		return
 	}
-	a.finishQuestionnaire(true)
+	p.finishQuestionnaire(true)
 }
 
-func (a *app) finishQuestionnaire(canceled bool) {
-	review := a.dialogs.questionnaire
+func (p *interruptPrompts) finishQuestionnaire(canceled bool) {
+	review := p.questionnaire
 	if review == nil {
 		return
 	}
-	if a.dialogs.questionDialog != nil {
-		a.dialogs.questionDialog.Controller().Dismiss()
-		a.dialogs.questionDialog = nil
+	if p.questionDialog != nil {
+		p.questionDialog.Controller().Dismiss()
+		p.questionDialog = nil
 	}
 	if canceled {
-		a.dialogs.questionnaire = nil
-		if a.backInterrupt() {
+		p.questionnaire = nil
+		if p.backInterrupt() {
 			return
 		}
-		a.abortInterrupts("question canceled by the terminal user")
+		p.abort("question canceled by the terminal user")
 		return
 	}
 	answer, err := review.Answer()
 	if err != nil {
-		a.fail(err)
+		p.run.fail(err)
 		return
 	}
-	if err := a.dialogs.interruptReview.Record(answer); err != nil {
-		a.fail(fmt.Errorf("record question: %w", err))
+	if err := p.review.Record(answer); err != nil {
+		p.run.fail(fmt.Errorf("record question: %w", err))
 		return
 	}
-	a.dialogs.questionnaire = nil
-	a.advanceInterruptReview()
+	p.questionnaire = nil
+	p.advanceInterruptReview()
 }
 
 func questionOptions(field conversation.QuestionField) []headless.Option[questionChoice] {

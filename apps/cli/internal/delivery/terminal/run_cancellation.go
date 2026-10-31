@@ -21,12 +21,7 @@ const (
 )
 
 func (a *app) cancel() {
-	if a.dialogs.approval != nil {
-		a.answerApproval(approvalDenyOnce)
-		return
-	}
-	if a.dialogs.questionnaire != nil {
-		a.finishQuestionnaire(true)
+	if a.prompts.decline() {
 		return
 	}
 	if a.operations.Active(inputPreparationOperation) {

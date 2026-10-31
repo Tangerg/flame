@@ -68,8 +68,7 @@ func (a *app) restorePendingResume() {
 		a.fail(fmt.Errorf("restore pending interrupt decisions: %w", err))
 		return
 	}
-	a.dismissInterruptProjection()
-	a.dialogs.interruptReview = review
+	a.prompts.adopt(review)
 	a.deliverInterruptResume(review, pending.Command.Clone())
 }
 

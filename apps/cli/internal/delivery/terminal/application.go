@@ -83,6 +83,7 @@ type app struct {
 	steers       steerReceipts
 	dialogs      dialogState
 	reader       *readerSurface
+	prompts      *interruptPrompts
 
 	transcript  *transcriptView
 	brand       *brandBanner
@@ -293,7 +294,11 @@ func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.M
 	a.shell.Focus(true)
 	a.stack.SetBase(a.shell)
 	a.buildQueueDrawer(theme, glyphs, editorKeys)
-	a.buildApprovalDialog(theme, glyphs)
+	a.prompts = newInterruptPrompts(interruptPromptsConfig{
+		run: a, editContext: a.openContextEditor, remember: func() settings.RememberPreference { return a.settings.Approval.Remember },
+		stack: &a.stack, theme: theme, glyphs: glyphs, syntax: a.syntax,
+		wheel: a.loop.Environment().Wheel(), clipboard: a.loop.Clipboard(),
+	})
 	a.buildSessionPicker(theme, glyphs)
 	a.buildWorkspacePicker(theme, glyphs)
 	a.buildTimeline(theme, glyphs)

@@ -396,7 +396,7 @@ func (a *app) fail(err error) {
 		return
 	}
 	a.execution.following = false
-	a.dismissInterruptProjection()
+	a.prompts.dismiss()
 	if a.execution.conversation.Phase() == conversation.Running &&
 		a.execution.conversation.RunID() == "" && a.execution.opening == nil {
 		err = errors.Join(err, a.execution.conversation.StopStarting())

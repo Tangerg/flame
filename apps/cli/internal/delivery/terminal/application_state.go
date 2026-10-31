@@ -57,15 +57,6 @@ func (a *app) runtimeChangeBlocksRunAdmission() bool {
 // application root makes it impossible to mistake dialog drafts, selections,
 // or readers for durable Runtime state.
 type dialogState struct {
-	approval            *conversation.Approval
-	approvalDraft       *approvalDecisionDraft
-	approvalArguments   string
-	approvalOverride    *conversation.ToolArgumentOverride
-	approvalSections    []toolSection
-	approvalEditor      *contextEditorSession
-	approvalForm        *headless.Form
-	approvalPane        approvalPane
-	approvalDialog      *presentationDialog
 	sessionCenter       *sessionCenterPane
 	sessionDialog       *presentationDialog
 	sessionRenameDialog *kit.Dialog
@@ -80,10 +71,6 @@ type dialogState struct {
 	approvalModePicker  *picker[protocol.ApprovalModePolicy]
 	approvalModeDialog  *presentationDialog
 	activeContextEditor *contextEditorSession
-	questionnaire       *questionnaire
-	questionDialog      *kit.Dialog
-	interruptReview     *interruptReview
-	reviewDialog        *kit.Dialog
 	commandPicker       *picker[commandPaletteItem]
 	commandDialog       *presentationDialog
 	shortcutDialog      *presentationDialog

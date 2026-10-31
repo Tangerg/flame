@@ -205,22 +205,3 @@ func (a *app) installSessionMetadata(session conversation.Session) {
 	a.setActiveSession(session)
 	a.dialogs.sessionCenter.Replace(session)
 }
-
-// dismissInterruptProjection drops only the obsolete terminal-side answer
-// draft. It never answers or cancels the runtime interrupt.
-func (a *app) dismissInterruptProjection() {
-	a.clearApprovalProjection()
-	a.dialogs.questionnaire = nil
-	a.dialogs.interruptReview = nil
-	if a.dialogs.approvalDialog != nil {
-		a.dialogs.approvalDialog.Dismiss()
-	}
-	if a.dialogs.questionDialog != nil {
-		a.dialogs.questionDialog.Controller().Dismiss()
-		a.dialogs.questionDialog = nil
-	}
-	if a.dialogs.reviewDialog != nil {
-		a.dialogs.reviewDialog.Controller().Dismiss()
-		a.dialogs.reviewDialog = nil
-	}
-}

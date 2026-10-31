@@ -23,7 +23,7 @@ func (s *sessionContextLease) current(candidate *sessionContextLease) bool {
 }
 
 func (a *app) canPreserveInterruptProjection(next *conversation.Conversation) bool {
-	return a.dialogs.interruptReview != nil && a.execution.conversation.Phase() == conversation.Waiting &&
+	return a.prompts.review != nil && a.execution.conversation.Phase() == conversation.Waiting &&
 		next != nil && next.Phase() == conversation.Waiting && a.execution.conversation.RunID() == next.RunID() &&
 		sameInterrupts(a.execution.conversation.Interrupts(), next.Interrupts())
 }
@@ -37,14 +37,14 @@ func (a *app) prepareSessionProjectionReplacement(next conversation.Session, pro
 		a.reader.dismiss()
 	}
 	if !a.canPreserveInterruptProjection(projection) {
-		a.dismissInterruptProjection()
+		a.prompts.dismiss()
 	}
 }
 
 func (a *app) retireSessionContext() {
 	a.session.context.retire()
 	a.session.context = newSessionContextLease()
-	a.dismissInterruptProjection()
+	a.prompts.dismiss()
 	a.dismissConfirmation()
 	a.reader.dismiss()
 	a.dismissContextEditor()

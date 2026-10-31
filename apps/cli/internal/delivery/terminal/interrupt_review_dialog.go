@@ -58,13 +58,13 @@ func (i *interruptSummaryPane) Handle(event input.Event) bool {
 
 func (i *interruptSummaryPane) Focus(has bool) { i.form.Focus(has) }
 
-func (a *app) openInterruptSummary() {
-	review := a.dialogs.interruptReview
+func (p *interruptPrompts) openInterruptSummary() {
+	review := p.review
 	if review == nil || !review.Reviewing() {
 		return
 	}
 	if _, err := review.Responses(); err != nil {
-		a.fail(fmt.Errorf("review interrupts: %w", err))
+		p.run.fail(fmt.Errorf("review interrupts: %w", err))
 		return
 	}
 	decision := interruptReviewSubmit
@@ -82,50 +82,50 @@ func (a *app) openInterruptSummary() {
 	var dialog *kit.Dialog
 	settled := false
 	form.Done = func() {
-		if settled || a.dialogs.interruptReview != review || a.dialogs.reviewDialog != dialog {
+		if settled || p.review != review || p.reviewDialog != dialog {
 			return
 		}
 		if err := decision.Validate(); err != nil {
-			a.fail(err)
+			p.run.fail(err)
 			return
 		}
 		settled = true
 		dialog.Controller().Dismiss()
-		a.dialogs.reviewDialog = nil
+		p.reviewDialog = nil
 		switch decision {
 		case interruptReviewSubmit:
-			a.resumeInterrupts()
+			p.run.resumeInterrupts(p.review)
 		case interruptReviewBack:
-			a.backInterrupt()
+			p.backInterrupt()
 		case interruptReviewCancel:
-			a.abortInterrupts(interruptReviewCancellationReason)
+			p.abort(interruptReviewCancellationReason)
 		}
 	}
 	form.GaveUp = func() {
-		if settled || a.dialogs.interruptReview != review || a.dialogs.reviewDialog != dialog {
+		if settled || p.review != review || p.reviewDialog != dialog {
 			return
 		}
 		settled = true
 		dialog.Controller().Dismiss()
-		a.dialogs.reviewDialog = nil
-		if !a.backInterrupt() {
-			a.abortInterrupts(interruptReviewCancellationReason)
+		p.reviewDialog = nil
+		if !p.backInterrupt() {
+			p.abort(interruptReviewCancellationReason)
 		}
 	}
 	dressed := kit.NewForm(kit.FormConfig{
-		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs, Controller: form,
+		Theme: p.theme, Glyphs: p.glyphs, Controller: form,
 		Hints: []keymap.Action{headless.Submit, headless.Cancel},
 	})
-	summary := kit.NewParagraph(interruptSummary(review), a.transcript.theme.Text)
+	summary := kit.NewParagraph(interruptSummary(review), p.theme.Text)
 	viewport := headless.NewViewport(headless.Static{Of: summary})
-	viewport.Scroll().Wheel(a.loop.Environment().Wheel())
+	viewport.Scroll().Wheel(p.wheel)
 	pane := &interruptSummaryPane{viewport: viewport, form: dressed}
 	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
+		Stack: p.stack, Theme: p.theme, Glyphs: p.glyphs,
 		Title: "Review interrupts", Body: pane,
 		Where: layout.Placement{Width: 88, Height: 22},
 	})
-	a.dialogs.reviewDialog = dialog
+	p.reviewDialog = dialog
 	dialog.Controller().Show()
 }
 

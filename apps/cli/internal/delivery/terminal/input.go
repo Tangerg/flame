@@ -49,7 +49,7 @@ func (a *app) handleConfiguredAction(event input.Event, action keymap.Action) bo
 	// into covered content. Blocking runtime interrupts are the exception at
 	// the product-policy layer: their cancel action must resolve the interrupt,
 	// not disappear into the modal boundary.
-	if action == cancelRun && (a.dialogs.approval != nil || a.dialogs.questionnaire != nil) {
+	if action == cancelRun && a.prompts.answering() {
 		a.handleCancelGesture()
 		return true
 	}
@@ -220,7 +220,7 @@ func (a *app) handleGlobalAction(action keymap.Action) bool {
 }
 
 func (a *app) handleCancelGesture() {
-	if a.dialogs.approval != nil || a.dialogs.questionnaire != nil || a.operations.Active(inputPreparationOperation) {
+	if a.prompts.answering() || a.operations.Active(inputPreparationOperation) {
 		a.cancel()
 		return
 	}

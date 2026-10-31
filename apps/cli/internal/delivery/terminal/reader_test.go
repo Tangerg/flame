@@ -279,6 +279,7 @@ func TestSameSessionProjectionReplacementRetiresALiveTranscriptReader(t *testing
 		session:    sessionState{current: conversation.Session{ID: "session"}},
 		execution:  executionState{conversation: conversation.New()},
 		reader:     &readerSurface{pane: reader, tasks: unattachedTasks(operations)},
+		prompts:    testInterruptPrompts(t),
 	}
 	application.prepareSessionProjectionReplacement(conversation.Session{ID: "session"}, conversation.New())
 
@@ -297,6 +298,7 @@ func TestSameSessionProjectionReplacementPreservesAStaticReader(t *testing.T) {
 		session:   sessionState{current: conversation.Session{ID: "session"}},
 		execution: executionState{conversation: conversation.New()},
 		reader:    &readerSurface{pane: reader, shown: goal},
+		prompts:   testInterruptPrompts(t),
 	}
 	application.prepareSessionProjectionReplacement(conversation.Session{ID: "session"}, conversation.New())
 

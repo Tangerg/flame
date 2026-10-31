@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
@@ -54,34 +55,25 @@ func TestApprovalPaneRoutesInputToTheLastPresentedForm(t *testing.T) {
 }
 
 func TestReplacedApprovalFormCannotMutateTheCurrentDraft(t *testing.T) {
-	transcript := testTranscriptView(t)
-	application := &app{loop: &program.Runtime{}, transcript: transcript}
-	application.dialogs.approvalPane = approvalPane{
-		theme: transcript.theme, glyphs: transcript.glyphs,
-		detail: kit.NewParagraph("", transcript.theme.Text),
-	}
-	application.dialogs.approvalPane.view = kit.Transcript{
-		Content: &application.dialogs.approvalPane.preview, Scroll: &application.dialogs.approvalPane.scroll,
-		Theme: transcript.theme, Glyphs: transcript.glyphs,
-	}
-	application.dialogs.interruptReview = &interruptReview{}
-	application.dialogs.approval = &conversation.Approval{}
-	application.setApprovalForm(approvalAllowOnce)
-	retired := application.dialogs.approvalDraft
-	application.dialogs.approvalPane.Focus(true)
-	root := headless.NewRoot(&application.dialogs.approvalPane)
+	prompts := testInterruptPrompts(t)
+	prompts.review = &interruptReview{}
+	prompts.approval = &conversation.Approval{}
+	prompts.setApprovalForm(approvalAllowOnce)
+	retired := prompts.approvalDraft
+	prompts.approvalPane.Focus(true)
+	root := headless.NewRoot(&prompts.approvalPane)
 	surface := grid.NewSurface(80, 20)
 	root.Draw(surface.View())
 
-	application.dialogs.interruptReview = &interruptReview{}
-	application.dialogs.approval = &conversation.Approval{}
-	application.dialogs.approvalDraft = &approvalDecisionDraft{}
-	application.setApprovalForm(approvalAllowOnce)
+	prompts.review = &interruptReview{}
+	prompts.approval = &conversation.Approval{}
+	prompts.approvalDraft = &approvalDecisionDraft{}
+	prompts.setApprovalForm(approvalAllowOnce)
 	root.Handle(input.Key{Code: input.Down})
 	if retired.choice != approvalDenyOnce {
 		t.Fatalf("retired draft choice = %q, want deny once", retired.choice)
 	}
-	if current := application.dialogs.approvalDraft.choice; current != approvalAllowOnce {
+	if current := prompts.approvalDraft.choice; current != approvalAllowOnce {
 		t.Fatalf("current draft choice = %q after stale input, want allow once", current)
 	}
 }
@@ -193,20 +185,18 @@ func TestApprovalChoiceNormalizationRespectsRememberability(t *testing.T) {
 }
 
 func TestApprovalFormPreservesDenialWhenRememberingBecomesUnavailable(t *testing.T) {
-	view := testTranscriptView(t)
-	application := &app{loop: &program.Runtime{}, transcript: view, status: &statusView{}, execution: executionState{conversation: conversation.New()}}
-	application.dialogs.approvalPane = approvalPane{theme: view.theme, glyphs: view.glyphs}
-	application.dialogs.approval = &conversation.Approval{Rememberable: true}
-	application.setApprovalForm(approvalDenyGlobal)
-	application.dialogs.approval.Rememberable = false
-	application.setApprovalForm(application.dialogs.approvalDraft.choice)
-	if action := application.dialogs.approvalDraft.choice; action != approvalDenyOnce {
+	prompts := testInterruptPrompts(t)
+	prompts.approval = &conversation.Approval{Rememberable: true}
+	prompts.setApprovalForm(approvalDenyGlobal)
+	prompts.approval.Rememberable = false
+	prompts.setApprovalForm(prompts.approvalDraft.choice)
+	if action := prompts.approvalDraft.choice; action != approvalDenyOnce {
 		t.Fatalf("rebuilt denial became %q", action)
 	}
-	previous := application.dialogs.approvalForm
-	application.setApprovalForm(approvalAction("invalid"))
+	previous := prompts.approvalForm
+	prompts.setApprovalForm(approvalAction("invalid"))
 	previous.Done()
-	if application.dialogs.approvalForm != nil || application.dialogs.approvalPane.form != nil {
+	if prompts.approvalForm != nil || prompts.approvalPane.form != nil {
 		t.Fatal("unknown action left an answerable approval form")
 	}
 }
@@ -219,5 +209,58 @@ func TestUnknownApprovalAnswerCannotBecomeAnAction(t *testing.T) {
 		if action := approvalActionFromAnswer(answer); action != "" {
 			t.Fatalf("invalid answer became %q", action)
 		}
+	}
+}
+
+// promptRunProbe records what prompts ask of the Run.
+type promptRunProbe struct {
+	resumed  []*interruptReview
+	aborted  []string
+	failures []error
+	messages []string
+}
+
+func (p *promptRunProbe) resumeInterrupts(review *interruptReview) {
+	p.resumed = append(p.resumed, review)
+}
+func (p *promptRunProbe) abortRun(reason string) { p.aborted = append(p.aborted, reason) }
+func (p *promptRunProbe) fail(err error)         { p.failures = append(p.failures, err) }
+func (p *promptRunProbe) message(label string)   { p.messages = append(p.messages, label) }
+
+func testInterruptPrompts(t *testing.T) *interruptPrompts {
+	t.Helper()
+	transcript := testTranscriptView(t)
+	stack := &headless.Stack{}
+	stack.SetBase(transcript)
+	return newInterruptPrompts(interruptPromptsConfig{
+		run: &promptRunProbe{}, remember: func() settings.RememberPreference { return settings.RememberNone },
+		stack: stack, theme: transcript.theme, glyphs: transcript.glyphs, syntax: transcript.syntax,
+		clipboard: (&program.Runtime{}).Clipboard(),
+	})
+}
+
+func TestInterruptPromptsHandTheirOutcomeToTheRun(t *testing.T) {
+	approval := conversation.Approval{RunID: "run_1", ItemID: "approval", Title: "Write config", Tool: &conversation.ToolCall{
+		Kind: builtin.CategoryEdit, Name: "edit", Path: "config.json", Status: conversation.ToolRunning,
+	}}
+	declined := testInterruptPrompts(t)
+	run := declined.run.(*promptRunProbe)
+	if !declined.open([]conversation.Interrupt{approval}) || !declined.answering() {
+		t.Fatalf("approval did not open: %v", run.failures)
+	}
+	if !declined.decline() || len(run.resumed) != 1 || run.resumed[0] != declined.review || declined.answering() {
+		t.Fatalf("declined approval = resumed %v, answering %t", run.resumed, declined.answering())
+	}
+	answer, ok := declined.review.Answers()[0].(conversation.ApprovalAnswer)
+	if !ok || answer.Decision != protocol.ApprovalDeny {
+		t.Fatalf("declined approval answered %+v", declined.review.Answers())
+	}
+
+	aborted := testInterruptPrompts(t)
+	run = aborted.run.(*promptRunProbe)
+	aborted.open([]conversation.Interrupt{approval})
+	aborted.abort("canceled in test")
+	if aborted.review != nil || aborted.answering() || !slices.Equal(run.aborted, []string{"canceled in test"}) {
+		t.Fatalf("abort left review %v, aborted %v", aborted.review, run.aborted)
 	}
 }

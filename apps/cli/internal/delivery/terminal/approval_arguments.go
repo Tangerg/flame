@@ -6,14 +6,14 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
-func (a *app) openApprovalArgumentEditor() {
-	if a.dialogs.approval == nil {
+func (p *interruptPrompts) openApprovalArgumentEditor() {
+	if p.approval == nil {
 		return
 	}
-	a.dialogs.approvalEditor = a.openContextEditor(contextEditorRequest{
+	p.approvalEditor = p.editContext(contextEditorRequest{
 		Title:       "Edit tool arguments",
 		Description: "The replacement applies once. Use {} to clear the arguments.",
-		Content:     a.dialogs.approvalArguments,
+		Content:     p.approvalArguments,
 		Placeholder: "{\n  \"argument\": \"replacement\"\n}",
 		Save: func(value string, complete func(error) bool) error {
 			override, err := conversation.ParseToolArgumentOverride([]byte(value))
@@ -22,37 +22,37 @@ func (a *app) openApprovalArgumentEditor() {
 				return nil
 			}
 			if complete(nil) {
-				a.dialogs.approvalEditor = nil
-				a.dialogs.approvalOverride = override
-				a.dialogs.approvalArguments = prettyJSON(override.JSON())
-				a.setApprovalPreview(a.approvalPreviewSections())
-				a.setApprovalForm(approvalAllowOnce)
-				a.dialogs.approvalPane.Focus(true)
-				a.dialogs.approvalDialog.Controller().SetDescription("Arguments edited · choose how to proceed")
+				p.approvalEditor = nil
+				p.approvalOverride = override
+				p.approvalArguments = prettyJSON(override.JSON())
+				p.setApprovalPreview(p.approvalPreviewSections())
+				p.setApprovalForm(approvalAllowOnce)
+				p.approvalPane.Focus(true)
+				p.approvalDialog.Controller().SetDescription("Arguments edited · choose how to proceed")
 			}
 			return nil
 		},
-		Dismissed: func() { a.dialogs.approvalEditor = nil },
+		Dismissed: func() { p.approvalEditor = nil },
 	})
 }
 
-func (a *app) approvalPreviewSections() []toolSection {
-	sections := slices.Clone(a.dialogs.approvalSections)
-	if a.dialogs.approvalOverride == nil {
+func (p *interruptPrompts) approvalPreviewSections() []toolSection {
+	sections := slices.Clone(p.approvalSections)
+	if p.approvalOverride == nil {
 		return sections
 	}
 	return append(sections, toolSection{
 		Title: "Edited arguments · one-shot", Style: toolSectionCode,
-		Language: "json", Text: a.dialogs.approvalArguments,
+		Language: "json", Text: p.approvalArguments,
 	})
 }
 
-func (a *app) dismissApprovalEditor() {
-	if a.dialogs.approvalEditor == nil {
+func (p *interruptPrompts) dismissApprovalEditor() {
+	if p.approvalEditor == nil {
 		return
 	}
-	a.dialogs.approvalEditor.Dismiss()
-	a.dialogs.approvalEditor = nil
+	p.approvalEditor.Dismiss()
+	p.approvalEditor = nil
 }
 
 func editableApprovalArguments(call *conversation.ToolCall) string {
