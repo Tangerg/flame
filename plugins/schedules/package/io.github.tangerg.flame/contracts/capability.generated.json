@@ -163,8 +163,6 @@
               "ModelSelection",
               "Cron",
               "TimeZone",
-              "LastRunAt",
-              "NextRunAt",
               "CreatedAt",
               "Revision"
             ],
@@ -248,8 +246,6 @@
           "ModelSelection",
           "Cron",
           "TimeZone",
-          "LastRunAt",
-          "NextRunAt",
           "CreatedAt",
           "Revision"
         ],
@@ -408,8 +404,6 @@
               "ModelSelection",
               "Cron",
               "TimeZone",
-              "LastRunAt",
-              "NextRunAt",
               "CreatedAt",
               "Revision"
             ],
@@ -713,8 +707,6 @@
               "ModelSelection",
               "Cron",
               "TimeZone",
-              "LastRunAt",
-              "NextRunAt",
               "CreatedAt",
               "Revision"
             ],
@@ -798,8 +790,6 @@
           "ModelSelection",
           "Cron",
           "TimeZone",
-          "LastRunAt",
-          "NextRunAt",
           "CreatedAt",
           "Revision"
         ],

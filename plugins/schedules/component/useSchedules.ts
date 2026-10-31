@@ -35,8 +35,7 @@ import {
   type Edit,
   type ModelRead,
 } from "./types";
-export const hasTime = (value: string) => value !== "0001-01-01T00:00:00Z";
-export const enabled = (item: Schedule) => hasTime(item.NextRunAt);
+export const enabled = (item: Schedule) => item.NextRunAt !== undefined;
 export const selection = (model?: Model, reasoningEffort = "") => ({
   provider: model?.provider ?? "",
   model: model?.id ?? "",

@@ -44,7 +44,7 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if created.Revision != 1 || !created.LastRunAt.IsZero() || created.NextRunAt.IsZero() {
+	if created.Revision != 1 || created.LastRunAt != nil || created.NextRunAt == nil {
 		t.Fatalf("created Schedule = %+v, want pristine revision one", created)
 	}
 
@@ -142,11 +142,11 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 		t.Fatalf("Schedules: %+v", schedules)
 	}
 	current := schedules.Rows[0]
-	if current.ID != created.ID || current.Revision != created.Revision+1 || current.LastRunAt.IsZero() {
+	if current.ID != created.ID || current.Revision != created.Revision+1 || current.LastRunAt == nil {
 		t.Fatalf("Schedule after manual Run: %+v", current)
 	}
-	if created.NextRunAt.IsZero() || !current.NextRunAt.Equal(created.NextRunAt) {
-		t.Fatalf("Schedule next cursor: %v, want %v", current.NextRunAt, created.NextRunAt)
+	if current.NextRunAt == nil || !current.NextRunAt.Equal(*created.NextRunAt) {
+		t.Fatalf("Schedule next cursor: %v, want %v", current.NextRunAt, *created.NextRunAt)
 	}
 }
 

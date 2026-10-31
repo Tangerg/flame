@@ -77,8 +77,6 @@ export const VISUAL_SCHEDULES_PAGE: ScheduleOutputs["flame.schedules/list.v1"] =
       CWD: "/Users/visual/scope",
       ModelSelection: { provider: "", model: "", reasoningEffort: "" },
       CreatedAt: "2026-07-28T08:00:00Z",
-      LastRunAt: "0001-01-01T00:00:00Z",
-      NextRunAt: "0001-01-01T00:00:00Z",
     },
   ],
   NextCursor: "",

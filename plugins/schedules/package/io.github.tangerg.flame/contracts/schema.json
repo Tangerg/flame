@@ -223,8 +223,6 @@
         "ModelSelection",
         "Cron",
         "TimeZone",
-        "LastRunAt",
-        "NextRunAt",
         "CreatedAt",
         "Revision"
       ],

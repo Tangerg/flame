@@ -33,7 +33,7 @@ import {
 } from "@flame/ui";
 import { templates } from "./templates";
 
-import { useSchedules, selection, enabled, hasTime } from "./useSchedules";
+import { useSchedules, selection, enabled } from "./useSchedules";
 export function Schedules({ context }: { context: ComponentContext }) {
   const openSession = context.openSession;
   const {
@@ -579,7 +579,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
               <RecordBody>{item.Instructions}</RecordBody>
               <Metadata>
                 {t("nextFiring.label")} ·{" "}
-                {hasTime(item.NextRunAt) ? (
+                {item.NextRunAt !== undefined ? (
                   <time dateTime={item.NextRunAt}>
                     {dateTime.format(new Date(item.NextRunAt))}
                   </time>
@@ -607,7 +607,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
                     ],
                     [
                       t("fact.lastFiring"),
-                      hasTime(item.LastRunAt)
+                      item.LastRunAt !== undefined
                         ? dateTime.format(new Date(item.LastRunAt))
                         : t("fact.neverFired"),
                     ],

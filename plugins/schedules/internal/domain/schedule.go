@@ -50,8 +50,8 @@ type Snapshot struct {
 	ModelSelection modelchoice.Selection
 	Cron           string
 	TimeZone       string
-	LastRunAt      time.Time
-	NextRunAt      time.Time
+	LastRunAt      time.Time `json:",omitzero"`
+	NextRunAt      time.Time `json:",omitzero"`
 	CreatedAt      time.Time
 	Revision       uint64
 }
