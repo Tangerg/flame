@@ -11,6 +11,7 @@ test-results/
 
 runtime/cmd/contractgen/contractgen
 /runtime/flame
+/apps/cli/cli
 /examples/plugins/reviews/package/bin/
 */**/config.yaml
 /out/
