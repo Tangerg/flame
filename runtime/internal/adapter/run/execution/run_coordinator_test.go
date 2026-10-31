@@ -63,6 +63,8 @@ type runTestDeps struct {
 	runs.Dependencies
 	// The collaborators only opening or cancellation uses; shared ones come
 	// from Dependencies.
+	// Session is one double for every Session-side port.
+	Session                            any
 	RootStarts                         runs.RootExecutionStarter
 	Releases                           runs.ExecutionReleaser
 	Conversation                       runs.ConversationReader
@@ -118,10 +120,12 @@ func mustNewRunCoordinator(t *testing.T, d runTestDeps) testRuns {
 	fillRunDependency(t, &cancellation.RunningSubtreeCanceler, starter, "running subtree canceler")
 	fillRunDependency(t, &cancellation.WaitingSubtreeCancellationPreparer, starter, "waiting subtree cancellation preparer")
 
-	sessions := any(deps.Session.Reader)
-	fillRunDependency(t, &deps.Session.Creator, sessions, "session creator")
-	fillRunDependency(t, &deps.Session.ActiveRuns, sessions, "active run reader")
-	fillRunDependency(t, &deps.Session.Interrupts, sessions, "pending interrupt reader")
+	sessions := d.Session
+	fillRunDependency(t, &deps.Sessions, sessions, "session reader")
+	fillRunDependency(t, &deps.Interrupts, sessions, "pending interrupt reader")
+	fillRunDependency(t, &opening.Sessions, sessions, "session reader")
+	fillRunDependency(t, &opening.SessionCreator, sessions, "session creator")
+	fillRunDependency(t, &opening.ActiveRuns, sessions, "active run reader")
 	fillRunDependency(t, &cancellation.Terminations, sessions, "run termination committer")
 	ports := d.Projection
 	projection := any(ports.Openings)
@@ -165,14 +169,14 @@ func mustNewRunCoordinator(t *testing.T, d runTestDeps) testRuns {
 	}
 	fillRunDependency(t, &cancellation.WaitingRestorer, starter, "waiting execution restorer")
 	cancellation.WaitingSubtreeCancellations = ports.WaitingSubtreeCancellations
-	cancellation.Sessions, cancellation.Interrupts = deps.Session.Reader, deps.Session.Interrupts
+	cancellation.Sessions, cancellation.Interrupts = deps.Sessions, deps.Interrupts
 	cancellation.Checkpoints, cancellation.Releases = deps.Checkpoints, d.Releases
 	cancellation.Segments, cancellation.Runs, cancellation.Items, cancellation.Admissions = segments, deps.Runs, deps.Items, deps.Admissions
 	cancellations, err := runs.NewCancellations(cancellation)
 	if err != nil {
 		t.Fatalf("construct Run cancellations: %v", err)
 	}
-	opening.CommandAcceptances, opening.Session = deps.CommandAcceptances, deps.Session
+	opening.CommandAcceptances = deps.CommandAcceptances
 	opening.Segments, opening.Admissions = segments, deps.Admissions
 	openings, err := runs.NewOpenings(opening)
 	if err != nil {

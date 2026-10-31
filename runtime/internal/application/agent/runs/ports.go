@@ -264,15 +264,6 @@ type terminationCommitter interface {
 	ApplyRunLost(ctx context.Context, sessionID, runID string, finishedAt time.Time) error
 }
 
-// SessionPorts groups independently consumed Session-side capabilities for
-// composition. Coordinator stores each capability separately.
-type SessionPorts struct {
-	Reader     sessionReader
-	Creator    sessionCreator
-	ActiveRuns activeRunReader
-	Interrupts pendingInterruptReader
-}
-
 // Projection is the run use cases' durable Run read. Run answers point
 // identity; Tree resolves any root or child Run to its complete
 // root/descendant aggregate in one read, so a tree-scoped command does not first

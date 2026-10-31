@@ -26,7 +26,7 @@ func TestCancellationDuringParkedMaintenanceIsBusyUntilOwnerReleases(t *testing.
 	projection := &fakeRunProjection{runs: make(map[string]run.Run)}
 	coordinator := mustNewTestCoordinator(testDeps{
 		Observations: executor, Releases: &fakeExecutionPorts{},
-		Projection: effects, Session: testSessionPorts(sessions),
+		Projection: effects, Session: sessions,
 		Runs: projection, Admissions: testsupport.NewAdmissionGate(),
 	})
 	spec := testSegment()

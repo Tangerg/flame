@@ -114,6 +114,8 @@ func (t *testRuns) Cancel(ctx context.Context, cmd CancelCommand) (CancelResult,
 // helpers split it into each use case's own dependencies, sharing the rest.
 type runDeps struct {
 	Dependencies
+	// Session is one double for every Session-side port.
+	Session                            completeTestSessionPorts
 	RootStarts                         RootExecutionStarter
 	Releases                           ExecutionReleaser
 	Conversation                       ConversationReader
@@ -140,7 +142,7 @@ func mustNewCoordinatorWithSegments(deps runDeps, seg SegmentDependencies) *test
 	openings, err := NewOpenings(OpeningDependencies{
 		CommandAcceptances: deps.CommandAcceptances, RootStarts: deps.RootStarts, Releases: deps.Releases,
 		Conversation: deps.Conversation, WorkingContexts: deps.WorkingContexts, Models: deps.Models,
-		ModelSelector: deps.ModelSelector, Session: deps.Session, Segments: deps.Segments,
+		ModelSelector: deps.ModelSelector, Sessions: deps.Sessions, SessionCreator: deps.Session, ActiveRuns: deps.Session, Segments: deps.Segments,
 		Admissions: deps.Admissions, Isolation: deps.Isolation,
 	})
 	if err != nil {
@@ -153,8 +155,8 @@ func mustNewCoordinatorWithSegments(deps runDeps, seg SegmentDependencies) *test
 		WaitingSubtreeCancellationPreparer: deps.WaitingSubtreeCancellationPreparer,
 		WaitingSubtreeCancellations:        deps.WaitingSubtreeCancellations,
 		Terminations:                       deps.Terminations,
-		Sessions:                           deps.Session.Reader,
-		Interrupts:                         deps.Session.Interrupts,
+		Sessions:                           deps.Sessions,
+		Interrupts:                         deps.Interrupts,
 		Checkpoints:                        deps.Checkpoints,
 		Releases:                           deps.Releases,
 		Segments:                           deps.Segments,
@@ -212,26 +214,17 @@ func completeTestDependencies(deps runDeps, seg SegmentDependencies) runDeps {
 	if deps.WaitingSubtreeCancellationPreparer == nil {
 		deps.WaitingSubtreeCancellationPreparer = control
 	}
-	if deps.Session.Reader == nil {
-		deps.Session.Reader = sessions
+	if deps.Session == nil {
+		deps.Session = sessions
 	}
-	if deps.Session.Creator == nil {
-		deps.Session.Creator = sessions
+	if deps.Sessions == nil {
+		deps.Sessions = deps.Session
 	}
-	if deps.Session.ActiveRuns == nil {
-		deps.Session.ActiveRuns = sessions
-	}
-	if deps.Session.Interrupts == nil {
-		deps.Session.Interrupts = sessions
+	if deps.Interrupts == nil {
+		deps.Interrupts = deps.Session
 	}
 	if deps.Terminations == nil {
-		// Session doubles implement every Session port; a test's own one also
-		// records the terminations its cancellations commit.
-		if terminations, ok := deps.Session.Interrupts.(terminationCommitter); ok {
-			deps.Terminations = terminations
-		} else {
-			deps.Terminations = sessions
-		}
+		deps.Terminations = deps.Session
 	}
 	if deps.Checkpoints == nil {
 		deps.Checkpoints = effects

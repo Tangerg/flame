@@ -343,7 +343,7 @@ func scopeTestCoordinator(t *testing.T, executor *InteractionExecutor) testRuns 
 	var id int
 	coordinator := mustNewRunCoordinator(t, runTestDeps{
 		RootStarts: executor, Observations: executor, Releases: executor, RootCancellation: executor,
-		Conversation: projection.history, Session: runs.SessionPorts{Reader: projection.sessions, Creator: projection.sessions, ActiveRuns: projection.sessions},
+		Conversation: projection.history, Session: projection.sessions,
 		Projection: runTestProjection{Openings: projection, ChildStarts: projection, Events: projection, Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection},
 		Admissions: projection.admissions, Now: time.Now,
 		NewRunID: func() string { id++; return fmt.Sprintf("run_%d", id) }, NewSegmentID: func() string { id++; return fmt.Sprintf("segment_%d", id) },

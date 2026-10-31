@@ -47,7 +47,7 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 	coordinator := mustNewRunCoordinator(t, runTestDeps{
 		RootStarts: executor, Observations: executor, Releases: executor,
 		Conversation: projection.history,
-		Session:      runs.SessionPorts{Reader: projection.sessions, Creator: projection.sessions, ActiveRuns: projection.sessions},
+		Session:      projection.sessions,
 		Projection: runTestProjection{
 			Openings: projection, ChildStarts: projection, Events: projection,
 			Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection,
@@ -195,10 +195,7 @@ func TestInteractionExecutorCanceledDelegateWithUnknownModelOutcomeFailsRoot(t *
 	coordinator := mustNewRunCoordinator(t, runTestDeps{
 		RootStarts: executor, Observations: executor, Releases: executor,
 		Conversation: projection.history, RunningSubtreeCanceler: runningSubtreeCanceler,
-		Session: runs.SessionPorts{
-			Reader: projection.sessions, Creator: projection.sessions, ActiveRuns: projection.sessions,
-			Interrupts: projection.sessions,
-		},
+		Session: projection.sessions,
 		Projection: runTestProjection{
 			Openings: projection, ChildStarts: projection, Events: projection,
 			Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection,
@@ -547,7 +544,7 @@ func startDelegateTreeWithCompactor(t *testing.T, model chat.Model, input string
 	coordinator := mustNewRunCoordinator(t, runTestDeps{
 		RootStarts: executor, Observations: executor, Releases: executor,
 		Conversation: projection.history,
-		Session:      runs.SessionPorts{Reader: projection.sessions, Creator: projection.sessions, ActiveRuns: projection.sessions},
+		Session:      projection.sessions,
 		Projection: runTestProjection{
 			Openings: projection, ChildStarts: projection, Events: projection,
 			Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection,

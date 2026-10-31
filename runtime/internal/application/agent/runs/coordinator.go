@@ -47,7 +47,8 @@ type Dependencies struct {
 	ApprovalRules         approvalRulePreparer
 	AcceptedContinuations acceptedContinuationStore
 	Steering              RunningExecutionSteerer
-	Session               SessionPorts
+	Sessions              sessionReader
+	Interrupts            pendingInterruptReader
 	Checkpoints           WaitingCheckpointReader
 	// Segments runs every segment these use cases open.
 	Segments   *Segments
@@ -67,8 +68,8 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		{"approval rule preparer", deps.ApprovalRules},
 		{"accepted continuation store", deps.AcceptedContinuations},
 		{"running execution steerer", deps.Steering},
-		{"session reader", deps.Session.Reader},
-		{"pending interrupt reader", deps.Session.Interrupts},
+		{"session reader", deps.Sessions},
+		{"pending interrupt reader", deps.Interrupts},
 		{"waiting checkpoint reader", deps.Checkpoints},
 		{"segment supervisor", deps.Segments},
 		{"run projection", deps.Runs},
@@ -86,8 +87,8 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		approvalRules:         deps.ApprovalRules,
 		acceptedContinuations: deps.AcceptedContinuations,
 		steering:              deps.Steering,
-		sessionReader:         deps.Session.Reader,
-		interrupts:            deps.Session.Interrupts,
+		sessionReader:         deps.Sessions,
+		interrupts:            deps.Interrupts,
 		checkpoints:           deps.Checkpoints,
 		runs:                  deps.Runs,
 		items:                 deps.Items,

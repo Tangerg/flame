@@ -49,7 +49,9 @@ type OpeningDependencies struct {
 	WorkingContexts    WorkingContextComposer
 	Models             modelAdmitter
 	ModelSelector      modelapp.Selector
-	Session            SessionPorts
+	Sessions           sessionReader
+	SessionCreator     sessionCreator
+	ActiveRuns         activeRunReader
 	Segments           *Segments
 	Admissions         *ownership.Gate
 	Isolation          isolationProvider // nil disables isolated sessions (their start is refused)
@@ -72,9 +74,9 @@ func NewOpenings(deps OpeningDependencies) (*Openings, error) {
 		{"conversation reader", deps.Conversation},
 		{"working context composer", deps.WorkingContexts},
 		{"model admitter", deps.Models},
-		{"session reader", deps.Session.Reader},
-		{"session creator", deps.Session.Creator},
-		{"active run reader", deps.Session.ActiveRuns},
+		{"session reader", deps.Sessions},
+		{"session creator", deps.SessionCreator},
+		{"active run reader", deps.ActiveRuns},
 		{"segment supervisor", deps.Segments},
 		{"admission gate", deps.Admissions},
 	}
@@ -91,9 +93,9 @@ func NewOpenings(deps OpeningDependencies) (*Openings, error) {
 		workingContexts:    deps.WorkingContexts,
 		models:             deps.Models,
 		modelSelector:      deps.ModelSelector,
-		sessionReader:      deps.Session.Reader,
-		sessionCreator:     deps.Session.Creator,
-		activeRuns:         deps.Session.ActiveRuns,
+		sessionReader:      deps.Sessions,
+		sessionCreator:     deps.SessionCreator,
+		activeRuns:         deps.ActiveRuns,
 		isolation:          deps.Isolation,
 		releases:           deps.Releases,
 		admission:          deps.Admissions,

@@ -242,19 +242,14 @@ func buildAssemblyCore(
 		NewSegmentID:  newSegmentID,
 		Invalidations: policy.invalidations.publish,
 	}
-	sessionPorts := runs.SessionPorts{
-		Reader:     sessionCoordinator,
-		Creator:    sessionCoordinator,
-		ActiveRuns: sessionCoordinator,
-		Interrupts: sessionCoordinator,
-	}
 	runDependencies := runs.Dependencies{
 		CommandAcceptances:    cfg.stores.CommandAcceptances,
 		Continuation:          execution.executor,
 		ApprovalRules:         policy.approvals,
 		AcceptedContinuations: cfg.stores.AcceptedContinuations,
 		Steering:              execution.executor,
-		Session:               sessionPorts,
+		Sessions:              sessionCoordinator,
+		Interrupts:            sessionCoordinator,
 		Checkpoints:           runSegmentEffects,
 		Runs:                  cfg.stores.Runs,
 		Items:                 cfg.stores.Transcript,
@@ -268,7 +263,9 @@ func buildAssemblyCore(
 		WorkingContexts:    execution.workingContexts,
 		Models:             modelCapabilities,
 		ModelSelector:      execution.tools.callComposition,
-		Session:            sessionPorts,
+		Sessions:           sessionCoordinator,
+		SessionCreator:     sessionCoordinator,
+		ActiveRuns:         sessionCoordinator,
 		Admissions:         admissionGate,
 	}
 	cancellationDependencies := runs.CancellationDependencies{

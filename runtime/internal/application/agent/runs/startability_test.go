@@ -70,7 +70,7 @@ func TestParkedCancellationWakesSessionStartability(t *testing.T) {
 				active: &waiting, pending: map[string]Pending{"run_1": pending},
 			}}
 			coordinator := mustNewCoordinator(runDeps{
-				Releases: &fakeExecutionPorts{releaseErr: cleanupError}, Session: testSessionPorts(sessions),
+				Releases: &fakeExecutionPorts{releaseErr: cleanupError}, Session: sessions,
 				Runs: &fakeRunProjection{runs: map[string]run.Run{"run_1": waiting}}, Admissions: testsupport.NewAdmissionGate(),
 			})
 			ctx, cancel := context.WithCancel(t.Context())

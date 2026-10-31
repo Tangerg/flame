@@ -174,7 +174,7 @@ func TestCancellationClassifiesResumeBetweenDurableReadsAsBusy(t *testing.T) {
 			tree:    []run.Run{waiting},
 			current: running,
 		},
-		Session: testSessionPorts(&fakeRunSessions{}),
+		Session: &fakeRunSessions{},
 	})
 
 	_, _, _, err := coordinator.cancellations.cancellationPlanFor(
@@ -195,7 +195,7 @@ func TestCancellationPreservesPersistentMissingInterruptAsInvariantFault(t *test
 			tree:    []run.Run{waiting},
 			current: waiting,
 		},
-		Session: testSessionPorts(&fakeRunSessions{}),
+		Session: &fakeRunSessions{},
 	})
 
 	_, _, _, err := coordinator.cancellations.cancellationPlanFor(

@@ -885,7 +885,7 @@ func waitingCancellationCoordinator(
 		WaitingRestorer:                    control,
 		RunningSubtreeCanceler:             control,
 		WaitingSubtreeCancellationPreparer: control,
-		Session:                            testSessionPorts(sessions),
+		Session:                            sessions,
 		Projection:                         effects,
 		Runs:                               &fakeRunProjection{runs: runsByID},
 		Items:                              &fakeItemProjection{items: waitingCancellationItems(plan)},

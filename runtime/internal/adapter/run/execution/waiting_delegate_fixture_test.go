@@ -58,7 +58,7 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 		RootStarts: executor, Observations: observations, Releases: executor,
 		WaitingSubtreeCancellationPreparer: cancellation,
 		Conversation:                       projection.history,
-		Session:                            runs.SessionPorts{Reader: projection.sessions, Creator: projection.sessions, ActiveRuns: projection.sessions},
+		Session:                            projection.sessions,
 		Projection: runTestProjection{
 			Openings: projection, ChildStarts: projection, Events: projection,
 			Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection,

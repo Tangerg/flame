@@ -349,19 +349,12 @@ func (s stubRuntime) queriesCoordinator() *sessions.QueryCoordinator {
 func newTestHandler(rt testRuntime) *Handler {
 	s := &Handler{}
 	admissions := testsupport.NewAdmissionGate()
-	var sessionPorts runs.SessionPorts
 	var sessionCoordinator *sessions.Coordinator
 	// Wire the session/run lifecycle coordinator over the fake's in-memory stores
 	// when the fake provides one, mirroring the composition root.
 	if p, ok := rt.(sessionsCoordinatorProvider); ok {
 		sessionCoordinator = p.sessionsCoordinator(admissions)
 		s.sessions = sessionCoordinator
-		sessionPorts = runs.SessionPorts{
-			Reader:     sessionCoordinator,
-			Creator:    sessionCoordinator,
-			ActiveRuns: sessionCoordinator,
-			Interrupts: sessionCoordinator,
-		}
 	}
 	var ids atomic.Uint64
 	var runProjection runs.Projection
@@ -409,7 +402,8 @@ func newTestHandler(rt testRuntime) *Handler {
 		ApprovalRules:         inertDeliveryApprovalRules{},
 		AcceptedContinuations: inertDeliveryAcceptedContinuations{},
 		Steering:              rt,
-		Session:               sessionPorts,
+		Sessions:              sessionCoordinator,
+		Interrupts:            sessionCoordinator,
 		Checkpoints:           projectionWriter,
 		Segments:              runSegments,
 		Runs:                  nonNilRunProjection(runProjection),
@@ -426,8 +420,8 @@ func newTestHandler(rt testRuntime) *Handler {
 		WaitingSubtreeCancellationPreparer: rt,
 		WaitingSubtreeCancellations:        projectionWriter,
 		Terminations:                       sessionCoordinator,
-		Sessions:                           sessionPorts.Reader,
-		Interrupts:                         sessionPorts.Interrupts,
+		Sessions:                           sessionCoordinator,
+		Interrupts:                         sessionCoordinator,
 		Checkpoints:                        projectionWriter,
 		Releases:                           rt,
 		Segments:                           runSegments,
@@ -445,7 +439,9 @@ func newTestHandler(rt testRuntime) *Handler {
 		Conversation:       conversation,
 		WorkingContexts:    passthroughRunWorkingContext{},
 		Models:             passthroughRunWorkingContext{},
-		Session:            sessionPorts,
+		Sessions:           sessionCoordinator,
+		SessionCreator:     sessionCoordinator,
+		ActiveRuns:         sessionCoordinator,
 		Segments:           runSegments,
 		Admissions:         admissions,
 	})
