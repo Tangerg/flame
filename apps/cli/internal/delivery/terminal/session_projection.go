@@ -13,17 +13,17 @@ import (
 // the operator's interrupt answers.
 const statusWaitingForAnswers = "waiting for your answers"
 
-func (a *app) restore(snapshot conversation.SessionSnapshot) {
-	if err := a.runs.conversation().RestoreSnapshot(snapshot); err != nil {
-		a.runs.fail(err)
+func (l *sessionLifecycle) restore(snapshot conversation.SessionSnapshot) {
+	if err := l.runs.conversation().RestoreSnapshot(snapshot); err != nil {
+		l.runs.fail(err)
 		return
 	}
-	if err := presentSnapshot(a.transcript, snapshot); err != nil {
-		a.runs.fail(err)
+	if err := presentSnapshot(l.root.currentTranscript(), snapshot); err != nil {
+		l.runs.fail(err)
 		return
 	}
-	a.restoreActivity(snapshot)
-	a.steering.restoreSteerReceipts(snapshot)
+	l.restoreActivity(snapshot)
+	l.steering.restoreSteerReceipts(snapshot)
 }
 
 func presentSnapshot(view *transcriptView, snapshot conversation.SessionSnapshot) error {
@@ -55,7 +55,7 @@ func (s sessionProjection) close() {
 	}
 }
 
-func (a *app) projectSession(snapshot conversation.SessionSnapshot, attached *conversation.SegmentStream) (sessionProjection, error) {
+func (l *sessionLifecycle) projectSession(snapshot conversation.SessionSnapshot, attached *conversation.SegmentStream) (sessionProjection, error) {
 	if err := snapshot.Validate(); err != nil {
 		return sessionProjection{}, err
 	}
@@ -69,7 +69,7 @@ func (a *app) projectSession(snapshot conversation.SessionSnapshot, attached *co
 	if err != nil {
 		return sessionProjection{}, err
 	}
-	transcript := a.newTranscript()
+	transcript := l.root.newTranscript()
 	if err := presentSnapshot(transcript, snapshot); err != nil {
 		transcript.Close()
 		return sessionProjection{}, err
@@ -91,48 +91,45 @@ func (a *app) newTranscript() *transcriptView {
 // segment can no longer be replayed. It deliberately keeps the current stream
 // operation alive: run recovery already attached the replacement stream before
 // taking this snapshot, so canceling that operation here would reopen a gap.
-func (a *app) reconcileRunSnapshot(snapshot conversation.SessionSnapshot, stream conversation.SegmentStream) error {
-	if snapshot.Session.ID != a.session.current.ID {
-		return fmt.Errorf("reconcile run snapshot: session %s does not match %s", snapshot.Session.ID, a.session.current.ID)
+func (l *sessionLifecycle) reconcileRunSnapshot(snapshot conversation.SessionSnapshot, stream conversation.SegmentStream) error {
+	if snapshot.Session.ID != l.state.current.ID {
+		return fmt.Errorf("reconcile run snapshot: session %s does not match %s", snapshot.Session.ID, l.state.current.ID)
 	}
-	projection, err := a.projectSession(snapshot, &stream)
+	projection, err := l.projectSession(snapshot, &stream)
 	if err != nil {
 		return fmt.Errorf("reconcile run snapshot: %w", err)
 	}
 
-	a.prepareSessionProjectionReplacement(snapshot.Session, projection.conversation)
-	previousTranscript := a.transcript
-	a.setActiveSession(snapshot.Session)
-	a.runs.adoptProjection(projection.conversation)
-	a.transcript = projection.transcript
-	a.wireTranscript(projection.transcript)
-	a.shell.SetTranscript(projection.transcript)
-	a.header.SetUsage(projection.conversation.Usage())
-	a.header.SetGoal(snapshot.Goal)
-	a.activity.Set(projection.conversation.PlanItems())
-	a.status.setRunningDescendants(projection.conversation.RunningDescendants())
-	a.prompt.SetBusy(projection.conversation.Busy())
+	l.prepareSessionProjectionReplacement(snapshot.Session, projection.conversation)
+	l.setActiveSession(snapshot.Session)
+	l.runs.adoptProjection(projection.conversation)
+	previousTranscript := l.root.presentTranscript(projection.transcript)
+	l.header.SetUsage(projection.conversation.Usage())
+	l.header.SetGoal(snapshot.Goal)
+	l.activity.Set(projection.conversation.PlanItems())
+	l.status.setRunningDescendants(projection.conversation.RunningDescendants())
+	l.prompt.SetBusy(projection.conversation.Busy())
 	previousTranscript.Close()
-	a.listenForSearch()
-	a.steering.receipts.observeSnapshot(snapshot)
+	l.root.listenForSearch()
+	l.steering.receipts.observeSnapshot(snapshot)
 
-	resumed, err := a.runs.resumeReconciled(snapshot)
+	resumed, err := l.runs.resumeReconciled(snapshot)
 	if err != nil || !resumed {
 		return err
 	}
-	a.steering.restoreSteerReceipts(snapshot)
-	a.runs.syncAnimation()
+	l.steering.restoreSteerReceipts(snapshot)
+	l.runs.syncAnimation()
 	return nil
 }
 
-func (a *app) restoreActivity(snapshot conversation.SessionSnapshot) {
-	current := a.runs.conversation()
-	a.activity.Set(current.PlanItems())
-	a.header.SetUsage(current.Usage())
-	a.header.SetGoal(snapshot.Goal)
-	a.status.setRunningDescendants(current.RunningDescendants())
-	a.prompt.SetBusy(current.Busy())
-	a.runs.resumeRestored(snapshot)
+func (l *sessionLifecycle) restoreActivity(snapshot conversation.SessionSnapshot) {
+	current := l.runs.conversation()
+	l.activity.Set(current.PlanItems())
+	l.header.SetUsage(current.Usage())
+	l.header.SetGoal(snapshot.Goal)
+	l.status.setRunningDescendants(current.RunningDescendants())
+	l.prompt.SetBusy(current.Busy())
+	l.runs.resumeRestored(snapshot)
 }
 
 func (r *runs) observeCurrentRunStatus() {
@@ -156,8 +153,13 @@ func displayTitle(session conversation.Session) string {
 	return session.Title
 }
 
-func (a *app) setActiveSession(session conversation.Session) {
-	a.session.current = session
+func (l *sessionLifecycle) setActiveSession(session conversation.Session) {
+	l.state.current = session
+	l.root.presentSession(session)
+}
+
+// presentSession shows session in the header, banner, prompt and title.
+func (a *app) presentSession(session conversation.Session) {
 	a.header.SetSession(session)
 	a.brand.SetSession(session)
 	a.brand.SetOptions(a.displayOptions())
@@ -168,5 +170,5 @@ func (a *app) setActiveSession(session conversation.Session) {
 }
 
 func (a *app) displayOptions() authoring.RunOptions {
-	return displayRunOptions(a.options, a.session.current)
+	return displayRunOptions(a.options, a.lifecycle.state.current)
 }

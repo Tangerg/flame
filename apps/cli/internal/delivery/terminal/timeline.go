@@ -180,7 +180,7 @@ func (a *app) buildTimeline(theme kit.Theme, glyphs kit.Glyphs) {
 				return
 			}
 			a.timeline.dialog.Dismiss()
-			a.forkSessionFromRun(entry.Run.ID)
+			a.lifecycle.forkSessionFromRun(entry.Run.ID)
 		},
 	)
 }

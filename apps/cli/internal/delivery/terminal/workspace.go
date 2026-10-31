@@ -40,41 +40,41 @@ func (a *app) buildWorkspacePicker(theme kit.Theme, glyphs kit.Glyphs) {
 			}
 			return compactRelativeAge(choice.workspace.LastOpened)
 		},
-		choose: a.chooseWorkspaceChoice,
+		choose: func(choice workspaceChoice) { a.lifecycle.chooseWorkspaceChoice(choice) },
 	})
 }
 
-func (a *app) chooseWorkspaceChoice(choice workspaceChoice) {
+func (l *sessionLifecycle) chooseWorkspaceChoice(choice workspaceChoice) {
 	if !choice.available {
-		a.message("workspace is no longer available · " + choice.workspace.Path)
+		l.root.message("workspace is no longer available · " + choice.workspace.Path)
 		return
 	}
-	if a.workspaces != nil {
-		a.resolveAndStartWorkspace(choice.workspace.Path)
+	if l.workspaces != nil {
+		l.resolveAndStartWorkspace(choice.workspace.Path)
 		return
 	}
-	if err := a.createSessionInWorkspace(choice.workspace.Path); err != nil {
-		a.message(err.Error())
+	if err := l.createSessionInWorkspace(choice.workspace.Path); err != nil {
+		l.root.message(err.Error())
 	}
 }
 
-func (a *app) chooseWorkspace(argument string) error {
+func (l *sessionLifecycle) chooseWorkspace(argument string) error {
 	if strings.TrimSpace(argument) != "" {
-		if a.workspaces != nil {
-			a.resolveAndStartWorkspace(argument)
+		if l.workspaces != nil {
+			l.resolveAndStartWorkspace(argument)
 			return nil
 		}
-		return a.createSessionInWorkspace(argument)
+		return l.createSessionInWorkspace(argument)
 	}
-	if a.workspaces != nil {
-		a.loadWorkspaceChoices()
+	if l.workspaces != nil {
+		l.loadWorkspaceChoices()
 		return nil
 	}
-	return a.showLocalWorkspaceChoices()
+	return l.showLocalWorkspaceChoices()
 }
 
-func (a *app) showLocalWorkspaceChoices() error {
-	workspaces := a.workbench.Workspaces()
+func (l *sessionLifecycle) showLocalWorkspaceChoices() error {
+	workspaces := l.workbench.Workspaces()
 	if len(workspaces) == 0 {
 		return errors.New("there are no recent workspaces")
 	}
@@ -82,22 +82,22 @@ func (a *app) showLocalWorkspaceChoices() error {
 	for _, workspace := range workspaces {
 		choices = append(choices, workspaceChoice{
 			workspace: workspace,
-			current:   workspace.Path == a.session.current.Workspace.Path,
+			current:   workspace.Path == l.state.current.Workspace.Path,
 			available: true,
 		})
 	}
-	a.workspaceChoices.show(choices)
-	a.status.note("choose a workspace")
+	l.workspaceChoices.show(choices)
+	l.status.note("choose a workspace")
 	return nil
 }
 
-func (a *app) loadWorkspaceChoices() {
-	a.status.note("loading runtime workspaces")
-	currentWorkspace := a.session.current.Workspace.Path
-	recentWorkspaces := a.workbench.Workspaces()
-	a.tasks.session(workspaceQueryOperation, true,
+func (l *sessionLifecycle) loadWorkspaceChoices() {
+	l.status.note("loading runtime workspaces")
+	currentWorkspace := l.state.current.Workspace.Path
+	recentWorkspaces := l.workbench.Workspaces()
+	l.tasks.session(workspaceQueryOperation, true,
 		func(ctx context.Context) ([]workspaceChoice, error) {
-			known, err := a.workspaces.List(ctx)
+			known, err := l.workspaces.List(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -105,15 +105,15 @@ func (a *app) loadWorkspaceChoices() {
 		},
 		func(choices []workspaceChoice, err error) {
 			if err != nil {
-				a.message("could not load workspaces: " + err.Error())
+				l.root.message("could not load workspaces: " + err.Error())
 				return
 			}
 			if len(choices) == 0 {
-				a.message("there are no known workspaces")
+				l.root.message("there are no known workspaces")
 				return
 			}
-			a.workspaceChoices.show(choices)
-			a.status.note("choose a workspace")
+			l.workspaceChoices.show(choices)
+			l.status.note("choose a workspace")
 		},
 	)
 }
@@ -160,129 +160,129 @@ func mergeWorkspaceChoices(
 	return choices
 }
 
-func (a *app) resolveAndStartWorkspace(requested string) {
-	path, err := a.resolveWorkspaceInput(requested)
+func (l *sessionLifecycle) resolveAndStartWorkspace(requested string) {
+	path, err := l.resolveWorkspaceInput(requested)
 	if err != nil {
-		a.message(err.Error())
+		l.root.message(err.Error())
 		return
 	}
-	a.status.note("resolving workspace")
-	a.tasks.session(workspaceQueryOperation, true,
+	l.status.note("resolving workspace")
+	l.tasks.session(workspaceQueryOperation, true,
 		func(ctx context.Context) (workspace.Workspace, error) {
-			return a.workspaces.Resolve(ctx, workspace.ResolveRequest{Path: path})
+			return l.workspaces.Resolve(ctx, workspace.ResolveRequest{Path: path})
 		},
 		func(resolved workspace.Workspace, err error) {
 			if err != nil {
-				a.message("resolve workspace: " + err.Error())
+				l.root.message("resolve workspace: " + err.Error())
 				return
 			}
 			if !resolved.IsAvailable() {
-				a.message("workspace is unavailable · " + resolved.Path)
+				l.root.message("workspace is unavailable · " + resolved.Path)
 				return
 			}
-			a.startSessionInWorkspace(resolved.Path)
+			l.startSessionInWorkspace(resolved.Path)
 		},
 	)
 }
 
-func (a *app) createSessionInWorkspace(requested string) error {
-	workspace, err := a.resolveWorkspaceInput(requested)
+func (l *sessionLifecycle) createSessionInWorkspace(requested string) error {
+	workspace, err := l.resolveWorkspaceInput(requested)
 	if err != nil {
 		return err
 	}
-	a.startSessionInWorkspace(workspace)
+	l.startSessionInWorkspace(workspace)
 	return nil
 }
 
-func (a *app) RelocateSession(requested string) error {
-	if err := a.requireRuntimeFeature(protocol.FeatureRelocate); err != nil {
+func (l *sessionLifecycle) RelocateSession(requested string) error {
+	if err := l.root.requireRuntimeFeature(protocol.FeatureRelocate); err != nil {
 		return err
 	}
-	path, err := a.resolveWorkspaceInput(requested)
+	path, err := l.resolveWorkspaceInput(requested)
 	if err != nil {
 		return err
 	}
-	if a.workspaces == nil {
-		a.relocateSession(path)
+	if l.workspaces == nil {
+		l.relocateSession(path)
 		return nil
 	}
-	a.status.note("resolving workspace")
-	a.tasks.session(workspaceQueryOperation, true,
+	l.status.note("resolving workspace")
+	l.tasks.session(workspaceQueryOperation, true,
 		func(ctx context.Context) (workspace.Workspace, error) {
-			return a.workspaces.Resolve(ctx, workspace.ResolveRequest{Path: path})
+			return l.workspaces.Resolve(ctx, workspace.ResolveRequest{Path: path})
 		},
 		func(resolved workspace.Workspace, err error) {
 			if err != nil {
-				a.message("resolve workspace: " + err.Error())
+				l.root.message("resolve workspace: " + err.Error())
 				return
 			}
 			if !resolved.IsAvailable() {
-				a.message("workspace is unavailable · " + resolved.Path)
+				l.root.message("workspace is unavailable · " + resolved.Path)
 				return
 			}
-			a.relocateSession(resolved.Path)
+			l.relocateSession(resolved.Path)
 		},
 	)
 	return nil
 }
 
-func (a *app) relocateSession(path string) {
-	if path == a.session.current.Workspace.Path {
-		a.message("session already uses " + path)
+func (l *sessionLifecycle) relocateSession(path string) {
+	if path == l.state.current.Workspace.Path {
+		l.root.message("session already uses " + path)
 		return
 	}
-	sessionID := a.session.current.ID
-	a.runSessionChange("relocating session",
+	sessionID := l.state.current.ID
+	l.runSessionChange("relocating session",
 		func(ctx context.Context) (conversation.SessionSnapshot, error) {
-			latest, err := a.runtime.GetSession(ctx, sessionID)
+			latest, err := l.runtime.GetSession(ctx, sessionID)
 			if err != nil {
 				return conversation.SessionSnapshot{}, err
 			}
-			if _, err := a.runtime.UpdateSession(ctx, conversation.UpdateSession{
+			if _, err := l.runtime.UpdateSession(ctx, conversation.UpdateSession{
 				SessionID: sessionID, Workspace: &path, ExpectedRevision: latest.Session.Revision,
 			}); err != nil {
 				return conversation.SessionSnapshot{}, err
 			}
-			return a.readSessionAfterMutation(ctx, sessionID)
+			return l.readSessionAfterMutation(ctx, sessionID)
 		},
-		func(snapshot conversation.SessionSnapshot) error { return a.installSnapshot(snapshot) },
+		func(snapshot conversation.SessionSnapshot) error { return l.installSnapshot(snapshot) },
 	)
 }
 
 // startSessionInWorkspace accepts an already established workspace identity.
 // Callers resolving new user input go through createSessionInWorkspace; /new
 // reuses the runtime-authoritative workspace of the current session directly.
-func (a *app) startSessionInWorkspace(workspace string) {
-	a.runSessionChange("creating session in "+workspace,
+func (l *sessionLifecycle) startSessionInWorkspace(workspace string) {
+	l.runSessionChange("creating session in "+workspace,
 		func(ctx context.Context) (conversation.SessionSnapshot, error) {
-			created, err := a.runtime.CreateSession(ctx, conversation.CreateSession{Workspace: workspace})
+			created, err := l.runtime.CreateSession(ctx, conversation.CreateSession{Workspace: workspace})
 			return conversation.SessionSnapshot{Session: created}, err
 		},
-		func(snapshot conversation.SessionSnapshot) error { return a.installSnapshot(snapshot) },
+		func(snapshot conversation.SessionSnapshot) error { return l.installSnapshot(snapshot) },
 	)
 }
 
 // replaceDeletedSessionInWorkspace is the forced counterpart to /new. The
 // current draft moves to the replacement because its source identity is gone;
 // queued follow-ups remain session-scoped and are retired after installation.
-func (a *app) replaceDeletedSessionInWorkspace(workspace string) {
-	retiredSessionID := a.session.current.ID
-	a.runSessionChangeWithDraftDisposition("creating replacement session in "+workspace, retireSourceDraft,
+func (l *sessionLifecycle) replaceDeletedSessionInWorkspace(workspace string) {
+	retiredSessionID := l.state.current.ID
+	l.runSessionChangeWithDraftDisposition("creating replacement session in "+workspace, retireSourceDraft,
 		func(ctx context.Context) (conversation.SessionSnapshot, error) {
-			created, err := a.runtime.CreateSession(ctx, conversation.CreateSession{Workspace: workspace})
+			created, err := l.runtime.CreateSession(ctx, conversation.CreateSession{Workspace: workspace})
 			return conversation.SessionSnapshot{Session: created}, err
 		},
 		func(snapshot conversation.SessionSnapshot) error {
-			if err := a.installSnapshot(snapshot); err != nil {
+			if err := l.installSnapshot(snapshot); err != nil {
 				return err
 			}
-			discarded, err := a.retireSessionState(retiredSessionID)
+			discarded, err := l.retireSessionState(retiredSessionID)
 			if err != nil {
-				a.message("replacement installed; local state cleanup failed: " + err.Error())
+				l.root.message("replacement installed; local state cleanup failed: " + err.Error())
 				return nil
 			}
 			if discarded > 0 {
-				a.message(fmt.Sprintf("discarded %s from the deleted session", countedNoun(discarded, "queued prompt")))
+				l.root.message(fmt.Sprintf("discarded %s from the deleted session", countedNoun(discarded, "queued prompt")))
 			}
 			return nil
 		},
@@ -319,9 +319,9 @@ func resolveWorkspace(current, requested string) (string, error) {
 	return resolved, nil
 }
 
-func (a *app) resolveWorkspaceInput(requested string) (string, error) {
-	if a.localDirectory == "" {
-		return resolveWorkspace(a.session.current.Workspace.Path, requested)
+func (l *sessionLifecycle) resolveWorkspaceInput(requested string) (string, error) {
+	if l.localDirectory == "" {
+		return resolveWorkspace(l.state.current.Workspace.Path, requested)
 	}
 	ref := protocol.WorkspaceRef{Path: strings.TrimSpace(requested)}
 	if err := protocol.ValidateWireTree(ref); err != nil {

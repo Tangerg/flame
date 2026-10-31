@@ -18,31 +18,31 @@ type sessionImport struct {
 	artifact session.Document
 }
 
-func (a *app) prepareSessionImport(path string) error {
-	if a.transfers == nil {
+func (l *sessionLifecycle) prepareSessionImport(path string) error {
+	if l.transfers == nil {
 		return errors.New("this runtime composition has no session transfer service")
 	}
-	if err := a.requireRuntimeFeature(protocol.FeatureSessionExport); err != nil {
+	if err := l.root.requireRuntimeFeature(protocol.FeatureSessionExport); err != nil {
 		return err
 	}
-	workspace := authoringDirectory(a.localDirectory, a.session.current.Workspace.Path)
-	a.message("reading session artifact")
-	started := a.tasks.session(sessionOutputOperation, false,
+	workspace := authoringDirectory(l.localDirectory, l.state.current.Workspace.Path)
+	l.root.message("reading session artifact")
+	started := l.tasks.session(sessionOutputOperation, false,
 		func(context.Context) (sessionImport, error) {
-			artifact, err := a.artifacts.Load(workspace, path)
+			artifact, err := l.artifacts.Load(workspace, path)
 			return sessionImport{path: path, artifact: artifact}, err
 		},
 		func(prepared sessionImport, err error) {
 			if err != nil {
-				a.message("import session failed: " + err.Error())
+				l.root.message("import session failed: " + err.Error())
 				return
 			}
-			a.confirm.ask(
+			l.confirm.ask(
 				"Import session",
 				"Import "+prepared.path+"? An existing session with the artifact ID will be replaced.",
 				"Import and replace",
 				"",
-				func() { a.importSession(prepared.artifact) },
+				func() { l.importSession(prepared.artifact) },
 			)
 		},
 	)
@@ -52,39 +52,39 @@ func (a *app) prepareSessionImport(path string) error {
 	return nil
 }
 
-func (a *app) importSession(artifact session.Document) {
-	a.runSessionChange("importing session",
+func (l *sessionLifecycle) importSession(artifact session.Document) {
+	l.runSessionChange("importing session",
 		func(ctx context.Context) (conversation.SessionSnapshot, error) {
-			imported, err := a.transfers.ImportSession(ctx, session.ImportRequest{Artifact: artifact})
+			imported, err := l.transfers.ImportSession(ctx, session.ImportRequest{Artifact: artifact})
 			if err != nil {
 				return conversation.SessionSnapshot{}, err
 			}
-			return a.readSessionAfterMutation(ctx, imported.ID)
+			return l.readSessionAfterMutation(ctx, imported.ID)
 		},
 		func(snapshot conversation.SessionSnapshot) error {
-			if err := a.installSnapshot(snapshot); err != nil {
+			if err := l.installSnapshot(snapshot); err != nil {
 				return err
 			}
-			a.message("imported session · " + displayTitle(snapshot.Session))
+			l.root.message("imported session · " + displayTitle(snapshot.Session))
 			return nil
 		},
 	)
 }
 
-func (a *app) prepareSessionRollback(argument string) error {
-	request, err := parseRollbackArgument(a.session.current.ID, argument)
+func (l *sessionLifecycle) prepareSessionRollback(argument string) error {
+	request, err := parseRollbackArgument(l.state.current.ID, argument)
 	if err != nil {
 		return err
 	}
 	if request.RestoresFiles() {
-		if err := a.requireRuntimeFeature(protocol.FeatureCheckpoints); err != nil {
+		if err := l.root.requireRuntimeFeature(protocol.FeatureCheckpoints); err != nil {
 			return err
 		}
 	}
-	a.message("previewing rollback")
-	started := a.tasks.session(sessionOutputOperation, false,
+	l.root.message("previewing rollback")
+	started := l.tasks.session(sessionOutputOperation, false,
 		func(ctx context.Context) (rollbackPreview, error) {
-			snapshot, err := a.runtime.GetSession(ctx, request.SessionID)
+			snapshot, err := l.runtime.GetSession(ctx, request.SessionID)
 			if err != nil {
 				return rollbackPreview{}, err
 			}
@@ -92,15 +92,15 @@ func (a *app) prepareSessionRollback(argument string) error {
 		},
 		func(preview rollbackPreview, err error) {
 			if err != nil {
-				a.message("preview rollback failed: " + err.Error())
+				l.root.message("preview rollback failed: " + err.Error())
 				return
 			}
-			a.confirm.ask(
+			l.confirm.ask(
 				"Rollback session",
 				preview.Description()+" This cannot be undone.",
 				"Rollback permanently",
 				"",
-				func() { a.rollbackSession(preview) },
+				func() { l.rollbackSession(preview) },
 			)
 		},
 	)
@@ -150,12 +150,12 @@ type rollbackSettlement struct {
 	err    error
 }
 
-func (a *app) rollbackSession(preview rollbackPreview) {
-	a.runSessionChange("rolling back session",
+func (l *sessionLifecycle) rollbackSession(preview rollbackPreview) {
+	l.runSessionChange("rolling back session",
 		func(ctx context.Context) (rollbackSettlement, error) {
 			result, err := session.Rollback(
-				ctx, a.runtime, a.workbench, preview.settlement,
-				a.replayPolicy, runtimeRecoveryBackoff,
+				ctx, l.runtime, l.workbench, preview.settlement,
+				l.replayPolicy, runtimeRecoveryBackoff,
 			)
 			if result.Pending.CommandID == "" {
 				return rollbackSettlement{}, err
@@ -163,38 +163,38 @@ func (a *app) rollbackSession(preview rollbackPreview) {
 			return rollbackSettlement{result: result, err: err}, nil
 		},
 		func(settlement rollbackSettlement) error {
-			return a.applyRollbackSettlement(settlement)
+			return l.applyRollbackSettlement(settlement)
 		},
 	)
 }
 
-func (a *app) applyRollbackSettlement(settlement rollbackSettlement) error {
+func (l *sessionLifecycle) applyRollbackSettlement(settlement rollbackSettlement) error {
 	result := settlement.result
 	switch result.Outcome {
 	case mutation.Rejected:
-		if err := session.RejectRollback(a.workbench, result); err != nil {
-			a.message("rollback session failed; local intent cleanup failed: " + errors.Join(settlement.err, err).Error())
+		if err := session.RejectRollback(l.workbench, result); err != nil {
+			l.root.message("rollback session failed; local intent cleanup failed: " + errors.Join(settlement.err, err).Error())
 			return nil
 		}
-		a.message("rollback session failed: " + settlement.err.Error())
+		l.root.message("rollback session failed: " + settlement.err.Error())
 		return nil
 	case mutation.Unknown:
-		a.message("rollback outcome is unknown; the original request is saved for recovery; inspect the session before issuing a new command: " + settlement.err.Error())
+		l.root.message("rollback outcome is unknown; the original request is saved for recovery; inspect the session before issuing a new command: " + settlement.err.Error())
 		return nil
 	case mutation.Confirmed:
 	default:
 		return errors.New("rollback settlement returned an invalid outcome")
 	}
 
-	confirmationErr := session.ConfirmRollback(a.workbench, result)
-	installation, err := a.prepareSessionInstallation(result.Snapshot)
+	confirmationErr := session.ConfirmRollback(l.workbench, result)
+	installation, err := l.prepareSessionInstallation(result.Snapshot)
 	if err != nil {
 		return errors.Join(confirmationErr, err)
 	}
-	installation.apply(a)
+	l.install(installation)
 	recovery := installation.rollbackRecovery
 	if confirmationErr != nil {
-		current, _, draftErr := a.composer.draft()
+		current, _, draftErr := l.composer.draft()
 		if draftErr != nil {
 			return errors.Join(confirmationErr, draftErr)
 		}
@@ -203,10 +203,10 @@ func (a *app) applyRollbackSettlement(settlement rollbackSettlement) error {
 			Draft: recovered, DroppedCount: len(result.Pending.BeforeRunIDs) - len(result.Pending.AfterRunIDs),
 			OpeningImages: result.Pending.OpeningImages, Merged: merged,
 		}
-		if persistErr := a.composer.recoverDraft(recovered); persistErr != nil {
+		if persistErr := l.composer.recoverDraft(recovered); persistErr != nil {
 			label := fmt.Sprintf("rolled back %d runs; restored text was not saved: %v", recovery.DroppedCount, persistErr)
 			label = appendRollbackWarnings(label, recovery.OpeningImages, settlement.err, confirmationErr)
-			a.message(label)
+			l.root.message(label)
 			return nil
 		}
 	}
@@ -218,7 +218,7 @@ func (a *app) applyRollbackSettlement(settlement rollbackSettlement) error {
 		label += "; restored opening text before the newer draft"
 	}
 	label = appendRollbackWarnings(label, recovery.OpeningImages, settlement.err, confirmationErr)
-	a.message(label)
+	l.root.message(label)
 	return nil
 }
 

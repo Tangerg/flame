@@ -17,7 +17,7 @@ type sessionOutputResult struct {
 }
 
 func (a *app) copyLastAssistant() error {
-	sessionID := a.session.current.ID
+	sessionID := a.lifecycle.state.current.ID
 	started := a.tasks.session(sessionOutputOperation, false,
 		func(ctx context.Context) (sessionOutputResult, error) {
 			snapshot, err := a.runtime.GetSession(ctx, sessionID)
@@ -32,7 +32,7 @@ func (a *app) copyLastAssistant() error {
 				a.message("copy last response failed: " + err.Error())
 				return
 			}
-			if a.session.current.ID != result.sessionID {
+			if a.lifecycle.state.current.ID != result.sessionID {
 				a.message("copy canceled because the active session changed")
 				return
 			}
@@ -49,31 +49,31 @@ func (a *app) copyLastAssistant() error {
 	return nil
 }
 
-func (a *app) exportSession(argument string) error {
-	if err := a.requireRuntimeFeature(protocol.FeatureSessionExport); err != nil {
+func (l *sessionLifecycle) exportSession(argument string) error {
+	if err := l.root.requireRuntimeFeature(protocol.FeatureSessionExport); err != nil {
 		return err
 	}
 	format, filename, err := parseExportArgument(argument)
 	if err != nil {
 		return err
 	}
-	sessionID := a.session.current.ID
-	workspace := authoringDirectory(a.localDirectory, a.session.current.Workspace.Path)
-	title := a.session.current.Title
-	started := a.tasks.application(sessionOutputOperation, false,
+	sessionID := l.state.current.ID
+	workspace := authoringDirectory(l.localDirectory, l.state.current.Workspace.Path)
+	title := l.state.current.Title
+	started := l.tasks.application(sessionOutputOperation, false,
 		func(ctx context.Context) (sessionartifact.Publication, error) {
-			document, err := a.transfers.ExportSession(ctx, session.ExportRequest{SessionID: sessionID, Format: format})
+			document, err := l.transfers.ExportSession(ctx, session.ExportRequest{SessionID: sessionID, Format: format})
 			if err != nil {
 				return sessionartifact.Publication{}, err
 			}
-			return a.artifacts.Publish(workspace, title, filename, document), nil
+			return l.artifacts.Publish(workspace, title, filename, document), nil
 		},
 		func(result sessionartifact.Publication, err error) {
 			if err != nil {
-				a.message("export session failed: " + err.Error())
+				l.root.message("export session failed: " + err.Error())
 				return
 			}
-			a.message(sessionPublicationMessage(result))
+			l.root.message(sessionPublicationMessage(result))
 		},
 	)
 	if !started {

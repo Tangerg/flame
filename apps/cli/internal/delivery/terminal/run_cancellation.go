@@ -329,8 +329,7 @@ func (r *runs) handleRuntimeCancellation(
 		// The stream was rejected after Runtime had accepted the command. A
 		// cancellation receipt cannot reconstruct durable Items that were never
 		// projected, so the authoritative snapshot is the queue-admission fence.
-		r.session.invalidated = true
-		r.link.refreshInvalidatedSession(true)
+		r.sessions.refreshInvalidatedSession(true)
 		return
 	}
 	// The receipt names only the root Run. Its children and open tool calls
@@ -339,8 +338,7 @@ func (r *runs) handleRuntimeCancellation(
 	r.status.note("canceled")
 	r.prompt.SetBusy(false)
 	r.syncAnimation()
-	r.session.invalidated = true
-	r.link.refreshInvalidatedSession(true)
+	r.sessions.refreshInvalidatedSession(true)
 }
 
 func (r *runs) openingCommandForRun(runID string) authoring.CommandID {

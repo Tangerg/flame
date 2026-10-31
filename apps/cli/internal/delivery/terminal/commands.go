@@ -142,8 +142,8 @@ func (a *app) registerCommands() {
 		if command.Available != nil {
 			evaluate = func(host *app) extensions.CommandAvailability {
 				request := extensions.CommandRequest{
-					Workspace: host.session.current.Workspace.Path, SessionID: host.session.current.ID,
-					LocalDirectory: authoringDirectory(host.localDirectory, host.session.current.Workspace.Path),
+					Workspace: host.lifecycle.state.current.Workspace.Path, SessionID: host.lifecycle.state.current.ID,
+					LocalDirectory: authoringDirectory(host.localDirectory, host.lifecycle.state.current.Workspace.Path),
 				}
 				return command.Available(request)
 			}
@@ -230,8 +230,8 @@ func (a *app) executeCommand(pluginID string, command extensions.SlashCommand, a
 	name := command.Descriptor.Name
 	a.status.note("running /" + name)
 	request := extensions.CommandRequest{
-		Argument: argument, Workspace: a.session.current.Workspace.Path, SessionID: a.session.current.ID,
-		LocalDirectory: authoringDirectory(a.localDirectory, a.session.current.Workspace.Path),
+		Argument: argument, Workspace: a.lifecycle.state.current.Workspace.Path, SessionID: a.lifecycle.state.current.ID,
+		LocalDirectory: authoringDirectory(a.localDirectory, a.lifecycle.state.current.Workspace.Path),
 	}
 	dispatcher := a.loop.Dispatcher()
 	operation, err := a.commandOperations.reserve(pluginID)

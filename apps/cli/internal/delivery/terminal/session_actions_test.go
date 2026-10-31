@@ -85,7 +85,7 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 			t.Fatal(stagePendingResumeErr)
 		}
 	}
-	application := &app{composer: testPromptComposer(t), workbench: store, queue: prompts}
+	application := &sessionLifecycle{composer: testPromptComposer(t), workbench: store, queue: prompts, state: sessionState{}}
 
 	discarded, err := application.retireSessionState("retired")
 	if err != nil {
@@ -175,7 +175,7 @@ func TestRetiringSessionStateClearsTheQueueAfterDurableTombstone(t *testing.T) {
 		t.Fatal(writeFileErr)
 	}
 
-	application := &app{composer: testPromptComposer(t), workbench: store, queue: prompts}
+	application := &sessionLifecycle{composer: testPromptComposer(t), workbench: store, queue: prompts, state: sessionState{}}
 	discarded, err := application.retireSessionState(sessionID)
 	if err == nil {
 		t.Fatal("retirement hid the blocked physical cleanup")
@@ -620,9 +620,9 @@ func TestImportRequiresConfirmationAndInstallsTheAuthoritativeSession(t *testing
 
 func TestConfirmationRejectsCallbacksFromAReplacedPresentation(t *testing.T) {
 	transcript := testTranscriptView(t)
-	application := &app{composer: testPromptComposer(t), transcript: transcript, session: sessionState{context: newSessionContextLease()}}
+	application := &app{composer: testPromptComposer(t), transcript: transcript, lifecycle: &sessionLifecycle{state: sessionState{context: newSessionContextLease()}}}
 	application.stack.SetBase(transcript)
-	application.confirm = &confirmPrompt{stack: &application.stack, theme: transcript.theme, glyphs: transcript.glyphs, session: &application.session}
+	application.confirm = &confirmPrompt{stack: &application.stack, theme: transcript.theme, glyphs: transcript.glyphs, session: &application.lifecycle.state}
 	oldCalls, currentCalls := 0, 0
 	application.confirm.ask("Old confirmation", "Run the old action?", "Run old", "", func() { oldCalls++ })
 	drawRoot(t, &application.stack, 96, 28)
@@ -650,7 +650,7 @@ func TestProjectionRetirementRejectsAPresentedConfirmationCallback(t *testing.T)
 	operations := newOperationOwner(t.Context())
 	t.Cleanup(operations.Close)
 	application := &app{composer: testPromptComposer(t),
-		transcript: transcript, operations: operations, session: sessionState{context: newSessionContextLease()},
+		transcript: transcript, operations: operations, lifecycle: &sessionLifecycle{state: sessionState{context: newSessionContextLease()}},
 		reader: testReaderSurface(t, operations), prompts: testInterruptPrompts(t),
 	}
 	application.stack.SetBase(transcript)
@@ -659,7 +659,8 @@ func TestProjectionRetirementRejectsAPresentedConfirmationCallback(t *testing.T)
 	application.confirm.ask("Retired confirmation", "Run the retired action?", "Run", "", func() { calls++ })
 	drawRoot(t, application, 96, 28)
 
-	application.retireSessionContext()
+	application.lifecycle.root = application
+	application.lifecycle.retireSessionContext()
 	application.stack.Handle(input.Key{Code: input.Down})
 	application.stack.Handle(input.Key{Code: input.Enter})
 	if calls != 0 {
@@ -994,9 +995,9 @@ func steerReplayTestProfile(t *testing.T, workspace string) runtimefixture.Profi
 func withModalOwners(t *testing.T, application *app) {
 	t.Helper()
 	theme, glyphs := application.transcript.theme, application.transcript.glyphs
-	application.confirm = &confirmPrompt{stack: &application.stack, theme: theme, glyphs: glyphs, session: &application.session}
+	application.confirm = &confirmPrompt{stack: &application.stack, theme: theme, glyphs: glyphs, session: &application.lifecycle.state}
 	application.sessions = newSessionBrowser(sessionBrowserConfig{browser: sessionBrowser{
-		stack: &application.stack, theme: theme, glyphs: glyphs, session: &application.session,
+		stack: &application.stack, theme: theme, glyphs: glyphs, session: &application.lifecycle.state,
 	}, switchTo: func(string) {}})
 	application.search = newSearchPrompt(&application.stack, theme, glyphs, func(string) {})
 	application.timeline = newTimelineDialog(&application.stack, theme, glyphs, func(timelineEntry) {}, func(timelineEntry) {})
@@ -1013,7 +1014,7 @@ func withModalOwners(t *testing.T, application *app) {
 		label: func(protocol.Model) string { return "" }, detail: func(protocol.Model) string { return "" }, choose: func(protocol.Model) {},
 	})
 	application.queueEditor = newQueueEditor(queueEditorConfig{
-		session: &application.session, run: &runs{}, stack: &application.stack, theme: theme, glyphs: glyphs,
+		session: &application.lifecycle.state, run: &runs{}, stack: &application.stack, theme: theme, glyphs: glyphs,
 		keys: headless.DefaultEditorKeys(), clip: (&program.Runtime{}).Clipboard(),
 	})
 }

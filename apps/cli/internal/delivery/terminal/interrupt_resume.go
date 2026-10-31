@@ -142,7 +142,7 @@ func (r *runs) restoreRejectedInterruptReview(review *interruptReview, command c
 	r.execution.following = false
 	if r.session.invalidated {
 		r.status.note("resume refused · refreshing session")
-		r.link.refreshInvalidatedSession(false)
+		r.sessions.refreshInvalidatedSession(false)
 		return nil
 	}
 	r.status.note("resume refused · review preserved")

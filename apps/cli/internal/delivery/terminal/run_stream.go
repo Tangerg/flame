@@ -351,7 +351,7 @@ func (r *runs) finishFollowing() {
 	r.execution.projectionFailed = false
 	r.link.refreshOpenTimeline()
 	if r.session.invalidated {
-		r.link.refreshInvalidatedSession(true)
+		r.sessions.refreshInvalidatedSession(true)
 		return
 	}
 	if r.execution.conversation.Phase() != conversation.Idle || r.execution.conversation.Outcome().Status == "" {

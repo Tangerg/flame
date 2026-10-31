@@ -224,7 +224,7 @@ func (a *app) handleCancelGesture() {
 		a.runs.cancel()
 		return
 	}
-	if a.cancelSessionChange() {
+	if a.lifecycle.cancelSessionChange() {
 		return
 	}
 	message, hasDraft, err := a.composer.draft()

@@ -20,7 +20,7 @@ func (a *app) RecordFeedback(argument string) error {
 	}
 	runID, itemID := latestAssistantTarget(a.runs.conversation().Blocks())
 	request := protocol.FeedbackRequest{
-		SessionID: a.session.current.ID, RunID: runID, ItemID: itemID,
+		SessionID: a.lifecycle.state.current.ID, RunID: runID, ItemID: itemID,
 		Rating: rating, Text: strings.TrimSpace(note),
 	}
 	if err := protocol.ValidateWireTree(request); err != nil {

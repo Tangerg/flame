@@ -22,28 +22,33 @@ func (s *sessionContextLease) current(candidate *sessionContextLease) bool {
 	return s != nil && s == candidate && !s.retired
 }
 
-func (a *app) canPreserveInterruptProjection(next *conversation.Conversation) bool {
-	return a.prompts.review != nil && a.runs.conversation().Phase() == conversation.Waiting &&
-		next != nil && next.Phase() == conversation.Waiting && a.runs.conversation().RunID() == next.RunID() &&
-		sameInterrupts(a.runs.conversation().Interrupts(), next.Interrupts())
+func (l *sessionLifecycle) canPreserveInterruptProjection(next *conversation.Conversation) bool {
+	return l.prompts.review != nil && l.runs.conversation().Phase() == conversation.Waiting &&
+		next != nil && next.Phase() == conversation.Waiting && l.runs.conversation().RunID() == next.RunID() &&
+		sameInterrupts(l.runs.conversation().Interrupts(), next.Interrupts())
 }
 
-func (a *app) prepareSessionProjectionReplacement(next conversation.Session, projection *conversation.Conversation) {
-	if next.ID != a.session.current.ID || next.Workspace != a.session.current.Workspace {
-		a.retireSessionContext()
+func (l *sessionLifecycle) prepareSessionProjectionReplacement(next conversation.Session, projection *conversation.Conversation) {
+	if next.ID != l.state.current.ID || next.Workspace != l.state.current.Workspace {
+		l.retireSessionContext()
 		return
 	}
-	if a.reader.observingSource() {
-		a.reader.dismiss()
+	if l.reader.observingSource() {
+		l.reader.dismiss()
 	}
-	if !a.canPreserveInterruptProjection(projection) {
-		a.prompts.dismiss()
+	if !l.canPreserveInterruptProjection(projection) {
+		l.prompts.dismiss()
 	}
 }
 
-func (a *app) retireSessionContext() {
-	a.session.context.retire()
-	a.session.context = newSessionContextLease()
+func (l *sessionLifecycle) retireSessionContext() {
+	l.state.context.retire()
+	l.state.context = newSessionContextLease()
+	l.root.dismissModals()
+}
+
+// dismissModals closes every modal that belonged to the retired Session.
+func (a *app) dismissModals() {
 	a.prompts.dismiss()
 	a.confirm.dismiss()
 	a.reader.dismiss()

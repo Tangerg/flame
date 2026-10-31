@@ -69,7 +69,6 @@ type app struct {
 	pluginIssues     []extensions.SourceIssue
 	operations       *operationOwner
 	tasks            taskRunner
-	session          sessionState
 	runs             *runs
 	steering         *steerDesk
 	dialogs          dialogState
@@ -77,6 +76,7 @@ type app struct {
 	prompts          *interruptPrompts
 	confirm          *confirmPrompt
 	sessions         *sessionBrowser
+	lifecycle        *sessionLifecycle
 	screens          screens
 	timeline         *timelineDialog
 	palette          *pickerDialog[commandPaletteItem]
@@ -191,7 +191,6 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		runtimeProfile: cfg.runtimeProfile, replayPolicy: cfg.replayPolicy,
 		changes: cfg.changes, transfers: cfg.transfers,
 		feedback: cfg.feedback,
-		session:  sessionState{current: cfg.snapshot.Session, context: newSessionContextLease()},
 
 		pluginHost: cfg.pluginHost, pluginIssues: cfg.pluginIssues,
 		operations:        newOperationOwner(cfg.context),
@@ -214,17 +213,18 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		attention:         newAttentionCenter(),
 		keys:              keyRouter{application: cfg.keyBindings.application, global: cfg.keyBindings.global},
 	}
+	a.lifecycle = &sessionLifecycle{state: sessionState{current: cfg.snapshot.Session, context: newSessionContextLease()}}
 	a.runs = &runs{
 		execution: executionState{conversation: conversation.New()},
 		runtime:   cfg.runtime, workbench: cfg.workbench, queue: cfg.queue, replayPolicy: cfg.replayPolicy,
-		session: &a.session, every: loop.Every, setProgress: loop.Session().SetProgress,
+		session: &a.lifecycle.state, every: loop.Every, setProgress: loop.Session().SetProgress,
 		report: a.reportWorkbenchIssue, link: a, transcript: func() *transcriptView { return a.transcript },
 		status: a.status, header: a.header, activity: a.activity,
 	}
 	a.tasks = taskRunner{operations: a.operations, dispatch: loop.Dispatcher(), settled: func() { a.runs.drainQueue() }}
 	a.runs.tasks = a.tasks
 	a.composer = &promptComposer{
-		attachments: cfg.attachments, workbench: cfg.workbench, session: &a.session,
+		attachments: cfg.attachments, workbench: cfg.workbench, session: &a.lifecycle.state,
 		ctx: cfg.context, after: loop.After, closed: func() bool { return a.closed },
 		notify: a.message, report: a.reportWorkbenchIssue, validate: a.validateMessageCapabilities,
 		appendNote: func(label, body string) {
@@ -253,17 +253,27 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	a.registerCommands()
 	a.buildInterface(appearance, cfg.keyBindings.editor)
 	a.runs.prompt, a.runs.prompts, a.runs.queueEditor, a.runs.composer = a.prompt, a.prompts, a.queueEditor, a.composer
-	a.buildScreens(cfg)
 	a.steering = &steerDesk{
 		runtime: a.runtime, workbench: a.workbench, replayPolicy: a.replayPolicy,
-		composer: a.composer, session: &a.session, runs: a.runs, tasks: a.tasks,
-		notify: a.message, report: a.reportWorkbenchIssue, drainQueue: a.runs.drainQueue, readSession: a.readSessionAfterMutation,
+		composer: a.composer, session: &a.lifecycle.state, runs: a.runs, tasks: a.tasks,
+		notify: a.message, report: a.reportWorkbenchIssue, drainQueue: a.runs.drainQueue, readSession: func(ctx context.Context, id string) (conversation.SessionSnapshot, error) {
+			return a.lifecycle.readSessionAfterMutation(ctx, id)
+		},
 	}
 	a.runs.steering = a.steering
+	*a.lifecycle = sessionLifecycle{
+		state: a.lifecycle.state, root: a, runtime: a.runtime, workspaces: a.workspaces, transfers: a.transfers, artifacts: a.artifacts,
+		workbench: a.workbench, queue: a.queue, replayPolicy: a.replayPolicy, localDirectory: a.localDirectory, tasks: a.tasks,
+		report: a.reportWorkbenchIssue, status: a.status, prompt: a.prompt, header: a.header, activity: a.activity,
+		runs: a.runs, composer: a.composer, prompts: a.prompts, steering: a.steering, reader: a.reader, confirm: a.confirm,
+		sessions: a.sessions, workspaceChoices: a.workspaceChoices,
+	}
+	a.runs.sessions = a.lifecycle
+	a.buildScreens(cfg)
 	for _, result := range cfg.recoveredSteers {
 		a.steering.receipts.accept(result)
 	}
-	a.restore(cfg.snapshot)
+	a.lifecycle.restore(cfg.snapshot)
 	a.runs.restoreSessionOutbox()
 	_ = a.composer.persistDraft()
 	a.followRuntimeChanges()
@@ -313,7 +323,7 @@ func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.M
 	a.shell.Focus(true)
 	a.stack.SetBase(a.shell)
 	a.queueEditor = newQueueEditor(queueEditorConfig{
-		queue: a.queue, session: &a.session, run: a.runs, view: a.queueView, prompt: a.prompt,
+		queue: a.queue, session: &a.lifecycle.state, run: a.runs, view: a.queueView, prompt: a.prompt,
 		stack: &a.stack, theme: theme, glyphs: glyphs, keys: editorKeys, clip: a.loop.Clipboard(),
 	})
 	a.prompts = newInterruptPrompts(interruptPromptsConfig{
@@ -339,7 +349,7 @@ func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.M
 	})
 	a.shortcuts = newShortcutGuide(&a.stack, theme, glyphs, a.loop.Environment().Wheel(), editorKeys, a.transcript.Keys())
 	a.search = newSearchPrompt(&a.stack, theme, glyphs, a.Find)
-	a.confirm = &confirmPrompt{stack: &a.stack, theme: theme, glyphs: glyphs, wheel: a.loop.Environment().Wheel(), session: &a.session}
+	a.confirm = &confirmPrompt{stack: &a.stack, theme: theme, glyphs: glyphs, wheel: a.loop.Environment().Wheel(), session: &a.lifecycle.state}
 	a.reader = newReaderSurface(readerSurfaceConfig{
 		theme: theme, glyphs: glyphs, syntax: a.syntax, stack: &a.stack, loop: a.loop,
 		tasks: a.tasks, status: a.status, message: a.message,
@@ -362,10 +372,10 @@ func (a *app) wireTranscript(transcript *transcriptView) {
 func (a *app) buildSessionPicker(theme kit.Theme, glyphs kit.Glyphs) {
 	a.sessions = newSessionBrowser(sessionBrowserConfig{browser: sessionBrowser{
 		runtime: a.runtime, workbench: a.workbench, queue: a.queue, replayPolicy: a.replayPolicy,
-		session: &a.session, tasks: a.tasks, status: a.status, stack: &a.stack, theme: theme, glyphs: glyphs,
-		clipboard: a.loop.Clipboard(), notify: a.message, observing: a.runs.observing, adoptCurrent: a.setActiveSession,
-		catalogChanged: func() { a.applySessionInvalidation(true, false) },
-	}, switchTo: a.switchSession})
+		session: &a.lifecycle.state, tasks: a.tasks, status: a.status, stack: &a.stack, theme: theme, glyphs: glyphs,
+		clipboard: a.loop.Clipboard(), notify: a.message, observing: a.runs.observing, adoptCurrent: func(session conversation.Session) { a.lifecycle.setActiveSession(session) },
+		catalogChanged: func() { a.lifecycle.applySessionInvalidation(true, false) },
+	}, switchTo: func(id string) { a.lifecycle.switchSession(id) }})
 }
 
 func (a *app) Draw(frame headless.Frame) {
@@ -440,7 +450,7 @@ func (a *app) dispatchPrompt(message authoring.Message) {
 		return
 	}
 	commandID := mutation.NewCommandID()
-	if _, err := a.queue.EnqueueCommand(commandID, a.session.current.ID, message, a.options); err != nil {
+	if _, err := a.queue.EnqueueCommand(commandID, a.lifecycle.state.current.ID, message, a.options); err != nil {
 		a.reportWorkbenchIssue(workbenchRunOutbox, err)
 		a.message("prompt submission blocked: " + err.Error())
 		return
@@ -464,7 +474,7 @@ func (a *app) sendNextQueuedIfBusy() {
 	if !a.runs.blocksAdmission() {
 		return
 	}
-	state := a.queue.State(a.session.current.ID)
+	state := a.queue.State(a.lifecycle.state.current.ID)
 	if len(state.Entries) == 0 {
 		return
 	}
@@ -491,3 +501,21 @@ func (a *app) message(label string) {
 func (a *app) terminalClosed() bool { return a.closed }
 
 func (a *app) dismissCompletion() { a.completion.Dismiss() }
+
+func (a *app) currentTranscript() *transcriptView { return a.transcript }
+
+// presentTranscript shows transcript in place of the current one, which it
+// returns for the caller to close once nothing refers to it.
+func (a *app) presentTranscript(transcript *transcriptView) *transcriptView {
+	previous := a.transcript
+	a.transcript = transcript
+	a.wireTranscript(transcript)
+	a.shell.SetTranscript(transcript)
+	return previous
+}
+
+// enterSessionHealth resets workbench health for a newly presented Session.
+func (a *app) enterSessionHealth() {
+	a.workbenchHealth.enterSession()
+	a.status.setProblem(a.workbenchHealth.problem())
+}

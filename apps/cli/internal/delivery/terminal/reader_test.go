@@ -275,14 +275,13 @@ func TestSameSessionProjectionReplacementRetiresALiveTranscriptReader(t *testing
 
 	operations := newOperationOwner(t.Context())
 	t.Cleanup(operations.Close)
-	application := &app{composer: testPromptComposer(t),
-		operations: operations,
-		session:    sessionState{current: conversation.Session{ID: "session"}},
-		runs:       &runs{execution: executionState{conversation: conversation.New()}},
-		reader:     &readerSurface{pane: reader, tasks: unattachedTasks(operations)},
-		prompts:    testInterruptPrompts(t),
+	lifecycle := &sessionLifecycle{
+		state:   sessionState{current: conversation.Session{ID: "session"}},
+		runs:    &runs{execution: executionState{conversation: conversation.New()}},
+		reader:  &readerSurface{pane: reader, tasks: unattachedTasks(operations)},
+		prompts: testInterruptPrompts(t),
 	}
-	application.prepareSessionProjectionReplacement(conversation.Session{ID: "session"}, conversation.New())
+	lifecycle.prepareSessionProjectionReplacement(conversation.Session{ID: "session"}, conversation.New())
 
 	if source.released != 1 {
 		t.Fatalf("live reader source released %d times, want 1", source.released)
@@ -295,15 +294,15 @@ func TestSameSessionProjectionReplacementPreservesAStaticReader(t *testing.T) {
 	reader.Open(readerTarget{document: readerDocument{Title: "authoritative runtime document"}})
 
 	goal := &readerQuery{status: "loading session goal"}
-	application := &app{composer: testPromptComposer(t),
-		session: sessionState{current: conversation.Session{ID: "session"}},
+	lifecycle := &sessionLifecycle{
+		state:   sessionState{current: conversation.Session{ID: "session"}},
 		runs:    &runs{execution: executionState{conversation: conversation.New()}},
 		reader:  &readerSurface{pane: reader, shown: goal},
 		prompts: testInterruptPrompts(t),
 	}
-	application.prepareSessionProjectionReplacement(conversation.Session{ID: "session"}, conversation.New())
+	lifecycle.prepareSessionProjectionReplacement(conversation.Session{ID: "session"}, conversation.New())
 
-	if application.reader.shown != goal {
+	if lifecycle.reader.shown != goal {
 		t.Fatal("same-session replacement dismissed a static runtime reader")
 	}
 }

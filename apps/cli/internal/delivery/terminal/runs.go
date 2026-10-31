@@ -20,8 +20,13 @@ type runLink interface {
 	terminalClosed() bool
 	dismissCompletion()
 	raiseAttention(signal attentionSignal)
-	refreshInvalidatedSession(settlementFence bool)
 	refreshOpenTimeline()
+}
+
+// runSession is what Run execution asks of the Session lifecycle: re-read the
+// presented Session, or replace its projection after a replay gap.
+type runSession interface {
+	refreshInvalidatedSession(settlementFence bool)
 	reconcileRunSnapshot(snapshot conversation.SessionSnapshot, stream conversation.SegmentStream) error
 }
 
@@ -42,6 +47,7 @@ type runs struct {
 	setProgress  func(term.Progress)
 	report       func(workbenchConcern, error)
 	link         runLink
+	sessions     runSession
 
 	transcript  func() *transcriptView
 	status      *statusView

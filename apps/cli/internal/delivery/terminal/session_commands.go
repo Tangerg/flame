@@ -312,134 +312,134 @@ func (b *sessionBrowser) deleteSessionFromCenter(id string) {
 	}
 }
 
-func (a *app) NewSession() {
-	a.startSessionInWorkspace(a.session.current.Workspace.Path)
+func (l *sessionLifecycle) NewSession() {
+	l.startSessionInWorkspace(l.state.current.Workspace.Path)
 }
 
-func (a *app) RenameSession(title string) {
-	if a.runs.observing() {
-		a.message("finish or cancel the current run before renaming the session")
+func (l *sessionLifecycle) RenameSession(title string) {
+	if l.runs.observing() {
+		l.root.message("finish or cancel the current run before renaming the session")
 		return
 	}
 	title = strings.TrimSpace(title)
 	if title == "" {
-		a.message("/rename needs a non-empty title")
+		l.root.message("/rename needs a non-empty title")
 		return
 	}
-	target := a.session.current
-	a.runSessionChange("renaming session",
+	target := l.state.current
+	l.runSessionChange("renaming session",
 		func(ctx context.Context) (conversation.Session, error) {
-			return a.runtime.UpdateSession(ctx, conversation.UpdateSession{
+			return l.runtime.UpdateSession(ctx, conversation.UpdateSession{
 				SessionID: target.ID, Title: &title, ExpectedRevision: target.Revision,
 			})
 		},
 		func(updated conversation.Session) error {
-			a.setActiveSession(updated)
-			a.message("renamed session to " + updated.Title)
+			l.setActiveSession(updated)
+			l.root.message("renamed session to " + updated.Title)
 			return nil
 		},
 	)
 }
 
-func (a *app) ForkSession(title string) {
-	source := a.session.current.ID
-	a.runSessionChange("forking session",
+func (l *sessionLifecycle) ForkSession(title string) {
+	source := l.state.current.ID
+	l.runSessionChange("forking session",
 		func(ctx context.Context) (conversation.SessionSnapshot, error) {
-			forked, err := a.runtime.ForkSession(ctx, conversation.ForkSession{SessionID: source, Title: strings.TrimSpace(title)})
+			forked, err := l.runtime.ForkSession(ctx, conversation.ForkSession{SessionID: source, Title: strings.TrimSpace(title)})
 			if err != nil {
 				return conversation.SessionSnapshot{}, err
 			}
-			return a.readSessionAfterMutation(ctx, forked.ID)
+			return l.readSessionAfterMutation(ctx, forked.ID)
 		},
-		func(snapshot conversation.SessionSnapshot) error { return a.installSnapshot(snapshot) },
+		func(snapshot conversation.SessionSnapshot) error { return l.installSnapshot(snapshot) },
 	)
 }
 
-func (a *app) forkSessionFromRun(runID string) {
-	source := a.session.current.ID
+func (l *sessionLifecycle) forkSessionFromRun(runID string) {
+	source := l.state.current.ID
 	short := shortIdentity(runID)
-	a.runSessionChange("forking session from "+short,
+	l.runSessionChange("forking session from "+short,
 		func(ctx context.Context) (conversation.SessionSnapshot, error) {
-			forked, err := a.runtime.ForkSession(ctx, conversation.ForkSession{
+			forked, err := l.runtime.ForkSession(ctx, conversation.ForkSession{
 				SessionID: source, FromRunID: runID, Title: "Fork from " + short,
 			})
 			if err != nil {
 				return conversation.SessionSnapshot{}, err
 			}
-			return a.readSessionAfterMutation(ctx, forked.ID)
+			return l.readSessionAfterMutation(ctx, forked.ID)
 		},
-		func(snapshot conversation.SessionSnapshot) error { return a.installSnapshot(snapshot) },
+		func(snapshot conversation.SessionSnapshot) error { return l.installSnapshot(snapshot) },
 	)
 }
 
-func (a *app) switchSession(id string) {
-	if id == a.session.current.ID {
-		a.message("already in " + displayTitle(a.session.current))
+func (l *sessionLifecycle) switchSession(id string) {
+	if id == l.state.current.ID {
+		l.root.message("already in " + displayTitle(l.state.current))
 		return
 	}
-	a.runSessionChange("loading session",
-		func(ctx context.Context) (conversation.SessionSnapshot, error) { return a.runtime.GetSession(ctx, id) },
-		func(snapshot conversation.SessionSnapshot) error { return a.installSnapshot(snapshot) },
+	l.runSessionChange("loading session",
+		func(ctx context.Context) (conversation.SessionSnapshot, error) { return l.runtime.GetSession(ctx, id) },
+		func(snapshot conversation.SessionSnapshot) error { return l.installSnapshot(snapshot) },
 	)
 }
 
-func (a *app) runSessionChange[T any](label string, work func(context.Context) (T, error), apply func(T) error) {
-	a.runSessionChangeWithDraftDisposition(label, preserveSourceDraft, work, apply)
+func (l *sessionLifecycle) runSessionChange[T any](label string, work func(context.Context) (T, error), apply func(T) error) {
+	l.runSessionChangeWithDraftDisposition(label, preserveSourceDraft, work, apply)
 }
 
-func (a *app) runSessionChangeWithDraftDisposition[T any](
+func (l *sessionLifecycle) runSessionChangeWithDraftDisposition[T any](
 	label string,
 	disposition sourceDraftDisposition,
 	work func(context.Context) (T, error),
 	apply func(T) error,
 ) {
-	if a.runs.observing() {
-		a.message("finish or cancel the current run before changing sessions")
+	if l.runs.observing() {
+		l.root.message("finish or cancel the current run before changing sessions")
 		return
 	}
-	if a.runs.cancelPending() {
-		a.message("wait for runtime cancellation to finish")
+	if l.runs.cancelPending() {
+		l.root.message("wait for runtime cancellation to finish")
 		return
 	}
-	if a.operations.Active(sessionChangeOperation) {
-		a.message("wait for the current session change to finish")
+	if l.tasks.operations.Active(sessionChangeOperation) {
+		l.root.message("wait for the current session change to finish")
 		return
 	}
-	if a.operations.Active(sessionCenterOperation) {
-		a.message("wait for the current session action to finish")
+	if l.tasks.operations.Active(sessionCenterOperation) {
+		l.root.message("wait for the current session action to finish")
 		return
 	}
-	a.operations.Cancel(pickerCatalogOperation)
-	a.sessions.dialog.Dismiss()
-	baseline, _, err := a.composer.draft()
+	l.tasks.operations.Cancel(pickerCatalogOperation)
+	l.sessions.dialog.Dismiss()
+	baseline, _, err := l.composer.draft()
 	if err != nil {
-		a.message(label + " failed: " + err.Error())
+		l.root.message(label + " failed: " + err.Error())
 		return
 	}
-	if err := a.composer.saveDraft(baseline); err != nil {
-		a.reportWorkbenchIssue(workbenchDraft, err)
-		a.message("session change blocked: save session draft: " + err.Error())
+	if err := l.composer.saveDraft(baseline); err != nil {
+		l.report(workbenchDraft, err)
+		l.root.message("session change blocked: save session draft: " + err.Error())
 		return
 	}
-	a.reportWorkbenchIssue(workbenchDraft, nil)
-	a.session.draftTransition = &sessionDraftTransition{
-		sourceSessionID: a.session.current.ID,
+	l.report(workbenchDraft, nil)
+	l.state.draftTransition = &sessionDraftTransition{
+		sourceSessionID: l.state.current.ID,
 		baseline:        baseline,
 		disposition:     disposition,
 	}
-	a.message(label)
-	if !a.tasks.session(sessionChangeOperation, false, work, func(result T, err error) {
-		defer a.settleSessionChange()
+	l.root.message(label)
+	if !l.tasks.session(sessionChangeOperation, false, work, func(result T, err error) {
+		defer l.settleSessionChange()
 		if err != nil {
-			a.message(label + " failed: " + err.Error())
+			l.root.message(label + " failed: " + err.Error())
 			return
 		}
 		if err := apply(result); err != nil {
-			a.message(label + " failed: " + err.Error())
+			l.root.message(label + " failed: " + err.Error())
 		}
 	}) {
-		a.settleSessionChange()
-		a.message("wait for the current session change to finish")
+		l.settleSessionChange()
+		l.root.message("wait for the current session change to finish")
 	}
 }
 
@@ -447,23 +447,23 @@ func (a *app) runSessionChangeWithDraftDisposition[T any](
 // retaining the composer state authored during it. Runtime mutations that
 // completed before cancellation remain discoverable through the session list;
 // the terminal only withdraws its unfinished local transition.
-func (a *app) cancelSessionChange() bool {
-	if !a.operations.Active(sessionChangeOperation) {
+func (l *sessionLifecycle) cancelSessionChange() bool {
+	if !l.tasks.operations.Active(sessionChangeOperation) {
 		return false
 	}
-	a.operations.Cancel(sessionChangeOperation)
-	a.message("session change canceled")
-	a.settleSessionChange()
+	l.tasks.operations.Cancel(sessionChangeOperation)
+	l.root.message("session change canceled")
+	l.settleSessionChange()
 	return true
 }
 
 // settleSessionChange closes the terminal-side draft transaction and resumes
 // any authoritative refresh that runtime notifications deferred behind it.
-func (a *app) settleSessionChange() {
-	a.session.draftTransition = nil
-	if a.session.invalidated && a.runs.conversation().Phase() != conversation.Running &&
-		!a.runs.following() && !a.runs.cancelPending() {
-		a.refreshInvalidatedSession(false)
+func (l *sessionLifecycle) settleSessionChange() {
+	l.state.draftTransition = nil
+	if l.state.invalidated && l.runs.conversation().Phase() != conversation.Running &&
+		!l.runs.following() && !l.runs.cancelPending() {
+		l.refreshInvalidatedSession(false)
 	}
 }
 
@@ -544,16 +544,16 @@ type sessionInstallation struct {
 	rollbackRecovery *workbench.SessionRollbackRecovery
 }
 
-func (a *app) prepareSessionInstallation(snapshot conversation.SessionSnapshot) (sessionInstallation, error) {
-	attachments, err := attachment.New(authoringDirectory(a.localDirectory, snapshot.Session.Workspace.Path))
+func (l *sessionLifecycle) prepareSessionInstallation(snapshot conversation.SessionSnapshot) (sessionInstallation, error) {
+	attachments, err := attachment.New(authoringDirectory(l.localDirectory, snapshot.Session.Workspace.Path))
 	if err != nil {
 		return sessionInstallation{}, fmt.Errorf("session attachments: %w", err)
 	}
-	projection, err := a.projectSession(snapshot, nil)
+	projection, err := l.projectSession(snapshot, nil)
 	if err != nil {
 		return sessionInstallation{}, fmt.Errorf("install session: %w", err)
 	}
-	draft, recovery, err := a.prepareDestinationDraft(snapshot.Session)
+	draft, recovery, err := l.prepareDestinationDraft(snapshot.Session)
 	if err != nil {
 		projection.close()
 		return sessionInstallation{}, err
@@ -564,54 +564,54 @@ func (a *app) prepareSessionInstallation(snapshot conversation.SessionSnapshot) 
 	}, nil
 }
 
-func (a *app) prepareDestinationDraft(
+func (l *sessionLifecycle) prepareDestinationDraft(
 	session conversation.Session,
 ) (authoring.Message, *workbench.SessionRollbackRecovery, error) {
-	current, _, err := a.composer.draft()
+	current, _, err := l.composer.draft()
 	if err != nil {
 		return authoring.Message{}, nil, err
 	}
-	if saveDraftErr := a.composer.saveDraft(current); saveDraftErr != nil {
+	if saveDraftErr := l.composer.saveDraft(current); saveDraftErr != nil {
 		return authoring.Message{}, nil, fmt.Errorf("save source session draft: %w", saveDraftErr)
 	}
-	if activateSessionStateErr := a.workbench.ActivateSessionState(session.ID); activateSessionStateErr != nil {
+	if activateSessionStateErr := l.workbench.ActivateSessionState(session.ID); activateSessionStateErr != nil {
 		return authoring.Message{}, nil, fmt.Errorf("activate destination session state: %w", activateSessionStateErr)
 	}
-	draft, _ := a.workbench.Draft(session.ID)
-	if rememberWorkspaceErr := a.workbench.RememberWorkspace(session.Workspace.Path); rememberWorkspaceErr != nil {
+	draft, _ := l.workbench.Draft(session.ID)
+	if rememberWorkspaceErr := l.workbench.RememberWorkspace(session.Workspace.Path); rememberWorkspaceErr != nil {
 		return authoring.Message{}, nil, fmt.Errorf("remember workspace: %w", rememberWorkspaceErr)
 	}
-	transition := a.session.draftTransition
+	transition := l.state.draftTransition
 	if transition != nil {
-		if _, transitionErr := transition.resolve(a.workbench, session.ID, draft, current); transitionErr != nil {
+		if _, transitionErr := transition.resolve(l.workbench, session.ID, draft, current); transitionErr != nil {
 			return authoring.Message{}, nil, transitionErr
 		}
 	}
 	// Draft transfer is the last separate preparation that can abort projection
 	// installation. Activation then materializes rollback recovery and retires
 	// its one-time report in the same durable Session state replacement.
-	activation, err := a.workbench.ActivateSessionDraft(session.ID, authoring.Message{})
+	activation, err := l.workbench.ActivateSessionDraft(session.ID, authoring.Message{})
 	if err != nil {
 		return authoring.Message{}, nil, fmt.Errorf("activate destination session draft: %w", err)
 	}
 	return activation.Draft, activation.Rollback, nil
 }
 
-func (a *app) retireSessionState(sessionID string) (int, error) {
-	if a.workbench != nil {
-		if err := a.workbench.RetireSessionState(sessionID); err != nil {
+func (l *sessionLifecycle) retireSessionState(sessionID string) (int, error) {
+	if l.workbench != nil {
+		if err := l.workbench.RetireSessionState(sessionID); err != nil {
 			discarded := 0
-			if a.queue != nil {
-				before := len(a.queue.Snapshot(sessionID).Entries)
-				err = errors.Join(err, a.queue.Restore(sessionID))
-				discarded = before - len(a.queue.Snapshot(sessionID).Entries)
+			if l.queue != nil {
+				before := len(l.queue.Snapshot(sessionID).Entries)
+				err = errors.Join(err, l.queue.Restore(sessionID))
+				discarded = before - len(l.queue.Snapshot(sessionID).Entries)
 			}
 			return discarded, fmt.Errorf("discard session authoring state: %w", err)
 		}
 	}
 	discarded := 0
-	if a.queue != nil {
-		discarded = a.queue.ForgetSession(sessionID)
+	if l.queue != nil {
+		discarded = l.queue.ForgetSession(sessionID)
 	}
 	return discarded, nil
 }
@@ -619,9 +619,9 @@ func (a *app) retireSessionState(sessionID string) (int, error) {
 // readSessionAfterMutation converges the authoritative projection without
 // repeating a mutation that may already be durable. Its caller owns cancellation,
 // just as the observer owns live Run recovery.
-func (a *app) readSessionAfterMutation(ctx context.Context, sessionID string) (conversation.SessionSnapshot, error) {
+func (l *sessionLifecycle) readSessionAfterMutation(ctx context.Context, sessionID string) (conversation.SessionSnapshot, error) {
 	for failures := 0; ; {
-		snapshot, err := a.runtime.GetSession(ctx, sessionID)
+		snapshot, err := l.runtime.GetSession(ctx, sessionID)
 		if err == nil {
 			return snapshot, nil
 		}
@@ -639,57 +639,53 @@ func (a *app) readSessionAfterMutation(ctx context.Context, sessionID string) (c
 	}
 }
 
-func (s sessionInstallation) apply(a *app) {
-	previousSessionID := a.session.current.ID
-	previousWorkspace := a.session.current.Workspace
-	a.prepareSessionProjectionReplacement(s.snapshot.Session, s.projection.conversation)
-	a.cancelPluginCommands()
-	a.operations.CancelScope(sessionOperationScope)
-	a.runs.dropStream()
-	a.completion.Dismiss()
-	previousTranscript := a.transcript
-	a.setActiveSession(s.snapshot.Session)
-	a.queue.ReleaseDispatch(previousSessionID)
-	a.runs.switchProjection(s.projection.conversation)
-	a.composer.attachments = s.attachments
-	a.transcript = s.projection.transcript
-	a.wireTranscript(s.projection.transcript)
-	a.composer.restoreComposer(s.draft)
-	a.composer.drafts.adopt(a.session.current.ID, s.draft)
-	a.activity.Reset()
-	a.status.Reset()
-	a.workbenchHealth.enterSession()
-	a.status.setProblem(a.workbenchHealth.problem())
-	a.header.SetUsage(s.projection.conversation.Usage())
-	a.prompt.SetOptions(a.displayOptions())
-	a.prompt.SetBusy(s.projection.conversation.Busy())
-	a.shell.SetTranscript(s.projection.transcript)
-	a.runs.syncQueue()
+// install presents an installation as the current Session.
+func (l *sessionLifecycle) install(s sessionInstallation) {
+	previousSessionID := l.state.current.ID
+	previousWorkspace := l.state.current.Workspace
+	l.prepareSessionProjectionReplacement(s.snapshot.Session, s.projection.conversation)
+	l.root.cancelPluginCommands()
+	l.tasks.operations.CancelScope(sessionOperationScope)
+	l.runs.dropStream()
+	l.root.dismissCompletion()
+	l.setActiveSession(s.snapshot.Session)
+	l.queue.ReleaseDispatch(previousSessionID)
+	l.runs.switchProjection(s.projection.conversation)
+	l.composer.attachments = s.attachments
+	previousTranscript := l.root.presentTranscript(s.projection.transcript)
+	l.composer.restoreComposer(s.draft)
+	l.composer.drafts.adopt(l.state.current.ID, s.draft)
+	l.activity.Reset()
+	l.status.Reset()
+	l.root.enterSessionHealth()
+	l.header.SetUsage(s.projection.conversation.Usage())
+	l.prompt.SetOptions(l.root.displayOptions())
+	l.prompt.SetBusy(s.projection.conversation.Busy())
+	l.runs.syncQueue()
 	previousTranscript.Close()
-	a.listenForSearch()
-	a.setWindowTitle()
-	a.restoreActivity(s.snapshot)
-	a.runs.restoreSessionOutbox()
-	if a.session.current.Workspace != previousWorkspace {
-		a.followRuntimeChanges()
+	l.root.listenForSearch()
+	l.restoreActivity(s.snapshot)
+	l.runs.restoreSessionOutbox()
+	if l.state.current.Workspace != previousWorkspace {
+		l.root.followRuntimeChanges()
 	}
-	if a.runs.conversation().Phase() == conversation.Idle {
-		a.message("session · " + displayTitle(s.snapshot.Session))
-		if a.session.invalidated {
-			a.refreshInvalidatedSession(false)
+	if l.runs.conversation().Phase() == conversation.Idle {
+		l.root.message("session · " + displayTitle(s.snapshot.Session))
+		if l.state.invalidated {
+			l.refreshInvalidatedSession(false)
 		}
 	}
-	a.steering.restoreSteerReceipts(s.snapshot)
+	l.steering.restoreSteerReceipts(s.snapshot)
 }
 
-func (a *app) installSnapshot(snapshot conversation.SessionSnapshot) error {
-	installation, err := a.prepareSessionInstallation(snapshot)
+func (l *sessionLifecycle) installSnapshot(snapshot conversation.SessionSnapshot) error {
+	installation, err := l.prepareSessionInstallation(snapshot)
 	if err != nil {
 		return err
 	}
-	installation.apply(a)
+	l.install(installation)
 	if installation.rollbackRecovery != nil {
-		a.message(rollbackRecoveryNotice(*installation.rollbackRecovery))
+		l.root.message(rollbackRecoveryNotice(*installation.rollbackRecovery))
 	}
 	return nil
 }

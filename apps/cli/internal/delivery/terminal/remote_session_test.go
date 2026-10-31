@@ -413,7 +413,7 @@ func cancelFixtureSession(t *testing.T, backend *runtimefixture.Runtime, session
 }
 
 func TestRemoteWorkspaceInputsAndPickerPreserveRuntimePaths(t *testing.T) {
-	application := &app{composer: testPromptComposer(t), localDirectory: t.TempDir(), session: sessionState{current: conversation.Session{
+	application := &sessionLifecycle{composer: testPromptComposer(t), localDirectory: t.TempDir(), state: sessionState{current: conversation.Session{
 		Workspace: workspace.Workspace{Path: `C:\remote\current`},
 	}}}
 	for _, path := range []string{`D:\remote\new`, `\\server\share\project`, "/remote/unavailable", "~/remote", "../project"} {

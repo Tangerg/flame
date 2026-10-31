@@ -20,7 +20,7 @@ func (a *app) followRuntimeChanges() {
 	// The count describes the workspace the cancelled monitor watched; the new
 	// workspace has no count until its own monitor reads one, if it ever does.
 	a.header.SetWorkspaceChanges(0)
-	workspacePath := a.session.current.Workspace.Path
+	workspacePath := a.lifecycle.state.current.Workspace.Path
 	var repository WorkspaceChanges
 	if a.runtimeSupports(protocol.FeatureGit) {
 		repository = a.workspaces
@@ -38,7 +38,7 @@ func (a *app) followRuntimeChanges() {
 			resources:          a.observedRuntimeResources(),
 			applyFiles: func(changes []workspace.Change) error {
 				return post(ctx, dispatcher, func() {
-					if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Path != workspacePath {
+					if !a.operations.Current(lease) || a.closed || a.lifecycle.state.current.Workspace.Path != workspacePath {
 						return
 					}
 					a.applyWorkspaceChanges(changes)
@@ -46,7 +46,7 @@ func (a *app) followRuntimeChanges() {
 			},
 			applyEvent: func(event changefeed.Event) error {
 				return post(ctx, dispatcher, func() {
-					if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Path != workspacePath {
+					if !a.operations.Current(lease) || a.closed || a.lifecycle.state.current.Workspace.Path != workspacePath {
 						return
 					}
 					a.applyRuntimeInvalidation(event)
@@ -54,7 +54,7 @@ func (a *app) followRuntimeChanges() {
 			},
 			applyResync: func(topics []protocol.RuntimeTopic) error {
 				return post(ctx, dispatcher, func() {
-					if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Path != workspacePath {
+					if !a.operations.Current(lease) || a.closed || a.lifecycle.state.current.Workspace.Path != workspacePath {
 						return
 					}
 					a.applyRuntimeResync(topics)
@@ -63,7 +63,7 @@ func (a *app) followRuntimeChanges() {
 		}
 		if err := monitor.run(ctx); err != nil && context.Cause(ctx) == nil {
 			_ = post(ctx, dispatcher, func() {
-				if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Path != workspacePath {
+				if !a.operations.Current(lease) || a.closed || a.lifecycle.state.current.Workspace.Path != workspacePath {
 					return
 				}
 				a.message("runtime change observation stopped: " + err.Error())

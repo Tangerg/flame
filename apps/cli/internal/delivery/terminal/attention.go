@@ -96,7 +96,7 @@ func (a *app) raiseAttention(signal attentionSignal) {
 }
 
 func (a *app) setWindowTitle() {
-	title := "flame — " + displayTitle(a.session.current)
+	title := "flame — " + displayTitle(a.lifecycle.state.current)
 	if marker := a.attention.Marker(); marker != "" {
 		title += " · " + marker
 	}

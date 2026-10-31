@@ -36,8 +36,8 @@ func (a *app) buildModelPicker(theme kit.Theme, glyphs kit.Glyphs) {
 }
 
 func (a *app) selectSessionModel(model protocol.Model) {
-	sessionID := a.session.current.ID
-	a.runSessionChange("selecting model",
+	sessionID := a.lifecycle.state.current.ID
+	a.lifecycle.runSessionChange("selecting model",
 		func(ctx context.Context) (conversation.Session, error) {
 			latest, err := a.runtime.GetSession(ctx, sessionID)
 			if err != nil {
@@ -53,7 +53,7 @@ func (a *app) selectSessionModel(model protocol.Model) {
 			// The Session now owns the choice. A retained launch override would
 			// outrank it here and follow the user into every other Session.
 			a.options.Provider, a.options.Model, a.options.ReasoningEffort = "", "", ""
-			a.setActiveSession(updated)
+			a.lifecycle.setActiveSession(updated)
 			a.syncOptions("model · " + updated.Provider + "/" + updated.Model)
 			return nil
 		},

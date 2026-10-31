@@ -41,7 +41,7 @@ func (s *streamFollower) followAttachedSession() {
 			active = false
 			return
 		}
-		reconcileErr = s.runs.link.reconcileRunSnapshot(recovered.Snapshot, recovered.Stream)
+		reconcileErr = s.runs.sessions.reconcileRunSnapshot(recovered.Snapshot, recovered.Stream)
 	})
 	if postErr != nil || reconcileErr != nil {
 		s.postFailure(errors.Join(postErr, reconcileErr))
@@ -357,7 +357,7 @@ func (s *streamFollower) recover(runID string, cause error) recoveryAttempt {
 			active = false
 			return
 		}
-		reconcileErr = s.runs.link.reconcileRunSnapshot(recovered.Snapshot, recovered.Stream)
+		reconcileErr = s.runs.sessions.reconcileRunSnapshot(recovered.Snapshot, recovered.Stream)
 	})
 	if postErr != nil || reconcileErr != nil {
 		s.postFailure(errors.Join(postErr, reconcileErr))
