@@ -100,7 +100,7 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 	application := &app{
 		runtimeProfile: &profile,
 		goals:          new(goalServiceStub),
-		skills:         newSkillServiceStub(),
+		skills:         &skillScreens{service: newSkillServiceStub()},
 		mcp:            &mcpScreens{service: newMCPServiceStub()},
 	}
 	checks := []struct {

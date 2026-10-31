@@ -11,20 +11,22 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-func (a *app) ShowHooks() {
-	if a.hooks == nil {
-		a.message("this runtime composition has no hook service")
-		return
-	}
-	a.reader.show(a.hooksReaderQuery())
+// hookScreens audits lifecycle hooks and changes project hook trust.
+type hookScreens struct {
+	screenHost
+	service Hooks
 }
 
-func (a *app) hooksReaderQuery() *readerQuery {
-	workspacePath := a.session.current.Workspace.Path
+func (h *hookScreens) ShowHooks() {
+	h.reader.show(h.hooksReaderQuery())
+}
+
+func (h *hookScreens) hooksReaderQuery() *readerQuery {
+	workspacePath := h.session.current.Workspace.Path
 	return &readerQuery{
 		status: "loading lifecycle hooks", follows: followsTopic(protocol.TopicHooksChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
-			catalog, err := a.hooks.Catalog(ctx, workspacePath)
+			catalog, err := h.service.Catalog(ctx, workspacePath)
 			if err != nil {
 				return readerDocument{}, err
 			}
@@ -66,21 +68,18 @@ func hooksDocument(workspacePath string, catalog workspace.HookCatalog) readerDo
 	return readerDocument{Title: "Lifecycle hooks", Detail: detail, Sections: sections}
 }
 
-func (a *app) PrepareHookTrust(trusted bool) error {
-	if a.hooks == nil {
-		return errors.New("this runtime composition has no hook service")
-	}
-	workspacePath := a.session.current.Workspace.Path
-	a.status.note("loading project hook trust")
-	if !a.tasks.session(hookOperation, false,
-		func(ctx context.Context) (workspace.HookCatalog, error) { return a.hooks.Catalog(ctx, workspacePath) },
+func (h *hookScreens) PrepareHookTrust(trusted bool) error {
+	workspacePath := h.session.current.Workspace.Path
+	h.status.note("loading project hook trust")
+	if !h.tasks.session(hookOperation, false,
+		func(ctx context.Context) (workspace.HookCatalog, error) { return h.service.Catalog(ctx, workspacePath) },
 		func(catalog workspace.HookCatalog, err error) {
 			if err != nil {
-				a.message("load project hooks failed: " + err.Error())
+				h.message("load project hooks failed: " + err.Error())
 				return
 			}
 			if catalog.ProjectRoot == "" {
-				a.message("this workspace has no project root to trust")
+				h.message("this workspace has no project root to trust")
 				return
 			}
 			if catalog.ProjectTrusted == trusted {
@@ -88,14 +87,14 @@ func (a *app) PrepareHookTrust(trusted bool) error {
 				if trusted {
 					state = "trusted"
 				}
-				a.message("project hooks are already " + state + " · " + catalog.ProjectRoot)
+				h.message("project hooks are already " + state + " · " + catalog.ProjectRoot)
 				return
 			}
 			title, question, action := "Revoke project hooks", "Disable project hooks from "+catalog.ProjectRoot+"?", "Revoke trust"
 			if trusted {
 				title, question, action = "Trust project hooks", "Allow reviewed project hooks from "+catalog.ProjectRoot+" to execute?", "Trust hooks"
 			}
-			a.confirmAction(title, question, action, func() { a.setHookTrust(workspacePath, catalog.ProjectRoot, trusted) })
+			h.confirm(title, question, action, "", func() { h.setHookTrust(workspacePath, catalog.ProjectRoot, trusted) })
 		},
 	) {
 		return errors.New("another hook operation is running")
@@ -103,27 +102,27 @@ func (a *app) PrepareHookTrust(trusted bool) error {
 	return nil
 }
 
-func (a *app) setHookTrust(workspacePath, projectRoot string, trusted bool) {
-	presentation := a.session.context
-	a.status.note("updating project hook trust")
-	if !a.tasks.admissionMutation(hookOperation, false,
+func (h *hookScreens) setHookTrust(workspacePath, projectRoot string, trusted bool) {
+	presentation := h.session.context
+	h.status.note("updating project hook trust")
+	if !h.tasks.admissionMutation(hookOperation, false,
 		func(ctx context.Context) (workspace.HookCatalog, error) {
-			if err := a.hooks.SetProjectTrust(ctx, projectRoot, trusted); err != nil {
+			if err := h.service.SetProjectTrust(ctx, projectRoot, trusted); err != nil {
 				return workspace.HookCatalog{}, err
 			}
-			return a.hooks.Catalog(ctx, workspacePath)
+			return h.service.Catalog(ctx, workspacePath)
 		},
 		func(catalog workspace.HookCatalog, err error) {
 			if err != nil {
-				a.message("update project hook trust failed: " + err.Error())
+				h.message("update project hook trust failed: " + err.Error())
 				return
 			}
-			if a.session.context.current(presentation) {
-				a.reader.open(a.hooksReaderQuery(), hooksDocument(workspacePath, catalog))
+			if h.session.context.current(presentation) {
+				h.reader.open(h.hooksReaderQuery(), hooksDocument(workspacePath, catalog))
 			}
-			a.status.note("project hook trust updated")
+			h.status.note("project hook trust updated")
 		},
 	) {
-		a.message("another hook operation is running")
+		h.message("another hook operation is running")
 	}
 }

@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/program"
@@ -38,5 +39,27 @@ func (a *app) buildScreens(cfg appConfig) {
 	host := a.screenHost()
 	if cfg.mcp != nil {
 		a.mcp = &mcpScreens{screenHost: host, service: cfg.mcp, setApprovalRule: a.setApprovalRule}
+	}
+	if cfg.skills != nil {
+		a.skills = &skillScreens{screenHost: host, service: cfg.skills}
+	}
+	if cfg.hooks != nil {
+		a.hooks = &hookScreens{screenHost: host, service: cfg.hooks}
+	}
+	if cfg.diagnosticTools != nil {
+		a.diagnosticTools = &diagnosticScreens{screenHost: host, service: cfg.diagnosticTools}
+	}
+	if cfg.plugins != nil {
+		a.plugins = &pluginScreens{screenHost: host, service: cfg.plugins, workbench: a.workbench, viewsChanged: a.registerCommands}
+	}
+	if cfg.authoringContext != nil {
+		a.authoringContext = &agentDocumentScreens{screenHost: host, service: cfg.authoringContext}
+	}
+}
+
+// loadPluginViews reads the installed terminal views when installations change.
+func (a *app) loadPluginViews(affected bool) {
+	if affected && a.plugins != nil && a.runtimeSupports(protocol.FeaturePlugins) {
+		a.plugins.loadPluginViews()
 	}
 }

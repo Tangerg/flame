@@ -7,14 +7,16 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-func (a *app) ShowAgentDocuments() {
-	if a.authoringContext == nil {
-		a.message("this runtime composition has no authoring context service")
-		return
-	}
-	workspace := a.session.current.Workspace.Path
-	a.reader.show(&readerQuery{status: "loading agent documents", read: func(ctx context.Context) (readerDocument, error) {
-		documents, err := a.authoringContext.Documents(ctx, workspace)
+// agentDocumentScreens shows the AGENTS.md documents that apply to the workspace.
+type agentDocumentScreens struct {
+	screenHost
+	service AuthoringContext
+}
+
+func (c *agentDocumentScreens) ShowAgentDocuments() {
+	workspace := c.session.current.Workspace.Path
+	c.reader.show(&readerQuery{status: "loading agent documents", read: func(ctx context.Context) (readerDocument, error) {
+		documents, err := c.service.Documents(ctx, workspace)
 		if err != nil {
 			return readerDocument{}, err
 		}

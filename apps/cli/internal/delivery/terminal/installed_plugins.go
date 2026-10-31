@@ -8,15 +8,15 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-func (a *app) ShowPlugins() {
-	a.reader.show(a.pluginsReaderQuery())
+func (p *pluginScreens) ShowPlugins() {
+	p.reader.show(p.pluginsReaderQuery())
 }
 
-func (a *app) pluginsReaderQuery() *readerQuery {
+func (p *pluginScreens) pluginsReaderQuery() *readerQuery {
 	return &readerQuery{
 		status: "loading installed plugins", follows: followsTopic(protocol.TopicPluginsChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
-			installations, err := a.plugins.ListPlugins(ctx)
+			installations, err := p.service.ListPlugins(ctx)
 			if err != nil {
 				return readerDocument{}, err
 			}

@@ -26,7 +26,7 @@ func (a *app) applyRuntimeInvalidation(event changefeed.Event) {
 		return
 	}
 	a.reader.follow(event)
-	a.refreshPluginViews(event.Type == protocol.RuntimePluginsChanged)
+	a.loadPluginViews(event.Type == protocol.RuntimePluginsChanged)
 	a.followModelChanges(event.Type == protocol.RuntimeModelsChanged)
 	a.applySessionInvalidation(
 		invalidatesSessionCatalog(event),
@@ -36,7 +36,7 @@ func (a *app) applyRuntimeInvalidation(event changefeed.Event) {
 
 func (a *app) applyRuntimeResync(topics []protocol.RuntimeTopic) {
 	a.reader.follow(changefeed.Event{Type: protocol.RuntimeResync, Topics: topics})
-	a.refreshPluginViews(slices.Contains(topics, protocol.TopicPluginsChanged))
+	a.loadPluginViews(slices.Contains(topics, protocol.TopicPluginsChanged))
 	a.followModelChanges(slices.Contains(topics, protocol.TopicModelsChanged))
 	a.applySessionInvalidation(
 		invalidatesSessionCatalog(changefeed.Event{Type: protocol.RuntimeResync, Topics: topics}),

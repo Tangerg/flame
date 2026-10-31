@@ -23,27 +23,29 @@ import (
 // an export.
 const maxPluginViewPages = 50
 
-// pluginViewState holds the terminal views installed packages declare. Each
-// view becomes a slash command; the open list remembers its form so a data
-// change re-reads the same rows.
-type pluginViewState struct {
-	views  []pluginview.View
-	open   string
-	form   map[string]string
-	dialog *kit.Dialog
+// pluginScreens shows installed plugins and the terminal views their releases
+// declare. Each view becomes a slash command; open and form name the listed
+// view and its form, so an action finds its row among the rows shown.
+type pluginScreens struct {
+	screenHost
+	service   Plugins
+	workbench *workbench.Store
+	// viewsChanged rebuilds the command catalog after the views change.
+	viewsChanged func()
+	views        []pluginview.View
+	open         string
+	form         map[string]string
+	dialog       *kit.Dialog
 }
 
-func (a *app) loadPluginViews() {
-	if a.plugins == nil || !a.runtimeSupports(protocol.FeaturePlugins) {
-		return
-	}
+func (p *pluginScreens) loadPluginViews() {
 	type loaded struct {
 		views    []pluginview.View
 		problems []error
 	}
-	a.tasks.application(pluginViewsOperation, true,
+	p.tasks.application(pluginViewsOperation, true,
 		func(ctx context.Context) (loaded, error) {
-			installations, err := a.plugins.ListPlugins(ctx)
+			installations, err := p.service.ListPlugins(ctx)
 			if err != nil {
 				return loaded{}, err
 			}
@@ -52,35 +54,29 @@ func (a *app) loadPluginViews() {
 		},
 		func(result loaded, err error) {
 			if err != nil {
-				a.message("plugin views: " + err.Error())
+				p.message("plugin views: " + err.Error())
 				return
 			}
 			for _, problem := range result.problems {
-				a.message(problem.Error())
+				p.message(problem.Error())
 			}
-			a.pluginViews.views = result.views
-			a.registerCommands()
+			p.views = result.views
+			p.viewsChanged()
 		},
 	)
 }
 
-// refreshPluginViews re-reads the declared views when installations change.
-func (a *app) refreshPluginViews(affected bool) {
-	if affected {
-		a.loadPluginViews()
-	}
-}
-
-func (a *app) registerPluginViewCommands() {
-	for _, view := range a.pluginViews.views {
+// registerViewCommands adds one command per view through add.
+func (p *pluginScreens) registerViewCommands(add func(owner string, descriptor extensions.CommandDescriptor, run func(string, func())) error) {
+	for _, view := range p.views {
 		descriptor := extensions.CommandDescriptor{Name: view.ID, Title: view.Title + " · " + pluginViewUsage(view), Category: commandCategoryExtensions, Arguments: extensions.OptionalArguments}
-		if err := a.commands.add(view.InstallationID, descriptor, func(argument string, accept func()) {
+		if err := add(view.InstallationID, descriptor, func(argument string, accept func()) {
 			accept()
-			if err := a.runPluginView(view, argument); err != nil {
-				a.message(err.Error())
+			if err := p.runPluginView(view, argument); err != nil {
+				p.message(err.Error())
 			}
-		}, nil); err != nil {
-			a.message(err.Error())
+		}); err != nil {
+			p.message(err.Error())
 		}
 	}
 }
@@ -97,21 +93,21 @@ func pluginViewUsage(view pluginview.View) string {
 	return strings.Join(actions, " · ")
 }
 
-func (a *app) pluginViewContext() pluginview.Context {
+func (p *pluginScreens) pluginViewContext() pluginview.Context {
 	zone, _ := timezone.Host()
-	return pluginview.Context{Workspace: a.session.current.Workspace.Path, TimeZone: zone}
+	return pluginview.Context{Workspace: p.session.current.Workspace.Path, TimeZone: zone}
 }
 
 // runPluginView lists the view, or runs the action the argument names first.
 // Remaining words fill the list's form fields in order, or name the row.
-func (a *app) runPluginView(view pluginview.View, argument string) error {
+func (p *pluginScreens) runPluginView(view pluginview.View, argument string) error {
 	words := strings.Fields(argument)
 	if len(words) > 0 {
 		if action, found := view.Action(words[0]); found {
-			return a.startPluginViewAction(view, action, strings.Join(words[1:], " "))
+			return p.startPluginViewAction(view, action, strings.Join(words[1:], " "))
 		}
 	}
-	fields, err := view.ListForm(a.pluginViewContext())
+	fields, err := view.ListForm(p.pluginViewContext())
 	if err != nil {
 		return err
 	}
@@ -125,21 +121,21 @@ func (a *app) runPluginView(view pluginview.View, argument string) error {
 			form[field.Path] = words[index]
 		}
 	}
-	a.showPluginView(view, form)
+	p.showPluginView(view, form)
 	return nil
 }
 
-func (a *app) showPluginView(view pluginview.View, form map[string]string) {
-	a.pluginViews.open, a.pluginViews.form = view.ID, form
-	a.reader.show(a.pluginViewReaderQuery(view, form))
+func (p *pluginScreens) showPluginView(view pluginview.View, form map[string]string) {
+	p.open, p.form = view.ID, form
+	p.reader.show(p.pluginViewReaderQuery(view, form))
 }
 
-func (a *app) pluginViewReaderQuery(view pluginview.View, form map[string]string) *readerQuery {
-	here := a.pluginViewContext()
+func (p *pluginScreens) pluginViewReaderQuery(view pluginview.View, form map[string]string) *readerQuery {
+	here := p.pluginViewContext()
 	return &readerQuery{
 		status: "loading " + strings.ToLower(view.Title), follows: followsTopic(protocol.TopicPluginDataChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
-			rows, err := a.readPluginViewRows(ctx, view, here, form)
+			rows, err := p.readPluginViewRows(ctx, view, here, form)
 			if err != nil {
 				return readerDocument{}, err
 			}
@@ -148,7 +144,7 @@ func (a *app) pluginViewReaderQuery(view pluginview.View, form map[string]string
 	}
 }
 
-func (a *app) readPluginViewRows(ctx context.Context, view pluginview.View, here pluginview.Context, form map[string]string) ([]pluginview.Row, error) {
+func (p *pluginScreens) readPluginViewRows(ctx context.Context, view pluginview.View, here pluginview.Context, form map[string]string) ([]pluginview.Row, error) {
 	var rows []pluginview.Row
 	cursor := ""
 	for range maxPluginViewPages {
@@ -156,7 +152,7 @@ func (a *app) readPluginViewRows(ctx context.Context, view pluginview.View, here
 		if err != nil {
 			return nil, err
 		}
-		response, err := a.plugins.CallPlugin(ctx, request, "")
+		response, err := p.service.CallPlugin(ctx, request, "")
 		if err != nil {
 			return nil, err
 		}
@@ -195,23 +191,23 @@ func pluginViewDocument(view pluginview.View, rows []pluginview.Row) readerDocum
 
 // startPluginViewAction resolves the selected row, asks for the action's form
 // fields, confirms when declared, and then runs it.
-func (a *app) startPluginViewAction(view pluginview.View, action protocol.PluginTerminalAction, key string) error {
+func (p *pluginScreens) startPluginViewAction(view pluginview.View, action protocol.PluginTerminalAction, key string) error {
 	key = strings.TrimSpace(key)
 	if action.Target == extension.TerminalActionView {
-		return a.preparePluginViewAction(view, action, nil, "")
+		return p.preparePluginViewAction(view, action, nil, "")
 	}
 	if key == "" {
 		return fmt.Errorf("/%s %s needs a %s", view.ID, action.ID, strings.ToLower(view.List.Key))
 	}
-	if a.workbench != nil {
-		if _, pending := a.workbench.PendingInstalledCommand(pluginViewIntent(view, action, key)); pending {
-			a.runPluginViewAction(view, action, nil, key, nil)
+	if p.workbench != nil {
+		if _, pending := p.workbench.PendingInstalledCommand(pluginViewIntent(view, action, key)); pending {
+			p.runPluginViewAction(view, action, nil, key, nil)
 			return nil
 		}
 	}
-	form := a.pluginViews.form
-	if a.pluginViews.open != view.ID {
-		fields, err := view.ListForm(a.pluginViewContext())
+	form := p.form
+	if p.open != view.ID {
+		fields, err := view.ListForm(p.pluginViewContext())
 		if err != nil {
 			return err
 		}
@@ -220,10 +216,10 @@ func (a *app) startPluginViewAction(view pluginview.View, action protocol.Plugin
 			form[field.Path] = field.Initial
 		}
 	}
-	here := a.pluginViewContext()
-	a.tasks.application(pluginViewOperation, false,
+	here := p.pluginViewContext()
+	p.tasks.application(pluginViewOperation, false,
 		func(ctx context.Context) (pluginview.Row, error) {
-			rows, err := a.readPluginViewRows(ctx, view, here, form)
+			rows, err := p.readPluginViewRows(ctx, view, here, form)
 			if err != nil {
 				return nil, err
 			}
@@ -231,11 +227,11 @@ func (a *app) startPluginViewAction(view pluginview.View, action protocol.Plugin
 		},
 		func(row pluginview.Row, err error) {
 			if err != nil {
-				a.message(err.Error())
+				p.message(err.Error())
 				return
 			}
-			if err := a.preparePluginViewAction(view, action, row, row.Text(view.List.Key)); err != nil {
-				a.message(err.Error())
+			if err := p.preparePluginViewAction(view, action, row, row.Text(view.List.Key)); err != nil {
+				p.message(err.Error())
 			}
 		},
 	)
@@ -265,29 +261,29 @@ func selectPluginViewRow(view pluginview.View, rows []pluginview.Row, key string
 	}
 }
 
-func (a *app) preparePluginViewAction(view pluginview.View, action protocol.PluginTerminalAction, row pluginview.Row, key string) error {
-	fields, err := view.ActionForm(action, a.pluginViewContext(), row)
+func (p *pluginScreens) preparePluginViewAction(view pluginview.View, action protocol.PluginTerminalAction, row pluginview.Row, key string) error {
+	fields, err := view.ActionForm(action, p.pluginViewContext(), row)
 	if err != nil {
 		return err
 	}
 	run := func(form map[string]string) {
 		if !action.Confirm {
-			a.runPluginViewAction(view, action, row, key, form)
+			p.runPluginViewAction(view, action, row, key, form)
 			return
 		}
 		subject := view.Title
 		if key != "" {
 			subject += " " + key
 		}
-		a.confirmAction(action.Title, action.Title+" "+subject+"?", action.Title, func() {
-			a.runPluginViewAction(view, action, row, key, form)
+		p.confirm(action.Title, action.Title+" "+subject+"?", action.Title, "", func() {
+			p.runPluginViewAction(view, action, row, key, form)
 		})
 	}
 	if len(fields) == 0 {
 		run(nil)
 		return nil
 	}
-	a.openPluginViewForm(view, action, key, fields, run)
+	p.openPluginViewForm(view, action, key, fields, run)
 	return nil
 }
 
@@ -298,8 +294,8 @@ func pluginViewIntent(view pluginview.View, action protocol.PluginTerminalAction
 // runPluginViewAction calls the action's method. A mutation is staged durably
 // first, so a lost acknowledgement resumes the original call; row is nil when
 // that staged call is being reconciled.
-func (a *app) runPluginViewAction(view pluginview.View, action protocol.PluginTerminalAction, row pluginview.Row, key string, form map[string]string) {
-	here := a.pluginViewContext()
+func (p *pluginScreens) runPluginViewAction(view pluginview.View, action protocol.PluginTerminalAction, row pluginview.Row, key string, form map[string]string) {
+	here := p.pluginViewContext()
 	intent := pluginViewIntent(view, action, key)
 	prepare := func(context.Context) (protocol.CallPluginRequest, error) {
 		if action.Target == extension.TerminalActionRow && row == nil {
@@ -307,17 +303,17 @@ func (a *app) runPluginViewAction(view pluginview.View, action protocol.PluginTe
 		}
 		return view.ActionRequest(action, here, row, form)
 	}
-	a.status.note(strings.ToLower(action.Title) + " · " + view.Title)
-	started := a.tasks.application(pluginViewOperation, false,
+	p.status.note(strings.ToLower(action.Title) + " · " + view.Title)
+	started := p.tasks.application(pluginViewOperation, false,
 		func(ctx context.Context) (struct{}, error) {
 			if view.Mutates(action) {
-				return struct{}{}, workbench.ExecuteInstalledCommand(ctx, a.plugins, a.workbench, intent, a.replayPolicy, prepare)
+				return struct{}{}, workbench.ExecuteInstalledCommand(ctx, p.service, p.workbench, intent, p.replayPolicy, prepare)
 			}
 			request, err := prepare(ctx)
 			if err != nil {
 				return struct{}{}, err
 			}
-			response, err := a.plugins.CallPlugin(ctx, request, "")
+			response, err := p.service.CallPlugin(ctx, request, "")
 			if err == nil && response != nil && response.Failure != nil {
 				err = errors.New(response.Failure.Message)
 			}
@@ -326,29 +322,29 @@ func (a *app) runPluginViewAction(view pluginview.View, action protocol.PluginTe
 		func(_ struct{}, err error) {
 			if err != nil {
 				message := action.Title + " failed: " + err.Error()
-				if a.workbench != nil {
-					if _, pending := a.workbench.PendingInstalledCommand(intent); pending {
+				if p.workbench != nil {
+					if _, pending := p.workbench.PendingInstalledCommand(intent); pending {
 						message += " · retry /" + view.ID + " " + action.ID + " " + key + " to reconcile the original call"
 					}
 				}
-				a.message(message)
+				p.message(message)
 				return
 			}
-			a.message(view.Title + " · " + strings.ToLower(action.Title) + " done")
-			a.reader.reload()
+			p.message(view.Title + " · " + strings.ToLower(action.Title) + " done")
+			p.reader.reload()
 		},
 	)
 	if !started {
-		a.message("another plugin view action is running")
+		p.message("another plugin view action is running")
 	}
 }
 
-func (a *app) openPluginViewForm(view pluginview.View, action protocol.PluginTerminalAction, key string, fields []pluginview.FormField, submit func(map[string]string)) {
-	if a.pluginViews.dialog != nil {
-		a.pluginViews.dialog.Controller().Dismiss()
-		a.pluginViews.dialog = nil
+func (p *pluginScreens) openPluginViewForm(view pluginview.View, action protocol.PluginTerminalAction, key string, fields []pluginview.FormField, submit func(map[string]string)) {
+	if p.dialog != nil {
+		p.dialog.Controller().Dismiss()
+		p.dialog = nil
 	}
-	generation := a.session.context
+	generation := p.session.context
 	values := make(map[string]*string, len(fields))
 	controls := make([]headless.Field, 0, len(fields))
 	for _, field := range fields {
@@ -369,7 +365,7 @@ func (a *app) openPluginViewForm(view pluginview.View, action protocol.PluginTer
 			controls = append(controls, choice)
 		default:
 			text := headless.NewText(headless.TextConfig{Label: field.Title, Value: headless.Bind(values[field.Path])})
-			text.Clipboard = a.loop.Clipboard()
+			text.Clipboard = p.clipboard
 			controls = append(controls, text)
 		}
 	}
@@ -377,13 +373,13 @@ func (a *app) openPluginViewForm(view pluginview.View, action protocol.PluginTer
 	form.Keys = headless.DefaultFormKeys()
 	var dialog *kit.Dialog
 	dismiss := func() {
-		if a.pluginViews.dialog == dialog {
+		if p.dialog == dialog {
 			dialog.Controller().Dismiss()
-			a.pluginViews.dialog = nil
+			p.dialog = nil
 		}
 	}
 	form.Done = func() {
-		if a.pluginViews.dialog != dialog || !a.session.context.current(generation) {
+		if p.dialog != dialog || !p.session.context.current(generation) {
 			return
 		}
 		entered := make(map[string]string, len(values))
@@ -395,7 +391,7 @@ func (a *app) openPluginViewForm(view pluginview.View, action protocol.PluginTer
 	}
 	form.GaveUp = dismiss
 	body := kit.NewForm(kit.FormConfig{
-		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs, Controller: form,
+		Theme: p.theme, Glyphs: p.glyphs, Controller: form,
 		Hints: []keymap.Action{headless.Submit, headless.Cancel},
 	})
 	title := action.Title + " · " + view.Title
@@ -403,10 +399,10 @@ func (a *app) openPluginViewForm(view pluginview.View, action protocol.PluginTer
 		title += " · " + key
 	}
 	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
+		Stack: p.stack, Theme: p.theme, Glyphs: p.glyphs,
 		Title: title, Body: body,
 		Where: layout.Placement{Width: 88, Height: formDialogHeight(body.HeightForWidth(84), len(controls), 24)},
 	})
-	a.pluginViews.dialog = dialog
+	p.dialog = dialog
 	dialog.Controller().Show()
 }

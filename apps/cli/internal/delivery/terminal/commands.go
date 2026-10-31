@@ -130,7 +130,11 @@ func (a *app) registerCommands() {
 			a.message(err.Error())
 		}
 	}
-	a.registerPluginViewCommands()
+	if a.plugins != nil {
+		a.plugins.registerViewCommands(func(owner string, descriptor extensions.CommandDescriptor, run func(string, func())) error {
+			return a.commands.add(owner, descriptor, run, nil)
+		})
+	}
 	for _, contributed := range a.pluginHost.Commands() {
 		command := contributed.Command
 		pluginID := contributed.PluginID

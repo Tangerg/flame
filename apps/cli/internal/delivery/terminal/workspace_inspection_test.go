@@ -600,10 +600,10 @@ func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 	application := &app{
 		runtimeProfile: &profile,
 		goals:          new(goalServiceStub),
-		skills:         newSkillServiceStub(),
+		skills:         &skillScreens{service: newSkillServiceStub()},
 		mcp:            &mcpScreens{service: newMCPServiceStub()},
-		plugins:        &installedPluginCatalog{},
-		hooks:          &hookServiceStub{},
+		plugins:        &pluginScreens{service: &installedPluginCatalog{}},
+		hooks:          &hookScreens{service: &hookServiceStub{}},
 	}
 	if got := application.observedRuntimeResources(); got != (runtimeResourceObservation{hooks: true, models: true, approvals: true}) {
 		t.Fatalf("resources with disabled features = %+v", got)

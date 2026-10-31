@@ -10,13 +10,15 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 )
 
-func (a *app) ShowDiagnosticTools() {
-	if a.diagnosticTools == nil {
-		a.message("this runtime composition has no diagnostic tool service")
-		return
-	}
-	a.reader.show(&readerQuery{status: "loading diagnostic tools", read: func(ctx context.Context) (readerDocument, error) {
-		tools, err := a.diagnosticTools.Tools(ctx)
+// diagnosticScreens lists and invokes direct read-only diagnostic tools.
+type diagnosticScreens struct {
+	screenHost
+	service DiagnosticTools
+}
+
+func (d *diagnosticScreens) ShowDiagnosticTools() {
+	d.reader.show(&readerQuery{status: "loading diagnostic tools", read: func(ctx context.Context) (readerDocument, error) {
+		tools, err := d.service.Tools(ctx)
 		if err != nil {
 			return readerDocument{}, err
 		}
@@ -42,19 +44,16 @@ func diagnosticToolsDocument(tools []workspace.DiagnosticToolDescriptor) readerD
 	return readerDocument{Title: "Diagnostic tools", Detail: fmt.Sprintf("%d read-only tools", len(tools)), Sections: sections}
 }
 
-func (a *app) InvokeDiagnosticTool(argument string) error {
-	if a.diagnosticTools == nil {
-		return errors.New("this runtime composition has no diagnostic tool service")
-	}
+func (d *diagnosticScreens) InvokeDiagnosticTool(argument string) error {
 	identity, arguments, err := parseDiagnosticToolInvocation(argument)
 	if err != nil {
 		return err
 	}
-	workspacePath := a.session.current.Workspace.Path
-	a.status.note("invoking diagnostic tool " + identity)
-	started := a.tasks.session(diagnosticToolOperation, false,
+	workspacePath := d.session.current.Workspace.Path
+	d.status.note("invoking diagnostic tool " + identity)
+	started := d.tasks.session(diagnosticToolOperation, false,
 		func(ctx context.Context) (diagnosticInvocationResult, error) {
-			tools, err := a.diagnosticTools.Tools(ctx)
+			tools, err := d.service.Tools(ctx)
 			if err != nil {
 				return diagnosticInvocationResult{}, err
 			}
@@ -62,21 +61,21 @@ func (a *app) InvokeDiagnosticTool(argument string) error {
 			if err != nil {
 				return diagnosticInvocationResult{}, err
 			}
-			result, err := a.diagnosticTools.Invoke(ctx, workspace.DiagnosticToolInvocation{
+			result, err := d.service.Invoke(ctx, workspace.DiagnosticToolInvocation{
 				Tool: tool, Arguments: arguments, Workspace: workspacePath,
 			})
 			return diagnosticInvocationResult{tool: tool, result: result}, err
 		},
 		func(invocation diagnosticInvocationResult, err error) {
 			if err != nil {
-				a.message("invoke diagnostic tool failed: " + err.Error())
+				d.message("invoke diagnostic tool failed: " + err.Error())
 				return
 			}
-			a.reader.open(nil, readerDocument{
+			d.reader.open(nil, readerDocument{
 				Title: "Diagnostic · " + invocation.tool.Name, Detail: workspacePath,
 				Sections: []toolSection{{Title: "Result", Style: toolSectionCode, Language: "json", Text: prettyJSON(invocation.result.JSON)}},
 			})
-			a.status.note("diagnostic complete · " + invocation.tool.Name)
+			d.status.note("diagnostic complete · " + invocation.tool.Name)
 		},
 	)
 	if !started {

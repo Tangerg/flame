@@ -63,12 +63,12 @@ type app struct {
 	usage            Usage
 	modelConfig      ModelConfiguration
 	goals            Goals
-	skills           Skills
+	skills           *skillScreens
 	mcp              *mcpScreens
-	plugins          Plugins
-	diagnosticTools  DiagnosticTools
-	authoringContext AuthoringContext
-	hooks            Hooks
+	plugins          *pluginScreens
+	diagnosticTools  *diagnosticScreens
+	authoringContext *agentDocumentScreens
+	hooks            *hookScreens
 	feedback         Feedback
 	runtimeProfile   RuntimeProfile
 	replayPolicy     mutation.ReplayPolicy
@@ -79,7 +79,6 @@ type app struct {
 	operations   *operationOwner
 	tasks        taskRunner
 	session      sessionState
-	pluginViews  pluginViewState
 	execution    executionState
 	steers       steerReceipts
 	dialogs      dialogState
@@ -199,10 +198,9 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		ctx: cfg.context, loop: loop, runtime: cfg.runtime, workspaces: cfg.workspaces,
 		runtimeProfile: cfg.runtimeProfile, replayPolicy: cfg.replayPolicy,
 		changes: cfg.changes, transfers: cfg.transfers, usage: cfg.usage, modelConfig: cfg.modelConfig,
-		goals: cfg.goals, skills: cfg.skills, plugins: cfg.plugins,
-		diagnosticTools:  cfg.diagnosticTools,
-		authoringContext: cfg.authoringContext, hooks: cfg.hooks, feedback: cfg.feedback,
-		session: sessionState{current: cfg.snapshot.Session, context: newSessionContextLease()},
+		goals:    cfg.goals,
+		feedback: cfg.feedback,
+		session:  sessionState{current: cfg.snapshot.Session, context: newSessionContextLease()},
 
 		pluginHost: cfg.pluginHost, pluginIssues: cfg.pluginIssues,
 		execution:          executionState{conversation: conversation.New()},
@@ -258,7 +256,7 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	a.restoreSessionOutbox()
 	_ = a.persistDraft()
 	a.followRuntimeChanges()
-	a.loadPluginViews()
+	a.loadPluginViews(true)
 	return a
 }
 

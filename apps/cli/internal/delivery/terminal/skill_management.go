@@ -10,22 +10,25 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-func (a *app) ShowDiscoveredSkills(name string) {
-	if a.skills == nil {
-		a.message("this runtime composition has no skill service")
-		return
-	}
-	if name = strings.TrimSpace(name); name != "" {
-		a.reader.show(a.skillDetailReaderQuery(name))
-		return
-	}
-	a.reader.show(a.discoveredSkillsReaderQuery())
+// skillScreens shows discovered and managed Skills and decides proposals
+// through the Runtime's Skills port.
+type skillScreens struct {
+	screenHost
+	service Skills
 }
 
-func (a *app) skillDetailReaderQuery(name string) *readerQuery {
-	workspace := a.session.current.Workspace.Path
+func (s *skillScreens) ShowDiscoveredSkills(name string) {
+	if name = strings.TrimSpace(name); name != "" {
+		s.reader.show(s.skillDetailReaderQuery(name))
+		return
+	}
+	s.reader.show(s.discoveredSkillsReaderQuery())
+}
+
+func (s *skillScreens) skillDetailReaderQuery(name string) *readerQuery {
+	workspace := s.session.current.Workspace.Path
 	return &readerQuery{status: "loading skill detail", follows: followsTopic(protocol.TopicSkillsChanged), read: func(ctx context.Context) (readerDocument, error) {
-		detail, err := a.skills.InspectSkill(ctx, workspace, name)
+		detail, err := s.service.InspectSkill(ctx, workspace, name)
 		if err != nil {
 			return readerDocument{}, err
 		}
@@ -36,13 +39,13 @@ func (a *app) skillDetailReaderQuery(name string) *readerQuery {
 	}}
 }
 
-func (a *app) discoveredSkillsReaderQuery() *readerQuery {
-	workspace := a.session.current.Workspace.Path
+func (s *skillScreens) discoveredSkillsReaderQuery() *readerQuery {
+	workspace := s.session.current.Workspace.Path
 	return &readerQuery{
 		status:  "loading discovered skills",
 		follows: followsTopic(protocol.TopicSkillsChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
-			discovered, err := a.skills.Discover(ctx, workspace)
+			discovered, err := s.service.Discover(ctx, workspace)
 			if err != nil {
 				return readerDocument{}, err
 			}
@@ -70,20 +73,16 @@ func discoveredSkillsDocument(workspacePath string, catalog protocol.SkillDiscov
 	return paragraphDocument("Discovered skills", fmt.Sprintf("%d available · %s", len(discovered), workspacePath), lines)
 }
 
-func (a *app) ShowManagedSkills() {
-	if a.skills == nil {
-		a.message("this runtime composition has no skill service")
-		return
-	}
-	a.reader.show(a.managedSkillsReaderQuery())
+func (s *skillScreens) ShowManagedSkills() {
+	s.reader.show(s.managedSkillsReaderQuery())
 }
 
-func (a *app) managedSkillsReaderQuery() *readerQuery {
+func (s *skillScreens) managedSkillsReaderQuery() *readerQuery {
 	return &readerQuery{
 		status:  "loading managed skills",
 		follows: followsTopic(protocol.TopicSkillsChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
-			managed, err := a.skills.Managed(ctx)
+			managed, err := s.service.Managed(ctx)
 			if err != nil {
 				return readerDocument{}, err
 			}
@@ -107,21 +106,17 @@ func managedSkillsDocument(managed []protocol.ManagedSkill) readerDocument {
 	return paragraphDocument("Managed Skill library", fmt.Sprintf("%d entries", len(managed)), lines)
 }
 
-func (a *app) ShowSkillProposals() {
-	if a.skills == nil {
-		a.message("this runtime composition has no skill service")
-		return
-	}
-	a.reader.show(a.skillProposalsReaderQuery())
+func (s *skillScreens) ShowSkillProposals() {
+	s.reader.show(s.skillProposalsReaderQuery())
 }
 
-func (a *app) skillProposalsReaderQuery() *readerQuery {
-	workspace := a.session.current.Workspace.Path
+func (s *skillScreens) skillProposalsReaderQuery() *readerQuery {
+	workspace := s.session.current.Workspace.Path
 	return &readerQuery{
 		status:  "loading skill proposals",
 		follows: followsTopic(protocol.TopicSkillsChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
-			proposals, err := a.skills.Proposals(ctx, workspace)
+			proposals, err := s.service.Proposals(ctx, workspace)
 			if err != nil {
 				return readerDocument{}, err
 			}
@@ -151,21 +146,15 @@ func skillProposalsDocument(proposals []workspace.SkillProposal) readerDocument 
 	return readerDocument{Title: "Skill proposals", Detail: fmt.Sprintf("%d awaiting review", len(proposals)), Sections: sections}
 }
 
-func (a *app) ArchiveSkill(name string) error {
-	if a.skills == nil {
-		return errors.New("this runtime composition has no skill service")
-	}
-	return a.changeSkillLifecycle("archiving skill", name, a.skills.Archive)
+func (s *skillScreens) ArchiveSkill(name string) error {
+	return s.changeSkillLifecycle("archiving skill", name, s.service.Archive)
 }
 
-func (a *app) RestoreSkill(name string) error {
-	if a.skills == nil {
-		return errors.New("this runtime composition has no skill service")
-	}
-	return a.changeSkillLifecycle("restoring skill", name, a.skills.Restore)
+func (s *skillScreens) RestoreSkill(name string) error {
+	return s.changeSkillLifecycle("restoring skill", name, s.service.Restore)
 }
 
-func (a *app) changeSkillLifecycle(
+func (s *skillScreens) changeSkillLifecycle(
 	status, name string,
 	change func(context.Context, string) error,
 ) error {
@@ -173,17 +162,17 @@ func (a *app) changeSkillLifecycle(
 	if name == "" {
 		return errors.New("a skill name is required")
 	}
-	a.status.note(status + " " + name)
-	started := a.tasks.admissionMutation(skillOperation, false,
+	s.status.note(status + " " + name)
+	started := s.tasks.admissionMutation(skillOperation, false,
 		func(ctx context.Context) (string, error) {
 			return name, change(ctx, name)
 		},
 		func(changed string, err error) {
 			if err != nil {
-				a.message(status + " failed: " + err.Error())
+				s.message(status + " failed: " + err.Error())
 				return
 			}
-			a.message(status + " complete · " + changed)
+			s.message(status + " complete · " + changed)
 		},
 	)
 	if !started {
@@ -197,19 +186,16 @@ type skillProposalDecision struct {
 	reference workspace.SkillProposalReference
 }
 
-func (a *app) PrepareSkillProposalDecision(identity string, approve bool) error {
-	if a.skills == nil {
-		return errors.New("this runtime composition has no skill service")
-	}
+func (s *skillScreens) PrepareSkillProposalDecision(identity string, approve bool) error {
 	identity = strings.TrimSpace(identity)
 	if identity == "" {
 		return errors.New("a proposal name or scope/name is required")
 	}
-	workspace := a.session.current.Workspace.Path
-	a.status.note("loading skill proposal " + identity)
-	started := a.tasks.session(skillOperation, false,
+	workspace := s.session.current.Workspace.Path
+	s.status.note("loading skill proposal " + identity)
+	started := s.tasks.session(skillOperation, false,
 		func(ctx context.Context) (skillProposalDecision, error) {
-			proposals, err := a.skills.Proposals(ctx, workspace)
+			proposals, err := s.service.Proposals(ctx, workspace)
 			if err != nil {
 				return skillProposalDecision{}, err
 			}
@@ -222,10 +208,10 @@ func (a *app) PrepareSkillProposalDecision(identity string, approve bool) error 
 		},
 		func(decision skillProposalDecision, err error) {
 			if err != nil {
-				a.message("load skill proposal failed: " + err.Error())
+				s.message("load skill proposal failed: " + err.Error())
 				return
 			}
-			a.confirmSkillProposalDecision(decision, approve)
+			s.confirmSkillProposalDecision(decision, approve)
 		},
 	)
 	if !started {
@@ -251,7 +237,7 @@ func resolveSkillProposal(proposals []workspace.SkillProposal, identity string) 
 	}
 }
 
-func (a *app) confirmSkillProposalDecision(decision skillProposalDecision, approve bool) {
+func (s *skillScreens) confirmSkillProposalDecision(decision skillProposalDecision, approve bool) {
 	verb, action := "Reject", "Reject permanently"
 	if approve {
 		verb, action = "Approve", "Approve and publish"
@@ -262,32 +248,32 @@ func (a *app) confirmSkillProposalDecision(decision skillProposalDecision, appro
 		content.WriteString(section.Title + "\n" + section.Text + "\n\n")
 	}
 	question := "Decide this exact revision · PgUp/PgDn scroll"
-	a.confirmActionWithContent(verb+" Skill proposal", question, action, content.String(), func() {
-		a.decideSkillProposal(decision.reference, approve)
+	s.confirm(verb+" Skill proposal", question, action, content.String(), func() {
+		s.decideSkillProposal(decision.reference, approve)
 	})
 }
 
-func (a *app) decideSkillProposal(reference workspace.SkillProposalReference, approve bool) {
+func (s *skillScreens) decideSkillProposal(reference workspace.SkillProposalReference, approve bool) {
 	verb := "rejecting"
-	decide := a.skills.Reject
+	decide := s.service.Reject
 	if approve {
 		verb = "approving"
-		decide = a.skills.Approve
+		decide = s.service.Approve
 	}
-	a.status.note(verb + " skill proposal " + reference.Name)
-	started := a.tasks.admissionMutation(skillOperation, false,
+	s.status.note(verb + " skill proposal " + reference.Name)
+	started := s.tasks.admissionMutation(skillOperation, false,
 		func(ctx context.Context) (workspace.SkillProposalReference, error) {
 			return reference, decide(ctx, reference)
 		},
 		func(reviewed workspace.SkillProposalReference, err error) {
 			if err != nil {
-				a.message(verb + " skill proposal failed: " + err.Error())
+				s.message(verb + " skill proposal failed: " + err.Error())
 				return
 			}
-			a.message(verb + " skill proposal complete · " + string(reviewed.Scope) + "/" + reviewed.Name)
+			s.message(verb + " skill proposal complete · " + string(reviewed.Scope) + "/" + reviewed.Name)
 		},
 	)
 	if !started {
-		a.message("another skill operation is running")
+		s.message("another skill operation is running")
 	}
 }
