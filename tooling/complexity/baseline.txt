@@ -3,7 +3,6 @@
 24 apps/cli/internal/adapter/filesystem/statefile/store.go:Open
 24 apps/cli/internal/application/workbench/session_rollback.go:PendingSessionRollback.Validate
 25 apps/cli/internal/delivery/terminal/external_editor.go:draftEditor.Edit
-23 apps/cli/internal/delivery/terminal/input.go:app.handleConfiguredAction
 21 apps/cli/internal/delivery/terminal/steering_receipts.go:app.presentSteerReceipts
 27 apps/cli/internal/domain/conversation/presentation.go:ToolCall.Validate
 23 apps/desktop/cmd/bridgegen/source.go:newGraph
