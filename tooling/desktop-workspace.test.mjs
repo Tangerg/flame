@@ -43,6 +43,7 @@ async function runDesktopCommand(t, command) {
       join(directory, member, "package.json"),
       JSON.stringify({
         name: index === 0 ? "@flame/icons" : "@flame/ui",
+        exports: { ".": "./dist/index.js" },
         scripts: { build: "unused" },
       }),
     );
