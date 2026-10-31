@@ -42,7 +42,6 @@ const resetKernelForTest = async () => {
   running = undefined;
 };
 
-import { type FlameClient } from "@flame/runtime-client";
 let connection: ReturnType<typeof createRuntimeConnection>;
 
 const host = createBrowserHost();
@@ -133,13 +132,8 @@ describe("built-in contributions", () => {
     expect(shadowed).toEqual([]);
   });
 
-  it("hands every startup plugin the connection's already journal-backed client", async () => {
-    const earlyClient = connection.client();
-    const received: FlameClient[] = [];
-    vi.spyOn(connection, "client").mockImplementation(() => {
-      received.push(earlyClient);
-      return earlyClient;
-    });
+  it("resolves no Runtime client during startup before a generation exists", async () => {
+    const resolve = vi.spyOn(connection, "client");
     builtinPlugins = createBuiltinPlugins(
       connection,
       testClient.navigation,
@@ -154,7 +148,6 @@ describe("built-in contributions", () => {
       testClient.feedback,
     );
     running = await startKernel(builtinPlugins);
-    expect(received.length).toBeGreaterThan(0);
-    expect(received.every((client) => client === earlyClient)).toBe(true);
+    expect(resolve).not.toHaveBeenCalled();
   });
 });
