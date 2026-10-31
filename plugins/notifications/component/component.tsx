@@ -2,14 +2,13 @@ import {
   useCallback,
   useEffect,
   useEffectEvent,
-  useMemo,
   useState,
   useSyncExternalStore,
 } from "react";
 import {
-  createTranslator,
   failureText,
   type ComponentContext,
+  useTranslator,
 } from "@flame/component-sdk";
 import {
   Panel,
@@ -48,10 +47,7 @@ export function NotificationSettings({
 }: {
   context: ComponentContext;
 }) {
-  const t = useMemo(
-    () => createTranslator(catalogs, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(catalogs, context.locale);
   const channel = context.notifications;
   const authorization = useSyncExternalStore(
     channel.subscribe,

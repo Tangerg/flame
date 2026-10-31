@@ -8,9 +8,9 @@ import {
 } from "react";
 import {
   failureText,
-  createTranslator,
   type ComponentContext,
   type Translate,
+  useTranslator,
 } from "@flame/component-sdk";
 import { ChartColumn, Refresh } from "@flame/icons/react";
 import type { UsageSummary } from "@flame/runtime-client/wire";
@@ -260,10 +260,7 @@ type Read = {
 };
 
 export function Usage({ context }: { context: ComponentContext }) {
-  const t = useMemo(
-    () => createTranslator(CATALOGS, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(CATALOGS, context.locale);
   const fmt = useMemo(
     () => makeFormatters(context.locale, t),
     [context.locale, t],

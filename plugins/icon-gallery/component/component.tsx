@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { icons } from "@flame/icons/catalog";
 import * as Drawings from "@flame/icons/react";
-import { createTranslator, type ComponentContext } from "@flame/component-sdk";
+import { type ComponentContext, useTranslator } from "@flame/component-sdk";
 import {
   Metadata,
   EmptyState,
@@ -41,10 +41,7 @@ const catalog = icons.map((icon) => {
 const groups = [...new Set(catalog.map((icon) => icon.group))];
 
 export function Gallery({ context }: { context: ComponentContext }) {
-  const t = useMemo(
-    () => createTranslator(CATALOGS, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(CATALOGS, context.locale);
   const [filter, setFilter] = useState("");
   const [group, setGroup] = useState("");
   const query = filter.trim().toLocaleLowerCase();

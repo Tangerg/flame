@@ -2,9 +2,9 @@ import { Children, isValidElement, useMemo, type ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
-  createTranslator,
   type ComponentContext,
   type Translate,
+  useTranslator,
 } from "@flame/component-sdk";
 import {
   Callout,
@@ -178,10 +178,7 @@ function markdownComponents(t: Translate): Components {
 export function Markdown({ context }: { context: ComponentContext }) {
   const file = context.file;
   if (!file) throw new Error("Markdown requires a captured file context");
-  const t = useMemo(
-    () => createTranslator(CATALOGS, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(CATALOGS, context.locale);
   const components = useMemo(() => markdownComponents(t), [t]);
   return (
     <Panel label={t("panel.label")}>

@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import {
-  createTranslator,
   type ComponentContext,
   type Translate,
+  useTranslator,
 } from "@flame/component-sdk";
 import {
   Badge,
@@ -229,10 +229,7 @@ function failOnRenderErrors(errors: OpenUIError[]) {
 }
 
 export function GenUIResult({ context }: { context: ComponentContext }) {
-  const t = useMemo(
-    () => createTranslator(CATALOGS, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(CATALOGS, context.locale);
   const tool = context.toolResult;
   const presentation = useMemo(() => {
     if (tool?.status !== "ok" || typeof tool.result !== "string") {

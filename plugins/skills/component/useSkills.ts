@@ -11,9 +11,9 @@ import {
   mutationSettlementIsUnknown,
   isErrorType,
   scrollPositions,
-  createTranslator,
   failureText as failure,
   type ComponentContext,
+  useTranslator,
 } from "@flame/component-sdk";
 import { type MutationPromise } from "@flame/runtime-client";
 
@@ -42,10 +42,7 @@ export const SECTION_VALUES = [
   "library",
 ] as const satisfies readonly Target[];
 export function useSkills(context: ComponentContext) {
-  const t = useMemo(
-    () => createTranslator(CATALOGS, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(CATALOGS, context.locale);
   const workspace = useMemo(
     () =>
       context.workspace

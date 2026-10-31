@@ -9,9 +9,9 @@ import {
 } from "react";
 import {
   failureText,
-  createTranslator,
   mutationSettlementIsUnknown,
   type ComponentContext,
+  useTranslator,
 } from "@flame/component-sdk";
 import type { MutationPromise } from "@flame/runtime-client";
 import { Refresh } from "@flame/icons/react";
@@ -55,10 +55,7 @@ type Read = {
 };
 
 export function Trajectory({ context }: { context: ComponentContext }) {
-  const t = useMemo(
-    () => createTranslator(catalogs, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(catalogs, context.locale);
   const [kind, setKind] = useState("all");
   const [run, setRun] = useState("all");
   const [search, setSearch] = useState("");
@@ -284,10 +281,7 @@ export function Trajectory({ context }: { context: ComponentContext }) {
 export function RenameSession({ context }: { context: ComponentContext }) {
   const session = context.sessionTarget;
   if (!session) throw new Error("A captured Session action target is required");
-  const t = useMemo(
-    () => createTranslator(catalogs, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(catalogs, context.locale);
   const [title, setTitle] = useState(session.title);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string>();

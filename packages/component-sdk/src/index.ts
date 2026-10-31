@@ -3,7 +3,7 @@ import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
 import { OperationFailure } from "@flame/runtime-client";
 import { pluginMethod } from "@flame/runtime-client";
 export { OperationFailure } from "@flame/runtime-client";
-import type { ComponentType, ReactNode } from "react";
+import { useMemo, type ComponentType, type ReactNode } from "react";
 import type { FlameClient, MutationPromise } from "@flame/runtime-client";
 import type {
   CallPluginResponse,
@@ -294,6 +294,13 @@ export function createTranslator(
         )
       : template;
   };
+}
+
+export function useTranslator(
+  catalogs: Readonly<Record<string, Catalog>>,
+  locale: string,
+): Translate {
+  return useMemo(() => createTranslator(catalogs, locale), [catalogs, locale]);
 }
 
 function output<R>(reply: CallPluginResponse): R {

@@ -1,9 +1,9 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { companion, FLAME_ORANGE, mark, plush } from "@flame/brand-assets";
 import {
-  createTranslator,
   failureText,
   type ComponentContext,
+  useTranslator,
 } from "@flame/component-sdk";
 import { Check, Copy, Download } from "@flame/icons/react";
 import {
@@ -48,10 +48,7 @@ function pngBytes(source: string): Uint8Array {
 }
 
 export function Brand({ context }: { context: ComponentContext }) {
-  const t = useMemo(
-    () => createTranslator(CATALOGS, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(CATALOGS, context.locale);
   const { copied, copy } = useCopyFeedback(hex);
   const saving = useRef(false);
   const [savingID, setSavingID] = useState<string>();

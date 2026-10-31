@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   failureText,
   bindOperations,
-  createTranslator,
   mutationSettlementIsUnknown,
   type ComponentContext,
+  useTranslator,
 } from "@flame/component-sdk";
 import {
   CAPABILITY_JSON,
@@ -29,10 +29,7 @@ import { fr } from "./locales/fr";
 import { de } from "./locales/de";
 const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 export function useMemory(context: ComponentContext) {
-  const t = useMemo(
-    () => createTranslator(CATALOGS, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(CATALOGS, context.locale);
   const operations = useMemo(() => {
     if (!context.binding)
       throw new Error("Memory requires its declared callable contribution");

@@ -10,10 +10,10 @@ import {
 import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Search } from "@flame/icons/react";
 import {
-  createTranslator,
   type CapturedToolResult,
   type ComponentContext,
   type Translate,
+  useTranslator,
 } from "@flame/component-sdk";
 import {
   Button,
@@ -741,10 +741,7 @@ const CHANGE_VERB = {
 } as const;
 
 export function RecordedResult({ context }: { context: ComponentContext }) {
-  const t = useMemo(
-    () => createTranslator(CATALOGS, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(CATALOGS, context.locale);
   const tool = context.toolResult;
   const content = useMemo(() => {
     if (!tool || tool.status === "running" || typeof tool.result !== "string")

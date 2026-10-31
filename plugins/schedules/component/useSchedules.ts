@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   bindOperations,
-  createTranslator,
   mutationSettlementIsUnknown,
   OperationFailure,
   scrollPositions,
   failureText as failure,
   type ComponentContext,
+  useTranslator,
 } from "@flame/component-sdk";
 import { type Model } from "@flame/runtime-client/wire";
 import {
@@ -43,10 +43,7 @@ export const selection = (model?: Model, reasoningEffort = "") => ({
   reasoningEffort,
 });
 export function useSchedules(context: ComponentContext) {
-  const t = useMemo(
-    () => createTranslator(CATALOGS, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(CATALOGS, context.locale);
   const dateTime = useMemo(
     () =>
       new Intl.DateTimeFormat(context.locale, {

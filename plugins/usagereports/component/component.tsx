@@ -12,10 +12,10 @@ import { LIMITS } from "../contracts/limits";
 import {
   failureText,
   bindOperations,
-  createTranslator,
   mutationSettlementIsUnknown,
   type ComponentContext,
   type Translate,
+  useTranslator,
 } from "@flame/component-sdk";
 import { scrollPositions, type ScrollPosition } from "@flame/component-sdk";
 import type { JSONNumber } from "@qimu/sdk/json";
@@ -119,7 +119,7 @@ export function UsageReports({ context }: { context: ComponentContext }) {
 
 function Archive({ context }: { context: BoundContext }) {
   const locale = context.locale;
-  const t = useMemo(() => createTranslator(CATALOGS, locale), [locale]);
+  const t = useTranslator(CATALOGS, locale);
   const fmt = useMemo(() => makeFormatters(locale, t), [locale, t]);
   const operations = useMemo(
     () =>

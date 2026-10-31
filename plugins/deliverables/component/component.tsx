@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState } from "react";
 import {
-  createTranslator,
   failureText,
   type ComponentContext,
   type Translate,
+  useTranslator,
 } from "@flame/component-sdk";
 import {
   Badge,
@@ -499,10 +499,7 @@ function Inspector({
 }
 
 function Workspace({ context }: { context: ComponentContext }) {
-  const t = useMemo(
-    () => createTranslator(catalogs, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(catalogs, context.locale);
   const dateTime = useMemo(
     () =>
       new Intl.DateTimeFormat(context.locale, {

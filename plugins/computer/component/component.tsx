@@ -9,10 +9,10 @@ import {
   type RefObject,
 } from "react";
 import {
-  createTranslator,
   failureText,
   type ComponentContext,
   type Translate,
+  useTranslator,
 } from "@flame/component-sdk";
 import { parseJSON } from "@qimu/sdk/json";
 import {
@@ -233,10 +233,7 @@ function ExecuteForm({
 }
 
 export function Computer({ context }: { context: ComponentContext }) {
-  const t = useMemo(
-    () => createTranslator(CATALOGS, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(CATALOGS, context.locale);
   const state = useComputer(context);
   const [lease, setLease] = useState(String(LIMITS.defaultLeaseSeconds));
   const [leaseError, setLeaseError] = useState(false);

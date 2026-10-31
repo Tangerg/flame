@@ -2,15 +2,15 @@ import {
   useCallback,
   useEffect,
   useEffectEvent,
-  useMemo,
   useRef,
   useState,
 } from "react";
 import {
-  createTranslator,
   failureText,
   mutationSettlementIsUnknown,
   type ComponentContext,
+  type Translate,
+  useTranslator,
 } from "@flame/component-sdk";
 import { type MutationPromise } from "@flame/runtime-client";
 import {
@@ -50,10 +50,7 @@ type Command = { phase: "running" } | { phase: "unknown"; error: string };
 const literal = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
 
 export function Hooks({ context }: { context: ComponentContext }) {
-  const t = useMemo(
-    () => createTranslator(CATALOGS, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(CATALOGS, context.locale);
   const [read, setRead] = useState<Read>({ loading: true });
   const reading = useRef<AbortController>(undefined);
   const [observationError, setObservationError] = useState<string>();
@@ -250,13 +247,7 @@ export function Hooks({ context }: { context: ComponentContext }) {
   );
 }
 
-function HookRow({
-  value,
-  t,
-}: {
-  value: HookInfo;
-  t: ReturnType<typeof createTranslator>;
-}) {
+function HookRow({ value, t }: { value: HookInfo; t: Translate }) {
   return (
     <ListRow>
       <div

@@ -8,11 +8,11 @@ import {
 } from "react";
 import {
   failureText,
-  createTranslator,
   scrollPositions,
   type ComponentContext,
   type ScrollPosition,
   type Translate,
+  useTranslator,
 } from "@flame/component-sdk";
 import {
   ArrowLeft,
@@ -82,10 +82,7 @@ type Selection =
   | { view: "file"; path: string; returnTo: "files" | "source" };
 
 export function WorkspaceDiff({ context }: { context: ComponentContext }) {
-  const t = useMemo(
-    () => createTranslator(CATALOGS, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(CATALOGS, context.locale);
   const workspace = useMemo(() => {
     if (!context.workspace || !context.workspace.focus)
       throw new Error("Workspace diff requires a workspace context");

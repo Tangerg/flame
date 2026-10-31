@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from "react";
-import { createTranslator, type ComponentContext } from "@flame/component-sdk";
+import { useEffect } from "react";
+import { type ComponentContext, useTranslator } from "@flame/component-sdk";
 import { asSessionId } from "@flame/runtime-client";
 import { stringifyJSON } from "@qimu/sdk/json";
 import { catalogs } from "./catalogs";
@@ -47,10 +47,7 @@ export async function saveSessionExport(
 }
 
 export function SessionExports({ context }: { context: ComponentContext }) {
-  const t = useMemo(
-    () => createTranslator(catalogs, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(catalogs, context.locale);
   useEffect(() => {
     const commands = [
       { id: "markdown", label: t("export.markdown"), format: "md" },

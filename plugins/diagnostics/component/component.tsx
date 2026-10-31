@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   failureText,
-  createTranslator,
   type ComponentContext,
   type TelemetrySnapshot,
   type SpanRow,
   type MetricRow,
   type LogRow,
   type Translate,
+  useTranslator,
 } from "@flame/component-sdk";
 import { Activity, Refresh, Gauge, FileText } from "@flame/icons/react";
 import {
@@ -203,10 +203,7 @@ function DiagnosticsReport({
 type Read = { snapshot?: TelemetrySnapshot; error?: string };
 
 export function Diagnostics({ context }: { context: ComponentContext }) {
-  const t = useMemo(
-    () => createTranslator(CATALOGS, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(CATALOGS, context.locale);
   const numbers = useMemo(
     () => new Intl.NumberFormat(context.locale),
     [context.locale],

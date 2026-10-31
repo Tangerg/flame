@@ -1,14 +1,13 @@
 import {
   useEffect,
   useEffectEvent,
-  useMemo,
   useState,
   useSyncExternalStore,
 } from "react";
 import {
-  createTranslator,
   defineComponent,
   type ComponentContext,
+  useTranslator,
 } from "@flame/component-sdk";
 import { Refresh, Server } from "@flame/icons/react";
 import {
@@ -53,10 +52,7 @@ function ProvidersPane({
   settings: ProviderSettings;
 }) {
   const state = useSyncExternalStore(settings.subscribe, settings.getSnapshot);
-  const t = useMemo(
-    () => createTranslator(CATALOGS, context.locale),
-    [context.locale],
-  );
+  const t = useTranslator(CATALOGS, context.locale);
   const [attempt, setAttempt] = useState(0);
   const observe = useEffectEvent(() => settings.observe(context));
   useEffect(() => observe(), [settings, context.signal, attempt]);
