@@ -69,7 +69,7 @@ func TestParkedCancellationWakesSessionStartability(t *testing.T) {
 				sess:   testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}),
 				active: &waiting, pending: map[string]Pending{"run_1": pending},
 			}}
-			coordinator := mustNewCoordinator(Dependencies{
+			coordinator := mustNewCoordinator(runDeps{
 				Releases: &fakeExecutionPorts{releaseErr: cleanupError}, Session: testSessionPorts(sessions),
 				Runs: &fakeRunProjection{runs: map[string]run.Run{"run_1": waiting}}, Admissions: testsupport.NewAdmissionGate(),
 			})

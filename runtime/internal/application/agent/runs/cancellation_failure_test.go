@@ -31,7 +31,7 @@ func TestLiveChildCancellationReleasesClaimWhenExecutorTeardownFails(t *testing.
 			return teardownErr
 		},
 	}
-	coordinator := mustNewTestCoordinator(testDeps{cancellationOnly: cancellationOnly{RunningSubtreeCanceler: control}})
+	coordinator := mustNewTestCoordinator(testDeps{runDeps: runDeps{RunningSubtreeCanceler: control}})
 	live := testRunTreeOwner(t, nil)
 	if _, err := live.beginExecution(t.Context(), nil); err != nil {
 		t.Fatal(err)
@@ -72,8 +72,9 @@ func TestLiveRootCancellationRetainsFailedSettlement(t *testing.T) {
 	sessions := &fakeRunSessions{}
 	coordinator.sessionReader = sessions
 	coordinator.cancellations.sessionReader = coordinator.sessionReader
-	coordinator.sessionCreator = sessions
-	coordinator.activeRuns = sessions
+	coordinator.openings.sessionReader = coordinator.sessionReader
+	coordinator.openings.sessionCreator = sessions
+	coordinator.openings.activeRuns = sessions
 	coordinator.interrupts = sessions
 	coordinator.cancellations.interrupts = coordinator.interrupts
 	coordinator.cancellations.terminations = sessions

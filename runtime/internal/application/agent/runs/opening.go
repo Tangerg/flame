@@ -9,12 +9,139 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/qimu/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
+	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/keylock"
 	corechat "github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
+
+// Openings starts root Runs: it resolves the Session and model selection, claims
+// the fresh Run under start admission, composes its working context and opens
+// its first segment.
+type Openings struct {
+	commandAcceptances commandAcceptanceReader
+	startAdmissions    *keylock.Set
+	rootStarts         RootExecutionStarter
+	conversation       ConversationReader
+	workingContexts    WorkingContextComposer
+	models             modelAdmitter
+	modelSelector      modelapp.Selector
+	sessionReader      sessionReader
+	sessionCreator     sessionCreator
+	activeRuns         activeRunReader
+	isolation          isolationProvider // resolves an isolated session's sandbox copy; nil = isolation off
+	releases           ExecutionReleaser
+	admission          *ownership.Gate
+	segments           *Segments
+}
+
+// OpeningDependencies are the collaborators starting a root Run requires.
+type OpeningDependencies struct {
+	CommandAcceptances commandAcceptanceReader
+	RootStarts         RootExecutionStarter
+	Releases           ExecutionReleaser
+	Conversation       ConversationReader
+	WorkingContexts    WorkingContextComposer
+	Models             modelAdmitter
+	ModelSelector      modelapp.Selector
+	Session            SessionPorts
+	Segments           *Segments
+	Admissions         *ownership.Gate
+	Isolation          isolationProvider // nil disables isolated sessions (their start is refused)
+}
+
+func NewOpenings(deps OpeningDependencies) (*Openings, error) {
+	if deps.ModelSelector != nil && lo.IsNil(deps.ModelSelector) {
+		return nil, errors.New("runs: model selector is typed nil")
+	}
+	if deps.Isolation != nil && lo.IsNil(deps.Isolation) {
+		return nil, errors.New("runs: isolation provider must not be typed nil")
+	}
+	required := []struct {
+		name  string
+		value any
+	}{
+		{"command acceptance reader", deps.CommandAcceptances},
+		{"root execution starter", deps.RootStarts},
+		{"execution releaser", deps.Releases},
+		{"conversation reader", deps.Conversation},
+		{"working context composer", deps.WorkingContexts},
+		{"model admitter", deps.Models},
+		{"session reader", deps.Session.Reader},
+		{"session creator", deps.Session.Creator},
+		{"active run reader", deps.Session.ActiveRuns},
+		{"segment supervisor", deps.Segments},
+		{"admission gate", deps.Admissions},
+	}
+	for _, required := range required {
+		if lo.IsNil(required.value) {
+			return nil, fmt.Errorf("runs: %s is required", required.name)
+		}
+	}
+	return &Openings{
+		commandAcceptances: deps.CommandAcceptances,
+		startAdmissions:    keylock.NewSet(),
+		rootStarts:         deps.RootStarts,
+		conversation:       deps.Conversation,
+		workingContexts:    deps.WorkingContexts,
+		models:             deps.Models,
+		modelSelector:      deps.ModelSelector,
+		sessionReader:      deps.Session.Reader,
+		sessionCreator:     deps.Session.Creator,
+		activeRuns:         deps.Session.ActiveRuns,
+		isolation:          deps.Isolation,
+		releases:           deps.Releases,
+		admission:          deps.Admissions,
+		segments:           deps.Segments,
+	}, nil
+}
+
+// AdmitSelection exposes the same model policy Start applies before any Goal
+// can freeze that selection durably.
+func (c *Openings) AdmitSelection(ctx context.Context, selection modelchoice.Selection) error {
+	if err := c.models.AdmitSelection(ctx, selection); err != nil {
+		if !errors.Is(err, modelchoice.ErrUnsupported) {
+			return err
+		}
+		return fmt.Errorf("%w: %w", ErrUnsupportedModelSelection, err)
+	}
+	return nil
+}
+
+// WaitSessionStartable lets an application-owned continuation wait until both
+// the live admission gate and the durable Session Run projection are
+// free before attempting its own Start. It does not reserve either resource;
+// Start remains the authority that acquires them.
+func (c *Openings) WaitSessionStartable(ctx context.Context, sessionID string) error {
+	sess, err := c.sessionReader.Get(ctx, sessionID)
+	if err != nil {
+		return err
+	}
+	for {
+		// Every writer releases its admission after settling durable state,
+		// including parked cancellation, recovery and failed cleanup. Capture
+		// that version before either read so no successful release is missed.
+		changed := c.admission.Changes()
+		if err := c.admission.WaitRunStartable(ctx, sess.ID(), sess.Workspace().Path()); err != nil {
+			return err
+		}
+		_, active, err := c.activeRuns.ActiveRun(ctx, sess.ID())
+		err = errors.Join(err, cancellation.Err(ctx))
+		if err != nil || !active {
+			return err
+		}
+		select {
+		case <-ctx.Done():
+			return cancellation.Err(ctx)
+		case <-changed:
+		}
+	}
+}
 
 type rootStartPreparation struct {
 	command            StartCommand
@@ -31,7 +158,7 @@ type rootStartPreparation struct {
 // command carries an external acceptance identity, an exact prior acceptance is
 // returned as the original opening before any mutable preparation, so a retried
 // key never admits a second Run.
-func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (StartResult, error) {
+func (c *Openings) Start(ctx context.Context, cmd StartCommand) (StartResult, error) {
 	if cmd.NewSession != nil {
 		if cmd.SessionID != "" || cmd.Acceptance == nil {
 			return StartResult{}, fmt.Errorf("%w: new Session opening requires its own target and command identity", ErrInvalidStart)
@@ -54,7 +181,7 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (StartResult,
 			return StartResult{}, err
 		}
 		defer release()
-		reopened, found, err := c.lookupAcceptedCommand(ctx, *cmd.Acceptance, CommandStartOpening)
+		reopened, found, err := lookupAcceptedCommand(ctx, c.commandAcceptances, *cmd.Acceptance, CommandStartOpening)
 		if err != nil {
 			return StartResult{}, err
 		}
@@ -68,7 +195,7 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (StartResult,
 // startRoot claims the Session and working tree, stages execution, and commits
 // the opening. A captured new Session commits in the same write-set. Activation
 // continues under the lifecycle supervisor after that acceptance boundary.
-func (c *Coordinator) startRoot(ctx context.Context, cmd StartCommand) (result StartResult, err error) {
+func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result StartResult, err error) {
 	runAdmission, preparation, err := c.admitRootStart(ctx, cmd)
 	if err != nil {
 		return StartResult{}, err
@@ -197,7 +324,7 @@ func (c *Coordinator) startRoot(ctx context.Context, cmd StartCommand) (result S
 // stage the Segment under a policy no admission covers: the preparation is
 // re-derived and the claim retaken until the admitted Session is the prepared
 // one. A Session that is not durable yet has no other writer.
-func (c *Coordinator) admitRootStart(
+func (c *Openings) admitRootStart(
 	ctx context.Context,
 	cmd StartCommand,
 ) (ownership.RunAdmission, rootStartPreparation, error) {
@@ -225,7 +352,7 @@ func (c *Coordinator) admitRootStart(
 	}
 }
 
-func (c *Coordinator) prepareRootStart(
+func (c *Openings) prepareRootStart(
 	ctx context.Context,
 	cmd StartCommand,
 ) (rootStartPreparation, error) {
@@ -281,7 +408,7 @@ func prepareStartSessionReplacement(
 	return &replacement, nil
 }
 
-func (c *Coordinator) resolveOpeningError(ctx context.Context, sessionID string, err error) error {
+func (c *Openings) resolveOpeningError(ctx context.Context, sessionID string, err error) error {
 	if !errors.Is(err, run.ErrSessionBusy) {
 		return err
 	}
@@ -296,7 +423,7 @@ func (c *Coordinator) resolveOpeningError(ctx context.Context, sessionID string,
 // resolveSessionSelection admits an explicitly requested selection, resolves
 // the Session that owns the default, and returns the proposal from which
 // the opening selects its immutable execution route. Existing Sessions never fall back to Runtime config.
-func (c *Coordinator) resolveSessionSelection(
+func (c *Openings) resolveSessionSelection(
 	ctx context.Context,
 	cmd StartCommand,
 ) (session.Session, *session.Session, modelchoice.Selection, error) {
@@ -325,7 +452,7 @@ func (c *Coordinator) resolveSessionSelection(
 	return sess, initial, effective, nil
 }
 
-func (c *Coordinator) resolveSession(
+func (c *Openings) resolveSession(
 	ctx context.Context,
 	cmd StartCommand,
 	selection modelchoice.Selection,
@@ -340,7 +467,7 @@ func (c *Coordinator) resolveSession(
 	return sess, nil, err
 }
 
-func (c *Coordinator) claimFreshRun(ctx context.Context, sess session.Session) (ownership.RunAdmission, error) {
+func (c *Openings) claimFreshRun(ctx context.Context, sess session.Session) (ownership.RunAdmission, error) {
 	runAdmission, ok, leaseErr := c.admission.AcquireRun(ctx, sess.ID(), sess.Workspace().Path())
 	if leaseErr != nil {
 		return ownership.RunAdmission{}, leaseErr
@@ -371,7 +498,7 @@ func (c *Coordinator) claimFreshRun(ctx context.Context, sess session.Session) (
 // it has none. One author, because the same conflict is reachable twice: this process
 // can see the Run before admission, and the durable unique index can reject the
 // INSERT after another process created one.
-func (c *Coordinator) activeRunConflict(ctx context.Context, sessionID string) (error, error) {
+func (c *Openings) activeRunConflict(ctx context.Context, sessionID string) (error, error) {
 	run, found, err := c.activeRuns.ActiveRun(ctx, sessionID)
 	if err != nil || !found {
 		return nil, err
@@ -383,7 +510,7 @@ func (c *Coordinator) activeRunConflict(ctx context.Context, sessionID string) (
 // for an isolated session (created on first use), else the project directory.
 // It fails closed when isolation is requested but unavailable — an isolated run
 // must never fall back to the real tree.
-func (c *Coordinator) executionCWD(ctx context.Context, sess session.Session) (cwd string, isolated bool, err error) {
+func (c *Openings) executionCWD(ctx context.Context, sess session.Session) (cwd string, isolated bool, err error) {
 	if !sess.Isolated() {
 		return sess.Workspace().Path(), false, nil
 	}

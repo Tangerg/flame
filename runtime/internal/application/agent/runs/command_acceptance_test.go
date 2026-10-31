@@ -23,7 +23,7 @@ func TestLookupCommandAcceptanceDelegatesNonEmptyKey(t *testing.T) {
 	reader := &recordingAcceptanceReader{record: CommandAcceptanceRecord{
 		Found: true, CurrentRun: new(run.Run), Acceptance: validCommandAcceptance(),
 	}}
-	coordinator := mustNewCoordinator(Dependencies{CommandAcceptances: reader})
+	coordinator := mustNewCoordinator(runDeps{CommandAcceptances: reader})
 	got, err := coordinator.LookupCommandAcceptance(context.Background(), "cmd-key-1")
 	if err != nil {
 		t.Fatalf("lookup: %v", err)
@@ -44,7 +44,7 @@ func TestStartReturnsReopenedForAcceptedKey(t *testing.T) {
 	reader := &recordingAcceptanceReader{record: CommandAcceptanceRecord{
 		Found: true, CurrentRun: new(run.Run), Acceptance: accepted,
 	}}
-	coordinator := mustNewCoordinator(Dependencies{CommandAcceptances: reader})
+	coordinator := mustNewCoordinator(runDeps{CommandAcceptances: reader})
 	result, err := coordinator.Start(context.Background(), StartCommand{
 		SessionID:  accepted.SessionID,
 		Acceptance: &CommandIdentity{Key: accepted.Key, Fingerprint: accepted.Fingerprint},
@@ -71,7 +71,7 @@ func TestStartRejectsAcceptedKeyConflicts(t *testing.T) {
 	for name, record := range cases {
 		t.Run(name, func(t *testing.T) {
 			reader := &recordingAcceptanceReader{record: record}
-			coordinator := mustNewCoordinator(Dependencies{CommandAcceptances: reader})
+			coordinator := mustNewCoordinator(runDeps{CommandAcceptances: reader})
 			_, err := coordinator.Start(context.Background(), StartCommand{
 				SessionID:  accepted.SessionID,
 				Acceptance: &CommandIdentity{Key: accepted.Key, Fingerprint: accepted.Fingerprint},
@@ -85,7 +85,7 @@ func TestStartRejectsAcceptedKeyConflicts(t *testing.T) {
 
 func TestLookupCommandAcceptanceSkipsReaderForEmptyKey(t *testing.T) {
 	reader := &recordingAcceptanceReader{record: CommandAcceptanceRecord{Found: true}}
-	coordinator := mustNewCoordinator(Dependencies{CommandAcceptances: reader})
+	coordinator := mustNewCoordinator(runDeps{CommandAcceptances: reader})
 	got, err := coordinator.LookupCommandAcceptance(context.Background(), "")
 	if err != nil {
 		t.Fatalf("lookup empty: %v", err)
@@ -129,14 +129,14 @@ func TestResumeReturnsOriginalAcceptanceBeforeReadingTheRun(t *testing.T) {
 		if !retired {
 			reader.record.CurrentRun = new(run.Run)
 		}
-		coordinator := mustNewCoordinator(Dependencies{CommandAcceptances: reader})
+		coordinator := mustNewCoordinator(runDeps{CommandAcceptances: reader})
 		result, err := coordinator.Resume(t.Context(), ResumeCommand{RunID: accepted.RunID, Acceptance: &CommandIdentity{Key: accepted.Key, Fingerprint: accepted.Fingerprint}})
 		if err != nil || !result.Reopened || result.MaterialRetired != retired || result.SegmentID != accepted.SegmentID || result.UserItemID != "" {
 			t.Fatalf("original Resume acceptance=%+v,%v", result, err)
 		}
 	}
 	accepted := validCommandAcceptance()
-	coordinator := mustNewCoordinator(Dependencies{CommandAcceptances: &recordingAcceptanceReader{record: CommandAcceptanceRecord{Found: true, Acceptance: accepted}}})
+	coordinator := mustNewCoordinator(runDeps{CommandAcceptances: &recordingAcceptanceReader{record: CommandAcceptanceRecord{Found: true, Acceptance: accepted}}})
 	_, err := coordinator.Resume(t.Context(), ResumeCommand{RunID: accepted.RunID, Acceptance: &CommandIdentity{Key: accepted.Key, Fingerprint: accepted.Fingerprint}})
 	if !errors.Is(err, ErrCommandKeyConflict) {
 		t.Fatalf("Start key used for Resume=%v", err)

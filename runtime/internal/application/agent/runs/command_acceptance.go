@@ -171,8 +171,8 @@ func AcceptCommand(key, requestFingerprint string, opening OpeningCommit) (Comma
 	return acceptance, nil
 }
 
-func (c *Coordinator) lookupAcceptedCommand(ctx context.Context, identity CommandIdentity, operation CommandOperation) (StartResult, bool, error) {
-	record, err := c.commandAcceptances.Lookup(ctx, identity.Key)
+func lookupAcceptedCommand(ctx context.Context, acceptances commandAcceptanceReader, identity CommandIdentity, operation CommandOperation) (StartResult, bool, error) {
+	record, err := acceptances.Lookup(ctx, identity.Key)
 	if err != nil {
 		return StartResult{}, false, err
 	}

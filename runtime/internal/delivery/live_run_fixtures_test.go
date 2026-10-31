@@ -75,7 +75,7 @@ func startLiveRun(t *testing.T, s *Handler, cwd string) (runID, segmentID string
 	if err != nil {
 		t.Fatalf("create live-run session: %v", err)
 	}
-	result, err := s.runs.Start(context.Background(), runs.StartCommand{
+	result, err := s.runOpenings.Start(context.Background(), runs.StartCommand{
 		SessionID: sess.ID,
 		Input:     []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hold this run open"}},
 	})

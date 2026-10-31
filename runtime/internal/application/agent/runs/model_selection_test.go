@@ -25,7 +25,7 @@ func TestFreshStartBindsSelectedModelAndKeepsSessionPreferenceAndOriginalInput(t
 	effects := &fakeEffects{}
 	coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, new(fakeRunSessions), effects)
 	count := 0
-	coordinator.modelSelector = modelSelectorFunc(func(_ context.Context, input models.SelectionInput) (modelchoice.Selection, error) {
+	coordinator.openings.modelSelector = modelSelectorFunc(func(_ context.Context, input models.SelectionInput) (modelchoice.Selection, error) {
 		count++
 		request := input.Request
 		if input.Context.Use != modelchoice.Interaction || input.Context.Limits != nil || input.Proposed != proposed || len(request.Messages) != 1 || request.Messages[0].Text() != "question" || request.Options.MaxOutputTokens == nil || *request.Options.MaxOutputTokens != 128 {
@@ -59,7 +59,7 @@ func TestSelectionFailureRefusesBeforeStagingAndDurableOpening(t *testing.T) {
 	effects := &fakeEffects{}
 	coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, new(fakeRunSessions), effects)
 	refusal := errors.New("selection unavailable")
-	coordinator.modelSelector = modelSelectorFunc(func(context.Context, models.SelectionInput) (modelchoice.Selection, error) {
+	coordinator.openings.modelSelector = modelSelectorFunc(func(context.Context, models.SelectionInput) (modelchoice.Selection, error) {
 		return modelchoice.Selection{}, refusal
 	})
 	_, err := coordinator.Start(t.Context(), StartCommand{Acceptance: &CommandIdentity{Key: "selected-opening", Fingerprint: testsupport.Digest("selected opening").String()}, NewSession: &SessionOpening{SessionID: "ses_selected", RunID: "run_selected", CWD: "/selected", Title: "Selected"}, ModelSelection: testsupport.DefaultModelSelection(), Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "question"}}})
@@ -74,7 +74,7 @@ func TestSelectionFailureRefusesBeforeStagingAndDurableOpening(t *testing.T) {
 func TestAcceptedStartRecoveryDoesNotSelectAgain(t *testing.T) {
 	accepted := validCommandAcceptance()
 	reader := &recordingAcceptanceReader{record: CommandAcceptanceRecord{Found: true, CurrentRun: nil, Acceptance: accepted}}
-	coordinator := mustNewCoordinator(Dependencies{CommandAcceptances: reader, ModelSelector: modelSelectorFunc(func(context.Context, models.SelectionInput) (modelchoice.Selection, error) {
+	coordinator := mustNewCoordinator(runDeps{CommandAcceptances: reader, ModelSelector: modelSelectorFunc(func(context.Context, models.SelectionInput) (modelchoice.Selection, error) {
 		t.Fatal("accepted command reran selection")
 		return modelchoice.Selection{}, errors.New("unexpected selection")
 	})})

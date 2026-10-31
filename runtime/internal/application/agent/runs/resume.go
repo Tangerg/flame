@@ -21,7 +21,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 		if err := cmd.Acceptance.Validate(); err != nil {
 			return StartResult{}, fmt.Errorf("%w: %w", ErrInvalidInterruptResponse, err)
 		}
-		accepted, found, err := c.lookupAcceptedCommand(ctx, *cmd.Acceptance, CommandResumeOpening)
+		accepted, found, err := lookupAcceptedCommand(ctx, c.commandAcceptances, *cmd.Acceptance, CommandResumeOpening)
 		if err != nil || found {
 			return accepted, err
 		}

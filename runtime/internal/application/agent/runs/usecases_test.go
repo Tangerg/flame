@@ -431,21 +431,19 @@ func newUseCaseCoordinator(exec ExecutionObserver, control *fakeExecutionPorts, 
 			}
 		}
 	}
-	deps := testDeps{Dependencies: Dependencies{
-		RootStarts:   control,
-		Releases:     control,
-		Conversation: emptyConversationReader{},
-		Continuation: control,
-		Steering:     control,
-		Session:      testSessionPorts(sessions),
-		Runs:         projection,
-		Items:        items,
-		Admissions:   testsupport.NewAdmissionGate(),
+	deps := testDeps{runDeps: runDeps{
+		RootStarts:       control,
+		Releases:         control,
+		Conversation:     emptyConversationReader{},
+		Continuation:     control,
+		Steering:         control,
+		Session:          testSessionPorts(sessions),
+		Runs:             projection,
+		Items:            items,
+		Admissions:       testsupport.NewAdmissionGate(),
+		RootCancellation: control, WaitingRestorer: control,
+		RunningSubtreeCanceler: control, WaitingSubtreeCancellationPreparer: control,
 	},
-		cancellationOnly: cancellationOnly{
-			RootCancellation: control, WaitingRestorer: control,
-			RunningSubtreeCanceler: control, WaitingSubtreeCancellationPreparer: control,
-		},
 		NewRunID:     func() string { return "run_new" },
 		NewSegmentID: func() string { return "seg_new" },
 		Observations: exec,
@@ -885,7 +883,7 @@ func TestStartSeedsExecutorFromConversationAndCurrentUserMessage(t *testing.T) {
 	sessions := &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")})}
 	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}}
 	c := newUseCaseCoordinator(exec, control, sessions, effects)
-	c.conversation = staticConversationReader{messages: []corechat.Message{
+	c.openings.conversation = staticConversationReader{messages: []corechat.Message{
 		corechat.NewUserMessage(corechat.NewTextPart("earlier question")),
 		corechat.NewAssistantMessage(corechat.NewTextPart("earlier answer")),
 	}}
@@ -964,7 +962,7 @@ func TestStartSeparatesIsolatedExecutionDirFromPersistentWorkspace(t *testing.T)
 	sessions := &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work"), Isolated: true})}
 	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}}
 	c := newUseCaseCoordinator(exec, control, sessions, effects)
-	c.isolation = &stubIsolation{path: "/sandbox/copy"}
+	c.openings.isolation = &stubIsolation{path: "/sandbox/copy"}
 
 	result, err := c.Start(t.Context(), StartCommand{
 		SessionID: "ses_1",
@@ -1102,7 +1100,7 @@ func TestResumeCommitsOpeningBeforeActivation(t *testing.T) {
 	activatedAfterOpening := false
 	control.resumeCheck = func() { _, activatedAfterOpening = effects.opening().Resume() }
 	c := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
-	c.modelSelector = modelSelectorFunc(func(context.Context, models.SelectionInput) (modelchoice.Selection, error) {
+	c.openings.modelSelector = modelSelectorFunc(func(context.Context, models.SelectionInput) (modelchoice.Selection, error) {
 		t.Fatal("Resume reran model selection")
 		return modelchoice.Selection{}, errors.New("unexpected selection")
 	})
@@ -1650,7 +1648,7 @@ func TestCancelParkedRunUsesApplicationAdmission(t *testing.T) {
 		operations: &operations,
 	}
 	control := &fakeExecutionPorts{operations: &operations}
-	c := mustNewCoordinator(Dependencies{
+	c := mustNewCoordinator(runDeps{
 		Releases: control, Session: testSessionPorts(sessions),
 		Runs: &fakeRunProjection{runs: map[string]run.Run{
 			"run_1": runForPending(pending),
@@ -1681,7 +1679,7 @@ func TestCancelParkedRunUsesApplicationAdmission(t *testing.T) {
 
 func TestCancelFinishedRunReportsFinishedInsteadOfNotFound(t *testing.T) {
 	finished := runRecord(run.Finished, "", "")
-	c := mustNewCoordinator(Dependencies{
+	c := mustNewCoordinator(runDeps{
 		Releases:   &fakeExecutionPorts{},
 		Session:    testSessionPorts(&fakeRunSessions{}),
 		Runs:       &fakeRunProjection{runs: map[string]run.Run{"run_1": finished}},
@@ -1695,7 +1693,7 @@ func TestCancelFinishedRunReportsFinishedInsteadOfNotFound(t *testing.T) {
 }
 
 func TestCancelUnknownRunReportsNotFound(t *testing.T) {
-	c := mustNewCoordinator(Dependencies{
+	c := mustNewCoordinator(runDeps{
 		Releases:   &fakeExecutionPorts{},
 		Session:    testSessionPorts(&fakeRunSessions{}),
 		Runs:       &fakeRunProjection{},
@@ -1710,7 +1708,7 @@ func TestCancelUnknownRunReportsNotFound(t *testing.T) {
 
 func TestCancelChildRunRequiresExplicitAuthority(t *testing.T) {
 	child := runRecord(run.Running, "seg_child", "item_parent")
-	c := mustNewCoordinator(Dependencies{
+	c := mustNewCoordinator(runDeps{
 		Releases:   &fakeExecutionPorts{},
 		Session:    testSessionPorts(&fakeRunSessions{}),
 		Runs:       &fakeRunProjection{runs: map[string]run.Run{"run_1": child}},
@@ -1924,7 +1922,7 @@ func TestCancelParkedRunReportsExecutorReleaseFailureAfterDurableCommit(t *testi
 	sessions := &fakeRunSessions{pending: map[string]Pending{
 		"run_1": pending}}
 	control := &fakeExecutionPorts{releaseErr: cleanupErr}
-	c := mustNewCoordinator(Dependencies{
+	c := mustNewCoordinator(runDeps{
 		Releases: control, Session: testSessionPorts(sessions),
 		Runs: &fakeRunProjection{runs: map[string]run.Run{
 			"run_1": runForPending(pending),
@@ -2193,7 +2191,7 @@ func TestCancelTreatsAlreadyReleasedExecutorAsIdempotentSuccess(t *testing.T) {
 	sessions := &fakeRunSessions{pending: map[string]Pending{
 		"run_1": pending}}
 	control := &fakeExecutionPorts{releaseErr: ErrExecutorNotLive}
-	c := mustNewCoordinator(Dependencies{
+	c := mustNewCoordinator(runDeps{
 		Releases: control, Session: testSessionPorts(sessions),
 		Runs: &fakeRunProjection{runs: map[string]run.Run{
 			"run_1": runForPending(pending),
@@ -2276,7 +2274,7 @@ func TestStartRejectsUnsupportedReasoningSelectionBeforeAnyOpeningSideEffect(t *
 	c := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
 	unsupported := fmt.Errorf("%w: reasoning effort is not advertised by the selected model", modelchoice.ErrUnsupported)
 	probe := &modelInputAdmissionProbe{selectionErr: unsupported}
-	c.models = probe
+	c.openings.models = probe
 	selection, err := modelchoice.NewWithReasoningEffort("openai", "gpt-5.6-sol", "impossible")
 	if err != nil {
 		t.Fatal(err)
@@ -2299,7 +2297,7 @@ func TestStartRetainsHistoricalMediaForFinalModelAdmission(t *testing.T) {
 	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}}
 	c := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, &fakeEffects{})
 	historical := corechat.NewUserMessage(corechat.NewMediaPart(mustInputMedia(t, "image/png", []byte("history"))))
-	c.conversation = staticConversationReader{messages: []corechat.Message{historical}}
+	c.openings.conversation = staticConversationReader{messages: []corechat.Message{historical}}
 	result, err := c.Start(t.Context(), StartCommand{SessionID: "ses_1", ModelSelection: testsupport.MustModelSelection("provider", "text-model"), Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "continue"}}})
 	if err != nil {
 		t.Fatal(err)

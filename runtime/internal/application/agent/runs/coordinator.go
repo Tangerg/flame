@@ -6,81 +6,43 @@ import (
 	"fmt"
 	"iter"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/qimu/cancellation"
-	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/keylock"
 	"github.com/samber/lo"
 	"go.opentelemetry.io/otel/trace"
 )
 
-// errClosed is returned by [Coordinator.Start] once the Coordinator is closing:
-// it accepts no new run segments.
+// errClosed refuses a new segment once Segments is shutting down.
 var errClosed = errors.New("runs: coordinator closed")
 
-// Coordinator owns the live run segments, the per-run event [journal], the
-// segment pump that drives a run from Start to terminal, and the
-// request-detached task group that keeps runs alive across client disconnects
-// and cancels + joins them during shutdown.
-//
-// Reading Start and the pump explains a Run end to end through canonical
-// application events.
+// Coordinator continues existing Runs: it resumes a waiting Run with its
+// answers, revives accepted and uncertain continuations after a restart, steers
+// a running Run and reports a command's prior acceptance. [Openings] starts
+// Runs, [Cancellations] stops them and [Segments] runs every segment they open.
 type Coordinator struct {
 	commandAcceptances    commandAcceptanceReader
-	startAdmissions       *keylock.Set
-	rootStarts            RootExecutionStarter
-	conversation          ConversationReader
-	workingContexts       WorkingContextComposer
-	models                modelAdmitter
-	modelSelector         modelapp.Selector
 	continuation          ExecutionContinuer
 	approvalRules         approvalRulePreparer
 	acceptedContinuations acceptedContinuationStore
 	steering              RunningExecutionSteerer
 	sessionReader         sessionReader
-	sessionCreator        sessionCreator
-	activeRuns            activeRunReader
 	interrupts            pendingInterruptReader
 	checkpoints           WaitingCheckpointReader
-	isolation             isolationProvider // resolves an isolated session's sandbox copy; nil = isolation off
 	// runs reads the durable run record. A subscribe or a steer that cannot be
 	// served has to say WHY — waiting, finished, a child, or a segment that has
 	// been replaced — and only the durable projection knows: the live registry
 	// holds running segments, so every one of those looks identical there.
 	runs Projection
-	// items resolves the exact parent tool projection a waiting child
-	// cancellation replaces.
+	// items reads the Items a waiting hand-off names.
 	items     ItemProjection
-	releases  ExecutionReleaser
 	admission *ownership.Gate
 	segments  *Segments
 }
 
-// AdmitSelection exposes the same model policy Start applies before any Goal
-// can freeze that selection durably.
-func (c *Coordinator) AdmitSelection(ctx context.Context, selection modelchoice.Selection) error {
-	if err := c.models.AdmitSelection(ctx, selection); err != nil {
-		if !errors.Is(err, modelchoice.ErrUnsupported) {
-			return err
-		}
-		return fmt.Errorf("%w: %w", ErrUnsupportedModelSelection, err)
-	}
-	return nil
-}
-
-// Dependencies is the complete collaborator set for the user-visible run use
-// cases and the segment supervisor they own.
+// Dependencies are the collaborators continuing an existing Run requires.
 type Dependencies struct {
 	CommandAcceptances    commandAcceptanceReader
-	RootStarts            RootExecutionStarter
-	Releases              ExecutionReleaser
-	Conversation          ConversationReader
-	WorkingContexts       WorkingContextComposer
-	Models                modelAdmitter
-	ModelSelector         modelapp.Selector
 	Continuation          ExecutionContinuer
 	ApprovalRules         approvalRulePreparer
 	AcceptedContinuations acceptedContinuationStore
@@ -92,31 +54,20 @@ type Dependencies struct {
 	Runs       Projection
 	Items      ItemProjection
 	Admissions *ownership.Gate
-	Isolation  isolationProvider // nil disables isolated sessions (their start is refused)
 }
 
 // NewCoordinator builds the run use cases over the segment supervisor that runs them.
 func NewCoordinator(deps Dependencies) (*Coordinator, error) {
-	if deps.ModelSelector != nil && lo.IsNil(deps.ModelSelector) {
-		return nil, errors.New("runs: model selector is typed nil")
-	}
 	required := []struct {
 		name  string
 		value any
 	}{
-		{"root execution starter", deps.RootStarts},
 		{"command acceptance reader", deps.CommandAcceptances},
-		{"execution releaser", deps.Releases},
-		{"conversation reader", deps.Conversation},
-		{"working context composer", deps.WorkingContexts},
-		{"model admitter", deps.Models},
 		{"waiting execution continuer", deps.Continuation},
 		{"approval rule preparer", deps.ApprovalRules},
 		{"accepted continuation store", deps.AcceptedContinuations},
 		{"running execution steerer", deps.Steering},
 		{"session reader", deps.Session.Reader},
-		{"session creator", deps.Session.Creator},
-		{"active run reader", deps.Session.ActiveRuns},
 		{"pending interrupt reader", deps.Session.Interrupts},
 		{"waiting checkpoint reader", deps.Checkpoints},
 		{"segment supervisor", deps.Segments},
@@ -129,30 +80,17 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 			return nil, fmt.Errorf("runs: %s is required", required.name)
 		}
 	}
-	if deps.Isolation != nil && lo.IsNil(deps.Isolation) {
-		return nil, errors.New("runs: isolation provider must not be typed nil")
-	}
 	return &Coordinator{
 		commandAcceptances:    deps.CommandAcceptances,
-		startAdmissions:       keylock.NewSet(),
-		rootStarts:            deps.RootStarts,
-		conversation:          deps.Conversation,
-		workingContexts:       deps.WorkingContexts,
-		models:                deps.Models,
-		modelSelector:         deps.ModelSelector,
 		continuation:          deps.Continuation,
 		approvalRules:         deps.ApprovalRules,
 		acceptedContinuations: deps.AcceptedContinuations,
 		steering:              deps.Steering,
 		sessionReader:         deps.Session.Reader,
-		sessionCreator:        deps.Session.Creator,
-		activeRuns:            deps.Session.ActiveRuns,
 		interrupts:            deps.Session.Interrupts,
 		checkpoints:           deps.Checkpoints,
 		runs:                  deps.Runs,
 		items:                 deps.Items,
-		isolation:             deps.Isolation,
-		releases:              deps.Releases,
 		admission:             deps.Admissions,
 		segments:              deps.Segments,
 	}, nil
@@ -162,36 +100,6 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 // it from here rather than from a constant of its own: a number the client is
 // told and a number the runtime evicts by must be the same number.
 func (c *Segments) ReplayRetention() Retention { return c.retention }
-
-// WaitSessionStartable lets an application-owned continuation wait until both
-// the live admission gate and the durable Session Run projection are
-// free before attempting its own Start. It does not reserve either resource;
-// Start remains the authority that acquires them.
-func (c *Coordinator) WaitSessionStartable(ctx context.Context, sessionID string) error {
-	sess, err := c.sessionReader.Get(ctx, sessionID)
-	if err != nil {
-		return err
-	}
-	for {
-		// Every writer releases its admission after settling durable state,
-		// including parked cancellation, recovery and failed cleanup. Capture
-		// that version before either read so no successful release is missed.
-		changed := c.admission.Changes()
-		if err := c.admission.WaitRunStartable(ctx, sess.ID(), sess.Workspace().Path()); err != nil {
-			return err
-		}
-		_, active, err := c.activeRuns.ActiveRun(ctx, sess.ID())
-		err = errors.Join(err, cancellation.Err(ctx))
-		if err != nil || !active {
-			return err
-		}
-		select {
-		case <-ctx.Done():
-			return cancellation.Err(ctx)
-		case <-changed:
-		}
-	}
-}
 
 // openSegment attaches an already-staged executor stream, atomically commits
 // admission/resume plus opening projections, registers the live owner, then

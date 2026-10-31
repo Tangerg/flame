@@ -58,7 +58,7 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 	if actor, present := operation.ActorFrom(ctx); present {
 		command.Actor = &actor
 	}
-	result, err := s.runs.Start(ctx, command)
+	result, err := s.runOpenings.Start(ctx, command)
 	if err != nil {
 		return nil, nil, wireRunStartErr(err)
 	}

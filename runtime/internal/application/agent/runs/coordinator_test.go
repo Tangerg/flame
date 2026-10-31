@@ -541,8 +541,7 @@ type completeTestProjectionPorts interface {
 // testDeps fixes one collaborator set for a Coordinator and its segment
 // supervisor, so a test names a fake once wherever both consume it.
 type testDeps struct {
-	Dependencies
-	cancellationOnly
+	runDeps
 	Observations  ExecutionObserver
 	Projection    completeTestProjectionPorts
 	Now           func() time.Time
@@ -553,7 +552,7 @@ type testDeps struct {
 }
 
 func mustNewTestCoordinator(d testDeps) *testRuns {
-	deps := d.Dependencies
+	deps := d.runDeps
 	seg := SegmentDependencies{Observations: d.Observations, Now: d.Now, Invalidations: d.Invalidations, Retention: d.Retention, NewRunID: d.NewRunID, NewSegmentID: d.NewSegmentID}
 	if d.Projection != nil {
 		seg.Publication = PublicationPorts{Openings: d.Projection, Events: d.Projection, Barriers: d.Projection, Workspace: d.Projection}
@@ -561,11 +560,11 @@ func mustNewTestCoordinator(d testDeps) *testRuns {
 		if deps.Checkpoints == nil {
 			deps.Checkpoints = d.Projection
 		}
-		if d.WaitingSubtreeCancellations == nil {
-			d.WaitingSubtreeCancellations = d.Projection
+		if deps.WaitingSubtreeCancellations == nil {
+			deps.WaitingSubtreeCancellations = d.Projection
 		}
 	}
-	return mustNewCoordinatorWithSegments(deps, seg, d.cancellationOnly)
+	return mustNewCoordinatorWithSegments(deps, seg)
 }
 
 func (f *fakeEffects) ReadWaitingCheckpoint(
@@ -2827,8 +2826,9 @@ func TestCoordinatorCancelContextSurvivesRequestContext(t *testing.T) {
 	sessions := &fakeRunSessions{}
 	coordinator.sessionReader = sessions
 	coordinator.cancellations.sessionReader = coordinator.sessionReader
-	coordinator.sessionCreator = sessions
-	coordinator.activeRuns = sessions
+	coordinator.openings.sessionReader = coordinator.sessionReader
+	coordinator.openings.sessionCreator = sessions
+	coordinator.openings.activeRuns = sessions
 	coordinator.interrupts = sessions
 	coordinator.cancellations.interrupts = coordinator.interrupts
 	coordinator.cancellations.terminations = sessions

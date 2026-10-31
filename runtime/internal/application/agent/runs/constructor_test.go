@@ -7,29 +7,34 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-func TestNewCoordinatorRejectsMalformedDependencies(t *testing.T) {
+func TestRunUseCasesRejectMalformedDependencies(t *testing.T) {
 	var typedNilStarter *fakeExecutionPorts
+	complete := completeTestDependencies(runDeps{}, SegmentDependencies{})
+	withoutSegments := complete.Dependencies
+	withoutSegments.Segments = nil
 	tests := []struct {
-		name string
-		deps Dependencies
-		want string
+		name      string
+		construct func() error
+		want      string
 	}{
-		{name: "empty", deps: Dependencies{}, want: "root execution starter"},
-		{name: "typed nil", deps: Dependencies{RootStarts: typedNilStarter}, want: "root execution starter"},
-		{name: "missing segments", deps: func() Dependencies {
-			deps := completeTestDependencies(Dependencies{}, SegmentDependencies{})
-			deps.Segments = nil
-			return deps
-		}(), want: "segment supervisor"},
+		{name: "empty coordinator", construct: func() error { _, err := NewCoordinator(Dependencies{}); return err }, want: "command acceptance reader"},
+		{name: "coordinator without segments", construct: func() error { _, err := NewCoordinator(withoutSegments); return err }, want: "segment supervisor"},
+		{name: "empty openings", construct: func() error { _, err := NewOpenings(OpeningDependencies{}); return err }, want: "command acceptance reader"},
+		{name: "typed nil starter", construct: func() error {
+			_, err := NewOpenings(OpeningDependencies{CommandAcceptances: noCommandAcceptances{}, RootStarts: typedNilStarter})
+			return err
+		}, want: "root execution starter"},
+		{name: "empty cancellations", construct: func() error { _, err := NewCancellations(CancellationDependencies{}); return err }, want: "root cancellation requester"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if _, err := NewCoordinator(test.deps); err == nil || !strings.Contains(err.Error(), test.want) {
-				t.Fatalf("NewCoordinator error = %v, want %q", err, test.want)
+			if err := test.construct(); err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("constructor error = %v, want %q", err, test.want)
 			}
 		})
 	}
@@ -77,24 +82,45 @@ func (acceptAllModelInputs) AdmitSelection(context.Context, modelchoice.Selectio
 // mustNewCoordinator completes dependencies unrelated to a focused test. The
 // production constructor remains strict; tests opt into explicit inert doubles
 // instead of manufacturing partially valid Coordinators.
-func mustNewCoordinator(deps Dependencies) *testRuns {
-	return mustNewCoordinatorWithSegments(deps, SegmentDependencies{}, cancellationOnly{})
+func mustNewCoordinator(deps runDeps) *testRuns {
+	return mustNewCoordinatorWithSegments(deps, SegmentDependencies{})
 }
 
-// testRuns is the run use cases a test drives: the Coordinator and the
-// Cancellations built over the same collaborators and Segments.
+// testRuns is the run use cases a test drives, built over the same
+// collaborators and Segments.
 type testRuns struct {
 	*Coordinator
+	openings      *Openings
 	cancellations *Cancellations
+}
+
+func (t *testRuns) Start(ctx context.Context, cmd StartCommand) (StartResult, error) {
+	return t.openings.Start(ctx, cmd)
+}
+
+func (t *testRuns) AdmitSelection(ctx context.Context, selection modelchoice.Selection) error {
+	return t.openings.AdmitSelection(ctx, selection)
+}
+
+func (t *testRuns) WaitSessionStartable(ctx context.Context, sessionID string) error {
+	return t.openings.WaitSessionStartable(ctx, sessionID)
 }
 
 func (t *testRuns) Cancel(ctx context.Context, cmd CancelCommand) (CancelResult, error) {
 	return t.cancellations.Cancel(ctx, cmd)
 }
 
-// cancellationOnly are the collaborators only Cancellations uses; the shared
-// ones come from the completed Dependencies.
-type cancellationOnly struct {
+// runDeps is every collaborator of the run use cases a test may fix. The
+// helpers split it into each use case's own dependencies, sharing the rest.
+type runDeps struct {
+	Dependencies
+	RootStarts                         RootExecutionStarter
+	Releases                           ExecutionReleaser
+	Conversation                       ConversationReader
+	WorkingContexts                    WorkingContextComposer
+	Models                             modelAdmitter
+	ModelSelector                      modelapp.Selector
+	Isolation                          isolationProvider
 	RootCancellation                   RunningRootCancellationRequester
 	WaitingRestorer                    waitingExecutionRestorer
 	RunningSubtreeCanceler             RunningSubtreeCanceler
@@ -103,54 +129,30 @@ type cancellationOnly struct {
 	Terminations                       terminationCommitter
 }
 
-// mustNewCoordinatorWithSegments also fixes the segment supervisor's and
-// cancellation's collaborators; defaults are shared with the use cases' own.
-func mustNewCoordinatorWithSegments(deps Dependencies, seg SegmentDependencies, only cancellationOnly) *testRuns {
+// mustNewCoordinatorWithSegments also fixes the segment supervisor's
+// collaborators; defaults are shared with the use cases' own.
+func mustNewCoordinatorWithSegments(deps runDeps, seg SegmentDependencies) *testRuns {
 	deps = completeTestDependencies(deps, seg)
-	coordinator, err := NewCoordinator(deps)
+	coordinator, err := NewCoordinator(deps.Dependencies)
 	if err != nil {
 		panic(err)
 	}
-	cancellations, err := NewCancellations(completeTestCancellations(deps, only))
+	openings, err := NewOpenings(OpeningDependencies{
+		CommandAcceptances: deps.CommandAcceptances, RootStarts: deps.RootStarts, Releases: deps.Releases,
+		Conversation: deps.Conversation, WorkingContexts: deps.WorkingContexts, Models: deps.Models,
+		ModelSelector: deps.ModelSelector, Session: deps.Session, Segments: deps.Segments,
+		Admissions: deps.Admissions, Isolation: deps.Isolation,
+	})
 	if err != nil {
 		panic(err)
 	}
-	return &testRuns{Coordinator: coordinator, cancellations: cancellations}
-}
-
-func completeTestCancellations(deps Dependencies, only cancellationOnly) CancellationDependencies {
-	control := &fakeExecutionPorts{}
-	if only.RootCancellation == nil {
-		only.RootCancellation = control
-	}
-	if only.WaitingRestorer == nil {
-		only.WaitingRestorer = control
-	}
-	if only.RunningSubtreeCanceler == nil {
-		only.RunningSubtreeCanceler = control
-	}
-	if only.WaitingSubtreeCancellationPreparer == nil {
-		only.WaitingSubtreeCancellationPreparer = control
-	}
-	if only.WaitingSubtreeCancellations == nil {
-		only.WaitingSubtreeCancellations = &fakeEffects{}
-	}
-	if only.Terminations == nil {
-		// Session doubles implement every Session port; a test's own one also
-		// records the terminations its cancellations commit.
-		if terminations, ok := deps.Session.Interrupts.(terminationCommitter); ok {
-			only.Terminations = terminations
-		} else {
-			only.Terminations = &fakeRunSessions{}
-		}
-	}
-	return CancellationDependencies{
-		RootCancellation:                   only.RootCancellation,
-		WaitingRestorer:                    only.WaitingRestorer,
-		RunningSubtreeCanceler:             only.RunningSubtreeCanceler,
-		WaitingSubtreeCancellationPreparer: only.WaitingSubtreeCancellationPreparer,
-		WaitingSubtreeCancellations:        only.WaitingSubtreeCancellations,
-		Terminations:                       only.Terminations,
+	cancellations, err := NewCancellations(CancellationDependencies{
+		RootCancellation:                   deps.RootCancellation,
+		WaitingRestorer:                    deps.WaitingRestorer,
+		RunningSubtreeCanceler:             deps.RunningSubtreeCanceler,
+		WaitingSubtreeCancellationPreparer: deps.WaitingSubtreeCancellationPreparer,
+		WaitingSubtreeCancellations:        deps.WaitingSubtreeCancellations,
+		Terminations:                       deps.Terminations,
 		Sessions:                           deps.Session.Reader,
 		Interrupts:                         deps.Session.Interrupts,
 		Checkpoints:                        deps.Checkpoints,
@@ -159,10 +161,14 @@ func completeTestCancellations(deps Dependencies, only cancellationOnly) Cancell
 		Runs:                               deps.Runs,
 		Items:                              deps.Items,
 		Admissions:                         deps.Admissions,
+	})
+	if err != nil {
+		panic(err)
 	}
+	return &testRuns{Coordinator: coordinator, openings: openings, cancellations: cancellations}
 }
 
-func completeTestDependencies(deps Dependencies, seg SegmentDependencies) Dependencies {
+func completeTestDependencies(deps runDeps, seg SegmentDependencies) runDeps {
 	control := &fakeExecutionPorts{}
 	observer := &fakeExecutor{}
 	sessions := &fakeRunSessions{}
@@ -194,6 +200,18 @@ func completeTestDependencies(deps Dependencies, seg SegmentDependencies) Depend
 	if deps.Steering == nil {
 		deps.Steering = control
 	}
+	if deps.RootCancellation == nil {
+		deps.RootCancellation = control
+	}
+	if deps.WaitingRestorer == nil {
+		deps.WaitingRestorer = control
+	}
+	if deps.RunningSubtreeCanceler == nil {
+		deps.RunningSubtreeCanceler = control
+	}
+	if deps.WaitingSubtreeCancellationPreparer == nil {
+		deps.WaitingSubtreeCancellationPreparer = control
+	}
 	if deps.Session.Reader == nil {
 		deps.Session.Reader = sessions
 	}
@@ -206,8 +224,20 @@ func completeTestDependencies(deps Dependencies, seg SegmentDependencies) Depend
 	if deps.Session.Interrupts == nil {
 		deps.Session.Interrupts = sessions
 	}
+	if deps.Terminations == nil {
+		// Session doubles implement every Session port; a test's own one also
+		// records the terminations its cancellations commit.
+		if terminations, ok := deps.Session.Interrupts.(terminationCommitter); ok {
+			deps.Terminations = terminations
+		} else {
+			deps.Terminations = sessions
+		}
+	}
 	if deps.Checkpoints == nil {
 		deps.Checkpoints = effects
+	}
+	if deps.WaitingSubtreeCancellations == nil {
+		deps.WaitingSubtreeCancellations = effects
 	}
 	if deps.CommandAcceptances == nil {
 		deps.CommandAcceptances = noCommandAcceptances{}

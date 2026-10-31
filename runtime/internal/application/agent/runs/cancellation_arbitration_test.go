@@ -156,8 +156,9 @@ func TestWaitingChildAndRootCancellationHaveOneApplicationOwner(t *testing.T) {
 		}
 		coordinator.sessionReader = sessions
 		coordinator.cancellations.sessionReader = coordinator.sessionReader
-		coordinator.sessionCreator = sessions
-		coordinator.activeRuns = sessions
+		coordinator.openings.sessionReader = coordinator.sessionReader
+		coordinator.openings.sessionCreator = sessions
+		coordinator.openings.activeRuns = sessions
 		coordinator.interrupts = sessions
 		coordinator.cancellations.interrupts = coordinator.interrupts
 		coordinator.cancellations.terminations = sessions

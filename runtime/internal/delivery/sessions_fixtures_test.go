@@ -404,12 +404,7 @@ func newTestHandler(rt testRuntime) *Handler {
 		panic(err)
 	}
 	runCoordinator, err := runs.NewCoordinator(runs.Dependencies{
-		RootStarts:            rt,
 		CommandAcceptances:    noDeliveryCommandAcceptances{},
-		Releases:              rt,
-		Conversation:          conversation,
-		WorkingContexts:       passthroughRunWorkingContext{},
-		Models:                passthroughRunWorkingContext{},
 		Continuation:          rt,
 		ApprovalRules:         inertDeliveryApprovalRules{},
 		AcceptedContinuations: inertDeliveryAcceptedContinuations{},
@@ -443,7 +438,22 @@ func newTestHandler(rt testRuntime) *Handler {
 	if err != nil {
 		panic(err)
 	}
+	runOpenings, err := runs.NewOpenings(runs.OpeningDependencies{
+		CommandAcceptances: noDeliveryCommandAcceptances{},
+		RootStarts:         rt,
+		Releases:           rt,
+		Conversation:       conversation,
+		WorkingContexts:    passthroughRunWorkingContext{},
+		Models:             passthroughRunWorkingContext{},
+		Session:            sessionPorts,
+		Segments:           runSegments,
+		Admissions:         admissions,
+	})
+	if err != nil {
+		panic(err)
+	}
 	s.runs = runCoordinator
+	s.runOpenings = runOpenings
 	s.runCancellations = runCancellations
 	s.runStreams = runSegments
 	if p, ok := rt.(queriesCoordinatorProvider); ok {

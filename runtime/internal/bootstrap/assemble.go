@@ -242,28 +242,34 @@ func buildAssemblyCore(
 		NewSegmentID:  newSegmentID,
 		Invalidations: policy.invalidations.publish,
 	}
+	sessionPorts := runs.SessionPorts{
+		Reader:     sessionCoordinator,
+		Creator:    sessionCoordinator,
+		ActiveRuns: sessionCoordinator,
+		Interrupts: sessionCoordinator,
+	}
 	runDependencies := runs.Dependencies{
 		CommandAcceptances:    cfg.stores.CommandAcceptances,
-		RootStarts:            execution.executor,
-		Releases:              execution.executor,
-		Conversation:          execution.conversation.messages,
-		Models:                modelCapabilities,
-		ModelSelector:         execution.tools.callComposition,
 		Continuation:          execution.executor,
 		ApprovalRules:         policy.approvals,
 		AcceptedContinuations: cfg.stores.AcceptedContinuations,
 		Steering:              execution.executor,
-		WorkingContexts:       execution.workingContexts,
-		Session: runs.SessionPorts{
-			Reader:     sessionCoordinator,
-			Creator:    sessionCoordinator,
-			ActiveRuns: sessionCoordinator,
-			Interrupts: sessionCoordinator,
-		},
-		Checkpoints: runSegmentEffects,
-		Runs:        cfg.stores.Runs,
-		Items:       cfg.stores.Transcript,
-		Admissions:  admissionGate,
+		Session:               sessionPorts,
+		Checkpoints:           runSegmentEffects,
+		Runs:                  cfg.stores.Runs,
+		Items:                 cfg.stores.Transcript,
+		Admissions:            admissionGate,
+	}
+	openingDependencies := runs.OpeningDependencies{
+		CommandAcceptances: cfg.stores.CommandAcceptances,
+		RootStarts:         execution.executor,
+		Releases:           execution.executor,
+		Conversation:       execution.conversation.messages,
+		WorkingContexts:    execution.workingContexts,
+		Models:             modelCapabilities,
+		ModelSelector:      execution.tools.callComposition,
+		Session:            sessionPorts,
+		Admissions:         admissionGate,
 	}
 	cancellationDependencies := runs.CancellationDependencies{
 		RootCancellation:                   execution.executor,
@@ -280,16 +286,17 @@ func buildAssemblyCore(
 		Items:                              cfg.stores.Transcript,
 		Admissions:                         admissionGate,
 	}
-	// Set only when present so a nil *Isolator never reaches the coordinator as a
+	// Set only when present so a nil *Isolator never reaches the openings as a
 	// non-nil interface (which would defeat its own nil check).
 	if execution.isolation != nil {
-		runDependencies.Isolation = execution.isolation
+		openingDependencies.Isolation = execution.isolation
 	}
-	runCoordinator, runCancellations, runSegments, err := composeRuns(runDependencies, cancellationDependencies, runSegmentDependencies)
+	runUseCases, err := composeRuns(runDependencies, openingDependencies, cancellationDependencies, runSegmentDependencies)
 	if err != nil {
 		return nil, err
 	}
-	lifetime.runSegments = runSegments
+	runCoordinator := runUseCases.coordinator
+	lifetime.runSegments = runUseCases.segments
 
 	toolCoordinator, err := workspace.NewDiagnosticTools(execution.toolRegistry, workspaceServices.scope)
 	if err != nil {
@@ -324,8 +331,8 @@ func buildAssemblyCore(
 	// Goal mode: the autonomous-execution loop driver over the run coordinator.
 	goalDriver, err := goals.NewDriver(
 		policy.goals,
-		runCoordinator,
-		runCancellations,
+		runUseCases.openings,
+		runUseCases.cancellations,
 		cfg.stores.Sessions,
 		goalMutations,
 		builtin.RunInstructions,
@@ -491,8 +498,9 @@ func buildAssemblyCore(
 				ModelEndpoints:         modelEndpoints,
 				Tools:                  toolCoordinator,
 				Runs:                   runCoordinator,
-				RunCancellations:       runCancellations,
-				RunStreams:             runSegments,
+				RunOpenings:            runUseCases.openings,
+				RunCancellations:       runUseCases.cancellations,
+				RunStreams:             runUseCases.segments,
 				FileChanges:            fileChanges.observe,
 				Invalidations:          policy.invalidations.observe,
 				Queries:                queries,
@@ -543,24 +551,37 @@ func sessionResourceCleanups(checkpoints *workspaceadapter.Checkpoints, isolatio
 // composeRuns builds the segment supervisor every Run segment opens on and the
 // run use cases that open them; the use cases share its identity allocation and
 // publication ordering.
+// composedRuns are the run use cases over the one segment supervisor that runs
+// every segment they open.
+type composedRuns struct {
+	coordinator   *runs.Coordinator
+	openings      *runs.Openings
+	cancellations *runs.Cancellations
+	segments      *runs.Segments
+}
+
 func composeRuns(
 	deps runs.Dependencies,
+	openingDeps runs.OpeningDependencies,
 	cancellationDeps runs.CancellationDependencies,
 	segmentDeps runs.SegmentDependencies,
-) (*runs.Coordinator, *runs.Cancellations, *runs.Segments, error) {
+) (composedRuns, error) {
 	segments, err := runs.NewSegments(segmentDeps)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("runtime: construct Run segments: %w", err)
+		return composedRuns{}, fmt.Errorf("runtime: construct Run segments: %w", err)
 	}
-	deps.Segments = segments
+	deps.Segments, openingDeps.Segments, cancellationDeps.Segments = segments, segments, segments
 	coordinator, err := runs.NewCoordinator(deps)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("runtime: construct Run coordinator: %w", err)
+		return composedRuns{}, fmt.Errorf("runtime: construct Run coordinator: %w", err)
 	}
-	cancellationDeps.Segments = segments
+	openings, err := runs.NewOpenings(openingDeps)
+	if err != nil {
+		return composedRuns{}, fmt.Errorf("runtime: construct Run openings: %w", err)
+	}
 	cancellations, err := runs.NewCancellations(cancellationDeps)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("runtime: construct Run cancellations: %w", err)
+		return composedRuns{}, fmt.Errorf("runtime: construct Run cancellations: %w", err)
 	}
-	return coordinator, cancellations, segments, nil
+	return composedRuns{coordinator: coordinator, openings: openings, cancellations: cancellations, segments: segments}, nil
 }
