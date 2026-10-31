@@ -85,7 +85,7 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 			t.Fatal(stagePendingResumeErr)
 		}
 	}
-	application := &app{workbench: store, queue: prompts}
+	application := &app{composer: testPromptComposer(t), workbench: store, queue: prompts}
 
 	discarded, err := application.retireSessionState("retired")
 	if err != nil {
@@ -175,7 +175,7 @@ func TestRetiringSessionStateClearsTheQueueAfterDurableTombstone(t *testing.T) {
 		t.Fatal(writeFileErr)
 	}
 
-	application := &app{workbench: store, queue: prompts}
+	application := &app{composer: testPromptComposer(t), workbench: store, queue: prompts}
 	discarded, err := application.retireSessionState(sessionID)
 	if err == nil {
 		t.Fatal("retirement hid the blocked physical cleanup")
@@ -620,7 +620,7 @@ func TestImportRequiresConfirmationAndInstallsTheAuthoritativeSession(t *testing
 
 func TestConfirmationRejectsCallbacksFromAReplacedPresentation(t *testing.T) {
 	transcript := testTranscriptView(t)
-	application := &app{transcript: transcript, session: sessionState{context: newSessionContextLease()}}
+	application := &app{composer: testPromptComposer(t), transcript: transcript, session: sessionState{context: newSessionContextLease()}}
 	application.stack.SetBase(transcript)
 	oldCalls, currentCalls := 0, 0
 	application.confirmAction("Old confirmation", "Run the old action?", "Run old", func() { oldCalls++ })
@@ -648,7 +648,7 @@ func TestProjectionRetirementRejectsAPresentedConfirmationCallback(t *testing.T)
 	transcript := testTranscriptView(t)
 	operations := newOperationOwner(t.Context())
 	t.Cleanup(operations.Close)
-	application := &app{
+	application := &app{composer: testPromptComposer(t),
 		transcript: transcript, operations: operations, session: sessionState{context: newSessionContextLease()},
 		reader: testReaderSurface(t, operations), prompts: testInterruptPrompts(t),
 	}

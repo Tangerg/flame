@@ -366,7 +366,7 @@ func TestOpeningCancellationReplaysTheSamePayloadAfterCloseAndRestart(t *testing
 	}
 	pending := store.PendingRuns(sessionID)[0]
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
-	closing := &app{runtime: backend, workbench: store, runtimeProfile: &profile, replayPolicy: testReplayPolicy(t, &profile)}
+	closing := &app{composer: testPromptComposer(t), runtime: backend, workbench: store, runtimeProfile: &profile, replayPolicy: testReplayPolicy(t, &profile)}
 	if err := closing.cancelOpeningRunNow(t.Context(), pending); !errors.Is(err, authoring.ErrCommandOutcomeUnknown) {
 		t.Fatalf("terminal-close cancellation = %v, want unknown acknowledgement", err)
 	}
@@ -413,7 +413,7 @@ func cancelFixtureSession(t *testing.T, backend *runtimefixture.Runtime, session
 }
 
 func TestRemoteWorkspaceInputsAndPickerPreserveRuntimePaths(t *testing.T) {
-	application := &app{localDirectory: t.TempDir(), session: sessionState{current: conversation.Session{
+	application := &app{composer: testPromptComposer(t), localDirectory: t.TempDir(), session: sessionState{current: conversation.Session{
 		Workspace: workspace.Workspace{Path: `C:\remote\current`},
 	}}}
 	for _, path := range []string{`D:\remote\new`, `\\server\share\project`, "/remote/unavailable", "~/remote", "../project"} {

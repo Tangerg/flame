@@ -42,13 +42,13 @@ func (a *app) steerRun(instruction string) error {
 	// following aggregate replacement then transfers it and its attachments into
 	// the steer journal atomically.
 	sourceDraft := authoring.Message{Text: workbench.SteerSourcePrefix + instruction, Attachments: slices.Clone(draft.Attachments)}
-	if saveDraftErr := a.saveDraft(sourceDraft); saveDraftErr != nil {
+	if saveDraftErr := a.composer.saveDraft(sourceDraft); saveDraftErr != nil {
 		a.reportWorkbenchIssue(workbenchDraft, saveDraftErr)
 		return fmt.Errorf("steer blocked: save command draft: %w", saveDraftErr)
 	}
 	a.reportWorkbenchIssue(workbenchDraft, nil)
-	a.restoreComposer(sourceDraft)
-	a.drafts.adopt(a.session.current.ID, sourceDraft)
+	a.composer.restoreComposer(sourceDraft)
+	a.composer.drafts.adopt(a.session.current.ID, sourceDraft)
 	if a.operations.Active(inputPreparationOperation) || a.operations.Active(steerRunOperation) {
 		return errors.New("another input or steer operation is already running")
 	}
@@ -93,8 +93,8 @@ func (a *app) deliverPreparedSteer(request authoring.SteerRun, sourceDraft autho
 		return err
 	}
 	a.reportWorkbenchIssue(workbenchSteerOutbox, nil)
-	a.restoreComposer(authoring.Message{})
-	a.drafts.adopt(a.session.current.ID, authoring.Message{})
+	a.composer.restoreComposer(authoring.Message{})
+	a.composer.drafts.adopt(a.session.current.ID, authoring.Message{})
 	a.steers.track(pending)
 	started := a.tasks.sessionSettlement(steerRunOperation, false,
 		func(ctx context.Context) (runworkflow.SteerResult, error) {
@@ -113,8 +113,8 @@ func (a *app) deliverPreparedSteer(request authoring.SteerRun, sourceDraft autho
 			a.restoreSteerAttachments(request.Message.Attachments)
 			return fmt.Errorf("another steer operation is already running; restore attachments: %w", err)
 		}
-		a.restoreComposer(recovered)
-		a.drafts.adopt(a.session.current.ID, recovered)
+		a.composer.restoreComposer(recovered)
+		a.composer.drafts.adopt(a.session.current.ID, recovered)
 		return errors.New("another steer operation is already running")
 	}
 	return nil
@@ -137,8 +137,8 @@ func (a *app) settleSteer(result runworkflow.SteerResult, deliveryErr error) {
 			a.message("steer run failed; restored attachments were not saved: " + err.Error())
 			return
 		}
-		a.restoreComposer(recovered)
-		a.drafts.adopt(a.session.current.ID, recovered)
+		a.composer.restoreComposer(recovered)
+		a.composer.drafts.adopt(a.session.current.ID, recovered)
 		a.message("steer run failed: " + deliveryErr.Error())
 	case mutation.Unknown:
 		a.message("steer outcome is unknown; the original request is saved for recovery; inspect the session before issuing a new command: " + deliveryErr.Error())
@@ -152,17 +152,17 @@ func (a *app) acknowledgeSteer(pending workbench.PendingSteer) error {
 	if err != nil {
 		return fmt.Errorf("read composer for steer settlement: %w", err)
 	}
-	if err := a.saveDraft(current); err != nil {
+	if err := a.composer.saveDraft(current); err != nil {
 		a.reportWorkbenchIssue(workbenchDraft, err)
 		return fmt.Errorf("save current session draft: %w", err)
 	}
 	a.reportWorkbenchIssue(workbenchDraft, nil)
 	if err := a.workbench.AcknowledgePendingSteer(a.session.current.ID, pending.CommandID()); err != nil {
-		a.history.Load(a.workbench.History())
+		a.composer.history.Load(a.workbench.History())
 		a.reportWorkbenchIssue(workbenchSteerOutbox, fmt.Errorf("settle accepted steer command: %w", err))
 		return fmt.Errorf("retire accepted steer command: %w", err)
 	}
-	a.history.Add(pending.Message())
+	a.composer.history.Add(pending.Message())
 	a.reportWorkbenchIssue(workbenchSteerOutbox, nil)
 	a.reportWorkbenchIssue(workbenchHistory, nil)
 	return nil
@@ -173,7 +173,7 @@ func (a *app) rejectSteer(pending workbench.PendingSteer) (authoring.Message, er
 	if err != nil {
 		return authoring.Message{}, fmt.Errorf("read composer for attachment recovery: %w", err)
 	}
-	if saveDraftErr := a.saveDraft(current); saveDraftErr != nil {
+	if saveDraftErr := a.composer.saveDraft(current); saveDraftErr != nil {
 		a.reportWorkbenchIssue(workbenchDraft, saveDraftErr)
 		return authoring.Message{}, fmt.Errorf("save current session draft: %w", saveDraftErr)
 	}
@@ -196,10 +196,10 @@ func (a *app) restoreSteerAttachments(rejected []authoring.Attachment) {
 	current, _, err := a.composer.draft()
 	if err != nil {
 		a.composer.insertAttachments(rejected)
-		a.scheduleDraftPersistence()
+		a.composer.scheduleDraftPersistence()
 		return
 	}
-	a.restoreComposer(workbench.MergeSteerAttachments(current, rejected))
+	a.composer.restoreComposer(workbench.MergeSteerAttachments(current, rejected))
 }
 
 func (a *app) refusedSteersNotice(refused []runworkflow.SteerRefusal) string {

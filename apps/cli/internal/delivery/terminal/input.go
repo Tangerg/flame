@@ -244,10 +244,10 @@ func (a *app) handleCancelGesture() {
 }
 
 func (a *app) retireDraft(message authoring.Message) error {
-	if err := a.rememberPrompt(message); err != nil {
+	if err := a.composer.rememberPrompt(message); err != nil {
 		return fmt.Errorf("save prompt history: %w", err)
 	}
-	if err := a.commitDraft(authoring.Message{}); err != nil {
+	if err := a.composer.commitDraft(authoring.Message{}); err != nil {
 		return fmt.Errorf("retire session draft: %w", err)
 	}
 	a.completion.Dismiss()
@@ -312,12 +312,12 @@ func (a *app) handlePromptAction(action keymap.Action) bool {
 func (a *app) handleHistoryAction(action keymap.Action) bool {
 	switch action {
 	case historyPrevious:
-		if !a.recallPrevious() {
+		if !a.composer.recallPrevious() {
 			a.composer.Editor().MoveUp()
 		}
 		return true
 	case historyNext:
-		if !a.recallNext() {
+		if !a.composer.recallNext() {
 			a.composer.Editor().MoveDown()
 		}
 		return true
@@ -331,6 +331,6 @@ func (a *app) handleHistoryAction(action keymap.Action) bool {
 // leave the token unchanged, so they cannot keep postponing durable recovery.
 func (a *app) scheduleDraftPersistenceAfter(before uint64) {
 	if a.composer.Editor().Revision() != before {
-		a.scheduleDraftPersistence()
+		a.composer.scheduleDraftPersistence()
 	}
 }

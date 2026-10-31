@@ -8,7 +8,7 @@ import (
 )
 
 func TestWorkbenchProblemsArePrioritizedAndClearedIndependently(t *testing.T) {
-	application := &app{
+	application := &app{composer: testPromptComposer(t),
 		status: newStatusView(kit.Dark(), kit.Unicode()),
 	}
 	application.status.active("working")

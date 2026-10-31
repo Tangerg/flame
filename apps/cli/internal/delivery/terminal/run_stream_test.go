@@ -32,7 +32,7 @@ func TestDropStreamPermanentlyRetiresFollowerOwnership(t *testing.T) {
 	}) {
 		t.Fatal("could not establish stream ownership")
 	}
-	application := &app{operations: owner, execution: executionState{following: true}}
+	application := &app{composer: testPromptComposer(t), operations: owner, execution: executionState{following: true}}
 	retired := streamFollower{app: application, lease: <-leaseReady}
 	if !retired.current() {
 		t.Fatal("new stream follower did not own its operation")
@@ -363,7 +363,7 @@ func TestRecoveredSessionKeepsFollowingAfterLocalAttachBudget(t *testing.T) {
 
 func TestStreamRecoveryUsesTheFollowerSessionIdentity(t *testing.T) {
 	runtime := &sessionReadRecordingRuntime{Runtime: runtimefixture.New()}
-	application := &app{
+	application := &app{composer: testPromptComposer(t),
 		runtime: runtime,
 		session: sessionState{current: conversation.Session{ID: "ses_demo_2"}},
 	}

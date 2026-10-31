@@ -55,11 +55,11 @@ func TestPromptHistoryOwnsAndEnforcesItsRetentionCapacity(t *testing.T) {
 }
 
 func TestCommittedComposerCannotUndoIntoReleasedAttachmentPayloads(t *testing.T) {
-	a := &app{}
+	a := &app{composer: testPromptComposer(t)}
 	editor := a.composer.Editor()
 	a.composer.attach(authoring.Attachment{Name: "design.md"})
 	editor.Insert(" inspect this")
-	a.clearComposer()
+	a.composer.clearComposer()
 	editor.Do(headless.Undo)
 	if !editor.Empty() || len(editor.Elements()) != 0 {
 		t.Fatal("committed draft can resurrect text or released attachments")
@@ -67,7 +67,7 @@ func TestCommittedComposerCannotUndoIntoReleasedAttachmentPayloads(t *testing.T)
 }
 
 func TestRejectedSteerAttachmentsNeverReplaceAnUnreadableDraft(t *testing.T) {
-	a := &app{closed: true}
+	a := &app{composer: testPromptComposer(t), closed: true}
 	editor := a.composer.Editor()
 	editor.InsertElement(fileElement, "@orphan.md")
 	editor.Insert(" keep this text")

@@ -1364,7 +1364,7 @@ func TestInvalidatedSessionReadDoesNotRetryAPermanentFailure(t *testing.T) {
 	backend := &snapshotCountingRuntime{Runtime: runtimefixture.New(), failure: permanent}
 	backend.failures.Store(2)
 
-	_, err := (&app{runtime: backend}).readInvalidatedSession(t.Context(), "ses_demo_1")
+	_, err := (&app{composer: testPromptComposer(t), runtime: backend}).readInvalidatedSession(t.Context(), "ses_demo_1")
 	if !errors.Is(err, permanent) {
 		t.Fatalf("readInvalidatedSession error = %v, want permanent failure", err)
 	}

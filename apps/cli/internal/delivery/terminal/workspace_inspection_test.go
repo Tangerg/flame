@@ -597,7 +597,7 @@ func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 
 	features := map[string]protocol.FeatureCapability{protocol.FeaturePlan: {}, protocol.FeatureGoals: {}, protocol.FeatureSkills: {}, protocol.FeatureMCP: {}, protocol.FeaturePlugins: {}}
 	profile := terminalProfileWithFeatures(t, features)
-	application := &app{
+	application := &app{composer: testPromptComposer(t),
 		runtimeProfile: &profile,
 		screens: screens{
 			goals:   &goalScreens{service: new(goalServiceStub)},

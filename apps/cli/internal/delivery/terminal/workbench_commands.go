@@ -7,11 +7,10 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
-	"github.com/Tangerg/oolong/components/kit"
 )
 
-func (a *app) stashPrompt() error {
-	message, present, err := a.composer.draft()
+func (c *promptComposer) stashPrompt() error {
+	message, present, err := c.draft()
 	if err != nil {
 		return err
 	}
@@ -21,74 +20,74 @@ func (a *app) stashPrompt() error {
 	// Flush the exact visible value first, serializing this transfer after every
 	// autosave. The store can then move that durable draft into the stash
 	// collection without racing an older writer that would resurrect it.
-	if saveDraftErr := a.saveDraft(message); saveDraftErr != nil {
-		a.reportWorkbenchIssue(workbenchDraft, saveDraftErr)
+	if saveDraftErr := c.saveDraft(message); saveDraftErr != nil {
+		c.report(workbenchDraft, saveDraftErr)
 		return fmt.Errorf("save session draft before stashing: %w", saveDraftErr)
 	}
-	stash, err := a.workbench.StashDraft(a.session.current.ID, message)
-	a.reportWorkbenchIssue(workbenchDraft, err)
+	stash, err := c.workbench.StashDraft(c.session.current.ID, message)
+	c.report(workbenchDraft, err)
 	if err != nil {
 		return fmt.Errorf("stash session draft: %w", err)
 	}
-	a.drafts.adopt(a.session.current.ID, authoring.Message{})
-	a.restoreComposer(authoring.Message{})
-	a.message("stashed prompt · " + stash.ID)
+	c.drafts.adopt(c.session.current.ID, authoring.Message{})
+	c.restoreComposer(authoring.Message{})
+	c.notify("stashed prompt · " + stash.ID)
 	return nil
 }
 
-func (a *app) showPromptStashes() {
-	stashes := a.workbench.Stashes()
+func (c *promptComposer) showPromptStashes() {
+	stashes := c.workbench.Stashes()
 	if len(stashes) == 0 {
-		a.message("there are no prompt stashes")
+		c.notify("there are no prompt stashes")
 		return
 	}
 	lines := make([]string, 0, len(stashes))
 	for index, stash := range stashes {
 		lines = append(lines, fmt.Sprintf("%d. %s · %s · %s", index+1, stash.ID, compactRelativeAge(stash.CreatedAt), promptSummary(stash)))
 	}
-	a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: "prompt stashes", Body: strings.Join(lines, "\n")})
+	c.appendNote("prompt stashes", strings.Join(lines, "\n"))
 }
 
-func (a *app) applyPromptStash(identity string) error {
-	if _, present, err := a.composer.draft(); err != nil {
+func (c *promptComposer) applyPromptStash(identity string) error {
+	if _, present, err := c.draft(); err != nil {
 		return err
 	} else if present {
 		return errors.New("the composer is not empty; stash or clear it before applying another prompt")
 	}
-	stash, err := a.findPromptStash(identity)
+	stash, err := c.findPromptStash(identity)
 	if err != nil {
 		return err
 	}
-	if err := a.commitDraft(stash.Message); err != nil {
+	if err := c.commitDraft(stash.Message); err != nil {
 		return fmt.Errorf("apply prompt stash: save session draft: %w", err)
 	}
-	a.message("applied prompt stash · " + stash.ID)
+	c.notify("applied prompt stash · " + stash.ID)
 	return nil
 }
 
-func (a *app) deletePromptStash(identity string) error {
-	stash, err := a.findPromptStash(identity)
+func (c *promptComposer) deletePromptStash(identity string) error {
+	stash, err := c.findPromptStash(identity)
 	if err != nil {
 		return err
 	}
-	deleted, err := a.workbench.DeleteStash(stash.ID)
+	deleted, err := c.workbench.DeleteStash(stash.ID)
 	if err != nil {
 		return err
 	}
 	if !deleted {
 		return errors.New("prompt stash disappeared before it could be deleted")
 	}
-	a.message("deleted prompt stash · " + stash.ID)
+	c.notify("deleted prompt stash · " + stash.ID)
 	return nil
 }
 
-func (a *app) findPromptStash(identity string) (workbench.Stash, error) {
+func (c *promptComposer) findPromptStash(identity string) (workbench.Stash, error) {
 	identity = strings.TrimSpace(identity)
 	if identity == "" {
 		return workbench.Stash{}, errors.New("a prompt stash id or unique prefix is required")
 	}
 	var matches []workbench.Stash
-	for _, stash := range a.workbench.Stashes() {
+	for _, stash := range c.workbench.Stashes() {
 		if strings.HasPrefix(stash.ID, identity) {
 			matches = append(matches, stash)
 		}

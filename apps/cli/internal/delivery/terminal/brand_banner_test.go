@@ -102,7 +102,7 @@ func TestReplacementTranscriptDoesNotInheritTheBrand(t *testing.T) {
 	initial := testTranscriptView(t)
 	initial.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", conversation.Session{}, authoring.RunOptions{}))
 	initial.images = newTerminalImagePresenter(program.Images{})
-	a := &app{ctx: t.Context(), transcript: initial, syntax: initial.syntax, settings: settings.Default()}
+	a := &app{composer: testPromptComposer(t), ctx: t.Context(), transcript: initial, syntax: initial.syntax, settings: settings.Default()}
 
 	replacement := a.newTranscript()
 	t.Cleanup(replacement.Close)

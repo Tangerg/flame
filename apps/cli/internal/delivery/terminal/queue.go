@@ -100,7 +100,7 @@ func countedNoun(count int, noun string) string {
 }
 
 func (a *app) enqueueDeferredPrompt() {
-	a.resetComposer()
+	a.composer.resetComposer()
 	a.operations.Cancel(completionOperation)
 	a.completion.Dismiss()
 	snapshot := a.syncQueue()
@@ -165,7 +165,7 @@ func (a *app) presentQueuedRetirement(entry authoring.QueueEntry, retired bool) 
 	if !retired {
 		return
 	}
-	a.history.Add(entry.Message)
+	a.composer.history.Add(entry.Message)
 	a.reportWorkbenchIssue(workbenchRunOutbox, nil)
 	a.syncQueue()
 }

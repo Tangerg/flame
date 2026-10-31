@@ -205,7 +205,7 @@ func (a *app) applyRollbackSettlement(settlement rollbackSettlement) error {
 			Draft: recovered, DroppedCount: len(result.Pending.BeforeRunIDs) - len(result.Pending.AfterRunIDs),
 			OpeningImages: result.Pending.OpeningImages, Merged: merged,
 		}
-		if persistErr := a.recoverDraft(recovered); persistErr != nil {
+		if persistErr := a.composer.recoverDraft(recovered); persistErr != nil {
 			label := fmt.Sprintf("rolled back %d runs; restored text was not saved: %v", recovery.DroppedCount, persistErr)
 			label = appendRollbackWarnings(label, recovery.OpeningImages, settlement.err, confirmationErr)
 			a.message(label)

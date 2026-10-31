@@ -112,10 +112,10 @@ func (a *app) completeFiles(query completionQuery) {
 	if !a.completion.Dismiss() {
 		return
 	}
-	if a.attachments == nil {
+	if a.composer.attachments == nil {
 		return
 	}
-	resolver := a.attachments
+	resolver := a.composer.attachments
 	a.tasks.session(completionOperation, true,
 		func(ctx context.Context) ([]headless.Candidate, error) {
 			matches, err := resolver.Complete(ctx, query.token.Query)

@@ -94,7 +94,7 @@ type app struct {
 	settings   settings.Config
 
 	options        authoring.RunOptions
-	composer       composerContent
+	composer       *promptComposer
 	prompt         *promptView
 	commands       commandCatalog
 	completion     headless.Completion
@@ -103,13 +103,10 @@ type app struct {
 	stack          headless.Stack
 	queue          *workbench.Queue
 	workbench      *workbench.Store
-	drafts         draftAutosave
 	editor         *draftEditor
 	localDirectory string
 	detachOnExit   bool
 
-	attachments       *attachment.Resolver
-	history           promptHistory
 	workbenchHealth   workbenchHealth
 	commandOperations commandOperationRegistry
 	confirmation      pressConfirmation
@@ -212,16 +209,24 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		settings:          cfg.settings.Clone(),
 		options:           cfg.options,
 		syntax:            appearance.syntax,
-		attachments:       cfg.attachments,
 		commandOperations: newCommandOperationRegistry(),
 		commands:          newCommandCatalog(),
 		attention:         newAttentionCenter(),
 		keys:              keyRouter{application: cfg.keyBindings.application, global: cfg.keyBindings.global},
 	}
 	a.tasks = taskRunner{operations: a.operations, dispatch: loop.Dispatcher(), settled: func() { a.drainQueue() }}
-	a.drafts.store = newDraftPersistence(cfg.workbench, func(result draftPersistenceResult) {
+	a.composer = &promptComposer{
+		attachments: cfg.attachments, workbench: cfg.workbench, session: &a.session,
+		ctx: cfg.context, after: loop.After, closed: func() bool { return a.closed },
+		notify: a.message, report: a.reportWorkbenchIssue, validate: a.validateMessageCapabilities,
+		appendNote: func(label, body string) {
+			a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: label, Body: body})
+		},
+		cleared: a.confirmation.Reset,
+	}
+	a.composer.drafts.store = newDraftPersistence(cfg.workbench, func(result draftPersistenceResult) {
 		loop.Dispatcher().Post(func() {
-			if a.closed || !a.drafts.store.Current(result.revision) {
+			if a.closed || !a.composer.drafts.store.Current(result.revision) {
 				return
 			}
 			a.reportWorkbenchIssue(workbenchDraft, result.err)
@@ -245,7 +250,7 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	}
 	a.restore(cfg.snapshot)
 	a.restoreSessionOutbox()
-	_ = a.persistDraft()
+	_ = a.composer.persistDraft()
 	a.followRuntimeChanges()
 	a.loadPluginViews(true)
 	return a
@@ -259,9 +264,9 @@ func (a *app) configureComposer(appearance terminalAppearance, keys *keymap.Map,
 	a.composer.Editor().Keys = keys
 	a.composer.Editor().Clipboard = a.loop.Clipboard()
 	if a.workbench != nil {
-		a.history.Load(a.workbench.History())
+		a.composer.history.Load(a.workbench.History())
 	}
-	a.restoreComposer(initial)
+	a.composer.restoreComposer(initial)
 }
 
 func (a *app) configureCompletion(appearance terminalAppearance) {
@@ -280,7 +285,7 @@ func (a *app) configureCompletion(appearance terminalAppearance) {
 			}
 			a.completionGate.Reset()
 			a.composer.Editor().Replace(token.Start, token.End, candidate.Text)
-			a.scheduleDraftPersistence()
+			a.composer.scheduleDraftPersistence()
 		},
 	}
 }
@@ -421,11 +426,11 @@ func (a *app) Close(ctx context.Context) error {
 	if a.screens.mcp != nil && a.screens.mcp.form != nil {
 		a.screens.mcp.closeMCPForm(a.screens.mcp.form)
 	}
-	a.drafts.cancel()
+	a.composer.drafts.cancel()
 	// Flush is a serialization barrier: any autosave already in the filesystem
 	// finishes first, then the last visible composer state is written last.
-	closeErr = errors.Join(closeErr, a.persistDraft())
-	closeErr = errors.Join(closeErr, a.drafts.store.Close())
+	closeErr = errors.Join(closeErr, a.composer.persistDraft())
+	closeErr = errors.Join(closeErr, a.composer.drafts.store.Close())
 	if cancelRuntime {
 		if err := a.cancelRuntimeNow(ctx, target, cancelReplay); err == nil {
 			closeErr = errors.Join(closeErr, a.retireCanceledRuntimeOwnership(target.RunID, openingCommandID))
@@ -460,7 +465,7 @@ func (a *app) submit() {
 	}
 	if name, arg, command := parseSlashCommand(strings.TrimSpace(message.Text)); command {
 		a.runCommand(name, arg, func() {
-			a.restoreComposer(authoring.Message{Attachments: message.Attachments})
+			a.composer.restoreComposer(authoring.Message{Attachments: message.Attachments})
 			a.operations.Cancel(completionOperation)
 			a.completion.Dismiss()
 		})
@@ -494,7 +499,7 @@ func (a *app) dispatchPrompt(message authoring.Message) {
 	}
 	a.dialogs.sessionDialog.Dismiss()
 	a.dismissModelPicker()
-	a.resetComposer()
+	a.composer.resetComposer()
 	a.operations.Cancel(completionOperation)
 	a.completion.Dismiss()
 	if !a.drainQueue() {

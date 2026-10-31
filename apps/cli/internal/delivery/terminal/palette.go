@@ -26,7 +26,7 @@ func (a *app) chooseCommand(item commandPaletteItem) {
 	if a.commands.arguments(command.Name).TakesInput() {
 		a.composer.Editor().SetText("/" + command.Name + " ")
 		a.composer.Editor().Focus(true)
-		a.scheduleDraftPersistence()
+		a.composer.scheduleDraftPersistence()
 		return
 	}
 	a.runCommand(command.Name, "", func() {})

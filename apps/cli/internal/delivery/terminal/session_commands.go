@@ -349,7 +349,7 @@ func (a *app) runSessionChangeWithDraftDisposition[T any](
 		a.message(label + " failed: " + err.Error())
 		return
 	}
-	if err := a.saveDraft(baseline); err != nil {
+	if err := a.composer.saveDraft(baseline); err != nil {
 		a.reportWorkbenchIssue(workbenchDraft, err)
 		a.message("session change blocked: save session draft: " + err.Error())
 		return
@@ -504,7 +504,7 @@ func (a *app) prepareDestinationDraft(
 	if err != nil {
 		return authoring.Message{}, nil, err
 	}
-	if saveDraftErr := a.saveDraft(current); saveDraftErr != nil {
+	if saveDraftErr := a.composer.saveDraft(current); saveDraftErr != nil {
 		return authoring.Message{}, nil, fmt.Errorf("save source session draft: %w", saveDraftErr)
 	}
 	if activateSessionStateErr := a.workbench.ActivateSessionState(session.ID); activateSessionStateErr != nil {
@@ -586,11 +586,11 @@ func (s sessionInstallation) apply(a *app) {
 	a.execution.opening = nil
 	a.execution.conversation = s.projection.conversation
 	a.execution.projectionFailed = false
-	a.attachments = s.attachments
+	a.composer.attachments = s.attachments
 	a.transcript = s.projection.transcript
 	a.wireTranscript(s.projection.transcript)
-	a.restoreComposer(s.draft)
-	a.drafts.adopt(a.session.current.ID, s.draft)
+	a.composer.restoreComposer(s.draft)
+	a.composer.drafts.adopt(a.session.current.ID, s.draft)
 	a.activity.Reset()
 	a.status.Reset()
 	a.workbenchHealth.enterSession()

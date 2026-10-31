@@ -55,10 +55,10 @@ func builtinCommands() []localCommand {
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "attach", Title: "attach a local file to the next prompt", Arguments: extensions.RequiredArguments}, Run: func(a *app, path string) error { return a.AttachFile(path) }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "detach", Title: "remove an attachment by name, number, or all", Arguments: extensions.RequiredArguments}, Run: func(a *app, value string) error { return a.DetachFile(value) }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "attachments", Title: "show files attached to the next prompt", Aliases: []string{"files"}}, Run: func(a *app, _ string) error { a.ShowAttachments(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "stash", Title: "stash the current prompt and clear the composer"}, Available: availableWithDraft, Run: func(a *app, _ string) error { return a.stashPrompt() }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "stashes", Title: "list saved prompt stashes"}, Run: func(a *app, _ string) error { a.showPromptStashes(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "stash-apply", Title: "apply a prompt stash by id or unique prefix", Arguments: extensions.RequiredArguments}, Available: availableWithEmptyDraft, Run: func(a *app, id string) error { return a.applyPromptStash(id) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "stash-delete", Title: "delete a prompt stash by id or unique prefix", Arguments: extensions.RequiredArguments}, Run: func(a *app, id string) error { return a.deletePromptStash(id) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "stash", Title: "stash the current prompt and clear the composer"}, Available: availableWithDraft, Run: func(a *app, _ string) error { return a.composer.stashPrompt() }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "stashes", Title: "list saved prompt stashes"}, Run: func(a *app, _ string) error { a.composer.showPromptStashes(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "stash-apply", Title: "apply a prompt stash by id or unique prefix", Arguments: extensions.RequiredArguments}, Available: availableWithEmptyDraft, Run: func(a *app, id string) error { return a.composer.applyPromptStash(id) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "stash-delete", Title: "delete a prompt stash by id or unique prefix", Arguments: extensions.RequiredArguments}, Run: func(a *app, id string) error { return a.composer.deletePromptStash(id) }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "editor", Title: "edit the current prompt in the configured external editor"}, Available: availableWithoutActiveRun, Run: func(a *app, _ string) error { return a.editPromptExternally() }},
 		),
 		commandGroup(commandCategoryRuntime,
@@ -346,11 +346,11 @@ func (a *app) ShowShortcuts() {
 	a.status.note("keyboard shortcuts")
 }
 
-func (a *app) AttachFile(path string) error { return a.addAttachment(path) }
+func (a *app) AttachFile(path string) error { return a.composer.addAttachment(path) }
 
-func (a *app) DetachFile(value string) error { return a.removeAttachment(value) }
+func (a *app) DetachFile(value string) error { return a.composer.removeAttachment(value) }
 
-func (a *app) ShowAttachments() { a.showAttachments() }
+func (a *app) ShowAttachments() { a.composer.showAttachments() }
 
 func (a *app) ToggleToolDetails() {
 	a.transcript.ToggleDetails()

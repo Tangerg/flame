@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"slices"
@@ -8,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/attachment"
+	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
@@ -28,6 +31,31 @@ const promptHistoryCapacity = 1000
 type composerContent struct {
 	kit.Composer
 	chips map[uint64]authoring.Attachment
+}
+
+// promptComposer owns the prompt being written: its editor content and
+// attachments, the session draft it autosaves, the prompt history it recalls
+// and the stashes it parks. It reports workbench health and notices through
+// the collaborators it was built with.
+type promptComposer struct {
+	composerContent
+	drafts      draftAutosave
+	history     promptHistory
+	attachments *attachment.Resolver
+	workbench   *workbench.Store
+	session     *sessionState
+	// appendNote adds a labelled note to the current transcript.
+	appendNote func(label, body string)
+
+	ctx      context.Context
+	after    func(time.Duration, func()) func()
+	closed   func() bool
+	notify   func(string)
+	report   func(workbenchConcern, error)
+	validate func(authoring.Message) error
+	// cleared runs after the composer empties, retiring input state that
+	// referred to the old content.
+	cleared func()
 }
 
 type attachmentInsertion struct {
@@ -115,19 +143,19 @@ func (p *promptHistory) Forward() (authoring.Message, bool) {
 // mutated. Completion acceptance can therefore commit the token replacement and
 // attachment chip as one successful UI transition instead of destroying the
 // user's token when resolution, duplicate detection, or capacity checks fail.
-func (a *app) resolveAttachment(path string) (attachmentInsertion, error) {
-	if a.attachments == nil {
+func (c *promptComposer) resolveAttachment(path string) (attachmentInsertion, error) {
+	if c.attachments == nil {
 		return attachmentInsertion{}, errors.New("attachments are unavailable in this session")
 	}
-	current, err := a.composer.message()
+	current, err := c.message()
 	if err != nil {
 		return attachmentInsertion{}, err
 	}
-	item, err := a.attachments.Resolve(a.ctx, path)
+	item, err := c.attachments.Resolve(c.ctx, path)
 	if err != nil {
 		return attachmentInsertion{}, err
 	}
-	if err := a.validateMessageCapabilities(authoring.Message{Attachments: []authoring.Attachment{item}}); err != nil {
+	if err := c.validate(authoring.Message{Attachments: []authoring.Attachment{item}}); err != nil {
 		return attachmentInsertion{}, err
 	}
 	for _, attached := range current.Attachments {
@@ -141,44 +169,44 @@ func (a *app) resolveAttachment(path string) (attachmentInsertion, error) {
 	return attachmentInsertion{item: item, count: len(current.Attachments) + 1}, nil
 }
 
-func (a *app) insertAttachment(insertion attachmentInsertion) {
+func (c *promptComposer) insertAttachment(insertion attachmentInsertion) {
 	item := insertion.item
-	a.composer.attach(item)
-	a.scheduleDraftPersistence()
-	a.message(fmt.Sprintf("attached %s · %s · %d/%d", item.Name, item.MimeType, insertion.count, authoring.MaxMessageAttachments))
+	c.attach(item)
+	c.scheduleDraftPersistence()
+	c.notify(fmt.Sprintf("attached %s · %s · %d/%d", item.Name, item.MimeType, insertion.count, authoring.MaxMessageAttachments))
 }
 
-func (a *app) addAttachment(path string) error {
-	insertion, err := a.resolveAttachment(path)
+func (c *promptComposer) addAttachment(path string) error {
+	insertion, err := c.resolveAttachment(path)
 	if err != nil {
 		return err
 	}
-	a.insertAttachment(insertion)
+	c.insertAttachment(insertion)
 	return nil
 }
 
 func (a *app) acceptAttachmentCompletion(path string, token headless.Token) {
-	insertion, err := a.resolveAttachment(path)
+	insertion, err := a.composer.resolveAttachment(path)
 	if err != nil {
 		a.message(err.Error())
 		return
 	}
 	a.completionGate.Reset()
 	a.composer.Editor().Replace(max(token.Start-1, 0), token.End, "")
-	a.insertAttachment(insertion)
+	a.composer.insertAttachment(insertion)
 }
 
-func (a *app) removeAttachment(argument string) error {
-	name, err := a.composer.detach(argument)
+func (c *promptComposer) removeAttachment(argument string) error {
+	name, err := c.detach(argument)
 	if err != nil {
 		return err
 	}
-	a.scheduleDraftPersistence()
+	c.scheduleDraftPersistence()
 	if name == "" {
-		a.message("removed all attachments")
+		c.notify("removed all attachments")
 		return nil
 	}
-	a.message("detached " + name)
+	c.notify("detached " + name)
 	return nil
 }
 
@@ -277,21 +305,21 @@ func filepathBase(path string) string {
 	return path
 }
 
-func (a *app) showAttachments() {
-	message, err := a.composer.message()
+func (c *promptComposer) showAttachments() {
+	message, err := c.message()
 	if err != nil {
-		a.message(err.Error())
+		c.notify(err.Error())
 		return
 	}
 	if len(message.Attachments) == 0 {
-		a.message("the composer has no attachments")
+		c.notify("the composer has no attachments")
 		return
 	}
 	lines := make([]string, 0, len(message.Attachments))
 	for i, item := range message.Attachments {
 		lines = append(lines, fmt.Sprintf("%d. %s · %s · %d bytes", i+1, item.Name, item.MimeType, item.Size))
 	}
-	a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: "attachments", Body: strings.Join(lines, "\n")})
+	c.appendNote("attachments", strings.Join(lines, "\n"))
 }
 
 func (c *composerContent) message() (authoring.Message, error) {
@@ -341,14 +369,14 @@ func stripAttachmentElements(lines []string, elements []headless.Element) error 
 	return nil
 }
 
-func (a *app) resetComposer() {
-	a.clearComposer()
-	a.scheduleDraftPersistence()
+func (c *promptComposer) resetComposer() {
+	c.clearComposer()
+	c.scheduleDraftPersistence()
 }
 
-func (a *app) clearComposer() {
-	a.composer.clear()
-	a.confirmation.Reset()
+func (c *promptComposer) clearComposer() {
+	c.clear()
+	c.cleared()
 }
 
 // clear empties the editor and forgets its undo history, so undo cannot bring
@@ -372,25 +400,25 @@ func (c *composerContent) draft() (authoring.Message, bool, error) {
 	return message, true, nil
 }
 
-func (a *app) rememberPrompt(message authoring.Message) error {
-	if a.workbench != nil {
-		if err := a.workbench.Remember(message); err != nil {
-			a.reportWorkbenchIssue(workbenchHistory, err)
+func (c *promptComposer) rememberPrompt(message authoring.Message) error {
+	if c.workbench != nil {
+		if err := c.workbench.Remember(message); err != nil {
+			c.report(workbenchHistory, err)
 			return err
 		}
 	}
-	a.history.Add(message)
-	a.reportWorkbenchIssue(workbenchHistory, nil)
+	c.history.Add(message)
+	c.report(workbenchHistory, nil)
 	return nil
 }
 
-func (a *app) persistDraft() error {
-	a.drafts.cancel()
-	message, _, err := a.composer.draft()
+func (c *promptComposer) persistDraft() error {
+	c.drafts.cancel()
+	message, _, err := c.draft()
 	if err == nil {
-		err = a.saveDraft(message)
+		err = c.saveDraft(message)
 	}
-	a.reportWorkbenchIssue(workbenchDraft, err)
+	c.report(workbenchDraft, err)
 	return err
 }
 
@@ -446,63 +474,63 @@ func (d *draftAutosave) adopt(sessionID string, message authoring.Message) {
 // scheduleDraftPersistence marks authoring input in constant time. The complete
 // message is captured only after the input burst settles, so editing a long
 // prompt does not rebuild and clone its entire value after every key.
-func (a *app) scheduleDraftPersistence() {
-	if a.closed {
+func (c *promptComposer) scheduleDraftPersistence() {
+	if c.closed() {
 		return
 	}
-	a.drafts.schedule(a.loop.After, func() (string, authoring.Message, error) {
-		message, _, err := a.composer.draft()
-		return a.session.current.ID, message, err
-	}, func(err error) { a.reportWorkbenchIssue(workbenchDraft, err) })
+	c.drafts.schedule(c.after, func() (string, authoring.Message, error) {
+		message, _, err := c.draft()
+		return c.session.current.ID, message, err
+	}, func(err error) { c.report(workbenchDraft, err) })
 }
 
-func (a *app) saveDraft(message authoring.Message) error {
-	return a.drafts.save(a.session.current.ID, message)
+func (c *promptComposer) saveDraft(message authoring.Message) error {
+	return c.drafts.save(c.session.current.ID, message)
 }
 
 // commitDraft makes a recoverable value durable before replacing the visible
 // composer. Callers retain their source value when persistence fails.
-func (a *app) commitDraft(message authoring.Message) error {
-	err := a.saveDraft(message)
-	a.reportWorkbenchIssue(workbenchDraft, err)
+func (c *promptComposer) commitDraft(message authoring.Message) error {
+	err := c.saveDraft(message)
+	c.report(workbenchDraft, err)
 	if err != nil {
 		return err
 	}
-	a.restoreComposer(message)
+	c.restoreComposer(message)
 	return nil
 }
 
 // recoverDraft exposes an irreplaceable value before attempting persistence.
 // A failed save must not discard editor output or runtime recovery data.
-func (a *app) recoverDraft(message authoring.Message) error {
-	a.restoreComposer(message)
-	return a.persistDraft()
+func (c *promptComposer) recoverDraft(message authoring.Message) error {
+	c.restoreComposer(message)
+	return c.persistDraft()
 }
 
-func (a *app) restoreComposer(message authoring.Message) {
-	a.clearComposer()
-	a.composer.insertAttachments(message.Attachments)
-	a.composer.Editor().Insert(message.Text)
-	a.scheduleDraftPersistence()
+func (c *promptComposer) restoreComposer(message authoring.Message) {
+	c.clearComposer()
+	c.insertAttachments(message.Attachments)
+	c.Editor().Insert(message.Text)
+	c.scheduleDraftPersistence()
 }
 
-func (a *app) recallPrevious() bool {
-	current, err := a.composer.message()
+func (c *promptComposer) recallPrevious() bool {
+	current, err := c.message()
 	if err != nil {
-		a.message(err.Error())
+		c.notify(err.Error())
 		return true
 	}
-	message, ok := a.history.Back(current)
+	message, ok := c.history.Back(current)
 	if ok {
-		a.restoreComposer(message)
+		c.restoreComposer(message)
 	}
 	return ok
 }
 
-func (a *app) recallNext() bool {
-	message, ok := a.history.Forward()
+func (c *promptComposer) recallNext() bool {
+	message, ok := c.history.Forward()
 	if ok {
-		a.restoreComposer(message)
+		c.restoreComposer(message)
 	}
 	return ok
 }

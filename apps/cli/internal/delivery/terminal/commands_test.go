@@ -75,7 +75,7 @@ func TestBuiltinCommandsHonorNegotiatedFineGrainedCapabilities(t *testing.T) {
 	t.Parallel()
 
 	profile := terminalProfileWithFeatures(t, map[string]protocol.FeatureCapability{protocol.FeatureGit: {}, protocol.FeatureRelocate: {}, protocol.FeatureSessionExport: {}})
-	application := &app{
+	application := &app{composer: testPromptComposer(t),
 		runtimeProfile: &profile,
 		execution:      executionState{conversation: conversation.New()},
 		workspaces:     &workspaceServiceStub{},
@@ -97,7 +97,7 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 
 	features := map[string]protocol.FeatureCapability{protocol.FeatureGoals: {}, protocol.FeatureSkills: {}, protocol.FeatureMCP: {}, protocol.FeaturePlugins: {}}
 	profile := terminalProfileWithFeatures(t, features)
-	application := &app{
+	application := &app{composer: testPromptComposer(t),
 		runtimeProfile: &profile,
 		screens: screens{
 			goals:  &goalScreens{service: new(goalServiceStub)},
@@ -135,7 +135,7 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 func TestMessageCapabilitiesRejectImagesOnlyWhenMultimodalWasNotNegotiated(t *testing.T) {
 	t.Parallel()
 
-	application := &app{runtimeProfile: new(terminalProfileWithFeatures(t, map[string]protocol.FeatureCapability{protocol.FeatureMultimodal: {Enabled: false}}))}
+	application := &app{composer: testPromptComposer(t), runtimeProfile: new(terminalProfileWithFeatures(t, map[string]protocol.FeatureCapability{protocol.FeatureMultimodal: {Enabled: false}}))}
 	text := authoring.Message{Attachments: []authoring.Attachment{{Kind: protocol.ContentBlockText}}}
 	if err := application.validateMessageCapabilities(text); err != nil {
 		t.Fatalf("text attachment: %v", err)
@@ -263,7 +263,7 @@ func TestRejectedSlashCommandsPreserveTheEditorAndAttachments(t *testing.T) {
 		{name: "availability panic", text: "/inspect", availability: func(*app) extensions.CommandAvailability { panic("availability failed") }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			application := &app{
+			application := &app{composer: testPromptComposer(t),
 				status: &statusView{}, execution: executionState{conversation: conversation.New()},
 				commands: newCommandCatalog(),
 			}

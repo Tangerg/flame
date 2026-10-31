@@ -74,7 +74,7 @@ func TestCancellationDispatchWaitsForItsRetainedIdentityToBeDurable(t *testing.T
 	}
 	pending := store.PendingRuns("session")[0]
 	runtime := &cancellationAdmissionProbe{Runtime: runtimefixture.New()}
-	application := &app{runtime: runtime, workbench: store, replayPolicy: replay}
+	application := &app{composer: testPromptComposer(t), runtime: runtime, workbench: store, replayPolicy: replay}
 	for _, dispatch := range []func(context.Context, conversation.CancelRun, authoring.ReplayGuard) error{application.cancelRootRun, application.cancelRuntimeNow} {
 		request := conversation.CancelRun{CommandID: pending.CancelCommandID, RunID: "run_original", Reason: "original"}
 		if err := dispatch(t.Context(), request, pending.CancelReplay); !errors.Is(err, fault.cause) || !mutation.OutcomeUnknown(err) {

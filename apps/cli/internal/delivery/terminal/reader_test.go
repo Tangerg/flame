@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -274,7 +275,7 @@ func TestSameSessionProjectionReplacementRetiresALiveTranscriptReader(t *testing
 
 	operations := newOperationOwner(t.Context())
 	t.Cleanup(operations.Close)
-	application := &app{
+	application := &app{composer: testPromptComposer(t),
 		operations: operations,
 		session:    sessionState{current: conversation.Session{ID: "session"}},
 		execution:  executionState{conversation: conversation.New()},
@@ -294,7 +295,7 @@ func TestSameSessionProjectionReplacementPreservesAStaticReader(t *testing.T) {
 	reader.Open(readerTarget{document: readerDocument{Title: "authoritative runtime document"}})
 
 	goal := &readerQuery{status: "loading session goal"}
-	application := &app{
+	application := &app{composer: testPromptComposer(t),
 		session:   sessionState{current: conversation.Session{ID: "session"}},
 		execution: executionState{conversation: conversation.New()},
 		reader:    &readerSurface{pane: reader, shown: goal},
@@ -368,4 +369,17 @@ func testScreenHost(t *testing.T, transcript *transcriptView, stack *headless.St
 		host.reader = testReaderSurface(t, operations)
 	}
 	return host
+}
+
+// testPromptComposer is a composer whose notices, health reports and
+// capability checks go nowhere.
+func testPromptComposer(t *testing.T) *promptComposer {
+	t.Helper()
+	return &promptComposer{
+		session: &sessionState{}, ctx: t.Context(),
+		after:  func(time.Duration, func()) func() { return func() {} },
+		closed: func() bool { return false }, notify: func(string) {},
+		report: func(workbenchConcern, error) {}, validate: func(authoring.Message) error { return nil },
+		appendNote: func(string, string) {}, cleared: func() {},
+	}
 }
