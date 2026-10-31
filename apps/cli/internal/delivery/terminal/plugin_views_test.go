@@ -117,10 +117,19 @@ func runNotesView(t *testing.T) (*notesPlugin, *installedPluginCatalog, *runtime
 	return plugin, catalog, source, host, stop
 }
 
+// typeNotesCommand waits for the view command, which arrives after startup
+// reads the installed views.
+func typeNotesCommand(t *testing.T, host *programtest.Host, argument string) {
+	t.Helper()
+	host.Type("/notes")
+	host.Shows(t, "Notes · edit <id>")
+	host.Type(argument)
+	host.Press(input.Enter)
+}
+
 func TestPluginViewListsRowsThroughTheDeclaredContract(t *testing.T) {
 	_, catalog, _, host, stop := runNotesView(t)
-	host.Type("/notes")
-	host.Press(input.Enter)
+	typeNotesCommand(t, host, "")
 	host.Shows(t, "note_release")
 	host.Shows(t, "confirm release steps")
 	host.Shows(t, "/notes edit <id>")
@@ -135,8 +144,7 @@ func TestPluginViewListsRowsThroughTheDeclaredContract(t *testing.T) {
 
 func TestPluginViewReaderFollowsPluginDataChanges(t *testing.T) {
 	plugin, _, source, host, stop := runNotesView(t)
-	host.Type("/notes")
-	host.Press(input.Enter)
+	typeNotesCommand(t, host, "")
 	host.Shows(t, "confirm release steps")
 	plugin.setContent("note_release", "confirm externally revised release steps")
 	source.events <- changefeed.Event{Type: protocol.RuntimePluginDataChanged, Sequence: 1}
@@ -147,8 +155,7 @@ func TestPluginViewReaderFollowsPluginDataChanges(t *testing.T) {
 
 func TestPluginViewActionFillsTheFormFromTheSelectedRow(t *testing.T) {
 	plugin, _, _, host, stop := runNotesView(t)
-	host.Type("/notes edit note_rel")
-	host.Press(input.Enter)
+	typeNotesCommand(t, host, " edit note_rel")
 	host.Shows(t, "Edit · Notes · note_release")
 	host.Shows(t, "confirm release steps")
 	host.Type(" today")

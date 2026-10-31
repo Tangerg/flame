@@ -59,7 +59,11 @@ func (a *app) buildScreens(cfg appConfig) {
 		a.diagnosticTools = &diagnosticScreens{screenHost: host, service: cfg.diagnosticTools}
 	}
 	if cfg.plugins != nil {
-		a.plugins = &pluginScreens{screenHost: host, service: cfg.plugins, workbench: a.workbench, viewsChanged: a.registerCommands}
+		a.plugins = &pluginScreens{screenHost: host, service: cfg.plugins, workbench: a.workbench, viewsChanged: func() {
+			a.registerCommands()
+			// A command typed while the views loaded completes once they arrive.
+			a.refreshCompletion()
+		}}
 	}
 	if cfg.authoringContext != nil {
 		a.authoringContext = &agentDocumentScreens{screenHost: host, service: cfg.authoringContext}
