@@ -663,7 +663,6 @@ func (l *sessionLifecycle) install(s sessionInstallation) {
 	l.prompt.SetBusy(s.projection.conversation.Busy())
 	l.runs.syncQueue()
 	previousTranscript.Close()
-	l.root.listenForSearch()
 	l.restoreActivity(s.snapshot)
 	l.runs.restoreSessionOutbox()
 	if l.state.current.Workspace != previousWorkspace {

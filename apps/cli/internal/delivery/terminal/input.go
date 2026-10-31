@@ -280,10 +280,10 @@ func (a *app) handleSessionAction(action keymap.Action) bool {
 		a.ToggleToolDetails()
 		return true
 	case nextMatch:
-		a.NextMatch()
+		a.search.step(1)
 		return true
 	case previousMatch:
-		a.PreviousMatch()
+		a.search.step(-1)
 		return true
 	case scrollPageUp, scrollPageDown, scrollTop, scrollBottom:
 		if a.completion.popup.Open() {

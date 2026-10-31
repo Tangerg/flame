@@ -71,7 +71,7 @@ type app struct {
 	screens          screens
 	timeline         *timelineDialog
 	palette          *pickerDialog[commandPaletteItem]
-	search           *searchPrompt
+	search           *liveSearch
 	shortcuts        *shortcutGuide
 	queueEditor      *queueEditor
 	extensions       *localExtensions
@@ -325,13 +325,13 @@ func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.M
 		choose: a.chooseCommand,
 	})
 	a.shortcuts = newShortcutGuide(&a.stack, theme, glyphs, a.loop.Environment().Wheel(), editorKeys, a.transcript.Keys())
-	a.search = newSearchPrompt(&a.stack, theme, glyphs, a.Find)
+	a.search = newLiveSearch(&a.stack, theme, glyphs, a.tasks, a.currentTranscript, a.message)
 	a.confirm = &confirmPrompt{stack: &a.stack, theme: theme, glyphs: glyphs, wheel: a.loop.Environment().Wheel(), session: &a.lifecycle.state}
 	a.reader = newReaderSurface(readerSurfaceConfig{
 		theme: theme, glyphs: glyphs, syntax: a.syntax, stack: &a.stack, loop: a.loop,
 		tasks: a.tasks, status: a.status, message: a.message,
 	})
-	a.listenForSearch()
+	a.search.listen()
 	a.setWindowTitle()
 }
 
@@ -488,6 +488,7 @@ func (a *app) presentTranscript(transcript *transcriptView) *transcriptView {
 	a.transcript = transcript
 	a.wireTranscript(transcript)
 	a.shell.SetTranscript(transcript)
+	a.search.listen()
 	return previous
 }
 

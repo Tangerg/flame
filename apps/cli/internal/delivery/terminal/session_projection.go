@@ -110,7 +110,6 @@ func (l *sessionLifecycle) reconcileRunSnapshot(snapshot conversation.SessionSna
 	l.status.setRunningDescendants(projection.conversation.RunningDescendants())
 	l.prompt.SetBusy(projection.conversation.Busy())
 	previousTranscript.Close()
-	l.root.listenForSearch()
 	l.steering.receipts.observeSnapshot(snapshot)
 
 	resumed, err := l.runs.resumeReconciled(snapshot)

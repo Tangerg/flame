@@ -6,9 +6,6 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
 	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/keymap"
-	"github.com/Tangerg/oolong/core/layout"
 )
 
 type commandPaletteItem struct {
@@ -72,39 +69,4 @@ func commandCategoryRank(category string) int {
 	default:
 		return 6
 	}
-}
-
-// searchPrompt asks for text to find in the live transcript.
-type searchPrompt struct {
-	dialog *presentationDialog
-	query  string
-}
-
-func newSearchPrompt(stack *headless.Stack, theme kit.Theme, glyphs kit.Glyphs, find func(string)) *searchPrompt {
-	p := &searchPrompt{}
-	field := headless.NewText(headless.TextConfig{Label: "Find in the live transcript", Placeholder: "text", Value: headless.Bind(&p.query), Check: requiredText})
-	form := headless.NewForm(field)
-	form.Keys = headless.DefaultFormKeys()
-	form.Done = func() {
-		if !p.dialog.Open() {
-			return
-		}
-		p.dialog.Dismiss()
-		find(p.query)
-	}
-	form.GaveUp = func() { p.dialog.Dismiss() }
-	dressed := kit.NewForm(kit.FormConfig{
-		Theme: theme, Glyphs: glyphs, Controller: form,
-		Hints: []keymap.Action{headless.Submit, headless.Cancel},
-	})
-	p.dialog = newPresentationDialog(kit.DialogConfig{
-		Stack: stack, Theme: theme, Glyphs: glyphs, Title: "Search", Body: dressed,
-		Where: layout.Placement{Width: 68, Height: 7},
-	})
-	return p
-}
-
-func (p *searchPrompt) show() {
-	p.query = ""
-	p.dialog.Show()
 }

@@ -30,9 +30,9 @@ func builtinCommands() []localCommand {
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "help", Title: "show commands available in this session"}, Run: func(a *app, _ string) error { a.ShowHelp(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "shortcuts", Title: "show all keyboard shortcuts"}, Run: func(a *app, _ string) error { a.ShowShortcuts(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "clear", Title: "release the live transcript"}, Available: availableWithoutActiveRun, Run: func(a *app, _ string) error { a.Clear(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "find", Title: "find text in the live transcript", Arguments: extensions.RequiredArguments}, Run: func(a *app, query string) error { a.Find(query); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "next", Title: "step to the next search match"}, Run: func(a *app, _ string) error { a.NextMatch(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "previous", Title: "step to the previous search match", Aliases: []string{"prev"}}, Run: func(a *app, _ string) error { a.PreviousMatch(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "find", Title: "find text in the live transcript", Arguments: extensions.RequiredArguments}, Run: func(a *app, query string) error { a.search.find(query); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "next", Title: "step to the next search match"}, Run: func(a *app, _ string) error { a.search.step(1); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "previous", Title: "step to the previous search match", Aliases: []string{"prev"}}, Run: func(a *app, _ string) error { a.search.step(-1); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "queue", Title: "manage follow-ups waiting behind the current run"}, Run: func(a *app, _ string) error { a.queueEditor.ShowQueue(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "details", Title: "expand or collapse tool output and diffs"}, Run: func(a *app, _ string) error { a.ToggleToolDetails(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "view", Title: "open the selected transcript entry in the full reader"}, Available: availableWithReadableSelection, Run: func(a *app, _ string) error { a.OpenReader(); return nil }},
@@ -318,23 +318,6 @@ func (a *app) Clear() {
 	a.status.Reset()
 	a.status.note("cleared")
 	a.header.SetUsage(a.runs.conversation().Usage())
-}
-
-func (a *app) Find(query string) {
-	a.transcript.Find(query)
-	a.message("searching for " + query)
-}
-
-func (a *app) NextMatch() {
-	if !a.transcript.StepMatch(1) {
-		a.message("no active search matches")
-	}
-}
-
-func (a *app) PreviousMatch() {
-	if !a.transcript.StepMatch(-1) {
-		a.message("no active search matches")
-	}
 }
 
 func (a *app) Quit() { a.loop.Quit() }

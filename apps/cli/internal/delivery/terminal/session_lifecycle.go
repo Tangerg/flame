@@ -18,7 +18,6 @@ type sessionRoot interface {
 	currentTranscript() *transcriptView
 	newTranscript() *transcriptView
 	presentTranscript(transcript *transcriptView) *transcriptView
-	listenForSearch()
 	enterSessionHealth()
 	dismissModals()
 	dismissCompletion()

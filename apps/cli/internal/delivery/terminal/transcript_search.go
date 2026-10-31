@@ -6,7 +6,9 @@ import (
 	"strings"
 
 	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/core/program"
+	"github.com/Tangerg/oolong/components/kit"
+	"github.com/Tangerg/oolong/core/keymap"
+	"github.com/Tangerg/oolong/core/layout"
 )
 
 type transcriptSearch struct {
@@ -168,17 +170,74 @@ func (t *transcriptView) StepMatch(delta int) bool {
 	return t.view.RevealMatch(t.view.Current)
 }
 
-func (a *app) listenForSearch() {
-	results := a.transcript.SearchResults()
-	dispatcher := a.loop.Dispatcher()
-	a.operations.Go(searchOperation, true, func(ctx context.Context, lease operationLease) {
+// liveSearch finds text in the live transcript: it asks for the query,
+// follows the transcript's background search results and steps between
+// matches. transcript is the transcript presented now.
+type liveSearch struct {
+	dialog     *presentationDialog
+	query      string
+	transcript func() *transcriptView
+	tasks      taskRunner
+	notify     func(string)
+}
+
+func newLiveSearch(stack *headless.Stack, theme kit.Theme, glyphs kit.Glyphs, tasks taskRunner, transcript func() *transcriptView, notify func(string)) *liveSearch {
+	p := &liveSearch{transcript: transcript, tasks: tasks, notify: notify}
+	field := headless.NewText(headless.TextConfig{Label: "Find in the live transcript", Placeholder: "text", Value: headless.Bind(&p.query), Check: requiredText})
+	form := headless.NewForm(field)
+	form.Keys = headless.DefaultFormKeys()
+	form.Done = func() {
+		if !p.dialog.Open() {
+			return
+		}
+		p.dialog.Dismiss()
+		p.find(p.query)
+	}
+	form.GaveUp = func() { p.dialog.Dismiss() }
+	dressed := kit.NewForm(kit.FormConfig{
+		Theme: theme, Glyphs: glyphs, Controller: form,
+		Hints: []keymap.Action{headless.Submit, headless.Cancel},
+	})
+	p.dialog = newPresentationDialog(kit.DialogConfig{
+		Stack: stack, Theme: theme, Glyphs: glyphs, Title: "Search", Body: dressed,
+		Where: layout.Placement{Width: 68, Height: 7},
+	})
+	return p
+}
+
+func (p *liveSearch) show() {
+	p.query = ""
+	p.dialog.Show()
+}
+
+func (p *liveSearch) find(query string) {
+	p.transcript().Find(query)
+	p.notify("searching for " + query)
+}
+
+func (p *liveSearch) step(delta int) {
+	if !p.transcript().StepMatch(delta) {
+		p.notify("no active search matches")
+	}
+}
+
+// listen follows the search results of the presented transcript, replacing
+// the subscription to a transcript no longer presented.
+func (p *liveSearch) listen() {
+	results := p.transcript().SearchResults()
+	operations := p.tasks.operations
+	operations.Go(searchOperation, true, func(ctx context.Context, lease operationLease) {
 		for {
 			select {
 			case result, ok := <-results:
 				if !ok {
 					return
 				}
-				if err := a.postSearchResult(ctx, dispatcher, lease, result); err != nil {
+				if err := post(ctx, p.tasks.dispatch, func() {
+					if operations.Current(lease) {
+						p.accept(result)
+					}
+				}); err != nil {
 					return
 				}
 			case <-ctx.Done():
@@ -188,22 +247,13 @@ func (a *app) listenForSearch() {
 	})
 }
 
-func (a *app) postSearchResult(ctx context.Context, dispatcher program.Dispatcher, lease operationLease, result headless.Result) error {
-	return post(ctx, dispatcher, func() {
-		if !a.operations.Current(lease) || a.closed {
-			return
-		}
-		a.acceptSearchResult(result)
-	})
-}
-
-func (a *app) acceptSearchResult(result headless.Result) {
+func (p *liveSearch) accept(result headless.Result) {
 	if result.Err != nil {
-		a.message(fmt.Sprintf("search failed: %v", result.Err))
+		p.notify(fmt.Sprintf("search failed: %v", result.Err))
 		return
 	}
-	accepted, announce := a.transcript.AcceptSearch(result)
+	accepted, announce := p.transcript().AcceptSearch(result)
 	if accepted && announce {
-		a.message(fmt.Sprintf("%d match(es) for %q", len(result.Matches), result.Query))
+		p.notify(fmt.Sprintf("%d match(es) for %q", len(result.Matches), result.Query))
 	}
 }

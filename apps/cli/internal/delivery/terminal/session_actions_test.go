@@ -1000,7 +1000,7 @@ func withModalOwners(t *testing.T, application *app) {
 	application.sessions = newSessionBrowser(sessionBrowserConfig{browser: sessionBrowser{
 		stack: &application.stack, theme: theme, glyphs: glyphs, session: &application.lifecycle.state,
 	}, switchTo: func(string) {}})
-	application.search = newSearchPrompt(&application.stack, theme, glyphs, func(string) {})
+	application.search = newLiveSearch(&application.stack, theme, glyphs, taskRunner{}, func() *transcriptView { return application.transcript }, func(string) {})
 	application.timeline = newTimelineDialog(&application.stack, theme, glyphs, func(timelineEntry) {}, func(timelineEntry) {})
 	application.palette = newPickerDialog(pickerDialogConfig[commandPaletteItem]{
 		stack: &application.stack, theme: theme, glyphs: glyphs,
