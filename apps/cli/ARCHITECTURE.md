@@ -118,11 +118,14 @@ the terminal transport stays open until application cleanup finishes.
 
 Long-lived terminal features own their cancellation and settlement locally. The application root coordinates them but does not mirror every feature field or become a general service bag.
 
-The application root owns the conversation: the Session projection, Run execution, the prompt queue, interrupts, and the transcript. Other surfaces are owners it composes:
+The application root composes the terminal and owns the conversation: the Session projection, Run admission and execution, queue dispatch and settlement, steering, cancellation and recovery. These transition one state machine (Session projection, Conversation and the authoring outbox) and read each other's state throughout, so they stay together rather than behind callback interfaces. Other surfaces are owners the root composes:
 
 - `taskRunner` starts background work and applies its result on the terminal loop under an operation lease.
 - `readerSurface` owns the reader dialog and the query behind its document. A change event re-reads only the shown document, and the document's owner updates it in place through the same query.
-- Each management screen owns one Runtime port and its own state: MCP, Skills, hooks, diagnostic tools, agent documents, goals, model configuration, usage, and installed plugins with their terminal views. A screen reaches the rest of the terminal only through `screenHost`. The root holds no screen when its port is absent, and command availability already reports that absence.
+- `screens` are the management surfaces, each owning one Runtime port and its state: approval policy, workspace inspection, goals, model configuration, usage, MCP, Skills, hooks, diagnostic tools, agent documents, and installed plugins with their terminal views. A screen reaches the rest of the terminal only through `screenHost`. A screen whose port is absent is nil, which command availability reports.
+- `interruptPrompts` walks a waiting Run's approvals and questions and hands a completed review, an abandoned Run or a failure back through `interruptRun`; the root delivers and settles the resume.
+- `queueEditor` presents the prompt queue and owns its edit rules; promotion asks Run admission through `queueRun`.
+- `pickerDialog` pairs a searchable picker with its modal for commands, models, workspaces and approval modes; the timeline, transcript search and shortcut guide own their modals likewise.
 - `composerContent` owns the editor and the attachment behind each file chip. `draftAutosave` owns draft persistence, the last saved draft, and the pending save. `keyRouter` owns the application and global bindings and their partial sequences.
 
 Whether the connected Runtime offers an optional surface is the composition root's question, answered once against the negotiated `Profile` and expressed by leaving that consumer port unset. A binding accessor therefore returns a usable value and never reports absence with a nil pointer: assigned into a consumer's interface-typed port, a nil pointer arrives as a non-nil interface, so the consumer's own "is this wired?" check cannot fire and its first call dereferences nil. Absence is the absent field, not a present value that fails on use.
