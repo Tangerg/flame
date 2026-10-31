@@ -71,7 +71,7 @@ func (a *app) PrepareHookTrust(trusted bool) error {
 	}
 	workspacePath := a.session.current.Workspace.Path
 	a.status.note("loading project hook trust")
-	if !a.runOperation(hookOperation, false,
+	if !a.tasks.session(hookOperation, false,
 		func(ctx context.Context) (workspace.HookCatalog, error) { return a.hooks.Catalog(ctx, workspacePath) },
 		func(catalog workspace.HookCatalog, err error) {
 			if err != nil {
@@ -105,7 +105,7 @@ func (a *app) PrepareHookTrust(trusted bool) error {
 func (a *app) setHookTrust(workspacePath, projectRoot string, trusted bool) {
 	presentation := a.session.context
 	a.status.note("updating project hook trust")
-	if !a.runAdmissionMutation(hookOperation, false,
+	if !a.tasks.admissionMutation(hookOperation, false,
 		func(ctx context.Context) (workspace.HookCatalog, error) {
 			if err := a.hooks.SetProjectTrust(ctx, projectRoot, trusted); err != nil {
 				return workspace.HookCatalog{}, err

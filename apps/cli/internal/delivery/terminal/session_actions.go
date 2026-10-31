@@ -31,7 +31,7 @@ func (a *app) prepareSessionImport(path string) error {
 	}
 	workspace := authoringDirectory(a.localDirectory, a.session.current.Workspace.Path)
 	a.message("reading session artifact")
-	started := a.runOperation(sessionOutputOperation, false,
+	started := a.tasks.session(sessionOutputOperation, false,
 		func(context.Context) (sessionImport, error) {
 			artifact, err := a.artifacts.Load(workspace, path)
 			return sessionImport{path: path, artifact: artifact}, err
@@ -85,7 +85,7 @@ func (a *app) prepareSessionRollback(argument string) error {
 		}
 	}
 	a.message("previewing rollback")
-	started := a.runOperation(sessionOutputOperation, false,
+	started := a.tasks.session(sessionOutputOperation, false,
 		func(ctx context.Context) (rollbackPreview, error) {
 			snapshot, err := a.runtime.GetSession(ctx, request.SessionID)
 			if err != nil {

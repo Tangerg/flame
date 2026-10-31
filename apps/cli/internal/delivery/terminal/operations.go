@@ -312,86 +312,68 @@ func (o *operationOwner) release(lease operationLease, cancel context.CancelFunc
 	o.mu.Unlock()
 }
 
-// runOperation owns a user-initiated task for the lifetime of the current
-// session projection. Most commands belong here because their result is
-// interpreted against the session and workspace that launched them.
-func (a *app) runOperation[T any](slot operationSlot, replace bool, work func(context.Context) (T, error), apply func(T, error)) bool {
-	return a.runOwnedOperation(operationPolicy{scope: sessionOperationScope}, slot, replace, work, apply)
+// taskRunner starts background work whose result is applied on the terminal
+// loop. A result applies only while its lease is current, so replacement,
+// session change or shutdown drops it; the loop stops before the terminal
+// closes, so no result applies after Close.
+type taskRunner struct {
+	operations *operationOwner
+	dispatch   program.Dispatcher
+	// settled resumes Run admission after a result that gated it has applied.
+	settled func()
 }
 
-// runSessionSettlement owns a session command whose durable acknowledgement
+// session owns a user-initiated task for the lifetime of the current session
+// projection. Most commands belong here because their result is interpreted
+// against the session and workspace that launched them.
+func (r taskRunner) session[T any](slot operationSlot, replace bool, work func(context.Context) (T, error), apply func(T, error)) bool {
+	return runTask(r, operationPolicy{scope: sessionOperationScope}, slot, replace, work, apply)
+}
+
+// sessionSettlement owns a session command whose durable acknowledgement
 // boundary orders subsequent Run admission. Prompts may be authored and queued
 // while it settles, but dispatch cannot overtake the command journal.
-func (a *app) runSessionSettlement[T any](
-	slot operationSlot,
-	replace bool,
-	work func(context.Context) (T, error),
-	apply func(T, error),
-) bool {
-	return a.runOwnedOperation(operationPolicy{
-		scope: sessionOperationScope, runAdmission: runAdmissionAfterSettlement,
-	}, slot, replace, work, apply)
+func (r taskRunner) sessionSettlement[T any](slot operationSlot, replace bool, work func(context.Context) (T, error), apply func(T, error)) bool {
+	return runTask(r, operationPolicy{scope: sessionOperationScope, runAdmission: runAdmissionAfterSettlement}, slot, replace, work, apply)
 }
 
-// runSessionAdmissionFence blocks Run admission while an authoritative Session
-// read is in flight without assuming that completion means success. The caller
-// owns retry state and explicitly drains the queue only after installing the
-// result.
-func (a *app) runSessionAdmissionFence[T any](
-	slot operationSlot,
-	replace bool,
-	work func(context.Context) (T, error),
-	apply func(T, error),
-) bool {
-	return a.runOwnedOperation(operationPolicy{
-		scope: sessionOperationScope, runAdmission: runAdmissionFence,
-	}, slot, replace, work, apply)
+// sessionFence blocks Run admission while an authoritative Session read is in
+// flight without assuming that completion means success. The caller owns retry
+// state and explicitly drains the queue only after installing the result.
+func (r taskRunner) sessionFence[T any](slot operationSlot, replace bool, work func(context.Context) (T, error), apply func(T, error)) bool {
+	return runTask(r, operationPolicy{scope: sessionOperationScope, runAdmission: runAdmissionFence}, slot, replace, work, apply)
 }
 
-// runApplicationOperation owns work whose domain lifetime is independent of a
-// chat session. It survives projection replacement but is still canceled and
-// joined when the terminal closes. Callers must keep apply safe when any
+// application owns work whose domain lifetime is independent of a chat
+// session. It survives projection replacement but is still canceled and joined
+// when the terminal closes. Callers must keep apply safe when any
 // session-scoped presentation they opened has since been dismissed.
-func (a *app) runApplicationOperation[T any](slot operationSlot, replace bool, work func(context.Context) (T, error), apply func(T, error)) bool {
-	return a.runOwnedOperation(operationPolicy{scope: applicationOperationScope}, slot, replace, work, apply)
+func (r taskRunner) application[T any](slot operationSlot, replace bool, work func(context.Context) (T, error), apply func(T, error)) bool {
+	return runTask(r, operationPolicy{scope: applicationOperationScope}, slot, replace, work, apply)
 }
 
-// runAdmissionMutation owns an application-level mutation whose settled
-// state is an input to subsequently admitted Runs. Prompts may still be queued
-// while it is active, but queue dispatch waits until apply has observed the
-// mutation result, so a Run cannot race stale approval, provider, tool, or
+// admissionMutation owns an application-level mutation whose settled state is
+// an input to subsequently admitted Runs. Prompts may still be queued while it
+// is active, but queue dispatch waits until apply has observed the mutation
+// result, so a Run cannot race stale approval, provider, tool, or
 // authored-context state.
-func (a *app) runAdmissionMutation[T any](
-	slot operationSlot,
-	replace bool,
-	work func(context.Context) (T, error),
-	apply func(T, error),
-) bool {
-	return a.runOwnedOperation(operationPolicy{
-		scope: applicationOperationScope, runAdmission: runAdmissionAfterSettlement,
-	}, slot, replace, work, apply)
+func (r taskRunner) admissionMutation[T any](slot operationSlot, replace bool, work func(context.Context) (T, error), apply func(T, error)) bool {
+	return runTask(r, operationPolicy{scope: applicationOperationScope, runAdmission: runAdmissionAfterSettlement}, slot, replace, work, apply)
 }
 
-func (a *app) runOwnedOperation[T any](
-	policy operationPolicy,
-	slot operationSlot,
-	replace bool,
-	work func(context.Context) (T, error),
-	apply func(T, error),
-) bool {
-	dispatcher := a.loop.Dispatcher()
-	return a.operations.goWithPolicy(policy, slot, replace, func(ctx context.Context, lease operationLease) {
+func runTask[T any](r taskRunner, policy operationPolicy, slot operationSlot, replace bool, work func(context.Context) (T, error), apply func(T, error)) bool {
+	return r.operations.goWithPolicy(policy, slot, replace, func(ctx context.Context, lease operationLease) {
 		result, err := work(ctx)
 		if context.Cause(ctx) != nil {
 			return
 		}
-		_ = post(ctx, dispatcher, func() {
-			if !a.operations.Current(lease) || a.closed || !a.operations.Release(lease) {
+		_ = post(ctx, r.dispatch, func() {
+			if !r.operations.Current(lease) || !r.operations.Release(lease) {
 				return
 			}
 			apply(result, err)
 			if policy.runAdmission == runAdmissionAfterSettlement {
-				a.drainQueue()
+				r.settled()
 			}
 		})
 	})

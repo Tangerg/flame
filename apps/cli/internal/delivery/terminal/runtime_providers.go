@@ -73,7 +73,7 @@ func (a *app) TestConfiguredProvider(providerID string) error {
 		return fmt.Errorf("provider test: %w", err)
 	}
 	a.status.note("testing provider " + providerID)
-	started := a.runApplicationOperation(modelConfigOperation, false,
+	started := a.tasks.application(modelConfigOperation, false,
 		func(ctx context.Context) (protocol.ProviderTestOutcome, error) {
 			return a.modelConfig.TestProvider(ctx, providerID)
 		},
@@ -104,7 +104,7 @@ func (a *app) ConfigureProvider(providerID string) error {
 	}
 	presentation := a.session.context
 	a.status.note("loading provider " + providerID)
-	started := a.runApplicationOperation(modelConfigOperation, false,
+	started := a.tasks.application(modelConfigOperation, false,
 		func(ctx context.Context) (models.Provider, error) {
 			providers, err := a.modelConfig.Providers(ctx)
 			if err != nil {
@@ -261,7 +261,7 @@ func valueChange(mode formChange, value string) (*models.ValueChange, error) {
 
 func (a *app) updateProvider(update models.UpdateProvider) {
 	a.status.note("updating provider " + update.Provider)
-	started := a.runAdmissionMutation(modelConfigOperation, false,
+	started := a.tasks.admissionMutation(modelConfigOperation, false,
 		func(ctx context.Context) (models.Provider, error) {
 			return a.modelConfig.UpdateProvider(ctx, update)
 		},

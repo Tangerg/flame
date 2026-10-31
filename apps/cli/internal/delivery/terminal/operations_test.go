@@ -233,3 +233,9 @@ func TestSessionSettlementOwnsRunAdmissionUntilItsExactLeaseEnds(t *testing.T) {
 		t.Fatal("replaced session retained the old settlement boundary")
 	}
 }
+
+// unattachedTasks runs work whose results never apply, because no loop drains
+// the dispatcher.
+func unattachedTasks(operations *operationOwner) taskRunner {
+	return taskRunner{operations: operations, dispatch: (&program.Runtime{}).Dispatcher(), settled: func() {}}
+}

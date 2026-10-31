@@ -288,9 +288,9 @@ func (a *app) submitMCPForm(flow *mcpFormFlow) {
 	}
 	var started bool
 	if flow.mode == mcpFormProbe {
-		started = a.runApplicationOperation(mcpOperation, false, submission.work, apply)
+		started = a.tasks.application(mcpOperation, false, submission.work, apply)
 	} else {
-		started = a.runAdmissionMutation(mcpOperation, false, submission.work, apply)
+		started = a.tasks.admissionMutation(mcpOperation, false, submission.work, apply)
 	}
 	if !started {
 		flow.feedback("another MCP operation is running")

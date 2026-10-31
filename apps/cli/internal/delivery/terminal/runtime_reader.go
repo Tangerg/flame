@@ -66,7 +66,7 @@ func (a *app) runRuntimeReaderQuery(
 
 func (a *app) executeRuntimeReaderQuery(query runtimeReaderQuery) {
 	a.status.note(query.status)
-	a.runOperation(readerDocumentOperation, true, query.read, func(document readerDocument, err error) {
+	a.tasks.session(readerDocumentOperation, true, query.read, func(document readerDocument, err error) {
 		if err != nil {
 			message := query.status + " failed: " + err.Error()
 			if a.dialogs.readerDialog.Open() && a.dialogs.runtimeReader == query.mode {

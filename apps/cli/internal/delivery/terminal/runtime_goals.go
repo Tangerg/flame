@@ -103,7 +103,7 @@ func (a *app) ClearGoal() error {
 	sessionID := a.session.current.ID
 	label := "clearing session goal"
 	a.status.note(label)
-	started := a.runAdmissionMutation(goalOperation, false,
+	started := a.tasks.admissionMutation(goalOperation, false,
 		func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, a.goals.ClearGoal(ctx, sessionID)
 		},
@@ -150,7 +150,7 @@ func (a *app) ResumeGoal() error {
 func (a *app) changeGoal(label string, change func(context.Context) (protocol.Goal, error)) error {
 	presentation := a.session.context
 	a.status.note(label)
-	started := a.runAdmissionMutation(goalOperation, false, change, func(current protocol.Goal, err error) {
+	started := a.tasks.admissionMutation(goalOperation, false, change, func(current protocol.Goal, err error) {
 		if err != nil {
 			a.message(label + " failed: " + err.Error())
 			return

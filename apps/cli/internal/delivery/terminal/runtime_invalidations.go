@@ -226,7 +226,7 @@ func (a *app) refreshInvalidatedSession(settlementFence bool) {
 	// Every authoritative refresh fences queued Run admission. Settlement
 	// refreshes additionally replace an ordinary read already in flight so a
 	// weaker coalesced request cannot discard that obligation.
-	started := a.runSessionAdmissionFence(sessionInvalidationOperation, settlementFence, read, apply)
+	started := a.tasks.sessionFence(sessionInvalidationOperation, settlementFence, read, apply)
 	if !started {
 		a.session.invalidated = true
 	}

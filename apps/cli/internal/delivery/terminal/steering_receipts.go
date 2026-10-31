@@ -170,7 +170,7 @@ func (a *app) readSteerReceipts() {
 	if len(pending) == 0 || a.operations.Active(steerReceiptReadOperation) {
 		return
 	}
-	a.runOperation(steerReceiptReadOperation, false,
+	a.tasks.session(steerReceiptReadOperation, false,
 		func(ctx context.Context) (conversation.SessionSnapshot, error) {
 			return a.readSessionAfterMutation(ctx, sessionID)
 		},

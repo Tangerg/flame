@@ -77,6 +77,7 @@ type app struct {
 	pluginHost   *extensions.Host
 	pluginIssues []extensions.SourceIssue
 	operations   *operationOwner
+	tasks        taskRunner
 	session      sessionState
 	pluginViews  pluginViewState
 	execution    executionState
@@ -227,6 +228,7 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		applicationKeys:    cfg.keyBindings.application,
 		globalKeys:         cfg.keyBindings.global,
 	}
+	a.tasks = taskRunner{operations: a.operations, dispatch: loop.Dispatcher(), settled: func() { a.drainQueue() }}
 	a.drafts = newDraftPersistence(cfg.workbench, func(result draftPersistenceResult) {
 		loop.Dispatcher().Post(func() {
 			if a.closed || !a.drafts.Current(result.revision) {

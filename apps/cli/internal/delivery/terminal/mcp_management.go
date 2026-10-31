@@ -269,7 +269,7 @@ func (a *app) EditMCPServer(argument string) error {
 	}
 	presentation := a.session.context
 	a.status.note("loading MCP server " + mcp.ServerLabel(id))
-	started := a.runApplicationOperation(mcpOperation, false,
+	started := a.tasks.application(mcpOperation, false,
 		func(ctx context.Context) (protocol.MCPServer, error) {
 			servers, err := a.mcp.Servers(ctx)
 			if err != nil {
@@ -342,7 +342,7 @@ func (a *app) ReconnectMCPServer(argument string) error {
 
 func (a *app) runMCPAck(label string, command func(context.Context) error) {
 	a.status.note(label)
-	started := a.runAdmissionMutation(mcpOperation, false,
+	started := a.tasks.admissionMutation(mcpOperation, false,
 		func(ctx context.Context) (struct{}, error) { return struct{}{}, command(ctx) },
 		func(_ struct{}, err error) {
 			if err != nil {
@@ -370,7 +370,7 @@ func (a *app) AuthorizeMCPServer(argument string) error {
 	}
 	presentation := a.session.context
 	a.status.note("starting MCP authorization " + mcp.ServerLabel(server))
-	started := a.runAdmissionMutation(mcpAuthorizationOperation, false,
+	started := a.tasks.admissionMutation(mcpAuthorizationOperation, false,
 		func(ctx context.Context) (protocol.MCPAuthorizationAttempt, error) {
 			return a.mcp.StartAuthorization(ctx, server)
 		},
@@ -400,7 +400,7 @@ func (a *app) pollMCPAuthorization(initial protocol.MCPAuthorizationAttempt) {
 	observer := mcpAuthorizationObserver{
 		service: a.mcp, pollInterval: mcpAuthorizationPollInterval, recovery: runtimeRecoveryBackoff,
 	}
-	started := a.runApplicationOperation(mcpAuthorizationOperation, false,
+	started := a.tasks.application(mcpAuthorizationOperation, false,
 		func(ctx context.Context) (protocol.MCPAuthorizationAttempt, error) {
 			return observer.observe(ctx, initial)
 		},

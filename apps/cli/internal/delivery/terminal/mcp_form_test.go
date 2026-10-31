@@ -193,7 +193,7 @@ func TestMCPFormBusyAdmissionKeepsTheOriginalDraftAndStep(t *testing.T) {
 				t.Fatal("could not occupy MCP operation")
 			}
 			service := newMCPServiceStub()
-			application := &app{loop: &program.Runtime{}, transcript: transcript, operations: operations, mcp: service, status: &statusView{}, execution: executionState{conversation: conversation.New()}, session: sessionState{context: newSessionContextLease()}}
+			application := &app{loop: &program.Runtime{}, transcript: transcript, operations: operations, tasks: unattachedTasks(operations), mcp: service, status: &statusView{}, execution: executionState{conversation: conversation.New()}, session: sessionState{context: newSessionContextLease()}}
 			application.replayPolicy = testReplayPolicy(t, featuredTerminalProfile(t))
 			application.stack.SetBase(transcript)
 			flow := newMCPFormFlow(test.mode, service.servers[0])

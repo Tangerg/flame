@@ -102,7 +102,7 @@ func (a *app) loadWorkspaceChoices() {
 	a.status.note("loading runtime workspaces")
 	currentWorkspace := a.session.current.Workspace.Path
 	recentWorkspaces := a.workbench.Workspaces()
-	a.runOperation(workspaceQueryOperation, true,
+	a.tasks.session(workspaceQueryOperation, true,
 		func(ctx context.Context) ([]workspaceChoice, error) {
 			known, err := a.workspaces.List(ctx)
 			if err != nil {
@@ -176,7 +176,7 @@ func (a *app) resolveAndStartWorkspace(requested string) {
 		return
 	}
 	a.status.note("resolving workspace")
-	a.runOperation(workspaceQueryOperation, true,
+	a.tasks.session(workspaceQueryOperation, true,
 		func(ctx context.Context) (workspace.Workspace, error) {
 			return a.workspaces.Resolve(ctx, workspace.ResolveRequest{Path: path})
 		},
@@ -216,7 +216,7 @@ func (a *app) RelocateSession(requested string) error {
 		return nil
 	}
 	a.status.note("resolving workspace")
-	a.runOperation(workspaceQueryOperation, true,
+	a.tasks.session(workspaceQueryOperation, true,
 		func(ctx context.Context) (workspace.Workspace, error) {
 			return a.workspaces.Resolve(ctx, workspace.ResolveRequest{Path: path})
 		},

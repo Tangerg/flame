@@ -116,7 +116,7 @@ func (a *app) completeFiles(query completionQuery) {
 		return
 	}
 	resolver := a.attachments
-	a.runOperation(completionOperation, true,
+	a.tasks.session(completionOperation, true,
 		func(ctx context.Context) ([]headless.Candidate, error) {
 			matches, err := resolver.Complete(ctx, query.token.Query)
 			candidates := make([]headless.Candidate, 0, len(matches))

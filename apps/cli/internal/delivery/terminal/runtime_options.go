@@ -108,7 +108,7 @@ func (a *app) refreshModelPicker() {
 	if presentation == nil {
 		return
 	}
-	a.runOperation(pickerCatalogOperation, true,
+	a.tasks.session(pickerCatalogOperation, true,
 		func(ctx context.Context) ([]protocol.Model, error) { return a.runtime.ListModels(ctx) },
 		func(models []protocol.Model, err error) {
 			if !presentation.current(a.dialogs.modelDialog.Identity()) {
@@ -132,7 +132,7 @@ func (a *app) ChooseApprovalMode() {
 		a.message("approval mode changes apply between runs")
 		return
 	}
-	a.runOperation(pickerCatalogOperation, true,
+	a.tasks.session(pickerCatalogOperation, true,
 		func(ctx context.Context) (protocol.ApprovalModeResult, error) { return a.runtime.GetApprovalMode(ctx) },
 		func(result protocol.ApprovalModeResult, err error) {
 			if err != nil {
@@ -148,7 +148,7 @@ func (a *app) ChooseApprovalMode() {
 }
 
 func (a *app) setApprovalMode(mode protocol.ApprovalMode) {
-	a.runAdmissionMutation(approvalModeOperation, true,
+	a.tasks.admissionMutation(approvalModeOperation, true,
 		func(ctx context.Context) (protocol.ApprovalModeResult, error) {
 			return a.runtime.SetApprovalMode(ctx, mode)
 		},
@@ -163,7 +163,7 @@ func (a *app) setApprovalMode(mode protocol.ApprovalMode) {
 }
 
 func (a *app) ShowRuntimeStatus() {
-	a.runOperation(pickerCatalogOperation, true,
+	a.tasks.session(pickerCatalogOperation, true,
 		func(ctx context.Context) (protocol.ApprovalModeResult, error) { return a.runtime.GetApprovalMode(ctx) },
 		func(result protocol.ApprovalModeResult, err error) {
 			if err != nil {
@@ -276,7 +276,7 @@ func (a *app) PrepareDeleteApprovalRule(identity string) error {
 	}
 	sessionID := a.session.current.ID
 	a.status.note("loading approval rule to forget")
-	if !a.runOperation(approvalRuleOperation, false,
+	if !a.tasks.session(approvalRuleOperation, false,
 		func(ctx context.Context) (protocol.ApprovalRule, error) {
 			rules, err := a.runtime.ListApprovalRules(ctx, sessionID)
 			if err != nil {
@@ -314,7 +314,7 @@ type approvalRuleDeletionResult struct {
 
 func (a *app) deleteApprovalRule(sessionID, id string) {
 	a.status.note("forgetting approval rule " + id)
-	if !a.runAdmissionMutation(approvalRuleOperation, false,
+	if !a.tasks.admissionMutation(approvalRuleOperation, false,
 		func(ctx context.Context) (approvalRuleDeletionResult, error) {
 			if err := a.runtime.DeleteApprovalRule(ctx, id); err != nil {
 				return approvalRuleDeletionResult{}, err
@@ -390,7 +390,7 @@ func (a *app) setApprovalRule(request protocol.SetApprovalRuleRequest) error {
 	}
 	label := "remembering global " + string(request.Decision) + " for " + source
 	a.status.note(label)
-	if !a.runAdmissionMutation(approvalRuleOperation, false,
+	if !a.tasks.admissionMutation(approvalRuleOperation, false,
 		func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, a.runtime.SetApprovalRule(ctx, request)
 		},

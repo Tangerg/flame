@@ -41,7 +41,7 @@ func (a *app) loadPluginViews() {
 		views    []pluginview.View
 		problems []error
 	}
-	a.runApplicationOperation(pluginViewsOperation, true,
+	a.tasks.application(pluginViewsOperation, true,
 		func(ctx context.Context) (loaded, error) {
 			installations, err := a.plugins.ListPlugins(ctx)
 			if err != nil {
@@ -233,7 +233,7 @@ func (a *app) startPluginViewAction(view pluginview.View, action protocol.Plugin
 		}
 	}
 	here := a.pluginViewContext()
-	a.runApplicationOperation(pluginViewOperation, false,
+	a.tasks.application(pluginViewOperation, false,
 		func(ctx context.Context) (pluginview.Row, error) {
 			rows, err := a.readPluginViewRows(ctx, view, here, form)
 			if err != nil {
@@ -320,7 +320,7 @@ func (a *app) runPluginViewAction(view pluginview.View, action protocol.PluginTe
 		return view.ActionRequest(action, here, row, form)
 	}
 	a.status.note(strings.ToLower(action.Title) + " · " + view.Title)
-	started := a.runApplicationOperation(pluginViewOperation, false,
+	started := a.tasks.application(pluginViewOperation, false,
 		func(ctx context.Context) (struct{}, error) {
 			if view.Mutates(action) {
 				return struct{}{}, workbench.ExecuteInstalledCommand(ctx, a.plugins, a.workbench, intent, a.replayPolicy, prepare)

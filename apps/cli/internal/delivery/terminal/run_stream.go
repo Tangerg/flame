@@ -72,7 +72,7 @@ func (a *app) startRun(commandID authoring.CommandID, message authoring.Message,
 	// The queue reservation owns this candidate while the existing operation
 	// owner reads and saves its bytes. Only the UI callback can publish dispatch:
 	// canceling preparation therefore leaves an ordinary editable queue entry.
-	started := a.runSessionAdmissionFence(inputPreparationOperation, false,
+	started := a.tasks.sessionFence(inputPreparationOperation, false,
 		func(ctx context.Context) (*workbench.PreparedInput, error) {
 			blocks, err := a.runtime.PrepareInput(ctx, pending.Command.Message)
 			if err != nil {

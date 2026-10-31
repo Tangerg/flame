@@ -39,7 +39,7 @@ func (a *app) loadMoreSessions() {
 
 func (a *app) loadSessionPage(cursor string, appendPage bool) {
 	a.message("loading sessions")
-	a.runOperation(pickerCatalogOperation, true,
+	a.tasks.session(pickerCatalogOperation, true,
 		func(ctx context.Context) (conversation.SessionPage, error) {
 			return a.runtime.ListSessions(ctx, conversation.SessionQuery{PageSize: conversation.DefaultPageSize(), Cursor: cursor})
 		},
@@ -169,7 +169,7 @@ func (a *app) openSessionDelete(session conversation.Session) {
 }
 
 func (a *app) updateSessionFromCenter(request conversation.UpdateSession, label string, settled func(error)) bool {
-	started := a.runApplicationOperation(sessionCenterOperation, false,
+	started := a.tasks.application(sessionCenterOperation, false,
 		func(ctx context.Context) (conversation.Session, error) {
 			return a.runtime.UpdateSession(ctx, request)
 		},
@@ -199,7 +199,7 @@ func (a *app) updateSessionFromCenter(request conversation.UpdateSession, label 
 }
 
 func (a *app) deleteSessionFromCenter(id string) {
-	started := a.runApplicationOperation(sessionCenterOperation, false,
+	started := a.tasks.application(sessionCenterOperation, false,
 		func(ctx context.Context) (session.DeletionResult, error) {
 			return session.Delete(
 				ctx, a.runtime, a.workbench, id, a.replayPolicy, runtimeRecoveryBackoff,
@@ -361,7 +361,7 @@ func (a *app) runSessionChangeWithDraftDisposition[T any](
 		disposition:     disposition,
 	}
 	a.message(label)
-	if !a.runOperation(sessionChangeOperation, false, work, func(result T, err error) {
+	if !a.tasks.session(sessionChangeOperation, false, work, func(result T, err error) {
 		defer a.settleSessionChange()
 		if err != nil {
 			a.message(label + " failed: " + err.Error())

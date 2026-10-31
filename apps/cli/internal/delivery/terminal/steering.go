@@ -52,7 +52,7 @@ func (a *app) steerRun(instruction string) error {
 	if a.operations.Active(inputPreparationOperation) || a.operations.Active(steerRunOperation) {
 		return errors.New("another input or steer operation is already running")
 	}
-	started := a.runSessionAdmissionFence(inputPreparationOperation, false,
+	started := a.tasks.sessionFence(inputPreparationOperation, false,
 		func(ctx context.Context) (*workbench.PreparedInput, error) {
 			blocks, err := a.runtime.PrepareInput(ctx, request.Message)
 			if err != nil {
@@ -96,7 +96,7 @@ func (a *app) deliverPreparedSteer(request authoring.SteerRun, sourceDraft autho
 	a.restoreComposer(authoring.Message{})
 	a.draftState.Reset(a.session.current.ID, authoring.Message{})
 	a.steers.track(pending)
-	started := a.runSessionSettlement(steerRunOperation, false,
+	started := a.tasks.sessionSettlement(steerRunOperation, false,
 		func(ctx context.Context) (runworkflow.SteerResult, error) {
 			return runworkflow.DeliverSteer(
 				ctx, a.runtime, a.workbench, pending, a.replayPolicy, runtimeRecoveryBackoff,

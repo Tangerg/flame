@@ -18,6 +18,7 @@ func TestFileCompletionCannotAcceptAnOfferForEarlierInput(t *testing.T) {
 	// The unattached loop cannot apply the new lookup, so acceptance exercises
 	// the interval between editing the query and receiving its candidates.
 	a := &app{loop: &program.Runtime{}, operations: newOperationOwner(t.Context()), attachments: resolver}
+	a.tasks = unattachedTasks(a.operations)
 	t.Cleanup(a.operations.Close)
 	a.composer.Editor().SetText("@c")
 	query, ok := a.currentCompletionQuery()
