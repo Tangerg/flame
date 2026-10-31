@@ -226,19 +226,7 @@ func (s *steerDesk) presentSteerReceipts() {
 		identity = string(selected.commandID)
 	}
 	status := selected.status()
-	var label string
-	switch status {
-	case steerAccepted:
-		label = "steer accepted · waiting to enter model context"
-	case steerVerifying:
-		label = "steer accepted · verifying application"
-	case steerApplied:
-		label = "steer applied to model context"
-	case steerNotApplied:
-		label = "steer not applied to this run"
-	case steerUnconfirmed:
-		label = "steer application remains unconfirmed after this run"
-	}
+	label := steerReceiptLabel(status)
 	if selected.runID != s.runs.conversation().RunID() {
 		label += " · " + shortIdentity(selected.runID)
 	}
@@ -247,6 +235,23 @@ func (s *steerDesk) presentSteerReceipts() {
 		label += ": " + selected.readFailure.Error()
 	}
 	s.notify(label)
+}
+
+func steerReceiptLabel(status steerReceiptStatus) string {
+	switch status {
+	case steerAccepted:
+		return "steer accepted · waiting to enter model context"
+	case steerVerifying:
+		return "steer accepted · verifying application"
+	case steerApplied:
+		return "steer applied to model context"
+	case steerNotApplied:
+		return "steer not applied to this run"
+	case steerUnconfirmed:
+		return "steer application remains unconfirmed after this run"
+	default:
+		return ""
+	}
 }
 
 func steerReceiptPriority(status steerReceiptStatus) int {
