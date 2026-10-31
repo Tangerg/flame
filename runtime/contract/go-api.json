@@ -2012,6 +2012,7 @@
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/identity",
       "imports": [
+        "github.com/Tangerg/qimu",
         "github.com/Tangerg/qimu/integrity"
       ],
       "constants": [
@@ -2081,6 +2082,10 @@
           "signature": "func() string"
         },
         {
+          "name": "ParseHostInstallation",
+          "signature": "func(id qimu.InstallationID) (InstallationID, error)"
+        },
+        {
           "name": "ParseInstallation",
           "signature": "func(text string) (InstallationID, error)"
         },
@@ -2130,6 +2135,10 @@
           "name": "InstallationID",
           "kind": "struct",
           "methods": [
+            {
+              "name": "Host",
+              "signature": "func() qimu.InstallationID"
+            },
             {
               "name": "String",
               "signature": "func() string"
@@ -4741,7 +4750,7 @@
         },
         {
           "name": "Command",
-          "signature": "func[P, R any](ctx context.Context, db *sql.DB, method string, id string, admitted jsonvalue.Value, classify func(error) string, handler func(context.Context, P) (R, error)) (R, error)"
+          "signature": "func[P, R any](ctx context.Context, db *sql.DB, method string, id string, admitted jsonvalue.Value, classify mcp.Classifier, handler func(context.Context, P) (R, error)) (R, error)"
         },
         {
           "name": "ReadReceipt",
@@ -4749,7 +4758,7 @@
         },
         {
           "name": "RegisterCommand",
-          "signature": "func[P, R any](server *mcp.Backend, db *sql.DB, method *mcp.Method[P, R], classify func(error) string, handler func(context.Context, *mcp.ServerSession, P) (R, error)) error"
+          "signature": "func[P, R any](server *mcp.Backend, db *sql.DB, method *mcp.Method[P, R], classify mcp.Classifier, handler func(context.Context, *mcp.ServerSession, P) (R, error)) error"
         },
         {
           "name": "RegisterReceipts",
