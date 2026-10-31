@@ -156,11 +156,15 @@ func validateDependencies(dependencies []LockedRelease) error {
 }
 
 func (m Manifest) Validate() error {
-	if m.SchemaVersion != ManifestSchemaVersion || !qimu.ValidName(m.Package) || !qimu.ValidName(m.Version) {
-		return ErrInvalid
-	}
-	if !m.Release.IsZero() && m.Release.Validate() != nil {
-		return ErrInvalid
+	switch {
+	case m.SchemaVersion != ManifestSchemaVersion:
+		return fmt.Errorf("%w: schema version %d", ErrInvalid, m.SchemaVersion)
+	case !qimu.ValidName(m.Package):
+		return fmt.Errorf("%w: package name %q", ErrInvalid, m.Package)
+	case !qimu.ValidName(m.Version):
+		return fmt.Errorf("%w: version %q", ErrInvalid, m.Version)
+	case !m.Release.IsZero() && m.Release.Validate() != nil:
+		return fmt.Errorf("%w: release digest", ErrInvalid)
 	}
 	if err := validateDependencies(m.Dependencies); err != nil {
 		return err
