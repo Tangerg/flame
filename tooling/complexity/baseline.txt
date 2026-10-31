@@ -63,7 +63,6 @@
 28 qimu/point.go:Host.validatePlanLocked
 28 qimu/point.go:snapshotMetadata
 24 qimu/portable/limits.go:checkJSON
-60 qimu/portable/schema.go:schemaWork
 45 qimu/process/driver.go:Driver.Prepare
 24 qimu/runner/runner.go:Open
 26 qimu/sqlite/installation.go:Store.CommitInstallation
