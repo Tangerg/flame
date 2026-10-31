@@ -121,7 +121,7 @@ export interface AgentRunFact {
   status: AgentRunStatus;
   activeSegmentId: string | null;
   outcome: AgentRunOutcome | null;
-  modelSelection?: AgentModelSelection;
+  modelSelection: AgentModelSelection;
   metrics: AgentRunMetrics;
   contextTokens?: number;
   createdAt: string;

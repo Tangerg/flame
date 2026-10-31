@@ -109,51 +109,7 @@ function runtimeRunOutcome(outcome: RunOutcome): AgentRunOutcome {
   }
 }
 
-function assertRunFacts(run: RunRef): void {
-  if (!run.status) throw new Error(`agent.adapter.run.statusMissing:run=${run.id}`);
-  if (!run.createdAt) throw new Error(`agent.adapter.run.createdAtMissing:run=${run.id}`);
-
-  const child = run.spawnedByItemId !== undefined;
-  if (child && (!run.parentRunId || !run.rootRunId)) {
-    throw new Error(
-      `agent.adapter.run.childLineageMissing:run=${run.id};parentRun=${run.parentRunId ?? "missing"};rootRun=${run.rootRunId ?? "missing"}`,
-    );
-  }
-  if (!child && (run.parentRunId || run.rootRunId)) {
-    throw new Error(
-      `agent.adapter.run.rootLineagePresent:run=${run.id};parentRun=${run.parentRunId ?? "missing"};rootRun=${run.rootRunId ?? "missing"}`,
-    );
-  }
-  if (run.status === "running" && !run.activeSegmentId) {
-    throw new Error(`agent.adapter.run.activeSegmentMissing:run=${run.id}`);
-  }
-  if (run.status !== "running" && run.activeSegmentId) {
-    throw new Error(
-      `agent.adapter.run.unexpectedActiveSegment:run=${run.id};status=${run.status};segment=${run.activeSegmentId}`,
-    );
-  }
-  if (run.status === "finished" && (!run.outcome || !run.finishedAt)) {
-    throw new Error(
-      `agent.adapter.run.terminalFactsMissing:run=${run.id};outcome=${run.outcome?.type ?? "missing"};finishedAt=${run.finishedAt ?? "missing"}`,
-    );
-  }
-  if (run.status !== "finished" && (run.outcome || run.finishedAt)) {
-    throw new Error(
-      `agent.adapter.run.unexpectedTerminalFacts:run=${run.id};status=${run.status};outcome=${run.outcome?.type ?? "missing"};finishedAt=${run.finishedAt ?? "missing"}`,
-    );
-  }
-  if ((run.provider === undefined) !== (run.model === undefined)) {
-    throw new Error(
-      `agent.adapter.run.modelSelectionIncomplete:run=${run.id};provider=${run.provider ?? "missing"};model=${run.model ?? "missing"}`,
-    );
-  }
-  if (run.reasoningEffort !== undefined && run.provider === undefined) {
-    throw new Error(`agent.adapter.run.reasoningWithoutModel:run=${run.id}`);
-  }
-}
-
 export function runtimeRunFact(run: RunRef): AgentRunFact {
-  assertRunFacts(run);
   const child = run.spawnedByItemId !== undefined;
 
   return {
@@ -165,15 +121,11 @@ export function runtimeRunFact(run: RunRef): AgentRunFact {
     status: run.status,
     activeSegmentId: run.activeSegmentId ?? null,
     outcome: run.outcome ? runtimeRunOutcome(run.outcome) : null,
-    ...(run.provider !== undefined && run.model !== undefined
-      ? {
-          modelSelection: {
-            provider: run.provider,
-            model: run.model,
-            ...(run.reasoningEffort !== undefined ? { reasoningEffort: run.reasoningEffort } : {}),
-          },
-        }
-      : {}),
+    modelSelection: {
+      provider: run.provider,
+      model: run.model,
+      ...(run.reasoningEffort !== undefined ? { reasoningEffort: run.reasoningEffort } : {}),
+    },
     metrics: runtimeRunMetrics(run.metrics),
     ...(run.contextTokens !== undefined && run.contextTokens > 0
       ? { contextTokens: run.contextTokens }

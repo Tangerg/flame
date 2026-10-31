@@ -428,6 +428,7 @@ function run(id: string, createdAt: string): RunRef {
     createdAt,
     finishedAt: createdAt,
     outcome: { type: "completed" },
+    modelSelection: { provider: "openai", model: "gpt-test" },
     metrics: {
       steps: 1,
       activeDurationMillis: 1,

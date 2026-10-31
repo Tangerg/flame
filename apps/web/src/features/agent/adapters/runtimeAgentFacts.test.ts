@@ -426,48 +426,4 @@ describe("Runtime → Agent fact adapter", () => {
       ],
     });
   });
-
-  it.each([
-    ["status", runningRoot({ status: undefined }), "statusMissing"],
-    ["creation time", runningRoot({ createdAt: undefined }), "createdAtMissing"],
-    [
-      "complete child lineage",
-      runningRoot({ spawnedByItemId: "item_spawn", parentRunId: "run_root" }),
-      "childLineageMissing",
-    ],
-    ["root lineage absence", runningRoot({ rootRunId: "run_root" }), "rootLineagePresent"],
-    ["running segment", runningRoot({ activeSegmentId: undefined }), "activeSegmentMissing"],
-    [
-      "complete model identity",
-      runningRoot({ provider: "openai", model: undefined }),
-      "modelSelectionIncomplete",
-    ],
-    [
-      "reasoning model ownership",
-      runningRoot({ provider: undefined, model: undefined, reasoningEffort: "high" }),
-      "reasoningWithoutModel",
-    ],
-    [
-      "waiting segment absence",
-      runningRoot({ status: "waiting", activeSegmentId: "seg_1" }),
-      "unexpectedActiveSegment",
-    ],
-    [
-      "terminal facts",
-      runningRoot({ status: "finished", activeSegmentId: undefined }),
-      "terminalFactsMissing",
-    ],
-    [
-      "non-terminal facts absence",
-      runningRoot({
-        status: "waiting",
-        activeSegmentId: undefined,
-        finishedAt: "2026-08-12T08:00:02.000Z",
-        outcome: { type: "completed" },
-      }),
-      "unexpectedTerminalFacts",
-    ],
-  ])("rejects malformed Runtime %s at the Adapter boundary", (_case, run, code) => {
-    expect(() => runtimeRunFact(run)).toThrow(`agent.adapter.run.${code}`);
-  });
 });

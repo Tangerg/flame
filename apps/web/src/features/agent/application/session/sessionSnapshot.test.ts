@@ -36,6 +36,7 @@ describe("projectAgentSessionSnapshot", () => {
         finishedAt: null,
         createdAt: "2026-07-30T01:00:00.000Z",
         metrics: { steps: 2, activeDurationMillis: 20, usage },
+        modelSelection: { provider: "openai", model: "gpt-test" },
       };
       const tool: Extract<AgentSessionSnapshot["items"][number], { type: "toolCall" }> = {
         type: "toolCall",
@@ -124,6 +125,7 @@ describe("projectAgentSessionSnapshot", () => {
             loss: { reason: "restart" },
           },
           metrics: { steps: 3, activeDurationMillis: 30, usage },
+          modelSelection: { provider: "openai", model: "gpt-test" },
         },
         {
           id: ROOT_RUN_ID,
@@ -137,6 +139,7 @@ describe("projectAgentSessionSnapshot", () => {
           finishedAt: null,
           createdAt: "2026-07-30T01:00:00.000Z",
           metrics: { steps: 2, activeDurationMillis: 20, usage },
+          modelSelection: { provider: "openai", model: "gpt-test" },
         },
         {
           id: CHILD_RUN_ID,
@@ -147,6 +150,7 @@ describe("projectAgentSessionSnapshot", () => {
           finishedAt: null,
           createdAt: "2026-07-30T01:00:01.000Z",
           metrics: { steps: 1, activeDurationMillis: 10, usage },
+          modelSelection: { provider: "openai", model: "gpt-test" },
           parentRunId: ROOT_RUN_ID,
           rootRunId: ROOT_RUN_ID,
           spawnedByItemId: "item_spawn",
@@ -160,6 +164,7 @@ describe("projectAgentSessionSnapshot", () => {
           finishedAt: null,
           createdAt: "2026-07-30T01:00:01.500Z",
           metrics: { steps: 1, activeDurationMillis: 5, usage },
+          modelSelection: { provider: "openai", model: "gpt-test" },
           parentRunId: ROOT_RUN_ID,
           rootRunId: ROOT_RUN_ID,
           spawnedByItemId: "item_spawn_running",

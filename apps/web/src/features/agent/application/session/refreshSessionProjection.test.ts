@@ -96,6 +96,7 @@ describe("refreshAgentSessionProjection", () => {
             status: "finished",
             activeSegmentId: null,
             outcome: { type: "completed" },
+            modelSelection: { provider: "openai", model: "gpt-test" },
             metrics: {
               steps: 1,
               activeDurationMillis: 1,

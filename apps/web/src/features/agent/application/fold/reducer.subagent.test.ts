@@ -38,6 +38,7 @@ function runningRun(
     finishedAt: null,
     createdAt: `2026-06-03T00:00:0${id.length}.000Z`,
     metrics: METRICS,
+    modelSelection: { provider: "openai", model: "gpt-test" },
   };
 }
 

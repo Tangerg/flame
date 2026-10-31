@@ -100,6 +100,8 @@ export const FINISHED_AT = "2026-06-03T00:05:00.000Z";
 
 let nextEventSequence = 0;
 
+const TEST_MODEL_SELECTION = { provider: "openai", model: "gpt-test" };
+
 function completeStartedRun(state: AgentSessionView, run: RunRef, segmentId: string): RunRef {
   const parent = run.spawnedByItemId ? selectCurrentRootRun(state) : null;
   const { createdAt = "2026-06-03T00:00:00.000Z", metrics = noMetrics, status = "running" } = run;
@@ -111,6 +113,7 @@ function completeStartedRun(state: AgentSessionView, run: RunRef, segmentId: str
     rootRunId: child ? (run.rootRunId ?? parent?.rootRunId ?? parent?.id ?? run.id) : run.id,
     spawnedByItemId: run.spawnedByItemId ?? null,
     activeSegmentId: segmentId,
+    modelSelection: run.modelSelection ?? TEST_MODEL_SELECTION,
     createdAt,
     metrics,
     status,
@@ -130,7 +133,7 @@ function completeFinishedRun(state: AgentSessionView, run: RunRef, runId: string
     spawnedByItemId: owner?.spawnedByItemId ?? null,
     activeSegmentId: null,
     createdAt: owner?.createdAt ?? "2026-06-03T00:00:00.000Z",
-    ...(owner?.modelSelection ? { modelSelection: { ...owner.modelSelection } } : {}),
+    modelSelection: { ...(owner?.modelSelection ?? run.modelSelection ?? TEST_MODEL_SELECTION) },
   };
 }
 

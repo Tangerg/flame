@@ -2,7 +2,6 @@
 # This list may only shrink: reduce a function, then lower or remove its line.
 48 apps/web/src/features/agent/adapters/agentRunPump.ts:pump
 37 apps/web/src/features/agent/adapters/agentRuntimeGateway.ts:loadSessionSnapshot
-34 apps/web/src/features/agent/adapters/runtimeAgentFacts.ts:assertRunFacts
 24 apps/web/src/features/agent/application/conversation/transcriptRows.ts:readTurnFacts
 23 apps/web/src/features/agent/application/fold/itemHandlers.ts:assertItemProjectionIdentity
 33 apps/web/src/features/agent/application/fold/projections.ts:categoryFields
