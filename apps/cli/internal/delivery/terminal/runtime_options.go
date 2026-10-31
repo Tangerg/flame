@@ -2,7 +2,6 @@ package terminal
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -42,23 +41,6 @@ func (a *app) buildRuntimePickers(theme kit.Theme, glyphs kit.Glyphs) {
 		Where: layout.Placement{Width: 76, Height: 14},
 	})
 	a.dialogs.modelPicker.cancel = a.dismissModelPicker
-
-	a.dialogs.approvalModePicker = newPicker(theme, glyphs, "search approval modes",
-		func(policy protocol.ApprovalModePolicy) string { return approvalModeTitle(policy.Mode) },
-		approvalPolicyDetail,
-		func(policy protocol.ApprovalModePolicy) {
-			if !a.dialogs.approvalModeDialog.Open() {
-				return
-			}
-			a.dialogs.approvalModeDialog.Dismiss()
-			a.setApprovalMode(policy.Mode)
-		},
-	)
-	a.dialogs.approvalModeDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Runtime approval mode", Body: a.dialogs.approvalModePicker,
-		Where: layout.Placement{Width: 88, Height: 9},
-	})
-	a.dialogs.approvalModePicker.cancel = a.dialogs.approvalModeDialog.Dismiss
 }
 
 func (a *app) selectSessionModel(model protocol.Model) {
@@ -123,41 +105,6 @@ func (a *app) refreshModelPicker() {
 			if err != nil {
 				a.message("model catalog incomplete: " + err.Error())
 			}
-		},
-	)
-}
-
-func (a *app) ChooseApprovalMode() {
-	if a.execution.observing() {
-		a.message("approval mode changes apply between runs")
-		return
-	}
-	a.tasks.session(pickerCatalogOperation, true,
-		func(ctx context.Context) (protocol.ApprovalModeResult, error) { return a.runtime.GetApprovalMode(ctx) },
-		func(result protocol.ApprovalModeResult, err error) {
-			if err != nil {
-				a.message("could not read approval modes: " + err.Error())
-				return
-			}
-			a.dialogs.approvalModePicker.Reset()
-			a.dialogs.approvalModePicker.SetItems(result.Modes)
-			a.dialogs.approvalModeDialog.Show()
-			a.status.note("choose the runtime approval mode")
-		},
-	)
-}
-
-func (a *app) setApprovalMode(mode protocol.ApprovalMode) {
-	a.tasks.admissionMutation(approvalModeOperation, true,
-		func(ctx context.Context) (protocol.ApprovalModeResult, error) {
-			return a.runtime.SetApprovalMode(ctx, mode)
-		},
-		func(applied protocol.ApprovalModeResult, err error) {
-			if err != nil {
-				a.message("could not set approval mode: " + err.Error())
-				return
-			}
-			a.message("approval mode · " + string(applied.Mode))
 		},
 	)
 }
@@ -235,24 +182,6 @@ func formatRuntimeBytes(value int) string {
 	}
 }
 
-func (a *app) ShowApprovalRules() {
-	a.reader.show(a.approvalRulesReaderQuery())
-}
-
-func (a *app) approvalRulesReaderQuery() *readerQuery {
-	sessionID := a.session.current.ID
-	return &readerQuery{
-		status: "loading approval rules", follows: followsTopic(protocol.TopicApprovalsChanged, protocol.TopicMCPChanged),
-		read: func(ctx context.Context) (readerDocument, error) {
-			rules, err := a.runtime.ListApprovalRules(ctx, sessionID)
-			if err != nil {
-				return readerDocument{}, err
-			}
-			return approvalRulesDocument(rules)
-		},
-	}
-}
-
 func approvalRulesDocument(rules []protocol.ApprovalRule) (readerDocument, error) {
 	if len(rules) == 0 {
 		return paragraphDocument("Approval rules", "none remembered", []string{"No remembered approval rules."}), nil
@@ -269,40 +198,6 @@ func approvalRulesDocument(rules []protocol.ApprovalRule) (readerDocument, error
 	return paragraphDocument("Approval rules", fmt.Sprintf("%d remembered", len(rules)), lines), nil
 }
 
-func (a *app) PrepareDeleteApprovalRule(identity string) error {
-	identity = strings.TrimSpace(identity)
-	if identity == "" {
-		return errors.New("usage: /rule-delete <rule-id>")
-	}
-	sessionID := a.session.current.ID
-	a.status.note("loading approval rule to forget")
-	if !a.tasks.session(approvalRuleOperation, false,
-		func(ctx context.Context) (protocol.ApprovalRule, error) {
-			rules, err := a.runtime.ListApprovalRules(ctx, sessionID)
-			if err != nil {
-				return protocol.ApprovalRule{}, err
-			}
-			return resolveApprovalRule(rules, identity)
-		},
-		func(rule protocol.ApprovalRule, err error) {
-			if err != nil {
-				a.message("load approval rule failed: " + err.Error())
-				return
-			}
-			subject := conversation.ApprovalSubject(rule.Subject)
-			a.confirmAction(
-				"Forget approval rule",
-				"Forget "+rule.ID+" ("+rule.ModelName+":"+subject+")?",
-				"Forget permanently",
-				func() { a.deleteApprovalRule(sessionID, rule.ID) },
-			)
-		},
-	) {
-		return errors.New("another approval operation is running")
-	}
-	return nil
-}
-
 func resolveApprovalRule(rules []protocol.ApprovalRule, identity string) (protocol.ApprovalRule, error) {
 	return resolveByID(rules, identity, "approval rule", func(rule protocol.ApprovalRule) string { return rule.ID })
 }
@@ -310,36 +205,6 @@ func resolveApprovalRule(rules []protocol.ApprovalRule, identity string) (protoc
 type approvalRuleDeletionResult struct {
 	id    string
 	rules []protocol.ApprovalRule
-}
-
-func (a *app) deleteApprovalRule(sessionID, id string) {
-	a.status.note("forgetting approval rule " + id)
-	if !a.tasks.admissionMutation(approvalRuleOperation, false,
-		func(ctx context.Context) (approvalRuleDeletionResult, error) {
-			if err := a.runtime.DeleteApprovalRule(ctx, id); err != nil {
-				return approvalRuleDeletionResult{}, err
-			}
-			rules, err := a.runtime.ListApprovalRules(ctx, sessionID)
-			return approvalRuleDeletionResult{id: id, rules: rules}, err
-		},
-		func(deleted approvalRuleDeletionResult, err error) {
-			if err != nil {
-				a.message("forget approval rule failed: " + err.Error())
-				return
-			}
-			a.status.note("approval rule forgotten · " + deleted.id)
-			if a.session.current.ID == sessionID {
-				document, err := approvalRulesDocument(deleted.rules)
-				if err != nil {
-					a.message("forget approval rule: " + err.Error())
-					return
-				}
-				a.reader.open(a.approvalRulesReaderQuery(), document)
-			}
-		},
-	) {
-		a.message("another approval operation is running")
-	}
 }
 
 func (a *app) syncOptions(message string) {
@@ -380,28 +245,4 @@ func approvalGateText(gate protocol.ApprovalGate) string {
 	default:
 		return string(gate)
 	}
-}
-
-func (a *app) setApprovalRule(request protocol.SetApprovalRuleRequest) error {
-	source, err := mcp.ToolLabel(request.Tool)
-	if err != nil {
-		return err
-	}
-	label := "remembering global " + string(request.Decision) + " for " + source
-	a.status.note(label)
-	if !a.tasks.admissionMutation(approvalRuleOperation, false,
-		func(ctx context.Context) (struct{}, error) {
-			return struct{}{}, a.runtime.SetApprovalRule(ctx, request)
-		},
-		func(_ struct{}, err error) {
-			if err != nil {
-				a.message(label + " failed: " + err.Error())
-				return
-			}
-			a.message(label + " accepted")
-		},
-	) {
-		return errors.New("another approval operation is running")
-	}
-	return nil
 }

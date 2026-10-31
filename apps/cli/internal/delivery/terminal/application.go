@@ -84,6 +84,7 @@ type app struct {
 	dialogs      dialogState
 	reader       *readerSurface
 	prompts      *interruptPrompts
+	approvals    *approvalScreens
 
 	transcript  *transcriptView
 	brand       *brandBanner

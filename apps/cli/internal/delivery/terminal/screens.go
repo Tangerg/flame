@@ -37,6 +37,7 @@ func (a *app) screenHost() screenHost {
 
 func (a *app) buildScreens(cfg appConfig) {
 	host := a.screenHost()
+	a.approvals = newApprovalScreens(host, a.runtime, a.execution.observing)
 	if cfg.goals != nil {
 		a.goals = &goalScreens{screenHost: host, service: cfg.goals, options: &a.options, header: a.header}
 	}
@@ -47,7 +48,7 @@ func (a *app) buildScreens(cfg appConfig) {
 		a.usage = &usageScreens{screenHost: host, service: cfg.usage}
 	}
 	if cfg.mcp != nil {
-		a.mcp = &mcpScreens{screenHost: host, service: cfg.mcp, setApprovalRule: a.setApprovalRule}
+		a.mcp = &mcpScreens{screenHost: host, service: cfg.mcp, setApprovalRule: a.approvals.setApprovalRule}
 	}
 	if cfg.skills != nil {
 		a.skills = &skillScreens{screenHost: host, service: cfg.skills}

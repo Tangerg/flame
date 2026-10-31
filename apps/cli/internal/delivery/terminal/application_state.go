@@ -68,8 +68,6 @@ type dialogState struct {
 	timelineDialog      *presentationDialog
 	modelPicker         *picker[protocol.Model]
 	modelDialog         *presentationDialog
-	approvalModePicker  *picker[protocol.ApprovalModePolicy]
-	approvalModeDialog  *presentationDialog
 	activeContextEditor *contextEditorSession
 	commandPicker       *picker[commandPaletteItem]
 	commandDialog       *presentationDialog

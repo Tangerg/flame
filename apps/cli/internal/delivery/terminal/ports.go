@@ -32,6 +32,10 @@ type Runtime interface {
 	CancelRun(context.Context, conversation.CancelRun) (conversation.RunCancellation, error)
 	// ListModels may return discovered models and provider-specific errors together.
 	ListModels(context.Context) ([]protocol.Model, error)
+	ApprovalPolicy
+}
+
+type ApprovalPolicy interface {
 	GetApprovalMode(context.Context) (protocol.ApprovalModeResult, error)
 	SetApprovalMode(context.Context, protocol.ApprovalMode) (protocol.ApprovalModeResult, error)
 	SetApprovalRule(context.Context, protocol.SetApprovalRuleRequest) error
