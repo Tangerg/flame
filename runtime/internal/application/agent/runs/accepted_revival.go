@@ -55,7 +55,7 @@ func (c *Coordinator) reviveAcceptedContinuation(ctx context.Context, accepted A
 	if err := accepted.validateRuns(values); err != nil {
 		return c.retireUnrestorableAccepted(ctx, accepted, err)
 	}
-	items, err := c.pendingItems(ctx, accepted.Pending)
+	items, err := pendingItems(ctx, c.items, accepted.Pending)
 	if err != nil {
 		return err
 	}

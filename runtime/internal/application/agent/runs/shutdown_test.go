@@ -6,14 +6,14 @@ import (
 	"time"
 )
 
-func shutdownCoordinator(c *Coordinator) error {
+func shutdownCoordinator(c *testRuns) error {
 	c.segments.BeginShutdown()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	return c.segments.AwaitShutdown(ctx)
 }
 
-func requireCoordinatorShutdown(t testing.TB, c *Coordinator) {
+func requireCoordinatorShutdown(t testing.TB, c *testRuns) {
 	t.Helper()
 	if err := shutdownCoordinator(c); err != nil {
 		t.Fatalf("shutdown run coordinator: %v", err)

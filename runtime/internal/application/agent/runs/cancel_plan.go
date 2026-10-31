@@ -78,7 +78,7 @@ type cancellationPlanSource struct {
 // cancellationPlanFor resolves either a root or child address to one complete
 // tree snapshot before any executor side effect. The single Tree read avoids
 // racing a target lookup against a second aggregate lookup.
-func (c *Coordinator) cancellationPlanFor(
+func (c *Cancellations) cancellationPlanFor(
 	ctx context.Context,
 	cmd CancelCommand,
 ) (cancellationPlan, liveSegment, bool, error) {
@@ -109,7 +109,7 @@ func (c *Coordinator) cancellationPlanFor(
 	return plan, source.live, source.hasLive, nil
 }
 
-func (c *Coordinator) readCancellationPlanSource(
+func (c *Cancellations) readCancellationPlanSource(
 	ctx context.Context,
 	cmd CancelCommand,
 ) (cancellationPlanSource, error) {
@@ -177,7 +177,7 @@ func (c *Coordinator) readCancellationPlanSource(
 	}, nil
 }
 
-func (c *Coordinator) resolveCancellationOwner(
+func (c *Cancellations) resolveCancellationOwner(
 	ctx context.Context,
 	targetRunID string,
 	root rundomain.Run,
@@ -287,7 +287,7 @@ func (c *Coordinator) resolveCancellationOwner(
 // commit can linearize between those reads. That loser is a normal busy/finished
 // outcome; only a contradiction that still exists at the refreshed Run state is
 // an internal invariant fault.
-func (c *Coordinator) classifyCancellationOwnerDrift(
+func (c *Cancellations) classifyCancellationOwnerDrift(
 	ctx context.Context,
 	targetRunID string,
 	sourceState rundomain.State,

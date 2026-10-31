@@ -8,14 +8,14 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-func (c *Coordinator) loadWaitingCancellationItems(ctx context.Context, plan *cancellationPlan) error {
+func (c *Cancellations) loadWaitingCancellationItems(ctx context.Context, plan *cancellationPlan) error {
 	if plan == nil {
 		return errors.New("runs: waiting cancellation plan is required")
 	}
 	if err := c.loadWaitingCancellationSpawningItem(ctx, plan); err != nil {
 		return err
 	}
-	itemsByID, err := c.pendingItems(ctx, plan.pending)
+	itemsByID, err := pendingItems(ctx, c.items, plan.pending)
 	if err != nil {
 		return err
 	}
@@ -47,10 +47,10 @@ func (c *Coordinator) loadWaitingCancellationItems(ctx context.Context, plan *ca
 
 // pendingItems reads every Item a hand-off names; those Items, not the
 // hand-off, own what each interrupt asked and each drained Tool invoked.
-func (c *Coordinator) pendingItems(ctx context.Context, pending Pending) (map[string]transcript.Item, error) {
+func pendingItems(ctx context.Context, items ItemProjection, pending Pending) (map[string]transcript.Item, error) {
 	itemsByID := make(map[string]transcript.Item)
 	for _, itemID := range pendingItemIDs(pending) {
-		item, found, err := c.items.Item(ctx, itemID)
+		item, found, err := items.Item(ctx, itemID)
 		if err != nil {
 			return nil, fmt.Errorf("runs: read waiting Item %q: %w", itemID, err)
 		}
@@ -62,7 +62,7 @@ func (c *Coordinator) pendingItems(ctx context.Context, pending Pending) (map[st
 	return itemsByID, nil
 }
 
-func (c *Coordinator) loadWaitingCancellationSpawningItem(
+func (c *Cancellations) loadWaitingCancellationSpawningItem(
 	ctx context.Context,
 	plan *cancellationPlan,
 ) error {

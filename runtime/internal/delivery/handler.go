@@ -27,6 +27,7 @@ type HandlerConfig struct {
 	ModelEndpoints     endpointObservationUseCases
 	Tools              toolUseCases
 	Runs               runUseCases
+	RunCancellations   runCancellationUseCases
 	RunStreams         runStreamUseCases
 	Queries            queryUseCases
 	Usage              usageUseCases
@@ -78,6 +79,7 @@ type Handler struct {
 	modelEndpoints     endpointObservationUseCases
 	tools              toolUseCases
 	runs               runUseCases
+	runCancellations   runCancellationUseCases
 	runStreams         runStreamUseCases
 	queries            queryUseCases
 	usage              usageUseCases
@@ -152,6 +154,7 @@ func (c HandlerConfig) validate() error {
 		{name: "Models", value: c.Models},
 		{name: "Tools", value: c.Tools},
 		{name: "Runs", value: c.Runs},
+		{name: "RunCancellations", value: c.RunCancellations},
 		{name: "Queries", value: c.Queries},
 		{name: "Usage", value: c.Usage},
 		{name: "Feedback", value: c.Feedback},
@@ -235,6 +238,7 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		modelEndpoints:           cfg.ModelEndpoints,
 		tools:                    cfg.Tools,
 		runs:                     cfg.Runs,
+		runCancellations:         cfg.RunCancellations,
 		runStreams:               cfg.RunStreams,
 		queries:                  cfg.Queries,
 		usage:                    cfg.Usage,

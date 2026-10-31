@@ -57,7 +57,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 	}
 	// The Items an open interrupt names cannot change while it is open: only
 	// the opening transaction below answers them.
-	itemsByID, err := c.pendingItems(ctx, pending)
+	itemsByID, err := pendingItems(ctx, c.items, pending)
 	if err != nil {
 		return StartResult{}, err
 	}

@@ -29,29 +29,23 @@ var errClosed = errors.New("runs: coordinator closed")
 // Reading Start and the pump explains a Run end to end through canonical
 // application events.
 type Coordinator struct {
-	commandAcceptances                 commandAcceptanceReader
-	startAdmissions                    *keylock.Set
-	rootStarts                         RootExecutionStarter
-	rootCancellation                   RunningRootCancellationRequester
-	conversation                       ConversationReader
-	workingContexts                    WorkingContextComposer
-	models                             modelAdmitter
-	modelSelector                      modelapp.Selector
-	continuation                       ExecutionContinuer
-	approvalRules                      approvalRulePreparer
-	acceptedContinuations              acceptedContinuationStore
-	waitingRestorer                    waitingExecutionRestorer
-	steering                           RunningExecutionSteerer
-	runningSubtreeCanceler             RunningSubtreeCanceler
-	waitingSubtreeCancellationPreparer WaitingSubtreeCancellationPreparer
-	sessionReader                      sessionReader
-	sessionCreator                     sessionCreator
-	activeRuns                         activeRunReader
-	interrupts                         pendingInterruptReader
-	terminations                       terminationCommitter
-	checkpoints                        WaitingCheckpointReader
-	waitingSubtreeCancellations        WaitingSubtreeCancellationCommitter
-	isolation                          isolationProvider // resolves an isolated session's sandbox copy; nil = isolation off
+	commandAcceptances    commandAcceptanceReader
+	startAdmissions       *keylock.Set
+	rootStarts            RootExecutionStarter
+	conversation          ConversationReader
+	workingContexts       WorkingContextComposer
+	models                modelAdmitter
+	modelSelector         modelapp.Selector
+	continuation          ExecutionContinuer
+	approvalRules         approvalRulePreparer
+	acceptedContinuations acceptedContinuationStore
+	steering              RunningExecutionSteerer
+	sessionReader         sessionReader
+	sessionCreator        sessionCreator
+	activeRuns            activeRunReader
+	interrupts            pendingInterruptReader
+	checkpoints           WaitingCheckpointReader
+	isolation             isolationProvider // resolves an isolated session's sandbox copy; nil = isolation off
 	// runs reads the durable run record. A subscribe or a steer that cannot be
 	// served has to say WHY — waiting, finished, a child, or a segment that has
 	// been replaced — and only the durable projection knows: the live registry
@@ -80,24 +74,19 @@ func (c *Coordinator) AdmitSelection(ctx context.Context, selection modelchoice.
 // Dependencies is the complete collaborator set for the user-visible run use
 // cases and the segment supervisor they own.
 type Dependencies struct {
-	CommandAcceptances                 commandAcceptanceReader
-	RootStarts                         RootExecutionStarter
-	Releases                           ExecutionReleaser
-	RootCancellation                   RunningRootCancellationRequester
-	Conversation                       ConversationReader
-	WorkingContexts                    WorkingContextComposer
-	Models                             modelAdmitter
-	ModelSelector                      modelapp.Selector
-	Continuation                       ExecutionContinuer
-	ApprovalRules                      approvalRulePreparer
-	AcceptedContinuations              acceptedContinuationStore
-	WaitingRestorer                    waitingExecutionRestorer
-	Steering                           RunningExecutionSteerer
-	RunningSubtreeCanceler             RunningSubtreeCanceler
-	WaitingSubtreeCancellationPreparer WaitingSubtreeCancellationPreparer
-	Session                            SessionPorts
-	Checkpoints                        WaitingCheckpointReader
-	WaitingSubtreeCancellations        WaitingSubtreeCancellationCommitter
+	CommandAcceptances    commandAcceptanceReader
+	RootStarts            RootExecutionStarter
+	Releases              ExecutionReleaser
+	Conversation          ConversationReader
+	WorkingContexts       WorkingContextComposer
+	Models                modelAdmitter
+	ModelSelector         modelapp.Selector
+	Continuation          ExecutionContinuer
+	ApprovalRules         approvalRulePreparer
+	AcceptedContinuations acceptedContinuationStore
+	Steering              RunningExecutionSteerer
+	Session               SessionPorts
+	Checkpoints           WaitingCheckpointReader
 	// Segments runs every segment these use cases open.
 	Segments   *Segments
 	Runs       Projection
@@ -118,24 +107,18 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		{"root execution starter", deps.RootStarts},
 		{"command acceptance reader", deps.CommandAcceptances},
 		{"execution releaser", deps.Releases},
-		{"root cancellation requester", deps.RootCancellation},
 		{"conversation reader", deps.Conversation},
 		{"working context composer", deps.WorkingContexts},
 		{"model admitter", deps.Models},
 		{"waiting execution continuer", deps.Continuation},
 		{"approval rule preparer", deps.ApprovalRules},
 		{"accepted continuation store", deps.AcceptedContinuations},
-		{"waiting execution restorer", deps.WaitingRestorer},
 		{"running execution steerer", deps.Steering},
-		{"running subtree canceler", deps.RunningSubtreeCanceler},
-		{"waiting subtree cancellation preparer", deps.WaitingSubtreeCancellationPreparer},
 		{"session reader", deps.Session.Reader},
 		{"session creator", deps.Session.Creator},
 		{"active run reader", deps.Session.ActiveRuns},
 		{"pending interrupt reader", deps.Session.Interrupts},
-		{"run termination committer", deps.Session.Terminations},
 		{"waiting checkpoint reader", deps.Checkpoints},
-		{"waiting subtree cancellation committer", deps.WaitingSubtreeCancellations},
 		{"segment supervisor", deps.Segments},
 		{"run projection", deps.Runs},
 		{"item projection", deps.Items},
@@ -150,34 +133,28 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		return nil, errors.New("runs: isolation provider must not be typed nil")
 	}
 	return &Coordinator{
-		commandAcceptances:                 deps.CommandAcceptances,
-		startAdmissions:                    keylock.NewSet(),
-		rootStarts:                         deps.RootStarts,
-		rootCancellation:                   deps.RootCancellation,
-		conversation:                       deps.Conversation,
-		workingContexts:                    deps.WorkingContexts,
-		models:                             deps.Models,
-		modelSelector:                      deps.ModelSelector,
-		continuation:                       deps.Continuation,
-		approvalRules:                      deps.ApprovalRules,
-		acceptedContinuations:              deps.AcceptedContinuations,
-		waitingRestorer:                    deps.WaitingRestorer,
-		steering:                           deps.Steering,
-		runningSubtreeCanceler:             deps.RunningSubtreeCanceler,
-		waitingSubtreeCancellationPreparer: deps.WaitingSubtreeCancellationPreparer,
-		sessionReader:                      deps.Session.Reader,
-		sessionCreator:                     deps.Session.Creator,
-		activeRuns:                         deps.Session.ActiveRuns,
-		interrupts:                         deps.Session.Interrupts,
-		terminations:                       deps.Session.Terminations,
-		checkpoints:                        deps.Checkpoints,
-		waitingSubtreeCancellations:        deps.WaitingSubtreeCancellations,
-		runs:                               deps.Runs,
-		items:                              deps.Items,
-		isolation:                          deps.Isolation,
-		releases:                           deps.Releases,
-		admission:                          deps.Admissions,
-		segments:                           deps.Segments,
+		commandAcceptances:    deps.CommandAcceptances,
+		startAdmissions:       keylock.NewSet(),
+		rootStarts:            deps.RootStarts,
+		conversation:          deps.Conversation,
+		workingContexts:       deps.WorkingContexts,
+		models:                deps.Models,
+		modelSelector:         deps.ModelSelector,
+		continuation:          deps.Continuation,
+		approvalRules:         deps.ApprovalRules,
+		acceptedContinuations: deps.AcceptedContinuations,
+		steering:              deps.Steering,
+		sessionReader:         deps.Session.Reader,
+		sessionCreator:        deps.Session.Creator,
+		activeRuns:            deps.Session.ActiveRuns,
+		interrupts:            deps.Session.Interrupts,
+		checkpoints:           deps.Checkpoints,
+		runs:                  deps.Runs,
+		items:                 deps.Items,
+		isolation:             deps.Isolation,
+		releases:              deps.Releases,
+		admission:             deps.Admissions,
+		segments:              deps.Segments,
 	}, nil
 }
 

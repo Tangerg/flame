@@ -177,7 +177,7 @@ func TestCancellationClassifiesResumeBetweenDurableReadsAsBusy(t *testing.T) {
 		Session: testSessionPorts(&fakeRunSessions{}),
 	})
 
-	_, _, _, err := coordinator.cancellationPlanFor(
+	_, _, _, err := coordinator.cancellations.cancellationPlanFor(
 		t.Context(),
 		CancelCommand{RunID: pending.RootRunID},
 	)
@@ -198,7 +198,7 @@ func TestCancellationPreservesPersistentMissingInterruptAsInvariantFault(t *test
 		Session: testSessionPorts(&fakeRunSessions{}),
 	})
 
-	_, _, _, err := coordinator.cancellationPlanFor(
+	_, _, _, err := coordinator.cancellations.cancellationPlanFor(
 		t.Context(),
 		CancelCommand{RunID: pending.RootRunID},
 	)

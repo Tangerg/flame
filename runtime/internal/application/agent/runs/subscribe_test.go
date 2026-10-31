@@ -73,7 +73,7 @@ func runRecord(state run.State, activeSegmentID, spawnedBy string) run.Run {
 
 // liveCoordinator wires a Coordinator whose registry already holds one streaming
 // segment, so a test can address it without driving a whole run.
-func liveCoordinator(t *testing.T, record run.Run) (*Coordinator, *journal) {
+func liveCoordinator(t *testing.T, record run.Run) (*testRuns, *journal) {
 	t.Helper()
 	c := mustNewCoordinator(Dependencies{
 		Releases: &fakeExecutionPorts{},

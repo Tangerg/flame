@@ -155,10 +155,12 @@ func TestWaitingChildAndRootCancellationHaveOneApplicationOwner(t *testing.T) {
 			release:         release,
 		}
 		coordinator.sessionReader = sessions
+		coordinator.cancellations.sessionReader = coordinator.sessionReader
 		coordinator.sessionCreator = sessions
 		coordinator.activeRuns = sessions
 		coordinator.interrupts = sessions
-		coordinator.terminations = sessions
+		coordinator.cancellations.interrupts = coordinator.interrupts
+		coordinator.cancellations.terminations = sessions
 
 		rootDone := make(chan cancelAttemptOutcome, 1)
 		go func() {

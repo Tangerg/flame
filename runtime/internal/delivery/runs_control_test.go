@@ -12,7 +12,6 @@ import (
 )
 
 type cancelRunUseCaseStub struct {
-	runUseCases
 	result  runs.CancelResult
 	err     error
 	command runs.CancelCommand
@@ -27,7 +26,7 @@ func TestCancelRunPresentsCommittedRootSnapshot(t *testing.T) {
 	useCases := &cancelRunUseCaseStub{result: runs.CancelResult{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "ses_1", State: run.Finished,
 		Ending: run.Canceled{Detail: "user stopped"}}),
 	}}
-	server := &Handler{runs: useCases}
+	server := &Handler{runCancellations: useCases}
 
 	result, err := server.CancelRun(t.Context(), protocol.CancelRunRequest{
 		RunID: "run_1", Reason: "user stopped",
@@ -49,7 +48,7 @@ func TestCancelRunPresentsCommittedRootSnapshot(t *testing.T) {
 
 func TestCancelRunPassesNegotiatedChildAuthorityWithoutBlockingARoot(t *testing.T) {
 	useCases := &cancelRunUseCaseStub{result: runs.CancelResult{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "ses_1", State: run.Finished, Ending: run.Canceled{}})}}
-	server := &Handler{runs: useCases}
+	server := &Handler{runCancellations: useCases}
 	ctx := withClientCapabilities(protocol.ClientCapabilities{
 		Features: map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}},
 	})
@@ -64,7 +63,7 @@ func TestCancelRunPassesNegotiatedChildAuthorityWithoutBlockingARoot(t *testing.
 }
 
 func TestCancelRunMapsFinishedToTheSharedLifecycleError(t *testing.T) {
-	server := &Handler{runs: &cancelRunUseCaseStub{err: runs.ErrRunFinished}}
+	server := &Handler{runCancellations: &cancelRunUseCaseStub{err: runs.ErrRunFinished}}
 
 	result, err := server.CancelRun(t.Context(), protocol.CancelRunRequest{RunID: "run_1"})
 	if result != nil || !errors.Is(err, protocol.ErrRunFinished) {
@@ -73,7 +72,7 @@ func TestCancelRunMapsFinishedToTheSharedLifecycleError(t *testing.T) {
 }
 
 func TestCancelRunMapsInvalidReasonToInvalidParams(t *testing.T) {
-	server := &Handler{runs: &cancelRunUseCaseStub{err: runs.ErrInvalidCancellationReason}}
+	server := &Handler{runCancellations: &cancelRunUseCaseStub{err: runs.ErrInvalidCancellationReason}}
 
 	result, err := server.CancelRun(t.Context(), protocol.CancelRunRequest{RunID: "run_1"})
 	if result != nil || !errors.Is(err, protocol.ErrInvalidParams) ||
@@ -83,7 +82,7 @@ func TestCancelRunMapsInvalidReasonToInvalidParams(t *testing.T) {
 }
 
 func TestCancelRunNamesTheCapabilityNeededForAChild(t *testing.T) {
-	server := &Handler{runs: &cancelRunUseCaseStub{err: runs.ErrChildRunNotAllowed}}
+	server := &Handler{runCancellations: &cancelRunUseCaseStub{err: runs.ErrChildRunNotAllowed}}
 
 	result, err := server.CancelRun(t.Context(), protocol.CancelRunRequest{RunID: "run_child"})
 	if result != nil || !errors.Is(err, protocol.ErrCapabilityNotNeg) {
@@ -99,7 +98,7 @@ func TestCancelRunNamesTheCapabilityNeededForAChild(t *testing.T) {
 
 func TestCancelRunDoesNotEraseSettlementFailureBehindFinishedRefusal(t *testing.T) {
 	cleanupErr := errors.New("terminal cleanup failed")
-	server := &Handler{runs: &cancelRunUseCaseStub{err: &runs.CancellationSettlementError{Cause: errors.Join(runs.ErrRunFinished, cleanupErr)}}}
+	server := &Handler{runCancellations: &cancelRunUseCaseStub{err: &runs.CancellationSettlementError{Cause: errors.Join(runs.ErrRunFinished, cleanupErr)}}}
 	result, err := server.CancelRun(t.Context(), protocol.CancelRunRequest{RunID: "run_1"})
 	if result != nil || !errors.Is(err, cleanupErr) || projectError(err).Problem().Type != protocol.ProblemInternalError {
 		t.Fatalf("cancel lost its failed settlement: result=%+v, error=%v", result, err)

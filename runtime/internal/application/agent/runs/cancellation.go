@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/samber/lo"
 )
 
 // CancellationSettlementError means the Run owner could not join its complete
@@ -23,12 +24,92 @@ func (e *CancellationSettlementError) Error() string {
 
 func (e *CancellationSettlementError) Unwrap() error { return e.Cause }
 
+// Cancellations owns Run cancellation: a live root or child, a waiting child and
+// a parked Run, including recovery of a committed waiting-child cancellation.
+type Cancellations struct {
+	rootCancellation                   RunningRootCancellationRequester
+	waitingRestorer                    waitingExecutionRestorer
+	runningSubtreeCanceler             RunningSubtreeCanceler
+	waitingSubtreeCancellationPreparer WaitingSubtreeCancellationPreparer
+	waitingSubtreeCancellations        WaitingSubtreeCancellationCommitter
+	terminations                       terminationCommitter
+	sessionReader                      sessionReader
+	interrupts                         pendingInterruptReader
+	checkpoints                        WaitingCheckpointReader
+	releases                           ExecutionReleaser
+	segments                           *Segments
+	runs                               Projection
+	items                              ItemProjection
+	admission                          *ownership.Gate
+}
+
+// CancellationDependencies are the collaborators Run cancellation requires.
+type CancellationDependencies struct {
+	RootCancellation                   RunningRootCancellationRequester
+	WaitingRestorer                    waitingExecutionRestorer
+	RunningSubtreeCanceler             RunningSubtreeCanceler
+	WaitingSubtreeCancellationPreparer WaitingSubtreeCancellationPreparer
+	WaitingSubtreeCancellations        WaitingSubtreeCancellationCommitter
+	Terminations                       terminationCommitter
+	Sessions                           sessionReader
+	Interrupts                         pendingInterruptReader
+	Checkpoints                        WaitingCheckpointReader
+	Releases                           ExecutionReleaser
+	Segments                           *Segments
+	Runs                               Projection
+	Items                              ItemProjection
+	Admissions                         *ownership.Gate
+}
+
+func NewCancellations(deps CancellationDependencies) (*Cancellations, error) {
+	required := []struct {
+		name  string
+		value any
+	}{
+		{"root cancellation requester", deps.RootCancellation},
+		{"waiting execution restorer", deps.WaitingRestorer},
+		{"running subtree canceler", deps.RunningSubtreeCanceler},
+		{"waiting subtree cancellation preparer", deps.WaitingSubtreeCancellationPreparer},
+		{"waiting subtree cancellation committer", deps.WaitingSubtreeCancellations},
+		{"run termination committer", deps.Terminations},
+		{"session reader", deps.Sessions},
+		{"pending interrupt reader", deps.Interrupts},
+		{"waiting checkpoint reader", deps.Checkpoints},
+		{"execution releaser", deps.Releases},
+		{"segment supervisor", deps.Segments},
+		{"run projection", deps.Runs},
+		{"item projection", deps.Items},
+		{"admission gate", deps.Admissions},
+	}
+	for _, required := range required {
+		if lo.IsNil(required.value) {
+			return nil, fmt.Errorf("runs: %s is required", required.name)
+		}
+	}
+	return &Cancellations{
+		rootCancellation:                   deps.RootCancellation,
+		waitingRestorer:                    deps.WaitingRestorer,
+		runningSubtreeCanceler:             deps.RunningSubtreeCanceler,
+		waitingSubtreeCancellationPreparer: deps.WaitingSubtreeCancellationPreparer,
+		waitingSubtreeCancellations:        deps.WaitingSubtreeCancellations,
+		terminations:                       deps.Terminations,
+		sessionReader:                      deps.Sessions,
+		interrupts:                         deps.Interrupts,
+		checkpoints:                        deps.Checkpoints,
+		releases:                           deps.Releases,
+		segments:                           deps.Segments,
+		runs:                               deps.Runs,
+		items:                              deps.Items,
+		admission:                          deps.Admissions,
+	}, nil
+}
+
 // Cancel handles both live and parked runs under the same run/session admission
 // rules and returns the exact terminal Run committed by the winning write-set.
 // The durable abandon write-set is authoritative and commits before a parked
 // executor is torn down. Cleanup errors are returned unless the executor already
 // disappeared, which is the idempotent completion race.
-func (c *Coordinator) Cancel(ctx context.Context, cmd CancelCommand) (CancelResult, error) {
+func (c *Cancellations) Cancel(ctx context.Context, cmd CancelCommand) (CancelResult, error) {
 	var err error
 	cmd, err = cmd.normalizeReason()
 	if err != nil {
@@ -117,7 +198,7 @@ func (c *Coordinator) Cancel(ctx context.Context, cmd CancelCommand) (CancelResu
 // cancelLiveChild takes no context on purpose: a cancellation that has begun
 // runs to a committed outcome on the tree owner's cleanup context, so the
 // requester's own deadline cannot abandon it half-applied.
-func (c *Coordinator) cancelLiveChild(
+func (c *Cancellations) cancelLiveChild(
 	cmd CancelCommand,
 	plan cancellationPlan,
 	owner *runTreeOwner,
@@ -164,7 +245,7 @@ func (c *Coordinator) cancelLiveChild(
 // the final boundary instead opens continuation Segments in the same transaction
 // and immediately continues the already-settled runtime tree—there is no
 // synthetic human answer and no transient Running row without an owner.
-func (c *Coordinator) cancelWaitingChild(
+func (c *Cancellations) cancelWaitingChild(
 	ctx context.Context,
 	cmd CancelCommand,
 	initial cancellationPlan,
@@ -249,7 +330,7 @@ func (c *Coordinator) cancelWaitingChild(
 	)
 }
 
-func (c *Coordinator) resolveClaimedWaitingChildCancellation(
+func (c *Cancellations) resolveClaimedWaitingChildCancellation(
 	ctx context.Context,
 	cmd CancelCommand,
 ) (cancellationPlan, error) {
@@ -294,7 +375,7 @@ func (c *Coordinator) resolveClaimedWaitingChildCancellation(
 	return plan, nil
 }
 
-func (c *Coordinator) waitingChildCancellationContinuation(
+func (c *Cancellations) waitingChildCancellationContinuation(
 	ctx context.Context,
 	sess session.Session,
 	plan cancellationPlan,
@@ -325,7 +406,7 @@ func (c *Coordinator) waitingChildCancellationContinuation(
 	return waitingContinuationFromPending(plan.pending, checkpoint, plan.treeRuns(), sess)
 }
 
-func (c *Coordinator) commitWaitingChildCancellation(
+func (c *Cancellations) commitWaitingChildCancellation(
 	ctx context.Context,
 	sess session.Session,
 	plan cancellationPlan,
@@ -363,7 +444,7 @@ func (c *Coordinator) commitWaitingChildCancellation(
 	return CancelResult{Run: result.TargetRun, RootRun: &result.RootRun}, nil
 }
 
-func (c *Coordinator) resumeAfterWaitingChildCancellation(
+func (c *Cancellations) resumeAfterWaitingChildCancellation(
 	ctx context.Context,
 	sess session.Session,
 	plan cancellationPlan,
@@ -433,7 +514,7 @@ func (c *Coordinator) resumeAfterWaitingChildCancellation(
 	return CancelResult{Run: committed.TargetRun, RootRun: &committed.RootRun}, nil
 }
 
-func (c *Coordinator) recoverCommittedWaitingCancellation(
+func (c *Cancellations) recoverCommittedWaitingCancellation(
 	ctx context.Context,
 	sess session.Session,
 	plan cancellationPlan,
@@ -468,7 +549,7 @@ func (c *Coordinator) recoverCommittedWaitingCancellation(
 	return nil
 }
 
-func (c *Coordinator) failCommittedWaitingCancellationRecovery(
+func (c *Cancellations) failCommittedWaitingCancellationRecovery(
 	ctx context.Context,
 	plan cancellationPlan,
 	cause error,
@@ -530,7 +611,7 @@ func validateWaitingChildCancellationResult(
 	return nil
 }
 
-func (c *Coordinator) publishWaitingChildCancellation(
+func (c *Cancellations) publishWaitingChildCancellation(
 	plan cancellationPlan,
 	transformation waitingCancellationTransformation,
 ) {
@@ -567,7 +648,7 @@ func (c *Coordinator) publishWaitingChildCancellation(
 // left the live registry after the first durable read. A second durable read
 // classifies a real terminal race; a still-running orphan is an invariant fault,
 // never run_not_found.
-func (c *Coordinator) cancelWithoutLiveSegment(ctx context.Context, cmd CancelCommand, value rundomain.Run) (CancelResult, error) {
+func (c *Cancellations) cancelWithoutLiveSegment(ctx context.Context, cmd CancelCommand, value rundomain.Run) (CancelResult, error) {
 	if value.State() == rundomain.Waiting {
 		cleanupCtx, cancel := runCleanupContext(ctx)
 		defer cancel()
@@ -599,7 +680,7 @@ func (c *Coordinator) cancelWithoutLiveSegment(ctx context.Context, cmd CancelCo
 // admission order linearizes cancel against resume: whichever command owns the
 // Session decides the one durable transition, and the loser observes busy or
 // the resulting terminal state instead of misreporting run_not_found.
-func (c *Coordinator) cancelParkedRun(ctx context.Context, cmd CancelCommand, value rundomain.Run) (CancelResult, error) {
+func (c *Cancellations) cancelParkedRun(ctx context.Context, cmd CancelCommand, value rundomain.Run) (CancelResult, error) {
 	releaseSession, ok, leaseErr := c.admission.AcquireSession(ctx, value.SessionID())
 	if leaseErr != nil {
 		return CancelResult{}, leaseErr
@@ -636,7 +717,7 @@ func (c *Coordinator) cancelParkedRun(ctx context.Context, cmd CancelCommand, va
 // interrupt transaction committed. The owner's Segment binding is therefore the exact
 // executor that transaction parked; resolving it again would introduce a second,
 // weaker source of identity between two halves of one command.
-func (c *Coordinator) cancelKnownParkedRun(
+func (c *Cancellations) cancelKnownParkedRun(
 	ctx context.Context,
 	cmd CancelCommand,
 	value rundomain.Run,
@@ -659,7 +740,7 @@ func (c *Coordinator) cancelKnownParkedRun(
 	return c.cancelClaimedParkedRun(ctx, cmd, ref)
 }
 
-func (c *Coordinator) cancelClaimedParkedRun(ctx context.Context, cmd CancelCommand, ref ExecutorRef) (CancelResult, error) {
+func (c *Cancellations) cancelClaimedParkedRun(ctx context.Context, cmd CancelCommand, ref ExecutorRef) (CancelResult, error) {
 	terminal, err := c.terminations.ApplyRunCancel(ctx, ref.SessionID, cmd.RunID, cmd.Reason, c.segments.publications.nowUTC())
 	if err != nil {
 		return CancelResult{}, err

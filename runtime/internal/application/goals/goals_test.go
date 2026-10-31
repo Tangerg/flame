@@ -627,16 +627,22 @@ func (t *terminalRaceRuns) Cancel(context.Context, runs.CancelCommand) (runs.Can
 	return runs.CancelResult{}, err
 }
 
+// testRuns is a fake Run entry point that both starts and cancels.
+type testRuns interface {
+	goals.AutonomousRuns
+	goals.RunCancellations
+}
+
 func mustDriver(
 	t testing.TB,
 	store goals.Store,
-	autonomousRuns goals.AutonomousRuns,
+	autonomousRuns testRuns,
 	sessions goals.SessionExistence,
 	mutations *goals.SessionMutations,
 	instructions goals.RunInstructionBuilder,
 ) *goals.Driver {
 	t.Helper()
-	driver, err := goals.NewDriver(store, autonomousRuns, sessions, mutations, instructions)
+	driver, err := goals.NewDriver(store, autonomousRuns, autonomousRuns, sessions, mutations, instructions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -656,23 +662,25 @@ func TestNewDriverRejectsIncompleteComposition(t *testing.T) {
 	sessions := &fakeSessions{}
 	mutations := goals.NewSessionMutations()
 	tests := []struct {
-		name         string
-		store        goals.Store
-		runs         goals.AutonomousRuns
-		sessions     goals.SessionExistence
-		mutations    *goals.SessionMutations
-		instructions goals.RunInstructionBuilder
+		name          string
+		store         goals.Store
+		runs          goals.AutonomousRuns
+		cancellations goals.RunCancellations
+		sessions      goals.SessionExistence
+		mutations     *goals.SessionMutations
+		instructions  goals.RunInstructionBuilder
 	}{
-		{name: "store", runs: autonomousRuns, sessions: sessions, mutations: mutations, instructions: testPrompt},
-		{name: "runs", store: store, sessions: sessions, mutations: mutations, instructions: testPrompt},
-		{name: "sessions", store: store, runs: autonomousRuns, mutations: mutations, instructions: testPrompt},
-		{name: "mutations", store: store, runs: autonomousRuns, sessions: sessions, instructions: testPrompt},
-		{name: "instructions", store: store, runs: autonomousRuns, sessions: sessions, mutations: mutations},
+		{name: "store", runs: autonomousRuns, cancellations: autonomousRuns, sessions: sessions, mutations: mutations, instructions: testPrompt},
+		{name: "runs", store: store, cancellations: autonomousRuns, sessions: sessions, mutations: mutations, instructions: testPrompt},
+		{name: "cancellations", store: store, runs: autonomousRuns, sessions: sessions, mutations: mutations, instructions: testPrompt},
+		{name: "sessions", store: store, runs: autonomousRuns, cancellations: autonomousRuns, mutations: mutations, instructions: testPrompt},
+		{name: "mutations", store: store, runs: autonomousRuns, cancellations: autonomousRuns, sessions: sessions, instructions: testPrompt},
+		{name: "instructions", store: store, runs: autonomousRuns, cancellations: autonomousRuns, sessions: sessions, mutations: mutations},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			driver, err := goals.NewDriver(
-				test.store, test.runs, test.sessions, test.mutations, test.instructions,
+				test.store, test.runs, test.cancellations, test.sessions, test.mutations, test.instructions,
 			)
 			if err == nil || driver != nil {
 				t.Fatalf("NewDriver incomplete composition = (%v, %v)", driver, err)

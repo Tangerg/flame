@@ -197,7 +197,7 @@ func TestInteractionExecutorCanceledDelegateWithUnknownModelOutcomeFailsRoot(t *
 		Conversation: projection.history, RunningSubtreeCanceler: runningSubtreeCanceler,
 		Session: runs.SessionPorts{
 			Reader: projection.sessions, Creator: projection.sessions, ActiveRuns: projection.sessions,
-			Interrupts: projection.sessions, Terminations: projection.sessions,
+			Interrupts: projection.sessions,
 		},
 		Projection: runTestProjection{
 			Openings: projection, ChildStarts: projection, Events: projection,

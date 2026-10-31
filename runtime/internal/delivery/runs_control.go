@@ -18,7 +18,7 @@ func (s *Handler) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (
 	// Root cancel is the emergency stop and is always allowed. Whether the target
 	// is a child is durable state resolved by the application, so do not reject
 	// unsupported client preferences before that identity is known.
-	result, err := s.runs.Cancel(ctx, runs.CancelCommand{
+	result, err := s.runCancellations.Cancel(ctx, runs.CancelCommand{
 		RunID:         in.RunID,
 		Reason:        in.Reason,
 		AllowChildRun: s.requestCanUseFeature(ctx, protocol.FeatureChildRuns),

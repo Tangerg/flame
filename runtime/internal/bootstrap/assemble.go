@@ -243,40 +243,49 @@ func buildAssemblyCore(
 		Invalidations: policy.invalidations.publish,
 	}
 	runDependencies := runs.Dependencies{
-		CommandAcceptances:                 cfg.stores.CommandAcceptances,
-		RootStarts:                         execution.executor,
-		Releases:                           execution.executor,
+		CommandAcceptances:    cfg.stores.CommandAcceptances,
+		RootStarts:            execution.executor,
+		Releases:              execution.executor,
+		Conversation:          execution.conversation.messages,
+		Models:                modelCapabilities,
+		ModelSelector:         execution.tools.callComposition,
+		Continuation:          execution.executor,
+		ApprovalRules:         policy.approvals,
+		AcceptedContinuations: cfg.stores.AcceptedContinuations,
+		Steering:              execution.executor,
+		WorkingContexts:       execution.workingContexts,
+		Session: runs.SessionPorts{
+			Reader:     sessionCoordinator,
+			Creator:    sessionCoordinator,
+			ActiveRuns: sessionCoordinator,
+			Interrupts: sessionCoordinator,
+		},
+		Checkpoints: runSegmentEffects,
+		Runs:        cfg.stores.Runs,
+		Items:       cfg.stores.Transcript,
+		Admissions:  admissionGate,
+	}
+	cancellationDependencies := runs.CancellationDependencies{
 		RootCancellation:                   execution.executor,
-		Conversation:                       execution.conversation.messages,
-		Models:                             modelCapabilities,
-		ModelSelector:                      execution.tools.callComposition,
-		Continuation:                       execution.executor,
-		ApprovalRules:                      policy.approvals,
-		AcceptedContinuations:              cfg.stores.AcceptedContinuations,
 		WaitingRestorer:                    execution.executor,
-		Steering:                           execution.executor,
 		RunningSubtreeCanceler:             execution.executor,
 		WaitingSubtreeCancellationPreparer: execution.executor,
-		WorkingContexts:                    execution.workingContexts,
-		Session: runs.SessionPorts{
-			Reader:       sessionCoordinator,
-			Creator:      sessionCoordinator,
-			ActiveRuns:   sessionCoordinator,
-			Interrupts:   sessionCoordinator,
-			Terminations: sessionCoordinator,
-		},
-		Checkpoints:                 runSegmentEffects,
-		WaitingSubtreeCancellations: runSegmentEffects,
-		Runs:                        cfg.stores.Runs,
-		Items:                       cfg.stores.Transcript,
-		Admissions:                  admissionGate,
+		WaitingSubtreeCancellations:        runSegmentEffects,
+		Terminations:                       sessionCoordinator,
+		Sessions:                           sessionCoordinator,
+		Interrupts:                         sessionCoordinator,
+		Checkpoints:                        runSegmentEffects,
+		Releases:                           execution.executor,
+		Runs:                               cfg.stores.Runs,
+		Items:                              cfg.stores.Transcript,
+		Admissions:                         admissionGate,
 	}
 	// Set only when present so a nil *Isolator never reaches the coordinator as a
 	// non-nil interface (which would defeat its own nil check).
 	if execution.isolation != nil {
 		runDependencies.Isolation = execution.isolation
 	}
-	runCoordinator, runSegments, err := composeRuns(runDependencies, runSegmentDependencies)
+	runCoordinator, runCancellations, runSegments, err := composeRuns(runDependencies, cancellationDependencies, runSegmentDependencies)
 	if err != nil {
 		return nil, err
 	}
@@ -316,6 +325,7 @@ func buildAssemblyCore(
 	goalDriver, err := goals.NewDriver(
 		policy.goals,
 		runCoordinator,
+		runCancellations,
 		cfg.stores.Sessions,
 		goalMutations,
 		builtin.RunInstructions,
@@ -481,6 +491,7 @@ func buildAssemblyCore(
 				ModelEndpoints:         modelEndpoints,
 				Tools:                  toolCoordinator,
 				Runs:                   runCoordinator,
+				RunCancellations:       runCancellations,
 				RunStreams:             runSegments,
 				FileChanges:            fileChanges.observe,
 				Invalidations:          policy.invalidations.observe,
@@ -532,15 +543,24 @@ func sessionResourceCleanups(checkpoints *workspaceadapter.Checkpoints, isolatio
 // composeRuns builds the segment supervisor every Run segment opens on and the
 // run use cases that open them; the use cases share its identity allocation and
 // publication ordering.
-func composeRuns(deps runs.Dependencies, segmentDeps runs.SegmentDependencies) (*runs.Coordinator, *runs.Segments, error) {
+func composeRuns(
+	deps runs.Dependencies,
+	cancellationDeps runs.CancellationDependencies,
+	segmentDeps runs.SegmentDependencies,
+) (*runs.Coordinator, *runs.Cancellations, *runs.Segments, error) {
 	segments, err := runs.NewSegments(segmentDeps)
 	if err != nil {
-		return nil, nil, fmt.Errorf("runtime: construct Run segments: %w", err)
+		return nil, nil, nil, fmt.Errorf("runtime: construct Run segments: %w", err)
 	}
 	deps.Segments = segments
 	coordinator, err := runs.NewCoordinator(deps)
 	if err != nil {
-		return nil, nil, fmt.Errorf("runtime: construct Run coordinator: %w", err)
+		return nil, nil, nil, fmt.Errorf("runtime: construct Run coordinator: %w", err)
 	}
-	return coordinator, segments, nil
+	cancellationDeps.Segments = segments
+	cancellations, err := runs.NewCancellations(cancellationDeps)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("runtime: construct Run cancellations: %w", err)
+	}
+	return coordinator, cancellations, segments, nil
 }

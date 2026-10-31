@@ -56,11 +56,10 @@ type completeTestSessionPorts interface {
 
 func testSessionPorts(ports completeTestSessionPorts) SessionPorts {
 	return SessionPorts{
-		Reader:       ports,
-		Creator:      ports,
-		ActiveRuns:   ports,
-		Interrupts:   ports,
-		Terminations: ports,
+		Reader:     ports,
+		Creator:    ports,
+		ActiveRuns: ports,
+		Interrupts: ports,
 	}
 }
 
@@ -406,7 +405,7 @@ func (m *modelInputAdmissionProbe) AdmitSelection(ctx context.Context, selection
 	return m.selectionErr
 }
 
-func newUseCaseCoordinator(exec ExecutionObserver, control *fakeExecutionPorts, sessions completeTestSessionPorts, effects completeTestProjectionPorts) *Coordinator {
+func newUseCaseCoordinator(exec ExecutionObserver, control *fakeExecutionPorts, sessions completeTestSessionPorts, effects completeTestProjectionPorts) *testRuns {
 	if executor, ok := exec.(*fakeExecutor); ok && control.requestRootCancel == nil {
 		control.requestRootCancel = executor.requestRootCancellation
 	}
@@ -433,20 +432,20 @@ func newUseCaseCoordinator(exec ExecutionObserver, control *fakeExecutionPorts, 
 		}
 	}
 	deps := testDeps{Dependencies: Dependencies{
-		RootStarts:                         control,
-		Releases:                           control,
-		RootCancellation:                   control,
-		Conversation:                       emptyConversationReader{},
-		Continuation:                       control,
-		WaitingRestorer:                    control,
-		Steering:                           control,
-		RunningSubtreeCanceler:             control,
-		WaitingSubtreeCancellationPreparer: control,
-		Session:                            testSessionPorts(sessions),
-		Runs:                               projection,
-		Items:                              items,
-		Admissions:                         testsupport.NewAdmissionGate(),
+		RootStarts:   control,
+		Releases:     control,
+		Conversation: emptyConversationReader{},
+		Continuation: control,
+		Steering:     control,
+		Session:      testSessionPorts(sessions),
+		Runs:         projection,
+		Items:        items,
+		Admissions:   testsupport.NewAdmissionGate(),
 	},
+		cancellationOnly: cancellationOnly{
+			RootCancellation: control, WaitingRestorer: control,
+			RunningSubtreeCanceler: control, WaitingSubtreeCancellationPreparer: control,
+		},
 		NewRunID:     func() string { return "run_new" },
 		NewSegmentID: func() string { return "seg_new" },
 		Observations: exec,
@@ -1231,6 +1230,7 @@ func TestResumeAndRootCancelShareOneApplicationAdmissionBoundary(t *testing.T) {
 	c.runs = &fakeRunProjection{runs: map[string]run.Run{
 		"run_1": runForPending(pending),
 	}}
+	c.cancellations.runs = c.runs
 
 	type resumeOutcome struct {
 		result StartResult
@@ -1290,7 +1290,7 @@ func TestResumeAndRootCancelShareOneApplicationAdmissionBoundary(t *testing.T) {
 // iff is a cross-shape rule no schema keyword can state, so it is held here.
 func TestResumeWithInputCommitsTheUserItemWithTheContinuation(t *testing.T) {
 	createdAt := time.Date(2025, 1, 2, 3, 4, 5, 0, time.UTC)
-	newResumeCase := func() (*fakeEffects, *fakeExecutionPorts, *Coordinator) {
+	newResumeCase := func() (*fakeEffects, *fakeExecutionPorts, *testRuns) {
 		effects := &fakeEffects{}
 		sessions := &fakeRunSessions{
 			sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}),
@@ -1793,7 +1793,7 @@ func requireChildCancellationProjection(
 	}
 }
 
-func requireLiveJournalHead(t *testing.T, coordinator *Coordinator, runID string) (*journal, string) {
+func requireLiveJournalHead(t *testing.T, coordinator *testRuns, runID string) (*journal, string) {
 	t.Helper()
 	entry, live := coordinator.segments.registry.Get(runID)
 	if !live || entry.owner == nil || entry.owner.hub == nil {

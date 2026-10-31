@@ -61,17 +61,23 @@ type runTestProjection struct {
 // segment supervisor they open segments on.
 type runTestDeps struct {
 	runs.Dependencies
-	Observations runs.ExecutionObserver
-	Projection   runTestProjection
-	Now          func() time.Time
-	Retention    runs.Retention
-	NewRunID     func() string
-	NewSegmentID func() string
+	// The collaborators only cancellation uses; shared ones come from
+	// Dependencies.
+	RootCancellation                   runs.RunningRootCancellationRequester
+	RunningSubtreeCanceler             runs.RunningSubtreeCanceler
+	WaitingSubtreeCancellationPreparer runs.WaitingSubtreeCancellationPreparer
+	Observations                       runs.ExecutionObserver
+	Projection                         runTestProjection
+	Now                                func() time.Time
+	Retention                          runs.Retention
+	NewRunID                           func() string
+	NewSegmentID                       func() string
 }
 
 // testRuns is one fixture over the run use cases and their supervisor.
 type testRuns struct {
 	*runs.Coordinator
+	*runs.Cancellations
 	*runs.Segments
 }
 
@@ -93,12 +99,17 @@ func mustNewRunCoordinator(t *testing.T, d runTestDeps) testRuns {
 		deps.AcceptedContinuations = inertAcceptedContinuationStore{}
 	}
 	starter := any(deps.RootStarts)
-	fillRunDependency(t, &deps.RootCancellation, starter, "root cancellation requester")
 	fillRunDependency(t, &deps.Continuation, starter, "waiting execution continuer")
-	fillRunDependency(t, &deps.WaitingRestorer, starter, "waiting execution restorer")
 	fillRunDependency(t, &deps.Steering, starter, "running execution steerer")
-	fillRunDependency(t, &deps.RunningSubtreeCanceler, starter, "running subtree canceler")
-	fillRunDependency(t, &deps.WaitingSubtreeCancellationPreparer, starter, "waiting subtree cancellation preparer")
+	cancellation := runs.CancellationDependencies{
+		RootCancellation:                   d.RootCancellation,
+		RunningSubtreeCanceler:             d.RunningSubtreeCanceler,
+		WaitingSubtreeCancellationPreparer: d.WaitingSubtreeCancellationPreparer,
+	}
+	fillRunDependency(t, &cancellation.RootCancellation, starter, "root cancellation requester")
+	fillRunDependency(t, &cancellation.RunningSubtreeCanceler, starter, "running subtree canceler")
+	fillRunDependency(t, &cancellation.WaitingSubtreeCancellationPreparer, starter, "waiting subtree cancellation preparer")
+
 	if deps.WorkingContexts == nil {
 		deps.WorkingContexts = passthroughRunWorkingContext{}
 	}
@@ -109,7 +120,7 @@ func mustNewRunCoordinator(t *testing.T, d runTestDeps) testRuns {
 	fillRunDependency(t, &deps.Session.Creator, sessions, "session creator")
 	fillRunDependency(t, &deps.Session.ActiveRuns, sessions, "active run reader")
 	fillRunDependency(t, &deps.Session.Interrupts, sessions, "pending interrupt reader")
-	fillRunDependency(t, &deps.Session.Terminations, sessions, "run termination committer")
+	fillRunDependency(t, &cancellation.Terminations, sessions, "run termination committer")
 	ports := d.Projection
 	projection := any(ports.Openings)
 	fillRunDependency(t, &ports.ChildStarts, projection, "child run start committer")
@@ -127,7 +138,7 @@ func mustNewRunCoordinator(t *testing.T, d runTestDeps) testRuns {
 	fillRunDependency(t, &ports.Finalizer, projection, "segment finalizer")
 	fillRunDependency(t, &deps.Runs, projection, "run projection")
 	fillRunDependency(t, &deps.Items, projection, "item projection")
-	deps.Checkpoints, deps.WaitingSubtreeCancellations = ports.Checkpoints, ports.WaitingSubtreeCancellations
+	deps.Checkpoints = ports.Checkpoints
 	now := d.Now
 	if now == nil {
 		now = time.Now
@@ -150,6 +161,15 @@ func mustNewRunCoordinator(t *testing.T, d runTestDeps) testRuns {
 	if err != nil {
 		t.Fatalf("construct Run coordinator: %v", err)
 	}
+	fillRunDependency(t, &cancellation.WaitingRestorer, starter, "waiting execution restorer")
+	cancellation.WaitingSubtreeCancellations = ports.WaitingSubtreeCancellations
+	cancellation.Sessions, cancellation.Interrupts = deps.Session.Reader, deps.Session.Interrupts
+	cancellation.Checkpoints, cancellation.Releases = deps.Checkpoints, deps.Releases
+	cancellation.Segments, cancellation.Runs, cancellation.Items, cancellation.Admissions = segments, deps.Runs, deps.Items, deps.Admissions
+	cancellations, err := runs.NewCancellations(cancellation)
+	if err != nil {
+		t.Fatalf("construct Run cancellations: %v", err)
+	}
 	t.Cleanup(func() {
 		segments.BeginShutdown()
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -158,7 +178,7 @@ func mustNewRunCoordinator(t *testing.T, d runTestDeps) testRuns {
 			t.Error(err)
 		}
 	})
-	return testRuns{Coordinator: coordinator, Segments: segments}
+	return testRuns{Coordinator: coordinator, Cancellations: cancellations, Segments: segments}
 }
 
 func testDefaultSelection() modelchoice.Selection {

@@ -350,17 +350,17 @@ func newTestHandler(rt testRuntime) *Handler {
 	s := &Handler{}
 	admissions := testsupport.NewAdmissionGate()
 	var sessionPorts runs.SessionPorts
+	var sessionCoordinator *sessions.Coordinator
 	// Wire the session/run lifecycle coordinator over the fake's in-memory stores
 	// when the fake provides one, mirroring the composition root.
 	if p, ok := rt.(sessionsCoordinatorProvider); ok {
-		sessionCoordinator := p.sessionsCoordinator(admissions)
+		sessionCoordinator = p.sessionsCoordinator(admissions)
 		s.sessions = sessionCoordinator
 		sessionPorts = runs.SessionPorts{
-			Reader:       sessionCoordinator,
-			Creator:      sessionCoordinator,
-			ActiveRuns:   sessionCoordinator,
-			Interrupts:   sessionCoordinator,
-			Terminations: sessionCoordinator,
+			Reader:     sessionCoordinator,
+			Creator:    sessionCoordinator,
+			ActiveRuns: sessionCoordinator,
+			Interrupts: sessionCoordinator,
 		}
 	}
 	var ids atomic.Uint64
@@ -404,23 +404,37 @@ func newTestHandler(rt testRuntime) *Handler {
 		panic(err)
 	}
 	runCoordinator, err := runs.NewCoordinator(runs.Dependencies{
-		RootStarts:                         rt,
-		CommandAcceptances:                 noDeliveryCommandAcceptances{},
-		Releases:                           rt,
+		RootStarts:            rt,
+		CommandAcceptances:    noDeliveryCommandAcceptances{},
+		Releases:              rt,
+		Conversation:          conversation,
+		WorkingContexts:       passthroughRunWorkingContext{},
+		Models:                passthroughRunWorkingContext{},
+		Continuation:          rt,
+		ApprovalRules:         inertDeliveryApprovalRules{},
+		AcceptedContinuations: inertDeliveryAcceptedContinuations{},
+		Steering:              rt,
+		Session:               sessionPorts,
+		Checkpoints:           projectionWriter,
+		Segments:              runSegments,
+		Runs:                  nonNilRunProjection(runProjection),
+		Items:                 itemProjectionFor(rt),
+		Admissions:            admissions,
+	})
+	if err != nil {
+		panic(err)
+	}
+	runCancellations, err := runs.NewCancellations(runs.CancellationDependencies{
 		RootCancellation:                   inertRunControl{},
-		Conversation:                       conversation,
-		WorkingContexts:                    passthroughRunWorkingContext{},
-		Models:                             passthroughRunWorkingContext{},
-		Continuation:                       rt,
-		ApprovalRules:                      inertDeliveryApprovalRules{},
-		AcceptedContinuations:              inertDeliveryAcceptedContinuations{},
 		WaitingRestorer:                    inertRunControl{},
-		Steering:                           rt,
 		RunningSubtreeCanceler:             rt,
 		WaitingSubtreeCancellationPreparer: rt,
-		Session:                            sessionPorts,
-		Checkpoints:                        projectionWriter,
 		WaitingSubtreeCancellations:        projectionWriter,
+		Terminations:                       sessionCoordinator,
+		Sessions:                           sessionPorts.Reader,
+		Interrupts:                         sessionPorts.Interrupts,
+		Checkpoints:                        projectionWriter,
+		Releases:                           rt,
 		Segments:                           runSegments,
 		Runs:                               nonNilRunProjection(runProjection),
 		Items:                              itemProjectionFor(rt),
@@ -430,6 +444,7 @@ func newTestHandler(rt testRuntime) *Handler {
 		panic(err)
 	}
 	s.runs = runCoordinator
+	s.runCancellations = runCancellations
 	s.runStreams = runSegments
 	if p, ok := rt.(queriesCoordinatorProvider); ok {
 		s.queries = p.queriesCoordinator()

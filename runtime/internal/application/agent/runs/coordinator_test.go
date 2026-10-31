@@ -542,6 +542,7 @@ type completeTestProjectionPorts interface {
 // supervisor, so a test names a fake once wherever both consume it.
 type testDeps struct {
 	Dependencies
+	cancellationOnly
 	Observations  ExecutionObserver
 	Projection    completeTestProjectionPorts
 	Now           func() time.Time
@@ -551,7 +552,7 @@ type testDeps struct {
 	NewSegmentID  func() string
 }
 
-func mustNewTestCoordinator(d testDeps) *Coordinator {
+func mustNewTestCoordinator(d testDeps) *testRuns {
 	deps := d.Dependencies
 	seg := SegmentDependencies{Observations: d.Observations, Now: d.Now, Invalidations: d.Invalidations, Retention: d.Retention, NewRunID: d.NewRunID, NewSegmentID: d.NewSegmentID}
 	if d.Projection != nil {
@@ -560,11 +561,11 @@ func mustNewTestCoordinator(d testDeps) *Coordinator {
 		if deps.Checkpoints == nil {
 			deps.Checkpoints = d.Projection
 		}
-		if deps.WaitingSubtreeCancellations == nil {
-			deps.WaitingSubtreeCancellations = d.Projection
+		if d.WaitingSubtreeCancellations == nil {
+			d.WaitingSubtreeCancellations = d.Projection
 		}
 	}
-	return mustNewCoordinatorWithSegments(deps, seg)
+	return mustNewCoordinatorWithSegments(deps, seg, d.cancellationOnly)
 }
 
 func (f *fakeEffects) ReadWaitingCheckpoint(
@@ -750,7 +751,7 @@ func (f *fakeEffects) finishCount() int {
 func testCoordinator(executor interface {
 	ExecutionObserver
 	ExecutionReleaser
-}, effects completeTestProjectionPorts) *Coordinator {
+}, effects completeTestProjectionPorts) *testRuns {
 	return mustNewTestCoordinator(testDeps{
 		Observations: executor,
 		Releases:     executor,
@@ -855,7 +856,7 @@ func TestResumedExecutorRoutesBindLiveTopologyWithoutPersistingIt(t *testing.T) 
 	}
 }
 
-func testAdmittedSegment(t *testing.T, c *Coordinator, spec segmentSpec) segmentSpec {
+func testAdmittedSegment(t *testing.T, c *testRuns, spec segmentSpec) segmentSpec {
 	t.Helper()
 	admission, ok, _ := c.admission.AcquireRun(t.Context(), spec.SessionID, spec.WorkspaceCWD)
 	if !ok {
@@ -1095,7 +1096,7 @@ func TestCoordinatorHoldsSessionAdmissionThroughTerminalMaintenance(t *testing.T
 	}
 }
 
-func hasActiveSession(c *Coordinator, sessionID string) bool {
+func hasActiveSession(c *testRuns, sessionID string) bool {
 	return c.admission.ActiveSessions()[sessionID]
 }
 
@@ -2821,14 +2822,16 @@ func TestCoordinatorCancelContextSurvivesRequestContext(t *testing.T) {
 	executor := &fakeExecutor{block: true}
 	coordinator := testCoordinator(executor, &fakeEffects{})
 	control := &fakeExecutionPorts{}
-	coordinator.waitingSubtreeCancellationPreparer = control
-	coordinator.rootCancellation = executor
+	coordinator.cancellations.waitingSubtreeCancellationPreparer = control
+	coordinator.cancellations.rootCancellation = executor
 	sessions := &fakeRunSessions{}
 	coordinator.sessionReader = sessions
+	coordinator.cancellations.sessionReader = coordinator.sessionReader
 	coordinator.sessionCreator = sessions
 	coordinator.activeRuns = sessions
 	coordinator.interrupts = sessions
-	coordinator.terminations = sessions
+	coordinator.cancellations.interrupts = coordinator.interrupts
+	coordinator.cancellations.terminations = sessions
 	useRunProjection(coordinator, &fakeRunProjection{runs: map[string]run.Run{
 		"run_1": runForSegment(testSegment()),
 	}})
@@ -2952,6 +2955,6 @@ func (f *fakeEffects) CommitExecutionTree(ctx context.Context, tree ExecutionTre
 
 // useRunProjection swaps the durable Run read for both the use cases and the
 // segment supervisor, which read the same projection.
-func useRunProjection(coordinator *Coordinator, projection Projection) {
-	coordinator.runs, coordinator.segments.runs = projection, projection
+func useRunProjection(coordinator *testRuns, projection Projection) {
+	coordinator.runs, coordinator.cancellations.runs, coordinator.segments.runs = projection, projection, projection
 }

@@ -50,6 +50,10 @@ type AutonomousRuns interface {
 	WaitSessionStartable(ctx context.Context, sessionID string) error
 	AdmitSelection(ctx context.Context, selection modelchoice.Selection) error
 	Start(ctx context.Context, cmd runs.StartCommand) (runs.StartResult, error)
+}
+
+// RunCancellations stops a Goal's autonomous Run when the drive is superseded.
+type RunCancellations interface {
 	// Cancel returns after the Run has reached its complete terminal boundary.
 	Cancel(ctx context.Context, cmd runs.CancelCommand) (runs.CancelResult, error)
 }
@@ -83,6 +87,7 @@ type RunInstructionBuilder func(RunInstructionInput) string
 type Driver struct {
 	goals          Store
 	runs           AutonomousRuns
+	cancellations  RunCancellations
 	sessions       SessionExistence
 	tasks          *taskgroup.Group
 	now            func() time.Time
@@ -97,6 +102,7 @@ type Driver struct {
 func NewDriver(
 	store Store,
 	autonomousRuns AutonomousRuns,
+	cancellations RunCancellations,
 	sessions SessionExistence,
 	mutations *SessionMutations,
 	instructions RunInstructionBuilder,
@@ -106,6 +112,9 @@ func NewDriver(
 	}
 	if lo.IsNil(autonomousRuns) {
 		return nil, errors.New("goals: autonomous runs are required")
+	}
+	if lo.IsNil(cancellations) {
+		return nil, errors.New("goals: run cancellations are required")
 	}
 	if lo.IsNil(sessions) {
 		return nil, errors.New("goals: session policy reader is required")
@@ -119,6 +128,7 @@ func NewDriver(
 	return &Driver{
 		goals:          store,
 		runs:           autonomousRuns,
+		cancellations:  cancellations,
 		sessions:       sessions,
 		tasks:          &taskgroup.Group{},
 		now:            time.Now,

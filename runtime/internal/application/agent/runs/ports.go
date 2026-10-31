@@ -267,11 +267,10 @@ type terminationCommitter interface {
 // SessionPorts groups independently consumed Session-side capabilities for
 // composition. Coordinator stores each capability separately.
 type SessionPorts struct {
-	Reader       sessionReader
-	Creator      sessionCreator
-	ActiveRuns   activeRunReader
-	Interrupts   pendingInterruptReader
-	Terminations terminationCommitter
+	Reader     sessionReader
+	Creator    sessionCreator
+	ActiveRuns activeRunReader
+	Interrupts pendingInterruptReader
 }
 
 // Projection is the run use cases' durable Run read. Run answers point

@@ -189,7 +189,7 @@ func TestGoalDriveAwaitReturnsCompletedOutcomeAfterCallerCancellation(t *testing
 }
 
 func TestGoalRunCleanupAcceptsAnAlreadyTerminalRun(t *testing.T) {
-	driver := &Driver{runs: alreadyTerminalRuns{}}
+	driver := &Driver{cancellations: alreadyTerminalRuns{}}
 
 	if err := driver.cancelRun(t.Context(), "run_1"); err != nil {
 		t.Fatalf("cancelRun after terminal commit: %v", err)

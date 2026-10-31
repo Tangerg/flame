@@ -31,13 +31,13 @@ func TestLiveChildCancellationReleasesClaimWhenExecutorTeardownFails(t *testing.
 			return teardownErr
 		},
 	}
-	coordinator := mustNewCoordinator(Dependencies{RunningSubtreeCanceler: control})
+	coordinator := mustNewTestCoordinator(testDeps{cancellationOnly: cancellationOnly{RunningSubtreeCanceler: control}})
 	live := testRunTreeOwner(t, nil)
 	if _, err := live.beginExecution(t.Context(), nil); err != nil {
 		t.Fatal(err)
 	}
 
-	_, err := coordinator.cancelLiveChild(
+	_, err := coordinator.cancellations.cancelLiveChild(
 		CancelCommand{
 			RunID:         plan.target.run.ID(),
 			Reason:        "stop child",
@@ -68,13 +68,15 @@ func TestLiveRootCancellationRetainsFailedSettlement(t *testing.T) {
 	cleanupErr := errors.New("executor cleanup failed")
 	executor := &fakeExecutor{block: true, releaseErr: cleanupErr}
 	coordinator := testCoordinator(executor, &fakeEffects{})
-	coordinator.rootCancellation = executor
+	coordinator.cancellations.rootCancellation = executor
 	sessions := &fakeRunSessions{}
 	coordinator.sessionReader = sessions
+	coordinator.cancellations.sessionReader = coordinator.sessionReader
 	coordinator.sessionCreator = sessions
 	coordinator.activeRuns = sessions
 	coordinator.interrupts = sessions
-	coordinator.terminations = sessions
+	coordinator.cancellations.interrupts = coordinator.interrupts
+	coordinator.cancellations.terminations = sessions
 	useRunProjection(coordinator, &fakeRunProjection{runs: map[string]run.Run{"run_1": runForSegment(testSegment())}})
 	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {

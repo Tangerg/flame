@@ -310,9 +310,9 @@ func TestPublishWaitingChildCancellationInvalidatesExactReadSet(t *testing.T) {
 				t.Fatalf("prepare waiting cancellation: %v", err)
 			}
 			invalidations := &invalidationRecorder{}
-			coordinator := &Coordinator{segments: &Segments{publications: runPublications{invalidations: invalidations.publish}}}
+			cancellations := &Cancellations{segments: &Segments{publications: runPublications{invalidations: invalidations.publish}}}
 
-			coordinator.publishWaitingChildCancellation(plan, transformation)
+			cancellations.publishWaitingChildCancellation(plan, transformation)
 
 			want := []invalidation.Notice{
 				invalidation.InSession(invalidation.Runs, plan.root.run.SessionID(), test.affectedRunIDs...),
@@ -847,7 +847,7 @@ func waitingCancellationCoordinator(
 		ExecutionObserver
 		ExecutionReleaser
 	},
-) (*Coordinator, *fakeExecutionPorts) {
+) (*testRuns, *fakeExecutionPorts) {
 	t.Helper()
 	runsByID := make(map[string]run.Run)
 	for _, member := range append(slices.Clone(plan.targetSubtree), plan.survivingTree...) {

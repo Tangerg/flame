@@ -512,7 +512,7 @@ func (d *Driver) settleOwned(ctx context.Context, current *goal.Goal) (runSettle
 func (d *Driver) cancelRun(ctx context.Context, runID string) error {
 	cancelCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), goalRunCleanupTimeout)
 	defer cancel()
-	_, err := d.runs.Cancel(cancelCtx, runs.CancelCommand{
+	_, err := d.cancellations.Cancel(cancelCtx, runs.CancelCommand{
 		RunID:  runID,
 		Reason: "autonomous goal stopped",
 	})
