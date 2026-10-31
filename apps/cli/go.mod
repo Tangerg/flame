@@ -29,7 +29,6 @@ require (
 	github.com/go-chi/cors v1.2.2 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-resty/resty/v2 v2.17.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/google/jsonschema-go v0.4.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -62,7 +61,6 @@ require (
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.6 // indirect
 	golang.org/x/image v0.47.0 // indirect
-	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
@@ -76,10 +74,10 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.audit-merge.1
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261031.audit-fix.1
 	github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1
-	github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.audit-merge.1
-	github.com/Tangerg/flame/runtime v0.1.0-quality.20261030.audit-merge.1
+	github.com/Tangerg/flame/qimu v0.1.0-quality.20261031.audit-fix.1
+	github.com/Tangerg/flame/runtime v0.1.0-quality.20261031.audit-fix.1
 	github.com/Tangerg/oolong/components v0.25.0
 	github.com/Tangerg/oolong/core v0.25.0
 	github.com/Tangerg/oolong/highlight v0.25.0
