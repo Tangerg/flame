@@ -89,35 +89,30 @@ func (p PortableRun) rootID() string {
 	return p.ID
 }
 
-// validateLineage checks the identity rules a schema cannot: a root carries its
-// capabilities, a child carries none of its own, and a
-// child's edges name other runs in the same session rather than itself.
+// lineage restores the Run's lineage and checks the identity rules a schema
+// cannot: a root carries its capabilities and a child carries none of its own.
 //
 // These are not shape rules — JSON Schema cannot compare two fields, and "root"
 // is the ABSENCE of the child edges, which no presence rule can condition on — so
 // they belong to the transaction that turns an archive into a session.
-func (p PortableRun) validateLineage() error {
-	lineage := run.Lineage{
-		SpawnedByItemID: p.SpawnedByItemID,
-		ParentRunID:     p.ParentRunID,
-		RootRunID:       p.RootRunID,
-	}
-	if err := lineage.Validate(p.ID); err != nil {
-		return err
+func (p PortableRun) lineage() (run.Lineage, error) {
+	lineage, err := run.NewLineage(p.SpawnedByItemID, p.ParentRunID, p.RootRunID)
+	if err != nil {
+		return run.Lineage{}, err
 	}
 	if lineage.IsRoot() {
 		if p.Capabilities == nil {
-			return fmt.Errorf("root run %q carries no capabilities", p.ID)
+			return run.Lineage{}, fmt.Errorf("root run %q carries no capabilities", p.ID)
 		}
 		if _, known := p.MessageMark.Count(); !known {
-			return fmt.Errorf("root run %q carries no conversation watermark", p.ID)
+			return run.Lineage{}, fmt.Errorf("root run %q carries no conversation watermark", p.ID)
 		}
-		return nil
+		return lineage, nil
 	}
 	if p.Capabilities != nil {
-		return fmt.Errorf("child run %q carries capabilities of its own", p.ID)
+		return run.Lineage{}, fmt.Errorf("child run %q carries capabilities of its own", p.ID)
 	}
-	return nil
+	return lineage, nil
 }
 
 // CanonicalSnapshot rebuilds and validates the canonical aggregate from a
@@ -144,7 +139,8 @@ func (p PortableSnapshot) CanonicalSnapshot() (Snapshot, error) {
 		}
 	}
 	for _, portable := range p.Runs {
-		if err := portable.validateLineage(); err != nil {
+		lineage, err := portable.lineage()
+		if err != nil {
 			return Snapshot{}, fmt.Errorf("%w: %w", ErrInvalidPortableSnapshot, err)
 		}
 		if _, known := capabilitySets[portable.rootID()]; !known {
@@ -152,13 +148,9 @@ func (p PortableSnapshot) CanonicalSnapshot() (Snapshot, error) {
 				ErrInvalidPortableSnapshot, portable.ID, portable.rootID())
 		}
 		restored, err := run.Restore(run.Snapshot{
-			SessionID: portable.SessionID,
-			ID:        portable.ID,
-			Lineage: run.Lineage{
-				SpawnedByItemID: portable.SpawnedByItemID,
-				ParentRunID:     portable.ParentRunID,
-				RootRunID:       portable.RootRunID,
-			},
+			SessionID:         portable.SessionID,
+			ID:                portable.ID,
+			Lineage:           lineage,
 			ModelSelection:    portable.Selection,
 			State:             run.Finished,
 			Ending:            portable.Ending,
@@ -270,9 +262,9 @@ func (s Snapshot) PortableSnapshot() (PortableSnapshot, error) {
 		portableRun := PortableRun{
 			SessionID:         run.SessionID(),
 			ID:                run.ID(),
-			SpawnedByItemID:   run.Lineage().SpawnedByItemID,
-			ParentRunID:       run.Lineage().ParentRunID,
-			RootRunID:         run.Lineage().RootRunID,
+			SpawnedByItemID:   run.Lineage().SpawnedByItemID(),
+			ParentRunID:       run.Lineage().ParentRunID(),
+			RootRunID:         run.Lineage().RootRunID(),
 			Selection:         run.ModelSelection(),
 			Ending:            ending,
 			UnresolvedEffects: run.UnresolvedEffects(),

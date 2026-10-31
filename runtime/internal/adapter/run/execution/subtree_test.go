@@ -151,8 +151,8 @@ func waitingDelegateContinuation(barrier runs.TreeBarrierCommit, workspace strin
 	for _, member := range pending.Continuations {
 		members = append(members, runs.ExecutionMember{
 			RunID: member.RunID, MemberID: member.MemberID,
-			ParentRunID:     parked[member.RunID].Lineage().ParentRunID,
-			SpawnedByItemID: parked[member.RunID].Lineage().SpawnedByItemID,
+			ParentRunID:     parked[member.RunID].Lineage().ParentRunID(),
+			SpawnedByItemID: parked[member.RunID].Lineage().SpawnedByItemID(),
 			ModelSelection:  parked[member.RunID].ModelSelection(), Metrics: parked[member.RunID].Metrics(),
 			DrainedTools: slices.Clone(member.DrainedTools),
 		})

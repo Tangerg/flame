@@ -681,13 +681,11 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 	}); err != nil {
 		t.Fatalf("admit root: %v", err)
 	}
-	lineage := run.Lineage{
-		SpawnedByItemID: "item_spawn_child", ParentRunID: "run_root", RootRunID: "run_root",
-	}
+	lineage := testsupport.ChildLineage("item_spawn_child", "run_root", "run_root")
 	if err := runStore.Admit(ctx, run.Draft{
 		RunID: "run_child", SessionID: "session_1", SegmentID: "segment_child",
-		SpawnedByItemID: lineage.SpawnedByItemID, ParentRunID: lineage.ParentRunID,
-		RootRunID: lineage.RootRunID, ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
+		SpawnedByItemID: lineage.SpawnedByItemID(), ParentRunID: lineage.ParentRunID(),
+		RootRunID: lineage.RootRunID(), ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}); err != nil {
 		t.Fatalf("admit child: %v", err)
 	}
@@ -804,9 +802,7 @@ func waitingTestSessionRun(
 		State: run.Waiting,
 
 		CreatedAt:   createdAt,
-		MessageMark: run.UnknownMessageMark(), Lineage: run.Lineage{SpawnedByItemID: lineage.SpawnedByItemID,
-			ParentRunID: lineage.ParentRunID,
-			RootRunID:   lineage.RootRunID}})
+		MessageMark: run.UnknownMessageMark(), Lineage: testsupport.ChildLineage(lineage.SpawnedByItemID(), lineage.ParentRunID(), lineage.RootRunID())})
 
 }
 
@@ -1618,21 +1614,9 @@ func newWaitingCancellationSQLiteFixtureAt(
 	createdAt := time.Date(2026, 7, 30, 1, 2, 3, 0, time.UTC)
 	finishedAt := createdAt.Add(time.Minute)
 	rootLineage := run.Lineage{}
-	childLineage := run.Lineage{
-		SpawnedByItemID: "item_spawn_child",
-		ParentRunID:     "run_root",
-		RootRunID:       "run_root",
-	}
-	grandchildLineage := run.Lineage{
-		SpawnedByItemID: "item_spawn_grandchild",
-		ParentRunID:     "run_child",
-		RootRunID:       "run_root",
-	}
-	siblingLineage := run.Lineage{
-		SpawnedByItemID: "item_spawn_sibling",
-		ParentRunID:     "run_root",
-		RootRunID:       "run_root",
-	}
+	childLineage := testsupport.ChildLineage("item_spawn_child", "run_root", "run_root")
+	grandchildLineage := testsupport.ChildLineage("item_spawn_grandchild", "run_child", "run_root")
+	siblingLineage := testsupport.ChildLineage("item_spawn_sibling", "run_root", "run_root")
 	state := db.Runs
 	capabilities := run.Capabilities{
 		ChildRuns:      true,
@@ -1649,8 +1633,8 @@ func newWaitingCancellationSQLiteFixtureAt(
 	transcriptStore := db.Transcript
 	parentItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID:  "session_1",
-		ID:         childLineage.SpawnedByItemID,
-		RunID:      childLineage.ParentRunID,
+		ID:         childLineage.SpawnedByItemID(),
+		RunID:      childLineage.ParentRunID(),
 		Status:     transcript.ItemRunning,
 		Kind:       transcript.ToolCall,
 		OccurredAt: createdAt,
@@ -1663,9 +1647,9 @@ func newWaitingCancellationSQLiteFixtureAt(
 		RunID:           "run_child",
 		SessionID:       "session_1",
 		SegmentID:       "segment_child",
-		SpawnedByItemID: childLineage.SpawnedByItemID,
-		ParentRunID:     childLineage.ParentRunID,
-		RootRunID:       childLineage.RootRunID,
+		SpawnedByItemID: childLineage.SpawnedByItemID(),
+		ParentRunID:     childLineage.ParentRunID(),
+		RootRunID:       childLineage.RootRunID(),
 		ModelSelection:  testsupport.DefaultModelSelection(),
 		CreatedAt:       createdAt,
 	}); admitErr != nil {
@@ -1675,9 +1659,9 @@ func newWaitingCancellationSQLiteFixtureAt(
 		RunID:           "run_grandchild",
 		SessionID:       "session_1",
 		SegmentID:       "segment_grandchild",
-		SpawnedByItemID: grandchildLineage.SpawnedByItemID,
-		ParentRunID:     grandchildLineage.ParentRunID,
-		RootRunID:       grandchildLineage.RootRunID,
+		SpawnedByItemID: grandchildLineage.SpawnedByItemID(),
+		ParentRunID:     grandchildLineage.ParentRunID(),
+		RootRunID:       grandchildLineage.RootRunID(),
 		ModelSelection:  testsupport.DefaultModelSelection(),
 		CreatedAt:       createdAt,
 	}); admitErr != nil {
@@ -1688,9 +1672,9 @@ func newWaitingCancellationSQLiteFixtureAt(
 			RunID:           "run_sibling",
 			SessionID:       "session_1",
 			SegmentID:       "segment_sibling",
-			SpawnedByItemID: siblingLineage.SpawnedByItemID,
-			ParentRunID:     siblingLineage.ParentRunID,
-			RootRunID:       siblingLineage.RootRunID,
+			SpawnedByItemID: siblingLineage.SpawnedByItemID(),
+			ParentRunID:     siblingLineage.ParentRunID(),
+			RootRunID:       siblingLineage.RootRunID(),
 			ModelSelection:  testsupport.DefaultModelSelection(),
 			CreatedAt:       createdAt,
 		}); admitErr != nil {

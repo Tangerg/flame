@@ -238,12 +238,12 @@ func validateCancellationMemberBindings(
 		if !binding.hasMember {
 			continue
 		}
-		parent := bindings[run.Lineage().ParentRunID]
+		parent := bindings[run.Lineage().ParentRunID()]
 		if !parent.hasMember {
 			return fmt.Errorf(
 				"runs: build cancellation plan: child Run %q has no bound parent Run %q",
 				runID,
-				run.Lineage().ParentRunID,
+				run.Lineage().ParentRunID(),
 			)
 		}
 	}

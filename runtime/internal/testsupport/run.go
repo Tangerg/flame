@@ -201,3 +201,13 @@ func OptionalCost(usd *float64) accounting.Cost {
 	}
 	return cost
 }
+
+// ChildLineage builds a child Run's lineage; an invalid edge set is a broken
+// fixture, so it panics.
+func ChildLineage(spawnedByItemID, parentRunID, rootRunID string) run.Lineage {
+	lineage, err := run.NewLineage(spawnedByItemID, parentRunID, rootRunID)
+	if err != nil {
+		panic(err)
+	}
+	return lineage
+}

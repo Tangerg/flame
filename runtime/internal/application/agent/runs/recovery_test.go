@@ -190,9 +190,7 @@ func TestRecoveryRejectsActiveOpenToolWithoutItsRunningItem(t *testing.T) {
 		ID: "run_child", SessionID: root.SessionID(), State: rundomain.Running,
 		ActiveSegmentID: "segment_child", CreatedAt: createdAt,
 		MessageMark: rundomain.UnknownMessageMark(),
-		Lineage: rundomain.Lineage{
-			ParentRunID: root.ID(), RootRunID: root.ID(), SpawnedByItemID: "item_spawn",
-		},
+		Lineage:     testsupport.ChildLineage("item_spawn", root.ID(), root.ID()),
 	})
 	open := OpenToolInvocation{
 		SessionID: root.SessionID(), RunID: root.ID(), SegmentID: root.ActiveSegmentID(),
@@ -338,9 +336,7 @@ func TestRecoveryRejectsIncoherentActiveTreeBeforePlanning(t *testing.T) {
 		ID: "run_child", SessionID: root.SessionID(), State: rundomain.Running,
 		ActiveSegmentID: "segment_child", CreatedAt: createdAt,
 		MessageMark: rundomain.UnknownMessageMark(),
-		Lineage: rundomain.Lineage{
-			SpawnedByItemID: "item_spawn", ParentRunID: root.ID(), RootRunID: root.ID(),
-		},
+		Lineage:     testsupport.ChildLineage("item_spawn", root.ID(), root.ID()),
 	})
 	for _, test := range []struct {
 		name   string
@@ -352,10 +348,10 @@ func TestRecoveryRejectsIncoherentActiveTreeBeforePlanning(t *testing.T) {
 			snapshot.ActiveSegmentID = ""
 		}, "while root Run"},
 		{"missing parent", func(snapshot *rundomain.Snapshot) {
-			snapshot.Lineage.ParentRunID = "run_missing"
+			snapshot.Lineage = testsupport.ChildLineage(snapshot.Lineage.SpawnedByItemID(), "run_missing", snapshot.Lineage.RootRunID())
 		}, "unknown parent"},
 		{"missing root", func(snapshot *rundomain.Snapshot) {
-			snapshot.Lineage.RootRunID = "run_missing"
+			snapshot.Lineage = testsupport.ChildLineage(snapshot.Lineage.SpawnedByItemID(), snapshot.Lineage.ParentRunID(), "run_missing")
 		}, "is missing"},
 		{"foreign Session", func(snapshot *rundomain.Snapshot) {
 			snapshot.SessionID = "session_foreign"
@@ -753,8 +749,7 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 
 	child := testsupport.MustRestoreRun(rundomain.Snapshot{ID: "run_child", SessionID: root.SessionID(), State: rundomain.Running,
 		ActiveSegmentID: "segment_child",
-		CreatedAt:       createdAt, MessageMark: rundomain.UnknownMessageMark(), Lineage: rundomain.Lineage{ParentRunID: root.ID(), RootRunID: root.ID(),
-			SpawnedByItemID: "item_spawn"}})
+		CreatedAt:       createdAt, MessageMark: rundomain.UnknownMessageMark(), Lineage: testsupport.ChildLineage("item_spawn", root.ID(), root.ID())})
 
 	item := testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_running", SessionID: root.SessionID(), RunID: child.ID(),

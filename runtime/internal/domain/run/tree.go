@@ -119,17 +119,17 @@ func (r *runTreeBuilder) addMember(index int, member TreeMember) error {
 			r.rootRunID,
 		)
 	}
-	if member.Lineage.RootRunID != r.rootRunID {
+	if member.Lineage.RootRunID() != r.rootRunID {
 		return fmt.Errorf(
 			"%w: child run %q names root %q, want %q",
 			ErrInvalidTree,
 			member.RunID,
-			member.Lineage.RootRunID,
+			member.Lineage.RootRunID(),
 			r.rootRunID,
 		)
 	}
-	r.children[member.Lineage.ParentRunID] = append(
-		r.children[member.Lineage.ParentRunID],
+	r.children[member.Lineage.ParentRunID()] = append(
+		r.children[member.Lineage.ParentRunID()],
 		member.RunID,
 	)
 	return nil
@@ -140,12 +140,12 @@ func (r *runTreeBuilder) validateParents() error {
 		if lineage.IsRoot() {
 			continue
 		}
-		if _, exists := r.lineages[lineage.ParentRunID]; !exists {
+		if _, exists := r.lineages[lineage.ParentRunID()]; !exists {
 			return fmt.Errorf(
 				"%w: child run %q names unknown parent %q",
 				ErrInvalidTree,
 				runID,
-				lineage.ParentRunID,
+				lineage.ParentRunID(),
 			)
 		}
 	}

@@ -53,7 +53,7 @@ func (f *fakeRunProjection) Tree(_ context.Context, runID string) ([]run.Run, er
 	rootRunID := target.Lineage().TreeRootID(target.ID())
 	var tree []run.Run
 	for _, record := range f.runs {
-		if record.ID() == rootRunID || record.Lineage().RootRunID == rootRunID {
+		if record.ID() == rootRunID || record.Lineage().RootRunID() == rootRunID {
 			tree = append(tree, record)
 		}
 	}
@@ -61,10 +61,9 @@ func (f *fakeRunProjection) Tree(_ context.Context, runID string) ([]run.Run, er
 }
 
 func runRecord(state run.State, activeSegmentID, spawnedBy string) run.Run {
-	lineage := run.Lineage{SpawnedByItemID: spawnedBy}
+	lineage := run.Lineage{}
 	if spawnedBy != "" {
-		lineage.ParentRunID = "run_parent"
-		lineage.RootRunID = "run_root"
+		lineage = testsupport.ChildLineage(spawnedBy, "run_parent", "run_root")
 	}
 	return testsupport.MustRestoreRun(run.Snapshot{
 		ID: testRunID, SessionID: "ses_1", State: state,

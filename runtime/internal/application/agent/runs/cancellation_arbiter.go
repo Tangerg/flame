@@ -78,8 +78,8 @@ func (r *runTreeOwner) beginChildCancellation(
 	}
 	attempt := &childCancellation{
 		targetRunID:    plan.target.run.ID(),
-		parentRunID:    plan.target.run.Lineage().ParentRunID,
-		spawningItemID: plan.target.run.Lineage().SpawnedByItemID,
+		parentRunID:    plan.target.run.Lineage().ParentRunID(),
+		spawningItemID: plan.target.run.Lineage().SpawnedByItemID(),
 		reason:         reason,
 		targetRunIDs:   targetRunIDs,
 		done:           make(chan struct{}),

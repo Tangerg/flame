@@ -212,7 +212,7 @@ func cancellationTree(state run.State) []run.Run {
 	makeRun := func(id, parent string) run.Run {
 		lineage := run.Lineage{}
 		if parent != "" {
-			lineage = run.Lineage{SpawnedByItemID: "item_" + id, ParentRunID: parent, RootRunID: "run_root"}
+			lineage = testsupport.ChildLineage("item_"+id, parent, "run_root")
 		}
 		return testsupport.MustRestoreRun(run.Snapshot{ID: id, SessionID: "ses_1", State: state,
 			ActiveSegmentID: "segment_" + id, CreatedAt: createdAt,

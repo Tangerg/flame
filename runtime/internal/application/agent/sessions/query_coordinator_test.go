@@ -177,8 +177,8 @@ func (f *fakeRuns) RunsWithAncestors(_ context.Context, runIDs []string) ([]run.
 	wanted := slices.Clone(runIDs)
 	for index := 0; index < len(wanted); index++ {
 		for _, run := range f.runs {
-			if run.ID() == wanted[index] && run.Lineage().ParentRunID != "" && !slices.Contains(wanted, run.Lineage().ParentRunID) {
-				wanted = append(wanted, run.Lineage().ParentRunID)
+			if run.ID() == wanted[index] && run.Lineage().ParentRunID() != "" && !slices.Contains(wanted, run.Lineage().ParentRunID()) {
+				wanted = append(wanted, run.Lineage().ParentRunID())
 			}
 		}
 	}
@@ -554,14 +554,11 @@ func TestListItemPageScopedToARunReadsOnlyThatRun(t *testing.T) {
 
 func TestListItemPageScopesASubtreeAndIncludesAncestors(t *testing.T) {
 	root := testsupport.MustRestoreRun(run.Snapshot{ID: "run_root"})
-	child := testsupport.MustRestoreRun(run.Snapshot{ID: "run_child", Lineage: run.Lineage{SpawnedByItemID: "item_spawn_child",
-		ParentRunID: root.ID(), RootRunID: root.ID()}})
+	child := testsupport.MustRestoreRun(run.Snapshot{ID: "run_child", Lineage: testsupport.ChildLineage("item_spawn_child", root.ID(), root.ID())})
 
-	grandchild := testsupport.MustRestoreRun(run.Snapshot{ID: "run_grandchild", Lineage: run.Lineage{SpawnedByItemID: "item_spawn_grandchild",
-		ParentRunID: child.ID(), RootRunID: root.ID()}})
+	grandchild := testsupport.MustRestoreRun(run.Snapshot{ID: "run_grandchild", Lineage: testsupport.ChildLineage("item_spawn_grandchild", child.ID(), root.ID())})
 
-	sibling := testsupport.MustRestoreRun(run.Snapshot{ID: "run_sibling", Lineage: run.Lineage{SpawnedByItemID: "item_spawn_sibling",
-		ParentRunID: root.ID(), RootRunID: root.ID()}})
+	sibling := testsupport.MustRestoreRun(run.Snapshot{ID: "run_sibling", Lineage: testsupport.ChildLineage("item_spawn_sibling", root.ID(), root.ID())})
 
 	tx := &fakeTranscript{
 		items: []transcript.SequencedItem{
@@ -876,9 +873,7 @@ func TestListPendingInterruptPageFiltersByRootAndRefusesAChild(t *testing.T) {
 		Transcript: &fakeTranscript{items: approvalItemsFor("ses_1", ints.pending...)},
 		Runs: &fakeRuns{history: []run.Run{
 			queryRun("run_1"),
-			testsupport.MustRestoreRun(run.Snapshot{ID: "run_child", Lineage: run.Lineage{
-				SpawnedByItemID: "it_spawn", ParentRunID: "run_1", RootRunID: "run_1",
-			}}),
+			testsupport.MustRestoreRun(run.Snapshot{ID: "run_child", Lineage: testsupport.ChildLineage("it_spawn", "run_1", "run_1")}),
 		}},
 		Interrupts: ints,
 		Sessions:   &fakeSessions{},
@@ -982,12 +977,10 @@ func TestListRunPageReturnsEveryStatusUntilFiltered(t *testing.T) {
 func TestListRunPageIncludesDescendantsAndBindsTheCursor(t *testing.T) {
 	root := testsupport.MustRestoreRun(run.Snapshot{ID: "run_root", CreatedAt: time.Unix(0, 1).UTC()})
 	child := testsupport.MustRestoreRun(run.Snapshot{ID: "run_child",
-		CreatedAt: time.Unix(0, 2).UTC(), Lineage: run.Lineage{SpawnedByItemID: "item_spawn_child",
-			ParentRunID: root.ID(), RootRunID: root.ID()}})
+		CreatedAt: time.Unix(0, 2).UTC(), Lineage: testsupport.ChildLineage("item_spawn_child", root.ID(), root.ID())})
 
 	grandchild := testsupport.MustRestoreRun(run.Snapshot{ID: "run_grandchild",
-		CreatedAt: time.Unix(0, 3).UTC(), Lineage: run.Lineage{SpawnedByItemID: "item_spawn_grandchild",
-			ParentRunID: child.ID(), RootRunID: root.ID()}})
+		CreatedAt: time.Unix(0, 3).UTC(), Lineage: testsupport.ChildLineage("item_spawn_grandchild", child.ID(), root.ID())})
 
 	runs := &fakeRuns{history: []run.Run{grandchild, child, root}}
 	c := newQueryCoordinator(t, QueryDependencies{Transcript: &fakeTranscript{}, Runs: runs, Sessions: &fakeSessions{}})

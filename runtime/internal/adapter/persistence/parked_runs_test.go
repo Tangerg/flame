@@ -18,11 +18,7 @@ func seedParkedRuns(t *testing.T, db *sql.DB, sessionID string, pending runs.Pen
 	for index, continuation := range pending.Continuations {
 		members[index] = testsupport.ParkedMember{RunID: continuation.RunID}
 		if continuation.RunID != pending.RootRunID {
-			members[index].Lineage = run.Lineage{
-				SpawnedByItemID: "item_spawn_" + strings.TrimPrefix(continuation.RunID, "run_"),
-				ParentRunID:     pending.RootRunID,
-				RootRunID:       pending.RootRunID,
-			}
+			members[index].Lineage = testsupport.ChildLineage("item_spawn_"+strings.TrimPrefix(continuation.RunID, "run_"), pending.RootRunID, pending.RootRunID)
 		}
 	}
 	testsupport.SeedParkedRuns(t, db, sessionID, pending.RootRunID, "", run.Capabilities{}, members)

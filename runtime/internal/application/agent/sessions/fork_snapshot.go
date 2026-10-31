@@ -126,17 +126,13 @@ func (projection *forkSnapshotProjection) remapLineage(
 	if !lineage.IsChild() {
 		return lineage, nil
 	}
-	spawnedBy, itemFound := projection.itemIDs[lineage.SpawnedByItemID]
-	parentID, parentFound := projection.runIDs[lineage.ParentRunID]
-	rootID, rootFound := projection.runIDs[lineage.RootRunID]
+	spawnedBy, itemFound := projection.itemIDs[lineage.SpawnedByItemID()]
+	parentID, parentFound := projection.runIDs[lineage.ParentRunID()]
+	rootID, rootFound := projection.runIDs[lineage.RootRunID()]
 	if !itemFound || !parentFound || !rootFound {
 		return run.Lineage{}, fmt.Errorf("sessions: fork run %q has lineage outside the selected boundary", sourceID)
 	}
-	return run.Lineage{
-		SpawnedByItemID: spawnedBy,
-		ParentRunID:     parentID,
-		RootRunID:       rootID,
-	}, nil
+	return run.NewLineage(spawnedBy, parentID, rootID)
 }
 
 func (projection *forkSnapshotProjection) copyItems() error {

@@ -549,7 +549,7 @@ func (c *Coordinator) publishWaitingChildCancellation(
 	for _, runID := range transformation.canceledRunIDs {
 		appendRunID(runID)
 	}
-	appendRunID(plan.target.run.Lineage().ParentRunID)
+	appendRunID(plan.target.run.Lineage().ParentRunID())
 	if transformation.remaining == nil {
 		for _, continuation := range transformation.continuation.continuations {
 			appendRunID(continuation.RunID)

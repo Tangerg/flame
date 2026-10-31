@@ -89,7 +89,7 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 			   capabilities, message_mark, created_at, updated_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			admitted.ID(), admitted.SessionID(),
-			lineage.SpawnedByItemID, lineage.ParentRunID, lineage.RootRunID,
+			lineage.SpawnedByItemID(), lineage.ParentRunID(), lineage.RootRunID(),
 			string(rundomain.Running), admitted.ActiveSegmentID(),
 			admitted.ModelSelection().Provider(), admitted.ModelSelection().Model(), admitted.ModelSelection().ReasoningEffort(),
 			admitted.GoalIncarnationID(),
@@ -652,8 +652,8 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 			"restore",
 			value.ID(),
 			value.SessionID(),
-			lineage.ParentRunID,
-			lineage.RootRunID,
+			lineage.ParentRunID(),
+			lineage.RootRunID(),
 			false,
 		); err != nil {
 			return err
@@ -685,7 +685,7 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 		   capabilities, message_mark, created_at, finished_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		value.ID(), value.SessionID(),
-		lineage.SpawnedByItemID, lineage.ParentRunID, lineage.RootRunID,
+		lineage.SpawnedByItemID(), lineage.ParentRunID(), lineage.RootRunID(),
 		string(value.State()), outcome,
 		selection.Provider(), selection.Model(), selection.ReasoningEffort(),
 		value.GoalIncarnationID(),

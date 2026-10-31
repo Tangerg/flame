@@ -1746,9 +1746,7 @@ func projectAdmittedChildRun(
 		Capabilities:    draft.Capabilities,
 		CreatedAt:       draft.CreatedAt,
 		UpdatedAt:       draft.CreatedAt,
-		MessageMark:     run.UnknownMessageMark(), Lineage: run.Lineage{SpawnedByItemID: draft.SpawnedByItemID,
-			ParentRunID: draft.ParentRunID,
-			RootRunID:   draft.RootRunID}})
+		MessageMark:     run.UnknownMessageMark(), Lineage: testsupport.ChildLineage(draft.SpawnedByItemID, draft.ParentRunID, draft.RootRunID)})
 
 	projection.runs[child.ID()] = child
 	return child
@@ -1760,7 +1758,7 @@ func requireCanceledChildResult(t *testing.T, result CancelResult, child run.Run
 		!runHasOutcome(result.Run, run.OutcomeCanceled) || result.Run.Detail() != reason {
 		t.Fatalf("child result = %+v, want exact canceled terminal", result.Run)
 	}
-	rootRunID := child.Lineage().RootRunID
+	rootRunID := child.Lineage().RootRunID()
 	if result.RootRun == nil || result.RootRun.ID() != rootRunID || result.RootRun.State() != run.Running {
 		t.Fatalf("root result = %+v, want still-running %s", result.RootRun, rootRunID)
 	}
@@ -1780,7 +1778,7 @@ func requireChildCancellationProjection(
 		}
 		for _, item := range commit.Items {
 			failure, failed := testsupport.FailureOf(item.Item())
-			if item.Item().ID() == child.Lineage().SpawnedByItemID && item.Item().Status() == transcript.ItemIncomplete &&
+			if item.Item().ID() == child.Lineage().SpawnedByItemID() && item.Item().Status() == transcript.ItemIncomplete &&
 				failed && failure.Kind == tool.FailureChildRunCanceled && failure.Detail == reason {
 				parentCancellationItems++
 			}

@@ -66,11 +66,11 @@ func (c *Coordinator) loadWaitingCancellationSpawningItem(
 	ctx context.Context,
 	plan *cancellationPlan,
 ) error {
-	item, found, err := c.items.Item(ctx, plan.target.run.Lineage().SpawnedByItemID)
+	item, found, err := c.items.Item(ctx, plan.target.run.Lineage().SpawnedByItemID())
 	if err != nil {
 		return fmt.Errorf(
 			"runs: read spawning Item %q: %w",
-			plan.target.run.Lineage().SpawnedByItemID,
+			plan.target.run.Lineage().SpawnedByItemID(),
 			err,
 		)
 	}
@@ -78,7 +78,7 @@ func (c *Coordinator) loadWaitingCancellationSpawningItem(
 		return fmt.Errorf(
 			"runs: waiting child Run %q spawning Item %q is missing",
 			plan.target.run.ID(),
-			plan.target.run.Lineage().SpawnedByItemID,
+			plan.target.run.Lineage().SpawnedByItemID(),
 		)
 	}
 	if err := validateWaitingCancellationSpawningItem(*plan, item); err != nil {
@@ -99,12 +99,12 @@ func cancellationTargetRunIDs(subtree []cancellationRun) map[string]struct{} {
 
 func validateWaitingCancellationSpawningItem(plan cancellationPlan, item transcript.Item) error {
 	switch {
-	case item.ID() != plan.target.run.Lineage().SpawnedByItemID:
+	case item.ID() != plan.target.run.Lineage().SpawnedByItemID():
 		return fmt.Errorf(
 			"runs: waiting child Run %q resolved spawning Item %q, want %q",
 			plan.target.run.ID(),
 			item.ID(),
-			plan.target.run.Lineage().SpawnedByItemID,
+			plan.target.run.Lineage().SpawnedByItemID(),
 		)
 	case item.SessionID() != plan.root.run.SessionID():
 		return fmt.Errorf(
@@ -113,12 +113,12 @@ func validateWaitingCancellationSpawningItem(plan cancellationPlan, item transcr
 			item.SessionID(),
 			plan.root.run.SessionID(),
 		)
-	case item.RunID() != plan.target.run.Lineage().ParentRunID:
+	case item.RunID() != plan.target.run.Lineage().ParentRunID():
 		return fmt.Errorf(
 			"runs: spawning Item %q belongs to Run %q, want parent Run %q",
 			item.ID(),
 			item.RunID(),
-			plan.target.run.Lineage().ParentRunID,
+			plan.target.run.Lineage().ParentRunID(),
 		)
 	case item.Kind() != transcript.ToolCall:
 		return fmt.Errorf("runs: spawning Item %q is not a tool call", item.ID())

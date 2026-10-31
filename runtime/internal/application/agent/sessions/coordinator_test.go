@@ -342,9 +342,7 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 	createdAt := time.Date(2026, 7, 17, 2, 0, 0, 0, time.UTC)
 	finishedAt := createdAt.Add(time.Minute)
 	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue child?", Kind: questioncontract.Text}}}
-	childLineage := run.Lineage{
-		SpawnedByItemID: "item_spawn", ParentRunID: "run_root", RootRunID: "run_root",
-	}
+	childLineage := testsupport.ChildLineage("item_spawn", "run_root", "run_root")
 	selection := testsupport.DefaultModelSelection()
 	capabilities := run.Capabilities{
 		ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptQuestion},

@@ -477,8 +477,8 @@ func TestRunAdmitSharesOneRootAdmissionAcrossTheTree(t *testing.T) {
 		if err != nil || !found {
 			t.Fatalf("read %s: found=%v err=%v", want.id, found, err)
 		}
-		if record.Lineage().ParentRunID != want.parentID ||
-			record.Lineage().RootRunID != "run_root" ||
+		if record.Lineage().ParentRunID() != want.parentID ||
+			record.Lineage().RootRunID() != "run_root" ||
 			!record.Capabilities().IsEmpty() {
 			t.Fatalf("run %s = %+v, want parent %s, root run_root, and no capabilities of its own", want.id, record, want.parentID)
 		}
@@ -985,13 +985,13 @@ func TestPageRunsSelectsRootsOrDescendants(t *testing.T) {
 	child := finishedRun("run_child", "ses_A", run.OutcomeCompleted)
 	child = withRunSnapshot(child, func(snapshot *run.Snapshot) {
 		snapshot.CreatedAt = time.Unix(0, 20).UTC()
-		snapshot.Lineage = run.Lineage{SpawnedByItemID: "it_spawn", ParentRunID: root.ID(), RootRunID: root.ID()}
+		snapshot.Lineage = testsupport.ChildLineage("it_spawn", root.ID(), root.ID())
 		snapshot.Capabilities = run.Capabilities{}
 	})
 	grandchild := finishedRun("run_grandchild", "ses_A", run.OutcomeCompleted)
 	grandchild = withRunSnapshot(grandchild, func(snapshot *run.Snapshot) {
 		snapshot.CreatedAt = time.Unix(0, 30).UTC()
-		snapshot.Lineage = run.Lineage{SpawnedByItemID: "it_spawn_grandchild", ParentRunID: child.ID(), RootRunID: root.ID()}
+		snapshot.Lineage = testsupport.ChildLineage("it_spawn_grandchild", child.ID(), root.ID())
 		snapshot.Capabilities = run.Capabilities{}
 	})
 	for _, record := range []run.Run{root, child, grandchild} {
@@ -1019,9 +1019,9 @@ func TestPageRunsSelectsRootsOrDescendants(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatalf("read child run: ok=%v err=%v", ok, err)
 	}
-	if found.Lineage().SpawnedByItemID != "it_spawn" ||
-		found.Lineage().ParentRunID != "run_root" ||
-		found.Lineage().RootRunID != "run_root" ||
+	if found.Lineage().SpawnedByItemID() != "it_spawn" ||
+		found.Lineage().ParentRunID() != "run_root" ||
+		found.Lineage().RootRunID() != "run_root" ||
 		found.SessionID() != "ses_A" {
 		t.Fatalf("child = %+v, want its complete lineage and session", found)
 	}
@@ -1044,17 +1044,17 @@ func TestPageRunTreeItemsUsesDurableParentEdges(t *testing.T) {
 	root := finishedRun("run_root", "ses_A", run.OutcomeCompleted)
 	child := finishedRun("run_child", "ses_A", run.OutcomeCompleted)
 	child = withRunSnapshot(child, func(snapshot *run.Snapshot) {
-		snapshot.Lineage = run.Lineage{SpawnedByItemID: "item_spawn_child", ParentRunID: root.ID(), RootRunID: root.ID()}
+		snapshot.Lineage = testsupport.ChildLineage("item_spawn_child", root.ID(), root.ID())
 		snapshot.Capabilities = run.Capabilities{}
 	})
 	grandchild := finishedRun("run_grandchild", "ses_A", run.OutcomeCompleted)
 	grandchild = withRunSnapshot(grandchild, func(snapshot *run.Snapshot) {
-		snapshot.Lineage = run.Lineage{SpawnedByItemID: "item_spawn_grandchild", ParentRunID: child.ID(), RootRunID: root.ID()}
+		snapshot.Lineage = testsupport.ChildLineage("item_spawn_grandchild", child.ID(), root.ID())
 		snapshot.Capabilities = run.Capabilities{}
 	})
 	sibling := finishedRun("run_sibling", "ses_A", run.OutcomeCompleted)
 	sibling = withRunSnapshot(sibling, func(snapshot *run.Snapshot) {
-		snapshot.Lineage = run.Lineage{SpawnedByItemID: "item_spawn_sibling", ParentRunID: root.ID(), RootRunID: root.ID()}
+		snapshot.Lineage = testsupport.ChildLineage("item_spawn_sibling", root.ID(), root.ID())
 		snapshot.Capabilities = run.Capabilities{}
 	})
 	for _, record := range []run.Run{root, child, grandchild, sibling} {

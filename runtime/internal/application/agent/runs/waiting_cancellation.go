@@ -312,7 +312,7 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 		}
 		clone := continuation
 		clone.DrainedTools = slices.Clone(continuation.DrainedTools)
-		if continuation.RunID == w.plan.target.run.Lineage().ParentRunID {
+		if continuation.RunID == w.plan.target.run.Lineage().ParentRunID() {
 			var matches []DrainedTool
 			for _, tool := range clone.DrainedTools {
 				if tool.ItemID == parentItem.ID() {

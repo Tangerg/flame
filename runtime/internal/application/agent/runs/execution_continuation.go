@@ -137,8 +137,8 @@ func waitingMembersFromPending(pending Pending, parked []run.Run) ([]ExecutionMe
 		}
 		members[index] = ExecutionMember{
 			RunID: continuation.RunID, MemberID: continuation.MemberID,
-			ParentRunID:     value.Lineage().ParentRunID,
-			SpawnedByItemID: value.Lineage().SpawnedByItemID,
+			ParentRunID:     value.Lineage().ParentRunID(),
+			SpawnedByItemID: value.Lineage().SpawnedByItemID(),
 			ModelSelection:  value.ModelSelection(), Metrics: value.Metrics(),
 			DrainedTools: continuation.DrainedTools,
 		}
@@ -254,10 +254,11 @@ func buildExecutionContinuationTopology(
 			if member.ParentRunID == "" {
 				return waitingContinuationTopology{}, fmt.Errorf("runs: waiting child Run %q has no parent", member.RunID)
 			}
-			lineage = run.Lineage{
-				SpawnedByItemID: member.SpawnedByItemID,
-				ParentRunID:     member.ParentRunID, RootRunID: continuation.RootRunID,
+			child, err := run.NewLineage(member.SpawnedByItemID, member.ParentRunID, continuation.RootRunID)
+			if err != nil {
+				return waitingContinuationTopology{}, fmt.Errorf("runs: waiting child Run %q: %w", member.RunID, err)
 			}
+			lineage = child
 		} else {
 			if member.ParentRunID != "" || rootMemberID != "" {
 				return waitingContinuationTopology{}, errors.New("runs: waiting continuation has an invalid root member")

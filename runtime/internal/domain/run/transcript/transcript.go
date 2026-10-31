@@ -210,7 +210,7 @@ func (t Timeline) ordered() ([]RunNode, error) {
 		if node.IsRoot() {
 			roots = append(roots, node)
 		} else {
-			children[node.Lineage.RootRunID] = append(children[node.Lineage.RootRunID], node)
+			children[node.Lineage.RootRunID()] = append(children[node.Lineage.RootRunID()], node)
 		}
 	}
 	slices.SortFunc(roots, byTime)
@@ -223,7 +223,7 @@ func (t Timeline) ordered() ([]RunNode, error) {
 	}
 	if len(children) > 0 {
 		orphan := children[slices.Min(slices.Collect(maps.Keys(children)))][0]
-		return nil, fmt.Errorf("timeline child Run %q has no root %q", orphan.ID, orphan.Lineage.RootRunID)
+		return nil, fmt.Errorf("timeline child Run %q has no root %q", orphan.ID, orphan.Lineage.RootRunID())
 	}
 	return nodes, nil
 }

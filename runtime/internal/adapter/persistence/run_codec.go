@@ -318,7 +318,10 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 	if err != nil {
 		return rundomain.Run{}, fmt.Errorf("run %q: %w", id, err)
 	}
-	lineage := rundomain.Lineage{SpawnedByItemID: spawnedByItemID, ParentRunID: parentRunID, RootRunID: rootRunID}
+	lineage, err := rundomain.NewLineage(spawnedByItemID, parentRunID, rootRunID)
+	if err != nil {
+		return rundomain.Run{}, fmt.Errorf("run %q: %w", id, err)
+	}
 	capabilitiesValue, err := decodeRunCapabilities(capabilities)
 	if err != nil {
 		return rundomain.Run{}, fmt.Errorf("run %q: %w", id, err)

@@ -62,7 +62,7 @@ func TestValidateSnapshotRejectsInconsistentPortableState(t *testing.T) {
 			appendRootedSnapshotRun(s, "run_2", "run_1", "item_2")
 			child := s.Runs[0].Snapshot()
 			child.ID = "run_3"
-			child.Lineage = run.Lineage{SpawnedByItemID: "item_3", ParentRunID: "run_2", RootRunID: "run_2"}
+			child.Lineage = testsupport.ChildLineage("item_3", "run_2", "run_2")
 			child.Capabilities = run.Capabilities{}
 			s.Runs = append(s.Runs, testsupport.MustRestoreRun(child))
 			s.Items = append(s.Items,
@@ -103,7 +103,7 @@ func TestValidateSnapshotRejectsInconsistentPortableState(t *testing.T) {
 func appendRootedSnapshotRun(snapshot *Snapshot, runID, parentRunID, spawningItemID string) {
 	child := snapshot.Runs[0].Snapshot()
 	child.ID = runID
-	child.Lineage = run.Lineage{SpawnedByItemID: spawningItemID, ParentRunID: parentRunID, RootRunID: "run_1"}
+	child.Lineage = testsupport.ChildLineage(spawningItemID, parentRunID, "run_1")
 	child.Capabilities = run.Capabilities{}
 	snapshot.Runs = append(snapshot.Runs, testsupport.MustRestoreRun(child))
 }
@@ -121,12 +121,12 @@ func TestRestorePlanOrdersRunTreeParentsBeforeChildren(t *testing.T) {
 	root := testsupport.MustRestoreRun(rootSnapshot)
 	childSnapshot := rootSnapshot
 	childSnapshot.ID = "run_child"
-	childSnapshot.Lineage = run.Lineage{SpawnedByItemID: "item_root_task", ParentRunID: "run_root", RootRunID: "run_root"}
+	childSnapshot.Lineage = testsupport.ChildLineage("item_root_task", "run_root", "run_root")
 	childSnapshot.Capabilities = run.Capabilities{}
 	child := testsupport.MustRestoreRun(childSnapshot)
 	grandchildSnapshot := rootSnapshot
 	grandchildSnapshot.ID = "run_grandchild"
-	grandchildSnapshot.Lineage = run.Lineage{SpawnedByItemID: "item_child_task", ParentRunID: "run_child", RootRunID: "run_root"}
+	grandchildSnapshot.Lineage = testsupport.ChildLineage("item_child_task", "run_child", "run_root")
 	grandchildSnapshot.Capabilities = run.Capabilities{}
 	grandchild := testsupport.MustRestoreRun(grandchildSnapshot)
 	snapshot.Runs = []run.Run{grandchild, child, root}

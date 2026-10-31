@@ -344,7 +344,7 @@ func TestUsageOfChargesDescendantsWithoutCountingAnotherGoalRun(t *testing.T) {
 	now := time.Unix(10, 0).UTC()
 	root := goalTestRun(t, "run_root", "inc_1", run.OutcomeCompleted, new(0.25), 2, now)
 	childSnapshot := goalTestRun(t, "run_child", "", run.OutcomeCanceled, new(0.5), 3, now).Snapshot()
-	childSnapshot.Lineage = run.Lineage{ParentRunID: root.ID(), RootRunID: root.ID(), SpawnedByItemID: "itm_delegate"}
+	childSnapshot.Lineage = testsupport.ChildLineage("itm_delegate", root.ID(), root.ID())
 	child, err := run.Restore(childSnapshot)
 	if err != nil {
 		t.Fatal(err)

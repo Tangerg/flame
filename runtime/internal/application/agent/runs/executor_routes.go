@@ -263,8 +263,8 @@ func (r *resumedRouteBuilder) orderRoutesPreorder() error {
 	childrenByParentRunID := make(map[string][]*executorRoute, len(r.routes.byRunID))
 	for _, route := range r.routes.byRunID {
 		if route != r.routes.root {
-			childrenByParentRunID[route.lineage.ParentRunID] = append(
-				childrenByParentRunID[route.lineage.ParentRunID],
+			childrenByParentRunID[route.lineage.ParentRunID()] = append(
+				childrenByParentRunID[route.lineage.ParentRunID()],
 				route,
 			)
 		}
@@ -318,12 +318,12 @@ func (e *executorRoutes) unfinishedInPostorder() ([]*executorRoute, error) {
 		}
 		if !route.boundary.finished() {
 			if route.lineage.IsChild() {
-				parent := byRunID[route.lineage.ParentRunID]
+				parent := byRunID[route.lineage.ParentRunID()]
 				if parent == nil {
 					return nil, fmt.Errorf(
 						"runs: active executor route %q has no parent route %q",
 						route.runID,
-						route.lineage.ParentRunID,
+						route.lineage.ParentRunID(),
 					)
 				}
 				if parent.boundary.finished() {
@@ -373,12 +373,12 @@ func (e *executorRoutes) resolve(member ExecutorMember) (*executorRoute, error) 
 			return nil, fmt.Errorf("runs: root Run %q emitted a child executor member", route.runID)
 		}
 		if !route.memberBound {
-			parent := e.byRunID[route.lineage.ParentRunID]
+			parent := e.byRunID[route.lineage.ParentRunID()]
 			if parent == nil || parent.member.MemberID == "" {
 				return nil, fmt.Errorf(
 					"runs: resumed child Run %q has no bound parent Run %q",
 					route.runID,
-					route.lineage.ParentRunID,
+					route.lineage.ParentRunID(),
 				)
 			}
 			if member.ParentID != parent.member.MemberID {
@@ -667,12 +667,8 @@ func (c *Segments) prepareChildStart(
 	}
 	childRunID := c.newRunID()
 	childSegmentID := c.newSegmentID()
-	lineage := rundomain.Lineage{
-		SpawnedByItemID: spawningItem.ID(),
-		ParentRunID:     parent.runID,
-		RootRunID:       parent.rootRunID,
-	}
-	if validateErr := lineage.Validate(childRunID); validateErr != nil {
+	lineage, validateErr := rundomain.NewLineage(spawningItem.ID(), parent.runID, parent.rootRunID)
+	if validateErr != nil {
 		return nil, fmt.Errorf("runs: open child member %q lineage: %w", member.MemberID, validateErr)
 	}
 	child := &executorRoute{
@@ -693,7 +689,7 @@ func (c *Segments) prepareChildStart(
 	reservation := ChildRunStartReservation{
 		SessionID: spec.SessionID, ExecutorID: spec.ExecutorID, Member: member,
 		Binding: ChildRunBinding{
-			MemberID: member.MemberID, RunID: child.runID, ParentRunID: child.lineage.ParentRunID,
+			MemberID: member.MemberID, RunID: child.runID, ParentRunID: child.lineage.ParentRunID(),
 		},
 		SegmentID: child.segmentID, SpawnedByItemID: spawningItem.ID(),
 		RootRunID: child.rootRunID, ReservedAt: c.publications.nowUTC().UTC(),

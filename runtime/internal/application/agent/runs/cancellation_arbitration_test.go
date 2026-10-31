@@ -354,8 +354,8 @@ func TestLiveChildCancellationAndNaturalTerminalHaveOneTreeOwner(t *testing.T) {
 		}
 		owner.recordTerminalRun(canceled)
 		owner.recordChildCancellationItem(
-			plan.target.run.Lineage().ParentRunID, testsupport.MustRestoreItem(testsupport.ItemInput{
-				ID:   plan.target.run.Lineage().SpawnedByItemID,
+			plan.target.run.Lineage().ParentRunID(), testsupport.MustRestoreItem(testsupport.ItemInput{
+				ID:   plan.target.run.Lineage().SpawnedByItemID(),
 				Kind: transcript.ToolCall, Status: transcript.ItemIncomplete,
 				Failure: &tool.Failure{
 					Kind: tool.FailureChildRunCanceled,
@@ -410,11 +410,7 @@ func runningChildCancellationPlan() cancellationPlan {
 		ID:        "run_child",
 		SessionID: "session",
 
-		State: run.Running, Lineage: run.Lineage{
-			SpawnedByItemID: "item_spawn",
-			ParentRunID:     "run_root",
-			RootRunID:       "run_root",
-		},
+		State: run.Running, Lineage: testsupport.ChildLineage("item_spawn", "run_root", "run_root"),
 	})
 
 	return cancellationPlan{

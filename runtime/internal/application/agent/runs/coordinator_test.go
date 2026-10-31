@@ -1727,11 +1727,7 @@ func TestCoordinatorPublishesChildSegmentOnItsOwnRunIdentity(t *testing.T) {
 		t.Fatalf("child opening confirmation: %v", err)
 	}
 
-	lineage := run.Lineage{
-		SpawnedByItemID: firstSegmentItemID(t, "seg_1"),
-		ParentRunID:     "run_1",
-		RootRunID:       "run_1",
-	}
+	lineage := testsupport.ChildLineage(firstSegmentItemID(t, "seg_1"), "run_1", "run_1")
 	lifecycle := requirePublishedChildLifecycle(t, events, "run_child", "seg_child")
 	requireIndependentChildLifecycle(t, lifecycle, spec, lineage, "run_child", "seg_child")
 	if !effects.terminalized(spec.SessionID, "run_child") ||

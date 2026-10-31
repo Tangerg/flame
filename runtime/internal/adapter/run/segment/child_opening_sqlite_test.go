@@ -80,9 +80,9 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("read child: found=%v error=%v", found, err)
 	}
-	if persistedChild.Lineage().SpawnedByItemID != spawningItem.ID() ||
-		persistedChild.Lineage().ParentRunID != root.RunID ||
-		persistedChild.Lineage().RootRunID != root.RunID {
+	if persistedChild.Lineage().SpawnedByItemID() != spawningItem.ID() ||
+		persistedChild.Lineage().ParentRunID() != root.RunID ||
+		persistedChild.Lineage().RootRunID() != root.RunID {
 		t.Fatalf("persisted child = %+v, want complete lineage", persistedChild)
 	}
 	if !persistedChild.Capabilities().IsEmpty() {

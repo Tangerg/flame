@@ -67,7 +67,7 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 	child := testsupport.MustRestoreRun(run.Snapshot{
 		ID: "run_export_child", SessionID: ses.ID, State: run.Finished, Ending: testsupport.EndingFor(run.OutcomeCanceled),
 		CreatedAt: at, FinishedAt: at.Add(time.Minute),
-		Lineage: run.Lineage{SpawnedByItemID: "item_export_spawn", ParentRunID: root.ID(), RootRunID: root.ID()},
+		Lineage: testsupport.ChildLineage("item_export_spawn", root.ID(), root.ID()),
 	})
 	for _, value := range []run.Run{root, child} {
 		if err := db.Runs.Restore(t.Context(), value); err != nil {

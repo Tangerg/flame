@@ -145,7 +145,7 @@ func validateSnapshotRunTree(runs []run.Run, items map[string]transcript.Item) e
 			if err := index.validateChildSpawn(value, items); err != nil {
 				return err
 			}
-			rootRunID = lineage.RootRunID
+			rootRunID = lineage.RootRunID()
 		}
 		membersByRoot[rootRunID] = append(
 			membersByRoot[rootRunID],
@@ -172,13 +172,13 @@ func (s *snapshotRunTree) validateChildSpawn(
 	items map[string]transcript.Item,
 ) error {
 	lineage := child.Lineage()
-	parent, parentFound := s.runByID[lineage.ParentRunID]
+	parent, parentFound := s.runByID[lineage.ParentRunID()]
 	if !parentFound {
-		return fmt.Errorf("sessions: snapshot child run %q references unknown parent %q", child.ID(), lineage.ParentRunID)
+		return fmt.Errorf("sessions: snapshot child run %q references unknown parent %q", child.ID(), lineage.ParentRunID())
 	}
-	root, rootFound := s.runByID[lineage.RootRunID]
+	root, rootFound := s.runByID[lineage.RootRunID()]
 	if !rootFound {
-		return fmt.Errorf("sessions: snapshot child run %q references unknown root %q", child.ID(), lineage.RootRunID)
+		return fmt.Errorf("sessions: snapshot child run %q references unknown root %q", child.ID(), lineage.RootRunID())
 	}
 	if !root.Capabilities().ChildRuns {
 		return fmt.Errorf(
@@ -187,12 +187,12 @@ func (s *snapshotRunTree) validateChildSpawn(
 			root.ID(),
 		)
 	}
-	item, found := items[lineage.SpawnedByItemID]
+	item, found := items[lineage.SpawnedByItemID()]
 	if !found {
-		return fmt.Errorf("sessions: snapshot run %q references unknown spawning item %q", child.ID(), lineage.SpawnedByItemID)
+		return fmt.Errorf("sessions: snapshot run %q references unknown spawning item %q", child.ID(), lineage.SpawnedByItemID())
 	}
 	if item.Kind() != transcript.ToolCall {
-		return fmt.Errorf("sessions: snapshot run %q spawning item %q is not a tool call", child.ID(), lineage.SpawnedByItemID)
+		return fmt.Errorf("sessions: snapshot run %q spawning item %q is not a tool call", child.ID(), lineage.SpawnedByItemID())
 	}
 	if item.RunID() != parent.ID() {
 		return fmt.Errorf(

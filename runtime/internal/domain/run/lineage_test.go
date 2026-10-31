@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestRunLineageAcceptsExactlyRootOrCompleteChild(t *testing.T) {
@@ -16,37 +17,17 @@ func TestRunLineageAcceptsExactlyRootOrCompleteChild(t *testing.T) {
 	}{
 		{name: "root"},
 		{
-			name: "child",
-			lineage: run.Lineage{
-				SpawnedByItemID: "item_spawn",
-				ParentRunID:     "run_parent",
-				RootRunID:       "run_root",
-			},
+			name:    "child",
+			lineage: testsupport.ChildLineage("item_spawn", "run_parent", "run_root"),
 		},
 		{
-			name: "partial child",
-			lineage: run.Lineage{
-				SpawnedByItemID: "item_spawn",
-				ParentRunID:     "run_parent",
-			},
-			wantErr: "requires spawnedByItemId, parentRunId, and rootRunId together",
-		},
-		{
-			name: "self parent",
-			lineage: run.Lineage{
-				SpawnedByItemID: "item_spawn",
-				ParentRunID:     "run_child",
-				RootRunID:       "run_root",
-			},
+			name:    "self parent",
+			lineage: testsupport.ChildLineage("item_spawn", "run_child", "run_root"),
 			wantErr: "is its own parent",
 		},
 		{
-			name: "self root",
-			lineage: run.Lineage{
-				SpawnedByItemID: "item_spawn",
-				ParentRunID:     "run_parent",
-				RootRunID:       "run_child",
-			},
+			name:    "self root",
+			lineage: testsupport.ChildLineage("item_spawn", "run_parent", "run_child"),
 			wantErr: "is its own root",
 		},
 	}
@@ -68,16 +49,20 @@ func TestRunLineageAcceptsExactlyRootOrCompleteChild(t *testing.T) {
 	}
 }
 
+func TestNewLineageRejectsAPartialChild(t *testing.T) {
+	_, err := run.NewLineage("item_spawn", "run_parent", "")
+	if !errors.Is(err, run.ErrInvalidLineage) ||
+		!strings.Contains(err.Error(), "requires spawnedByItemId, parentRunId, and rootRunId together") {
+		t.Fatalf("NewLineage error = %v, want a partial child refused", err)
+	}
+}
+
 func TestRunLineageResolvesTreeRootWithoutGuessingFromTheParent(t *testing.T) {
 	root := run.Lineage{}
 	if got := root.TreeRootID("run_root"); got != "run_root" {
 		t.Fatalf("root TreeRootID = %q, want run_root", got)
 	}
-	child := run.Lineage{
-		SpawnedByItemID: "item_spawn",
-		ParentRunID:     "run_parent",
-		RootRunID:       "run_root",
-	}
+	child := testsupport.ChildLineage("item_spawn", "run_parent", "run_root")
 	if got := child.TreeRootID("run_child"); got != "run_root" {
 		t.Fatalf("child TreeRootID = %q, want run_root", got)
 	}

@@ -7,42 +7,27 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestRunTreeCanonicalPostorderAndSubtree(t *testing.T) {
 	tree, err := run.NewTree("run_root", []run.TreeMember{
 		{
-			RunID: "run_b",
-			Lineage: run.Lineage{
-				SpawnedByItemID: "item_b",
-				ParentRunID:     "run_root",
-				RootRunID:       "run_root",
-			},
+			RunID:   "run_b",
+			Lineage: testsupport.ChildLineage("item_b", "run_root", "run_root"),
 		},
 		{RunID: "run_root"},
 		{
-			RunID: "run_a1",
-			Lineage: run.Lineage{
-				SpawnedByItemID: "item_a1",
-				ParentRunID:     "run_a",
-				RootRunID:       "run_root",
-			},
+			RunID:   "run_a1",
+			Lineage: testsupport.ChildLineage("item_a1", "run_a", "run_root"),
 		},
 		{
-			RunID: "run_a",
-			Lineage: run.Lineage{
-				SpawnedByItemID: "item_a",
-				ParentRunID:     "run_root",
-				RootRunID:       "run_root",
-			},
+			RunID:   "run_a",
+			Lineage: testsupport.ChildLineage("item_a", "run_root", "run_root"),
 		},
 		{
-			RunID: "run_a0",
-			Lineage: run.Lineage{
-				SpawnedByItemID: "item_a0",
-				ParentRunID:     "run_a",
-				RootRunID:       "run_root",
-			},
+			RunID:   "run_a0",
+			Lineage: testsupport.ChildLineage("item_a0", "run_a", "run_root"),
 		},
 	})
 	if err != nil {
@@ -74,12 +59,8 @@ func TestRunTreeCanonicalPostorderAndSubtree(t *testing.T) {
 func TestRunTreeRejectsInvalidTopology(t *testing.T) {
 	child := func(runID, parentRunID, rootRunID string) run.TreeMember {
 		return run.TreeMember{
-			RunID: runID,
-			Lineage: run.Lineage{
-				SpawnedByItemID: "item_" + runID,
-				ParentRunID:     parentRunID,
-				RootRunID:       rootRunID,
-			},
+			RunID:   runID,
+			Lineage: testsupport.ChildLineage("item_"+runID, parentRunID, rootRunID),
 		}
 	}
 	tests := []struct {

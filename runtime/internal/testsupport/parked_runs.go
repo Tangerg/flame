@@ -48,7 +48,7 @@ func SeedParkedRuns(
 			 VALUES (?, ?, ?, ?, ?, 'waiting', ?, ?, ?, ?, 0, 0)
 			 ON CONFLICT(run_id) DO NOTHING`,
 			member.RunID, sessionID,
-			member.Lineage.SpawnedByItemID, member.Lineage.ParentRunID, member.Lineage.RootRunID,
+			member.Lineage.SpawnedByItemID(), member.Lineage.ParentRunID(), member.Lineage.RootRunID(),
 			DefaultModelSelection().Provider(), DefaultModelSelection().Model(),
 			goal, memberCapabilities,
 		); err != nil {

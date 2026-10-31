@@ -509,7 +509,7 @@ func TestJoinedDelegateTreePublishesEveryTerminalBeforeRoot(t *testing.T) {
 			t.Fatalf("terminal %d: %+v", index, terminal)
 		}
 	}
-	if terminals[2].Lineage().IsChild() || terminals[0].Lineage().ParentRunID != terminals[1].ID() || terminals[1].Lineage().ParentRunID != terminals[2].ID() {
+	if terminals[2].Lineage().IsChild() || terminals[0].Lineage().ParentRunID() != terminals[1].ID() || terminals[1].Lineage().ParentRunID() != terminals[2].ID() {
 		t.Fatalf("terminals are not in postorder: %+v", terminals)
 	}
 	if len(terminals[0].UnresolvedEffects()) != 1 {

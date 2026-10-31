@@ -48,9 +48,9 @@ func fixtureLineage(rootRunID, runID string) run.Lineage {
 	case rootRunID:
 		return run.Lineage{}
 	case "run_a", "run_b":
-		return run.Lineage{SpawnedByItemID: "item_spawn_" + runID[len("run_"):], ParentRunID: rootRunID, RootRunID: rootRunID}
+		return testsupport.ChildLineage("item_spawn_"+runID[len("run_"):], rootRunID, rootRunID)
 	case "run_grandchild":
-		return run.Lineage{SpawnedByItemID: "item_spawn_grandchild", ParentRunID: "run_a", RootRunID: rootRunID}
+		return testsupport.ChildLineage("item_spawn_grandchild", "run_a", rootRunID)
 	default:
 		panic("fixture Run " + runID + " has no lineage")
 	}

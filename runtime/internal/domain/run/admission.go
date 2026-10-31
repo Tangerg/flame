@@ -86,8 +86,8 @@ func (d Draft) Validate() error {
 // validation and tree routing.
 func (d Draft) Lineage() Lineage {
 	return Lineage{
-		SpawnedByItemID: d.SpawnedByItemID,
-		ParentRunID:     d.ParentRunID,
-		RootRunID:       d.RootRunID,
+		spawnedByItemID: d.SpawnedByItemID,
+		parentRunID:     d.ParentRunID,
+		rootRunID:       d.RootRunID,
 	}
 }

@@ -40,9 +40,9 @@ func retainedRunBytes(value run.Run) int {
 	bytes := retainedRunHeaderBytes + stringsBytes(
 		snapshot.SessionID,
 		snapshot.ID,
-		snapshot.Lineage.SpawnedByItemID,
-		snapshot.Lineage.ParentRunID,
-		snapshot.Lineage.RootRunID,
+		snapshot.Lineage.SpawnedByItemID(),
+		snapshot.Lineage.ParentRunID(),
+		snapshot.Lineage.RootRunID(),
 		snapshot.GoalIncarnationID,
 		snapshot.ActiveSegmentID,
 		snapshot.ModelSelection.Provider(),

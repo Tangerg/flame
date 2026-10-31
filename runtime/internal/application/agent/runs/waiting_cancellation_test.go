@@ -942,7 +942,7 @@ func runACancellationPlan(
 	}
 	callID := "call_" + targetRunID
 	for index := range pending.Continuations {
-		if pending.Continuations[index].RunID != target.Lineage().ParentRunID {
+		if pending.Continuations[index].RunID != target.Lineage().ParentRunID() {
 			if pending.Continuations[index].RunID == targetRunID {
 				pending.Continuations[index].DrainedTools = append(
 					pending.Continuations[index].DrainedTools,
@@ -957,7 +957,7 @@ func runACancellationPlan(
 		pending.Continuations[index].DrainedTools = append(
 			pending.Continuations[index].DrainedTools,
 			DrainedTool{
-				ItemID: target.Lineage().SpawnedByItemID,
+				ItemID: target.Lineage().SpawnedByItemID(),
 				CallID: callID, SourceCallID: "provider_" + targetRunID,
 			},
 		)
@@ -981,9 +981,9 @@ func runACancellationPlan(
 		t.Fatalf("waiting cancellation plan: %v", err)
 	}
 	plan.spawningItem = testsupport.MustRestoreItem(testsupport.ItemInput{
-		ID:         target.Lineage().SpawnedByItemID,
+		ID:         target.Lineage().SpawnedByItemID(),
 		SessionID:  fixtureSessionID,
-		RunID:      target.Lineage().ParentRunID,
+		RunID:      target.Lineage().ParentRunID(),
 		Status:     transcript.ItemRunning,
 		Kind:       transcript.ToolCall,
 		OccurredAt: createdAt,

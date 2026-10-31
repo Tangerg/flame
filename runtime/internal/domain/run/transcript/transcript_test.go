@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func root(id string, atUnix int64, mark int) transcript.RunNode {
@@ -16,7 +17,7 @@ func root(id string, atUnix int64, mark int) transcript.RunNode {
 
 func sub(id, spawnedByItem, rootRunID string, atUnix int64, mark int) transcript.RunNode {
 	return transcript.RunNode{
-		ID: id, Lineage: run.Lineage{SpawnedByItemID: spawnedByItem, ParentRunID: rootRunID, RootRunID: rootRunID},
+		ID: id, Lineage: testsupport.ChildLineage(spawnedByItem, rootRunID, rootRunID),
 		CreatedAt: time.Unix(atUnix, 0).UTC(), MessageMark: run.MessageMarkAt(mark),
 	}
 }
@@ -92,9 +93,9 @@ func TestBoundaryAt(t *testing.T) {
 func TestPortableBoundaryAtKeepsOnlyCompleteRunTrees(t *testing.T) {
 	nodes := transcript.Timeline{
 		{ID: "run_1", CreatedAt: time.Unix(1, 0), MessageMark: run.MessageMarkAt(4), Terminal: true},
-		{ID: "run_1_child", Lineage: run.Lineage{SpawnedByItemID: "item_1", ParentRunID: "run_1", RootRunID: "run_1"}, CreatedAt: time.Unix(2, 0), MessageMark: run.MessageMarkAt(-1), Terminal: true},
+		{ID: "run_1_child", Lineage: testsupport.ChildLineage("item_1", "run_1", "run_1"), CreatedAt: time.Unix(2, 0), MessageMark: run.MessageMarkAt(-1), Terminal: true},
 		{ID: "run_2", CreatedAt: time.Unix(3, 0), MessageMark: run.MessageMarkAt(-1)},
-		{ID: "run_2_child", Lineage: run.Lineage{SpawnedByItemID: "item_2", ParentRunID: "run_2", RootRunID: "run_2"}, CreatedAt: time.Unix(4, 0), MessageMark: run.MessageMarkAt(-1), Terminal: true},
+		{ID: "run_2_child", Lineage: testsupport.ChildLineage("item_2", "run_2", "run_2"), CreatedAt: time.Unix(4, 0), MessageMark: run.MessageMarkAt(-1), Terminal: true},
 	}
 
 	boundary, err := nodes.PortableBoundaryAt("")
@@ -122,7 +123,7 @@ func TestPortableBoundaryAtKeepsOnlyCompleteRunTrees(t *testing.T) {
 func TestPortableBoundaryAtRejectsAChildOutsideItsRootTree(t *testing.T) {
 	nodes := transcript.Timeline{
 		{ID: "run_1", CreatedAt: time.Unix(1, 0), MessageMark: run.MessageMarkAt(2), Terminal: true},
-		{ID: "run_child", Lineage: run.Lineage{SpawnedByItemID: "item_1", ParentRunID: "run_other", RootRunID: "run_other"}, CreatedAt: time.Unix(2, 0), MessageMark: run.MessageMarkAt(4), Terminal: true},
+		{ID: "run_child", Lineage: testsupport.ChildLineage("item_1", "run_other", "run_other"), CreatedAt: time.Unix(2, 0), MessageMark: run.MessageMarkAt(4), Terminal: true},
 	}
 	if _, err := nodes.PortableBoundaryAt(""); err == nil {
 		t.Fatal("PortableBoundaryAt accepted a child from another Run tree")

@@ -167,7 +167,7 @@ func TestGoalUsageIncludesDelegatedSpendingAfterRestart(t *testing.T) {
 	} {
 		value := testsupport.MustRestoreRun(run.Snapshot{
 			SessionID: sessionID, ID: descendant.id,
-			Lineage:   run.Lineage{ParentRunID: descendant.parent, RootRunID: root.ID(), SpawnedByItemID: "itm_" + descendant.id},
+			Lineage:   testsupport.ChildLineage("itm_"+descendant.id, descendant.parent, root.ID()),
 			Ending:    testsupport.EndingFor(descendant.outcome),
 			Metrics:   testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: descendant.steps, Usage: &accounting.Usage{Total: accounting.Totals{Cost: testsupport.OptionalCost(&descendant.cost)}}}),
 			CreatedAt: now, UpdatedAt: now.Add(time.Second), FinishedAt: now.Add(time.Second),

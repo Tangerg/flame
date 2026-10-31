@@ -31,7 +31,7 @@ func runsInParentFirstOrder(runs []rundomain.Run) []rundomain.Run {
 			depths[run.ID()] = 0
 			return 0
 		}
-		value := depth(byID[run.Lineage().ParentRunID]) + 1
+		value := depth(byID[run.Lineage().ParentRunID()]) + 1
 		depths[run.ID()] = value
 		return value
 	}

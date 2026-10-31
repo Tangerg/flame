@@ -122,8 +122,7 @@ func TestExportPreservesRunTreeLineage(t *testing.T) {
 
 		State: run.Finished, Ending: testsupport.EndingFor(outcome),
 		CreatedAt: time.Unix(2, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
-		UpdatedAt: time.Unix(2, 0).UTC(), Lineage: run.Lineage{SpawnedByItemID: "item_spawn",
-			ParentRunID: "run_root", RootRunID: "run_root"}}),
+		UpdatedAt: time.Unix(2, 0).UTC(), Lineage: testsupport.ChildLineage("item_spawn", "run_root", "run_root")}),
 	); restoreErr != nil {
 		t.Fatalf("seed child run: %v", restoreErr)
 	}
@@ -441,7 +440,7 @@ func seedChildRun(t *testing.T, rt *stubRuntime, sessionID string) {
 		CreatedAt:      time.Unix(7, 0).UTC(),
 		FinishedAt:     time.Unix(8, 0).UTC(),
 		UpdatedAt:      time.Unix(8, 0).UTC(),
-		MessageMark:    run.MessageMarkAt(1), Lineage: run.Lineage{SpawnedByItemID: "item_tool", ParentRunID: "run_done", RootRunID: "run_done"}}),
+		MessageMark:    run.MessageMarkAt(1), Lineage: testsupport.ChildLineage("item_tool", "run_done", "run_done")}),
 	); err != nil {
 		t.Fatalf("seed child run: %v", err)
 	}

@@ -30,8 +30,8 @@ func presentRunStatus(status rundomain.State) protocol.RunStatus {
 // back in bulk.
 func presentRunSummary(run rundomain.Run) protocol.RunSummary {
 	summary := protocol.RunSummary{
-		ID: run.ID(), SessionID: run.SessionID(), SpawnedByItemID: run.Lineage().SpawnedByItemID,
-		ParentRunID: run.Lineage().ParentRunID, RootRunID: run.Lineage().RootRunID,
+		ID: run.ID(), SessionID: run.SessionID(), SpawnedByItemID: run.Lineage().SpawnedByItemID(),
+		ParentRunID: run.Lineage().ParentRunID(), RootRunID: run.Lineage().RootRunID(),
 		Provider: run.ModelSelection().Provider(), Model: run.ModelSelection().Model(),
 		ReasoningEffort: run.ModelSelection().ReasoningEffort(),
 		Status:          presentRunStatus(run.State()),

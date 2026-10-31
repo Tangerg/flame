@@ -73,11 +73,11 @@ func TestRestoreRejectsInvalidState(t *testing.T) {
 }
 
 func TestChildRunCarriesNoCapabilitiesOfItsOwn(t *testing.T) {
-	lineage := Lineage{SpawnedByItemID: "item_1", ParentRunID: "run_root", RootRunID: "run_root"}
+	lineage := Lineage{spawnedByItemID: "item_1", parentRunID: "run_root", rootRunID: "run_root"}
 	capabilities := Capabilities{InterruptKinds: []InterruptKind{InterruptQuestion}}
 	draft := Draft{
 		RunID: "run_child", SessionID: "session_1", SegmentID: "segment_1",
-		SpawnedByItemID: lineage.SpawnedByItemID, ParentRunID: lineage.ParentRunID, RootRunID: lineage.RootRunID,
+		SpawnedByItemID: lineage.SpawnedByItemID(), ParentRunID: lineage.ParentRunID(), RootRunID: lineage.RootRunID(),
 		ModelSelection: mustRunSelection(t), CreatedAt: time.Unix(1, 0), Capabilities: capabilities,
 	}
 	if _, err := Admit(draft); err == nil {
@@ -306,7 +306,7 @@ func TestForkKeepsTheLineageKindItWasDerivedFrom(t *testing.T) {
 	}
 	// Lineage.Validate proves a lineage is well formed, not that it names the
 	// same kind of Run. Only Fork can refuse to turn a root into a child.
-	childLineage := Lineage{SpawnedByItemID: "item_spawn", ParentRunID: "run_parent", RootRunID: "run_parent"}
+	childLineage := Lineage{spawnedByItemID: "item_spawn", parentRunID: "run_parent", rootRunID: "run_parent"}
 	if err := childLineage.Validate("run_child_copy"); err != nil {
 		t.Fatalf("child lineage is not well formed: %v", err)
 	}
@@ -505,7 +505,7 @@ func TestRestoreRejectsSnapshotsThatBreakRunInvariants(t *testing.T) {
 		}},
 		{name: "child carries a Goal incarnation", break_: func(s *Snapshot) {
 			s.Lineage = Lineage{
-				SpawnedByItemID: "item_parent", ParentRunID: "run_parent", RootRunID: "run_root",
+				spawnedByItemID: "item_parent", parentRunID: "run_parent", rootRunID: "run_root",
 			}
 			s.GoalIncarnationID = "incarnation_1"
 		}},

@@ -26,9 +26,7 @@ func TestCopyForkSnapshotRemapsTheCompleteVisibleRunTree(t *testing.T) {
 	})
 	childRun := testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: "ses_parent", ID: "run_child", State: run.Finished,
-		Lineage: run.Lineage{
-			SpawnedByItemID: "item_spawn", ParentRunID: "run_root", RootRunID: "run_root",
-		},
+		Lineage:    testsupport.ChildLineage("item_spawn", "run_root", "run_root"),
 		CreatedAt:  at.Add(time.Millisecond),
 		FinishedAt: at.Add(time.Second), UpdatedAt: at.Add(time.Second), MessageMark: run.MessageMarkAt(1),
 	})
@@ -82,7 +80,7 @@ func TestCopyForkSnapshotRemapsTheCompleteVisibleRunTree(t *testing.T) {
 		t.Fatalf("copied Runs = %+v, want fresh root and child identities", copied.Runs)
 	}
 	lineage := copied.Runs[1].Lineage()
-	if lineage.ParentRunID != "run_copy_root" || lineage.RootRunID != "run_copy_root" || lineage.SpawnedByItemID != "item_copy_spawn" {
+	if lineage.ParentRunID() != "run_copy_root" || lineage.RootRunID() != "run_copy_root" || lineage.SpawnedByItemID() != "item_copy_spawn" {
 		t.Fatalf("copied child lineage = %+v, want remapped edges", lineage)
 	}
 	if len(copied.Items) != 1 || copied.Items[0].SessionID() != "ses_child" || copied.Items[0].RunID() != "run_copy_root" || copied.Items[0].ID() != "item_copy_spawn" {

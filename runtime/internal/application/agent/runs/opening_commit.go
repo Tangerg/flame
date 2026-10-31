@@ -264,7 +264,7 @@ func (o OpeningCommit) validateEventOwner(commit EventCommit) error {
 			return nil
 		}
 		lineage := o.admit.Lineage()
-		if lineage.IsChild() && commit.RunID == lineage.ParentRunID {
+		if lineage.IsChild() && commit.RunID == lineage.ParentRunID() {
 			return nil
 		}
 		return errors.New("event belongs to a Run outside the admission")
