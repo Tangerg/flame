@@ -60,9 +60,9 @@ type app struct {
 	workspaces       Workspaces
 	changes          changefeed.Source
 	transfers        session.TransferService
-	usage            Usage
-	modelConfig      ModelConfiguration
-	goals            Goals
+	usage            *usageScreens
+	modelConfig      *modelConfigScreens
+	goals            *goalScreens
 	skills           *skillScreens
 	mcp              *mcpScreens
 	plugins          *pluginScreens
@@ -197,8 +197,7 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	a := &app{
 		ctx: cfg.context, loop: loop, runtime: cfg.runtime, workspaces: cfg.workspaces,
 		runtimeProfile: cfg.runtimeProfile, replayPolicy: cfg.replayPolicy,
-		changes: cfg.changes, transfers: cfg.transfers, usage: cfg.usage, modelConfig: cfg.modelConfig,
-		goals:    cfg.goals,
+		changes: cfg.changes, transfers: cfg.transfers,
 		feedback: cfg.feedback,
 		session:  sessionState{current: cfg.snapshot.Session, context: newSessionContextLease()},
 

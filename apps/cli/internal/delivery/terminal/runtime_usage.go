@@ -17,21 +17,24 @@ type usageReport struct {
 	summary conversation.UsageSummary
 }
 
-func (a *app) ShowUsage(argument string) error {
-	if a.usage == nil {
-		return errors.New("this runtime composition has no usage service")
-	}
+// usageScreens reports session and runtime usage.
+type usageScreens struct {
+	screenHost
+	service Usage
+}
+
+func (u *usageScreens) ShowUsage(argument string) error {
 	period, err := parseUsagePeriod(argument)
 	if err != nil {
 		return err
 	}
-	sessionID := a.session.current.ID
-	a.reader.show(&readerQuery{status: "loading runtime usage", read: func(ctx context.Context) (readerDocument, error) {
-		session, err := a.usage.SessionUsage(ctx, sessionID)
+	sessionID := u.session.current.ID
+	u.reader.show(&readerQuery{status: "loading runtime usage", read: func(ctx context.Context) (readerDocument, error) {
+		session, err := u.service.SessionUsage(ctx, sessionID)
 		if err != nil {
 			return readerDocument{}, err
 		}
-		summary, err := a.usage.Summary(ctx, period)
+		summary, err := u.service.Summary(ctx, period)
 		if err != nil {
 			return readerDocument{}, err
 		}

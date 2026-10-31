@@ -16,19 +16,22 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-func (a *app) ShowProviders() {
-	if a.modelConfig == nil {
-		a.message("this runtime composition has no model configuration service")
-		return
-	}
-	a.reader.show(a.providersReaderQuery())
+// modelConfigScreens inspects and configures model providers and roles.
+type modelConfigScreens struct {
+	screenHost
+	service        ModelConfiguration
+	providerDialog *kit.Dialog
 }
 
-func (a *app) providersReaderQuery() *readerQuery {
+func (m *modelConfigScreens) ShowProviders() {
+	m.reader.show(m.providersReaderQuery())
+}
+
+func (m *modelConfigScreens) providersReaderQuery() *readerQuery {
 	return &readerQuery{
 		status: "loading providers", follows: followsTopic(protocol.TopicModelsChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
-			providers, err := a.modelConfig.Providers(ctx)
+			providers, err := m.service.Providers(ctx)
 			if err != nil {
 				return readerDocument{}, err
 			}
@@ -65,28 +68,25 @@ func providersDocument(providers []models.Provider) readerDocument {
 	return paragraphDocument("Providers", fmt.Sprintf("%d available", len(providers)), lines)
 }
 
-func (a *app) TestConfiguredProvider(providerID string) error {
-	if a.modelConfig == nil {
-		return errors.New("this runtime composition has no model configuration service")
-	}
+func (m *modelConfigScreens) TestConfiguredProvider(providerID string) error {
 	if err := model.ValidateProviderIdentity(providerID); err != nil {
 		return fmt.Errorf("provider test: %w", err)
 	}
-	a.status.note("testing provider " + providerID)
-	started := a.tasks.application(modelConfigOperation, false,
+	m.status.note("testing provider " + providerID)
+	started := m.tasks.application(modelConfigOperation, false,
 		func(ctx context.Context) (protocol.ProviderTestOutcome, error) {
-			return a.modelConfig.TestProvider(ctx, providerID)
+			return m.service.TestProvider(ctx, providerID)
 		},
 		func(outcome protocol.ProviderTestOutcome, err error) {
 			if err == nil {
 				var message string
 				message, err = providerProbeMessage(providerID, outcome)
 				if err == nil {
-					a.message(message)
+					m.message(message)
 					return
 				}
 			}
-			a.message("provider test failed: " + err.Error())
+			m.message("provider test failed: " + err.Error())
 		},
 	)
 	if !started {
@@ -95,18 +95,15 @@ func (a *app) TestConfiguredProvider(providerID string) error {
 	return nil
 }
 
-func (a *app) ConfigureProvider(providerID string) error {
-	if a.modelConfig == nil {
-		return errors.New("this runtime composition has no model configuration service")
-	}
+func (m *modelConfigScreens) ConfigureProvider(providerID string) error {
 	if err := model.ValidateProviderIdentity(providerID); err != nil {
 		return fmt.Errorf("provider configuration: %w", err)
 	}
-	presentation := a.session.context
-	a.status.note("loading provider " + providerID)
-	started := a.tasks.application(modelConfigOperation, false,
+	presentation := m.session.context
+	m.status.note("loading provider " + providerID)
+	started := m.tasks.application(modelConfigOperation, false,
 		func(ctx context.Context) (models.Provider, error) {
-			providers, err := a.modelConfig.Providers(ctx)
+			providers, err := m.service.Providers(ctx)
 			if err != nil {
 				return models.Provider{}, err
 			}
@@ -119,14 +116,14 @@ func (a *app) ConfigureProvider(providerID string) error {
 		},
 		func(provider models.Provider, err error) {
 			if err != nil {
-				a.message("configure provider failed: " + err.Error())
+				m.message("configure provider failed: " + err.Error())
 				return
 			}
-			if !a.session.context.current(presentation) {
-				a.message("provider loaded after the active session changed; reopen configuration to continue")
+			if !m.session.context.current(presentation) {
+				m.message("provider loaded after the active session changed; reopen configuration to continue")
 				return
 			}
-			a.openProviderConfig(provider)
+			m.openProviderConfig(provider)
 		},
 	)
 	if !started {
@@ -135,7 +132,7 @@ func (a *app) ConfigureProvider(providerID string) error {
 	return nil
 }
 
-func (a *app) openProviderConfig(provider models.Provider) {
+func (m *modelConfigScreens) openProviderConfig(provider models.Provider) {
 	baseURL, endpointConfigured := provider.BaseURL()
 	baseMode := formChangeKeep
 	if provider.RequiresBaseURL() && !endpointConfigured {
@@ -181,8 +178,8 @@ func (a *app) openProviderConfig(provider models.Provider) {
 		},
 	})
 	keyField.SetMask("•")
-	baseField.Clipboard = a.loop.Clipboard()
-	keyField.Clipboard = a.loop.Clipboard()
+	baseField.Clipboard = m.clipboard
+	keyField.Clipboard = m.clipboard
 	form := headless.NewForm(baseChoice, baseField, keyChoice, keyField)
 	form.Keys = headless.DefaultFormKeys()
 	var dialog *kit.Dialog
@@ -192,39 +189,39 @@ func (a *app) openProviderConfig(provider models.Provider) {
 	}
 	dismiss := func() {
 		clearKey()
-		if a.dialogs.providerDialog == dialog {
+		if m.providerDialog == dialog {
 			dialog.Controller().Dismiss()
-			a.dialogs.providerDialog = nil
+			m.providerDialog = nil
 		}
 	}
 	form.Done = func() {
-		if a.dialogs.providerDialog != dialog {
+		if m.providerDialog != dialog {
 			clearKey()
 			return
 		}
 		update, err := providerUpdate(provider.ID(), baseMode, baseURL, keyMode, apiKey)
 		if err != nil {
-			a.message("provider form: " + err.Error())
+			m.message("provider form: " + err.Error())
 			return
 		}
 		dismiss()
 		if update.BaseURL == nil && update.APIKey == nil {
-			a.message("provider configuration unchanged")
+			m.message("provider configuration unchanged")
 			return
 		}
-		a.updateProvider(update)
+		m.updateProvider(update)
 	}
 	form.GaveUp = dismiss
 	dressed := kit.NewForm(kit.FormConfig{
-		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs, Controller: form,
+		Theme: m.theme, Glyphs: m.glyphs, Controller: form,
 		Hints: []keymap.Action{headless.Submit, headless.Cancel},
 	})
 	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
+		Stack: m.stack, Theme: m.theme, Glyphs: m.glyphs,
 		Title: "Configure provider · " + provider.ID(), Body: dressed,
 		Where: layout.Placement{Width: 82, Height: 18},
 	})
-	a.dialogs.providerDialog = dialog
+	m.providerDialog = dialog
 	dialog.Controller().Show()
 }
 
@@ -259,21 +256,21 @@ func valueChange(mode formChange, value string) (*models.ValueChange, error) {
 	panic("validated form change became unreachable")
 }
 
-func (a *app) updateProvider(update models.UpdateProvider) {
-	a.status.note("updating provider " + update.Provider)
-	started := a.tasks.admissionMutation(modelConfigOperation, false,
+func (m *modelConfigScreens) updateProvider(update models.UpdateProvider) {
+	m.status.note("updating provider " + update.Provider)
+	started := m.tasks.admissionMutation(modelConfigOperation, false,
 		func(ctx context.Context) (models.Provider, error) {
-			return a.modelConfig.UpdateProvider(ctx, update)
+			return m.service.UpdateProvider(ctx, update)
 		},
 		func(provider models.Provider, err error) {
 			if err != nil {
-				a.message("update provider failed: " + err.Error())
+				m.message("update provider failed: " + err.Error())
 				return
 			}
-			a.message("provider updated · " + provider.ID())
+			m.message("provider updated · " + provider.ID())
 		},
 	)
 	if !started {
-		a.message("another model configuration operation is running")
+		m.message("another model configuration operation is running")
 	}
 }

@@ -7,24 +7,30 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-func (a *app) ShowGoal() {
-	if a.goals == nil {
-		a.message("this runtime composition has no goal service")
-		return
-	}
-	a.reader.show(a.goalReaderQuery())
+// goalScreens shows and changes the current session's autonomous goal.
+type goalScreens struct {
+	screenHost
+	service Goals
+	// options are the session's current run options a started goal runs with.
+	options *authoring.RunOptions
+	header  *sessionHeader
 }
 
-func (a *app) goalReaderQuery() *readerQuery {
-	sessionID := a.session.current.ID
+func (g *goalScreens) ShowGoal() {
+	g.reader.show(g.goalReaderQuery())
+}
+
+func (g *goalScreens) goalReaderQuery() *readerQuery {
+	sessionID := g.session.current.ID
 	return &readerQuery{
 		status:  "loading session goal",
 		follows: func(event changefeed.Event) bool { return goalInvalidationAffectsSession(event, sessionID) },
 		read: func(ctx context.Context) (readerDocument, error) {
-			current, exists, err := a.goals.GetGoal(ctx, sessionID)
+			current, exists, err := g.service.GetGoal(ctx, sessionID)
 			if err != nil {
 				return readerDocument{}, err
 			}
@@ -73,51 +79,42 @@ func goalCostLabel(used protocol.GoalUsage) string {
 	return "cost unavailable"
 }
 
-func (a *app) StartGoal(objective string) error {
-	if a.goals == nil {
-		return errors.New("this runtime composition has no goal service")
-	}
+func (g *goalScreens) StartGoal(objective string) error {
 	start := protocol.StartGoalRequest{
-		SessionID: a.session.current.ID, Objective: objective,
-		Provider: a.options.Provider, Model: a.options.Model, ReasoningEffort: a.options.ReasoningEffort,
+		SessionID: g.session.current.ID, Objective: objective,
+		Provider: g.options.Provider, Model: g.options.Model, ReasoningEffort: g.options.ReasoningEffort,
 	}
-	return a.changeGoal("starting session goal", func(ctx context.Context) (protocol.Goal, error) {
-		return a.goals.StartGoal(ctx, start)
+	return g.changeGoal("starting session goal", func(ctx context.Context) (protocol.Goal, error) {
+		return g.service.StartGoal(ctx, start)
 	})
 }
 
-func (a *app) UpdateGoal(objective string) error {
-	if a.goals == nil {
-		return errors.New("this runtime composition has no goal service")
-	}
-	update := protocol.UpdateGoalRequest{SessionID: a.session.current.ID, Objective: objective}
-	return a.changeGoal("updating session goal", func(ctx context.Context) (protocol.Goal, error) {
-		return a.goals.UpdateGoal(ctx, update)
+func (g *goalScreens) UpdateGoal(objective string) error {
+	update := protocol.UpdateGoalRequest{SessionID: g.session.current.ID, Objective: objective}
+	return g.changeGoal("updating session goal", func(ctx context.Context) (protocol.Goal, error) {
+		return g.service.UpdateGoal(ctx, update)
 	})
 }
 
-func (a *app) ClearGoal() error {
-	if a.goals == nil {
-		return errors.New("this runtime composition has no goal service")
-	}
-	presentation := a.session.context
-	sessionID := a.session.current.ID
+func (g *goalScreens) ClearGoal() error {
+	presentation := g.session.context
+	sessionID := g.session.current.ID
 	label := "clearing session goal"
-	a.status.note(label)
-	started := a.tasks.admissionMutation(goalOperation, false,
+	g.status.note(label)
+	started := g.tasks.admissionMutation(goalOperation, false,
 		func(ctx context.Context) (struct{}, error) {
-			return struct{}{}, a.goals.ClearGoal(ctx, sessionID)
+			return struct{}{}, g.service.ClearGoal(ctx, sessionID)
 		},
 		func(_ struct{}, err error) {
 			if err != nil {
-				a.message(label + " failed: " + err.Error())
+				g.message(label + " failed: " + err.Error())
 				return
 			}
-			if a.session.context.current(presentation) {
-				a.header.SetGoal(nil)
-				a.reader.open(a.goalReaderQuery(), goalDocument(protocol.Goal{}, false))
+			if g.session.context.current(presentation) {
+				g.header.SetGoal(nil)
+				g.reader.open(g.goalReaderQuery(), goalDocument(protocol.Goal{}, false))
 			}
-			a.status.note("goal · cleared")
+			g.status.note("goal · cleared")
 		},
 	)
 	if !started {
@@ -126,39 +123,33 @@ func (a *app) ClearGoal() error {
 	return nil
 }
 
-func (a *app) StopGoal() error {
-	if a.goals == nil {
-		return errors.New("this runtime composition has no goal service")
-	}
-	sessionID := a.session.current.ID
-	return a.changeGoal("stopping session goal", func(ctx context.Context) (protocol.Goal, error) {
-		return a.goals.StopGoal(ctx, sessionID)
+func (g *goalScreens) StopGoal() error {
+	sessionID := g.session.current.ID
+	return g.changeGoal("stopping session goal", func(ctx context.Context) (protocol.Goal, error) {
+		return g.service.StopGoal(ctx, sessionID)
 	})
 }
 
-func (a *app) ResumeGoal() error {
-	if a.goals == nil {
-		return errors.New("this runtime composition has no goal service")
-	}
-	sessionID := a.session.current.ID
-	return a.changeGoal("resuming session goal", func(ctx context.Context) (protocol.Goal, error) {
-		return a.goals.ResumeGoal(ctx, sessionID)
+func (g *goalScreens) ResumeGoal() error {
+	sessionID := g.session.current.ID
+	return g.changeGoal("resuming session goal", func(ctx context.Context) (protocol.Goal, error) {
+		return g.service.ResumeGoal(ctx, sessionID)
 	})
 }
 
-func (a *app) changeGoal(label string, change func(context.Context) (protocol.Goal, error)) error {
-	presentation := a.session.context
-	a.status.note(label)
-	started := a.tasks.admissionMutation(goalOperation, false, change, func(current protocol.Goal, err error) {
+func (g *goalScreens) changeGoal(label string, change func(context.Context) (protocol.Goal, error)) error {
+	presentation := g.session.context
+	g.status.note(label)
+	started := g.tasks.admissionMutation(goalOperation, false, change, func(current protocol.Goal, err error) {
 		if err != nil {
-			a.message(label + " failed: " + err.Error())
+			g.message(label + " failed: " + err.Error())
 			return
 		}
-		if a.session.context.current(presentation) {
-			a.header.SetGoal(&current)
-			a.reader.open(a.goalReaderQuery(), goalDocument(current, true))
+		if g.session.context.current(presentation) {
+			g.header.SetGoal(&current)
+			g.reader.open(g.goalReaderQuery(), goalDocument(current, true))
 		}
-		a.status.note("goal · " + string(current.Status))
+		g.status.note("goal · " + string(current.Status))
 	})
 	if !started {
 		return errors.New("another goal operation is running")

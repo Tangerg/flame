@@ -37,6 +37,15 @@ func (a *app) screenHost() screenHost {
 
 func (a *app) buildScreens(cfg appConfig) {
 	host := a.screenHost()
+	if cfg.goals != nil {
+		a.goals = &goalScreens{screenHost: host, service: cfg.goals, options: &a.options, header: a.header}
+	}
+	if cfg.modelConfig != nil {
+		a.modelConfig = &modelConfigScreens{screenHost: host, service: cfg.modelConfig}
+	}
+	if cfg.usage != nil {
+		a.usage = &usageScreens{screenHost: host, service: cfg.usage}
+	}
 	if cfg.mcp != nil {
 		a.mcp = &mcpScreens{screenHost: host, service: cfg.mcp, setApprovalRule: a.setApprovalRule}
 	}

@@ -599,7 +599,7 @@ func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 	profile := terminalProfileWithFeatures(t, features)
 	application := &app{
 		runtimeProfile: &profile,
-		goals:          new(goalServiceStub),
+		goals:          &goalScreens{service: new(goalServiceStub)},
 		skills:         &skillScreens{service: newSkillServiceStub()},
 		mcp:            &mcpScreens{service: newMCPServiceStub()},
 		plugins:        &pluginScreens{service: &installedPluginCatalog{}},

@@ -10,19 +10,15 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-func (a *app) ShowModelRoles() {
-	if a.modelConfig == nil {
-		a.message("this runtime composition has no model configuration service")
-		return
-	}
-	a.reader.show(a.modelRolesReaderQuery())
+func (m *modelConfigScreens) ShowModelRoles() {
+	m.reader.show(m.modelRolesReaderQuery())
 }
 
-func (a *app) modelRolesReaderQuery() *readerQuery {
+func (m *modelConfigScreens) modelRolesReaderQuery() *readerQuery {
 	return &readerQuery{
 		status: "loading model roles", follows: followsTopic(protocol.TopicModelsChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
-			roles, err := a.modelConfig.Roles(ctx)
+			roles, err := m.service.Roles(ctx)
 			if err != nil {
 				return readerDocument{}, err
 			}
@@ -49,28 +45,25 @@ func modelRolesDocument(roles models.Roles) (readerDocument, error) {
 	}), nil
 }
 
-func (a *app) SetModelRole(kind models.RoleKind, argument string) error {
-	if a.modelConfig == nil {
-		return errors.New("this runtime composition has no model configuration service")
-	}
+func (m *modelConfigScreens) SetModelRole(kind models.RoleKind, argument string) error {
 	role, err := parseModelRole(kind, argument)
 	if err != nil {
 		return err
 	}
-	a.status.note("updating " + string(kind) + " model role")
-	started := a.tasks.admissionMutation(modelConfigOperation, false,
-		func(ctx context.Context) (models.Role, error) { return a.modelConfig.SetRole(ctx, role) },
+	m.status.note("updating " + string(kind) + " model role")
+	started := m.tasks.admissionMutation(modelConfigOperation, false,
+		func(ctx context.Context) (models.Role, error) { return m.service.SetRole(ctx, role) },
 		func(updated models.Role, err error) {
 			if err != nil {
-				a.message("update " + string(kind) + " role failed: " + err.Error())
+				m.message("update " + string(kind) + " role failed: " + err.Error())
 				return
 			}
 			label, labelErr := updated.Label()
 			if labelErr != nil {
-				a.message("update " + string(kind) + " role returned invalid state: " + labelErr.Error())
+				m.message("update " + string(kind) + " role returned invalid state: " + labelErr.Error())
 				return
 			}
-			a.message(string(kind) + " model · " + label)
+			m.message(string(kind) + " model · " + label)
 		},
 	)
 	if !started {
