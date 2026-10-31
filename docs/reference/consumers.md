@@ -2,8 +2,8 @@
 
 | Consumer                   | Entry                                                                |
 | -------------------------- | -------------------------------------------------------------------- |
-| Generic Go plugin host     | `github.com/Tangerg/qimu`                                      |
-| Generic Go backend author  | `github.com/Tangerg/qimu/mcp`                                  |
+| Generic Go plugin host     | `github.com/Tangerg/qimu`                                            |
+| Generic Go backend author  | `github.com/Tangerg/qimu/mcp`                                        |
 | Generic TypeScript backend | `@qimu/node`                                                         |
 | Generic browser host       | `@qimu/browser`, `@qimu/react`                                       |
 | Generic TypeScript values  | `@qimu/sdk`, `@qimu/sdk/json`                                        |
