@@ -614,7 +614,7 @@ func (s sessionInstallation) apply(a *app) {
 			a.refreshInvalidatedSession(false)
 		}
 	}
-	a.restoreSteerReceipts(s.snapshot)
+	a.steering.restoreSteerReceipts(s.snapshot)
 }
 
 func (a *app) installSnapshot(snapshot conversation.SessionSnapshot) error {

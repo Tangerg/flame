@@ -25,7 +25,7 @@ func (a *app) restore(snapshot conversation.SessionSnapshot) {
 		return
 	}
 	a.restoreActivity(snapshot)
-	a.restoreSteerReceipts(snapshot)
+	a.steering.restoreSteerReceipts(snapshot)
 }
 
 func presentSnapshot(view *transcriptView, snapshot conversation.SessionSnapshot) error {
@@ -117,7 +117,7 @@ func (a *app) reconcileRunSnapshot(snapshot conversation.SessionSnapshot, stream
 	a.prompt.SetBusy(projection.conversation.Busy())
 	previousTranscript.Close()
 	a.listenForSearch()
-	a.steers.observeSnapshot(snapshot)
+	a.steering.receipts.observeSnapshot(snapshot)
 
 	switch projection.conversation.Phase() {
 	case conversation.Running:
@@ -149,7 +149,7 @@ func (a *app) reconcileRunSnapshot(snapshot conversation.SessionSnapshot, stream
 	default:
 		return errors.New("reconcile run snapshot: unknown conversation phase")
 	}
-	a.restoreSteerReceipts(snapshot)
+	a.steering.restoreSteerReceipts(snapshot)
 	a.syncAnimation()
 	return nil
 }

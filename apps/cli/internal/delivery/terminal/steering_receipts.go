@@ -141,45 +141,45 @@ func (s *steerReceipts) needingRead(sessionID string) []*steerReceipt {
 	return pending
 }
 
-func (a *app) restoreSteerReceipts(snapshot conversation.SessionSnapshot) {
-	for _, pending := range a.workbench.PendingSteers() {
-		a.steers.track(pending)
+func (s *steerDesk) restoreSteerReceipts(snapshot conversation.SessionSnapshot) {
+	for _, pending := range s.workbench.PendingSteers() {
+		s.receipts.track(pending)
 	}
-	a.steers.observeSnapshot(snapshot)
-	a.refreshSteerPresentation()
+	s.receipts.observeSnapshot(snapshot)
+	s.refreshSteerPresentation()
 }
 
-func (a *app) refreshSteerPresentation() {
-	for _, entry := range a.steers.entries {
-		if entry.sessionID == a.session.current.ID && entry.runID == a.execution.conversation.RunID() {
+func (s *steerDesk) refreshSteerPresentation() {
+	for _, entry := range s.receipts.entries {
+		if entry.sessionID == s.session.current.ID && entry.runID == s.execution.conversation.RunID() {
 			entry.presented = steerPending
 		}
 	}
-	a.presentSteerReceipts()
+	s.presentSteerReceipts()
 }
 
-func (a *app) observeSteerEvent(event conversation.RunEvent) {
-	a.steers.observeEvent(a.session.current.ID, event)
-	a.presentSteerReceipts()
-	a.readSteerReceipts()
+func (s *steerDesk) observeSteerEvent(event conversation.RunEvent) {
+	s.receipts.observeEvent(s.session.current.ID, event)
+	s.presentSteerReceipts()
+	s.readSteerReceipts()
 }
 
-func (a *app) readSteerReceipts() {
-	sessionID := a.session.current.ID
-	pending := a.steers.needingRead(sessionID)
-	if len(pending) == 0 || a.operations.Active(steerReceiptReadOperation) {
+func (s *steerDesk) readSteerReceipts() {
+	sessionID := s.session.current.ID
+	pending := s.receipts.needingRead(sessionID)
+	if len(pending) == 0 || s.tasks.operations.Active(steerReceiptReadOperation) {
 		return
 	}
-	a.tasks.session(steerReceiptReadOperation, false,
+	s.tasks.session(steerReceiptReadOperation, false,
 		func(ctx context.Context) (conversation.SessionSnapshot, error) {
-			return a.readSessionAfterMutation(ctx, sessionID)
+			return s.readSession(ctx, sessionID)
 		},
 		func(snapshot conversation.SessionSnapshot, err error) {
 			if err == nil && snapshot.Session.ID != sessionID {
 				err = fmt.Errorf("steer receipt read returned session %s instead of %s", snapshot.Session.ID, sessionID)
 			}
 			if err == nil {
-				a.steers.observeSnapshot(snapshot)
+				s.receipts.observeSnapshot(snapshot)
 			}
 			for _, entry := range pending {
 				if entry.afterFinishedRead || entry.status() == steerApplied {
@@ -190,16 +190,16 @@ func (a *app) readSteerReceipts() {
 					entry.readFailure = fmt.Errorf("authoritative read did not include finished run %s", entry.runID)
 				}
 			}
-			a.presentSteerReceipts()
-			a.readSteerReceipts()
+			s.presentSteerReceipts()
+			s.readSteerReceipts()
 		},
 	)
 }
 
-func (a *app) presentSteerReceipts() {
+func (s *steerDesk) presentSteerReceipts() {
 	var selected *steerReceipt
-	for _, entry := range a.steers.entries {
-		if entry.sessionID != a.session.current.ID {
+	for _, entry := range s.receipts.entries {
+		if entry.sessionID != s.session.current.ID {
 			continue
 		}
 		status := entry.status()
@@ -215,8 +215,8 @@ func (a *app) presentSteerReceipts() {
 		return
 	}
 	runID := selected.runID
-	for _, entry := range a.steers.entries {
-		if entry.sessionID == a.session.current.ID && entry.runID == runID &&
+	for _, entry := range s.receipts.entries {
+		if entry.sessionID == s.session.current.ID && entry.runID == runID &&
 			steerReceiptPriority(entry.status()) >= steerReceiptPriority(selected.status()) {
 			selected = entry
 		}
@@ -239,14 +239,14 @@ func (a *app) presentSteerReceipts() {
 	case steerUnconfirmed:
 		label = "steer application remains unconfirmed after this run"
 	}
-	if selected.runID != a.execution.conversation.RunID() {
+	if selected.runID != s.execution.conversation.RunID() {
 		label += " · " + shortIdentity(selected.runID)
 	}
 	label += " · " + identity
 	if selected.readFailure != nil && status == steerUnconfirmed {
 		label += ": " + selected.readFailure.Error()
 	}
-	a.message(label)
+	s.notify(label)
 }
 
 func steerReceiptPriority(status steerReceiptStatus) int {

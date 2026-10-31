@@ -72,7 +72,7 @@ type app struct {
 	tasks            taskRunner
 	session          sessionState
 	execution        executionState
-	steers           steerReceipts
+	steering         *steerDesk
 	dialogs          dialogState
 	reader           *readerSurface
 	prompts          *interruptPrompts
@@ -245,8 +245,13 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	a.registerCommands()
 	a.buildInterface(appearance, cfg.keyBindings.editor)
 	a.buildScreens(cfg)
+	a.steering = &steerDesk{
+		runtime: a.runtime, workbench: a.workbench, replayPolicy: a.replayPolicy,
+		composer: a.composer, session: &a.session, execution: &a.execution, tasks: a.tasks,
+		notify: a.message, report: a.reportWorkbenchIssue, drainQueue: a.drainQueue, readSession: a.readSessionAfterMutation,
+	}
 	for _, result := range cfg.recoveredSteers {
-		a.steers.accept(result)
+		a.steering.receipts.accept(result)
 	}
 	a.restore(cfg.snapshot)
 	a.restoreSessionOutbox()

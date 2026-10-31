@@ -110,7 +110,7 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 			}
 			active.announceStartup(
 				rollbackNotice,
-				active.refusedSteersNotice(prepared.recoveryIssues.steers.Refused),
+				active.steering.refusedSteersNotice(prepared.recoveryIssues.steers.Refused),
 				unloadedPluginsNotice(results, discovered.Issues),
 				pendingInstalledCommandsNotice(prepared.workbench),
 			)

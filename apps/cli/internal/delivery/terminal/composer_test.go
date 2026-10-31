@@ -67,11 +67,11 @@ func TestCommittedComposerCannotUndoIntoReleasedAttachmentPayloads(t *testing.T)
 }
 
 func TestRejectedSteerAttachmentsNeverReplaceAnUnreadableDraft(t *testing.T) {
-	a := &app{composer: testPromptComposer(t), closed: true}
-	editor := a.composer.Editor()
+	steering := &steerDesk{composer: testPromptComposer(t)}
+	editor := steering.composer.Editor()
 	editor.InsertElement(fileElement, "@orphan.md")
 	editor.Insert(" keep this text")
-	a.restoreSteerAttachments([]authoring.Attachment{{Name: "rejected.md"}})
+	steering.restoreSteerAttachments([]authoring.Attachment{{Name: "rejected.md"}})
 	if text := editor.Text(); !strings.Contains(text, "keep this text") || !strings.Contains(text, "@rejected.md") {
 		t.Fatalf("composer = %q, want the user's text kept and the rejected attachment inserted", text)
 	}

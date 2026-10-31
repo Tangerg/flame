@@ -269,7 +269,7 @@ func (a *app) apply(event conversation.RunEvent) error {
 		return err
 	}
 	a.applyPresentationEvent(event)
-	a.observeSteerEvent(event)
+	a.steering.observeSteerEvent(event)
 	a.status.setRunningDescendants(a.execution.conversation.RunningDescendants())
 	switch event.Event.(type) {
 	case conversation.SegmentStarted, conversation.RunProgress, conversation.SegmentFinished:
@@ -372,7 +372,7 @@ func (a *app) finishFollowing() {
 	if !dispatching && a.drainQueue() {
 		return
 	}
-	a.refreshSteerPresentation()
+	a.steering.refreshSteerPresentation()
 	a.raiseAttention(outcomeAttention(a.execution.conversation.Outcome()))
 }
 

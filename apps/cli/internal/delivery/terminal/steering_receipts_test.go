@@ -171,10 +171,7 @@ func TestSteerPresentationKeepsAnUnappliedInstructionVisibleBesideAppliedInput(t
 				Session: conversation.Session{ID: "ses_1"}, Runs: []conversation.Run{{ID: "run_1", Status: protocol.RunStatusFinished}},
 				Transcript: []conversation.Block{{ID: "item_applied", RunID: "run_1", Kind: conversation.BlockUser, Status: conversation.BlockStatusCompleted}},
 			})
-			terminal := app{
-				session:   sessionState{current: conversation.Session{ID: "ses_1"}},
-				execution: executionState{conversation: conversation.New()}, status: &statusView{}, steers: receipts,
-			}
+			terminal := testSteerDesk(receipts)
 			terminal.presentSteerReceipts()
 			want := "steer not applied"
 			if unknown {
@@ -204,15 +201,12 @@ func TestLateSteerACKCannotHideAnotherUnappliedInstructionInTheSameRun(t *testin
 		Session: conversation.Session{ID: "ses_1"}, Runs: []conversation.Run{{ID: "run_1", Status: protocol.RunStatusFinished}},
 		Transcript: []conversation.Block{{ID: "item_applied", RunID: "run_1", Kind: conversation.BlockUser, Status: conversation.BlockStatusCompleted}},
 	})
-	terminal := app{
-		session:   sessionState{current: conversation.Session{ID: "ses_1"}},
-		execution: executionState{conversation: conversation.New()}, status: &statusView{}, steers: receipts,
-	}
+	terminal := testSteerDesk(receipts)
 	terminal.presentSteerReceipts()
 	if !strings.Contains(terminal.status.doing, "steer not applied") || !strings.Contains(terminal.status.doing, "item_missing") {
 		t.Fatalf("completed run steer status = %q", terminal.status.doing)
 	}
-	terminal.steers.accept(late)
+	terminal.receipts.accept(late)
 	terminal.presentSteerReceipts()
 	if !strings.Contains(terminal.status.doing, "steer not applied") || !strings.Contains(terminal.status.doing, "item_missing") {
 		t.Fatalf("late applied acknowledgement hid the unapplied instruction: %q", terminal.status.doing)
@@ -412,4 +406,17 @@ func delayedSteerRuntime(t *testing.T) *delayedSteerReceiptRuntime {
 	return &delayedSteerReceiptRuntime{
 		Runtime: base, requests: make(chan authoring.SteerRun, 1), acknowledge: make(chan struct{}), read: make(chan struct{}, 1),
 	}
+}
+
+type steerStatusProbe struct {
+	*steerDesk
+	status *statusView
+}
+
+func testSteerDesk(receipts steerReceipts) steerStatusProbe {
+	status := &statusView{}
+	return steerStatusProbe{steerDesk: &steerDesk{
+		receipts: receipts, session: &sessionState{current: conversation.Session{ID: "ses_1"}},
+		execution: &executionState{conversation: conversation.New()}, notify: status.note,
+	}, status: status}
 }
