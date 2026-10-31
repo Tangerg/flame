@@ -11,7 +11,7 @@
       "description": "Replace or rearm the trigger at its current revision; omitting trigger disables observation. Configuration acceptance does not claim a live watch. Captured work remains immutable.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Draft": {
+          "domain.Draft": {
             "additionalProperties": false,
             "properties": {
               "instructions": {
@@ -60,7 +60,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_ConfigureInput": {
+          "wire.ConfigureInput": {
             "additionalProperties": false,
             "properties": {
               "expectedRevision": {
@@ -74,7 +74,7 @@
                 "type": "integer"
               },
               "trigger": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Draft"
+                "$ref": "#/$defs/domain.Draft"
               }
             },
             "required": [
@@ -97,7 +97,7 @@
             "type": "integer"
           },
           "trigger": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Draft"
+            "$ref": "#/$defs/domain.Draft"
           }
         },
         "required": [
@@ -107,7 +107,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Draft": {
+          "domain.Draft": {
             "additionalProperties": false,
             "properties": {
               "instructions": {
@@ -156,7 +156,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Snapshot": {
+          "domain.Snapshot": {
             "additionalProperties": false,
             "properties": {
               "revision": {
@@ -170,7 +170,7 @@
                 "type": "integer"
               },
               "trigger": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Draft"
+                "$ref": "#/$defs/domain.Draft"
               }
             },
             "required": [
@@ -193,7 +193,7 @@
             "type": "integer"
           },
           "trigger": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Draft"
+            "$ref": "#/$defs/domain.Draft"
           }
         },
         "required": [
@@ -209,7 +209,7 @@
       "description": "Read one retained observation and its complete original dispatch capture.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_EventInput": {
+          "wire.EventInput": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -240,14 +240,14 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Capture": {
+          "domain.Capture": {
             "additionalProperties": false,
             "properties": {
               "generation": {
                 "type": "string"
               },
               "invocation": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_Invocation"
+                "$ref": "#/$defs/portable.Invocation"
               },
               "kind": {
                 "allOf": [
@@ -295,7 +295,7 @@
                 "type": "string"
               },
               "trigger": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Draft"
+                "$ref": "#/$defs/domain.Draft"
               }
             },
             "required": [
@@ -312,7 +312,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Draft": {
+          "domain.Draft": {
             "additionalProperties": false,
             "properties": {
               "instructions": {
@@ -361,14 +361,14 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Event": {
+          "domain.Event": {
             "additionalProperties": false,
             "properties": {
               "accepted": {
                 "type": "boolean"
               },
               "capture": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Capture"
+                "$ref": "#/$defs/domain.Capture"
               }
             },
             "required": [
@@ -377,7 +377,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_Invocation": {
+          "portable.Invocation": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -390,7 +390,7 @@
                 "type": "string"
               },
               "target": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_Target"
+                "$ref": "#/$defs/portable.Target"
               }
             },
             "required": [
@@ -400,7 +400,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_Target": {
+          "portable.Target": {
             "additionalProperties": false,
             "properties": {
               "reference": {
@@ -424,7 +424,7 @@
             "type": "boolean"
           },
           "capture": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Capture"
+            "$ref": "#/$defs/domain.Capture"
           }
         },
         "required": [
@@ -447,7 +447,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Header": {
+          "domain.Header": {
             "additionalProperties": false,
             "properties": {
               "accepted": {
@@ -511,7 +511,7 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "items": {
-          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Header"
+          "$ref": "#/$defs/domain.Header"
         },
         "type": "array"
       }
@@ -529,7 +529,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Draft": {
+          "domain.Draft": {
             "additionalProperties": false,
             "properties": {
               "instructions": {
@@ -578,7 +578,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Snapshot": {
+          "domain.Snapshot": {
             "additionalProperties": false,
             "properties": {
               "revision": {
@@ -592,7 +592,7 @@
                 "type": "integer"
               },
               "trigger": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Draft"
+                "$ref": "#/$defs/domain.Draft"
               }
             },
             "required": [
@@ -615,7 +615,7 @@
             "type": "integer"
           },
           "trigger": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Draft"
+            "$ref": "#/$defs/domain.Draft"
           }
         },
         "required": [
@@ -637,7 +637,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Status": {
+          "domain.Status": {
             "additionalProperties": false,
             "properties": {
               "dispatchError": {

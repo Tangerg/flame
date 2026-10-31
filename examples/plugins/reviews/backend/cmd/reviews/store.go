@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"unicode/utf8"
 
+	"github.com/Tangerg/qimu/portable"
+
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
@@ -38,7 +40,7 @@ func openStore(ctx context.Context, directory string) (_ *store, err error) {
 	if !filepath.IsAbs(directory) {
 		return nil, errors.New("reviews: data directory must be absolute")
 	}
-	inputSchema, err := jsonschema.For[reviews.Update]()
+	inputSchema, err := portable.SchemaFor[reviews.Update]()
 	if err != nil {
 		return nil, fmt.Errorf("reviews: input schema: %w", err)
 	}

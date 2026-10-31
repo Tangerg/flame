@@ -8,7 +8,6 @@ import (
 	"github.com/Tangerg/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 type Analysis struct {
@@ -62,7 +61,7 @@ func NewAnalyzerContracts() (AnalyzerContracts, error) {
 }
 
 func NewAnalyzerPoint() (*portable.Point, error) {
-	schema, err := jsonschema.For[Analyzer]()
+	schema, err := portable.SchemaFor[Analyzer]()
 	if err != nil {
 		return nil, err
 	}

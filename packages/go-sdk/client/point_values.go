@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/scope/core/jsonschema"
 	"github.com/samber/lo"
 )
 
@@ -33,7 +32,7 @@ func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contra
 	if err := jsonvalue.ValidateType(reflect.TypeFor[T]()); err != nil {
 		return nil, err
 	}
-	schema, err := jsonschema.For[T]()
+	schema, err := portable.SchemaFor[T]()
 	if err != nil {
 		return nil, err
 	}

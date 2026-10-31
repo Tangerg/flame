@@ -1,13 +1,12 @@
 package contractgen
 
 import (
-	"encoding/base64"
+	"bytes"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
 	"go/token"
 	"maps"
-	"path"
 	"slices"
 	"strings"
 	"unicode"
@@ -123,11 +122,11 @@ func buildFeature(data []byte) (*featureArtifacts, error) {
 	return artifacts, nil
 }
 
-// featureNames gives every method frame and schema definition a readable
-// identifier. A method is named by its last path segment; Scope keys a Go type
-// as go_<base64url(package path)>_<type>, which is named by the type alone
-// unless two packages publish it, and then by package and type. A name that
-// still collides is rejected rather than escaped into an unreadable one.
+// featureNames gives every method frame and schema definition an identifier.
+// A method is named by its last path segment; a definition by the readable name
+// its contract publishes. Two methods that publish the same name must publish
+// the same definition, and a name that collides is rejected rather than escaped
+// into an unreadable one.
 func featureNames(descriptors []portable.MethodDescriptor) (map[string]string, map[string]string, error) {
 	roots := make(map[string]string, len(descriptors))
 	owners := make(map[string]string)
@@ -160,25 +159,26 @@ func featureNames(descriptors []portable.MethodDescriptor) (map[string]string, m
 			if err := json.Unmarshal(raw, &document); err != nil {
 				return nil, nil, err
 			}
-			maps.Copy(keys, document.Defs)
+			for key, body := range document.Defs {
+				if known, found := keys[key]; found && !bytes.Equal(known, body) {
+					return nil, nil, fmt.Errorf("feature contracts: methods publish different %s definitions", key)
+				}
+				keys[key] = body
+			}
 		}
 	}
-	type source struct{ pkg, name string }
-	sources := make(map[string]source, len(keys))
-	packages := make(map[string]map[string]bool)
+	// A contract names a definition <package>.<type>; a projection drops the
+	// package unless another definition shares the type name.
+	typeName := func(key string) string { return key[strings.IndexByte(key, '.')+1:] }
+	sharing := make(map[string]int, len(keys))
 	for key := range keys {
-		pkg, name := goDefinitionSource(key)
-		sources[key] = source{pkg, goFeatureIdentifier(name)}
-		if packages[sources[key].name] == nil {
-			packages[sources[key].name] = make(map[string]bool)
-		}
-		packages[sources[key].name][pkg] = true
+		sharing[typeName(key)]++
 	}
 	renamed := make(map[string]string, len(keys))
 	for _, key := range slices.Sorted(maps.Keys(keys)) {
-		name := sources[key].name
-		if len(packages[name]) > 1 {
-			name = goFeatureIdentifier(path.Base(sources[key].pkg)) + name
+		name := goFeatureIdentifier(typeName(key))
+		if sharing[typeName(key)] > 1 {
+			name = goFeatureIdentifier(key)
 		}
 		if err := claim(name, key); err != nil {
 			return nil, nil, err
@@ -199,41 +199,12 @@ func featureNames(descriptors []portable.MethodDescriptor) (map[string]string, m
 		}
 	}
 	for target, encoders := range encodedBy {
-		if _, name := goDefinitionSource(target); len(encoders) == 1 && keys[target] != nil && unicode.IsLower([]rune(name)[0]) {
+		name := typeName(target)
+		if len(encoders) == 1 && keys[target] != nil && unicode.IsLower([]rune(name)[0]) {
 			renamed[target] = renamed[encoders[0]]
 		}
 	}
 	return roots, renamed, nil
-}
-
-// goDefinitionSource reads the package path and type name from a Scope Go
-// definition key; any other key is its own name. Base64url and Go type names
-// may both contain '_', so the separator is the first one after which the
-// prefix decodes to an import path and the rest begins a type name.
-func goDefinitionSource(key string) (pkg, name string) {
-	encoded, ok := strings.CutPrefix(key, "go_")
-	if !ok {
-		return "", key
-	}
-	for index := strings.IndexByte(encoded, '_'); index >= 0; {
-		decoded, err := base64.RawURLEncoding.DecodeString(encoded[:index])
-		rest := encoded[index+1:]
-		if err == nil && importPath(string(decoded)) && rest != "" && unicode.IsLetter([]rune(rest)[0]) {
-			return string(decoded), rest
-		}
-		next := strings.IndexByte(rest, '_')
-		if next < 0 {
-			break
-		}
-		index += next + 1
-	}
-	return "", key
-}
-
-func importPath(value string) bool {
-	return value != "" && !strings.ContainsFunc(value, func(r rune) bool {
-		return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("./-_~+", r))
-	})
 }
 
 func addFeatureSchema(artifacts *featureArtifacts, root string, raw jsontext.Value, renamed map[string]string) error {

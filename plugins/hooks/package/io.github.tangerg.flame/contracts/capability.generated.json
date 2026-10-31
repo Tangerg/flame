@@ -11,7 +11,7 @@
       "description": "Read ordered lifecycle rules. Exclude all project configuration when the Runtime has not admitted its trust.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_Discovery": {
+          "hookprovider.Discovery": {
             "additionalProperties": false,
             "properties": {
               "cwd": {
@@ -60,7 +60,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_Hook": {
+          "hook.Hook": {
             "additionalProperties": false,
             "properties": {
               "command": {
@@ -122,7 +122,7 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "items": {
-          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_Hook"
+          "$ref": "#/$defs/hook.Hook"
         },
         "type": "array"
       }
@@ -134,7 +134,7 @@
       "description": "Execute one trusted lifecycle command under its original receipt, bounded input, output and process lifetime. Return advice; never grant Runtime authorization.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_Input": {
+          "hook.Input": {
             "additionalProperties": false,
             "properties": {
               "cwd": {
@@ -169,7 +169,7 @@
                 "type": "string"
               },
               "tool": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_ToolInput"
+                "$ref": "#/$defs/hook.ToolInput"
               }
             },
             "required": [
@@ -177,7 +177,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_ToolInput": {
+          "hook.ToolInput": {
             "additionalProperties": false,
             "properties": {
               "arguments": {
@@ -198,7 +198,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_Command": {
+          "hookprovider.Command": {
             "additionalProperties": false,
             "properties": {
               "command": {
@@ -208,7 +208,7 @@
                 "type": "string"
               },
               "input": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_Input"
+                "$ref": "#/$defs/hook.Input"
               },
               "timeoutMillis": {
                 "allOf": [
@@ -240,7 +240,7 @@
             "type": "string"
           },
           "input": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_Input"
+            "$ref": "#/$defs/hook.Input"
           },
           "timeoutMillis": {
             "allOf": [
@@ -263,7 +263,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_CommandDecision": {
+          "hook.CommandDecision": {
             "additionalProperties": false,
             "properties": {
               "injectContext": {
@@ -293,7 +293,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_Failure": {
+          "hookprovider.Failure": {
             "additionalProperties": false,
             "properties": {
               "kind": {
@@ -318,11 +318,11 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_Result": {
+          "hookprovider.Result": {
             "additionalProperties": false,
             "properties": {
               "decision": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_CommandDecision"
+                "$ref": "#/$defs/hook.CommandDecision"
               },
               "exitCode": {
                 "allOf": [
@@ -334,7 +334,7 @@
                 "type": "integer"
               },
               "failure": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_Failure"
+                "$ref": "#/$defs/hookprovider.Failure"
               },
               "stderr": {
                 "type": "string"
@@ -350,7 +350,7 @@
         "additionalProperties": false,
         "properties": {
           "decision": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_CommandDecision"
+            "$ref": "#/$defs/hook.CommandDecision"
           },
           "exitCode": {
             "allOf": [
@@ -362,7 +362,7 @@
             "type": "integer"
           },
           "failure": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_Failure"
+            "$ref": "#/$defs/hookprovider.Failure"
           },
           "stderr": {
             "type": "string"

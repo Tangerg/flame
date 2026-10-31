@@ -13,6 +13,8 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	agent "github.com/Tangerg/scope/agent"
@@ -25,7 +27,7 @@ import (
 // drift from the shape that is read back. Which remember scopes exist stays
 // with approval.Scope, which rejects an unknown one at decode.
 var resolutionSchema = sync.OnceValues(func() (jsonschema.Schema, error) {
-	schema, err := jsonschema.For[resolutionPayload]()
+	schema, err := portable.SchemaFor[resolutionPayload]()
 	if err != nil {
 		return jsonschema.Schema{}, fmt.Errorf("run input: derive resolution schema: %w", err)
 	}

@@ -11,7 +11,7 @@
       "description": "Read a bounded page of a previously captured snapshot by ID and Unicode codepoint offset. This reads captured material without network I/O; an evicted snapshot is refused.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_BrowseInput": {
+          "wire.BrowseInput": {
             "additionalProperties": false,
             "properties": {
               "limit": {
@@ -88,7 +88,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL2RvbWFpbg_Page": {
+          "domain.Page": {
             "additionalProperties": false,
             "properties": {
               "content": {
@@ -221,7 +221,7 @@
       "description": "Fetch a URL through configured Jina Reader credentials and capture a private immutable snapshot. Return its first 8192 Unicode codepoints and exact continuation offset.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_FetchRequest": {
+          "web.FetchRequest": {
             "additionalProperties": false,
             "properties": {
               "format": {
@@ -278,7 +278,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL2RvbWFpbg_Page": {
+          "domain.Page": {
             "additionalProperties": false,
             "properties": {
               "content": {
@@ -411,7 +411,7 @@
       "description": "Execute one HTTP request within the installed host allowlist. GET and HEAD are allowed; other methods are refused. Responses are bounded to 256 KiB. Preserve the command identity: an unconfirmed request must never be resubmitted.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL2h0dHByZXE_Request": {
+          "httpreq.Request": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -550,7 +550,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_HTTPContent": {
+          "wire.HTTPContent": {
             "additionalProperties": false,
             "properties": {
               "data": {
@@ -570,11 +570,11 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_HTTPResponse": {
+          "wire.HTTPResponse": {
             "additionalProperties": false,
             "properties": {
               "body": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_HTTPContent"
+                "$ref": "#/$defs/wire.HTTPContent"
               },
               "duration": {
                 "type": "string"
@@ -582,7 +582,7 @@
               "headers": {
                 "additionalProperties": {
                   "items": {
-                    "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_HTTPContent"
+                    "$ref": "#/$defs/wire.HTTPContent"
                   },
                   "type": "array"
                 },
@@ -613,7 +613,7 @@
         "additionalProperties": false,
         "properties": {
           "body": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_HTTPContent"
+            "$ref": "#/$defs/wire.HTTPContent"
           },
           "duration": {
             "type": "string"
@@ -621,7 +621,7 @@
           "headers": {
             "additionalProperties": {
               "items": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_HTTPContent"
+                "$ref": "#/$defs/wire.HTTPContent"
               },
               "type": "array"
             },
@@ -655,7 +655,7 @@
       "description": "Search through configured Tavily credentials with a query up to 8192 bytes, honoring explicit domain and supported recency filters. Each call queries the provider; results are bounded to 128 KiB.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_SearchRequest": {
+          "web.SearchRequest": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -796,7 +796,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_SearchResponse": {
+          "web.SearchResponse": {
             "additionalProperties": false,
             "properties": {
               "query": {
@@ -804,7 +804,7 @@
               },
               "results": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_SearchResult"
+                  "$ref": "#/$defs/web.SearchResult"
                 },
                 "type": "array"
               }
@@ -815,7 +815,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_SearchResult": {
+          "web.SearchResult": {
             "additionalProperties": false,
             "properties": {
               "favicon_url": {
@@ -854,7 +854,7 @@
           },
           "results": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_SearchResult"
+              "$ref": "#/$defs/web.SearchResult"
             },
             "type": "array"
           }

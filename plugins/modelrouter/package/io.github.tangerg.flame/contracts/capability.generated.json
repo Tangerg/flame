@@ -17,10 +17,65 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]"
+          "domain.Rule": {
+            "additionalProperties": false,
+            "properties": {
+              "ceiling": {
+                "$ref": "#/$defs/model.SelectionLimits"
+              },
+              "selection": {
+                "$ref": "#/$defs/model.Selection"
+              },
+              "use": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "interaction",
+                      "utility",
+                      "independent"
+                    ]
+                  }
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "use",
+              "selection"
+            ],
+            "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_SelectionLimits": {
+          "domain.Snapshot": {
+            "additionalProperties": false,
+            "properties": {
+              "revision": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "rules": {
+                "items": {
+                  "$ref": "#/$defs/domain.Rule"
+                },
+                "maxItems": 3,
+                "type": "array"
+              }
+            },
+            "required": [
+              "revision",
+              "rules"
+            ],
+            "type": "object"
+          },
+          "model.Selection": {
+            "$ref": "#/$defs/model.selectionJSON[string]"
+          },
+          "model.SelectionLimits": {
             "additionalProperties": false,
             "properties": {
               "inputKind": {
@@ -62,7 +117,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]": {
+          "model.selectionJSON[string]": {
             "additionalProperties": false,
             "properties": {
               "model": {
@@ -79,61 +134,6 @@
               "model",
               "provider",
               "reasoningEffort"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule": {
-            "additionalProperties": false,
-            "properties": {
-              "ceiling": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_SelectionLimits"
-              },
-              "selection": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection"
-              },
-              "use": {
-                "allOf": [
-                  {
-                    "enum": [
-                      "interaction",
-                      "utility",
-                      "independent"
-                    ]
-                  }
-                ],
-                "type": "string"
-              }
-            },
-            "required": [
-              "use",
-              "selection"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Snapshot": {
-            "additionalProperties": false,
-            "properties": {
-              "revision": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "minimum": 1,
-                "type": "integer"
-              },
-              "rules": {
-                "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule"
-                },
-                "maxItems": 3,
-                "type": "array"
-              }
-            },
-            "required": [
-              "revision",
-              "rules"
             ],
             "type": "object"
           }
@@ -153,7 +153,7 @@
           },
           "rules": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule"
+              "$ref": "#/$defs/domain.Rule"
             },
             "maxItems": 3,
             "type": "array"
@@ -173,10 +173,38 @@
       "description": "Replace the routing policy at the inspected revision. Each use has at most one exact target and an optional caller-envelope ceiling.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]"
+          "domain.Rule": {
+            "additionalProperties": false,
+            "properties": {
+              "ceiling": {
+                "$ref": "#/$defs/model.SelectionLimits"
+              },
+              "selection": {
+                "$ref": "#/$defs/model.Selection"
+              },
+              "use": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "interaction",
+                      "utility",
+                      "independent"
+                    ]
+                  }
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "use",
+              "selection"
+            ],
+            "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_SelectionLimits": {
+          "model.Selection": {
+            "$ref": "#/$defs/model.selectionJSON[string]"
+          },
+          "model.SelectionLimits": {
             "additionalProperties": false,
             "properties": {
               "inputKind": {
@@ -218,7 +246,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]": {
+          "model.selectionJSON[string]": {
             "additionalProperties": false,
             "properties": {
               "model": {
@@ -238,35 +266,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule": {
-            "additionalProperties": false,
-            "properties": {
-              "ceiling": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_SelectionLimits"
-              },
-              "selection": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection"
-              },
-              "use": {
-                "allOf": [
-                  {
-                    "enum": [
-                      "interaction",
-                      "utility",
-                      "independent"
-                    ]
-                  }
-                ],
-                "type": "string"
-              }
-            },
-            "required": [
-              "use",
-              "selection"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvd2lyZQ_ReplaceInput": {
+          "wire.ReplaceInput": {
             "additionalProperties": false,
             "properties": {
               "expectedRevision": {
@@ -281,7 +281,7 @@
               },
               "rules": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule"
+                  "$ref": "#/$defs/domain.Rule"
                 },
                 "maxItems": 3,
                 "type": "array"
@@ -309,7 +309,7 @@
           },
           "rules": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule"
+              "$ref": "#/$defs/domain.Rule"
             },
             "maxItems": 3,
             "type": "array"
@@ -323,10 +323,65 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]"
+          "domain.Rule": {
+            "additionalProperties": false,
+            "properties": {
+              "ceiling": {
+                "$ref": "#/$defs/model.SelectionLimits"
+              },
+              "selection": {
+                "$ref": "#/$defs/model.Selection"
+              },
+              "use": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "interaction",
+                      "utility",
+                      "independent"
+                    ]
+                  }
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "use",
+              "selection"
+            ],
+            "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_SelectionLimits": {
+          "domain.Snapshot": {
+            "additionalProperties": false,
+            "properties": {
+              "revision": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "rules": {
+                "items": {
+                  "$ref": "#/$defs/domain.Rule"
+                },
+                "maxItems": 3,
+                "type": "array"
+              }
+            },
+            "required": [
+              "revision",
+              "rules"
+            ],
+            "type": "object"
+          },
+          "model.Selection": {
+            "$ref": "#/$defs/model.selectionJSON[string]"
+          },
+          "model.SelectionLimits": {
             "additionalProperties": false,
             "properties": {
               "inputKind": {
@@ -368,7 +423,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]": {
+          "model.selectionJSON[string]": {
             "additionalProperties": false,
             "properties": {
               "model": {
@@ -385,61 +440,6 @@
               "model",
               "provider",
               "reasoningEffort"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule": {
-            "additionalProperties": false,
-            "properties": {
-              "ceiling": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_SelectionLimits"
-              },
-              "selection": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection"
-              },
-              "use": {
-                "allOf": [
-                  {
-                    "enum": [
-                      "interaction",
-                      "utility",
-                      "independent"
-                    ]
-                  }
-                ],
-                "type": "string"
-              }
-            },
-            "required": [
-              "use",
-              "selection"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Snapshot": {
-            "additionalProperties": false,
-            "properties": {
-              "revision": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "minimum": 1,
-                "type": "integer"
-              },
-              "rules": {
-                "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule"
-                },
-                "maxItems": 3,
-                "type": "array"
-              }
-            },
-            "required": [
-              "revision",
-              "rules"
             ],
             "type": "object"
           }
@@ -459,7 +459,7 @@
           },
           "rules": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule"
+              "$ref": "#/$defs/domain.Rule"
             },
             "maxItems": 3,
             "type": "array"

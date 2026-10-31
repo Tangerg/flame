@@ -9,10 +9,9 @@ import (
 	"reflect"
 	"unicode/utf8"
 
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 type MethodConfig struct {
@@ -53,11 +52,11 @@ func NewMethod[P, R any](config MethodConfig) (*Method[P, R], error) {
 	if config.Description == "" || !utf8.ValidString(config.Description) {
 		return nil, errors.New("plugin: method description is required")
 	}
-	input, err := jsonschema.For[P]()
+	input, err := portable.SchemaFor[P]()
 	if err != nil {
 		return nil, fmt.Errorf("plugin: %s input: %w", config.Name, err)
 	}
-	output, err := jsonschema.For[R]()
+	output, err := portable.SchemaFor[R]()
 	if err != nil {
 		return nil, fmt.Errorf("plugin: %s output: %w", config.Name, err)
 	}

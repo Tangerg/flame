@@ -11,10 +11,9 @@ import (
 	"net/http"
 	"reflect"
 
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/scope/core/jsonschema"
 	"github.com/Tangerg/sse"
 )
 
@@ -55,7 +54,7 @@ func NewStreamingMethod[P, C, R any](config MethodConfig) (*StreamingMethod[P, C
 	if err := jsonvalue.ValidateType(reflect.TypeFor[C]()); err != nil {
 		return nil, fmt.Errorf("plugin: %s chunk codec: %w", config.Name, err)
 	}
-	chunk, err := jsonschema.For[C]()
+	chunk, err := portable.SchemaFor[C]()
 	if err != nil {
 		return nil, err
 	}

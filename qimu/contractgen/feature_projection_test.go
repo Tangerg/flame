@@ -1,7 +1,6 @@
 package contractgen
 
 import (
-	"encoding/base64"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"go/ast"
@@ -337,9 +336,6 @@ func TestFeatureGoProjectionPreservesTypedFramesAndIntegerBounds(t *testing.T) {
 }
 
 func TestFeatureDefinitionsAreNamedByTheirGoTypes(t *testing.T) {
-	key := func(pkg, name string) string {
-		return "go_" + base64.RawURLEncoding.EncodeToString([]byte(pkg)) + "_" + name
-	}
 	schema := func(keys ...string) []byte {
 		defs := make([]string, len(keys))
 		for index, key := range keys {
@@ -347,15 +343,23 @@ func TestFeatureDefinitionsAreNamedByTheirGoTypes(t *testing.T) {
 		}
 		return []byte(`{"$defs":{` + strings.Join(defs, ",") + `}}`)
 	}
-	domain, wire := key("example.com/feature/internal/domain", "Snapshot"), key("example.com/feature/internal/wire", "Snapshot")
-	selection := key("example.com/sdk/model", "selection_JSON[string]")
 	_, renamed, err := featureNames([]portable.MethodDescriptor{
-		{Name: "feature/read.v1", Input: schema(domain, selection), Output: schema(wire)},
+		{Name: "feature/read.v1", Input: schema("domain.Snapshot", "model.selection_JSON[string]"), Output: schema("wire.Snapshot")},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if renamed[domain] != "DomainSnapshot" || renamed[wire] != "WireSnapshot" || renamed[selection] != "SelectionJSONString" {
+	if renamed["domain.Snapshot"] != "DomainSnapshot" || renamed["wire.Snapshot"] != "WireSnapshot" || renamed["model.selection_JSON[string]"] != "SelectionJSONString" {
 		t.Fatalf("definition names = %v", renamed)
+	}
+}
+
+func TestFeatureDefinitionsRefuseOneNameForTwoBodies(t *testing.T) {
+	_, _, err := featureNames([]portable.MethodDescriptor{
+		{Name: "feature/read.v1", Input: []byte(`{"$defs":{"domain.Item":{"type":"string"}}}`)},
+		{Name: "feature/write.v1", Input: []byte(`{"$defs":{"domain.Item":{"type":"integer"}}}`)},
+	})
+	if err == nil {
+		t.Fatal("two methods published different domain.Item definitions and were accepted")
 	}
 }

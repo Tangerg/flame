@@ -6,10 +6,11 @@ import (
 	jsonv2 "encoding/json/v2"
 	"fmt"
 
+	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/core/chat"
-	corejsonschema "github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -31,7 +32,7 @@ func newInterruptTool[Args any](
 	plan func(context.Context, Args) (runs.Interrupt, error),
 	resolve func(context.Context, Args, run.InterruptResolution) (string, error),
 ) (toolcontract.Tool, error) {
-	schema, err := corejsonschema.For[Args]()
+	schema, err := portable.SchemaFor[Args]()
 	if err != nil {
 		return nil, fmt.Errorf("%s: derive input schema: %w", config.Name, err)
 	}

@@ -11,7 +11,7 @@
       "description": "Compute a transformation of the supplied exact source version without writing workspace files. Absent content means unsupported formatting.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vY29kZWludGVs_Document": {
+          "codeintel.Document": {
             "additionalProperties": false,
             "properties": {
               "content": {
@@ -21,7 +21,7 @@
                 "type": "string"
               },
               "version": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest"
+                "$ref": "#/$defs/integrity.Digest"
               },
               "workspace": {
                 "type": "string"
@@ -35,7 +35,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest": {
+          "integrity.Digest": {
             "allOf": [
               {
                 "pattern": "^[0-9a-f]{64}$"
@@ -54,7 +54,7 @@
             "type": "string"
           },
           "version": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest"
+            "$ref": "#/$defs/integrity.Digest"
           },
           "workspace": {
             "type": "string"
@@ -70,14 +70,14 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vY29kZWludGVs_Transformation": {
+          "codeintel.Transformation": {
             "additionalProperties": false,
             "properties": {
               "content": {
                 "type": "string"
               },
               "version": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest"
+                "$ref": "#/$defs/integrity.Digest"
               }
             },
             "required": [
@@ -85,7 +85,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest": {
+          "integrity.Digest": {
             "allOf": [
               {
                 "pattern": "^[0-9a-f]{64}$"
@@ -101,7 +101,7 @@
             "type": "string"
           },
           "version": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest"
+            "$ref": "#/$defs/integrity.Digest"
           }
         },
         "required": [
@@ -117,7 +117,7 @@
       "description": "Analyze the supplied source version and render newly introduced problems against the captured baseline. Unavailable or stale diagnostics are explicit failures.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vY29kZWludGVs_Document": {
+          "codeintel.Document": {
             "additionalProperties": false,
             "properties": {
               "content": {
@@ -127,7 +127,7 @@
                 "type": "string"
               },
               "version": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest"
+                "$ref": "#/$defs/integrity.Digest"
               },
               "workspace": {
                 "type": "string"
@@ -141,7 +141,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vY29kZWludGVs_Inspection": {
+          "codeintel.Inspection": {
             "additionalProperties": false,
             "properties": {
               "baseline": {
@@ -151,7 +151,7 @@
                 "type": "array"
               },
               "document": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vY29kZWludGVs_Document"
+                "$ref": "#/$defs/codeintel.Document"
               }
             },
             "required": [
@@ -160,7 +160,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest": {
+          "integrity.Digest": {
             "allOf": [
               {
                 "pattern": "^[0-9a-f]{64}$"
@@ -179,7 +179,7 @@
             "type": "array"
           },
           "document": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vY29kZWludGVs_Document"
+            "$ref": "#/$defs/codeintel.Document"
           }
         },
         "required": [
@@ -190,7 +190,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vY29kZWludGVs_Report": {
+          "codeintel.Report": {
             "additionalProperties": false,
             "properties": {
               "problems": {
@@ -203,7 +203,7 @@
                 "type": "string"
               },
               "version": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest"
+                "$ref": "#/$defs/integrity.Digest"
               }
             },
             "required": [
@@ -213,7 +213,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest": {
+          "integrity.Digest": {
             "allOf": [
               {
                 "pattern": "^[0-9a-f]{64}$"
@@ -235,7 +235,7 @@
             "type": "string"
           },
           "version": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest"
+            "$ref": "#/$defs/integrity.Digest"
           }
         },
         "required": [

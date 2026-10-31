@@ -11,7 +11,7 @@
       "description": "Return an optional inactivity threshold when an archive check is due at the caller's time. The caller alone admits and commits archival.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_ArchiveRequest": {
+          "skilllearning.ArchiveRequest": {
             "additionalProperties": false,
             "properties": {
               "now": {
@@ -40,7 +40,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_ArchiveAdvice": {
+          "skilllearning.ArchiveAdvice": {
             "additionalProperties": false,
             "properties": {
               "afterMillis": {
@@ -81,7 +81,7 @@
       "description": "Apply learning cadence to a completed Run and return optional proposal advice using call-scoped history, current skill and model callbacks. Never publish or store active skills.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_Run": {
+          "skilllearning.Run": {
             "additionalProperties": false,
             "properties": {
               "sessionId": {
@@ -130,23 +130,23 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_MineResult": {
+          "skilllearning.MineResult": {
             "additionalProperties": false,
             "properties": {
               "proposal": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_Proposal"
+                "$ref": "#/$defs/skilllearning.Proposal"
               }
             },
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_Proposal": {
+          "skilllearning.Proposal": {
             "additionalProperties": false,
             "properties": {
               "revises": {
                 "type": "boolean"
               },
               "skill": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_Skill"
+                "$ref": "#/$defs/skilllearning.Skill"
               }
             },
             "required": [
@@ -155,7 +155,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_Skill": {
+          "skilllearning.Skill": {
             "additionalProperties": false,
             "properties": {
               "description": {
@@ -180,7 +180,7 @@
         "additionalProperties": false,
         "properties": {
           "proposal": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_Proposal"
+            "$ref": "#/$defs/skilllearning.Proposal"
           }
         },
         "type": "object"
