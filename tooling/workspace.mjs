@@ -284,6 +284,7 @@ export async function generate(repository = root) {
       ],
       "plugins",
     );
+    go(["generate", "./plugin/schedule"], "packages/go-sdk");
     go(["generate", "./internal/testsupport"], "runtime");
     go(["generate", "./nodequalification", "./integration"], "tooling");
     go(["generate", "./..."], "apps/cli");

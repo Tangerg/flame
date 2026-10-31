@@ -9,8 +9,8 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/schedule"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 

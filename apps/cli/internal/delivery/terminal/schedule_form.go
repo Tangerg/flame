@@ -4,8 +4,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/schedule"
 	"github.com/Tangerg/flame/packages/go-sdk/timezone"
 
 	"github.com/Tangerg/oolong/components/headless"

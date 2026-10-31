@@ -25,10 +25,10 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/failure"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
 	workspaceapi "github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/schedule"
 )
 
 func TestRuntimeConnectionPreservesCallerCancellation(t *testing.T) {
@@ -327,11 +327,11 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 	if agentMemory == nil {
 		t.Fatal("context adapters were not advertised")
 	}
-	userTarget, err := conversation.NewMemoryTarget(memory.ItemSnapshotScopeUser, "")
+	userTarget, err := conversation.NewMemoryTarget(memorycontract.ItemSnapshotScopeUser, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	addition, err := agentMemory.PrepareAdd(t.Context(), memory.AddInput{Scope: memory.AddInputScope(userTarget.Scope), Content: "integration preference"})
+	addition, err := agentMemory.PrepareAdd(t.Context(), memorycontract.AddInput{Scope: memorycontract.AddInputScope(userTarget.Scope), Content: "integration preference"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -340,7 +340,7 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 		t.Fatal(err)
 	}
 	addedResult, err := agentMemory.DecodeAdd(addedReply)
-	added := memoryProjection(memory.ItemSnapshot(addedResult.Item))
+	added := memoryProjection(memorycontract.ItemSnapshot(addedResult.Item))
 	if err != nil {
 		t.Fatalf("Add agent memory: %v", err)
 	}
@@ -349,7 +349,7 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 		t.Fatalf("Items agent memory = (%+v, %v)", items, err)
 	}
 	pinned := true
-	update, err := agentMemory.PrepareUpdate(t.Context(), memory.UpdateInput{ExpectedRevision: 1, ID: added.ID, Pinned: &pinned})
+	update, err := agentMemory.PrepareUpdate(t.Context(), memorycontract.UpdateInput{ExpectedRevision: 1, ID: added.ID, Pinned: &pinned})
 	if err != nil {
 		t.Fatal(err)
 	}

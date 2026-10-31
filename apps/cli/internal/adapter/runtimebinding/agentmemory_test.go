@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -38,19 +39,19 @@ type agentMemoryBindingStub struct {
 	nilList          bool
 	updateResult     *memory.Item
 	addResult        *memory.Item
-	listPage         func(memory.ListInput) (*protocol.Page[memory.Item], error)
-	pageCapacity     func(memory.ListInput) int64
+	listPage         func(memorycontract.ListInput) (*protocol.Page[memory.Item], error)
+	pageCapacity     func(memorycontract.ListInput) int64
 	pluginCall       func(protocol.CallPluginRequest, protocol.PluginCallOptions) (*protocol.CallPluginResponse, error)
 }
 
-func (a *agentMemoryBindingStub) list(request memory.ListInput, options protocol.CallOptions) (*protocol.Page[memory.Item], error) {
+func (a *agentMemoryBindingStub) list(request memorycontract.ListInput, options protocol.CallOptions) (*protocol.Page[memory.Item], error) {
 	a.assertMeta(options.RequestMeta)
 	switch request.Scope {
-	case memory.ListInputScopeProject:
+	case memorycontract.ListInputScopeProject:
 		if request.CWD != "/workspace" {
 			a.t.Fatalf("project list request = %+v", request)
 		}
-	case memory.ListInputScopeUser:
+	case memorycontract.ListInputScopeUser:
 		if request.CWD != "" {
 			a.t.Fatalf("user list request leaked workspace: %+v", request)
 		}
@@ -67,8 +68,8 @@ func (a *agentMemoryBindingStub) list(request memory.ListInput, options protocol
 		return a.listed, nil
 	}
 	return &protocol.Page[memory.Item]{Data: []memory.Item{{
-		Revision: 1, ID: adapterMemoryIDOne, Scope: memory.ItemSnapshotScope(request.Scope), Content: "durable fact", Origin: memory.ItemSnapshotOriginAuto,
-		Status: memory.ItemSnapshotStatusPending, CreatedAt: a.now, UpdatedAt: a.now,
+		Revision: 1, ID: adapterMemoryIDOne, Scope: memorycontract.ItemSnapshotScope(request.Scope), Content: "durable fact", Origin: memorycontract.ItemSnapshotOriginAuto,
+		Status: memorycontract.ItemSnapshotStatusPending, CreatedAt: a.now, UpdatedAt: a.now,
 	}}}, nil
 }
 
@@ -77,8 +78,8 @@ func TestAgentMemoryAdapterTraversesWithoutPartialSuccess(t *testing.T) {
 	for _, scenario := range []string{"complete", "duplicate", "later failure"} {
 		t.Run(scenario, func(t *testing.T) {
 			calls := 0
-			item := memory.Item{Revision: 1, ID: adapterMemoryIDOne, Scope: memory.ItemSnapshotScopeUser, Content: "fact", Origin: memory.ItemSnapshotOriginUser, Status: memory.ItemSnapshotStatusActive, CreatedAt: now, UpdatedAt: now}
-			stub := &agentMemoryBindingStub{t: t, listPage: func(request memory.ListInput) (*protocol.Page[memory.Item], error) {
+			item := memory.Item{Revision: 1, ID: adapterMemoryIDOne, Scope: memorycontract.ItemSnapshotScopeUser, Content: "fact", Origin: memorycontract.ItemSnapshotOriginUser, Status: memorycontract.ItemSnapshotStatusActive, CreatedAt: now, UpdatedAt: now}
+			stub := &agentMemoryBindingStub{t: t, listPage: func(request memorycontract.ListInput) (*protocol.Page[memory.Item], error) {
 				calls++
 				if calls == 1 {
 					if request.Cursor != "" {
@@ -98,7 +99,7 @@ func TestAgentMemoryAdapterTraversesWithoutPartialSuccess(t *testing.T) {
 				return &protocol.Page[memory.Item]{Data: []memory.Item{item}}, nil
 			}}
 			adapter := &AgentMemory{runtime: &Connection{plugins: stub, meta: requestMeta("test")}}
-			target, err := conversation.NewMemoryTarget(memory.ItemSnapshotScopeUser, "")
+			target, err := conversation.NewMemoryTarget(memorycontract.ItemSnapshotScopeUser, "")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -120,8 +121,8 @@ func TestAgentMemoryAdapterTraversesWithoutPartialSuccess(t *testing.T) {
 func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 	now := time.Now()
 	valid := memory.Item{
-		Revision: 1, ID: adapterMemoryIDOne, Scope: memory.ItemSnapshotScopeProject, Content: "fact",
-		Origin: memory.ItemSnapshotOriginAuto, Status: memory.ItemSnapshotStatusPending,
+		Revision: 1, ID: adapterMemoryIDOne, Scope: memorycontract.ItemSnapshotScopeProject, Content: "fact",
+		Origin: memorycontract.ItemSnapshotOriginAuto, Status: memorycontract.ItemSnapshotStatusPending,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	for _, test := range []struct {
@@ -131,8 +132,8 @@ func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 	}{
 		{name: "nil list", nilList: true},
 		{name: "wrong scope", listed: &protocol.Page[memory.Item]{Data: []memory.Item{{
-			Revision: 1, ID: adapterMemoryIDOne, Scope: memory.ItemSnapshotScopeUser, Content: "fact",
-			Origin: memory.ItemSnapshotOriginUser, Status: memory.ItemSnapshotStatusActive,
+			Revision: 1, ID: adapterMemoryIDOne, Scope: memorycontract.ItemSnapshotScopeUser, Content: "fact",
+			Origin: memorycontract.ItemSnapshotOriginUser, Status: memorycontract.ItemSnapshotStatusActive,
 			CreatedAt: now, UpdatedAt: now,
 		}}}},
 		{name: "duplicate identity", listed: &protocol.Page[memory.Item]{Data: []memory.Item{valid, valid}}},
@@ -148,7 +149,7 @@ func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 				}},
 				meta: requestMeta("test"),
 			}}
-			target, err := conversation.NewMemoryTarget(memory.ItemSnapshotScopeProject, "/workspace")
+			target, err := conversation.NewMemoryTarget(memorycontract.ItemSnapshotScopeProject, "/workspace")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -163,32 +164,32 @@ func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 
 func TestMemoryTraversalRejectsCapacityDriftWithoutPartialSuccess(t *testing.T) {
 	stub := &agentMemoryBindingStub{t: t, now: time.Now()}
-	stub.listPage = func(input memory.ListInput) (*protocol.Page[memory.Item], error) {
+	stub.listPage = func(input memorycontract.ListInput) (*protocol.Page[memory.Item], error) {
 		if input.Limit != nil {
 			t.Fatal("collector replaced the owner's default page width")
 		}
 		if input.Cursor == "" {
-			return &protocol.Page[memory.Item]{Data: []memory.Item{*stub.item(adapterMemoryIDOne, memory.ItemSnapshotScopeUser, "fact", false)}, NextCursor: "next"}, nil
+			return &protocol.Page[memory.Item]{Data: []memory.Item{*stub.item(adapterMemoryIDOne, memorycontract.ItemSnapshotScopeUser, "fact", false)}, NextCursor: "next"}, nil
 		}
 		return &protocol.Page[memory.Item]{Data: []memory.Item{}}, nil
 	}
-	stub.pageCapacity = func(input memory.ListInput) int64 {
+	stub.pageCapacity = func(input memorycontract.ListInput) int64 {
 		if input.Cursor == "" {
 			return 512
 		}
 		return 513
 	}
 	adapter := &AgentMemory{runtime: &Connection{plugins: stub, meta: requestMeta("test")}}
-	items, err := adapter.Items(t.Context(), conversation.MemoryTarget{Scope: memory.ItemSnapshotScopeUser})
+	items, err := adapter.Items(t.Context(), conversation.MemoryTarget{Scope: memorycontract.ItemSnapshotScopeUser})
 	if err == nil || items != nil {
 		t.Fatalf("capacity drift returned partial success: %+v, %v", items, err)
 	}
 }
 
-func (a *agentMemoryBindingStub) item(id string, scope memory.ItemSnapshotScope, content string, pinned bool) *memory.Item {
+func (a *agentMemoryBindingStub) item(id string, scope memorycontract.ItemSnapshotScope, content string, pinned bool) *memory.Item {
 	return &memory.Item{
-		Revision: 1, ID: id, Scope: scope, Content: content, Origin: memory.ItemSnapshotOriginUser,
-		Status: memory.ItemSnapshotStatusActive, Pinned: pinned, CreatedAt: a.now, UpdatedAt: a.now,
+		Revision: 1, ID: id, Scope: scope, Content: content, Origin: memorycontract.ItemSnapshotOriginUser,
+		Status: memorycontract.ItemSnapshotStatusActive, Pinned: pinned, CreatedAt: a.now, UpdatedAt: a.now,
 	}
 }
 
@@ -210,12 +211,12 @@ func (a *agentMemoryBindingStub) assertCommand(options protocol.CommandOptions) 
 func TestAgentMemoryAdditionPreservesCapturedWorkspace(t *testing.T) {
 	stub := &agentMemoryBindingStub{t: t}
 	adapter := &AgentMemory{runtime: &Connection{plugins: stub, meta: requestMeta("test")}}
-	input := memory.AddInput{Scope: "project", CWD: "/workspace/subdirectory", Content: "authored"}
+	input := memorycontract.AddInput{Scope: "project", CWD: "/workspace/subdirectory", Content: "authored"}
 	request, err := adapter.PrepareAdd(t.Context(), input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var captured memory.AddInput
+	var captured memorycontract.AddInput
 	if err := json.Unmarshal([]byte(request.Input), &captured); err != nil {
 		t.Fatal(err)
 	}
@@ -235,22 +236,22 @@ func TestAgentMemoryAdapterPreservesTargetReviewAndMutationSemantics(t *testing.
 		}},
 		meta: requestMeta("test"),
 	}}
-	project, err := conversation.NewMemoryTarget(memory.ItemSnapshotScopeProject, "/workspace")
+	project, err := conversation.NewMemoryTarget(memorycontract.ItemSnapshotScopeProject, "/workspace")
 	if err != nil {
 		t.Fatal(err)
 	}
 	items, err := adapter.Items(t.Context(), project)
-	if err != nil || len(items) != 1 || items[0].Status != memory.ItemSnapshotStatusPending {
+	if err != nil || len(items) != 1 || items[0].Status != memorycontract.ItemSnapshotStatusPending {
 		t.Fatalf("Items = (%+v, %v)", items, err)
 	}
-	user, err := conversation.NewMemoryTarget(memory.ItemSnapshotScopeUser, "")
+	user, err := conversation.NewMemoryTarget(memorycontract.ItemSnapshotScopeUser, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, itemsErr := adapter.Items(t.Context(), user); itemsErr != nil {
 		t.Fatal(itemsErr)
 	}
-	review, err := adapter.PrepareReview(t.Context(), adapterMemoryIDOne, 1, memory.ReviewInputDecisionApprove)
+	review, err := adapter.PrepareReview(t.Context(), adapterMemoryIDOne, 1, memorycontract.ReviewInputDecisionApprove)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,7 +259,7 @@ func TestAgentMemoryAdapterPreservesTargetReviewAndMutationSemantics(t *testing.
 		t.Fatal(err)
 	}
 	content, pinned := "edited", true
-	update, err := adapter.PrepareUpdate(t.Context(), memory.UpdateInput{ExpectedRevision: 1, ID: adapterMemoryIDOne, Content: &content, Pinned: &pinned})
+	update, err := adapter.PrepareUpdate(t.Context(), memorycontract.UpdateInput{ExpectedRevision: 1, ID: adapterMemoryIDOne, Content: &content, Pinned: &pinned})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -270,7 +271,7 @@ func TestAgentMemoryAdapterPreservesTargetReviewAndMutationSemantics(t *testing.
 	if err != nil || updated.Content != content || !updated.Pinned {
 		t.Fatalf("Update = (%+v, %v)", updated, err)
 	}
-	addition, err := adapter.PrepareAdd(t.Context(), memory.AddInput{Scope: memory.AddInputScope(user.Scope), Content: "authored"})
+	addition, err := adapter.PrepareAdd(t.Context(), memorycontract.AddInput{Scope: memorycontract.AddInputScope(user.Scope), Content: "authored"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,7 +299,7 @@ func TestAgentMemoryAdapterPreservesTargetReviewAndMutationSemantics(t *testing.
 func TestAgentMemoryMutationRejectsIdentityDrift(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
-	result, err := jsonvalue.Encode(memory.ItemSnapshot{ID: adapterMemoryIDOther, Scope: "project", Content: "edited", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}})
+	result, err := jsonvalue.Encode(memorycontract.ItemSnapshot{ID: adapterMemoryIDOther, Scope: "project", Content: "edited", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -310,8 +311,8 @@ func TestAgentMemoryAdapterRejectsAnUnidentifiedAddition(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
 	unidentifiedAdd := memory.Item{
-		Scope: memory.ItemSnapshotScopeUser, Content: "authored",
-		Origin: memory.ItemSnapshotOriginUser, Status: memory.ItemSnapshotStatusActive,
+		Scope: memorycontract.ItemSnapshotScopeUser, Content: "authored",
+		Origin: memorycontract.ItemSnapshotOriginUser, Status: memorycontract.ItemSnapshotStatusActive,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	tests := []struct {
@@ -325,11 +326,11 @@ func TestAgentMemoryAdapterRejectsAnUnidentifiedAddition(t *testing.T) {
 			name: "add identity",
 			stub: &agentMemoryBindingStub{addResult: &unidentifiedAdd},
 			invoke: func(adapter *AgentMemory) error {
-				target, err := conversation.NewMemoryTarget(memory.ItemSnapshotScopeUser, "")
+				target, err := conversation.NewMemoryTarget(memorycontract.ItemSnapshotScopeUser, "")
 				if err != nil {
 					return err
 				}
-				request, err := adapter.PrepareAdd(t.Context(), memory.AddInput{Scope: memory.AddInputScope(target.Scope), CWD: target.Workspace, Content: "authored"})
+				request, err := adapter.PrepareAdd(t.Context(), memorycontract.AddInput{Scope: memorycontract.AddInputScope(target.Scope), CWD: target.Workspace, Content: "authored"})
 				if err != nil {
 					return err
 				}
@@ -363,7 +364,7 @@ func (a *agentMemoryBindingStub) ListPluginProviders(_ context.Context, _ protoc
 	return protocol.NewPage([]protocol.PluginProviderSelection{{Role: "memory", InstallationID: id, Contribution: "memory-provider"}}), nil
 }
 func (a *agentMemoryBindingStub) ListPlugins(_ context.Context, _ protocol.CallOptions) (*protocol.Page[protocol.PluginInstallation], error) {
-	contract, err := portable.ParseCapability([]byte(memory.CapabilityJSON))
+	contract, err := portable.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		a.t.Fatal(err)
 	}
@@ -378,65 +379,65 @@ func (a *agentMemoryBindingStub) ListPlugins(_ context.Context, _ protocol.CallO
 	return protocol.NewPage([]protocol.PluginInstallation{{ID: memoryInstallation, Enabled: true, Selected: protocol.PluginRelease{Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contributions: []protocol.PluginContribution{{ID: "memory-provider", Contract: string(encoded)}}}}}), nil
 }
 func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (*protocol.CallPluginResponse, error) {
-	if request.InstallationID != memoryInstallation || request.Target.Reference != memoryInstallation || request.Contract != memory.CapabilityJSON {
+	if request.InstallationID != memoryInstallation || request.Target.Reference != memoryInstallation || request.Contract != memorycontract.CapabilityJSON {
 		a.t.Fatalf("unbound memory operation: %+v", request)
 	}
 	a.calls = append(a.calls, request)
 	if a.pluginCall != nil {
 		return a.pluginCall(request, options)
 	}
-	if request.Method == memory.AddV2Method {
+	if request.Method == memorycontract.AddV2Method {
 		a.assertCommand(protocol.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
-		var input memory.AddInput
+		var input memorycontract.AddInput
 		if err := json.Unmarshal([]byte(request.Input), &input); err != nil {
 			a.t.Fatal(err)
 		}
 		a.actions = append(a.actions, "add:"+string(input.Scope))
 		result := a.addResult
 		if result == nil {
-			result = a.item(adapterMemoryIDTwo, memory.ItemSnapshotScope(input.Scope), input.Content, false)
+			result = a.item(adapterMemoryIDTwo, memorycontract.ItemSnapshotScope(input.Scope), input.Content, false)
 		}
-		out := memory.AddResult{Item: memory.ItemSnapshot{Revision: result.Revision, ID: memory.ItemID(result.ID), Scope: result.Scope, Content: result.Content, Origin: result.Origin, Status: result.Status, Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}}
+		out := memorycontract.AddResult{Item: memorycontract.ItemSnapshot{Revision: result.Revision, ID: memorycontract.ItemID(result.ID), Scope: result.Scope, Content: result.Content, Origin: result.Origin, Status: result.Status, Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}}
 		encoded, err := jsonvalue.Encode(out)
 		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
-	if request.Method == memory.UpdateV2Method {
+	if request.Method == memorycontract.UpdateV2Method {
 		a.assertCommand(protocol.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
-		var input memory.UpdateInput
+		var input memorycontract.UpdateInput
 		if err := json.Unmarshal([]byte(request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
 			a.t.Fatal(err)
 		}
 		a.actions = append(a.actions, "update:"+input.ID)
 		result := a.updateResult
 		if result == nil {
-			result = a.item(input.ID, memory.ItemSnapshotScopeProject, "edited", true)
+			result = a.item(input.ID, memorycontract.ItemSnapshotScopeProject, "edited", true)
 		}
-		output := memory.ItemSnapshot{Revision: result.Revision, ID: memory.ItemID(result.ID), Scope: result.Scope, Content: result.Content, Origin: result.Origin, Status: result.Status, Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}
+		output := memorycontract.ItemSnapshot{Revision: result.Revision, ID: memorycontract.ItemID(result.ID), Scope: result.Scope, Content: result.Content, Origin: result.Origin, Status: result.Status, Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}
 		encoded, err := jsonvalue.Encode(output)
 		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
-	if request.Method == memory.ReviewV2Method {
+	if request.Method == memorycontract.ReviewV2Method {
 		a.assertCommand(protocol.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
-		var input memory.ReviewInput
+		var input memorycontract.ReviewInput
 		if err := json.Unmarshal([]byte(request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
 			a.t.Fatal(err)
 		}
 		a.actions = append(a.actions, "review:"+input.ID+":"+string(input.Decision))
 		return &protocol.CallPluginResponse{Output: `{}`}, nil
 	}
-	if request.Method == memory.DeleteV2Method {
+	if request.Method == memorycontract.DeleteV2Method {
 		a.assertCommand(protocol.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
-		var input memory.ItemInput
+		var input memorycontract.ItemInput
 		if err := json.Unmarshal([]byte(request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
 			a.t.Fatal(err)
 		}
 		a.actions = append(a.actions, "delete:"+input.ID)
 		return &protocol.CallPluginResponse{Output: `{}`}, nil
 	}
-	if request.Method != memory.ListV2Method || options.IdempotencyKey != "" {
+	if request.Method != memorycontract.ListV2Method || options.IdempotencyKey != "" {
 		a.t.Fatalf("invalid memory query: %+v", request)
 	}
-	var input memory.ListInput
+	var input memorycontract.ListInput
 	if err := json.Unmarshal([]byte(request.Input), &input); err != nil {
 		a.t.Fatal(err)
 	}
@@ -444,12 +445,12 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 	if err != nil || page == nil {
 		return nil, err
 	}
-	output := memory.Page{Capacity: 512, NextCursor: page.NextCursor, Rows: make([]memory.ItemSnapshot, 0, len(page.Data))}
+	output := memorycontract.Page{Capacity: 512, NextCursor: page.NextCursor, Rows: make([]memorycontract.ItemSnapshot, 0, len(page.Data))}
 	if a.pageCapacity != nil {
 		output.Capacity = a.pageCapacity(input)
 	}
 	for _, row := range page.Data {
-		output.Rows = append(output.Rows, memory.ItemSnapshot{Revision: row.Revision, ID: memory.ItemID(row.ID), Scope: row.Scope, Content: row.Content, Origin: row.Origin, Status: row.Status, Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Embedding: []float64{}})
+		output.Rows = append(output.Rows, memorycontract.ItemSnapshot{Revision: row.Revision, ID: memorycontract.ItemID(row.ID), Scope: row.Scope, Content: row.Content, Origin: row.Origin, Status: row.Status, Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Embedding: []float64{}})
 	}
 	encoded, err := jsonvalue.Encode(output)
 	if err != nil {
@@ -459,7 +460,7 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 }
 
 func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) {
-	for _, method := range []string{memory.DeleteV2Method, memory.ReviewV2Method, memory.UpdateV2Method, memory.AddV2Method} {
+	for _, method := range []string{memorycontract.DeleteV2Method, memorycontract.ReviewV2Method, memorycontract.UpdateV2Method, memorycontract.AddV2Method} {
 		t.Run(method, func(t *testing.T) {
 
 			directory := t.TempDir()
@@ -490,22 +491,22 @@ func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) 
 			}
 			execute := func(ctx context.Context) error {
 				_, err := workbench.ExecuteInstalledCommand(ctx, adapter, store, intent, policy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
-					if method == memory.AddV2Method {
-						return adapter.PrepareAdd(ctx, memory.AddInput{Scope: "user", Content: "original addition"})
+					if method == memorycontract.AddV2Method {
+						return adapter.PrepareAdd(ctx, memorycontract.AddInput{Scope: "user", Content: "original addition"})
 					}
-					if method == memory.UpdateV2Method {
-						return adapter.PrepareUpdate(ctx, memory.UpdateInput{ExpectedRevision: 1, ID: adapterMemoryIDOne, Content: new("original patch"), Pinned: new(false)})
+					if method == memorycontract.UpdateV2Method {
+						return adapter.PrepareUpdate(ctx, memorycontract.UpdateInput{ExpectedRevision: 1, ID: adapterMemoryIDOne, Content: new("original patch"), Pinned: new(false)})
 					}
-					if method == memory.ReviewV2Method {
-						return adapter.PrepareReview(ctx, adapterMemoryIDOne, 1, memory.ReviewInputDecisionApprove)
+					if method == memorycontract.ReviewV2Method {
+						return adapter.PrepareReview(ctx, adapterMemoryIDOne, 1, memorycontract.ReviewInputDecisionApprove)
 					}
 					return adapter.PrepareDelete(ctx, adapterMemoryIDOne, 1)
 				}, func(reply *protocol.CallPluginResponse) (struct{}, error) {
-					if method == memory.AddV2Method {
+					if method == memorycontract.AddV2Method {
 						_, err := adapter.DecodeAdd(reply)
 						return struct{}{}, err
 					}
-					if method == memory.UpdateV2Method {
+					if method == memorycontract.UpdateV2Method {
 						_, err := adapter.DecodeUpdate(adapterMemoryIDOne, reply)
 						return struct{}{}, err
 					}
@@ -546,12 +547,12 @@ func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) 
 				if request.InstallationID != pending.Request.InstallationID || request.Digest != pending.Request.Digest || request.Contribution != pending.Request.Contribution || request.Contract != pending.Request.Contract || request.Method != pending.Request.Method || request.Target != pending.Request.Target || !(request.Input == pending.Request.Input) || options.IdempotencyKey != string(pending.CommandID) {
 					t.Fatal("delete recovery changed its original command or binding")
 				}
-				if method == memory.AddV2Method {
-					output, err := jsonvalue.Encode(memory.AddResult{Changed: true, Item: memory.ItemSnapshot{Revision: 1, ID: adapterMemoryIDOne, Scope: "user", Content: "original addition", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}}})
+				if method == memorycontract.AddV2Method {
+					output, err := jsonvalue.Encode(memorycontract.AddResult{Changed: true, Item: memorycontract.ItemSnapshot{Revision: 1, ID: adapterMemoryIDOne, Scope: "user", Content: "original addition", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}}})
 					return &protocol.CallPluginResponse{Output: string(output.JSON())}, err
 				}
-				if method == memory.UpdateV2Method {
-					output, err := jsonvalue.Encode(memory.ItemSnapshot{Revision: 1, ID: adapterMemoryIDOne, Scope: "user", Content: "original patch", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}})
+				if method == memorycontract.UpdateV2Method {
+					output, err := jsonvalue.Encode(memorycontract.ItemSnapshot{Revision: 1, ID: adapterMemoryIDOne, Scope: "user", Content: "original patch", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}})
 					return &protocol.CallPluginResponse{Output: string(output.JSON())}, err
 				}
 				return &protocol.CallPluginResponse{Output: `{}`}, nil
@@ -570,8 +571,8 @@ func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) 
 func TestMemoryReadRetainsOriginalProviderAcrossPages(t *testing.T) {
 	now := time.Now()
 	stub := &agentMemoryBindingStub{t: t}
-	stub.listPage = func(input memory.ListInput) (*protocol.Page[memory.Item], error) {
-		row := memory.Item{Revision: 1, ID: adapterMemoryIDOne, Scope: memory.ItemSnapshotScopeUser, Content: "fact", Origin: memory.ItemSnapshotOriginUser, Status: memory.ItemSnapshotStatusActive, CreatedAt: now, UpdatedAt: now}
+	stub.listPage = func(input memorycontract.ListInput) (*protocol.Page[memory.Item], error) {
+		row := memory.Item{Revision: 1, ID: adapterMemoryIDOne, Scope: memorycontract.ItemSnapshotScopeUser, Content: "fact", Origin: memorycontract.ItemSnapshotOriginUser, Status: memorycontract.ItemSnapshotStatusActive, CreatedAt: now, UpdatedAt: now}
 		if input.Cursor == "" {
 			stub.provider = "replacement-installation"
 			return protocol.NewPageWithCursor([]memory.Item{row}, "next"), nil
@@ -580,7 +581,7 @@ func TestMemoryReadRetainsOriginalProviderAcrossPages(t *testing.T) {
 		return protocol.NewPage([]memory.Item{row}), nil
 	}
 	adapter := &AgentMemory{runtime: &Connection{plugins: stub, meta: requestMeta("test")}}
-	target, err := conversation.NewMemoryTarget(memory.ItemSnapshotScopeUser, "")
+	target, err := conversation.NewMemoryTarget(memorycontract.ItemSnapshotScopeUser, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -593,7 +594,7 @@ func TestMemoryReadRetainsOriginalProviderAcrossPages(t *testing.T) {
 func TestMemoryReadRefusesAnotherPublishedProtocolBeforeDispatch(t *testing.T) {
 	stub := &agentMemoryBindingStub{t: t, protocolOverride: "another-protocol"}
 	adapter := &AgentMemory{runtime: &Connection{plugins: stub, meta: requestMeta("test")}}
-	target, err := conversation.NewMemoryTarget(memory.ItemSnapshotScopeUser, "")
+	target, err := conversation.NewMemoryTarget(memorycontract.ItemSnapshotScopeUser, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -23,11 +24,11 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 	if err != nil {
 		return nil, err
 	}
-	bound, err := r.selectedInstalledCall(ctx, memory.CapabilityJSON, memory.ListV2Method)
+	bound, err := r.selectedInstalledCall(ctx, memorycontract.CapabilityJSON, memorycontract.ListV2Method)
 	if err != nil {
 		return nil, err
 	}
-	input := memory.ListInput{Scope: memory.ListInputScope(validated.Scope), CWD: validated.Workspace}
+	input := memorycontract.ListInput{Scope: memorycontract.ListInputScope(validated.Scope), CWD: validated.Workspace}
 	var traversal *cursorTraversal
 	capacity := int64(0)
 	items := make([]memory.Item, 0)
@@ -46,7 +47,7 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 		if err != nil {
 			return nil, classifyError(err)
 		}
-		var result memory.Page
+		var result memorycontract.Page
 		if err := json.Unmarshal([]byte(reply.Output), &result, json.RejectUnknownMembers(true)); err != nil {
 			return nil, runtimeContractViolation("list agent memory output: %v", err)
 		}
@@ -64,7 +65,7 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 			return nil, runtimeContractViolation("list agent memory exceeded its target capacity or returned an empty continuation")
 		}
 		for _, row := range result.Rows {
-			item := memoryProjection(memory.ItemSnapshot(row))
+			item := memoryProjection(memorycontract.ItemSnapshot(row))
 			if err := item.Validate(); err != nil {
 				return nil, runtimeContractViolation("list agent memory item %d is invalid: %v", len(items)+1, err)
 			}
@@ -88,27 +89,27 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 	return items, nil
 }
 
-func (a *AgentMemory) PrepareReview(ctx context.Context, id string, expectedRevision uint64, decision memory.ReviewInputDecision) (protocol.CallPluginRequest, error) {
-	input, err := jsonvalue.Encode(memory.ReviewInput{ID: strings.TrimSpace(id), ExpectedRevision: expectedRevision, Decision: decision})
+func (a *AgentMemory) PrepareReview(ctx context.Context, id string, expectedRevision uint64, decision memorycontract.ReviewInputDecision) (protocol.CallPluginRequest, error) {
+	input, err := jsonvalue.Encode(memorycontract.ReviewInput{ID: strings.TrimSpace(id), ExpectedRevision: expectedRevision, Decision: decision})
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
-	return a.prepareCommand(ctx, memory.ReviewV2Method, input)
+	return a.prepareCommand(ctx, memorycontract.ReviewV2Method, input)
 }
 
-func (a *AgentMemory) PrepareUpdate(ctx context.Context, request memory.UpdateInput) (protocol.CallPluginRequest, error) {
+func (a *AgentMemory) PrepareUpdate(ctx context.Context, request memorycontract.UpdateInput) (protocol.CallPluginRequest, error) {
 	input, err := jsonvalue.Encode(request)
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
-	return a.prepareCommand(ctx, memory.UpdateV2Method, input)
+	return a.prepareCommand(ctx, memorycontract.UpdateV2Method, input)
 }
 
 func (a *AgentMemory) DecodeUpdate(id string, reply *protocol.CallPluginResponse) (memory.Item, error) {
 	if reply == nil {
 		return memory.Item{}, runtimeContractViolation("update agent memory returned nil")
 	}
-	var output memory.ItemSnapshot
+	var output memorycontract.ItemSnapshot
 	if err := json.Unmarshal([]byte(reply.Output), &output, json.RejectUnknownMembers(true)); err != nil {
 		return memory.Item{}, runtimeContractViolation("update agent memory output: %v", err)
 	}
@@ -116,20 +117,20 @@ func (a *AgentMemory) DecodeUpdate(id string, reply *protocol.CallPluginResponse
 	return agentMemoryResult("update agent memory", id, "", &item, nil)
 }
 
-func memoryProjection(row memory.ItemSnapshot) memory.Item {
+func memoryProjection(row memorycontract.ItemSnapshot) memory.Item {
 	return memory.Item{ID: string(row.ID), Revision: row.Revision, Scope: row.Scope, Content: row.Content, Origin: row.Origin, Status: row.Status, Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 }
 
 func (a *AgentMemory) PrepareDelete(ctx context.Context, id string, expectedRevision uint64) (protocol.CallPluginRequest, error) {
-	input, err := jsonvalue.Encode(memory.ItemInput{ID: strings.TrimSpace(id), ExpectedRevision: expectedRevision})
+	input, err := jsonvalue.Encode(memorycontract.ItemInput{ID: strings.TrimSpace(id), ExpectedRevision: expectedRevision})
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
-	return a.prepareCommand(ctx, memory.DeleteV2Method, input)
+	return a.prepareCommand(ctx, memorycontract.DeleteV2Method, input)
 }
 
 func (a *AgentMemory) prepareCommand(ctx context.Context, name string, input jsonvalue.Value) (protocol.CallPluginRequest, error) {
-	bound, err := a.runtime.selectedInstalledCall(ctx, memory.CapabilityJSON, name)
+	bound, err := a.runtime.selectedInstalledCall(ctx, memorycontract.CapabilityJSON, name)
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
@@ -152,28 +153,28 @@ func (a *AgentMemory) CallPlugin(ctx context.Context, request protocol.CallPlugi
 	return a.runtime.CallPlugin(ctx, request, commandID)
 }
 
-func (a *AgentMemory) PrepareAdd(ctx context.Context, request memory.AddInput) (protocol.CallPluginRequest, error) {
-	if _, err := conversation.NewMemoryTarget(memory.ItemSnapshotScope(request.Scope), request.CWD); err != nil {
+func (a *AgentMemory) PrepareAdd(ctx context.Context, request memorycontract.AddInput) (protocol.CallPluginRequest, error) {
+	if _, err := conversation.NewMemoryTarget(memorycontract.ItemSnapshotScope(request.Scope), request.CWD); err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
 	input, err := jsonvalue.Encode(request)
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
-	return a.prepareCommand(ctx, memory.AddV2Method, input)
+	return a.prepareCommand(ctx, memorycontract.AddV2Method, input)
 }
 
-func (a *AgentMemory) DecodeAdd(reply *protocol.CallPluginResponse) (memory.AddResult, error) {
+func (a *AgentMemory) DecodeAdd(reply *protocol.CallPluginResponse) (memorycontract.AddResult, error) {
 	if reply == nil {
-		return memory.AddResult{}, runtimeContractViolation("add agent memory returned nil")
+		return memorycontract.AddResult{}, runtimeContractViolation("add agent memory returned nil")
 	}
-	var output memory.AddResult
+	var output memorycontract.AddResult
 	if err := json.Unmarshal([]byte(reply.Output), &output, json.RejectUnknownMembers(true)); err != nil {
-		return memory.AddResult{}, runtimeContractViolation("add agent memory output: %v", err)
+		return memorycontract.AddResult{}, runtimeContractViolation("add agent memory output: %v", err)
 	}
-	item := memoryProjection(memory.ItemSnapshot(output.Item))
+	item := memoryProjection(memorycontract.ItemSnapshot(output.Item))
 	if _, err := agentMemoryResult("add agent memory", "", "", &item, nil); err != nil {
-		return memory.AddResult{}, err
+		return memorycontract.AddResult{}, err
 	}
 	return output, nil
 }
@@ -182,7 +183,7 @@ func (a *AgentMemory) resolveTarget(ctx context.Context, target conversation.Mem
 	if err := target.Validate(); err != nil {
 		return conversation.MemoryTarget{}, err
 	}
-	if target.Scope != memory.ItemSnapshotScopeProject {
+	if target.Scope != memorycontract.ItemSnapshotScopeProject {
 		return target, nil
 	}
 	resolved, err := a.runtime.Resolve(ctx, workspace.ResolveRequest{Path: target.Workspace})
@@ -194,7 +195,7 @@ func (a *AgentMemory) resolveTarget(ctx context.Context, target conversation.Mem
 
 func agentMemoryResult(
 	operation, expectedID string,
-	expectedScope memory.ItemSnapshotScope,
+	expectedScope memorycontract.ItemSnapshotScope,
 	result *memory.Item,
 	err error,
 ) (memory.Item, error) {

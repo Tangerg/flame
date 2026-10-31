@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/schedule"
 )
 
 type scheduleBindingStub struct {

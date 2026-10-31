@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/schedule"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"

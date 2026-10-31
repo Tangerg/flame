@@ -12,8 +12,9 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	memorycontract "github.com/Tangerg/flame/apps/cli/internal/domain/memory"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -28,8 +29,8 @@ const (
 
 type agentMemoryServiceStub struct {
 	mu      sync.Mutex
-	project []memorycontract.Item
-	user    []memorycontract.Item
+	project []memory.Item
+	user    []memory.Item
 	added   chan string
 	review  chan memorycontract.ReviewInputDecision
 }
@@ -87,12 +88,12 @@ func (b *blockingAgentMemoryReviewService) CallPlugin(ctx context.Context, reque
 func newAgentMemoryServiceStub() *agentMemoryServiceStub {
 	now := time.Now()
 	return &agentMemoryServiceStub{
-		project: []memorycontract.Item{{
+		project: []memory.Item{{
 			Revision: 1, ID: terminalMemoryPendingID, Scope: memorycontract.ItemSnapshotScopeProject, Content: "confirm release steps",
 			Origin: memorycontract.ItemSnapshotOriginAuto, Status: memorycontract.ItemSnapshotStatusPending, SessionID: "ses_origin",
 			Day: "2026-08-12", CreatedAt: now, UpdatedAt: now,
 		}},
-		user: []memorycontract.Item{{
+		user: []memory.Item{{
 			Revision: 1, ID: terminalMemoryUserID, Scope: memorycontract.ItemSnapshotScopeUser, Content: "prefer concise answers",
 			Origin: memorycontract.ItemSnapshotOriginUser, Status: memorycontract.ItemSnapshotStatusActive, Pinned: true,
 			CreatedAt: now, UpdatedAt: now,
@@ -101,16 +102,16 @@ func newAgentMemoryServiceStub() *agentMemoryServiceStub {
 	}
 }
 
-func (a *agentMemoryServiceStub) Items(_ context.Context, target conversation.MemoryTarget) ([]memorycontract.Item, error) {
+func (a *agentMemoryServiceStub) Items(_ context.Context, target conversation.MemoryTarget) ([]memory.Item, error) {
 	if err := target.Validate(); err != nil {
 		return nil, err
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if target.Scope == memorycontract.ItemSnapshotScopeUser {
-		return append([]memorycontract.Item(nil), a.user...), nil
+		return append([]memory.Item(nil), a.user...), nil
 	}
-	return append([]memorycontract.Item(nil), a.project...), nil
+	return append([]memory.Item(nil), a.project...), nil
 }
 
 func (a *agentMemoryServiceStub) reviewItem(_ context.Context, id string, expectedRevision uint64, decision memorycontract.ReviewInputDecision) error {
@@ -138,13 +139,13 @@ func (a *agentMemoryServiceStub) reviewItem(_ context.Context, id string, expect
 	return errors.New("not found")
 }
 
-func (a *agentMemoryServiceStub) updateItem(_ context.Context, request memorycontract.UpdateInput) (memorycontract.Item, error) {
+func (a *agentMemoryServiceStub) updateItem(_ context.Context, request memorycontract.UpdateInput) (memory.Item, error) {
 	if request.Content == nil && request.Pinned == nil {
-		return memorycontract.Item{}, errors.New("update requires a change")
+		return memory.Item{}, errors.New("update requires a change")
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	for _, items := range []*[]memorycontract.Item{&a.project, &a.user} {
+	for _, items := range []*[]memory.Item{&a.project, &a.user} {
 		for index := range *items {
 			item := &(*items)[index]
 			if item.ID != request.ID {
@@ -160,7 +161,7 @@ func (a *agentMemoryServiceStub) updateItem(_ context.Context, request memorycon
 			return *item, nil
 		}
 	}
-	return memorycontract.Item{}, errors.New("not found")
+	return memory.Item{}, errors.New("not found")
 }
 
 func (*agentMemoryServiceStub) PrepareAdd(_ context.Context, input memorycontract.AddInput) (protocol.CallPluginRequest, error) {
@@ -174,15 +175,15 @@ func (*agentMemoryServiceStub) DecodeAdd(reply *protocol.CallPluginResponse) (me
 func (*agentMemoryServiceStub) PrepareUpdate(_ context.Context, input memorycontract.UpdateInput) (protocol.CallPluginRequest, error) {
 	return boundMemoryRequest(memorycontract.UpdateV2Method, input)
 }
-func (*agentMemoryServiceStub) DecodeUpdate(id string, reply *protocol.CallPluginResponse) (memorycontract.Item, error) {
+func (*agentMemoryServiceStub) DecodeUpdate(id string, reply *protocol.CallPluginResponse) (memory.Item, error) {
 	var row memorycontract.ItemSnapshot
 	if err := json.Unmarshal([]byte(reply.Output), &row); err != nil {
-		return memorycontract.Item{}, err
+		return memory.Item{}, err
 	}
 	if string(row.ID) != id {
-		return memorycontract.Item{}, errors.New("wrong update item")
+		return memory.Item{}, errors.New("wrong update item")
 	}
-	return memorycontract.Item{ID: string(row.ID), Revision: row.Revision, Scope: row.Scope, Content: row.Content, Origin: row.Origin, Status: row.Status, Pinned: row.Pinned, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+	return memory.Item{ID: string(row.ID), Revision: row.Revision, Scope: row.Scope, Content: row.Content, Origin: row.Origin, Status: row.Status, Pinned: row.Pinned, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 func (*agentMemoryServiceStub) PrepareReview(_ context.Context, id string, expectedRevision uint64, decision memorycontract.ReviewInputDecision) (protocol.CallPluginRequest, error) {
 	return boundMemoryRequest(memorycontract.ReviewV2Method, memorycontract.ReviewInput{ID: id, ExpectedRevision: expectedRevision, Decision: decision})
@@ -256,7 +257,7 @@ func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.
 func (a *agentMemoryServiceStub) delete(id string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	for _, items := range []*[]memorycontract.Item{&a.project, &a.user} {
+	for _, items := range []*[]memory.Item{&a.project, &a.user} {
 		for index := range *items {
 			if (*items)[index].ID == id {
 				*items = append((*items)[:index], (*items)[index+1:]...)
@@ -267,12 +268,12 @@ func (a *agentMemoryServiceStub) delete(id string) error {
 	return errors.New("not found")
 }
 
-func (a *agentMemoryServiceStub) addItem(_ context.Context, target conversation.MemoryTarget, content string) (memorycontract.Item, error) {
+func (a *agentMemoryServiceStub) addItem(_ context.Context, target conversation.MemoryTarget, content string) (memory.Item, error) {
 	if err := target.Validate(); err != nil {
-		return memorycontract.Item{}, err
+		return memory.Item{}, err
 	}
 	now := time.Now()
-	item := memorycontract.Item{
+	item := memory.Item{
 		ID: terminalMemoryAddedID, Scope: target.Scope, Content: content, Origin: memorycontract.ItemSnapshotOriginUser,
 		Status: memorycontract.ItemSnapshotStatusActive, CreatedAt: now, UpdatedAt: now,
 	}

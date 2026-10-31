@@ -9,7 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/schedule"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 

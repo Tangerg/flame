@@ -14,7 +14,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 )
 
 func TestPendingMemoryReviewKeepsItsDecisionBeforeTargetReads(t *testing.T) {
@@ -32,7 +32,7 @@ func TestPendingMemoryReviewKeepsItsDecisionBeforeTargetReads(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	lost := &unconfirmedMemoryReview{agentMemoryServiceStub: &agentMemoryServiceStub{}, cancel: cancel}
-	if err := workbench.ExecuteMemoryReview(ctx, lost, store, policy, terminalMemoryPendingID, 1, memory.ReviewInputDecisionApprove); err == nil {
+	if err := workbench.ExecuteMemoryReview(ctx, lost, store, policy, terminalMemoryPendingID, 1, memorycontract.ReviewInputDecisionApprove); err == nil {
 		t.Fatal("lost acknowledgement became success")
 	}
 	original := store.PendingInstalledCommands()[0]
@@ -44,7 +44,7 @@ func TestPendingMemoryReviewKeepsItsDecisionBeforeTargetReads(t *testing.T) {
 	if !found || pending.CommandID != original.CommandID || !(pending.Request.Input == original.Request.Input) {
 		t.Fatal("opposite review changed original identity or input")
 	}
-	if _, _, err := store.PendingMemoryReview(terminalMemoryPendingID, memory.ReviewInputDecisionApprove); err != nil {
+	if _, _, err := store.PendingMemoryReview(terminalMemoryPendingID, memorycontract.ReviewInputDecisionApprove); err != nil {
 		t.Fatal(err)
 	}
 
