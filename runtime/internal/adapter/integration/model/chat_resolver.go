@@ -33,7 +33,6 @@ type ResolvedChat struct {
 	fits              func(context.Context, *corechat.Request) (bool, error)
 }
 
-// NewResolvedChat validates and freezes one resolved chat construction.
 func NewResolvedChat(model corechat.Model, counter InputTokenCounter, metadata *catalog.Model) (ResolvedChat, error) {
 	if lo.IsNil(model) {
 		return ResolvedChat{}, errors.New("model: resolved chat model is nil")
@@ -78,13 +77,11 @@ func (r ResolvedChat) WithModel(model corechat.Model) (ResolvedChat, error) {
 // instance, so a caller that needs them asks it rather than a second build.
 func (r ResolvedChat) Model() corechat.Model { return r.model }
 
-// Streamer returns the streaming projection when this provider has one.
 func (r ResolvedChat) Streamer() (corechat.Streamer, bool) {
 	streamer, ok := r.model.(corechat.Streamer)
 	return streamer, ok
 }
 
-// InputTokenCounter returns the optional complete-request counting projection.
 func (r ResolvedChat) InputTokenCounter() (InputTokenCounter, bool) {
 	return r.inputTokenCounter, r.inputTokenCounter != nil
 }

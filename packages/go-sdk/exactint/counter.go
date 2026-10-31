@@ -37,10 +37,10 @@ func First() Counter { return Counter{value: 1} }
 
 func (c Counter) Value() uint64 { return c.value }
 
-// IsZero reports whether no value has been assigned yet.
+// IsZero reports a counter that was never assigned; First starts at 1.
 func (c Counter) IsZero() bool { return c.value == 0 }
 
-// Next returns the next exact value. It never wraps.
+// Next fails past Maximum instead of wrapping.
 func (c Counter) Next() (Counter, error) {
 	if c.value > Maximum {
 		return Counter{}, ErrOutOfRange
