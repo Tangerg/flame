@@ -60,6 +60,7 @@ const pluginThemeSchemas = [
             points: [],
             pointValues: [],
             components: [],
+            terminalViews: [],
             servers: [],
             inputs: [],
             locales: [],
