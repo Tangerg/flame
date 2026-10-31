@@ -520,7 +520,7 @@ func (a *app) ConfigureMCPTool(arguments string) error {
 			return err
 		}
 		a.runMCPAck("setting tool exposure "+mcp.ServerLabel(server)+"/"+name, func(ctx context.Context) error { return a.mcp.SetToolExposure(ctx, request) })
-	case "allow", "deny":
+	case string(protocol.ApprovalRuleDecisionAllow), string(protocol.ApprovalRuleDecisionDeny):
 		request := protocol.SetApprovalRuleRequest{Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectAll}, Tool: protocol.ToolRef{Type: protocol.ToolRefMCP, Server: &server, Name: name}, Scope: protocol.ApprovalRuleScopeGlobal, Decision: protocol.ApprovalRuleDecision(action)}
 		if err := protocol.ValidateWireTree(request); err != nil {
 			return err
