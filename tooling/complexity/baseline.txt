@@ -43,7 +43,6 @@
 21 qimu/control/host/publication.go:Bridge.Withdraw
 30 qimu/control/host/selection.go:Bridge.Acquire
 37 qimu/control/typescript.go:writeTypeScript
-82 qimu/distribution/manifest.go:Manifest.Validate
 23 qimu/distribution/manifest.go:validPath
 27 qimu/distribution/store.go:Store.InstallArchiveHeld
 22 qimu/distribution/store.go:Store.InstallDirectoryHeld

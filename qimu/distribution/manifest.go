@@ -165,174 +165,227 @@ func (m Manifest) Validate() error {
 	if err := validateDependencies(m.Dependencies); err != nil {
 		return err
 	}
-	artifacts := make(map[string]Artifact, len(m.Artifacts))
+	artifacts, err := indexArtifacts(m.Artifacts)
+	if err != nil {
+		return err
+	}
+	contracts, err := indexContracts(m.Contracts)
+	if err != nil {
+		return err
+	}
+	units := make(map[qimu.UnitID]Unit, len(m.Units))
+	for _, unit := range m.Units {
+		if _, exists := units[unit.ID]; exists {
+			return fmt.Errorf("%w: duplicate unit %q", ErrInvalid, unit.ID)
+		}
+		if err := unit.validate(contracts, artifacts); err != nil {
+			return fmt.Errorf("unit %q: %w", unit.ID, err)
+		}
+		units[unit.ID] = unit
+	}
+	return validateContributions(m.Contributions, units, contracts)
+}
+
+func indexArtifacts(declared []Artifact) (map[string]Artifact, error) {
+	artifacts := make(map[string]Artifact, len(declared))
 	paths := map[string]string{}
-	for _, artifact := range m.Artifacts {
+	for _, artifact := range declared {
 		if !validPath(artifact.Path) || artifact.Path == ManifestName || artifact.Path == LockName || artifact.Size < 0 || artifact.Digest.Validate() != nil {
-			return fmt.Errorf("%w: artifact", ErrInvalid)
+			return nil, fmt.Errorf("%w: artifact %q", ErrInvalid, artifact.Path)
 		}
 		if err := admitPath(paths, artifact.Path); err != nil {
-			return err
+			return nil, err
 		}
 		artifacts[artifact.Path] = artifact
 	}
+	return artifacts, nil
+}
+
+func indexContracts(declared []qimu.ContractRef) (map[qimu.ContractRef]struct{}, error) {
 	contracts := map[qimu.ContractRef]struct{}{}
 	type nominalContract struct {
 		kind          qimu.ContractKind
 		name, version string
 	}
 	nominal := map[nominalContract]qimu.ContractRef{}
-	for _, contract := range m.Contracts {
+	for _, contract := range declared {
 		if err := contract.Validate(); err != nil {
-			return errors.Join(ErrInvalid, err)
+			return nil, errors.Join(ErrInvalid, err)
 		}
 		if _, ok := contracts[contract]; ok {
-			return fmt.Errorf("%w: duplicate contract", ErrInvalid)
+			return nil, fmt.Errorf("%w: duplicate contract %q", ErrInvalid, contract.Name)
 		}
 		key := nominalContract{contract.Kind, contract.Name, contract.Version}
 		if prior, ok := nominal[key]; ok && prior != contract {
-			return fmt.Errorf("%w: conflicting contract version", ErrInvalid)
+			return nil, fmt.Errorf("%w: conflicting contract version %q", ErrInvalid, contract.Name)
 		}
 		nominal[key] = contract
 		contracts[contract] = struct{}{}
 	}
-	units := map[qimu.UnitID]Unit{}
-	for _, unit := range m.Units {
-		if unit.ID.Validate() != nil || unit.Profile.Validate() != nil {
-			return fmt.Errorf("%w: unit identity", ErrInvalid)
-		}
-		if _, exists := units[unit.ID]; exists {
-			return fmt.Errorf("%w: duplicate unit", ErrInvalid)
-		}
-		units[unit.ID] = unit
-		slots := map[string]struct{}{}
-		for _, imported := range unit.Imports {
-			if !qimu.ValidName(imported.Slot) {
-				return fmt.Errorf("%w: import slot", ErrInvalid)
-			}
-			if _, exists := slots[imported.Slot]; exists {
-				return fmt.Errorf("%w: duplicate import slot", ErrInvalid)
-			}
-			if _, exists := contracts[imported.Contract]; !exists {
-				return fmt.Errorf("%w: undeclared import contract", ErrInvalid)
-			}
-			slots[imported.Slot] = struct{}{}
-		}
-		exports := map[string]struct{}{}
-		for _, export := range unit.Exports {
-			if !qimu.ValidName(export.Name) {
-				return fmt.Errorf("%w: export name", ErrInvalid)
-			}
-			if _, exists := exports[export.Name]; exists {
-				return fmt.Errorf("%w: duplicate export", ErrInvalid)
-			}
-			if _, exists := contracts[export.Contract]; !exists {
-				return fmt.Errorf("%w: undeclared export contract", ErrInvalid)
-			}
-			exports[export.Name] = struct{}{}
-		}
-		targets := map[[2]string]struct{}{}
-		for _, variant := range unit.Variants {
-			artifact, exists := artifacts[variant.Path]
-			if !exists || !qimu.ValidName(variant.OS) || !qimu.ValidName(variant.Arch) {
-				return fmt.Errorf("%w: unit artifact", ErrInvalid)
-			}
-			if variant.Runtime == nil && !artifact.Executable {
-				return fmt.Errorf("%w: process entry is not executable", ErrInvalid)
-			}
-			if variant.Runtime != nil && !validRuntime(*variant.Runtime) {
-				return fmt.Errorf("%w: runtime reference", ErrInvalid)
-			}
-			key := [2]string{variant.OS, variant.Arch}
-			if _, exists := targets[key]; exists {
-				return fmt.Errorf("%w: duplicate target variant", ErrInvalid)
-			}
-			targets[key] = struct{}{}
-		}
-		if unit.Module != nil {
-			if _, exists := artifacts[unit.Module.Entry]; !exists {
-				return fmt.Errorf("%w: module entry", ErrInvalid)
-			}
-			specifiers := map[string]struct{}{}
-			for _, imported := range unit.Module.Imports {
-				if !qimu.ValidName(imported.Specifier) || (imported.Path == "") == (imported.Shared == nil) {
-					return fmt.Errorf("%w: module import", ErrInvalid)
-				}
-				if _, exists := specifiers[imported.Specifier]; exists {
-					return fmt.Errorf("%w: duplicate module import", ErrInvalid)
-				}
-				specifiers[imported.Specifier] = struct{}{}
-				if imported.Shared != nil {
-					if !qimu.ValidName(imported.Shared.Profile) {
-						return fmt.Errorf("%w: shared module", ErrInvalid)
-					}
-				} else if _, exists := artifacts[imported.Path]; !exists {
-					return fmt.Errorf("%w: module path", ErrInvalid)
-				}
-			}
-		}
-		for _, resource := range unit.Resources {
-			if _, exists := artifacts[resource]; !exists {
-				return fmt.Errorf("%w: resource path", ErrInvalid)
-			}
-		}
-		for _, capability := range unit.RequestedCapabilities {
-			if !qimu.ValidName(capability) {
-				return fmt.Errorf("%w: capability name", ErrInvalid)
-			}
-		}
-		switch unit.Profile {
-		case qimu.MCPProcess:
-			if len(unit.Variants) == 0 || unit.Module != nil {
-				return fmt.Errorf("%w: process unit entry", ErrInvalid)
-			}
-			for _, imported := range unit.Imports {
-				if imported.Contract.Mode != qimu.PortableMode {
-					return fmt.Errorf("%w: process import is native", ErrInvalid)
-				}
-			}
-			for _, exported := range unit.Exports {
-				if exported.Contract.Mode != qimu.PortableMode {
-					return fmt.Errorf("%w: process export is native", ErrInvalid)
-				}
-			}
-		case qimu.BrowserJS:
-			if unit.Module == nil || len(unit.Variants) != 0 {
-				return fmt.Errorf("%w: browser unit entry", ErrInvalid)
-			}
-		case qimu.StaticResource:
-			if len(unit.Resources) == 0 || unit.Module != nil || len(unit.Variants) != 0 || len(unit.Imports) != 0 {
-				return fmt.Errorf("%w: resource unit entry", ErrInvalid)
-			}
-		case qimu.NativeGo:
-			if unit.Module != nil || len(unit.Variants) != 0 {
-				return fmt.Errorf("%w: native unit is supplied by the host build", ErrInvalid)
-			}
-		default:
-			return fmt.Errorf("%w: unsupported distribution profile %q", ErrInvalid, unit.Profile)
+	return contracts, nil
+}
+
+func (u Unit) validate(contracts map[qimu.ContractRef]struct{}, artifacts map[string]Artifact) error {
+	if u.ID.Validate() != nil || u.Profile.Validate() != nil {
+		return fmt.Errorf("%w: unit identity", ErrInvalid)
+	}
+	if err := u.validateBindings(contracts); err != nil {
+		return err
+	}
+	if err := u.validateVariants(artifacts); err != nil {
+		return err
+	}
+	if u.Module != nil {
+		if err := u.Module.validate(artifacts); err != nil {
+			return err
 		}
 	}
+	for _, resource := range u.Resources {
+		if _, exists := artifacts[resource]; !exists {
+			return fmt.Errorf("%w: resource path %q", ErrInvalid, resource)
+		}
+	}
+	for _, capability := range u.RequestedCapabilities {
+		if !qimu.ValidName(capability) {
+			return fmt.Errorf("%w: capability name %q", ErrInvalid, capability)
+		}
+	}
+	return u.validateProfileShape()
+}
+
+func (u Unit) validateBindings(contracts map[qimu.ContractRef]struct{}) error {
+	slots := map[string]struct{}{}
+	for _, imported := range u.Imports {
+		if !qimu.ValidName(imported.Slot) {
+			return fmt.Errorf("%w: import slot %q", ErrInvalid, imported.Slot)
+		}
+		if _, exists := slots[imported.Slot]; exists {
+			return fmt.Errorf("%w: duplicate import slot %q", ErrInvalid, imported.Slot)
+		}
+		if _, exists := contracts[imported.Contract]; !exists {
+			return fmt.Errorf("%w: import slot %q names an undeclared contract", ErrInvalid, imported.Slot)
+		}
+		slots[imported.Slot] = struct{}{}
+	}
+	exports := map[string]struct{}{}
+	for _, export := range u.Exports {
+		if !qimu.ValidName(export.Name) {
+			return fmt.Errorf("%w: export name %q", ErrInvalid, export.Name)
+		}
+		if _, exists := exports[export.Name]; exists {
+			return fmt.Errorf("%w: duplicate export %q", ErrInvalid, export.Name)
+		}
+		if _, exists := contracts[export.Contract]; !exists {
+			return fmt.Errorf("%w: export %q names an undeclared contract", ErrInvalid, export.Name)
+		}
+		exports[export.Name] = struct{}{}
+	}
+	return nil
+}
+
+func (u Unit) validateVariants(artifacts map[string]Artifact) error {
+	targets := map[[2]string]struct{}{}
+	for _, variant := range u.Variants {
+		artifact, exists := artifacts[variant.Path]
+		if !exists || !qimu.ValidName(variant.OS) || !qimu.ValidName(variant.Arch) {
+			return fmt.Errorf("%w: unit artifact %q", ErrInvalid, variant.Path)
+		}
+		if variant.Runtime == nil && !artifact.Executable {
+			return fmt.Errorf("%w: process entry %q is not executable", ErrInvalid, variant.Path)
+		}
+		if variant.Runtime != nil && !validRuntime(*variant.Runtime) {
+			return fmt.Errorf("%w: runtime reference of %q", ErrInvalid, variant.Path)
+		}
+		key := [2]string{variant.OS, variant.Arch}
+		if _, exists := targets[key]; exists {
+			return fmt.Errorf("%w: duplicate target variant %s/%s", ErrInvalid, variant.OS, variant.Arch)
+		}
+		targets[key] = struct{}{}
+	}
+	return nil
+}
+
+func (m Module) validate(artifacts map[string]Artifact) error {
+	if _, exists := artifacts[m.Entry]; !exists {
+		return fmt.Errorf("%w: module entry %q", ErrInvalid, m.Entry)
+	}
+	specifiers := map[string]struct{}{}
+	for _, imported := range m.Imports {
+		if !qimu.ValidName(imported.Specifier) || (imported.Path == "") == (imported.Shared == nil) {
+			return fmt.Errorf("%w: module import %q", ErrInvalid, imported.Specifier)
+		}
+		if _, exists := specifiers[imported.Specifier]; exists {
+			return fmt.Errorf("%w: duplicate module import %q", ErrInvalid, imported.Specifier)
+		}
+		specifiers[imported.Specifier] = struct{}{}
+		if imported.Shared != nil {
+			if !qimu.ValidName(imported.Shared.Profile) {
+				return fmt.Errorf("%w: shared module %q", ErrInvalid, imported.Specifier)
+			}
+		} else if _, exists := artifacts[imported.Path]; !exists {
+			return fmt.Errorf("%w: module path %q", ErrInvalid, imported.Path)
+		}
+	}
+	return nil
+}
+
+// validateProfileShape checks the entry a distribution profile requires.
+func (u Unit) validateProfileShape() error {
+	switch u.Profile {
+	case qimu.MCPProcess:
+		if len(u.Variants) == 0 || u.Module != nil {
+			return fmt.Errorf("%w: process unit entry", ErrInvalid)
+		}
+		for _, imported := range u.Imports {
+			if imported.Contract.Mode != qimu.PortableMode {
+				return fmt.Errorf("%w: process import %q is native", ErrInvalid, imported.Slot)
+			}
+		}
+		for _, exported := range u.Exports {
+			if exported.Contract.Mode != qimu.PortableMode {
+				return fmt.Errorf("%w: process export %q is native", ErrInvalid, exported.Name)
+			}
+		}
+	case qimu.BrowserJS:
+		if u.Module == nil || len(u.Variants) != 0 {
+			return fmt.Errorf("%w: browser unit entry", ErrInvalid)
+		}
+	case qimu.StaticResource:
+		if len(u.Resources) == 0 || u.Module != nil || len(u.Variants) != 0 || len(u.Imports) != 0 {
+			return fmt.Errorf("%w: resource unit entry", ErrInvalid)
+		}
+	case qimu.NativeGo:
+		if u.Module != nil || len(u.Variants) != 0 {
+			return fmt.Errorf("%w: native unit is supplied by the host build", ErrInvalid)
+		}
+	default:
+		return fmt.Errorf("%w: unsupported distribution profile %q", ErrInvalid, u.Profile)
+	}
+	return nil
+}
+
+func validateContributions(declared []Contribution, units map[qimu.UnitID]Unit, contracts map[qimu.ContractRef]struct{}) error {
 	type contributionKey struct {
 		unit       qimu.UnitID
 		point, key string
 	}
 	keys := map[contributionKey]struct{}{}
-	for _, contribution := range m.Contributions {
+	for _, contribution := range declared {
 		unit, ok := units[contribution.Unit]
 		if !ok || !qimu.ValidName(contribution.Key) || !qimu.ValidName(contribution.Export) {
-			return fmt.Errorf("%w: contribution", ErrInvalid)
+			return fmt.Errorf("%w: contribution %q of unit %q", ErrInvalid, contribution.Key, contribution.Unit)
 		}
 		if _, ok := contracts[contribution.Point]; !ok || contribution.Point.Kind != qimu.PointKind {
-			return fmt.Errorf("%w: contribution point", ErrInvalid)
+			return fmt.Errorf("%w: contribution %q point", ErrInvalid, contribution.Key)
 		}
 		if !slices.ContainsFunc(unit.Exports, func(export qimu.ExportDeclaration) bool {
 			return export.Name == contribution.Export && export.Contract == contribution.Point
 		}) {
-			return fmt.Errorf("%w: contribution export", ErrInvalid)
+			return fmt.Errorf("%w: contribution %q export %q", ErrInvalid, contribution.Key, contribution.Export)
 		}
 		key := contributionKey{contribution.Unit, contribution.Point.Name, contribution.Key}
 		if _, ok := keys[key]; ok {
-			return fmt.Errorf("%w: duplicate contribution", ErrInvalid)
+			return fmt.Errorf("%w: duplicate contribution %q", ErrInvalid, contribution.Key)
 		}
 		keys[key] = struct{}{}
 		if len(contribution.Metadata) != 0 {
