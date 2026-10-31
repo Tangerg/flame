@@ -74,8 +74,8 @@ func TestCancellationDispatchWaitsForItsRetainedIdentityToBeDurable(t *testing.T
 	}
 	pending := store.PendingRuns("session")[0]
 	runtime := &cancellationAdmissionProbe{Runtime: runtimefixture.New()}
-	application := &app{composer: testPromptComposer(t), runtime: runtime, workbench: store, replayPolicy: replay}
-	for _, dispatch := range []func(context.Context, conversation.CancelRun, authoring.ReplayGuard) error{application.cancelRootRun, application.cancelRuntimeNow} {
+	runs := &runs{runtime: runtime, workbench: store, replayPolicy: replay}
+	for _, dispatch := range []func(context.Context, conversation.CancelRun, authoring.ReplayGuard) error{runs.cancelRootRun, runs.cancelRuntimeNow} {
 		request := conversation.CancelRun{CommandID: pending.CancelCommandID, RunID: "run_original", Reason: "original"}
 		if err := dispatch(t.Context(), request, pending.CancelReplay); !errors.Is(err, fault.cause) || !mutation.OutcomeUnknown(err) {
 			t.Fatalf("unconfirmed cancellation: %v", err)
@@ -84,7 +84,7 @@ func TestCancellationDispatchWaitsForItsRetainedIdentityToBeDurable(t *testing.T
 			t.Fatal("unconfirmed cancellation reached Runtime")
 		}
 	}
-	if err := application.cancelRootRun(t.Context(), conversation.CancelRun{CommandID: mutation.NewCommandID(), RunID: "run_other"}, guard); err != nil || runtime.calls != 1 {
+	if err := runs.cancelRootRun(t.Context(), conversation.CancelRun{CommandID: mutation.NewCommandID(), RunID: "run_other"}, guard); err != nil || runtime.calls != 1 {
 		t.Fatalf("independent live cancellation was blocked: %v, calls=%d", err, runtime.calls)
 	}
 }

@@ -1,10 +1,8 @@
 package terminal
 
 import (
-	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
@@ -16,12 +14,12 @@ import (
 const statusWaitingForAnswers = "waiting for your answers"
 
 func (a *app) restore(snapshot conversation.SessionSnapshot) {
-	if err := a.execution.conversation.RestoreSnapshot(snapshot); err != nil {
-		a.fail(err)
+	if err := a.runs.conversation().RestoreSnapshot(snapshot); err != nil {
+		a.runs.fail(err)
 		return
 	}
 	if err := presentSnapshot(a.transcript, snapshot); err != nil {
-		a.fail(err)
+		a.runs.fail(err)
 		return
 	}
 	a.restoreActivity(snapshot)
@@ -105,8 +103,7 @@ func (a *app) reconcileRunSnapshot(snapshot conversation.SessionSnapshot, stream
 	a.prepareSessionProjectionReplacement(snapshot.Session, projection.conversation)
 	previousTranscript := a.transcript
 	a.setActiveSession(snapshot.Session)
-	a.execution.conversation = projection.conversation
-	a.execution.projectionFailed = false
+	a.runs.adoptProjection(projection.conversation)
 	a.transcript = projection.transcript
 	a.wireTranscript(projection.transcript)
 	a.shell.SetTranscript(projection.transcript)
@@ -119,88 +116,36 @@ func (a *app) reconcileRunSnapshot(snapshot conversation.SessionSnapshot, stream
 	a.listenForSearch()
 	a.steering.receipts.observeSnapshot(snapshot)
 
-	switch projection.conversation.Phase() {
-	case conversation.Running:
-		a.execution.following = true
-		a.execution.clock.start(projection.conversation.Usage().Duration, time.Now())
-		active, ok := snapshot.ActiveRun()
-		if !ok {
-			return errors.New("reconcile run snapshot: running conversation has no active run")
-		}
-		a.showRecoveredRunStatus("reconnected", active)
-	case conversation.Waiting:
-		a.execution.following = false
-		if a.prompts.review == nil {
-			a.openInterrupts(projection.conversation.Interrupts())
-		}
-		a.observeCurrentRunStatus()
-		a.status.note(statusWaitingForAnswers)
-	case conversation.Idle:
-		a.execution.following = false
-		if projection.conversation.Outcome().Status != "" {
-			a.settleCurrentRunStatus()
-		}
-		if a.drainQueue() {
-			return nil
-		}
-		if projection.conversation.Outcome().Status != "" {
-			a.raiseAttention(outcomeAttention(projection.conversation.Outcome()))
-		}
-	default:
-		return errors.New("reconcile run snapshot: unknown conversation phase")
+	resumed, err := a.runs.resumeReconciled(snapshot)
+	if err != nil || !resumed {
+		return err
 	}
 	a.steering.restoreSteerReceipts(snapshot)
-	a.syncAnimation()
+	a.runs.syncAnimation()
 	return nil
 }
 
 func (a *app) restoreActivity(snapshot conversation.SessionSnapshot) {
-	a.activity.Set(a.execution.conversation.PlanItems())
-	a.header.SetUsage(a.execution.conversation.Usage())
+	current := a.runs.conversation()
+	a.activity.Set(current.PlanItems())
+	a.header.SetUsage(current.Usage())
 	a.header.SetGoal(snapshot.Goal)
-	a.status.setRunningDescendants(a.execution.conversation.RunningDescendants())
-	a.prompt.SetBusy(a.execution.conversation.Busy())
-	switch a.execution.conversation.Phase() {
-	case conversation.Waiting:
-		if a.prompts.review == nil {
-			a.openInterrupts(a.execution.conversation.Interrupts())
-		}
-		a.observeCurrentRunStatus()
-		a.status.note(statusWaitingForAnswers)
-	case conversation.Running:
-		active, ok := snapshot.ActiveRun()
-		if !ok {
-			a.fail(errors.New("session snapshot has a running conversation without an active run"))
-			return
-		}
-		a.execution.clock.start(a.execution.conversation.Usage().Duration, time.Now())
-		a.showRecoveredRunStatus("reconnecting", active)
-		a.followRecoveredSession()
-	case conversation.Idle:
-		if a.execution.conversation.Outcome().Status != "" {
-			a.settleCurrentRunStatus()
-		}
-	default:
-		a.fail(errors.New("session snapshot has an unknown conversation phase"))
+	a.status.setRunningDescendants(current.RunningDescendants())
+	a.prompt.SetBusy(current.Busy())
+	a.runs.resumeRestored(snapshot)
+}
+
+func (r *runs) observeCurrentRunStatus() {
+	run, ok := r.execution.conversation.CurrentRun()
+	if ok {
+		r.status.observeRun(run)
 	}
 }
 
-func (a *app) showRecoveredRunStatus(label string, run conversation.Run) {
-	a.status.observeRun(run)
-	a.status.active(label)
-}
-
-func (a *app) observeCurrentRunStatus() {
-	run, ok := a.execution.conversation.CurrentRun()
+func (r *runs) settleCurrentRunStatus() {
+	run, ok := r.execution.conversation.CurrentRun()
 	if ok {
-		a.status.observeRun(run)
-	}
-}
-
-func (a *app) settleCurrentRunStatus() {
-	run, ok := a.execution.conversation.CurrentRun()
-	if ok {
-		a.status.settled(run)
+		r.status.settled(run)
 	}
 }
 

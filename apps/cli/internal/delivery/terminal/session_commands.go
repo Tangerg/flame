@@ -21,7 +21,7 @@ import (
 )
 
 func (a *app) ShowSessions() {
-	if a.execution.observing() {
+	if a.runs.observing() {
 		a.message("finish or cancel the current run before switching sessions")
 		return
 	}
@@ -250,7 +250,7 @@ func (a *app) NewSession() {
 }
 
 func (a *app) RenameSession(title string) {
-	if a.execution.observing() {
+	if a.runs.observing() {
 		a.message("finish or cancel the current run before renaming the session")
 		return
 	}
@@ -326,11 +326,11 @@ func (a *app) runSessionChangeWithDraftDisposition[T any](
 	work func(context.Context) (T, error),
 	apply func(T) error,
 ) {
-	if a.execution.observing() {
+	if a.runs.observing() {
 		a.message("finish or cancel the current run before changing sessions")
 		return
 	}
-	if a.execution.pendingCancel != nil {
+	if a.runs.cancelPending() {
 		a.message("wait for runtime cancellation to finish")
 		return
 	}
@@ -394,8 +394,8 @@ func (a *app) cancelSessionChange() bool {
 // any authoritative refresh that runtime notifications deferred behind it.
 func (a *app) settleSessionChange() {
 	a.session.draftTransition = nil
-	if a.session.invalidated && a.execution.conversation.Phase() != conversation.Running &&
-		!a.execution.following && a.execution.pendingCancel == nil {
+	if a.session.invalidated && a.runs.conversation().Phase() != conversation.Running &&
+		!a.runs.following() && !a.runs.cancelPending() {
 		a.refreshInvalidatedSession(false)
 	}
 }
@@ -578,14 +578,12 @@ func (s sessionInstallation) apply(a *app) {
 	a.prepareSessionProjectionReplacement(s.snapshot.Session, s.projection.conversation)
 	a.cancelPluginCommands()
 	a.operations.CancelScope(sessionOperationScope)
-	a.dropStream()
+	a.runs.dropStream()
 	a.completion.Dismiss()
 	previousTranscript := a.transcript
 	a.setActiveSession(s.snapshot.Session)
 	a.queue.ReleaseDispatch(previousSessionID)
-	a.execution.opening = nil
-	a.execution.conversation = s.projection.conversation
-	a.execution.projectionFailed = false
+	a.runs.switchProjection(s.projection.conversation)
 	a.composer.attachments = s.attachments
 	a.transcript = s.projection.transcript
 	a.wireTranscript(s.projection.transcript)
@@ -599,16 +597,16 @@ func (s sessionInstallation) apply(a *app) {
 	a.prompt.SetOptions(a.displayOptions())
 	a.prompt.SetBusy(s.projection.conversation.Busy())
 	a.shell.SetTranscript(s.projection.transcript)
-	a.syncQueue()
+	a.runs.syncQueue()
 	previousTranscript.Close()
 	a.listenForSearch()
 	a.setWindowTitle()
 	a.restoreActivity(s.snapshot)
-	a.restoreSessionOutbox()
+	a.runs.restoreSessionOutbox()
 	if a.session.current.Workspace != previousWorkspace {
 		a.followRuntimeChanges()
 	}
-	if a.execution.conversation.Phase() == conversation.Idle {
+	if a.runs.conversation().Phase() == conversation.Idle {
 		a.message("session · " + displayTitle(s.snapshot.Session))
 		if a.session.invalidated {
 			a.refreshInvalidatedSession(false)

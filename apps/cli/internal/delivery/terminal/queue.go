@@ -99,118 +99,118 @@ func countedNoun(count int, noun string) string {
 	return fmt.Sprintf("%d %ss", count, noun)
 }
 
-func (a *app) enqueueDeferredPrompt() {
-	a.composer.resetComposer()
-	a.operations.Cancel(completionOperation)
-	a.completion.Dismiss()
-	snapshot := a.syncQueue()
+func (r *runs) enqueueDeferredPrompt() {
+	r.composer.resetComposer()
+	r.tasks.operations.Cancel(completionOperation)
+	r.link.dismissCompletion()
+	snapshot := r.syncQueue()
 	label := "queued follow-up"
-	if a.runtimeChangeBlocksRunAdmission() {
+	if r.runtimeChangeBlocksRunAdmission() {
 		label = "queued behind runtime change"
 	}
-	a.message(fmt.Sprintf("%s · %d waiting", label, len(snapshot.Entries)))
+	r.link.message(fmt.Sprintf("%s · %d waiting", label, len(snapshot.Entries)))
 }
 
-func (a *app) drainQueue() bool {
-	if a.closed {
+func (r *runs) drainQueue() bool {
+	if r.link.terminalClosed() {
 		return false
 	}
-	if _, dispatching := a.queue.Dispatching(a.session.current.ID); dispatching {
-		if a.runAdmissionBlocked() || a.execution.opening == nil ||
-			a.operations.Active(sessionChangeOperation) || a.operations.Active(pendingRunRecoveryOperation) {
+	if _, dispatching := r.queue.Dispatching(r.session.current.ID); dispatching {
+		if r.runAdmissionBlocked() || r.execution.opening == nil ||
+			r.tasks.operations.Active(sessionChangeOperation) || r.tasks.operations.Active(pendingRunRecoveryOperation) {
 			return false
 		}
-		if err := a.attemptQueuedDispatchSettlement(a.execution.opening.CommandID); err != nil {
-			a.reportQueuedDispatchSettlementFailure(a.execution.opening.CommandID, err)
+		if err := r.attemptQueuedDispatchSettlement(r.execution.opening.CommandID); err != nil {
+			r.reportQueuedDispatchSettlementFailure(r.execution.opening.CommandID, err)
 			return false
 		}
-		a.execution.opening = nil
+		r.execution.opening = nil
 	}
-	if a.runAdmissionBlocked() ||
-		a.operations.Active(sessionChangeOperation) || a.operations.Active(pendingRunRecoveryOperation) {
+	if r.runAdmissionBlocked() ||
+		r.tasks.operations.Active(sessionChangeOperation) || r.tasks.operations.Active(pendingRunRecoveryOperation) {
 		return false
 	}
-	entry, ok := a.queue.BeginDispatch(a.session.current.ID)
+	entry, ok := r.queue.BeginDispatch(r.session.current.ID)
 	if !ok {
 		return false
 	}
-	a.syncQueue()
-	if !a.startRun(entry.CommandID, entry.Message, entry.Options, "starting queued follow-up") {
-		a.queue.ReleaseDispatch(a.session.current.ID)
-		a.syncQueue()
+	r.syncQueue()
+	if !r.startRun(entry.CommandID, entry.Message, entry.Options, "starting queued follow-up") {
+		r.queue.ReleaseDispatch(r.session.current.ID)
+		r.syncQueue()
 		return false
 	}
 	return true
 }
 
-func (a *app) attemptQueuedDispatchSettlement(commandID authoring.CommandID) error {
-	entry, retired, err := a.queue.SettleDispatch(a.session.current.ID, commandID)
+func (r *runs) attemptQueuedDispatchSettlement(commandID authoring.CommandID) error {
+	entry, retired, err := r.queue.SettleDispatch(r.session.current.ID, commandID)
 	if err != nil {
 		return err
 	}
-	a.presentQueuedRetirement(entry, retired)
+	r.presentQueuedRetirement(entry, retired)
 	return nil
 }
 
-func (a *app) retireQueuedCommand(sessionID string, commandID authoring.CommandID) error {
-	entry, retired, err := a.queue.Retire(sessionID, commandID)
+func (r *runs) retireQueuedCommand(sessionID string, commandID authoring.CommandID) error {
+	entry, retired, err := r.queue.Retire(sessionID, commandID)
 	if err != nil {
 		return err
 	}
-	a.presentQueuedRetirement(entry, retired)
+	r.presentQueuedRetirement(entry, retired)
 	return nil
 }
 
-func (a *app) presentQueuedRetirement(entry authoring.QueueEntry, retired bool) {
+func (r *runs) presentQueuedRetirement(entry authoring.QueueEntry, retired bool) {
 	if !retired {
 		return
 	}
-	a.composer.history.Add(entry.Message)
-	a.reportWorkbenchIssue(workbenchRunOutbox, nil)
-	a.syncQueue()
+	r.composer.history.Add(entry.Message)
+	r.report(workbenchRunOutbox, nil)
+	r.syncQueue()
 }
 
-func (a *app) settleQueuedDispatch(commandID authoring.CommandID) bool {
-	if a.operations.Active(pendingRunSettlementOperation) {
+func (r *runs) settleQueuedDispatch(commandID authoring.CommandID) bool {
+	if r.tasks.operations.Active(pendingRunSettlementOperation) {
 		return false
 	}
-	if err := a.attemptQueuedDispatchSettlement(commandID); err != nil {
-		a.reportQueuedDispatchSettlementFailure(commandID, err)
+	if err := r.attemptQueuedDispatchSettlement(commandID); err != nil {
+		r.reportQueuedDispatchSettlementFailure(commandID, err)
 		return false
 	}
 	return true
 }
 
-func (a *app) queuedDispatchCanceling() bool {
-	return a.queue.DispatchCanceling(a.session.current.ID)
+func (r *runs) queuedDispatchCanceling() bool {
+	return r.queue.DispatchCanceling(r.session.current.ID)
 }
 
-func (a *app) reportQueuedDispatchSettlementFailure(commandID authoring.CommandID, err error) {
+func (r *runs) reportQueuedDispatchSettlementFailure(commandID authoring.CommandID, err error) {
 	if errors.Is(err, workbench.ErrDispatchCanceling) {
 		return
 	}
-	a.reportWorkbenchIssue(workbenchRunOutbox, err)
-	a.message("could not settle acknowledged run start: " + err.Error())
-	a.retryQueuedDispatchSettlement(commandID)
+	r.report(workbenchRunOutbox, err)
+	r.link.message("could not settle acknowledged run start: " + err.Error())
+	r.retryQueuedDispatchSettlement(commandID)
 }
 
-func (a *app) retryQueuedDispatchSettlement(commandID authoring.CommandID) {
-	receipt := a.execution.opening
-	a.retryAuthoringSettlement(
+func (r *runs) retryQueuedDispatchSettlement(commandID authoring.CommandID) {
+	receipt := r.execution.opening
+	r.retryAuthoringSettlement(
 		pendingRunSettlementOperation,
-		func() error { return a.attemptQueuedDispatchSettlement(commandID) },
-		func() { a.finishQueuedSettlementRecovery(receipt) },
+		func() error { return r.attemptQueuedDispatchSettlement(commandID) },
+		func() { r.finishQueuedSettlementRecovery(receipt) },
 	)
 }
 
 // retryCanceledRuntimeOwnership is the cancellation counterpart to ordinary
 // acknowledgement settlement. It retries both a pending HITL decision and the
 // exact opening command, because either can remain after a partial state write.
-func (a *app) retryCanceledRuntimeOwnership(runID string, commandID authoring.CommandID) {
-	a.retryAuthoringSettlement(
+func (r *runs) retryCanceledRuntimeOwnership(runID string, commandID authoring.CommandID) {
+	r.retryAuthoringSettlement(
 		ownershipSettlementOperation,
-		func() error { return a.retireCanceledRuntimeOwnership(runID, commandID) },
-		func() { a.finishCanceledRuntimeOwnershipRecovery(runID, commandID) },
+		func() error { return r.retireCanceledRuntimeOwnership(runID, commandID) },
+		func() { r.finishCanceledRuntimeOwnershipRecovery(runID, commandID) },
 	)
 }
 
@@ -218,23 +218,23 @@ func (a *app) retryCanceledRuntimeOwnership(runID string, commandID authoring.Co
 // session. The settlement itself always runs on the UI thread: it may update
 // both a durable workbench aggregate and its in-memory projection atomically
 // from the application's point of view.
-func (a *app) retryAuthoringSettlement(slot operationSlot, settle func() error, finish func()) {
-	if settle == nil || a.operations.Active(slot) {
+func (r *runs) retryAuthoringSettlement(slot operationSlot, settle func() error, finish func()) {
+	if settle == nil || r.tasks.operations.Active(slot) {
 		return
 	}
-	sessionID := a.session.current.ID
-	dispatcher := a.loop.Dispatcher()
-	a.operations.GoSessionSettlement(slot, false, func(ctx context.Context, lease operationLease) {
+	sessionID := r.session.current.ID
+	dispatcher := r.tasks.dispatch
+	r.tasks.operations.GoSessionSettlement(slot, false, func(ctx context.Context, lease operationLease) {
 		for failures := 1; ; failures++ {
 			if err := runtimeRecoveryBackoff.Wait(ctx, failures); err != nil {
 				return
 			}
 			completed := false
 			if err := post(ctx, dispatcher, func() {
-				if !a.operations.Current(lease) || a.closed || a.session.current.ID != sessionID {
+				if !r.tasks.operations.Current(lease) || r.link.terminalClosed() || r.session.current.ID != sessionID {
 					return
 				}
-				if settle() != nil || !a.operations.Release(lease) {
+				if settle() != nil || !r.tasks.operations.Release(lease) {
 					return
 				}
 				completed = true
@@ -248,31 +248,31 @@ func (a *app) retryAuthoringSettlement(slot operationSlot, settle func() error, 
 	})
 }
 
-func (a *app) finishQueuedSettlementRecovery(receipt *openingReceipt) {
-	if a.execution.opening == receipt {
-		a.execution.opening = nil
+func (r *runs) finishQueuedSettlementRecovery(receipt *openingReceipt) {
+	if r.execution.opening == receipt {
+		r.execution.opening = nil
 	}
-	a.finishAuthoringSettlementRecovery()
+	r.finishAuthoringSettlementRecovery()
 }
 
 // A canceled ownership retry may outlive the queue drain that starts the next
 // run. It must only clear the opening identity it originally owned; otherwise
 // a late local disk recovery could detach the successor's lifecycle.
-func (a *app) finishCanceledRuntimeOwnershipRecovery(runID string, commandID authoring.CommandID) {
-	if a.execution.opening != nil && a.execution.opening.RunID == runID && a.execution.opening.CommandID == commandID {
-		a.execution.opening = nil
+func (r *runs) finishCanceledRuntimeOwnershipRecovery(runID string, commandID authoring.CommandID) {
+	if r.execution.opening != nil && r.execution.opening.RunID == runID && r.execution.opening.CommandID == commandID {
+		r.execution.opening = nil
 	}
-	a.reportWorkbenchIssue(workbenchCancellationOwnership, nil)
-	a.finishAuthoringSettlementRecovery()
+	r.report(workbenchCancellationOwnership, nil)
+	r.finishAuthoringSettlementRecovery()
 }
 
-func (a *app) finishAuthoringSettlementRecovery() {
-	if a.runAdmissionBlocked() || a.drainQueue() {
+func (r *runs) finishAuthoringSettlementRecovery() {
+	if r.runAdmissionBlocked() || r.drainQueue() {
 		return
 	}
-	if a.execution.conversation.Outcome().Status != "" {
-		a.settleCurrentRunStatus()
-		a.syncAnimation()
+	if r.execution.conversation.Outcome().Status != "" {
+		r.settleCurrentRunStatus()
+		r.syncAnimation()
 	}
 }
 
@@ -286,11 +286,11 @@ func pendingRunByCommandID(pending []workbench.PendingRun, commandID authoring.C
 }
 
 // queueSendBlocked reports why a queued prompt cannot be promoted now.
-func (a *app) queueSendBlocked() error {
-	if a.operations.Active(sessionChangeOperation) {
+func (r *runs) queueSendBlocked() error {
+	if r.tasks.operations.Active(sessionChangeOperation) {
 		return errors.New("wait for the current session change to finish")
 	}
-	if !a.execution.blocksAdmission() && a.runtimeChangeBlocksRunAdmission() {
+	if !r.execution.blocksAdmission() && r.runtimeChangeBlocksRunAdmission() {
 		return errors.New("wait for the pending runtime change before sending a queued prompt")
 	}
 	return nil
@@ -298,17 +298,17 @@ func (a *app) queueSendBlocked() error {
 
 // dispatchPromoted sends the promoted entry: an active Run is canceled first,
 // and an idle session dispatches it at once.
-func (a *app) dispatchPromoted() error {
-	if a.execution.blocksAdmission() {
-		a.cancel()
+func (r *runs) dispatchPromoted() error {
+	if r.execution.blocksAdmission() {
+		r.cancel()
 		return nil
 	}
-	if !a.drainQueue() {
+	if !r.drainQueue() {
 		return errors.New("queued prompt could not be dispatched")
 	}
 	return nil
 }
 
-func (a *app) syncQueue() authoring.QueueSnapshot {
-	return a.queueEditor.sync()
+func (r *runs) syncQueue() authoring.QueueSnapshot {
+	return r.queueEditor.sync()
 }

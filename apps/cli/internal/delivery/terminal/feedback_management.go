@@ -18,7 +18,7 @@ func (a *app) RecordFeedback(argument string) error {
 	if err != nil {
 		return errors.New("usage: /feedback <positive|negative> [note]")
 	}
-	runID, itemID := latestAssistantTarget(a.execution.conversation.Blocks())
+	runID, itemID := latestAssistantTarget(a.runs.conversation().Blocks())
 	request := protocol.FeedbackRequest{
 		SessionID: a.session.current.ID, RunID: runID, ItemID: itemID,
 		Rating: rating, Text: strings.TrimSpace(note),

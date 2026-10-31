@@ -175,7 +175,7 @@ func (a *app) buildTimeline(theme kit.Theme, glyphs kit.Glyphs) {
 			a.shell.focus(transcriptPaneKey)
 		},
 		func(entry timelineEntry) {
-			if a.execution.blocksAdmission() {
+			if a.runs.blocksAdmission() {
 				a.message("finish or cancel the current run before forking")
 				return
 			}
@@ -186,16 +186,16 @@ func (a *app) buildTimeline(theme kit.Theme, glyphs kit.Glyphs) {
 }
 
 func (a *app) ShowTimeline() {
-	runs := a.execution.conversation.Runs()
+	runs := a.runs.conversation().Runs()
 	if len(runs) == 0 {
 		a.message("the current session has no runs")
 		return
 	}
-	a.timeline.show(runs, a.execution.blocksAdmission())
+	a.timeline.show(runs, a.runs.blocksAdmission())
 }
 
 func (a *app) refreshOpenTimeline() {
-	a.timeline.refresh(a.execution.conversation.Runs(), a.execution.blocksAdmission())
+	a.timeline.refresh(a.runs.conversation().Runs(), a.runs.blocksAdmission())
 }
 
 func shortIdentity(identity string) string {

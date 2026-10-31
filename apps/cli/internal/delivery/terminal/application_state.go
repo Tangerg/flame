@@ -41,12 +41,12 @@ func (e executionState) blocksAdmission() bool {
 	return e.observing() || e.pendingCancel != nil
 }
 
-func (a *app) runAdmissionBlocked() bool {
-	return a.execution.blocksAdmission() || a.session.invalidated || a.operations.BlocksRunAdmission()
+func (r *runs) runAdmissionBlocked() bool {
+	return r.execution.blocksAdmission() || r.session.invalidated || r.tasks.operations.BlocksRunAdmission()
 }
 
-func (a *app) runtimeChangeBlocksRunAdmission() bool {
-	return a.session.invalidated || a.operations.BlocksRunAdmission()
+func (r *runs) runtimeChangeBlocksRunAdmission() bool {
+	return r.session.invalidated || r.tasks.operations.BlocksRunAdmission()
 }
 
 // dialogState owns transient modal presentation. Keeping it separate from the

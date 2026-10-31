@@ -61,7 +61,7 @@ func (a *app) selectSessionModel(model protocol.Model) {
 }
 
 func (a *app) ChooseModel() {
-	if a.execution.observing() {
+	if a.runs.observing() {
 		a.message("model changes apply between runs")
 		return
 	}

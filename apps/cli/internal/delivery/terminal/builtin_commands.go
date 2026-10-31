@@ -258,7 +258,7 @@ func availableForRollback(a *app) extensions.CommandAvailability {
 }
 
 func availableWithRunningSegment(a *app) extensions.CommandAvailability {
-	if a.execution.conversation.Phase() != conversation.Running || a.execution.conversation.RunID() == "" || a.execution.conversation.SegmentID() == "" {
+	if a.runs.conversation().Phase() != conversation.Running || a.runs.conversation().RunID() == "" || a.runs.conversation().SegmentID() == "" {
 		return extensions.CommandUnavailable("no observed run segment is executing")
 	}
 	return extensions.CommandAvailable()
@@ -272,7 +272,7 @@ func commandGroup(category string, commands ...localCommand) []localCommand {
 }
 
 func availableWithoutActiveRun(a *app) extensions.CommandAvailability {
-	if a.execution.blocksAdmission() {
+	if a.runs.blocksAdmission() {
 		return extensions.CommandUnavailable("an active run owns this session")
 	}
 	return extensions.CommandAvailable()
@@ -308,16 +308,16 @@ func availableWithEmptyDraft(a *app) extensions.CommandAvailability {
 }
 
 func (a *app) Clear() {
-	if a.execution.observing() {
+	if a.runs.observing() {
 		a.status.doing = "the active run owns the transcript"
 		return
 	}
-	a.execution.conversation.ClearPresentation()
+	a.runs.conversation().ClearPresentation()
 	a.transcript.Reset()
 	a.activity.Reset()
 	a.status.Reset()
 	a.status.note("cleared")
-	a.header.SetUsage(a.execution.conversation.Usage())
+	a.header.SetUsage(a.runs.conversation().Usage())
 }
 
 func (a *app) Find(query string) {

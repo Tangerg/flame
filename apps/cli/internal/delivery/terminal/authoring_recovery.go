@@ -15,86 +15,86 @@ import (
 // session. It belongs to projection installation rather than process startup:
 // every session can have an independent outbox, including one first visited
 // after this process began.
-func (a *app) restoreSessionOutbox() {
-	a.restorePendingResume()
-	a.restorePendingRuns()
+func (r *runs) restoreSessionOutbox() {
+	r.restorePendingResume()
+	r.restorePendingRuns()
 }
 
-func (a *app) restorePendingRuns() {
-	pending := a.workbench.PendingRuns(a.session.current.ID)
+func (r *runs) restorePendingRuns() {
+	pending := r.workbench.PendingRuns(r.session.current.ID)
 	if len(pending) == 0 {
 		return
 	}
-	if pending[0].State != workbench.PendingRunQueued && !a.replayPolicy.SameStore(pending[0].Replay) {
-		a.fail(errors.New("recover pending run: command belongs to another runtime"))
+	if pending[0].State != workbench.PendingRunQueued && !r.replayPolicy.SameStore(pending[0].Replay) {
+		r.fail(errors.New("recover pending run: command belongs to another runtime"))
 		return
 	}
-	if err := a.restorePendingQueue(); err != nil {
-		a.fail(err)
+	if err := r.restorePendingQueue(); err != nil {
+		r.fail(err)
 		return
 	}
 	if pending[0].State == workbench.PendingRunCanceling {
-		a.reconcileCanceledStart(pending[0])
+		r.reconcileCanceledStart(pending[0])
 		return
 	}
 	if pending[0].State == workbench.PendingRunDispatching {
-		if a.execution.conversation.Busy() {
-			a.reconcilePendingRun(pending[0])
+		if r.execution.conversation.Busy() {
+			r.reconcilePendingRun(pending[0])
 			return
 		}
-		a.replayPendingRun(pending[0])
+		r.replayPendingRun(pending[0])
 		return
 	}
-	if !a.execution.conversation.Busy() {
-		a.drainQueue()
+	if !r.execution.conversation.Busy() {
+		r.drainQueue()
 	}
 }
 
-func (a *app) restorePendingResume() {
-	pending, ok := a.workbench.PendingResume(a.session.current.ID)
+func (r *runs) restorePendingResume() {
+	pending, ok := r.workbench.PendingResume(r.session.current.ID)
 	if !ok {
 		return
 	}
-	if !a.replayPolicy.SameStore(pending.Replay) {
-		a.fail(errors.New("recover interrupt decisions: command belongs to another runtime"))
+	if !r.replayPolicy.SameStore(pending.Replay) {
+		r.fail(errors.New("recover interrupt decisions: command belongs to another runtime"))
 		return
 	}
-	if err := a.execution.conversation.ValidateInterruptReview(pending.Command.RunID, pending.Interrupts); err != nil {
-		a.reconcilePendingResume(pending)
+	if err := r.execution.conversation.ValidateInterruptReview(pending.Command.RunID, pending.Interrupts); err != nil {
+		r.reconcilePendingResume(pending)
 		return
 	}
 	review, err := restoreInterruptReview(pending.Interrupts, pending.Command.Answers)
 	if err != nil {
-		a.fail(fmt.Errorf("restore pending interrupt decisions: %w", err))
+		r.fail(fmt.Errorf("restore pending interrupt decisions: %w", err))
 		return
 	}
-	a.prompts.adopt(review)
-	a.deliverInterruptResume(review, pending.Command.Clone())
+	r.prompts.adopt(review)
+	r.deliverInterruptResume(review, pending.Command.Clone())
 }
 
-func (a *app) reconcilePendingResume(pending workbench.PendingResume) {
+func (r *runs) reconcilePendingResume(pending workbench.PendingResume) {
 	command := pending.Command
-	dispatcher := a.loop.Dispatcher()
-	a.operations.GoSession(resumeRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
+	dispatcher := r.tasks.dispatch
+	r.tasks.operations.GoSession(resumeRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
 		_, err := mutation.ConfirmAdmitted(ctx, runtimeRecoveryBackoff, nil, func(ctx context.Context) (conversation.SegmentStream, error) {
-			return runworkflow.OpenPendingResume(ctx, a.runtime, a.workbench, pending, a.replayPolicy)
+			return runworkflow.OpenPendingResume(ctx, r.runtime, r.workbench, pending, r.replayPolicy)
 		})
 		if context.Cause(ctx) != nil {
 			return
 		}
 		_ = post(ctx, dispatcher, func() {
-			if !a.operations.Current(lease) || !a.operations.Release(lease) {
+			if !r.tasks.operations.Current(lease) || !r.tasks.operations.Release(lease) {
 				return
 			}
 			if _, retired := errors.AsType[*conversation.RetiredOpeningError](err); err == nil || retired {
-				a.settleAcknowledgedResume(command.CommandID)
+				r.settleAcknowledgedResume(command.CommandID)
 				return
 			}
 			_, accepted := conversation.AcceptedMutationReceipt(err)
 			if !accepted && !mutation.OutcomeUnknown(err) {
-				err = errors.Join(err, a.workbench.RejectPendingResume(a.session.current.ID, command.CommandID))
+				err = errors.Join(err, r.workbench.RejectPendingResume(r.session.current.ID, command.CommandID))
 			}
-			a.message("reconcile earlier interrupt delivery: " + err.Error())
+			r.link.message("reconcile earlier interrupt delivery: " + err.Error())
 		})
 	})
 }
@@ -122,52 +122,52 @@ func sameInterrupts(left, right []conversation.Interrupt) bool {
 	return true
 }
 
-func (a *app) restorePendingQueue() error {
-	if err := a.queue.Restore(a.session.current.ID); err != nil {
+func (r *runs) restorePendingQueue() error {
+	if err := r.queue.Restore(r.session.current.ID); err != nil {
 		return fmt.Errorf("restore pending runs: %w", err)
 	}
-	a.syncQueue()
+	r.syncQueue()
 	return nil
 }
 
-func (a *app) replayPendingRun(pending workbench.PendingRun) {
-	entry, ok := a.queue.Dispatching(pending.Command.SessionID)
+func (r *runs) replayPendingRun(pending workbench.PendingRun) {
+	entry, ok := r.queue.Dispatching(pending.Command.SessionID)
 	if !ok || entry.CommandID != pending.Command.CommandID {
-		a.fail(errors.New("replay pending run: dispatch reservation is unavailable"))
+		r.fail(errors.New("replay pending run: dispatch reservation is unavailable"))
 		return
 	}
-	a.startRun(entry.CommandID, entry.Message, entry.Options, "recovering queued prompt")
+	r.startRun(entry.CommandID, entry.Message, entry.Options, "recovering queued prompt")
 }
 
-func (a *app) reconcilePendingRun(pending workbench.PendingRun) {
+func (r *runs) reconcilePendingRun(pending workbench.PendingRun) {
 	command := pending.Command
-	dispatcher := a.loop.Dispatcher()
-	a.operations.GoSession(pendingRunRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
+	dispatcher := r.tasks.dispatch
+	r.tasks.operations.GoSession(pendingRunRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
 		opened, err := openStartRunWithBackoff(
-			ctx, a.runtime, a.workbench, pending, a.replayPolicy, runtimeRecoveryBackoff,
+			ctx, r.runtime, r.workbench, pending, r.replayPolicy, runtimeRecoveryBackoff,
 		)
 		if context.Cause(ctx) != nil {
 			return
 		}
 		_ = post(ctx, dispatcher, func() {
-			if !a.operations.Current(lease) || a.closed || a.session.current.ID != command.SessionID ||
-				!a.operations.Release(lease) {
+			if !r.tasks.operations.Current(lease) || r.link.terminalClosed() || r.session.current.ID != command.SessionID ||
+				!r.tasks.operations.Release(lease) {
 				return
 			}
 			_, accepted := observedSegmentStream(opened, err)
 			switch {
 			case accepted:
-				err = a.retireQueuedCommand(command.SessionID, command.CommandID)
+				err = r.retireQueuedCommand(command.SessionID, command.CommandID)
 			case errors.Is(err, conversation.ErrSessionHasActiveRun):
-				err = a.queue.RequeueDispatch(command.SessionID, command.CommandID)
+				err = r.queue.RequeueDispatch(command.SessionID, command.CommandID)
 				if err == nil {
-					a.syncQueue()
+					r.syncQueue()
 				}
 			default:
 				err = fmt.Errorf("reconcile pending run: %w", err)
 			}
 			if err != nil {
-				a.message(err.Error())
+				r.link.message(err.Error())
 			}
 		})
 	})

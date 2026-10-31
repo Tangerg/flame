@@ -53,7 +53,7 @@ func (a *app) screenHost() screenHost {
 
 func (a *app) buildScreens(cfg appConfig) {
 	host := a.screenHost()
-	a.screens.approvals = newApprovalScreens(host, a.runtime, a.execution.observing)
+	a.screens.approvals = newApprovalScreens(host, a.runtime, a.runs.observing)
 	a.screens.inspection = &workspaceScreens{screenHost: host, service: a.workspaces}
 	if cfg.goals != nil {
 		a.screens.goals = &goalScreens{screenHost: host, service: cfg.goals, options: &a.options, header: a.header}

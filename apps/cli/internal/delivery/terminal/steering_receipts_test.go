@@ -417,6 +417,6 @@ func testSteerDesk(receipts steerReceipts) steerStatusProbe {
 	status := &statusView{}
 	return steerStatusProbe{steerDesk: &steerDesk{
 		receipts: receipts, session: &sessionState{current: conversation.Session{ID: "ses_1"}},
-		execution: &executionState{conversation: conversation.New()}, notify: status.note,
+		runs: &runs{execution: executionState{conversation: conversation.New()}}, notify: status.note,
 	}, status: status}
 }

@@ -59,58 +59,58 @@ func (a *activeDurationClock) elapsed(at time.Time) time.Duration {
 	return a.carried + current
 }
 
-func (a *app) startRun(commandID authoring.CommandID, message authoring.Message, options authoring.RunOptions, status string) bool {
-	input := authoring.StartRun{CommandID: commandID, SessionID: a.session.current.ID, Message: message.Clone(), Options: options.Clone()}
-	pending, ok := pendingRunByCommandID(a.workbench.PendingRuns(input.SessionID), input.CommandID)
+func (r *runs) startRun(commandID authoring.CommandID, message authoring.Message, options authoring.RunOptions, status string) bool {
+	input := authoring.StartRun{CommandID: commandID, SessionID: r.session.current.ID, Message: message.Clone(), Options: options.Clone()}
+	pending, ok := pendingRunByCommandID(r.workbench.PendingRuns(input.SessionID), input.CommandID)
 	if !ok {
-		a.fail(errors.New("run is absent from the durable outbox"))
+		r.fail(errors.New("run is absent from the durable outbox"))
 		return false
 	}
 	if pending.State != workbench.PendingRunQueued {
-		return a.startPreparedRun(input, nil, status)
+		return r.startPreparedRun(input, nil, status)
 	}
 	// The queue reservation owns this candidate while the existing operation
 	// owner reads and saves its bytes. Only the UI callback can publish dispatch:
 	// canceling preparation therefore leaves an ordinary editable queue entry.
-	started := a.tasks.sessionFence(inputPreparationOperation, false,
+	started := r.tasks.sessionFence(inputPreparationOperation, false,
 		func(ctx context.Context) (*workbench.PreparedInput, error) {
-			blocks, err := a.runtime.PrepareInput(ctx, pending.Command.Message)
+			blocks, err := r.runtime.PrepareInput(ctx, pending.Command.Message)
 			if err != nil {
 				return nil, err
 			}
-			return a.workbench.PrepareInput(ctx, pending.Command.Message, blocks)
+			return r.workbench.PrepareInput(ctx, pending.Command.Message, blocks)
 		},
 		func(prepared *workbench.PreparedInput, err error) {
-			if err == nil && a.startPreparedRun(input, prepared, status) {
+			if err == nil && r.startPreparedRun(input, prepared, status) {
 				return
 			}
-			a.queue.ReleaseDispatch(input.SessionID)
-			a.syncQueue()
-			a.prompt.SetBusy(a.runAdmissionBlocked())
+			r.queue.ReleaseDispatch(input.SessionID)
+			r.syncQueue()
+			r.prompt.SetBusy(r.runAdmissionBlocked())
 			if err != nil {
-				a.message("run start blocked: prepare input: " + err.Error())
+				r.link.message("run start blocked: prepare input: " + err.Error())
 			}
 		},
 	)
 	if started {
-		a.prompt.SetBusy(true)
-		a.status.note("preparing input")
+		r.prompt.SetBusy(true)
+		r.status.note("preparing input")
 	}
 	return started
 }
 
-func (a *app) startPreparedRun(input authoring.StartRun, prepared *workbench.PreparedInput, status string) bool {
-	if !a.prepareRunStart(&input, prepared) {
+func (r *runs) startPreparedRun(input authoring.StartRun, prepared *workbench.PreparedInput, status string) bool {
+	if !r.prepareRunStart(&input, prepared) {
 		return false
 	}
-	pending, ok := pendingRunByCommandID(a.workbench.PendingRuns(input.SessionID), input.CommandID)
+	pending, ok := pendingRunByCommandID(r.workbench.PendingRuns(input.SessionID), input.CommandID)
 	if !ok {
-		a.fail(errors.New("dispatching run disappeared from the durable outbox"))
+		r.fail(errors.New("dispatching run disappeared from the durable outbox"))
 		return false
 	}
-	a.presentRunStart(status)
-	a.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
-		opened, err := runworkflow.OpenPendingStart(ctx, a.runtime, a.workbench, pending, a.replayPolicy)
+	r.presentRunStart(status)
+	r.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
+		opened, err := runworkflow.OpenPendingStart(ctx, r.runtime, r.workbench, pending, r.replayPolicy)
 		if err != nil {
 			if _, accepted := conversation.AcceptedMutationReceipt(err); accepted {
 				return conversation.SegmentStream{}, err
@@ -124,100 +124,100 @@ func (a *app) startPreparedRun(input authoring.StartRun, prepared *workbench.Pre
 	}, streamOpeningObserver{
 		persistent: true,
 		accepted: func(opened conversation.SegmentStream) streamOpeningDisposition {
-			a.acceptStartedRun(input, opened)
+			r.acceptStartedRun(input, opened)
 			return followOpenedStream
 		},
 		rejected: func(err error) error {
 			if _, retired := errors.AsType[*conversation.RetiredOpeningError](err); retired {
-				return errors.Join(err, a.retireQueuedCommand(input.SessionID, input.CommandID))
+				return errors.Join(err, r.retireQueuedCommand(input.SessionID, input.CommandID))
 			}
 			if receipt, accepted := conversation.AcceptedMutationReceipt(err); accepted {
 				if identityErr := protocol.ValidateRunID(receipt.RunID); identityErr != nil {
-					return errors.Join(err, identityErr, a.requeueDefinitivelyRefusedStart(input, err))
+					return errors.Join(err, identityErr, r.requeueDefinitivelyRefusedStart(input, err))
 				}
-				a.execution.opening = &openingReceipt{RunID: receipt.RunID, CommandID: input.CommandID}
-				a.cancelRuntimePreservingFailure(conversation.CancelRun{
+				r.execution.opening = &openingReceipt{RunID: receipt.RunID, CommandID: input.CommandID}
+				r.cancelRuntimePreservingFailure(conversation.CancelRun{
 					RunID: receipt.RunID, Reason: "runtime returned an invalid start receipt",
 				})
 			}
-			return errors.Join(err, a.requeueDefinitivelyRefusedStart(input, err))
+			return errors.Join(err, r.requeueDefinitivelyRefusedStart(input, err))
 		},
 	})
 	return true
 }
 
-func (a *app) prepareRunStart(input *authoring.StartRun, prepared *workbench.PreparedInput) bool {
-	pending, ok := pendingRunByCommandID(a.workbench.PendingRuns(input.SessionID), input.CommandID)
+func (r *runs) prepareRunStart(input *authoring.StartRun, prepared *workbench.PreparedInput) bool {
+	pending, ok := pendingRunByCommandID(r.workbench.PendingRuns(input.SessionID), input.CommandID)
 	if !ok {
-		a.fail(errors.New("run is absent from the durable outbox"))
+		r.fail(errors.New("run is absent from the durable outbox"))
 		return false
 	}
 	*input = pending.Command.Clone()
-	if err := a.execution.conversation.Starting(); err != nil {
-		a.fail(err)
+	if err := r.execution.conversation.Starting(); err != nil {
+		r.fail(err)
 		return false
 	}
 	if pending.State != workbench.PendingRunQueued {
 		return true
 	}
-	replayGuard, err := a.replayPolicy.NewGuard()
+	replayGuard, err := r.replayPolicy.NewGuard()
 	if err != nil {
-		a.fail(errors.Join(err, a.execution.conversation.StopStarting()))
+		r.fail(errors.Join(err, r.execution.conversation.StopStarting()))
 		return false
 	}
-	if err := a.workbench.MarkPendingRunDispatching(input.SessionID, input.CommandID, replayGuard, prepared); err != nil {
-		rollbackErr := a.execution.conversation.StopStarting()
-		a.message("run start blocked: save dispatching run: " + err.Error())
+	if err := r.workbench.MarkPendingRunDispatching(input.SessionID, input.CommandID, replayGuard, prepared); err != nil {
+		rollbackErr := r.execution.conversation.StopStarting()
+		r.link.message("run start blocked: save dispatching run: " + err.Error())
 		if rollbackErr != nil {
-			a.fail(errors.Join(err, rollbackErr))
+			r.fail(errors.Join(err, rollbackErr))
 		}
 		return false
 	}
-	pending, ok = pendingRunByCommandID(a.workbench.PendingRuns(input.SessionID), input.CommandID)
+	pending, ok = pendingRunByCommandID(r.workbench.PendingRuns(input.SessionID), input.CommandID)
 	if !ok {
-		a.fail(errors.New("dispatching run disappeared from the durable outbox"))
+		r.fail(errors.New("dispatching run disappeared from the durable outbox"))
 		return false
 	}
 	*input = pending.Command.Clone()
 	return true
 }
 
-func (a *app) presentRunStart(status string) {
-	a.execution.projectionFailed = false
-	a.transcript.Follow()
-	a.activity.Reset()
-	a.header.SetUsage(conversation.Usage{})
-	a.prompt.SetBusy(true)
-	a.status.beginRun(status)
-	a.execution.clock.start(0, time.Now())
-	a.syncAnimation()
+func (r *runs) presentRunStart(status string) {
+	r.execution.projectionFailed = false
+	r.transcript().Follow()
+	r.activity.Reset()
+	r.header.SetUsage(conversation.Usage{})
+	r.prompt.SetBusy(true)
+	r.status.beginRun(status)
+	r.execution.clock.start(0, time.Now())
+	r.syncAnimation()
 }
 
-func (a *app) acceptStartedRun(input authoring.StartRun, opened conversation.SegmentStream) {
-	a.execution.opening = &openingReceipt{RunID: opened.RunID, CommandID: input.CommandID}
-	pending := a.workbench.PendingRuns(input.SessionID)
+func (r *runs) acceptStartedRun(input authoring.StartRun, opened conversation.SegmentStream) {
+	r.execution.opening = &openingReceipt{RunID: opened.RunID, CommandID: input.CommandID}
+	pending := r.workbench.PendingRuns(input.SessionID)
 	if len(pending) == 0 || pending[0].Command.CommandID != input.CommandID {
 		return
 	}
 	if pending[0].State != workbench.PendingRunCanceling {
-		a.settleQueuedDispatch(input.CommandID)
+		r.settleQueuedDispatch(input.CommandID)
 		return
 	}
-	a.status.active("canceling")
-	a.requestRuntimeCancellation(conversation.CancelRun{
+	r.status.active("canceling")
+	r.requestRuntimeCancellation(conversation.CancelRun{
 		CommandID: pending[0].CancelCommandID,
 		RunID:     opened.RunID,
 		Reason:    unconfirmedStartCancellationReason,
 	}, applyRuntimeSettlement)
 }
 
-func (a *app) requeueDefinitivelyRefusedStart(input authoring.StartRun, failure error) error {
+func (r *runs) requeueDefinitivelyRefusedStart(input authoring.StartRun, failure error) error {
 	callFailure, refused := errors.AsType[*startRunCallError](failure)
-	_, dispatchingPresent := a.queue.Dispatching(input.SessionID)
+	_, dispatchingPresent := r.queue.Dispatching(input.SessionID)
 	if !refused || mutation.OutcomeUnknown(callFailure.err) || !dispatchingPresent {
 		return nil
 	}
-	if err := a.queue.RequeueDispatch(input.SessionID, input.CommandID); err != nil {
+	if err := r.queue.RequeueDispatch(input.SessionID, input.CommandID); err != nil {
 		return fmt.Errorf("requeue refused run: %w", err)
 	}
 	return nil
@@ -242,138 +242,138 @@ type streamOpeningObserver struct {
 	persistent bool
 }
 
-func (a *app) followOpening(
+func (r *runs) followOpening(
 	open func(context.Context) (conversation.SegmentStream, error),
 	observer streamOpeningObserver,
 ) {
-	sessionID := a.session.current.ID
-	a.startFollowing(func(ctx context.Context, lease operationLease) {
+	sessionID := r.session.current.ID
+	r.startFollowing(func(ctx context.Context, lease operationLease) {
 		follower := streamFollower{
-			app: a, ctx: ctx, dispatcher: a.loop.Dispatcher(), lease: lease, sessionID: sessionID,
-			open: open, applyEvent: a.apply,
+			runs: r, ctx: ctx, dispatcher: r.tasks.dispatch, lease: lease, sessionID: sessionID,
+			open: open, applyEvent: r.apply,
 		}
 		follower.opening = observer
 		follower.run()
 	})
 }
 
-func (a *app) apply(event conversation.RunEvent) error {
-	result, err := a.execution.conversation.ApplyRunEvent(event)
+func (r *runs) apply(event conversation.RunEvent) error {
+	result, err := r.execution.conversation.ApplyRunEvent(event)
 	if err != nil {
 		return fmt.Errorf("apply runtime event %s: %w", event.EventID, err)
 	}
 	if !result.Applied {
 		return nil
 	}
-	if err := a.transcript.ApplyRunEvent(event); err != nil {
+	if err := r.transcript().ApplyRunEvent(event); err != nil {
 		return err
 	}
-	a.applyPresentationEvent(event)
-	a.steering.observeSteerEvent(event)
-	a.status.setRunningDescendants(a.execution.conversation.RunningDescendants())
+	r.applyPresentationEvent(event)
+	r.steering.observeSteerEvent(event)
+	r.status.setRunningDescendants(r.execution.conversation.RunningDescendants())
 	switch event.Event.(type) {
 	case conversation.SegmentStarted, conversation.RunProgress, conversation.SegmentFinished:
-		a.refreshOpenTimeline()
+		r.link.refreshOpenTimeline()
 	}
-	a.transcript.DiscardExcess()
-	a.syncAnimation()
+	r.transcript().DiscardExcess()
+	r.syncAnimation()
 	return nil
 }
 
-func (a *app) applyPresentationEvent(envelope conversation.RunEvent) {
+func (r *runs) applyPresentationEvent(envelope conversation.RunEvent) {
 	switch event := envelope.Event.(type) {
 	case conversation.SegmentStarted:
 		if event.Run.Lineage.IsRoot() {
-			a.observeCurrentRunStatus()
-			if a.execution.opening != nil && a.execution.opening.RunID == event.Run.ID && !a.operations.Active(pendingRunSettlementOperation) {
-				a.execution.opening = nil
+			r.observeCurrentRunStatus()
+			if r.execution.opening != nil && r.execution.opening.RunID == event.Run.ID && !r.tasks.operations.Active(pendingRunSettlementOperation) {
+				r.execution.opening = nil
 			}
-			if a.queuedDispatchCanceling() {
-				a.status.active("canceling")
-			} else if a.operations.Active(pendingRunSettlementOperation) {
-				a.status.note("working · retrying local settlement")
+			if r.queuedDispatchCanceling() {
+				r.status.active("canceling")
+			} else if r.tasks.operations.Active(pendingRunSettlementOperation) {
+				r.status.note("working · retrying local settlement")
 			} else {
-				a.status.active("working")
+				r.status.active("working")
 			}
-			a.execution.clock.start(event.Run.Usage.Duration, time.Now())
+			r.execution.clock.start(event.Run.Usage.Duration, time.Now())
 		}
 	case conversation.BlockStarted:
-		a.noteBlockStarted(event.Block)
+		r.noteBlockStarted(event.Block)
 	case conversation.BlockCompleted:
 		if event.Block.Kind == conversation.BlockTool {
-			a.status.active("working")
+			r.status.active("working")
 		}
 	case conversation.PlanChanged:
-		a.activity.Set(a.execution.conversation.PlanItems())
+		r.activity.Set(r.execution.conversation.PlanItems())
 	case conversation.RunProgress:
-		if envelope.RunID == a.execution.conversation.RunID() {
-			a.header.SetUsage(a.execution.conversation.Usage())
-			a.observeCurrentRunStatus()
-			a.status.progress(event)
+		if envelope.RunID == r.execution.conversation.RunID() {
+			r.header.SetUsage(r.execution.conversation.Usage())
+			r.observeCurrentRunStatus()
+			r.status.progress(event)
 		} else if event.Activity != nil {
-			a.status.active("subagent · " + activityLabel(event.Activity))
+			r.status.active("subagent · " + activityLabel(event.Activity))
 		}
 	case conversation.SegmentFinished:
 		switch {
 		case event.Run.Status == protocol.RunStatusFinished:
-			if envelope.RunID == a.execution.conversation.RunID() {
-				a.noteRunFinished()
+			if envelope.RunID == r.execution.conversation.RunID() {
+				r.noteRunFinished()
 			}
-		case a.execution.conversation.Phase() == conversation.Waiting:
-			a.openInterrupts(a.execution.conversation.Interrupts())
-			a.header.SetUsage(a.execution.conversation.Usage())
-			a.observeCurrentRunStatus()
-			a.status.note(statusWaitingForAnswers)
+		case r.execution.conversation.Phase() == conversation.Waiting:
+			r.openInterrupts(r.execution.conversation.Interrupts())
+			r.header.SetUsage(r.execution.conversation.Usage())
+			r.observeCurrentRunStatus()
+			r.status.note(statusWaitingForAnswers)
 		}
 	case conversation.BlockDelta, conversation.ToolArgumentsDelta, conversation.CustomEvent:
 	default:
 	}
 }
 
-func (a *app) noteBlockStarted(block conversation.Block) {
+func (r *runs) noteBlockStarted(block conversation.Block) {
 	if block.Kind == conversation.BlockTool && block.Tool != nil {
 		label := strings.TrimSpace(block.Tool.Summary)
 		if label == "" {
 			label = "using " + toolLabel(*block.Tool)
 		}
-		a.status.active(label)
+		r.status.active(label)
 	}
 }
 
-func (a *app) noteRunFinished() {
-	a.observeCurrentRunStatus()
-	a.status.note("finishing run")
-	a.header.SetUsage(a.execution.conversation.Usage())
+func (r *runs) noteRunFinished() {
+	r.observeCurrentRunStatus()
+	r.status.note("finishing run")
+	r.header.SetUsage(r.execution.conversation.Usage())
 }
 
-func (a *app) finishFollowing() {
-	a.execution.following = false
-	a.execution.projectionFailed = false
-	a.refreshOpenTimeline()
-	if a.session.invalidated {
-		a.refreshInvalidatedSession(true)
+func (r *runs) finishFollowing() {
+	r.execution.following = false
+	r.execution.projectionFailed = false
+	r.link.refreshOpenTimeline()
+	if r.session.invalidated {
+		r.link.refreshInvalidatedSession(true)
 		return
 	}
-	if a.execution.conversation.Phase() != conversation.Idle || a.execution.conversation.Outcome().Status == "" {
+	if r.execution.conversation.Phase() != conversation.Idle || r.execution.conversation.Outcome().Status == "" {
 		return
 	}
-	a.settleCurrentRunStatus()
-	a.prompt.SetBusy(false)
-	_, dispatching := a.queue.Dispatching(a.session.current.ID)
+	r.settleCurrentRunStatus()
+	r.prompt.SetBusy(false)
+	_, dispatching := r.queue.Dispatching(r.session.current.ID)
 	if !dispatching {
-		a.execution.opening = nil
-	} else if a.queuedDispatchCanceling() || a.execution.pendingCancel != nil {
-		a.status.note("canceling")
-	} else if a.operations.Active(pendingRunSettlementOperation) {
-		a.status.note("run complete · retrying local settlement")
+		r.execution.opening = nil
+	} else if r.queuedDispatchCanceling() || r.execution.pendingCancel != nil {
+		r.status.note("canceling")
+	} else if r.tasks.operations.Active(pendingRunSettlementOperation) {
+		r.status.note("run complete · retrying local settlement")
 	} else {
-		a.status.note("pending prompt outcome unknown")
+		r.status.note("pending prompt outcome unknown")
 	}
-	if !dispatching && a.drainQueue() {
+	if !dispatching && r.drainQueue() {
 		return
 	}
-	a.steering.refreshSteerPresentation()
-	a.raiseAttention(outcomeAttention(a.execution.conversation.Outcome()))
+	r.steering.refreshSteerPresentation()
+	r.link.raiseAttention(outcomeAttention(r.execution.conversation.Outcome()))
 }
 
 func outcomeNotification(outcome conversation.Outcome) string {
@@ -391,56 +391,56 @@ func outcomeNotification(outcome conversation.Outcome) string {
 	}
 }
 
-func (a *app) fail(err error) {
+func (r *runs) fail(err error) {
 	if err == nil || errors.Is(err, context.Canceled) {
 		return
 	}
-	a.execution.following = false
-	a.prompts.dismiss()
-	if a.execution.conversation.Phase() == conversation.Running &&
-		a.execution.conversation.RunID() == "" && a.execution.opening == nil {
-		err = errors.Join(err, a.execution.conversation.StopStarting())
+	r.execution.following = false
+	r.prompts.dismiss()
+	if r.execution.conversation.Phase() == conversation.Running &&
+		r.execution.conversation.RunID() == "" && r.execution.opening == nil {
+		err = errors.Join(err, r.execution.conversation.StopStarting())
 	}
-	a.transcript.rejectLivePresentation()
-	a.transcript.Append(presentError(a.transcript.theme, err.Error()))
-	a.header.SetUsage(a.execution.conversation.Usage())
-	blocked := a.runAdmissionBlocked()
-	a.execution.projectionFailed = a.execution.conversation.Busy()
-	a.prompt.SetBusy(blocked)
-	a.status.fail(err.Error(), blocked)
-	a.syncAnimation()
-	a.raiseAttention(failureAttention())
+	r.transcript().rejectLivePresentation()
+	r.transcript().Append(presentError(r.transcript().theme, err.Error()))
+	r.header.SetUsage(r.execution.conversation.Usage())
+	blocked := r.runAdmissionBlocked()
+	r.execution.projectionFailed = r.execution.conversation.Busy()
+	r.prompt.SetBusy(blocked)
+	r.status.fail(err.Error(), blocked)
+	r.syncAnimation()
+	r.link.raiseAttention(failureAttention())
 }
 
-func (a *app) dropStream() {
-	a.operations.Cancel(streamOperation)
-	a.execution.following = false
+func (r *runs) dropStream() {
+	r.tasks.operations.Cancel(streamOperation)
+	r.execution.following = false
 }
 
-func (a *app) startFollowing(work func(context.Context, operationLease)) {
-	a.dropStream()
-	a.execution.following = true
-	if a.operations.Go(streamOperation, false, work) {
+func (r *runs) startFollowing(work func(context.Context, operationLease)) {
+	r.dropStream()
+	r.execution.following = true
+	if r.tasks.operations.Go(streamOperation, false, work) {
 		return
 	}
-	a.execution.following = false
-	a.fail(errStreamFollowerUnavailable)
+	r.execution.following = false
+	r.fail(errStreamFollowerUnavailable)
 }
 
-func (a *app) syncAnimation() {
-	running := a.execution.conversation.Phase() == conversation.Running && a.execution.following
+func (r *runs) syncAnimation() {
+	running := r.execution.conversation.Phase() == conversation.Running && r.execution.following
 	switch {
-	case running && a.execution.stopClock == nil:
-		a.execution.stopClock = a.loop.Every(animationInterval, func() {
-			a.status.tick(a.execution.clock.elapsed(time.Now()))
+	case running && r.execution.stopClock == nil:
+		r.execution.stopClock = r.every(animationInterval, func() {
+			r.status.tick(r.execution.clock.elapsed(time.Now()))
 		})
-	case !running && a.execution.stopClock != nil:
-		a.execution.stopClock()
-		a.execution.stopClock = nil
+	case !running && r.execution.stopClock != nil:
+		r.execution.stopClock()
+		r.execution.stopClock = nil
 	}
 	state := term.Progress{}
 	if running {
 		state.State = term.ProgressIndeterminate
 	}
-	a.loop.Session().SetProgress(state)
+	r.setProgress(state)
 }

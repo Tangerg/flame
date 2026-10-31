@@ -77,7 +77,7 @@ func TestBuiltinCommandsHonorNegotiatedFineGrainedCapabilities(t *testing.T) {
 	profile := terminalProfileWithFeatures(t, map[string]protocol.FeatureCapability{protocol.FeatureGit: {}, protocol.FeatureRelocate: {}, protocol.FeatureSessionExport: {}})
 	application := &app{composer: testPromptComposer(t),
 		runtimeProfile: &profile,
-		execution:      executionState{conversation: conversation.New()},
+		runs:           &runs{execution: executionState{conversation: conversation.New()}},
 		workspaces:     &workspaceServiceStub{},
 		transfers:      outputTransferStub{},
 	}
@@ -264,7 +264,7 @@ func TestRejectedSlashCommandsPreserveTheEditorAndAttachments(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			application := &app{composer: testPromptComposer(t),
-				status: &statusView{}, execution: executionState{conversation: conversation.New()},
+				status: &statusView{}, runs: &runs{execution: executionState{conversation: conversation.New()}},
 				commands: newCommandCatalog(),
 			}
 			if err := application.commands.add("test", extensions.CommandDescriptor{Name: "inspect", Title: "Inspect", Arguments: test.arguments}, func(string, func()) { t.Fatal("rejected command executed") }, test.availability); err != nil {

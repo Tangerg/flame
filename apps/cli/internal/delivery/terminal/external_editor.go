@@ -136,7 +136,7 @@ func validateEditedDraft(info os.FileInfo) error {
 }
 
 func (a *app) editPromptExternally() error {
-	if a.execution.blocksAdmission() {
+	if a.runs.blocksAdmission() {
 		return errors.New("finish or cancel the active run before opening an external editor")
 	}
 	message, err := a.composer.message()

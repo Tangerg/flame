@@ -30,7 +30,7 @@ func TestStartConflictAndLocalPreparationFailuresKeepOriginalDispatchIdentity(t 
 			if err := prompts.Restore(command.SessionID); err != nil {
 				t.Fatal(err)
 			}
-			application := &app{composer: testPromptComposer(t), workbench: store, queue: prompts}
+			application := &runs{composer: testPromptComposer(t), workbench: store, queue: prompts}
 			if err := application.requeueDefinitivelyRefusedStart(command, &startRunCallError{err: cause}); err != nil {
 				t.Fatal(err)
 			}

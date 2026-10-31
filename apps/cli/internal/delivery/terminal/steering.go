@@ -25,7 +25,7 @@ type steerDesk struct {
 	replayPolicy mutation.ReplayPolicy
 	composer     *promptComposer
 	session      *sessionState
-	execution    *executionState
+	runs         *runs
 	tasks        taskRunner
 
 	notify      func(string)
@@ -39,8 +39,8 @@ func (s *steerDesk) steerRun(instruction string) error {
 	if instruction == "" {
 		return errors.New("/steer needs a non-empty instruction")
 	}
-	runID, segmentID := s.execution.conversation.RunID(), s.execution.conversation.SegmentID()
-	if runID == "" || segmentID == "" || s.execution.conversation.Phase() != conversation.Running {
+	runID, segmentID := s.runs.conversation().RunID(), s.runs.conversation().SegmentID()
+	if runID == "" || segmentID == "" || s.runs.conversation().Phase() != conversation.Running {
 		return errors.New("no observed run segment is available to steer")
 	}
 	draft, _, err := s.composer.draft()

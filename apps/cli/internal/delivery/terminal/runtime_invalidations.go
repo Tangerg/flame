@@ -30,7 +30,7 @@ func (a *app) applyRuntimeInvalidation(event changefeed.Event) {
 	a.followModelChanges(event.Type == protocol.RuntimeModelsChanged)
 	a.applySessionInvalidation(
 		invalidatesSessionCatalog(event),
-		invalidationAffectsSession(event, a.session.current.ID, a.execution.conversation.RunID()),
+		invalidationAffectsSession(event, a.session.current.ID, a.runs.conversation().RunID()),
 	)
 }
 
@@ -67,7 +67,7 @@ func (a *app) applySessionInvalidation(catalogChanged, currentSessionChanged boo
 		return
 	}
 	a.session.invalidated = true
-	if a.execution.conversation.Phase() == conversation.Running || a.execution.following || a.execution.pendingCancel != nil ||
+	if a.runs.conversation().Phase() == conversation.Running || a.runs.following() || a.runs.cancelPending() ||
 		a.operations.Active(sessionChangeOperation) {
 		return
 	}
@@ -150,7 +150,7 @@ func (a *app) applyInvalidatedSessionRefresh(
 	}
 	if err != nil {
 		a.session.invalidated = true
-		if errors.Is(err, conversation.ErrSessionNotFound) && a.execution.conversation.Phase() == conversation.Idle && !a.execution.following {
+		if errors.Is(err, conversation.ErrSessionNotFound) && a.runs.conversation().Phase() == conversation.Idle && !a.runs.following() {
 			a.message("the active session was deleted; creating a replacement")
 			a.replaceDeletedSessionInWorkspace(a.session.current.Workspace.Path)
 			return
@@ -158,11 +158,11 @@ func (a *app) applyInvalidatedSessionRefresh(
 		a.message("refresh session after runtime change failed: " + err.Error())
 		return
 	}
-	if !settlementFence && (a.execution.conversation.Phase() == conversation.Running || a.execution.following) {
+	if !settlementFence && (a.runs.conversation().Phase() == conversation.Running || a.runs.following()) {
 		a.session.invalidated = true
 		return
 	}
-	conversationMatches := a.execution.conversation.MatchesSnapshot(snapshot)
+	conversationMatches := a.runs.conversation().MatchesSnapshot(snapshot)
 	sessionMatches := a.session.current.Equal(snapshot.Session)
 	if conversationMatches && a.session.current.Workspace == snapshot.Session.Workspace {
 		if !sessionMatches {
@@ -175,15 +175,15 @@ func (a *app) applyInvalidatedSessionRefresh(
 			return
 		}
 	}
-	if settlementFence && a.execution.conversation.Phase() == conversation.Idle {
-		a.finishFollowing()
+	if settlementFence && a.runs.conversation().Phase() == conversation.Idle {
+		a.runs.finishFollowing()
 		return
 	}
 	if !conversationMatches || !sessionMatches {
 		a.message("session refreshed after runtime change")
 	}
 	if !settlementFence {
-		a.drainQueue()
+		a.runs.drainQueue()
 	}
 }
 

@@ -13,59 +13,59 @@ import (
 )
 
 // resumeInterrupts stages and delivers a completed review.
-func (a *app) resumeInterrupts(review *interruptReview) {
+func (r *runs) resumeInterrupts(review *interruptReview) {
 	answers, err := review.Responses()
 	if err != nil {
-		a.fail(fmt.Errorf("commit interrupt review: %w", err))
+		r.fail(fmt.Errorf("commit interrupt review: %w", err))
 		return
 	}
-	runID := a.execution.conversation.RunID()
-	if err := a.execution.conversation.ValidateInterruptReview(runID, review.Items()); err != nil {
+	runID := r.execution.conversation.RunID()
+	if err := r.execution.conversation.ValidateInterruptReview(runID, review.Items()); err != nil {
 		failure := fmt.Errorf("resume blocked: %w", err)
 		review.ReportSubmissionFailure(failure)
-		a.fail(failure)
+		r.fail(failure)
 		return
 	}
 	commandID := mutation.NewCommandID()
 	command := conversation.ResumeRun{CommandID: commandID, RunID: runID, Answers: answers}
-	replayGuard, err := a.replayPolicy.NewGuard()
+	replayGuard, err := r.replayPolicy.NewGuard()
 	if err != nil {
 		failure := fmt.Errorf("resume blocked: %w", err)
 		review.ReportSubmissionFailure(failure)
-		a.fail(failure)
+		r.fail(failure)
 		return
 	}
-	if a.workbench != nil {
+	if r.workbench != nil {
 		pending := workbench.PendingResume{
 			Command: command.Clone(), Interrupts: review.Items(), Replay: replayGuard,
 		}
-		if err := a.workbench.StagePendingResume(a.session.current.ID, pending, nil); err != nil {
+		if err := r.workbench.StagePendingResume(r.session.current.ID, pending, nil); err != nil {
 			failure := fmt.Errorf("resume blocked: save interrupt decisions: %w", err)
 			review.ReportSubmissionFailure(failure)
-			a.message(failure.Error())
-			a.status.note("resume blocked · review preserved")
-			if reopenErr := a.prompts.reopenCompletedInterruptReview(review); reopenErr != nil {
-				a.fail(errors.Join(failure, reopenErr))
+			r.link.message(failure.Error())
+			r.status.note("resume blocked · review preserved")
+			if reopenErr := r.prompts.reopenCompletedInterruptReview(review); reopenErr != nil {
+				r.fail(errors.Join(failure, reopenErr))
 			}
 			return
 		}
 	}
-	a.deliverInterruptResume(review, command)
+	r.deliverInterruptResume(review, command)
 }
 
-func (a *app) deliverInterruptResume(
+func (r *runs) deliverInterruptResume(
 	review *interruptReview,
 	command conversation.ResumeRun,
 ) {
-	pending, ok := a.workbench.PendingResume(a.session.current.ID)
+	pending, ok := r.workbench.PendingResume(r.session.current.ID)
 	if !ok || pending.Command.CommandID != command.CommandID {
-		a.fail(errors.New("submitted resume is absent from the durable outbox"))
+		r.fail(errors.New("submitted resume is absent from the durable outbox"))
 		return
 	}
-	a.status.active("resuming")
-	a.syncAnimation()
-	a.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
-		stream, err := runworkflow.OpenPendingResume(ctx, a.runtime, a.workbench, pending, a.replayPolicy)
+	r.status.active("resuming")
+	r.syncAnimation()
+	r.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
+		stream, err := runworkflow.OpenPendingResume(ctx, r.runtime, r.workbench, pending, r.replayPolicy)
 		if err != nil {
 			if _, accepted := conversation.AcceptedMutationReceipt(err); accepted {
 				return conversation.SegmentStream{}, err
@@ -79,90 +79,90 @@ func (a *app) deliverInterruptResume(
 	}, streamOpeningObserver{
 		persistent: true,
 		accepted: func(opened conversation.SegmentStream) streamOpeningDisposition {
-			a.prompts.release()
-			a.settleAcknowledgedResume(command.CommandID)
-			if a.execution.conversation.RunID() != opened.RunID {
-				a.followRecoveredSession()
+			r.prompts.release()
+			r.settleAcknowledgedResume(command.CommandID)
+			if r.execution.conversation.RunID() != opened.RunID {
+				r.followRecoveredSession()
 				return rejectOpenedStream
 			}
 			return followOpenedStream
 		},
 		rejected: func(failure error) error {
 			if _, retired := errors.AsType[*conversation.RetiredOpeningError](failure); retired {
-				a.prompts.release()
-				a.settleAcknowledgedResume(command.CommandID)
+				r.prompts.release()
+				r.settleAcknowledgedResume(command.CommandID)
 				return failure
 			}
 			if _, accepted := conversation.AcceptedMutationReceipt(failure); accepted {
-				a.prompts.release()
-				a.cancelRuntimePreservingFailure(conversation.CancelRun{
+				r.prompts.release()
+				r.cancelRuntimePreservingFailure(conversation.CancelRun{
 					RunID: command.RunID, Reason: "runtime returned an invalid resume receipt",
 				})
 				return failure
 			}
-			return a.restoreRejectedInterruptReview(review, command, failure)
+			return r.restoreRejectedInterruptReview(review, command, failure)
 		},
 	})
 }
 
-func (a *app) settleAcknowledgedResume(commandID authoring.CommandID) {
-	if err := a.retireAcknowledgedResume(commandID); err != nil {
-		a.reportWorkbenchIssue(workbenchResumeOutbox, err)
-		a.message("could not settle acknowledged interrupt decisions: " + err.Error())
-		a.retryAuthoringSettlement(
+func (r *runs) settleAcknowledgedResume(commandID authoring.CommandID) {
+	if err := r.retireAcknowledgedResume(commandID); err != nil {
+		r.report(workbenchResumeOutbox, err)
+		r.link.message("could not settle acknowledged interrupt decisions: " + err.Error())
+		r.retryAuthoringSettlement(
 			resumeSettlementOperation,
-			func() error { return a.retireAcknowledgedResume(commandID) },
-			func() { a.reportWorkbenchIssue(workbenchResumeOutbox, nil) },
+			func() error { return r.retireAcknowledgedResume(commandID) },
+			func() { r.report(workbenchResumeOutbox, nil) },
 		)
 		return
 	}
-	a.reportWorkbenchIssue(workbenchResumeOutbox, nil)
+	r.report(workbenchResumeOutbox, nil)
 }
 
-func (a *app) retireAcknowledgedResume(commandID authoring.CommandID) error {
-	if _, ok := a.workbench.PendingResume(a.session.current.ID); !ok {
+func (r *runs) retireAcknowledgedResume(commandID authoring.CommandID) error {
+	if _, ok := r.workbench.PendingResume(r.session.current.ID); !ok {
 		return nil
 	}
 	// The store claims the identity under its own lock, so re-deciding it here
 	// would both restate the rule and read it a moment before the claim.
-	return a.workbench.AcknowledgePendingResume(a.session.current.ID, commandID)
+	return r.workbench.AcknowledgePendingResume(r.session.current.ID, commandID)
 }
 
-func (a *app) restoreRejectedInterruptReview(review *interruptReview, command conversation.ResumeRun, failure error) error {
+func (r *runs) restoreRejectedInterruptReview(review *interruptReview, command conversation.ResumeRun, failure error) error {
 	callFailure, refused := errors.AsType[*resumeRunCallError](failure)
-	if !refused || mutation.OutcomeUnknown(callFailure.err) || a.prompts.review != review ||
-		a.execution.conversation.Phase() != conversation.Waiting || a.execution.conversation.RunID() != command.RunID {
+	if !refused || mutation.OutcomeUnknown(callFailure.err) || r.prompts.review != review ||
+		r.execution.conversation.Phase() != conversation.Waiting || r.execution.conversation.RunID() != command.RunID {
 		return failure
 	}
-	if a.workbench != nil {
-		if err := a.workbench.RejectPendingResume(a.session.current.ID, command.CommandID); err != nil {
+	if r.workbench != nil {
+		if err := r.workbench.RejectPendingResume(r.session.current.ID, command.CommandID); err != nil {
 			return errors.Join(failure, fmt.Errorf("release refused interrupt decisions: %w", err))
 		}
 	}
-	a.execution.following = false
-	if a.session.invalidated {
-		a.status.note("resume refused · refreshing session")
-		a.refreshInvalidatedSession(false)
+	r.execution.following = false
+	if r.session.invalidated {
+		r.status.note("resume refused · refreshing session")
+		r.link.refreshInvalidatedSession(false)
 		return nil
 	}
-	a.status.note("resume refused · review preserved")
+	r.status.note("resume refused · review preserved")
 	review.ReportSubmissionFailure(fmt.Errorf("resume refused: %w", callFailure.err))
-	if err := a.prompts.reopenCompletedInterruptReview(review); err != nil {
+	if err := r.prompts.reopenCompletedInterruptReview(review); err != nil {
 		return errors.Join(failure, err)
 	}
 	return nil
 }
 
 // abortRun cancels the waiting Run whose interrupts the user abandoned.
-func (a *app) abortRun(reason string) {
-	if runID := a.execution.conversation.RunID(); runID != "" {
-		a.cancelRuntime(conversation.CancelRun{RunID: runID, Reason: reason})
+func (r *runs) abortRun(reason string) {
+	if runID := r.execution.conversation.RunID(); runID != "" {
+		r.cancelRuntime(conversation.CancelRun{RunID: runID, Reason: reason})
 	}
 }
 
 // openInterrupts presents the interrupts a waiting Run raised.
-func (a *app) openInterrupts(interrupts []conversation.Interrupt) {
-	if a.prompts.open(interrupts) {
-		a.raiseAttention(interruptAttention(interrupts))
+func (r *runs) openInterrupts(interrupts []conversation.Interrupt) {
+	if r.prompts.open(interrupts) {
+		r.link.raiseAttention(interruptAttention(interrupts))
 	}
 }

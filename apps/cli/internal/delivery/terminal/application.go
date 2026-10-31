@@ -3,7 +3,6 @@ package terminal
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/attachment"
@@ -71,7 +70,7 @@ type app struct {
 	operations       *operationOwner
 	tasks            taskRunner
 	session          sessionState
-	execution        executionState
+	runs             *runs
 	steering         *steerDesk
 	dialogs          dialogState
 	reader           *readerSurface
@@ -193,7 +192,6 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		session:  sessionState{current: cfg.snapshot.Session, context: newSessionContextLease()},
 
 		pluginHost: cfg.pluginHost, pluginIssues: cfg.pluginIssues,
-		execution:         executionState{conversation: conversation.New()},
 		operations:        newOperationOwner(cfg.context),
 		transcript:        transcript,
 		brand:             brand,
@@ -214,7 +212,15 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		attention:         newAttentionCenter(),
 		keys:              keyRouter{application: cfg.keyBindings.application, global: cfg.keyBindings.global},
 	}
-	a.tasks = taskRunner{operations: a.operations, dispatch: loop.Dispatcher(), settled: func() { a.drainQueue() }}
+	a.runs = &runs{
+		execution: executionState{conversation: conversation.New()},
+		runtime:   cfg.runtime, workbench: cfg.workbench, queue: cfg.queue, replayPolicy: cfg.replayPolicy,
+		session: &a.session, every: loop.Every, setProgress: loop.Session().SetProgress,
+		report: a.reportWorkbenchIssue, link: a, transcript: func() *transcriptView { return a.transcript },
+		status: a.status, header: a.header, activity: a.activity,
+	}
+	a.tasks = taskRunner{operations: a.operations, dispatch: loop.Dispatcher(), settled: func() { a.runs.drainQueue() }}
+	a.runs.tasks = a.tasks
 	a.composer = &promptComposer{
 		attachments: cfg.attachments, workbench: cfg.workbench, session: &a.session,
 		ctx: cfg.context, after: loop.After, closed: func() bool { return a.closed },
@@ -244,17 +250,19 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	a.configureCompletion(appearance)
 	a.registerCommands()
 	a.buildInterface(appearance, cfg.keyBindings.editor)
+	a.runs.prompt, a.runs.prompts, a.runs.queueEditor, a.runs.composer = a.prompt, a.prompts, a.queueEditor, a.composer
 	a.buildScreens(cfg)
 	a.steering = &steerDesk{
 		runtime: a.runtime, workbench: a.workbench, replayPolicy: a.replayPolicy,
-		composer: a.composer, session: &a.session, execution: &a.execution, tasks: a.tasks,
-		notify: a.message, report: a.reportWorkbenchIssue, drainQueue: a.drainQueue, readSession: a.readSessionAfterMutation,
+		composer: a.composer, session: &a.session, runs: a.runs, tasks: a.tasks,
+		notify: a.message, report: a.reportWorkbenchIssue, drainQueue: a.runs.drainQueue, readSession: a.readSessionAfterMutation,
 	}
+	a.runs.steering = a.steering
 	for _, result := range cfg.recoveredSteers {
 		a.steering.receipts.accept(result)
 	}
 	a.restore(cfg.snapshot)
-	a.restoreSessionOutbox()
+	a.runs.restoreSessionOutbox()
 	_ = a.composer.persistDraft()
 	a.followRuntimeChanges()
 	a.loadPluginViews(true)
@@ -303,11 +311,11 @@ func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.M
 	a.shell.Focus(true)
 	a.stack.SetBase(a.shell)
 	a.queueEditor = newQueueEditor(queueEditorConfig{
-		queue: a.queue, session: &a.session, run: a, view: a.queueView, prompt: a.prompt,
+		queue: a.queue, session: &a.session, run: a.runs, view: a.queueView, prompt: a.prompt,
 		stack: &a.stack, theme: theme, glyphs: glyphs, keys: editorKeys, clip: a.loop.Clipboard(),
 	})
 	a.prompts = newInterruptPrompts(interruptPromptsConfig{
-		run: a, editContext: a.openContextEditor, remember: func() settings.RememberPreference { return a.settings.Approval.Remember },
+		run: a.runs, editContext: a.openContextEditor, remember: func() settings.RememberPreference { return a.settings.Approval.Remember },
 		stack: &a.stack, theme: theme, glyphs: glyphs, syntax: a.syntax,
 		wheel: a.loop.Environment().Wheel(), clipboard: a.loop.Clipboard(),
 	})
@@ -342,7 +350,7 @@ func (a *app) wireTranscript(transcript *transcriptView) {
 	transcript.OnFocusChange(a.prompt.SetTranscriptFocused)
 	transcript.OnSelection(a.prompt.SetTranscriptSelection)
 	transcript.OnCopy(func(string) {
-		if !a.execution.conversation.Busy() && !a.execution.following {
+		if !a.runs.conversation().Busy() && !a.runs.following() {
 			a.status.note("copied selected transcript text")
 		}
 	})
@@ -378,53 +386,11 @@ func (a *app) Close(ctx context.Context) error {
 	if a.closed {
 		return a.closeErr
 	}
-	var closeErr error
-	if !a.execution.blocksAdmission() && a.execution.opening != nil {
-		if err := a.attemptQueuedDispatchSettlement(a.execution.opening.CommandID); err != nil {
-			closeErr = errors.Join(closeErr, fmt.Errorf("settle acknowledged run start: %w", err))
-		} else {
-			a.execution.opening = nil
-		}
-	}
+	closeErr := a.runs.settleOpeningForShutdown()
 	a.closed = true
-	var (
-		target           conversation.CancelRun
-		openingCommandID authoring.CommandID
-		cancelRuntime    bool
-		cancelReplay     authoring.ReplayGuard
-	)
-	if a.execution.pendingCancel != nil {
-		target, openingCommandID, cancelRuntime = a.execution.pendingCancel.request, a.execution.pendingCancel.openingCommandID, true
-		cancelReplay = a.execution.pendingCancel.replay
-	} else if !a.detachOnExit {
-		target, cancelRuntime = a.activeCancellation()
-		openingCommandID = a.openingCommandForRun(target.RunID)
-		var err error
-		cancelReplay, err = a.replayPolicy.NewGuard()
-		if err != nil {
-			closeErr = errors.Join(closeErr, err)
-			cancelRuntime = false
-		}
-	}
-	var (
-		pendingStart  workbench.PendingRun
-		cancelOpening bool
-	)
-	if !cancelRuntime && closeErr == nil {
-		if a.detachOnExit {
-			for _, pending := range a.workbench.PendingRuns(a.session.current.ID) {
-				if pending.State == workbench.PendingRunCanceling {
-					pendingStart, cancelOpening = pending, true
-					break
-				}
-			}
-		} else {
-			var err error
-			pendingStart, cancelOpening, err = a.stageOpeningCancellation()
-			closeErr = errors.Join(closeErr, err)
-		}
-	}
-	a.dropStream()
+	shutdown, err := a.runs.planShutdown(a.detachOnExit, closeErr == nil)
+	closeErr = errors.Join(closeErr, err)
+	a.runs.dropStream()
 	a.operations.Cancel(completionOperation)
 	a.cancelPluginCommands()
 	a.operations.Close()
@@ -436,24 +402,13 @@ func (a *app) Close(ctx context.Context) error {
 	// finishes first, then the last visible composer state is written last.
 	closeErr = errors.Join(closeErr, a.composer.persistDraft())
 	closeErr = errors.Join(closeErr, a.composer.drafts.store.Close())
-	if cancelRuntime {
-		if err := a.cancelRuntimeNow(ctx, target, cancelReplay); err == nil {
-			closeErr = errors.Join(closeErr, a.retireCanceledRuntimeOwnership(target.RunID, openingCommandID))
-		} else {
-			closeErr = errors.Join(closeErr, err)
-		}
-	} else if cancelOpening {
-		closeErr = errors.Join(closeErr, a.cancelOpeningRunNow(ctx, pendingStart))
-	}
+	closeErr = errors.Join(closeErr, a.runs.finishShutdown(ctx, shutdown))
 	a.transcript.Close()
 	closeErr = errors.Join(closeErr, a.transcript.releaseErr)
 	if a.reader != nil {
 		a.reader.shutdown()
 	}
-	if a.execution.stopClock != nil {
-		a.execution.stopClock()
-		a.execution.stopClock = nil
-	}
+	a.runs.stopClock()
 	a.closeErr = closeErr
 	return closeErr
 }
@@ -498,8 +453,8 @@ func (a *app) dispatchPrompt(message authoring.Message) {
 		return
 	}
 	a.reportWorkbenchIssue(workbenchRunOutbox, nil)
-	if a.runAdmissionBlocked() {
-		a.enqueueDeferredPrompt()
+	if a.runs.runAdmissionBlocked() {
+		a.runs.enqueueDeferredPrompt()
 		return
 	}
 	a.dialogs.sessionDialog.Dismiss()
@@ -507,13 +462,13 @@ func (a *app) dispatchPrompt(message authoring.Message) {
 	a.composer.resetComposer()
 	a.operations.Cancel(completionOperation)
 	a.completion.Dismiss()
-	if !a.drainQueue() {
-		a.syncQueue()
+	if !a.runs.drainQueue() {
+		a.runs.syncQueue()
 	}
 }
 
 func (a *app) sendNextQueuedIfBusy() {
-	if !a.execution.blocksAdmission() {
+	if !a.runs.blocksAdmission() {
 		return
 	}
 	state := a.queue.State(a.session.current.ID)
@@ -533,9 +488,13 @@ func (a *app) sendNextQueuedIfBusy() {
 }
 
 func (a *app) message(label string) {
-	if a.execution.conversation.Phase() == conversation.Running {
+	if a.runs.conversation().Phase() == conversation.Running {
 		a.status.active(label)
 		return
 	}
 	a.status.note(label)
 }
+
+func (a *app) terminalClosed() bool { return a.closed }
+
+func (a *app) dismissCompletion() { a.completion.Dismiss() }

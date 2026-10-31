@@ -20,118 +20,118 @@ const (
 	unconfirmedStartCancellationReason = "canceled while start delivery was unconfirmed"
 )
 
-func (a *app) cancel() {
-	if a.prompts.decline() {
+func (r *runs) cancel() {
+	if r.prompts.decline() {
 		return
 	}
-	if a.operations.Active(inputPreparationOperation) {
-		a.operations.Cancel(inputPreparationOperation)
-		if entry, reserved := a.queue.Dispatching(a.session.current.ID); reserved {
-			pending, found := pendingRunByCommandID(a.workbench.PendingRuns(a.session.current.ID), entry.CommandID)
+	if r.tasks.operations.Active(inputPreparationOperation) {
+		r.tasks.operations.Cancel(inputPreparationOperation)
+		if entry, reserved := r.queue.Dispatching(r.session.current.ID); reserved {
+			pending, found := pendingRunByCommandID(r.workbench.PendingRuns(r.session.current.ID), entry.CommandID)
 			if found && pending.State == workbench.PendingRunQueued {
-				a.queue.ReleaseDispatch(a.session.current.ID)
+				r.queue.ReleaseDispatch(r.session.current.ID)
 			}
 		}
-		a.syncQueue()
-		a.prompt.SetBusy(a.runAdmissionBlocked())
-		a.message("input preparation canceled; the prompt remains editable")
+		r.syncQueue()
+		r.prompt.SetBusy(r.runAdmissionBlocked())
+		r.link.message("input preparation canceled; the prompt remains editable")
 		return
 	}
-	if a.execution.pendingCancel != nil {
-		a.status.doing = "retrying cancellation"
-		a.requestRuntimeCancellation(a.execution.pendingCancel.request, a.execution.pendingCancel.policy)
+	if r.execution.pendingCancel != nil {
+		r.status.doing = "retrying cancellation"
+		r.requestRuntimeCancellation(r.execution.pendingCancel.request, r.execution.pendingCancel.policy)
 		return
 	}
-	if !a.execution.conversation.Busy() && !a.execution.following {
+	if !r.execution.conversation.Busy() && !r.execution.following {
 		return
 	}
-	a.status.doing = "canceling"
-	runID := a.execution.conversation.RunID()
+	r.status.doing = "canceling"
+	runID := r.execution.conversation.RunID()
 	if runID == "" {
-		pending, staged, err := a.stageOpeningCancellation()
+		pending, staged, err := r.stageOpeningCancellation()
 		if err != nil {
-			a.message("could not preserve cancellation of unconfirmed run: " + err.Error())
+			r.link.message("could not preserve cancellation of unconfirmed run: " + err.Error())
 			return
 		}
 		if !staged {
 			return
 		}
-		a.dropStream()
-		if err := a.execution.conversation.StopStarting(); err != nil {
-			a.fail(err)
+		r.dropStream()
+		if err := r.execution.conversation.StopStarting(); err != nil {
+			r.fail(err)
 			return
 		}
-		a.prompt.SetBusy(false)
-		a.status.note("canceled · reconciling runtime delivery")
-		a.syncAnimation()
-		a.reconcileCanceledStart(pending)
+		r.prompt.SetBusy(false)
+		r.status.note("canceled · reconciling runtime delivery")
+		r.syncAnimation()
+		r.reconcileCanceledStart(pending)
 		return
 	}
-	a.cancelRuntime(conversation.CancelRun{RunID: runID, Reason: "canceled by the terminal user"})
+	r.cancelRuntime(conversation.CancelRun{RunID: runID, Reason: "canceled by the terminal user"})
 }
 
-func (a *app) stageOpeningCancellation() (workbench.PendingRun, bool, error) {
-	entry, ok := a.queue.Dispatching(a.session.current.ID)
+func (r *runs) stageOpeningCancellation() (workbench.PendingRun, bool, error) {
+	entry, ok := r.queue.Dispatching(r.session.current.ID)
 	if !ok {
 		return workbench.PendingRun{}, false, nil
 	}
 	if entry.CommandID == "" {
 		return workbench.PendingRun{}, false, errors.New("dispatching queue entry is no longer available")
 	}
-	if pending, found := pendingRunByCommandID(a.workbench.PendingRuns(a.session.current.ID), entry.CommandID); found &&
+	if pending, found := pendingRunByCommandID(r.workbench.PendingRuns(r.session.current.ID), entry.CommandID); found &&
 		pending.State == workbench.PendingRunQueued {
 		// Input preparation has not published a dispatch intent. Closing the
 		// operation owner will discard its result without a Runtime mutation.
 		return workbench.PendingRun{}, false, nil
 	}
-	cancelReplay, err := a.replayPolicy.NewGuard()
+	cancelReplay, err := r.replayPolicy.NewGuard()
 	if err != nil {
 		return workbench.PendingRun{}, false, err
 	}
-	if _, err := a.workbench.MarkPendingRunCanceling(a.session.current.ID, entry.CommandID, cancelReplay); err != nil {
+	if _, err := r.workbench.MarkPendingRunCanceling(r.session.current.ID, entry.CommandID, cancelReplay); err != nil {
 		return workbench.PendingRun{}, false, err
 	}
-	pending, ok := pendingRunByCommandID(a.workbench.PendingRuns(a.session.current.ID), entry.CommandID)
+	pending, ok := pendingRunByCommandID(r.workbench.PendingRuns(r.session.current.ID), entry.CommandID)
 	if !ok {
 		return workbench.PendingRun{}, false, errors.New("canceling run start disappeared from the durable outbox")
 	}
 	return pending, true, nil
 }
 
-func (a *app) reconcileCanceledStart(pending workbench.PendingRun) {
-	dispatcher := a.loop.Dispatcher()
-	a.operations.GoSession(pendingRunRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
+func (r *runs) reconcileCanceledStart(pending workbench.PendingRun) {
+	dispatcher := r.tasks.dispatch
+	r.tasks.operations.GoSession(pendingRunRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
 		opened, err := openStartRunWithBackoff(
-			ctx, a.runtime, a.workbench, pending, a.replayPolicy, runtimeRecoveryBackoff,
+			ctx, r.runtime, r.workbench, pending, r.replayPolicy, runtimeRecoveryBackoff,
 		)
 		if context.Cause(ctx) != nil {
 			return
 		}
 		_ = post(ctx, dispatcher, func() {
-			if !a.operations.Current(lease) || a.closed || a.session.current.ID != pending.Command.SessionID ||
-				!a.operations.Release(lease) {
+			if !r.tasks.operations.Current(lease) || r.link.terminalClosed() || r.session.current.ID != pending.Command.SessionID ||
+				!r.tasks.operations.Release(lease) {
 				return
 			}
 			if _, retired := errors.AsType[*conversation.RetiredOpeningError](err); retired {
-				if err := a.retireCanceledStart(pending); err != nil {
-					a.fail(err)
+				if err := r.retireCanceledStart(pending); err != nil {
+					r.fail(err)
 				}
 				return
 			}
 			observed, accepted := observedSegmentStream(opened, err)
 			if !accepted {
 				if mutation.OutcomeUnknown(err) {
-					a.fail(fmt.Errorf("reconcile canceled start: %w", err))
+					r.fail(fmt.Errorf("reconcile canceled start: %w", err))
 					return
 				}
-				if retireErr := a.retireCanceledStart(pending); retireErr != nil {
-					a.fail(errors.Join(err, retireErr))
+				if retireErr := r.retireCanceledStart(pending); retireErr != nil {
+					r.fail(errors.Join(err, retireErr))
 				}
 				return
 			}
 			validationErr := observed.ValidateStart()
 			if identityErr := protocol.ValidateRunID(observed.RunID); identityErr != nil {
-				a.fail(errors.Join(
+				r.fail(errors.Join(
 					fmt.Errorf("reconcile canceled start: accepted receipt: %w", identityErr),
 					err,
 					validationErr,
@@ -139,9 +139,9 @@ func (a *app) reconcileCanceledStart(pending workbench.PendingRun) {
 				return
 			}
 			if receiptErr := errors.Join(err, validationErr); receiptErr != nil {
-				a.message("runtime returned an invalid start receipt; canceling accepted run: " + receiptErr.Error())
+				r.link.message("runtime returned an invalid start receipt; canceling accepted run: " + receiptErr.Error())
 			}
-			a.requestRuntimeCancellation(conversation.CancelRun{
+			r.requestRuntimeCancellation(conversation.CancelRun{
 				CommandID: pending.CancelCommandID,
 				RunID:     observed.RunID,
 				Reason:    unconfirmedStartCancellationReason,
@@ -174,37 +174,37 @@ func observedSegmentStream(stream conversation.SegmentStream, err error) (conver
 	return receipt, accepted
 }
 
-func (a *app) retireCanceledStart(pending workbench.PendingRun) error {
-	if err := a.retireQueuedCommand(pending.Command.SessionID, pending.Command.CommandID); err != nil {
+func (r *runs) retireCanceledStart(pending workbench.PendingRun) error {
+	if err := r.retireQueuedCommand(pending.Command.SessionID, pending.Command.CommandID); err != nil {
 		return fmt.Errorf("retire canceled start: %w", err)
 	}
-	a.status.note("canceled")
-	a.drainQueue()
+	r.status.note("canceled")
+	r.drainQueue()
 	return nil
 }
 
-func (a *app) activeCancellation() (conversation.CancelRun, bool) {
-	if a.execution.projectionFailed {
+func (r *runs) activeCancellation() (conversation.CancelRun, bool) {
+	if r.execution.projectionFailed {
 		return conversation.CancelRun{}, false
 	}
-	if runID := a.execution.conversation.RunID(); runID != "" && a.execution.conversation.Busy() {
+	if runID := r.execution.conversation.RunID(); runID != "" && r.execution.conversation.Busy() {
 		return conversation.CancelRun{RunID: runID, Reason: "terminal closed"}, true
 	}
-	if a.execution.opening != nil && a.execution.conversation.Busy() {
-		return conversation.CancelRun{RunID: a.execution.opening.RunID, Reason: "terminal closed"}, true
+	if r.execution.opening != nil && r.execution.conversation.Busy() {
+		return conversation.CancelRun{RunID: r.execution.opening.RunID, Reason: "terminal closed"}, true
 	}
 	return conversation.CancelRun{}, false
 }
 
-func (a *app) cancelRuntime(target conversation.CancelRun) {
-	a.requestRuntimeCancellation(target, applyRuntimeSettlement)
+func (r *runs) cancelRuntime(target conversation.CancelRun) {
+	r.requestRuntimeCancellation(target, applyRuntimeSettlement)
 }
 
 // cancelRuntimePreservingFailure stops a run whose event stream has already been
 // rejected locally. The cancellation receipt proves cleanup, but only a cold
 // Session read can replace the now-untrustworthy transcript projection.
-func (a *app) cancelRuntimePreservingFailure(target conversation.CancelRun) {
-	a.requestRuntimeCancellation(target, recoverProjectionFailure)
+func (r *runs) cancelRuntimePreservingFailure(target conversation.CancelRun) {
+	r.requestRuntimeCancellation(target, recoverProjectionFailure)
 }
 
 type cancellationResultPolicy uint8
@@ -222,42 +222,42 @@ type pendingCancellation struct {
 	replay           authoring.ReplayGuard
 }
 
-func (a *app) requestRuntimeCancellation(target conversation.CancelRun, policy cancellationResultPolicy) {
+func (r *runs) requestRuntimeCancellation(target conversation.CancelRun, policy cancellationResultPolicy) {
 	if target.CommandID == "" {
 		commandID := mutation.NewCommandID()
 		target.CommandID = commandID
 	}
 	var replayGuard authoring.ReplayGuard
-	if current := a.execution.pendingCancel; current != nil && current.request.CommandID == target.CommandID {
+	if current := r.execution.pendingCancel; current != nil && current.request.CommandID == target.CommandID {
 		replayGuard = current.replay
 	} else {
-		guard, err := a.replayPolicy.NewGuard()
+		guard, err := r.replayPolicy.NewGuard()
 		if err != nil {
-			a.message("could not cancel run: " + err.Error())
+			r.link.message("could not cancel run: " + err.Error())
 			return
 		}
 		replayGuard = guard
 	}
 	pending := pendingCancellation{
-		request: target, openingCommandID: a.openingCommandForRun(target.RunID), policy: policy, replay: replayGuard,
+		request: target, openingCommandID: r.openingCommandForRun(target.RunID), policy: policy, replay: replayGuard,
 	}
-	if pending.openingCommandID == "" && a.execution.pendingCancel != nil && a.execution.pendingCancel.request.RunID == target.RunID {
-		pending.openingCommandID = a.execution.pendingCancel.openingCommandID
+	if pending.openingCommandID == "" && r.execution.pendingCancel != nil && r.execution.pendingCancel.request.RunID == target.RunID {
+		pending.openingCommandID = r.execution.pendingCancel.openingCommandID
 	}
-	if pending.openingCommandID == "" && a.workbench != nil {
-		outbox := a.workbench.PendingRuns(a.session.current.ID)
+	if pending.openingCommandID == "" && r.workbench != nil {
+		outbox := r.workbench.PendingRuns(r.session.current.ID)
 		if len(outbox) > 0 && outbox[0].State == workbench.PendingRunCanceling &&
 			outbox[0].CancelCommandID == target.CommandID {
 			pending.openingCommandID = outbox[0].Command.CommandID
 			pending.replay = outbox[0].CancelReplay
 		}
 	}
-	a.execution.pendingCancel = &pending
-	dispatcher := a.loop.Dispatcher()
-	a.operations.Go(cancelRunOperation, true, func(ownerCtx context.Context, lease operationLease) {
-		err := a.cancelRootRun(ownerCtx, target, pending.replay)
+	r.execution.pendingCancel = &pending
+	dispatcher := r.tasks.dispatch
+	r.tasks.operations.Go(cancelRunOperation, true, func(ownerCtx context.Context, lease operationLease) {
+		err := r.cancelRootRun(ownerCtx, target, pending.replay)
 		_ = post(ownerCtx, dispatcher, func() {
-			a.handleRuntimeCancellation(lease, pending, err)
+			r.handleRuntimeCancellation(lease, pending, err)
 		})
 	})
 }
@@ -265,22 +265,22 @@ func (a *app) requestRuntimeCancellation(target conversation.CancelRun, policy c
 // cancelRootRun makes cancellation idempotent at the terminal boundary. A run
 // may finish between the user's gesture and the control request; in that case
 // the authoritative snapshot that follows is the settlement of the same intent.
-func (a *app) cancelRootRun(
+func (r *runs) cancelRootRun(
 	ctx context.Context,
 	target conversation.CancelRun,
 	replayGuard authoring.ReplayGuard,
 ) error {
 	result, err := mutation.ConfirmAdmitted(
-		ctx, runtimeRecoveryBackoff, mutation.ReplayAdmission(a.replayPolicy, replayGuard),
+		ctx, runtimeRecoveryBackoff, mutation.ReplayAdmission(r.replayPolicy, replayGuard),
 		func(ctx context.Context) (conversation.RunCancellation, error) {
-			if a.workbench != nil {
-				if err := a.workbench.CancellationReady(target.CommandID); err != nil {
+			if r.workbench != nil {
+				if err := r.workbench.CancellationReady(target.CommandID); err != nil {
 					return conversation.RunCancellation{}, err
 				}
 			}
 			attemptCtx, cancel := context.WithTimeout(ctx, runtimeControlTimeout)
 			defer cancel()
-			return a.runtime.CancelRun(attemptCtx, target)
+			return r.runtime.CancelRun(attemptCtx, target)
 		},
 	)
 	if err == nil {
@@ -295,75 +295,75 @@ func (a *app) cancelRootRun(
 	return err
 }
 
-func (a *app) handleRuntimeCancellation(
+func (r *runs) handleRuntimeCancellation(
 	lease operationLease,
 	pending pendingCancellation,
 	err error,
 ) {
-	if !a.operations.Current(lease) || a.closed {
+	if !r.tasks.operations.Current(lease) || r.link.terminalClosed() {
 		return
 	}
 	if err != nil {
 		// A rejected control request says nothing about the run itself. Keep the
 		// conversation and cancellation target intact so the user can retry while
 		// the runtime remains the source of truth for eventual settlement.
-		a.message("could not cancel run: " + err.Error())
+		r.link.message("could not cancel run: " + err.Error())
 		return
 	}
-	if retireErr := a.retireCanceledRuntimeOwnership(pending.request.RunID, pending.openingCommandID); retireErr != nil {
+	if retireErr := r.retireCanceledRuntimeOwnership(pending.request.RunID, pending.openingCommandID); retireErr != nil {
 		failure := fmt.Errorf("retire canceled runtime ownership: %w", retireErr)
-		a.reportWorkbenchIssue(workbenchCancellationOwnership, failure)
-		a.message("could not " + failure.Error())
-		a.retryCanceledRuntimeOwnership(pending.request.RunID, pending.openingCommandID)
+		r.report(workbenchCancellationOwnership, failure)
+		r.link.message("could not " + failure.Error())
+		r.retryCanceledRuntimeOwnership(pending.request.RunID, pending.openingCommandID)
 	} else {
-		a.reportWorkbenchIssue(workbenchCancellationOwnership, nil)
+		r.report(workbenchCancellationOwnership, nil)
 	}
-	if current := a.execution.pendingCancel; current != nil && current.request.CommandID == pending.request.CommandID {
-		a.execution.pendingCancel = nil
+	if current := r.execution.pendingCancel; current != nil && current.request.CommandID == pending.request.CommandID {
+		r.execution.pendingCancel = nil
 	}
-	a.execution.opening = nil
-	a.dropStream()
+	r.execution.opening = nil
+	r.dropStream()
 	if pending.policy == recoverProjectionFailure {
-		a.prompt.SetBusy(false)
-		a.syncAnimation()
+		r.prompt.SetBusy(false)
+		r.syncAnimation()
 		// The stream was rejected after Runtime had accepted the command. A
 		// cancellation receipt cannot reconstruct durable Items that were never
 		// projected, so the authoritative snapshot is the queue-admission fence.
-		a.session.invalidated = true
-		a.refreshInvalidatedSession(true)
+		r.session.invalidated = true
+		r.link.refreshInvalidatedSession(true)
 		return
 	}
 	// The receipt names only the root Run. Its children and open tool calls
 	// settle in the Runtime with their own outcomes, so the authoritative
 	// snapshot, not the root's outcome, replaces the projection.
-	a.status.note("canceled")
-	a.prompt.SetBusy(false)
-	a.syncAnimation()
-	a.session.invalidated = true
-	a.refreshInvalidatedSession(true)
+	r.status.note("canceled")
+	r.prompt.SetBusy(false)
+	r.syncAnimation()
+	r.session.invalidated = true
+	r.link.refreshInvalidatedSession(true)
 }
 
-func (a *app) openingCommandForRun(runID string) authoring.CommandID {
-	if a.execution.opening == nil || runID != a.execution.opening.RunID {
+func (r *runs) openingCommandForRun(runID string) authoring.CommandID {
+	if r.execution.opening == nil || runID != r.execution.opening.RunID {
 		return ""
 	}
-	return a.execution.opening.CommandID
+	return r.execution.opening.CommandID
 }
 
-func (a *app) retireCanceledRuntimeOwnership(runID string, openingCommandID authoring.CommandID) error {
+func (r *runs) retireCanceledRuntimeOwnership(runID string, openingCommandID authoring.CommandID) error {
 	var err error
-	if a.workbench != nil {
-		if pending, ok := a.workbench.PendingResume(a.session.current.ID); ok && pending.Command.RunID == runID {
-			err = errors.Join(err, a.workbench.AcknowledgePendingResume(a.session.current.ID, pending.Command.CommandID))
+	if r.workbench != nil {
+		if pending, ok := r.workbench.PendingResume(r.session.current.ID); ok && pending.Command.RunID == runID {
+			err = errors.Join(err, r.workbench.AcknowledgePendingResume(r.session.current.ID, pending.Command.CommandID))
 		}
 	}
 	if openingCommandID != "" {
-		err = errors.Join(err, a.retireQueuedCommand(a.session.current.ID, openingCommandID))
+		err = errors.Join(err, r.retireQueuedCommand(r.session.current.ID, openingCommandID))
 	}
 	return err
 }
 
-func (a *app) cancelRuntimeNow(
+func (r *runs) cancelRuntimeNow(
 	ownerCtx context.Context,
 	target conversation.CancelRun,
 	replayGuard authoring.ReplayGuard,
@@ -371,7 +371,7 @@ func (a *app) cancelRuntimeNow(
 	if target.CommandID == "" {
 		commandID := mutation.NewCommandID()
 		target.CommandID = commandID
-		guard, err := a.replayPolicy.NewGuard()
+		guard, err := r.replayPolicy.NewGuard()
 		if err != nil {
 			return err
 		}
@@ -380,14 +380,14 @@ func (a *app) cancelRuntimeNow(
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ownerCtx), runtimeControlTimeout)
 	defer cancel()
 	result, err := mutation.ConfirmAdmitted(
-		ctx, runtimeRecoveryBackoff, mutation.ReplayAdmission(a.replayPolicy, replayGuard),
+		ctx, runtimeRecoveryBackoff, mutation.ReplayAdmission(r.replayPolicy, replayGuard),
 		func(ctx context.Context) (conversation.RunCancellation, error) {
-			if a.workbench != nil {
-				if err := a.workbench.CancellationReady(target.CommandID); err != nil {
+			if r.workbench != nil {
+				if err := r.workbench.CancellationReady(target.CommandID); err != nil {
 					return conversation.RunCancellation{}, err
 				}
 			}
-			return a.runtime.CancelRun(ctx, target)
+			return r.runtime.CancelRun(ctx, target)
 		},
 	)
 	if errors.Is(err, conversation.ErrRunFinished) {
@@ -402,19 +402,19 @@ func (a *app) cancelRuntimeNow(
 	return nil
 }
 
-func (a *app) cancelOpeningRunNow(ownerCtx context.Context, pending workbench.PendingRun) error {
+func (r *runs) cancelOpeningRunNow(ownerCtx context.Context, pending workbench.PendingRun) error {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ownerCtx), runtimeControlTimeout)
 	defer cancel()
 	opened, err := openStartRunWithBackoff(
-		ctx, a.runtime, a.workbench, pending, a.replayPolicy, runtimeRecoveryBackoff,
+		ctx, r.runtime, r.workbench, pending, r.replayPolicy, runtimeRecoveryBackoff,
 	)
 	if _, retired := errors.AsType[*conversation.RetiredOpeningError](err); retired {
-		return a.retireCanceledStart(pending)
+		return r.retireCanceledStart(pending)
 	}
 	opened, accepted := observedSegmentStream(opened, err)
 	if !accepted {
 		if !mutation.OutcomeUnknown(err) {
-			return a.retireCanceledStart(pending)
+			return r.retireCanceledStart(pending)
 		}
 		return fmt.Errorf("reconcile run start during terminal close: %w", err)
 	}
@@ -426,7 +426,7 @@ func (a *app) cancelOpeningRunNow(ownerCtx context.Context, pending workbench.Pe
 			validationErr,
 		)
 	}
-	cancelErr := a.cancelRuntimeNow(ctx, conversation.CancelRun{
+	cancelErr := r.cancelRuntimeNow(ctx, conversation.CancelRun{
 		CommandID: pending.CancelCommandID,
 		RunID:     opened.RunID,
 		Reason:    unconfirmedStartCancellationReason,
@@ -434,5 +434,5 @@ func (a *app) cancelOpeningRunNow(ownerCtx context.Context, pending workbench.Pe
 	if cancelErr != nil {
 		return errors.Join(err, validationErr, fmt.Errorf("cancel run opened during terminal close: %w", cancelErr))
 	}
-	return a.retireCanceledStart(pending)
+	return r.retireCanceledStart(pending)
 }

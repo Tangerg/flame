@@ -151,7 +151,7 @@ func (s *steerDesk) restoreSteerReceipts(snapshot conversation.SessionSnapshot) 
 
 func (s *steerDesk) refreshSteerPresentation() {
 	for _, entry := range s.receipts.entries {
-		if entry.sessionID == s.session.current.ID && entry.runID == s.execution.conversation.RunID() {
+		if entry.sessionID == s.session.current.ID && entry.runID == s.runs.conversation().RunID() {
 			entry.presented = steerPending
 		}
 	}
@@ -239,7 +239,7 @@ func (s *steerDesk) presentSteerReceipts() {
 	case steerUnconfirmed:
 		label = "steer application remains unconfirmed after this run"
 	}
-	if selected.runID != s.execution.conversation.RunID() {
+	if selected.runID != s.runs.conversation().RunID() {
 		label += " · " + shortIdentity(selected.runID)
 	}
 	label += " · " + identity

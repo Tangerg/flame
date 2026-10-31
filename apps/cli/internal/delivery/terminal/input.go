@@ -54,7 +54,7 @@ func (a *app) handleConfiguredAction(event input.Event, action keymap.Action) bo
 		return true
 	}
 	if action == cancelRun && a.queueEditor.closable() {
-		a.cancel()
+		a.runs.cancel()
 		return true
 	}
 	if a.stack.Depth() > 0 {
@@ -163,9 +163,9 @@ func isEscapeEvent(event input.Event) bool {
 }
 
 func (a *app) handleEscape() bool {
-	if a.execution.blocksAdmission() || a.operations.Active(inputPreparationOperation) {
+	if a.runs.blocksAdmission() || a.operations.Active(inputPreparationOperation) {
 		a.confirmation.Reset()
-		a.cancel()
+		a.runs.cancel()
 		return true
 	}
 	message, hasDraft, err := a.composer.draft()
@@ -221,7 +221,7 @@ func (a *app) handleGlobalAction(action keymap.Action) bool {
 
 func (a *app) handleCancelGesture() {
 	if a.prompts.answering() || a.operations.Active(inputPreparationOperation) {
-		a.cancel()
+		a.runs.cancel()
 		return
 	}
 	if a.cancelSessionChange() {
@@ -240,7 +240,7 @@ func (a *app) handleCancelGesture() {
 		a.message("draft cleared; repeat " + formatKeyBindings(a.keys.application, cancelRun, " or ") + " to cancel")
 		return
 	}
-	a.cancel()
+	a.runs.cancel()
 }
 
 func (a *app) retireDraft(message authoring.Message) error {

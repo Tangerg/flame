@@ -17,13 +17,13 @@ import (
 // opens an already-running session. The background owner requests one coherent
 // snapshot subscription, installs its material and opaque head on the UI thread,
 // and only then starts consuming the successor tail.
-func (a *app) followRecoveredSession() {
-	dispatcher := a.loop.Dispatcher()
-	sessionID := a.session.current.ID
-	a.startFollowing(func(ctx context.Context, lease operationLease) {
+func (r *runs) followRecoveredSession() {
+	dispatcher := r.tasks.dispatch
+	sessionID := r.session.current.ID
+	r.startFollowing(func(ctx context.Context, lease operationLease) {
 		follower := streamFollower{
-			app: a, ctx: ctx, dispatcher: dispatcher, lease: lease, sessionID: sessionID,
-			applyEvent: a.apply,
+			runs: r, ctx: ctx, dispatcher: dispatcher, lease: lease, sessionID: sessionID,
+			applyEvent: r.apply,
 		}
 		follower.followAttachedSession()
 	})
@@ -41,7 +41,7 @@ func (s *streamFollower) followAttachedSession() {
 			active = false
 			return
 		}
-		reconcileErr = s.app.reconcileRunSnapshot(recovered.Snapshot, recovered.Stream)
+		reconcileErr = s.runs.link.reconcileRunSnapshot(recovered.Snapshot, recovered.Stream)
 	})
 	if postErr != nil || reconcileErr != nil {
 		s.postFailure(errors.Join(postErr, reconcileErr))
@@ -55,7 +55,7 @@ func (s *streamFollower) followAttachedSession() {
 }
 
 type streamFollower struct {
-	app        *app
+	runs       *runs
 	ctx        context.Context
 	dispatcher program.Dispatcher
 	lease      operationLease
@@ -69,12 +69,12 @@ type streamFollower struct {
 }
 
 func (s *streamFollower) current() bool {
-	return s != nil && s.app != nil && s.app.operations.Current(s.lease)
+	return s != nil && s.runs != nil && s.runs.tasks.operations.Current(s.lease)
 }
 
 func (s *streamFollower) restoreAttachedSession(sessionID string) (runworkflow.Recovery, bool) {
 	for {
-		recovered, err := runworkflow.AttachSession(s.ctx, s.app.runtime, sessionID)
+		recovered, err := runworkflow.AttachSession(s.ctx, s.runs.runtime, sessionID)
 		if err == nil {
 			s.failures = 0
 			return recovered, true
@@ -227,7 +227,7 @@ func (s *streamFollower) apply(event conversation.RunEvent) (bool, error) {
 			return
 		}
 		applyErr = s.applyEvent(event)
-		s.checkpoint = s.app.execution.conversation.Checkpoint()
+		s.checkpoint = s.runs.execution.conversation.Checkpoint()
 	})
 	if applyErr != nil {
 		applyErr = &eventApplicationError{err: applyErr}
@@ -262,8 +262,8 @@ func (s *streamFollower) snapshot() (followSnapshot, error) {
 			snapshot.active = false
 			return
 		}
-		snapshot.checkpoint = s.app.execution.conversation.Checkpoint()
-		snapshot.phase = s.app.execution.conversation.Phase()
+		snapshot.checkpoint = s.runs.execution.conversation.Checkpoint()
+		snapshot.phase = s.runs.execution.conversation.Phase()
 	})
 	return snapshot, err
 }
@@ -292,7 +292,7 @@ func (s *streamFollower) reconnect(runID, segmentID string, cause error) (conver
 		if !s.waitBeforeRetry(cause) {
 			return conversation.SegmentStream{}, false
 		}
-		rebound, err := s.app.runtime.SubscribeRun(s.ctx, conversation.SubscribeRun{
+		rebound, err := s.runs.runtime.SubscribeRun(s.ctx, conversation.SubscribeRun{
 			RunID: runID, SegmentID: segmentID, AfterEventID: s.checkpoint,
 		})
 		if err == nil {
@@ -323,8 +323,8 @@ func (s *streamFollower) postRetryStatus(persistent bool) bool {
 			if persistent {
 				label = fmt.Sprintf("confirming delivery · attempt %d", s.failures)
 			}
-			s.app.status.note(label)
-			s.app.syncAnimation()
+			s.runs.status.note(label)
+			s.runs.syncAnimation()
 		}
 	})
 	return err == nil
@@ -343,7 +343,7 @@ func (s *streamFollower) acceptRebound(runID, segmentID string, rebound conversa
 }
 
 func (s *streamFollower) recover(runID string, cause error) recoveryAttempt {
-	recovered, err := runworkflow.RecoverSegment(s.ctx, s.app.runtime, s.sessionID, runID)
+	recovered, err := runworkflow.RecoverSegment(s.ctx, s.runs.runtime, s.sessionID, runID)
 	if err != nil {
 		if runworkflow.RecoveryRequired(err) {
 			return recoveryAttempt{disposition: recoveryRetry, cause: cause}
@@ -357,7 +357,7 @@ func (s *streamFollower) recover(runID string, cause error) recoveryAttempt {
 			active = false
 			return
 		}
-		reconcileErr = s.app.reconcileRunSnapshot(recovered.Snapshot, recovered.Stream)
+		reconcileErr = s.runs.link.reconcileRunSnapshot(recovered.Snapshot, recovered.Stream)
 	})
 	if postErr != nil || reconcileErr != nil {
 		s.postFailure(errors.Join(postErr, reconcileErr))
@@ -373,7 +373,7 @@ func (s *streamFollower) recover(runID string, cause error) recoveryAttempt {
 func (s *streamFollower) finish() {
 	_ = post(s.ctx, s.dispatcher, func() {
 		if s.current() {
-			s.app.finishFollowing()
+			s.runs.finishFollowing()
 		}
 	})
 }
@@ -386,7 +386,7 @@ func (s *streamFollower) postFailure(err error) {
 		if !s.current() {
 			return
 		}
-		s.app.fail(err)
+		s.runs.fail(err)
 	})
 }
 
@@ -404,6 +404,6 @@ func (s *streamFollower) postOpenFailure(err error) {
 				return
 			}
 		}
-		s.app.fail(err)
+		s.runs.fail(err)
 	})
 }

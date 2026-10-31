@@ -1008,7 +1008,7 @@ func withModalOwners(t *testing.T, application *app) {
 		label: func(protocol.Model) string { return "" }, detail: func(protocol.Model) string { return "" }, choose: func(protocol.Model) {},
 	})
 	application.queueEditor = newQueueEditor(queueEditorConfig{
-		session: &application.session, run: application, stack: &application.stack, theme: theme, glyphs: glyphs,
+		session: &application.session, run: &runs{}, stack: &application.stack, theme: theme, glyphs: glyphs,
 		keys: headless.DefaultEditorKeys(), clip: (&program.Runtime{}).Clipboard(),
 	})
 }
