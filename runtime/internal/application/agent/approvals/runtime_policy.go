@@ -2,14 +2,12 @@ package approvals
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/qimu/integrity"
 	"github.com/samber/lo"
 )
@@ -208,17 +206,16 @@ type RuleView struct {
 	Stale      bool
 }
 
-// ListRules returns the rules visible from a session. Unknown sessions degrade to
-// session/global lookup; storage failures are real errors.
+// ListRules returns the global rules, plus the session and project rules visible
+// from sessionID when one is named.
 func (r *RuntimePolicy) ListRules(ctx context.Context, sessionID string) ([]RuleView, error) {
 	projectDir := ""
 	if sessionID != "" {
-		switch sess, err := r.sessions.Get(ctx, sessionID); {
-		case err == nil:
-			projectDir = sess.Workspace().Path()
-		case !errors.Is(err, session.ErrNotFound):
+		sess, err := r.sessions.Get(ctx, sessionID)
+		if err != nil {
 			return nil, err
 		}
+		projectDir = sess.Workspace().Path()
 	}
 	rules, err := r.visibleRules(ctx, sessionID, projectDir)
 	if err != nil {

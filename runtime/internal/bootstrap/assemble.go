@@ -423,7 +423,7 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct session queries: %w", err)
 	}
 	usage, err := sessions.NewUsageReporter(sessions.UsageDependencies{
-		Source: cfg.stores.ModelInvocations,
+		Source: cfg.stores.ModelInvocations, Now: time.Now,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct usage reporter: %w", err)

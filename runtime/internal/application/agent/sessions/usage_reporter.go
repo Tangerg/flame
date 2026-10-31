@@ -74,11 +74,10 @@ func NewUsageReporter(deps UsageDependencies) (*UsageReporter, error) {
 	if lo.IsNil(deps.Source) {
 		return nil, errors.New("sessions: physical usage source is required")
 	}
-	now := deps.Now
-	if now == nil {
-		now = time.Now
+	if deps.Now == nil {
+		return nil, errors.New("sessions: usage clock is required")
 	}
-	return &UsageReporter{source: deps.Source, now: now}, nil
+	return &UsageReporter{source: deps.Source, now: deps.Now}, nil
 }
 
 func (r *UsageReporter) Session(ctx context.Context, sessionID string) (UsageReport, error) {

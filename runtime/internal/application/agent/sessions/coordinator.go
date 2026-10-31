@@ -316,9 +316,6 @@ type Dependencies struct {
 
 // New returns a Coordinator over deps.
 func New(deps Dependencies) (*Coordinator, error) {
-	if deps.Now == nil {
-		deps.Now = time.Now
-	}
 	required := []struct {
 		name  string
 		value any
@@ -340,6 +337,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		{"workspace resolver", deps.Paths},
 		{"model admitter", deps.Models},
 		{"admissions", deps.Admissions},
+		{"clock", deps.Now},
 		{"session id generator", deps.NewID},
 		{"run id generator", deps.NewRunID},
 		{"item id generator", deps.NewItemID},

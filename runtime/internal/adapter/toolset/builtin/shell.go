@@ -101,7 +101,7 @@ func BuildShell(shells *exec.Shells) ([]toolcontract.Tool, error) {
 				"Set description to a concise action label that explains the command's purpose while it runs. " +
 				"Avoid `find`, `grep`, `cat`, `head`, `tail`, `sed`, `awk` here — use the dedicated `glob`, `grep`, and `read` tools instead; use `apply_patch` for file changes. Reserve `shell` for operations that genuinely need a shell (build commands, git, package managers, etc.). " +
 				"Each invocation starts a fresh shell — `cd`, exported variables, and shell options do not persist between calls. " +
-				"A command still running after auto_background_after_seconds (default 60) is moved to the background; continue with read_shell_output or stop_shell. Set run_in_background to background it immediately.",
+				"A command still running after auto_background_after_seconds is moved to the background; continue with read_shell_output or stop_shell. Set run_in_background to background it immediately.",
 		},
 		t.run,
 	)

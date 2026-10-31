@@ -154,7 +154,7 @@ func openRetirementFixture(t *testing.T, root, cut string) *retirementFixture {
 		t.Fatal(err)
 	}
 	coordinator, err := sessions.New(sessions.Dependencies{
-		Sessions: stores.sessions, Interrupts: stores.interrupts, Transcript: stores.transcript, Runs: stores.runs,
+		Sessions: stores.sessions, Interrupts: stores.interrupts, Transcript: stores.transcript, Runs: stores.runs, Now: time.Now,
 		Snapshots: stores.SessionStores, MaterialSnapshots: stores.SessionStores, Writes: writes,
 		Plan:           sessions.PlanServices{Boundaries: stores.plan, Replacements: mustPlanCoordinator(sessions.PlanDependencies{Store: stores.plan, Now: time.Now})},
 		TransientState: retirementTransient{}, ExecutionReleaser: retirementTransient{},

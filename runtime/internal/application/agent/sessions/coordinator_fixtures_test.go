@@ -254,7 +254,7 @@ func testDependencies(stores testStores, deps Dependencies) Dependencies {
 		deps.Plan.Boundaries = recordedBoundaries{}
 	}
 	if deps.Plan.Replacements == nil {
-		deps.Plan.Replacements = mustPlanCoordinator(PlanDependencies{Store: &planStoreFake{}})
+		deps.Plan.Replacements = mustPlanCoordinator(PlanDependencies{Store: &planStoreFake{}, Now: time.Now})
 	}
 	if deps.Mutations == nil {
 		deps.Mutations = &observingMutations{}
@@ -317,6 +317,9 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 	if deps.Admissions == nil {
 		deps.Admissions = new(testClaimer)
 	}
+	if deps.Now == nil {
+		deps.Now = time.Now
+	}
 	if deps.NewID == nil {
 		deps.NewID = func() string { return "ses_test" }
 	}
@@ -336,7 +339,7 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 		deps.Plan.Boundaries = recordedBoundaries{}
 	}
 	if deps.Plan.Replacements == nil {
-		deps.Plan.Replacements = mustPlanCoordinator(PlanDependencies{Store: &planStoreFake{}})
+		deps.Plan.Replacements = mustPlanCoordinator(PlanDependencies{Store: &planStoreFake{}, Now: time.Now})
 	}
 	if deps.Mutations == nil {
 		deps.Mutations = &observingMutations{}

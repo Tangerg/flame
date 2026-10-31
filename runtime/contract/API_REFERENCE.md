@@ -92,10 +92,10 @@ Protocol `2026-10-30.2` · 105 methods
 | `plugins.uninstall` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `hooks.list` | query | unary | none | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `workspace_unavailable` |
 | `hooks.setTrust` | command | unary | replayResponse | none | none | — | — | `workspace_unavailable` |
-| `approval.setRule` | command | unary | replayResponse | none | none | — | — | — |
+| `approval.setRule` | command | unary | replayResponse | none | none | — | — | `session_not_found` |
 | `approval.getMode` | query | unary | none | none | none | — | — | — |
 | `approval.setMode` | command | unary | replayResponse | none | none | — | — | — |
-| `approval.listRules` | query | unary | none | none | none | — | — | — |
+| `approval.listRules` | query | unary | none | none | none | — | — | `session_not_found` |
 | `approval.forgetRule` | command | unary | replayResponse | none | none | — | — | — |
 | `goals.start` | command | unary | replayResponse | none | none | — | `goals` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `capability_not_negotiated` |
 | `goals.update` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |

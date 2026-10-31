@@ -1404,7 +1404,10 @@
       "operation": "command",
       "idempotency": "replayResponse",
       "replayCursor": "none",
-      "pagination": "none"
+      "pagination": "none",
+      "errors": [
+        "session_not_found"
+      ]
     },
     {
       "goName": "GetApprovalMode",
@@ -1431,7 +1434,10 @@
       "operation": "query",
       "idempotency": "none",
       "replayCursor": "none",
-      "pagination": "none"
+      "pagination": "none",
+      "errors": [
+        "session_not_found"
+      ]
     },
     {
       "goName": "ForgetApprovalRule",
@@ -2324,6 +2330,8 @@
         "code": -32002,
         "recoveryAction": "refetch",
         "methods": [
+          "approval.listRules",
+          "approval.setRule",
           "goals.clear",
           "goals.get",
           "goals.resume",

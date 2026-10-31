@@ -15,7 +15,7 @@ const (
 )
 
 func registerApproval(registry *Registry) {
-	registry.commandAck(MethodMeta{Name: approvalSetRule, GoName: "SetApprovalRule"}, func(service interface {
+	registry.commandAck(MethodMeta{Name: approvalSetRule, GoName: "SetApprovalRule", Errors: []string{protocol.ErrSessionNotFound.Error()}}, func(service interface {
 		SetApprovalRule(context.Context, protocol.SetApprovalRuleRequest) error
 	}, ctx context.Context, request protocol.SetApprovalRuleRequest) error {
 		return service.SetApprovalRule(ctx, request)
@@ -35,7 +35,7 @@ func registerApproval(registry *Registry) {
 			return service.SetApprovalMode(ctx, request)
 		})
 
-	registry.query(MethodMeta{Name: ApprovalListRules, GoName: "ListApprovalRules"},
+	registry.query(MethodMeta{Name: ApprovalListRules, GoName: "ListApprovalRules", Errors: []string{protocol.ErrSessionNotFound.Error()}},
 		func(service interface {
 			ListApprovalRules(context.Context, protocol.ListApprovalRulesRequest) (*protocol.ListApprovalRulesResult, error)
 		}, ctx context.Context, request protocol.ListApprovalRulesRequest) (*protocol.ListApprovalRulesResult, error) {

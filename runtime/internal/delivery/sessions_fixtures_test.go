@@ -1098,7 +1098,7 @@ func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.Works
 		deps.Mutations = s.muts
 	}
 	if deps.Plan.Boundaries == nil {
-		deps.Plan = sessions.PlanServices{Boundaries: inertQueryStores{}, Replacements: mustPlanCoordinator(sessions.PlanDependencies{Store: inertQueryStores{}})}
+		deps.Plan = sessions.PlanServices{Boundaries: inertQueryStores{}, Replacements: mustPlanCoordinator(sessions.PlanDependencies{Store: inertQueryStores{}, Now: time.Now})}
 	}
 	if deps.Mutations == nil {
 		deps.Mutations = inertWorkspaceMutations{}

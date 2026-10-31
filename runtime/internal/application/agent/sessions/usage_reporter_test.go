@@ -42,7 +42,7 @@ func TestNewUsageReporterRequiresPhysicalSource(t *testing.T) {
 		t.Fatal("missing source accepted")
 	}
 	var source *usageSourceStub
-	if _, err := NewUsageReporter(UsageDependencies{Source: source}); err == nil {
+	if _, err := NewUsageReporter(UsageDependencies{Source: source, Now: time.Now}); err == nil {
 		t.Fatal("typed nil source accepted")
 	}
 }
@@ -148,7 +148,7 @@ func TestPhysicalUsageIncludesAuxiliaryUnattachedAndUnknownWithoutDoubleCounting
 	unknown := usageRecord(t, "global", "provider-a", "served", modelref.InvocationUnknown, at.Add(2*time.Second), nil, nil)
 	unreported := usageRecord(t, "unreported", "provider-a", "served", modelref.InvocationCompleted, at.Add(3*time.Second), nil, nil)
 	started := usageRecord(t, "started", "provider-b", "served", modelref.InvocationStarted, at.Add(4*time.Second), nil, nil)
-	reporter, err := NewUsageReporter(UsageDependencies{Source: usageSourceStub{values: []modelref.EndpointRecord{primary, auxiliary, unknown, unreported, started}}})
+	reporter, err := NewUsageReporter(UsageDependencies{Source: usageSourceStub{values: []modelref.EndpointRecord{primary, auxiliary, unknown, unreported, started}}, Now: time.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -195,7 +195,7 @@ func TestPhysicalUsageFiltersAtAdmissionAndRejectsPartialRead(t *testing.T) {
 	if err != nil || report.Coverage.Calls != 1 || report.Coverage.ReportedCalls != 1 || report.Total.Cost.OptionalUSD() == nil || *report.Total.Cost.OptionalUSD() != 0 {
 		t.Fatalf("window or reported zero lost: %+v %v", report, err)
 	}
-	reader, err = NewUsageReporter(UsageDependencies{Source: usageSourceStub{values: []modelref.EndpointRecord{current}, failure: errors.New("later source is corrupt")}})
+	reader, err = NewUsageReporter(UsageDependencies{Source: usageSourceStub{values: []modelref.EndpointRecord{current}, failure: errors.New("later source is corrupt")}, Now: time.Now})
 	if err != nil {
 		t.Fatal(err)
 	}

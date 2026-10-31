@@ -371,7 +371,7 @@ func TestListRulesScopesBySessionProject(t *testing.T) {
 		wantErr     error
 	}{
 		{name: "known session", sessions: repoSessions{}, wantProject: "/repo"},
-		{name: "unknown session", sessions: failingSessions{err: session.ErrNotFound}},
+		{name: "unknown session", sessions: failingSessions{err: session.ErrNotFound}, wantErr: session.ErrNotFound},
 		{name: "session store failure", sessions: failingSessions{err: storeErr}, wantErr: storeErr},
 	} {
 		t.Run(test.name, func(t *testing.T) {

@@ -41,7 +41,7 @@ func NewPlanCoordinator(deps PlanDependencies) (*PlanCoordinator, error) {
 		return nil, errors.New("sessions: Plan store is required")
 	}
 	if deps.Now == nil {
-		deps.Now = time.Now
+		return nil, errors.New("sessions: Plan clock is required")
 	}
 	return &PlanCoordinator{store: deps.Store, now: deps.Now, invalidations: deps.Invalidations}, nil
 }

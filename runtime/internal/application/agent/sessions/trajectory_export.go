@@ -71,7 +71,7 @@ func (e *TrajectoryExporter) Export(ctx context.Context, sessionID string) (Traj
 	if err != nil {
 		return TrajectoryExport{}, err
 	}
-	collectedAt := time.Now().UTC()
+	collectedAt := e.coordinator.now().UTC()
 	view, err := e.coordinator.view(evidence.Snapshot.Session, activityIdle)
 	if err != nil {
 		return TrajectoryExport{}, err
