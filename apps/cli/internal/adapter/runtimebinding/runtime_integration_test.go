@@ -2,6 +2,7 @@ package runtimebinding
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"maps"
@@ -23,12 +24,12 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/apps/cli/internal/application/pluginview"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/failure"
 	workspaceapi "github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
-	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/schedule"
 )
 
 func TestRuntimeConnectionPreservesCallerCancellation(t *testing.T) {
@@ -60,7 +61,9 @@ func TestRuntimeConnectionResourceFailures(t *testing.T) {
 	activateManagedPlugins(t, runtime, "schedules")
 
 	t.Run("installed schedule", func(t *testing.T) {
-		request, err := runtime.PrepareRunNow(t.Context(), "sch_missing")
+		view := firstPartyView(t, runtime, "schedules")
+		run, _ := view.Action("run")
+		request, err := view.ActionRequest(run, pluginview.Context{}, pluginview.Row{"ID": jsontext.Value(`"sch_missing"`)}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -323,51 +326,94 @@ func requireAuxiliaryCapabilities(t *testing.T, runtime *Connection, sessionID, 
 
 func requireContextManagement(t *testing.T, runtime *Connection, workspace string) {
 	t.Helper()
-	agentMemory := runtime.AgentMemory()
-	if agentMemory == nil {
-		t.Fatal("context adapters were not advertised")
+	view := firstPartyView(t, runtime, "memory")
+	here := pluginview.Context{Workspace: workspace}
+	user := map[string]string{"Scope": "user"}
+	callViewAction(t, runtime, view, "add", nil, map[string]string{"Scope": "user", "Content": "integration preference"})
+	rows := viewRows(t, runtime, view, here, user)
+	if len(rows) != 1 || rows[0].Text("Content") != "integration preference" || rows[0].Text("Pinned") != "false" {
+		t.Fatalf("memory rows = %+v", rows)
 	}
-	userTarget, err := conversation.NewMemoryTarget(memorycontract.ItemSnapshotScopeUser, "")
+	callViewAction(t, runtime, view, "pin", rows[0], nil)
+	rows = viewRows(t, runtime, view, here, user)
+	if len(rows) != 1 || rows[0].Text("Pinned") != "true" {
+		t.Fatalf("pinned memory rows = %+v", rows)
+	}
+	callViewAction(t, runtime, view, "delete", rows[0], nil)
+	if rows := viewRows(t, runtime, view, here, user); len(rows) != 0 {
+		t.Fatalf("memory rows after deletion = %+v", rows)
+	}
+}
+
+// firstPartyView reads a first-party package's terminal view through the same
+// generic path the terminal uses, so the declaration is exercised against the
+// package's real contract and backend.
+func firstPartyView(t *testing.T, runtime *Connection, id string) pluginview.View {
+	t.Helper()
+	installations, err := runtime.ListPlugins(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	addition, err := agentMemory.PrepareAdd(t.Context(), memorycontract.AddInput{Scope: memorycontract.AddInputScope(userTarget.Scope), Content: "integration preference"})
+	views, problems := pluginview.Views(installations)
+	if len(problems) != 0 {
+		t.Fatalf("terminal views: %v", problems)
+	}
+	for _, view := range views {
+		if view.ID == id {
+			return view
+		}
+	}
+	t.Fatalf("no %s terminal view among %d", id, len(views))
+	return pluginview.View{}
+}
+
+func viewRows(t *testing.T, runtime *Connection, view pluginview.View, here pluginview.Context, form map[string]string) []pluginview.Row {
+	t.Helper()
+	request, err := view.ListRequest(here, form, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	addedReply, err := agentMemory.CallPlugin(t.Context(), addition, mutation.NewCommandID())
+	response, err := runtime.CallPlugin(t.Context(), request, "")
+	if err != nil {
+		t.Fatalf("list %s: %v", view.ID, err)
+	}
+	page, err := view.Page(response)
 	if err != nil {
 		t.Fatal(err)
 	}
-	addedResult, err := agentMemory.DecodeAdd(addedReply)
-	added := memoryProjection(memorycontract.ItemSnapshot(addedResult.Item))
-	if err != nil {
-		t.Fatalf("Add agent memory: %v", err)
+	return page.Rows
+}
+
+// callViewAction fills the action's form from its declared defaults, overridden
+// by entered, and calls it as the terminal would.
+func callViewAction(t *testing.T, runtime *Connection, view pluginview.View, id string, row pluginview.Row, entered map[string]string) *protocol.CallPluginResponse {
+	t.Helper()
+	action, found := view.Action(id)
+	if !found {
+		t.Fatalf("%s has no action %s", view.ID, id)
 	}
-	items, err := agentMemory.Items(t.Context(), userTarget)
-	if err != nil || len(items) != 1 || items[0].ID != added.ID {
-		t.Fatalf("Items agent memory = (%+v, %v)", items, err)
-	}
-	pinned := true
-	update, err := agentMemory.PrepareUpdate(t.Context(), memorycontract.UpdateInput{ExpectedRevision: 1, ID: added.ID, Pinned: &pinned})
-	if err != nil {
-		t.Fatal(err)
-	}
-	reply, err := agentMemory.CallPlugin(t.Context(), update, mutation.NewCommandID())
+	fields, err := view.ActionForm(action, pluginview.Context{}, row)
 	if err != nil {
 		t.Fatal(err)
 	}
-	updated, err := agentMemory.DecodeUpdate(added.ID, reply)
-	if err != nil || !updated.Pinned {
-		t.Fatalf("Update agent memory = (%+v, %v)", updated, err)
+	form := make(map[string]string, len(fields))
+	for _, field := range fields {
+		form[field.Path] = field.Initial
 	}
-	deletion, err := agentMemory.PrepareDelete(t.Context(), added.ID, updated.Revision)
+	maps.Copy(form, entered)
+	request, err := view.ActionRequest(action, pluginview.Context{}, row, form)
 	if err != nil {
-		t.Fatalf("Prepare agent memory deletion: %v", err)
+		t.Fatalf("%s %s: %v", view.ID, id, err)
 	}
-	if _, deleteErr := agentMemory.CallPlugin(t.Context(), deletion, mutation.NewCommandID()); deleteErr != nil {
-		t.Fatalf("Delete agent memory: %v", deleteErr)
+	var command authoring.CommandID
+	if view.Mutates(action) {
+		command = mutation.NewCommandID()
 	}
+	response, err := runtime.CallPlugin(t.Context(), request, command)
+	if err != nil {
+		t.Fatalf("%s %s: %v", view.ID, id, err)
+	}
+	return response
 }
 
 func requireSessionPortability(t *testing.T, runtime *Connection, sessionID string) {
@@ -929,69 +975,24 @@ func requireIntegrationMCPServer(
 
 func requireScheduleLifecycle(t *testing.T, runtime *Connection, workspace string) {
 	t.Helper()
-	create := schedule.Draft{
-		Title: "Adapter schedule", Instructions: "review the workspace",
-		CWD: workspace, Enabled: true, Cron: "0 9 * * 1-5", TimeZone: "UTC",
+	view := firstPartyView(t, runtime, "schedules")
+	callViewAction(t, runtime, view, "create", nil, map[string]string{
+		"Title": "Adapter schedule", "Instructions": "review the workspace", "TimeZone": "UTC", "CWD": workspace,
+	})
+	rows := viewRows(t, runtime, view, pluginview.Context{}, nil)
+	if len(rows) != 1 || rows[0].Text("CWD") != workspace || rows[0].Text("Cron") != "0 9 * * 1-5" || rows[0].Text("NextRunAt") == "" {
+		t.Fatalf("created schedule rows = %+v", rows)
 	}
-	creation, err := runtime.PrepareCreate(t.Context(), create)
-	if err != nil {
-		t.Fatal(err)
+	callViewAction(t, runtime, view, "edit", rows[0], map[string]string{"Title": "Updated schedule", "Cron": "0 15 * * 1-5"})
+	callViewAction(t, runtime, view, "disable", viewRows(t, runtime, view, pluginview.Context{}, nil)[0], nil)
+	rows = viewRows(t, runtime, view, pluginview.Context{}, nil)
+	if len(rows) != 1 || rows[0].Text("Title") != "Updated schedule" || rows[0].Text("Instructions") != "review the workspace" ||
+		rows[0].Text("Cron") != "0 15 * * 1-5" || rows[0].Text("CWD") != workspace || rows[0].Text("NextRunAt") != "" {
+		t.Fatalf("updated schedule rows = %+v", rows)
 	}
-	reply, err := runtime.CallPlugin(t.Context(), creation, mutation.NewCommandID())
-	if err != nil {
-		t.Fatal(err)
-	}
-	created, err := runtime.DecodeCreate(reply)
-	if err != nil {
-		t.Fatalf("Create schedule: %v", err)
-	}
-	create.CWD = "/caller-reused-create"
-	if created.CWD != workspace || created.NextRunAt.IsZero() {
-		t.Fatalf("created schedule is incomplete: %+v", created)
-	}
-	created.CWD = "/caller-reused-workspace"
-	created.NextRunAt = time.Time{}
-	listed, err := runtime.Schedules(t.Context())
-	if err != nil || len(listed) != 1 || listed[0].ID != created.ID ||
-		listed[0].CWD != workspace ||
-		listed[0].NextRunAt.IsZero() {
-		t.Fatalf("Schedules = (%+v, %v)", listed, err)
-	}
-	listed[0].CWD = "/caller-reused-list"
-	title, instructions, cron, enabled := "Updated schedule", "review again", "0 15 * * 1-5", false
-	update := schedule.UpdateInput{
-		ID: created.ID, ExpectedRevision: created.Revision,
-		Title: &title, Instructions: &instructions, Cron: &cron, Enabled: &enabled,
-		CWD: new(workspace),
-	}
-	updateRequest, err := runtime.PrepareUpdate(t.Context(), update)
-	if err != nil {
-		t.Fatal(err)
-	}
-	updateReply, err := runtime.CallPlugin(t.Context(), updateRequest, mutation.NewCommandID())
-	if err != nil {
-		t.Fatal(err)
-	}
-	updated, err := runtime.DecodeUpdate(created.ID, updateReply)
-	if err != nil || !updated.NextRunAt.IsZero() || updated.Revision <= created.Revision ||
-		updated.Title != title || updated.Instructions != instructions || updated.Cron != cron ||
-		updated.CWD != workspace {
-		t.Fatalf("Update schedule = (%+v, %v)", updated, err)
-	}
-	title, instructions, cron, enabled = "reused", "reused", "0 * * * *", true
-	*update.CWD = "/caller-reused-update"
-	listed, err = runtime.Schedules(t.Context())
-	if err != nil || len(listed) != 1 || listed[0].ID != updated.ID || !listed[0].NextRunAt.IsZero() ||
-		listed[0].Title != "Updated schedule" || listed[0].Instructions != "review again" ||
-		listed[0].Cron != "0 15 * * 1-5" || listed[0].CWD != workspace {
-		t.Fatalf("Schedules after request reuse = (%+v, %v)", listed, err)
-	}
-	deletion, err := runtime.PrepareDelete(t.Context(), created.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := runtime.CallPlugin(t.Context(), deletion, mutation.NewCommandID()); err != nil {
-		t.Fatalf("Delete schedule: %v", err)
+	callViewAction(t, runtime, view, "delete", rows[0], nil)
+	if rows := viewRows(t, runtime, view, pluginview.Context{}, nil); len(rows) != 0 {
+		t.Fatalf("schedule rows after deletion = %+v", rows)
 	}
 }
 
@@ -1047,8 +1048,7 @@ func TestOwnerOpensOnceAndRefusesReopenAfterClose(t *testing.T) {
 	if secondProfile.Discovery().Capabilities.RuntimeTopics[0] == "mutated" {
 		t.Fatal("owner leaked mutable profile state")
 	}
-	if first.AgentMemory() == nil ||
-		first.DiagnosticTools() == nil || first.AuthoringContext() == nil ||
+	if first.DiagnosticTools() == nil || first.AuthoringContext() == nil ||
 		first.Hooks() == nil || first.Feedback() == nil {
 		t.Fatal("connection adapters were not composed")
 	}

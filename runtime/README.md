@@ -347,8 +347,9 @@ missing evidence remains unknown and cannot authorize another mutation. Partial
 stream output is observation, not a final receipt. Core Run acceptance remains
 with Runtime independently of a plugin's acknowledgement or availability.
 
-Memory and Schedules are ordinary selected contributions. CLI, workspace clients,
-Tools and components consume their published operations. Private Memory items,
+Memory and Schedules are ordinary selected contributions. Workspace clients,
+Tools and components consume their published operations; terminal clients read
+and change them through the packages' declared terminal views. Private Memory items,
 ledger, watermark and curation belong to Memory; definitions, cursors and captured
 pending work belong to Schedules. Core has no feature business facade or private
 feature store. Memory publishes its read capacity and owns its maintenance budget.

@@ -15,7 +15,6 @@ const (
 	commandCategorySessions    = "Sessions"
 	commandCategoryComposer    = "Composer"
 	commandCategoryRuntime     = "Runtime"
-	commandCategoryAutomation  = "Automation"
 	commandCategoryContext     = "Context"
 	commandCategoryConnections = "Connections"
 	commandCategoryWorkspace   = "Workspace"
@@ -89,25 +88,8 @@ func builtinCommands() []localCommand {
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "hooks-trust", Title: "trust reviewed project lifecycle hooks"}, Available: availableWithHooks, Run: func(a *app, _ string) error { return a.PrepareHookTrust(true) }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "hooks-revoke", Title: "revoke project lifecycle hook trust"}, Available: availableWithHooks, Run: func(a *app, _ string) error { return a.PrepareHookTrust(false) }},
 		),
-		commandGroup(commandCategoryAutomation,
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "schedules", Title: "inspect scheduled headless runs"}, Available: availableWithSchedules, Run: func(a *app, _ string) error { a.ShowSchedules(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "schedule-create", Title: "create a scheduled headless run"}, Available: availableWithSchedules, Run: func(a *app, _ string) error { return a.OpenScheduleCreateForm() }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "schedule-edit", Title: "edit a schedule by id, prefix, or title", Arguments: extensions.RequiredArguments}, Available: availableWithSchedules, Run: func(a *app, identity string) error { return a.EditSchedule(identity) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "schedule-enable", Title: "enable a schedule", Arguments: extensions.RequiredArguments}, Available: availableWithSchedules, Run: func(a *app, identity string) error { return a.SetScheduleEnabled(identity, true) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "schedule-disable", Title: "disable a schedule", Arguments: extensions.RequiredArguments}, Available: availableWithSchedules, Run: func(a *app, identity string) error { return a.SetScheduleEnabled(identity, false) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "schedule-run", Title: "fire a schedule without advancing its cron cursor", Arguments: extensions.RequiredArguments}, Available: availableWithSchedules, Run: func(a *app, identity string) error { return a.RunScheduleNow(identity) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "schedule-delete", Title: "delete a schedule", Arguments: extensions.RequiredArguments}, Available: availableWithSchedules, Run: func(a *app, identity string) error { return a.PrepareDeleteSchedule(identity) }},
-		),
 		commandGroup(commandCategoryContext,
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "agent-docs", Title: "inspect applicable AGENTS.md documents"}, Available: availableWithAuthoringContext, Run: func(a *app, _ string) error { a.ShowAgentDocuments(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "memory", Title: "inspect governed agent memory by scope", Arguments: extensions.OptionalArguments}, Available: availableWithAgentMemory, Run: func(a *app, scope string) error { return a.ShowAgentMemory(scope) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "memory-add", Title: "author a new active memory item", Arguments: extensions.OptionalArguments}, Available: availableWithAgentMemory, Run: func(a *app, scope string) error { return a.AddAgentMemory(scope) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "memory-edit", Title: "edit memory by scope and id", Arguments: extensions.RequiredArguments}, Available: availableWithAgentMemory, Run: func(a *app, identity string) error { return a.EditAgentMemory(identity) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "memory-pin", Title: "pin memory by scope and id", Arguments: extensions.RequiredArguments}, Available: availableWithAgentMemory, Run: func(a *app, identity string) error { return a.SetAgentMemoryPinned(identity, true) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "memory-unpin", Title: "unpin memory by scope and id", Arguments: extensions.RequiredArguments}, Available: availableWithAgentMemory, Run: func(a *app, identity string) error { return a.SetAgentMemoryPinned(identity, false) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "memory-approve", Title: "approve a pending memory proposal", Arguments: extensions.RequiredArguments}, Available: availableWithAgentMemory, Run: func(a *app, identity string) error { return a.PrepareAgentMemoryReview(identity, true) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "memory-reject", Title: "reject a pending memory proposal", Arguments: extensions.RequiredArguments}, Available: availableWithAgentMemory, Run: func(a *app, identity string) error { return a.PrepareAgentMemoryReview(identity, false) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "memory-delete", Title: "delete memory by scope and id", Arguments: extensions.RequiredArguments}, Available: availableWithAgentMemory, Run: func(a *app, identity string) error { return a.PrepareDeleteAgentMemory(identity) }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skills", Title: "inspect available skills or one named skill", Arguments: extensions.OptionalArguments}, Available: availableWithSkills, Run: func(a *app, name string) error { a.ShowDiscoveredSkills(name); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-library", Title: "inspect active and archived managed skills"}, Available: availableWithSkills, Run: func(a *app, _ string) error { a.ShowManagedSkills(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-proposals", Title: "review pending immutable Skill proposals"}, Available: availableWithSkills, Run: func(a *app, _ string) error { a.ShowSkillProposals(); return nil }},
@@ -207,20 +189,6 @@ func availableWithMCP(a *app) extensions.CommandAvailability {
 func availableWithPlugins(a *app) extensions.CommandAvailability {
 	if a.plugins == nil {
 		return extensions.CommandUnavailable("this runtime composition has no plugin catalog")
-	}
-	return availableWithRuntimeFeature(a, protocol.FeaturePlugins)
-}
-
-func availableWithSchedules(a *app) extensions.CommandAvailability {
-	if a.schedules == nil {
-		return extensions.CommandUnavailable("this runtime composition has no schedule service")
-	}
-	return availableWithRuntimeFeature(a, protocol.FeaturePlugins)
-}
-
-func availableWithAgentMemory(a *app) extensions.CommandAvailability {
-	if a.agentMemory == nil {
-		return extensions.CommandUnavailable("this runtime composition has no agent memory service")
 	}
 	return availableWithRuntimeFeature(a, protocol.FeaturePlugins)
 }

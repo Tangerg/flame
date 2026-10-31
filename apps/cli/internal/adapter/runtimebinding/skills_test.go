@@ -256,13 +256,8 @@ func TestProfileAnswersOptionalAdapterAvailability(t *testing.T) {
 		profile.Supports(protocol.FeatureGoals) {
 		t.Fatalf("profile features = %+v", profile.Discovery().Capabilities.Features)
 	}
-	if profile.Supports(protocol.FeaturePlugins) {
-		t.Fatal("fixture advertises the context features this case must not")
-	}
-
-	// Unadvertised is exactly the state that used to hand back a nil pointer.
-	if runtime.AgentMemory() == nil {
-		t.Fatal("context adapter accessor returned a nil pointer a consumer cannot detect")
+	if runtime.DiagnosticTools() == nil || runtime.AuthoringContext() == nil || runtime.Hooks() == nil || runtime.Feedback() == nil {
+		t.Fatal("adapter accessor returned a nil pointer a consumer cannot detect")
 	}
 }
 

@@ -130,6 +130,7 @@ func (a *app) registerCommands() {
 			a.message(err.Error())
 		}
 	}
+	a.registerPluginViewCommands()
 	for _, contributed := range a.pluginHost.Commands() {
 		command := contributed.Command
 		pluginID := contributed.PluginID

@@ -80,8 +80,6 @@ func startTerminal(ctx context.Context, connection *runtimebinding.Connection, r
 	}
 	if profile.Supports(protocol.FeaturePlugins) {
 		cfg.Plugins = connection
-		cfg.Schedules = connection
-		cfg.AgentMemory = connection.AgentMemory()
 	}
 	if profile.Supports(protocol.FeatureSessionExport) {
 		cfg.Transfers = connection

@@ -322,6 +322,19 @@ module embeds the original PNGs; `saveFile` transfers those same bytes through
 the host's destination owner. The author kit packs this asset package whenever
 the selected component imports it.
 
+## Terminal views
+
+A declaration's `terminalViews` give terminal clients a management screen
+without compiled-in package types. Each view names one callable contribution, a
+query `list` (`method`, `rows`, row `key`, optional `cursor`, `columns`) and
+`actions` that call that contract's methods on the `view` or a selected `row`.
+Every input property is bound to exactly one source: a literal `value`, a `row`
+field, a client `context` fact (`workspace` or `timeZone`) or a `form` field with
+an optional default. Paths walk nested objects with `/`. Runtime refuses a view
+whose methods, properties, row fields or required inputs disagree with the
+contract and derives each form field's kind and choices from the bound schema.
+Memory and Schedules declare `memory` and `schedules`.
+
 ## Contextual Session actions
 
 A public component may declare Session scope and `sessionAction` placement. It is

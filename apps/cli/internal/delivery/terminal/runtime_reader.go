@@ -3,8 +3,6 @@ package terminal
 import (
 	"context"
 	"strings"
-
-	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
 type runtimeReaderMode uint8
@@ -19,12 +17,11 @@ const (
 	runtimeReaderMCPServers
 	runtimeReaderMCPTools
 	runtimeReaderMCPAuthorization
-	runtimeReaderSchedules
 	runtimeReaderModels
 	runtimeReaderModelRoles
 	runtimeReaderProviders
 	runtimeReaderApprovalRules
-	runtimeReaderAgentMemory
+	runtimeReaderPluginView
 	runtimeReaderDiagnosticTools
 	runtimeReaderAgentDocuments
 	runtimeReaderHooks
@@ -45,8 +42,7 @@ type runtimeReaderQuery struct {
 // reader after an authoritative change event. It deliberately contains no UI
 // or transport state.
 type runtimeReaderSelection struct {
-	skillName         string
-	agentMemoryTarget conversation.MemoryTarget
+	skillName string
 }
 
 func (a *app) setRuntimeReader(mode runtimeReaderMode) {

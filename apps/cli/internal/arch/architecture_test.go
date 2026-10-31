@@ -119,7 +119,7 @@ func mayImportRuntime(relative, imported string) bool {
 		return true
 	}
 	switch imported {
-	case sdkPath + "/protocol", sdkPath + "/plugin/memory", sdkPath + "/plugin/schedule", sdkPath + "/builtin", sdkPath + "/extension", sdkPath + "/exactint", sdkPath + "/httporigin", sdkPath + "/jsonvalue", sdkPath + "/model", sdkPath + "/question", sdkPath + "/filesystem/commit":
+	case sdkPath + "/protocol", sdkPath + "/builtin", sdkPath + "/extension", sdkPath + "/exactint", sdkPath + "/httporigin", sdkPath + "/jsonvalue", sdkPath + "/model", sdkPath + "/question", sdkPath + "/filesystem/commit":
 		return true
 	case sdkPath + "/filesystem", sdkPath + "/timezone":
 		ring := ringOf(relative)
@@ -143,10 +143,9 @@ func TestRuntimeImportBoundaries(t *testing.T) {
 		{consumer: "main.go", imported: localRuntimePath, allowed: true},
 		{consumer: "internal/application/settings/config.go", imported: localRuntimePath, allowed: true},
 		{consumer: "internal/application/settings/config.go", imported: sdkPath + "/httporigin", allowed: true},
-		{consumer: "internal/application/workbench/installed_memory_commands.go", imported: sdkPath + "/extension", allowed: true},
 		{consumer: "internal/application/workbench/installed_commands.go", imported: sdkPath + "/extension", allowed: true},
 		{consumer: "internal/delivery/cmd/plugins.go", imported: sdkPath + "/extension", allowed: true},
-		{consumer: "internal/application/workbench/installed_memory_commands.go", imported: sdkPath + "/plugin"},
+		{consumer: "internal/application/workbench/installed_commands.go", imported: sdkPath + "/plugin"},
 		{consumer: "internal/application/workbench/installed_commands.go", imported: sdkPath + "/sqlite"},
 		{consumer: "main.go", imported: runtimePath},
 		{consumer: "internal/adapter/runtimebinding/connection.go", imported: runtimePath, allowed: true},
@@ -154,9 +153,9 @@ func TestRuntimeImportBoundaries(t *testing.T) {
 		{consumer: "internal/adapter/filesystem/store.go", imported: localRuntimePath},
 		{consumer: "internal/adapter/filesystem/statefile/store.go", imported: sdkPath + "/filesystem", allowed: true},
 		{consumer: "internal/application/workbench/store.go", imported: sdkPath + "/filesystem"},
-		{consumer: "internal/delivery/terminal/schedule_form.go", imported: sdkPath + "/timezone", allowed: true},
-		{consumer: "internal/domain/memory/item.go", imported: sdkPath + "/plugin/memory", allowed: true},
-		{consumer: "internal/domain/schedule/schedule.go", imported: sdkPath + "/timezone"},
+		{consumer: "internal/delivery/terminal/plugin_views.go", imported: sdkPath + "/timezone", allowed: true},
+		{consumer: "internal/application/pluginview/view.go", imported: sdkPath + "/plugin/memory"},
+		{consumer: "internal/application/pluginview/view.go", imported: sdkPath + "/timezone"},
 		{consumer: "internal/application/workbench/persistence.go", imported: sdkPath + "/filesystem/commit", allowed: true},
 		{consumer: "internal/domain/conversation/session.go", imported: sdkPath + "/filesystem"},
 		{consumer: "internal/domain/conversation/session.go", imported: sdkPath + "/exactint", allowed: true},

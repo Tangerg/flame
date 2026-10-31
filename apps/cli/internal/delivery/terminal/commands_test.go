@@ -54,7 +54,7 @@ func TestPluginCommandRegistryTakesOnlySelectedOwner(t *testing.T) {
 func TestCommandsWithUsefulDefaultsDeclareOptionalArguments(t *testing.T) {
 	t.Parallel()
 	want := map[string]bool{
-		"workspace": true, "fork": true, "usage": true, "memory": true, "memory-add": true,
+		"workspace": true, "fork": true, "usage": true,
 		"mcp-tools": true, "diff": true, "browse": true,
 	}
 	for _, command := range builtinCommands() {
@@ -102,8 +102,6 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 		goals:          new(goalServiceStub),
 		skills:         newSkillServiceStub(),
 		mcp:            newMCPServiceStub(),
-		schedules:      newScheduleServiceStub(),
-		agentMemory:    newAgentMemoryServiceStub(),
 	}
 	checks := []struct {
 		feature string
@@ -112,8 +110,6 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 		{protocol.FeatureGoals, availableWithGoals},
 		{protocol.FeatureSkills, availableWithSkills},
 		{protocol.FeatureMCP, availableWithMCP},
-		{protocol.FeaturePlugins, availableWithSchedules},
-		{protocol.FeaturePlugins, availableWithAgentMemory},
 	}
 	for _, entry := range checks {
 		feature, check := entry.feature, entry.check
@@ -186,8 +182,7 @@ func TestBuiltinCommandsOwnTheirCategoryAndAvailabilityPolicy(t *testing.T) {
 		commandCategorySessions:    {"sessions", "timeline", "new", "workspace", "relocate", "rename", "fork", "rollback", "import"},
 		commandCategoryComposer:    {"attach", "detach", "attachments", "stash", "stashes", "stash-apply", "stash-delete", "editor"},
 		commandCategoryRuntime:     {"tools", "tool-invoke", "model", "models", "usage", "roles", "utility", "embedding", "providers", "provider-test", "provider-config", "approval", "status", "rules", "rule-delete", "steer", "goal", "goal-start", "goal-update", "goal-clear", "goal-stop", "goal-resume", "hooks", "hooks-trust", "hooks-revoke"},
-		commandCategoryAutomation:  {"schedules", "schedule-create", "schedule-edit", "schedule-enable", "schedule-disable", "schedule-run", "schedule-delete"},
-		commandCategoryContext:     {"agent-docs", "memory", "memory-add", "memory-edit", "memory-pin", "memory-unpin", "memory-approve", "memory-reject", "memory-delete", "skills", "skill-library", "skill-proposals", "skill-archive", "skill-restore", "skill-approve", "skill-reject"},
+		commandCategoryContext:     {"agent-docs", "skills", "skill-library", "skill-proposals", "skill-archive", "skill-restore", "skill-approve", "skill-reject"},
 		commandCategoryConnections: {"mcp-tool", "mcp", "mcp-tools", "mcp-create", "mcp-edit", "mcp-probe", "mcp-delete", "mcp-reconnect", "mcp-auth"},
 		commandCategoryWorkspace:   {"workspaces", "changes", "diff", "preview", "grep", "browse", "read"},
 		commandCategoryExtensions:  {"plugins", "extensions", "reload", "unload"},
@@ -200,9 +195,7 @@ func TestBuiltinCommandsOwnTheirCategoryAndAvailabilityPolicy(t *testing.T) {
 		"usage": true, "roles": true, "utility": true, "embedding": true, "providers": true, "provider-test": true, "provider-config": true,
 		"steer": true, "goal": true, "goal-start": true, "goal-update": true, "goal-clear": true, "goal-stop": true, "goal-resume": true,
 		"skills": true, "skill-library": true, "skill-proposals": true, "skill-archive": true, "skill-restore": true, "skill-approve": true, "skill-reject": true,
-		"memory": true, "memory-add": true, "memory-edit": true, "memory-pin": true, "memory-unpin": true, "memory-approve": true, "memory-reject": true, "memory-delete": true,
 		"mcp-tool": true, "mcp": true, "mcp-tools": true, "mcp-create": true, "mcp-edit": true, "mcp-probe": true, "mcp-delete": true, "mcp-reconnect": true, "mcp-auth": true,
-		"schedules": true, "schedule-create": true, "schedule-edit": true, "schedule-enable": true, "schedule-disable": true, "schedule-run": true, "schedule-delete": true,
 		"tools": true, "tool-invoke": true,
 		"agent-docs": true,
 		"hooks":      true, "hooks-trust": true, "hooks-revoke": true,

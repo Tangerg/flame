@@ -5,12 +5,9 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/models"
-	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/schedule"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -105,27 +102,11 @@ type Skills interface {
 	Reject(context.Context, workspace.SkillProposalReference) error
 }
 
+// Plugins lists installations and calls their contributions. A call carrying
+// a command identity is the durable dispatch of a staged mutation.
 type Plugins interface {
 	ListPlugins(context.Context) ([]protocol.PluginInstallation, error)
-}
-
-// Schedules borrows mutation inputs until return and transfers owned results.
-// A form hands its fresh request to the operation that invokes this port.
-type Schedules interface {
-	Schedules(context.Context) ([]schedule.Snapshot, error)
-	PrepareCreate(context.Context, schedule.Draft) (protocol.CallPluginRequest, error)
-	DecodeCreate(*protocol.CallPluginResponse) (schedule.Snapshot, error)
-	PrepareUpdate(context.Context, schedule.UpdateInput) (protocol.CallPluginRequest, error)
-	DecodeUpdate(string, *protocol.CallPluginResponse) (schedule.Snapshot, error)
-	PrepareDelete(context.Context, string) (protocol.CallPluginRequest, error)
 	CallPlugin(context.Context, protocol.CallPluginRequest, authoring.CommandID) (*protocol.CallPluginResponse, error)
-	PrepareRunNow(context.Context, string) (protocol.CallPluginRequest, error)
-	DecodeRunNow(*protocol.CallPluginResponse) (conversation.RunReference, error)
-}
-
-type AgentMemory interface {
-	workbench.MemoryCommands
-	Items(context.Context, conversation.MemoryTarget) ([]memory.Item, error)
 }
 
 type DiagnosticTools interface {

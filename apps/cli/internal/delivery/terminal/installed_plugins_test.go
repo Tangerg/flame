@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/core/input"
@@ -18,6 +19,19 @@ type installedPluginCatalog struct {
 	mu           sync.Mutex
 	installation *protocol.PluginInstallation
 	err          error
+	calls        []protocol.CallPluginRequest
+	respond      func(protocol.CallPluginRequest) (*protocol.CallPluginResponse, error)
+}
+
+func (c *installedPluginCatalog) CallPlugin(_ context.Context, request protocol.CallPluginRequest, _ authoring.CommandID) (*protocol.CallPluginResponse, error) {
+	c.mu.Lock()
+	c.calls = append(c.calls, request)
+	respond := c.respond
+	c.mu.Unlock()
+	if respond == nil {
+		return nil, errors.New("plugin calls are not served")
+	}
+	return respond(request)
 }
 
 func (c *installedPluginCatalog) ListPlugins(context.Context) ([]protocol.PluginInstallation, error) {

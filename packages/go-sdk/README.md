@@ -15,7 +15,7 @@ including in tests and development commands.
 | `hook`                                                                                 | Portable lifecycle events, rules and bounded command material                        |
 | `plugin`                                                                               | Flame model roles, tool authoring and product receipt contracts                      |
 | `plugin/backend`, `plugin/process`                                                     | Package backend process entry and the environment the Runtime binds for it           |
-| `plugin/memory`, `plugin/schedule`                                                     | Published Memory and Schedule consumer contracts                                     |
+| `plugin/memory`                                                                        | Published Memory consumer contract                                                   |
 | `plugin/skilllearning`                                                                 | Skill learning advice and bounded call-scoped source/model contracts                 |
 | `plugin/codeintel`                                                                     | Versioned source transformations and diagnostic consumer contract                    |
 | `plugin/modelprovider`                                                                 | Installed chat, token counting, model facts and embedding adapters                   |

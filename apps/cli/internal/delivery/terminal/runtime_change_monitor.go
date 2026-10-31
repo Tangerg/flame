@@ -94,16 +94,14 @@ type runtimeChangeMonitor struct {
 }
 
 type runtimeResourceObservation struct {
-	plan        bool
-	goals       bool
-	skills      bool
-	mcp         bool
-	plugins     bool
-	schedules   bool
-	hooks       bool
-	models      bool
-	approvals   bool
-	agentMemory bool
+	plan      bool
+	goals     bool
+	skills    bool
+	mcp       bool
+	plugins   bool
+	hooks     bool
+	models    bool
+	approvals bool
 }
 
 func (r runtimeResourceObservation) hasWorkspaceAuthoredResources() bool {
@@ -112,16 +110,14 @@ func (r runtimeResourceObservation) hasWorkspaceAuthoredResources() bool {
 
 func (a *app) observedRuntimeResources() runtimeResourceObservation {
 	return runtimeResourceObservation{
-		plan:        a.runtimeSupports(protocol.FeaturePlan),
-		goals:       a.goals != nil && a.runtimeSupports(protocol.FeatureGoals),
-		skills:      a.skills != nil && a.runtimeSupports(protocol.FeatureSkills),
-		mcp:         a.mcp != nil && a.runtimeSupports(protocol.FeatureMCP),
-		plugins:     a.plugins != nil && a.runtimeSupports(protocol.FeaturePlugins),
-		schedules:   a.schedules != nil && a.runtimeSupports(protocol.FeaturePlugins),
-		hooks:       a.hooks != nil,
-		models:      true,
-		approvals:   true,
-		agentMemory: a.agentMemory != nil && a.runtimeSupports(protocol.FeaturePlugins),
+		plan:      a.runtimeSupports(protocol.FeaturePlan),
+		goals:     a.goals != nil && a.runtimeSupports(protocol.FeatureGoals),
+		skills:    a.skills != nil && a.runtimeSupports(protocol.FeatureSkills),
+		mcp:       a.mcp != nil && a.runtimeSupports(protocol.FeatureMCP),
+		plugins:   a.plugins != nil && a.runtimeSupports(protocol.FeaturePlugins),
+		hooks:     a.hooks != nil,
+		models:    true,
+		approvals: true,
 	}
 }
 
@@ -364,10 +360,7 @@ func (r runtimeChangeMonitor) supportedTopics() []protocol.RuntimeTopic {
 		candidates = append(candidates, protocol.TopicMCPChanged)
 	}
 	if r.resources.plugins {
-		candidates = append(candidates, protocol.TopicPluginsChanged)
-	}
-	if r.resources.schedules || r.resources.agentMemory {
-		candidates = append(candidates, protocol.TopicPluginDataChanged)
+		candidates = append(candidates, protocol.TopicPluginsChanged, protocol.TopicPluginDataChanged)
 	}
 	if r.resources.hooks {
 		candidates = append(candidates, protocol.TopicHooksChanged)

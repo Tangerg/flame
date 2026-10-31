@@ -29,11 +29,11 @@ func (a *app) applyRuntimeInvalidation(event changefeed.Event) {
 	a.refreshSkillReader(event.Type == protocol.RuntimeSkillsChanged)
 	a.refreshMCPReader(event.Type == protocol.RuntimeMCPChanged)
 	a.refreshPluginsReader(event.Type == protocol.RuntimePluginsChanged)
-	a.refreshScheduleReader(event.Type == protocol.RuntimePluginDataChanged)
+	a.refreshPluginViews(event.Type == protocol.RuntimePluginsChanged)
+	a.refreshPluginViewReader(event.Type == protocol.RuntimePluginDataChanged)
 	a.refreshHooksReader(event.Type == protocol.RuntimeHooksChanged)
 	a.refreshModelReader(event.Type == protocol.RuntimeModelsChanged)
 	a.refreshApprovalReader(event.Type == protocol.RuntimeApprovalsChanged || event.Type == protocol.RuntimeMCPChanged)
-	a.refreshAgentMemoryReader(event.Type == protocol.RuntimePluginDataChanged)
 	a.applySessionInvalidation(
 		invalidatesSessionCatalog(event),
 		invalidationAffectsSession(event, a.session.current.ID, a.execution.conversation.RunID()),
@@ -45,11 +45,11 @@ func (a *app) applyRuntimeResync(topics []protocol.RuntimeTopic) {
 	a.refreshSkillReader(slices.Contains(topics, protocol.TopicSkillsChanged))
 	a.refreshMCPReader(slices.Contains(topics, protocol.TopicMCPChanged))
 	a.refreshPluginsReader(slices.Contains(topics, protocol.TopicPluginsChanged))
-	a.refreshScheduleReader(slices.Contains(topics, protocol.TopicPluginDataChanged))
+	a.refreshPluginViews(slices.Contains(topics, protocol.TopicPluginsChanged))
+	a.refreshPluginViewReader(slices.Contains(topics, protocol.TopicPluginDataChanged))
 	a.refreshHooksReader(slices.Contains(topics, protocol.TopicHooksChanged))
 	a.refreshModelReader(slices.Contains(topics, protocol.TopicModelsChanged))
 	a.refreshApprovalReader(slices.Contains(topics, protocol.TopicApprovalsChanged) || slices.Contains(topics, protocol.TopicMCPChanged))
-	a.refreshAgentMemoryReader(slices.Contains(topics, protocol.TopicPluginDataChanged))
 	a.applySessionInvalidation(
 		invalidatesSessionCatalog(changefeed.Event{Type: protocol.RuntimeResync, Topics: topics}),
 		resyncAffectsSession(topics),
@@ -65,12 +65,6 @@ func (a *app) refreshPluginsReader(affected bool) {
 func (a *app) refreshHooksReader(affected bool) {
 	if affected && a.hooks != nil && a.dialogs.runtimeReader == runtimeReaderHooks && a.dialogs.readerDialog.Open() {
 		a.refreshRuntimeReader(a.hooksReaderQuery())
-	}
-}
-
-func (a *app) refreshScheduleReader(affected bool) {
-	if affected && a.schedules != nil && a.dialogs.runtimeReader == runtimeReaderSchedules && a.dialogs.readerDialog.Open() {
-		a.refreshRuntimeReader(a.schedulesReaderQuery())
 	}
 }
 
@@ -135,12 +129,6 @@ func (a *app) refreshModelReader(affected bool) {
 func (a *app) refreshApprovalReader(affected bool) {
 	if affected && a.dialogs.runtimeReader == runtimeReaderApprovalRules && a.dialogs.readerDialog.Open() {
 		a.refreshRuntimeReader(a.approvalRulesReaderQuery())
-	}
-}
-
-func (a *app) refreshAgentMemoryReader(affected bool) {
-	if affected && a.agentMemory != nil && a.dialogs.runtimeReader == runtimeReaderAgentMemory && a.dialogs.readerDialog.Open() {
-		a.refreshRuntimeReader(a.agentMemoryReaderQuery(a.dialogs.runtimeSelection.agentMemoryTarget))
 	}
 }
 

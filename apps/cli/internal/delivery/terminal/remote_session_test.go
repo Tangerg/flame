@@ -16,7 +16,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/schedule"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/core/input"
 )
@@ -434,19 +433,5 @@ func TestRemoteWorkspaceInputsAndPickerPreserveRuntimePaths(t *testing.T) {
 	}, nil, current)
 	if len(choices) != 2 || choices[0].workspace.Path != current || !choices[0].current || choices[1].current {
 		t.Fatalf("remote workspace identities = %+v", choices)
-	}
-}
-
-func TestScheduleFormsPreserveForeignRuntimeWorkspaceReferences(t *testing.T) {
-	const path = `D:\server\scheduled`
-	draft := scheduleFormDraft{instructions: "review", workspace: path, cron: defaultScheduleCron, timeZone: "UTC"}
-	request, err := draft.candidate()
-	if err != nil || request.CWD != path {
-		t.Fatalf("remote schedule candidate = %+v, %v", request, err)
-	}
-	original := schedule.Snapshot{ID: "sch_review", Revision: 1, Instructions: "review", Cron: defaultScheduleCron, TimeZone: "UTC"}
-	requestPatch, changed, err := draft.patch(original)
-	if err != nil || !changed || requestPatch.CWD == nil || *requestPatch.CWD != path {
-		t.Fatalf("remote schedule update = %+v, changed %t, %v", requestPatch, changed, err)
 	}
 }

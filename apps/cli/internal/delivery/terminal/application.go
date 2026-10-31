@@ -66,8 +66,6 @@ type app struct {
 	skills           Skills
 	mcp              MCPManagement
 	plugins          Plugins
-	schedules        Schedules
-	agentMemory      AgentMemory
 	diagnosticTools  DiagnosticTools
 	authoringContext AuthoringContext
 	hooks            Hooks
@@ -80,6 +78,7 @@ type app struct {
 	pluginIssues []extensions.SourceIssue
 	operations   *operationOwner
 	session      sessionState
+	pluginViews  pluginViewState
 	execution    executionState
 	steers       steerReceipts
 	dialogs      dialogState
@@ -140,8 +139,6 @@ type appConfig struct {
 	skills           Skills
 	mcp              MCPManagement
 	plugins          Plugins
-	schedules        Schedules
-	agentMemory      AgentMemory
 	diagnosticTools  DiagnosticTools
 	authoringContext AuthoringContext
 	hooks            Hooks
@@ -200,8 +197,7 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		ctx: cfg.context, loop: loop, runtime: cfg.runtime, workspaces: cfg.workspaces,
 		runtimeProfile: cfg.runtimeProfile, replayPolicy: cfg.replayPolicy,
 		changes: cfg.changes, transfers: cfg.transfers, usage: cfg.usage, modelConfig: cfg.modelConfig,
-		goals: cfg.goals, skills: cfg.skills, mcp: cfg.mcp, plugins: cfg.plugins, schedules: cfg.schedules,
-		agentMemory:      cfg.agentMemory,
+		goals: cfg.goals, skills: cfg.skills, mcp: cfg.mcp, plugins: cfg.plugins,
 		diagnosticTools:  cfg.diagnosticTools,
 		authoringContext: cfg.authoringContext, hooks: cfg.hooks, feedback: cfg.feedback,
 		session: sessionState{current: cfg.snapshot.Session, context: newSessionContextLease()},
@@ -258,6 +254,7 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	a.restoreSessionOutbox()
 	_ = a.persistDraft()
 	a.followRuntimeChanges()
+	a.loadPluginViews()
 	return a
 }
 

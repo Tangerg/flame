@@ -76,7 +76,7 @@ func request(t *testing.T) protocol.CallPluginRequest {
 }
 
 func execute(ctx context.Context, caller workbench.InstalledCaller, store *workbench.Store, intent string, policy mutation.ReplayPolicy, prepare func(context.Context) (protocol.CallPluginRequest, error)) error {
-	_, err := workbench.ExecuteInstalledCommand(ctx, caller, store, intent, policy, prepare, func(*protocol.CallPluginResponse) (struct{}, error) { return struct{}{}, nil })
+	err := workbench.ExecuteInstalledCommand(ctx, caller, store, intent, policy, prepare)
 	return err
 }
 
@@ -241,44 +241,5 @@ func TestOnlyOwnerEvidenceRetiresTheOriginalIntent(t *testing.T) {
 	}
 	if _, pending := store.PendingInstalledCommand("refused"); pending {
 		t.Fatal("definite owner refusal remains unresolved")
-	}
-}
-
-func TestDecodedAcknowledgementPrecedesIntentRetirement(t *testing.T) {
-	store, err := workbench.OpenMemory(workbench.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer store.Close()
-	now := time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC)
-	preparations := 0
-	prepare := func(context.Context) (protocol.CallPluginRequest, error) {
-		preparations++
-		return request(t), nil
-	}
-	var originalID authoring.CommandID
-	owner := callerFunc(func(_ context.Context, _ protocol.CallPluginRequest, id authoring.CommandID) (*protocol.CallPluginResponse, error) {
-		if originalID != "" && id != originalID {
-			t.Fatal("invalid acknowledgement replaced the original command")
-		}
-		originalID = id
-		return &protocol.CallPluginResponse{Output: `{}`}, nil
-	})
-	decode := func(*protocol.CallPluginResponse) (string, error) {
-		return "", &portable.Refusal{Code: "invalid_projection", Message: "invalid owner acknowledgement"}
-	}
-	if _, err := workbench.ExecuteInstalledCommand(t.Context(), owner, store, "accept", policy(t, "store", &now), prepare, decode); err == nil {
-		t.Fatal("invalid decoded acknowledgement became success")
-	}
-	if _, pending := store.PendingInstalledCommand("accept"); !pending {
-		t.Fatal("invalid decoded acknowledgement retired the original intent")
-	}
-	decode = func(*protocol.CallPluginResponse) (string, error) { return "original acceptance", nil }
-	result, err := workbench.ExecuteInstalledCommand(t.Context(), owner, store, "accept", policy(t, "store", &now), prepare, decode)
-	if err != nil || result != "original acceptance" || preparations != 1 {
-		t.Fatalf("decoded original acceptance: %q, preparations=%d, error=%v", result, preparations, err)
-	}
-	if _, pending := store.PendingInstalledCommand("accept"); pending {
-		t.Fatal("validated acknowledgement remains unresolved")
 	}
 }

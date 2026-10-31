@@ -362,84 +362,20 @@ receipt lexemes. Rebuild Runtime and CLI together; inline payloads are refused.
 Private receipts and local pending input records retain their original JSON and
 owner.
 
-Schedule catalog reads capture the selected installation/contribution and full
-required callable contract once, then page through `plugins.call`. The CLI's Go
-request/output projection is generated from the same publisher contracts as TS;
-no private backend package is imported. Selection changes cannot mix providers
-inside one traversal. Cursor/request/row bounds and duplicate ID rejection remain.
-Every Schedule read and mutation uses public installed operations.
-Before dispatch, the CLI workbench persists the original installation, release,
-contribution, contract, target, input bytes and command ID. After a lost
-acknowledgement or restart, `/schedule-create`, `/schedule-delete <original-full-id>`
-`/schedule-edit <original-full-id>` or `/schedule-run <original-full-id>` reconciles that request before current
-provider discovery. An unresolved creation reuses the original draft instead of
-opening a fresh form. Startup reports pending intents. An unavailable original
-owner, expired replay guarantee or changed Runtime store leaves intent unconfirmed;
-it cannot resubmit the command to another installation. Only a decoded owner
-acknowledgement or business refusal retires it. This record contains no result. If local publication becomes visible but directory
-synchronization fails, the original intent remains pending and delivery is fenced.
-Close and reopen the workbench to confirm the actual records before retrying;
-retries cannot create a replacement command identity.
+Package management screens are plugin terminal views. An installed release
+declares each view's list method, row key, columns and actions; Runtime admits the
+declaration against the contribution's contract and resolves every form field's
+kind. Each view becomes a `/<view-id>` command: the bare command lists rows, and
+`/<view-id> <action> [key]` runs an action on the view or on the row whose key is
+the argument or its unique prefix. `application/pluginview` binds the declared
+literals, row fields, workspace/time-zone context and form values into one input
+and validates it against the contract before the call. The CLI compiles in no
+package type; first-party memory and schedules use this same path.
 
-Forms and the binding adapter use the same generated publisher Go projection in
-`internal/domain/schedule`; no private backend import or handwritten create DTO
-is needed. Workspace resolution precedes initial capture and is never repeated for
-pending intent. The publisher still owns schedule validation, creation and receipt.
-Manual execution returns the existing Core Session/Run reference; a settled command
-permits a later new intent. Editing and enablement retain the originally inspected
-revision and patch; workspace reset is an explicit empty CWD, while omission keeps
-the binding. Pending edits are reconciled before reading another revision. Readers
-use the generated publisher snapshot directly, without a Core Schedule projection
-or extra Enabled state. No Schedule Core API, DTO or feature flag remains; the
-client negotiates the generic plugins entrance and resolves the selected contract.
-
-Memory catalog reads use the publisher's generated Go contract and public installed
-query. The selected installation, release, contribution and complete contract are
-captured once for all pages. Project workspace resolution precedes capture; each
-page keeps that owner and target. Capacity/request/page bounds, repeated IDs/cursors,
-empty continuations and scope mismatches are refused without partial results.
-The former ListAgentMemory/agentMemory.list and workspace list wrapper are removed.
-CLI Memory deletion uses the generated public operation and stages its complete
-binding, raw input, command identity and replay guard in the existing workbench
-before dispatch. An uncertain deletion resumes before workspace or catalog reads,
-including after client restart and provider replacement. The retry accepts a full
-ID or an unambiguous prefix among pending deletions; an invalid acknowledgement
-retains the original intent. Desktop deletion now also uses the installed operation
-and its existing client journal restores the original route before any new provider
-preparation. Core DeleteAgentMemory/agentMemory.delete and their DTO are removed.
-CLI review also uses the published operation; the installed graphical component
-uses that same backend owner. Approve and reject share
-one logical intent per item; an unconfirmed decision must be reconciled before an
-opposite decision can be submitted. Pending full/prefix IDs resolve before current
-workspace/catalog reads, and original decision/request/key survive restart.
-Core ReviewAgentMemory/agentMemory.review, its request and global decision enum
-are removed. Editing and pin/unpin now use the generated public update operation.
-They share one item intent and retain the original nullable patch before I/O.
-An edited retry cannot confirm a different draft; /memory-edit first resumes the
-original pending patch without current workspace/catalog reads. Public snapshot
-decoding precedes intent retirement. Core UpdateAgentMemory/agentMemory.update and
-its request are removed. Add now uses the generated public operation and one
-authoring intent. The workbench retains the original scope, captured workspace,
-content, binding and command identity. /memory-add reconciles that intent before
-reading the current workspace or opening another editor. Changed content or target
-cannot replace an uncertain addition. The backend alone resolves the captured path
-to its private project root and reports whether it changed the business state.
-Snapshot validation, including original scope, precedes retirement. Core
-AddAgentMemory/agentMemory.add, its DTO and the Memory-specific Core feature are
-removed. Clients negotiate plugins and resolve the concrete published capability.
-Uncertain requests from retired Core contracts are not translated into fresh
-public commands. The publisher owns Memory read models and closed values.
-Terminal presentation owns its compact read projection; generated publisher
-snapshots remain the transport contract. Visible-state and timestamp checks precede
-presentation, while publisher schemas own identity/content admission. Complete
-readers consume the publisher-owned capacity without a Core Memory export. Complete readers obtain the
-publisher's schema-bound Capacity from the first page, require it to remain stable
-under the captured binding and reject cumulative overflow or empty continuation.
-Page width uses the backend default, and the publisher alone derives row/request
-limits from its business constants.
-
-Memory and Schedule invalidations use `plugins.dataChanged`.
-The CLI subscribes once when either reader exists and refreshes both through their
-public owner reads. The event contains no business state or record IDs. Unknown
-installed command outcomes still invalidate reads without claiming success; ordinary
-resync and subscription gap/partition behavior remain unchanged.
+A query action calls directly. A mutation stages its complete request, command ID
+and replay guard in the workbench before dispatch under the intent
+`plugin-view:<installation>/<view>/<action>/<key>`. After a lost acknowledgement
+or restart, repeating that action resumes the original request instead of
+preparing a new one; only an owner acknowledgement or business refusal retires it.
+An open view re-reads its rows on `plugins.dataChanged`, and the view commands are
+rebuilt on `plugins.changed`.

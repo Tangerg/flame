@@ -179,69 +179,55 @@ type InstalledCaller interface {
 
 // ExecuteInstalledCommand stages the complete request before I/O. An unresolved intent always
 // resumes its original request, including after restart or provider replacement.
-func ExecuteInstalledCommand[T any](ctx context.Context, caller InstalledCaller, store *Store, intent string, policy mutation.ReplayPolicy, prepare func(context.Context) (protocol.CallPluginRequest, error), decode func(*protocol.CallPluginResponse) (T, error)) (T, error) {
-	return executeInstalledCommand(ctx, caller, store, intent, policy, prepare, nil, decode)
-}
-
-func executeInstalledCommand[T any](ctx context.Context, caller InstalledCaller, store *Store, intent string, policy mutation.ReplayPolicy, prepare func(context.Context) (protocol.CallPluginRequest, error), admit func(protocol.CallPluginRequest) error, decode func(*protocol.CallPluginResponse) (T, error)) (T, error) {
-	var zero T
+func ExecuteInstalledCommand(ctx context.Context, caller InstalledCaller, store *Store, intent string, policy mutation.ReplayPolicy, prepare func(context.Context) (protocol.CallPluginRequest, error)) error {
 	if store == nil {
-		return zero, ErrUnavailable
+		return ErrUnavailable
 	}
 	pending, exists := store.PendingInstalledCommand(intent)
 	if !exists {
 		request, err := prepare(ctx)
 		if err != nil {
-			return zero, err
-		}
-		if admit != nil {
-			if err := admit(request); err != nil {
-				return zero, err
-			}
+			return err
 		}
 		guard, err := policy.NewGuard()
 		if err != nil {
-			return zero, err
+			return err
 		}
 		pending = PendingInstalledCommand{Intent: intent, CommandID: mutation.NewCommandID(), Request: request, Replay: guard}
 		if err := store.stageInstalledCommand(pending); err != nil {
-			return zero, fmt.Errorf("stage installed command: %w", err)
+			return fmt.Errorf("stage installed command: %w", err)
 		}
 		pending, exists = store.PendingInstalledCommand(intent)
 		if !exists {
-			return zero, errors.New("staged installed command is absent")
-		}
-	} else if admit != nil {
-		if err := admit(pending.Request); err != nil {
-			return zero, err
+			return errors.New("staged installed command is absent")
 		}
 	}
 	var ownerRefusal *portable.Refusal
-	result, err := mutation.ConfirmAdmitted(ctx, mutation.AcknowledgementBackoff(), mutation.ReplayAdmission(policy, pending.Replay), func(ctx context.Context) (T, error) {
+	_, err := mutation.ConfirmAdmitted(ctx, mutation.AcknowledgementBackoff(), mutation.ReplayAdmission(policy, pending.Replay), func(ctx context.Context) (struct{}, error) {
 		if err := store.DispatchReady(); err != nil {
-			return zero, err
+			return struct{}{}, err
 		}
 		request := pending.Request
 		reply, err := caller.CallPlugin(ctx, request, pending.CommandID)
 		ownerRefusal = nil
 		if err != nil {
 			errors.As(err, &ownerRefusal)
-			return zero, err
+			return struct{}{}, err
 		}
 		if reply == nil {
-			return zero, errors.New("installed command acknowledgement is absent")
+			return struct{}{}, errors.New("installed command acknowledgement is absent")
 		}
 		if reply.Failure != nil {
 			ownerRefusal = &portable.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
-			return zero, ownerRefusal
+			return struct{}{}, ownerRefusal
 		}
-		return decode(reply)
+		return struct{}{}, nil
 	})
 	if err != nil && ownerRefusal == nil {
-		return zero, fmt.Errorf("installed command outcome remains unknown: %w", errors.Join(authoring.ErrCommandOutcomeUnknown, err))
+		return fmt.Errorf("installed command outcome remains unknown: %w", errors.Join(authoring.ErrCommandOutcomeUnknown, err))
 	}
 	if retireErr := store.retireInstalledCommand(pending); retireErr != nil {
-		return zero, errors.Join(err, fmt.Errorf("retire installed command intent: %w", retireErr))
+		return errors.Join(err, fmt.Errorf("retire installed command intent: %w", retireErr))
 	}
-	return result, err
+	return err
 }

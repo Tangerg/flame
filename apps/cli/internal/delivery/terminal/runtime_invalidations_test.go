@@ -298,27 +298,6 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		})
 
 	}
-
-	t.Run("agent memory", func(t *testing.T) {
-		memory := newAgentMemoryServiceStub()
-		source := runtimeResourceChangeSource(protocol.TopicPluginDataChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Changes: source, Workspace: "/workspace"})
-		host.Shows(t, "Ask flame")
-		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicPluginDataChanged)
-		host.Type("/memory project")
-		host.Press(input.Enter)
-		host.Shows(t, "confirm release steps")
-
-		memory.mu.Lock()
-		memory.project[0].Content = "confirm externally revised release steps"
-		memory.project[0].UpdatedAt = time.Now()
-		memory.mu.Unlock()
-		source.events <- changefeed.Event{Type: protocol.RuntimePluginDataChanged, Sequence: 1}
-		awaitSignal(t, source.applied, "plugins.dataChanged delivery")
-		host.Shows(t, "confirm externally revised release steps")
-		host.Hides(t, "confirm release steps")
-		stop()
-	})
 }
 
 func TestApprovalRuleDeletionResolvesAUniquePrefixAndSurvivesResize(t *testing.T) {
