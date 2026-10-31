@@ -68,14 +68,8 @@ const resultPublicationSourceColumn = "source_message_seq INTEGER REFERENCES mes
 const resultPublicationResultsColumn = "model_results TEXT CHECK (model_results IS NULL OR json_valid(model_results))"
 
 // openDatabase creates the current schema in an empty database or admits an exact
-// current schema. Other schemas are refused. The returned *sql.DB is safe for
-// concurrent use and is shared by every store.
-//
-// Tuning baked in:
-//   - journal_mode = WAL — concurrent readers don't block the writer
-//   - foreign_keys = ON — surfaces parent-id violations early
-//   - immediate writes — acquire the writer slot before reading mutable state
-//   - busy_timeout = 5000ms — waits for other owners' brief write-sets
+// current schema. Other schemas are refused. Connection tuning is qimu/sqlite's;
+// the returned *sql.DB is shared by every store.
 func openDatabase(ctx context.Context, path string) (*sql.DB, error) {
 	return sqlite.OpenSchema(ctx, path, currentSchema())
 }
