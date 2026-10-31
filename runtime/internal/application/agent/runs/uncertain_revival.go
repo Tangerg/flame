@@ -9,6 +9,14 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
+// uncertainRevivalSource is the durable evidence revival reads: the open Runs,
+// their Transcript, and the Tool attempts that never settled.
+type uncertainRevivalSource interface {
+	ListNonTerminalRuns(context.Context) ([]run.Run, error)
+	ListTranscript(ctx context.Context, sessionID string) ([]transcript.Item, error)
+	ListOpenToolInvocations(context.Context) ([]OpenToolInvocation, error)
+}
+
 type sessionExecutionContexts interface {
 	LoadSessionCheckpoint(context.Context, string) (ExecutorCheckpoint, bool, error)
 }
@@ -39,7 +47,7 @@ type UncertainExecutionPlan struct {
 
 // The coordinator reinstalls the original writer lease and Segment pump before
 // the executor restores Scope or publishes a verified external result.
-func (c *Coordinator) ReviveUncertainExecutions(ctx context.Context, source RecoveryStore, contexts sessionExecutionContexts, executor uncertainExecutionRecovery) error {
+func (c *Coordinator) ReviveUncertainExecutions(ctx context.Context, source uncertainRevivalSource, contexts sessionExecutionContexts, executor uncertainExecutionRecovery) error {
 	values, err := source.ListNonTerminalRuns(ctx)
 	if err != nil {
 		return err
