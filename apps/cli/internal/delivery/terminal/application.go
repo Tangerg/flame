@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/input"
@@ -54,42 +55,34 @@ const (
 )
 
 type app struct {
-	ctx              context.Context
-	loop             *program.Runtime
-	runtime          Runtime
-	workspaces       Workspaces
-	changes          changefeed.Source
-	transfers        session.TransferService
-	usage            *usageScreens
-	modelConfig      *modelConfigScreens
-	goals            *goalScreens
-	skills           *skillScreens
-	mcp              *mcpScreens
-	plugins          *pluginScreens
-	diagnosticTools  *diagnosticScreens
-	authoringContext *agentDocumentScreens
-	hooks            *hookScreens
-	feedback         Feedback
-	runtimeProfile   RuntimeProfile
-	replayPolicy     mutation.ReplayPolicy
-	artifacts        sessionartifact.Store
+	ctx            context.Context
+	loop           *program.Runtime
+	runtime        Runtime
+	workspaces     Workspaces
+	changes        changefeed.Source
+	transfers      session.TransferService
+	feedback       Feedback
+	runtimeProfile RuntimeProfile
+	replayPolicy   mutation.ReplayPolicy
+	artifacts      sessionartifact.Store
 
-	pluginHost   *extensions.Host
-	pluginIssues []extensions.SourceIssue
-	operations   *operationOwner
-	tasks        taskRunner
-	session      sessionState
-	execution    executionState
-	steers       steerReceipts
-	dialogs      dialogState
-	reader       *readerSurface
-	prompts      *interruptPrompts
-	approvals    *approvalScreens
-	inspection   *workspaceScreens
-	timeline     *timelineDialog
-	palette      *commandPaletteDialog
-	search       *searchPrompt
-	shortcuts    *shortcutGuide
+	pluginHost       *extensions.Host
+	pluginIssues     []extensions.SourceIssue
+	operations       *operationOwner
+	tasks            taskRunner
+	session          sessionState
+	execution        executionState
+	steers           steerReceipts
+	dialogs          dialogState
+	reader           *readerSurface
+	prompts          *interruptPrompts
+	screens          screens
+	timeline         *timelineDialog
+	palette          *pickerDialog[commandPaletteItem]
+	search           *searchPrompt
+	shortcuts        *shortcutGuide
+	models           *pickerDialog[protocol.Model]
+	workspaceChoices *pickerDialog[workspaceChoice]
 
 	transcript  *transcriptView
 	brand       *brandBanner
@@ -308,8 +301,19 @@ func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.M
 	a.buildSessionPicker(theme, glyphs)
 	a.buildWorkspacePicker(theme, glyphs)
 	a.buildTimeline(theme, glyphs)
-	a.buildRuntimePickers(theme, glyphs)
-	a.palette = newCommandPaletteDialog(&a.stack, theme, glyphs, a.chooseCommand)
+	a.buildModelPicker(theme, glyphs)
+	a.palette = newPickerDialog(pickerDialogConfig[commandPaletteItem]{
+		stack: &a.stack, theme: theme, glyphs: glyphs, title: "Commands", search: "search commands",
+		where: layout.Placement{Width: 82, Height: 18},
+		label: func(item commandPaletteItem) string { return "/" + item.command.Name },
+		detail: func(item commandPaletteItem) string {
+			if !item.availability.Enabled() {
+				return item.category + " · unavailable: " + item.availability.Reason()
+			}
+			return item.category + " · " + item.command.Title
+		},
+		choose: a.chooseCommand,
+	})
 	a.shortcuts = newShortcutGuide(&a.stack, theme, glyphs, a.loop.Environment().Wheel(), editorKeys, a.transcript.Keys())
 	a.search = newSearchPrompt(&a.stack, theme, glyphs, a.Find)
 	a.reader = newReaderSurface(readerSurfaceConfig{
@@ -411,8 +415,8 @@ func (a *app) Close(ctx context.Context) error {
 	a.operations.Cancel(completionOperation)
 	a.cancelPluginCommands()
 	a.operations.Close()
-	if a.mcp != nil && a.mcp.form != nil {
-		a.mcp.closeMCPForm(a.mcp.form)
+	if a.screens.mcp != nil && a.screens.mcp.form != nil {
+		a.screens.mcp.closeMCPForm(a.screens.mcp.form)
 	}
 	a.drafts.cancel()
 	// Flush is a serialization barrier: any autosave already in the filesystem

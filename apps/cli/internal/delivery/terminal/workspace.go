@@ -27,9 +27,11 @@ type workspaceChoice struct {
 }
 
 func (a *app) buildWorkspacePicker(theme kit.Theme, glyphs kit.Glyphs) {
-	a.dialogs.workspacePicker = newPicker(theme, glyphs, "search recent workspaces",
-		func(choice workspaceChoice) string { return choice.workspace.Path },
-		func(choice workspaceChoice) string {
+	a.workspaceChoices = newPickerDialog(pickerDialogConfig[workspaceChoice]{
+		stack: &a.stack, theme: theme, glyphs: glyphs, title: "Workspaces", search: "search recent workspaces",
+		where: layout.Placement{Width: 92, Height: 20},
+		label: func(choice workspaceChoice) string { return choice.workspace.Path },
+		detail: func(choice workspaceChoice) string {
 			if choice.current {
 				return "current"
 			}
@@ -38,29 +40,22 @@ func (a *app) buildWorkspacePicker(theme kit.Theme, glyphs kit.Glyphs) {
 			}
 			return compactRelativeAge(choice.workspace.LastOpened)
 		},
-		func(choice workspaceChoice) {
-			if !a.dialogs.workspaceDialog.Open() {
-				return
-			}
-			a.dialogs.workspaceDialog.Dismiss()
-			if !choice.available {
-				a.message("workspace is no longer available · " + choice.workspace.Path)
-				return
-			}
-			if a.workspaces != nil {
-				a.resolveAndStartWorkspace(choice.workspace.Path)
-				return
-			}
-			if err := a.createSessionInWorkspace(choice.workspace.Path); err != nil {
-				a.message(err.Error())
-			}
-		},
-	)
-	a.dialogs.workspaceDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Workspaces", Body: a.dialogs.workspacePicker,
-		Where: layout.Placement{Width: 92, Height: 20},
+		choose: a.chooseWorkspaceChoice,
 	})
-	a.dialogs.workspacePicker.cancel = a.dialogs.workspaceDialog.Dismiss
+}
+
+func (a *app) chooseWorkspaceChoice(choice workspaceChoice) {
+	if !choice.available {
+		a.message("workspace is no longer available · " + choice.workspace.Path)
+		return
+	}
+	if a.workspaces != nil {
+		a.resolveAndStartWorkspace(choice.workspace.Path)
+		return
+	}
+	if err := a.createSessionInWorkspace(choice.workspace.Path); err != nil {
+		a.message(err.Error())
+	}
 }
 
 func (a *app) chooseWorkspace(argument string) error {
@@ -91,9 +86,7 @@ func (a *app) showLocalWorkspaceChoices() error {
 			available: true,
 		})
 	}
-	a.dialogs.workspacePicker.Reset()
-	a.dialogs.workspacePicker.SetItems(choices)
-	a.dialogs.workspaceDialog.Show()
+	a.workspaceChoices.show(choices)
 	a.status.note("choose a workspace")
 	return nil
 }
@@ -119,9 +112,7 @@ func (a *app) loadWorkspaceChoices() {
 				a.message("there are no known workspaces")
 				return
 			}
-			a.dialogs.workspacePicker.Reset()
-			a.dialogs.workspacePicker.SetItems(choices)
-			a.dialogs.workspaceDialog.Show()
+			a.workspaceChoices.show(choices)
 			a.status.note("choose a workspace")
 		},
 	)

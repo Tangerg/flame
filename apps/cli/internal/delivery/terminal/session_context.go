@@ -51,7 +51,7 @@ func (a *app) retireSessionContext() {
 	a.search.dialog.Dismiss()
 	a.palette.dialog.Dismiss()
 	a.timeline.dialog.Dismiss()
-	a.dialogs.workspaceDialog.Dismiss()
+	a.workspaceChoices.dialog.Dismiss()
 	a.dismissModelPicker()
 	a.dialogs.sessionDialog.Dismiss()
 	a.dialogs.queueDialog.Dismiss()

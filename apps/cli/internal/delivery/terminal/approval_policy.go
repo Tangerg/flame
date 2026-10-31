@@ -8,7 +8,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/layout"
 )
 
@@ -17,30 +16,20 @@ import (
 // which the mode cannot change.
 type approvalScreens struct {
 	screenHost
-	service    ApprovalPolicy
-	observing  func() bool
-	modePicker *picker[protocol.ApprovalModePolicy]
-	modeDialog *presentationDialog
+	service   ApprovalPolicy
+	observing func() bool
+	modes     *pickerDialog[protocol.ApprovalModePolicy]
 }
 
 func newApprovalScreens(host screenHost, service ApprovalPolicy, observing func() bool) *approvalScreens {
 	p := &approvalScreens{screenHost: host, service: service, observing: observing}
-	p.modePicker = newPicker(host.theme, host.glyphs, "search approval modes",
-		func(policy protocol.ApprovalModePolicy) string { return approvalModeTitle(policy.Mode) },
-		approvalPolicyDetail,
-		func(policy protocol.ApprovalModePolicy) {
-			if !p.modeDialog.Open() {
-				return
-			}
-			p.modeDialog.Dismiss()
-			p.setApprovalMode(policy.Mode)
-		},
-	)
-	p.modeDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: host.stack, Theme: host.theme, Glyphs: host.glyphs, Title: "Runtime approval mode", Body: p.modePicker,
-		Where: layout.Placement{Width: 88, Height: 9},
+	p.modes = newPickerDialog(pickerDialogConfig[protocol.ApprovalModePolicy]{
+		stack: host.stack, theme: host.theme, glyphs: host.glyphs, title: "Runtime approval mode", search: "search approval modes",
+		where:  layout.Placement{Width: 88, Height: 9},
+		label:  func(policy protocol.ApprovalModePolicy) string { return approvalModeTitle(policy.Mode) },
+		detail: approvalPolicyDetail,
+		choose: func(policy protocol.ApprovalModePolicy) { p.setApprovalMode(policy.Mode) },
 	})
-	p.modePicker.cancel = p.modeDialog.Dismiss
 	return p
 }
 
@@ -56,9 +45,7 @@ func (p *approvalScreens) ChooseApprovalMode() {
 				p.message("could not read approval modes: " + err.Error())
 				return
 			}
-			p.modePicker.Reset()
-			p.modePicker.SetItems(result.Modes)
-			p.modeDialog.Show()
+			p.modes.show(result.Modes)
 			p.status.note("choose the runtime approval mode")
 		},
 	)

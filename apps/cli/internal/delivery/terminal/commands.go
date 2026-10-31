@@ -130,8 +130,8 @@ func (a *app) registerCommands() {
 			a.message(err.Error())
 		}
 	}
-	if a.plugins != nil {
-		a.plugins.registerViewCommands(func(owner string, descriptor extensions.CommandDescriptor, run func(string, func())) error {
+	if a.screens.plugins != nil {
+		a.screens.plugins.registerViewCommands(func(owner string, descriptor extensions.CommandDescriptor, run func(string, func())) error {
 			return a.commands.add(owner, descriptor, run, nil)
 		})
 	}

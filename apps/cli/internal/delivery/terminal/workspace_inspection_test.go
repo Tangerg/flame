@@ -599,11 +599,13 @@ func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 	profile := terminalProfileWithFeatures(t, features)
 	application := &app{
 		runtimeProfile: &profile,
-		goals:          &goalScreens{service: new(goalServiceStub)},
-		skills:         &skillScreens{service: newSkillServiceStub()},
-		mcp:            &mcpScreens{service: newMCPServiceStub()},
-		plugins:        &pluginScreens{service: &installedPluginCatalog{}},
-		hooks:          &hookScreens{service: &hookServiceStub{}},
+		screens: screens{
+			goals:   &goalScreens{service: new(goalServiceStub)},
+			skills:  &skillScreens{service: newSkillServiceStub()},
+			mcp:     &mcpScreens{service: newMCPServiceStub()},
+			plugins: &pluginScreens{service: &installedPluginCatalog{}},
+			hooks:   &hookScreens{service: &hookServiceStub{}},
+		},
 	}
 	if got := application.observedRuntimeResources(); got != (runtimeResourceObservation{hooks: true, models: true, approvals: true}) {
 		t.Fatalf("resources with disabled features = %+v", got)

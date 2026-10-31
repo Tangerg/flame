@@ -15,9 +15,11 @@ import (
 	"github.com/Tangerg/oolong/core/layout"
 )
 
-func (a *app) buildRuntimePickers(theme kit.Theme, glyphs kit.Glyphs) {
-	a.dialogs.modelPicker = newPicker(theme, glyphs, "search models",
-		func(model protocol.Model) string {
+func (a *app) buildModelPicker(theme kit.Theme, glyphs kit.Glyphs) {
+	a.models = newPickerDialog(pickerDialogConfig[protocol.Model]{
+		stack: &a.stack, theme: theme, glyphs: glyphs, title: "Models", search: "search models",
+		where: layout.Placement{Width: 76, Height: 14},
+		label: func(model protocol.Model) string {
 			label := model.DisplayName
 			if label == "" {
 				label = model.ID
@@ -27,20 +29,10 @@ func (a *app) buildRuntimePickers(theme kit.Theme, glyphs kit.Glyphs) {
 			}
 			return label
 		},
-		func(model protocol.Model) string { return model.Provider + "/" + model.ID },
-		func(model protocol.Model) {
-			if !a.dialogs.modelDialog.Open() {
-				return
-			}
-			a.dismissModelPicker()
-			a.selectSessionModel(model)
-		},
-	)
-	a.dialogs.modelDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Models", Body: a.dialogs.modelPicker,
-		Where: layout.Placement{Width: 76, Height: 14},
+		detail:    func(model protocol.Model) string { return model.Provider + "/" + model.ID },
+		choose:    a.selectSessionModel,
+		dismissed: func() { a.operations.Cancel(pickerCatalogOperation) },
 	})
-	a.dialogs.modelPicker.cancel = a.dismissModelPicker
 }
 
 func (a *app) selectSessionModel(model protocol.Model) {
@@ -74,33 +66,30 @@ func (a *app) ChooseModel() {
 		return
 	}
 	a.message("loading models")
-	a.dialogs.modelPicker.Reset()
-	a.dialogs.modelPicker.SetItems(nil)
-	a.dialogs.modelDialog.Show()
+	a.models.show(nil)
 	a.refreshModelPicker()
 }
 
 func (a *app) dismissModelPicker() {
-	a.operations.Cancel(pickerCatalogOperation)
-	a.dialogs.modelDialog.Dismiss()
+	a.models.dismiss(func() { a.operations.Cancel(pickerCatalogOperation) })
 }
 
 func (a *app) refreshModelPicker() {
-	presentation := a.dialogs.modelDialog.Identity()
+	presentation := a.models.dialog.Identity()
 	if presentation == nil {
 		return
 	}
 	a.tasks.session(pickerCatalogOperation, true,
 		func(ctx context.Context) ([]protocol.Model, error) { return a.runtime.ListModels(ctx) },
 		func(models []protocol.Model, err error) {
-			if !presentation.current(a.dialogs.modelDialog.Identity()) {
+			if !presentation.current(a.models.dialog.Identity()) {
 				return
 			}
 			if err != nil && len(models) == 0 {
 				a.message("could not load models: " + err.Error())
 				return
 			}
-			a.dialogs.modelPicker.SetItems(models)
+			a.models.picker.SetItems(models)
 			a.status.note("choose a provider-qualified model")
 			if err != nil {
 				a.message("model catalog incomplete: " + err.Error())

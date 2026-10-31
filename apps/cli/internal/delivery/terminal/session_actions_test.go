@@ -652,7 +652,18 @@ func TestProjectionRetirementRejectsAPresentedConfirmationCallback(t *testing.T)
 	}
 	application.stack.SetBase(transcript)
 	application.search = newSearchPrompt(&application.stack, transcript.theme, transcript.glyphs, func(string) {})
-	application.palette = newCommandPaletteDialog(&application.stack, transcript.theme, transcript.glyphs, func(commandPaletteItem) {})
+	application.palette = newPickerDialog(pickerDialogConfig[commandPaletteItem]{
+		stack: &application.stack, theme: transcript.theme, glyphs: transcript.glyphs,
+		label: func(commandPaletteItem) string { return "" }, detail: func(commandPaletteItem) string { return "" }, choose: func(commandPaletteItem) {},
+	})
+	application.workspaceChoices = newPickerDialog(pickerDialogConfig[workspaceChoice]{
+		stack: &application.stack, theme: transcript.theme, glyphs: transcript.glyphs,
+		label: func(workspaceChoice) string { return "" }, detail: func(workspaceChoice) string { return "" }, choose: func(workspaceChoice) {},
+	})
+	application.models = newPickerDialog(pickerDialogConfig[protocol.Model]{
+		stack: &application.stack, theme: transcript.theme, glyphs: transcript.glyphs,
+		label: func(protocol.Model) string { return "" }, detail: func(protocol.Model) string { return "" }, choose: func(protocol.Model) {},
+	})
 	application.timeline = newTimelineDialog(&application.stack, transcript.theme, transcript.glyphs, func(timelineEntry) {}, func(timelineEntry) {})
 	calls := 0
 	application.confirmAction("Retired confirmation", "Run the retired action?", "Run", func() { calls++ })

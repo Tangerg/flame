@@ -17,46 +17,6 @@ type commandPaletteItem struct {
 	availability extensions.CommandAvailability
 }
 
-// commandPaletteDialog lists every command by category and hands the chosen one to
-// choose.
-type commandPaletteDialog struct {
-	picker *picker[commandPaletteItem]
-	dialog *presentationDialog
-}
-
-func newCommandPaletteDialog(stack *headless.Stack, theme kit.Theme, glyphs kit.Glyphs, choose func(commandPaletteItem)) *commandPaletteDialog {
-	p := &commandPaletteDialog{}
-	p.picker = newPicker(theme, glyphs, "search commands",
-		func(item commandPaletteItem) string { return "/" + item.command.Name },
-		func(item commandPaletteItem) string {
-			detail := item.category + " · " + item.command.Title
-			if !item.availability.Enabled() {
-				detail = item.category + " · unavailable: " + item.availability.Reason()
-			}
-			return detail
-		},
-		func(item commandPaletteItem) {
-			if !p.dialog.Open() {
-				return
-			}
-			p.dialog.Dismiss()
-			choose(item)
-		},
-	)
-	p.dialog = newPresentationDialog(kit.DialogConfig{
-		Stack: stack, Theme: theme, Glyphs: glyphs, Title: "Commands", Body: p.picker,
-		Where: layout.Placement{Width: 82, Height: 18},
-	})
-	p.picker.cancel = p.dialog.Dismiss
-	return p
-}
-
-func (p *commandPaletteDialog) show(items []commandPaletteItem) {
-	p.picker.Reset()
-	p.picker.SetItems(items)
-	p.dialog.Show()
-}
-
 func (a *app) chooseCommand(item commandPaletteItem) {
 	command := item.command
 	if !item.availability.Enabled() {

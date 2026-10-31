@@ -74,7 +74,7 @@ func (a *app) followRuntimeChanges() {
 
 func (a *app) applyWorkspaceChanges(changes []workspace.Change) {
 	a.header.SetWorkspaceChanges(len(changes))
-	a.inspection.showChanges(changes)
+	a.screens.inspection.showChanges(changes)
 }
 
 type runtimeChangeMonitor struct {
@@ -108,11 +108,11 @@ func (r runtimeResourceObservation) hasWorkspaceAuthoredResources() bool {
 func (a *app) observedRuntimeResources() runtimeResourceObservation {
 	return runtimeResourceObservation{
 		plan:      a.runtimeSupports(protocol.FeaturePlan),
-		goals:     a.goals != nil && a.runtimeSupports(protocol.FeatureGoals),
-		skills:    a.skills != nil && a.runtimeSupports(protocol.FeatureSkills),
-		mcp:       a.mcp != nil && a.runtimeSupports(protocol.FeatureMCP),
-		plugins:   a.plugins != nil && a.runtimeSupports(protocol.FeaturePlugins),
-		hooks:     a.hooks != nil,
+		goals:     a.screens.goals != nil && a.runtimeSupports(protocol.FeatureGoals),
+		skills:    a.screens.skills != nil && a.runtimeSupports(protocol.FeatureSkills),
+		mcp:       a.screens.mcp != nil && a.runtimeSupports(protocol.FeatureMCP),
+		plugins:   a.screens.plugins != nil && a.runtimeSupports(protocol.FeaturePlugins),
+		hooks:     a.screens.hooks != nil,
 		models:    true,
 		approvals: true,
 	}

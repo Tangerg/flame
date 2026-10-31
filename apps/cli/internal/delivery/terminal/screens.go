@@ -26,6 +26,22 @@ type screenHost struct {
 	replayPolicy mutation.ReplayPolicy
 }
 
+// screens are the management surfaces the terminal composes. A screen whose
+// Runtime port is absent is nil, which command availability reports.
+type screens struct {
+	approvals        *approvalScreens
+	inspection       *workspaceScreens
+	goals            *goalScreens
+	modelConfig      *modelConfigScreens
+	usage            *usageScreens
+	mcp              *mcpScreens
+	skills           *skillScreens
+	hooks            *hookScreens
+	diagnosticTools  *diagnosticScreens
+	authoringContext *agentDocumentScreens
+	plugins          *pluginScreens
+}
+
 func (a *app) screenHost() screenHost {
 	return screenHost{
 		tasks: a.tasks, reader: a.reader, status: a.status, message: a.message,
@@ -37,44 +53,44 @@ func (a *app) screenHost() screenHost {
 
 func (a *app) buildScreens(cfg appConfig) {
 	host := a.screenHost()
-	a.approvals = newApprovalScreens(host, a.runtime, a.execution.observing)
-	a.inspection = &workspaceScreens{screenHost: host, service: a.workspaces}
+	a.screens.approvals = newApprovalScreens(host, a.runtime, a.execution.observing)
+	a.screens.inspection = &workspaceScreens{screenHost: host, service: a.workspaces}
 	if cfg.goals != nil {
-		a.goals = &goalScreens{screenHost: host, service: cfg.goals, options: &a.options, header: a.header}
+		a.screens.goals = &goalScreens{screenHost: host, service: cfg.goals, options: &a.options, header: a.header}
 	}
 	if cfg.modelConfig != nil {
-		a.modelConfig = &modelConfigScreens{screenHost: host, service: cfg.modelConfig}
+		a.screens.modelConfig = &modelConfigScreens{screenHost: host, service: cfg.modelConfig}
 	}
 	if cfg.usage != nil {
-		a.usage = &usageScreens{screenHost: host, service: cfg.usage}
+		a.screens.usage = &usageScreens{screenHost: host, service: cfg.usage}
 	}
 	if cfg.mcp != nil {
-		a.mcp = &mcpScreens{screenHost: host, service: cfg.mcp, setApprovalRule: a.approvals.setApprovalRule}
+		a.screens.mcp = &mcpScreens{screenHost: host, service: cfg.mcp, setApprovalRule: a.screens.approvals.setApprovalRule}
 	}
 	if cfg.skills != nil {
-		a.skills = &skillScreens{screenHost: host, service: cfg.skills}
+		a.screens.skills = &skillScreens{screenHost: host, service: cfg.skills}
 	}
 	if cfg.hooks != nil {
-		a.hooks = &hookScreens{screenHost: host, service: cfg.hooks}
+		a.screens.hooks = &hookScreens{screenHost: host, service: cfg.hooks}
 	}
 	if cfg.diagnosticTools != nil {
-		a.diagnosticTools = &diagnosticScreens{screenHost: host, service: cfg.diagnosticTools}
+		a.screens.diagnosticTools = &diagnosticScreens{screenHost: host, service: cfg.diagnosticTools}
 	}
 	if cfg.plugins != nil {
-		a.plugins = &pluginScreens{screenHost: host, service: cfg.plugins, workbench: a.workbench, viewsChanged: func() {
+		a.screens.plugins = &pluginScreens{screenHost: host, service: cfg.plugins, workbench: a.workbench, viewsChanged: func() {
 			a.registerCommands()
 			// A command typed while the views loaded completes once they arrive.
 			a.refreshCompletion()
 		}}
 	}
 	if cfg.authoringContext != nil {
-		a.authoringContext = &agentDocumentScreens{screenHost: host, service: cfg.authoringContext}
+		a.screens.authoringContext = &agentDocumentScreens{screenHost: host, service: cfg.authoringContext}
 	}
 }
 
 // loadPluginViews reads the installed terminal views when installations change.
 func (a *app) loadPluginViews(affected bool) {
-	if affected && a.plugins != nil && a.runtimeSupports(protocol.FeaturePlugins) {
-		a.plugins.loadPluginViews()
+	if affected && a.screens.plugins != nil && a.runtimeSupports(protocol.FeaturePlugins) {
+		a.screens.plugins.loadPluginViews()
 	}
 }

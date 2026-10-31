@@ -62,64 +62,72 @@ func builtinCommands() []localCommand {
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "editor", Title: "edit the current prompt in the configured external editor"}, Available: availableWithoutActiveRun, Run: func(a *app, _ string) error { return a.editPromptExternally() }},
 		),
 		commandGroup(commandCategoryRuntime,
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "tools", Title: "inspect direct read-only diagnostic tools"}, Available: availableWithDiagnosticTools, Run: func(a *app, _ string) error { a.diagnosticTools.ShowDiagnosticTools(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "tool-invoke", Title: "invoke a direct read-only diagnostic tool", Arguments: extensions.RequiredArguments}, Available: availableWithDiagnosticTools, Run: func(a *app, argument string) error { return a.diagnosticTools.InvokeDiagnosticTool(argument) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "tools", Title: "inspect direct read-only diagnostic tools"}, Available: availableWithDiagnosticTools, Run: func(a *app, _ string) error { a.screens.diagnosticTools.ShowDiagnosticTools(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "tool-invoke", Title: "invoke a direct read-only diagnostic tool", Arguments: extensions.RequiredArguments}, Available: availableWithDiagnosticTools, Run: func(a *app, argument string) error { return a.screens.diagnosticTools.InvokeDiagnosticTool(argument) }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "model", Title: "choose the current session model"}, Run: func(a *app, _ string) error { a.ChooseModel(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "models", Title: "inspect runtime model capabilities and pricing"}, Run: func(a *app, _ string) error { a.ShowModels(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "usage", Title: "inspect session and runtime usage", Arguments: extensions.OptionalArguments}, Available: availableWithUsage, Run: func(a *app, days string) error { return a.usage.ShowUsage(days) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "roles", Title: "inspect utility and embedding model roles"}, Available: availableWithModelConfiguration, Run: func(a *app, _ string) error { a.modelConfig.ShowModelRoles(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "utility", Title: "set the utility model role", Arguments: extensions.RequiredArguments}, Available: availableWithModelConfiguration, Run: func(a *app, target string) error { return a.modelConfig.SetModelRole(models.UtilityRole, target) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "embedding", Title: "set the embedding model role", Arguments: extensions.RequiredArguments}, Available: availableWithModelConfiguration, Run: func(a *app, target string) error { return a.modelConfig.SetModelRole(models.EmbeddingRole, target) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "providers", Title: "inspect configured model providers"}, Available: availableWithModelConfiguration, Run: func(a *app, _ string) error { a.modelConfig.ShowProviders(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "provider-test", Title: "test a configured provider", Arguments: extensions.RequiredArguments}, Available: availableWithModelConfiguration, Run: func(a *app, provider string) error { return a.modelConfig.TestConfiguredProvider(provider) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "provider-config", Title: "configure provider endpoint and credentials", Arguments: extensions.RequiredArguments}, Available: availableWithModelConfiguration, Run: func(a *app, provider string) error { return a.modelConfig.ConfigureProvider(provider) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "approval", Title: "choose the runtime approval mode", Aliases: []string{"permissions", "permission"}}, Run: func(a *app, _ string) error { a.approvals.ChooseApprovalMode(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "usage", Title: "inspect session and runtime usage", Arguments: extensions.OptionalArguments}, Available: availableWithUsage, Run: func(a *app, days string) error { return a.screens.usage.ShowUsage(days) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "roles", Title: "inspect utility and embedding model roles"}, Available: availableWithModelConfiguration, Run: func(a *app, _ string) error { a.screens.modelConfig.ShowModelRoles(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "utility", Title: "set the utility model role", Arguments: extensions.RequiredArguments}, Available: availableWithModelConfiguration, Run: func(a *app, target string) error {
+				return a.screens.modelConfig.SetModelRole(models.UtilityRole, target)
+			}},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "embedding", Title: "set the embedding model role", Arguments: extensions.RequiredArguments}, Available: availableWithModelConfiguration, Run: func(a *app, target string) error {
+				return a.screens.modelConfig.SetModelRole(models.EmbeddingRole, target)
+			}},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "providers", Title: "inspect configured model providers"}, Available: availableWithModelConfiguration, Run: func(a *app, _ string) error { a.screens.modelConfig.ShowProviders(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "provider-test", Title: "test a configured provider", Arguments: extensions.RequiredArguments}, Available: availableWithModelConfiguration, Run: func(a *app, provider string) error { return a.screens.modelConfig.TestConfiguredProvider(provider) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "provider-config", Title: "configure provider endpoint and credentials", Arguments: extensions.RequiredArguments}, Available: availableWithModelConfiguration, Run: func(a *app, provider string) error { return a.screens.modelConfig.ConfigureProvider(provider) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "approval", Title: "choose the runtime approval mode", Aliases: []string{"permissions", "permission"}}, Run: func(a *app, _ string) error { a.screens.approvals.ChooseApprovalMode(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "status", Title: "show runtime and run policy"}, Run: func(a *app, _ string) error { a.ShowRuntimeStatus(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "rules", Title: "show remembered approval rules"}, Run: func(a *app, _ string) error { a.approvals.ShowApprovalRules(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "rule-delete", Title: "forget a remembered approval rule", Arguments: extensions.RequiredArguments}, Run: func(a *app, id string) error { return a.approvals.PrepareDeleteApprovalRule(id) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "rules", Title: "show remembered approval rules"}, Run: func(a *app, _ string) error { a.screens.approvals.ShowApprovalRules(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "rule-delete", Title: "forget a remembered approval rule", Arguments: extensions.RequiredArguments}, Run: func(a *app, id string) error { return a.screens.approvals.PrepareDeleteApprovalRule(id) }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "steer", Title: "inject an instruction into the observed run segment", Arguments: extensions.RequiredArguments}, Available: availableWithRunningSegment, Run: func(a *app, instruction string) error { return a.steerRun(instruction) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "goal", Title: "inspect the current autonomous session goal"}, Available: availableWithGoals, Run: func(a *app, _ string) error { a.goals.ShowGoal(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "goal-start", Title: "start autonomous pursuit for this session", Arguments: extensions.RequiredArguments}, Available: availableForGoalStart, Run: func(a *app, objective string) error { return a.goals.StartGoal(objective) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "goal-update", Title: "revise the current autonomous objective", Arguments: extensions.RequiredArguments}, Available: availableWithGoals, Run: func(a *app, objective string) error { return a.goals.UpdateGoal(objective) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "goal-clear", Title: "clear autonomous pursuit for this session"}, Available: availableWithGoals, Run: func(a *app, _ string) error { return a.goals.ClearGoal() }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "goal-stop", Title: "pause autonomous pursuit for this session"}, Available: availableWithGoals, Run: func(a *app, _ string) error { return a.goals.StopGoal() }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "goal-resume", Title: "resume autonomous pursuit for this session"}, Available: availableWithGoals, Run: func(a *app, _ string) error { return a.goals.ResumeGoal() }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "hooks", Title: "audit lifecycle hooks and project trust"}, Available: availableWithHooks, Run: func(a *app, _ string) error { a.hooks.ShowHooks(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "hooks-trust", Title: "trust reviewed project lifecycle hooks"}, Available: availableWithHooks, Run: func(a *app, _ string) error { return a.hooks.PrepareHookTrust(true) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "hooks-revoke", Title: "revoke project lifecycle hook trust"}, Available: availableWithHooks, Run: func(a *app, _ string) error { return a.hooks.PrepareHookTrust(false) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "goal", Title: "inspect the current autonomous session goal"}, Available: availableWithGoals, Run: func(a *app, _ string) error { a.screens.goals.ShowGoal(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "goal-start", Title: "start autonomous pursuit for this session", Arguments: extensions.RequiredArguments}, Available: availableForGoalStart, Run: func(a *app, objective string) error { return a.screens.goals.StartGoal(objective) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "goal-update", Title: "revise the current autonomous objective", Arguments: extensions.RequiredArguments}, Available: availableWithGoals, Run: func(a *app, objective string) error { return a.screens.goals.UpdateGoal(objective) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "goal-clear", Title: "clear autonomous pursuit for this session"}, Available: availableWithGoals, Run: func(a *app, _ string) error { return a.screens.goals.ClearGoal() }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "goal-stop", Title: "pause autonomous pursuit for this session"}, Available: availableWithGoals, Run: func(a *app, _ string) error { return a.screens.goals.StopGoal() }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "goal-resume", Title: "resume autonomous pursuit for this session"}, Available: availableWithGoals, Run: func(a *app, _ string) error { return a.screens.goals.ResumeGoal() }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "hooks", Title: "audit lifecycle hooks and project trust"}, Available: availableWithHooks, Run: func(a *app, _ string) error { a.screens.hooks.ShowHooks(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "hooks-trust", Title: "trust reviewed project lifecycle hooks"}, Available: availableWithHooks, Run: func(a *app, _ string) error { return a.screens.hooks.PrepareHookTrust(true) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "hooks-revoke", Title: "revoke project lifecycle hook trust"}, Available: availableWithHooks, Run: func(a *app, _ string) error { return a.screens.hooks.PrepareHookTrust(false) }},
 		),
 		commandGroup(commandCategoryContext,
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "agent-docs", Title: "inspect applicable AGENTS.md documents"}, Available: availableWithAuthoringContext, Run: func(a *app, _ string) error { a.authoringContext.ShowAgentDocuments(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skills", Title: "inspect available skills or one named skill", Arguments: extensions.OptionalArguments}, Available: availableWithSkills, Run: func(a *app, name string) error { a.skills.ShowDiscoveredSkills(name); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-library", Title: "inspect active and archived managed skills"}, Available: availableWithSkills, Run: func(a *app, _ string) error { a.skills.ShowManagedSkills(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-proposals", Title: "review pending immutable Skill proposals"}, Available: availableWithSkills, Run: func(a *app, _ string) error { a.skills.ShowSkillProposals(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-archive", Title: "archive one managed Skill", Arguments: extensions.RequiredArguments}, Available: availableWithSkills, Run: func(a *app, name string) error { return a.skills.ArchiveSkill(name) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-restore", Title: "restore one archived managed Skill", Arguments: extensions.RequiredArguments}, Available: availableWithSkills, Run: func(a *app, name string) error { return a.skills.RestoreSkill(name) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-approve", Title: "approve an exact pending Skill proposal", Arguments: extensions.RequiredArguments}, Available: availableWithSkills, Run: func(a *app, identity string) error { return a.skills.PrepareSkillProposalDecision(identity, true) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-reject", Title: "reject an exact pending Skill proposal", Arguments: extensions.RequiredArguments}, Available: availableWithSkills, Run: func(a *app, identity string) error { return a.skills.PrepareSkillProposalDecision(identity, false) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "agent-docs", Title: "inspect applicable AGENTS.md documents"}, Available: availableWithAuthoringContext, Run: func(a *app, _ string) error { a.screens.authoringContext.ShowAgentDocuments(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skills", Title: "inspect available skills or one named skill", Arguments: extensions.OptionalArguments}, Available: availableWithSkills, Run: func(a *app, name string) error { a.screens.skills.ShowDiscoveredSkills(name); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-library", Title: "inspect active and archived managed skills"}, Available: availableWithSkills, Run: func(a *app, _ string) error { a.screens.skills.ShowManagedSkills(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-proposals", Title: "review pending immutable Skill proposals"}, Available: availableWithSkills, Run: func(a *app, _ string) error { a.screens.skills.ShowSkillProposals(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-archive", Title: "archive one managed Skill", Arguments: extensions.RequiredArguments}, Available: availableWithSkills, Run: func(a *app, name string) error { return a.screens.skills.ArchiveSkill(name) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-restore", Title: "restore one archived managed Skill", Arguments: extensions.RequiredArguments}, Available: availableWithSkills, Run: func(a *app, name string) error { return a.screens.skills.RestoreSkill(name) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-approve", Title: "approve an exact pending Skill proposal", Arguments: extensions.RequiredArguments}, Available: availableWithSkills, Run: func(a *app, identity string) error {
+				return a.screens.skills.PrepareSkillProposalDecision(identity, true)
+			}},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-reject", Title: "reject an exact pending Skill proposal", Arguments: extensions.RequiredArguments}, Available: availableWithSkills, Run: func(a *app, identity string) error {
+				return a.screens.skills.PrepareSkillProposalDecision(identity, false)
+			}},
 		),
 		commandGroup(commandCategoryConnections,
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-tool", Title: "set one MCP tool's exposure or standing decision", Arguments: extensions.RequiredArguments}, Available: availableWithMCP, Run: func(a *app, args string) error { return a.mcp.ConfigureMCPTool(args) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp", Title: "inspect configured MCP servers and live state"}, Available: availableWithMCP, Run: func(a *app, _ string) error { a.mcp.ShowMCPServers(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-tools", Title: "inspect MCP tools, optionally for one server", Arguments: extensions.OptionalArguments}, Available: availableWithMCP, Run: func(a *app, server string) error { a.mcp.ShowMCPTools(server); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-create", Title: "configure a new MCP server"}, Available: availableWithMCP, Run: func(a *app, _ string) error { return a.mcp.OpenMCPCreateForm() }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-edit", Title: "update an MCP server", Arguments: extensions.RequiredArguments}, Available: availableWithMCP, Run: func(a *app, server string) error { return a.mcp.EditMCPServer(server) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-probe", Title: "test an unpersisted MCP candidate"}, Available: availableWithMCP, Run: func(a *app, _ string) error { return a.mcp.OpenMCPProbeForm() }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-delete", Title: "delete an MCP server", Arguments: extensions.RequiredArguments}, Available: availableWithMCP, Run: func(a *app, server string) error { return a.mcp.PrepareDeleteMCPServer(server) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-reconnect", Title: "request an asynchronous MCP reconnect", Arguments: extensions.RequiredArguments}, Available: availableWithMCP, Run: func(a *app, server string) error { return a.mcp.ReconnectMCPServer(server) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-auth", Title: "start and observe MCP browser authorization", Arguments: extensions.RequiredArguments}, Available: availableWithMCP, Run: func(a *app, server string) error { return a.mcp.AuthorizeMCPServer(server) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-tool", Title: "set one MCP tool's exposure or standing decision", Arguments: extensions.RequiredArguments}, Available: availableWithMCP, Run: func(a *app, args string) error { return a.screens.mcp.ConfigureMCPTool(args) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp", Title: "inspect configured MCP servers and live state"}, Available: availableWithMCP, Run: func(a *app, _ string) error { a.screens.mcp.ShowMCPServers(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-tools", Title: "inspect MCP tools, optionally for one server", Arguments: extensions.OptionalArguments}, Available: availableWithMCP, Run: func(a *app, server string) error { a.screens.mcp.ShowMCPTools(server); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-create", Title: "configure a new MCP server"}, Available: availableWithMCP, Run: func(a *app, _ string) error { return a.screens.mcp.OpenMCPCreateForm() }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-edit", Title: "update an MCP server", Arguments: extensions.RequiredArguments}, Available: availableWithMCP, Run: func(a *app, server string) error { return a.screens.mcp.EditMCPServer(server) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-probe", Title: "test an unpersisted MCP candidate"}, Available: availableWithMCP, Run: func(a *app, _ string) error { return a.screens.mcp.OpenMCPProbeForm() }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-delete", Title: "delete an MCP server", Arguments: extensions.RequiredArguments}, Available: availableWithMCP, Run: func(a *app, server string) error { return a.screens.mcp.PrepareDeleteMCPServer(server) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-reconnect", Title: "request an asynchronous MCP reconnect", Arguments: extensions.RequiredArguments}, Available: availableWithMCP, Run: func(a *app, server string) error { return a.screens.mcp.ReconnectMCPServer(server) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-auth", Title: "start and observe MCP browser authorization", Arguments: extensions.RequiredArguments}, Available: availableWithMCP, Run: func(a *app, server string) error { return a.screens.mcp.AuthorizeMCPServer(server) }},
 		),
 		commandGroup(commandCategoryWorkspace,
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "workspaces", Title: "inspect runtime-known workspaces"}, Available: availableWithWorkspaceService, Run: func(a *app, _ string) error { a.inspection.ShowWorkspaces(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "changes", Title: "inspect authoritative workspace changes"}, Available: availableWithGitWorkspaceService, Run: func(a *app, _ string) error { a.inspection.ShowWorkspaceChanges(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "diff", Title: "inspect workspace changes; supports --base, --rows, and --limit", Arguments: extensions.OptionalArguments}, Available: availableWithGitWorkspaceService, Run: func(a *app, argument string) error { return a.inspection.ShowWorkspaceDiff(argument) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "preview", Title: "preview a file; supports --lines", Arguments: extensions.RequiredArguments}, Available: availableWithWorkspaceService, Run: func(a *app, argument string) error { return a.inspection.PreviewWorkspaceFile(argument) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "grep", Title: "search files; supports --path and --limit", Arguments: extensions.RequiredArguments}, Available: availableWithWorkspaceService, Run: func(a *app, argument string) error { return a.inspection.SearchWorkspace(argument) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "browse", Title: "browse files; supports --recursive, --ignored, and --glob", Arguments: extensions.OptionalArguments}, Available: availableWithWorkspaceService, Run: func(a *app, argument string) error { return a.inspection.BrowseWorkspace(argument) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "read", Title: "read a file; supports --start, --end, and --max-bytes", Arguments: extensions.RequiredArguments}, Available: availableWithWorkspaceService, Run: func(a *app, argument string) error { return a.inspection.ReadWorkspaceFile(argument) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "workspaces", Title: "inspect runtime-known workspaces"}, Available: availableWithWorkspaceService, Run: func(a *app, _ string) error { a.screens.inspection.ShowWorkspaces(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "changes", Title: "inspect authoritative workspace changes"}, Available: availableWithGitWorkspaceService, Run: func(a *app, _ string) error { a.screens.inspection.ShowWorkspaceChanges(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "diff", Title: "inspect workspace changes; supports --base, --rows, and --limit", Arguments: extensions.OptionalArguments}, Available: availableWithGitWorkspaceService, Run: func(a *app, argument string) error { return a.screens.inspection.ShowWorkspaceDiff(argument) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "preview", Title: "preview a file; supports --lines", Arguments: extensions.RequiredArguments}, Available: availableWithWorkspaceService, Run: func(a *app, argument string) error { return a.screens.inspection.PreviewWorkspaceFile(argument) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "grep", Title: "search files; supports --path and --limit", Arguments: extensions.RequiredArguments}, Available: availableWithWorkspaceService, Run: func(a *app, argument string) error { return a.screens.inspection.SearchWorkspace(argument) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "browse", Title: "browse files; supports --recursive, --ignored, and --glob", Arguments: extensions.OptionalArguments}, Available: availableWithWorkspaceService, Run: func(a *app, argument string) error { return a.screens.inspection.BrowseWorkspace(argument) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "read", Title: "read a file; supports --start, --end, and --max-bytes", Arguments: extensions.RequiredArguments}, Available: availableWithWorkspaceService, Run: func(a *app, argument string) error { return a.screens.inspection.ReadWorkspaceFile(argument) }},
 		),
 		commandGroup(commandCategoryExtensions,
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "plugins", Title: "inspect Runtime-installed plugins and release state"}, Available: availableWithPlugins, Run: func(a *app, _ string) error { a.plugins.ShowPlugins(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "plugins", Title: "inspect Runtime-installed plugins and release state"}, Available: availableWithPlugins, Run: func(a *app, _ string) error { a.screens.plugins.ShowPlugins(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "extensions", Title: "show local command extensions and lifecycle state"}, Run: func(a *app, _ string) error { a.ShowExtensions(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "reload", Title: "reload a local command extension and its dependents", Arguments: extensions.RequiredArguments}, Run: func(a *app, id string) error { a.ReloadPlugin(id); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "unload", Title: "unload a local command extension and its dependents", Arguments: extensions.RequiredArguments}, Run: func(a *app, id string) error { a.UnloadPlugin(id); return nil }},
@@ -152,63 +160,63 @@ func availableWithSessionTransfer(a *app) extensions.CommandAvailability {
 }
 
 func availableWithUsage(a *app) extensions.CommandAvailability {
-	if a.usage == nil {
+	if a.screens.usage == nil {
 		return extensions.CommandUnavailable("this runtime composition has no usage service")
 	}
 	return extensions.CommandAvailable()
 }
 
 func availableWithModelConfiguration(a *app) extensions.CommandAvailability {
-	if a.modelConfig == nil {
+	if a.screens.modelConfig == nil {
 		return extensions.CommandUnavailable("this runtime composition has no model configuration service")
 	}
 	return extensions.CommandAvailable()
 }
 
 func availableWithGoals(a *app) extensions.CommandAvailability {
-	if a.goals == nil {
+	if a.screens.goals == nil {
 		return extensions.CommandUnavailable("this runtime composition has no goal service")
 	}
 	return availableWithRuntimeFeature(a, protocol.FeatureGoals)
 }
 
 func availableWithSkills(a *app) extensions.CommandAvailability {
-	if a.skills == nil {
+	if a.screens.skills == nil {
 		return extensions.CommandUnavailable("this runtime composition has no skill service")
 	}
 	return availableWithRuntimeFeature(a, protocol.FeatureSkills)
 }
 
 func availableWithMCP(a *app) extensions.CommandAvailability {
-	if a.mcp == nil {
+	if a.screens.mcp == nil {
 		return extensions.CommandUnavailable("this runtime composition has no MCP service")
 	}
 	return availableWithRuntimeFeature(a, protocol.FeatureMCP)
 }
 
 func availableWithPlugins(a *app) extensions.CommandAvailability {
-	if a.plugins == nil {
+	if a.screens.plugins == nil {
 		return extensions.CommandUnavailable("this runtime composition has no plugin catalog")
 	}
 	return availableWithRuntimeFeature(a, protocol.FeaturePlugins)
 }
 
 func availableWithDiagnosticTools(a *app) extensions.CommandAvailability {
-	if a.diagnosticTools == nil {
+	if a.screens.diagnosticTools == nil {
 		return extensions.CommandUnavailable("this runtime composition has no diagnostic tool service")
 	}
 	return extensions.CommandAvailable()
 }
 
 func availableWithAuthoringContext(a *app) extensions.CommandAvailability {
-	if a.authoringContext == nil {
+	if a.screens.authoringContext == nil {
 		return extensions.CommandUnavailable("this runtime composition has no authoring context service")
 	}
 	return extensions.CommandAvailable()
 }
 
 func availableWithHooks(a *app) extensions.CommandAvailability {
-	if a.hooks == nil {
+	if a.screens.hooks == nil {
 		return extensions.CommandUnavailable("this runtime composition has no hook service")
 	}
 	return extensions.CommandAvailable()
