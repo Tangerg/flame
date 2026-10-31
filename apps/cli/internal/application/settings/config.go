@@ -15,28 +15,31 @@ import (
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 )
 
+// Action names one rebindable terminal command in the keys configuration.
+type Action string
+
 const (
-	ActionSend            = "send"
-	ActionNewline         = "newline"
-	ActionCancelRun       = "cancel-run"
-	ActionQuit            = "quit"
-	ActionCommandPalette  = "command-palette"
-	ActionShortcuts       = "shortcuts"
-	ActionSessions        = "sessions"
-	ActionTimeline        = "timeline"
-	ActionSearch          = "search"
-	ActionManageQueue     = "manage-queue"
-	ActionChooseModel     = "choose-model"
-	ActionToggleDetails   = "toggle-details"
-	ActionHistoryPrevious = "history-previous"
-	ActionHistoryNext     = "history-next"
-	ActionNextMatch       = "next-match"
-	ActionPreviousMatch   = "previous-match"
-	ActionScrollPageUp    = "scroll-page-up"
-	ActionScrollPageDown  = "scroll-page-down"
-	ActionScrollTop       = "scroll-top"
-	ActionScrollBottom    = "scroll-bottom"
-	ActionExternalEditor  = "external-editor"
+	ActionSend            Action = "send"
+	ActionNewline                = "newline"
+	ActionCancelRun              = "cancel-run"
+	ActionQuit                   = "quit"
+	ActionCommandPalette         = "command-palette"
+	ActionShortcuts              = "shortcuts"
+	ActionSessions               = "sessions"
+	ActionTimeline               = "timeline"
+	ActionSearch                 = "search"
+	ActionManageQueue            = "manage-queue"
+	ActionChooseModel            = "choose-model"
+	ActionToggleDetails          = "toggle-details"
+	ActionHistoryPrevious        = "history-previous"
+	ActionHistoryNext            = "history-next"
+	ActionNextMatch              = "next-match"
+	ActionPreviousMatch          = "previous-match"
+	ActionScrollPageUp           = "scroll-page-up"
+	ActionScrollPageDown         = "scroll-page-down"
+	ActionScrollTop              = "scroll-top"
+	ActionScrollBottom           = "scroll-bottom"
+	ActionExternalEditor         = "external-editor"
 )
 
 // AuthoringPartition preserves the local outbox identity across reconnects.
@@ -54,7 +57,7 @@ type Config struct {
 	Approval Approval            `json:"approval" mapstructure:"approval"`
 	UI       UI                  `json:"ui"       mapstructure:"ui"`
 	Plugins  Plugins             `json:"plugins"  mapstructure:"plugins"`
-	Keys     map[string][]string `json:"keys"     mapstructure:"keys"`
+	Keys     map[Action][]string `json:"keys"     mapstructure:"keys"`
 }
 
 // Runtime selects the process-owned embedded Runtime or an existing endpoint.
@@ -115,7 +118,7 @@ func Default() Config {
 		Runtime:  Runtime{Mode: RuntimeRemote, Endpoint: localruntime.DefaultOrigin},
 		Approval: Approval{Remember: RememberNone},
 		UI:       UI{Mouse: true, Notifications: true, ToolDetails: false, TranscriptRetain: 24},
-		Keys: map[string][]string{
+		Keys: map[Action][]string{
 			ActionSend:            {"enter"},
 			ActionNewline:         {"shift+enter", "alt+enter"},
 			ActionCancelRun:       {"ctrl+c"},
@@ -186,7 +189,7 @@ func validatePluginDirectories(directories []string) []error {
 	return problems
 }
 
-func validateKeys(keys map[string][]string) []error {
+func validateKeys(keys map[Action][]string) []error {
 	known := Default().Keys
 	var problems []error
 	for _, action := range slices.Sorted(maps.Keys(known)) {
@@ -219,7 +222,7 @@ func (c Config) RunOptions() (authoring.RunOptions, error) {
 func (c Config) Clone() Config {
 	out := c
 	out.Plugins.Directories = slices.Clone(c.Plugins.Directories)
-	out.Keys = make(map[string][]string, len(c.Keys))
+	out.Keys = make(map[Action][]string, len(c.Keys))
 	for action, bindings := range c.Keys {
 		out.Keys[action] = slices.Clone(bindings)
 	}

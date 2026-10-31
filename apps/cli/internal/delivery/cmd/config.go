@@ -70,7 +70,7 @@ func setDefaults(v *viper.Viper, defaults settings.Config) {
 	v.SetDefault("plugins.directories", defaults.Plugins.Directories)
 	for _, action := range slices.Sorted(maps.Keys(defaults.Keys)) {
 		bindings := defaults.Keys[action]
-		v.SetDefault("keys."+action, bindings)
+		v.SetDefault("keys."+string(action), bindings)
 	}
 }
 

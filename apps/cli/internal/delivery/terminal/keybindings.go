@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -24,14 +25,8 @@ func configuredKeyBindings(configured settings.Config) (keyBindings, error) {
 		application: &keymap.Map{},
 		global:      &keymap.Map{},
 	}
-	actions := slices.Sorted(func(yield func(string) bool) {
-		for action := range configured.Keys {
-			if !yield(action) {
-				return
-			}
-		}
-	})
-	seen := make(map[string]string)
+	actions := slices.Sorted(maps.Keys(configured.Keys))
+	seen := make(map[string]settings.Action)
 	for _, name := range actions {
 		action := keymap.Action(name)
 		for _, encoded := range configured.Keys[name] {
