@@ -41,7 +41,7 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261031.terminal-views.1
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261101.terminal-views.2
 	github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/qimu v0.1.0-quality.20261031.terminal-views.1

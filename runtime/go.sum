@@ -1,5 +1,5 @@
-github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261031.terminal-views.1 h1:yEHsXRCIhSSnMjrG1gelN/gqxcpQLv5y/2DCiQbM+6w=
-github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261031.terminal-views.1/go.mod h1:MNKLIPEEnEc7Pf78qD37bdJSDNlC63kGaHXCOggBJRg=
+github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261101.terminal-views.2 h1:kzR2lpg5l7Ko+MDw8LiIGN6RVImxU+LYVtSSZNcIBwg=
+github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261101.terminal-views.2/go.mod h1:MNKLIPEEnEc7Pf78qD37bdJSDNlC63kGaHXCOggBJRg=
 github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1 h1:K4hHeTNDtsjyprD65V6+auhC6bAS1EmGeYw0l/FLc90=
 github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1/go.mod h1:k7GImwPntRgT/FNYEO+2Bx351W/ULxJUH2cU0y3zKRg=
 github.com/Tangerg/go-sdk v1.8.1-scope.3 h1:hMC4qrvwu38L4/bLwnPiCYi9BTRFQxGb6Cs97pa/CzQ=
