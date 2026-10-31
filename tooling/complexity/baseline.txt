@@ -35,7 +35,6 @@
 30 qimu/control/host/bridge.go:Bridge.Prepare
 35 qimu/control/host/bridge.go:Bridge.Ready
 27 qimu/control/host/http.go:Bridge.dispatch
-62 qimu/control/host/proof.go:Bridge.Prove
 21 qimu/control/host/proof.go:Bridge.Reconnect
 31 qimu/control/host/proof.go:Bridge.releaseExecution
 25 qimu/control/host/proof.go:Bridge.releaseUseTree

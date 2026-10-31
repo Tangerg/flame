@@ -32,76 +32,13 @@ func (b *Bridge) Prove(ctx context.Context, token string, proof control.ClosePro
 	if int64(len(encoded)) > b.config.MaxRequestBytes {
 		return control.ProofAcknowledgement{}, qimu.ErrCapacity
 	}
-	records, err := b.config.Store.Attempts(ctx)
+	attempt, err := b.provenAttempt(ctx, session, proof)
 	if err != nil {
 		return control.ProofAcknowledgement{}, err
 	}
-	var record *sqlite.AttemptRecord
-	for index := range records {
-		if records[index].Attempt.ID == proof.Execution.ID {
-			record = &records[index]
-			break
-		}
-	}
-	if record == nil {
-		return control.ProofAcknowledgement{}, qimu.ErrUnavailable
-	}
-	attempt := record.Attempt
-	if attempt.Profile != qimu.BrowserJS || attempt.Realm != string(RealmID(session.realm)) || proof.Authority.Epoch != strconv.FormatUint(attempt.Epoch, 10) || proof.Execution.Generation != strconv.FormatUint(attempt.Generation, 10) || proof.ScopeID != string(attempt.Scope) || proof.ScopeGeneration != strconv.FormatUint(attempt.ScopeGeneration, 10) {
-		return control.ProofAcknowledgement{}, qimu.ErrStaleBinding
-	}
-	if hasDuplicate(proof.Instances) {
-		return control.ProofAcknowledgement{}, qimu.ErrInvalid
-	}
-	scope := string(proof.ScopeKind)
-	var useRecord *sqlite.UseRecord
-	var publication *controlOperation
-	switch proof.ScopeKind {
-	case control.ExecutionScope:
-		if proof.UseID != "" || proof.PublicationID != "" || len(proof.Instances) != 1 || proof.Instances[0] != attempt.ID {
-			return control.ProofAcknowledgement{}, qimu.ErrInvalid
-		}
-	case control.UseScope:
-		if proof.UseID == "" || proof.PublicationID != "" {
-			return control.ProofAcknowledgement{}, qimu.ErrInvalid
-		}
-		uses, err := b.config.Store.Uses(ctx)
-		if err != nil {
-			return control.ProofAcknowledgement{}, err
-		}
-		for index := range uses {
-			if uses[index].Approval.ID == proof.UseID {
-				useRecord = &uses[index]
-				break
-			}
-		}
-		if useRecord == nil || useRecord.Approval.ExecutionID != attempt.ID || useRecord.Approval.Realm != RealmID(session.realm) || useRecord.Approval.Epoch != attempt.Epoch || useRecord.Approval.Scope != attempt.Scope || useRecord.Approval.ScopeGeneration != attempt.ScopeGeneration || !sameSet(useRecord.Approval.Instances, proof.Instances) {
-			return control.ProofAcknowledgement{}, qimu.ErrStaleBinding
-		}
-		scope += ":" + proof.UseID
-	case control.PublicationScope:
-		if proof.PublicationID == "" || proof.UseID != "" || len(proof.Instances) != 1 || proof.Instances[0] != attempt.ID {
-			return control.ProofAcknowledgement{}, qimu.ErrInvalid
-		}
-		scope += ":" + proof.PublicationID
-		b.mu.Lock()
-		for _, candidate := range b.operations {
-			if candidate.kind == "publish" && candidate.execution == attempt.ID && candidate.publication.Publication != nil && candidate.publication.Publication.ID == proof.PublicationID {
-				publication = candidate
-				break
-			}
-		}
-		live := b.executions[attempt.ID] != nil
-		valid := publication != nil && publication.realm == session.realm && publication.withdrawn
-		b.mu.Unlock()
-		if live && !valid {
-			return control.ProofAcknowledgement{}, qimu.ErrStaleBinding
-		}
-		// After Host reconstruction the old public catalog is sealed. A
-		// subordinate object proof records evidence but releases no attempt or
-		// delegated Use, so it cannot widen the original execution authority.
-	default:
-		return control.ProofAcknowledgement{}, qimu.ErrInvalid
+	scope, publication, err := b.bindProofScope(ctx, session, attempt, proof)
+	if err != nil {
+		return control.ProofAcknowledgement{}, err
 	}
 	prior, err := b.config.Store.ExitProof(ctx, attempt.ID, proof.ProofID)
 	if err == nil && !bytes.Equal(prior, encoded) {
@@ -113,24 +50,117 @@ func (b *Bridge) Prove(ctx context.Context, token string, proof control.ClosePro
 	if err := b.config.Store.RecordExitProof(ctx, attempt.ID, scope, proof.ProofID, encoded); err != nil {
 		return control.ProofAcknowledgement{}, err
 	}
-	err = nil
 	exit := sqlite.ExitProof{AttemptID: attempt.ID, Realm: attempt.Realm, ExitID: proof.CloseID, Kind: "browser-" + string(proof.ScopeKind), Evidence: encoded}
+	if err := b.releaseProven(ctx, proof, attempt, publication, exit); err != nil {
+		return control.ProofAcknowledgement{}, err
+	}
+	return control.ProofAcknowledgement{CloseID: proof.CloseID, ProofID: proof.ProofID, Recorded: true, Authority: b.authority}, nil
+}
+
+func (b *Bridge) releaseProven(ctx context.Context, proof control.CloseProof, attempt sqlite.Attempt, publication *controlOperation, exit sqlite.ExitProof) error {
 	switch proof.ScopeKind {
 	case control.UseScope:
-		err = b.releaseUseTree(ctx, proof.UseID, attempt, exit)
+		return b.releaseUseTree(ctx, proof.UseID, attempt, exit)
+	case control.ExecutionScope:
+		return b.releaseExecution(ctx, attempt, exit)
 	case control.PublicationScope:
 		if publication != nil {
 			b.mu.Lock()
 			publication.released = true
 			b.mu.Unlock()
 		}
-	case control.ExecutionScope:
-		err = b.releaseExecution(ctx, attempt, exit)
 	}
+	return nil
+}
+
+// provenAttempt finds the browser attempt a proof closes and refuses a proof
+// minted for an earlier epoch, generation or scope of it.
+func (b *Bridge) provenAttempt(ctx context.Context, session *realmSession, proof control.CloseProof) (sqlite.Attempt, error) {
+	records, err := b.config.Store.Attempts(ctx)
 	if err != nil {
-		return control.ProofAcknowledgement{}, err
+		return sqlite.Attempt{}, err
 	}
-	return control.ProofAcknowledgement{CloseID: proof.CloseID, ProofID: proof.ProofID, Recorded: true, Authority: b.authority}, nil
+	index := slices.IndexFunc(records, func(record sqlite.AttemptRecord) bool { return record.Attempt.ID == proof.Execution.ID })
+	if index < 0 {
+		return sqlite.Attempt{}, qimu.ErrUnavailable
+	}
+	attempt := records[index].Attempt
+	if attempt.Profile != qimu.BrowserJS || attempt.Realm != string(RealmID(session.realm)) || proof.Authority.Epoch != strconv.FormatUint(attempt.Epoch, 10) || proof.Execution.Generation != strconv.FormatUint(attempt.Generation, 10) || proof.ScopeID != string(attempt.Scope) || proof.ScopeGeneration != strconv.FormatUint(attempt.ScopeGeneration, 10) {
+		return sqlite.Attempt{}, qimu.ErrStaleBinding
+	}
+	if hasDuplicate(proof.Instances) {
+		return sqlite.Attempt{}, qimu.ErrInvalid
+	}
+	return attempt, nil
+}
+
+// bindProofScope checks that the proof's scope belongs to attempt and returns
+// the durable scope key it is recorded under.
+func (b *Bridge) bindProofScope(ctx context.Context, session *realmSession, attempt sqlite.Attempt, proof control.CloseProof) (string, *controlOperation, error) {
+	scope := string(proof.ScopeKind)
+	switch proof.ScopeKind {
+	case control.ExecutionScope:
+		if proof.UseID != "" || proof.PublicationID != "" || len(proof.Instances) != 1 || proof.Instances[0] != attempt.ID {
+			return "", nil, qimu.ErrInvalid
+		}
+		return scope, nil, nil
+	case control.UseScope:
+		if proof.UseID == "" || proof.PublicationID != "" {
+			return "", nil, qimu.ErrInvalid
+		}
+		if err := b.bindProofUse(ctx, session, attempt, proof); err != nil {
+			return "", nil, err
+		}
+		return scope + ":" + proof.UseID, nil, nil
+	case control.PublicationScope:
+		if proof.PublicationID == "" || proof.UseID != "" || len(proof.Instances) != 1 || proof.Instances[0] != attempt.ID {
+			return "", nil, qimu.ErrInvalid
+		}
+		publication, err := b.bindProofPublication(session, attempt, proof)
+		if err != nil {
+			return "", nil, err
+		}
+		return scope + ":" + proof.PublicationID, publication, nil
+	default:
+		return "", nil, qimu.ErrInvalid
+	}
+}
+
+func (b *Bridge) bindProofUse(ctx context.Context, session *realmSession, attempt sqlite.Attempt, proof control.CloseProof) error {
+	uses, err := b.config.Store.Uses(ctx)
+	if err != nil {
+		return err
+	}
+	index := slices.IndexFunc(uses, func(use sqlite.UseRecord) bool { return use.Approval.ID == proof.UseID })
+	if index < 0 {
+		return qimu.ErrStaleBinding
+	}
+	approval := uses[index].Approval
+	if approval.ExecutionID != attempt.ID || approval.Realm != RealmID(session.realm) || approval.Epoch != attempt.Epoch || approval.Scope != attempt.Scope || approval.ScopeGeneration != attempt.ScopeGeneration || !sameSet(approval.Instances, proof.Instances) {
+		return qimu.ErrStaleBinding
+	}
+	return nil
+}
+
+func (b *Bridge) bindProofPublication(session *realmSession, attempt sqlite.Attempt, proof control.CloseProof) (*controlOperation, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	var publication *controlOperation
+	for _, candidate := range b.operations {
+		if candidate.kind == "publish" && candidate.execution == attempt.ID && candidate.publication.Publication != nil && candidate.publication.Publication.ID == proof.PublicationID {
+			publication = candidate
+			break
+		}
+	}
+	live := b.executions[attempt.ID] != nil
+	valid := publication != nil && publication.realm == session.realm && publication.withdrawn
+	if live && !valid {
+		return nil, qimu.ErrStaleBinding
+	}
+	// After Host reconstruction the old public catalog is sealed. A
+	// subordinate object proof records evidence but releases no attempt or
+	// delegated Use, so it cannot widen the original execution authority.
+	return publication, nil
 }
 
 // A Use's actual exit covers the child range delegated through that original
