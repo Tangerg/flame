@@ -22,6 +22,14 @@ const draftPersistenceDelay = 150 * time.Millisecond
 // recall behavior.
 const promptHistoryCapacity = 1000
 
+// composerContent is the prompt editor and the attachment behind each of its
+// file chips. Every chip in the editor has a backing attachment; message
+// refuses an editor whose chips lost theirs. The zero value is empty.
+type composerContent struct {
+	kit.Composer
+	chips map[uint64]authoring.Attachment
+}
+
 type attachmentInsertion struct {
 	item  authoring.Attachment
 	count int
@@ -111,7 +119,7 @@ func (a *app) resolveAttachment(path string) (attachmentInsertion, error) {
 	if a.attachments == nil {
 		return attachmentInsertion{}, errors.New("attachments are unavailable in this session")
 	}
-	current, err := a.composerMessage()
+	current, err := a.composer.message()
 	if err != nil {
 		return attachmentInsertion{}, err
 	}
@@ -135,8 +143,7 @@ func (a *app) resolveAttachment(path string) (attachmentInsertion, error) {
 
 func (a *app) insertAttachment(insertion attachmentInsertion) {
 	item := insertion.item
-	element := a.composer.Editor().InsertElement(fileElement, "@"+item.Name)
-	a.attachmentElements[element.ID] = item
+	a.composer.attach(item)
 	a.scheduleDraftPersistence()
 	a.message(fmt.Sprintf("attached %s · %s · %d/%d", item.Name, item.MimeType, insertion.count, authoring.MaxMessageAttachments))
 }
@@ -162,41 +169,58 @@ func (a *app) acceptAttachmentCompletion(path string, token headless.Token) {
 }
 
 func (a *app) removeAttachment(argument string) error {
-	argument = strings.TrimSpace(argument)
-	if argument == "" {
-		return errors.New("/detach needs a file name, number, or all")
-	}
-	elements := a.composer.Editor().Elements()
-	if len(elements) == 0 {
-		return errors.New("the composer has no attachments")
-	}
-	if strings.EqualFold(argument, "all") {
-		a.removeAllAttachments(elements)
-		a.message("removed all attachments")
-		return nil
-	}
-	element, item, err := a.findAttachment(elements, argument)
+	name, err := a.composer.detach(argument)
 	if err != nil {
 		return err
 	}
-	a.composer.Editor().RemoveElement(element.ID)
 	a.scheduleDraftPersistence()
-	a.message("detached " + item.Name)
+	if name == "" {
+		a.message("removed all attachments")
+		return nil
+	}
+	a.message("detached " + name)
 	return nil
 }
 
-func (a *app) removeAllAttachments(elements []headless.Element) {
-	removed := false
-	for _, element := range elements {
-		if element.Kind != fileElement {
-			continue
+func (c *composerContent) attach(item authoring.Attachment) {
+	element := c.Editor().InsertElement(fileElement, "@"+item.Name)
+	if c.chips == nil {
+		c.chips = make(map[uint64]authoring.Attachment)
+	}
+	c.chips[element.ID] = item
+}
+
+func (c *composerContent) insertAttachments(items []authoring.Attachment) {
+	for _, item := range items {
+		c.attach(item)
+	}
+}
+
+// detach removes the attachment argument names, or every attachment for
+// "all"; it returns the removed attachment's name, empty for all.
+func (c *composerContent) detach(argument string) (string, error) {
+	argument = strings.TrimSpace(argument)
+	if argument == "" {
+		return "", errors.New("/detach needs a file name, number, or all")
+	}
+	elements := c.Editor().Elements()
+	if len(elements) == 0 {
+		return "", errors.New("the composer has no attachments")
+	}
+	if strings.EqualFold(argument, "all") {
+		for _, element := range elements {
+			if element.Kind == fileElement {
+				c.Editor().RemoveElement(element.ID)
+			}
 		}
-		a.composer.Editor().RemoveElement(element.ID)
-		removed = true
+		return "", nil
 	}
-	if removed {
-		a.scheduleDraftPersistence()
+	element, item, err := c.find(elements, argument)
+	if err != nil {
+		return "", err
 	}
+	c.Editor().RemoveElement(element.ID)
+	return item.Name, nil
 }
 
 type composerAttachment struct {
@@ -204,10 +228,10 @@ type composerAttachment struct {
 	item    authoring.Attachment
 }
 
-func (a *app) findAttachment(elements []headless.Element, argument string) (headless.Element, authoring.Attachment, error) {
+func (c *composerContent) find(elements []headless.Element, argument string) (headless.Element, authoring.Attachment, error) {
 	attached := make([]composerAttachment, 0, len(elements))
 	for _, element := range elements {
-		item, ok := a.attachmentElements[element.ID]
+		item, ok := c.chips[element.ID]
 		if !ok || element.Kind != fileElement {
 			continue
 		}
@@ -254,7 +278,7 @@ func filepathBase(path string) string {
 }
 
 func (a *app) showAttachments() {
-	message, err := a.composerMessage()
+	message, err := a.composer.message()
 	if err != nil {
 		a.message(err.Error())
 		return
@@ -270,11 +294,11 @@ func (a *app) showAttachments() {
 	a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: "attachments", Body: strings.Join(lines, "\n")})
 }
 
-func (a *app) composerMessage() (authoring.Message, error) {
-	editor := a.composer.Editor()
+func (c *composerContent) message() (authoring.Message, error) {
+	editor := c.Editor()
 	lines := strings.Split(editor.Text(), "\n")
 	elements := editor.Elements()
-	attachments, err := a.collectAttachments(editor, elements)
+	attachments, err := c.attachments(editor, elements)
 	if err != nil {
 		return authoring.Message{}, err
 	}
@@ -284,13 +308,13 @@ func (a *app) composerMessage() (authoring.Message, error) {
 	return authoring.Message{Text: strings.Join(lines, "\n"), Attachments: attachments}, nil
 }
 
-func (a *app) collectAttachments(editor *headless.Editor, elements []headless.Element) ([]authoring.Attachment, error) {
+func (c *composerContent) attachments(editor *headless.Editor, elements []headless.Element) ([]authoring.Attachment, error) {
 	attachments := make([]authoring.Attachment, 0, len(elements))
 	for _, element := range elements {
 		if element.Kind != fileElement {
 			continue
 		}
-		item, ok := a.attachmentElements[element.ID]
+		item, ok := c.chips[element.ID]
 		if !ok {
 			return nil, fmt.Errorf("attachment chip %q lost its backing value", element.Text(editor))
 		}
@@ -323,10 +347,29 @@ func (a *app) resetComposer() {
 }
 
 func (a *app) clearComposer() {
-	a.composer.Editor().Clear()
-	a.composer.Editor().ForgetHistory()
-	clear(a.attachmentElements)
+	a.composer.clear()
 	a.confirmation.Reset()
+}
+
+// clear empties the editor and forgets its undo history, so undo cannot bring
+// back a chip whose attachment was released.
+func (c *composerContent) clear() {
+	c.Editor().Clear()
+	c.Editor().ForgetHistory()
+	clear(c.chips)
+}
+
+// draft is the composer's message and whether it holds anything.
+func (c *composerContent) draft() (authoring.Message, bool, error) {
+	editor := c.Editor()
+	if editor.Empty() && len(editor.Elements()) == 0 {
+		return authoring.Message{}, false, nil
+	}
+	message, err := c.message()
+	if err != nil {
+		return authoring.Message{}, false, err
+	}
+	return message, true, nil
 }
 
 func (a *app) rememberPrompt(message authoring.Message) error {
@@ -342,13 +385,62 @@ func (a *app) rememberPrompt(message authoring.Message) error {
 }
 
 func (a *app) persistDraft() error {
-	a.cancelScheduledDraftSave()
-	message, _, err := a.currentDraft()
+	a.drafts.cancel()
+	message, _, err := a.composer.draft()
 	if err == nil {
 		err = a.saveDraft(message)
 	}
 	a.reportWorkbenchIssue(workbenchDraft, err)
 	return err
+}
+
+// draftAutosave persists the composer's draft per session. It keeps the
+// draft last known to be persisted, so a settled burst that changed nothing
+// writes nothing, and the pending save of the current input burst.
+type draftAutosave struct {
+	store   *draftPersistence
+	saved   draftObservation
+	pending func()
+}
+
+// schedule saves capture's draft once input has been quiet for
+// draftPersistenceDelay; a new burst replaces the pending save.
+func (d *draftAutosave) schedule(after func(time.Duration, func()) func(), capture func() (string, authoring.Message, error), report func(error)) {
+	d.cancel()
+	d.pending = after(draftPersistenceDelay, func() {
+		d.pending = nil
+		sessionID, message, err := capture()
+		if err != nil {
+			report(err)
+			return
+		}
+		if d.saved.Observe(sessionID, message) {
+			report(d.store.Schedule(sessionID, message))
+		}
+	})
+}
+
+func (d *draftAutosave) cancel() {
+	if d.pending == nil {
+		return
+	}
+	d.pending()
+	d.pending = nil
+}
+
+// save persists message now, replacing any pending save.
+func (d *draftAutosave) save(sessionID string, message authoring.Message) error {
+	d.cancel()
+	if err := d.store.Flush(sessionID, message); err != nil {
+		return err
+	}
+	d.saved.Reset(sessionID, message)
+	return nil
+}
+
+// adopt records message as already persisted for sessionID.
+func (d *draftAutosave) adopt(sessionID string, message authoring.Message) {
+	d.saved.Reset(sessionID, message)
 }
 
 // scheduleDraftPersistence marks authoring input in constant time. The complete
@@ -358,35 +450,14 @@ func (a *app) scheduleDraftPersistence() {
 	if a.closed {
 		return
 	}
-	a.cancelScheduledDraftSave()
-	a.stopDraftSave = a.loop.After(draftPersistenceDelay, func() {
-		a.stopDraftSave = nil
-		message, _, err := a.currentDraft()
-		if err != nil {
-			a.reportWorkbenchIssue(workbenchDraft, err)
-			return
-		}
-		if a.draftState.Observe(a.session.current.ID, message) {
-			a.reportWorkbenchIssue(workbenchDraft, a.drafts.Schedule(a.session.current.ID, message))
-		}
-	})
-}
-
-func (a *app) cancelScheduledDraftSave() {
-	if a.stopDraftSave == nil {
-		return
-	}
-	a.stopDraftSave()
-	a.stopDraftSave = nil
+	a.drafts.schedule(a.loop.After, func() (string, authoring.Message, error) {
+		message, _, err := a.composer.draft()
+		return a.session.current.ID, message, err
+	}, func(err error) { a.reportWorkbenchIssue(workbenchDraft, err) })
 }
 
 func (a *app) saveDraft(message authoring.Message) error {
-	a.cancelScheduledDraftSave()
-	if err := a.drafts.Flush(a.session.current.ID, message); err != nil {
-		return err
-	}
-	a.draftState.Reset(a.session.current.ID, message)
-	return nil
+	return a.drafts.save(a.session.current.ID, message)
 }
 
 // commitDraft makes a recoverable value durable before replacing the visible
@@ -410,20 +481,13 @@ func (a *app) recoverDraft(message authoring.Message) error {
 
 func (a *app) restoreComposer(message authoring.Message) {
 	a.clearComposer()
-	a.insertComposerAttachments(message.Attachments)
+	a.composer.insertAttachments(message.Attachments)
 	a.composer.Editor().Insert(message.Text)
 	a.scheduleDraftPersistence()
 }
 
-func (a *app) insertComposerAttachments(items []authoring.Attachment) {
-	for _, item := range items {
-		element := a.composer.Editor().InsertElement(fileElement, "@"+item.Name)
-		a.attachmentElements[element.ID] = item
-	}
-}
-
 func (a *app) recallPrevious() bool {
-	current, err := a.composerMessage()
+	current, err := a.composer.message()
 	if err != nil {
 		a.message(err.Error())
 		return true

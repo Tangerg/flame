@@ -139,7 +139,7 @@ func (a *app) editPromptExternally() error {
 	if a.execution.blocksAdmission() {
 		return errors.New("finish or cancel the active run before opening an external editor")
 	}
-	message, err := a.composerMessage()
+	message, err := a.composer.message()
 	if err != nil {
 		return err
 	}

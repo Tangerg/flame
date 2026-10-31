@@ -344,7 +344,7 @@ func (a *app) runSessionChangeWithDraftDisposition[T any](
 	}
 	a.operations.Cancel(pickerCatalogOperation)
 	a.dialogs.sessionDialog.Dismiss()
-	baseline, _, err := a.currentDraft()
+	baseline, _, err := a.composer.draft()
 	if err != nil {
 		a.message(label + " failed: " + err.Error())
 		return
@@ -500,7 +500,7 @@ func (a *app) prepareSessionInstallation(snapshot conversation.SessionSnapshot) 
 func (a *app) prepareDestinationDraft(
 	session conversation.Session,
 ) (authoring.Message, *workbench.SessionRollbackRecovery, error) {
-	current, _, err := a.currentDraft()
+	current, _, err := a.composer.draft()
 	if err != nil {
 		return authoring.Message{}, nil, err
 	}
@@ -590,7 +590,7 @@ func (s sessionInstallation) apply(a *app) {
 	a.transcript = s.projection.transcript
 	a.wireTranscript(s.projection.transcript)
 	a.restoreComposer(s.draft)
-	a.draftState.Reset(a.session.current.ID, s.draft)
+	a.drafts.adopt(a.session.current.ID, s.draft)
 	a.activity.Reset()
 	a.status.Reset()
 	a.workbenchHealth.enterSession()

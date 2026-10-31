@@ -11,7 +11,7 @@ import (
 )
 
 func (a *app) stashPrompt() error {
-	message, present, err := a.currentDraft()
+	message, present, err := a.composer.draft()
 	if err != nil {
 		return err
 	}
@@ -30,7 +30,7 @@ func (a *app) stashPrompt() error {
 	if err != nil {
 		return fmt.Errorf("stash session draft: %w", err)
 	}
-	a.draftState.Reset(a.session.current.ID, authoring.Message{})
+	a.drafts.adopt(a.session.current.ID, authoring.Message{})
 	a.restoreComposer(authoring.Message{})
 	a.message("stashed prompt · " + stash.ID)
 	return nil
@@ -50,7 +50,7 @@ func (a *app) showPromptStashes() {
 }
 
 func (a *app) applyPromptStash(identity string) error {
-	if _, present, err := a.currentDraft(); err != nil {
+	if _, present, err := a.composer.draft(); err != nil {
 		return err
 	} else if present {
 		return errors.New("the composer is not empty; stash or clear it before applying another prompt")

@@ -94,7 +94,7 @@ type app struct {
 	settings    settings.Config
 
 	options        authoring.RunOptions
-	composer       kit.Composer
+	composer       composerContent
 	prompt         *promptView
 	commands       commandCatalog
 	completion     headless.Completion
@@ -103,24 +103,18 @@ type app struct {
 	stack          headless.Stack
 	queue          *workbench.Queue
 	workbench      *workbench.Store
-	drafts         *draftPersistence
-	draftState     draftObservation
-	stopDraftSave  func()
+	drafts         draftAutosave
 	editor         *draftEditor
 	localDirectory string
 	detachOnExit   bool
 
-	attachments        *attachment.Resolver
-	attachmentElements map[uint64]authoring.Attachment
-	history            promptHistory
-	workbenchHealth    workbenchHealth
-	commandOperations  commandOperationRegistry
-	confirmation       pressConfirmation
-	applicationKeys    *keymap.Map
-	globalKeys         *keymap.Map
-	applicationMatcher keymap.Matcher
-	globalMatcher      keymap.Matcher
-	attention          attentionCenter
+	attachments       *attachment.Resolver
+	history           promptHistory
+	workbenchHealth   workbenchHealth
+	commandOperations commandOperationRegistry
+	confirmation      pressConfirmation
+	keys              keyRouter
+	attention         attentionCenter
 
 	closed         bool
 	closeErr       error
@@ -202,34 +196,32 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		session:  sessionState{current: cfg.snapshot.Session, context: newSessionContextLease()},
 
 		pluginHost: cfg.pluginHost, pluginIssues: cfg.pluginIssues,
-		execution:          executionState{conversation: conversation.New()},
-		operations:         newOperationOwner(cfg.context),
-		transcript:         transcript,
-		brand:              brand,
-		header:             newSessionHeader(appearance.theme, appearance.glyphs, cfg.snapshot.Session),
-		activity:           newActivityView(appearance.theme, appearance.glyphs),
-		queueView:          newQueueView(appearance.theme, appearance.glyphs),
-		status:             newStatusView(appearance.theme, appearance.glyphs),
-		queue:              cfg.queue,
-		workbench:          cfg.workbench,
-		editor:             cfg.editor,
-		localDirectory:     cfg.localDirectory,
-		detachOnExit:       cfg.detachOnExit,
-		settings:           cfg.settings.Clone(),
-		options:            cfg.options,
-		syntax:             appearance.syntax,
-		attachments:        cfg.attachments,
-		attachmentElements: make(map[uint64]authoring.Attachment),
-		commandOperations:  newCommandOperationRegistry(),
-		commands:           newCommandCatalog(),
-		attention:          newAttentionCenter(),
-		applicationKeys:    cfg.keyBindings.application,
-		globalKeys:         cfg.keyBindings.global,
+		execution:         executionState{conversation: conversation.New()},
+		operations:        newOperationOwner(cfg.context),
+		transcript:        transcript,
+		brand:             brand,
+		header:            newSessionHeader(appearance.theme, appearance.glyphs, cfg.snapshot.Session),
+		activity:          newActivityView(appearance.theme, appearance.glyphs),
+		queueView:         newQueueView(appearance.theme, appearance.glyphs),
+		status:            newStatusView(appearance.theme, appearance.glyphs),
+		queue:             cfg.queue,
+		workbench:         cfg.workbench,
+		editor:            cfg.editor,
+		localDirectory:    cfg.localDirectory,
+		detachOnExit:      cfg.detachOnExit,
+		settings:          cfg.settings.Clone(),
+		options:           cfg.options,
+		syntax:            appearance.syntax,
+		attachments:       cfg.attachments,
+		commandOperations: newCommandOperationRegistry(),
+		commands:          newCommandCatalog(),
+		attention:         newAttentionCenter(),
+		keys:              keyRouter{application: cfg.keyBindings.application, global: cfg.keyBindings.global},
 	}
 	a.tasks = taskRunner{operations: a.operations, dispatch: loop.Dispatcher(), settled: func() { a.drainQueue() }}
-	a.drafts = newDraftPersistence(cfg.workbench, func(result draftPersistenceResult) {
+	a.drafts.store = newDraftPersistence(cfg.workbench, func(result draftPersistenceResult) {
 		loop.Dispatcher().Post(func() {
-			if a.closed || !a.drafts.Current(result.revision) {
+			if a.closed || !a.drafts.store.Current(result.revision) {
 				return
 			}
 			a.reportWorkbenchIssue(workbenchDraft, result.err)
@@ -260,10 +252,9 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 }
 
 func (a *app) configureComposer(appearance terminalAppearance, keys *keymap.Map, initial authoring.Message) {
-	a.composer = kit.Composer{
-		Theme: appearance.theme, Prompt: appearance.glyphs.Marker + " ",
-		MaxRows: 6,
-	}
+	a.composer.Theme = appearance.theme
+	a.composer.Prompt = appearance.glyphs.Marker + " "
+	a.composer.MaxRows = 6
 	a.composer.Editor().Placeholder = "Ask flame to inspect, explain, or change something"
 	a.composer.Editor().Keys = keys
 	a.composer.Editor().Clipboard = a.loop.Clipboard()
@@ -296,7 +287,7 @@ func (a *app) configureCompletion(appearance terminalAppearance) {
 
 func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.Map) {
 	theme, glyphs := appearance.theme, appearance.glyphs
-	a.prompt = newPromptView(theme, glyphs, editorKeys, &a.composer, a.displayOptions())
+	a.prompt = newPromptView(theme, glyphs, editorKeys, &a.composer.Composer, a.displayOptions())
 	a.shell = newShellView(a.header, a.transcript, a.activity, a.queueView, a.status, a.prompt)
 	a.wireTranscript(a.transcript)
 	a.shell.Focus(true)
@@ -412,11 +403,11 @@ func (a *app) Close(ctx context.Context) error {
 	if a.mcp != nil && a.mcp.form != nil {
 		a.mcp.closeMCPForm(a.mcp.form)
 	}
-	a.cancelScheduledDraftSave()
+	a.drafts.cancel()
 	// Flush is a serialization barrier: any autosave already in the filesystem
 	// finishes first, then the last visible composer state is written last.
 	closeErr = errors.Join(closeErr, a.persistDraft())
-	closeErr = errors.Join(closeErr, a.drafts.Close())
+	closeErr = errors.Join(closeErr, a.drafts.store.Close())
 	if cancelRuntime {
 		if err := a.cancelRuntimeNow(ctx, target, cancelReplay); err == nil {
 			closeErr = errors.Join(closeErr, a.retireCanceledRuntimeOwnership(target.RunID, openingCommandID))
@@ -440,7 +431,7 @@ func (a *app) Close(ctx context.Context) error {
 }
 
 func (a *app) submit() {
-	message, err := a.composerMessage()
+	message, err := a.composer.message()
 	if err != nil {
 		a.message(err.Error())
 		return

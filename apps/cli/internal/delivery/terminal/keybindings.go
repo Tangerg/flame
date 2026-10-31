@@ -57,6 +57,29 @@ func (k keyBindings) setResolver(resolve keymap.Resolver) {
 	}
 }
 
+// keyRouter matches key sequences against the application bindings, or only
+// the global ones while a modal is open. Each map keeps its own partial
+// sequence, so an application prefix cannot swallow form input.
+type keyRouter struct {
+	application        *keymap.Map
+	global             *keymap.Map
+	applicationPending keymap.Matcher
+	globalPending      keymap.Matcher
+}
+
+// route returns the hint for an application sequence still in progress; it is
+// empty while a modal is open.
+func (k *keyRouter) route(key input.Key, modal bool, handle func(keymap.Action) bool) (matched, handled bool, pending string) {
+	if modal {
+		k.applicationPending.Clear()
+		matched, handled = k.globalPending.Handle(k.global, key, handle)
+		return matched, handled, ""
+	}
+	k.globalPending.Clear()
+	matched, handled = k.applicationPending.Handle(k.application, key, handle)
+	return matched, handled, pendingKeySequenceHint(k.application, k.applicationPending.Keys())
+}
+
 func formatKeyBindings(keys *keymap.Map, action keymap.Action, separator string) string {
 	sequences := keys.Keys(action)
 	names := make([]string, len(sequences))

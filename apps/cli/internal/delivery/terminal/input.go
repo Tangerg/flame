@@ -26,22 +26,16 @@ func (a *app) matchConfiguredAction(event input.Event) (matched, handled bool) {
 	if !ok || !key.Down() {
 		return false, false
 	}
-	keys, matcher := a.applicationKeys, &a.applicationMatcher
-	if a.stack.Depth() > 0 {
-		// A modal owns every non-global key. Keeping a separate matcher prevents a
-		// printable prefix configured for the application from swallowing form input.
-		a.applicationMatcher.Clear()
+	modal := a.stack.Depth() > 0
+	if modal {
 		a.prompt.SetPendingKeySequence("")
-		keys, matcher = a.globalKeys, &a.globalMatcher
-	} else {
-		a.globalMatcher.Clear()
 	}
-	matched, handled = matcher.Handle(keys, key, func(action keymap.Action) bool {
+	matched, handled, pending := a.keys.route(key, modal, func(action keymap.Action) bool {
 		a.disarmConfirmation(event, action)
 		return a.handleConfiguredAction(event, action)
 	})
-	if matcher == &a.applicationMatcher {
-		a.prompt.SetPendingKeySequence(pendingKeySequenceHint(keys, matcher.Keys()))
+	if !modal {
+		a.prompt.SetPendingKeySequence(pending)
 	}
 	return matched, handled
 }
@@ -174,7 +168,7 @@ func (a *app) handleEscape() bool {
 		a.cancel()
 		return true
 	}
-	message, hasDraft, err := a.currentDraft()
+	message, hasDraft, err := a.composer.draft()
 	if err != nil {
 		a.message(err.Error())
 		return true
@@ -197,22 +191,10 @@ func (a *app) handleEscape() bool {
 
 func (a *app) handleQuit() {
 	if !a.confirmation.Confirm(confirmQuit, time.Now()) {
-		a.message("repeat " + formatKeyBindings(a.applicationKeys, quitApp, " or ") + " to quit")
+		a.message("repeat " + formatKeyBindings(a.keys.application, quitApp, " or ") + " to quit")
 		return
 	}
 	a.loop.Quit()
-}
-
-func (a *app) currentDraft() (authoring.Message, bool, error) {
-	editor := a.composer.Editor()
-	if editor.Empty() && len(editor.Elements()) == 0 {
-		return authoring.Message{}, false, nil
-	}
-	message, err := a.composerMessage()
-	if err != nil {
-		return authoring.Message{}, false, err
-	}
-	return message, true, nil
 }
 
 func isPromptTextEvent(event input.Event) bool {
@@ -245,7 +227,7 @@ func (a *app) handleCancelGesture() {
 	if a.cancelSessionChange() {
 		return
 	}
-	message, hasDraft, err := a.currentDraft()
+	message, hasDraft, err := a.composer.draft()
 	if err != nil {
 		a.message(err.Error())
 		return
@@ -255,7 +237,7 @@ func (a *app) handleCancelGesture() {
 			a.message("draft clear blocked: " + err.Error())
 			return
 		}
-		a.message("draft cleared; repeat " + formatKeyBindings(a.applicationKeys, cancelRun, " or ") + " to cancel")
+		a.message("draft cleared; repeat " + formatKeyBindings(a.keys.application, cancelRun, " or ") + " to cancel")
 		return
 	}
 	a.cancel()

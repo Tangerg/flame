@@ -55,10 +55,9 @@ func TestPromptHistoryOwnsAndEnforcesItsRetentionCapacity(t *testing.T) {
 }
 
 func TestCommittedComposerCannotUndoIntoReleasedAttachmentPayloads(t *testing.T) {
-	a := &app{attachmentElements: make(map[uint64]authoring.Attachment)}
+	a := &app{}
 	editor := a.composer.Editor()
-	element := editor.InsertElement(fileElement, "@design.md")
-	a.attachmentElements[element.ID] = authoring.Attachment{Name: "design.md"}
+	a.composer.attach(authoring.Attachment{Name: "design.md"})
 	editor.Insert(" inspect this")
 	a.clearComposer()
 	editor.Do(headless.Undo)
@@ -68,7 +67,7 @@ func TestCommittedComposerCannotUndoIntoReleasedAttachmentPayloads(t *testing.T)
 }
 
 func TestRejectedSteerAttachmentsNeverReplaceAnUnreadableDraft(t *testing.T) {
-	a := &app{attachmentElements: make(map[uint64]authoring.Attachment), closed: true}
+	a := &app{closed: true}
 	editor := a.composer.Editor()
 	editor.InsertElement(fileElement, "@orphan.md")
 	editor.Insert(" keep this text")

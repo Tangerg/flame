@@ -313,7 +313,7 @@ func (a *app) runCommand(name, argument string, accept func()) {
 }
 
 func (a *app) commandDraft() (authoring.Message, bool, error) {
-	message, _, err := a.currentDraft()
+	message, _, err := a.composer.draft()
 	if err != nil {
 		return authoring.Message{}, false, err
 	}

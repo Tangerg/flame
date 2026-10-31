@@ -263,24 +263,24 @@ func TestRejectedSlashCommandsPreserveTheEditorAndAttachments(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			application := &app{
 				status: &statusView{}, execution: executionState{conversation: conversation.New()},
-				commands: newCommandCatalog(), attachmentElements: make(map[uint64]authoring.Attachment),
+				commands: newCommandCatalog(),
 			}
 			if err := application.commands.add("test", extensions.CommandDescriptor{Name: "inspect", Title: "Inspect", Arguments: test.arguments}, func(string, func()) { t.Fatal("rejected command executed") }, test.availability); err != nil {
 				t.Fatal(err)
 			}
 			editor := application.composer.Editor()
 			attachment := editor.InsertElement(fileElement, "@context.txt")
-			application.attachmentElements[attachment.ID] = authoring.Attachment{ID: "context", Kind: protocol.ContentBlockText, Name: "context.txt", MimeType: "text/plain"}
+			application.composer.chips = map[uint64]authoring.Attachment{attachment.ID: {ID: "context", Kind: protocol.ContentBlockText, Name: "context.txt", MimeType: "text/plain"}}
 			editor.Insert(test.text)
 			editor.SetCursor(0, 3)
 			revision := editor.Revision()
 			line, column := editor.Cursor()
-			message, err := application.composerMessage()
+			message, err := application.composer.message()
 			if err != nil {
 				t.Fatal(err)
 			}
 			application.submit()
-			after, err := application.composerMessage()
+			after, err := application.composer.message()
 			if err != nil {
 				t.Fatal(err)
 			}

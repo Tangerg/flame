@@ -196,7 +196,7 @@ func (a *app) applyRollbackSettlement(settlement rollbackSettlement) error {
 	installation.apply(a)
 	recovery := installation.rollbackRecovery
 	if confirmationErr != nil {
-		current, _, draftErr := a.currentDraft()
+		current, _, draftErr := a.composer.draft()
 		if draftErr != nil {
 			return errors.Join(confirmationErr, draftErr)
 		}
