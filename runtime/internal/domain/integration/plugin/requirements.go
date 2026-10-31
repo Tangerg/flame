@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -31,7 +32,7 @@ type RequiredBindings struct{ values []ResolvedRequirement }
 
 func NewRequiredBindings(values []ResolvedRequirement) (*RequiredBindings, error) {
 	owned := &RequiredBindings{values: slices.Clone(values)}
-	seen := make(map[string]bool, len(values))
+	seen := make(map[[2]ContributionID]bool, len(values))
 	for i, value := range owned.values {
 		if err := value.Contribution.Validate(); err != nil {
 			return nil, err
@@ -39,11 +40,11 @@ func NewRequiredBindings(values []ResolvedRequirement) (*RequiredBindings, error
 		if err := value.ID.Validate(); err != nil {
 			return nil, err
 		}
-		key := value.Contribution.String() + "/" + value.ID.String()
-		if seen[key] {
+		key := fmt.Sprintf("%s/%s", value.Contribution, value.ID)
+		if seen[[2]ContributionID{value.Contribution, value.ID}] {
 			return nil, fmt.Errorf("%w: duplicate resolved requirement %s", ErrInvalid, key)
 		}
-		seen[key] = true
+		seen[[2]ContributionID{value.Contribution, value.ID}] = true
 		contract, err := portable.ParseCapability(value.Contract.JSON())
 		if err != nil {
 			return nil, fmt.Errorf("%w: requirement %s contract: %w", ErrInvalid, key, err)
@@ -53,7 +54,11 @@ func NewRequiredBindings(values []ResolvedRequirement) (*RequiredBindings, error
 		}
 		owned.values[i].Contract = contract.Identity()
 		owned.values[i].Bindings = slices.Clone(value.Bindings)
-		providers := map[string]bool{}
+		type provider struct {
+			installation identity.InstallationID
+			contribution ContributionID
+		}
+		providers := map[provider]bool{}
 		for _, binding := range value.Bindings {
 			if err := binding.Provider.Validate(); err != nil {
 				return nil, err
@@ -67,7 +72,7 @@ func NewRequiredBindings(values []ResolvedRequirement) (*RequiredBindings, error
 			if !portable.ValidExportName(binding.Export) || binding.Contract != contract.Identity() {
 				return nil, fmt.Errorf("%w: requirement %s binding contract", ErrInvalid, key)
 			}
-			providerKey := binding.Provider.InstallationID.String() + "/" + binding.Contribution.String()
+			providerKey := provider{binding.Provider.InstallationID, binding.Contribution}
 			if providers[providerKey] {
 				return nil, fmt.Errorf("%w: requirement %s has a duplicate provider", ErrInvalid, key)
 			}

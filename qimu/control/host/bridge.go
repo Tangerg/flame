@@ -88,7 +88,7 @@ type realmSession struct {
 	token       string
 	cleanupOnly bool
 	revision    uint64
-	fences      map[string]control.Fence
+	fences      map[control.Fence]struct{}
 }
 
 type browserExecution struct {
@@ -241,7 +241,7 @@ func (b *Bridge) openRealm(ctx context.Context, operationID, resumeToken string)
 	if len(b.sessions) >= b.config.MaxRealms {
 		return Credentials{}, qimu.ErrCapacity
 	}
-	session := &realmSession{realm: credentials.Realm, token: credentials.Token, fences: map[string]control.Fence{}}
+	session := &realmSession{realm: credentials.Realm, token: credentials.Token, fences: map[control.Fence]struct{}{}}
 	b.sessions[string(RealmID(credentials.Realm))] = session
 	b.tokens[credentials.Token] = session
 	return credentials, nil
@@ -265,7 +265,7 @@ func (b *Bridge) ResumeRealm(ctx context.Context, realm control.Realm, resumeTok
 	if len(b.sessions) >= b.config.MaxRealms {
 		return Credentials{}, qimu.ErrCapacity
 	}
-	session := &realmSession{realm: realm, token: newToken(), cleanupOnly: true, fences: map[string]control.Fence{}}
+	session := &realmSession{realm: realm, token: newToken(), cleanupOnly: true, fences: map[control.Fence]struct{}{}}
 	b.sessions[key] = session
 	b.tokens[session.token] = session
 	return Credentials{Authority: b.authority, Realm: realm, Token: session.token, ResumeToken: resumeToken}, nil
@@ -402,9 +402,9 @@ func (b *Bridge) fence(entry *browserExecution) {
 	if session == nil {
 		return
 	}
-	key := entry.plan.ScopeID + "/" + entry.plan.ScopeGeneration
-	if _, exists := session.fences[key]; !exists {
-		session.fences[key] = control.Fence{ScopeID: entry.plan.ScopeID, ScopeGeneration: entry.plan.ScopeGeneration}
+	fence := control.Fence{ScopeID: entry.plan.ScopeID, ScopeGeneration: entry.plan.ScopeGeneration}
+	if _, exists := session.fences[fence]; !exists {
+		session.fences[fence] = struct{}{}
 		session.revision++
 	}
 }
@@ -426,7 +426,7 @@ func (b *Bridge) Poll(ctx context.Context, token string) (control.Poll, error) {
 			result.Plans = append(result.Plans, clone(entry.plan))
 		}
 	}
-	for _, fence := range session.fences {
+	for fence := range session.fences {
 		result.Fences = append(result.Fences, fence)
 	}
 	slices.SortFunc(result.Plans, func(a, b control.LocalPlan) int { return compare(a.Execution.ID, b.Execution.ID) })

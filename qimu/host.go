@@ -168,7 +168,7 @@ type Host struct {
 	closed                   bool
 	drivers                  map[Profile]Driver
 	contracts                map[ContractRef]*declaration
-	contractNames            map[string]ContractRef
+	contractNames            map[nominalContract]ContractRef
 	installations            map[InstallationID]*installed
 	instances                map[instanceKey]*Instance
 	allInstances             map[string]*Instance
@@ -222,7 +222,7 @@ func NewHost(ctx context.Context, config HostConfig) (*Host, error) {
 	if config.MaxInstallations < 1 || config.MaxPublications < 1 || config.MaxPublicationOperations < 1 || config.WatchCapacity < 1 || config.MaxWatches < 1 || config.MaxUses < 1 || config.MaxEventRoutes < 1 {
 		return nil, ErrInvalid
 	}
-	h := &Host{admission: config.Admission, lifetime: config.Lifetime, epoch: config.Epoch, identity: &authorityIdentity{}, drivers: make(map[Profile]Driver), contracts: make(map[ContractRef]*declaration), contractNames: make(map[string]ContractRef), installations: make(map[InstallationID]*installed), instances: make(map[instanceKey]*Instance), allInstances: make(map[string]*Instance), catalog: make(map[ContractRef]*pointStore), uses: make(map[string]*Use), watches: make(map[*Watch]struct{}), store: config.Installations, protection: config.ExecutionProtection, maxPublications: config.MaxPublications, maxPublicationOperations: config.MaxPublicationOperations, watchCapacity: config.WatchCapacity}
+	h := &Host{admission: config.Admission, lifetime: config.Lifetime, epoch: config.Epoch, identity: &authorityIdentity{}, drivers: make(map[Profile]Driver), contracts: make(map[ContractRef]*declaration), contractNames: make(map[nominalContract]ContractRef), installations: make(map[InstallationID]*installed), instances: make(map[instanceKey]*Instance), allInstances: make(map[string]*Instance), catalog: make(map[ContractRef]*pointStore), uses: make(map[string]*Use), watches: make(map[*Watch]struct{}), store: config.Installations, protection: config.ExecutionProtection, maxPublications: config.MaxPublications, maxPublicationOperations: config.MaxPublicationOperations, watchCapacity: config.WatchCapacity}
 	h.routes = make(map[string]*eventRoute)
 	h.maxEventRoutes = config.MaxEventRoutes
 	h.maxInstallations = config.MaxInstallations
@@ -282,7 +282,7 @@ func (h *Host) Register(declarations ...Declaration) error {
 	if h.closed {
 		return ErrClosed
 	}
-	names := make(map[string]ContractRef, len(declarations))
+	names := make(map[nominalContract]ContractRef, len(declarations))
 	definitions := make(map[ContractRef]*declaration, len(declarations))
 	for _, token := range declarations {
 		if nilValue(token) || token.definition() == nil {

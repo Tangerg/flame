@@ -177,7 +177,11 @@ func (m Manifest) Validate() error {
 		artifacts[artifact.Path] = artifact
 	}
 	contracts := map[qimu.ContractRef]struct{}{}
-	nominal := map[string]qimu.ContractRef{}
+	type nominalContract struct {
+		kind          qimu.ContractKind
+		name, version string
+	}
+	nominal := map[nominalContract]qimu.ContractRef{}
 	for _, contract := range m.Contracts {
 		if err := contract.Validate(); err != nil {
 			return errors.Join(ErrInvalid, err)
@@ -185,7 +189,7 @@ func (m Manifest) Validate() error {
 		if _, ok := contracts[contract]; ok {
 			return fmt.Errorf("%w: duplicate contract", ErrInvalid)
 		}
-		key := string(contract.Kind) + "\x00" + contract.Name + "\x00" + contract.Version
+		key := nominalContract{contract.Kind, contract.Name, contract.Version}
 		if prior, ok := nominal[key]; ok && prior != contract {
 			return fmt.Errorf("%w: conflicting contract version", ErrInvalid)
 		}
@@ -227,7 +231,7 @@ func (m Manifest) Validate() error {
 			}
 			exports[export.Name] = struct{}{}
 		}
-		targets := map[string]struct{}{}
+		targets := map[[2]string]struct{}{}
 		for _, variant := range unit.Variants {
 			artifact, exists := artifacts[variant.Path]
 			if !exists || !qimu.ValidName(variant.OS) || !qimu.ValidName(variant.Arch) {
@@ -239,7 +243,7 @@ func (m Manifest) Validate() error {
 			if variant.Runtime != nil && !validRuntime(*variant.Runtime) {
 				return fmt.Errorf("%w: runtime reference", ErrInvalid)
 			}
-			key := variant.OS + "/" + variant.Arch
+			key := [2]string{variant.OS, variant.Arch}
 			if _, exists := targets[key]; exists {
 				return fmt.Errorf("%w: duplicate target variant", ErrInvalid)
 			}
@@ -308,7 +312,11 @@ func (m Manifest) Validate() error {
 			return fmt.Errorf("%w: unsupported distribution profile %q", ErrInvalid, unit.Profile)
 		}
 	}
-	keys := map[string]struct{}{}
+	type contributionKey struct {
+		unit       qimu.UnitID
+		point, key string
+	}
+	keys := map[contributionKey]struct{}{}
 	for _, contribution := range m.Contributions {
 		unit, ok := units[contribution.Unit]
 		if !ok || !qimu.ValidName(contribution.Key) || !qimu.ValidName(contribution.Export) {
@@ -322,7 +330,7 @@ func (m Manifest) Validate() error {
 		}) {
 			return fmt.Errorf("%w: contribution export", ErrInvalid)
 		}
-		key := string(contribution.Unit) + "/" + contribution.Point.Name + "/" + contribution.Key
+		key := contributionKey{contribution.Unit, contribution.Point.Name, contribution.Key}
 		if _, ok := keys[key]; ok {
 			return fmt.Errorf("%w: duplicate contribution", ErrInvalid)
 		}

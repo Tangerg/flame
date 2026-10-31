@@ -311,14 +311,14 @@ func (r Release) declaresSkill(name string) bool {
 // isolate an invalid member without revalidating the members before it.
 type Builder struct {
 	declaration Declaration
-	bindings    map[string]bool
+	bindings    map[inputSlot]bool
 }
 
 func NewBuilder(name, version, description string) (*Builder, error) {
 	if !validName(name) {
 		return nil, fmt.Errorf("%w: package name", ErrInvalid)
 	}
-	return &Builder{declaration: Declaration{Name: name, Version: version, Description: description}, bindings: map[string]bool{}}, nil
+	return &Builder{declaration: Declaration{Name: name, Version: version, Description: description}, bindings: map[inputSlot]bool{}}, nil
 }
 
 // Report records an admission finding. Findings are validated with the
@@ -432,57 +432,64 @@ func (b *Builder) release() Release { return Release{declaration: b.declaration}
 // launch policy owns them, so a user input may not supply them.
 var managedNodeLaunchVariables = []string{"NODE_OPTIONS", "NODE_PATH", "NODE_REPL_EXTERNAL_MODULE"}
 
+// inputSlot is the configuration slot an input fills on its server.
+type inputSlot struct {
+	server mcpserver.ServerName
+	target InputTarget
+	key    string
+}
+
 // binding names the configuration slot an input fills on its server, in the
 // canonical case of the target, so two spellings cannot fill one slot.
-func (i Input) binding(server Server) (string, error) {
+func (i Input) binding(server Server) (inputSlot, error) {
 	key := i.Key
 	switch i.Target {
 	case Environment:
 		if server.Transport() != mcpserver.TransportStdio {
-			return "", refuse(DiagnosticInvalidDependencies, "input %q binds an environment variable of a non-stdio server", i.ID)
+			return inputSlot{}, refuse(DiagnosticInvalidDependencies, "input %q binds an environment variable of a non-stdio server", i.ID)
 		}
 		_, managed := server.Startup.(ManagedBackend)
 		if managed && slices.Contains(managedNodeLaunchVariables, strings.ToUpper(key)) {
-			return "", refuse(DiagnosticInvalidDependencies, "input %q replaces managed node launch policy", i.ID)
+			return inputSlot{}, refuse(DiagnosticInvalidDependencies, "input %q replaces managed node launch policy", i.ID)
 		}
 		if err := validatePackageEnvironment(map[string]string{key: ""}); err != nil {
-			return "", &Refusal{Code: DiagnosticInvalidDeclaration, cause: fmt.Errorf("input %q: %w", i.ID, err)}
+			return inputSlot{}, &Refusal{Code: DiagnosticInvalidDeclaration, cause: fmt.Errorf("input %q: %w", i.ID, err)}
 		}
 		key = strings.ToUpper(key)
 		stdio, _ := server.stdio()
 		for static := range stdio.Env {
 			if strings.EqualFold(static, key) {
-				return "", refuse(DiagnosticInvalidDependencies, "input %q duplicates static environment configuration", i.ID)
+				return inputSlot{}, refuse(DiagnosticInvalidDependencies, "input %q duplicates static environment configuration", i.ID)
 			}
 		}
 	case Header:
 		if server.Transport() != mcpserver.TransportStreamableHTTP {
-			return "", refuse(DiagnosticInvalidDependencies, "input %q binds a header of a non-HTTP server", i.ID)
+			return inputSlot{}, refuse(DiagnosticInvalidDependencies, "input %q binds a header of a non-HTTP server", i.ID)
 		}
 		if err := mcpserver.ValidateHTTPHeaders("", map[string]string{key: ""}); err != nil {
-			return "", refuse(DiagnosticInvalidDeclaration, "input %q header: %v", i.ID, err)
+			return inputSlot{}, refuse(DiagnosticInvalidDeclaration, "input %q header: %v", i.ID, err)
 		}
 		if !i.Secret {
-			return "", refuse(DiagnosticInvalidDeclaration, "input %q header must be a secret", i.ID)
+			return inputSlot{}, refuse(DiagnosticInvalidDeclaration, "input %q header must be a secret", i.ID)
 		}
 		key = strings.ToLower(key)
 		http, _ := server.http()
 		for static := range http.Headers {
 			if strings.EqualFold(static, key) {
-				return "", refuse(DiagnosticInvalidDependencies, "input %q duplicates static header configuration", i.ID)
+				return inputSlot{}, refuse(DiagnosticInvalidDependencies, "input %q duplicates static header configuration", i.ID)
 			}
 		}
 	case Authorization:
 		if server.Transport() != mcpserver.TransportStreamableHTTP {
-			return "", refuse(DiagnosticInvalidDependencies, "input %q binds authorization of a non-HTTP server", i.ID)
+			return inputSlot{}, refuse(DiagnosticInvalidDependencies, "input %q binds authorization of a non-HTTP server", i.ID)
 		}
 		if key != "" || !i.Secret {
-			return "", refuse(DiagnosticInvalidDeclaration, "input %q authorization must be an unkeyed secret", i.ID)
+			return inputSlot{}, refuse(DiagnosticInvalidDeclaration, "input %q authorization must be an unkeyed secret", i.ID)
 		}
 	default:
-		return "", refuse(DiagnosticInvalidDeclaration, "input %q target", i.ID)
+		return inputSlot{}, refuse(DiagnosticInvalidDeclaration, "input %q target", i.ID)
 	}
-	return i.Server.String() + "/" + string(i.Target) + "/" + key, nil
+	return inputSlot{server: i.Server, target: i.Target, key: key}, nil
 }
 
 // validate checks the connection rules the MCP registry owns, then the few
