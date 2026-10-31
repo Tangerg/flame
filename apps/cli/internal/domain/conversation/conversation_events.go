@@ -27,15 +27,12 @@ func (c *Conversation) ApplyRunEvent(envelope RunEvent) (EventAcceptance, error)
 	if err := c.validateEventIdentity(envelope); err != nil {
 		return EventAcceptance{}, err
 	}
-	ignored, err := c.ignoreRecoveredOverlap(envelope)
+	ignored, err := c.alreadyProjected(envelope)
 	if err != nil {
 		return EventAcceptance{}, err
 	}
 	if !ignored {
 		err = c.apply(envelope)
-		if err == nil && c.recovery == recoveryOverlap {
-			c.recovery = recoveryColdTail
-		}
 	}
 	if err != nil {
 		return EventAcceptance{}, err
@@ -52,23 +49,20 @@ func (c *Conversation) ApplyRunEvent(envelope RunEvent) (EventAcceptance, error)
 	return EventAcceptance{Applied: !ignored}, nil
 }
 
-func (c *Conversation) ignoreRecoveredOverlap(envelope RunEvent) (bool, error) {
+// alreadyProjected reports the events whose fact the projection holds by
+// protocol design. An attached snapshot splits exactly from its tail, so no
+// other repeat is legitimate and any other duplicate fails to fold.
+func (c *Conversation) alreadyProjected(envelope RunEvent) (bool, error) {
 	event := envelope.Event
 	if item, ok := event.(PlanChanged); ok {
 		state, stateErr := committedPlanState(&item.Plan)
 		if stateErr != nil {
-			return false, stateErr
+			return false, fmt.Errorf("%w: %w", ErrInvalidTransition, stateErr)
 		}
-		if c.plan != nil && c.plan.State != nil && state.Revision == c.plan.State.Revision {
-			if !equalPlans(c.plan, &item.Plan) {
-				return false, fmt.Errorf("%w: plan revision %d changed content", ErrEventConflict, state.Revision)
-			}
-			// The Runtime deliberately repeats the segment's final Plan immediately
-			// before segment.finished. Revision + content are the business identity;
-			// the fence has a distinct transport EventID but folds to the same value.
-			return true, nil
-		}
-		if state.Revision <= c.restoredPlanRevision {
+		// The Plan is a latest-value projection identified by its revision. The
+		// Runtime repeats the final Plan before segment.finished, and persists a
+		// revision before publishing it, so a snapshot may already hold it.
+		if c.plan != nil && c.plan.State != nil && state.Revision <= c.plan.State.Revision {
 			return true, nil
 		}
 	}
@@ -80,46 +74,13 @@ func (c *Conversation) ignoreRecoveredOverlap(envelope RunEvent) (bool, error) {
 			return true, nil
 		}
 	}
-	if delta, ok := event.(BlockDelta); ok {
-		key := BlockKey(envelope.RunID, delta.BlockID)
-		if _, exists := c.index[key]; !exists && c.recovery != recoveryNone {
-			// Agent-message and reasoning starts are non-durable previews. A
-			// head attachment can therefore observe their later deltas without
-			// either a replayable start or a cold Item. Their completed Item is
-			// authoritative and will restore the missing presentation block.
+	if delta, ok := event.(BlockDelta); ok && c.coldTail {
+		if _, exists := c.index[BlockKey(envelope.RunID, delta.BlockID)]; !exists {
+			// The completed Item is authoritative and restores the block.
 			return true, nil
 		}
 	}
-	if c.recovery != recoveryOverlap {
-		return false, nil
-	}
-	switch item := event.(type) {
-	case BlockStarted:
-		at, exists := c.index[BlockKey(item.Block.RunID, item.Block.ID)]
-		if !exists {
-			return false, nil
-		}
-		if err := validateBlockIdentity(c.blocks[at], item.Block); err != nil {
-			return false, fmt.Errorf("%w: replayed start conflicts with the cold snapshot: %w", ErrEventConflict, err)
-		}
-		return true, nil
-	case BlockDelta:
-		key := BlockKey(envelope.RunID, item.BlockID)
-		at, exists := c.index[key]
-		return !exists || c.blocks[at].Status != BlockStatusRunning, nil
-	case BlockCompleted:
-		key := BlockKey(item.Block.RunID, item.Block.ID)
-		at, exists := c.index[key]
-		if !exists || c.blocks[at].Status == BlockStatusRunning || answersQuestion(c.blocks[at], item.Block) {
-			return false, nil
-		}
-		if !c.blocks[at].Equal(item.Block) {
-			return false, fmt.Errorf("%w: completed block %s differs from the cold snapshot", ErrEventConflict, item.Block.ID)
-		}
-		return true, nil
-	default:
-		return false, nil
-	}
+	return false, nil
 }
 
 func (c *Conversation) validateEventIdentity(envelope RunEvent) error {
@@ -174,7 +135,7 @@ func (c *Conversation) apply(envelope RunEvent) error {
 }
 
 func (c *Conversation) applySegmentStarted(event SegmentStarted) error {
-	c.recovery = recoveryNone
+	c.coldTail = false
 	run := event.Run
 	previous, exists := c.runs[run.ID]
 	if run.Lineage.IsRoot() {
@@ -352,13 +313,6 @@ func (c *Conversation) applyPlanChanged(runID string, event PlanChanged) error {
 			c.runs[runID].SessionID,
 		)
 	}
-	state, err := committedPlanState(&event.Plan)
-	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidTransition, err)
-	}
-	if c.plan != nil && c.plan.State != nil && state.Revision <= c.plan.State.Revision {
-		return fmt.Errorf("%w: plan revision %d does not advance %d", ErrInvalidTransition, state.Revision, c.plan.State.Revision)
-	}
 	c.plan = ClonePlan(&event.Plan)
 	return nil
 }
@@ -391,7 +345,7 @@ func (c *Conversation) applySegmentFinished(runID string, event SegmentFinished)
 	}
 	c.rememberRun(event.Run)
 	if runID == c.runID {
-		c.recovery = recoveryNone
+		c.coldTail = false
 		if event.Run.Status == protocol.RunStatusFinished {
 			c.interrupts = nil
 		}
@@ -423,7 +377,7 @@ func (c *Conversation) parkRun(runID string, interrupts []Interrupt) error {
 		return fmt.Errorf("%w: tree interrupt set: %w", ErrInvalidTransition, err)
 	}
 	c.interrupts = pending
-	c.recovery = recoveryNone
+	c.coldTail = false
 	return nil
 }
 

@@ -432,7 +432,7 @@ func TestConversationStartingWindow(t *testing.T) {
 	}
 }
 
-func TestConversationReconcilesAttachThenReadOverlap(t *testing.T) {
+func TestConversationFoldsAnAttachedTailThatSplitsExactlyFromItsSnapshot(t *testing.T) {
 	projection := New()
 	snapshot := attachedReconciliationSnapshot(t)
 	plan := snapshot.Plan.State.Steps
@@ -440,47 +440,24 @@ func TestConversationReconcilesAttachThenReadOverlap(t *testing.T) {
 	if err := projection.RestoreAttachedSnapshot(snapshot, stream); err != nil {
 		t.Fatal(err)
 	}
-	ignored := []RunEvent{
-		{EventID: "overlap-start", RunID: "run_1", SegmentID: "seg_1", Event: BlockStarted{Block: Block{ID: "same", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockAssistant}}},
-		{EventID: "overlap-delta", RunID: "run_1", SegmentID: "seg_1", Event: BlockDelta{BlockID: "same", Text: "duplicate preview"}},
-		{EventID: "overlap-complete", RunID: "run_1", SegmentID: "seg_1", Event: BlockCompleted{Block: snapshot.Transcript[1]}},
+	duplicateStart := RunEvent{
+		EventID: "duplicate-start", RunID: "run_1", SegmentID: "seg_1",
+		Event: BlockStarted{Block: Block{ID: "same", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockAssistant}},
 	}
-	for _, event := range ignored {
-		accepted, err := projection.ApplyRunEvent(event)
-		if err != nil {
-			t.Fatalf("apply overlap %s: %v", event.EventID, err)
-		}
-		if accepted.Applied {
-			t.Fatalf("overlap %s was folded twice", event.EventID)
-		}
+	if _, err := projection.ApplyRunEvent(duplicateStart); !errors.Is(err, ErrInvalidTransition) {
+		t.Fatalf("durable start already in the snapshot = %v, want ErrInvalidTransition", err)
 	}
-	startConflict := RunEvent{
-		EventID: "overlap-start-conflict", RunID: "run_1", SegmentID: "seg_1",
-		Event: BlockStarted{Block: Block{ID: "same", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockReasoning}},
-	}
-	if _, err := projection.ApplyRunEvent(startConflict); !errors.Is(err, ErrEventConflict) {
-		t.Fatalf("replayed start conflict = %v", err)
-	}
-	// A non-overlapping event may be published before an already-committed Plan
-	// event. It must not erase the Plan's independent cold-read watermark.
-	apply(t, projection, RunEvent{
-		EventID: "new-progress", RunID: "run_1", SegmentID: "seg_1",
-		Event: RunProgress{Usage: &Usage{}},
-	})
+	// The Runtime persists a Plan revision before publishing it, so the tail may
+	// still carry revisions the snapshot already holds.
 	currentPlan := testPlanChanged(t, 2, plan)
-	currentPlan.Plan.State.UpdatedAt = currentPlan.Plan.State.UpdatedAt.Add(time.Minute)
 	for _, event := range []RunEvent{
-		{EventID: "overlap-plan-old", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 1, []protocol.PlanStep{{Description: "older", Status: protocol.PlanStatusPending}})},
-		{EventID: "overlap-plan-current", RunID: "run_1", SegmentID: "seg_1", Event: currentPlan},
+		{EventID: "plan-old", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 1, []protocol.PlanStep{{Description: "older", Status: protocol.PlanStatusPending}})},
+		{EventID: "plan-current", RunID: "run_1", SegmentID: "seg_1", Event: currentPlan},
 	} {
 		accepted, err := projection.ApplyRunEvent(event)
 		if err != nil || accepted.Applied {
-			t.Fatalf("apply Plan overlap %s = %+v, %v", event.EventID, accepted, err)
+			t.Fatalf("apply held Plan %s = %+v, %v", event.EventID, accepted, err)
 		}
-	}
-	conflict := RunEvent{EventID: "overlap-plan-conflict", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 2, []protocol.PlanStep{{Description: "different", Status: protocol.PlanStatusInProgress}})}
-	if _, err := projection.ApplyRunEvent(conflict); !errors.Is(err, ErrEventConflict) {
-		t.Fatalf("same-revision plan conflict = %v", err)
 	}
 
 	accepted, err := projection.ApplyRunEvent(RunEvent{EventID: "new-delta", RunID: "run_1", SegmentID: "seg_1", Event: BlockDelta{BlockID: "live", Text: "preview"}})
@@ -497,16 +474,12 @@ func TestConversationReconcilesAttachThenReadOverlap(t *testing.T) {
 	apply(t, projection, RunEvent{EventID: "missing-complete", RunID: "run_1", SegmentID: "seg_1", Event: BlockCompleted{Block: Block{ID: "missing", RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockAssistant, Text: "authoritative"}}})
 	apply(t, projection, RunEvent{EventID: "new-plan", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 3, []protocol.PlanStep{{Description: "done", Status: protocol.PlanStatusCompleted}})})
 	if projection.Plan() == nil || projection.Plan().State.Revision != 3 || projection.Checkpoint() != "new-plan" {
-		t.Fatalf("reconciled state = plan %+v, checkpoint %q", projection.Plan(), projection.Checkpoint())
+		t.Fatalf("folded state = plan %+v, checkpoint %q", projection.Plan(), projection.Checkpoint())
 	}
 	fence := RunEvent{EventID: "plan-fence", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 3, []protocol.PlanStep{{Description: "done", Status: protocol.PlanStatusCompleted}})}
 	accepted, err = projection.ApplyRunEvent(fence)
 	if err != nil || accepted.Applied {
 		t.Fatalf("final Plan fence = %+v, %v", accepted, err)
-	}
-	conflictingFence := RunEvent{EventID: "plan-fence-conflict", RunID: "run_1", SegmentID: "seg_1", Event: testPlanChanged(t, 3, []protocol.PlanStep{{Description: "different", Status: protocol.PlanStatusCompleted}})}
-	if _, err := projection.ApplyRunEvent(conflictingFence); !errors.Is(err, ErrEventConflict) {
-		t.Fatalf("conflicting final Plan fence = %v", err)
 	}
 }
 

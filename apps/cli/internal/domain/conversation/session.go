@@ -419,9 +419,6 @@ func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) error {
 	next := New()
 	next.blocks = cloneBlocks(snapshot.Transcript)
 	next.plan = ClonePlan(snapshot.Plan)
-	if next.plan != nil && next.plan.State != nil {
-		next.restoredPlanRevision = next.plan.State.Revision
-	}
 	next.rebuildBlockIndex()
 	for _, run := range snapshot.Runs {
 		next.rememberRun(run)
@@ -432,7 +429,7 @@ func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) error {
 		if active.Status == protocol.RunStatusWaiting {
 			next.interrupts = CloneInterrupts(snapshot.Interrupts)
 		} else {
-			next.recovery = recoveryColdTail
+			next.coldTail = true
 		}
 	} else if latest, ok := snapshot.LatestRun(); ok {
 		next.runID = latest.ID
@@ -463,7 +460,6 @@ func (c *Conversation) RestoreAttachedSnapshot(snapshot SessionSnapshot, stream 
 		return err
 	}
 	c.checkpoint = stream.HeadEventID
-	c.recovery = recoveryOverlap
 	return nil
 }
 
