@@ -4,13 +4,14 @@ import (
 	"context"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
 
 // The autonomous drive is request-detached — without a span per Run and a
-// disposition metric it runs blind. The drive's ctx keeps the
+// settlement metric it runs blind. The drive's ctx keeps the
 // starting request's trace values (taskgroup.Attach → context.WithoutCancel), so
 // each Goal-run span nests under the root Goal trace. No-op until
 // a TracerProvider / MeterProvider is installed.
@@ -18,26 +19,30 @@ const observeScope = "scope/flame/goal"
 
 var driverTracer = otel.Tracer(observeScope)
 
-// runDisposition labels how one autonomous Run ended — the span attribute and
-// metric dimension. dispContinue means the drive launches another Run; the other
-// three are terminal. The zero value means the Run never completed and is not
-// metered.
-type runDisposition string
+// runSettlement is the Goal status an autonomous Run left behind — the span
+// attribute and metric dimension. An active Goal continues the drive with
+// another Run. A drive that settled no Run (canceled, superseded or never
+// launched) is not metered.
+type runSettlement struct {
+	status  goal.Status
+	settled bool
+}
 
-const (
-	dispContinue runDisposition = "continue"
-	dispComplete runDisposition = "complete"
-	dispBlocked  runDisposition = "blocked"
-	dispPaused   runDisposition = "paused"
-)
+func settledAs(status goal.Status) runSettlement {
+	return runSettlement{status: status, settled: true}
+}
+
+func (s runSettlement) continues() bool {
+	return s.settled && s.status == goal.StatusActive
+}
 
 var loadGoalRuns = sync.OnceValue(func() metric.Int64Counter {
 	// A creation error yields a usable no-op counter, so it's safe to drop.
 	counter, _ := otel.Meter(observeScope).Int64Counter("goal.runs",
-		metric.WithDescription("Autonomous Goal Runs, by disposition (continue/complete/blocked/paused)."))
+		metric.WithDescription("Autonomous Goal Runs, by the Goal status each left (active/complete/blocked/paused)."))
 	return counter
 })
 
-func recordGoalRun(ctx context.Context, disposition runDisposition) {
-	loadGoalRuns().Add(ctx, 1, metric.WithAttributes(attribute.String("goal.disposition", string(disposition))))
+func recordGoalRun(ctx context.Context, status goal.Status) {
+	loadGoalRuns().Add(ctx, 1, metric.WithAttributes(attribute.String("goal.status", string(status))))
 }

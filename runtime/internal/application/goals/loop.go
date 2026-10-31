@@ -161,11 +161,11 @@ func (d *Driver) drive(ctx context.Context, sessionID, incarnationID string) err
 		if !ok || g.Status() != goal.StatusActive || g.IncarnationID() != incarnationID {
 			return nil
 		}
-		disposition, err := d.driveRun(ctx, &g)
+		settlement, err := d.driveRun(ctx, &g)
 		if err != nil {
 			return err
 		}
-		if disposition != dispContinue {
+		if !settlement.continues() {
 			return nil
 		}
 	}
@@ -173,25 +173,25 @@ func (d *Driver) drive(ctx context.Context, sessionID, incarnationID string) err
 
 // driveRun launches one autonomous run, waits for it to finish, folds its usage
 // in, and decides what to do next — all under a goal.run span. The returned
-// disposition is empty when a cancellation or vanished goal means no Run
+// settlement is unsettled when a cancellation or vanished goal means no Run
 // completed, so nothing is metered.
-func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (disposition runDisposition, err error) {
+func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (settlement runSettlement, err error) {
 	ctx, span := driverTracer.Start(ctx, "goal.run", trace.WithAttributes(
 		attribute.String("goal.session", g.SessionID()),
 		attribute.Int("goal.run_ordinal", g.Used().Runs+1),
 	))
 	defer span.End()
 	// Meter each Run under its own span (this defer runs before span.End) so the
-	// exemplar links to the Run; a "" disposition (canceled / vanished goal) is
-	// not a completed Run and is not counted.
+	// exemplar links to the Run; an unsettled drive (canceled / vanished goal)
+	// is not a completed Run and is not counted.
 	defer func() {
-		if disposition != "" {
-			recordGoalRun(ctx, disposition)
+		if settlement.settled {
+			recordGoalRun(ctx, settlement.status)
 		}
 	}()
 
 	if ctxErr := ctx.Err(); ctxErr != nil {
-		return "", nil
+		return runSettlement{}, nil
 	}
 	var result runs.StartResult
 	for {
@@ -207,19 +207,19 @@ func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (disposition runDis
 		owned, refreshOwnedGoalErr := d.refreshOwnedGoal(ctx, g)
 		if refreshOwnedGoalErr != nil {
 			span.RecordError(refreshOwnedGoalErr)
-			return "", refreshOwnedGoalErr
+			return runSettlement{}, refreshOwnedGoalErr
 		}
 		if !owned {
-			return "", nil
+			return runSettlement{}, nil
 		}
-		settleDisposition, refreshOwnedGoalErr := d.settleOwned(ctx, g)
+		current, refreshOwnedGoalErr := d.settleOwned(ctx, g)
 		if refreshOwnedGoalErr != nil {
-			return "", refreshOwnedGoalErr
+			return runSettlement{}, refreshOwnedGoalErr
 		}
-		if settleDisposition != dispContinue {
-			// This drive did not launch a Run, so leave the metric disposition
-			// empty. The Run that changed the Goal owns its own observation.
-			return "", nil
+		if !current.continues() {
+			// This drive did not launch a Run, so it settles none. The Run that
+			// changed the Goal owns its own observation.
+			return runSettlement{}, nil
 		}
 
 		result, refreshOwnedGoalErr = d.runs.Start(ctx, d.command(*g))
@@ -237,9 +237,9 @@ func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (disposition runDis
 	finished := drainRootBoundary(result.Events, result.RunID)
 	if ctx.Err() != nil {
 		if finished == nil {
-			return "", d.cancelRun(ctx, result.RunID)
+			return runSettlement{}, d.cancelRun(ctx, result.RunID)
 		}
-		return "", nil
+		return runSettlement{}, nil
 	}
 	recordTerminalRunAttributes(span, finished)
 
@@ -247,20 +247,20 @@ func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (disposition runDis
 	owned, err := d.refreshOwnedGoal(ctx, g)
 	if err != nil {
 		span.RecordError(err)
-		return "", err
+		return runSettlement{}, err
 	}
 	if !owned {
-		return "", nil
+		return runSettlement{}, nil
 	}
-	disposition, err = d.settleOwned(ctx, g)
+	settlement, err = d.settleOwned(ctx, g)
 	if err != nil {
 		if ctx.Err() != nil {
-			return "", nil
+			return runSettlement{}, nil
 		}
-		return "", err
+		return runSettlement{}, err
 	}
-	if disposition != dispContinue {
-		return disposition, nil
+	if !settlement.continues() {
+		return settlement, nil
 	}
 	return d.resolveTerminalRun(ctx, g, span, finished)
 }
@@ -270,9 +270,9 @@ func (d *Driver) resolveGoalRunStartError(
 	g *goal.Goal,
 	span trace.Span,
 	startErr error,
-) (runDisposition, error) {
+) (runSettlement, error) {
 	if ctx.Err() != nil {
-		return "", nil
+		return runSettlement{}, nil
 	}
 	span.RecordError(startErr)
 	span.SetStatus(codes.Error, "start run")
@@ -281,11 +281,11 @@ func (d *Driver) resolveGoalRunStartError(
 	// A start failure is an operational fact already reported in diagnostics.
 	// Persist only its stable cause so Goal status never stores diagnostic
 	// details that cannot be recovered consistently.
-	disposition, err := d.pauseOwned(ctx, g, goal.ReasonRunStartFailed)
+	settlement, err := d.pauseOwned(ctx, g, goal.ReasonRunStartFailed)
 	if err != nil && ctx.Err() != nil {
-		return "", nil
+		return runSettlement{}, nil
 	}
-	return disposition, err
+	return settlement, err
 }
 
 func recordTerminalRunAttributes(span trace.Span, finished *run.Run) {
@@ -326,52 +326,52 @@ func (d *Driver) resolveTerminalRun(
 	g *goal.Goal,
 	span trace.Span,
 	finished *run.Run,
-) (runDisposition, error) {
+) (runSettlement, error) {
 	if finished == nil {
 		// A segment stream must end with its root boundary. Absence cannot prove
 		// HITL: child boundaries may have been present and a broken stream may end
 		// without any boundary at all. Preserve that distinction as a contract
 		// failure instead of inventing a waiting Run.
-		disposition, err := d.pauseOwned(ctx, g, goal.ReasonTerminalOutcomeMissing)
+		settlement, err := d.pauseOwned(ctx, g, goal.ReasonTerminalOutcomeMissing)
 		if err != nil {
 			if ctx.Err() != nil {
-				return "", nil
+				return runSettlement{}, nil
 			}
-			return "", err
+			return runSettlement{}, err
 		}
-		return disposition, nil
+		return settlement, nil
 	}
 	if finished.State() == run.Waiting {
 		// Waiting is a first-class root boundary. The user may resume the Goal
 		// drive while resolving the durable interrupt; WaitSessionStartable keeps
 		// that drive behind the same parked Run until it terminalizes.
-		disposition, err := d.pauseOwned(ctx, g, goal.ReasonAwaitingInput)
+		settlement, err := d.pauseOwned(ctx, g, goal.ReasonAwaitingInput)
 		if err != nil {
 			if ctx.Err() != nil {
-				return "", nil
+				return runSettlement{}, nil
 			}
-			return "", err
+			return runSettlement{}, err
 		}
-		return disposition, nil
+		return settlement, nil
 	}
 
 	_, err := outcomeOf(finished)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "malformed terminal run")
-		disposition, pauseErr := d.pauseOwned(ctx, g, goal.ReasonTerminalOutcomeMissing)
+		settlement, pauseErr := d.pauseOwned(ctx, g, goal.ReasonTerminalOutcomeMissing)
 		if pauseErr != nil {
 			if ctx.Err() != nil {
-				return "", nil
+				return runSettlement{}, nil
 			}
-			return "", pauseErr
+			return runSettlement{}, pauseErr
 		}
-		return disposition, nil
+		return settlement, nil
 	}
 	// The terminal Run transaction has already recorded this Run's usage (and
 	// derived any pause) under the Goal incarnation. Do not reconstruct that
 	// durable fact from the stream; accounting must share the terminal commit.
-	return dispContinue, nil
+	return settledAs(goal.StatusActive), nil
 }
 
 // command builds the next autonomous Run under the exact client contract frozen
@@ -435,37 +435,37 @@ func runSteps(run *run.Run) int { return run.Metrics().Steps() }
 
 // pauseOwned persists a drive-originated pause against the newest revision of
 // the incarnation it owns. A CAS miss is resolved from the authoritative row: a
-// concurrent complete/blocked transition determines the Run disposition
+// concurrent complete/blocked transition determines the Run settlement
 // instead of being mislabeled as paused.
 func (d *Driver) pauseOwned(
 	ctx context.Context,
 	current *goal.Goal,
 	code goal.ReasonCode,
-) (runDisposition, error) {
+) (runSettlement, error) {
 	for current.Status() == goal.StatusActive {
 		expected := current.Version()
 		candidate, transitionErr := current.Pause(code, d.now())
 		if transitionErr != nil {
-			return "", transitionErr
+			return runSettlement{}, transitionErr
 		}
 		change, replacementErr := goal.NewReplacement(expected, candidate)
 		if replacementErr != nil {
-			return "", replacementErr
+			return runSettlement{}, replacementErr
 		}
 		applied, err := d.goals.Save(ctx, change)
 		if err != nil {
-			return "", err
+			return runSettlement{}, err
 		}
 		if applied {
 			*current = candidate
-			return dispPaused, nil
+			return settledAs(goal.StatusPaused), nil
 		}
 		reread, ok, err := loadGoal(ctx, d.goals, current.SessionID())
 		if err != nil {
-			return "", err
+			return runSettlement{}, err
 		}
 		if !ok || reread.IncarnationID() != current.IncarnationID() {
-			return "", nil
+			return runSettlement{}, nil
 		}
 		*current = reread
 	}
@@ -475,36 +475,36 @@ func (d *Driver) pauseOwned(
 // settleOwned maps the authoritative state of the current incarnation to the drive
 // outcome. Complete is transient, so this method also owns its conditional
 // clear and resolves any CAS miss before returning.
-func (d *Driver) settleOwned(ctx context.Context, current *goal.Goal) (runDisposition, error) {
+func (d *Driver) settleOwned(ctx context.Context, current *goal.Goal) (runSettlement, error) {
 	for {
 		switch current.Status() {
 		case goal.StatusActive:
-			return dispContinue, nil
+			return settledAs(goal.StatusActive), nil
 		case goal.StatusPaused:
-			return dispPaused, nil
+			return settledAs(goal.StatusPaused), nil
 		case goal.StatusBlocked:
-			return dispBlocked, nil
+			return settledAs(goal.StatusBlocked), nil
 		case goal.StatusComplete:
 			applied, err := d.goals.ClearIf(ctx, current.SessionID(), current.Version())
 			if err != nil {
-				return "", err
+				return runSettlement{}, err
 			}
 			if applied {
-				return dispComplete, nil
+				return settledAs(goal.StatusComplete), nil
 			}
 			reread, ok, err := loadGoal(ctx, d.goals, current.SessionID())
 			if err != nil {
-				return "", err
+				return runSettlement{}, err
 			}
 			if !ok {
-				return dispComplete, nil
+				return settledAs(goal.StatusComplete), nil
 			}
 			if reread.IncarnationID() != current.IncarnationID() {
-				return "", nil
+				return runSettlement{}, nil
 			}
 			*current = reread
 		default:
-			return "", fmt.Errorf("goals: invalid authoritative status %q", current.Status())
+			return runSettlement{}, fmt.Errorf("goals: invalid authoritative status %q", current.Status())
 		}
 	}
 }
