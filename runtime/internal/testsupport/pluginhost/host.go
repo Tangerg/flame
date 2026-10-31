@@ -92,7 +92,7 @@ func (f *Fixture) Apply(ctx context.Context, installation *plugin.Installation) 
 	if err != nil {
 		return err
 	}
-	config := qimu.InstallationConfig{ID: qimu.InstallationID(record.ID.String()), Plugin: projection.Plugin, Configuration: configuration, Enabled: record.Enabled}
+	config := qimu.InstallationConfig{ID: record.ID.Host(), Plugin: projection.Plugin, Configuration: configuration, Enabled: record.Enabled}
 	previous, exists := f.Host.Installation(config.ID)
 	if exists {
 		err = f.Host.Update(ctx, previous, config)

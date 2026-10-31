@@ -70,7 +70,7 @@ func (b *Bundle) commitPluginReferences(ctx context.Context, host *qimu.Host, id
 				if slices.Contains(previous.Resources, resource) {
 					continue
 				}
-				installation, exists := host.Installation(qimu.InstallationID(resource.InstallationID.String()))
+				installation, exists := host.Installation(resource.InstallationID.Host())
 				if !exists || !installation.Enabled || installation.Release.String() != resource.Digest.String() {
 					return fmt.Errorf("%w: retained content source changed", qimu.ErrStaleBinding)
 				}

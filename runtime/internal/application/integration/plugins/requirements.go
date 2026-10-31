@@ -231,7 +231,7 @@ func (c requirementCatalog) collaborators(root plugin.Snapshot, declaration plug
 	for _, required := range declaration.Requires {
 		var chosen *qimu.ImportDeclaration
 		for _, unit := range binding.Units {
-			if unit.Source.InstallationID != qimu.InstallationID(root.Installation.ID().String()) || unit.Source.Release != root.Selected.Digest() || unit.Source.UnitID != BackendUnit(declaration.Server) {
+			if unit.Source.InstallationID != root.Installation.ID().Host() || unit.Source.Release != root.Selected.Digest() || unit.Source.UnitID != BackendUnit(declaration.Server) {
 				continue
 			}
 			for _, slot := range unit.Imports {
@@ -247,7 +247,7 @@ func (c requirementCatalog) collaborators(root plugin.Snapshot, declaration plug
 		}
 		bindings := make([]ContributionBinding, 0, len(chosen.Providers))
 		for _, provider := range chosen.Providers {
-			id, err := identity.ParseInstallation(provider.InstallationID.String())
+			id, err := identity.ParseHostInstallation(provider.InstallationID)
 			if err != nil {
 				return nil, err
 			}
@@ -282,7 +282,7 @@ func (c requirementCatalog) plan(ctx context.Context, host *qimu.Host, root plug
 		}
 		for _, contribution := range snapshot.Selected.Declaration().Contributions {
 			for _, required := range contribution.Requires {
-				choice := qimu.BindingChoice{Unit: qimu.UnitRef{InstallationID: qimu.InstallationID(snapshot.Installation.ID().String()), Release: snapshot.Selected.Digest(), UnitID: BackendUnit(contribution.Server)}, Slot: RequirementSlot(contribution.ID, required.ID), Providers: []qimu.ExportRef{}}
+				choice := qimu.BindingChoice{Unit: qimu.UnitRef{InstallationID: snapshot.Installation.ID().Host(), Release: snapshot.Selected.Digest(), UnitID: BackendUnit(contribution.Server)}, Slot: RequirementSlot(contribution.ID, required.ID), Providers: []qimu.ExportRef{}}
 				providers, err := c.candidates(required)
 				if err != nil {
 					choice.Providers = nil
@@ -300,7 +300,7 @@ func (c requirementCatalog) plan(ctx context.Context, host *qimu.Host, root plug
 			}
 		}
 	}
-	unit := qimu.UnitRef{InstallationID: qimu.InstallationID(root.Installation.ID().String()), Release: root.Selected.Digest(), UnitID: BackendUnit(server)}
+	unit := qimu.UnitRef{InstallationID: root.Installation.ID().Host(), Release: root.Selected.Digest(), UnitID: BackendUnit(server)}
 	plan, err := host.PlanUnit(ctx, "", unit, choices)
 	return plan, FrameworkError(err)
 }

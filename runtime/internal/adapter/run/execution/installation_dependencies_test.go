@@ -68,7 +68,7 @@ func installationTestHost(t *testing.T, executor *InteractionExecutor, owners ..
 		t.Fatal(err)
 	}
 	for _, id := range []identity.InstallationID{dependedInstallation, unrelatedInstallation} {
-		if _, err := host.Install(t.Context(), qimu.InstallationConfig{ID: qimu.InstallationID(id.String()), Plugin: installationTestPlugin(t, id.String()), Enabled: true}); err != nil {
+		if _, err := host.Install(t.Context(), qimu.InstallationConfig{ID: id.Host(), Plugin: installationTestPlugin(t, id.String()), Enabled: true}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -125,9 +125,9 @@ func TestQuiescentInstallationChangeReadsOnlyDependencyProjections(t *testing.T)
 			}
 			var err error
 			if test.disable {
-				err = host.SetEnabled(t.Context(), qimu.InstallationID(dependedInstallation.String()), false)
+				err = host.SetEnabled(t.Context(), dependedInstallation.Host(), false)
 			} else {
-				err = host.Replace(t.Context(), qimu.InstallationID(dependedInstallation.String()), installationTestPlugin(t, "replacement"), nil)
+				err = host.Replace(t.Context(), dependedInstallation.Host(), installationTestPlugin(t, "replacement"), nil)
 			}
 			if test.refused {
 				if !errors.Is(err, qimu.ErrInUse) {
@@ -166,7 +166,7 @@ func TestInstallationChangeDoesNotWaitForAssembly(t *testing.T) {
 
 		unrelated := make(chan error, 1)
 		go func() {
-			unrelated <- host.Replace(t.Context(), qimu.InstallationID(unrelatedInstallation.String()), installationTestPlugin(t, "unrelated replacement"), nil)
+			unrelated <- host.Replace(t.Context(), unrelatedInstallation.Host(), installationTestPlugin(t, "unrelated replacement"), nil)
 		}()
 		synctest.Wait()
 		select {
@@ -183,13 +183,13 @@ func TestInstallationChangeDoesNotWaitForAssembly(t *testing.T) {
 		if err != nil {
 			t.Fatalf("assembly behind a pending change: %v", err)
 		}
-		if err := host.Replace(t.Context(), qimu.InstallationID(dependedInstallation.String()), installationTestPlugin(t, "depended replacement"), nil); !errors.Is(err, qimu.ErrInUse) {
+		if err := host.Replace(t.Context(), dependedInstallation.Host(), installationTestPlugin(t, "depended replacement"), nil); !errors.Is(err, qimu.ErrInUse) {
 			t.Fatalf("change under a published dependency = %v", err)
 		}
 		if err := executor.Release(t.Context(), ref); err != nil {
 			t.Fatal(err)
 		}
-		if err := host.Replace(t.Context(), qimu.InstallationID(dependedInstallation.String()), installationTestPlugin(t, "depended replacement"), nil); err != nil {
+		if err := host.Replace(t.Context(), dependedInstallation.Host(), installationTestPlugin(t, "depended replacement"), nil); err != nil {
 			t.Fatalf("change after release: %v", err)
 		}
 
@@ -248,13 +248,13 @@ func TestStagedModelTransitiveDependenciesBlockReplacementUntilRelease(t *testin
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = executor.Release(context.Background(), ref) })
-	if err := host.Replace(t.Context(), qimu.InstallationID(leaf.InstallationID.String()), installationTestPlugin(t, "leaf replacement"), nil); !errors.Is(err, qimu.ErrInUse) {
+	if err := host.Replace(t.Context(), leaf.InstallationID.Host(), installationTestPlugin(t, "leaf replacement"), nil); !errors.Is(err, qimu.ErrInUse) {
 		t.Fatalf("transitive replacement admitted: %v", err)
 	}
 	if err := executor.Release(t.Context(), ref); err != nil {
 		t.Fatal(err)
 	}
-	if err := host.Replace(t.Context(), qimu.InstallationID(leaf.InstallationID.String()), installationTestPlugin(t, "leaf replacement"), nil); err != nil {
+	if err := host.Replace(t.Context(), leaf.InstallationID.Host(), installationTestPlugin(t, "leaf replacement"), nil); err != nil {
 		t.Fatalf("released graph still held its leaf: %v", err)
 	}
 }

@@ -36,7 +36,7 @@ func NewSource(installations plugins.Store, resources resources) (*Source, error
 }
 
 func (s *Source) component(ctx context.Context, binding qimu.UnitBinding) (plugin.Snapshot, plugin.ClientComponent, error) {
-	id, err := identity.ParseInstallation(binding.Source.InstallationID.String())
+	id, err := identity.ParseHostInstallation(binding.Source.InstallationID)
 	if err != nil {
 		return plugin.Snapshot{}, plugin.ClientComponent{}, err
 	}
@@ -44,8 +44,8 @@ func (s *Source) component(ctx context.Context, binding qimu.UnitBinding) (plugi
 	if err != nil {
 		return plugin.Snapshot{}, plugin.ClientComponent{}, err
 	}
-	digest, err := integrity.ParseDigest(binding.Source.Release.String())
-	if err != nil {
+	digest := binding.Source.Release
+	if err := digest.Validate(); err != nil {
 		return plugin.Snapshot{}, plugin.ClientComponent{}, err
 	}
 	snapshot, found, err := s.installations.Get(ctx, id)

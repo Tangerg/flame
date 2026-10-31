@@ -245,7 +245,7 @@ func TestAssemblyPublicationFollowsCommittedExecutionChanges(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer abandon()
-			if err := executor.installations.Change(t.Context(), qimu.InstallationID(dependedInstallation.String()), func() (bool, error) {
+			if err := executor.installations.Change(t.Context(), dependedInstallation.Host(), func() (bool, error) {
 				return outcome.changed, outcome.err
 			}); !errors.Is(err, outcome.err) {
 				t.Fatalf("change = %v, want %v", err, outcome.err)

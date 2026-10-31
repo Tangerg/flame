@@ -93,7 +93,7 @@ func TestManagedCatalogProtectsCallsWithoutRetainingAnIdleUse(t *testing.T) {
 	case <-t.Context().Done():
 		t.Fatal(t.Context().Err())
 	}
-	id := qimu.InstallationID(installation.ID().String())
+	id := installation.ID().Host()
 	if err := managed.Host.Uninstall(t.Context(), id); !errors.Is(err, qimu.ErrInUse) {
 		t.Fatalf("active call lost its exact Use: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestManagedReconnectWaitsForOriginalUseBeforeStartingReplacement(t *testing
 	if err := borrowed.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := managed.Host.WaitRetired(t.Context(), qimu.InstallationID(installation.ID().String())); err != nil {
+	if err := managed.Host.WaitRetired(t.Context(), installation.ID().Host()); err != nil {
 		t.Fatal(err)
 	}
 	attempt, err = managed.Pool.BeginConnect(t.Context(), server.ID())

@@ -181,8 +181,8 @@ func restoreFramework(ctx context.Context, stores *persistence.Bundle, host *qim
 	}
 	definitions := make([]*qimu.Plugin, 0, len(records))
 	for _, record := range records {
-		digest, err := integrity.ParseDigest(record.Release.String())
-		if err != nil {
+		digest := record.Release
+		if err := digest.Validate(); err != nil {
 			return err
 		}
 		release, err := stores.PluginReleases.Get(ctx, digest)

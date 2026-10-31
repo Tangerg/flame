@@ -54,7 +54,7 @@ func NewProcessSource(installations plugins.Store, packages installedPackages, c
 }
 
 func (s *ProcessSource) snapshot(ctx context.Context, binding qimu.UnitBinding) (plugin.Snapshot, mcpserver.ServerName, error) {
-	id, err := identity.ParseInstallation(binding.Source.InstallationID.String())
+	id, err := identity.ParseHostInstallation(binding.Source.InstallationID)
 	if err != nil {
 		return plugin.Snapshot{}, mcpserver.ServerName{}, err
 	}

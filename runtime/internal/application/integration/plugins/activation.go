@@ -23,18 +23,15 @@ func ProjectActivation(binding qimu.BindingSnapshot) (plugin.Activation, error) 
 	if err != nil {
 		return plugin.Activation{}, err
 	}
-	digest, err := integrity.ParseDigest(integrity.Hash(data).String())
-	if err != nil {
-		return plugin.Activation{}, err
-	}
+	digest := integrity.Hash(data)
 	activation := plugin.Activation{Binding: value, Identity: digest}
 	for _, dependency := range binding.Dependencies() {
-		installation, err := identity.ParseInstallation(dependency.InstallationID.String())
+		installation, err := identity.ParseHostInstallation(dependency.InstallationID)
 		if err != nil {
 			return plugin.Activation{}, err
 		}
-		release, err := integrity.ParseDigest(dependency.Release.String())
-		if err != nil {
+		release := dependency.Release
+		if err := release.Validate(); err != nil {
 			return plugin.Activation{}, err
 		}
 		activation.Dependencies = append(activation.Dependencies, plugin.Dependency{InstallationID: installation, Digest: release})
@@ -75,7 +72,7 @@ func ReadActivation(data []byte) (plugin.Activation, error) {
 // OriginalActivation locates a retained entry without selecting collaborators.
 // Transitive membership does not grant a new root entry into another Unit.
 func OriginalActivation(activations []plugin.Activation, installation identity.InstallationID, release integrity.Digest, server mcpserver.ServerName) (plugin.Activation, error) {
-	source := qimu.UnitRef{InstallationID: qimu.InstallationID(installation.String()), Release: release, UnitID: BackendUnit(server)}
+	source := qimu.UnitRef{InstallationID: installation.Host(), Release: release, UnitID: BackendUnit(server)}
 	var selected *plugin.Activation
 	for _, activation := range activations {
 		binding, err := DecodeActivation(activation)

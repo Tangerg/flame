@@ -93,7 +93,7 @@ func installFirstParty(ctx context.Context, host *qimu.Host, store Store, packag
 	if err != nil {
 		return err
 	}
-	if _, err := host.Install(ctx, qimu.InstallationConfig{ID: qimu.InstallationID(id.String()), Plugin: projection.Plugin, Configuration: configuration, Enabled: true}); err != nil {
+	if _, err := host.Install(ctx, qimu.InstallationConfig{ID: id.Host(), Plugin: projection.Plugin, Configuration: configuration, Enabled: true}); err != nil {
 		return err
 	}
 	return packages.Prepare(ctx, installation, release)

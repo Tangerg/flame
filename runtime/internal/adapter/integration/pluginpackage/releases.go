@@ -124,8 +124,8 @@ func (r *Releases) Materialize(ctx context.Context, source string) (_ plugins.Ca
 		}
 	}()
 	neutral := lease.Release()
-	digest, err := integrity.ParseDigest(neutral.Digest.String())
-	if err != nil {
+	digest := neutral.Digest
+	if err := digest.Validate(); err != nil {
 		return nil, err
 	}
 	directory, err := lease.Directory()

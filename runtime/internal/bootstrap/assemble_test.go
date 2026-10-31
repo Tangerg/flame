@@ -12,7 +12,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
-	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/distribution"
 	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/qimu/runner"
@@ -248,7 +247,7 @@ func TestAssemblyRetainsUnreferencedPluginReleaseUntilConstructionSucceeds(t *te
 	}
 	installed := installations[0]
 	framework := pluginhost.New(t, cfg.stores)
-	if err := framework.Host.Uninstall(t.Context(), qimu.InstallationID(installed.Installation.ID().String())); err != nil {
+	if err := framework.Host.Uninstall(t.Context(), installed.Installation.ID().Host()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := framework.Host.Close(t.Context()); err != nil {

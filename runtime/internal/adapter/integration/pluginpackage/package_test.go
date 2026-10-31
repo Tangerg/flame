@@ -64,7 +64,7 @@ func (s *installationFixture) Save(ctx context.Context, installation *plugin.Ins
 	if err != nil {
 		return err
 	}
-	config := qimu.InstallationConfig{ID: qimu.InstallationID(installation.ID().String()), Plugin: projected.Plugin, Configuration: encoded, Enabled: installation.Enabled()}
+	config := qimu.InstallationConfig{ID: installation.ID().Host(), Plugin: projected.Plugin, Configuration: encoded, Enabled: installation.Enabled()}
 	if found {
 		original, ok := s.host.Installation(config.ID)
 		if !ok {

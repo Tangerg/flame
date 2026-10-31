@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/Tangerg/qimu"
 )
 
 type value struct {
@@ -91,5 +93,15 @@ func ParseInstallation(text string) (InstallationID, error) {
 	}
 	return InstallationID{value: value{text: text}}, nil
 }
+
+// ParseHostInstallation reads the plugin host's key back as Flame's identity.
+func ParseHostInstallation(id qimu.InstallationID) (InstallationID, error) {
+	return ParseInstallation(string(id))
+}
+
 func (i InstallationID) String() string  { return i.text }
 func (i InstallationID) Validate() error { return requireConstructed("installation", i.text) }
+
+// Host is the plugin host's key for this installation; the host accepts any
+// name, and Flame keys every installation by its canonical UUID.
+func (i InstallationID) Host() qimu.InstallationID { return qimu.InstallationID(i.text) }

@@ -84,7 +84,7 @@ func installationDependencies(dependencies []plugin.Dependency) []installationDe
 func dependencyInstallations(dependencies []plugin.Dependency) []qimu.InstallationID {
 	result := make([]qimu.InstallationID, 0, len(dependencies))
 	for _, dependency := range dependencies {
-		result = append(result, qimu.InstallationID(dependency.InstallationID.String()))
+		result = append(result, dependency.InstallationID.Host())
 	}
 	return result
 }

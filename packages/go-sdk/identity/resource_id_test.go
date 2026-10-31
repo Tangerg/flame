@@ -51,3 +51,16 @@ func TestInstallationIdentityHasOneNonzeroWireGrammar(t *testing.T) {
 		}
 	}
 }
+
+func TestInstallationHostKeyRoundTrips(t *testing.T) {
+	id, err := ParseInstallation("12345678-1234-1234-1234-123456789abc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if back, err := ParseHostInstallation(id.Host()); err != nil || back != id {
+		t.Fatalf("host key round trip = %v, %v", back, err)
+	}
+	if _, err := ParseHostInstallation("notes"); err == nil {
+		t.Fatal("a host key outside Flame's identity space was accepted")
+	}
+}

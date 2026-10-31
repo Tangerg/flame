@@ -76,7 +76,7 @@ func sourceFixture(t *testing.T) (*Source, *sourceStore, *sourceResources, qimu.
 	if err != nil {
 		t.Fatal(err)
 	}
-	binding := qimu.UnitBinding{Source: qimu.UnitRef{InstallationID: qimu.InstallationID(id.String()), Release: digest, UnitID: plugins.ComponentUnit("panel")}, Configuration: integrity.Hash(configuration), Imports: []qimu.ImportDeclaration{}}
+	binding := qimu.UnitBinding{Source: qimu.UnitRef{InstallationID: id.Host(), Release: digest, UnitID: plugins.ComponentUnit("panel")}, Configuration: integrity.Hash(configuration), Imports: []qimu.ImportDeclaration{}}
 	return source, store, resources, binding
 }
 

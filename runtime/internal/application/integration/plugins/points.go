@@ -55,7 +55,7 @@ func ResolvePoint(ctx context.Context, host *qimu.Host, store Store, contract *p
 			}
 		}
 		if slices.ContainsFunc(declaration.PointValues, func(value plugin.PointValue) bool { return value.Contract == contract.Identity() }) {
-			unit := qimu.UnitRef{InstallationID: qimu.InstallationID(snapshot.Installation.ID().String()), Release: snapshot.Selected.Digest(), UnitID: PointValuesUnit}
+			unit := qimu.UnitRef{InstallationID: snapshot.Installation.ID().Host(), Release: snapshot.Selected.Digest(), UnitID: PointValuesUnit}
 			providers = append(providers, unit)
 		}
 	}
@@ -87,7 +87,7 @@ func ResolvePoint(ctx context.Context, host *qimu.Host, store Store, contract *p
 	values := make([]portable.PointValue, 0, len(candidates))
 	for _, candidate := range candidates {
 		source := candidate.Source()
-		installation, err := identity.ParseInstallation(source.InstallationID.String())
+		installation, err := identity.ParseHostInstallation(source.InstallationID)
 		if err != nil {
 			return nil, err
 		}
@@ -95,8 +95,8 @@ func ResolvePoint(ctx context.Context, host *qimu.Host, store Store, contract *p
 		if err != nil {
 			return nil, err
 		}
-		digest, err := integrity.ParseDigest(source.Release.String())
-		if err != nil {
+		digest := source.Release
+		if err := digest.Validate(); err != nil {
 			return nil, err
 		}
 		reference := PointReference{Installation: installation, Contribution: contribution}

@@ -240,7 +240,7 @@ func disableOriginalScheduleBinding(t *testing.T, cfg assemblyConfig) {
 		t.Fatal("original execution has no retained installation")
 	}
 	for _, dependency := range dependencies {
-		if err := framework.host.SetEnabled(t.Context(), qimu.InstallationID(dependency.InstallationID.String()), false); err != nil {
+		if err := framework.host.SetEnabled(t.Context(), dependency.InstallationID.Host(), false); err != nil {
 			t.Fatal(err)
 		}
 	}

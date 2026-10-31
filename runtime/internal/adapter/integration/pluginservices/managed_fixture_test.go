@@ -190,7 +190,7 @@ func (f *managedFixture) open(t *testing.T, connect bool) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = f.Host.Install(t.Context(), qimu.InstallationConfig{ID: qimu.InstallationID(f.store.snapshot.Installation.ID().String()), Plugin: definition.Plugin, Configuration: configuration, Enabled: f.store.snapshot.Installation.Enabled()})
+		_, err = f.Host.Install(t.Context(), qimu.InstallationConfig{ID: f.store.snapshot.Installation.ID().Host(), Plugin: definition.Plugin, Configuration: configuration, Enabled: f.store.snapshot.Installation.Enabled()})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -272,7 +272,7 @@ func (s *toolInstallationStore) disable(t *testing.T) {
 	if s.host == nil {
 		t.Fatal("installation fixture has no Host authority")
 	}
-	if err := s.host.SetEnabled(t.Context(), qimu.InstallationID(s.snapshot.Installation.ID().String()), false); err != nil {
+	if err := s.host.SetEnabled(t.Context(), s.snapshot.Installation.ID().Host(), false); err != nil {
 		t.Fatal(err)
 	}
 	snapshot, found, err := s.Store.Get(t.Context(), s.snapshot.Installation.ID())

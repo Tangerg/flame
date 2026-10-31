@@ -80,7 +80,7 @@ func newBindingFixture(t *testing.T) bindingFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	id := qimu.InstallationID(installation.ID().String())
+	id := installation.ID().Host()
 	if _, err := host.Install(t.Context(), qimu.InstallationConfig{ID: id, Plugin: projection.Plugin, Configuration: configuration, Enabled: true}); err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +174,7 @@ func TestBusinessCheckpointAdmitsOriginalBindingInItsOwnAtomicWriteSet(t *testin
 	if _, err := f.store.ExecutorCheckpoints.LoadCheckpoint(t.Context(), checkpoint.RootMemberID); !errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("rolled-back original binding remained visible: %v", err)
 	}
-	if held, err := f.store.PluginUses.Held(t.Context(), qimu.InstallationID(f.provider.InstallationID.String())); err != nil || len(held) != 0 {
+	if held, err := f.store.PluginUses.Held(t.Context(), f.provider.InstallationID.Host()); err != nil || len(held) != 0 {
 		t.Fatalf("rollback retained references: %+v, %v", held, err)
 	}
 	err = f.store.CommitPluginReferences(t.Context(), f.host, "original-event", checkpoint, func(ctx context.Context) error {
@@ -187,10 +187,10 @@ func TestBusinessCheckpointAdmitsOriginalBindingInItsOwnAtomicWriteSet(t *testin
 	if err != nil || !reflect.DeepEqual(loaded, checkpoint) {
 		t.Fatalf("original checkpoint = %+v, %v", loaded, err)
 	}
-	if err := f.host.Uninstall(t.Context(), qimu.InstallationID(f.provider.InstallationID.String())); !errors.Is(err, qimu.ErrInUse) {
+	if err := f.host.Uninstall(t.Context(), f.provider.InstallationID.Host()); !errors.Is(err, qimu.ErrInUse) {
 		t.Fatalf("installation escaped retained business graph: %v", err)
 	}
-	if err := f.host.SetEnabled(t.Context(), qimu.InstallationID(f.provider.InstallationID.String()), false); err != nil {
+	if err := f.host.SetEnabled(t.Context(), f.provider.InstallationID.Host(), false); err != nil {
 		t.Fatal(err)
 	}
 	checkpoint.Payload = []byte("original execution progressed while disabled")
@@ -206,7 +206,7 @@ func TestBusinessCheckpointAdmitsOriginalBindingInItsOwnAtomicWriteSet(t *testin
 	if err := f.store.ExecutorCheckpoints.DeleteSessionCheckpoints(t.Context(), checkpoint.SessionID); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.host.Uninstall(t.Context(), qimu.InstallationID(f.provider.InstallationID.String())); err != nil {
+	if err := f.host.Uninstall(t.Context(), f.provider.InstallationID.Host()); err != nil {
 		t.Fatalf("business retirement did not release the original source: %v", err)
 	}
 }
@@ -216,7 +216,7 @@ func TestBusinessCheckpointAndInstallationChangeHaveOneAdmission(t *testing.T) {
 		t.Run(first, func(t *testing.T) {
 			f := newBindingFixture(t)
 			checkpoint := f.checkpoint()
-			id := qimu.InstallationID(f.provider.InstallationID.String())
+			id := f.provider.InstallationID.Host()
 			if first == "uninstall" {
 				if err := f.host.Uninstall(t.Context(), id); err != nil {
 					t.Fatal(err)
@@ -280,7 +280,7 @@ func TestOriginalCommandRetainsBindingUntilItsBusinessOwnerRetires(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	id := qimu.InstallationID(f.provider.InstallationID.String())
+	id := f.provider.InstallationID.Host()
 	if err := f.host.Uninstall(t.Context(), id); !errors.Is(err, qimu.ErrInUse) {
 		t.Fatalf("prepared command did not protect its original graph: %v", err)
 	}

@@ -133,7 +133,7 @@ func TestCommandBindingAndInstallationChangeShareAdmission(t *testing.T) {
 		synctest.Wait()
 		changed := make(chan error, 1)
 		go func() {
-			changed <- admission.Change(t.Context(), qimu.InstallationID(provider.InstallationID.String()), func() (bool, error) {
+			changed <- admission.Change(t.Context(), provider.InstallationID.Host(), func() (bool, error) {
 				if store.command == nil || !store.command.Pending() {
 					return false, errors.New("change missed the pending command")
 				}

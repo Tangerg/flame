@@ -199,7 +199,7 @@ func (c *Coordinator) Install(ctx context.Context, source string) (_ Inspection,
 	if err != nil {
 		return Inspection{}, err
 	}
-	_, err = c.framework.Install(ctx, qimu.InstallationConfig{ID: qimu.InstallationID(id.String()), Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()})
+	_, err = c.framework.Install(ctx, qimu.InstallationConfig{ID: id.Host(), Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()})
 	if err != nil {
 		return Inspection{}, FrameworkError(err)
 	}
@@ -295,7 +295,7 @@ func (c *Coordinator) change(ctx context.Context, id identity.InstallationID, tr
 	if err != nil {
 		return Inspection{}, err
 	}
-	expected, found := c.framework.Installation(qimu.InstallationID(id.String()))
+	expected, found := c.framework.Installation(id.Host())
 	if !found {
 		return Inspection{}, plugin.ErrNotFound
 	}
@@ -375,7 +375,7 @@ func (c *Coordinator) Uninstall(ctx context.Context, id identity.InstallationID)
 	if err != nil {
 		return err
 	}
-	if err := c.framework.Uninstall(ctx, qimu.InstallationID(id.String())); err != nil {
+	if err := c.framework.Uninstall(ctx, id.Host()); err != nil {
 		return FrameworkError(err)
 	}
 	withdrawErr := c.connections.WithdrawInstallation(servers)

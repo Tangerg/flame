@@ -70,12 +70,12 @@ func DecodeFrameworkConfiguration(record qimu.InstallationRecord) (plugin.Record
 	if err := json.Unmarshal(record.Configuration, &value, json.RejectUnknownMembers(true)); err != nil {
 		return plugin.Record{}, err
 	}
-	id, err := identity.ParseInstallation(record.ID.String())
+	id, err := identity.ParseHostInstallation(record.ID)
 	if err != nil {
 		return plugin.Record{}, err
 	}
-	digest, err := integrity.ParseDigest(record.Release.String())
-	if err != nil {
+	digest := record.Release
+	if err := digest.Validate(); err != nil {
 		return plugin.Record{}, err
 	}
 	return plugin.Record{ID: id, Source: value.Source, Selected: digest, Enabled: record.Enabled, Values: value.Values, DisabledServers: value.DisabledServers, DisabledSkills: value.DisabledSkills}, nil
@@ -301,7 +301,7 @@ func ContributionSource(binding ContributionBinding) (qimu.ExportRef, error) {
 	if err != nil {
 		return qimu.ExportRef{}, err
 	}
-	return qimu.ExportRef{InstallationID: qimu.InstallationID(binding.InstallationID.String()), Release: binding.Digest, UnitID: BackendUnit(binding.ServerName), Export: binding.ContributionID.String(), Contract: point.Ref()}, nil
+	return qimu.ExportRef{InstallationID: binding.InstallationID.Host(), Release: binding.Digest, UnitID: BackendUnit(binding.ServerName), Export: binding.ContributionID.String(), Contract: point.Ref()}, nil
 }
 
 // FrameworkError gives Core failures one Flame category without losing their

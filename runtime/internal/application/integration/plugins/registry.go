@@ -90,7 +90,7 @@ func (r *Registry) ComponentPlan(ctx context.Context, realm qimu.RealmID, id ide
 		return nil, err
 	}
 	return r.framework.PlanWith(ctx, realm, nil, qimu.ExportRef{
-		InstallationID: qimu.InstallationID(id.String()),
+		InstallationID: id.Host(),
 		Release:        digest,
 		UnitID:         ComponentUnit(component),
 		Export:         extension.ComponentExport,

@@ -85,7 +85,7 @@ func testFramework(t testing.TB, store Store, dependencies ...*installationDepen
 		if err != nil {
 			t.Fatal(err)
 		}
-		records = append(records, qimu.InstallationRecord{ID: qimu.InstallationID(snapshot.Installation.ID().String()), Release: projection.Plugin.Revision(), Configuration: configuration, Enabled: snapshot.Installation.Enabled(), Units: projection.Plugin.Units()})
+		records = append(records, qimu.InstallationRecord{ID: snapshot.Installation.ID().Host(), Release: projection.Plugin.Revision(), Configuration: configuration, Enabled: snapshot.Installation.Enabled(), Units: projection.Plugin.Units()})
 		definitions = append(definitions, projection.Plugin)
 	}
 	if err := host.Restore(context.Background(), records, definitions); err != nil {
