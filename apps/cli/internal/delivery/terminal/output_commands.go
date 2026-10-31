@@ -66,7 +66,7 @@ func (l *sessionLifecycle) exportSession(argument string) error {
 			if err != nil {
 				return sessionartifact.Publication{}, err
 			}
-			return l.artifacts.Publish(workspace, title, filename, document), nil
+			return sessionartifact.Store{}.Publish(workspace, title, filename, document), nil
 		},
 		func(result sessionartifact.Publication, err error) {
 			if err != nil {

@@ -79,7 +79,7 @@ func TestBuiltinCommandsHonorNegotiatedFineGrainedCapabilities(t *testing.T) {
 		runtimeProfile: &profile,
 		runs:           &runs{execution: executionState{conversation: conversation.New()}},
 		workspaces:     &workspaceServiceStub{},
-		transfers:      outputTransferStub{},
+		lifecycle:      &sessionLifecycle{transfers: outputTransferStub{}},
 	}
 	for name, availability := range map[string]extensions.CommandAvailability{
 		"changes":  availableWithGitWorkspaceService(application),

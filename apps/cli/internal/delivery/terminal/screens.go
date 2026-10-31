@@ -42,17 +42,17 @@ type screens struct {
 	plugins          *pluginScreens
 }
 
-func (a *app) screenHost() screenHost {
+func (a *app) screenHost(replayPolicy mutation.ReplayPolicy) screenHost {
 	return screenHost{
 		tasks: a.tasks, reader: a.reader, status: a.status, message: a.message,
 		confirm: a.confirm.ask, session: &a.lifecycle.state,
 		stack: &a.stack, theme: a.transcript.theme, glyphs: a.transcript.glyphs,
-		clipboard: a.loop.Clipboard(), replayPolicy: a.replayPolicy,
+		clipboard: a.loop.Clipboard(), replayPolicy: replayPolicy,
 	}
 }
 
 func (a *app) buildScreens(cfg appConfig) {
-	host := a.screenHost()
+	host := a.screenHost(cfg.replayPolicy)
 	a.screens.approvals = newApprovalScreens(host, a.runtime, a.runs.observing)
 	a.screens.inspection = &workspaceScreens{screenHost: host, service: a.workspaces}
 	if cfg.goals != nil {

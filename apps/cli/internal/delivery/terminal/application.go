@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/attachment"
-	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/sessionartifact"
 	runworkflow "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
@@ -59,11 +58,8 @@ type app struct {
 	runtime        Runtime
 	workspaces     Workspaces
 	changes        changefeed.Source
-	transfers      session.TransferService
 	feedback       Feedback
 	runtimeProfile RuntimeProfile
-	replayPolicy   mutation.ReplayPolicy
-	artifacts      sessionartifact.Store
 
 	pluginHost       *extensions.Host
 	pluginIssues     []extensions.SourceIssue
@@ -188,9 +184,9 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	transcript.SetEntrance(brand)
 	a := &app{
 		ctx: cfg.context, loop: loop, runtime: cfg.runtime, workspaces: cfg.workspaces,
-		runtimeProfile: cfg.runtimeProfile, replayPolicy: cfg.replayPolicy,
-		changes: cfg.changes, transfers: cfg.transfers,
-		feedback: cfg.feedback,
+		runtimeProfile: cfg.runtimeProfile,
+		changes:        cfg.changes,
+		feedback:       cfg.feedback,
 
 		pluginHost: cfg.pluginHost, pluginIssues: cfg.pluginIssues,
 		operations:        newOperationOwner(cfg.context),
@@ -253,8 +249,9 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	a.registerCommands()
 	a.buildInterface(appearance, cfg.keyBindings.editor)
 	a.runs.prompt, a.runs.prompts, a.runs.queueEditor, a.runs.composer = a.prompt, a.prompts, a.queueEditor, a.composer
+	a.buildSessionPicker(appearance.theme, appearance.glyphs, cfg.replayPolicy)
 	a.steering = &steerDesk{
-		runtime: a.runtime, workbench: a.workbench, replayPolicy: a.replayPolicy,
+		runtime: a.runtime, workbench: a.workbench, replayPolicy: cfg.replayPolicy,
 		composer: a.composer, session: &a.lifecycle.state, runs: a.runs, tasks: a.tasks,
 		notify: a.message, report: a.reportWorkbenchIssue, drainQueue: a.runs.drainQueue, readSession: func(ctx context.Context, id string) (conversation.SessionSnapshot, error) {
 			return a.lifecycle.readSessionAfterMutation(ctx, id)
@@ -262,8 +259,8 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	}
 	a.runs.steering = a.steering
 	*a.lifecycle = sessionLifecycle{
-		state: a.lifecycle.state, root: a, runtime: a.runtime, workspaces: a.workspaces, transfers: a.transfers, artifacts: a.artifacts,
-		workbench: a.workbench, queue: a.queue, replayPolicy: a.replayPolicy, localDirectory: a.localDirectory, tasks: a.tasks,
+		state: a.lifecycle.state, root: a, runtime: a.runtime, workspaces: a.workspaces, transfers: cfg.transfers,
+		workbench: a.workbench, queue: a.queue, replayPolicy: cfg.replayPolicy, localDirectory: a.localDirectory, tasks: a.tasks,
 		report: a.reportWorkbenchIssue, status: a.status, prompt: a.prompt, header: a.header, activity: a.activity,
 		runs: a.runs, composer: a.composer, prompts: a.prompts, steering: a.steering, reader: a.reader, confirm: a.confirm,
 		sessions: a.sessions, workspaceChoices: a.workspaceChoices,
@@ -331,7 +328,6 @@ func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.M
 		stack: &a.stack, theme: theme, glyphs: glyphs, syntax: a.syntax,
 		wheel: a.loop.Environment().Wheel(), clipboard: a.loop.Clipboard(),
 	})
-	a.buildSessionPicker(theme, glyphs)
 	a.buildWorkspacePicker(theme, glyphs)
 	a.buildTimeline(theme, glyphs)
 	a.buildModelPicker(theme, glyphs)
@@ -369,9 +365,9 @@ func (a *app) wireTranscript(transcript *transcriptView) {
 	})
 }
 
-func (a *app) buildSessionPicker(theme kit.Theme, glyphs kit.Glyphs) {
+func (a *app) buildSessionPicker(theme kit.Theme, glyphs kit.Glyphs, replayPolicy mutation.ReplayPolicy) {
 	a.sessions = newSessionBrowser(sessionBrowserConfig{browser: sessionBrowser{
-		runtime: a.runtime, workbench: a.workbench, queue: a.queue, replayPolicy: a.replayPolicy,
+		runtime: a.runtime, workbench: a.workbench, queue: a.queue, replayPolicy: replayPolicy,
 		session: &a.lifecycle.state, tasks: a.tasks, status: a.status, stack: &a.stack, theme: theme, glyphs: glyphs,
 		clipboard: a.loop.Clipboard(), notify: a.message, observing: a.runs.observing, adoptCurrent: func(session conversation.Session) { a.lifecycle.setActiveSession(session) },
 		catalogChanged: func() { a.lifecycle.applySessionInvalidation(true, false) },

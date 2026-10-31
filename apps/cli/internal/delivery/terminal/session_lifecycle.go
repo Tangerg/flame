@@ -1,7 +1,6 @@
 package terminal
 
 import (
-	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/sessionartifact"
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
@@ -45,7 +44,6 @@ type sessionLifecycle struct {
 	runtime        Runtime
 	workspaces     Workspaces
 	transfers      session.TransferService
-	artifacts      sessionartifact.Store
 	workbench      *workbench.Store
 	queue          *workbench.Queue
 	replayPolicy   mutation.ReplayPolicy

@@ -153,7 +153,7 @@ func availableWithSessionTransfer(a *app) extensions.CommandAvailability {
 	if unavailable := availableWithoutActiveRun(a); !unavailable.Enabled() {
 		return unavailable
 	}
-	if a.transfers == nil {
+	if a.lifecycle.transfers == nil {
 		return extensions.CommandUnavailable("this runtime composition has no session transfer service")
 	}
 	return availableWithRuntimeFeature(a, protocol.FeatureSessionExport)

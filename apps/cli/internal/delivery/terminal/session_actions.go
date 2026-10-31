@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/sessionartifact"
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
@@ -29,7 +30,7 @@ func (l *sessionLifecycle) prepareSessionImport(path string) error {
 	l.root.message("reading session artifact")
 	started := l.tasks.session(sessionOutputOperation, false,
 		func(context.Context) (sessionImport, error) {
-			artifact, err := l.artifacts.Load(workspace, path)
+			artifact, err := sessionartifact.Store{}.Load(workspace, path)
 			return sessionImport{path: path, artifact: artifact}, err
 		},
 		func(prepared sessionImport, err error) {
