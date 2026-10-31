@@ -6,10 +6,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // commandAcceptanceStore writes immutable Run-owned receipts in their product

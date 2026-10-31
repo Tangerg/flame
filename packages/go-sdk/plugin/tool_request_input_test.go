@@ -3,9 +3,9 @@ package plugin
 import (
 	"context"
 	"encoding/json/jsontext"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/qimu/mcp"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/tool"
 	"testing"
 )

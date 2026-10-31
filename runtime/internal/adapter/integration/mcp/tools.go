@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/qimu/integrity"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"
 )

@@ -6,8 +6,8 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 func (t *ToolInvocationStore) retainCaller(ctx context.Context, caller plugin.ToolCaller) error {

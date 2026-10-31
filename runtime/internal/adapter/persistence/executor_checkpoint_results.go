@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // References and payload advance in the same checkpoint transaction. A waiting

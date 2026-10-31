@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/qimu/integrity"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 func TestDocumentAndResultKeepTheOriginalContentVersion(t *testing.T) {

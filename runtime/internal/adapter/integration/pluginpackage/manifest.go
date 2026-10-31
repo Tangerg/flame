@@ -16,14 +16,14 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	sdkplugin "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/qimu/cancellation"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
+	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/portable"
 	sdk "github.com/Tangerg/scope/skills"
 )
 

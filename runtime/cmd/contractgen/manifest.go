@@ -7,11 +7,11 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/contractgen"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+	"github.com/Tangerg/qimu/contractgen"
 )
 
 // manifest is the machine-readable projection of the Contract Registry.

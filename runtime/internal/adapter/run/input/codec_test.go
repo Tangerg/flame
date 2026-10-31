@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {

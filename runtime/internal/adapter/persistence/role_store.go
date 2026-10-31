@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // roleStore is the shared persistence primitive for single-row role tables,

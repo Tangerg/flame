@@ -3,8 +3,8 @@ package plugins
 import (
 	"strings"
 
-	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/qimu"
 )
 
 func ComponentID(unit qimu.UnitID) (plugin.ContributionID, error) {

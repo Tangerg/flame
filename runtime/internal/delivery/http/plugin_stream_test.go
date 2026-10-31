@@ -13,11 +13,11 @@ import (
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/portable"
 )
 
 type streamRuntime struct {

@@ -11,9 +11,9 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/process"
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
+	"github.com/Tangerg/qimu/integrity"
 	skillspec "github.com/Tangerg/scope/skills"
 )
 

@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestStreamingCallbackNeverPublishesAPrematureFinalResult(t *testing.T) {

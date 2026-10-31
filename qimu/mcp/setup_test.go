@@ -7,8 +7,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/qimu/portable"
 )
 
 type setupTestResource struct{ closes *atomic.Int32 }

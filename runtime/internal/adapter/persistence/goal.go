@@ -8,9 +8,9 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // GoalStore is the SQLite persistence adapter for autonomous goals: one row per

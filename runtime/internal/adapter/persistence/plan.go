@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // PlanStore persists one complete ordered Plan per session. Plans are replaced

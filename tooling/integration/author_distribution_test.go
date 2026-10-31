@@ -13,8 +13,8 @@ import (
 
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/portable"
 	flameruntime "github.com/Tangerg/flame/runtime"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func TestStandalonePluginArchiveRetainsItsContractAndPrivateCommandOwner(t *testing.T) {

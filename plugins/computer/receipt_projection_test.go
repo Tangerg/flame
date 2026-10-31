@@ -8,8 +8,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Tangerg/qimu/jsonvalue"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"

@@ -11,7 +11,6 @@ import (
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -19,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"
 	toolcontract "github.com/Tangerg/scope/core/tool"

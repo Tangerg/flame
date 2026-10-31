@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/qimu/portable"
 )
 
 type memoryIdempotencyStore struct {

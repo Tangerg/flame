@@ -8,7 +8,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -20,6 +19,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	skilldomain "github.com/Tangerg/flame/runtime/internal/domain/skills"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 // The value constraints of wire shapes.

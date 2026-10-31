@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/qimu/integrity"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 )

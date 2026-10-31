@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 // interactionToolResolver builds the exact Tool manifest for one staged root.

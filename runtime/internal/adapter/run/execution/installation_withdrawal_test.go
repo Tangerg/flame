@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -17,6 +16,7 @@ import (
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/pluginhost"
+	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/scope/core/chat"
 )
 

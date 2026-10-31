@@ -14,15 +14,15 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/runner"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/qimu"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/runner"
 	"github.com/Tangerg/scope/core/chat"
 )
 

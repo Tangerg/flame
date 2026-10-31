@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func backendStreamingSession(t *testing.T, method *StreamingMethod[callbackInput, int64, bool], handler func(context.Context, *sdk.ServerSession, Command[callbackInput]) iter.Seq2[StreamValue[int64, bool], error]) (*Binding, *Callbacks) {

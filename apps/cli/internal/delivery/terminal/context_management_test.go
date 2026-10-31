@@ -16,9 +16,9 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/oolong/core/input"
 )
 
 const (

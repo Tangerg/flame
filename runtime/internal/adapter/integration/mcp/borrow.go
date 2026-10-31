@@ -5,12 +5,12 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 // BorrowedSession holds one call in the original Use. Context propagates

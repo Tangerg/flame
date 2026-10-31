@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/qimu/integrity"
 	sdk "github.com/Tangerg/scope/skills"
 )
 

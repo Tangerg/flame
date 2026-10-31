@@ -8,11 +8,11 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/google/uuid"
 	"github.com/samber/lo"

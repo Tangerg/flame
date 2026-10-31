@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // ProviderStore persists only stored provider configuration. Effective

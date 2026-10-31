@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 // runtimeApplication is the immutable application capsule owned by Instance. Delivery

@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 

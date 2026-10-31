@@ -9,8 +9,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 const Namespace = "io.github.tangerg.flame"

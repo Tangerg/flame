@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/qimu/portable"
 )
 
 type callbackInput struct {

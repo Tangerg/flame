@@ -8,11 +8,11 @@ import (
 	"log/slog"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/integrity"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 )

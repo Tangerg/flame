@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -16,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 )
 

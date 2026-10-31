@@ -6,12 +6,12 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func TestBackgroundNoticesRequireTheirOwnEnabledContribution(t *testing.T) {

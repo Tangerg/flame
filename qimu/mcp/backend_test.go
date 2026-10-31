@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func TestBackendPublishesOneCurrentTransportWithIndependentExports(t *testing.T) {

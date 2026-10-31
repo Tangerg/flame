@@ -11,11 +11,11 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 type interruptState string

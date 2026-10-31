@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/runner"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/runner"
 )
 
 func TestRestorationFailureBelongsToTheExactCurrentAttempt(t *testing.T) {

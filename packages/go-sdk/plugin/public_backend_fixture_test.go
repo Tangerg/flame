@@ -3,9 +3,9 @@ package plugin
 import (
 	"testing"
 
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func newTestCallbacks(t *testing.T) *qimumcp.Callbacks {

@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 type ruleSet []Rule

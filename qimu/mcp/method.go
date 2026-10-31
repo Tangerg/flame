@@ -9,9 +9,9 @@ import (
 	"reflect"
 	"unicode/utf8"
 
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
 	"github.com/google/uuid"
 )

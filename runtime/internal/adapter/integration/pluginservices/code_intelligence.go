@@ -5,12 +5,12 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/codeintel"
-	"github.com/Tangerg/qimu/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/qimu/cancellation"
 )
 
 func (c *CommandCalls) AcquireCodeIntelligence(ctx context.Context) (toolset.CodeIntelligenceUse, error) {

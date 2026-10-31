@@ -11,12 +11,12 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
 

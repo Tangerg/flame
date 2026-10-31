@@ -6,10 +6,10 @@ import (
 	"sync/atomic"
 	"testing"
 
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestParsedMutationResultSurvivesLaterCallerCancellationAndUseExit(t *testing.T) {

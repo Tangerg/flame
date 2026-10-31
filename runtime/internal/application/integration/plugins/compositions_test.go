@@ -7,9 +7,9 @@ import (
 	"github.com/Tangerg/qimu"
 	"testing"
 
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/qimu/portable"
 )
 
 type requirementCompositions struct {

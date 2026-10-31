@@ -9,7 +9,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/recovery"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
@@ -28,6 +27,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 // assemble transfers acquired resources directly to the Runtime lifecycle.

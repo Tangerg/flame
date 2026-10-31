@@ -13,9 +13,9 @@ import (
 	"testing"
 	"testing/synctest"
 
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 func TestTransactionFailureRetainsRollbackDiagnostic(t *testing.T) {

@@ -9,10 +9,10 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/Tangerg/qimu/distribution"
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/qimu/distribution"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 func TestNeutralDeclarationCannotSubstituteManagedRuntimeOrCapabilities(t *testing.T) {

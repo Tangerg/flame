@@ -8,9 +8,9 @@ import (
 	"iter"
 	"sync"
 
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 	scopemetadata "github.com/Tangerg/scope/core/metadata"
 )
 

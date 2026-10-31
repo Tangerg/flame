@@ -7,7 +7,6 @@ import (
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
@@ -21,6 +20,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"

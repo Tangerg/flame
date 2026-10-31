@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 type trajectoryPosition struct {

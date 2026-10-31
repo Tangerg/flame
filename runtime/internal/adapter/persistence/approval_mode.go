@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // ModeStore records the Runtime's permission modes: the default a user chose

@@ -7,9 +7,9 @@ import (
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
 )

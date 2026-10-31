@@ -4,10 +4,10 @@ import (
 	"context"
 	json "encoding/json/v2"
 
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func CallCapability[P, R any](ctx context.Context, session *sdk.ClientSession, contract *portable.Capability, export, method, id string, input P, metadata sdk.ParamsBase) (R, error) {

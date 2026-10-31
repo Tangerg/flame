@@ -11,12 +11,12 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 )

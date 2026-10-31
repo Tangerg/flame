@@ -13,8 +13,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Tangerg/qimu/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
+	"github.com/Tangerg/qimu/cancellation"
 )
 
 // ErrUnavailable means the git binary isn't on PATH. ErrNotRepo means the

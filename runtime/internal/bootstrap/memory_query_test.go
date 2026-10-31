@@ -7,8 +7,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func memoryQuery(r *poMCPRuntime, input memorycontract.ListInput) (protocol.CallPluginRequest, error) {

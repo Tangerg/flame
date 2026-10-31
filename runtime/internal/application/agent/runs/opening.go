@@ -9,13 +9,13 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/qimu/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
+	"github.com/Tangerg/qimu/cancellation"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/samber/lo"
 )

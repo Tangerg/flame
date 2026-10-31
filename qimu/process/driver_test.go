@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/qimu/jsonvalue"
@@ -19,7 +20,6 @@ import (
 	"github.com/Tangerg/qimu/process"
 	"github.com/Tangerg/qimu/runner"
 	"github.com/Tangerg/qimu/sqlite"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func echoContract() (*mcp.Method[string, string], *portable.Capability, error) {

@@ -3,8 +3,8 @@ package plugin
 import (
 	"context"
 	"errors"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"iter"
 	"sync/atomic"

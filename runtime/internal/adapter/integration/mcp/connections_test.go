@@ -16,10 +16,10 @@ import (
 	"testing"
 	"time"
 
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"

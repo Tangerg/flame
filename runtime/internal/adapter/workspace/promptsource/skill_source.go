@@ -11,10 +11,10 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/qimu/cancellation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
+	"github.com/Tangerg/qimu/cancellation"
 	sdk "github.com/Tangerg/scope/skills"
 )
 

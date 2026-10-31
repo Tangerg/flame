@@ -18,10 +18,10 @@ import (
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 const inspectedSHA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"

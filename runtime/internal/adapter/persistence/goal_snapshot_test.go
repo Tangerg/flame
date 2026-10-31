@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // The separate writer commits after the Goal row is read and before usage is

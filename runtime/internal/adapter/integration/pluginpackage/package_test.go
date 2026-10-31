@@ -16,15 +16,15 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	sdkplugin "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/distribution"
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/distribution"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 const portableManifest = `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"test.content","version":"1.0.0"}`

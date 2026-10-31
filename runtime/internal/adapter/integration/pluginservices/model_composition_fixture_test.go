@@ -5,13 +5,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func installedCallCompositionFixture(t *testing.T, contract *portable.Capability, members []string, register func(*qimumcp.Backend), handlers ...http.Handler) (*CallComposition, *toolInstallationStore) {

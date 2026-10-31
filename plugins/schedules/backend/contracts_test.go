@@ -11,9 +11,9 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	"github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestGeneratedSchedulesContractMatchesLiveMethods(t *testing.T) {

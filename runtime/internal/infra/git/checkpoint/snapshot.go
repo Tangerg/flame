@@ -10,8 +10,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/Tangerg/qimu/cancellation"
 	workspacegit "github.com/Tangerg/flame/runtime/internal/infra/git"
+	"github.com/Tangerg/qimu/cancellation"
 )
 
 // maxCheckpointFileSize caps a single file the checkpoint will stage (2 MiB

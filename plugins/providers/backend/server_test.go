@@ -18,10 +18,10 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 )

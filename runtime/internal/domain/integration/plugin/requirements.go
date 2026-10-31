@@ -5,9 +5,9 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
 type BoundContribution struct {

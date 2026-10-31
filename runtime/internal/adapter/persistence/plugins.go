@@ -6,10 +6,10 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 type InstallationStore struct {

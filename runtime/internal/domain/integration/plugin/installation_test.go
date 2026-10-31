@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/qimu/integrity"
 	"github.com/google/uuid"
 )
 

@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -14,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 func TestAuthorityReadSharesOneSourceObservationAndRefreshesNextRequest(t *testing.T) {

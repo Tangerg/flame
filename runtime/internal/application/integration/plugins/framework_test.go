@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/samber/lo"
 )
 

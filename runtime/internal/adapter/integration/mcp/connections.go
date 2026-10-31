@@ -7,12 +7,12 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu/cancellation"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/qimu/cancellation"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 // server is the live state of one configured MCP server. Access is guarded by

@@ -17,10 +17,10 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	toolcontract "github.com/Tangerg/scope/core/tool"

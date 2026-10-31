@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Tangerg/qimu/contractgen"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+	"github.com/Tangerg/qimu/contractgen"
 )
 
 // The TypeScript validator is COMPILED FROM THE SCHEMA TREE, for the same reason

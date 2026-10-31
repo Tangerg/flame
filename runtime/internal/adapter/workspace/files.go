@@ -13,9 +13,9 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/qimu/cancellation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
+	"github.com/Tangerg/qimu/cancellation"
 )
 
 // File browsing returns workspace entries for tree and completion consumers.

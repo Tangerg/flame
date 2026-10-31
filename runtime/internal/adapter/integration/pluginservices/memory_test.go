@@ -13,9 +13,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	execution "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -24,6 +21,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 )
 

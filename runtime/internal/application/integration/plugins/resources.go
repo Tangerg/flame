@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 func (c *Coordinator) Component(ctx context.Context, id identity.InstallationID, digest integrity.Digest, component plugin.ContributionID) (plugin.ClientComponent, error) {

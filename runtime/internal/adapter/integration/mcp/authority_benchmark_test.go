@@ -11,14 +11,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/qimu/distribution"
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/pluginhost"
+	"github.com/Tangerg/qimu/distribution"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 // BenchmarkInstalledSourceAdmission measures the source verification that each

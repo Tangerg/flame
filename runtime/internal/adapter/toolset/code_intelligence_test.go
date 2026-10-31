@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/codeintel"
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 type testCodeIntelligence struct {

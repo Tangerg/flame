@@ -9,9 +9,9 @@ import (
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 type typedStreamCaller struct {

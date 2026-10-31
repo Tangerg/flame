@@ -10,11 +10,11 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
+	"github.com/Tangerg/qimu/cancellation"
 	sdk "github.com/Tangerg/scope/skills"
 	"github.com/samber/lo"
 )

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // ListNonTerminalRuns returns the complete unique set of constructed open Runs.

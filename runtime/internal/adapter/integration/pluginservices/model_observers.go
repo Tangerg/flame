@@ -9,12 +9,12 @@ import (
 	"sync"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 )
 

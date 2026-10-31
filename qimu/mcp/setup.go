@@ -10,10 +10,10 @@ import (
 	"slices"
 	"sync"
 
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 const SetupMethod = "io.github.tangerg.qimu/operations.setup"

@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // Insert persists one already-decided initial Session. Identity, timestamps,

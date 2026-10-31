@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/qimu"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
@@ -23,6 +21,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
+	"github.com/Tangerg/qimu"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )

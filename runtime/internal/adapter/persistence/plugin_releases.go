@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // ReleaseStore is the admitted release catalog: the only owner of release

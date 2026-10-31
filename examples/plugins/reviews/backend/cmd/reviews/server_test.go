@@ -14,10 +14,10 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func modelToolMetadata(t *testing.T, id string) sdk.Meta {

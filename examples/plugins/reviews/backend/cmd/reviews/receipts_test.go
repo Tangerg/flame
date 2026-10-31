@@ -8,10 +8,10 @@ import (
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestPublicReceiptLookupRetainsOriginalOutcomeAcrossBackendRestart(t *testing.T) {

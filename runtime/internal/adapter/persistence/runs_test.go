@@ -10,12 +10,12 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 func newRunStores(t *testing.T) (*RunStore, *InterruptStore) {

@@ -9,12 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/qimu"
-	controlhost "github.com/Tangerg/qimu/control/host"
-	"github.com/Tangerg/qimu/distribution"
-	"github.com/Tangerg/qimu/integrity"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/process"
 	mcpadapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	browseradapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginbrowser"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
@@ -23,6 +17,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/qimu"
+	controlhost "github.com/Tangerg/qimu/control/host"
+	"github.com/Tangerg/qimu/distribution"
+	"github.com/Tangerg/qimu/integrity"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/process"
 )
 
 type frameworkComposition struct {

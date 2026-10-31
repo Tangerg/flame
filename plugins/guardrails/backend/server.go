@@ -10,8 +10,8 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/guardrails/internal/contract"
 	guardrail "github.com/Tangerg/flame/plugins/guardrails/internal/domain"
 	"github.com/Tangerg/flame/plugins/guardrails/internal/wire"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
 

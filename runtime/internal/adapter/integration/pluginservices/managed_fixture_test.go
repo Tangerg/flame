@@ -9,11 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/integrity"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/process"
-	"github.com/Tangerg/qimu/runner"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -22,6 +17,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport/mcpfixture"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/integrity"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/process"
+	"github.com/Tangerg/qimu/runner"
 )
 
 // The child forwards transport messages only. Test callbacks and their business

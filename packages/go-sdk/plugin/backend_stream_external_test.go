@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
 

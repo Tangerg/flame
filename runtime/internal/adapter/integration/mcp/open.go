@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/samber/lo"
 	"go.opentelemetry.io/otel"
 )

@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // MCPAuthorizationStore keeps at most one credential per MCP source, bound to

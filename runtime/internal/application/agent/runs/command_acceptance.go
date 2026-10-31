@@ -7,9 +7,9 @@ import (
 	"slices"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 // ErrCommandKeyConflict reports that a command's idempotency key is already

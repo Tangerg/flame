@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func TestContributionsHaveIndependentIDsAndCanShareOneBackend(t *testing.T) {

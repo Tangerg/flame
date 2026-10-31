@@ -5,13 +5,13 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/process"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/process"
 )
 
 // Installed projects approved Qimu instances into Flame's MCP tool catalog.

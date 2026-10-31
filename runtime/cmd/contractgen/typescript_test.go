@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/qimu/contractgen"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
+	"github.com/Tangerg/qimu/contractgen"
 )
 
 type unconditionalRequiredShape struct {

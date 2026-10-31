@@ -8,13 +8,13 @@ import (
 	"slices"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/qimu/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
 type pluginCommandStore struct {

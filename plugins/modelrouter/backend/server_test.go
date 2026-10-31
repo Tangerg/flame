@@ -13,9 +13,9 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/modelrouter/internal/contract"
 	routing "github.com/Tangerg/flame/plugins/modelrouter/internal/domain"
 	"github.com/Tangerg/flame/plugins/modelrouter/internal/wire"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestPolicyCommandsAndSelectionShareTheDurableOwnerAcrossReopen(t *testing.T) {

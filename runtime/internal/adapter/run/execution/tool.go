@@ -10,9 +10,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
-	"github.com/Tangerg/qimu/integrity"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -22,6 +19,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/qimu/integrity"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"

@@ -11,8 +11,8 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
 	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
 )

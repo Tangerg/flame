@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
+	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 // The Go wire validator enforces registered constraints at Runtime boundaries.

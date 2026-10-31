@@ -9,13 +9,13 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/qimu/portable"
 	flameruns "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 )

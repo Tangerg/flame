@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/contractgen"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/qimu/contractgen"
 )
 
 // The method surface, as TypeScript reads it: which methods exist, what each one

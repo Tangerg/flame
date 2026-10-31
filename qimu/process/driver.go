@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/qimu/jsonvalue"
@@ -19,7 +20,6 @@ import (
 	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/qimu/runner"
 	"github.com/Tangerg/qimu/sqlite"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 // Program is an immutable distribution projection. Secret material belongs in

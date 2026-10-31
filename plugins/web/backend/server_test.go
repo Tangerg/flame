@@ -16,10 +16,10 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
 	"github.com/Tangerg/flame/plugins/web/internal/wire"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/tools/httpreq"
 	"github.com/Tangerg/scope/tools/web"
 )

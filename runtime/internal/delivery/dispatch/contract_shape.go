@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 // This file holds the shape half of the contract: which wire types are closed

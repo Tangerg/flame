@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/qimu/sqlite"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // Measure the coherent storage read and application validation together. Network

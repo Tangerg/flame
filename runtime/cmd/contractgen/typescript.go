@@ -10,10 +10,10 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/contractgen"
-	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+	"github.com/Tangerg/qimu/contractgen"
+	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 // The TypeScript wire types are emitted from the SCHEMA tree, not from a second

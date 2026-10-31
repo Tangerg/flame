@@ -9,7 +9,6 @@ import (
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/qimu"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -19,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/qimu"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"

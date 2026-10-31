@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/qimu/contractgen"
-	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
+	"github.com/Tangerg/qimu/contractgen"
+	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 // The schema walker turns the registered wire types into JSON Schema.

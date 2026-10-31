@@ -6,8 +6,8 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
 

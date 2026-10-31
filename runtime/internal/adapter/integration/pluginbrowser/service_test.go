@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	controlhost "github.com/Tangerg/qimu/control/host"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	controlhost "github.com/Tangerg/qimu/control/host"
 )
 
 func TestControlEndpointRequiresAnHTTPAuthorityOrSameOriginPath(t *testing.T) {

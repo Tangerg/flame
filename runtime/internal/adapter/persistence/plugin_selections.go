@@ -6,8 +6,8 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 type providerSelectionStore struct{ db *sql.DB }

@@ -8,9 +8,9 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestTypedAndModelEntriesShareTaskBindingsAndOriginalReceipts(t *testing.T) {

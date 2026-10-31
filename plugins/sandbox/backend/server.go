@@ -10,9 +10,9 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
 	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
 )

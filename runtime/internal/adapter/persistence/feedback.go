@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/feedback"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // feedbackStore persists the append-only quality ledger. The DB must have been

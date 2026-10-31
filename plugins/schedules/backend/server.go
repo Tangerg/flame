@@ -15,8 +15,8 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/google/uuid"
 )
 

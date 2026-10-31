@@ -10,11 +10,11 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/samber/lo"

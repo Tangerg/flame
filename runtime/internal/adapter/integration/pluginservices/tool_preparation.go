@@ -7,8 +7,6 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -17,6 +15,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/qimu/portable"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"
 	"github.com/samber/lo"

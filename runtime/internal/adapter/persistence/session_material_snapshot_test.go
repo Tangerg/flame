@@ -8,7 +8,6 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/qimu/sqlite"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
@@ -17,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 type blockingGoalProjection struct {

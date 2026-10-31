@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"github.com/Tangerg/qimu"
 
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/samber/lo"
 )
 

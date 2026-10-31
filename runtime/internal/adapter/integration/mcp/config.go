@@ -15,10 +15,10 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	"github.com/Tangerg/flame/packages/go-sdk/httpresponse"
 	"github.com/Tangerg/flame/packages/go-sdk/procgroup"
-	"github.com/Tangerg/qimu/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/qimu/cancellation"
 	"golang.org/x/oauth2"
 )
 

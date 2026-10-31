@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/qimu/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
 // The framework authority and original Flame business owners share one file

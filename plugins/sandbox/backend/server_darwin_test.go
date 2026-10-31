@@ -13,10 +13,10 @@ import (
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
 	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T) {

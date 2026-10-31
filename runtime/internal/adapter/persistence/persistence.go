@@ -12,9 +12,9 @@ import (
 	"sync"
 
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/application/operation"
 )
 
 // Bundle holds Runtime's host stores in one SQLite database under DataDirectory.

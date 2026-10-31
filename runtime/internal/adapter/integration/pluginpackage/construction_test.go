@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/qimu/distribution"
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+	"github.com/Tangerg/qimu/distribution"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 func TestReleaseStoreRejectsMissingCatalogBeforeCreatingDirectory(t *testing.T) {

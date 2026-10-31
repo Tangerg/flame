@@ -6,9 +6,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/qimu/integrity"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/metadata"

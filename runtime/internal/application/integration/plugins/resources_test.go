@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 type localePackages struct {

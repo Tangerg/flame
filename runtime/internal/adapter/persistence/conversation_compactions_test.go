@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/qimu/sqlite"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
 

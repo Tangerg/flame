@@ -9,10 +9,10 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/portable"
 )
 
 func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *testing.T) {

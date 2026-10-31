@@ -13,8 +13,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 )

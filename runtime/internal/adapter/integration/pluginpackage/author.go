@@ -14,11 +14,11 @@ import (
 	"slices"
 
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/distribution"
 	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
 type BuildTarget struct {

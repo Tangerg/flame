@@ -7,13 +7,13 @@ import (
 	"runtime"
 	"slices"
 
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/distribution"
-	"github.com/Tangerg/qimu/integrity"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/qimu/distribution"
+	"github.com/Tangerg/qimu/integrity"
 )
 
 // Connection transfers the original content lease to the real process owner.

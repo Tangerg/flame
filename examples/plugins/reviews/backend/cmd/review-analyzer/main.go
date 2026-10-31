@@ -8,8 +8,8 @@ import (
 	"syscall"
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 func main() {

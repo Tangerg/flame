@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Tangerg/qimu/contractgen"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
+	"github.com/Tangerg/qimu/contractgen"
 )
 
 type recursiveWireObject struct {

@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/qimu/sqlite"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 // runColumns is the whole Run row, joined with the open interrupts a parked Run
