@@ -149,6 +149,5 @@
 22 runtime/internal/infra/filesystem/skillauthoring/proposals.go:Store.ApproveProposal
 22 runtime/internal/testsupport/item.go:MustRestoreItem
 22 runtime/internal/testsupport/run.go:MustRestoreRun
-72 tooling/goapi/consumers.go:collect
 21 tooling/moduleproxy/main.go:run
 61 tooling/nodequalification/main.go:qualify

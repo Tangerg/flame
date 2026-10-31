@@ -34,26 +34,65 @@ func readGoDirectory(directory string) []os.DirEntry {
 	}
 }
 
+// consumerScan records, per Runtime method, the CLI binding and plugin backend
+// call sites that invoke it.
+type consumerScan struct {
+	root      string
+	methods   map[string]string
+	files     *token.FileSet
+	consumers map[string][]string
+}
+
 func collect(root string, methods map[string]string) map[string][]string {
-	files := token.NewFileSet()
-	parse := func(directory string) []*ast.File {
-		entries := readGoDirectory(directory)
-		var parsed []*ast.File
-		for _, entry := range entries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
-				continue
-			}
-			file, err := parser.ParseFile(files, filepath.Join(directory, entry.Name()), nil, 0)
-			if err != nil {
-				fail(err)
-			}
-			parsed = append(parsed, file)
-		}
-		return parsed
+	scan := &consumerScan{root: root, methods: methods, files: token.NewFileSet(), consumers: map[string][]string{}}
+	cli := scan.parse(filepath.Join(root, "apps/cli/internal/adapter/runtimebinding"))
+	scan.connectionCalls(cli, connectionPorts(cli))
+	backends, err := filepath.Glob(filepath.Join(root, "plugins", "*", "backend"))
+	if err != nil {
+		fail(err)
 	}
-	cli := parse(filepath.Join(root, "apps/cli/internal/adapter/runtimebinding"))
+	for _, directory := range backends {
+		if _, err := os.Stat(directory); os.IsNotExist(err) {
+			continue
+		}
+		scan.backendCalls(scan.parse(directory))
+	}
+	return scan.consumers
+}
+
+func (s *consumerScan) parse(directory string) []*ast.File {
+	var parsed []*ast.File
+	for _, entry := range readGoDirectory(directory) {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(s.files, filepath.Join(directory, entry.Name()), nil, 0)
+		if err != nil {
+			fail(err)
+		}
+		parsed = append(parsed, file)
+	}
+	return parsed
+}
+
+// record adds call as a consumer of the Runtime method named operation, if any.
+func (s *consumerScan) record(operation string, call *ast.CallExpr) {
+	name, ok := s.methods[operation]
+	if !ok {
+		return
+	}
+	position := s.files.Position(call.Pos())
+	path, err := filepath.Rel(s.root, position.Filename)
+	if err != nil {
+		fail(err)
+	}
+	s.consumers[name] = append(s.consumers[name], fmt.Sprintf("%s:%d", filepath.ToSlash(path), position.Line))
+}
+
+// connectionPorts maps each Connection field typed by a binding interface to
+// that interface's method set.
+func connectionPorts(cli []*ast.File) map[string]map[string]bool {
 	interfaces := map[string]map[string]bool{}
-	ports := map[string]map[string]bool{}
 	for _, file := range cli {
 		ast.Inspect(file, func(node ast.Node) bool {
 			spec, ok := node.(*ast.TypeSpec)
@@ -61,19 +100,12 @@ func collect(root string, methods map[string]string) map[string][]string {
 				return true
 			}
 			if kind, ok := spec.Type.(*ast.InterfaceType); ok {
-				members := map[string]bool{}
-				for _, field := range kind.Methods.List {
-					for _, name := range field.Names {
-						if _, ok := field.Type.(*ast.FuncType); ok {
-							members[name.Name] = true
-						}
-					}
-				}
-				interfaces[spec.Name.Name] = members
+				interfaces[spec.Name.Name] = interfaceMethods(kind)
 			}
 			return true
 		})
 	}
+	ports := map[string]map[string]bool{}
 	for _, file := range cli {
 		ast.Inspect(file, func(node ast.Node) bool {
 			spec, ok := node.(*ast.TypeSpec)
@@ -98,7 +130,25 @@ func collect(root string, methods map[string]string) map[string][]string {
 			return true
 		})
 	}
-	consumers := map[string][]string{}
+	return ports
+}
+
+func interfaceMethods(kind *ast.InterfaceType) map[string]bool {
+	members := map[string]bool{}
+	for _, field := range kind.Methods.List {
+		if _, ok := field.Type.(*ast.FuncType); !ok {
+			continue
+		}
+		for _, name := range field.Names {
+			members[name.Name] = true
+		}
+	}
+	return members
+}
+
+// connectionCalls records each `receiver.port.Method(...)` call a Connection
+// method makes through a binding port.
+func (s *consumerScan) connectionCalls(cli []*ast.File, ports map[string]map[string]bool) {
 	for _, file := range cli {
 		for _, declaration := range file.Decls {
 			method, ok := declaration.(*ast.FuncDecl)
@@ -109,158 +159,129 @@ func collect(root string, methods map[string]string) map[string][]string {
 			if !ok {
 				continue
 			}
-			kind, ok := receiver.X.(*ast.Ident)
-			if !ok || kind.Name != "Connection" {
+			if kind, ok := receiver.X.(*ast.Ident); !ok || kind.Name != "Connection" {
 				continue
 			}
 			receiverName := method.Recv.List[0].Names[0].Name
-			ast.Inspect(method.Body, func(node ast.Node) bool {
-				call, ok := node.(*ast.CallExpr)
-				if !ok {
-					return true
-				}
-				operation, ok := call.Fun.(*ast.SelectorExpr)
-				if !ok {
-					return true
-				}
-				port, ok := operation.X.(*ast.SelectorExpr)
-				if !ok {
-					return true
-				}
-				owner, ok := port.X.(*ast.Ident)
-				if !ok || owner.Name != receiverName {
-					return true
-				}
-				if !ports[port.Sel.Name][operation.Sel.Name] {
-					return true
-				}
-				name, ok := methods[operation.Sel.Name]
-				if !ok {
-					return true
-				}
-				position := files.Position(call.Pos())
-				path, err := filepath.Rel(root, position.Filename)
-				if err != nil {
-					fail(err)
-				}
-				consumers[name] = append(consumers[name], fmt.Sprintf("%s:%d", filepath.ToSlash(path), position.Line))
-				return true
+			s.fieldCalls(method.Body, receiverName, func(field, operation string) bool {
+				return ports[field][operation]
 			})
 		}
 	}
-	backends, err := filepath.Glob(filepath.Join(root, "plugins", "*", "backend"))
-	if err != nil {
-		fail(err)
+}
+
+// fieldCalls records calls shaped `receiver.field.operation(...)` that accepts.
+func (s *consumerScan) fieldCalls(body *ast.BlockStmt, receiver string, accepts func(field, operation string) bool) {
+	ast.Inspect(body, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		operation, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		field, ok := operation.X.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		owner, ok := field.X.(*ast.Ident)
+		if !ok || owner.Name != receiver || !accepts(field.Sel.Name, operation.Sel.Name) {
+			return true
+		}
+		s.record(operation.Sel.Name, call)
+		return true
+	})
+}
+
+// backendCalls records plugin backend calls through struct fields holding a
+// Runtime or Runtime client.
+func (s *consumerScan) backendCalls(sources []*ast.File) {
+	receivers := map[string]map[string]bool{}
+	for _, file := range sources {
+		imports := runtimeImports(file)
+		ast.Inspect(file, func(node ast.Node) bool {
+			spec, ok := node.(*ast.TypeSpec)
+			if !ok {
+				return true
+			}
+			if value, ok := spec.Type.(*ast.StructType); ok {
+				receivers[spec.Name.Name] = runtimeFields(value, imports)
+			}
+			return true
+		})
 	}
-	for _, directory := range backends {
-		if _, err := os.Stat(directory); os.IsNotExist(err) {
+	for _, file := range sources {
+		for _, declaration := range file.Decls {
+			method, ok := declaration.(*ast.FuncDecl)
+			if !ok || method.Recv == nil || method.Body == nil {
+				continue
+			}
+			receiver := method.Recv.List[0]
+			kind := receiver.Type
+			if pointer, ok := kind.(*ast.StarExpr); ok {
+				kind = pointer.X
+			}
+			owner, ok := kind.(*ast.Ident)
+			if !ok {
+				continue
+			}
+			fields := receivers[owner.Name]
+			if len(fields) == 0 {
+				continue
+			}
+			s.fieldCalls(method.Body, receiver.Names[0].Name, func(field, _ string) bool { return fields[field] })
+		}
+	}
+}
+
+// runtimeImports returns the local names file gives the Runtime and its client.
+func runtimeImports(file *ast.File) map[string]bool {
+	imports := map[string]bool{}
+	for _, value := range file.Imports {
+		path, err := strconv.Unquote(value.Path.Value)
+		if err != nil {
+			fail(err)
+		}
+		alias := ""
+		switch path {
+		case "github.com/Tangerg/flame/runtime":
+			alias = "runtime"
+		case "github.com/Tangerg/flame/packages/go-sdk/client":
+			alias = "runtimeclient"
+		default:
 			continue
 		}
-		sources := parse(directory)
-		receivers := map[string]map[string]bool{}
-		for _, file := range sources {
-			imports := map[string]bool{}
-			for _, value := range file.Imports {
-				path, err := strconv.Unquote(value.Path.Value)
-				if err != nil {
-					fail(err)
-				}
-				if path != "github.com/Tangerg/flame/runtime" && path != "github.com/Tangerg/flame/packages/go-sdk/client" {
-					continue
-				}
-				alias := "runtime"
-				if path == "github.com/Tangerg/flame/packages/go-sdk/client" {
-					alias = "runtimeclient"
-				}
-				if value.Name != nil {
-					alias = value.Name.Name
-				}
-				imports[alias] = true
-			}
-			ast.Inspect(file, func(node ast.Node) bool {
-				spec, ok := node.(*ast.TypeSpec)
-				if !ok {
-					return true
-				}
-				value, ok := spec.Type.(*ast.StructType)
-				if !ok {
-					return true
-				}
-				fields := map[string]bool{}
-				for _, field := range value.Fields.List {
-					pointer, ok := field.Type.(*ast.StarExpr)
-					if !ok {
-						continue
-					}
-					name, ok := pointer.X.(*ast.SelectorExpr)
-					if !ok {
-						continue
-					}
-					owner, ok := name.X.(*ast.Ident)
-					if !ok || !imports[owner.Name] || (name.Sel.Name != "Client" && name.Sel.Name != "Runtime") {
-						continue
-					}
-					for _, fieldName := range field.Names {
-						fields[fieldName.Name] = true
-					}
-				}
-				receivers[spec.Name.Name] = fields
-				return true
-			})
+		if value.Name != nil {
+			alias = value.Name.Name
 		}
-		for _, file := range sources {
-			for _, declaration := range file.Decls {
-				method, ok := declaration.(*ast.FuncDecl)
-				if !ok || method.Recv == nil || method.Body == nil {
-					continue
-				}
-				receiver := method.Recv.List[0]
-				kind := receiver.Type
-				if pointer, ok := kind.(*ast.StarExpr); ok {
-					kind = pointer.X
-				}
-				owner, ok := kind.(*ast.Ident)
-				if !ok {
-					continue
-				}
-				fields := receivers[owner.Name]
-				if len(fields) == 0 {
-					continue
-				}
-				ast.Inspect(method.Body, func(node ast.Node) bool {
-					call, ok := node.(*ast.CallExpr)
-					if !ok {
-						return true
-					}
-					operation, ok := call.Fun.(*ast.SelectorExpr)
-					if !ok {
-						return true
-					}
-					field, ok := operation.X.(*ast.SelectorExpr)
-					if !ok || !fields[field.Sel.Name] {
-						return true
-					}
-					target, ok := field.X.(*ast.Ident)
-					if !ok || target.Name != receiver.Names[0].Name {
-						return true
-					}
-					name, ok := methods[operation.Sel.Name]
-					if !ok {
-						return true
-					}
-					position := files.Position(call.Pos())
-					path, err := filepath.Rel(root, position.Filename)
-					if err != nil {
-						fail(err)
-					}
-					consumers[name] = append(consumers[name], fmt.Sprintf("%s:%d", filepath.ToSlash(path), position.Line))
-					return true
-				})
-			}
+		imports[alias] = true
+	}
+	return imports
+}
+
+// runtimeFields names the struct's fields that hold a *Client or *Runtime from
+// one of imports.
+func runtimeFields(value *ast.StructType, imports map[string]bool) map[string]bool {
+	fields := map[string]bool{}
+	for _, field := range value.Fields.List {
+		pointer, ok := field.Type.(*ast.StarExpr)
+		if !ok {
+			continue
+		}
+		name, ok := pointer.X.(*ast.SelectorExpr)
+		if !ok {
+			continue
+		}
+		owner, ok := name.X.(*ast.Ident)
+		if !ok || !imports[owner.Name] || (name.Sel.Name != "Client" && name.Sel.Name != "Runtime") {
+			continue
+		}
+		for _, fieldName := range field.Names {
+			fields[fieldName.Name] = true
 		}
 	}
-
-	return consumers
+	return fields
 }
 
 func fail(err error) { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
