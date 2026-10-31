@@ -62,16 +62,8 @@ type dialogState struct {
 	confirmationDialog  *kit.Dialog
 	workspacePicker     *picker[workspaceChoice]
 	workspaceDialog     *presentationDialog
-	timeline            *timelinePane
-	timelineDialog      *presentationDialog
 	modelPicker         *picker[protocol.Model]
 	modelDialog         *presentationDialog
 	activeContextEditor *contextEditorSession
-	commandPicker       *picker[commandPaletteItem]
-	commandDialog       *presentationDialog
-	shortcutDialog      *presentationDialog
-	shortcutViewport    *headless.Viewport
-	searchDialog        *presentationDialog
 	queueDialog         *headless.Dialog
-	searchQuery         string
 }

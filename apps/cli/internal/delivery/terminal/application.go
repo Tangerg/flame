@@ -86,6 +86,10 @@ type app struct {
 	prompts      *interruptPrompts
 	approvals    *approvalScreens
 	inspection   *workspaceScreens
+	timeline     *timelineDialog
+	palette      *commandPaletteDialog
+	search       *searchPrompt
+	shortcuts    *shortcutGuide
 
 	transcript  *transcriptView
 	brand       *brandBanner
@@ -305,9 +309,9 @@ func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.M
 	a.buildWorkspacePicker(theme, glyphs)
 	a.buildTimeline(theme, glyphs)
 	a.buildRuntimePickers(theme, glyphs)
-	a.buildCommandPalette(theme, glyphs)
-	a.buildShortcutDialog(theme, glyphs, editorKeys)
-	a.buildSearchDialog(theme, glyphs)
+	a.palette = newCommandPaletteDialog(&a.stack, theme, glyphs, a.chooseCommand)
+	a.shortcuts = newShortcutGuide(&a.stack, theme, glyphs, a.loop.Environment().Wheel(), editorKeys, a.transcript.Keys())
+	a.search = newSearchPrompt(&a.stack, theme, glyphs, a.Find)
 	a.reader = newReaderSurface(readerSurfaceConfig{
 		theme: theme, glyphs: glyphs, syntax: a.syntax, stack: &a.stack, loop: a.loop,
 		tasks: a.tasks, status: a.status, message: a.message,

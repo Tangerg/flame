@@ -17,8 +17,16 @@ type commandPaletteItem struct {
 	availability extensions.CommandAvailability
 }
 
-func (a *app) buildCommandPalette(theme kit.Theme, glyphs kit.Glyphs) {
-	a.dialogs.commandPicker = newPicker(theme, glyphs, "search commands",
+// commandPaletteDialog lists every command by category and hands the chosen one to
+// choose.
+type commandPaletteDialog struct {
+	picker *picker[commandPaletteItem]
+	dialog *presentationDialog
+}
+
+func newCommandPaletteDialog(stack *headless.Stack, theme kit.Theme, glyphs kit.Glyphs, choose func(commandPaletteItem)) *commandPaletteDialog {
+	p := &commandPaletteDialog{}
+	p.picker = newPicker(theme, glyphs, "search commands",
 		func(item commandPaletteItem) string { return "/" + item.command.Name },
 		func(item commandPaletteItem) string {
 			detail := item.category + " · " + item.command.Title
@@ -28,29 +36,40 @@ func (a *app) buildCommandPalette(theme kit.Theme, glyphs kit.Glyphs) {
 			return detail
 		},
 		func(item commandPaletteItem) {
-			if !a.dialogs.commandDialog.Open() {
+			if !p.dialog.Open() {
 				return
 			}
-			command := item.command
-			a.dialogs.commandDialog.Dismiss()
-			if !item.availability.Enabled() {
-				a.message("/" + command.Name + " unavailable: " + item.availability.Reason())
-				return
-			}
-			if a.commands.arguments(command.Name).TakesInput() {
-				a.composer.Editor().SetText("/" + command.Name + " ")
-				a.composer.Editor().Focus(true)
-				a.scheduleDraftPersistence()
-				return
-			}
-			a.runCommand(command.Name, "", func() {})
+			p.dialog.Dismiss()
+			choose(item)
 		},
 	)
-	a.dialogs.commandDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Commands", Body: a.dialogs.commandPicker,
+	p.dialog = newPresentationDialog(kit.DialogConfig{
+		Stack: stack, Theme: theme, Glyphs: glyphs, Title: "Commands", Body: p.picker,
 		Where: layout.Placement{Width: 82, Height: 18},
 	})
-	a.dialogs.commandPicker.cancel = a.dialogs.commandDialog.Dismiss
+	p.picker.cancel = p.dialog.Dismiss
+	return p
+}
+
+func (p *commandPaletteDialog) show(items []commandPaletteItem) {
+	p.picker.Reset()
+	p.picker.SetItems(items)
+	p.dialog.Show()
+}
+
+func (a *app) chooseCommand(item commandPaletteItem) {
+	command := item.command
+	if !item.availability.Enabled() {
+		a.message("/" + command.Name + " unavailable: " + item.availability.Reason())
+		return
+	}
+	if a.commands.arguments(command.Name).TakesInput() {
+		a.composer.Editor().SetText("/" + command.Name + " ")
+		a.composer.Editor().Focus(true)
+		a.scheduleDraftPersistence()
+		return
+	}
+	a.runCommand(command.Name, "", func() {})
 }
 
 func (a *app) showCommandPalette() {
@@ -68,9 +87,7 @@ func (a *app) showCommandPalette() {
 		}
 		return strings.Compare(left.command.Name, right.command.Name)
 	})
-	a.dialogs.commandPicker.Reset()
-	a.dialogs.commandPicker.SetItems(commands)
-	a.dialogs.commandDialog.Show()
+	a.palette.show(commands)
 	a.status.note("choose a command")
 }
 
@@ -97,30 +114,37 @@ func commandCategoryRank(category string) int {
 	}
 }
 
-func (a *app) buildSearchDialog(theme kit.Theme, glyphs kit.Glyphs) {
-	field := headless.NewText(headless.TextConfig{Label: "Find in the live transcript", Placeholder: "text", Value: headless.Bind(&a.dialogs.searchQuery), Check: requiredText})
-	keys := headless.DefaultFormKeys()
+// searchPrompt asks for text to find in the live transcript.
+type searchPrompt struct {
+	dialog *presentationDialog
+	query  string
+}
+
+func newSearchPrompt(stack *headless.Stack, theme kit.Theme, glyphs kit.Glyphs, find func(string)) *searchPrompt {
+	p := &searchPrompt{}
+	field := headless.NewText(headless.TextConfig{Label: "Find in the live transcript", Placeholder: "text", Value: headless.Bind(&p.query), Check: requiredText})
 	form := headless.NewForm(field)
-	form.Keys = keys
+	form.Keys = headless.DefaultFormKeys()
 	form.Done = func() {
-		if !a.dialogs.searchDialog.Open() {
+		if !p.dialog.Open() {
 			return
 		}
-		a.dialogs.searchDialog.Dismiss()
-		a.Find(a.dialogs.searchQuery)
+		p.dialog.Dismiss()
+		find(p.query)
 	}
-	form.GaveUp = func() { a.dialogs.searchDialog.Dismiss() }
+	form.GaveUp = func() { p.dialog.Dismiss() }
 	dressed := kit.NewForm(kit.FormConfig{
 		Theme: theme, Glyphs: glyphs, Controller: form,
 		Hints: []keymap.Action{headless.Submit, headless.Cancel},
 	})
-	a.dialogs.searchDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Search", Body: dressed,
+	p.dialog = newPresentationDialog(kit.DialogConfig{
+		Stack: stack, Theme: theme, Glyphs: glyphs, Title: "Search", Body: dressed,
 		Where: layout.Placement{Width: 68, Height: 7},
 	})
+	return p
 }
 
-func (a *app) showSearchDialog() {
-	a.dialogs.searchQuery = ""
-	a.dialogs.searchDialog.Show()
+func (p *searchPrompt) show() {
+	p.query = ""
+	p.dialog.Show()
 }

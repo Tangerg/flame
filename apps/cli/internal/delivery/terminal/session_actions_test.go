@@ -651,6 +651,9 @@ func TestProjectionRetirementRejectsAPresentedConfirmationCallback(t *testing.T)
 		reader: testReaderSurface(t, operations), prompts: testInterruptPrompts(t),
 	}
 	application.stack.SetBase(transcript)
+	application.search = newSearchPrompt(&application.stack, transcript.theme, transcript.glyphs, func(string) {})
+	application.palette = newCommandPaletteDialog(&application.stack, transcript.theme, transcript.glyphs, func(commandPaletteItem) {})
+	application.timeline = newTimelineDialog(&application.stack, transcript.theme, transcript.glyphs, func(timelineEntry) {}, func(timelineEntry) {})
 	calls := 0
 	application.confirmAction("Retired confirmation", "Run the retired action?", "Run", func() { calls++ })
 	drawRoot(t, application, 96, 28)

@@ -4,6 +4,7 @@ import (
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
+	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/core/layout"
 )
@@ -21,12 +22,18 @@ type shortcutDefinition struct {
 	keys        *keymap.Map
 }
 
-func (a *app) buildShortcutDialog(theme kit.Theme, glyphs kit.Glyphs, applicationKeys *keymap.Map) {
+// shortcutGuide shows every configured key binding.
+type shortcutGuide struct {
+	viewport *headless.Viewport
+	dialog   *presentationDialog
+}
+
+func newShortcutGuide(stack *headless.Stack, theme kit.Theme, glyphs kit.Glyphs, wheel input.Wheel, applicationKeys, transcriptKeys *keymap.Map) *shortcutGuide {
 	guideKeys := headless.DefaultScrollKeys()
 	for _, binding := range headless.DefaultStackKeys().Keys(headless.Close) {
 		guideKeys.Bind(headless.Close, binding...)
 	}
-	rows := collectShortcutRows(applicationKeys, a.transcript.Keys(), guideKeys)
+	rows := collectShortcutRows(applicationKeys, transcriptKeys, guideKeys)
 	table := &kit.Table{
 		Theme: theme,
 		Columns: []kit.Column{
@@ -46,19 +53,17 @@ func (a *app) buildShortcutDialog(theme kit.Theme, glyphs kit.Glyphs, applicatio
 	}
 	viewport := headless.NewViewport(headless.Static{Of: table})
 	viewport.Keys = guideKeys
-	viewport.Scroll().Wheel(a.loop.Environment().Wheel())
-	a.dialogs.shortcutViewport = viewport
-	a.dialogs.shortcutDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Shortcuts", Body: viewport,
+	viewport.Scroll().Wheel(wheel)
+	return &shortcutGuide{viewport: viewport, dialog: newPresentationDialog(kit.DialogConfig{
+		Stack: stack, Theme: theme, Glyphs: glyphs, Title: "Shortcuts", Body: viewport,
 		Where: layout.Placement{Width: 88, Height: 24}, Keys: guideKeys,
 		Hints: []keymap.Action{headless.ScrollUp, headless.ScrollDown, headless.Close},
-	})
+	})}
 }
 
-func (a *app) showShortcutDialog() {
-	a.dialogs.shortcutViewport.Scroll().ToTop()
-	a.dialogs.shortcutDialog.Show()
-	a.status.note("keyboard shortcuts")
+func (g *shortcutGuide) show() {
+	g.viewport.Scroll().ToTop()
+	g.dialog.Show()
 }
 
 func collectShortcutRows(applicationKeys, transcriptKeys, guideKeys *keymap.Map) []shortcutRow {

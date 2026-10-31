@@ -260,7 +260,7 @@ func (a *app) handleSessionAction(action keymap.Action) bool {
 		a.showCommandPalette()
 		return true
 	case showShortcuts:
-		a.showShortcutDialog()
+		a.ShowShortcuts()
 		return true
 	case showSessions:
 		a.ShowSessions()
@@ -271,7 +271,7 @@ func (a *app) handleSessionAction(action keymap.Action) bool {
 	case chooseModel, editPrompt:
 		return a.handlePromptAction(action)
 	case searchTranscript:
-		a.showSearchDialog()
+		a.search.show()
 		return true
 	case manageQueue:
 		a.ShowQueue()

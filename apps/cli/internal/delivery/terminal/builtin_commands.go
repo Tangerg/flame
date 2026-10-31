@@ -333,7 +333,10 @@ func (a *app) Quit() { a.loop.Quit() }
 
 func (a *app) ShowHelp() { a.showCommandPalette() }
 
-func (a *app) ShowShortcuts() { a.showShortcutDialog() }
+func (a *app) ShowShortcuts() {
+	a.shortcuts.show()
+	a.status.note("keyboard shortcuts")
+}
 
 func (a *app) AttachFile(path string) error { return a.addAttachment(path) }
 
