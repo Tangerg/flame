@@ -1,7 +1,9 @@
 package approval
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -104,23 +106,15 @@ func (r Rule) Validate() error {
 
 // specificity encodes the conflict policy: narrower scope beats wider scope,
 // then exact subject beats glob, and glob beats whole-tool.
-func (r Rule) specificity() int {
-	score := 0
-	switch r.Scope {
-	case ScopeSession:
-		score = 300
-	case ScopeProject:
-		score = 200
-	case ScopeGlobal:
-		score = 100
+// specificity ranks a rule by scope first and subject second: any narrower
+// scope outranks any broader one, and within a scope an exact subject outranks
+// a glob, which outranks matching every invocation.
+func (r Rule) specificity() [2]int {
+	rank := func(order []string, value string) int { return slices.Index(order, value) + 1 }
+	return [2]int{
+		rank([]string{string(ScopeGlobal), string(ScopeProject), string(ScopeSession)}, string(r.Scope)),
+		rank([]string{string(SubjectAll), string(SubjectGlob), string(SubjectExact)}, string(r.Subject.Type)),
 	}
-	switch r.Subject.Type {
-	case SubjectGlob:
-		score++
-	case SubjectExact:
-		score += 2
-	}
-	return score
 }
 
 // Validate verifies the complete identity of one tool-call policy query.
@@ -145,7 +139,7 @@ func (r ruleSet) decide(q Query) (Decision, bool, error) {
 	if err := ValidateVisibleRules(r, q.SessionID, q.ProjectDir); err != nil {
 		return "", false, err
 	}
-	best := -1
+	var best [2]int
 	var verdict Decision
 	conflict := false
 	for _, rule := range r {
@@ -153,13 +147,13 @@ func (r ruleSet) decide(q Query) (Decision, bool, error) {
 			continue
 		}
 		switch score := rule.specificity(); {
-		case score > best:
+		case cmp.Or(cmp.Compare(score[0], best[0]), cmp.Compare(score[1], best[1])) > 0:
 			best, verdict, conflict = score, rule.Decision, false
 		case score == best && rule.Decision != verdict:
 			conflict = true
 		}
 	}
-	if best < 0 {
+	if best == ([2]int{}) {
 		return "", false, nil
 	}
 	if conflict {

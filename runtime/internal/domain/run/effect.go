@@ -20,6 +20,10 @@ type UnresolvedEffect struct {
 	output    string
 }
 
+// maximumEffectIdentityBytes bounds the process, effect and cause names an
+// unresolved effect records.
+const maximumEffectIdentityBytes = 512
+
 type UnresolvedEffectConfig struct {
 	ProcessID string
 	EffectID  string
@@ -31,11 +35,11 @@ type UnresolvedEffectConfig struct {
 
 func NewUnresolvedEffect(config UnresolvedEffectConfig) (UnresolvedEffect, error) {
 	for _, identity := range []string{config.ProcessID, config.EffectID, config.Cause} {
-		if strings.TrimSpace(identity) != identity || identity == "" || len(identity) > 512 {
+		if strings.TrimSpace(identity) != identity || identity == "" || len(identity) > maximumEffectIdentityBytes {
 			return UnresolvedEffect{}, errors.New("run: invalid unresolved effect identity or cause")
 		}
 	}
-	if len(config.Reason) > 4096 || len(config.Detail) > 4096 {
+	if len(config.Reason) > maximumDiagnosticBytes || len(config.Detail) > maximumDiagnosticBytes {
 		return UnresolvedEffect{}, errors.New("run: unresolved effect diagnostic exceeds limit")
 	}
 	var output string
