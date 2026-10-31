@@ -820,7 +820,6 @@ export const en: Record<string, string> = {
   "tool.state.failed": "failed",
   "tool.group.read": "{{count}} read",
   "tool.group.search": "{{count}} search",
-  "tool.group.lookup": "{{count}} lookup",
   "tool.group.write": "{{count}} write",
   "tool.group.run": "{{count}} run",
   "tool.group.fetch": "{{count}} fetch",

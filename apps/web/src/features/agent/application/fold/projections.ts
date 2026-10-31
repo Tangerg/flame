@@ -17,6 +17,7 @@ import {
   type QuestionItem,
 } from "@/features/agent/public/contentBlock";
 import { type ToolCall, type ToolCallStatus } from "@/features/agent/public/sessionView";
+import { builtinToolName } from "@/features/agent/domain/toolCategory";
 import { type AgentFoldSource } from "@/features/agent/application/fold/source";
 export function itemStartedAt(item: AgentItem): string {
   return item.type === "toolCall" ? item.startedAt : item.createdAt;
@@ -97,14 +98,7 @@ function firstLine(v: unknown): string | undefined {
 
 function nameLabel(tool: AgentToolInvocation): string | undefined {
   const a = tool.arguments;
-  switch (tool.name) {
-    case "codeintel_lsp": {
-      const op = asString(a.operation);
-      if (op === "workspace_symbols") return asString(a.query);
-      const path = asString(a.path);
-      if (op === "document_symbols" || op === "diagnostics") return path;
-      return path ? `${path}:${a.line ?? "?"}:${a.character ?? "?"}` : undefined;
-    }
+  switch (builtinToolName(tool)) {
     case "ask_user": {
       const first = Array.isArray(a.questions) ? asRecord(a.questions[0]) : undefined;
       return firstLine(first?.question);
@@ -122,12 +116,8 @@ function nameLabel(tool: AgentToolInvocation): string | undefined {
       const path = asString(a.path);
       return name && path ? `${name}/${path}` : (name ?? path);
     }
-    case "search_memory":
     case "search_tools":
       return asString(a.query);
-    case "web_fetch":
-    case "web_http_request":
-      return asString(a.url);
     default:
       return undefined;
   }

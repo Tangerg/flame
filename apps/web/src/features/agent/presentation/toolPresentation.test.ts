@@ -10,15 +10,22 @@ import {
   toolIntent,
   toolMetaItems,
 } from "@/features/agent/presentation/toolPresentation";
-const tool = ({ runId = "run_1", ...overrides }: Partial<ToolCall>): ToolCall => ({
-  id: "tool-1",
-  runId,
-  name: "shell",
-  fn: "shell",
-  args: "",
-  status: "ok",
-  ...overrides,
-});
+import { toolCategoryForName } from "@/features/agent/application/fold/reducer.fixtures";
+
+// The Runtime stamps a category on built-in calls only; fixtures reproduce that.
+const tool = ({ runId = "run_1", ...overrides }: Partial<ToolCall>): ToolCall => {
+  const category = toolCategoryForName(overrides.name ?? "shell");
+  return {
+    id: "tool-1",
+    runId,
+    name: "shell",
+    fn: "shell",
+    args: "",
+    status: "ok",
+    ...(category !== undefined ? { category } : {}),
+    ...overrides,
+  };
+};
 
 describe("toolPresentation", () => {
   it("projects tool args into a compact intent", () => {
@@ -180,7 +187,7 @@ describe("toolPresentation", () => {
       tool({ id: "glob", name: "glob" }),
       tool({ id: "codeintel_lsp", name: "codeintel_lsp" }),
     ];
-    expect(summarizeActivity(t, tools)).toBe("1 read · 2 search · 1 lookup");
+    expect(summarizeActivity(t, tools)).toBe("1 read · 3 search");
   });
 
   it("tells acts apart by the runtime's safety class", () => {

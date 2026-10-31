@@ -3,6 +3,7 @@ import { type Translate } from "@/lib/i18n/index";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { fmtDuration } from "@/lib/format";
 import { toolVerbId } from "@/lib/toolFamilies";
+import { builtinToolName } from "@/features/agent/domain/toolCategory";
 export type ToolDetail = { kind: "path" | "machine" | "prose"; value: string };
 
 export interface ToolIntent {
@@ -99,13 +100,12 @@ export function toolActivityStatus(tools: readonly ToolCall[]) {
   return counts;
 }
 
-const ACTIVITY_FAMILIES = ["read", "search", "lookup", "write", "run", "fetch"] as const;
+const ACTIVITY_FAMILIES = ["read", "search", "write", "run", "fetch"] as const;
 
 type ActivityFamily = (typeof ACTIVITY_FAMILIES)[number];
 
 function activityFamily(tool: ToolCall): ActivityFamily {
-  if (tool.name === "read") return "read";
-  if (tool.name === "codeintel_lsp") return "lookup";
+  if (builtinToolName(tool) === "read") return "read";
   if (tool.safetyClass === "write") return "write";
   if (tool.safetyClass === "exec") return "run";
   if (tool.safetyClass === "network") return "fetch";

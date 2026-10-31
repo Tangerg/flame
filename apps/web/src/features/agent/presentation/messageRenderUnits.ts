@@ -113,7 +113,7 @@ function planWithinWave(
     if (
       tool &&
       hasQuestion &&
-      isQuestionTool(tool.name) &&
+      isQuestionTool(tool) &&
       tool.status !== "err" &&
       tool.status !== "denied"
     ) {

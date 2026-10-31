@@ -21,27 +21,17 @@ it("renders original opaque Tool arguments and output without numeric conversion
 });
 
 describe("toolLabel — name-keyed specialised tools", () => {
-  it("lsp position operations label path:line:character", () => {
-    expect(
-      toolLabel(
-        tool("codeintel_lsp", { operation: "definition", path: "main.go", line: 42, character: 3 }),
-      ),
-    ).toBe("main.go:42:3");
-    expect(
-      toolLabel(tool("codeintel_lsp", { operation: "hover", path: "a.ts", line: 1, character: 5 })),
-    ).toBe("a.ts:1:5");
+  it("labels plugin and MCP tools by their own name, never by a guessed argument", () => {
+    expect(toolLabel(tool("codeintel_lsp", { operation: "hover", path: "a.ts" }))).toBe(
+      "codeintel_lsp",
+    );
+    expect(toolLabel(tool("web_fetch", { url: "https://go.dev" }))).toBe("web_fetch");
   });
 
-  it("lsp file/query operations label by their key argument", () => {
+  it("does not read a category-less tool as the built-in of the same name", () => {
     expect(
-      toolLabel(tool("codeintel_lsp", { operation: "document_symbols", path: "main.go" })),
-    ).toBe("main.go");
-    expect(
-      toolLabel(tool("codeintel_lsp", { operation: "workspace_symbols", query: "ReadTool" })),
-    ).toBe("ReadTool");
-    expect(toolLabel(tool("codeintel_lsp", { operation: "diagnostics", path: "main.go" }))).toBe(
-      "main.go",
-    );
+      toolLabel({ name: "read_shell_output", arguments: { shell_id: "bg_1" } } as ToolInvocation),
+    ).toBe("read_shell_output");
   });
 
   it("the Skill family labels by name; ask_user labels the first question", () => {
@@ -61,13 +51,8 @@ describe("toolLabel — name-keyed specialised tools", () => {
     ).toBe("Audit the retry path");
   });
 
-  it("the searches and fetches label by query and url", () => {
-    expect(toolLabel(tool("search_memory", { query: "deploy runbook" }))).toBe("deploy runbook");
+  it("search_tools labels by its query", () => {
     expect(toolLabel(tool("search_tools", { query: "screenshot" }))).toBe("screenshot");
-    expect(toolLabel(tool("web_fetch", { url: "https://go.dev" }))).toBe("https://go.dev");
-    expect(toolLabel(tool("web_http_request", { url: "https://api.local/health" }))).toBe(
-      "https://api.local/health",
-    );
   });
 
   it("shell labels its description, and the shell pollers their shell id", () => {

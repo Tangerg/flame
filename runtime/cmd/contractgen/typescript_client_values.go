@@ -45,7 +45,8 @@ func newClientValues(set *schemaSet) (string, error) {
 	for _, name := range builtin.Names() {
 		toolNames = append(toolNames, string(name))
 	}
-	fmt.Fprintf(&out, "export type BuiltinToolName = %s;\n\n", strings.Join(contractgen.QuoteAll(toolNames), " | "))
+	fmt.Fprintf(&out, "export const BUILTIN_TOOL_NAMES = [%s] as const;\n\n", strings.Join(contractgen.QuoteAll(toolNames), ", "))
+	out.WriteString("export type BuiltinToolName = (typeof BUILTIN_TOOL_NAMES)[number];\n\n")
 	recovery := reflect.TypeFor[protocol.RecoveryAction]()
 	actions, ok := enumValues(recovery)
 	if !ok {

@@ -6,6 +6,7 @@ import {
   waveStepCount,
   type MessageRenderUnit,
 } from "@/features/agent/presentation/messageRenderUnits";
+import { toolCategoryForName } from "@/features/agent/application/fold/reducer.fixtures";
 const NO_AWAITING: ReadonlyMap<string, string> = new Map();
 
 const text = (value: string, status: "running" | "complete" = "complete"): ContentBlock => ({
@@ -28,15 +29,19 @@ const tool = (
   name: string,
   safetyClass: ToolCall["safetyClass"] = "safe",
   status: ToolCall["status"] = "ok",
-): ToolCall => ({
-  id,
-  runId: "run_1",
-  name,
-  fn: name,
-  args: "",
-  status,
-  safetyClass,
-});
+): ToolCall => {
+  const category = toolCategoryForName(name);
+  return {
+    id,
+    runId: "run_1",
+    name,
+    fn: name,
+    args: "",
+    status,
+    safetyClass,
+    ...(category !== undefined ? { category } : {}),
+  };
+};
 
 const TOOLS: Record<string, ToolCall> = {
   read: tool("read", "read"),
