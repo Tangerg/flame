@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
@@ -66,7 +67,7 @@ type querySessionReader interface {
 // both apply.
 // Returned Pending values, including nested data, belong to the caller.
 type QueryInterruptReader interface {
-	ListPage(ctx context.Context, sessionID, rootRunID string, afterCreatedAt int64, afterRootRunID string, limit int) ([]runs.Pending, error)
+	ListPage(ctx context.Context, sessionID, rootRunID string, after *run.PageAnchor, limit int) ([]runs.Pending, error)
 }
 
 // queryRunReader is the coordinator's view of the durable Run record: one Run by id,
@@ -78,7 +79,7 @@ type QueryInterruptReader interface {
 type queryRunReader interface {
 	Run(ctx context.Context, runID string) (run.Run, bool, error)
 	RunsWithAncestors(ctx context.Context, runIDs []string) ([]run.Run, error)
-	PageRuns(ctx context.Context, sessionID string, statuses []run.State, includeDescendants bool, beforeCreatedAt int64, beforeRunID string, limit int) ([]run.Run, error)
+	PageRuns(ctx context.Context, sessionID string, statuses []run.State, includeDescendants bool, before *run.PageAnchor, limit int) ([]run.Run, error)
 }
 
 // QueryCoordinator serves the session read projections. Stateless beyond its store
@@ -406,7 +407,7 @@ func (c *QueryCoordinator) ListRunPage(ctx context.Context, filter RunPageFilter
 		statusFilter(filter.Statuses),
 		strconv.FormatBool(filter.IncludeDescendants),
 	}
-	beforeCreatedAt, beforeID, err := timeAndRunIDAnchor(cursor, runPageNamespace, filters)
+	before, err := runPageAnchor(cursor, runPageNamespace, filters)
 	if err != nil {
 		return pagination.Page[run.Run]{}, err
 	}
@@ -419,8 +420,7 @@ func (c *QueryCoordinator) ListRunPage(ctx context.Context, filter RunPageFilter
 		filter.SessionID,
 		filter.Statuses,
 		filter.IncludeDescendants,
-		beforeCreatedAt,
-		beforeID,
+		before,
 		size+1,
 	)
 	if err != nil {
@@ -503,7 +503,7 @@ func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, session
 		}
 	}
 	filters := []string{sessionID, rootRunID}
-	afterCreatedAt, afterID, err := timeAndRunIDAnchor(cursor, interruptPageNamespace, filters)
+	after, err := runPageAnchor(cursor, interruptPageNamespace, filters)
 	if err != nil {
 		return pagination.Page[InterruptSet]{}, err
 	}
@@ -516,7 +516,7 @@ func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, session
 		if requireRootErr := c.requireRoot(ctx, rootRunID); requireRootErr != nil {
 			return requireRootErr
 		}
-		rows, err := c.interrupts.ListPage(ctx, sessionID, rootRunID, afterCreatedAt, afterID, size+1)
+		rows, err := c.interrupts.ListPage(ctx, sessionID, rootRunID, after, size+1)
 		if err != nil {
 			return err
 		}
@@ -600,23 +600,26 @@ func (c *QueryCoordinator) requireRoot(ctx context.Context, runID string) error 
 // a nanosecond, and a timestamp-only bound would then drop one or return it
 // twice. Both current consumers page Run-owned records, so accepting a generic
 // string here would weaken the identity boundary immediately after decoding.
-func timeAndRunIDAnchor(cursor, method string, filters []string) (int64, string, error) {
+// runPageAnchor decodes the position a Run-keyed page ended at; the first
+// page has none.
+func runPageAnchor(cursor, method string, filters []string) (*run.PageAnchor, error) {
 	anchor, err := pagination.Decode(cursor, method, filters)
 	if err != nil {
-		return 0, "", err
+		return nil, err
 	}
 	if len(anchor) == 0 {
-		return 0, "", nil
+		return nil, nil
 	}
 	if len(anchor) != 2 {
-		return 0, "", pagination.ErrInvalidCursor
+		return nil, pagination.ErrInvalidCursor
 	}
 	stamp, err := strconv.ParseInt(anchor[0], 10, 64)
 	if err != nil {
-		return 0, "", pagination.ErrInvalidCursor
+		return nil, pagination.ErrInvalidCursor
 	}
-	if err := identity.ValidateRun(anchor[1]); err != nil {
-		return 0, "", pagination.ErrInvalidCursor
+	position, err := run.NewPageAnchor(time.Unix(0, stamp), anchor[1])
+	if err != nil {
+		return nil, pagination.ErrInvalidCursor
 	}
-	return stamp, anchor[1], nil
+	return &position, nil
 }

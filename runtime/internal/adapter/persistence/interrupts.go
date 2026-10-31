@@ -6,6 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
@@ -27,18 +28,10 @@ func (s *InterruptStore) List(ctx context.Context, sessionID string) ([]runs.Pen
 func (s *InterruptStore) ListPage(
 	ctx context.Context,
 	sessionID, rootRunID string,
-	afterCreatedAt int64,
-	afterRootRunID string,
+	after *rundomain.PageAnchor,
 	limit int,
 ) ([]runs.Pending, error) {
-	records, err := s.pendingRecordsPage(
-		ctx,
-		sessionID,
-		rootRunID,
-		afterCreatedAt,
-		afterRootRunID,
-		limit,
-	)
+	records, err := s.list(ctx, sessionID, rootRunID, after, limit)
 	if err != nil {
 		return nil, err
 	}

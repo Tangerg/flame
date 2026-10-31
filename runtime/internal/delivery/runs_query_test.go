@@ -28,7 +28,7 @@ func (f *fakeInterruptReader) List(_ context.Context, sessionID string) ([]runs.
 	return f.pending, f.err
 }
 
-func (f *fakeInterruptReader) ListPage(ctx context.Context, sessionID, _ string, _ int64, _ string, _ int) ([]runs.Pending, error) {
+func (f *fakeInterruptReader) ListPage(ctx context.Context, sessionID, _ string, _ *run.PageAnchor, _ int) ([]runs.Pending, error) {
 	return f.List(ctx, sessionID)
 }
 
@@ -460,7 +460,7 @@ func (rootRunReader) RunsWithAncestors(context.Context, []string) ([]run.Run, er
 	return nil, nil
 }
 
-func (rootRunReader) PageRuns(context.Context, string, []run.State, bool, int64, string, int) ([]run.Run, error) {
+func (rootRunReader) PageRuns(context.Context, string, []run.State, bool, *run.PageAnchor, int) ([]run.Run, error) {
 	return nil, nil
 }
 

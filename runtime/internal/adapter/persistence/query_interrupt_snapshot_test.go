@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -25,8 +26,8 @@ type pausedInterruptPage struct {
 	resume   chan struct{}
 }
 
-func (p *pausedInterruptPage) ListPage(ctx context.Context, sessionID, rootRunID string, createdAt int64, after string, limit int) ([]runs.Pending, error) {
-	rows, err := p.QueryInterruptReader.ListPage(ctx, sessionID, rootRunID, createdAt, after, limit)
+func (p *pausedInterruptPage) ListPage(ctx context.Context, sessionID, rootRunID string, after *rundomain.PageAnchor, limit int) ([]runs.Pending, error) {
+	rows, err := p.QueryInterruptReader.ListPage(ctx, sessionID, rootRunID, after, limit)
 	if err != nil || p.observed == nil {
 		return rows, err
 	}

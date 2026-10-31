@@ -859,7 +859,7 @@ func TestPageRunsReturnsEveryLifecyclePosition(t *testing.T) {
 		t.Fatalf("terminalize: %v", err)
 	}
 
-	all, err := store.PageRuns(ctx, "", nil, false, 0, "", 0)
+	all, err := store.PageRuns(ctx, "", nil, false, nil, 0)
 	if err != nil {
 		t.Fatalf("page runs: %v", err)
 	}
@@ -878,7 +878,7 @@ func TestPageRunsReturnsEveryLifecyclePosition(t *testing.T) {
 		{"recovery pair", []run.State{run.Running, run.Waiting}, []string{"run_live", "run_parked"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			rows, err := store.PageRuns(ctx, "", tt.statuses, false, 0, "", 0)
+			rows, err := store.PageRuns(ctx, "", tt.statuses, false, nil, 0)
 			if err != nil {
 				t.Fatalf("page runs: %v", err)
 			}
@@ -892,10 +892,10 @@ func TestPageRunsReturnsEveryLifecyclePosition(t *testing.T) {
 
 	// The session filter is independent of the status one: scoping to a session that
 	// holds a parked run still finds it.
-	if scoped, err := store.PageRuns(ctx, "ses_B", nil, false, 0, "", 0); err != nil || len(scoped) != 1 || scoped[0].ID() != "run_parked" {
+	if scoped, err := store.PageRuns(ctx, "ses_B", nil, false, nil, 0); err != nil || len(scoped) != 1 || scoped[0].ID() != "run_parked" {
 		t.Fatalf("ses_B scoped = %+v (err %v), want the parked run", scoped, err)
 	}
-	if _, err := store.PageRuns(ctx, "", []run.State{run.State("invalid")}, false, 0, "", 0); err == nil {
+	if _, err := store.PageRuns(ctx, "", []run.State{run.State("invalid")}, false, nil, 0); err == nil {
 		t.Fatal("page runs accepted an unknown status instead of refusing to widen the page")
 	}
 }
@@ -918,7 +918,7 @@ func TestPageRunsOrdersNewestFirst(t *testing.T) {
 			t.Fatalf("admit %s: %v", draft.RunID, err)
 		}
 	}
-	rows, err := store.PageRuns(ctx, "", nil, false, 0, "", 0)
+	rows, err := store.PageRuns(ctx, "", nil, false, nil, 0)
 	if err != nil {
 		t.Fatalf("page runs: %v", err)
 	}
@@ -945,7 +945,7 @@ func TestPageRunsSeeksBeforeItsAnchor(t *testing.T) {
 		}
 	}
 
-	first, err := store.PageRuns(ctx, "", nil, false, 0, "", 2)
+	first, err := store.PageRuns(ctx, "", nil, false, nil, 2)
 	if err != nil {
 		t.Fatalf("first page: %v", err)
 	}
@@ -955,7 +955,11 @@ func TestPageRunsSeeksBeforeItsAnchor(t *testing.T) {
 
 	// run_b shares run_c's admission time, so a time-only bound would drop it or
 	// repeat it; the run id breaks the tie.
-	rest, err := store.PageRuns(ctx, "", nil, false, first[1].CreatedAt().UnixNano(), first[1].ID(), 2)
+	anchor, err := run.NewPageAnchor(first[1].CreatedAt(), first[1].ID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	rest, err := store.PageRuns(ctx, "", nil, false, &anchor, 2)
 	if err != nil {
 		t.Fatalf("second page: %v", err)
 	}
@@ -996,14 +1000,14 @@ func TestPageRunsSelectsRootsOrDescendants(t *testing.T) {
 		}
 	}
 
-	page, err := store.PageRuns(ctx, "", nil, false, 0, "", 0)
+	page, err := store.PageRuns(ctx, "", nil, false, nil, 0)
 	if err != nil {
 		t.Fatalf("page runs: %v", err)
 	}
 	if order := runIDs(page); !slices.Equal(order, []string{"run_root"}) {
 		t.Fatalf("page = %v, want the root run only", order)
 	}
-	treePage, err := store.PageRuns(ctx, "", nil, true, 0, "", 0)
+	treePage, err := store.PageRuns(ctx, "", nil, true, nil, 0)
 	if err != nil {
 		t.Fatalf("page runs with descendants: %v", err)
 	}

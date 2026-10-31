@@ -146,7 +146,8 @@ func (f *fakeRuns) Run(_ context.Context, runID string) (run.Run, bool, error) {
 	return run.Run{}, false, nil
 }
 
-func (f *fakeRuns) PageRuns(_ context.Context, sessionID string, statuses []run.State, includeDescendants bool, beforeCreatedAt int64, beforeRunID string, limit int) ([]run.Run, error) {
+func (f *fakeRuns) PageRuns(_ context.Context, sessionID string, statuses []run.State, includeDescendants bool, before *run.PageAnchor, limit int) ([]run.Run, error) {
+	beforeCreatedAt, beforeRunID := anchorParts(before)
 	f.session, f.statuses, f.descendants = sessionID, statuses, includeDescendants
 	f.beforeCreatedAt, f.beforeRunID, f.limit = beforeCreatedAt, beforeRunID, limit
 	var out []run.Run
@@ -206,7 +207,7 @@ type rawInterruptPageReader struct {
 	beforeRead func()
 }
 
-func (r *rawInterruptPageReader) ListPage(context.Context, string, string, int64, string, int) ([]runs.Pending, error) {
+func (r *rawInterruptPageReader) ListPage(context.Context, string, string, *run.PageAnchor, int) ([]runs.Pending, error) {
 	if r.beforeRead != nil {
 		r.beforeRead()
 	}
@@ -269,7 +270,8 @@ func TestNewQueryCoordinatorRejectsIncompleteDependencies(t *testing.T) {
 	}
 }
 
-func (f *fakeInterrupts) ListPage(_ context.Context, sessionID, rootRunID string, afterCreatedAt int64, afterRunID string, limit int) ([]runs.Pending, error) {
+func (f *fakeInterrupts) ListPage(_ context.Context, sessionID, rootRunID string, after *run.PageAnchor, limit int) ([]runs.Pending, error) {
+	afterCreatedAt, afterRunID := anchorParts(after)
 	f.session, f.rootRun = sessionID, rootRunID
 	f.afterCreatedAt, f.afterRunID, f.limit = afterCreatedAt, afterRunID, limit
 	var out []runs.Pending
@@ -658,7 +660,7 @@ func TestTimeAndRunIDAnchorRejectsForgedIdentityMaterial(t *testing.T) {
 	if err != nil {
 		t.Fatalf("encode structurally valid forged cursor: %v", err)
 	}
-	if _, _, err := timeAndRunIDAnchor(forged, runPageNamespace, nil); !errors.Is(err, pagination.ErrInvalidCursor) {
+	if _, err := runPageAnchor(forged, runPageNamespace, nil); !errors.Is(err, pagination.ErrInvalidCursor) {
 		t.Fatalf("forged Run identity err = %v, want ErrInvalidCursor", err)
 	}
 }
@@ -1117,4 +1119,13 @@ type emptyModelInvocations struct{}
 
 func (emptyModelInvocations) PageModelInvocations(context.Context, string, int64, string, int) ([]runs.ModelInvocationCommit, error) {
 	return nil, nil
+}
+
+// anchorParts spells a page anchor as the store's (time, Run) seek pair; the
+// first page has neither.
+func anchorParts(anchor *run.PageAnchor) (int64, string) {
+	if anchor == nil {
+		return 0, ""
+	}
+	return anchor.CreatedAt().UnixNano(), anchor.RunID()
 }

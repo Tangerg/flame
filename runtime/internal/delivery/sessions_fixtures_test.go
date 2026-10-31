@@ -1241,14 +1241,14 @@ func (inertQueryStores) RunsWithAncestors(context.Context, []string) ([]run.Run,
 	return nil, nil
 }
 
-func (inertQueryStores) PageRuns(context.Context, string, []run.State, bool, int64, string, int) ([]run.Run, error) {
+func (inertQueryStores) PageRuns(context.Context, string, []run.State, bool, *run.PageAnchor, int) ([]run.Run, error) {
 	return nil, nil
 }
 func (inertQueryStores) Exists(context.Context, string) (bool, error) { return false, nil }
 
 type inertQueryInterrupts struct{}
 
-func (inertQueryInterrupts) ListPage(context.Context, string, string, int64, string, int) ([]runs.Pending, error) {
+func (inertQueryInterrupts) ListPage(context.Context, string, string, *run.PageAnchor, int) ([]runs.Pending, error) {
 	return nil, nil
 }
 

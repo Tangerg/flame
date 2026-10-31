@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -251,24 +252,16 @@ func (s *InterruptStore) requireTreeRuns(ctx context.Context, p pendingRecord) e
 }
 
 func (s *InterruptStore) pendingRecords(ctx context.Context, sessionID string) ([]pendingRecord, error) {
-	return s.list(ctx, sessionID, "", 0, "", 0)
+	return s.list(ctx, sessionID, "", nil, 0)
 }
 
-// ListPage returns open interrupts oldest first, bounded by the query. after is
-// the (open time, run id) position a previous page ended at; the pair is what
-// makes the order total, since two runs can park in the same nanosecond.
-func (s *InterruptStore) pendingRecordsPage(ctx context.Context, sessionID, rootRunID string, afterCreatedAt int64, afterRootRunID string, limit int) ([]pendingRecord, error) {
-	return s.list(ctx, sessionID, rootRunID, afterCreatedAt, afterRootRunID, limit)
-}
-
-func (s *InterruptStore) list(ctx context.Context, sessionID, rootRunID string, afterCreatedAt int64, afterRunID string, limit int) ([]pendingRecord, error) {
+// list returns open interrupts oldest first, after the position a previous
+// page ended at when one is given.
+func (s *InterruptStore) list(ctx context.Context, sessionID, rootRunID string, after *rundomain.PageAnchor, limit int) ([]pendingRecord, error) {
 	if err := validateOptionalSessionResource("list interrupts", sessionID); err != nil {
 		return nil, err
 	}
 	if err := validateOptionalRunResource("list interrupts root", rootRunID); err != nil {
-		return nil, err
-	}
-	if err := validateOptionalRunResource("list interrupts anchor", afterRunID); err != nil {
 		return nil, err
 	}
 	query := `SELECT ` + interruptColumns + ` FROM interrupts`
@@ -282,9 +275,10 @@ func (s *InterruptStore) list(ctx context.Context, sessionID, rootRunID string, 
 		conditions = append(conditions, `root_run_id = ?`)
 		args = append(args, rootRunID)
 	}
-	if afterCreatedAt > 0 || afterRunID != "" {
+	if after != nil {
+		stamp := after.CreatedAt().UnixNano()
 		conditions = append(conditions, `(created_at > ? OR (created_at = ? AND root_run_id > ?))`)
-		args = append(args, afterCreatedAt, afterCreatedAt, afterRunID)
+		args = append(args, stamp, stamp, after.RunID())
 	}
 	if len(conditions) > 0 {
 		query += ` WHERE ` + strings.Join(conditions, ` AND `)

@@ -33,11 +33,8 @@ const runReadJoins = `LEFT JOIN interrupts AS i
 // PageRuns returns one page of Runs a caller may browse, newest admission first,
 // scoped to sessionID and statuses when provided. Descendants are excluded unless
 // includeDescendants is true.
-func (r *RunStore) PageRuns(ctx context.Context, sessionID string, statuses []rundomain.State, includeDescendants bool, beforeStartedAt int64, beforeRunID string, limit int) ([]rundomain.Run, error) {
+func (r *RunStore) PageRuns(ctx context.Context, sessionID string, statuses []rundomain.State, includeDescendants bool, before *rundomain.PageAnchor, limit int) ([]rundomain.Run, error) {
 	if err := validateOptionalSessionResource("page Runs", sessionID); err != nil {
-		return nil, err
-	}
-	if err := validateOptionalRunResource("page Runs anchor", beforeRunID); err != nil {
 		return nil, err
 	}
 	query := `SELECT ` + runColumns + `
@@ -60,9 +57,10 @@ func (r *RunStore) PageRuns(ctx context.Context, sessionID string, statuses []ru
 		conditions = append(conditions, `r.state IN (`+placeholders(len(columns))+`)`)
 		args = append(args, columns...)
 	}
-	if beforeRunID != "" {
+	if before != nil {
+		stamp := before.CreatedAt().UnixNano()
 		conditions = append(conditions, `(r.created_at < ? OR (r.created_at = ? AND r.run_id < ?))`)
-		args = append(args, beforeStartedAt, beforeStartedAt, beforeRunID)
+		args = append(args, stamp, stamp, before.RunID())
 	}
 	if len(conditions) > 0 {
 		query += ` WHERE ` + strings.Join(conditions, ` AND `)
