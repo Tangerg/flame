@@ -79,22 +79,22 @@ func artifactRunFromPortable(run sessions.PortableRun) (protocol.ArtifactRun, er
 		RootRunID:       run.RootRunID,
 		Metrics:         presentMetrics(run.Metrics),
 		ContextTokens:   run.ContextTokens,
-		ProtocolProfile: presentArtifactProtocolProfile(run.Capabilities),
+		Capabilities:    presentArtifactCapabilities(run.Capabilities),
 		Outcome:         outcome,
 		CreatedAt:       run.CreatedAt, FinishedAt: run.FinishedAt,
 		UpdatedAt: run.UpdatedAt, MessageMark: artifactMessageMark(run.MessageMark),
 	}, nil
 }
 
-// presentArtifactProtocolProfile writes the protocol contract a root Run
+// presentArtifactCapabilities writes the protocol contract a root Run
 // published under, and
 // nothing for a child — a child reads its root's, and writing a second copy is how
 // the two come to disagree.
-func presentArtifactProtocolProfile(capabilities *run.Capabilities) *protocol.RunProtocolProfile {
+func presentArtifactCapabilities(capabilities *run.Capabilities) *protocol.RunCapabilities {
 	if capabilities == nil {
 		return nil
 	}
-	presented := presentRunProtocolProfile(*capabilities)
+	presented := presentRunCapabilities(*capabilities)
 	return &presented
 }
 

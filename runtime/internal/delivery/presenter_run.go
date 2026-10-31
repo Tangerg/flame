@@ -54,8 +54,8 @@ func presentRun(run rundomain.Run) protocol.RunRef {
 		ContextTokens:   run.ContextTokens(),
 	}
 	if run.Lineage().IsRoot() {
-		profile := presentRunProtocolProfile(run.Capabilities())
-		ref.ProtocolProfile = &profile
+		capabilities := presentRunCapabilities(run.Capabilities())
+		ref.Capabilities = &capabilities
 	}
 	return ref
 }
@@ -77,16 +77,16 @@ func presentCancelResult(result runs.CancelResult) *protocol.CancelRunResponse {
 	}
 }
 
-// presentRunProtocolProfile maps the Run's capabilities to the external
-// protocol contract. Both sets are allocated even when empty: the Minimal
-// Profile is known, not null.
-func presentRunProtocolProfile(capabilities rundomain.Capabilities) protocol.RunProtocolProfile {
-	out := protocol.RunProtocolProfile{
-		RequiredFeatures: make([]protocol.RunProtocolFeature, 0, 1),
+// presentRunCapabilities maps the Run's capabilities to the external
+// protocol contract. Both sets are allocated even when empty: a Run that
+// requires nothing has known, empty capabilities, not null ones.
+func presentRunCapabilities(capabilities rundomain.Capabilities) protocol.RunCapabilities {
+	out := protocol.RunCapabilities{
+		RequiredFeatures: make([]protocol.RunCapabilityFeature, 0, 1),
 		InterruptTypes:   make([]protocol.InterruptType, 0, len(capabilities.InterruptTypes)),
 	}
 	if capabilities.ChildRuns {
-		out.RequiredFeatures = append(out.RequiredFeatures, protocol.RunProtocolFeatureChildRuns)
+		out.RequiredFeatures = append(out.RequiredFeatures, protocol.RunCapabilityFeatureChildRuns)
 	}
 	for _, kind := range capabilities.InterruptTypes {
 		out.InterruptTypes = append(out.InterruptTypes, presentInterruptType(kind))

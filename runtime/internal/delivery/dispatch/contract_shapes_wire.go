@@ -903,7 +903,7 @@ func registerObjectConstraints(s *Shapes) {
 			Forbidden: []string{"activeSegmentId"},
 		}, {
 			When:      []delivery.FieldCondition{{Field: "spawnedByItemId", Operator: delivery.OperatorPresent}},
-			Forbidden: []string{"protocolProfile"},
+			Forbidden: []string{"capabilities"},
 		}},
 	})
 
@@ -935,7 +935,7 @@ func registerObjectConstraints(s *Shapes) {
 			},
 			{
 				When:      []delivery.FieldCondition{{Field: "spawnedByItemId", Operator: delivery.OperatorPresent}},
-				Forbidden: []string{"protocolProfile", "messageMark"},
+				Forbidden: []string{"capabilities", "messageMark"},
 			},
 		}, childLineageRules()...),
 	})

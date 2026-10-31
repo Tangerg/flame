@@ -55,7 +55,7 @@ export type {
   RunOutcome,
   RunProgress,
   RunMetrics,
-  RunProtocolProfile,
+  RunCapabilities,
   StartRunResponse,
   CancelRunResponse,
   Item,

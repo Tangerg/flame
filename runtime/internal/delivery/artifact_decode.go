@@ -167,7 +167,7 @@ func portableRunFromArtifact(path string, artifact protocol.ArtifactRun) (sessio
 	if err != nil {
 		return sessions.PortableRun{}, err
 	}
-	capabilities, err := portableCapabilitiesFromArtifact(path+".protocolProfile", artifact.ProtocolProfile)
+	capabilities, err := portableCapabilitiesFromArtifact(path+".capabilities", artifact.Capabilities)
 	if err != nil {
 		return sessions.PortableRun{}, err
 	}
@@ -218,25 +218,25 @@ func portableUnresolvedEffectsFromArtifact(path string, values []protocol.Unreso
 // enforces. An interrupt type this runtime cannot raise is refused rather than
 // dropped: importing the run without it would silently rewrite the contract the
 // archive recorded.
-func portableCapabilitiesFromArtifact(path string, profile *protocol.RunProtocolProfile) (*run.Capabilities, error) {
-	if profile == nil {
+func portableCapabilitiesFromArtifact(path string, wire *protocol.RunCapabilities) (*run.Capabilities, error) {
+	if wire == nil {
 		return nil, nil
 	}
 	var out run.Capabilities
-	for _, feature := range profile.RequiredFeatures {
+	for _, feature := range wire.RequiredFeatures {
 		switch feature {
-		case protocol.RunProtocolFeatureChildRuns:
+		case protocol.RunCapabilityFeatureChildRuns:
 			out.ChildRuns = true
 		default:
 			return nil, invalidArtifact(path+".requiredFeatures", "unknown value %q", feature)
 		}
 	}
-	for _, declared := range profile.InterruptTypes {
-		kind, backed := interruptTypeFromWire(declared)
+	for _, declared := range wire.InterruptTypes {
+		interruptType, backed := interruptTypeFromWire(declared)
 		if !backed {
 			return nil, invalidArtifact(path+".interruptTypes", "unknown value %q", declared)
 		}
-		out.InterruptTypes = append(out.InterruptTypes, kind)
+		out.InterruptTypes = append(out.InterruptTypes, interruptType)
 	}
 	normalized := out.Normalized()
 	return &normalized, nil

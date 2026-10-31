@@ -113,7 +113,7 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 						Status: protocol.RunStatusRunning, CreatedAt: time.Unix(1, 0).UTC(),
 					},
 					ActiveSegmentID: segmentID,
-					ProtocolProfile: &protocol.RunProtocolProfile{RequiredFeatures: []protocol.RunProtocolFeature{}, InterruptTypes: []protocol.InterruptType{}},
+					Capabilities:    &protocol.RunCapabilities{RequiredFeatures: []protocol.RunCapabilityFeature{}, InterruptTypes: []protocol.InterruptType{}},
 				}},
 			}, nil)
 			yield(protocol.RunEvent{
@@ -188,7 +188,7 @@ func TestRunMutationsPreserveCallerCommandIdentity(t *testing.T) {
 				CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
 				Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCanceled},
 			},
-			ProtocolProfile: &protocol.RunProtocolProfile{RequiredFeatures: []protocol.RunProtocolFeature{}, InterruptTypes: []protocol.InterruptType{}},
+			Capabilities: &protocol.RunCapabilities{RequiredFeatures: []protocol.RunCapabilityFeature{}, InterruptTypes: []protocol.InterruptType{}},
 		}}, nil
 	}
 	stub.steer = func(_ context.Context, _ protocol.SteerRunRequest, options protocol.CommandOptions) (*protocol.SteerRunResponse, error) {
@@ -480,7 +480,7 @@ func TestResumeAndCancelMapControlContracts(t *testing.T) {
 				CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
 				Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCanceled, Detail: "stop"},
 			},
-			ProtocolProfile: &protocol.RunProtocolProfile{RequiredFeatures: []protocol.RunProtocolFeature{}, InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}},
+			Capabilities: &protocol.RunCapabilities{RequiredFeatures: []protocol.RunCapabilityFeature{}, InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}},
 		}}, nil
 	}
 	runtime := &Connection{runs: stub, meta: requestMeta("test")}
@@ -602,8 +602,8 @@ func TestCancelRunProjectsChildAndSurvivingRootAtomically(t *testing.T) {
 				ID: "run_root", SessionID: "ses_1", Provider: "mock", Model: "balanced",
 				Status: protocol.RunStatusWaiting, CreatedAt: time.Unix(1, 0).UTC(),
 			},
-			ProtocolProfile: &protocol.RunProtocolProfile{
-				RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureChildRuns},
+			Capabilities: &protocol.RunCapabilities{
+				RequiredFeatures: []protocol.RunCapabilityFeature{protocol.RunCapabilityFeatureChildRuns},
 				InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval},
 			},
 		}
@@ -617,7 +617,7 @@ func TestCancelRunProjectsChildAndSurvivingRootAtomically(t *testing.T) {
 					CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
 					Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCanceled, Detail: "stop child"},
 				},
-				ProtocolProfile: root.ProtocolProfile,
+				Capabilities: root.Capabilities,
 			},
 			RootRun: &root,
 		}, nil
@@ -642,7 +642,7 @@ func TestCancelRunRejectsMalformedClosedResults(t *testing.T) {
 			CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
 			Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCanceled},
 		},
-		ProtocolProfile: &protocol.RunProtocolProfile{RequiredFeatures: []protocol.RunProtocolFeature{}, InterruptTypes: []protocol.InterruptType{}},
+		Capabilities: &protocol.RunCapabilities{RequiredFeatures: []protocol.RunCapabilityFeature{}, InterruptTypes: []protocol.InterruptType{}},
 	}
 	root := canceled
 	for _, test := range []struct {

@@ -1,7 +1,7 @@
 import {
   type Item,
   type PendingInterruptSet,
-  type RunProtocolProfile,
+  type RunCapabilities,
   type RunRef,
   type StreamEvent,
 } from "@flame/runtime-client";
@@ -70,7 +70,7 @@ const METRICS = {
   usage: { inputTokens: 96_000, outputTokens: 3_100, cacheReadTokens: 64_000 },
 };
 
-const PROFILE: RunProtocolProfile = {
+const PROFILE: RunCapabilities = {
   interruptTypes: ["approval"],
   requiredFeatures: ["childRuns"],
 };
@@ -128,7 +128,7 @@ function run(status: RunRef["status"], patch: Partial<RunRef> = {}): RunRef {
     status,
     createdAt: CREATED_AT,
     metrics: METRICS,
-    protocolProfile: PROFILE,
+    capabilities: PROFILE,
     provider: RUN_PROVIDER,
     model: RUN_MODEL,
     ...(status === "running" ? { activeSegmentId: "seg_root" } : {}),

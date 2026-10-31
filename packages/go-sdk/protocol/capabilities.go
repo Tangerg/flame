@@ -11,7 +11,7 @@ package protocol
 type ClientCapabilities struct {
 	Features map[string]FeaturePreference `json:"features,omitempty"`
 	// InterruptTypes are the HITL interrupt types the client can answer. A run
-	// freezes them into its RunProtocolProfile, so the runtime can never park on a
+	// freezes them into its RunCapabilities, so the runtime can never park on a
 	// wait nobody will answer. Omitted and empty mean the
 	// same thing: a client that answers nothing.
 	InterruptTypes []InterruptType `json:"interruptTypes,omitempty"`
@@ -60,12 +60,12 @@ type FeatureCapability struct {
 	// feature only for a request whose capabilities declare it. A client that reads
 	// `enabled:true` and never declares it still gets the feature's absence.
 	ClientOptIn bool `json:"clientOptIn"`
-	// RequiredByRunProtocol says negotiating it changes the authoritative Run
+	// RequiredByRun says negotiating it changes the authoritative Run
 	// event / resource shape, so a subscriber that does not understand it cannot
-	// follow the Run. Exactly these keys enter [RunProtocolProfile.RequiredFeatures]
+	// follow the Run. Exactly these keys enter [RunCapabilities.RequiredFeatures]
 	// and make a later low-capability resume or subscribe a refusal rather than a
 	// downgrade.
-	RequiredByRunProtocol bool `json:"requiredByRunProtocol"`
+	RequiredByRun bool `json:"requiredByRun"`
 }
 
 // MissingFeatureRequirements evaluates one request against discovery's feature

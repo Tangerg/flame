@@ -45,7 +45,7 @@ function root(status: "running" | "waiting"): RunRef {
     model: "model",
     createdAt: "2026-10-27T00:00:00Z",
     metrics: { steps: 0, activeDurationMillis: 0 },
-    protocolProfile: { interruptTypes: [], requiredFeatures: [] },
+    capabilities: { interruptTypes: [], requiredFeatures: [] },
   };
 }
 

@@ -8526,6 +8526,9 @@
       },
       "ArtifactRun": {
         "properties": {
+          "capabilities": {
+            "$ref": "#/components/schemas/RunCapabilities"
+          },
           "contextTokens": {},
           "createdAt": {},
           "finishedAt": {},
@@ -8539,9 +8542,6 @@
             "$ref": "#/components/schemas/ArtifactOutcome"
           },
           "parentRunId": {},
-          "protocolProfile": {
-            "$ref": "#/components/schemas/RunProtocolProfile"
-          },
           "provider": {},
           "reasoningEffort": {},
           "rootRunId": {},
@@ -8991,6 +8991,22 @@
           }
         ]
       },
+      "RunCapabilities": {
+        "properties": {
+          "interruptTypes": {
+            "items": {}
+          },
+          "requiredFeatures": {
+            "items": {}
+          }
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/RunCapabilities"
+          }
+        ]
+      },
       "RunLoss": {
         "properties": {
           "detail": {},
@@ -9015,22 +9031,6 @@
         "allOf": [
           {
             "$ref": "schema.json#/$defs/RunMetrics"
-          }
-        ]
-      },
-      "RunProtocolProfile": {
-        "properties": {
-          "interruptTypes": {
-            "items": {}
-          },
-          "requiredFeatures": {
-            "items": {}
-          }
-        },
-        "unevaluatedProperties": false,
-        "allOf": [
-          {
-            "$ref": "schema.json#/$defs/RunProtocolProfile"
           }
         ]
       },

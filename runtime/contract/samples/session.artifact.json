@@ -40,7 +40,7 @@
         "steps": 0,
         "activeDurationMillis": 0
       },
-      "protocolProfile": {
+      "capabilities": {
         "requiredFeatures": [],
         "interruptTypes": []
       }

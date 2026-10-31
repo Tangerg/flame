@@ -6347,6 +6347,11 @@
           "value": "\"retired\""
         },
         {
+          "name": "RunCapabilityFeatureChildRuns",
+          "type": "RunCapabilityFeature",
+          "value": "\"childRuns\""
+        },
+        {
           "name": "RunCommandResume",
           "type": "RunCommandOperation",
           "value": "\"resume\""
@@ -6360,11 +6365,6 @@
           "name": "RunCommandSteer",
           "type": "RunCommandOperation",
           "value": "\"steer\""
-        },
-        {
-          "name": "RunProtocolFeatureChildRuns",
-          "type": "RunProtocolFeature",
-          "value": "\"childRuns\""
         },
         {
           "name": "RunStatusFinished",
@@ -7468,9 +7468,9 @@
               "tag": "json:\"contextTokens,omitzero\""
             },
             {
-              "name": "ProtocolProfile",
-              "type": "*RunProtocolProfile",
-              "tag": "json:\"protocolProfile,omitzero\""
+              "name": "Capabilities",
+              "type": "*RunCapabilities",
+              "tag": "json:\"capabilities,omitzero\""
             },
             {
               "name": "Outcome",
@@ -8142,7 +8142,7 @@
               "type": "bool"
             },
             {
-              "name": "RequiredByRunProtocol",
+              "name": "RequiredByRun",
               "type": "bool"
             }
           ]
@@ -8162,9 +8162,9 @@
               "tag": "json:\"clientOptIn\""
             },
             {
-              "name": "RequiredByRunProtocol",
+              "name": "RequiredByRun",
               "type": "bool",
-              "tag": "json:\"requiredByRunProtocol\""
+              "tag": "json:\"requiredByRun\""
             }
           ]
         },
@@ -12166,6 +12166,27 @@
           "underlying": "string"
         },
         {
+          "name": "RunCapabilities",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "RequiredFeatures",
+              "type": "[]RunCapabilityFeature",
+              "tag": "json:\"requiredFeatures\""
+            },
+            {
+              "name": "InterruptTypes",
+              "type": "[]InterruptType",
+              "tag": "json:\"interruptTypes\""
+            }
+          ]
+        },
+        {
+          "name": "RunCapabilityFeature",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
           "name": "RunCommandOperation",
           "kind": "defined",
           "underlying": "string"
@@ -12323,27 +12344,6 @@
           ]
         },
         {
-          "name": "RunProtocolFeature",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
-          "name": "RunProtocolProfile",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "RequiredFeatures",
-              "type": "[]RunProtocolFeature",
-              "tag": "json:\"requiredFeatures\""
-            },
-            {
-              "name": "InterruptTypes",
-              "type": "[]InterruptType",
-              "tag": "json:\"interruptTypes\""
-            }
-          ]
-        },
-        {
           "name": "RunRef",
           "kind": "struct",
           "fields": [
@@ -12367,9 +12367,9 @@
               "tag": "json:\"contextTokens,omitzero\""
             },
             {
-              "name": "ProtocolProfile",
-              "type": "*RunProtocolProfile",
-              "tag": "json:\"protocolProfile,omitzero\""
+              "name": "Capabilities",
+              "type": "*RunCapabilities",
+              "tag": "json:\"capabilities,omitzero\""
             }
           ]
         },

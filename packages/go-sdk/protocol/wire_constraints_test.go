@@ -780,11 +780,11 @@ func TestCancelRunReasonWireConstraintUsesUnicodeCharacters(t *testing.T) {
 	assertConstraintField(t, valid.validateWire(), "CancelRunRequest", "reason")
 }
 
-func TestRunProtocolProfileWireConstraints(t *testing.T) {
+func TestRunCapabilitiesWireConstraints(t *testing.T) {
 	t.Parallel()
 
-	valid := RunProtocolProfile{
-		RequiredFeatures: []RunProtocolFeature{RunProtocolFeatureChildRuns},
+	valid := RunCapabilities{
+		RequiredFeatures: []RunCapabilityFeature{RunCapabilityFeatureChildRuns},
 		InterruptTypes:   []InterruptType{InterruptApproval, InterruptQuestion},
 	}
 	if err := valid.validateWire(); err != nil {
@@ -792,16 +792,16 @@ func TestRunProtocolProfileWireConstraints(t *testing.T) {
 	}
 
 	repeatedFeature := valid
-	repeatedFeature.RequiredFeatures = append(repeatedFeature.RequiredFeatures, RunProtocolFeatureChildRuns)
-	assertConstraintField(t, repeatedFeature.validateWire(), "RunProtocolProfile", "requiredFeatures")
+	repeatedFeature.RequiredFeatures = append(repeatedFeature.RequiredFeatures, RunCapabilityFeatureChildRuns)
+	assertConstraintField(t, repeatedFeature.validateWire(), "RunCapabilities", "requiredFeatures")
 
 	repeatedInterrupt := valid
 	repeatedInterrupt.InterruptTypes = append(repeatedInterrupt.InterruptTypes, InterruptApproval)
-	assertConstraintField(t, repeatedInterrupt.validateWire(), "RunProtocolProfile", "interruptTypes")
+	assertConstraintField(t, repeatedInterrupt.validateWire(), "RunCapabilities", "interruptTypes")
 
 	unknown := valid
-	unknown.RequiredFeatures = []RunProtocolFeature{"telepathy"}
-	assertConstraintField(t, unknown.validateWire(), "RunProtocolProfile", "requiredFeatures[0]")
+	unknown.RequiredFeatures = []RunCapabilityFeature{"telepathy"}
+	assertConstraintField(t, unknown.validateWire(), "RunCapabilities", "requiredFeatures[0]")
 }
 
 func TestValidateWireTreeComposesNestedConstraints(t *testing.T) {

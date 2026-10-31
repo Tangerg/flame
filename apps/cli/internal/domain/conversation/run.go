@@ -29,7 +29,7 @@ type Run struct {
 	ContextTokens   int64
 	Outcome         Outcome
 	Usage           Usage
-	ProtocolProfile *protocol.RunProtocolProfile
+	Capabilities    *protocol.RunCapabilities
 }
 
 type runLineageKind uint8
@@ -76,7 +76,7 @@ func (r RunLineage) RootRunID() string { return r.rootRunID }
 func (r Run) Clone() Run {
 	r.Outcome = r.Outcome.Clone()
 	r.Usage = r.Usage.Clone()
-	r.ProtocolProfile = cloneRunProtocolProfile(r.ProtocolProfile)
+	r.Capabilities = cloneRunCapabilities(r.Capabilities)
 	return r
 }
 
@@ -88,10 +88,10 @@ func (r Run) Equal(other Run) bool {
 		r.CreatedAt.Equal(other.CreatedAt) && r.FinishedAt.Equal(other.FinishedAt) &&
 		r.ContextTokens == other.ContextTokens &&
 		r.Outcome.Equal(other.Outcome) && r.Usage.Equal(other.Usage) &&
-		equalRunProtocolProfiles(r.ProtocolProfile, other.ProtocolProfile)
+		equalRunCapabilitiess(r.Capabilities, other.Capabilities)
 }
 
-func cloneRunProtocolProfile(profile *protocol.RunProtocolProfile) *protocol.RunProtocolProfile {
+func cloneRunCapabilities(profile *protocol.RunCapabilities) *protocol.RunCapabilities {
 	if profile == nil {
 		return nil
 	}
@@ -101,7 +101,7 @@ func cloneRunProtocolProfile(profile *protocol.RunProtocolProfile) *protocol.Run
 	return &cloned
 }
 
-func equalRunProtocolProfiles(left, right *protocol.RunProtocolProfile) bool {
+func equalRunCapabilitiess(left, right *protocol.RunCapabilities) bool {
 	if (left == nil) != (right == nil) {
 		return false
 	}

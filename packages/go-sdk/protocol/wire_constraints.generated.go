@@ -2202,7 +2202,7 @@ func (r RunRef) validateWire() error {
 		requiredWhen(wireFieldEquals(r, "status", "running"), "activeSegmentId", r),
 		forbiddenWhen(wireFieldEquals(r, "status", "waiting"), "activeSegmentId", r),
 		forbiddenWhen(wireFieldEquals(r, "status", "finished"), "activeSegmentId", r),
-		forbiddenWhen(wireFieldPresent(r, "spawnedByItemId"), "protocolProfile", r),
+		forbiddenWhen(wireFieldPresent(r, "spawnedByItemId"), "capabilities", r),
 	)
 }
 
@@ -2248,7 +2248,7 @@ func (a ArtifactRun) validateWire() error {
 		requiredWhen(true, "createdAt", a),
 		requiredWhen(true, "finishedAt", a),
 		requiredWhen(true, "updatedAt", a),
-		forbiddenWhen(wireFieldPresent(a, "spawnedByItemId"), "protocolProfile", a),
+		forbiddenWhen(wireFieldPresent(a, "spawnedByItemId"), "capabilities", a),
 		forbiddenWhen(wireFieldPresent(a, "spawnedByItemId"), "messageMark", a),
 		requiredWhen(wireFieldPresent(a, "spawnedByItemId"), "parentRunId", a),
 		requiredWhen(wireFieldPresent(a, "spawnedByItemId"), "rootRunId", a),
@@ -2412,8 +2412,8 @@ func (u Usage) validateWire() error {
 	)
 }
 
-func (r RunProtocolProfile) validateWire() error {
-	return collectWireViolations("RunProtocolProfile",
+func (r RunCapabilities) validateWire() error {
+	return collectWireViolations("RunCapabilities",
 		uniqueItems("requiredFeatures", r.RequiredFeatures),
 		uniqueItems("interruptTypes", r.InterruptTypes),
 		closedEnumItems("requiredFeatures", r.RequiredFeatures, []string{"childRuns"}),

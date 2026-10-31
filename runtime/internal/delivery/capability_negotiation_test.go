@@ -63,8 +63,8 @@ func TestNegotiationMapsChildRunsFeatureToRunPolicy(t *testing.T) {
 	if !capabilities.ChildRuns {
 		t.Fatalf("capabilities = %+v, want child runs enabled", capabilities)
 	}
-	wire := presentRunProtocolProfile(capabilities)
-	want := []protocol.RunProtocolFeature{protocol.RunProtocolFeatureChildRuns}
+	wire := presentRunCapabilities(capabilities)
+	want := []protocol.RunCapabilityFeature{protocol.RunCapabilityFeatureChildRuns}
 	if !slices.Equal(wire.RequiredFeatures, want) {
 		t.Fatalf("wire requiredFeatures = %v, want %v", wire.RequiredFeatures, want)
 	}
@@ -78,7 +78,7 @@ func TestCapabilitiesAdvertiseNegotiableChildRuns(t *testing.T) {
 		t.Fatal("capabilities omit features.childRuns")
 	}
 	if !feature.Enabled || !feature.ClientOptIn ||
-		!feature.RequiredByRunProtocol {
+		!feature.RequiredByRun {
 		t.Fatalf("features.childRuns = %+v, want enabled opt-in Run protocol feature", feature)
 	}
 }
@@ -87,7 +87,7 @@ func TestEveryRequiredRunFeatureHasAnApplicationPolicyMapping(t *testing.T) {
 	s, _ := rollbackHarness(t)
 
 	for _, feature := range protocol.Features() {
-		if !feature.RequiredByRunProtocol {
+		if !feature.RequiredByRun {
 			continue
 		}
 		t.Run(feature.Key, func(t *testing.T) {
@@ -147,7 +147,7 @@ func TestNegotiationWithoutCapabilitiesIsTheMinimalProfile(t *testing.T) {
 	}
 	// It reaches the wire as two empty arrays: `null` would report a known
 	// contract as unknown.
-	wire := presentRunProtocolProfile(capabilities)
+	wire := presentRunCapabilities(capabilities)
 	if wire.RequiredFeatures == nil || wire.InterruptTypes == nil {
 		t.Fatalf("wire capabilities = %+v, want allocated empty sets", wire)
 	}

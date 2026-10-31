@@ -12,7 +12,7 @@ import (
 func TestRuntimeProfilePreservesDiscoveryAndNegotiatesWithProtocolRules(t *testing.T) {
 	t.Parallel()
 	discovery := compatibleDiscovery()
-	discovery.Capabilities.Features = map[string]protocol.FeatureCapability{protocol.FeatureMCP: {Enabled: true}, protocol.FeatureChildRuns: {Enabled: true, ClientOptIn: true, RequiredByRunProtocol: true}, protocol.FeatureGoals: {}}
+	discovery.Capabilities.Features = map[string]protocol.FeatureCapability{protocol.FeatureMCP: {Enabled: true}, protocol.FeatureChildRuns: {Enabled: true, ClientOptIn: true, RequiredByRun: true}, protocol.FeatureGoals: {}}
 	for _, enabled := range []bool{false, true} {
 		client := &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: enabled}}}
 		profile := requireProfile(t, discovery, client)

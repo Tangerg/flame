@@ -141,8 +141,8 @@ func TestExportPreservesRunTreeLineage(t *testing.T) {
 		child.RootRunID != "run_root" {
 		t.Fatalf("exported child = %+v, want complete lineage", child)
 	}
-	if child.ProtocolProfile != nil {
-		t.Fatalf("exported child protocol profile = %+v, want root-owned absence", child.ProtocolProfile)
+	if child.Capabilities != nil {
+		t.Fatalf("exported child protocol profile = %+v, want root-owned absence", child.Capabilities)
 	}
 }
 
@@ -153,8 +153,8 @@ func TestExportPreservesRunTreeLineage(t *testing.T) {
 func TestImportRefusesAChildWhoseRootProfileDisallowsChildren(t *testing.T) {
 	s, _ := rollbackHarness(t)
 	at := time.Unix(1, 0).UTC()
-	profile := protocol.RunProtocolProfile{
-		RequiredFeatures: []protocol.RunProtocolFeature{},
+	profile := protocol.RunCapabilities{
+		RequiredFeatures: []protocol.RunCapabilityFeature{},
 		InterruptTypes:   []protocol.InterruptType{},
 	}
 	artifact := protocol.SessionArtifact{
@@ -165,7 +165,7 @@ func TestImportRefusesAChildWhoseRootProfileDisallowsChildren(t *testing.T) {
 		},
 		Runs: []protocol.ArtifactRun{
 			{
-				ID: "run_root", SessionID: "ses_tree", ProtocolProfile: &profile,
+				ID: "run_root", SessionID: "ses_tree", Capabilities: &profile,
 				Provider: "test-provider", Model: "test-model",
 				Outcome:   protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeCompleted},
 				CreatedAt: at, FinishedAt: at, UpdatedAt: at, MessageMark: new(int),
@@ -193,11 +193,11 @@ func TestImportRefusesAChildWhoseRootProfileDisallowsChildren(t *testing.T) {
 	}
 }
 
-func TestImportRefusesAnUnknownRunProtocolFeature(t *testing.T) {
+func TestImportRefusesAnUnknownRunCapabilityFeature(t *testing.T) {
 	s, _ := rollbackHarness(t)
 	at := time.Unix(1, 0).UTC()
-	profile := protocol.RunProtocolProfile{
-		RequiredFeatures: []protocol.RunProtocolFeature{"telepathy"},
+	profile := protocol.RunCapabilities{
+		RequiredFeatures: []protocol.RunCapabilityFeature{"telepathy"},
 		InterruptTypes:   []protocol.InterruptType{},
 	}
 	artifact := protocol.SessionArtifact{
@@ -207,7 +207,7 @@ func TestImportRefusesAnUnknownRunProtocolFeature(t *testing.T) {
 			Provider: "test-provider", Model: "test-model", CreatedAt: at, UpdatedAt: at,
 		},
 		Runs: []protocol.ArtifactRun{{
-			ID: "run_root", SessionID: "ses_unknown_profile", ProtocolProfile: &profile,
+			ID: "run_root", SessionID: "ses_unknown_profile", Capabilities: &profile,
 			Provider: "test-provider", Model: "test-model",
 			Outcome:   protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeCompleted},
 			CreatedAt: at, FinishedAt: at, UpdatedAt: at,

@@ -64,7 +64,7 @@ export function finishedSegment(runId: string, finish: SegmentFinish = {}): Stre
     model: "mock",
     status: waiting ? "waiting" : "finished",
     metrics: finish.metrics ?? { steps: 0, activeDurationMillis: 0 },
-    protocolProfile: { requiredFeatures: [], interruptTypes: ["approval", "question"] },
+    capabilities: { requiredFeatures: [], interruptTypes: ["approval", "question"] },
     createdAt: "2026-06-03T00:00:00Z",
     ...(waiting
       ? {}

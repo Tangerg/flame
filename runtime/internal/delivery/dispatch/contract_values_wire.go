@@ -310,7 +310,7 @@ func registerRunValues(s *Shapes) {
 		Constraints: modelUsageMapIdentities("byModel"),
 	})
 	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.RunProtocolProfile](),
+		GoType: typeOf[protocol.RunCapabilities](),
 		Constraints: []FieldConstraint{
 			{Field: "requiredFeatures", Kind: ConstraintUniqueItems},
 			{Field: "interruptTypes", Kind: ConstraintUniqueItems},

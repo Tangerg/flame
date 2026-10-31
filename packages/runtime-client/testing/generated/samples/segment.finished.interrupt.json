@@ -15,7 +15,7 @@
         "steps": 2,
         "activeDurationMillis": 8100
       },
-      "protocolProfile": {
+      "capabilities": {
         "requiredFeatures": [],
         "interruptTypes": [
           "approval"

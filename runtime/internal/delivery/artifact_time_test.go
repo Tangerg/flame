@@ -17,7 +17,7 @@ func TestSessionImportPreservesExactTimeBoundsAndEpoch(t *testing.T) {
 			artifact := validArtifact()
 			artifact.Session.Workspace.Path = t.TempDir()
 			artifact.Session.CreatedAt, artifact.Session.UpdatedAt = at, at
-			artifact.Runs[0].ProtocolProfile = &protocol.RunProtocolProfile{}
+			artifact.Runs[0].Capabilities = &protocol.RunCapabilities{}
 			artifact.Runs[0].CreatedAt, artifact.Runs[0].FinishedAt, artifact.Runs[0].UpdatedAt = at, at, at
 			artifact.Items[0] = archivedToolAt(at)
 			artifact.Items[0].Tool.Result = "preview"
@@ -64,7 +64,7 @@ func TestSessionImportRefusesTimesThatCannotSurvivePersistence(t *testing.T) {
 				handler, rt := rollbackHarness(t)
 				artifact := validArtifact()
 				artifact.Session.Workspace.Path = t.TempDir()
-				artifact.Runs[0].ProtocolProfile = &protocol.RunProtocolProfile{}
+				artifact.Runs[0].Capabilities = &protocol.RunCapabilities{}
 				test.change(&artifact)
 				if _, err := handler.ImportSession(t.Context(), protocol.ImportSessionRequest{Artifact: artifact}); !errors.Is(err, protocol.ErrInvalidParams) {
 					t.Fatalf("import error = %v, want invalid_params before mutation", err)
@@ -82,7 +82,7 @@ func TestSessionImportPreservesToolResultCreationNanoseconds(t *testing.T) {
 	at := time.Unix(1, 123456789).UTC()
 	artifact := validArtifact()
 	artifact.Session.Workspace.Path = t.TempDir()
-	artifact.Runs[0].ProtocolProfile = &protocol.RunProtocolProfile{}
+	artifact.Runs[0].Capabilities = &protocol.RunCapabilities{}
 	artifact.Items[0] = archivedToolAt(time.Unix(1, 0).UTC())
 	artifact.Items[0].Tool.Result = "preview"
 	artifact.ToolResults = []protocol.ArtifactToolResult{{ID: "ABC234", ItemID: "item_1", Body: "full result", CreatedAt: at}}

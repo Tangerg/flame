@@ -182,7 +182,7 @@ describe("createFlameClient", () => {
         childRuns: {
           enabled: true,
           clientOptIn: true,
-          requiredByRunProtocol: true,
+          requiredByRun: true,
         },
       },
       limits: {

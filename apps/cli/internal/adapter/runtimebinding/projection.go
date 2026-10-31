@@ -23,7 +23,7 @@ func projectRun(value protocol.RunRef) (conversation.Run, error) {
 		Status:  value.Status, ActiveSegmentID: value.ActiveSegmentID,
 		CreatedAt: value.CreatedAt, FinishedAt: value.FinishedAt,
 		ContextTokens: value.ContextTokens,
-		Usage:         projectUsage(value.Metrics), ProtocolProfile: projectRunProtocolProfile(value.ProtocolProfile),
+		Usage:         projectUsage(value.Metrics), Capabilities: projectRunCapabilities(value.Capabilities),
 	}
 	if value.Outcome != nil {
 		projected.Outcome = projectRunOutcome(*value.Outcome)
@@ -38,7 +38,7 @@ func projectRunLineage(value protocol.RunRef) (conversation.RunLineage, error) {
 	return conversation.NewChildRunLineage(value.ID, value.SpawnedByItemID, value.ParentRunID, value.RootRunID)
 }
 
-func projectRunProtocolProfile(profile *protocol.RunProtocolProfile) *protocol.RunProtocolProfile {
+func projectRunCapabilities(profile *protocol.RunCapabilities) *protocol.RunCapabilities {
 	if profile == nil {
 		return nil
 	}

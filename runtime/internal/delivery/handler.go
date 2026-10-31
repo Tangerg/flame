@@ -362,9 +362,9 @@ func advertisedFeatures(enabled map[string]bool) map[string]protocol.FeatureCapa
 	out := make(map[string]protocol.FeatureCapability, len(features))
 	for _, feature := range features {
 		out[feature.Key] = protocol.FeatureCapability{
-			Enabled:               enabled[feature.Key],
-			ClientOptIn:           feature.ClientOptIn,
-			RequiredByRunProtocol: feature.RequiredByRunProtocol,
+			Enabled:       enabled[feature.Key],
+			ClientOptIn:   feature.ClientOptIn,
+			RequiredByRun: feature.RequiredByRun,
 		}
 	}
 	return out

@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 import {
   type RunEvent,
   type RunOutcome,
-  type RunProtocolProfile,
+  type RunCapabilities,
   type RunRef,
   type SessionSnapshot,
 } from "@flame/runtime-client";
@@ -24,7 +24,7 @@ import {
 import { runtimeSessionMaterial } from "@/features/agent/adapters/runtimeSessionMaterial";
 import { projectAgentSessionSnapshot } from "@/features/agent/application/session/sessionSnapshot";
 import { CurrentRootMaterial } from "@/features/agent/application/run/runReadModel";
-const PROFILE: RunProtocolProfile = { interruptTypes: [], requiredFeatures: [] };
+const PROFILE: RunCapabilities = { interruptTypes: [], requiredFeatures: [] };
 
 const METRICS = { steps: 2, activeDurationMillis: 25 };
 
@@ -36,7 +36,7 @@ function runningRoot(patch: Partial<RunRef> = {}): RunRef {
     activeSegmentId: "seg_1",
     createdAt: "2026-08-12T08:00:00.000Z",
     metrics: METRICS,
-    protocolProfile: PROFILE,
+    capabilities: PROFILE,
     provider: "openai",
     model: "gpt-5",
     ...patch,
@@ -266,7 +266,7 @@ describe("Runtime → Agent fact adapter", () => {
         activeDurationMillis: 50,
         usage: { inputTokens: 11, outputTokens: 7, cacheReadTokens: 3, costUsd: 0.01 },
       },
-      protocolProfile: PROFILE,
+      capabilities: PROFILE,
       provider: "openai",
       model: "gpt-5",
     };

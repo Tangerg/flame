@@ -11,8 +11,8 @@ import (
 func TestRunProjectionOwnsItsNegotiatedContract(t *testing.T) {
 	running := runningRun("seg_1")
 	running.CreatedAt = time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
-	running.ProtocolProfile = &protocol.RunProtocolProfile{
-		RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureChildRuns},
+	running.Capabilities = &protocol.RunCapabilities{
+		RequiredFeatures: []protocol.RunCapabilityFeature{protocol.RunCapabilityFeatureChildRuns},
 		InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
 	}
 	if err := running.Validate(); err != nil {
@@ -22,8 +22,8 @@ func TestRunProjectionOwnsItsNegotiatedContract(t *testing.T) {
 		t.Fatal("an unconstructed run projection was accepted")
 	}
 	cloned := running.Clone()
-	cloned.ProtocolProfile.InterruptTypes[0] = protocol.InterruptQuestion
-	if running.ProtocolProfile.InterruptTypes[0] != protocol.InterruptApproval || running.Equal(cloned) {
+	cloned.Capabilities.InterruptTypes[0] = protocol.InterruptQuestion
+	if running.Capabilities.InterruptTypes[0] != protocol.InterruptApproval || running.Equal(cloned) {
 		t.Fatal("run clone shares its negotiated contract")
 	}
 }

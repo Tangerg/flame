@@ -40,7 +40,7 @@ const run: RunRef = {
   activeSegmentId: "seg_default",
   createdAt: "2026-09-13T00:00:00.000Z",
   metrics: { steps: 0, activeDurationMillis: 0 },
-  protocolProfile: { interruptTypes: [], requiredFeatures: [] },
+  capabilities: { interruptTypes: [], requiredFeatures: [] },
   provider: "openai",
   model: "gpt-5",
 };
@@ -65,7 +65,7 @@ describe("Goal and mounted Session integration", () => {
         ...capabilities,
         features: {
           ...capabilities.features,
-          goals: { enabled: true, clientOptIn: false, requiredByRunProtocol: false },
+          goals: { enabled: true, clientOptIn: false, requiredByRun: false },
         },
       },
     });

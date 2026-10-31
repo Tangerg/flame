@@ -32,7 +32,7 @@ func TestRunCatalogMapsQueriesAndProjectsPages(t *testing.T) {
 			CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
 			Status: protocol.RunStatusFinished, Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCompleted},
 		},
-		ProtocolProfile: &protocol.RunProtocolProfile{RequiredFeatures: []protocol.RunProtocolFeature{}, InterruptTypes: []protocol.InterruptType{}},
+		Capabilities: &protocol.RunCapabilities{RequiredFeatures: []protocol.RunCapabilityFeature{}, InterruptTypes: []protocol.InterruptType{}},
 	}
 	stub := runCatalogBindingStub{
 		get: func(_ context.Context, request protocol.GetRunRequest, options protocol.CallOptions) (*protocol.RunRef, error) {
@@ -190,7 +190,7 @@ func TestRunCatalogRejectsResponsesOutsideTheRequestedScope(t *testing.T) {
 			ID: "run_1", SessionID: "ses_other", Status: protocol.RunStatusFinished,
 			Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCompleted},
 		},
-		ProtocolProfile: &protocol.RunProtocolProfile{RequiredFeatures: []protocol.RunProtocolFeature{}, InterruptTypes: []protocol.InterruptType{}},
+		Capabilities: &protocol.RunCapabilities{RequiredFeatures: []protocol.RunCapabilityFeature{}, InterruptTypes: []protocol.InterruptType{}},
 	}
 	wrongIdentity := base
 	wrongIdentity.ID = "run_other"

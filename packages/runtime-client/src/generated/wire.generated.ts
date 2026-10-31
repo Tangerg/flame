@@ -334,6 +334,7 @@ export interface ArtifactProblem {
 export type ArtifactProblemType = "internal_error" | "agent_stuck" | "rate_limited" | "invalid_credentials" | "timeout" | "provider_unavailable" | "provider_rejected" | "denied_by_user" | "tool_failed" | "child_run_canceled" | "tool_canceled";
 
 export interface ArtifactRun {
+  capabilities?: RunCapabilities;
   contextTokens?: number;
   createdAt: string;
   finishedAt: string;
@@ -343,7 +344,6 @@ export interface ArtifactRun {
   model: string;
   outcome: ArtifactOutcome;
   parentRunId?: string;
-  protocolProfile?: RunProtocolProfile;
   provider: string;
   reasoningEffort?: string;
   rootRunId?: string;
@@ -523,7 +523,7 @@ export interface ExportTrajectoryResponse {
 export interface FeatureCapability {
   clientOptIn: boolean;
   enabled: boolean;
-  requiredByRunProtocol: boolean;
+  requiredByRun: boolean;
 }
 
 export interface FeaturePreference {
@@ -1720,6 +1720,13 @@ export type RunAcceptance =
 
 export type RunAcceptanceType = "notRecorded" | "accepted" | "retired";
 
+export interface RunCapabilities {
+  interruptTypes: InterruptType[];
+  requiredFeatures: RunCapabilityFeature[];
+}
+
+export type RunCapabilityFeature = "childRuns";
+
 export type RunCommandOperation = "start" | "resume" | "steer";
 
 export interface RunEvent {
@@ -1757,15 +1764,9 @@ export interface RunProgress {
   usage?: Usage;
 }
 
-export type RunProtocolFeature = "childRuns";
-
-export interface RunProtocolProfile {
-  interruptTypes: InterruptType[];
-  requiredFeatures: RunProtocolFeature[];
-}
-
 export interface RunRef {
   activeSegmentId?: string;
+  capabilities?: RunCapabilities;
   contextTokens?: number;
   createdAt: string;
   finishedAt?: string;
@@ -1774,7 +1775,6 @@ export interface RunRef {
   model: string;
   outcome?: RunOutcome;
   parentRunId?: string;
-  protocolProfile?: RunProtocolProfile;
   provider: string;
   reasoningEffort?: string;
   rootRunId?: string;
@@ -2416,9 +2416,9 @@ export const WIRE_ENUMS = {
   RestoreType: ["history", "files", "both"],
   ResultShape: ["search", "patch", "command"],
   RunAcceptanceType: ["notRecorded", "accepted", "retired"],
+  RunCapabilityFeature: ["childRuns"],
   RunCommandOperation: ["start", "resume", "steer"],
   RunOutcomeType: ["completed", "timedOut", "failed", "canceled", "lost"],
-  RunProtocolFeature: ["childRuns"],
   RunReplayScope: ["runtimeInstanceRootSegment"],
   RunStatus: ["running", "waiting", "finished"],
   RuntimeEventType: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "resync"],

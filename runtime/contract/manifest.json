@@ -6637,7 +6637,7 @@
             }
           ],
           "forbidden": [
-            "protocolProfile"
+            "capabilities"
           ]
         }
       ]
@@ -6673,7 +6673,7 @@
             }
           ],
           "forbidden": [
-            "protocolProfile",
+            "capabilities",
             "messageMark"
           ]
         },
@@ -7788,7 +7788,7 @@
       ]
     },
     {
-      "type": "RunProtocolProfile",
+      "type": "RunCapabilities",
       "rules": [
         {
           "field": "requiredFeatures",

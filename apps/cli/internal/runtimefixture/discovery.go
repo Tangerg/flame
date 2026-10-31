@@ -35,7 +35,7 @@ func CompleteDiscovery() (*protocol.DiscoverResponse, *protocol.ClientCapabiliti
 	client := &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{}}
 	for _, feature := range protocol.Features() {
 		discovery.Capabilities.Features[feature.Key] = protocol.FeatureCapability{
-			Enabled: true, ClientOptIn: feature.ClientOptIn, RequiredByRunProtocol: feature.RequiredByRunProtocol,
+			Enabled: true, ClientOptIn: feature.ClientOptIn, RequiredByRun: feature.RequiredByRun,
 		}
 		if feature.ClientOptIn {
 			client.Features[feature.Key] = protocol.FeaturePreference{Enabled: true}

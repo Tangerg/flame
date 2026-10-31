@@ -17,7 +17,7 @@ function advertising(
         {
           enabled,
           clientOptIn: clientOptIn.includes(name),
-          requiredByRunProtocol: false,
+          requiredByRun: false,
         },
       ]),
     ),

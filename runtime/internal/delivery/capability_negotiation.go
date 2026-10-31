@@ -51,7 +51,7 @@ func (s *Handler) negotiateCapabilities(ctx context.Context) (run.Capabilities, 
 		// Only a feature that changes what the Run PUBLISHES belongs on the Run: the
 		// capability set exists so a later subscriber can be told what it must understand,
 		// and a feature invisible in the stream demands nothing of it.
-		if published.RequiredByRunProtocol {
+		if published.RequiredByRun {
 			switch key {
 			case protocol.FeatureChildRuns:
 				capabilities.ChildRuns = true
@@ -137,7 +137,7 @@ func interruptTypeFromWire(kind protocol.InterruptType) (run.InterruptType, bool
 	}
 }
 
-// presentInterruptType is the same mapping read outward, for a protocol profile or an
+// presentInterruptType is the same mapping read outward, for a Run's capabilities or an
 // interrupt on its way to the wire.
 func presentInterruptType(kind run.InterruptType) protocol.InterruptType {
 	switch kind {

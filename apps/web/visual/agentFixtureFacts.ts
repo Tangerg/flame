@@ -22,12 +22,12 @@ export const VISUAL_RUNTIME_FEATURES = [
 
 function visualFeatureCapabilities(): Record<
   string,
-  { enabled: boolean; clientOptIn: boolean; requiredByRunProtocol: boolean }
+  { enabled: boolean; clientOptIn: boolean; requiredByRun: boolean }
 > {
   return Object.fromEntries(
     VISUAL_RUNTIME_FEATURES.map((name) => [
       name,
-      { enabled: true, clientOptIn: false, requiredByRunProtocol: false },
+      { enabled: true, clientOptIn: false, requiredByRun: false },
     ]),
   );
 }

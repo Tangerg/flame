@@ -45,7 +45,7 @@ func enumValues(t reflect.Type) ([]string, bool) {
 		return slices.Clone(values.Values()), true
 	}
 	switch t {
-	case reflect.TypeFor[protocol.RunProtocolFeature]():
+	case reflect.TypeFor[protocol.RunCapabilityFeature]():
 		return runProtocolFeatureValues(), true
 	case reflect.TypeFor[protocol.RuntimeEventType]():
 		return runtimeEventValues(), true
@@ -148,7 +148,7 @@ func enumConstants(pkg *packages.Package) map[string][]string {
 func runProtocolFeatureValues() []string {
 	var values []string
 	for _, feature := range protocol.Features() {
-		if feature.RequiredByRunProtocol {
+		if feature.RequiredByRun {
 			values = append(values, feature.Key)
 		}
 	}

@@ -1050,6 +1050,9 @@
     "ArtifactRun": {
       "type": "object",
       "properties": {
+        "capabilities": {
+          "$ref": "#/$defs/RunCapabilities"
+        },
         "contextTokens": {
           "type": "integer",
           "minimum": 0
@@ -1087,9 +1090,6 @@
           "type": "string",
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
-        },
-        "protocolProfile": {
-          "$ref": "#/$defs/RunProtocolProfile"
         },
         "provider": {
           "type": "string",
@@ -1143,8 +1143,8 @@
           },
           "then": {
             "properties": {
-              "messageMark": false,
-              "protocolProfile": false
+              "capabilities": false,
+              "messageMark": false
             }
           }
         },
@@ -2070,14 +2070,14 @@
         "enabled": {
           "type": "boolean"
         },
-        "requiredByRunProtocol": {
+        "requiredByRun": {
           "type": "boolean"
         }
       },
       "required": [
         "clientOptIn",
         "enabled",
-        "requiredByRunProtocol"
+        "requiredByRun"
       ]
     },
     "FeaturePreference": {
@@ -9524,6 +9524,35 @@
         "retired"
       ]
     },
+    "RunCapabilities": {
+      "type": "object",
+      "properties": {
+        "interruptTypes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/InterruptType"
+          }
+        },
+        "requiredFeatures": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/RunCapabilityFeature"
+          }
+        }
+      },
+      "required": [
+        "interruptTypes",
+        "requiredFeatures"
+      ]
+    },
+    "RunCapabilityFeature": {
+      "type": "string",
+      "enum": [
+        "childRuns"
+      ]
+    },
     "RunCommandOperation": {
       "type": "string",
       "enum": [
@@ -9752,35 +9781,6 @@
         }
       ]
     },
-    "RunProtocolFeature": {
-      "type": "string",
-      "enum": [
-        "childRuns"
-      ]
-    },
-    "RunProtocolProfile": {
-      "type": "object",
-      "properties": {
-        "interruptTypes": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/InterruptType"
-          }
-        },
-        "requiredFeatures": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/RunProtocolFeature"
-          }
-        }
-      },
-      "required": [
-        "interruptTypes",
-        "requiredFeatures"
-      ]
-    },
     "RunRef": {
       "type": "object",
       "properties": {
@@ -9788,6 +9788,9 @@
           "type": "string",
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "capabilities": {
+          "$ref": "#/$defs/RunCapabilities"
         },
         "contextTokens": {
           "type": "integer",
@@ -9823,9 +9826,6 @@
           "type": "string",
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
-        },
-        "protocolProfile": {
-          "$ref": "#/$defs/RunProtocolProfile"
         },
         "provider": {
           "type": "string",
@@ -10020,7 +10020,7 @@
           },
           "then": {
             "properties": {
-              "protocolProfile": false
+              "capabilities": false
             }
           }
         }

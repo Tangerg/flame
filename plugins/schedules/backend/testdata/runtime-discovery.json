@@ -40,72 +40,72 @@
       "reasoning": {
         "enabled": true,
         "clientOptIn": false,
-        "requiredByRunProtocol": false
+        "requiredByRun": false
       },
       "mcp": {
         "enabled": true,
         "clientOptIn": false,
-        "requiredByRunProtocol": false
+        "requiredByRun": false
       },
       "multimodal": {
         "enabled": true,
         "clientOptIn": false,
-        "requiredByRunProtocol": false
+        "requiredByRun": false
       },
       "git": {
         "enabled": true,
         "clientOptIn": false,
-        "requiredByRunProtocol": false
+        "requiredByRun": false
       },
       "fileWatch": {
         "enabled": true,
         "clientOptIn": false,
-        "requiredByRunProtocol": false
+        "requiredByRun": false
       },
       "checkpoints": {
         "enabled": true,
         "clientOptIn": false,
-        "requiredByRunProtocol": false
+        "requiredByRun": false
       },
       "lsp": {
         "enabled": true,
         "clientOptIn": false,
-        "requiredByRunProtocol": false
+        "requiredByRun": false
       },
       "childRuns": {
         "enabled": false,
         "clientOptIn": true,
-        "requiredByRunProtocol": true
+        "requiredByRun": true
       },
       "skills": {
         "enabled": true,
         "clientOptIn": false,
-        "requiredByRunProtocol": false
+        "requiredByRun": false
       },
       "sessionExport": {
         "enabled": true,
         "clientOptIn": false,
-        "requiredByRunProtocol": false
+        "requiredByRun": false
       },
       "relocate": {
         "enabled": true,
         "clientOptIn": false,
-        "requiredByRunProtocol": false
+        "requiredByRun": false
       },
       "plan": {
         "enabled": true,
         "clientOptIn": false,
-        "requiredByRunProtocol": false
+        "requiredByRun": false
       },
       "compaction": {
         "enabled": true,
         "clientOptIn": false,
-        "requiredByRunProtocol": false
+        "requiredByRun": false
       },
       "plugins": {
         "enabled": true,
         "clientOptIn": false,
-        "requiredByRunProtocol": false
+        "requiredByRun": false
       }
     },
     "limits": {

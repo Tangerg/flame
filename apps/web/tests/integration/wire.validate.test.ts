@@ -97,7 +97,7 @@ const finishedRun = {
   createdAt: "2026-07-07T10:00:00Z",
   finishedAt: "2026-07-07T10:00:20Z",
   metrics: { steps: 2, activeDurationMillis: 20_000 },
-  protocolProfile: { requiredFeatures: [], interruptTypes: [] },
+  capabilities: { requiredFeatures: [], interruptTypes: [] },
   provider: "openai",
   model: "gpt-5",
   outcome: { type: "completed" },
@@ -490,7 +490,7 @@ describe("the generated wire checks", () => {
 
   it("keeps cancel root and child results closed and distinct", () => {
     const canceledRoot = { ...finishedRun, outcome: { type: "canceled" } };
-    const { protocolProfile: _profile, ...canceledRunFacts } = canceledRoot;
+    const { capabilities: _profile, ...canceledRunFacts } = canceledRoot;
     const canceledChild = {
       ...canceledRunFacts,
       id: "run_child",
@@ -553,7 +553,7 @@ describe("the generated wire checks", () => {
   });
 
   it("applies an embedded shape's rules to the shape embedding it", () => {
-    const { protocolProfile: _profile, ...childFacts } = finishedRun;
+    const { capabilities: _profile, ...childFacts } = finishedRun;
     const { parentRunId: _parent, ...rootChild } = {
       ...childFacts,
       spawnedByItemId: "item_03",

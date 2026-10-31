@@ -27,7 +27,7 @@ func TestSessionJSONPreservesReasoningSelection(t *testing.T) {
 	}
 }
 
-func TestRunJSONPreservesNegotiatedProtocolProfile(t *testing.T) {
+func TestRunJSONPreservesNegotiatedCapabilities(t *testing.T) {
 	t.Parallel()
 
 	run := conversation.Run{
@@ -35,8 +35,8 @@ func TestRunJSONPreservesNegotiatedProtocolProfile(t *testing.T) {
 		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh",
 		ContextTokens: 32_768,
 		Lineage:       conversation.RootRunLineage(),
-		ProtocolProfile: &protocol.RunProtocolProfile{
-			RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureChildRuns},
+		Capabilities: &protocol.RunCapabilities{
+			RequiredFeatures: []protocol.RunCapabilityFeature{protocol.RunCapabilityFeatureChildRuns},
 			InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
 		},
 	}
@@ -45,7 +45,7 @@ func TestRunJSONPreservesNegotiatedProtocolProfile(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		`"reasoningEffort":"xhigh"`, `"contextTokens":32768`, `"protocolProfile"`,
+		`"reasoningEffort":"xhigh"`, `"contextTokens":32768`, `"capabilities"`,
 		`"requiredFeatures":["childRuns"]`, `"interruptTypes":["approval","question"]`,
 	} {
 		if !strings.Contains(output.String(), want) {

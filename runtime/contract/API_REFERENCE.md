@@ -728,8 +728,8 @@ TypeScript validator from this single registry projection.
 | `ModelUsage` | `costUsd` | `nonNegative` |
 | `Usage` | `byModel` | `identityPropertyNames` |
 | `Usage` | `byModel` | `maxPropertyNameLength(256)` |
-| `RunProtocolProfile` | `requiredFeatures` | `uniqueItems` |
-| `RunProtocolProfile` | `interruptTypes` | `uniqueItems` |
+| `RunCapabilities` | `requiredFeatures` | `uniqueItems` |
+| `RunCapabilities` | `interruptTypes` | `uniqueItems` |
 | `StartRunRequest` | `sessionId` | `identity` |
 | `StartRunRequest` | `sessionId` | `maxLength(256)` |
 | `StartRunRequest` | `input` | `nonEmptyItems` |

@@ -17,7 +17,7 @@
       },
       "createdAt": "2026-07-07T10:00:00Z",
       "activeSegmentId": "seg_01",
-      "protocolProfile": {
+      "capabilities": {
         "requiredFeatures": [],
         "interruptTypes": [
           "approval"

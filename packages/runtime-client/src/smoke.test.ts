@@ -153,7 +153,7 @@ describe("smoke: v2 end-to-end happy path", () => {
             activeSegmentId: "seg_1",
             createdAt: "2026-07-31T08:00:00.000Z",
             metrics: { steps: 0, activeDurationMillis: 0 },
-            protocolProfile: {
+            capabilities: {
               requiredFeatures: [],
               interruptTypes: ["approval"],
             },
@@ -268,7 +268,7 @@ describe("smoke: v2 end-to-end happy path", () => {
             activeSegmentId: "seg_1",
             createdAt: "2026-07-31T08:00:00.000Z",
             metrics: { steps: 0, activeDurationMillis: 0 },
-            protocolProfile: {
+            capabilities: {
               requiredFeatures: [],
               interruptTypes: ["approval"],
             },

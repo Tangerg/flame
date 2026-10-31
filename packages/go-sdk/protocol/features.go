@@ -45,10 +45,10 @@ type Feature struct {
 	// ClientOptIn: the runtime uses the feature only for a request whose
 	// capabilities declare it, even where this build supports it.
 	ClientOptIn bool
-	// RequiredByRunProtocol: negotiating it changes the authoritative Run event /
+	// RequiredByRun: negotiating it changes the authoritative Run event /
 	// resource shape, so a subscriber that does not understand it cannot follow the
-	// Run. Exactly these keys enter a Run's frozen RunProtocolProfile.
-	RequiredByRunProtocol bool
+	// Run. Exactly these keys enter a Run's frozen RunCapabilities.
+	RequiredByRun bool
 }
 
 // features is every key discovery may advertise, in the order the canonical docs
@@ -77,10 +77,10 @@ var features = mustFeatures([]Feature{
 	{Key: FeatureIsolation},
 	// ChildRuns is the one feature that reshapes a Run's authoritative stream:
 	// child runs, child lineage on every summary, and the `suspended` segment
-	// outcome only exist for a Run whose profile carries it. A subscriber that does
+	// outcome only exist for a Run whose capabilities carry it. A subscriber that does
 	// not understand them cannot follow such a Run at all, which is why it is
 	// opt-in AND frozen onto the Run.
-	{Key: FeatureChildRuns, ClientOptIn: true, RequiredByRunProtocol: true},
+	{Key: FeatureChildRuns, ClientOptIn: true, RequiredByRun: true},
 })
 
 // Features returns a snapshot of the published capability vocabulary.
@@ -123,7 +123,7 @@ func mustFeatures(features []Feature) []Feature {
 			panic("protocol: a feature needs a key")
 		case seen[feature.Key]:
 			panic(fmt.Sprintf("protocol: feature %q is declared twice", feature.Key))
-		case feature.RequiredByRunProtocol && !feature.ClientOptIn:
+		case feature.RequiredByRun && !feature.ClientOptIn:
 			panic(fmt.Sprintf("protocol: feature %q reshapes the run protocol without opt-in — it belongs in stable core, not in features", feature.Key))
 		}
 		seen[feature.Key] = true

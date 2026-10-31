@@ -13,7 +13,7 @@ function fixture(submitInput: SubmitCapturedAgentInput, admit = () => {}) {
     model: "model",
     createdAt: "2026-10-27T00:00:00Z",
     metrics: { steps: 1, activeDurationMillis: 1 },
-    protocolProfile: { interruptTypes: [], requiredFeatures: [] },
+    capabilities: { interruptTypes: [], requiredFeatures: [] },
   };
   const get = vi.fn(async () => run);
   const source = { runId: run.id, itemId: "item_original" };

@@ -155,8 +155,8 @@ func TestSessionMaterialSnapshotCanonicalizesRunCreationOrder(t *testing.T) {
 				Status:  protocol.RunStatusFinished,
 				Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCompleted}, CreatedAt: at, FinishedAt: at,
 			},
-			ProtocolProfile: &protocol.RunProtocolProfile{
-				RequiredFeatures: []protocol.RunProtocolFeature{}, InterruptTypes: []protocol.InterruptType{},
+			Capabilities: &protocol.RunCapabilities{
+				RequiredFeatures: []protocol.RunCapabilityFeature{}, InterruptTypes: []protocol.InterruptType{},
 			},
 		}
 	}

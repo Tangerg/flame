@@ -30,7 +30,7 @@ const (
 // FinishedAt stay here because they are lifecycle rather than metering: a
 // `status:"finished"` a client cannot explain would only send it back for another
 // request. What is left out is what grows with the model and the subtree —
-// metrics, protocol profile, active segment — and that is [RunRef].
+// metrics, capabilities, active segment — and that is [RunRef].
 type RunSummary struct {
 	ID              string `json:"id"`
 	SessionID       string `json:"sessionId"`
@@ -79,24 +79,24 @@ type RunRef struct {
 	// It survives waiting, terminalization, and restart; absence means this Run
 	// has not produced an authoritative footprint yet.
 	ContextTokens int64 `json:"contextTokens,omitzero"`
-	// ProtocolProfile is the protocol contract a root run was created under, and
+	// Capabilities is the protocol contract a root run was created under, and
 	// it is present in every status: a client that reconnects to a run has to
 	// know what the run may publish before it starts folding the stream. A child
 	// has none of its own; it follows its root's.
-	ProtocolProfile *RunProtocolProfile `json:"protocolProfile,omitzero"`
+	Capabilities *RunCapabilities `json:"capabilities,omitzero"`
 }
 
-// RunProtocolFeature is the closed set of negotiated features that may appear in
-// a RunProtocolProfile for this protocol version. The discovery feature map stays
+// RunCapabilityFeature is the closed set of negotiated features that may appear in
+// a RunCapabilities for this protocol version. The discovery feature map stays
 // open, but a feature that changes authoritative Run shape requires a protocol
 // version bump and therefore belongs to this versioned enum.
-type RunProtocolFeature string
+type RunCapabilityFeature string
 
 const (
-	RunProtocolFeatureChildRuns = RunProtocolFeature(FeatureChildRuns)
+	RunCapabilityFeatureChildRuns = RunCapabilityFeature(FeatureChildRuns)
 )
 
-// RunProtocolProfile is the client-observable protocol contract frozen when a run
+// RunCapabilities is the client-observable protocol contract frozen when a run
 // was created — not a preference recomputed per request.
 //
 // Both fields are sets: duplicates are illegal, order carries no meaning, and the
@@ -108,12 +108,12 @@ const (
 //
 // Its scope is one root run tree, never a session: the next runs.start negotiates
 // again, so a minimal client cannot permanently narrow what a session can do.
-type RunProtocolProfile struct {
+type RunCapabilities struct {
 	// RequiredFeatures are the negotiated features that changed what this run
-	// publishes (`requiredByRunProtocol` in discovery). A later resume or subscribe
+	// publishes (`requiredByRun` in discovery). A later resume or subscribe
 	// whose caller does not declare them is refused, not downgraded — the
 	// alternative is a second, quieter event stream for the same run.
-	RequiredFeatures []RunProtocolFeature `json:"requiredFeatures"`
+	RequiredFeatures []RunCapabilityFeature `json:"requiredFeatures"`
 	// InterruptTypes are the durable interrupt types this run may produce. The run
 	// keeps them for its whole life, so answering an interrupt cannot quietly
 	// change what the next segment is allowed to park on.

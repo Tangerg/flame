@@ -575,7 +575,7 @@ describe("methods factory", () => {
           ...discovery.capabilities,
           features: {
             ...discovery.capabilities.features,
-            goals: { enabled: true, clientOptIn: false, requiredByRunProtocol: false },
+            goals: { enabled: true, clientOptIn: false, requiredByRun: false },
           },
         }) as import("@flame/runtime-client/wire").ServerCapabilities,
     });
@@ -614,7 +614,7 @@ describe("methods factory", () => {
           ...discovery.capabilities,
           features: {
             ...discovery.capabilities.features,
-            goals: { enabled: true, clientOptIn: false, requiredByRunProtocol: false },
+            goals: { enabled: true, clientOptIn: false, requiredByRun: false },
           },
         }) as import("@flame/runtime-client/wire").ServerCapabilities,
     });

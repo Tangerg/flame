@@ -314,6 +314,8 @@ export type WireTypeName =
   | "RollbackSessionResponse"
   | "RunAcceptance"
   | "RunAcceptanceType"
+  | "RunCapabilities"
+  | "RunCapabilityFeature"
   | "RunCommandOperation"
   | "RunEvent"
   | "RunLoss"
@@ -321,8 +323,6 @@ export type WireTypeName =
   | "RunOutcome"
   | "RunOutcomeType"
   | "RunProgress"
-  | "RunProtocolFeature"
-  | "RunProtocolProfile"
   | "RunRef"
   | "RunReplayLimits"
   | "RunReplayScope"
@@ -796,6 +796,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ArtifactProblemType: enumOf(["internal_error", "agent_stuck", "rate_limited", "invalid_credentials", "timeout", "provider_unavailable", "provider_rejected", "denied_by_user", "tool_failed", "child_run_canceled", "tool_canceled"]),
   ArtifactRun: allOf([
     object({
+      capabilities: ref(() => CHECKS.RunCapabilities),
       contextTokens: allOf([integer(), minimum("0")]),
       createdAt: text(),
       finishedAt: text(),
@@ -805,7 +806,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       outcome: ref(() => CHECKS.ArtifactOutcome),
       parentRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      protocolProfile: ref(() => CHECKS.RunProtocolProfile),
       provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
       reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
       rootRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -816,8 +816,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ifThen(
       fields({}, ["spawnedByItemId"]),
       fields({
+        capabilities: absent(),
         messageMark: absent(),
-        protocolProfile: absent(),
       }, []),
     ),
     ifThen(
@@ -1087,8 +1087,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   FeatureCapability: object({
     clientOptIn: flag(),
     enabled: flag(),
-    requiredByRunProtocol: flag(),
-  }, ["clientOptIn", "enabled", "requiredByRunProtocol"]),
+    requiredByRun: flag(),
+  }, ["clientOptIn", "enabled", "requiredByRun"]),
   FeaturePreference: object({
     enabled: flag(),
   }, ["enabled"]),
@@ -3474,6 +3474,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ]),
   ]),
   RunAcceptanceType: enumOf(["notRecorded", "accepted", "retired"]),
+  RunCapabilities: object({
+    interruptTypes: allOf([array(ref(() => CHECKS.InterruptType)), uniqueItems()]),
+    requiredFeatures: allOf([array(ref(() => CHECKS.RunCapabilityFeature)), uniqueItems()]),
+  }, ["interruptTypes", "requiredFeatures"]),
+  RunCapabilityFeature: enumOf(["childRuns"]),
   RunCommandOperation: enumOf(["start", "resume", "steer"]),
   RunEvent: object({
     event: ref(() => CHECKS.StreamEvent),
@@ -3538,14 +3543,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     }, []),
     anyOf([fields({}, ["step"]), fields({}, ["usage"]), fields({}, ["contextTokens"]), fields({}, ["activity"])]),
   ]),
-  RunProtocolFeature: enumOf(["childRuns"]),
-  RunProtocolProfile: object({
-    interruptTypes: allOf([array(ref(() => CHECKS.InterruptType)), uniqueItems()]),
-    requiredFeatures: allOf([array(ref(() => CHECKS.RunProtocolFeature)), uniqueItems()]),
-  }, ["interruptTypes", "requiredFeatures"]),
   RunRef: allOf([
     object({
       activeSegmentId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      capabilities: ref(() => CHECKS.RunCapabilities),
       contextTokens: allOf([integer(), minimum("0")]),
       createdAt: text(),
       finishedAt: text(),
@@ -3554,7 +3555,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       outcome: ref(() => CHECKS.RunOutcome),
       parentRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      protocolProfile: ref(() => CHECKS.RunProtocolProfile),
       provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
       reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
       rootRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -3623,7 +3623,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ifThen(
       fields({}, ["spawnedByItemId"]),
       fields({
-        protocolProfile: absent(),
+        capabilities: absent(),
       }, []),
     ),
   ]),

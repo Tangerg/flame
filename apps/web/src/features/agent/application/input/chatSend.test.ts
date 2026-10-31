@@ -38,7 +38,7 @@ function waitingRoot(): RunRef {
     model: "gpt-5",
     createdAt: "2026-10-14T00:00:00Z",
     metrics: { steps: 0, activeDurationMillis: 0 },
-    protocolProfile: { interruptTypes: [], requiredFeatures: [] },
+    capabilities: { interruptTypes: [], requiredFeatures: [] },
   };
 }
 

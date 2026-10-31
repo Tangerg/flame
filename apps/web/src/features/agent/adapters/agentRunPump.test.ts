@@ -67,7 +67,7 @@ function terminalRun(): RunRef {
     finishedAt: "2026-07-29T00:00:01Z",
     outcome: { type: "completed" },
     metrics: { steps: 1, activeDurationMillis: 1 },
-    protocolProfile: { interruptTypes: [], requiredFeatures: [] },
+    capabilities: { interruptTypes: [], requiredFeatures: [] },
     provider: "openai",
     model: "gpt-5",
   };

@@ -62,7 +62,7 @@ func TestInvalidClosedEnumMarkersAreRejected(t *testing.T) {
 
 func TestDerivedWireVocabulariesRemainComplete(t *testing.T) {
 	constants := enumConstants(protocolVocabulary())
-	for _, typ := range []reflect.Type{reflect.TypeFor[protocol.RunProtocolFeature](), reflect.TypeFor[protocol.RuntimeEventType](), reflect.TypeFor[protocol.RuntimeTopic]()} {
+	for _, typ := range []reflect.Type{reflect.TypeFor[protocol.RunCapabilityFeature](), reflect.TypeFor[protocol.RuntimeEventType](), reflect.TypeFor[protocol.RuntimeTopic]()} {
 		got, ok := enumValues(typ)
 		if !ok || !slices.Equal(got, constants[typ.Name()]) {
 			t.Errorf("%s owner = %v, constants = %v", typ.Name(), got, constants[typ.Name()])

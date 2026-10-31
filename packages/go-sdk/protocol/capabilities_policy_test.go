@@ -13,7 +13,7 @@ func TestMissingFeatureRequirementsHonorsServerSupportAndClientOptIn(t *testing.
 			Enabled: true,
 		},
 		FeatureChildRuns: {
-			Enabled: true, ClientOptIn: true, RequiredByRunProtocol: true,
+			Enabled: true, ClientOptIn: true, RequiredByRun: true,
 		},
 	}
 	wantChildRuns := []CapabilityRequirement{{

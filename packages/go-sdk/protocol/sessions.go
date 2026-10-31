@@ -258,17 +258,17 @@ type ArtifactRun struct {
 	ReasoningEffort string     `json:"reasoningEffort,omitempty"`
 	Metrics         RunMetrics `json:"metrics"`
 	ContextTokens   int64      `json:"contextTokens,omitzero"`
-	// ProtocolProfile is the contract the run published under, required on a root
+	// Capabilities is the contract the run published under, required on a root
 	// and absent on a child. An import that dropped it would restore a run claiming
 	// the Minimal Profile, which is a different run. Import and export must
 	// preserve it verbatim — never defaulted to empty, never re-derived from the
 	// child or interrupt facts, never rewritten to the importing client's
 	// capabilities. A child has none of its own; it reads its root's.
-	ProtocolProfile *RunProtocolProfile `json:"protocolProfile,omitzero"`
-	Outcome         ArtifactOutcome     `json:"outcome"`
-	CreatedAt       time.Time           `json:"createdAt,omitzero"`
-	FinishedAt      time.Time           `json:"finishedAt,omitzero"`
-	UpdatedAt       time.Time           `json:"updatedAt,omitzero"`
+	Capabilities *RunCapabilities `json:"capabilities,omitzero"`
+	Outcome      ArtifactOutcome  `json:"outcome"`
+	CreatedAt    time.Time        `json:"createdAt,omitzero"`
+	FinishedAt   time.Time        `json:"finishedAt,omitzero"`
+	UpdatedAt    time.Time        `json:"updatedAt,omitzero"`
 	// MessageMark is the conversation length where a root run's tree ended,
 	// required on a root and absent on a child: a child ends inside its root's
 	// tree, which no boundary cuts before the root ends.

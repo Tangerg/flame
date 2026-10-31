@@ -56,10 +56,10 @@ type runJSONFrame struct {
 	CreatedAt        time.Time `json:"createdAt,omitzero"`
 	FinishedAt       time.Time `json:"finishedAt,omitzero"`
 
-	ContextTokens   int64            `json:"contextTokens,omitzero"`
-	Outcome         *outcomeJSON     `json:"outcome,omitzero"`
-	Usage           usageJSON        `json:"usage"`
-	ProtocolProfile *runContractJSON `json:"protocolProfile,omitzero"`
+	ContextTokens int64            `json:"contextTokens,omitzero"`
+	Outcome       *outcomeJSON     `json:"outcome,omitzero"`
+	Usage         usageJSON        `json:"usage"`
+	Capabilities  *runContractJSON `json:"capabilities,omitzero"`
 }
 
 type runContractJSON struct {
@@ -177,16 +177,16 @@ func encodeRun(run conversation.Run) runJSONFrame {
 	if run.Status == protocol.RunStatusFinished {
 		encoded.Outcome = encodeOutcome(run.Outcome)
 	}
-	if run.ProtocolProfile != nil {
-		encoded.ProtocolProfile = &runContractJSON{
-			RequiredFeatures: make([]string, len(run.ProtocolProfile.RequiredFeatures)),
-			InterruptTypes:   make([]string, len(run.ProtocolProfile.InterruptTypes)),
+	if run.Capabilities != nil {
+		encoded.Capabilities = &runContractJSON{
+			RequiredFeatures: make([]string, len(run.Capabilities.RequiredFeatures)),
+			InterruptTypes:   make([]string, len(run.Capabilities.InterruptTypes)),
 		}
-		for index, feature := range run.ProtocolProfile.RequiredFeatures {
-			encoded.ProtocolProfile.RequiredFeatures[index] = string(feature)
+		for index, feature := range run.Capabilities.RequiredFeatures {
+			encoded.Capabilities.RequiredFeatures[index] = string(feature)
 		}
-		for index, kind := range run.ProtocolProfile.InterruptTypes {
-			encoded.ProtocolProfile.InterruptTypes[index] = string(kind)
+		for index, kind := range run.Capabilities.InterruptTypes {
+			encoded.Capabilities.InterruptTypes[index] = string(kind)
 		}
 	}
 	return encoded

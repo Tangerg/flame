@@ -52,9 +52,9 @@ func (c *capabilityRuntime) Discover(context.Context) (*protocol.DiscoverRespons
 	for name, enabled := range c.features {
 		published, _ := protocol.LookupFeature(name)
 		advertised[name] = protocol.FeatureCapability{
-			Enabled:               enabled,
-			ClientOptIn:           published.ClientOptIn,
-			RequiredByRunProtocol: published.RequiredByRunProtocol,
+			Enabled:       enabled,
+			ClientOptIn:   published.ClientOptIn,
+			RequiredByRun: published.RequiredByRun,
 		}
 	}
 	return &protocol.DiscoverResponse{Capabilities: protocol.ServerCapabilities{Features: advertised}}, nil

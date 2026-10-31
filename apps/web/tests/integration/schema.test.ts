@@ -217,7 +217,7 @@ describe("the published JSON Schema bundle", () => {
       outcome: { type: "canceled" },
       finishedAt: "2026-07-30T00:00:00Z",
       metrics: { steps: 0, activeDurationMillis: 0 },
-      protocolProfile: { requiredFeatures: [], interruptTypes: [] },
+      capabilities: { requiredFeatures: [], interruptTypes: [] },
       provider: "openai",
       model: "gpt-5",
       createdAt: "2026-07-30T00:00:00Z",

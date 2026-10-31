@@ -426,8 +426,8 @@ func TestProjectChildRunPreservesLineage(t *testing.T) {
 		},
 		ActiveSegmentID: "seg_child",
 		ContextTokens:   32_768,
-		ProtocolProfile: &protocol.RunProtocolProfile{
-			RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureChildRuns},
+		Capabilities: &protocol.RunCapabilities{
+			RequiredFeatures: []protocol.RunCapabilityFeature{protocol.RunCapabilityFeatureChildRuns},
 			InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
 		},
 	})
@@ -438,12 +438,12 @@ func TestProjectChildRunPreservesLineage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantProfile := &protocol.RunProtocolProfile{
-		RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureChildRuns},
+	wantProfile := &protocol.RunCapabilities{
+		RequiredFeatures: []protocol.RunCapabilityFeature{protocol.RunCapabilityFeatureChildRuns},
 		InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
 	}
 	if projected.Lineage != want || projected.ReasoningEffort != "xhigh" || projected.ContextTokens != 32_768 ||
-		!projected.CreatedAt.Equal(created) || !reflect.DeepEqual(projected.ProtocolProfile, wantProfile) {
+		!projected.CreatedAt.Equal(created) || !reflect.DeepEqual(projected.Capabilities, wantProfile) {
 		t.Fatalf("projected run = %+v", projected)
 	}
 }
@@ -497,8 +497,8 @@ func waitingApprovalColdRead() coldRead {
 				ID: "run_1", SessionID: "ses_1", Provider: testSessionProvider, Model: testSessionModel,
 				Status: protocol.RunStatusWaiting, CreatedAt: startedAt.Add(-time.Second),
 			},
-			ProtocolProfile: &protocol.RunProtocolProfile{
-				RequiredFeatures: []protocol.RunProtocolFeature{},
+			Capabilities: &protocol.RunCapabilities{
+				RequiredFeatures: []protocol.RunCapabilityFeature{},
 				InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval},
 			},
 		}},

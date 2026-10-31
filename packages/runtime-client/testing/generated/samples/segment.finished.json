@@ -21,7 +21,7 @@
         "activeDurationMillis": 12400
       },
       "contextTokens": 1200,
-      "protocolProfile": {
+      "capabilities": {
         "requiredFeatures": [],
         "interruptTypes": [
           "approval"

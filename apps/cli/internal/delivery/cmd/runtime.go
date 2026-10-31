@@ -111,7 +111,7 @@ func writeRuntimeProfile(output io.Writer, profile RuntimeProfile) error {
 				flags = append(flags, "client opt-in declined")
 			}
 		}
-		if feature.RequiredByRunProtocol {
+		if feature.RequiredByRun {
 			flags = append(flags, "run protocol")
 		}
 		if profile.Supports(name) {

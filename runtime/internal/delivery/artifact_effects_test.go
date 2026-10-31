@@ -193,7 +193,7 @@ func TestSessionImportRejectsInvalidUnresolvedEffects(t *testing.T) {
 				},
 				Runs: []protocol.ArtifactRun{{
 					ID: "run_source", SessionID: "ses_source", Provider: "test-provider", Model: "test-model",
-					ProtocolProfile: &protocol.RunProtocolProfile{}, CreatedAt: at, FinishedAt: at, UpdatedAt: at,
+					Capabilities: &protocol.RunCapabilities{}, CreatedAt: at, FinishedAt: at, UpdatedAt: at,
 					MessageMark: new(int),
 					Outcome:     protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeCanceled, UnresolvedEffects: effects},
 				}},

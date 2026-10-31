@@ -16,7 +16,7 @@ import {
 
 import { RuntimeConnectionGeneration } from "@/features/connection/public/services";
 function feature(enabled: boolean): FeatureCapability {
-  return { enabled, clientOptIn: false, requiredByRunProtocol: false };
+  return { enabled, clientOptIn: false, requiredByRun: false };
 }
 
 function makeCaps(overrides: Partial<ServerCapabilities> = {}): ServerCapabilities {
