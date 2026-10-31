@@ -57,7 +57,7 @@ func (a *app) dismissModals() {
 	a.palette.dialog.Dismiss()
 	a.timeline.dialog.Dismiss()
 	a.workspaceChoices.dialog.Dismiss()
-	a.dismissModelPicker()
+	a.screens.options.dismissModelPicker()
 	a.sessions.dismiss()
 	a.queueEditor.dialog.Dismiss()
 }

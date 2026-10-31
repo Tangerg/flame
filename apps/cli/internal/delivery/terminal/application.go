@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/input"
@@ -58,7 +57,6 @@ type app struct {
 	runtime        Runtime
 	workspaces     Workspaces
 	changes        changefeed.Source
-	feedback       Feedback
 	runtimeProfile RuntimeProfile
 
 	pluginHost       *extensions.Host
@@ -79,7 +77,6 @@ type app struct {
 	search           *searchPrompt
 	shortcuts        *shortcutGuide
 	queueEditor      *queueEditor
-	models           *pickerDialog[protocol.Model]
 	workspaceChoices *pickerDialog[workspaceChoice]
 
 	transcript *transcriptView
@@ -100,7 +97,6 @@ type app struct {
 	stack          headless.Stack
 	queue          *workbench.Queue
 	workbench      *workbench.Store
-	editor         *draftEditor
 	localDirectory string
 	detachOnExit   bool
 
@@ -186,7 +182,6 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		ctx: cfg.context, loop: loop, runtime: cfg.runtime, workspaces: cfg.workspaces,
 		runtimeProfile: cfg.runtimeProfile,
 		changes:        cfg.changes,
-		feedback:       cfg.feedback,
 
 		pluginHost: cfg.pluginHost, pluginIssues: cfg.pluginIssues,
 		operations:        newOperationOwner(cfg.context),
@@ -198,7 +193,6 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		status:            newStatusView(appearance.theme, appearance.glyphs),
 		queue:             cfg.queue,
 		workbench:         cfg.workbench,
-		editor:            cfg.editor,
 		localDirectory:    cfg.localDirectory,
 		detachOnExit:      cfg.detachOnExit,
 		settings:          cfg.settings.Clone(),
@@ -221,12 +215,12 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	a.runs.tasks = a.tasks
 	a.composer = &promptComposer{
 		attachments: cfg.attachments, workbench: cfg.workbench, session: &a.lifecycle.state,
-		ctx: cfg.context, after: loop.After, closed: func() bool { return a.closed },
+		editor: cfg.editor, terminal: loop.Session(), localDirectory: cfg.localDirectory,
+		busy: func() bool { return a.runs.blocksAdmission() },
+		ctx:  cfg.context, after: loop.After, closed: func() bool { return a.closed },
 		notify: a.message, report: a.reportWorkbenchIssue, validate: a.validateMessageCapabilities,
-		appendNote: func(label, body string) {
-			a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: label, Body: body})
-		},
-		cleared: a.confirmation.Reset,
+		appendNote: a.appendNote,
+		cleared:    a.confirmation.Reset,
 	}
 	a.composer.drafts.store = newDraftPersistence(cfg.workbench, func(result draftPersistenceResult) {
 		loop.Dispatcher().Post(func() {
@@ -330,7 +324,6 @@ func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.M
 	})
 	a.buildWorkspacePicker(theme, glyphs)
 	a.buildTimeline(theme, glyphs)
-	a.buildModelPicker(theme, glyphs)
 	a.palette = newPickerDialog(pickerDialogConfig[commandPaletteItem]{
 		stack: &a.stack, theme: theme, glyphs: glyphs, title: "Commands", search: "search commands",
 		where: layout.Placement{Width: 82, Height: 18},
@@ -457,7 +450,7 @@ func (a *app) dispatchPrompt(message authoring.Message) {
 		return
 	}
 	a.sessions.dialog.Dismiss()
-	a.dismissModelPicker()
+	a.screens.options.dismissModelPicker()
 	a.composer.resetComposer()
 	a.operations.Cancel(completionOperation)
 	a.completion.Dismiss()
@@ -515,3 +508,18 @@ func (a *app) enterSessionHealth() {
 	a.workbenchHealth.enterSession()
 	a.status.setProblem(a.workbenchHealth.problem())
 }
+
+// presentOptions shows the effective run options in the prompt and banner.
+func (a *app) presentOptions() {
+	a.prompt.SetOptions(a.displayOptions())
+	a.brand.SetOptions(a.displayOptions())
+}
+
+// appendNote adds a labelled note to the current transcript.
+func (a *app) appendNote(label, body string) {
+	a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: label, Body: body})
+}
+
+func (a *app) dismissModelPicker() { a.screens.options.dismissModelPicker() }
+
+func (a *app) refreshModelPicker() { a.screens.options.refreshModelPicker() }

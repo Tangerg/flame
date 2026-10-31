@@ -15,9 +15,26 @@ import (
 	"github.com/Tangerg/oolong/core/layout"
 )
 
-func (a *app) buildModelPicker(theme kit.Theme, glyphs kit.Glyphs) {
-	a.models = newPickerDialog(pickerDialogConfig[protocol.Model]{
-		stack: &a.stack, theme: theme, glyphs: glyphs, title: "Models", search: "search models",
+// runOptionScreens chooses the presented Session's model and shows the model
+// catalog and the Runtime's options. A chosen model becomes the Session's
+// own choice through the Session lifecycle.
+type runOptionScreens struct {
+	screenHost
+	service   Runtime
+	profile   RuntimeProfile
+	options   *authoring.RunOptions
+	lifecycle *sessionLifecycle
+	models    *pickerDialog[protocol.Model]
+
+	observing      func() bool
+	displayOptions func() authoring.RunOptions
+	presentOptions func()
+	appendNote     func(label, body string)
+}
+
+func (o *runOptionScreens) buildModelPicker(theme kit.Theme, glyphs kit.Glyphs) {
+	o.models = newPickerDialog(pickerDialogConfig[protocol.Model]{
+		stack: o.stack, theme: theme, glyphs: glyphs, title: "Models", search: "search models",
 		where: layout.Placement{Width: 76, Height: 14},
 		label: func(model protocol.Model) string {
 			label := model.DisplayName
@@ -30,20 +47,20 @@ func (a *app) buildModelPicker(theme kit.Theme, glyphs kit.Glyphs) {
 			return label
 		},
 		detail:    func(model protocol.Model) string { return model.Provider + "/" + model.ID },
-		choose:    a.selectSessionModel,
-		dismissed: func() { a.operations.Cancel(pickerCatalogOperation) },
+		choose:    o.selectSessionModel,
+		dismissed: func() { o.tasks.operations.Cancel(pickerCatalogOperation) },
 	})
 }
 
-func (a *app) selectSessionModel(model protocol.Model) {
-	sessionID := a.lifecycle.state.current.ID
-	a.lifecycle.runSessionChange("selecting model",
+func (o *runOptionScreens) selectSessionModel(model protocol.Model) {
+	sessionID := o.lifecycle.state.current.ID
+	o.lifecycle.runSessionChange("selecting model",
 		func(ctx context.Context) (conversation.Session, error) {
-			latest, err := a.runtime.GetSession(ctx, sessionID)
+			latest, err := o.service.GetSession(ctx, sessionID)
 			if err != nil {
 				return conversation.Session{}, err
 			}
-			return a.runtime.UpdateSession(ctx, conversation.UpdateSession{
+			return o.service.UpdateSession(ctx, conversation.UpdateSession{
 				SessionID:        sessionID,
 				Model:            &conversation.ModelRef{Provider: model.Provider, Model: model.ID},
 				ExpectedRevision: latest.Session.Revision,
@@ -52,64 +69,61 @@ func (a *app) selectSessionModel(model protocol.Model) {
 		func(updated conversation.Session) error {
 			// The Session now owns the choice. A retained launch override would
 			// outrank it here and follow the user into every other Session.
-			a.options.Provider, a.options.Model, a.options.ReasoningEffort = "", "", ""
-			a.lifecycle.setActiveSession(updated)
-			a.syncOptions("model · " + updated.Provider + "/" + updated.Model)
+			o.options.Provider, o.options.Model, o.options.ReasoningEffort = "", "", ""
+			o.lifecycle.setActiveSession(updated)
+			o.syncOptions("model · " + updated.Provider + "/" + updated.Model)
 			return nil
 		},
 	)
 }
 
-func (a *app) ChooseModel() {
-	if a.runs.observing() {
-		a.message("model changes apply between runs")
+func (o *runOptionScreens) ChooseModel() {
+	if o.observing() {
+		o.message("model changes apply between runs")
 		return
 	}
-	a.message("loading models")
-	a.models.show(nil)
-	a.refreshModelPicker()
+	o.message("loading models")
+	o.models.show(nil)
+	o.refreshModelPicker()
 }
 
-func (a *app) dismissModelPicker() {
-	a.models.dismiss(func() { a.operations.Cancel(pickerCatalogOperation) })
+func (o *runOptionScreens) dismissModelPicker() {
+	o.models.dismiss(func() { o.tasks.operations.Cancel(pickerCatalogOperation) })
 }
 
-func (a *app) refreshModelPicker() {
-	presentation := a.models.dialog.Identity()
+func (o *runOptionScreens) refreshModelPicker() {
+	presentation := o.models.dialog.Identity()
 	if presentation == nil {
 		return
 	}
-	a.tasks.session(pickerCatalogOperation, true,
-		func(ctx context.Context) ([]protocol.Model, error) { return a.runtime.ListModels(ctx) },
+	o.tasks.session(pickerCatalogOperation, true,
+		func(ctx context.Context) ([]protocol.Model, error) { return o.service.ListModels(ctx) },
 		func(models []protocol.Model, err error) {
-			if !presentation.current(a.models.dialog.Identity()) {
+			if !presentation.current(o.models.dialog.Identity()) {
 				return
 			}
 			if err != nil && len(models) == 0 {
-				a.message("could not load models: " + err.Error())
+				o.message("could not load models: " + err.Error())
 				return
 			}
-			a.models.picker.SetItems(models)
-			a.status.note("choose a provider-qualified model")
+			o.models.picker.SetItems(models)
+			o.status.note("choose a provider-qualified model")
 			if err != nil {
-				a.message("model catalog incomplete: " + err.Error())
+				o.message("model catalog incomplete: " + err.Error())
 			}
 		},
 	)
 }
 
-func (a *app) ShowRuntimeStatus() {
-	a.tasks.session(pickerCatalogOperation, true,
-		func(ctx context.Context) (protocol.ApprovalModeResult, error) { return a.runtime.GetApprovalMode(ctx) },
+func (o *runOptionScreens) ShowRuntimeStatus() {
+	o.tasks.session(pickerCatalogOperation, true,
+		func(ctx context.Context) (protocol.ApprovalModeResult, error) { return o.service.GetApprovalMode(ctx) },
 		func(result protocol.ApprovalModeResult, err error) {
 			if err != nil {
-				a.message("could not read runtime status: " + err.Error())
+				o.message("could not read runtime status: " + err.Error())
 				return
 			}
-			a.transcript.Append(&kit.Entry{
-				Theme: a.transcript.theme, Label: "runtime options",
-				Body: runtimeStatusText(a.runtimeProfile, a.displayOptions(), result.Mode),
-			})
+			o.appendNote("runtime options", runtimeStatusText(o.profile, o.displayOptions(), result.Mode))
 		},
 	)
 }
@@ -196,10 +210,9 @@ type approvalRuleDeletionResult struct {
 	rules []protocol.ApprovalRule
 }
 
-func (a *app) syncOptions(message string) {
-	a.prompt.SetOptions(a.displayOptions())
-	a.brand.SetOptions(a.displayOptions())
-	a.message(message)
+func (o *runOptionScreens) syncOptions(message string) {
+	o.presentOptions()
+	o.message(message)
 }
 
 func approvalModeTitle(mode protocol.ApprovalMode) string {

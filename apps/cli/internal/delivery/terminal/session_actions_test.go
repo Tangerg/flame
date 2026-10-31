@@ -1009,10 +1009,8 @@ func withModalOwners(t *testing.T, application *app) {
 		stack: &application.stack, theme: theme, glyphs: glyphs,
 		label: func(workspaceChoice) string { return "" }, detail: func(workspaceChoice) string { return "" }, choose: func(workspaceChoice) {},
 	})
-	application.models = newPickerDialog(pickerDialogConfig[protocol.Model]{
-		stack: &application.stack, theme: theme, glyphs: glyphs,
-		label: func(protocol.Model) string { return "" }, detail: func(protocol.Model) string { return "" }, choose: func(protocol.Model) {},
-	})
+	application.screens.options = &runOptionScreens{screenHost: screenHost{tasks: unattachedTasks(newOperationOwner(t.Context())), stack: &application.stack}}
+	application.screens.options.buildModelPicker(theme, glyphs)
 	application.queueEditor = newQueueEditor(queueEditorConfig{
 		session: &application.lifecycle.state, run: &runs{}, stack: &application.stack, theme: theme, glyphs: glyphs,
 		keys: headless.DefaultEditorKeys(), clip: (&program.Runtime{}).Clipboard(),

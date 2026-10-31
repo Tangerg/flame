@@ -135,22 +135,24 @@ func validateEditedDraft(info os.FileInfo) error {
 	return nil
 }
 
-func (a *app) editPromptExternally() error {
-	if a.runs.blocksAdmission() {
+// editExternally replaces the prompt text with what the configured editor
+// saves, keeping the prompt's attachments.
+func (c *promptComposer) editExternally() error {
+	if c.busy() {
 		return errors.New("finish or cancel the active run before opening an external editor")
 	}
-	message, err := a.composer.message()
+	message, err := c.message()
 	if err != nil {
 		return err
 	}
-	edited, err := a.editor.Edit(a.ctx, a.loop.Session(), authoringDirectory(a.localDirectory, a.lifecycle.state.current.Workspace.Path), message.Text)
+	edited, err := c.editor.Edit(c.ctx, c.terminal, authoringDirectory(c.localDirectory, c.session.current.Workspace.Path), message.Text)
 	if err != nil {
 		return err
 	}
 	message.Text = edited
-	if err := a.composer.recoverDraft(message); err != nil {
+	if err := c.recoverDraft(message); err != nil {
 		return fmt.Errorf("prompt updated in external editor, but save session draft: %w", err)
 	}
-	a.message("updated prompt from external editor")
+	c.notify("updated prompt from external editor")
 	return nil
 }

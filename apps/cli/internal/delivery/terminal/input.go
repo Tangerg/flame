@@ -300,10 +300,10 @@ func (a *app) handlePromptAction(action keymap.Action) bool {
 		return false
 	}
 	if action == chooseModel {
-		a.ChooseModel()
+		a.screens.options.ChooseModel()
 		return true
 	}
-	if err := a.editPromptExternally(); err != nil {
+	if err := a.composer.editExternally(); err != nil {
 		a.message(err.Error())
 	}
 	return true

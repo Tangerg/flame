@@ -45,8 +45,8 @@ func (a *app) applyRuntimeResync(topics []protocol.RuntimeTopic) {
 }
 
 func (a *app) followModelChanges(affected bool) {
-	if affected && a.models.dialog.Open() {
-		a.refreshModelPicker()
+	if affected && a.screens.options.models.dialog.Open() {
+		a.screens.options.refreshModelPicker()
 	}
 }
 

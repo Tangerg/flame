@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
+	"github.com/Tangerg/oolong/core/program"
 )
 
 const fileElement headless.ElementKind = 1
@@ -43,7 +44,12 @@ type promptComposer struct {
 	history     promptHistory
 	attachments *attachment.Resolver
 	workbench   *workbench.Store
-	session     *sessionState
+	// editor edits the prompt in the configured external editor, in the
+	// terminal session and local directory it suspends to.
+	editor         *draftEditor
+	terminal       program.Session
+	localDirectory string
+	session        *sessionState
 	// appendNote adds a labelled note to the current transcript.
 	appendNote func(label, body string)
 
@@ -56,6 +62,9 @@ type promptComposer struct {
 	// cleared runs after the composer empties, retiring input state that
 	// referred to the old content.
 	cleared func()
+	// busy reports an active Run, during which the prompt cannot be edited
+	// externally.
+	busy func() bool
 }
 
 type attachmentInsertion struct {

@@ -29,6 +29,8 @@ type screenHost struct {
 // screens are the management surfaces the terminal composes. A screen whose
 // Runtime port is absent is nil, which command availability reports.
 type screens struct {
+	options          *runOptionScreens
+	feedback         *feedbackScreens
 	approvals        *approvalScreens
 	inspection       *workspaceScreens
 	goals            *goalScreens
@@ -53,6 +55,15 @@ func (a *app) screenHost(replayPolicy mutation.ReplayPolicy) screenHost {
 
 func (a *app) buildScreens(cfg appConfig) {
 	host := a.screenHost(cfg.replayPolicy)
+	a.screens.options = &runOptionScreens{
+		screenHost: host, service: a.runtime, profile: a.runtimeProfile, options: &a.options, lifecycle: a.lifecycle,
+		observing: a.runs.observing, displayOptions: a.displayOptions, presentOptions: a.presentOptions,
+		appendNote: a.appendNote,
+	}
+	a.screens.options.buildModelPicker(host.theme, host.glyphs)
+	if cfg.feedback != nil {
+		a.screens.feedback = &feedbackScreens{screenHost: host, service: cfg.feedback, runs: a.runs}
+	}
 	a.screens.approvals = newApprovalScreens(host, a.runtime, a.runs.observing)
 	a.screens.inspection = &workspaceScreens{screenHost: host, service: a.workspaces}
 	if cfg.goals != nil {

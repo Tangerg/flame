@@ -9,31 +9,36 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-func (a *app) RecordFeedback(argument string) error {
-	if a.feedback == nil {
-		return errors.New("this runtime composition has no feedback service")
-	}
+// feedbackScreens rates the latest assistant response through the Runtime's
+// feedback port.
+type feedbackScreens struct {
+	screenHost
+	service Feedback
+	runs    *runs
+}
+
+func (f *feedbackScreens) RecordFeedback(argument string) error {
 	ratingText, note, _ := strings.Cut(strings.TrimSpace(argument), " ")
 	rating, err := parseFeedbackRating(ratingText)
 	if err != nil {
 		return errors.New("usage: /feedback <positive|negative> [note]")
 	}
-	runID, itemID := latestAssistantTarget(a.runs.conversation().Blocks())
+	runID, itemID := latestAssistantTarget(f.runs.conversation().Blocks())
 	request := protocol.FeedbackRequest{
-		SessionID: a.lifecycle.state.current.ID, RunID: runID, ItemID: itemID,
+		SessionID: f.session.current.ID, RunID: runID, ItemID: itemID,
 		Rating: rating, Text: strings.TrimSpace(note),
 	}
 	if err := protocol.ValidateWireTree(request); err != nil {
 		return err
 	}
-	a.status.note("recording feedback")
-	if !a.tasks.application(feedbackOperation, false,
+	f.status.note("recording feedback")
+	if !f.tasks.application(feedbackOperation, false,
 		func(ctx context.Context) (protocol.FeedbackRequest, error) {
-			return request, a.feedback.Record(ctx, request)
+			return request, f.service.Record(ctx, request)
 		},
 		func(recorded protocol.FeedbackRequest, err error) {
 			if err != nil {
-				a.message("record feedback failed: " + err.Error())
+				f.message("record feedback failed: " + err.Error())
 				return
 			}
 			target := "session"
@@ -42,7 +47,7 @@ func (a *app) RecordFeedback(argument string) error {
 			} else if recorded.RunID != "" {
 				target = "run " + shortIdentity(recorded.RunID)
 			}
-			a.message("feedback recorded · " + string(recorded.Rating) + " · " + target)
+			f.message("feedback recorded · " + string(recorded.Rating) + " · " + target)
 		},
 	) {
 		return errors.New("another feedback operation is running")

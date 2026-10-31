@@ -10,15 +10,15 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-func (a *app) ShowModels() {
-	a.reader.show(a.modelsReaderQuery())
+func (o *runOptionScreens) ShowModels() {
+	o.reader.show(o.modelsReaderQuery())
 }
 
-func (a *app) modelsReaderQuery() *readerQuery {
+func (o *runOptionScreens) modelsReaderQuery() *readerQuery {
 	return &readerQuery{
 		status: "loading model catalog", follows: followsTopic(protocol.TopicModelsChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
-			models, err := a.runtime.ListModels(ctx)
+			models, err := o.service.ListModels(ctx)
 			if err != nil && len(models) == 0 {
 				return readerDocument{}, err
 			}

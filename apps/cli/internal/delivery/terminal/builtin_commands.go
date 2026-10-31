@@ -38,7 +38,7 @@ func builtinCommands() []localCommand {
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "view", Title: "open the selected transcript entry in the full reader"}, Available: availableWithReadableSelection, Run: func(a *app, _ string) error { a.OpenReader(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "copy-last", Title: "copy the latest durable assistant response"}, Run: func(a *app, _ string) error { return a.copyLastAssistant() }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "export", Title: "export a runtime-native session document", Arguments: extensions.RequiredArguments}, Available: availableWithSessionTransfer, Run: func(a *app, argument string) error { return a.lifecycle.exportSession(argument) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "feedback", Title: "rate the latest assistant response", Arguments: extensions.RequiredArguments}, Available: availableWithFeedback, Run: func(a *app, argument string) error { return a.RecordFeedback(argument) }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "feedback", Title: "rate the latest assistant response", Arguments: extensions.RequiredArguments}, Available: availableWithFeedback, Run: func(a *app, argument string) error { return a.screens.feedback.RecordFeedback(argument) }},
 		),
 		commandGroup(commandCategorySessions,
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "sessions", Title: "search and switch sessions", Aliases: []string{"resume"}}, Available: availableWithoutActiveRun, Run: func(a *app, _ string) error { a.sessions.ShowSessions(); return nil }},
@@ -59,13 +59,13 @@ func builtinCommands() []localCommand {
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "stashes", Title: "list saved prompt stashes"}, Run: func(a *app, _ string) error { a.composer.showPromptStashes(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "stash-apply", Title: "apply a prompt stash by id or unique prefix", Arguments: extensions.RequiredArguments}, Available: availableWithEmptyDraft, Run: func(a *app, id string) error { return a.composer.applyPromptStash(id) }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "stash-delete", Title: "delete a prompt stash by id or unique prefix", Arguments: extensions.RequiredArguments}, Run: func(a *app, id string) error { return a.composer.deletePromptStash(id) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "editor", Title: "edit the current prompt in the configured external editor"}, Available: availableWithoutActiveRun, Run: func(a *app, _ string) error { return a.editPromptExternally() }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "editor", Title: "edit the current prompt in the configured external editor"}, Available: availableWithoutActiveRun, Run: func(a *app, _ string) error { return a.composer.editExternally() }},
 		),
 		commandGroup(commandCategoryRuntime,
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "tools", Title: "inspect direct read-only diagnostic tools"}, Available: availableWithDiagnosticTools, Run: func(a *app, _ string) error { a.screens.diagnosticTools.ShowDiagnosticTools(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "tool-invoke", Title: "invoke a direct read-only diagnostic tool", Arguments: extensions.RequiredArguments}, Available: availableWithDiagnosticTools, Run: func(a *app, argument string) error { return a.screens.diagnosticTools.InvokeDiagnosticTool(argument) }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "model", Title: "choose the current session model"}, Run: func(a *app, _ string) error { a.ChooseModel(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "models", Title: "inspect runtime model capabilities and pricing"}, Run: func(a *app, _ string) error { a.ShowModels(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "model", Title: "choose the current session model"}, Run: func(a *app, _ string) error { a.screens.options.ChooseModel(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "models", Title: "inspect runtime model capabilities and pricing"}, Run: func(a *app, _ string) error { a.screens.options.ShowModels(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "usage", Title: "inspect session and runtime usage", Arguments: extensions.OptionalArguments}, Available: availableWithUsage, Run: func(a *app, days string) error { return a.screens.usage.ShowUsage(days) }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "roles", Title: "inspect utility and embedding model roles"}, Available: availableWithModelConfiguration, Run: func(a *app, _ string) error { a.screens.modelConfig.ShowModelRoles(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "utility", Title: "set the utility model role", Arguments: extensions.RequiredArguments}, Available: availableWithModelConfiguration, Run: func(a *app, target string) error {
@@ -78,7 +78,7 @@ func builtinCommands() []localCommand {
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "provider-test", Title: "test a configured provider", Arguments: extensions.RequiredArguments}, Available: availableWithModelConfiguration, Run: func(a *app, provider string) error { return a.screens.modelConfig.TestConfiguredProvider(provider) }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "provider-config", Title: "configure provider endpoint and credentials", Arguments: extensions.RequiredArguments}, Available: availableWithModelConfiguration, Run: func(a *app, provider string) error { return a.screens.modelConfig.ConfigureProvider(provider) }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "approval", Title: "choose the runtime approval mode", Aliases: []string{"permissions", "permission"}}, Run: func(a *app, _ string) error { a.screens.approvals.ChooseApprovalMode(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "status", Title: "show runtime and run policy"}, Run: func(a *app, _ string) error { a.ShowRuntimeStatus(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "status", Title: "show runtime and run policy"}, Run: func(a *app, _ string) error { a.screens.options.ShowRuntimeStatus(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "rules", Title: "show remembered approval rules"}, Run: func(a *app, _ string) error { a.screens.approvals.ShowApprovalRules(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "rule-delete", Title: "forget a remembered approval rule", Arguments: extensions.RequiredArguments}, Run: func(a *app, id string) error { return a.screens.approvals.PrepareDeleteApprovalRule(id) }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "steer", Title: "inject an instruction into the observed run segment", Arguments: extensions.RequiredArguments}, Available: availableWithRunningSegment, Run: func(a *app, instruction string) error { return a.steering.steerRun(instruction) }},
@@ -223,7 +223,7 @@ func availableWithHooks(a *app) extensions.CommandAvailability {
 }
 
 func availableWithFeedback(a *app) extensions.CommandAvailability {
-	if a.feedback == nil {
+	if a.screens.feedback == nil {
 		return extensions.CommandUnavailable("this runtime composition has no feedback service")
 	}
 	return extensions.CommandAvailable()
