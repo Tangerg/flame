@@ -34,11 +34,11 @@ function groups(): PendingInterruptGroup[] {
   return [
     {
       runId: "run_child_a",
-      interrupts: [{ itemId: "approval_a", kind: "approval" }],
+      interrupts: [{ itemId: "approval_a", type: "approval" }],
     },
     {
       runId: "run_child_b",
-      interrupts: [{ itemId: "question_b", kind: "question" }],
+      interrupts: [{ itemId: "question_b", type: "question" }],
     },
   ];
 }
@@ -125,7 +125,7 @@ describe("interrupt response coordinator", () => {
   });
 
   it("keeps an accepted response owned until the view drops its item, blocking a duplicate resume", () => {
-    seedPending([{ runId: ROOT_RUN_ID, interrupts: [{ itemId: "solo", kind: "approval" }] }]);
+    seedPending([{ runId: ROOT_RUN_ID, interrupts: [{ itemId: "solo", type: "approval" }] }]);
     let accept: (() => void) | undefined;
     const resume = vi.fn((_runId, _responses, onSettled?: () => void) => {
       accept = onSettled;

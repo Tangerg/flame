@@ -1439,7 +1439,7 @@ func TestRuntimeInterruptValuesStayWireFree(t *testing.T) {
 		}
 	}
 	for _, value := range []reflect.Type{
-		reflect.TypeFor[domainrun.InterruptKind](),
+		reflect.TypeFor[domainrun.InterruptType](),
 		reflect.TypeFor[domainrun.InterruptResolution](),
 		reflect.TypeFor[domainrun.QuestionAnswer](),
 		reflect.TypeFor[applicationruns.Interrupt](),

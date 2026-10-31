@@ -34,7 +34,7 @@ func NewApprovalAnswer(answer approval.Resolution) (InterruptResolution, error) 
 	return InterruptResolution{approval: new(answer)}, nil
 }
 
-func (r InterruptResolution) Kind() InterruptKind {
+func (r InterruptResolution) Type() InterruptType {
 	if r.question != nil {
 		return InterruptQuestion
 	}

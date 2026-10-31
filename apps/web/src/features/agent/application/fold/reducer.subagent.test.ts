@@ -144,11 +144,11 @@ describe("reducer — source-owned Run tree", () => {
     expect(view.pendingInterrupts).toEqual([
       {
         runId: childA.id,
-        interrupts: [{ itemId: "approval_a", kind: "approval" }],
+        interrupts: [{ itemId: "approval_a", type: "approval" }],
       },
       {
         runId: childB.id,
-        interrupts: [{ itemId: "question_b", kind: "question" }],
+        interrupts: [{ itemId: "question_b", type: "question" }],
       },
     ]);
     const blocks = view.messages.flatMap((message) => message.blocks);

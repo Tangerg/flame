@@ -439,7 +439,7 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 		t.Fatalf("insert Session: %v", err)
 	}
 	profile := run.Capabilities{
-		InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+		InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 	}
 	if err := cfg.stores.Runs.Admit(ctx, run.Draft{
 		RunID: runID, SessionID: sessionID, SegmentID: "seg_open",

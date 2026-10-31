@@ -23,7 +23,7 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 	putTestSession(t, rt)
 
 	createdAt := time.Date(2026, 8, 14, 2, 0, 0, 0, time.UTC)
-	capabilities := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
+	capabilities := run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}}
 	if err := rt.runs.Admit(t.Context(), testsupport.RunDraft(run.Draft{
 		SegmentID: "seg_waiting", RunID: "run_waiting", SessionID: "ses_1",
 		Capabilities: capabilities, CreatedAt: createdAt,
@@ -130,7 +130,7 @@ func TestGetSessionSnapshotKeepsCapabilityAndExistenceRefusals(t *testing.T) {
 	s, rt := rollbackHarness(t)
 	putTestSession(t, rt)
 	createdAt := time.Date(2026, 8, 14, 3, 0, 0, 0, time.UTC)
-	capabilities := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
+	capabilities := run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}}
 	if err := rt.runs.Admit(t.Context(), testsupport.RunDraft(run.Draft{
 		SegmentID: "seg_waiting", RunID: "run_waiting", SessionID: "ses_1",
 		Capabilities: capabilities, CreatedAt: createdAt,
@@ -172,7 +172,7 @@ func TestGetSessionSnapshotRejectsOwnerlessInterruptMaterial(t *testing.T) {
 	s, rt := rollbackHarness(t)
 	putTestSession(t, rt)
 	createdAt := time.Date(2026, 8, 14, 4, 0, 0, 0, time.UTC)
-	capabilities := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
+	capabilities := run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}}
 	if err := rt.runs.Admit(t.Context(), testsupport.RunDraft(run.Draft{
 		SegmentID: "seg_waiting", RunID: "run_waiting", SessionID: "ses_1",
 		Capabilities: capabilities, CreatedAt: createdAt,

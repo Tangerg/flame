@@ -218,7 +218,7 @@ func rememberedRuleCandidates(
 	candidates := make([]RememberedRuleCandidate, 0, len(answers))
 	for index, answer := range answers {
 		open := pending.Interrupts[index]
-		if open.Kind() != run.InterruptApproval || open.Approval == nil || !open.Approval.Rememberable {
+		if open.Type() != run.InterruptApproval || open.Approval == nil || !open.Approval.Rememberable {
 			continue
 		}
 		resolution := answer.Resolution.Approval()

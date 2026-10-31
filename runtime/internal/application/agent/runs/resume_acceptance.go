@@ -148,13 +148,13 @@ func (r ResumeAcceptance) ItemReplacements() ([]transcript.Replacement, error) {
 		}
 		var itemReplacement transcript.Replacement
 		var err error
-		switch open.Kind() {
+		switch open.Type() {
 		case run.InterruptQuestion:
 			itemReplacement, err = expected.AnswerQuestion(answer.Resolution.Question().Answers())
 		case run.InterruptApproval:
 			itemReplacement, err = expected.ResolveToolApproval(*answer.Resolution.Approval())
 		default:
-			err = fmt.Errorf("unknown interrupt kind %q", open.Kind())
+			err = fmt.Errorf("unknown interrupt kind %q", open.Type())
 		}
 		if err != nil {
 			return nil, fmt.Errorf("settle interrupt item %q: %w", open.ItemID, err)
@@ -169,7 +169,7 @@ func (r ResumeAcceptance) ItemReplacements() ([]transcript.Replacement, error) {
 func (r ResumeAcceptance) approvalCalls() map[string]string {
 	calls := make(map[string]string)
 	for index, open := range r.expected.Interrupts {
-		if open.Kind() != run.InterruptApproval {
+		if open.Type() != run.InterruptApproval {
 			continue
 		}
 		calls[open.ItemID] = r.expected.Bindings[index].ToolCallID

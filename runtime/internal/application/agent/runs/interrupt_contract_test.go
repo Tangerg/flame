@@ -73,7 +73,7 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 		t.Fatalf("question: %v", err)
 	}
 	resolution = answers[0].Resolution
-	if resolution.Kind() != run.InterruptQuestion || len(resolution.Question().Answers()) != 1 || len(resolution.Question().Answers()[0]) != 1 || resolution.Question().Answers()[0][0] != "Go" {
+	if resolution.Type() != run.InterruptQuestion || len(resolution.Question().Answers()) != 1 || len(resolution.Question().Answers()[0]) != 1 || resolution.Question().Answers()[0][0] != "Go" {
 		t.Fatalf("question resolution = %#v", resolution)
 	}
 
@@ -192,7 +192,7 @@ func TestResolveQuestionResponseUsesOrderedExactAnswers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("valid ordered answer: %v", err)
 	}
-	if resolution.Kind() != run.InterruptQuestion || !slices.Equal(resolution.Question().Answers()[0], []string{"name"}) ||
+	if resolution.Type() != run.InterruptQuestion || !slices.Equal(resolution.Question().Answers()[0], []string{"name"}) ||
 		!slices.Equal(resolution.Question().Answers()[1], []string{"A", "custom"}) {
 		t.Fatalf("resolution = %#v", resolution)
 	}
@@ -201,7 +201,7 @@ func TestResolveQuestionResponseUsesOrderedExactAnswers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("explicit skipped answers: %v", err)
 	}
-	if skipped.Kind() != run.InterruptQuestion || len(skipped.Question().Answers()) != len(question.Fields) ||
+	if skipped.Type() != run.InterruptQuestion || len(skipped.Question().Answers()) != len(question.Fields) ||
 		len(skipped.Question().Answers()[0]) != 0 || len(skipped.Question().Answers()[1]) != 0 {
 		t.Fatalf("skipped resolution = %#v", skipped)
 	}
@@ -240,7 +240,7 @@ func TestInterruptAnswerRefusesAnAnswerForAnotherKind(t *testing.T) {
 		{Prompt: transcript.Question{}},
 	} {
 		answer := testsupport.QuestionAnswer(t, [][]string{{"name"}})
-		if request.Kind() == run.InterruptQuestion {
+		if request.Type() == run.InterruptQuestion {
 			answer = testsupport.ApprovalAnswer(t, approval.Resolution{Decision: approval.Allow})
 		}
 		if err := (InterruptAnswer{Resolution: answer}).validateResolution(request); err == nil {

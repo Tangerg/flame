@@ -2540,7 +2540,7 @@ func TestCoordinatorCommitsCompleteTreeBarrierInDeterministicPostorder(t *testin
 	spec := testSegment()
 	spec.Capabilities = run.Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+		InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 	}
 	stream, err := coordinator.segments.openSegment(t.Context(), spec)
 	if err != nil {
@@ -2591,7 +2591,7 @@ func TestCoordinatorPersistsExactApprovalCallIdentityInTreeBarrier(t *testing.T)
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
 	spec := testSegment()
-	spec.Capabilities = run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}}
+	spec.Capabilities = run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptApproval}}
 
 	stream, err := coordinator.segments.openSegment(t.Context(), spec)
 	if err != nil {

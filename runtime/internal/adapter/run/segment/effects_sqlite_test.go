@@ -718,7 +718,7 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 		},
 		CreatedAt: createdAt.Add(time.Second)}
 	seedPending(t, database, "session_1", pending, run.Capabilities{
-		ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+		ChildRuns: true, InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 	}, testsupport.ParkedMember{RunID: "run_child", Lineage: lineage})
 	if err := interruptStore.Open(ctx, pending); err != nil {
 		t.Fatalf("put pending: %v", err)
@@ -1004,7 +1004,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 		RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open",
 		ModelSelection: testsupport.MustModelSelection("anthropic", "claude"),
 		Capabilities: run.Capabilities{
-			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+			InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 		},
 		CreatedAt: createdAt,
 	}); admitErr != nil {
@@ -1216,7 +1216,7 @@ type terminalCheckpointFixture struct {
 }
 
 // terminalFixtureCapabilities admits the question hand-off the fixture parks.
-var terminalFixtureCapabilities = run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
+var terminalFixtureCapabilities = run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}}
 
 func newTerminalCheckpointFixture(
 	t *testing.T,
@@ -1620,7 +1620,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 	state := db.Runs
 	capabilities := run.Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+		InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 	}
 	if admitErr := state.Admit(ctx, run.Draft{
 		RunID: "run_root", SessionID: "session_1", SegmentID: "segment_root",
@@ -2577,7 +2577,7 @@ func seedPending(t *testing.T, db *persistencefixture.Stores, sessionID string, 
 
 // questionCapabilities is the Run contract singleRunPending's question needs.
 func questionCapabilities() run.Capabilities {
-	return run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
+	return run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}}
 }
 
 func mustGoalRuns(tb testing.TB, store goals.Store) *goals.RunRecorder {

@@ -83,12 +83,12 @@ func presentCancelResult(result runs.CancelResult) *protocol.CancelRunResponse {
 func presentRunProtocolProfile(capabilities rundomain.Capabilities) protocol.RunProtocolProfile {
 	out := protocol.RunProtocolProfile{
 		RequiredFeatures: make([]protocol.RunProtocolFeature, 0, 1),
-		InterruptTypes:   make([]protocol.InterruptType, 0, len(capabilities.InterruptKinds)),
+		InterruptTypes:   make([]protocol.InterruptType, 0, len(capabilities.InterruptTypes)),
 	}
 	if capabilities.ChildRuns {
 		out.RequiredFeatures = append(out.RequiredFeatures, protocol.RunProtocolFeatureChildRuns)
 	}
-	for _, kind := range capabilities.InterruptKinds {
+	for _, kind := range capabilities.InterruptTypes {
 		out.InterruptTypes = append(out.InterruptTypes, presentInterruptType(kind))
 	}
 	return out
@@ -221,7 +221,7 @@ func presentInterrupts(interrupts []transcript.Interrupt) []protocol.Interrupt {
 	out := make([]protocol.Interrupt, 0, len(interrupts))
 	for _, request := range interrupts {
 		entry := protocol.Interrupt{ItemID: request.ItemID, RunID: request.RunID}
-		entry.Type = presentInterruptType(request.Kind())
+		entry.Type = presentInterruptType(request.Type())
 		switch prompt := request.Prompt.(type) {
 		case transcript.Approval:
 			entry.Payload = &protocol.InterruptPayload{

@@ -417,7 +417,7 @@ func seedCanceledRun(t *testing.T, rt *stubRuntime, sessionID string) {
 
 		Capabilities: run.Capabilities{
 			ChildRuns:      true,
-			InterruptKinds: []run.InterruptKind{run.InterruptApproval},
+			InterruptTypes: []run.InterruptType{run.InterruptApproval},
 		},
 		CreatedAt: time.Unix(2, 0).UTC(), FinishedAt: time.Unix(3, 0).UTC(),
 		UpdatedAt: time.Unix(3, 0).UTC(), MessageMark: run.MessageMarkAt(1)}),
@@ -455,7 +455,7 @@ func seedFailedRun(t *testing.T, rt *stubRuntime, sessionID string) {
 			RetryAfter: 30 * time.Second,
 		}}, Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1, ActiveDuration: 500 * time.Millisecond}),
 		Capabilities: run.Capabilities{
-			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+			InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 		},
 		CreatedAt: time.Unix(4, 0).UTC(), FinishedAt: time.Unix(5, 0).UTC(),
 		UpdatedAt: time.Unix(5, 0).UTC(), MessageMark: run.MessageMarkAt(2)}),
@@ -470,7 +470,7 @@ func seedLostRun(t *testing.T, rt *stubRuntime, sessionID string) {
 		Ending:  run.Lost{Loss: run.Loss{Reason: run.LossOtherBuild, Detail: "checkpoint belongs to another build"}},
 		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1}),
 		Capabilities: run.Capabilities{
-			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+			InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 		},
 		CreatedAt: time.Unix(5, 0).UTC(), FinishedAt: time.Unix(6, 0).UTC(),
 		UpdatedAt: time.Unix(6, 0).UTC(), MessageMark: run.MessageMarkAt(2)}),

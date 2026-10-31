@@ -247,7 +247,7 @@ describe("projectAgentSessionSnapshot", () => {
     expect(view.pendingInterrupts).toEqual([
       {
         runId: CHILD_RUN_ID,
-        interrupts: [{ itemId: "item_approval", kind: "approval" }],
+        interrupts: [{ itemId: "item_approval", type: "approval" }],
       },
     ]);
     expect(view.plan).toMatchObject({ revision: 4 });

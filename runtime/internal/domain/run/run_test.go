@@ -74,7 +74,7 @@ func TestRestoreRejectsInvalidState(t *testing.T) {
 
 func TestChildRunCarriesNoCapabilitiesOfItsOwn(t *testing.T) {
 	lineage := Lineage{spawnedByItemID: "item_1", parentRunID: "run_root", rootRunID: "run_root"}
-	capabilities := Capabilities{InterruptKinds: []InterruptKind{InterruptQuestion}}
+	capabilities := Capabilities{InterruptTypes: []InterruptType{InterruptQuestion}}
 	draft := Draft{
 		RunID: "run_child", SessionID: "session_1", SegmentID: "segment_1",
 		SpawnedByItemID: lineage.SpawnedByItemID(), ParentRunID: lineage.ParentRunID(), RootRunID: lineage.RootRunID(),
@@ -126,7 +126,7 @@ func TestRunAdmissionRequiresExactModelSelection(t *testing.T) {
 
 func TestRunLifecyclePreservesAdmissionFactsAndAdvancesMetrics(t *testing.T) {
 	createdAt := time.Unix(1, 0).UTC()
-	capabilities := Capabilities{ChildRuns: true, InterruptKinds: []InterruptKind{InterruptQuestion}}
+	capabilities := Capabilities{ChildRuns: true, InterruptTypes: []InterruptType{InterruptQuestion}}
 	value, err := Admit(Draft{
 		RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1",
 		ModelSelection: mustRunSelection(t), Capabilities: capabilities, CreatedAt: createdAt,
@@ -406,7 +406,7 @@ func TestRunRejectsIllegalTransitionsAndRegressingFacts(t *testing.T) {
 }
 
 func TestRunAndMetricsCopyOwnership(t *testing.T) {
-	capabilities := Capabilities{InterruptKinds: []InterruptKind{InterruptQuestion}}
+	capabilities := Capabilities{InterruptTypes: []InterruptType{InterruptQuestion}}
 	value, err := Admit(Draft{
 		RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1",
 		ModelSelection: mustRunSelection(t), Capabilities: capabilities, CreatedAt: time.Unix(1, 0).UTC(),
@@ -414,10 +414,10 @@ func TestRunAndMetricsCopyOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Admit: %v", err)
 	}
-	capabilities.InterruptKinds[0] = InterruptApproval
+	capabilities.InterruptTypes[0] = InterruptApproval
 	read := value.Capabilities()
-	read.InterruptKinds[0] = InterruptApproval
-	if got := value.Capabilities().InterruptKinds[0]; got != InterruptQuestion {
+	read.InterruptTypes[0] = InterruptApproval
+	if got := value.Capabilities().InterruptTypes[0]; got != InterruptQuestion {
 		t.Fatalf("Run capabilities changed through an external slice: %s", got)
 	}
 

@@ -40,7 +40,7 @@ type runModelRowUse struct {
 // into the enum cannot silently re-label stored rows.
 type runCapabilitiesRow struct {
 	ChildRuns      bool                      `json:"childRuns,omitzero"`
-	InterruptKinds []rundomain.InterruptKind `json:"interruptKinds,omitempty"`
+	InterruptTypes []rundomain.InterruptType `json:"interruptTypes,omitempty"`
 }
 
 // encodeRunCapabilities returns the empty string for no optional capabilities,
@@ -53,7 +53,7 @@ func encodeRunCapabilities(capabilities rundomain.Capabilities) (string, error) 
 		return "", nil
 	}
 	row := runCapabilitiesRow{ChildRuns: capabilities.ChildRuns}
-	row.InterruptKinds = append(row.InterruptKinds, capabilities.InterruptKinds...)
+	row.InterruptTypes = append(row.InterruptTypes, capabilities.InterruptTypes...)
 	encoded, err := encodeStoredJSON(row)
 	if err != nil {
 		return "", fmt.Errorf("encode run capabilities: %w", err)
@@ -70,13 +70,13 @@ func decodeRunCapabilities(encoded string) (rundomain.Capabilities, error) {
 		return rundomain.Capabilities{}, fmt.Errorf("decode run capabilities: %w", err)
 	}
 	capabilities := rundomain.Capabilities{ChildRuns: row.ChildRuns}
-	for _, kind := range row.InterruptKinds {
+	for _, kind := range row.InterruptTypes {
 		if !kind.Valid() {
 			// A stored kind this build cannot raise would let the Run park on
 			// something nothing answers. Refusing the row is the honest outcome.
 			return rundomain.Capabilities{}, fmt.Errorf("decode run capabilities: unknown interrupt kind %q", kind)
 		}
-		capabilities.InterruptKinds = append(capabilities.InterruptKinds, kind)
+		capabilities.InterruptTypes = append(capabilities.InterruptTypes, kind)
 	}
 	if err := capabilities.Validate(); err != nil {
 		return rundomain.Capabilities{}, fmt.Errorf("decode run capabilities: %w", err)

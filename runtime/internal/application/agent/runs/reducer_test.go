@@ -1664,7 +1664,7 @@ func startedItemID(t *testing.T, reductions []reduction) string {
 func TestReducerReportsFrozenRunCapabilitiesOnEverySegment(t *testing.T) {
 	frozen := run.Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []run.InterruptKind{run.InterruptApproval},
+		InterruptTypes: []run.InterruptType{run.InterruptApproval},
 	}
 	config := testReducerConfig()
 	config.Opened = reopened(config.Opened, func(s *run.Snapshot) { s.Capabilities = frozen })
@@ -1692,7 +1692,7 @@ func TestReducerReportsFrozenRunCapabilitiesOnEverySegment(t *testing.T) {
 
 func assertFrozenCapabilities(t *testing.T, got, want run.Capabilities, where string) {
 	t.Helper()
-	if got.ChildRuns != want.ChildRuns || !slices.Equal(got.InterruptKinds, want.InterruptKinds) {
+	if got.ChildRuns != want.ChildRuns || !slices.Equal(got.InterruptTypes, want.InterruptTypes) {
 		t.Fatalf("%s capabilities = %v, want %v", where, got, want)
 	}
 }

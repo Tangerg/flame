@@ -23,22 +23,22 @@ type parkedFacts struct {
 // fixtureFacts is the contract a fixture hand-off implies: exactly the interrupt
 // kinds it parks on, and child Runs when it has more than one member.
 func fixtureFacts(pending Pending) parkedFacts {
-	var kinds []run.InterruptKind
+	var kinds []run.InterruptType
 	for _, value := range pending.Interrupts {
-		if !slices.Contains(kinds, value.Kind()) {
-			kinds = append(kinds, value.Kind())
+		if !slices.Contains(kinds, value.Type()) {
+			kinds = append(kinds, value.Type())
 		}
 	}
 	return parkedFacts{capabilities: run.Capabilities{
 		ChildRuns:      len(pending.Continuations) > 1,
-		InterruptKinds: kinds,
+		InterruptTypes: kinds,
 	}.Normalized()}
 }
 
 // resumedTreeCapabilities is the contract of the question tree fixtures, held
 // even when a fixture has been reduced to fewer members or kinds.
 func resumedTreeCapabilities() run.Capabilities {
-	return run.Capabilities{ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
+	return run.Capabilities{ChildRuns: true, InterruptTypes: []run.InterruptType{run.InterruptQuestion}}
 }
 
 // fixtureLineage is the topology every tree fixture in this package shares:

@@ -17,7 +17,7 @@ import (
 // the failing continuation Start is what's under test.
 type resumeOKExecution struct{ executionStub }
 
-func (resumeOKExecution) Resume(context.Context, runs.ExecutorRef, []runs.InterruptAnswer, []run.InterruptKind) error {
+func (resumeOKExecution) Resume(context.Context, runs.ExecutorRef, []runs.InterruptAnswer, []run.InterruptType) error {
 	return nil
 }
 

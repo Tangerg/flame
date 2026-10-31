@@ -84,15 +84,15 @@ type pendingResumeJSON struct {
 	Replay      authoring.ReplayGuard  `json:"replay"`
 }
 
-type pendingInterruptKind string
+type pendingInterruptType string
 
 const (
-	pendingApprovalInterrupt pendingInterruptKind = "approval"
-	pendingQuestionInterrupt pendingInterruptKind = "question"
+	pendingApprovalInterrupt pendingInterruptType = "approval"
+	pendingQuestionInterrupt pendingInterruptType = "question"
 )
 
 type pendingInterruptJSON struct {
-	Kind           pendingInterruptKind         `json:"kind"`
+	Type           pendingInterruptType         `json:"type"`
 	Approval       *conversation.Approval       `json:"approval,omitzero"`
 	Question       *conversation.Question       `json:"question,omitzero"`
 	ApprovalAnswer *conversation.ApprovalAnswer `json:"approvalAnswer,omitzero"`
@@ -111,7 +111,7 @@ func newPendingInterruptJSON(
 		}
 		cloned := item.Clone()
 		return pendingInterruptJSON{
-			Kind: pendingApprovalInterrupt, Approval: &cloned, ApprovalAnswer: &decision,
+			Type: pendingApprovalInterrupt, Approval: &cloned, ApprovalAnswer: &decision,
 		}, nil
 	case conversation.Question:
 		response, ok := conversation.CloneAnswer(answer).(conversation.QuestionAnswer)
@@ -120,7 +120,7 @@ func newPendingInterruptJSON(
 		}
 		cloned := item.Clone()
 		return pendingInterruptJSON{
-			Kind: pendingQuestionInterrupt, Question: &cloned, QuestionAnswer: &response,
+			Type: pendingQuestionInterrupt, Question: &cloned, QuestionAnswer: &response,
 		}, nil
 	default:
 		return pendingInterruptJSON{}, fmt.Errorf("pending resume has unknown interrupt %T", interrupt)
@@ -128,7 +128,7 @@ func newPendingInterruptJSON(
 }
 
 func (p pendingInterruptJSON) decode(index int) (conversation.Interrupt, conversation.InterruptAnswer, error) {
-	switch p.Kind {
+	switch p.Type {
 	case pendingApprovalInterrupt:
 		if p.Approval == nil || p.ApprovalAnswer == nil || p.Question != nil || p.QuestionAnswer != nil {
 			return nil, conversation.InterruptAnswer{}, fmt.Errorf(
@@ -155,7 +155,7 @@ func (p pendingInterruptJSON) decode(index int) (conversation.Interrupt, convers
 		return nil, conversation.InterruptAnswer{}, fmt.Errorf(
 			"pending resume interrupt %d has unknown kind %q",
 			index+1,
-			p.Kind,
+			p.Type,
 		)
 	}
 }

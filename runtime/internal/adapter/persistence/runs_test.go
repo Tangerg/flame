@@ -170,7 +170,7 @@ func pendingForRun(
 			MemberID:        memberID,
 			RequestID:       "request_" + copied[index].ItemID,
 		}
-		if copied[index].Kind() == run.InterruptApproval {
+		if copied[index].Type() == run.InterruptApproval {
 			bindings[index].ToolCallID = "call_" + copied[index].ItemID
 		}
 	}
@@ -189,7 +189,7 @@ func pendingForRun(
 func capabilitiesForInterrupts(values []transcript.Interrupt) run.Capabilities {
 	capabilities := run.Capabilities{}
 	for _, value := range values {
-		capabilities.InterruptKinds = append(capabilities.InterruptKinds, value.Kind())
+		capabilities.InterruptTypes = append(capabilities.InterruptTypes, value.Type())
 	}
 	return capabilities.Normalized()
 }
@@ -1122,7 +1122,7 @@ func TestRunCapabilitiesAreImmutable(t *testing.T) {
 
 	admitted := run.Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion},
+		InterruptTypes: []run.InterruptType{run.InterruptApproval, run.InterruptQuestion},
 	}
 	draft := runDraft("run_1", "ses_A")
 	draft.Capabilities = admitted
@@ -1172,7 +1172,7 @@ func assertRunCapabilities(t *testing.T, store *RunStore, runID string, want run
 		}
 		capabilities := record.Capabilities()
 		if capabilities.ChildRuns != want.ChildRuns ||
-			!slices.Equal(capabilities.InterruptKinds, want.InterruptKinds) {
+			!slices.Equal(capabilities.InterruptTypes, want.InterruptTypes) {
 			t.Fatalf("capabilities %s = %v, want %v", when, capabilities, want)
 		}
 		return

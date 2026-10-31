@@ -36,7 +36,7 @@ func TestFailedTreeBarrierRetainsCommittedToolForTerminalClosure(t *testing.T) {
 	effects := &refusedTreeBarrierEffects{}
 	coordinator := testCoordinator(executor, effects)
 	spec := testSegment()
-	spec.Capabilities = run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
+	spec.Capabilities = run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}}
 	stream, err := coordinator.segments.openSegment(t.Context(), spec)
 	if err != nil {
 		t.Fatal(err)

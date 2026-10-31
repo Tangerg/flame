@@ -9,20 +9,20 @@ import (
 func TestRunCapabilitiesHasOneDurableRepresentation(t *testing.T) {
 	canonical := Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []InterruptKind{InterruptApproval, InterruptQuestion},
+		InterruptTypes: []InterruptType{InterruptApproval, InterruptQuestion},
 	}
 	if err := canonical.Validate(); err != nil {
 		t.Fatalf("Validate canonical capabilities: %v", err)
 	}
 	for name, capabilities := range map[string]Capabilities{
 		"duplicate": {
-			InterruptKinds: []InterruptKind{InterruptApproval, InterruptApproval},
+			InterruptTypes: []InterruptType{InterruptApproval, InterruptApproval},
 		},
 		"unsorted": {
-			InterruptKinds: []InterruptKind{InterruptQuestion, InterruptApproval},
+			InterruptTypes: []InterruptType{InterruptQuestion, InterruptApproval},
 		},
 		"unknown": {
-			InterruptKinds: []InterruptKind{InterruptKind("invalid")},
+			InterruptTypes: []InterruptType{InterruptType("invalid")},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -34,21 +34,21 @@ func TestRunCapabilitiesHasOneDurableRepresentation(t *testing.T) {
 
 	spelledDifferently := Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []InterruptKind{InterruptQuestion, InterruptApproval, InterruptQuestion},
+		InterruptTypes: []InterruptType{InterruptQuestion, InterruptApproval, InterruptQuestion},
 	}
 	if !canonical.Equal(spelledDifferently) {
 		t.Fatal("Equal treated two spellings of the same capability set as different")
 	}
-	if canonical.Equal(Capabilities{InterruptKinds: canonical.InterruptKinds}) {
+	if canonical.Equal(Capabilities{InterruptTypes: canonical.InterruptTypes}) {
 		t.Fatal("Equal ignored the child-Run capability")
 	}
 }
 
-func TestRunCapabilitiesCloneOwnsInterruptKinds(t *testing.T) {
-	original := Capabilities{InterruptKinds: []InterruptKind{InterruptApproval}}
+func TestRunCapabilitiesCloneOwnsInterruptTypes(t *testing.T) {
+	original := Capabilities{InterruptTypes: []InterruptType{InterruptApproval}}
 	cloned := original.Clone()
-	cloned.InterruptKinds[0] = InterruptQuestion
-	if original.InterruptKinds[0] != InterruptApproval {
+	cloned.InterruptTypes[0] = InterruptQuestion
+	if original.InterruptTypes[0] != InterruptApproval {
 		t.Fatal("Clone shares interrupt-kind storage with the source capabilities")
 	}
 }
@@ -56,11 +56,11 @@ func TestRunCapabilitiesCloneOwnsInterruptKinds(t *testing.T) {
 func TestRunCapabilitiesReportsTheCompleteMissingSet(t *testing.T) {
 	required := Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []InterruptKind{InterruptApproval, InterruptQuestion},
+		InterruptTypes: []InterruptType{InterruptApproval, InterruptQuestion},
 	}
-	caller := Capabilities{InterruptKinds: []InterruptKind{InterruptApproval}}
+	caller := Capabilities{InterruptTypes: []InterruptType{InterruptApproval}}
 	missing := required.MissingFrom(caller)
-	if !missing.ChildRuns || len(missing.InterruptKinds) != 1 || missing.InterruptKinds[0] != InterruptQuestion {
+	if !missing.ChildRuns || len(missing.InterruptTypes) != 1 || missing.InterruptTypes[0] != InterruptQuestion {
 		t.Fatalf("MissingFrom() = %v, want child runs and question interrupts", missing)
 	}
 	if text := missing.String(); strings.Contains(text, "interruptTypes") || text != "child runs, question interrupts" {

@@ -298,7 +298,7 @@ func parkWithGoalLease(
 		GoalIncarnationID: goalIncarnationID,
 		ModelSelection:    testsupport.DefaultModelSelection(),
 		Capabilities: run.Capabilities{
-			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+			InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 		},
 		CreatedAt: parkCreatedAt,
 	}); err != nil {
@@ -308,7 +308,7 @@ func parkWithGoalLease(
 		SessionID: sessionID, ID: runID, State: run.Waiting,
 		GoalIncarnationID: goalIncarnationID,
 		Capabilities: run.Capabilities{
-			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+			InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 		},
 
 		CreatedAt:   parkCreatedAt,

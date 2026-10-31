@@ -151,7 +151,7 @@ func serverPending(
 			MemberID:        memberID,
 			RequestID:       fmt.Sprintf("request_%s_%d", memberID, index),
 		}
-		if request.Kind() == run.InterruptApproval {
+		if request.Type() == run.InterruptApproval {
 			bindings[index].ToolCallID = fmt.Sprintf("call_%s_%d", memberID, index)
 		}
 	}
@@ -491,7 +491,7 @@ func (s *stubRuntime) openPending(ctx context.Context, t *testing.T, sessionID s
 	t.Helper()
 	capabilities := run.Capabilities{}
 	for _, request := range pending.Interrupts {
-		capabilities.InterruptKinds = append(capabilities.InterruptKinds, request.Kind())
+		capabilities.InterruptTypes = append(capabilities.InterruptTypes, request.Type())
 	}
 	return s.openPendingWith(ctx, t, sessionID, pending, capabilities.Normalized())
 }

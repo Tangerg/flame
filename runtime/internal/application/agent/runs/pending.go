@@ -110,7 +110,7 @@ type ApprovalReview struct {
 }
 
 // Kind is the answer the open Item awaits.
-func (o OpenInterrupt) Kind() run.InterruptKind {
+func (o OpenInterrupt) Type() run.InterruptType {
 	if o.Approval != nil {
 		return run.InterruptApproval
 	}
@@ -302,7 +302,7 @@ func (v *pendingBindingValidator) validate(index int, binding InterruptBinding) 
 	if err != nil {
 		return err
 	}
-	if request.Kind() == run.InterruptApproval {
+	if request.Type() == run.InterruptApproval {
 		if err := validateApprovalToolState(binding, continuation); err != nil {
 			return err
 		}
@@ -351,7 +351,7 @@ func (v *pendingBindingValidator) validateInterruptTool(
 	binding InterruptBinding,
 	request OpenInterrupt,
 ) error {
-	switch request.Kind() {
+	switch request.Type() {
 	case run.InterruptApproval:
 		if err := ValidateInvocation(binding.ToolCallID); err != nil {
 			return fmt.Errorf("interrupts: input-request binding[%d]: %w", index, err)

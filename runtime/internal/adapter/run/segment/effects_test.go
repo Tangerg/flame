@@ -521,7 +521,7 @@ func TestCommitTreeBarrierRejectsInterruptsItsRunCannotPark(t *testing.T) {
 		ModelSelection: testsupport.DefaultModelSelection(),
 		State:          run.Waiting,
 		Metrics:        testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2}),
-		Capabilities:   run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}},
+		Capabilities:   run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptApproval}},
 		CreatedAt:      createdAt,
 		MessageMark:    run.UnknownMessageMark()})
 	_, err := runs.NewTreeBarrierCommit(

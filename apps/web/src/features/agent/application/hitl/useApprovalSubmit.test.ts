@@ -37,7 +37,7 @@ function seedPending(itemId: string): void {
   const groups: PendingInterruptGroup[] = [
     {
       runId: "run_1",
-      interrupts: [{ itemId, kind: "approval" }],
+      interrupts: [{ itemId, type: "approval" }],
     },
   ];
   store.commitViewRefresh(SID, token, {

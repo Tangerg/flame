@@ -238,7 +238,7 @@ type CommittedUserInput struct {
 // Exactly one payload must match Kind.
 type ResumeResponse struct {
 	ItemID   string
-	Kind     run.InterruptKind
+	Kind     run.InterruptType
 	Approval *ApprovalResponse
 	Question *QuestionResponse
 }
@@ -405,7 +405,7 @@ func (r RootExecutionStart) Validate() error {
 	}
 	if err := (run.Capabilities{
 		ChildRuns:      r.ChildRunAdmissionEnabled,
-		InterruptKinds: r.InterruptKinds,
+		InterruptTypes: r.InterruptTypes,
 	}).Validate(); err != nil {
 		return fmt.Errorf("runs: capabilities: %w", err)
 	}
@@ -426,7 +426,7 @@ func (r RootExecutionStart) Clone() RootExecutionStart {
 	for index, message := range messages {
 		r.WorkingContext[index] = message.Clone()
 	}
-	r.InterruptKinds = slices.Clone(r.InterruptKinds)
+	r.InterruptTypes = slices.Clone(r.InterruptTypes)
 	return r
 }
 

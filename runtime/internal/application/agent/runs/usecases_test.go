@@ -1099,7 +1099,7 @@ func TestResumeCommitsOpeningBeforeActivation(t *testing.T) {
 	result, err := c.Resume(context.Background(), ResumeCommand{
 		RunID: "run_1",
 		CallerCapabilities: run.Capabilities{
-			InterruptKinds: []run.InterruptKind{run.InterruptApproval},
+			InterruptTypes: []run.InterruptType{run.InterruptApproval},
 		},
 		Responses: []ResumeResponse{{
 			ItemID: "item_1", Kind: run.InterruptApproval,
@@ -1151,7 +1151,7 @@ func TestResumeSettlesAfterOpeningWithoutWaitingForExecutorActivation(t *testing
 		result, err := coordinator.Resume(t.Context(), ResumeCommand{
 			RunID: "run_1",
 			CallerCapabilities: run.Capabilities{
-				InterruptKinds: []run.InterruptKind{run.InterruptApproval},
+				InterruptTypes: []run.InterruptType{run.InterruptApproval},
 			},
 			Responses: []ResumeResponse{{
 				ItemID: "item_1", Kind: run.InterruptApproval,
@@ -1230,7 +1230,7 @@ func TestResumeAndRootCancelShareOneApplicationAdmissionBoundary(t *testing.T) {
 		result, err := c.Resume(t.Context(), ResumeCommand{
 			RunID: "run_1",
 			CallerCapabilities: run.Capabilities{
-				InterruptKinds: []run.InterruptKind{run.InterruptApproval},
+				InterruptTypes: []run.InterruptType{run.InterruptApproval},
 			},
 			Responses: []ResumeResponse{{
 				ItemID: "item_1",
@@ -1298,7 +1298,7 @@ func TestResumeWithInputCommitsTheUserItemWithTheContinuation(t *testing.T) {
 	withInput, err := c.Resume(context.Background(), ResumeCommand{
 		RunID: "run_1", Responses: approve,
 		CallerCapabilities: run.Capabilities{
-			InterruptKinds: []run.InterruptKind{run.InterruptApproval},
+			InterruptTypes: []run.InterruptType{run.InterruptApproval},
 		},
 		Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "also skip the tests"}},
 	})
@@ -1332,7 +1332,7 @@ func TestResumeWithInputCommitsTheUserItemWithTheContinuation(t *testing.T) {
 
 	_, mediaControl, mediaCoordinator := newResumeCase()
 	source := []transcript.ContentBlock{{Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte("original resume image")}}
-	mediaResult, err := mediaCoordinator.Resume(t.Context(), ResumeCommand{RunID: "run_1", Responses: approve, CallerCapabilities: run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}}, Input: source})
+	mediaResult, err := mediaCoordinator.Resume(t.Context(), ResumeCommand{RunID: "run_1", Responses: approve, CallerCapabilities: run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptApproval}}, Input: source})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1345,7 +1345,7 @@ func TestResumeWithInputCommitsTheUserItemWithTheContinuation(t *testing.T) {
 	without, err := c.Resume(context.Background(), ResumeCommand{
 		RunID: "run_1", Responses: approve,
 		CallerCapabilities: run.Capabilities{
-			InterruptKinds: []run.InterruptKind{run.InterruptApproval},
+			InterruptTypes: []run.InterruptType{run.InterruptApproval},
 		},
 	})
 	if err != nil {
@@ -1376,7 +1376,7 @@ func TestResumePreflightLossKeepsRunRecoverable(t *testing.T) {
 	_, err := c.Resume(t.Context(), ResumeCommand{
 		RunID: "run_1",
 		CallerCapabilities: run.Capabilities{
-			InterruptKinds: []run.InterruptKind{run.InterruptApproval},
+			InterruptTypes: []run.InterruptType{run.InterruptApproval},
 		},
 		Responses: []ResumeResponse{{
 			ItemID: "item_1", Kind: run.InterruptApproval,
@@ -1426,7 +1426,7 @@ func TestResumeOpeningFailureNeverClaimsTheWriter(t *testing.T) {
 	_, err := coordinator.Resume(t.Context(), ResumeCommand{
 		RunID: "run_1",
 		CallerCapabilities: run.Capabilities{
-			InterruptKinds: []run.InterruptKind{run.InterruptApproval},
+			InterruptTypes: []run.InterruptType{run.InterruptApproval},
 		},
 		Responses: []ResumeResponse{{
 			ItemID: "item_1", Kind: run.InterruptApproval,
@@ -1577,7 +1577,7 @@ func TestResumeRefusesIsolatedRunAfterRuntimeRestart(t *testing.T) {
 	_, err := c.Resume(t.Context(), ResumeCommand{
 		RunID: "run_1",
 		CallerCapabilities: run.Capabilities{
-			InterruptKinds: []run.InterruptKind{run.InterruptApproval},
+			InterruptTypes: []run.InterruptType{run.InterruptApproval},
 		},
 		Responses: []ResumeResponse{{
 			ItemID: "item_1", Kind: run.InterruptApproval,
@@ -2129,7 +2129,7 @@ func TestCancelLetsCommittedInterruptOwnDurableFirstTeardown(t *testing.T) {
 	sessions := &fakeRunSessions{operations: &operations}
 	spec := testSegment()
 	spec.Capabilities = run.Capabilities{
-		InterruptKinds: []run.InterruptKind{run.InterruptApproval},
+		InterruptTypes: []run.InterruptType{run.InterruptApproval},
 	}
 	c := mustNewTestCoordinator(testDeps{
 		Observations: executor, Releases: control, RootCancellation: executor, Session: sessions, Projection: effects,

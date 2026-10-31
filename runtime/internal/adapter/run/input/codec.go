@@ -59,7 +59,7 @@ func decodeResolution(raw []byte) (run.InterruptResolution, error) {
 // validates against its pending-input response schema before continuing.
 func EncodeResolution(resolution run.InterruptResolution) (jsontext.Value, error) {
 	wire := resolutionPayload{}
-	switch resolution.Kind() {
+	switch resolution.Type() {
 	case run.InterruptQuestion:
 		wire.Question = &questionAnswerPayload{Answers: resolution.Question().Answers()}
 	case run.InterruptApproval:
@@ -85,7 +85,7 @@ func decode[T any](raw []byte) (T, error) {
 }
 
 type interruptWire struct {
-	Kind     run.InterruptKind   `json:"kind"`
+	Kind     run.InterruptType   `json:"kind"`
 	Approval *approvalPromptWire `json:"approval,omitzero"`
 	Question *questionPromptWire `json:"question,omitzero"`
 }
@@ -121,7 +121,7 @@ type questionOptionWire struct {
 }
 
 func promptWireFrom(interrupt runs.Interrupt) interruptWire {
-	result := interruptWire{Kind: interrupt.Kind()}
+	result := interruptWire{Kind: interrupt.Type()}
 	switch prompt := interrupt.(type) {
 	case runs.ApprovalPrompt:
 		result.Approval = &approvalPromptWire{

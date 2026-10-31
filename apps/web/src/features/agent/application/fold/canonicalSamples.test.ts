@@ -102,7 +102,7 @@ describe("segment.finished against the runtime's own samples", () => {
       finishedAt: null,
     });
     expect(view.pendingInterrupts).toEqual([
-      { runId: "run_01", interrupts: [{ itemId: "item_09", kind: "approval" }] },
+      { runId: "run_01", interrupts: [{ itemId: "item_09", type: "approval" }] },
     ]);
     expect(selectAwaitingInterrupts(view).get("item_09")).toBe("run_01");
     expect(

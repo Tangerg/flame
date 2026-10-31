@@ -111,10 +111,10 @@ func validatePendingRunTree(pending Pending, values []rundomain.Run) error {
 		)
 	}
 	for _, open := range pending.Interrupts {
-		if !slices.Contains(root.Capabilities().InterruptKinds, open.Kind()) {
+		if !slices.Contains(root.Capabilities().InterruptTypes, open.Type()) {
 			return fmt.Errorf(
 				"runs: validate parked Run tree %q: interrupt item %q has kind %s outside the root Run's capabilities",
-				pending.RootRunID, open.ItemID, open.Kind(),
+				pending.RootRunID, open.ItemID, open.Type(),
 			)
 		}
 	}

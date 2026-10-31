@@ -26,7 +26,7 @@ func TestResumeRejectsStructurallyInvalidMediaBeforeConsumingWait(t *testing.T) 
 	coordinator := newUseCaseCoordinator(&fakeExecutor{block: true}, control, sessions, effects)
 	command := ResumeCommand{
 		RunID:              "run_1",
-		CallerCapabilities: run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}},
+		CallerCapabilities: run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptApproval}},
 		Responses: []ResumeResponse{{
 			ItemID: "item_1", Kind: run.InterruptApproval,
 			Approval: &ApprovalResponse{Approved: true},

@@ -1382,7 +1382,7 @@ func coherentRecoveryPark(t *testing.T) (rundomain.Run, Pending, transcript.Item
 	}
 	run := testsupport.MustRestoreRun(rundomain.Snapshot{ID: "run_root", SessionID: "session", State: rundomain.Waiting,
 		ModelSelection: selection,
-		Capabilities:   rundomain.Capabilities{InterruptKinds: []rundomain.InterruptKind{rundomain.InterruptQuestion}},
+		Capabilities:   rundomain.Capabilities{InterruptTypes: []rundomain.InterruptType{rundomain.InterruptQuestion}},
 		CreatedAt:      createdAt, UpdatedAt: createdAt.Add(time.Second), MessageMark: rundomain.UnknownMessageMark()})
 
 	pending := Pending{

@@ -8,8 +8,8 @@ import (
 
 func normalizeCapabilities(capabilities run.Capabilities) run.Capabilities {
 	capabilities = capabilities.Normalized()
-	if len(capabilities.InterruptKinds) == 0 {
-		capabilities.InterruptKinds = nil
+	if len(capabilities.InterruptTypes) == 0 {
+		capabilities.InterruptTypes = nil
 	}
 	return capabilities
 }

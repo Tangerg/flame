@@ -232,11 +232,11 @@ func portableCapabilitiesFromArtifact(path string, profile *protocol.RunProtocol
 		}
 	}
 	for _, declared := range profile.InterruptTypes {
-		kind, backed := interruptKindFromWire(declared)
+		kind, backed := interruptTypeFromWire(declared)
 		if !backed {
 			return nil, invalidArtifact(path+".interruptTypes", "unknown value %q", declared)
 		}
-		out.InterruptKinds = append(out.InterruptKinds, kind)
+		out.InterruptTypes = append(out.InterruptTypes, kind)
 	}
 	normalized := out.Normalized()
 	return &normalized, nil

@@ -35,12 +35,12 @@ var resolutionSchema = sync.OnceValues(func() (jsonschema.Schema, error) {
 type capabilityContextKey struct{}
 
 type capabilityPolicy struct {
-	allowed []run.InterruptKind
+	allowed []run.InterruptType
 }
 
 // WithCapabilities freezes the product input kinds an Interaction Tool may
 // request. Require fails closed when a Tool asks for an unadmitted kind.
-func WithCapabilities(ctx context.Context, allowed []run.InterruptKind) context.Context {
+func WithCapabilities(ctx context.Context, allowed []run.InterruptType) context.Context {
 	return context.WithValue(ctx, capabilityContextKey{}, capabilityPolicy{
 		allowed: slices.Clone(allowed),
 	})
@@ -89,7 +89,7 @@ func Restore(invocation toolcontract.Invocation) (Continuation, bool, error) {
 	if err != nil {
 		return Continuation{}, true, err
 	}
-	if resolution.Kind() != prompt.Kind() {
+	if resolution.Type() != prompt.Type() {
 		return Continuation{}, true, errors.New("run input: answer kind differs from the persisted prompt")
 	}
 	return Continuation{Key: state.Key, Interrupt: prompt, Resolution: resolution}, true, nil
@@ -100,7 +100,7 @@ func Restore(invocation toolcontract.Invocation) (Continuation, bool, error) {
 // new input. Scope owns the suspension, wait identity, and re-entry.
 func Require(ctx context.Context, invocation toolcontract.Invocation, prompt runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
 	toolName, arguments := prompt.ToolCall()
-	key := run.InterruptKey(prompt.Kind(), toolName, arguments)
+	key := run.InterruptKey(prompt.Type(), toolName, arguments)
 	promptJSON, err := admitRequirement(ctx, prompt)
 	if err != nil {
 		return run.InterruptResolution{}, nil, err
@@ -141,10 +141,10 @@ func admitRequirement(ctx context.Context, prompt runs.Interrupt) (jsontext.Valu
 	if !ok {
 		return nil, errors.New("run input: Run capabilities are unavailable")
 	}
-	if !slices.Contains(policy.allowed, prompt.Kind()) {
+	if !slices.Contains(policy.allowed, prompt.Type()) {
 		return nil, fmt.Errorf(
 			"run input: %s is outside the Run capability set",
-			prompt.Kind(),
+			prompt.Type(),
 		)
 	}
 	return promptJSON, nil

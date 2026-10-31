@@ -208,7 +208,7 @@ export function onRunFinished(
   next = mergeRunPendingInterrupts(
     next,
     run.id,
-    interrupts.map((interrupt) => ({ itemId: interrupt.itemId, kind: interrupt.type })),
+    interrupts.map((interrupt) => ({ itemId: interrupt.itemId, type: interrupt.type })),
   );
   for (const interrupt of interrupts) next = materializeInterrupt(next, interrupt, source);
   return next;

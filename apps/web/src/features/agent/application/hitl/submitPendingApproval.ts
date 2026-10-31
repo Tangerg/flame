@@ -15,12 +15,12 @@ export function submitPendingApproval(
 
   const awaiting = selectAwaitingGroups(entry.view);
   const hasPendingApproval = awaiting.some((group) =>
-    group.interrupts.some((interrupt) => interrupt.kind === "approval"),
+    group.interrupts.some((interrupt) => interrupt.type === "approval"),
   );
   const oi = awaiting.find((group) =>
     group.interrupts.some(
       (interrupt) =>
-        interrupt.kind === "approval" &&
+        interrupt.type === "approval" &&
         !agentAccess.interrupts.isStaged({
           sessionId: sid,
           rootRunId: group.rootRunId,
@@ -30,7 +30,7 @@ export function submitPendingApproval(
   );
   const interrupt = oi?.interrupts.find(
     (candidate) =>
-      candidate.kind === "approval" &&
+      candidate.type === "approval" &&
       !agentAccess.interrupts.isStaged({
         sessionId: sid,
         rootRunId: oi.rootRunId,

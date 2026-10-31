@@ -48,13 +48,13 @@ func resolveResumeResponses(interrupts []transcript.Interrupt, bindings []Interr
 			itemResolution run.InterruptResolution
 			err            error
 		)
-		switch request.Kind() {
+		switch request.Type() {
 		case run.InterruptApproval:
 			itemResolution, err = resolveApprovalResponse(request, response)
 		case run.InterruptQuestion:
 			itemResolution, err = resolveQuestionResponse(request, response)
 		default:
-			err = fmt.Errorf("unknown open interrupt kind %q", request.Kind())
+			err = fmt.Errorf("unknown open interrupt kind %q", request.Type())
 		}
 		if err != nil {
 			return nil, fmt.Errorf("%w: item %q: %w", ErrInvalidInterruptResponse, response.ItemID, err)
@@ -135,7 +135,7 @@ func resolveQuestionResponse(request transcript.Interrupt, response ResumeRespon
 // validateResolution checks the closed answer against its exact open request.
 // Rememberability and question fields belong to that request.
 func (a InterruptAnswer) validateResolution(request transcript.Interrupt) error {
-	if a.Resolution.Kind() != request.Kind() {
+	if a.Resolution.Type() != request.Type() {
 		return errors.New("answer kind differs from its interrupt")
 	}
 	switch prompt := request.Prompt.(type) {
@@ -144,7 +144,7 @@ func (a InterruptAnswer) validateResolution(request transcript.Interrupt) error 
 	case transcript.Question:
 		return a.validateQuestionResolution(prompt)
 	default:
-		return fmt.Errorf("unknown interrupt kind %q", request.Kind())
+		return fmt.Errorf("unknown interrupt kind %q", request.Type())
 	}
 }
 

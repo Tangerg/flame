@@ -566,7 +566,7 @@ func putWaitingRun(t *testing.T, rt *stubRuntime, sessionID, runID string, atUni
 	ctx := t.Context()
 	at := time.Unix(atUnix, 0).UTC()
 	segmentID := "seg_" + runID
-	capabilities := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
+	capabilities := run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}}
 	if err := rt.runs.Admit(ctx, testsupport.RunDraft(run.Draft{
 		RunID: runID, SessionID: sessionID, SegmentID: segmentID,
 		Capabilities: capabilities, CreatedAt: at,

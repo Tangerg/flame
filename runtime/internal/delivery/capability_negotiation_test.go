@@ -125,9 +125,9 @@ func TestNegotiationDeclinedFeatureIsNotARefusal(t *testing.T) {
 	if capabilities.ChildRuns {
 		t.Fatal("declined childRuns unexpectedly enabled child runs")
 	}
-	want := []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion}
-	if len(capabilities.InterruptKinds) != len(want) {
-		t.Fatalf("interruptKinds = %v, want %v", capabilities.InterruptKinds, want)
+	want := []run.InterruptType{run.InterruptApproval, run.InterruptQuestion}
+	if len(capabilities.InterruptTypes) != len(want) {
+		t.Fatalf("interruptTypes = %v, want %v", capabilities.InterruptTypes, want)
 	}
 }
 
@@ -176,7 +176,7 @@ func TestResumeRunRefusesACallerThatCannotFollowTheRun(t *testing.T) {
 		time.Unix(1, 0).UTC(),
 	)
 	if err := rt.openPendingWith(ctx, t, sess.ID(), pending, run.Capabilities{
-		InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion},
+		InterruptTypes: []run.InterruptType{run.InterruptApproval, run.InterruptQuestion},
 	}); err != nil {
 		t.Fatalf("seed interrupt: %v", err)
 	}

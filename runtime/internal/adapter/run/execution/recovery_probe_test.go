@@ -57,7 +57,7 @@ func TestWaitingContributionProbeUsesTheOriginalRestorationConclusion(t *testing
 				t.Fatal("restoration probe called the provider")
 				return nil, nil
 			}), InteractionExecutorConfig{CallComposition: &failedRestorationComposition{definite: definite, cause: cause}})
-			continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restoration", run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}})
+			continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restoration", run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}})
 			verdict, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
 			if definite {
 				if err != nil || verdict.Resumable() || verdict.Deferred() || verdict.Loss() != run.LossConfigurationChanged {
@@ -83,7 +83,7 @@ func TestWaitingContributionProbeDistinguishesWithdrawalFromInconclusiveRead(t *
 				t.Fatal("probe called the provider")
 				return nil, nil
 			}), InteractionExecutorConfig{CallComposition: &unavailableCallComposition{cause: cause}})
-			continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_unavailable", run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}})
+			continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_unavailable", run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}})
 			verdict, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
 			if cause == plugin.ErrUnavailable || cause == plugin.ErrStale {
 				if err != nil || verdict.Resumable() || verdict.Deferred() || verdict.Loss() != run.LossConfigurationChanged {
@@ -150,7 +150,7 @@ func TestWaitingRecoveryDefersCapturedContributionBeforeRequiringALiveActivation
 		t.Error("recovery required a live activation before checking the pending connection")
 		return modeladapter.ResolvedChat{}, errors.New("unexpected assembly")
 	})
-	continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_pending", run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}})
+	continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_pending", run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}})
 	verdict, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
 	if err != nil || !verdict.Deferred() {
 		t.Fatalf("pending contribution became startup failure or lost state: %+v, %v", verdict, err)
@@ -175,7 +175,7 @@ func TestInteractionWaitingRecoveryPreservesCancellation(t *testing.T) {
 				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 			})
 			continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{
-				InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+				InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 			})
 			ctx, cancel := context.WithCancel(t.Context())
 			cancel()
@@ -216,7 +216,7 @@ func TestInteractionWaitingRecoveryPreservesActivationFailure(t *testing.T) {
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
 	continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{
-		InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+		InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 	})
 	head, found, err := store.LoadExecutionTree(t.Context(), continuation.SessionID, checkpoint.RootMemberID)
 	if err != nil || !found {
@@ -261,7 +261,7 @@ func TestInteractionWaitingRecoveryPreservesCancellationAfterActivation(t *testi
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
 	continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{
-		InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+		InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 	})
 	_, err := executor.RestoreWaitingExecution(ctx, continuation)
 	if !errors.Is(err, context.Canceled) || errors.Is(err, runs.ErrExecutorStateLost) {

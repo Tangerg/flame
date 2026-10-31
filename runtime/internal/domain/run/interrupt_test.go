@@ -2,13 +2,13 @@ package run
 
 import "testing"
 
-func TestInterruptKindsAreClosed(t *testing.T) {
-	for _, kind := range []InterruptKind{InterruptApproval, InterruptQuestion} {
+func TestInterruptTypesAreClosed(t *testing.T) {
+	for _, kind := range []InterruptType{InterruptApproval, InterruptQuestion} {
 		if !kind.Valid() {
 			t.Fatalf("declared kind %q is invalid", kind)
 		}
 	}
-	for _, kind := range []InterruptKind{"", "unknown"} {
+	for _, kind := range []InterruptType{"", "unknown"} {
 		if kind.Valid() {
 			t.Fatalf("undeclared kind %q is valid", kind)
 		}

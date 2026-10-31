@@ -117,7 +117,7 @@ func TestAnswerDeliveryCrashHelper(t *testing.T) {
 	executor := answerCrashExecutor(t, answerCrashTrees{ExecutionTreeStore: store, count: count}, workspace)
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []run.InterruptKind{run.InterruptQuestion}
+	start.InterruptTypes = []run.InterruptType{run.InterruptQuestion}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)
@@ -127,7 +127,7 @@ func TestAnswerDeliveryCrashHelper(t *testing.T) {
 	if err := store.SaveCheckpoint(t.Context(), checkpoint); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := executor.StageAcceptedContinuation(t.Context(), rootInteractionExecutionContinuation(checkpoint, workspace, ref.ExecutorID, run.Capabilities{InterruptKinds: start.InterruptKinds})); err != nil {
+	if _, err := executor.StageAcceptedContinuation(t.Context(), rootInteractionExecutionContinuation(checkpoint, workspace, ref.ExecutorID, run.Capabilities{InterruptTypes: start.InterruptTypes})); err != nil {
 		t.Fatal(err)
 	}
 	session, err := executor.session(ref)
@@ -174,7 +174,7 @@ func TestAnswerReceiptsSurviveAbruptRestart(t *testing.T) {
 			}
 			executor := answerCrashExecutor(t, answerFixtureTrees{ExecutionTreeStore: store, results: testTrees(t)}, workspace)
 			answers := checkpointAnswers(t, checkpoint)
-			ref, err := executor.StageAcceptedContinuation(t.Context(), rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restored", run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}))
+			ref, err := executor.StageAcceptedContinuation(t.Context(), rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restored", run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}}))
 			if err != nil {
 				t.Fatal(err)
 			}

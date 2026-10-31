@@ -122,7 +122,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	start := interactionTestStart()
 	start.Options = &chat.Options{Temperature: new(0.27), MaxOutputTokens: new(int64(321))}
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []run.InterruptKind{run.InterruptQuestion}
+	start.InterruptTypes = []run.InterruptType{run.InterruptQuestion}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)
@@ -141,7 +141,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		barrier.Checkpoint(),
 		workspace,
 		ref.ExecutorID,
-		run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}},
+		run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}},
 	)
 	resumption, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
 	resumable := resumption.Resumable()
@@ -282,7 +282,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	})
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []run.InterruptKind{run.InterruptQuestion}
+	start.InterruptTypes = []run.InterruptType{run.InterruptQuestion}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)
@@ -307,7 +307,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 		barrier.Checkpoint(),
 		workspace,
 		ref.ExecutorID,
-		run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}},
+		run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}},
 	)); stageContinuationErr != nil {
 		t.Fatal(stageContinuationErr)
 	}
@@ -363,7 +363,7 @@ func TestInteractionExecutorRestoresInteractiveApprovalWithoutRepeatingPolicyOrH
 	})
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []run.InterruptKind{run.InterruptApproval}
+	start.InterruptTypes = []run.InterruptType{run.InterruptApproval}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)
@@ -381,7 +381,7 @@ func TestInteractionExecutorRestoresInteractiveApprovalWithoutRepeatingPolicyOrH
 		barrier.Checkpoint(),
 		workspace,
 		ref.ExecutorID,
-		run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}},
+		run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptApproval}},
 	)
 
 	if _, stageContinuationErr := executor.StageAcceptedContinuation(t.Context(), continuation); stageContinuationErr != nil {
@@ -436,7 +436,7 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 	})
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []run.InterruptKind{run.InterruptApproval}
+	start.InterruptTypes = []run.InterruptType{run.InterruptApproval}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)
@@ -448,7 +448,7 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 		barrier.Checkpoint(),
 		workspace,
 		ref.ExecutorID,
-		run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}},
+		run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptApproval}},
 	)
 	if _, stageContinuationErr := executor.StageAcceptedContinuation(t.Context(), continuation); stageContinuationErr != nil {
 		t.Fatal(stageContinuationErr)
@@ -515,7 +515,7 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 	})
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []run.InterruptKind{run.InterruptApproval}
+	start.InterruptTypes = []run.InterruptType{run.InterruptApproval}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)
@@ -527,7 +527,7 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 		barrier.Checkpoint(),
 		workspace,
 		ref.ExecutorID,
-		run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}},
+		run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptApproval}},
 	)
 	if _, stageContinuationErr := executor.StageAcceptedContinuation(t.Context(), continuation); stageContinuationErr != nil {
 		t.Fatal(stageContinuationErr)
@@ -597,7 +597,7 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 	})
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []run.InterruptKind{run.InterruptQuestion}
+	start.InterruptTypes = []run.InterruptType{run.InterruptQuestion}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)
@@ -612,7 +612,7 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 		barrier.Checkpoint(),
 		workspace,
 		ref.ExecutorID,
-		run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}},
+		run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}},
 	)); stageContinuationErr != nil {
 		t.Fatal(stageContinuationErr)
 	}
@@ -835,7 +835,7 @@ func TestInteractionExecutorProbesWaitingCheckpointThroughExactRestorePath(t *te
 		checkpoint,
 		workspace,
 		"exec_probe",
-		run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}},
+		run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}},
 	)
 	head, found, err := executor.config.ExecutionTrees.LoadExecutionTree(t.Context(), continuation.SessionID, checkpoint.RootMemberID)
 	if err != nil || !found {
@@ -1121,7 +1121,7 @@ func captureInteractionQuestionCheckpoint(t *testing.T, workspace string) runs.E
 	})
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []run.InterruptKind{run.InterruptQuestion}
+	start.InterruptTypes = []run.InterruptType{run.InterruptQuestion}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)

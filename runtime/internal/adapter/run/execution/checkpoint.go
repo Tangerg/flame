@@ -119,7 +119,7 @@ func (i interactionCheckpointState) restoredStart(continuation runs.ExecutionCon
 		Isolated:                 continuation.Isolated,
 		GoalIncarnationID:        continuation.GoalIncarnationID,
 		ModelSelection:           continuation.RootModelSelection(),
-		InterruptKinds:           slices.Clone(continuation.Capabilities.InterruptKinds),
+		InterruptTypes:           slices.Clone(continuation.Capabilities.InterruptTypes),
 		ChildRunAdmissionEnabled: continuation.Capabilities.ChildRuns,
 		WorkingContext:           cloneChatMessages(i.instructions),
 		Options:                  new(i.options.Clone()),

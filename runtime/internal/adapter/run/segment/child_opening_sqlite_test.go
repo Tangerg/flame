@@ -28,7 +28,7 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 	runStore := db.Runs
 	transcriptStore := db.Transcript
 	capabilities := run.Capabilities{
-		ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+		ChildRuns: true, InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 	}
 	root := run.Draft{
 		RunID: "run_root", SessionID: "session_1", SegmentID: "segment_root",

@@ -405,7 +405,7 @@ func TestOpeningCommitOwnsItsValidatedWriteSet(t *testing.T) {
 	admission := run.Draft{
 		RunID: "run_root", SessionID: "session", SegmentID: "segment_root",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
-		Capabilities: run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}},
+		Capabilities: run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptApproval}},
 	}
 	initialSession := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "session", Workspace: testsupport.MustWorkspace("/work"),
@@ -426,18 +426,18 @@ func TestOpeningCommitOwnsItsValidatedWriteSet(t *testing.T) {
 		t.Fatalf("NewAdmissionOpeningCommit: %v", err)
 	}
 
-	admission.Capabilities.InterruptKinds[0] = run.InterruptQuestion
+	admission.Capabilities.InterruptTypes[0] = run.InterruptQuestion
 	initialSession = session.Session{}
 	events[0].ConversationMessages[0].Parts[0].Text = "changed"
 	projectedAdmission, _ := opening.Admission()
-	projectedAdmission.Capabilities.InterruptKinds[0] = run.InterruptQuestion
+	projectedAdmission.Capabilities.InterruptTypes[0] = run.InterruptQuestion
 	projectedEvents := opening.Events()
 	projectedEvents[0].ConversationMessages[0].Parts[0].Text = "projected"
 
 	ownedAdmission, admitted := opening.Admission()
 	ownedSession, initialized := opening.InitialSession()
 	ownedEvents := opening.Events()
-	if !admitted || ownedAdmission.Capabilities.InterruptKinds[0] != run.InterruptApproval {
+	if !admitted || ownedAdmission.Capabilities.InterruptTypes[0] != run.InterruptApproval {
 		t.Fatalf("owned admission = %+v", ownedAdmission)
 	}
 	if !initialized || ownedSession.ID() != "session" {

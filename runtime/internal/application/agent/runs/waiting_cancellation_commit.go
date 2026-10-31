@@ -388,7 +388,7 @@ func (w waitingCancellationValidation) validateTerminalItems() error {
 	expectedByItemID := make(map[string]expectedTool)
 	for index, request := range c.ExpectedPending.Interrupts {
 		continuation, _ := continuationForMember(c.ExpectedPending.Continuations, c.ExpectedPending.Bindings[index].MemberID)
-		if _, terminal := w.terminalRunIDs[continuation.RunID]; terminal && request.Kind() == rundomain.InterruptApproval {
+		if _, terminal := w.terminalRunIDs[continuation.RunID]; terminal && request.Type() == rundomain.InterruptApproval {
 			expectedByItemID[request.ItemID] = expectedTool{runID: continuation.RunID}
 		}
 	}

@@ -21,7 +21,7 @@ func TestStartCommandCloneOwnsMutableInput(t *testing.T) {
 	command := StartCommand{
 		Options: &corechat.Options{MaxOutputTokens: &maxOutputTokens},
 		Capabilities: run.Capabilities{
-			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+			InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 		},
 		Input: []transcript.ContentBlock{{
 			Kind: transcript.ImageContent, MediaType: "image/png", Bytes: imageBytes,
@@ -32,7 +32,7 @@ func TestStartCommandCloneOwnsMutableInput(t *testing.T) {
 	imageBytes[0] = 'x'
 	command.Input[0].MediaType = "image/jpeg"
 	*command.Options.MaxOutputTokens = 512
-	command.Capabilities.InterruptKinds[0] = run.InterruptApproval
+	command.Capabilities.InterruptTypes[0] = run.InterruptApproval
 
 	if got := string(owned.Input[0].Bytes); got != "image" {
 		t.Fatalf("owned image bytes = %q", got)
@@ -43,7 +43,7 @@ func TestStartCommandCloneOwnsMutableInput(t *testing.T) {
 	if got := *owned.Options.MaxOutputTokens; got != 256 {
 		t.Fatalf("owned max output tokens = %d", got)
 	}
-	if got := owned.Capabilities.InterruptKinds; !slices.Equal(got, []run.InterruptKind{run.InterruptQuestion}) {
+	if got := owned.Capabilities.InterruptTypes; !slices.Equal(got, []run.InterruptType{run.InterruptQuestion}) {
 		t.Fatalf("owned interrupt kinds = %v", got)
 	}
 }
@@ -58,7 +58,7 @@ func TestResumeCommandCloneOwnsMutableInput(t *testing.T) {
 			Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte("image"),
 		}},
 		CallerCapabilities: run.Capabilities{
-			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+			InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 		},
 	}
 	owned := command.clone()
@@ -66,7 +66,7 @@ func TestResumeCommandCloneOwnsMutableInput(t *testing.T) {
 	command.Responses[0].Approval.Arguments = "changed"
 	command.Responses[1].Question.Answers[0][0] = "changed"
 	command.Input[0].Bytes[0] = 'x'
-	command.CallerCapabilities.InterruptKinds[0] = run.InterruptApproval
+	command.CallerCapabilities.InterruptTypes[0] = run.InterruptApproval
 
 	if got := owned.Responses[0].Approval.Arguments; got != "{}" {
 		t.Fatalf("owned approval arguments = %q", got)
@@ -77,7 +77,7 @@ func TestResumeCommandCloneOwnsMutableInput(t *testing.T) {
 	if got := string(owned.Input[0].Bytes); got != "image" {
 		t.Fatalf("owned input bytes = %q", got)
 	}
-	if got := owned.CallerCapabilities.InterruptKinds; !slices.Equal(got, []run.InterruptKind{run.InterruptQuestion}) {
+	if got := owned.CallerCapabilities.InterruptTypes; !slices.Equal(got, []run.InterruptType{run.InterruptQuestion}) {
 		t.Fatalf("owned caller capabilities = %v", got)
 	}
 }
@@ -101,13 +101,13 @@ func TestSteerCommandCloneOwnsMutableInput(t *testing.T) {
 
 func TestSubscribeRequestCloneOwnsCallerCapabilities(t *testing.T) {
 	request := SubscribeRequest{CallerCapabilities: run.Capabilities{
-		InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+		InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 	}}
 	owned := request.clone()
 
-	request.CallerCapabilities.InterruptKinds[0] = run.InterruptApproval
+	request.CallerCapabilities.InterruptTypes[0] = run.InterruptApproval
 
-	if got := owned.CallerCapabilities.InterruptKinds; !slices.Equal(got, []run.InterruptKind{run.InterruptQuestion}) {
+	if got := owned.CallerCapabilities.InterruptTypes; !slices.Equal(got, []run.InterruptType{run.InterruptQuestion}) {
 		t.Fatalf("owned caller capabilities = %v", got)
 	}
 }
@@ -194,7 +194,7 @@ func TestStartExecutionValidateRejectsNonCanonicalAdmissionPolicy(t *testing.T) 
 		execution RootExecutionStart
 	}{
 		{name: "duplicate interrupt kind", execution: RootExecutionStart{
-			InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptApproval},
+			InterruptTypes: []run.InterruptType{run.InterruptApproval, run.InterruptApproval},
 		}},
 		{name: "goal incarnation surrounding whitespace", execution: RootExecutionStart{
 			GoalIncarnationID: " lease",

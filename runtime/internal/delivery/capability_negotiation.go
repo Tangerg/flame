@@ -65,9 +65,9 @@ func (s *Handler) negotiateCapabilities(ctx context.Context) (run.Capabilities, 
 	}
 
 	for _, declared := range caps.InterruptTypes {
-		kind, backed := interruptKindFromWire(declared)
+		kind, backed := interruptTypeFromWire(declared)
 		if backed {
-			capabilities.InterruptKinds = append(capabilities.InterruptKinds, kind)
+			capabilities.InterruptTypes = append(capabilities.InterruptTypes, kind)
 			continue
 		}
 		return run.Capabilities{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown interruptTypes value %q", declared))
@@ -109,13 +109,13 @@ func (s *Handler) requestCanUseFeature(ctx context.Context, feature string) bool
 // a state where the call succeeds.
 func capabilityGap(missing run.Capabilities) *CapabilityGapError {
 	requirements := make([]protocol.CapabilityRequirement, 0,
-		1+len(missing.InterruptKinds))
+		1+len(missing.InterruptTypes))
 	if missing.ChildRuns {
 		requirements = append(requirements, protocol.CapabilityRequirement{
 			Type: protocol.RequirementFeature, Name: protocol.FeatureChildRuns,
 		})
 	}
-	for _, kind := range missing.InterruptKinds {
+	for _, kind := range missing.InterruptTypes {
 		requirements = append(requirements, protocol.CapabilityRequirement{
 			Type: protocol.RequirementInterruptType, Name: string(presentInterruptType(kind)),
 		})
@@ -123,10 +123,10 @@ func capabilityGap(missing run.Capabilities) *CapabilityGapError {
 	return NewCapabilityGapError(requirements...)
 }
 
-// interruptKindFromWire maps a declared interrupt type onto the durable kind the
-// runtime raises. It reports false for a type no kind backs — which is not the
-// same as an unknown value, and the caller distinguishes them.
-func interruptKindFromWire(kind protocol.InterruptType) (run.InterruptKind, bool) {
+// interruptTypeFromWire maps a declared interrupt type onto the durable type the
+// runtime raises. It reports false for a type the runtime does not raise — which
+// is not the same as an unknown value, and the caller distinguishes them.
+func interruptTypeFromWire(kind protocol.InterruptType) (run.InterruptType, bool) {
 	switch kind {
 	case protocol.InterruptApproval:
 		return run.InterruptApproval, true
@@ -139,7 +139,7 @@ func interruptKindFromWire(kind protocol.InterruptType) (run.InterruptKind, bool
 
 // presentInterruptType is the same mapping read outward, for a protocol profile or an
 // interrupt on its way to the wire.
-func presentInterruptType(kind run.InterruptKind) protocol.InterruptType {
+func presentInterruptType(kind run.InterruptType) protocol.InterruptType {
 	switch kind {
 	case run.InterruptApproval:
 		return protocol.InterruptApproval

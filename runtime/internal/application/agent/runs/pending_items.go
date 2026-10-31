@@ -41,7 +41,7 @@ func (o OpenInterrupt) project(item transcript.Item) (transcript.Interrupt, erro
 		ItemID: item.ID(), ItemOccurredAt: item.OccurredAt(),
 		RunID: item.RunID(),
 	}
-	switch o.Kind() {
+	switch o.Type() {
 	case run.InterruptApproval:
 		call, present := item.ToolCall()
 		if !present || item.Status() != transcript.ItemRunning || call.Approval != nil {

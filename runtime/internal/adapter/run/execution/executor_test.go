@@ -173,7 +173,7 @@ func TestInteractionExecutorStageRootOwnsInput(t *testing.T) {
 	maxOutputTokens := int64(256)
 	start := interactionTestStart()
 	start.Options = &chat.Options{MaxOutputTokens: &maxOutputTokens}
-	start.InterruptKinds = []run.InterruptKind{run.InterruptQuestion}
+	start.InterruptTypes = []run.InterruptType{run.InterruptQuestion}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)
@@ -186,7 +186,7 @@ func TestInteractionExecutorStageRootOwnsInput(t *testing.T) {
 
 	start.WorkingContext[0].Parts[0].Text = "changed"
 	*start.Options.MaxOutputTokens = 512
-	start.InterruptKinds[0] = run.InterruptApproval
+	start.InterruptTypes[0] = run.InterruptApproval
 	session, err := executor.session(ref)
 	if err != nil {
 		t.Fatal(err)
@@ -197,7 +197,7 @@ func TestInteractionExecutorStageRootOwnsInput(t *testing.T) {
 	if got := *session.start.Options.MaxOutputTokens; got != 256 {
 		t.Fatalf("owned max output tokens = %d", got)
 	}
-	if got := session.start.InterruptKinds; !slices.Equal(got, []run.InterruptKind{run.InterruptQuestion}) {
+	if got := session.start.InterruptTypes; !slices.Equal(got, []run.InterruptType{run.InterruptQuestion}) {
 		t.Fatalf("owned interrupt kinds = %v", got)
 	}
 }

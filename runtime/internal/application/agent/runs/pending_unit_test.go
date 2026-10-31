@@ -219,7 +219,7 @@ func TestPendingRunTreeOwnsTopologyAndContract(t *testing.T) {
 	}
 
 	unadmitted := facts
-	unadmitted.capabilities = run.Capabilities{ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
+	unadmitted.capabilities = run.Capabilities{ChildRuns: true, InterruptTypes: []run.InterruptType{run.InterruptQuestion}}
 	if err := validatePendingRunTree(pending, parkedTree(pending, unadmitted)); err == nil || !strings.Contains(err.Error(), "outside the root Run's capabilities") {
 		t.Fatalf("unadmitted interrupt kind error = %v", err)
 	}
@@ -330,8 +330,8 @@ func TestAcceptedAnswersHaveOneFreshAndRecoveryProjection(t *testing.T) {
 			}
 			responses := make([]ResumeResponse, len(open))
 			for index, request := range open {
-				responses[index] = ResumeResponse{ItemID: request.ItemID, Kind: request.Kind()}
-				if request.Kind() == run.InterruptQuestion {
+				responses[index] = ResumeResponse{ItemID: request.ItemID, Kind: request.Type()}
+				if request.Type() == run.InterruptQuestion {
 					responses[index].Question = &QuestionResponse{Answers: [][]string{{"chosen"}}}
 				} else {
 					responses[index].Approval = &ApprovalResponse{Approved: index == 0}

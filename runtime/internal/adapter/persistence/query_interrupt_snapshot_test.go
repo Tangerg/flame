@@ -58,7 +58,7 @@ func TestInterruptPageReadsTheHandoffAndItemsFromOneSnapshot(t *testing.T) {
 	if err := newSessionStore(writer).Insert(t.Context(), sess); err != nil {
 		t.Fatal(err)
 	}
-	capabilities := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
+	capabilities := run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}}
 	runStore := newRunStore(writer)
 	draft := run.Draft{RunID: "run_snapshot", SessionID: sess.ID(), SegmentID: "seg_snapshot", ModelSelection: testsupport.DefaultModelSelection(), Capabilities: capabilities, CreatedAt: created}
 	if err := runStore.Admit(t.Context(), draft); err != nil {

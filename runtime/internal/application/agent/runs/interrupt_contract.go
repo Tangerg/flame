@@ -76,7 +76,7 @@ type QuestionOptionSpec struct {
 // ApprovalPrompt or a QuestionPrompt, and the prompt alone decides its Kind.
 // Executor continuation data is deliberately absent.
 type Interrupt interface {
-	Kind() run.InterruptKind
+	Type() run.InterruptType
 	// ToolCall returns the logical tool call that owns this interrupt.
 	ToolCall() (name, arguments string)
 	// Validate rejects a malformed prompt before it becomes a durable Pending
@@ -92,8 +92,8 @@ func validateInterrupt(interrupt Interrupt) error {
 	return interrupt.Validate()
 }
 
-func (ApprovalPrompt) Kind() run.InterruptKind { return run.InterruptApproval }
-func (QuestionPrompt) Kind() run.InterruptKind { return run.InterruptQuestion }
+func (ApprovalPrompt) Type() run.InterruptType { return run.InterruptApproval }
+func (QuestionPrompt) Type() run.InterruptType { return run.InterruptQuestion }
 
 func (a ApprovalPrompt) ToolCall() (name, arguments string) { return a.Tool.ModelName(), a.Arguments }
 func (q QuestionPrompt) ToolCall() (name, arguments string) { return q.ToolName, q.Arguments }

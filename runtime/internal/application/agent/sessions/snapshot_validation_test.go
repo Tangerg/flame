@@ -285,7 +285,7 @@ func TestPortableSnapshotDelegatesModelIdentityToRun(t *testing.T) {
 func TestPortableSnapshotKeepsCapabilitiesOnTheRoot(t *testing.T) {
 	capabilities := run.Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []run.InterruptKind{run.InterruptApproval},
+		InterruptTypes: []run.InterruptType{run.InterruptApproval},
 	}
 	at := time.Unix(1, 0).UTC()
 	selection := testsupport.MustModelSelection("provider", "model")

@@ -265,7 +265,7 @@ func TestGoalStore_RoundTrip(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0).UTC()
 	wantCapabilities := run.Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion},
+		InterruptTypes: []run.InterruptType{run.InterruptApproval, run.InterruptQuestion},
 	}
 	selection := testReasoningSelection(t, "anthropic", "claude", "high")
 	g, err := goal.New(sess, "ship the feature", selection, wantCapabilities, "lease-round-trip", now)

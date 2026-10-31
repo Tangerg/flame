@@ -98,7 +98,7 @@ func (w *waitingDelegateFixture) start(t *testing.T) runs.StartResult {
 	started, err := w.coordinator.Start(t.Context(), runs.StartCommand{
 		SessionID: "session_1",
 		Capabilities: run.Capabilities{
-			ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+			ChildRuns: true, InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 		},
 		Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "delegate waiting work"}},
 	})

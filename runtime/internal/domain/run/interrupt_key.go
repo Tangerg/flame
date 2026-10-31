@@ -10,7 +10,7 @@ import (
 // It is namespace-sensitive so mixed kinds do not collide (for example
 // "approval|write|{...}" vs. "question|write|{...}"). The stable hash keeps
 // serialized keys compact for transport and durable stores.
-func InterruptKey(kind InterruptKind, toolName, arguments string) string {
+func InterruptKey(kind InterruptType, toolName, arguments string) string {
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(kind))
 	_, _ = h.Write([]byte{0})

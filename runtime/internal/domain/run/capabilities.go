@@ -40,12 +40,12 @@ func (i *InsufficientCapabilitiesError) Is(target error) bool {
 // The empty value is a valid minimal capability set, not an unknown value.
 type Capabilities struct {
 	ChildRuns      bool
-	InterruptKinds []InterruptKind
+	InterruptTypes []InterruptType
 }
 
 // Clone returns an ownership-isolated copy.
 func (c Capabilities) Clone() Capabilities {
-	c.InterruptKinds = slices.Clone(c.InterruptKinds)
+	c.InterruptTypes = slices.Clone(c.InterruptTypes)
 	return c
 }
 
@@ -53,11 +53,11 @@ func (c Capabilities) Clone() Capabilities {
 // representation. Admission normalizes once; later boundaries can compare the
 // frozen value directly and fail closed on corruption.
 func (c Capabilities) Validate() error {
-	for index, kind := range c.InterruptKinds {
+	for index, kind := range c.InterruptTypes {
 		if !kind.Valid() {
 			return fmt.Errorf("run: run capability interrupt kind[%d] is unknown", index)
 		}
-		if index > 0 && c.InterruptKinds[index-1] >= kind {
+		if index > 0 && c.InterruptTypes[index-1] >= kind {
 			return errors.New("run: run capability interrupt kinds must be sorted without duplicates")
 		}
 	}
@@ -71,24 +71,24 @@ func (c Capabilities) Validate() error {
 func (c Capabilities) Equal(other Capabilities) bool {
 	left := c.Normalized()
 	right := other.Normalized()
-	return left.ChildRuns == right.ChildRuns && slices.Equal(left.InterruptKinds, right.InterruptKinds)
+	return left.ChildRuns == right.ChildRuns && slices.Equal(left.InterruptTypes, right.InterruptTypes)
 }
 
 // Normalized returns the interrupt policy as a canonical set: sorted and without
 // duplicates. Comparing or storing a set must not depend on how a caller happened
 // to order it.
 func (c Capabilities) Normalized() Capabilities {
-	kinds := slices.Clone(c.InterruptKinds)
+	kinds := slices.Clone(c.InterruptTypes)
 	slices.Sort(kinds)
 	return Capabilities{
 		ChildRuns:      c.ChildRuns,
-		InterruptKinds: slices.Compact(kinds),
+		InterruptTypes: slices.Compact(kinds),
 	}
 }
 
 // IsEmpty reports that the Run has no optional behavior enabled.
 func (c Capabilities) IsEmpty() bool {
-	return !c.ChildRuns && len(c.InterruptKinds) == 0
+	return !c.ChildRuns && len(c.InterruptTypes) == 0
 }
 
 // MissingFrom returns every capability in c that caller lacks.
@@ -97,9 +97,9 @@ func (c Capabilities) MissingFrom(caller Capabilities) Capabilities {
 	if c.ChildRuns && !caller.ChildRuns {
 		missing.ChildRuns = true
 	}
-	for _, kind := range c.InterruptKinds {
-		if !slices.Contains(caller.InterruptKinds, kind) {
-			missing.InterruptKinds = append(missing.InterruptKinds, kind)
+	for _, kind := range c.InterruptTypes {
+		if !slices.Contains(caller.InterruptTypes, kind) {
+			missing.InterruptTypes = append(missing.InterruptTypes, kind)
 		}
 	}
 	return missing
@@ -107,11 +107,11 @@ func (c Capabilities) MissingFrom(caller Capabilities) Capabilities {
 
 // String names the enabled behaviors for an error explaining a refusal.
 func (c Capabilities) String() string {
-	parts := make([]string, 0, 1+len(c.InterruptKinds))
+	parts := make([]string, 0, 1+len(c.InterruptTypes))
 	if c.ChildRuns {
 		parts = append(parts, "child runs")
 	}
-	for _, kind := range c.InterruptKinds {
+	for _, kind := range c.InterruptTypes {
 		parts = append(parts, string(kind)+" interrupts")
 	}
 	if len(parts) == 0 {

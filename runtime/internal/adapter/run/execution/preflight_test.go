@@ -18,7 +18,7 @@ import (
 func TestContinuationPreflightDoesNotAssembleOrAcquireAWriter(t *testing.T) {
 	workspace := t.TempDir()
 	checkpoint := captureInteractionQuestionCheckpoint(t, workspace)
-	waiting := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_preflight", run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}})
+	waiting := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_preflight", run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}})
 	state, err := decodeExecutorCheckpoint(checkpoint)
 	if err != nil {
 		t.Fatal(err)

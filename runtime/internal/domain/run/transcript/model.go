@@ -241,18 +241,18 @@ type Interrupt struct {
 
 // Prompt is the closed set of things an interrupt can ask.
 type Prompt interface {
-	Kind() run.InterruptKind
+	Type() run.InterruptType
 	prompt()
 }
 
-func (Approval) Kind() run.InterruptKind { return run.InterruptApproval }
-func (Question) Kind() run.InterruptKind { return run.InterruptQuestion }
+func (Approval) Type() run.InterruptType { return run.InterruptApproval }
+func (Question) Type() run.InterruptType { return run.InterruptQuestion }
 
 func (Approval) prompt() {}
 func (Question) prompt() {}
 
 // Kind reports what the interrupt asks.
-func (i Interrupt) Kind() run.InterruptKind { return i.Prompt.Kind() }
+func (i Interrupt) Type() run.InterruptType { return i.Prompt.Type() }
 
 // Validate reports whether an interrupt carries one valid prompt with a valid
 // item and run identity. An open question that already holds an accepted

@@ -846,7 +846,7 @@ func TestDriverCarriesFrozenGoalCapabilitiesIntoAutonomousRuns(t *testing.T) {
 	cleanupDriver(t, d)
 	want := run.Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion},
+		InterruptTypes: []run.InterruptType{run.InterruptApproval, run.InterruptQuestion},
 	}
 	started, err := d.Start(
 		context.Background(), "s1", "do it", testGoalModelSelection(), want,
@@ -867,7 +867,7 @@ func TestDriverCarriesFrozenGoalCapabilitiesIntoAutonomousRuns(t *testing.T) {
 
 func TestDriverResumeRequiresTheFrozenGoalCapabilities(t *testing.T) {
 	store := newMemStore()
-	want := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
+	want := run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}}
 	g, err := goal.New(
 		"s1", "do it", testGoalModelSelection(), want,
 		"incarnation-capabilities", time.Unix(0, 0),

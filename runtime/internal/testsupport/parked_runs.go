@@ -30,8 +30,8 @@ func SeedParkedRuns(
 	if !capabilities.IsEmpty() {
 		body, err := json.Marshal(struct {
 			ChildRuns      bool                `json:"childRuns,omitzero"`
-			InterruptKinds []run.InterruptKind `json:"interruptKinds,omitempty"`
-		}{capabilities.ChildRuns, capabilities.InterruptKinds})
+			InterruptTypes []run.InterruptType `json:"interruptTypes,omitempty"`
+		}{capabilities.ChildRuns, capabilities.InterruptTypes})
 		if err != nil {
 			t.Fatal(err)
 		}

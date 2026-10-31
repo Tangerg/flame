@@ -372,7 +372,7 @@ func (c *Openings) prepareRootStart(
 	draft := RootExecutionStart{
 		ModelSelection:           effectiveSelection,
 		Options:                  cmd.Options,
-		InterruptKinds:           cmd.Capabilities.InterruptKinds,
+		InterruptTypes:           cmd.Capabilities.InterruptTypes,
 		ChildRunAdmissionEnabled: cmd.Capabilities.ChildRuns,
 		GoalIncarnationID:        cmd.GoalIncarnationID,
 	}

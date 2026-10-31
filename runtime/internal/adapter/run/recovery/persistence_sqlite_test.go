@@ -414,7 +414,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 		RunID: "run_partial", SessionID: "session", SegmentID: "segment", CreatedAt: createdAt,
 		ModelSelection: testsupport.DefaultModelSelection(),
 		Capabilities: run.Capabilities{
-			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+			InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 		},
 	}); admitErr != nil {
 		t.Fatalf("Admit: %v", admitErr)
@@ -426,7 +426,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	}
 	if suspendErr := runStore.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{ID: "run_partial", SessionID: "session", State: run.Waiting,
 		Capabilities: run.Capabilities{
-			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+			InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 		},
 		CreatedAt: createdAt,
 		UpdatedAt: createdAt.Add(time.Second), MessageMark: run.UnknownMessageMark()}),

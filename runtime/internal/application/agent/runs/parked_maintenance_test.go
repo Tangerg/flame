@@ -30,7 +30,7 @@ func TestCancellationDuringParkedMaintenanceIsBusyUntilOwnerReleases(t *testing.
 		Runs: projection, Admissions: testsupport.NewAdmissionGate(),
 	})
 	spec := testSegment()
-	spec.Capabilities = run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
+	spec.Capabilities = run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}}
 	stream, err := coordinator.segments.openSegment(t.Context(), testAdmittedSegment(t, coordinator, spec))
 	if err != nil {
 		t.Fatal(err)

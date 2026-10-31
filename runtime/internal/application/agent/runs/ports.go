@@ -303,7 +303,7 @@ type RootExecutionStart struct {
 	// execution, including the current user message as its final entry. It is a
 	// seed, not a reference back to mutable Conversation state.
 	WorkingContext []corechat.Message
-	InterruptKinds []run.InterruptKind
+	InterruptTypes []run.InterruptType
 	// ChildRunAdmissionEnabled installs the executor-to-application admission
 	// handshake for Delegate children. It is deliberately explicit and defaults
 	// off; the Run's frozen application policy is its sole production source.

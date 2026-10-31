@@ -215,7 +215,7 @@ func TestWaitingCheckpointCarriesTheDependencyProjection(t *testing.T) {
 	})
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []run.InterruptKind{run.InterruptQuestion}
+	start.InterruptTypes = []run.InterruptType{run.InterruptQuestion}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)

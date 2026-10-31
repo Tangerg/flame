@@ -344,7 +344,7 @@ func TestSubscribeAfterOrphanRecoveryUsesFinishedStateBeforeOldCursor(t *testing
 
 func TestSubscribeRefusesACallerThatCouldNotFollowTheRun(t *testing.T) {
 	snapshot := runRecord(run.Running, testSegmentID, "").Snapshot()
-	snapshot.Capabilities = run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}}
+	snapshot.Capabilities = run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptApproval}}
 	record := testsupport.MustRestoreRun(snapshot)
 	c := mustNewCoordinator(runDeps{
 		Runs: &fakeRunProjection{runs: map[string]run.Run{testRunID: record}},

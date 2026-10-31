@@ -404,7 +404,7 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 			},
 			CreatedAt: created}}}
 	root := testsupport.MustRestoreRun(run.Snapshot{ID: "run_waiting", SessionID: "ses_1", State: run.Waiting,
-		Capabilities: run.Capabilities{ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptApproval}},
+		Capabilities: run.Capabilities{ChildRuns: true, InterruptTypes: []run.InterruptType{run.InterruptApproval}},
 	})
 	approvalItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_1", SessionID: "ses_1", RunID: "run_child",

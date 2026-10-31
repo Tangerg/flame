@@ -715,7 +715,7 @@ func approvalItemsFor(sessionID string, sets ...runs.Pending) []transcript.Seque
 }
 
 func approvalCapabilities() run.Capabilities {
-	return run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}}
+	return run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptApproval}}
 }
 
 func testPending(rootRunID string, createdAt time.Time) runs.Pending {
@@ -790,7 +790,7 @@ func TestListPendingInterruptPageValidatesCaller(t *testing.T) {
 		Transcript: &fakeTranscript{items: approvalItemsFor("ses_1", stored...)}, Interrupts: reader,
 		Runs: &fakeRuns{history: []run.Run{approvalRootRun("ses_1", "run_1")}}, Sessions: &fakeSessions{},
 	})
-	invalidCaller := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptApproval}}
+	invalidCaller := run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptApproval, run.InterruptApproval}}
 	if _, err := coordinator.ListPendingInterruptPage(t.Context(), "ses_1", "", invalidCaller, "", pagination.DefaultLimit()); err == nil {
 		t.Fatal("ListPendingInterruptPage accepted non-canonical caller capabilities")
 	}
@@ -809,7 +809,7 @@ func TestListPendingInterruptPageOwnsValidatedCallerCapabilities(t *testing.T) {
 		fakeInterrupts: &fakeInterrupts{},
 		page:           testSessionPendingRuns("run_1"),
 		beforeRead: func() {
-			caller.InterruptKinds[0] = run.InterruptQuestion
+			caller.InterruptTypes[0] = run.InterruptQuestion
 		},
 	}
 	coordinator := newQueryCoordinator(t, QueryDependencies{
@@ -837,7 +837,7 @@ func TestListPendingInterruptPageRefusesACallerThatCannotFollowTheRun(t *testing
 	ctx := context.Background()
 	waiting := testSessionPendingRuns("run_1")
 	root := testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "ses_1", Capabilities: run.Capabilities{
-		InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion},
+		InterruptTypes: []run.InterruptType{run.InterruptApproval, run.InterruptQuestion},
 	}})
 	c := newQueryCoordinator(t, QueryDependencies{
 		Transcript: &fakeTranscript{items: approvalItemsFor("ses_1", waiting...)},
@@ -847,14 +847,14 @@ func TestListPendingInterruptPageRefusesACallerThatCannotFollowTheRun(t *testing
 	})
 
 	answersOnlyApprovals := run.Capabilities{
-		InterruptKinds: []run.InterruptKind{run.InterruptApproval},
+		InterruptTypes: []run.InterruptType{run.InterruptApproval},
 	}
 	if _, err := c.ListPendingInterruptPage(ctx, "ses_1", "", answersOnlyApprovals, "", pagination.DefaultLimit()); !errors.Is(err, run.ErrInsufficientCapabilities) {
 		t.Fatalf("partial caller err = %v, want ErrInsufficientCapabilities", err)
 	}
 
 	full := run.Capabilities{
-		InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion},
+		InterruptTypes: []run.InterruptType{run.InterruptApproval, run.InterruptQuestion},
 	}
 	page, err := c.ListPendingInterruptPage(ctx, "ses_1", "", full, "", pagination.DefaultLimit())
 	if err != nil || len(page.Rows) != 1 {

@@ -67,7 +67,7 @@ func TestResumeRejectsAHandoffConsumedBeforeAdmission(t *testing.T) {
 	})
 	_, err := coordinator.Resume(t.Context(), ResumeCommand{
 		RunID:              "run_1",
-		CallerCapabilities: run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}},
+		CallerCapabilities: run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}},
 		Responses:          []ResumeResponse{{ItemID: "item_1", Kind: run.InterruptQuestion, Question: &QuestionResponse{Answers: [][]string{{"Yes"}}}}},
 	})
 	if !errors.Is(err, ErrInterruptNotOpen) {

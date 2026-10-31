@@ -58,16 +58,16 @@ func TestMissingScopeReportsNoWorkspace(t *testing.T) {
 }
 
 func TestRunCapabilitiesAreOwnershipIsolated(t *testing.T) {
-	input := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
+	input := run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}}
 	ctx := WithRunCapabilities(context.Background(), input)
-	input.InterruptKinds[0] = run.InterruptApproval
+	input.InterruptTypes[0] = run.InterruptApproval
 	first, ok := RunCapabilities(ctx)
-	if !ok || !first.Equal(run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}) {
+	if !ok || !first.Equal(run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}}) {
 		t.Fatalf("RunCapabilities = (%+v, %t)", first, ok)
 	}
-	first.InterruptKinds[0] = run.InterruptApproval
+	first.InterruptTypes[0] = run.InterruptApproval
 	second, _ := RunCapabilities(ctx)
-	if !second.Equal(run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}) {
+	if !second.Equal(run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}}) {
 		t.Fatalf("RunCapabilities returned shared storage: %+v", second)
 	}
 }

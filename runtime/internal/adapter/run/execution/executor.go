@@ -783,7 +783,7 @@ func runExecutionContext(
 ) context.Context {
 	capabilities := run.Capabilities{
 		ChildRuns:      start.ChildRunAdmissionEnabled,
-		InterruptKinds: slices.Clone(start.InterruptKinds),
+		InterruptTypes: slices.Clone(start.InterruptTypes),
 	}.Normalized()
 	ctx = executionctx.WithScope(ctx, scope)
 	return executionctx.WithRunCapabilities(ctx, capabilities)

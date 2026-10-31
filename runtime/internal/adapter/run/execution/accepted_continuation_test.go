@@ -38,13 +38,13 @@ func TestAcceptedAnswerDeliveryAdvancesOnlyThePausedHead(t *testing.T) {
 			start := interactionTestStart()
 			start.CWD, start.WorkspaceCWD = t.TempDir(), ""
 			start.WorkspaceCWD = start.CWD
-			start.InterruptKinds = []run.InterruptKind{run.InterruptQuestion}
+			start.InterruptTypes = []run.InterruptType{run.InterruptQuestion}
 			ref, err := executor.StageRoot(t.Context(), start)
 			if err != nil {
 				t.Fatal(err)
 			}
 			barrier := captureAcceptedTestBarrier(t, executor, ref, 2)
-			waiting := rootInteractionExecutionContinuation(barrier.Checkpoint(), start.CWD, ref.ExecutorID, run.Capabilities{InterruptKinds: start.InterruptKinds})
+			waiting := rootInteractionExecutionContinuation(barrier.Checkpoint(), start.CWD, ref.ExecutorID, run.Capabilities{InterruptTypes: start.InterruptTypes})
 			if _, err := executor.StageAcceptedContinuation(t.Context(), waiting); err != nil {
 				t.Fatal(err)
 			}

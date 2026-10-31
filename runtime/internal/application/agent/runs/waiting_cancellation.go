@@ -392,12 +392,12 @@ func (w waitingCancellationBuilder) remainingInterruptions(
 				binding.MemberID,
 			)
 		}
-		if interrupt.Kind() != boundary.Interrupt.Kind() {
+		if interrupt.Type() != boundary.Interrupt.Type() {
 			return nil, nil, fmt.Errorf(
 				"runs: prepared input request %q changed interrupt kind from %s to %s",
 				binding.RequestID,
-				interrupt.Kind(),
-				boundary.Interrupt.Kind(),
+				interrupt.Type(),
+				boundary.Interrupt.Type(),
 			)
 		}
 		keptBindings[index] = struct{}{}

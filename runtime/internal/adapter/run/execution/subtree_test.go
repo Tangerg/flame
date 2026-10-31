@@ -47,11 +47,11 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 	}
 	continuation.Members[0].MemberID = "member_changed"
 	continuation.Checkpoint.Payload[0] = 'x'
-	continuation.Capabilities.InterruptKinds[0] = "changed"
+	continuation.Capabilities.InterruptTypes[0] = "changed"
 	projected := request.Continuation()
 	projected.Members[0].MemberID = "member_projected"
 	projected.Checkpoint.Payload[0] = 'y'
-	projected.Capabilities.InterruptKinds[0] = "projected"
+	projected.Capabilities.InterruptTypes[0] = "projected"
 	// Preparation must remain abandonable; only Apply submits the cancellation.
 	prepareCtx, cancelPrepare := context.WithTimeout(t.Context(), 2*time.Second)
 	prepared, err := fixture.executor.PrepareWaitingSubtreeCancellation(prepareCtx, request)

@@ -47,11 +47,11 @@ describe("submitPendingApproval", () => {
     seedPending([
       {
         runId: "run_child_a",
-        interrupts: [{ itemId: "approval_a", kind: "approval" }],
+        interrupts: [{ itemId: "approval_a", type: "approval" }],
       },
       {
         runId: "run_child_b",
-        interrupts: [{ itemId: "approval_b", kind: "approval" }],
+        interrupts: [{ itemId: "approval_b", type: "approval" }],
       },
     ]);
     let accept: (() => void) | undefined;
@@ -93,7 +93,7 @@ describe("submitPendingApproval", () => {
     seedPending([
       {
         runId: ROOT_RUN_ID,
-        interrupts: [{ itemId: "question_a", kind: "question" }],
+        interrupts: [{ itemId: "question_a", type: "question" }],
       },
     ]);
     testClient.agent.projection.store.getState().setResume(
@@ -108,7 +108,7 @@ describe("submitPendingApproval", () => {
     seedPending([
       {
         runId: ROOT_RUN_ID,
-        interrupts: [{ itemId: "approval_same", kind: "approval" }],
+        interrupts: [{ itemId: "approval_same", type: "approval" }],
       },
     ]);
     const resume = vi.fn(() => true);
@@ -135,7 +135,7 @@ describe("submitPendingApproval", () => {
     seedPending([
       {
         runId: ROOT_RUN_ID,
-        interrupts: [{ itemId: "approval_same", kind: "approval" }],
+        interrupts: [{ itemId: "approval_same", type: "approval" }],
       },
     ]);
     const resume = vi.fn(() => true);
@@ -162,7 +162,7 @@ describe("submitPendingApproval", () => {
     seedPending([
       {
         runId: ROOT_RUN_ID,
-        interrupts: [{ itemId: "approval_exact", kind: "approval" }],
+        interrupts: [{ itemId: "approval_exact", type: "approval" }],
       },
     ]);
     const resume = vi.fn(() => true);

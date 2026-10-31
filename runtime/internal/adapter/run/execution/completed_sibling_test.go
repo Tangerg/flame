@@ -127,7 +127,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 		}
 	})
 	started, err := coordinator.Start(t.Context(), runs.StartCommand{
-		SessionID: "session_1", Capabilities: run.Capabilities{ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptQuestion}},
+		SessionID: "session_1", Capabilities: run.Capabilities{ChildRuns: true, InterruptTypes: []run.InterruptType{run.InterruptQuestion}},
 		Input:   []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "delegate both siblings"}},
 		Options: &chat.Options{Temperature: new(0.37), MaxOutputTokens: new(int64(731))},
 	})
@@ -204,7 +204,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	resumeCtx, cancelResume := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancelResume()
 	resumed, err := coordinator.Resume(t.Context(), runs.ResumeCommand{
-		RunID: pending.RootRunID, CallerCapabilities: run.Capabilities{ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptQuestion}},
+		RunID: pending.RootRunID, CallerCapabilities: run.Capabilities{ChildRuns: true, InterruptTypes: []run.InterruptType{run.InterruptQuestion}},
 		Responses: []runs.ResumeResponse{{ItemID: binding.InterruptItemID, Kind: run.InterruptQuestion, Question: &runs.QuestionResponse{Answers: [][]string{{"chosen"}}}}},
 	})
 	if err != nil {

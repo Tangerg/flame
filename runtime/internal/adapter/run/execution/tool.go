@@ -78,7 +78,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	ctx = runExecutionContext(ctx, o.session.scope, o.start)
 	ctx = o.session.modelCallContext(ctx, member, callID)
 	ctx = operation.Adopt(ctx, callID, extension.Model, member.MemberID)
-	ctx = runinput.WithCapabilities(ctx, o.start.InterruptKinds)
+	ctx = runinput.WithCapabilities(ctx, o.start.InterruptTypes)
 	// Scope carries any re-entry answer on bound; a Tool child restored from it
 	// receives the same continuation the question or approval parked on.
 	var continuation *toolcontract.Continuation
@@ -444,7 +444,7 @@ func (o *observedInteractionTool) requestToolApproval(
 	request ToolAuthorizationRequest,
 	prompt runs.ApprovalPrompt,
 ) (tool.Arguments, bool, string, *toolcontract.InputRequest, error) {
-	if !slices.Contains(o.start.InterruptKinds, run.InterruptApproval) {
+	if !slices.Contains(o.start.InterruptTypes, run.InterruptApproval) {
 		return request.Arguments, true, "approval input is unavailable for this Run", nil, nil
 	}
 	if err := validateToolApprovalPrompt(request, prompt); err != nil {
@@ -675,7 +675,7 @@ func wrapInteractionTools(
 				}
 			}
 			if config.ToolHooks == nil && len(session.toolProposals) == 0 && !config.ToolInterpreter.UsesStandardPolicy(ref) &&
-				!slices.Contains(start.InterruptKinds, run.InterruptApproval) {
+				!slices.Contains(start.InterruptTypes, run.InterruptApproval) {
 				concurrent, _, err := toolcontract.Capability[interaction.ConcurrentTool](executable)
 				if err != nil {
 					return nil, fmt.Errorf("execution: resolve Tool concurrency: %w", err)

@@ -29,7 +29,7 @@ func TestNewBuildsCommittedActiveGoal(t *testing.T) {
 	selection := testSelection(t)
 	value, err := New(
 		"ses_1", "finish the refactor", selection,
-		run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion, run.InterruptApproval}},
+		run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion, run.InterruptApproval}},
 		"inc_1", now,
 	)
 	if err != nil {
@@ -41,7 +41,7 @@ func TestNewBuildsCommittedActiveGoal(t *testing.T) {
 	if !value.CreatedAt().Equal(now) || value.CreatedAt().Location() != time.UTC {
 		t.Fatalf("created at = %v, want canonical UTC %v", value.CreatedAt(), now)
 	}
-	wantCapabilities := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion}}
+	wantCapabilities := run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptApproval, run.InterruptQuestion}}
 	if !value.Capabilities().Equal(wantCapabilities) {
 		t.Fatalf("capabilities = %v, want %v", value.Capabilities(), wantCapabilities)
 	}
@@ -104,13 +104,13 @@ func TestGoalCanonicalizesObjectiveCommands(t *testing.T) {
 }
 
 func TestGoalOwnsCapabilityStorage(t *testing.T) {
-	input := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion, run.InterruptApproval}}
+	input := run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion, run.InterruptApproval}}
 	value := testGoal(t, input)
-	input.InterruptKinds[0] = run.InterruptApproval
+	input.InterruptTypes[0] = run.InterruptApproval
 
 	read := value.Capabilities()
-	read.InterruptKinds[0] = run.InterruptQuestion
-	if !value.Capabilities().Equal(run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion}}) {
+	read.InterruptTypes[0] = run.InterruptQuestion
+	if !value.Capabilities().Equal(run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptApproval, run.InterruptQuestion}}) {
 		t.Fatalf("Goal shares capability storage: %v", value.Capabilities())
 	}
 }
@@ -132,7 +132,7 @@ func TestRestoreRejectsImpossibleCommittedState(t *testing.T) {
 		}},
 		{name: "blocked without model detail", mutate: func(s *Snapshot) { s.Status, s.ReasonCode = StatusBlocked, ReasonBlockedByModel }},
 		{name: "noncanonical capabilities", mutate: func(s *Snapshot) {
-			s.Capabilities.InterruptKinds = []run.InterruptKind{run.InterruptQuestion, run.InterruptApproval}
+			s.Capabilities.InterruptTypes = []run.InterruptType{run.InterruptQuestion, run.InterruptApproval}
 		}},
 	}
 	for _, test := range tests {
@@ -384,7 +384,7 @@ func TestUsageOfChargesDescendantsWithoutCountingAnotherGoalRun(t *testing.T) {
 
 func TestReviseObjectiveStartsFreshVersionAndPreservesFacts(t *testing.T) {
 	now := time.Unix(10, 0).UTC()
-	active := testGoalAt(t, run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}, now)
+	active := testGoalAt(t, run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}}, now)
 	paused, err := active.Pause(ReasonStoppedByUser, now.Add(time.Second))
 	if err != nil {
 		t.Fatal(err)

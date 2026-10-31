@@ -65,7 +65,7 @@ func retainedRunBytes(value run.Run) int {
 	}
 	usage, _ := snapshot.Metrics.Usage()
 	bytes += retainedUsageBytes(&usage)
-	bytes += cap(snapshot.Capabilities.InterruptKinds) * retainedSliceEntryBytes
+	bytes += cap(snapshot.Capabilities.InterruptTypes) * retainedSliceEntryBytes
 	return bytes
 }
 

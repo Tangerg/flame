@@ -30,7 +30,7 @@ func TestResumeActivationFailureSettlesAcceptedToolApproval(t *testing.T) {
 			coordinator := newUseCaseCoordinator(&fakeExecutor{block: true}, control, sessions, effects)
 			result, err := coordinator.Resume(t.Context(), ResumeCommand{
 				RunID:              "run_1",
-				CallerCapabilities: run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}},
+				CallerCapabilities: run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptApproval}},
 				Responses: []ResumeResponse{{
 					ItemID: "item_1", Kind: run.InterruptApproval,
 					Approval: &ApprovalResponse{Approved: decision == approval.Allow},
@@ -82,7 +82,7 @@ func TestResumeRestorationAndObservationFailuresBelongToAcceptedRun(t *testing.T
 					t.Error("accepted restoration has no Run owner")
 				}
 			}
-			result, err := coordinator.Resume(t.Context(), ResumeCommand{RunID: "run_1", CallerCapabilities: run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}}, Responses: []ResumeResponse{{ItemID: "item_1", Kind: run.InterruptApproval, Approval: &ApprovalResponse{Approved: true}}}})
+			result, err := coordinator.Resume(t.Context(), ResumeCommand{RunID: "run_1", CallerCapabilities: run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptApproval}}, Responses: []ResumeResponse{{ItemID: "item_1", Kind: run.InterruptApproval, Approval: &ApprovalResponse{Approved: true}}}})
 			if err != nil || result.SegmentID == "" {
 				t.Fatalf("accepted restoration failure rejected the command: %+v,%v", result, err)
 			}
@@ -109,7 +109,7 @@ func TestResumeExposesAcceptedOwnerWhileRestorationIsBlocked(t *testing.T) {
 	control := &fakeExecutionPorts{stageContinuationCheck: func() { close(entered); <-release }}
 	effects := &fakeEffects{}
 	coordinator := newUseCaseCoordinator(&fakeExecutor{block: true}, control, sessions, effects)
-	result, err := coordinator.Resume(t.Context(), ResumeCommand{RunID: "run_1", CallerCapabilities: run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}}, Responses: []ResumeResponse{{ItemID: "item_1", Kind: run.InterruptApproval, Approval: &ApprovalResponse{Approved: true}}}})
+	result, err := coordinator.Resume(t.Context(), ResumeCommand{RunID: "run_1", CallerCapabilities: run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptApproval}}, Responses: []ResumeResponse{{ItemID: "item_1", Kind: run.InterruptApproval, Approval: &ApprovalResponse{Approved: true}}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func TestResumeExposesAcceptedOwnerWhileRestorationIsBlocked(t *testing.T) {
 	delete(sessions.pending, "run_1")
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	if _, err := coordinator.segments.Subscribe(ctx, SubscribeRequest{RunID: result.RunID, SegmentID: result.SegmentID, CallerCapabilities: run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}}}); err != nil {
+	if _, err := coordinator.segments.Subscribe(ctx, SubscribeRequest{RunID: result.RunID, SegmentID: result.SegmentID, CallerCapabilities: run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptApproval}}}); err != nil {
 		t.Fatalf("accepted restoration has no observable owner: %v", err)
 	}
 	if control.resumed {

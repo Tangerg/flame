@@ -5,7 +5,7 @@ import {
   type MessagePhase as AgentMessagePhase,
   type ToolCategory,
   type RunStatus as AgentRunStatus,
-  type InterruptType as PendingInterruptKind,
+  type InterruptType as PendingInterruptType,
 } from "@/foundation/protocolValues.generated";
 export type { AgentMessagePhase, ToolCategory, AgentRunStatus };
 import { type CapturedToolResult, type RecordedFileChange } from "@flame/component-sdk";
@@ -144,7 +144,7 @@ export interface AgentRunView {
 
 export interface PendingInterrupt {
   itemId: string;
-  kind: PendingInterruptKind;
+  type: PendingInterruptType;
 }
 
 /** The open interrupts one Run raised; the Run itself names its tree's root. */

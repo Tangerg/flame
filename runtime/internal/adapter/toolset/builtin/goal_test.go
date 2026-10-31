@@ -83,7 +83,7 @@ func testGoalRunContext() context.Context {
 func testGoalRunCapabilities() run.Capabilities {
 	return run.Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion},
+		InterruptTypes: []run.InterruptType{run.InterruptApproval, run.InterruptQuestion},
 	}
 }
 

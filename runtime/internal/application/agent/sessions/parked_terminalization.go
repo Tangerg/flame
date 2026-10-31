@@ -245,7 +245,7 @@ func (projection *parkedTerminalItemProjection) projectInterrupt(
 			request.runID,
 		)
 	}
-	switch request.open.Kind() {
+	switch request.open.Type() {
 	case rundomain.InterruptQuestion:
 		if item.Kind() != transcript.QuestionItem || item.Status() != transcript.ItemCompleted {
 			return fmt.Errorf("sessions: parked question Item %q is not a complete prompt", item.ID())
@@ -261,7 +261,7 @@ func (projection *parkedTerminalItemProjection) projectInterrupt(
 		}
 		projection.items = append(projection.items, settled)
 	default:
-		return fmt.Errorf("sessions: parked interrupt Item %q has unknown kind %s", item.ID(), request.open.Kind())
+		return fmt.Errorf("sessions: parked interrupt Item %q has unknown kind %s", item.ID(), request.open.Type())
 	}
 	delete(projection.interrupts, item.ID())
 	return nil

@@ -1,6 +1,6 @@
 package run
 
-// InterruptKind is the closed vocabulary of durable human waits a Run can
+// InterruptType is the closed vocabulary of durable human waits a Run can
 // produce — why it is [Waiting], and what shape of answer resumes it.
 //
 // It lives beside the state it explains because three rings need the same
@@ -13,17 +13,17 @@ package run
 //
 // Executor implementations must preserve this exact union; they may not
 // infer a kind by inspecting arbitrary prompt fields.
-type InterruptKind string
+type InterruptType string
 
 const (
 	// InterruptApproval: a gated tool call awaits approve / deny.
-	InterruptApproval InterruptKind = "approval"
+	InterruptApproval InterruptType = "approval"
 	// InterruptQuestion: the agent asked the human a typed question.
-	InterruptQuestion InterruptKind = "question"
+	InterruptQuestion InterruptType = "question"
 )
 
 // Valid reports whether k is a kind the system can persist and surface.
 // Input boundaries map external values into this closed vocabulary.
-func (k InterruptKind) Valid() bool {
+func (k InterruptType) Valid() bool {
 	return k == InterruptApproval || k == InterruptQuestion
 }

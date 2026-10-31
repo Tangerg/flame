@@ -10,7 +10,7 @@ export function foldPendingInterruptSet(
   const byRunId = new Map<string, PendingInterrupt[]>();
   for (const interrupt of snapshot.interrupts) {
     const current = byRunId.get(interrupt.runId) ?? [];
-    current.push({ itemId: interrupt.itemId, kind: interrupt.type });
+    current.push({ itemId: interrupt.itemId, type: interrupt.type });
     byRunId.set(interrupt.runId, current);
   }
 

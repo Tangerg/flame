@@ -124,7 +124,7 @@ func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 				ID: "run_1", SessionID: "ses_1", State: run.Waiting,
 				ModelSelection: selection,
 				Capabilities: run.Capabilities{
-					InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+					InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 				},
 				CreatedAt: createdAt, MessageMark: run.MessageMarkAt(-1),
 			})},
@@ -204,7 +204,7 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 			Runs: []run.Run{testsupport.MustRestoreRun(run.Snapshot{
 				ID: "run_1", SessionID: "ses_1", State: run.Waiting,
 				ModelSelection: selection,
-				Capabilities:   run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}},
+				Capabilities:   run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}},
 				CreatedAt:      createdAt, MessageMark: run.UnknownMessageMark(),
 			})},
 			Items: []transcript.Item{
@@ -285,7 +285,7 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 				GoalIncarnationID: "lease_1",
 				ModelSelection:    selection,
 				Capabilities: run.Capabilities{
-					InterruptKinds: []run.InterruptKind{run.InterruptApproval},
+					InterruptTypes: []run.InterruptType{run.InterruptApproval},
 				},
 				Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 4, Usage: &accounting.Usage{
 					Total: accounting.Totals{Cost: testsupport.OptionalCost(&costUSD)},
@@ -345,7 +345,7 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 	childLineage := testsupport.ChildLineage("item_spawn", "run_root", "run_root")
 	selection := testsupport.DefaultModelSelection()
 	capabilities := run.Capabilities{
-		ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+		ChildRuns: true, InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 	}
 	pending := runs.Pending{
 		RootRunID: "run_root", ExecutorID: "turn_1",

@@ -122,7 +122,7 @@ describe("transcript rows", () => {
       ],
     });
     state.pendingInterrupts = [
-      { runId: child.id, interrupts: [{ itemId: "approval", kind: "approval" }] },
+      { runId: child.id, interrupts: [{ itemId: "approval", type: "approval" }] },
     ];
     const parked = buildTranscriptRows(state, EMPTY_TRANSCRIPT_ROW_CACHE);
     expect(parked.rows[0]!.facts.awaiting.get("approval")).toBe(ROOT_RUN);
