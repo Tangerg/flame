@@ -42,34 +42,40 @@ export async function workspaces(repository = root) {
   );
 }
 function ordered(packages) {
-  const byName = new Map(packages.map((p) => [p.name, p])),
-    result = [],
-    visiting = new Set(),
-    seen = new Set();
-  const add = (p) => {
-    if (seen.has(p.name)) return;
-    if (visiting.has(p.name))
-      throw new Error(`workspace dependency cycle: ${p.name}`);
-    visiting.add(p.name);
+  const byName = new Map(
+    packages.map((workspace) => [workspace.name, workspace]),
+  );
+  const result = [];
+  const visiting = new Set();
+  const seen = new Set();
+  const add = (workspace) => {
+    if (seen.has(workspace.name)) return;
+    if (visiting.has(workspace.name))
+      throw new Error(`workspace dependency cycle: ${workspace.name}`);
+    visiting.add(workspace.name);
     for (const name of new Set([
-      ...Object.keys(p.dependencies ?? {}),
-      ...Object.keys(p.peerDependencies ?? {}),
-      ...(p.flame?.buildDependencies ?? []),
+      ...Object.keys(workspace.dependencies ?? {}),
+      ...Object.keys(workspace.peerDependencies ?? {}),
+      ...(workspace.flame?.buildDependencies ?? []),
     ])) {
       if (byName.has(name)) add(byName.get(name));
     }
-    visiting.delete(p.name);
-    seen.add(p.name);
-    result.push(p);
+    visiting.delete(workspace.name);
+    seen.add(workspace.name);
+    result.push(workspace);
   };
   packages.forEach(add);
   return result;
 }
+// A library whose exports resolve into its own build output must be built
+// before any consumer type-checks or bundles against it.
+const exportsBuildOutput = (workspace) =>
+  workspace.scripts?.build !== undefined &&
+  JSON.stringify(workspace.exports ?? {}).includes('"./dist/');
 export async function buildShared(repository = root) {
-  const packages = ordered(await workspaces(repository));
-  for (const p of packages)
-    if (p.name === "@flame/icons" || p.name === "@flame/ui")
-      run("npm", ["run", "build"], p.directory);
+  for (const workspace of ordered(await workspaces(repository)))
+    if (exportsBuildOutput(workspace))
+      run("npm", ["run", "build"], workspace.directory);
 }
 async function declarationFiles(directory) {
   const found = [];
