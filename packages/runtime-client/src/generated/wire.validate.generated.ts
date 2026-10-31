@@ -278,10 +278,10 @@ export type WireTypeName =
   | "PluginTerminalAction"
   | "PluginTerminalBinding"
   | "PluginTerminalColumn"
-  | "PluginTerminalCursor"
   | "PluginTerminalFormField"
   | "PluginTerminalInput"
   | "PluginTerminalList"
+  | "PluginTerminalPaging"
   | "PluginTerminalView"
   | "PluginTheme"
   | "PluginThemeColors"
@@ -2921,10 +2921,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     field: text(),
     title: text(),
   }, ["field", "title"]),
-  PluginTerminalCursor: object({
-    input: text(),
-    output: text(),
-  }, ["input", "output"]),
   PluginTerminalFormField: allOf([
     object({
       default: ref(() => CHECKS.PluginTerminalBinding),
@@ -2945,12 +2941,16 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["path", "value"]),
   PluginTerminalList: object({
     columns: array(ref(() => CHECKS.PluginTerminalColumn)),
-    cursor: ref(() => CHECKS.PluginTerminalCursor),
     input: array(ref(() => CHECKS.PluginTerminalInput)),
     key: text(),
     method: text(),
+    paging: ref(() => CHECKS.PluginTerminalPaging),
     rows: text(),
   }, ["columns", "input", "key", "method", "rows"]),
+  PluginTerminalPaging: object({
+    input: text(),
+    output: text(),
+  }, ["input", "output"]),
   PluginTerminalView: object({
     actions: array(ref(() => CHECKS.PluginTerminalAction)),
     contribution: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),

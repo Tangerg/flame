@@ -33,13 +33,13 @@ type TerminalList struct {
 	Input   []InputBinding
 	Rows    string
 	Key     string
-	Cursor  *TerminalCursor
+	Paging  *TerminalPaging
 	Columns []TerminalColumn
 }
 
-// TerminalCursor pages a list: the output property carries the next cursor and
+// TerminalPaging pages a list: the output property carries the next cursor and
 // the input property sends it back.
-type TerminalCursor struct {
+type TerminalPaging struct {
 	Input  string
 	Output string
 }
@@ -71,7 +71,7 @@ type InputBinding struct {
 // the member Source names is set.
 type Binding struct {
 	Source  extension.TerminalBindingSource
-	Literal jsonvalue.Value `json:",omitzero"`
+	Literal jsonvalue.Value
 	Field   string
 	Context extension.TerminalContext
 	Form    *FormField
@@ -89,9 +89,9 @@ type FormField struct {
 
 func (v TerminalView) clone() TerminalView {
 	v.List.Input = cloneBindings(v.List.Input)
-	if v.List.Cursor != nil {
-		cursor := *v.List.Cursor
-		v.List.Cursor = &cursor
+	if v.List.Paging != nil {
+		paging := *v.List.Paging
+		v.List.Paging = &paging
 	}
 	v.List.Columns = slices.Clone(v.List.Columns)
 	v.Actions = slices.Clone(v.Actions)
@@ -179,18 +179,18 @@ func admitTerminalList(contract *portable.Capability, list TerminalList) error {
 		return err
 	}
 	bound := make([]string, 0, len(list.Input)+1)
-	if list.Cursor != nil {
+	if list.Paging != nil {
 		output, err := newSchemaNode(method.Descriptor().Output)
 		if err != nil {
 			return err
 		}
-		if _, ok := input.property(list.Cursor.Input); !ok {
-			return fmt.Errorf("cursor input %q is not an input property", list.Cursor.Input)
+		if _, ok := input.property(list.Paging.Input); !ok {
+			return fmt.Errorf("paging input %q is not an input property", list.Paging.Input)
 		}
-		if _, ok := output.property(list.Cursor.Output); !ok {
-			return fmt.Errorf("cursor output %q is not an output property", list.Cursor.Output)
+		if _, ok := output.property(list.Paging.Output); !ok {
+			return fmt.Errorf("paging output %q is not an output property", list.Paging.Output)
 		}
-		bound = append(bound, list.Cursor.Input)
+		bound = append(bound, list.Paging.Input)
 	}
 	for _, binding := range list.Input {
 		if binding.Value.Source == extension.TerminalBindingRow {

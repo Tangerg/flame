@@ -161,7 +161,7 @@ func (p *pluginScreens) readPluginViewRows(ctx context.Context, view pluginview.
 			return nil, err
 		}
 		rows = append(rows, page.Rows...)
-		if page.Next == "" || view.List.Cursor == nil {
+		if page.Next == "" || view.List.Paging == nil {
 			return rows, nil
 		}
 		cursor = page.Next

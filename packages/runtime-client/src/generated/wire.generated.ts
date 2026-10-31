@@ -1510,11 +1510,6 @@ export interface PluginTerminalColumn {
   title: string;
 }
 
-export interface PluginTerminalCursor {
-  input: string;
-  output: string;
-}
-
 export interface PluginTerminalFormField {
   default?: PluginTerminalBinding;
   kind: TerminalFormKind;
@@ -1529,11 +1524,16 @@ export interface PluginTerminalInput {
 
 export interface PluginTerminalList {
   columns: PluginTerminalColumn[];
-  cursor?: PluginTerminalCursor;
   input: PluginTerminalInput[];
   key: string;
   method: string;
+  paging?: PluginTerminalPaging;
   rows: string;
+}
+
+export interface PluginTerminalPaging {
+  input: string;
+  output: string;
 }
 
 export interface PluginTerminalView {

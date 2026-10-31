@@ -47,7 +47,7 @@ func memoryView(t *testing.T) TerminalView {
 		ID: "memory", Title: "Agent memory", Contribution: "memory-provider",
 		List: TerminalList{
 			Method: "memory/list", Rows: "Rows", Key: "ID",
-			Cursor:  &TerminalCursor{Input: "Cursor", Output: "NextCursor"},
+			Paging:  &TerminalPaging{Input: "Cursor", Output: "NextCursor"},
 			Columns: []TerminalColumn{{Title: "Content", Field: "Content"}},
 			Input: []InputBinding{
 				{Path: "CWD", Value: Binding{Source: extension.TerminalBindingContext, Context: extension.TerminalContextWorkspace}},

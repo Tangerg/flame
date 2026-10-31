@@ -28,7 +28,7 @@ func testView(t *testing.T) View {
 	declared := protocol.PluginTerminalView{
 		ID: "memory", Title: "Agent memory", Contribution: "memory-provider",
 		List: protocol.PluginTerminalList{
-			Method: "memory/list", Rows: "Rows", Key: "ID", Cursor: &protocol.PluginTerminalCursor{Input: "Cursor", Output: "NextCursor"},
+			Method: "memory/list", Rows: "Rows", Key: "ID", Paging: &protocol.PluginTerminalPaging{Input: "Cursor", Output: "NextCursor"},
 			Input: []protocol.PluginTerminalInput{
 				{Path: "CWD", Value: protocol.PluginTerminalBinding{Source: extension.TerminalBindingContext, Context: extension.TerminalContextWorkspace}},
 				{Path: "Scope", Value: scope},

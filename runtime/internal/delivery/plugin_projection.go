@@ -221,8 +221,8 @@ func presentTerminalView(view plugin.TerminalView) protocol.PluginTerminalView {
 		},
 		Actions: make([]protocol.PluginTerminalAction, 0, len(view.Actions)),
 	}
-	if view.List.Cursor != nil {
-		presented.List.Cursor = &protocol.PluginTerminalCursor{Input: view.List.Cursor.Input, Output: view.List.Cursor.Output}
+	if view.List.Paging != nil {
+		presented.List.Paging = &protocol.PluginTerminalPaging{Input: view.List.Paging.Input, Output: view.List.Paging.Output}
 	}
 	for _, column := range view.List.Columns {
 		presented.List.Columns = append(presented.List.Columns, protocol.PluginTerminalColumn{Title: column.Title, Field: column.Field})

@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/qimu/sqlite"
 )
@@ -280,4 +281,50 @@ func requireStoredRelease(t *testing.T, ctx context.Context, catalog *ReleaseSto
 	if got.Digest() != want.Digest() || !reflect.DeepEqual(got.Declaration(), want.Declaration()) {
 		t.Fatalf("stored release = %+v, want %+v", got.Declaration(), want.Declaration())
 	}
+}
+
+func TestReleaseStoresTerminalViewsWithTheirBindings(t *testing.T) {
+	db := openStore(t)
+	catalog := newReleaseStore(db)
+	contract, err := portable.NewCapability(
+		portable.CapabilityConfig{Reference: "notes", Composition: portable.Selection, Scope: extension.ScopeInstallation},
+		portable.MethodDescriptor{Name: "notes/list", Kind: portable.Query, Target: extension.ScopeInstallation,
+			Input:  jsontext.Value(`{"type":"object","required":["CWD","Cursor"],"properties":{"CWD":{"type":"string"},"Cursor":{"type":"string"}}}`),
+			Output: jsontext.Value(`{"type":"object","properties":{"Rows":{"type":"array","items":{"type":"object","properties":{"ID":{"type":"string"},"Pinned":{"type":"boolean"}}}},"Next":{"type":"string"}}}`)},
+		portable.MethodDescriptor{Name: "notes/pin", Kind: portable.Mutation, Target: extension.ScopeInstallation,
+			Input:  jsontext.Value(`{"type":"object","required":["ID","Pinned"],"properties":{"ID":{"type":"string"},"Pinned":{"type":"boolean"}}}`),
+			Output: jsontext.Value(`{"type":"object"}`)},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pinned, err := jsonvalue.Encode(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	backend := testsupport.ServerName("backend")
+	release := testsupport.Release(t, "release", plugin.Declaration{
+		Name:          "package",
+		Servers:       []plugin.Server{{Name: backend, Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "backend"}}}},
+		Contributions: []plugin.Contribution{{ID: "notes-provider", Server: backend, Export: "notes", Contract: contract.Identity()}},
+		TerminalViews: []plugin.TerminalView{{
+			ID: "notes", Title: "Notes", Contribution: "notes-provider",
+			List: plugin.TerminalList{
+				Method: "notes/list", Rows: "Rows", Key: "ID", Paging: &plugin.TerminalPaging{Input: "Cursor", Output: "Next"},
+				Columns: []plugin.TerminalColumn{{Title: "Pinned", Field: "Pinned"}},
+				Input:   []plugin.InputBinding{{Path: "CWD", Value: plugin.Binding{Source: extension.TerminalBindingContext, Context: extension.TerminalContextWorkspace}}},
+			},
+			Actions: []plugin.TerminalAction{{
+				ID: "pin", Title: "Pin", Method: "notes/pin", Target: extension.TerminalActionRow, Confirm: true,
+				Input: []plugin.InputBinding{
+					{Path: "ID", Value: plugin.Binding{Source: extension.TerminalBindingRow, Field: "ID"}},
+					{Path: "Pinned", Value: plugin.Binding{Source: extension.TerminalBindingForm, Form: &plugin.FormField{Title: "Pinned", Default: &plugin.Binding{Source: extension.TerminalBindingValue, Literal: pinned}}}},
+				},
+			}},
+		}},
+	})
+	if err := catalog.Admit(t.Context(), release); err != nil {
+		t.Fatal(err)
+	}
+	requireStoredRelease(t, t.Context(), catalog, release)
 }

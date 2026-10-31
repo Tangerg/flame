@@ -326,7 +326,7 @@ the selected component imports it.
 
 A declaration's `terminalViews` give terminal clients a management screen
 without compiled-in package types. Each view names one callable contribution, a
-query `list` (`method`, `rows`, row `key`, optional `cursor`, `columns`) and
+query `list` (`method`, `rows`, row `key`, optional `paging`, `columns`) and
 `actions` that call that contract's methods on the `view` or a selected `row`.
 Every input property is bound to exactly one source: a literal `value`, a `row`
 field, a client `context` fact (`workspace` or `timeZone`) or a `form` field with

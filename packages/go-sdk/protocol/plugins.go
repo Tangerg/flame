@@ -443,13 +443,13 @@ type PluginTerminalList struct {
 	Input   []PluginTerminalInput  `json:"input"`
 	Rows    string                 `json:"rows"`
 	Key     string                 `json:"key"`
-	Cursor  *PluginTerminalCursor  `json:"cursor,omitzero"`
+	Paging  *PluginTerminalPaging  `json:"paging,omitzero"`
 	Columns []PluginTerminalColumn `json:"columns"`
 }
 
-// PluginTerminalCursor pages a list: Output carries the next cursor and Input
+// PluginTerminalPaging pages a list: Output carries the next cursor and Input
 // sends it back.
-type PluginTerminalCursor struct {
+type PluginTerminalPaging struct {
 	Input  string `json:"input"`
 	Output string `json:"output"`
 }

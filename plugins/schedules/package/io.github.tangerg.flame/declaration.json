@@ -30,7 +30,7 @@
         "method": "flame.schedules/list.v1",
         "rows": "Rows",
         "key": "ID",
-        "cursor": {
+        "paging": {
           "input": "Cursor",
           "output": "NextCursor"
         },

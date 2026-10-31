@@ -8063,21 +8063,6 @@
         "title"
       ]
     },
-    "PluginTerminalCursor": {
-      "type": "object",
-      "properties": {
-        "input": {
-          "type": "string"
-        },
-        "output": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "input",
-        "output"
-      ]
-    },
     "PluginTerminalFormField": {
       "type": "object",
       "properties": {
@@ -8145,9 +8130,6 @@
             "$ref": "#/$defs/PluginTerminalColumn"
           }
         },
-        "cursor": {
-          "$ref": "#/$defs/PluginTerminalCursor"
-        },
         "input": {
           "type": "array",
           "items": {
@@ -8160,6 +8142,9 @@
         "method": {
           "type": "string"
         },
+        "paging": {
+          "$ref": "#/$defs/PluginTerminalPaging"
+        },
         "rows": {
           "type": "string"
         }
@@ -8170,6 +8155,21 @@
         "key",
         "method",
         "rows"
+      ]
+    },
+    "PluginTerminalPaging": {
+      "type": "object",
+      "properties": {
+        "input": {
+          "type": "string"
+        },
+        "output": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "input",
+        "output"
       ]
     },
     "PluginTerminalView": {

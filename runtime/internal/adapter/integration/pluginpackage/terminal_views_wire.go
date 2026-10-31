@@ -24,11 +24,11 @@ type wireTerminalList struct {
 	Input   map[string]wireBinding `json:"input,omitempty"`
 	Rows    string                 `json:"rows"`
 	Key     string                 `json:"key"`
-	Cursor  *wireTerminalCursor    `json:"cursor,omitzero"`
+	Paging  *wireTerminalPaging    `json:"paging,omitzero"`
 	Columns []wireTerminalColumn   `json:"columns"`
 }
 
-type wireTerminalCursor struct {
+type wireTerminalPaging struct {
 	Input  string `json:"input"`
 	Output string `json:"output"`
 }
@@ -69,8 +69,8 @@ func (w wireTerminalView) domain() (plugin.TerminalView, error) {
 		ID: w.ID, Title: w.Title, Contribution: w.Contribution,
 		List: plugin.TerminalList{Method: w.List.Method, Input: listInput, Rows: w.List.Rows, Key: w.List.Key},
 	}
-	if w.List.Cursor != nil {
-		view.List.Cursor = &plugin.TerminalCursor{Input: w.List.Cursor.Input, Output: w.List.Cursor.Output}
+	if w.List.Paging != nil {
+		view.List.Paging = &plugin.TerminalPaging{Input: w.List.Paging.Input, Output: w.List.Paging.Output}
 	}
 	for _, column := range w.List.Columns {
 		view.List.Columns = append(view.List.Columns, plugin.TerminalColumn{Title: column.Title, Field: column.Field})

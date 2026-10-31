@@ -11402,22 +11402,6 @@
           ]
         },
         {
-          "name": "PluginTerminalCursor",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Input",
-              "type": "string",
-              "tag": "json:\"input\""
-            },
-            {
-              "name": "Output",
-              "type": "string",
-              "tag": "json:\"output\""
-            }
-          ]
-        },
-        {
           "name": "PluginTerminalFormField",
           "kind": "struct",
           "fields": [
@@ -11484,14 +11468,30 @@
               "tag": "json:\"key\""
             },
             {
-              "name": "Cursor",
-              "type": "*PluginTerminalCursor",
-              "tag": "json:\"cursor,omitzero\""
+              "name": "Paging",
+              "type": "*PluginTerminalPaging",
+              "tag": "json:\"paging,omitzero\""
             },
             {
               "name": "Columns",
               "type": "[]PluginTerminalColumn",
               "tag": "json:\"columns\""
+            }
+          ]
+        },
+        {
+          "name": "PluginTerminalPaging",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Input",
+              "type": "string",
+              "tag": "json:\"input\""
+            },
+            {
+              "name": "Output",
+              "type": "string",
+              "tag": "json:\"output\""
             }
           ]
         },

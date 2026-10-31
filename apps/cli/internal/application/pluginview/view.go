@@ -137,12 +137,12 @@ func (v View) Mutates(action protocol.PluginTerminalAction) bool {
 // ListRequest reads one page; cursor is empty for the first.
 func (v View) ListRequest(context Context, form map[string]string, cursor string) (protocol.CallPluginRequest, error) {
 	input := slices.Clone(v.List.Input)
-	if v.List.Cursor != nil {
+	if v.List.Paging != nil {
 		literal, err := json.Marshal(cursor)
 		if err != nil {
 			return protocol.CallPluginRequest{}, err
 		}
-		input = append(input, protocol.PluginTerminalInput{Path: v.List.Cursor.Input, Value: protocol.PluginTerminalBinding{Source: extension.TerminalBindingValue, Value: string(literal)}})
+		input = append(input, protocol.PluginTerminalInput{Path: v.List.Paging.Input, Value: protocol.PluginTerminalBinding{Source: extension.TerminalBindingValue, Value: string(literal)}})
 	}
 	return v.request(v.List.Method, input, context, nil, form)
 }
@@ -201,8 +201,8 @@ func (v View) Page(response *protocol.CallPluginResponse) (Page, error) {
 			return Page{}, fmt.Errorf("list rows: %w", err)
 		}
 	}
-	if v.List.Cursor != nil {
-		if raw, found := output[v.List.Cursor.Output]; found {
+	if v.List.Paging != nil {
+		if raw, found := output[v.List.Paging.Output]; found {
 			_ = json.Unmarshal(raw, &page.Next)
 		}
 	}
