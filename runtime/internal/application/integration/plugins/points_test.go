@@ -31,7 +31,7 @@ func TestInstalledPointValuesRequireTheConsumerContractAndRetainExactBindings(t 
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := installation.Enable(release); err != nil {
+		if installation, err = installation.Enable(release); err != nil {
 			t.Fatal(err)
 		}
 		return plugin.Snapshot{Installation: installation, Selected: release}
@@ -63,19 +63,19 @@ func TestInstalledPointValuesRequireTheConsumerContractAndRetainExactBindings(t 
 		t.Fatalf("another installation borrowed the consumer's point declaration: %v", err)
 	}
 	otherConsumer := makeSnapshot("other-reviews", plugin.Declaration{Points: []plugin.Point{{ID: "analyzers", Contract: contract.Identity()}}})
-	consumer.Installation.Disable()
+	consumer.Installation = consumer.Installation.Disable()
 	store.snapshots = []plugin.Snapshot{producer, consumer, otherConsumer}
 	if _, err := ResolvePoint(t.Context(), testFramework(t, store), store, contract, context, nil); !errors.Is(err, plugin.ErrUnavailable) {
 		t.Fatalf("disabled target borrowed another consumer's declaration: %v", err)
 	}
-	if err := consumer.Installation.Enable(consumer.Selected); err != nil {
+	if consumer.Installation, err = consumer.Installation.Enable(consumer.Selected); err != nil {
 		t.Fatal(err)
 	}
 	store.snapshots = []plugin.Snapshot{producer}
 	if _, err := ResolvePoint(t.Context(), testFramework(t, store), store, contract, context, nil); err == nil {
 		t.Fatal("producer manufactured an undeclared consumer point")
 	}
-	producer.Installation.Disable()
+	producer.Installation = producer.Installation.Disable()
 	store.snapshots = []plugin.Snapshot{producer, consumer}
 	if bindings, err := ResolvePoint(t.Context(), testFramework(t, store), store, contract, context, nil); err != nil || len(bindings) != 0 {
 		t.Fatalf("disabled optional contributor: %+v, %v", bindings, err)

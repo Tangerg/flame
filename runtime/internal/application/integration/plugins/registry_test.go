@@ -133,7 +133,7 @@ func TestRegistryDefinitionsDoNotRealizePackageResources(t *testing.T) {
 	}
 }
 
-func (p *singleServerPackages) Definitions(ctx context.Context, installation *plugin.Installation, release plugin.Release) ([]mcpserver.Server, error) {
+func (p *singleServerPackages) Definitions(ctx context.Context, installation plugin.Installation, release plugin.Release) ([]mcpserver.Server, error) {
 	var result []mcpserver.Server
 	for _, declared := range release.Declaration().Servers {
 		server, _, err := p.Server(ctx, installation, release, declared.Name, Declared)
@@ -145,7 +145,7 @@ func (p *singleServerPackages) Definitions(ctx context.Context, installation *pl
 	return result, nil
 }
 
-func (p *singleServerPackages) Server(_ context.Context, installation *plugin.Installation, release plugin.Release, name mcpserver.ServerName, reach Reach) (mcpserver.Server, bool, error) {
+func (p *singleServerPackages) Server(_ context.Context, installation plugin.Installation, release plugin.Release, name mcpserver.ServerName, reach Reach) (mcpserver.Server, bool, error) {
 	p.reads = append(p.reads, serverRead{name, reach})
 	for _, declared := range release.Declaration().Servers {
 		if declared.Name != name {
@@ -160,7 +160,7 @@ func (p *singleServerPackages) Server(_ context.Context, installation *plugin.In
 	return mcpserver.Server{}, false, nil
 }
 
-func (p *singleServerPackages) Connection(ctx context.Context, installation *plugin.Installation, release plugin.Release, name mcpserver.ServerName) (mcpapp.Launch, bool, error) {
+func (p *singleServerPackages) Connection(ctx context.Context, installation plugin.Installation, release plugin.Release, name mcpserver.ServerName) (mcpapp.Launch, bool, error) {
 	server, found, err := p.Server(ctx, installation, release, name, Declared)
 	return mcpapp.Launch{Server: server}, found, err
 }
@@ -175,10 +175,10 @@ func TestRegistryResolvesOneServerPerOrigin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Configure(release, plugin.Configuration{Servers: map[mcpserver.ServerName]plugin.ComponentChange{testsupport.ServerName("off"): plugin.DisableComponent}}); err != nil {
+	if installation, err = installation.Configure(release, plugin.Configuration{Servers: map[mcpserver.ServerName]plugin.ComponentChange{testsupport.ServerName("off"): plugin.DisableComponent}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Enable(release); err != nil {
+	if installation, err = installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	installations := &identifiedInstallations{installationMemory: &installationMemory{catalog: releaseMemory{release.Digest(): release}}, id: installation.ID()}

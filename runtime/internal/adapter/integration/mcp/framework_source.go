@@ -24,8 +24,8 @@ import (
 )
 
 type installedPackages interface {
-	Connection(context.Context, *plugin.Installation, plugin.Release, mcpserver.ServerName) (mcpapp.Launch, bool, error)
-	Server(context.Context, *plugin.Installation, plugin.Release, mcpserver.ServerName, plugins.Reach) (mcpserver.Server, bool, error)
+	Connection(context.Context, plugin.Installation, plugin.Release, mcpserver.ServerName) (mcpapp.Launch, bool, error)
+	Server(context.Context, plugin.Installation, plugin.Release, mcpserver.ServerName, plugins.Reach) (mcpserver.Server, bool, error)
 }
 
 // ProcessSource owns Flame's process configuration and callback authority. Qimu

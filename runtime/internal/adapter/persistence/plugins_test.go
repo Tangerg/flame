@@ -28,7 +28,7 @@ func TestInstallationTransitionsPreserveStandingRulesUntilSourceRemoval(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := i.Enable(release); err != nil {
+	if i, err = i.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.projectRecord(t.Context(), i.Snapshot()); err != nil {
@@ -49,7 +49,11 @@ func TestInstallationTransitionsPreserveStandingRulesUntilSourceRemoval(t *testi
 	if err := rules.Put(t.Context(), rule); err != nil {
 		t.Fatal(err)
 	}
-	for _, transition := range []func() error{func() error { i.Disable(); return nil }, func() error { return i.Enable(release) }, func() error { i.Disable(); return nil }} {
+	for _, transition := range []func() error{
+		func() error { i = i.Disable(); return nil },
+		func() error { i, err = i.Enable(release); return err },
+		func() error { i = i.Disable(); return nil },
+	} {
 		if err := transition(); err != nil {
 			t.Fatal(err)
 		}
@@ -124,17 +128,17 @@ func TestInstallationCredentialsFollowTheirRecipient(t *testing.T) {
 	}
 	selectRelease := func(selected, candidate plugin.Release) {
 		t.Helper()
-		if err := i.Stage(selected, candidate); err != nil {
+		if i, err = i.Stage(selected, candidate); err != nil {
 			t.Fatal(err)
 		}
-		if err := i.Select(selected, candidate); err != nil {
+		if i, err = i.Select(selected, candidate); err != nil {
 			t.Fatal(err)
 		}
 		if err := store.projectRecord(t.Context(), i.Snapshot()); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := i.Configure(release, plugin.Configuration{Values: map[string]plugin.ValueChange{"tenant": plugin.SetValue("other")}}); err != nil {
+	if i, err = i.Configure(release, plugin.Configuration{Values: map[string]plugin.ValueChange{"tenant": plugin.SetValue("other")}}); err != nil {
 		t.Fatal(err)
 	}
 	sameEndpoint := declare("2", "https://mcp.example.test/tools")
@@ -187,14 +191,14 @@ func TestInstallationStateRoundTripsRelationally(t *testing.T) {
 		t.Fatal(err)
 	}
 	key := "secret"
-	for _, transition := range []error{
-		i.Configure(release, plugin.Configuration{Values: map[string]plugin.ValueChange{"key": plugin.SetValue(key)}, Servers: map[mcpserver.ServerName]plugin.ComponentChange{testsupport.ServerName("b"): plugin.DisableComponent}, Skills: map[string]plugin.ComponentChange{"review": plugin.DisableComponent}}),
-		i.Enable(release),
-		i.Stage(release, candidate),
-	} {
-		if transition != nil {
-			t.Fatal(transition)
-		}
+	if i, err = i.Configure(release, plugin.Configuration{Values: map[string]plugin.ValueChange{"key": plugin.SetValue(key)}, Servers: map[mcpserver.ServerName]plugin.ComponentChange{testsupport.ServerName("b"): plugin.DisableComponent}, Skills: map[string]plugin.ComponentChange{"review": plugin.DisableComponent}}); err != nil {
+		t.Fatal(err)
+	}
+	if i, err = i.Enable(release); err != nil {
+		t.Fatal(err)
+	}
+	if i, err = i.Stage(release, candidate); err != nil {
+		t.Fatal(err)
 	}
 	if err := store.projectRecord(t.Context(), i.Snapshot()); err != nil {
 		t.Fatal(err)
@@ -268,20 +272,20 @@ func TestInstallationReadsRejectStateOutsideItsAdmittedReleases(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, err := range []error{
-				installation.Configure(release, plugin.Configuration{Values: map[string]plugin.ValueChange{"key": plugin.SetValue("value"), "header": plugin.SetValue("value")}}),
-				installation.Enable(release),
-				store.projectRecord(t.Context(), installation.Snapshot()),
-			} {
-				if err != nil {
-					t.Fatal(err)
-				}
+			if installation, err = installation.Configure(release, plugin.Configuration{Values: map[string]plugin.ValueChange{"key": plugin.SetValue("value"), "header": plugin.SetValue("value")}}); err != nil {
+				t.Fatal(err)
+			}
+			if installation, err = installation.Enable(release); err != nil {
+				t.Fatal(err)
+			}
+			if err := store.projectRecord(t.Context(), installation.Snapshot()); err != nil {
+				t.Fatal(err)
 			}
 			args := append([]any{installation.ID().String()}, test.values...)
 			if _, err := db.ExecContext(t.Context(), test.statement, args...); err != nil {
 				t.Fatal(err)
 			}
-			if snapshot, found, err := store.Get(t.Context(), installation.ID()); !errors.Is(err, plugin.ErrInvalid) || found || snapshot.Installation != nil {
+			if snapshot, found, err := store.Get(t.Context(), installation.ID()); !errors.Is(err, plugin.ErrInvalid) || found {
 				t.Fatalf("invalid persisted state became an installation: %+v, %v", snapshot, err)
 			}
 			if _, err := store.List(t.Context()); !errors.Is(err, plugin.ErrInvalid) {

@@ -77,7 +77,7 @@ func BenchmarkInstalledSourceAdmission(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	if err := installation.Enable(release); err != nil {
+	if installation, err = installation.Enable(release); err != nil {
 		b.Fatal(err)
 	}
 	installations := db.Installations

@@ -78,7 +78,7 @@ func (c realizingConnections) ReconcileInstallation(ctx context.Context, _ []mcp
 	}
 }
 
-func withdrawalStore(t *testing.T, release plugin.Release, installation *plugin.Installation) (*persistence.Bundle, *pluginhost.Fixture) {
+func withdrawalStore(t *testing.T, release plugin.Release, installation plugin.Installation) (*persistence.Bundle, *pluginhost.Fixture) {
 	t.Helper()
 	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: t.TempDir()})
 	if err != nil {
@@ -97,11 +97,11 @@ func withdrawalStore(t *testing.T, release plugin.Release, installation *plugin.
 
 type preparedPackages struct{}
 
-func (preparedPackages) ReadLocale(context.Context, *plugin.Installation, plugin.Locale) (map[string]string, error) {
+func (preparedPackages) ReadLocale(context.Context, plugin.Installation, plugin.Locale) (map[string]string, error) {
 	return nil, errors.New("unexpected locale resource read")
 }
 
-func (preparedPackages) ReadResource(context.Context, *plugin.Installation, string) ([]byte, error) {
+func (preparedPackages) ReadResource(context.Context, plugin.Installation, string) ([]byte, error) {
 	return nil, errors.New("unexpected component resource read")
 }
 
@@ -109,10 +109,10 @@ func (preparedPackages) Materialize(context.Context, string) (plugins.Candidate,
 	return nil, errors.New("unexpected materialization")
 }
 func (preparedPackages) Reclaim(context.Context) error { return nil }
-func (preparedPackages) Prepare(context.Context, *plugin.Installation, plugin.Release) error {
+func (preparedPackages) Prepare(context.Context, plugin.Installation, plugin.Release) error {
 	return nil
 }
-func (preparedPackages) Realize(context.Context, *plugin.Installation, plugin.Release) (plugins.Realization, error) {
+func (preparedPackages) Realize(context.Context, plugin.Installation, plugin.Release) (plugins.Realization, error) {
 	return plugins.Realization{Release: plugins.ReleaseAvailable}, nil
 }
 
@@ -126,7 +126,7 @@ func TestRunAssembledAfterUninstallCommitCannotDependOnTheRemovedRelease(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Enable(release); err != nil {
+	if installation, err = installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	stores, framework := withdrawalStore(t, release, installation)
@@ -180,7 +180,7 @@ func TestWithdrawalRefusesAnUnpublishedRunWithTheFormerAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Enable(release); err != nil {
+	if installation, err = installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	stores, framework := withdrawalStore(t, release, installation)

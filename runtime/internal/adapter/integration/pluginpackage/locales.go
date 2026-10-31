@@ -24,7 +24,7 @@ func decodeLocale(body []byte) (map[string]string, error) {
 	return messages, nil
 }
 
-func (r *Releases) ReadLocale(ctx context.Context, installation *plugin.Installation, locale plugin.Locale) (map[string]string, error) {
+func (r *Releases) ReadLocale(ctx context.Context, installation plugin.Installation, locale plugin.Locale) (map[string]string, error) {
 	body, err := r.readResource(ctx, installation, locale.Entry, maxManifestBytes)
 	if err != nil {
 		if cancellation.Err(ctx) != nil {

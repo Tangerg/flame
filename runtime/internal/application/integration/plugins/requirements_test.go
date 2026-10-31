@@ -63,7 +63,7 @@ func requirementSnapshot(t *testing.T, id identity.InstallationID, name string, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Enable(release); err != nil {
+	if installation, err = installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	return plugin.Snapshot{Installation: installation, Selected: release}

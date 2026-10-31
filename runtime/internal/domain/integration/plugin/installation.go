@@ -76,7 +76,7 @@ type Configuration struct {
 // a detached read projection; only Installation transitions advance admission.
 // Store readers must hydrate all three values from the same consistent read.
 type Snapshot struct {
-	Installation *Installation
+	Installation Installation
 	Selected     Release
 	Staged       *Release
 }
@@ -88,69 +88,69 @@ type Snapshot struct {
 // storage records cannot originate an installation that transitions would reject.
 type Installation struct{ record Record }
 
-func New(id identity.InstallationID, source string, release Release) (*Installation, error) {
+func New(id identity.InstallationID, source string, release Release) (Installation, error) {
 	return Restore(Record{ID: id, Source: source, Selected: release.Digest(), Values: map[string]string{}}, release, nil)
 }
 
 // Restore validates persisted state against its admitted release definitions.
 // A record alone cannot prove configuration, enablement or staged package identity.
-func Restore(r Record, selected Release, staged *Release) (*Installation, error) {
+func Restore(r Record, selected Release, staged *Release) (Installation, error) {
 	if err := r.ID.Validate(); err != nil {
-		return nil, fmt.Errorf("%w: installation identity: %w", ErrInvalid, err)
+		return Installation{}, fmt.Errorf("%w: installation identity: %w", ErrInvalid, err)
 	}
 	if r.Source == "" || len(r.Source) > 4096 || !utf8.ValidString(r.Source) {
-		return nil, fmt.Errorf("%w: installation source", ErrInvalid)
+		return Installation{}, fmt.Errorf("%w: installation source", ErrInvalid)
 	}
 	if err := r.Selected.Validate(); err != nil {
-		return nil, fmt.Errorf("%w: selected release: %w", ErrInvalid, err)
+		return Installation{}, fmt.Errorf("%w: selected release: %w", ErrInvalid, err)
 	}
 	if selected.Digest() != r.Selected {
-		return nil, fmt.Errorf("%w: selected release binding", ErrStale)
+		return Installation{}, fmt.Errorf("%w: selected release binding", ErrStale)
 	}
 	if r.Staged != nil {
 		if err := r.Staged.Validate(); err != nil {
-			return nil, fmt.Errorf("%w: staged release: %w", ErrInvalid, err)
+			return Installation{}, fmt.Errorf("%w: staged release: %w", ErrInvalid, err)
 		}
 		if staged == nil || staged.Digest() != *r.Staged {
-			return nil, fmt.Errorf("%w: staged release binding", ErrStale)
+			return Installation{}, fmt.Errorf("%w: staged release binding", ErrStale)
 		}
 		if err := validateStaged(selected, *staged); err != nil {
-			return nil, err
+			return Installation{}, err
 		}
 	} else if staged != nil {
-		return nil, fmt.Errorf("%w: unexpected staged release", ErrStale)
+		return Installation{}, fmt.Errorf("%w: unexpected staged release", ErrStale)
 	}
 	if err := validateValues(selected, r.Values); err != nil {
-		return nil, err
+		return Installation{}, err
 	}
 	for _, name := range r.DisabledServers {
 		if err := name.Validate(); err != nil {
-			return nil, fmt.Errorf("%w: disabled server: %w", ErrInvalid, err)
+			return Installation{}, fmt.Errorf("%w: disabled server: %w", ErrInvalid, err)
 		}
 		if _, declared := selected.server(name); !declared {
-			return nil, fmt.Errorf("%w: unknown disabled server %q", ErrInvalid, name)
+			return Installation{}, fmt.Errorf("%w: unknown disabled server %q", ErrInvalid, name)
 		}
 	}
 	for _, name := range r.DisabledSkills {
 		if !selected.declaresSkill(name) {
-			return nil, fmt.Errorf("%w: unknown disabled skill %q", ErrInvalid, name)
+			return Installation{}, fmt.Errorf("%w: unknown disabled skill %q", ErrInvalid, name)
 		}
 	}
 	if duplicateNames(r.DisabledServers) || duplicateNames(r.DisabledSkills) {
-		return nil, fmt.Errorf("%w: duplicate disabled component", ErrInvalid)
+		return Installation{}, fmt.Errorf("%w: duplicate disabled component", ErrInvalid)
 	}
 	if r.Enabled {
 		if err := requiredValues(selected, r.Values, r.DisabledServers); err != nil {
-			return nil, err
+			return Installation{}, err
 		}
 	}
-	i := &Installation{record: clone(r)}
-	if i.record.Values == nil {
-		i.record.Values = map[string]string{}
+	record := clone(r)
+	if record.Values == nil {
+		record.Values = map[string]string{}
 	}
-	sortServers(i.record.DisabledServers)
-	slices.Sort(i.record.DisabledSkills)
-	return i, nil
+	sortServers(record.DisabledServers)
+	slices.Sort(record.DisabledSkills)
+	return Installation{record: record}, nil
 }
 
 func clone(r Record) Record {
@@ -164,18 +164,18 @@ func clone(r Record) Record {
 	return r
 }
 
-func (i *Installation) Snapshot() Record            { return clone(i.record) }
-func (i *Installation) ID() identity.InstallationID { return i.record.ID }
-func (i *Installation) Selected() integrity.Digest  { return i.record.Selected }
-func (i *Installation) Enabled() bool               { return i.record.Enabled }
-func (i *Installation) Staged() (integrity.Digest, bool) {
+func (i Installation) Snapshot() Record            { return clone(i.record) }
+func (i Installation) ID() identity.InstallationID { return i.record.ID }
+func (i Installation) Selected() integrity.Digest  { return i.record.Selected }
+func (i Installation) Enabled() bool               { return i.record.Enabled }
+func (i Installation) Staged() (integrity.Digest, bool) {
 	if i.record.Staged == nil {
 		return integrity.Digest{}, false
 	}
 	return *i.record.Staged, true
 }
 
-func (i *Installation) bound(release Release) error {
+func (i Installation) bound(release Release) error {
 	if release.Digest() != i.record.Selected {
 		return fmt.Errorf("%w: release %s is not selected %s", ErrStale, release.Digest(), i.record.Selected)
 	}
@@ -184,16 +184,17 @@ func (i *Installation) bound(release Release) error {
 
 // Stage records a candidate of the same package without touching the
 // selected release, its configuration, or its desired enablement.
-func (i *Installation) Stage(selected, candidate Release) error {
+func (i Installation) Stage(selected, candidate Release) (Installation, error) {
 	if err := i.bound(selected); err != nil {
-		return err
+		return Installation{}, err
 	}
 	if err := validateStaged(selected, candidate); err != nil {
-		return err
+		return Installation{}, err
 	}
+	next := clone(i.record)
 	digest := candidate.Digest()
-	i.record.Staged = &digest
-	return nil
+	next.Staged = &digest
+	return Installation{record: next}, nil
 }
 
 func validateStaged(selected, candidate Release) error {
@@ -210,12 +211,12 @@ func validateStaged(selected, candidate Release) error {
 // Configuration survives only where its meaning is unchanged: a value keeps
 // its input declaration, a secret additionally keeps its recipient, and a
 // disabled component is still declared.
-func (i *Installation) Select(selected, staged Release) error {
+func (i Installation) Select(selected, staged Release) (Installation, error) {
 	if err := i.bound(selected); err != nil {
-		return err
+		return Installation{}, err
 	}
 	if i.record.Staged == nil || *i.record.Staged != staged.Digest() {
-		return fmt.Errorf("%w: release %s is not staged", ErrStale, staged.Digest())
+		return Installation{}, fmt.Errorf("%w: release %s is not staged", ErrStale, staged.Digest())
 	}
 	next := Record{ID: i.record.ID, Source: i.record.Source, Selected: staged.Digest(), Enabled: i.record.Enabled, Values: map[string]string{}}
 	for id, value := range i.record.Values {
@@ -235,11 +236,10 @@ func (i *Installation) Select(selected, staged Release) error {
 	}
 	if next.Enabled {
 		if err := requiredValues(staged, next.Values, next.DisabledServers); err != nil {
-			return err
+			return Installation{}, err
 		}
 	}
-	i.record = next
-	return nil
+	return Installation{record: next}, nil
 }
 
 // retainsInput keeps a value only for an input the candidate binds to the
@@ -261,27 +261,32 @@ func retainsInput(selected, staged Release, id string) bool {
 	return previous == current
 }
 
-func (i *Installation) Enable(release Release) error {
+func (i Installation) Enable(release Release) (Installation, error) {
 	if err := i.bound(release); err != nil {
-		return err
+		return Installation{}, err
 	}
 	if err := requiredValues(release, i.record.Values, i.record.DisabledServers); err != nil {
-		return err
+		return Installation{}, err
 	}
-	i.record.Enabled = true
-	return nil
+	next := clone(i.record)
+	next.Enabled = true
+	return Installation{record: next}, nil
 }
 
-func (i *Installation) Disable() { i.record.Enabled = false }
+func (i Installation) Disable() Installation {
+	next := clone(i.record)
+	next.Enabled = false
+	return Installation{record: next}
+}
 
-func (i *Installation) Configure(release Release, configuration Configuration) error {
+func (i Installation) Configure(release Release, configuration Configuration) (Installation, error) {
 	if err := i.bound(release); err != nil {
-		return err
+		return Installation{}, err
 	}
 	values := maps.Clone(i.record.Values)
 	for key, change := range configuration.Values {
 		if _, declared := release.input(key); !declared {
-			return fmt.Errorf("%w: unknown input %q", ErrInvalid, key)
+			return Installation{}, fmt.Errorf("%w: unknown input %q", ErrInvalid, key)
 		}
 		switch change.kind {
 		case setValue:
@@ -289,32 +294,33 @@ func (i *Installation) Configure(release Release, configuration Configuration) e
 		case clearValue:
 			delete(values, key)
 		default:
-			return fmt.Errorf("%w: input %q change", ErrInvalid, key)
+			return Installation{}, fmt.Errorf("%w: input %q change", ErrInvalid, key)
 		}
 	}
 	if err := validateValues(release, values); err != nil {
-		return err
+		return Installation{}, err
 	}
 	servers, err := applyComponentChanges(i.record.DisabledServers, configuration.Servers, func(name mcpserver.ServerName) bool {
 		_, declared := release.server(name)
 		return declared
 	}, mcpserver.ServerName.String)
 	if err != nil {
-		return fmt.Errorf("server enablement: %w", err)
+		return Installation{}, fmt.Errorf("server enablement: %w", err)
 	}
 	skills, err := applyComponentChanges(i.record.DisabledSkills, configuration.Skills, release.declaresSkill, func(name string) string { return name })
 	if err != nil {
-		return fmt.Errorf("skill enablement: %w", err)
+		return Installation{}, fmt.Errorf("skill enablement: %w", err)
 	}
 	if i.record.Enabled {
 		if err := requiredValues(release, values, servers); err != nil {
-			return err
+			return Installation{}, err
 		}
 	}
-	i.record.Values = values
-	i.record.DisabledServers = servers
-	i.record.DisabledSkills = skills
-	return nil
+	next := clone(i.record)
+	next.Values = values
+	next.DisabledServers = servers
+	next.DisabledSkills = skills
+	return Installation{record: next}, nil
 }
 
 // applyComponentChanges returns the sorted disabled set after changes, each
@@ -384,12 +390,12 @@ func requiredValues(release Release, values map[string]string, disabled []mcpser
 // selected release digest and the server's name in it. Any release change
 // makes standing approvals for its tools stale; credentials and availability
 // affect connection realization, not permission.
-func (i *Installation) ServerAuthority(server mcpserver.ServerName) integrity.Digest {
+func (i Installation) ServerAuthority(server mcpserver.ServerName) integrity.Digest {
 	return identity.DigestStrings(i.record.Selected.String(), server.String())
 }
 
 // ServerID names one declared server of this installation in the MCP registry.
-func (i *Installation) ServerID(server mcpserver.ServerName) (mcpserver.ID, error) {
+func (i Installation) ServerID(server mcpserver.ServerName) (mcpserver.ID, error) {
 	origin, err := mcpserver.InstallationOrigin(i.record.ID)
 	if err != nil {
 		return mcpserver.ID{}, fmt.Errorf("plugin: installation %s origin: %w", i.record.ID, err)
@@ -402,7 +408,7 @@ func (i *Installation) ServerID(server mcpserver.ServerName) (mcpserver.ID, erro
 }
 
 // ServerIDs names every server the selected release declares.
-func (i *Installation) ServerIDs(release Release) ([]mcpserver.ID, error) {
+func (i Installation) ServerIDs(release Release) ([]mcpserver.ID, error) {
 	if err := i.bound(release); err != nil {
 		return nil, err
 	}
@@ -419,7 +425,7 @@ func (i *Installation) ServerIDs(release Release) ([]mcpserver.ID, error) {
 
 // ServerSource binds a declared server's registry record to the selected
 // release, its tool authority, and the recipient its credentials follow.
-func (i *Installation) ServerSource(release Release, server mcpserver.ServerName) (mcpserver.Source, error) {
+func (i Installation) ServerSource(release Release, server mcpserver.ServerName) (mcpserver.Source, error) {
 	if err := i.bound(release); err != nil {
 		return mcpserver.Source{}, err
 	}
@@ -430,7 +436,7 @@ func (i *Installation) ServerSource(release Release, server mcpserver.ServerName
 	return mcpserver.InstallationSource(i.record.ID, i.record.Selected, i.ServerAuthority(server), recipient)
 }
 
-func (i *Installation) authorizePresentation(release Release, digest integrity.Digest) error {
+func (i Installation) authorizePresentation(release Release, digest integrity.Digest) error {
 	if i.Selected() != digest || release.Digest() != digest {
 		return fmt.Errorf("%w: presentation release", ErrStale)
 	}
@@ -440,7 +446,7 @@ func (i *Installation) authorizePresentation(release Release, digest integrity.D
 	return nil
 }
 
-func (i *Installation) ServerEnabled(name mcpserver.ServerName) bool {
+func (i Installation) ServerEnabled(name mcpserver.ServerName) bool {
 	return i.Enabled() && !slices.Contains(i.record.DisabledServers, name)
 }
 
@@ -477,7 +483,7 @@ type View struct {
 	DisabledSkills  []string
 }
 
-func (i *Installation) View(release Release) (View, error) {
+func (i Installation) View(release Release) (View, error) {
 	if err := i.bound(release); err != nil {
 		return View{}, err
 	}
@@ -504,13 +510,13 @@ func (i *Installation) View(release Release) (View, error) {
 }
 
 // Dependency names the release an execution admits from this installation now.
-func (i *Installation) Dependency() Dependency {
+func (i Installation) Dependency() Dependency {
 	return Dependency{InstallationID: i.record.ID, Digest: i.record.Selected}
 }
 
 // EnabledSkills projects admitted metadata from the selected release: none
 // unless the installation is enabled, and never a Skill the user disabled.
-func (i *Installation) EnabledSkills(release Release) ([]Skill, error) {
+func (i Installation) EnabledSkills(release Release) ([]Skill, error) {
 	if err := i.bound(release); err != nil {
 		return nil, err
 	}
@@ -534,7 +540,7 @@ type ServerInputs struct {
 	Authorization string
 }
 
-func (i *Installation) ServerInputs(release Release, server mcpserver.ServerName) (ServerInputs, error) {
+func (i Installation) ServerInputs(release Release, server mcpserver.ServerName) (ServerInputs, error) {
 	if err := i.bound(release); err != nil {
 		return ServerInputs{}, err
 	}
@@ -557,7 +563,7 @@ func (i *Installation) ServerInputs(release Release, server mcpserver.ServerName
 }
 
 // Staging does not change the selected capabilities execution may admit.
-func (i *Installation) ExecutionChanged(previous *Installation) bool {
+func (i Installation) ExecutionChanged(previous Installation) bool {
 	return i.record.Selected != previous.record.Selected ||
 		i.Enabled() != previous.Enabled() ||
 		!maps.Equal(i.record.Values, previous.record.Values) ||
@@ -568,7 +574,7 @@ func (i *Installation) ExecutionChanged(previous *Installation) bool {
 // ChangedServers identifies connection facts advanced by the transition from
 // previous, whose selected release is before, to this installation, whose
 // selected release is after. Staging does not invalidate a live connection.
-func (i *Installation) ChangedServers(previous *Installation, before, after Release) ([]mcpserver.ServerName, error) {
+func (i Installation) ChangedServers(previous Installation, before, after Release) ([]mcpserver.ServerName, error) {
 	if err := previous.bound(before); err != nil {
 		return nil, err
 	}
@@ -593,7 +599,7 @@ func (i *Installation) ChangedServers(previous *Installation, before, after Rele
 	return changed, nil
 }
 
-func (i *Installation) sameInputValues(previous *Installation, release Release, name mcpserver.ServerName) bool {
+func (i Installation) sameInputValues(previous Installation, release Release, name mcpserver.ServerName) bool {
 	for _, input := range release.declaration.Inputs {
 		if input.Server != name {
 			continue

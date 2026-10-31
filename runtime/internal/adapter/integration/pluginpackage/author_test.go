@@ -68,7 +68,7 @@ func TestNativeReleaseWithoutCurrentPlatformNeverProducesALaunch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Enable(release); err != nil {
+	if installation, err = installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	launch, found, err := releases.Connection(t.Context(), installation, release, release.Declaration().Servers[0].Name)

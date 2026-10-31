@@ -36,7 +36,7 @@ func (*sourceResources) ComponentModules(context.Context, plugin.Release, plugin
 	return &distribution.Module{Entry: plugin.Namespace + "/component.js", Imports: []distribution.ModuleImport{}}, nil
 }
 
-func (s *sourceResources) ReadResource(_ context.Context, _ *plugin.Installation, path string) ([]byte, error) {
+func (s *sourceResources) ReadResource(_ context.Context, _ plugin.Installation, path string) ([]byte, error) {
 	if path != plugin.Namespace+"/component.js" {
 		return nil, errors.New("unexpected resource")
 	}
@@ -63,7 +63,7 @@ func sourceFixture(t *testing.T) (*Source, *sourceStore, *sourceResources, qimu.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Enable(release); err != nil {
+	if installation, err = installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	store := &sourceStore{snapshot: plugin.Snapshot{Installation: installation, Selected: release}}
@@ -99,7 +99,7 @@ func TestComponentArtifactUsesExactAdmittedBytesAndRefusesChangedConfiguration(t
 	if _, err := source.Module(t.Context(), changed); !errors.Is(err, plugin.ErrStale) {
 		t.Fatalf("changed release = %v", err)
 	}
-	store.snapshot.Installation.Disable()
+	store.snapshot.Installation = store.snapshot.Installation.Disable()
 	if _, err := source.Module(t.Context(), binding); !errors.Is(err, plugin.ErrDisabled) {
 		t.Fatalf("disabled installation = %v", err)
 	}

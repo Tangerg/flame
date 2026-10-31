@@ -13,6 +13,10 @@ import (
 const MaxLocaleTagBytes = 128
 const maxLocales = 32
 
+// baseLocale is the language of a declaration's own strings, so a package
+// cannot also declare it as a translation.
+var baseLocale = language.English
+
 type Locale struct {
 	Tag   string
 	Title string
@@ -25,7 +29,7 @@ func (b *Builder) AdmitLocale(value Locale) error {
 	}
 	tag, err := language.Parse(value.Tag)
 	base, _, _ := tag.Raw()
-	if err != nil || tag.String() != value.Tag || base.String() == "und" || value.Tag == "en" || len(value.Tag) > MaxLocaleTagBytes {
+	if err != nil || tag.String() != value.Tag || base.String() == "und" || tag == baseLocale || len(value.Tag) > MaxLocaleTagBytes {
 		return refuse(DiagnosticInvalidDeclaration, "locale tag %q", value.Tag)
 	}
 	if slices.ContainsFunc(b.declaration.Locales, func(current Locale) bool { return current.Tag == value.Tag }) {
@@ -41,7 +45,7 @@ func (b *Builder) AdmitLocale(value Locale) error {
 	return nil
 }
 
-func (i *Installation) AuthorizeLocale(release Release, digest integrity.Digest, tag string) (Locale, error) {
+func (i Installation) AuthorizeLocale(release Release, digest integrity.Digest, tag string) (Locale, error) {
 	if err := i.authorizePresentation(release, digest); err != nil {
 		return Locale{}, err
 	}

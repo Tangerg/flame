@@ -18,7 +18,7 @@ import (
 
 // Connection transfers the original content lease to the real process owner.
 // There is no copied execution tree, second release digest or process cache.
-func (r *Releases) Connection(ctx context.Context, installation *plugin.Installation, release plugin.Release, name mcpserver.ServerName) (connection mcpapp.Launch, found bool, err error) {
+func (r *Releases) Connection(ctx context.Context, installation plugin.Installation, release plugin.Release, name mcpserver.ServerName) (connection mcpapp.Launch, found bool, err error) {
 	server, found, err := r.Server(ctx, installation, release, name, plugins.Declared)
 	if err != nil || !found || !server.Enabled {
 		return mcpapp.Launch{Server: server}, found, err

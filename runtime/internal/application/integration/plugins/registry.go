@@ -23,8 +23,8 @@ type Store interface {
 	Stage(context.Context, identity.InstallationID, integrity.Digest) error
 }
 type packageSources interface {
-	Definitions(context.Context, *plugin.Installation, plugin.Release) ([]mcpserver.Server, error)
-	Server(context.Context, *plugin.Installation, plugin.Release, mcpserver.ServerName, Reach) (mcpserver.Server, bool, error)
+	Definitions(context.Context, plugin.Installation, plugin.Release) ([]mcpserver.Server, error)
+	Server(context.Context, plugin.Installation, plugin.Release, mcpserver.ServerName, Reach) (mcpserver.Server, bool, error)
 }
 
 // Reach is how far a single-server read realizes an installation's release.

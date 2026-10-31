@@ -62,7 +62,7 @@ func (s *installationMemory) Get(ctx context.Context, _ identity.InstallationID)
 	}
 	return plugin.Snapshot{Installation: installation, Selected: selected, Staged: staged}, true, nil
 }
-func (s *installationMemory) Save(_ context.Context, i *plugin.Installation) error {
+func (s *installationMemory) Save(_ context.Context, i plugin.Installation) error {
 	if s.saveErr != nil {
 		return s.saveErr
 	}
@@ -90,15 +90,15 @@ func (m releaseMemory) Get(_ context.Context, digest integrity.Digest) (plugin.R
 
 type installationPackages struct {
 	materialize func(context.Context, string) (plugin.Release, error)
-	prepare     func(context.Context, *plugin.Installation) error
-	realize     func(context.Context, *plugin.Installation) (Realization, error)
+	prepare     func(context.Context, plugin.Installation) error
+	realize     func(context.Context, plugin.Installation) (Realization, error)
 }
 
-func (installationPackages) ReadResource(context.Context, *plugin.Installation, string) ([]byte, error) {
+func (installationPackages) ReadResource(context.Context, plugin.Installation, string) ([]byte, error) {
 	return nil, errors.New("unexpected component resource read")
 }
 
-func (installationPackages) ReadLocale(context.Context, *plugin.Installation, plugin.Locale) (map[string]string, error) {
+func (installationPackages) ReadLocale(context.Context, plugin.Installation, plugin.Locale) (map[string]string, error) {
 	return nil, errors.New("unexpected locale read")
 }
 
@@ -119,13 +119,13 @@ func (p installationPackages) Materialize(ctx context.Context, source string) (C
 	return candidateRelease{release: release}, nil
 }
 func (installationPackages) Reclaim(context.Context) error { return nil }
-func (p installationPackages) Prepare(ctx context.Context, installation *plugin.Installation, _ plugin.Release) error {
+func (p installationPackages) Prepare(ctx context.Context, installation plugin.Installation, _ plugin.Release) error {
 	if p.prepare != nil {
 		return p.prepare(ctx, installation)
 	}
 	return nil
 }
-func (p installationPackages) Realize(ctx context.Context, i *plugin.Installation, _ plugin.Release) (Realization, error) {
+func (p installationPackages) Realize(ctx context.Context, i plugin.Installation, _ plugin.Release) (Realization, error) {
 	if p.realize != nil {
 		return p.realize(ctx, i)
 	}
@@ -318,7 +318,7 @@ func TestListingPreservesCancellationInsteadOfProjectingUnavailability(t *testin
 	ctx, cancel := context.WithCancelCause(t.Context())
 	defer cancel(nil)
 	cause := errors.New("listing abandoned")
-	packages := installationPackages{realize: func(ctx context.Context, _ *plugin.Installation) (Realization, error) {
+	packages := installationPackages{realize: func(ctx context.Context, _ plugin.Installation) (Realization, error) {
 		cancel(cause)
 		return Realization{}, context.Cause(ctx)
 	}}
@@ -334,7 +334,7 @@ func TestListingPreservesCancellationInsteadOfProjectingUnavailability(t *testin
 
 func TestListingReportsUnavailableReleaseWithoutLosingTheInstallation(t *testing.T) {
 	store, dependencies, id, catalog := installationFixture(t)
-	packages := installationPackages{realize: func(context.Context, *plugin.Installation) (Realization, error) {
+	packages := installationPackages{realize: func(context.Context, plugin.Installation) (Realization, error) {
 		return Realization{Release: ReleaseUnavailable}, nil
 	}}
 	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, installationConnections{}, nil)
@@ -353,7 +353,7 @@ func TestListingReportsUnavailableReleaseWithoutLosingTheInstallation(t *testing
 func TestPresentationIsAdmittedOnlyForAnActiveAvailableRelease(t *testing.T) {
 	store, dependencies, id, catalog := installationFixture(t)
 	releaseLost := false
-	packages := installationPackages{realize: func(context.Context, *plugin.Installation) (Realization, error) {
+	packages := installationPackages{realize: func(context.Context, plugin.Installation) (Realization, error) {
 		if releaseLost {
 			return Realization{Release: ReleaseUnavailable}, nil
 		}
@@ -398,7 +398,7 @@ func TestStaleConfigurationNeverReachesPersistenceOrRealization(t *testing.T) {
 	if err != nil || !found {
 		t.Fatal(err)
 	}
-	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{prepare: func(context.Context, *plugin.Installation) error {
+	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{prepare: func(context.Context, plugin.Installation) error {
 		t.Fatal("stale configuration reached preparation")
 		return nil
 	}}, installationConnections{reconcile: func(context.Context, []mcpserver.ID) error {
@@ -429,7 +429,7 @@ func TestFailedPreparationIsObservedByTheChangeAndEveryLaterListing(t *testing.T
 	unavailableBackend := Realization{Release: ReleaseAvailable, UnavailableBackends: []mcpserver.ServerName{backend}}
 	reconciled := false
 	packages := installationPackages{
-		prepare: func(ctx context.Context, installation *plugin.Installation) error {
+		prepare: func(ctx context.Context, installation plugin.Installation) error {
 			dependencies.requireReleased(t)
 			current, found, err := store.Get(ctx, id)
 			if err != nil || !found || !current.Installation.Enabled() || !installation.Enabled() {
@@ -437,7 +437,7 @@ func TestFailedPreparationIsObservedByTheChangeAndEveryLaterListing(t *testing.T
 			}
 			return errors.New("backend directory could not be created")
 		},
-		realize: func(context.Context, *plugin.Installation) (Realization, error) {
+		realize: func(context.Context, plugin.Installation) (Realization, error) {
 			return unavailableBackend, nil
 		},
 	}
@@ -590,11 +590,11 @@ func TestCommittedInstallationRealizationFollowsRuntimeLifetime(t *testing.T) {
 				connections := installationConnections{reconcile: func(context.Context, []mcpserver.ID) error { return nil }}
 				switch phase {
 				case "preparation":
-					packages.prepare = func(ctx context.Context, _ *plugin.Installation) error { return wait(ctx) }
+					packages.prepare = func(ctx context.Context, _ plugin.Installation) error { return wait(ctx) }
 				case "reconciliation", "removal":
 					connections.reconcile = func(ctx context.Context, _ []mcpserver.ID) error { return wait(ctx) }
 				case "installation", "projection":
-					packages.realize = func(ctx context.Context, _ *plugin.Installation) (Realization, error) {
+					packages.realize = func(ctx context.Context, _ plugin.Installation) (Realization, error) {
 						return Realization{}, wait(ctx)
 					}
 				}
@@ -679,7 +679,7 @@ func TestCommittedInstallReturnsItsProjectionAfterRequestCancellation(t *testing
 	cause := errors.New("request ended after installation commit")
 	packages := installationPackages{
 		materialize: func(context.Context, string) (plugin.Release, error) { return selected, nil },
-		realize: func(ctx context.Context, installation *plugin.Installation) (Realization, error) {
+		realize: func(ctx context.Context, installation plugin.Installation) (Realization, error) {
 			if store.record == nil || store.record.ID != installation.ID() {
 				t.Fatal("projection preceded installation commit or retained admission")
 			}

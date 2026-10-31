@@ -73,7 +73,7 @@ func newBindingFixture(t *testing.T) bindingFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Enable(release); err != nil {
+	if installation, err = installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	configuration, err := plugins.EncodeFrameworkConfiguration(installation.Snapshot())

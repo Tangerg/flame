@@ -260,8 +260,8 @@ func TestMissingInstallationReadRequiresAcceptedSettlement(t *testing.T) {
 	failure := errors.New("installation read commit failed")
 	db := settlementDatabase(t, &transactionFaults{commitFailure: failure})
 	snapshot, found, err := newInstallationStore(newReleaseStore(db)).Get(t.Context(), testsupport.InstallationID(t))
-	if found || snapshot.Installation != nil || !errors.Is(err, failure) {
-		t.Fatalf("installation = (%v, %t, %v), want rejected read settlement", snapshot.Installation, found, err)
+	if found || !errors.Is(err, failure) {
+		t.Fatalf("installation = (%+v, %t, %v), want rejected read settlement", snapshot, found, err)
 	}
 }
 
@@ -293,7 +293,7 @@ func TestInstallationLookupSeparatesAbsentRecordFromMissingRelease(t *testing.T)
 	if _, err := db.ExecContext(t.Context(), `DELETE FROM plugin_releases WHERE digest=?`, release.Digest().String()); err != nil {
 		t.Fatal(err)
 	}
-	if snapshot, found, err := store.Get(t.Context(), id); found || snapshot.Installation != nil || !errors.Is(err, plugin.ErrNotFound) || !strings.Contains(err.Error(), "selected release") {
+	if snapshot, found, err := store.Get(t.Context(), id); found || !errors.Is(err, plugin.ErrNotFound) || !strings.Contains(err.Error(), "selected release") {
 		t.Fatalf("malformed installation = (%v, %t, %v), want rejected restoration with release cause", snapshot.Installation, found, err)
 	}
 }

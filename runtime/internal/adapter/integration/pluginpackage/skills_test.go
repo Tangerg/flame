@@ -49,7 +49,7 @@ func TestRetainedSkillSourceIgnoresNewConflictingInstallations(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := installation.Enable(release); err != nil {
+		if installation, err = installation.Enable(release); err != nil {
 			t.Fatal(err)
 		}
 		if err := store.Save(t.Context(), installation); err != nil {
@@ -138,7 +138,7 @@ func TestSkillAdmissionAndReadsShareDirectoryNameBinding(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					if err := installation.Enable(release); err != nil {
+					if installation, err = installation.Enable(release); err != nil {
 						t.Fatal(err)
 					}
 					if err := store.Save(t.Context(), installation); err != nil {
@@ -204,7 +204,7 @@ func TestSkillDiscoveryDistinguishesUnavailablePackagesFromNameConflicts(t *test
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := installation.Enable(release); err != nil {
+				if installation, err = installation.Enable(release); err != nil {
 					t.Fatal(err)
 				}
 				if err := store.Save(t.Context(), installation); err != nil {
@@ -280,7 +280,7 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Enable(release); err != nil {
+	if installation, err = installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Save(t.Context(), installation); err != nil {
@@ -320,7 +320,7 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 	}
 	setSkill := func(change plugin.ComponentChange) {
 		t.Helper()
-		if err := installation.Configure(release, plugin.Configuration{Skills: map[string]plugin.ComponentChange{"review": change}}); err != nil {
+		if installation, err = installation.Configure(release, plugin.Configuration{Skills: map[string]plugin.ComponentChange{"review": change}}); err != nil {
 			t.Fatal(err)
 		}
 		if err := store.Save(t.Context(), installation); err != nil {

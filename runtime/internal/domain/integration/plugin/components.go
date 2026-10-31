@@ -142,7 +142,7 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 	return nil
 }
 
-func (i *Installation) AuthorizeComponent(release Release, digest integrity.Digest, id ContributionID) (ClientComponent, error) {
+func (i Installation) AuthorizeComponent(release Release, digest integrity.Digest, id ContributionID) (ClientComponent, error) {
 	if err := i.authorizePresentation(release, digest); err != nil {
 		return ClientComponent{}, err
 	}

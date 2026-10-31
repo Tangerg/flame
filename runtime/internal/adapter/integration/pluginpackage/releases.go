@@ -169,7 +169,7 @@ func (r *Releases) Reclaim(ctx context.Context) error {
 	return errors.Join(failures...)
 }
 
-func (r *Releases) readResource(ctx context.Context, installation *plugin.Installation, name string, limit int64) (_ []byte, err error) {
+func (r *Releases) readResource(ctx context.Context, installation plugin.Installation, name string, limit int64) (_ []byte, err error) {
 	if !plugin.ValidResourcePath(name) {
 		return nil, fmt.Errorf("%w: invalid resource path", plugin.ErrInvalid)
 	}
@@ -184,7 +184,7 @@ func (r *Releases) readResource(ctx context.Context, installation *plugin.Instal
 	}
 	return content, err
 }
-func (r *Releases) ReadResource(ctx context.Context, installation *plugin.Installation, name string) ([]byte, error) {
+func (r *Releases) ReadResource(ctx context.Context, installation plugin.Installation, name string) ([]byte, error) {
 	body, err := r.readResource(ctx, installation, name, maxPackageBytes)
 	if err != nil && !errors.Is(err, plugin.ErrInvalid) && cancellation.Err(ctx) == nil {
 		return nil, errors.Join(plugin.ErrUnavailable, err)

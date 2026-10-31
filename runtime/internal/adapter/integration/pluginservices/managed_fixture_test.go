@@ -44,7 +44,7 @@ type managedPackages struct {
 	digest integrity.Digest
 }
 
-func (p managedPackages) Server(_ context.Context, installation *plugin.Installation, release plugin.Release, name mcpserver.ServerName, _ plugins.Reach) (mcpserver.Server, bool, error) {
+func (p managedPackages) Server(_ context.Context, installation plugin.Installation, release plugin.Release, name mcpserver.ServerName, _ plugins.Reach) (mcpserver.Server, bool, error) {
 	if name != p.server.Name {
 		return mcpserver.Server{}, false, nil
 	}
@@ -58,12 +58,12 @@ func (p managedPackages) Server(_ context.Context, installation *plugin.Installa
 	return server, true, nil
 }
 
-func (p managedPackages) Definitions(ctx context.Context, installation *plugin.Installation, release plugin.Release) ([]mcpserver.Server, error) {
+func (p managedPackages) Definitions(ctx context.Context, installation plugin.Installation, release plugin.Release) ([]mcpserver.Server, error) {
 	server, _, err := p.Server(ctx, installation, release, p.server.Name, plugins.Declared)
 	return []mcpserver.Server{server}, err
 }
 
-func (p managedPackages) Connection(ctx context.Context, installation *plugin.Installation, release plugin.Release, name mcpserver.ServerName) (mcpapp.Launch, bool, error) {
+func (p managedPackages) Connection(ctx context.Context, installation plugin.Installation, release plugin.Release, name mcpserver.ServerName) (mcpapp.Launch, bool, error) {
 	server, found, err := p.Server(ctx, installation, release, name, plugins.Dispatchable)
 	if err != nil || !found {
 		return mcpapp.Launch{}, found, err

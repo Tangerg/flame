@@ -28,10 +28,10 @@ type catalog interface {
 type packages interface {
 	Materialize(context.Context, string) (Candidate, error)
 	Reclaim(context.Context) error
-	Prepare(context.Context, *plugin.Installation, plugin.Release) error
-	Realize(context.Context, *plugin.Installation, plugin.Release) (Realization, error)
-	ReadResource(context.Context, *plugin.Installation, string) ([]byte, error)
-	ReadLocale(context.Context, *plugin.Installation, plugin.Locale) (map[string]string, error)
+	Prepare(context.Context, plugin.Installation, plugin.Release) error
+	Realize(context.Context, plugin.Installation, plugin.Release) (Realization, error)
+	ReadResource(context.Context, plugin.Installation, string) ([]byte, error)
+	ReadLocale(context.Context, plugin.Installation, plugin.Locale) (map[string]string, error)
 }
 
 // Candidate is one package's admitted bytes awaiting publication. Only an
@@ -230,7 +230,7 @@ func (c *Coordinator) Stage(ctx context.Context, id identity.InstallationID, sou
 		if err != nil {
 			return err
 		}
-		if err := snapshot.Installation.Stage(snapshot.Selected, published); err != nil {
+		if _, err := snapshot.Installation.Stage(snapshot.Selected, published); err != nil {
 			return err
 		}
 		return c.store.Stage(admitted, id, published.Digest())
@@ -257,10 +257,10 @@ func (c *Coordinator) Reclaim(ctx context.Context) error {
 }
 
 func (c *Coordinator) Select(ctx context.Context, id identity.InstallationID, digest integrity.Digest) (Inspection, error) {
-	return c.change(ctx, id, func(ctx context.Context, i *plugin.Installation, selected plugin.Release) error {
+	return c.change(ctx, id, func(ctx context.Context, i plugin.Installation, selected plugin.Release) (plugin.Installation, error) {
 		staged, err := c.named(ctx, digest)
 		if err != nil {
-			return err
+			return plugin.Installation{}, err
 		}
 		return i.Select(selected, staged)
 	})
@@ -269,28 +269,27 @@ func (c *Coordinator) Select(ctx context.Context, id identity.InstallationID, di
 // Restoring availability of the same selected code does not replace a held
 // execution dependency. Selection and configuration still require quiescence.
 func (c *Coordinator) Enable(ctx context.Context, id identity.InstallationID) (Inspection, error) {
-	return c.change(ctx, id, func(_ context.Context, i *plugin.Installation, selected plugin.Release) error {
+	return c.change(ctx, id, func(_ context.Context, i plugin.Installation, selected plugin.Release) (plugin.Installation, error) {
 		return i.Enable(selected)
 	})
 }
 
 // Disable withdraws future dispatch and remains available while in use.
 func (c *Coordinator) Disable(ctx context.Context, id identity.InstallationID) (Inspection, error) {
-	return c.change(ctx, id, func(_ context.Context, i *plugin.Installation, _ plugin.Release) error {
-		i.Disable()
-		return nil
+	return c.change(ctx, id, func(_ context.Context, i plugin.Installation, _ plugin.Release) (plugin.Installation, error) {
+		return i.Disable(), nil
 	})
 }
 func (c *Coordinator) Configure(ctx context.Context, id identity.InstallationID, digest integrity.Digest, configuration plugin.Configuration) (Inspection, error) {
-	return c.change(ctx, id, func(ctx context.Context, i *plugin.Installation, _ plugin.Release) error {
+	return c.change(ctx, id, func(ctx context.Context, i plugin.Installation, _ plugin.Release) (plugin.Installation, error) {
 		release, err := c.named(ctx, digest)
 		if err != nil {
-			return err
+			return plugin.Installation{}, err
 		}
 		return i.Configure(release, configuration)
 	})
 }
-func (c *Coordinator) change(ctx context.Context, id identity.InstallationID, transition func(context.Context, *plugin.Installation, plugin.Release) error) (Inspection, error) {
+func (c *Coordinator) change(ctx context.Context, id identity.InstallationID, transition func(context.Context, plugin.Installation, plugin.Release) (plugin.Installation, error)) (Inspection, error) {
 	snapshot, err := c.installationSnapshot(ctx, id)
 	if err != nil {
 		return Inspection{}, err
@@ -306,11 +305,8 @@ func (c *Coordinator) change(ctx context.Context, id identity.InstallationID, tr
 	if expected.Release.String() != snapshot.Selected.Digest().String() || expected.Enabled != snapshot.Installation.Enabled() || !bytes.Equal(expected.Configuration, configuration) {
 		return Inspection{}, plugin.ErrStale
 	}
-	installation, err := plugin.Restore(snapshot.Installation.Snapshot(), snapshot.Selected, snapshot.Staged)
+	installation, err := transition(ctx, snapshot.Installation, snapshot.Selected)
 	if err != nil {
-		return Inspection{}, err
-	}
-	if err := transition(ctx, installation, snapshot.Selected); err != nil {
 		return Inspection{}, err
 	}
 	after := snapshot.Selected
@@ -403,8 +399,8 @@ func (c *Coordinator) realizationContext(request context.Context) (context.Conte
 	}
 }
 
-func installationStates(snapshots []plugin.Snapshot) []*plugin.Installation {
-	result := make([]*plugin.Installation, 0, len(snapshots))
+func installationStates(snapshots []plugin.Snapshot) []plugin.Installation {
+	result := make([]plugin.Installation, 0, len(snapshots))
 	for _, snapshot := range snapshots {
 		result = append(result, snapshot.Installation)
 	}

@@ -59,7 +59,7 @@ func TestManagedBackendLeasesCompleteGraphAndIgnoresAmbientNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Enable(release); err != nil {
+	if installation, err = installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("NODE_OPTIONS", "--import=/missing/ambient.mjs")
@@ -116,7 +116,7 @@ func TestMissingManagedCompanionKeepsNativeActivationAndManagementUsable(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Enable(release); err != nil {
+	if installation, err = installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err := r.Connection(t.Context(), installation, release, testsupport.ServerName("backend")); !errors.Is(err, plugin.ErrUnavailable) {

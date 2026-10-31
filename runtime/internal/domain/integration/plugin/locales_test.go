@@ -51,7 +51,7 @@ func TestLocaleAuthorizationFollowsSelectedEnabledRelease(t *testing.T) {
 	if _, err := installation.AuthorizeLocale(release, release.Digest(), "ja"); !errors.Is(err, ErrDisabled) {
 		t.Fatalf("disabled read=%v", err)
 	}
-	if err := installation.Enable(release); err != nil {
+	if installation, err = installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	if value, err := installation.AuthorizeLocale(release, release.Digest(), "ja"); err != nil || value != locale {
@@ -66,10 +66,10 @@ func TestLocaleAuthorizationFollowsSelectedEnabledRelease(t *testing.T) {
 		t.Fatalf("undeclared read=%v", err)
 	}
 	replacement := testRelease(t, "replacement", release.Declaration())
-	if err := installation.Stage(release, replacement); err != nil {
+	if installation, err = installation.Stage(release, replacement); err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Select(release, replacement); err != nil {
+	if installation, err = installation.Select(release, replacement); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := installation.AuthorizeLocale(replacement, release.Digest(), "ja"); !errors.Is(err, ErrStale) {

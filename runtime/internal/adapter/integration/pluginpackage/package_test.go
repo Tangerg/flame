@@ -44,7 +44,7 @@ type installationFixture struct {
 	catalog releaseCatalog
 }
 
-func (s *installationFixture) Save(ctx context.Context, installation *plugin.Installation) error {
+func (s *installationFixture) Save(ctx context.Context, installation plugin.Installation) error {
 	release, err := s.catalog.Get(ctx, installation.Selected())
 	if err != nil {
 		return err
@@ -352,7 +352,7 @@ func TestNativeConnectionRetainsOriginalContentAndDigest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Enable(release); err != nil {
+	if installation, err = installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	launch, found, err := releases.Connection(t.Context(), installation, release, testsupport.ServerName("backend"))

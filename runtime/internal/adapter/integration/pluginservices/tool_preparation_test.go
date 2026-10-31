@@ -109,7 +109,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := installation.Enable(release); err != nil {
+			if installation, err = installation.Enable(release); err != nil {
 				t.Fatal(err)
 			}
 			source, err := installation.ServerSource(release, name)

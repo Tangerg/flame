@@ -24,7 +24,7 @@ func TestOriginalScheduleSourceAvailabilityPreservesRecoveryFailures(t *testing.
 				t.Fatal(err)
 			}
 			if state != "disabled" {
-				if err := installation.Enable(release); err != nil {
+				if installation, err = installation.Enable(release); err != nil {
 					t.Fatal(err)
 				}
 			}

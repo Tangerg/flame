@@ -72,10 +72,7 @@ func New(t testing.TB, store *persistence.Bundle) *Fixture {
 
 // Apply proposes the fixture's product configuration through the real Host.
 // The SQLite installation index advances only inside that Host transaction.
-func (f *Fixture) Apply(ctx context.Context, installation *plugin.Installation) error {
-	if installation == nil {
-		return plugin.ErrInvalid
-	}
+func (f *Fixture) Apply(ctx context.Context, installation plugin.Installation) error {
 	record := installation.Snapshot()
 	release, err := f.store.PluginReleases.Get(ctx, record.Selected)
 	if err != nil {

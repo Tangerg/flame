@@ -79,7 +79,7 @@ func TestOrderedCompositionFreezesExplicitOrderAndRejectsWithdrawnMembers(t *tes
 	if _, err := owner.Resolve(t.Context(), drifted); !errors.Is(err, plugin.ErrUnavailable) {
 		t.Fatalf("changed consumer contract adopted stored composition: %v", err)
 	}
-	second.Installation.Disable()
+	store.snapshots[1].Installation = second.Installation.Disable()
 	if _, err := owner.Resolve(t.Context(), contract); !errors.Is(err, plugin.ErrUnavailable) {
 		t.Fatalf("withdrawn member silently skipped: %v", err)
 	}

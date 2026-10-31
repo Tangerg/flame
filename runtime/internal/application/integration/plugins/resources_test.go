@@ -17,7 +17,7 @@ type localePackages struct {
 	failure  error
 }
 
-func (p *localePackages) ReadLocale(ctx context.Context, installation *plugin.Installation, locale plugin.Locale) (map[string]string, error) {
+func (p *localePackages) ReadLocale(ctx context.Context, installation plugin.Installation, locale plugin.Locale) (map[string]string, error) {
 	p.reads++
 	if locale != p.expected || installation.Selected() == (integrity.Digest{}) {
 		return nil, errors.New("wrong locale release")
@@ -48,7 +48,7 @@ func TestLocaleReadAdmitsExactEnabledDeclarationBeforeContentAccess(t *testing.T
 	if _, err := coordinator.Locale(t.Context(), id, release.Digest(), "ja"); !errors.Is(err, plugin.ErrDisabled) || content.reads != 0 {
 		t.Fatalf("disabled read=%v, reads=%d", err, content.reads)
 	}
-	if err := installation.Enable(release); err != nil {
+	if installation, err = installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Save(t.Context(), installation); err != nil {

@@ -47,6 +47,7 @@ func (s *InstallationStore) List(ctx context.Context) ([]plugin.Snapshot, error)
 
 func (s *InstallationStore) Get(ctx context.Context, id identity.InstallationID) (plugin.Snapshot, bool, error) {
 	var result plugin.Snapshot
+	found := false
 	err := sqlite.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
 		records, err := s.records(ctx, `SELECT id,source,selected_digest,staged_digest,enabled FROM plugin_installations WHERE id=?`, id.String())
 		if err != nil {
@@ -56,12 +57,13 @@ func (s *InstallationStore) Get(ctx context.Context, id identity.InstallationID)
 			return nil
 		}
 		result, err = s.restore(ctx, records[0])
+		found = err == nil
 		return err
 	})
 	if err != nil {
 		return plugin.Snapshot{}, false, err
 	}
-	return result, result.Installation != nil, nil
+	return result, found, nil
 }
 
 func (s *InstallationStore) records(ctx context.Context, query string, args ...any) ([]plugin.Record, error) {

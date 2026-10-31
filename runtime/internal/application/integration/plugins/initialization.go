@@ -76,7 +76,8 @@ func installFirstParty(ctx context.Context, host *qimu.Host, store Store, packag
 	if err != nil {
 		return err
 	}
-	if err := installation.Enable(release); err != nil {
+	installation, err = installation.Enable(release)
+	if err != nil {
 		return err
 	}
 	if _, err := candidate.Publish(ctx); err != nil {

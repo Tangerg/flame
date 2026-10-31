@@ -17,26 +17,26 @@ func TestInstallationOwnsAtomicConfigurationAndReleaseTrust(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = installed.Enable(release); !errors.Is(err, ErrInvalid) {
+	if _, err = installed.Enable(release); !errors.Is(err, ErrInvalid) {
 		t.Fatal(err)
 	}
 	before := installed.Snapshot()
-	if err = installed.Configure(release, Configuration{Values: map[string]ValueChange{"key": SetValue("credential")}, Servers: map[mcpserver.ServerName]ComponentChange{serverName("missing"): DisableComponent}}); !errors.Is(err, ErrInvalid) {
+	if _, err = installed.Configure(release, Configuration{Values: map[string]ValueChange{"key": SetValue("credential")}, Servers: map[mcpserver.ServerName]ComponentChange{serverName("missing"): DisableComponent}}); !errors.Is(err, ErrInvalid) {
 		t.Fatal(err)
 	}
-	if err = installed.Configure(release, Configuration{Values: map[string]ValueChange{"key": {}}}); !errors.Is(err, ErrInvalid) {
+	if _, err = installed.Configure(release, Configuration{Values: map[string]ValueChange{"key": {}}}); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("zero value change = %v", err)
 	}
 	if !reflect.DeepEqual(before, installed.Snapshot()) {
 		t.Fatal("rejected transition changed installation facts")
 	}
-	if err = installed.Configure(release, Configuration{Values: map[string]ValueChange{"key": SetValue("credential")}}); err != nil {
+	if installed, err = installed.Configure(release, Configuration{Values: map[string]ValueChange{"key": SetValue("credential")}}); err != nil {
 		t.Fatal(err)
 	}
-	if err = installed.Enable(release); err != nil {
+	if installed, err = installed.Enable(release); err != nil {
 		t.Fatal(err)
 	}
-	if err = installed.Configure(release, Configuration{Values: map[string]ValueChange{"key": ClearValue()}}); !errors.Is(err, ErrInvalid) {
+	if _, err = installed.Configure(release, Configuration{Values: map[string]ValueChange{"key": ClearValue()}}); !errors.Is(err, ErrInvalid) {
 		t.Fatal("enabled release lost its required input")
 	}
 	snapshot := installed.Snapshot()
@@ -55,11 +55,11 @@ func TestInstallationOwnsDesiredEnablement(t *testing.T) {
 	if installation.Enabled() {
 		t.Fatal("new installation is enabled")
 	}
-	installation.Disable()
-	if err := installation.Enable(release); err != nil {
+	installation = installation.Disable()
+	if installation, err = installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Enable(release); err != nil {
+	if installation, err = installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	if !installation.Enabled() {
@@ -74,8 +74,8 @@ func TestInstallationOwnsDesiredEnablement(t *testing.T) {
 	if !installation.Enabled() {
 		t.Fatal("projection changed desired enablement")
 	}
-	installation.Disable()
-	installation.Disable()
+	installation = installation.Disable()
+	installation = installation.Disable()
 	if installation.Enabled() {
 		t.Fatal("disabled installation is enabled")
 	}
@@ -91,32 +91,33 @@ func TestExecutionChangesFollowSelectedCapabilities(t *testing.T) {
 	for _, test := range []struct {
 		name    string
 		state   bool
-		change  func(*Installation) error
+		change  func(Installation) (Installation, error)
 		changed bool
 		wantErr error
 	}{
-		{"staging", true, func(i *Installation) error { return i.Stage(release, candidate) }, false, nil},
-		{"enable", false, func(i *Installation) error { return i.Enable(release) }, true, nil},
-		{"already enabled", true, func(i *Installation) error { return i.Enable(release) }, false, nil},
-		{"disable", true, func(i *Installation) error { i.Disable(); return nil }, true, nil},
-		{"already disabled", false, func(i *Installation) error { i.Disable(); return nil }, false, nil},
-		{"unchanged configuration", true, func(i *Installation) error { return i.Configure(release, Configuration{}) }, false, nil},
-		{"optional empty input", true, func(i *Installation) error {
+		{"staging", true, func(i Installation) (Installation, error) { return i.Stage(release, candidate) }, false, nil},
+		{"enable", false, func(i Installation) (Installation, error) { return i.Enable(release) }, true, nil},
+		{"already enabled", true, func(i Installation) (Installation, error) { return i.Enable(release) }, false, nil},
+		{"disable", true, func(i Installation) (Installation, error) { return i.Disable(), nil }, true, nil},
+		{"already disabled", false, func(i Installation) (Installation, error) { return i.Disable(), nil }, false, nil},
+		{"unchanged configuration", true, func(i Installation) (Installation, error) { return i.Configure(release, Configuration{}) }, false, nil},
+		{"optional empty input", true, func(i Installation) (Installation, error) {
 			return i.Configure(release, Configuration{Values: map[string]ValueChange{"option": SetValue("")}})
 		}, true, nil},
-		{"server withdrawal", true, func(i *Installation) error {
+		{"server withdrawal", true, func(i Installation) (Installation, error) {
 			return i.Configure(release, Configuration{Servers: map[mcpserver.ServerName]ComponentChange{serverName("backend"): DisableComponent}})
 		}, true, nil},
-		{"skill withdrawal", true, func(i *Installation) error {
+		{"skill withdrawal", true, func(i Installation) (Installation, error) {
 			return i.Configure(release, Configuration{Skills: map[string]ComponentChange{"audit": DisableComponent}})
 		}, true, nil},
-		{"release selection", true, func(i *Installation) error {
-			if err := i.Stage(release, candidate); err != nil {
-				return err
+		{"release selection", true, func(i Installation) (Installation, error) {
+			staged, err := i.Stage(release, candidate)
+			if err != nil {
+				return Installation{}, err
 			}
-			return i.Select(release, candidate)
+			return staged.Select(release, candidate)
 		}, true, nil},
-		{"rejected configuration", true, func(i *Installation) error {
+		{"rejected configuration", true, func(i Installation) (Installation, error) {
 			return i.Configure(release, Configuration{Values: map[string]ValueChange{"missing": SetValue("value")}})
 		}, false, ErrInvalid},
 	} {
@@ -129,10 +130,14 @@ func TestExecutionChangesFollowSelectedCapabilities(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := test.change(current); !errors.Is(err, test.wantErr) {
+			next, err := test.change(current)
+			if !errors.Is(err, test.wantErr) {
 				t.Fatalf("transition = %v, want %v", err, test.wantErr)
 			}
-			if changed := current.ExecutionChanged(previous); changed != test.changed {
+			if err != nil {
+				next = current
+			}
+			if changed := next.ExecutionChanged(previous); changed != test.changed {
 				t.Fatalf("execution change = %t, want %t", changed, test.changed)
 			}
 		})
@@ -149,11 +154,12 @@ func TestTransitionsRefuseAReleaseTheyDoNotName(t *testing.T) {
 	}
 	before := installation.Snapshot()
 	for transition, apply := range map[string]func() error{
-		"enable": func() error { return installation.Enable(other) },
+		"enable": func() error { _, err := installation.Enable(other); return err },
 		"configure": func() error {
-			return installation.Configure(other, Configuration{Values: map[string]ValueChange{"mode": SetValue("strict")}})
+			_, err := installation.Configure(other, Configuration{Values: map[string]ValueChange{"mode": SetValue("strict")}})
+			return err
 		},
-		"stage": func() error { return installation.Stage(other, release) },
+		"stage": func() error { _, err := installation.Stage(other, release); return err },
 		"source": func() error {
 			_, err := installation.ServerSource(other, serverName("reviews"))
 			return err
@@ -178,7 +184,7 @@ func TestSelectedReleaseCannotAlsoBecomeStaged(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := installation.Snapshot()
-	if err := installation.Stage(release, release); !errors.Is(err, ErrStale) {
+	if _, err := installation.Stage(release, release); !errors.Is(err, ErrStale) {
 		t.Fatalf("staging selected digest = %v", err)
 	}
 	if !reflect.DeepEqual(before, installation.Snapshot()) {
@@ -190,7 +196,7 @@ func TestSelectedReleaseCannotAlsoBecomeStaged(t *testing.T) {
 		t.Fatalf("restored duplicate release positions = %v", err)
 	}
 	other := testRelease(t, "2", Declaration{Name: "other"})
-	if err := installation.Stage(release, other); !errors.Is(err, ErrInvalid) {
+	if _, err := installation.Stage(release, other); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("staging another package = %v", err)
 	}
 }
@@ -204,7 +210,7 @@ func TestRestorationRequiresTheReleasesItsRecordNames(t *testing.T) {
 		t.Fatal(err)
 	}
 	unstaged := installation.Snapshot()
-	if err := installation.Stage(selected, candidate); err != nil {
+	if installation, err = installation.Stage(selected, candidate); err != nil {
 		t.Fatal(err)
 	}
 	staged := installation.Snapshot()
@@ -225,8 +231,8 @@ func TestRestorationRequiresTheReleasesItsRecordNames(t *testing.T) {
 		{"unreferenced staged release", unstaged, selected, &candidate, ErrStale},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if restored, err := Restore(test.record, test.selected, test.staged); !errors.Is(err, test.wantErr) || restored != nil {
-				t.Fatalf("unbound record became an installation: %+v, %v; want %v", restored, err, test.wantErr)
+			if _, err := Restore(test.record, test.selected, test.staged); !errors.Is(err, test.wantErr) {
+				t.Fatalf("unbound record became an installation: %v; want %v", err, test.wantErr)
 			}
 		})
 	}
@@ -238,20 +244,21 @@ func TestSelectPreservesDesiredEnablementAndBindsNewCode(t *testing.T) {
 	candidate := testRelease(t, "2", declaration)
 	for _, enabled := range []bool{false, true} {
 		installation := configuredInstallation(t, release, nil)
+		var err error
 		if enabled {
-			if err := installation.Enable(release); err != nil {
+			if installation, err = installation.Enable(release); err != nil {
 				t.Fatal(err)
 			}
 		}
 		authority := installation.ServerAuthority(serverName("a"))
-		selectCandidate(t, installation, release, candidate)
+		installation = selectCandidate(t, installation, release, candidate)
 		if installation.Enabled() != enabled || installation.ServerEnabled(serverName("a")) != enabled {
 			t.Fatal("selection changed desired enablement")
 		}
 		if installation.ServerAuthority(serverName("a")) == authority {
 			t.Fatal("new code inherited standing tool authority")
 		}
-		if err := installation.Enable(release); !errors.Is(err, ErrStale) {
+		if _, err := installation.Enable(release); !errors.Is(err, ErrStale) {
 			t.Fatalf("enable old release = %v", err)
 		}
 	}
@@ -266,33 +273,34 @@ func TestSelectRefusesMissingRequiredRecipientWithoutChangingInstallation(t *tes
 	release := testRelease(t, "1", declaration)
 	candidate := testRelease(t, "2", declaration)
 	installation := configuredInstallation(t, release, map[string]string{"credential": "secret"})
-	if err := installation.Enable(release); err != nil {
+	var err error
+	if installation, err = installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Stage(release, candidate); err != nil {
+	if installation, err = installation.Stage(release, candidate); err != nil {
 		t.Fatal(err)
 	}
 	before := installation.Snapshot()
-	if err := installation.Select(release, candidate); !errors.Is(err, ErrInvalid) {
+	if _, err := installation.Select(release, candidate); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("select without candidate credentials = %v", err)
 	}
 	if !reflect.DeepEqual(installation.Snapshot(), before) {
 		t.Fatal("rejected selection changed release, preference or credentials")
 	}
-	installation.Disable()
-	if err := installation.Select(release, candidate); err != nil {
+	installation = installation.Disable()
+	if installation, err = installation.Select(release, candidate); err != nil {
 		t.Fatal(err)
 	}
 	if installation.Enabled() || len(installation.Snapshot().Values) != 0 {
 		t.Fatal("new executable inherited enablement or credentials")
 	}
-	if err := installation.Enable(candidate); !errors.Is(err, ErrInvalid) {
+	if _, err := installation.Enable(candidate); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("enable without required input = %v", err)
 	}
-	if err := installation.Configure(candidate, Configuration{Values: map[string]ValueChange{"credential": SetValue("new secret")}}); err != nil {
+	if installation, err = installation.Configure(candidate, Configuration{Values: map[string]ValueChange{"credential": SetValue("new secret")}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Enable(candidate); err != nil {
+	if installation, err = installation.Enable(candidate); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -314,7 +322,8 @@ func TestSelectRetainsConfigurationWhoseMeaningIsUnchanged(t *testing.T) {
 	}
 	release := testRelease(t, "1", declaration)
 	installation := configuredInstallation(t, release, map[string]string{"mode": "strict", "token": "Bearer secret", "region": "eu", "zone": "z1"})
-	if err := installation.Configure(release, Configuration{Servers: map[mcpserver.ServerName]ComponentChange{serverName("b"): DisableComponent}, Skills: map[string]ComponentChange{"audit": DisableComponent}}); err != nil {
+	var err error
+	if installation, err = installation.Configure(release, Configuration{Servers: map[mcpserver.ServerName]ComponentChange{serverName("b"): DisableComponent}, Skills: map[string]ComponentChange{"audit": DisableComponent}}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -328,7 +337,7 @@ func TestSelectRetainsConfigurationWhoseMeaningIsUnchanged(t *testing.T) {
 	}
 	next.Skills = []Skill{{Name: "review", Description: "Review"}}
 	candidate := testRelease(t, "2", next)
-	selectCandidate(t, installation, release, candidate)
+	installation = selectCandidate(t, installation, release, candidate)
 
 	current := installation.Snapshot()
 	if want := map[string]string{"mode": "strict", "token": "Bearer secret", "zone": "z1"}; !reflect.DeepEqual(current.Values, want) {
@@ -376,6 +385,7 @@ func TestCredentialsFollowTheirRecipientAcrossReleases(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			release := testRelease(t, "1", base)
 			installation := configuredInstallation(t, release, values)
+			var err error
 			next := base
 			next.Version = "2"
 			next.Servers = []Server{base.Servers[0].clone(), base.Servers[1].clone()}
@@ -385,7 +395,7 @@ func TestCredentialsFollowTheirRecipientAcrossReleases(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			selectCandidate(t, installation, release, candidate)
+			installation = selectCandidate(t, installation, release, candidate)
 			if current := installation.Snapshot().Values; !reflect.DeepEqual(current, test.want) {
 				t.Fatalf("retained values = %+v, want %+v", current, test.want)
 			}
@@ -417,10 +427,10 @@ func TestServerAuthorityIsTheSelectedCodeOfOneServer(t *testing.T) {
 	if a == b {
 		t.Fatal("sibling servers share tool authority")
 	}
-	if err := i.Configure(release, Configuration{Values: map[string]ValueChange{"secret": SetValue("rotated")}, Servers: map[mcpserver.ServerName]ComponentChange{serverName("b"): DisableComponent}}); err != nil {
+	if i, err = i.Configure(release, Configuration{Values: map[string]ValueChange{"secret": SetValue("rotated")}, Servers: map[mcpserver.ServerName]ComponentChange{serverName("b"): DisableComponent}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := i.Enable(release); err != nil {
+	if i, err = i.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	if i.ServerAuthority(serverName("a")) != a || i.ServerAuthority(serverName("b")) != b {
@@ -429,7 +439,7 @@ func TestServerAuthorityIsTheSelectedCodeOfOneServer(t *testing.T) {
 	next := declaration
 	next.Version = "2"
 	candidate := testRelease(t, "2", next)
-	selectCandidate(t, i, release, candidate)
+	i = selectCandidate(t, i, release, candidate)
 	if i.ServerAuthority(serverName("a")) == a || i.ServerAuthority(serverName("b")) == b {
 		t.Fatal("a release change kept standing tool authority")
 	}
@@ -443,7 +453,7 @@ func TestHTTPInputConfigurationRejectsInvalidCredentialsAtomically(t *testing.T)
 	}
 	before := i.Snapshot()
 	for _, value := range []string{"Bearer one\x01two", " Bearer secret", "Bearer secret "} {
-		if err := i.Configure(release, Configuration{Values: map[string]ValueChange{"credential": SetValue(value)}}); !errors.Is(err, ErrInvalid) {
+		if _, err := i.Configure(release, Configuration{Values: map[string]ValueChange{"credential": SetValue(value)}}); !errors.Is(err, ErrInvalid) {
 			t.Fatalf("invalid HTTP credential was persisted: %v", err)
 		}
 		if !reflect.DeepEqual(before, i.Snapshot()) {
@@ -460,10 +470,11 @@ func TestConfigurationIsADelta(t *testing.T) {
 		Skills:  []Skill{{Name: "review", Description: "Review"}},
 	})
 	i := configuredInstallation(t, release, map[string]string{"one": "1", "two": "2"})
-	if err := i.Configure(release, Configuration{Servers: map[mcpserver.ServerName]ComponentChange{serverName("a"): DisableComponent, serverName("b"): DisableComponent}, Skills: map[string]ComponentChange{"review": DisableComponent}}); err != nil {
+	var err error
+	if i, err = i.Configure(release, Configuration{Servers: map[mcpserver.ServerName]ComponentChange{serverName("a"): DisableComponent, serverName("b"): DisableComponent}, Skills: map[string]ComponentChange{"review": DisableComponent}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := i.Configure(release, Configuration{Values: map[string]ValueChange{"two": ClearValue()}, Servers: map[mcpserver.ServerName]ComponentChange{serverName("a"): EnableComponent}}); err != nil {
+	if i, err = i.Configure(release, Configuration{Values: map[string]ValueChange{"two": ClearValue()}, Servers: map[mcpserver.ServerName]ComponentChange{serverName("a"): EnableComponent}}); err != nil {
 		t.Fatal(err)
 	}
 	current := i.Snapshot()
@@ -473,7 +484,7 @@ func TestConfigurationIsADelta(t *testing.T) {
 	if !reflect.DeepEqual(current.DisabledServers, []mcpserver.ServerName{serverName("b")}) || !reflect.DeepEqual(current.DisabledSkills, []string{"review"}) {
 		t.Fatalf("disabled = %v, %v", current.DisabledServers, current.DisabledSkills)
 	}
-	if err := i.Configure(release, Configuration{Skills: map[string]ComponentChange{"review": "toggle"}}); !errors.Is(err, ErrInvalid) {
+	if _, err := i.Configure(release, Configuration{Skills: map[string]ComponentChange{"review": "toggle"}}); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("unknown component change = %v", err)
 	}
 }
@@ -484,14 +495,14 @@ func TestDisabledBackendDoesNotRequireItsInputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := i.Configure(release, Configuration{Servers: map[mcpserver.ServerName]ComponentChange{serverName("b"): DisableComponent}}); err != nil {
+	if i, err = i.Configure(release, Configuration{Servers: map[mcpserver.ServerName]ComponentChange{serverName("b"): DisableComponent}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := i.Enable(release); err != nil {
+	if i, err = i.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	before := i.Snapshot()
-	if err := i.Configure(release, Configuration{Servers: map[mcpserver.ServerName]ComponentChange{serverName("b"): EnableComponent}}); !errors.Is(err, ErrInvalid) {
+	if _, err := i.Configure(release, Configuration{Servers: map[mcpserver.ServerName]ComponentChange{serverName("b"): EnableComponent}}); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("enabled backend without required input: %v", err)
 	}
 	if !reflect.DeepEqual(before, i.Snapshot()) {
@@ -510,7 +521,7 @@ func TestOptionalInputPresenceAdvancesSourceConfiguration(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := installation.Configure(release, Configuration{Values: map[string]ValueChange{"option": change}}); err != nil {
+		if installation, err = installation.Configure(release, Configuration{Values: map[string]ValueChange{"option": change}}); err != nil {
 			t.Fatal(err)
 		}
 		changed, err := installation.ChangedServers(previous, release, release)
@@ -523,7 +534,7 @@ func TestOptionalInputPresenceAdvancesSourceConfiguration(t *testing.T) {
 	}
 }
 
-func configuredInstallation(t *testing.T, release Release, values map[string]string) *Installation {
+func configuredInstallation(t *testing.T, release Release, values map[string]string) Installation {
 	t.Helper()
 	installation, err := New(testInstallationID(t), "/package", release)
 	if err != nil {
@@ -533,23 +544,25 @@ func configuredInstallation(t *testing.T, release Release, values map[string]str
 	for id, value := range values {
 		changes[id] = SetValue(value)
 	}
-	if err := installation.Configure(release, Configuration{Values: changes}); err != nil {
+	if installation, err = installation.Configure(release, Configuration{Values: changes}); err != nil {
 		t.Fatal(err)
 	}
 	return installation
 }
 
-func selectCandidate(t *testing.T, installation *Installation, selected, candidate Release) {
+func selectCandidate(t *testing.T, installation Installation, selected, candidate Release) Installation {
 	t.Helper()
-	if err := installation.Stage(selected, candidate); err != nil {
+	installation, err := installation.Stage(selected, candidate)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Select(selected, selected); !errors.Is(err, ErrStale) {
+	if _, err := installation.Select(selected, selected); !errors.Is(err, ErrStale) {
 		t.Fatalf("selecting an unstaged release = %v", err)
 	}
-	if err := installation.Select(selected, candidate); err != nil {
+	if installation, err = installation.Select(selected, candidate); err != nil {
 		t.Fatal(err)
 	}
+	return installation
 }
 
 func testRelease(t *testing.T, seed string, declaration Declaration) Release {
@@ -583,13 +596,14 @@ func testInstallationID(t *testing.T) identity.InstallationID {
 func TestEnabledSkillsAreDeclaredUndisabledAndActive(t *testing.T) {
 	release := testRelease(t, "1", Declaration{Name: "review", Skills: []Skill{{Name: "audit", Description: "a"}, {Name: "explain", Description: "e"}}})
 	installation := configuredInstallation(t, release, nil)
+	var err error
 	if enabled, err := installation.EnabledSkills(release); err != nil || enabled != nil {
 		t.Fatalf("disabled installation skills = %v, %v; want none", enabled, err)
 	}
-	if err := installation.Enable(release); err != nil {
+	if installation, err = installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Configure(release, Configuration{Skills: map[string]ComponentChange{"audit": DisableComponent}}); err != nil {
+	if installation, err = installation.Configure(release, Configuration{Skills: map[string]ComponentChange{"audit": DisableComponent}}); err != nil {
 		t.Fatal(err)
 	}
 	if enabled, err := installation.EnabledSkills(release); err != nil || !reflect.DeepEqual(enabled, []Skill{{Name: "explain", Description: "e"}}) {
@@ -619,6 +633,7 @@ func TestServerInputsBindConfiguredValuesOfOneServer(t *testing.T) {
 		{ID: "key", Server: process.Name, Target: Environment, Key: "API_KEY", Secret: true},
 	}})
 	installation := configuredInstallation(t, release, map[string]string{"token": "Bearer t", "tenant": "acme", "key": "k"})
+	var err error
 	inputs, err := installation.ServerInputs(release, endpoint.Name)
 	if err != nil {
 		t.Fatal(err)

@@ -24,7 +24,7 @@ import (
 // Data preparation belongs to installation changes and connection activation.
 // Its outcome is not retained here: a backend that could not be prepared stays
 // unrealizable, and [Releases.Realize] observes that from the filesystem.
-func (r *Releases) Prepare(ctx context.Context, installation *plugin.Installation, release plugin.Release) error {
+func (r *Releases) Prepare(ctx context.Context, installation plugin.Installation, release plugin.Release) error {
 	if !installation.Enabled() {
 		return nil
 	}
@@ -54,7 +54,7 @@ func (r *Releases) Prepare(ctx context.Context, installation *plugin.Installatio
 // are never inspected: a call or a connection pays for its own target alone.
 // Enablement is reported, not enforced; refusing a disabled server belongs to
 // the registry's caller, and a disabled server is never prepared or realized.
-func (r *Releases) Server(ctx context.Context, installation *plugin.Installation, release plugin.Release, local mcpserver.ServerName, reach plugins.Reach) (_ mcpserver.Server, _ bool, err error) {
+func (r *Releases) Server(ctx context.Context, installation plugin.Installation, release plugin.Release, local mcpserver.ServerName, reach plugins.Reach) (_ mcpserver.Server, _ bool, err error) {
 	declaration := release.Declaration()
 	index := slices.IndexFunc(declaration.Servers, func(server plugin.Server) bool { return server.Name == local })
 	if index < 0 {
@@ -137,7 +137,7 @@ func (r *Releases) prepareBackend(id identity.InstallationID, server plugin.Serv
 
 // Definitions preserves declared membership without inspecting package or data
 // directories. An unresolved descriptor never grants connection authority.
-func (r *Releases) Definitions(ctx context.Context, installation *plugin.Installation, release plugin.Release) ([]mcpserver.Server, error) {
+func (r *Releases) Definitions(ctx context.Context, installation plugin.Installation, release plugin.Release) ([]mcpserver.Server, error) {
 	dir, err := r.Root(release.Digest())
 	if err != nil {
 		return nil, fmt.Errorf("pluginpackage: release directory: %w", err)
@@ -163,7 +163,7 @@ func (r *Releases) Definitions(ctx context.Context, installation *plugin.Install
 
 // Realize observes executable bytes and backends without advancing desired
 // configuration or live connections. Each backend has its own observed outcome.
-func (r *Releases) Realize(ctx context.Context, installation *plugin.Installation, release plugin.Release) (_ plugins.Realization, err error) {
+func (r *Releases) Realize(ctx context.Context, installation plugin.Installation, release plugin.Release) (_ plugins.Realization, err error) {
 	dir, err := r.Root(release.Digest())
 	if err != nil {
 		return plugins.Realization{}, fmt.Errorf("pluginpackage: release directory: %w", err)
@@ -201,7 +201,7 @@ func (r *Releases) Realize(ctx context.Context, installation *plugin.Installatio
 
 // declaredServer retains registry identity when configuration cannot produce a
 // complete descriptor. It never supplies enough authority to connect.
-func declaredServer(installation *plugin.Installation, release plugin.Release, declaration plugin.Declaration, declared plugin.Server) (mcpserver.Server, error) {
+func declaredServer(installation plugin.Installation, release plugin.Release, declaration plugin.Declaration, declared plugin.Server) (mcpserver.Server, error) {
 	source, err := installation.ServerSource(release, declared.Name)
 	if err != nil {
 		return mcpserver.Server{}, err
@@ -234,7 +234,7 @@ func unchangedDataRoot(data string) error {
 	return root.Close()
 }
 
-func descriptorServer(installation *plugin.Installation, release plugin.Release, declaration plugin.Declaration, declared plugin.Server, dir, data string) (mcpserver.Server, error) {
+func descriptorServer(installation plugin.Installation, release plugin.Release, declaration plugin.Declaration, declared plugin.Server, dir, data string) (mcpserver.Server, error) {
 	server, err := declaredServer(installation, release, declaration, declared)
 	if err != nil {
 		return mcpserver.Server{}, err

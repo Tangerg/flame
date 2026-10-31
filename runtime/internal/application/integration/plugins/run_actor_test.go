@@ -17,7 +17,7 @@ func TestRunActorAdmissionDistinguishesWithdrawalFromUnknownStorageFailure(t *te
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := snapshot.Installation.Enable(snapshot.Selected); err != nil {
+			if snapshot.Installation, err = snapshot.Installation.Enable(snapshot.Selected); err != nil {
 				t.Fatal(err)
 			}
 			if err := store.Save(t.Context(), snapshot.Installation); err != nil {

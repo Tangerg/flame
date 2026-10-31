@@ -28,7 +28,7 @@ func TestBackgroundNoticesRequireTheirOwnEnabledContribution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Enable(release); err != nil {
+	if installation, err = installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	store := &toolInstallationStore{snapshot: plugin.Snapshot{Installation: installation, Selected: release}}
@@ -51,7 +51,7 @@ func TestBackgroundNoticesRequireTheirOwnEnabledContribution(t *testing.T) {
 	if len(notices) != 1 || notices[0].Resource != invalidation.PluginData {
 		t.Fatalf("owner invalidation=%+v", notices)
 	}
-	installation.Disable()
+	store.snapshot.Installation = installation.Disable()
 	if err := caller.NotifyChange(ctx, "owner"); !errors.Is(err, plugin.ErrUnavailable) {
 		t.Fatalf("withdrawn owner notice accepted: %v", err)
 	}

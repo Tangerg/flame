@@ -17,7 +17,7 @@ import (
 )
 
 type resources interface {
-	ReadResource(context.Context, *plugin.Installation, string) ([]byte, error)
+	ReadResource(context.Context, plugin.Installation, string) ([]byte, error)
 	ComponentModules(context.Context, plugin.Release, plugin.ContributionID) (*distribution.Module, error)
 }
 
