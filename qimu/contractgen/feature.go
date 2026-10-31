@@ -127,6 +127,32 @@ func buildFeature(data []byte) (*featureArtifacts, error) {
 // its contract publishes. Two methods that publish the same name must publish
 // the same definition, and a name that collides is rejected rather than escaped
 // into an unreadable one.
+// sharedDefinitions collects every method schema's $defs; one key must carry
+// one body across the contract.
+func sharedDefinitions(descriptors []portable.MethodDescriptor) (map[string]jsontext.Value, error) {
+	keys := make(map[string]jsontext.Value)
+	for _, descriptor := range descriptors {
+		for _, raw := range []jsontext.Value{descriptor.Input, descriptor.Output, descriptor.Stream} {
+			if len(raw) == 0 {
+				continue
+			}
+			var document struct {
+				Defs map[string]jsontext.Value `json:"$defs"`
+			}
+			if err := json.Unmarshal(raw, &document); err != nil {
+				return nil, err
+			}
+			for key, body := range document.Defs {
+				if known, found := keys[key]; found && !bytes.Equal(known, body) {
+					return nil, fmt.Errorf("feature contracts: methods publish different %s definitions", key)
+				}
+				keys[key] = body
+			}
+		}
+	}
+	return keys, nil
+}
+
 func featureNames(descriptors []portable.MethodDescriptor) (map[string]string, map[string]string, error) {
 	roots := make(map[string]string, len(descriptors))
 	owners := make(map[string]string)
@@ -140,7 +166,6 @@ func featureNames(descriptors []portable.MethodDescriptor) (map[string]string, m
 		owners[name] = owner
 		return nil
 	}
-	keys := make(map[string]jsontext.Value)
 	for _, descriptor := range descriptors {
 		root := goFeatureIdentifier(descriptor.Name[strings.LastIndex(descriptor.Name, "/")+1:])
 		for _, suffix := range []string{"Input", "Output", "Chunk"} {
@@ -149,23 +174,10 @@ func featureNames(descriptors []portable.MethodDescriptor) (map[string]string, m
 			}
 		}
 		roots[descriptor.Name] = root
-		for _, raw := range []jsontext.Value{descriptor.Input, descriptor.Output, descriptor.Stream} {
-			if len(raw) == 0 {
-				continue
-			}
-			var document struct {
-				Defs map[string]jsontext.Value `json:"$defs"`
-			}
-			if err := json.Unmarshal(raw, &document); err != nil {
-				return nil, nil, err
-			}
-			for key, body := range document.Defs {
-				if known, found := keys[key]; found && !bytes.Equal(known, body) {
-					return nil, nil, fmt.Errorf("feature contracts: methods publish different %s definitions", key)
-				}
-				keys[key] = body
-			}
-		}
+	}
+	keys, err := sharedDefinitions(descriptors)
+	if err != nil {
+		return nil, nil, err
 	}
 	// A contract names a definition <package>.<type>; a projection drops the
 	// package unless another definition shares the type name.

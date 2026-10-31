@@ -203,58 +203,35 @@ type Release struct {
 }
 
 // NewRelease admits a complete declaration, each member exactly once.
+func admitEach[T any](values []T, admit func(T) error) error {
+	for _, value := range values {
+		if err := admit(value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func NewRelease(digest integrity.Digest, declaration Declaration) (Release, error) {
 	builder, err := NewBuilder(declaration.Name, declaration.Version, declaration.Description)
 	if err != nil {
 		return Release{}, err
 	}
-	for _, server := range declaration.Servers {
-		if err := builder.AdmitServer(server); err != nil {
-			return Release{}, err
-		}
-	}
-	for _, contribution := range declaration.Contributions {
-		if err := builder.AdmitContribution(contribution); err != nil {
-			return Release{}, err
-		}
-	}
-	for _, value := range declaration.Points {
-		if err := builder.AdmitPoint(value); err != nil {
-			return Release{}, err
-		}
-	}
-	for _, value := range declaration.PointValues {
-		if err := builder.AdmitPointValue(value); err != nil {
-			return Release{}, err
-		}
-	}
-	for _, value := range declaration.Components {
-		if err := builder.AdmitComponent(value); err != nil {
-			return Release{}, err
-		}
-	}
-	for _, value := range declaration.TerminalViews {
-		if err := builder.AdmitTerminalView(value); err != nil {
-			return Release{}, err
-		}
-	}
-	for _, input := range declaration.Inputs {
-		if err := builder.AdmitInput(input); err != nil {
-			return Release{}, err
-		}
-	}
-	for _, theme := range declaration.Themes {
-		if err := builder.AdmitTheme(theme); err != nil {
-			return Release{}, err
-		}
-	}
-	for _, locale := range declaration.Locales {
-		if err := builder.AdmitLocale(locale); err != nil {
-			return Release{}, err
-		}
-	}
-	for _, skill := range declaration.Skills {
-		if err := builder.AdmitSkill(skill); err != nil {
+	// Later entries resolve earlier ones: a terminal view names a contribution,
+	// which names a server.
+	for _, admit := range []func() error{
+		func() error { return admitEach(declaration.Servers, builder.AdmitServer) },
+		func() error { return admitEach(declaration.Contributions, builder.AdmitContribution) },
+		func() error { return admitEach(declaration.Points, builder.AdmitPoint) },
+		func() error { return admitEach(declaration.PointValues, builder.AdmitPointValue) },
+		func() error { return admitEach(declaration.Components, builder.AdmitComponent) },
+		func() error { return admitEach(declaration.TerminalViews, builder.AdmitTerminalView) },
+		func() error { return admitEach(declaration.Inputs, builder.AdmitInput) },
+		func() error { return admitEach(declaration.Themes, builder.AdmitTheme) },
+		func() error { return admitEach(declaration.Locales, builder.AdmitLocale) },
+		func() error { return admitEach(declaration.Skills, builder.AdmitSkill) },
+	} {
+		if err := admit(); err != nil {
 			return Release{}, err
 		}
 	}

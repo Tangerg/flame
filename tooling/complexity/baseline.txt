@@ -1,7 +1,6 @@
 # Functions accepted above the cyclomatic threshold, written by tooling/complexity -write.
 # This list may only shrink: reduce a function, then lower or remove its line.
 24 apps/cli/internal/adapter/filesystem/statefile/store.go:Open
-22 apps/cli/internal/adapter/runtimebinding/agentmemory.go:AgentMemory.Items
 24 apps/cli/internal/application/workbench/session_rollback.go:PendingSessionRollback.Validate
 25 apps/cli/internal/delivery/terminal/external_editor.go:draftEditor.Edit
 23 apps/cli/internal/delivery/terminal/input.go:app.handleConfiguredAction
@@ -23,7 +22,6 @@
 23 plugins/schedules/backend/tool_receipts.go:toolReceipt
 27 qimu/activation.go:Instance.finishPrepare
 21 qimu/contractgen/feature.go:buildFeature
-23 qimu/contractgen/feature.go:featureNames
 31 qimu/contractgen/feature.go:featureNode
 24 qimu/contractgen/feature.go:rewriteFeatureRefs
 22 qimu/contractgen/feature_go.go:featureArtifacts.goProjection
@@ -76,7 +74,7 @@
 27 runtime/internal/adapter/integration/pluginpackage/author.go:BuildRelease
 24 runtime/internal/adapter/integration/pluginpackage/author.go:authorManifest
 24 runtime/internal/adapter/integration/pluginpackage/executions.go:Releases.Connection
-58 runtime/internal/adapter/integration/pluginpackage/manifest.go:parseExtensions
+55 runtime/internal/adapter/integration/pluginpackage/manifest.go:parseExtensions
 30 runtime/internal/adapter/integration/pluginpackage/manifest.go:parseMetadata
 22 runtime/internal/adapter/integration/pluginpackage/modules.go:componentModule
 24 runtime/internal/adapter/integration/pluginservices/commands.go:CommandCalls.admitCommandRoute
@@ -99,6 +97,7 @@
 41 runtime/internal/adapter/run/execution/executor.go:InteractionExecutor.assembleInteraction
 26 runtime/internal/adapter/run/execution/executor.go:InteractionExecutor.restoreWaitingTree
 26 runtime/internal/adapter/run/execution/handoff.go:decodeInteractionHandoff
+23 runtime/internal/adapter/run/execution/model_context_compaction.go:newModelContextCompaction
 32 runtime/internal/adapter/run/execution/preflight.go:InteractionExecutor.PrepareContinuation
 30 runtime/internal/adapter/run/execution/recovery_probe.go:InteractionExecutor.CanResumeWaitingExecution
 21 runtime/internal/adapter/run/execution/result_commit.go:toolResultMetadata.validate
@@ -106,7 +105,6 @@
 23 runtime/internal/adapter/run/execution/tool.go:wrapInteractionTools
 39 runtime/internal/adapter/run/execution/tool_receipts.go:interactionSession.investigateToolReceipts
 22 runtime/internal/adapter/run/execution/tree.go:interactionSession.captureHumanInputBarrier
-23 runtime/internal/adapter/run/execution/model_context_compaction.go:newModelContextCompaction
 26 runtime/internal/adapter/run/segment/effects_commit.go:Effects.applyCommit
 58 runtime/internal/adapter/run/segment/execution_tree.go:Effects.CommitExecutionTree
 24 runtime/internal/adapter/toolset/code_intelligence.go:withCodeIntelligence
@@ -140,7 +138,6 @@
 23 runtime/internal/delivery/registry.go:paginationOf
 24 runtime/internal/domain/integration/plugin/command.go:RestoreCommand
 24 runtime/internal/domain/integration/plugin/installation.go:Restore
-21 runtime/internal/domain/integration/plugin/release.go:NewRelease
 29 runtime/internal/domain/modelref/endpoint.go:RestoreEndpointObservation
 26 runtime/internal/domain/run/run.go:Run.validate
 24 runtime/internal/domain/run/transcript/body.go:ToolCallBody.validate

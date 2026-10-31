@@ -137,6 +137,26 @@ func parseMetadata(ctx context.Context, root *os.Root) (*plugin.Builder, error) 
 	return release, nil
 }
 
+func admitManagedBackends(raw jsontext.Value, release *plugin.Builder, root *os.Root, nativeServers []string) error {
+	var values []wireManagedBackend
+	if err := jsonvalue.UnmarshalNonNull(raw, &values); err != nil {
+		return fmt.Errorf("%w: managed backend declarations: %w", plugin.ErrInvalid, err)
+	}
+	for _, value := range values {
+		if slices.Contains(nativeServers, value.ID.String()) {
+			return fmt.Errorf("%w: server %s has native and managed startup declarations", plugin.ErrInvalid, value.ID)
+		}
+		server := plugin.Server{Name: value.ID, Startup: plugin.ManagedBackend{Runtime: value.Runtime, Entry: value.Entry}}
+		if err := inspectServerFiles(root, server); err != nil {
+			return fmt.Errorf("%w: managed backend %s: %w", plugin.ErrInvalid, value.ID, err)
+		}
+		if err := release.AdmitServer(server); err != nil {
+			return fmt.Errorf("%w: managed backend %s: %w", plugin.ErrInvalid, value.ID, err)
+		}
+	}
+	return nil
+}
+
 func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Context, root *os.Root, nativeServers []string) error {
 	var namespaces map[string]jsontext.Value
 	if err := json.Unmarshal(raw, &namespaces); err != nil || namespaces == nil {
@@ -172,21 +192,8 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		}
 	}
 	if raw, found := members["managedBackends"]; found {
-		var values []wireManagedBackend
-		if err := jsonvalue.UnmarshalNonNull(raw, &values); err != nil {
-			return fmt.Errorf("%w: managed backend declarations: %w", plugin.ErrInvalid, err)
-		}
-		for _, value := range values {
-			if slices.Contains(nativeServers, value.ID.String()) {
-				return fmt.Errorf("%w: server %s has native and managed startup declarations", plugin.ErrInvalid, value.ID)
-			}
-			server := plugin.Server{Name: value.ID, Startup: plugin.ManagedBackend{Runtime: value.Runtime, Entry: value.Entry}}
-			if err := inspectServerFiles(root, server); err != nil {
-				return fmt.Errorf("%w: managed backend %s: %w", plugin.ErrInvalid, value.ID, err)
-			}
-			if err := release.AdmitServer(server); err != nil {
-				return fmt.Errorf("%w: managed backend %s: %w", plugin.ErrInvalid, value.ID, err)
-			}
+		if err := admitManagedBackends(raw, release, root, nativeServers); err != nil {
+			return err
 		}
 	}
 	var contributes map[string]jsontext.Value
