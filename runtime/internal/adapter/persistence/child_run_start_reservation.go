@@ -19,45 +19,20 @@ var (
 	errChildRunStartReservationConflict = errors.New("sqlite: child Run start reservation conflict")
 )
 
-// ChildRunStartConclusion is the durable conclusion of an opaque reservation.
-// Storage does not interpret the payload or publish product state.
-type ChildRunStartConclusion string
+// reservedState is the stored state of a reservation no outcome has concluded
+// yet; a concluded row stores its runs.ChildRunStartOutcome.
+const reservedState = "reserved"
 
-const (
-	ChildRunStartConclusionStarted ChildRunStartConclusion = "started"
-	ChildRunStartConclusionAborted ChildRunStartConclusion = "aborted"
-)
-
-type childRunStartState string
-
-const (
-	childRunStartStateReserved childRunStartState = "reserved"
-	childRunStartStateStarted  childRunStartState = "started"
-	childRunStartStateAborted  childRunStartState = "aborted"
-)
-
-func parseChildRunStartState(raw string) (childRunStartState, error) {
-	state := childRunStartState(raw)
-	switch state {
-	case childRunStartStateReserved, childRunStartStateStarted, childRunStartStateAborted:
-		return state, nil
-	default:
-		return "", errChildRunStartReservationConflict
+func parseStoredChildRunStart(raw string) (outcome runs.ChildRunStartOutcome, concluded bool, err error) {
+	if raw == reservedState {
+		return "", false, nil
 	}
-}
-
-func childRunStartConcludedState(conclusion ChildRunStartConclusion) (childRunStartState, error) {
-	switch conclusion {
-	case ChildRunStartConclusionStarted:
-		return childRunStartStateStarted, nil
-	case ChildRunStartConclusionAborted:
-		return childRunStartStateAborted, nil
-	default:
-		return "", errors.New("sqlite: child Run start conclusion is invalid")
+	outcome = runs.ChildRunStartOutcome(raw)
+	if !outcome.Valid() {
+		return "", false, errChildRunStartReservationConflict
 	}
+	return outcome, true, nil
 }
-
-func (c childRunStartState) String() string { return string(c) }
 
 // ChildRunStartReservationRecord is SQLite's opaque technical record. Runtime
 // application semantics live in the segment adapter; storage only enforces
@@ -114,7 +89,7 @@ func (c *ChildRunStartReservationStore) Reserve(
 		INSERT INTO child_run_start_reservations(member_id, session_id, payload, created_at, state)
 		VALUES (?, ?, ?, ?, ?)
 		ON CONFLICT(member_id) DO NOTHING`,
-		record.MemberID, record.SessionID, record.Payload, record.CreatedAt.UTC().UnixNano(), childRunStartStateReserved.String(),
+		record.MemberID, record.SessionID, record.Payload, record.CreatedAt.UTC().UnixNano(), reservedState,
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: reserve child Run start: %w", err)
@@ -126,7 +101,7 @@ func (c *ChildRunStartReservationStore) Reserve(
 	if inserted == 1 {
 		return nil
 	}
-	existing, _, err := c.load(ctx, record.MemberID)
+	existing, _, _, err := c.load(ctx, record.MemberID)
 	if err != nil {
 		return err
 	}
@@ -137,15 +112,14 @@ func (c *ChildRunStartReservationStore) Reserve(
 }
 
 // Concluded confirms the exact durable outcome without advancing a reservation.
-func (c *ChildRunStartReservationStore) Concluded(ctx context.Context, record ChildRunStartReservationRecord, conclusion ChildRunStartConclusion) (bool, error) {
+func (c *ChildRunStartReservationStore) Concluded(ctx context.Context, record ChildRunStartReservationRecord, outcome runs.ChildRunStartOutcome) (bool, error) {
 	if err := record.validate(); err != nil {
 		return false, err
 	}
-	expected, err := childRunStartConcludedState(conclusion)
-	if err != nil {
-		return false, err
+	if !outcome.Valid() {
+		return false, errors.New("sqlite: child Run start outcome is invalid")
 	}
-	existing, state, err := c.load(ctx, record.MemberID)
+	existing, stored, concluded, err := c.load(ctx, record.MemberID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
@@ -155,26 +129,25 @@ func (c *ChildRunStartReservationStore) Concluded(ctx context.Context, record Ch
 	if !existing.same(record) {
 		return false, errChildRunStartReservationConflict
 	}
-	return state == expected, nil
+	return concluded && stored == outcome, nil
 }
 
-// Conclude advances an exact reservation from reserved to one conclusive
-// state. changed is true only for the first conclusion. An exact replay of the
-// same conclusion returns false; absence, different content, or a different
-// prior conclusion is a conflict.
+// Conclude advances an exact reservation from reserved to one outcome. changed
+// is true only for the first conclusion. An exact replay of the same outcome
+// returns false; absence, different content, or a different prior outcome is a
+// conflict.
 func (c *ChildRunStartReservationStore) Conclude(
 	ctx context.Context,
 	record ChildRunStartReservationRecord,
-	conclusion ChildRunStartConclusion,
+	outcome runs.ChildRunStartOutcome,
 ) (bool, error) {
 	if err := record.validate(); err != nil {
 		return false, err
 	}
-	concludedState, err := childRunStartConcludedState(conclusion)
-	if err != nil {
-		return false, err
+	if !outcome.Valid() {
+		return false, errors.New("sqlite: child Run start outcome is invalid")
 	}
-	existing, state, err := c.load(ctx, record.MemberID)
+	existing, stored, concluded, err := c.load(ctx, record.MemberID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, errChildRunStartReservationConflict
 	}
@@ -184,16 +157,16 @@ func (c *ChildRunStartReservationStore) Conclude(
 	if !existing.same(record) {
 		return false, errChildRunStartReservationConflict
 	}
-	if state == concludedState {
-		return false, nil
-	}
-	if state != childRunStartStateReserved {
+	if concluded {
+		if stored == outcome {
+			return false, nil
+		}
 		return false, errChildRunStartReservationConflict
 	}
 	result, err := sqlite.Connection(ctx, c.db).ExecContext(ctx, `
 		UPDATE child_run_start_reservations
 		SET state = ?
-		WHERE member_id = ? AND state = ?`, concludedState.String(), record.MemberID, childRunStartStateReserved.String())
+		WHERE member_id = ? AND state = ?`, outcome.String(), record.MemberID, reservedState)
 	if err != nil {
 		return false, fmt.Errorf("sqlite: conclude child Run start reservation: %w", err)
 	}
@@ -230,7 +203,7 @@ func (c *ChildRunStartReservationStore) DeleteSession(
 func (c *ChildRunStartReservationStore) load(
 	ctx context.Context,
 	memberID string,
-) (ChildRunStartReservationRecord, childRunStartState, error) {
+) (ChildRunStartReservationRecord, runs.ChildRunStartOutcome, bool, error) {
 	var record ChildRunStartReservationRecord
 	var createdAt int64
 	var state string
@@ -240,15 +213,15 @@ func (c *ChildRunStartReservationStore) load(
 		WHERE member_id = ?`, memberID,
 	).Scan(&record.MemberID, &record.SessionID, &record.Payload, &createdAt, &state)
 	if err != nil {
-		return ChildRunStartReservationRecord{}, "", err
+		return ChildRunStartReservationRecord{}, "", false, err
 	}
 	record.CreatedAt = time.Unix(0, createdAt).UTC()
 	if err := record.validate(); err != nil {
-		return ChildRunStartReservationRecord{}, "", err
+		return ChildRunStartReservationRecord{}, "", false, err
 	}
-	parsedState, err := parseChildRunStartState(state)
+	outcome, concluded, err := parseStoredChildRunStart(state)
 	if err != nil {
-		return ChildRunStartReservationRecord{}, "", err
+		return ChildRunStartReservationRecord{}, "", false, err
 	}
-	return record, parsedState, nil
+	return record, outcome, concluded, nil
 }

@@ -301,9 +301,9 @@ func currentSchema() []string {
 			state      TEXT NOT NULL DEFAULT '%[1]s'
 			           CHECK (state IN ('%[1]s', '%[2]s', '%[3]s'))
 		)`,
-			childRunStartStateReserved.String(),
-			childRunStartStateStarted.String(),
-			childRunStartStateAborted.String(),
+			reservedState,
+			runs.ChildRunStarted.String(),
+			runs.ChildRunStartAborted.String(),
 		),
 		`CREATE INDEX IF NOT EXISTS idx_child_run_start_reservations_session
 			ON child_run_start_reservations(session_id)`,

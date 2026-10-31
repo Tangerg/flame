@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/qimu"
 )
@@ -73,7 +72,7 @@ func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTr
 			if err != nil {
 				return err
 			}
-			if _, err := e.childRunStarts.Conclude(ctx, record, persistence.ChildRunStartConclusionAborted); err != nil {
+			if _, err := e.childRunStarts.Conclude(ctx, record, runs.ChildRunStartAborted); err != nil {
 				return err
 			}
 		}
@@ -114,7 +113,7 @@ func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTr
 			if recordErr != nil {
 				return errors.Join(err, recordErr)
 			}
-			confirmed, lookupErr := e.childRunStarts.Concluded(readCtx, record, persistence.ChildRunStartConclusionAborted)
+			confirmed, lookupErr := e.childRunStarts.Concluded(readCtx, record, runs.ChildRunStartAborted)
 			if lookupErr != nil || !confirmed {
 				return errors.Join(err, lookupErr)
 			}

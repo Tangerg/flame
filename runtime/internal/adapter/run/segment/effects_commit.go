@@ -40,7 +40,7 @@ func (e *Effects) applyStartedChildRun(ctx context.Context, started runs.Started
 	if err != nil {
 		return err
 	}
-	changed, err := e.childRunStarts.Conclude(ctx, record, persistence.ChildRunStartConclusionStarted)
+	changed, err := e.childRunStarts.Conclude(ctx, record, runs.ChildRunStarted)
 	if err != nil {
 		return fmt.Errorf("segment: conclude started child Run reservation: %w", err)
 	}
@@ -65,7 +65,7 @@ func (e *Effects) AbortChildRunStart(
 	}
 	return e.runInTx(ctx, func(ctx context.Context) error {
 		if _, err := e.childRunStarts.Conclude(
-			ctx, record, persistence.ChildRunStartConclusionAborted,
+			ctx, record, runs.ChildRunStartAborted,
 		); err != nil {
 			return fmt.Errorf("segment: abort child Run start: %w", err)
 		}

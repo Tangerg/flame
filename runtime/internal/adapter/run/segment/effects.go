@@ -203,11 +203,11 @@ type executorCheckpointStore interface {
 // this adapter alone translates the application value.
 type childRunStartReservationStore interface {
 	Reserve(ctx context.Context, record persistence.ChildRunStartReservationRecord) error
-	Concluded(context.Context, persistence.ChildRunStartReservationRecord, persistence.ChildRunStartConclusion) (bool, error)
+	Concluded(context.Context, persistence.ChildRunStartReservationRecord, runs.ChildRunStartOutcome) (bool, error)
 	Conclude(
 		ctx context.Context,
 		record persistence.ChildRunStartReservationRecord,
-		conclusion persistence.ChildRunStartConclusion,
+		conclusion runs.ChildRunStartOutcome,
 	) (changed bool, err error)
 	DeleteSession(ctx context.Context, sessionID string) error
 }

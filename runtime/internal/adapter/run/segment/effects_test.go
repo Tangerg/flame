@@ -936,7 +936,7 @@ func (*fakeChildRunStarts) Reserve(context.Context, persistence.ChildRunStartRes
 func (f *fakeChildRunStarts) Conclude(
 	context.Context,
 	persistence.ChildRunStartReservationRecord,
-	persistence.ChildRunStartConclusion,
+	runs.ChildRunStartOutcome,
 ) (bool, error) {
 	f.conclusions++
 	return true, nil
@@ -1143,7 +1143,7 @@ func (*recordingExecutionTrees) ExecutionResultCommitted(context.Context, string
 	return false, nil
 }
 
-func (*fakeChildRunStarts) Concluded(context.Context, persistence.ChildRunStartReservationRecord, persistence.ChildRunStartConclusion) (bool, error) {
+func (*fakeChildRunStarts) Concluded(context.Context, persistence.ChildRunStartReservationRecord, runs.ChildRunStartOutcome) (bool, error) {
 	return false, nil
 }
 

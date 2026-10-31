@@ -6,6 +6,7 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -75,7 +76,7 @@ func TestDurableOwnerTimesRoundTripAtExactBounds(t *testing.T) {
 			if err := reservations.Reserve(t.Context(), record); err != nil {
 				t.Fatal(err)
 			}
-			if changed, err := reservations.Conclude(t.Context(), record, ChildRunStartConclusionStarted); err != nil || !changed {
+			if changed, err := reservations.Conclude(t.Context(), record, runs.ChildRunStarted); err != nil || !changed {
 				t.Fatalf("Conclude exact reservation = %v, %v", changed, err)
 			}
 		})

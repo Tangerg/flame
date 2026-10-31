@@ -1214,7 +1214,7 @@ func (inertRuntimeStores) Reserve(context.Context, persistence.ChildRunStartRese
 func (inertRuntimeStores) Conclude(
 	context.Context,
 	persistence.ChildRunStartReservationRecord,
-	persistence.ChildRunStartConclusion,
+	runs.ChildRunStartOutcome,
 ) (bool, error) {
 	return true, nil
 }
@@ -1674,7 +1674,7 @@ func (noDeliveryCommandAcceptances) Lookup(context.Context, string) (runs.Comman
 	return runs.CommandAcceptanceRecord{}, nil
 }
 
-func (inertRuntimeStores) Concluded(context.Context, persistence.ChildRunStartReservationRecord, persistence.ChildRunStartConclusion) (bool, error) {
+func (inertRuntimeStores) Concluded(context.Context, persistence.ChildRunStartReservationRecord, runs.ChildRunStartOutcome) (bool, error) {
 	return false, nil
 }
 

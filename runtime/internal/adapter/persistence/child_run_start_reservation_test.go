@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"testing"
 	"time"
 )
@@ -23,29 +24,29 @@ func TestChildRunStartReservationRetainsIdempotentConclusion(t *testing.T) {
 	if reserveErr := store.Reserve(t.Context(), record); reserveErr != nil {
 		t.Fatalf("Reserve exact replay: %v", reserveErr)
 	}
-	if confirmed, err := store.Concluded(t.Context(), record, ChildRunStartConclusionStarted); err != nil || confirmed {
+	if confirmed, err := store.Concluded(t.Context(), record, runs.ChildRunStarted); err != nil || confirmed {
 		t.Fatalf("reserved conclusion = %t/%v", confirmed, err)
 	}
 	changed, err := store.Conclude(
-		t.Context(), record, ChildRunStartConclusionStarted,
+		t.Context(), record, runs.ChildRunStarted,
 	)
 	if err != nil || !changed {
 		t.Fatalf("first started conclusion = (%v, %v), want changed", changed, err)
 	}
-	if confirmed, err := store.Concluded(t.Context(), record, ChildRunStartConclusionStarted); err != nil || !confirmed {
+	if confirmed, err := store.Concluded(t.Context(), record, runs.ChildRunStarted); err != nil || !confirmed {
 		t.Fatalf("started conclusion = %t/%v", confirmed, err)
 	}
-	if confirmed, err := store.Concluded(t.Context(), record, ChildRunStartConclusionAborted); err != nil || confirmed {
+	if confirmed, err := store.Concluded(t.Context(), record, runs.ChildRunStartAborted); err != nil || confirmed {
 		t.Fatalf("contradictory conclusion = %t/%v", confirmed, err)
 	}
 	changed, err = store.Conclude(
-		t.Context(), record, ChildRunStartConclusionStarted,
+		t.Context(), record, runs.ChildRunStarted,
 	)
 	if err != nil || changed {
 		t.Fatalf("started replay = (%v, %v), want unchanged success", changed, err)
 	}
 	if _, err := store.Conclude(
-		t.Context(), record, ChildRunStartConclusionAborted,
+		t.Context(), record, runs.ChildRunStartAborted,
 	); !errors.Is(err, errChildRunStartReservationConflict) {
 		t.Fatalf("contradictory conclusion = %v, want conflict", err)
 	}
@@ -71,7 +72,7 @@ func TestChildRunStartReservationRejectsMissingAndChangedIdentity(t *testing.T) 
 		Payload: []byte(`{"run":"child"}`), CreatedAt: time.Unix(1, 2).UTC(),
 	}
 	if _, err := store.Conclude(
-		t.Context(), record, ChildRunStartConclusionAborted,
+		t.Context(), record, runs.ChildRunStartAborted,
 	); !errors.Is(err, errChildRunStartReservationConflict) {
 		t.Fatalf("missing conclusion = %v, want conflict", err)
 	}
@@ -84,7 +85,7 @@ func TestChildRunStartReservationRejectsMissingAndChangedIdentity(t *testing.T) 
 		t.Fatalf("changed replay = %v, want conflict", err)
 	}
 	if _, err := store.Conclude(
-		t.Context(), record, ChildRunStartConclusion("unknown"),
+		t.Context(), record, runs.ChildRunStartOutcome("unknown"),
 	); err == nil {
 		t.Fatal("unknown conclusion succeeded")
 	}
