@@ -125,7 +125,7 @@ type ContentBlock struct {
 	Bytes     []byte
 }
 
-// Clone returns an ownership-isolated content value.
+// Equal compares content values, including their bytes.
 func (c ContentBlock) Equal(other ContentBlock) bool {
 	return c.Kind == other.Kind && c.Text == other.Text && c.MediaType == other.MediaType && bytes.Equal(c.Bytes, other.Bytes)
 }

@@ -3,23 +3,23 @@ package transcript
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 )
 
-const (
-	minIDLength = 2
-	maxIDLength = 64
-	// ToolResultIDPattern is the public wire grammar shared with generated
-	// protocol validators for portable offloaded-result records.
-	ToolResultIDPattern = `^[A-Z2-7]{2,64}$`
-)
+// ToolResultIDPattern is the public wire grammar shared with generated
+// protocol validators for portable offloaded-result records, and the only
+// statement of it: uppercase unpadded base32, 2 to 64 characters.
+const ToolResultIDPattern = `^[A-Z2-7]{2,64}$`
+
+var toolResultIDExpression = regexp.MustCompile(ToolResultIDPattern)
 
 var (
-	errInvalidToolResultID        = errors.New("toolresult: invalid tool-result ID")
-	ErrToolResultIdentityConflict = errors.New("toolresult: tool-result identity conflict")
+	errInvalidToolResultID        = errors.New("transcript: invalid tool-result ID")
+	ErrToolResultIdentityConflict = errors.New("transcript: tool-result identity conflict")
 )
 
 // ToolResultID is the opaque identity copied from an offload preview into
@@ -37,17 +37,10 @@ func ParseToolResultID(raw string) (ToolResultID, error) {
 
 func (i ToolResultID) String() string { return string(i) }
 
-// Validate accepts uppercase unpadded base32 and bounds imported or
-// model-supplied identifiers.
+// Validate bounds imported or model-supplied identifiers by [ToolResultIDPattern].
 func (i ToolResultID) Validate() error {
-	raw := string(i)
-	if len(raw) < minIDLength || len(raw) > maxIDLength {
-		return fmt.Errorf("%w: length must be between %d and %d characters", errInvalidToolResultID, minIDLength, maxIDLength)
-	}
-	for _, char := range raw {
-		if (char < 'A' || char > 'Z') && (char < '2' || char > '7') {
-			return fmt.Errorf("%w: %q is not uppercase base32", errInvalidToolResultID, raw)
-		}
+	if !toolResultIDExpression.MatchString(string(i)) {
+		return fmt.Errorf("%w: %q does not match %s", errInvalidToolResultID, string(i), ToolResultIDPattern)
 	}
 	return nil
 }
@@ -74,10 +67,10 @@ func (s ToolResultStage) Validate() error {
 		errs = append(errs, err)
 	}
 	if err := identity.ValidateSession(s.SessionID); err != nil {
-		errs = append(errs, fmt.Errorf("toolresult: %w", err))
+		errs = append(errs, fmt.Errorf("transcript: tool result: %w", err))
 	}
 	if s.Body == "" {
-		errs = append(errs, errors.New("toolresult: body is required"))
+		errs = append(errs, errors.New("transcript: tool result body is required"))
 	}
 	return errors.Join(errs...)
 }
@@ -86,25 +79,14 @@ func (s ToolResultStage) Validate() error {
 // transcript reconstruction and deferred result reads on another database.
 // The Item that offloaded it names it; a Blob does not name the Item back.
 type ToolResultBlob struct {
-	ID        ToolResultID
-	SessionID string
-	Body      string
+	ToolResultStage
 	CreatedAt time.Time
 }
 
 func (b ToolResultBlob) Validate() error {
-	var errs []error
-	if err := b.ID.Validate(); err != nil {
-		errs = append(errs, err)
-	}
-	if err := identity.ValidateSession(b.SessionID); err != nil {
-		errs = append(errs, fmt.Errorf("toolresult: %w", err))
-	}
-	if b.Body == "" {
-		errs = append(errs, errors.New("toolresult: body is required"))
-	}
+	errs := []error{b.ToolResultStage.Validate()}
 	if b.CreatedAt.IsZero() {
-		errs = append(errs, errors.New("toolresult: creation time is required"))
+		errs = append(errs, errors.New("transcript: tool result creation time is required"))
 	}
 	if err := instant.Validate(b.CreatedAt); err != nil {
 		errs = append(errs, err)
