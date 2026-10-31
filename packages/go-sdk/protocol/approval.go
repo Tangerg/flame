@@ -42,12 +42,10 @@ type ListApprovalRulesRequest struct {
 	SessionID string `json:"sessionId,omitempty"`
 }
 
-// ListApprovalRulesResult — the approval.listRules reply.
 type ListApprovalRulesResult struct {
 	Rules []ApprovalRule `json:"rules"`
 }
 
-// ForgetApprovalRuleRequest — approval.forgetRule body.
 type ForgetApprovalRuleRequest struct {
 	ID string `json:"id"`
 }
@@ -65,7 +63,6 @@ const (
 	ApprovalModeYolo     ApprovalMode = "yolo"
 )
 
-// SetApprovalModeRequest — approval.setMode body.
 type SetApprovalModeRequest struct {
 	Mode ApprovalMode `json:"mode"`
 }

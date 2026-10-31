@@ -71,7 +71,6 @@ type GoalUsage struct {
 	Steps   int      `json:"steps"`
 }
 
-// StartGoalRequest — goals.start body.
 type StartGoalRequest struct {
 	SessionID       string `json:"sessionId"`
 	Objective       string `json:"objective"`

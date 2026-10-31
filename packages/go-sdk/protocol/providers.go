@@ -102,7 +102,6 @@ const (
 	ProviderTestFailed             ProviderTestOutcome = "failed"
 )
 
-// ProviderTestResult — providers.test result.
 type ProviderTestResult struct {
 	Outcome ProviderTestOutcome `json:"outcome"`
 }

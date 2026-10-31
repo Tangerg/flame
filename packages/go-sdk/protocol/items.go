@@ -55,7 +55,6 @@ const (
 	ItemOrderDesc ItemOrder = "desc"
 )
 
-// ListItemsRequest — items.list body.
 type ListItemsRequest struct {
 	Scope ItemListScope `json:"scope"`
 	// Order defaults to asc. It is part of the cursor's identity: an anchor from a
