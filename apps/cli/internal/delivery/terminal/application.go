@@ -76,6 +76,7 @@ type app struct {
 	reader           *readerSurface
 	prompts          *interruptPrompts
 	confirm          *confirmPrompt
+	sessions         *sessionBrowser
 	screens          screens
 	timeline         *timelineDialog
 	palette          *pickerDialog[commandPaletteItem]
@@ -359,22 +360,12 @@ func (a *app) wireTranscript(transcript *transcriptView) {
 }
 
 func (a *app) buildSessionPicker(theme kit.Theme, glyphs kit.Glyphs) {
-	a.dialogs.sessionCenter = newSessionCenterPane(theme, glyphs, func(session conversation.Session) {
-		a.dialogs.sessionDialog.Dismiss()
-		a.switchSession(session.ID)
-	})
-	a.dialogs.sessionCenter.loadMore = a.loadMoreSessions
-	a.dialogs.sessionCenter.toggleFavorite = a.toggleSessionFavorite
-	a.dialogs.sessionCenter.rename = a.openSessionRename
-	a.dialogs.sessionCenter.delete = a.openSessionDelete
-	a.dialogs.sessionDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Sessions · Center", Body: a.dialogs.sessionCenter,
-		Where: layout.Placement{Width: 96, Height: 24},
-	})
-	a.dialogs.sessionCenter.picker.cancel = func() {
-		a.operations.Cancel(pickerCatalogOperation)
-		a.dialogs.sessionDialog.Dismiss()
-	}
+	a.sessions = newSessionBrowser(sessionBrowserConfig{browser: sessionBrowser{
+		runtime: a.runtime, workbench: a.workbench, queue: a.queue, replayPolicy: a.replayPolicy,
+		session: &a.session, tasks: a.tasks, status: a.status, stack: &a.stack, theme: theme, glyphs: glyphs,
+		clipboard: a.loop.Clipboard(), notify: a.message, observing: a.runs.observing, adoptCurrent: a.setActiveSession,
+		catalogChanged: func() { a.applySessionInvalidation(true, false) },
+	}, switchTo: a.switchSession})
 }
 
 func (a *app) Draw(frame headless.Frame) {
@@ -459,7 +450,7 @@ func (a *app) dispatchPrompt(message authoring.Message) {
 		a.runs.enqueueDeferredPrompt()
 		return
 	}
-	a.dialogs.sessionDialog.Dismiss()
+	a.sessions.dialog.Dismiss()
 	a.dismissModelPicker()
 	a.composer.resetComposer()
 	a.operations.Cancel(completionOperation)

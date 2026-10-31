@@ -995,6 +995,9 @@ func withModalOwners(t *testing.T, application *app) {
 	t.Helper()
 	theme, glyphs := application.transcript.theme, application.transcript.glyphs
 	application.confirm = &confirmPrompt{stack: &application.stack, theme: theme, glyphs: glyphs, session: &application.session}
+	application.sessions = newSessionBrowser(sessionBrowserConfig{browser: sessionBrowser{
+		stack: &application.stack, theme: theme, glyphs: glyphs, session: &application.session,
+	}, switchTo: func(string) {}})
 	application.search = newSearchPrompt(&application.stack, theme, glyphs, func(string) {})
 	application.timeline = newTimelineDialog(&application.stack, theme, glyphs, func(timelineEntry) {}, func(timelineEntry) {})
 	application.palette = newPickerDialog(pickerDialogConfig[commandPaletteItem]{

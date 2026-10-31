@@ -18,83 +18,150 @@ import (
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/core/layout"
+	"github.com/Tangerg/oolong/core/program"
 )
 
-func (a *app) ShowSessions() {
-	if a.runs.observing() {
-		a.message("finish or cancel the current run before switching sessions")
-		return
-	}
-	a.dialogs.sessionCenter.Reset()
-	a.loadSessionPage("", false)
+// sessionBrowser is the Session center: it lists, favorites, renames and
+// deletes Sessions and hands the chosen one to switchTo. It changes the
+// presented Session only through adoptCurrent.
+type sessionBrowser struct {
+	pane         *sessionCenterPane
+	dialog       *presentationDialog
+	renameDialog *kit.Dialog
+	deleteDialog *kit.Dialog
+
+	runtime      Runtime
+	workbench    *workbench.Store
+	queue        *workbench.Queue
+	replayPolicy mutation.ReplayPolicy
+	session      *sessionState
+	tasks        taskRunner
+	status       *statusView
+	stack        *headless.Stack
+	theme        kit.Theme
+	glyphs       kit.Glyphs
+	clipboard    program.Clipboard
+
+	notify         func(string)
+	observing      func() bool
+	adoptCurrent   func(conversation.Session)
+	catalogChanged func()
 }
 
-func (a *app) loadMoreSessions() {
-	if !a.dialogs.sessionCenter.HasMore() {
-		a.message("all sessions are already loaded")
-		return
-	}
-	a.loadSessionPage(a.dialogs.sessionCenter.Cursor(), true)
+type sessionBrowserConfig struct {
+	browser  sessionBrowser
+	switchTo func(id string)
 }
 
-func (a *app) loadSessionPage(cursor string, appendPage bool) {
-	a.message("loading sessions")
-	a.tasks.session(pickerCatalogOperation, true,
+func newSessionBrowser(cfg sessionBrowserConfig) *sessionBrowser {
+	b := &cfg.browser
+	b.pane = newSessionCenterPane(b.theme, b.glyphs, func(session conversation.Session) {
+		b.dialog.Dismiss()
+		cfg.switchTo(session.ID)
+	})
+	b.pane.loadMore = b.loadMoreSessions
+	b.pane.toggleFavorite = b.toggleSessionFavorite
+	b.pane.rename = b.openSessionRename
+	b.pane.delete = b.openSessionDelete
+	b.dialog = newPresentationDialog(kit.DialogConfig{
+		Stack: b.stack, Theme: b.theme, Glyphs: b.glyphs, Title: "Sessions · Center", Body: b.pane,
+		Where: layout.Placement{Width: 96, Height: 24},
+	})
+	b.pane.picker.cancel = func() {
+		b.tasks.operations.Cancel(pickerCatalogOperation)
+		b.dialog.Dismiss()
+	}
+	return b
+}
+
+// dismiss closes the center and any rename or delete it opened.
+func (b *sessionBrowser) dismiss() {
+	b.dialog.Dismiss()
+	if b.renameDialog != nil {
+		b.renameDialog.Controller().Dismiss()
+		b.renameDialog = nil
+	}
+	if b.deleteDialog != nil {
+		b.deleteDialog.Controller().Dismiss()
+		b.deleteDialog = nil
+	}
+}
+
+func (b *sessionBrowser) ShowSessions() {
+	if b.observing() {
+		b.notify("finish or cancel the current run before switching sessions")
+		return
+	}
+	b.pane.Reset()
+	b.loadSessionPage("", false)
+}
+
+func (b *sessionBrowser) loadMoreSessions() {
+	if !b.pane.HasMore() {
+		b.notify("all sessions are already loaded")
+		return
+	}
+	b.loadSessionPage(b.pane.Cursor(), true)
+}
+
+func (b *sessionBrowser) loadSessionPage(cursor string, appendPage bool) {
+	b.notify("loading sessions")
+	b.tasks.session(pickerCatalogOperation, true,
 		func(ctx context.Context) (conversation.SessionPage, error) {
-			return a.runtime.ListSessions(ctx, conversation.SessionQuery{PageSize: conversation.DefaultPageSize(), Cursor: cursor})
+			return b.runtime.ListSessions(ctx, conversation.SessionQuery{PageSize: conversation.DefaultPageSize(), Cursor: cursor})
 		},
 		func(page conversation.SessionPage, err error) {
-			if appendPage && !a.dialogs.sessionDialog.Open() {
+			if appendPage && !b.dialog.Open() {
 				return
 			}
 			if err != nil {
-				a.message("could not load sessions: " + err.Error())
+				b.notify("could not load sessions: " + err.Error())
 				return
 			}
-			if err := a.dialogs.sessionCenter.SetPage(page, appendPage); err != nil {
-				a.message("could not load sessions: " + err.Error())
+			if err := b.pane.SetPage(page, appendPage); err != nil {
+				b.notify("could not load sessions: " + err.Error())
 				return
 			}
 			if !appendPage {
-				a.dialogs.sessionDialog.Show()
+				b.dialog.Show()
 			}
-			a.status.note("choose a session")
+			b.status.note("choose a session")
 		},
 	)
 }
 
-func (a *app) toggleSessionFavorite(session conversation.Session) {
+func (b *sessionBrowser) toggleSessionFavorite(session conversation.Session) {
 	desired := !session.Favorite
-	a.updateSessionFromCenter(conversation.UpdateSession{
+	b.updateSessionFromCenter(conversation.UpdateSession{
 		SessionID: session.ID, Favorite: &desired, ExpectedRevision: session.Revision,
 	}, "updating favorite", nil)
 }
 
-func (a *app) openSessionRename(session conversation.Session) {
+func (b *sessionBrowser) openSessionRename(session conversation.Session) {
 	title := session.Title
 	field := headless.NewText(headless.TextConfig{Label: "Session title", Value: headless.Bind(&title), Check: requiredText})
-	field.Clipboard = a.loop.Clipboard()
+	field.Clipboard = b.clipboard
 	form := headless.NewForm(field)
 	form.Keys = headless.DefaultFormKeys()
 	dressed := kit.NewForm(kit.FormConfig{
-		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs, Controller: form,
+		Theme: b.theme, Glyphs: b.glyphs, Controller: form,
 		Hints: []keymap.Action{headless.Submit, headless.Cancel},
 	})
 	var dialog *kit.Dialog
 	form.Done = func() {
-		if a.dialogs.sessionRenameDialog != dialog {
+		if b.renameDialog != dialog {
 			return
 		}
 		trimmed := strings.TrimSpace(title)
 		if trimmed == strings.TrimSpace(session.Title) {
 			dialog.Controller().Dismiss()
-			a.dialogs.sessionRenameDialog = nil
+			b.renameDialog = nil
 			return
 		}
-		started := a.updateSessionFromCenter(conversation.UpdateSession{
+		started := b.updateSessionFromCenter(conversation.UpdateSession{
 			SessionID: session.ID, Title: &trimmed, ExpectedRevision: session.Revision,
 		}, "renaming session", func(err error) {
-			if a.dialogs.sessionRenameDialog != dialog {
+			if b.renameDialog != dialog {
 				return
 			}
 			if err != nil {
@@ -105,7 +172,7 @@ func (a *app) openSessionRename(session conversation.Session) {
 				dialog.Controller().Show()
 				return
 			}
-			a.dialogs.sessionRenameDialog = nil
+			b.renameDialog = nil
 		})
 		if started {
 			dialog.Controller().Dismiss()
@@ -114,23 +181,23 @@ func (a *app) openSessionRename(session conversation.Session) {
 		}
 	}
 	form.GaveUp = func() {
-		if a.dialogs.sessionRenameDialog == dialog {
+		if b.renameDialog == dialog {
 			dialog.Controller().Dismiss()
-			a.dialogs.sessionRenameDialog = nil
+			b.renameDialog = nil
 		}
 	}
 	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
+		Stack: b.stack, Theme: b.theme, Glyphs: b.glyphs,
 		Title: "Rename session", Body: dressed,
 		Where: layout.Placement{Width: 68, Height: 11},
 	})
-	a.dialogs.sessionRenameDialog = dialog
+	b.renameDialog = dialog
 	dialog.Controller().Show()
 }
 
-func (a *app) openSessionDelete(session conversation.Session) {
-	if session.ID == a.session.current.ID {
-		a.message("switch away before deleting the current session")
+func (b *sessionBrowser) openSessionDelete(session conversation.Session) {
+	if session.ID == b.session.current.ID {
+		b.notify("switch away before deleting the current session")
 		return
 	}
 	confirmed := false
@@ -140,108 +207,108 @@ func (a *app) openSessionDelete(session conversation.Session) {
 	form.Keys = headless.DefaultFormKeys()
 	var dialog *kit.Dialog
 	form.Done = func() {
-		if a.dialogs.sessionDeleteDialog != dialog {
+		if b.deleteDialog != dialog {
 			return
 		}
 		dialog.Controller().Dismiss()
-		a.dialogs.sessionDeleteDialog = nil
+		b.deleteDialog = nil
 		if confirmed {
-			a.deleteSessionFromCenter(session.ID)
+			b.deleteSessionFromCenter(session.ID)
 		}
 	}
 	form.GaveUp = func() {
-		if a.dialogs.sessionDeleteDialog == dialog {
+		if b.deleteDialog == dialog {
 			dialog.Controller().Dismiss()
-			a.dialogs.sessionDeleteDialog = nil
+			b.deleteDialog = nil
 		}
 	}
 	dressed := kit.NewForm(kit.FormConfig{
-		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs, Controller: form,
+		Theme: b.theme, Glyphs: b.glyphs, Controller: form,
 		Hints: []keymap.Action{headless.Submit, headless.Cancel},
 	})
 	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
+		Stack: b.stack, Theme: b.theme, Glyphs: b.glyphs,
 		Title: "Delete session", Body: dressed,
 		Where: layout.Placement{Width: 68, Height: 8},
 	})
-	a.dialogs.sessionDeleteDialog = dialog
+	b.deleteDialog = dialog
 	dialog.Controller().Show()
 }
 
-func (a *app) updateSessionFromCenter(request conversation.UpdateSession, label string, settled func(error)) bool {
-	started := a.tasks.application(sessionCenterOperation, false,
+func (b *sessionBrowser) updateSessionFromCenter(request conversation.UpdateSession, label string, settled func(error)) bool {
+	started := b.tasks.application(sessionCenterOperation, false,
 		func(ctx context.Context) (conversation.Session, error) {
-			return a.runtime.UpdateSession(ctx, request)
+			return b.runtime.UpdateSession(ctx, request)
 		},
 		func(updated conversation.Session, err error) {
 			if err != nil {
 				if settled != nil {
 					settled(err)
 				}
-				a.message(label + " failed: " + err.Error())
+				b.notify(label + " failed: " + err.Error())
 				return
 			}
-			a.dialogs.sessionCenter.Replace(updated)
-			if updated.ID == a.session.current.ID {
-				a.setActiveSession(updated)
+			b.pane.Replace(updated)
+			if updated.ID == b.session.current.ID {
+				b.adoptCurrent(updated)
 			}
-			a.applySessionInvalidation(true, false)
-			a.message(label + " complete")
+			b.catalogChanged()
+			b.notify(label + " complete")
 			if settled != nil {
 				settled(nil)
 			}
 		},
 	)
 	if !started {
-		a.message("wait for the current session action to finish")
+		b.notify("wait for the current session action to finish")
 	}
 	return started
 }
 
-func (a *app) deleteSessionFromCenter(id string) {
-	started := a.tasks.application(sessionCenterOperation, false,
+func (b *sessionBrowser) deleteSessionFromCenter(id string) {
+	started := b.tasks.application(sessionCenterOperation, false,
 		func(ctx context.Context) (session.DeletionResult, error) {
 			return session.Delete(
-				ctx, a.runtime, a.workbench, id, a.replayPolicy, runtimeRecoveryBackoff,
+				ctx, b.runtime, b.workbench, id, b.replayPolicy, runtimeRecoveryBackoff,
 			)
 		},
 		func(result session.DeletionResult, err error) {
 			switch result.Outcome {
 			case mutation.Rejected:
-				if rejectErr := session.RejectDeletion(a.workbench, result); rejectErr != nil {
-					a.message("delete session failed; local intent cleanup failed: " + errors.Join(err, rejectErr).Error())
+				if rejectErr := session.RejectDeletion(b.workbench, result); rejectErr != nil {
+					b.notify("delete session failed; local intent cleanup failed: " + errors.Join(err, rejectErr).Error())
 					return
 				}
-				a.message("delete session failed: " + err.Error())
+				b.notify("delete session failed: " + err.Error())
 				return
 			case mutation.Unknown:
 				if result.Request.CommandID == "" {
-					a.message("delete session failed: " + err.Error())
+					b.notify("delete session failed: " + err.Error())
 					return
 				}
-				a.message("delete session outcome is unknown; the original request is saved for recovery; inspect the session before issuing a new command: " + err.Error())
+				b.notify("delete session outcome is unknown; the original request is saved for recovery; inspect the session before issuing a new command: " + err.Error())
 				return
 			case mutation.Confirmed:
 			default:
-				a.message("delete session returned an invalid settlement outcome")
+				b.notify("delete session returned an invalid settlement outcome")
 				return
 			}
-			if err := session.ConfirmDeletion(a.workbench, result); err != nil {
-				if a.queue != nil {
-					err = errors.Join(err, a.queue.Restore(result.Request.SessionID))
+			if err := session.ConfirmDeletion(b.workbench, result); err != nil {
+				if b.queue != nil {
+					err = errors.Join(err, b.queue.Restore(result.Request.SessionID))
 				}
-				a.message("deleted session; local state cleanup failed: " + err.Error())
+				b.notify("deleted session; local state cleanup failed: " + err.Error())
 				return
 			}
-			if a.queue != nil {
-				a.queue.ForgetSession(result.Request.SessionID)
+			if b.queue != nil {
+				b.queue.ForgetSession(result.Request.SessionID)
 			}
-			a.dialogs.sessionCenter.Remove(id)
-			a.message("deleted session")
+			b.pane.Remove(id)
+			b.notify("deleted session")
 		},
 	)
 	if !started {
-		a.message("wait for the current session action to finish")
+		b.notify("wait for the current session action to finish")
 	}
 }
 
@@ -343,7 +410,7 @@ func (a *app) runSessionChangeWithDraftDisposition[T any](
 		return
 	}
 	a.operations.Cancel(pickerCatalogOperation)
-	a.dialogs.sessionDialog.Dismiss()
+	a.sessions.dialog.Dismiss()
 	baseline, _, err := a.composer.draft()
 	if err != nil {
 		a.message(label + " failed: " + err.Error())

@@ -263,7 +263,7 @@ func (a *app) handleSessionAction(action keymap.Action) bool {
 		a.ShowShortcuts()
 		return true
 	case showSessions:
-		a.ShowSessions()
+		a.sessions.ShowSessions()
 		return true
 	case showTimeline:
 		a.ShowTimeline()

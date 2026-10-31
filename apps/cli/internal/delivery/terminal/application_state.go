@@ -3,7 +3,6 @@ package terminal
 import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/oolong/components/kit"
 )
 
 // sessionState owns the active Runtime projection and the lease that prevents
@@ -53,9 +52,5 @@ func (r *runs) runtimeChangeBlocksRunAdmission() bool {
 // application root makes it impossible to mistake dialog drafts, selections,
 // or readers for durable Runtime state.
 type dialogState struct {
-	sessionCenter       *sessionCenterPane
-	sessionDialog       *presentationDialog
-	sessionRenameDialog *kit.Dialog
-	sessionDeleteDialog *kit.Dialog
 	activeContextEditor *contextEditorSession
 }

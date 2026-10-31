@@ -59,9 +59,9 @@ func goalInvalidationAffectsSession(event changefeed.Event, sessionID string) bo
 }
 
 func (a *app) applySessionInvalidation(catalogChanged, currentSessionChanged bool) {
-	if catalogChanged && a.dialogs.sessionDialog.Open() {
-		a.dialogs.sessionCenter.Reset()
-		a.loadSessionPage("", false)
+	if catalogChanged && a.sessions.dialog.Open() {
+		a.sessions.pane.Reset()
+		a.sessions.loadSessionPage("", false)
 	}
 	if !currentSessionChanged {
 		return
@@ -203,5 +203,5 @@ func (a *app) readInvalidatedSession(ctx context.Context, sessionID string) (con
 
 func (a *app) installSessionMetadata(session conversation.Session) {
 	a.setActiveSession(session)
-	a.dialogs.sessionCenter.Replace(session)
+	a.sessions.pane.Replace(session)
 }
