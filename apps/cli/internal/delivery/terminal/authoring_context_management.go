@@ -13,14 +13,13 @@ func (a *app) ShowAgentDocuments() {
 		return
 	}
 	workspace := a.session.current.Workspace.Path
-	a.runRuntimeReaderQuery("loading agent documents", runtimeReaderAgentDocuments,
-		func(ctx context.Context) (readerDocument, error) {
-			documents, err := a.authoringContext.Documents(ctx, workspace)
-			if err != nil {
-				return readerDocument{}, err
-			}
-			return agentDocumentsDocument(workspace, documents), nil
-		})
+	a.reader.show(&readerQuery{status: "loading agent documents", read: func(ctx context.Context) (readerDocument, error) {
+		documents, err := a.authoringContext.Documents(ctx, workspace)
+		if err != nil {
+			return readerDocument{}, err
+		}
+		return agentDocumentsDocument(workspace, documents), nil
+	}})
 }
 
 func agentDocumentsDocument(workspacePath string, documents []protocol.AgentDoc) readerDocument {

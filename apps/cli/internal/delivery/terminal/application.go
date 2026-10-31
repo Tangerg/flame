@@ -83,6 +83,7 @@ type app struct {
 	execution    executionState
 	steers       steerReceipts
 	dialogs      dialogState
+	reader       *readerSurface
 
 	transcript  *transcriptView
 	brand       *brandBanner
@@ -311,7 +312,10 @@ func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.M
 	a.buildCommandPalette(theme, glyphs)
 	a.buildShortcutDialog(theme, glyphs, editorKeys)
 	a.buildSearchDialog(theme, glyphs)
-	a.buildReader(theme, glyphs)
+	a.reader = newReaderSurface(readerSurfaceConfig{
+		theme: theme, glyphs: glyphs, syntax: a.syntax, stack: &a.stack, loop: a.loop,
+		tasks: a.tasks, status: a.status, message: a.message,
+	})
 	a.listenForSearch()
 	a.setWindowTitle()
 }
@@ -426,8 +430,8 @@ func (a *app) Close(ctx context.Context) error {
 	}
 	a.transcript.Close()
 	closeErr = errors.Join(closeErr, a.transcript.releaseErr)
-	if a.dialogs.reader != nil {
-		a.dialogs.reader.Shutdown()
+	if a.reader != nil {
+		a.reader.shutdown()
 	}
 	if a.execution.stopClock != nil {
 		a.execution.stopClock()

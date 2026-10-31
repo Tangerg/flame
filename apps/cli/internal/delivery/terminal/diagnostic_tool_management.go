@@ -15,14 +15,13 @@ func (a *app) ShowDiagnosticTools() {
 		a.message("this runtime composition has no diagnostic tool service")
 		return
 	}
-	a.runRuntimeReaderQuery("loading diagnostic tools", runtimeReaderDiagnosticTools,
-		func(ctx context.Context) (readerDocument, error) {
-			tools, err := a.diagnosticTools.Tools(ctx)
-			if err != nil {
-				return readerDocument{}, err
-			}
-			return diagnosticToolsDocument(tools), nil
-		})
+	a.reader.show(&readerQuery{status: "loading diagnostic tools", read: func(ctx context.Context) (readerDocument, error) {
+		tools, err := a.diagnosticTools.Tools(ctx)
+		if err != nil {
+			return readerDocument{}, err
+		}
+		return diagnosticToolsDocument(tools), nil
+	}})
 }
 
 func diagnosticToolsDocument(tools []workspace.DiagnosticToolDescriptor) readerDocument {
@@ -73,9 +72,7 @@ func (a *app) InvokeDiagnosticTool(argument string) error {
 				a.message("invoke diagnostic tool failed: " + err.Error())
 				return
 			}
-			a.setRuntimeReader(runtimeReaderDiagnosticTools)
-			a.dialogs.workspaceReader = workspaceReaderNone
-			a.openReaderDocument(readerDocument{
+			a.reader.open(nil, readerDocument{
 				Title: "Diagnostic · " + invocation.tool.Name, Detail: workspacePath,
 				Sections: []toolSection{{Title: "Result", Style: toolSectionCode, Language: "json", Text: prettyJSON(invocation.result.JSON)}},
 			})

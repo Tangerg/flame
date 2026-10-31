@@ -236,13 +236,13 @@ func formatRuntimeBytes(value int) string {
 }
 
 func (a *app) ShowApprovalRules() {
-	a.executeRuntimeReaderQuery(a.approvalRulesReaderQuery())
+	a.reader.show(a.approvalRulesReaderQuery())
 }
 
-func (a *app) approvalRulesReaderQuery() runtimeReaderQuery {
+func (a *app) approvalRulesReaderQuery() *readerQuery {
 	sessionID := a.session.current.ID
-	return runtimeReaderQuery{
-		status: "loading approval rules", mode: runtimeReaderApprovalRules,
+	return &readerQuery{
+		status: "loading approval rules", follows: followsTopic(protocol.TopicApprovalsChanged, protocol.TopicMCPChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
 			rules, err := a.runtime.ListApprovalRules(ctx, sessionID)
 			if err != nil {
@@ -334,8 +334,7 @@ func (a *app) deleteApprovalRule(sessionID, id string) {
 					a.message("forget approval rule: " + err.Error())
 					return
 				}
-				a.setRuntimeReader(runtimeReaderApprovalRules)
-				a.openReaderDocument(document)
+				a.reader.open(a.approvalRulesReaderQuery(), document)
 			}
 		},
 	) {

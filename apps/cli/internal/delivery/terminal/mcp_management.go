@@ -23,13 +23,13 @@ func (a *app) ShowMCPServers() {
 		a.message("this runtime composition has no MCP service")
 		return
 	}
-	a.executeRuntimeReaderQuery(a.mcpServersReaderQuery())
+	a.reader.show(a.mcpServersReaderQuery())
 }
 
-func (a *app) mcpServersReaderQuery() runtimeReaderQuery {
-	return runtimeReaderQuery{
-		status: "loading MCP servers",
-		mode:   runtimeReaderMCPServers,
+func (a *app) mcpServersReaderQuery() *readerQuery {
+	return &readerQuery{
+		status:  "loading MCP servers",
+		follows: followsTopic(protocol.TopicMCPChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
 			servers, err := a.mcp.Servers(ctx)
 			if err != nil {
@@ -163,14 +163,13 @@ func (a *app) ShowMCPTools(argument string) {
 		}
 		server = &parsed
 	}
-	a.dialogs.mcpToolServer = server
-	a.executeRuntimeReaderQuery(a.mcpToolsReaderQuery(server))
+	a.reader.show(a.mcpToolsReaderQuery(server))
 }
 
-func (a *app) mcpToolsReaderQuery(server *protocol.MCPServerID) runtimeReaderQuery {
-	return runtimeReaderQuery{
-		status: "loading MCP tools",
-		mode:   runtimeReaderMCPTools,
+func (a *app) mcpToolsReaderQuery(server *protocol.MCPServerID) *readerQuery {
+	return &readerQuery{
+		status:  "loading MCP tools",
+		follows: followsTopic(protocol.TopicMCPChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
 			tools, err := a.mcp.Tools(ctx, server)
 			if err != nil {
@@ -379,14 +378,13 @@ func (a *app) AuthorizeMCPServer(argument string) error {
 				a.message("start MCP authorization failed: " + err.Error())
 				return
 			}
+			// The reader follows this attempt only, so a later reader is not overwritten.
+			view := &readerQuery{status: "MCP authorization"}
 			if a.session.context.current(presentation) {
-				a.dialogs.mcpAuthorizationID = attempt.ID
-				a.setRuntimeReader(runtimeReaderMCPAuthorization)
-				a.dialogs.workspaceReader = workspaceReaderNone
-				a.openReaderDocument(mcpAuthorizationDocument(attempt))
+				a.reader.open(view, mcpAuthorizationDocument(attempt))
 			}
 			if attempt.Status.Type == protocol.MCPAuthorizationAttemptPending {
-				a.pollMCPAuthorization(attempt)
+				a.pollMCPAuthorization(attempt, view)
 			}
 		},
 	)
@@ -396,7 +394,7 @@ func (a *app) AuthorizeMCPServer(argument string) error {
 	return nil
 }
 
-func (a *app) pollMCPAuthorization(initial protocol.MCPAuthorizationAttempt) {
+func (a *app) pollMCPAuthorization(initial protocol.MCPAuthorizationAttempt, view *readerQuery) {
 	observer := mcpAuthorizationObserver{
 		service: a.mcp, pollInterval: mcpAuthorizationPollInterval, recovery: runtimeRecoveryBackoff,
 	}
@@ -409,9 +407,7 @@ func (a *app) pollMCPAuthorization(initial protocol.MCPAuthorizationAttempt) {
 				a.message("observe MCP authorization failed: " + err.Error())
 				return
 			}
-			if a.dialogs.runtimeReader == runtimeReaderMCPAuthorization && a.dialogs.mcpAuthorizationID == attempt.ID && a.dialogs.readerDialog.Open() {
-				a.dialogs.reader.replace(mcpAuthorizationDocument(attempt), true, false)
-			}
+			a.reader.update(view, mcpAuthorizationDocument(attempt))
 			a.message("MCP authorization " + string(attempt.Status.Type) + " · " + mcp.ServerLabel(attempt.Server))
 		},
 	)

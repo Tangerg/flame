@@ -21,12 +21,12 @@ func (a *app) ShowProviders() {
 		a.message("this runtime composition has no model configuration service")
 		return
 	}
-	a.executeRuntimeReaderQuery(a.providersReaderQuery())
+	a.reader.show(a.providersReaderQuery())
 }
 
-func (a *app) providersReaderQuery() runtimeReaderQuery {
-	return runtimeReaderQuery{
-		status: "loading providers", mode: runtimeReaderProviders,
+func (a *app) providersReaderQuery() *readerQuery {
+	return &readerQuery{
+		status: "loading providers", follows: followsTopic(protocol.TopicModelsChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
 			providers, err := a.modelConfig.Providers(ctx)
 			if err != nil {

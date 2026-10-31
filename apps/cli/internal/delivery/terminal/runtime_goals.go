@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -14,14 +15,14 @@ func (a *app) ShowGoal() {
 		a.message("this runtime composition has no goal service")
 		return
 	}
-	a.executeRuntimeReaderQuery(a.goalReaderQuery())
+	a.reader.show(a.goalReaderQuery())
 }
 
-func (a *app) goalReaderQuery() runtimeReaderQuery {
+func (a *app) goalReaderQuery() *readerQuery {
 	sessionID := a.session.current.ID
-	return runtimeReaderQuery{
-		status: "loading session goal",
-		mode:   runtimeReaderGoal,
+	return &readerQuery{
+		status:  "loading session goal",
+		follows: func(event changefeed.Event) bool { return goalInvalidationAffectsSession(event, sessionID) },
 		read: func(ctx context.Context) (readerDocument, error) {
 			current, exists, err := a.goals.GetGoal(ctx, sessionID)
 			if err != nil {
@@ -114,9 +115,7 @@ func (a *app) ClearGoal() error {
 			}
 			if a.session.context.current(presentation) {
 				a.header.SetGoal(nil)
-				a.setRuntimeReader(runtimeReaderGoal)
-				a.dialogs.workspaceReader = workspaceReaderNone
-				a.openReaderDocument(goalDocument(protocol.Goal{}, false))
+				a.reader.open(a.goalReaderQuery(), goalDocument(protocol.Goal{}, false))
 			}
 			a.status.note("goal · cleared")
 		},
@@ -157,9 +156,7 @@ func (a *app) changeGoal(label string, change func(context.Context) (protocol.Go
 		}
 		if a.session.context.current(presentation) {
 			a.header.SetGoal(&current)
-			a.setRuntimeReader(runtimeReaderGoal)
-			a.dialogs.workspaceReader = workspaceReaderNone
-			a.openReaderDocument(goalDocument(current, true))
+			a.reader.open(a.goalReaderQuery(), goalDocument(current, true))
 		}
 		a.status.note("goal · " + string(current.Status))
 	})

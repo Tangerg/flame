@@ -33,8 +33,8 @@ func (a *app) prepareSessionProjectionReplacement(next conversation.Session, pro
 		a.retireSessionContext()
 		return
 	}
-	if a.dialogs.reader.ObservingSource() {
-		a.dismissReader()
+	if a.reader.observingSource() {
+		a.reader.dismiss()
 	}
 	if !a.canPreserveInterruptProjection(projection) {
 		a.dismissInterruptProjection()
@@ -46,7 +46,7 @@ func (a *app) retireSessionContext() {
 	a.session.context = newSessionContextLease()
 	a.dismissInterruptProjection()
 	a.dismissConfirmation()
-	a.dismissReader()
+	a.reader.dismiss()
 	a.dismissContextEditor()
 	a.dialogs.searchDialog.Dismiss()
 	a.dialogs.commandDialog.Dismiss()
@@ -62,9 +62,5 @@ func (a *app) retireSessionContext() {
 	if a.dialogs.sessionDeleteDialog != nil {
 		a.dialogs.sessionDeleteDialog.Controller().Dismiss()
 		a.dialogs.sessionDeleteDialog = nil
-	}
-	if a.dialogs.scheduleDialog != nil {
-		a.dialogs.scheduleDialog.Controller().Dismiss()
-		a.dialogs.scheduleDialog = nil
 	}
 }

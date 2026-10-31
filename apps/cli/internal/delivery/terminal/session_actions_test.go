@@ -648,6 +648,7 @@ func TestProjectionRetirementRejectsAPresentedConfirmationCallback(t *testing.T)
 	t.Cleanup(operations.Close)
 	application := &app{
 		transcript: transcript, operations: operations, session: sessionState{context: newSessionContextLease()},
+		reader: testReaderSurface(t, operations),
 	}
 	application.stack.SetBase(transcript)
 	calls := 0

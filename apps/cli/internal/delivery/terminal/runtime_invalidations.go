@@ -25,15 +25,9 @@ func (a *app) applyRuntimeInvalidation(event changefeed.Event) {
 		a.applyRuntimeResync(event.Topics)
 		return
 	}
-	a.refreshGoalReader(goalInvalidationAffectsSession(event, a.session.current.ID))
-	a.refreshSkillReader(event.Type == protocol.RuntimeSkillsChanged)
-	a.refreshMCPReader(event.Type == protocol.RuntimeMCPChanged)
-	a.refreshPluginsReader(event.Type == protocol.RuntimePluginsChanged)
+	a.reader.follow(event)
 	a.refreshPluginViews(event.Type == protocol.RuntimePluginsChanged)
-	a.refreshPluginViewReader(event.Type == protocol.RuntimePluginDataChanged)
-	a.refreshHooksReader(event.Type == protocol.RuntimeHooksChanged)
-	a.refreshModelReader(event.Type == protocol.RuntimeModelsChanged)
-	a.refreshApprovalReader(event.Type == protocol.RuntimeApprovalsChanged || event.Type == protocol.RuntimeMCPChanged)
+	a.followModelChanges(event.Type == protocol.RuntimeModelsChanged)
 	a.applySessionInvalidation(
 		invalidatesSessionCatalog(event),
 		invalidationAffectsSession(event, a.session.current.ID, a.execution.conversation.RunID()),
@@ -41,113 +35,19 @@ func (a *app) applyRuntimeInvalidation(event changefeed.Event) {
 }
 
 func (a *app) applyRuntimeResync(topics []protocol.RuntimeTopic) {
-	a.refreshGoalReader(slices.Contains(topics, protocol.TopicGoalsChanged))
-	a.refreshSkillReader(slices.Contains(topics, protocol.TopicSkillsChanged))
-	a.refreshMCPReader(slices.Contains(topics, protocol.TopicMCPChanged))
-	a.refreshPluginsReader(slices.Contains(topics, protocol.TopicPluginsChanged))
+	a.reader.follow(changefeed.Event{Type: protocol.RuntimeResync, Topics: topics})
 	a.refreshPluginViews(slices.Contains(topics, protocol.TopicPluginsChanged))
-	a.refreshPluginViewReader(slices.Contains(topics, protocol.TopicPluginDataChanged))
-	a.refreshHooksReader(slices.Contains(topics, protocol.TopicHooksChanged))
-	a.refreshModelReader(slices.Contains(topics, protocol.TopicModelsChanged))
-	a.refreshApprovalReader(slices.Contains(topics, protocol.TopicApprovalsChanged) || slices.Contains(topics, protocol.TopicMCPChanged))
+	a.followModelChanges(slices.Contains(topics, protocol.TopicModelsChanged))
 	a.applySessionInvalidation(
 		invalidatesSessionCatalog(changefeed.Event{Type: protocol.RuntimeResync, Topics: topics}),
 		resyncAffectsSession(topics),
 	)
 }
 
-func (a *app) refreshPluginsReader(affected bool) {
-	if affected && a.plugins != nil && a.dialogs.runtimeReader == runtimeReaderPlugins && a.dialogs.readerDialog.Open() {
-		a.refreshRuntimeReader(a.pluginsReaderQuery())
-	}
-}
-
-func (a *app) refreshHooksReader(affected bool) {
-	if affected && a.hooks != nil && a.dialogs.runtimeReader == runtimeReaderHooks && a.dialogs.readerDialog.Open() {
-		a.refreshRuntimeReader(a.hooksReaderQuery())
-	}
-}
-
-func (a *app) refreshMCPReader(affected bool) {
-	if !affected || a.mcp == nil || !a.dialogs.readerDialog.Open() {
-		return
-	}
-	switch a.dialogs.runtimeReader {
-	case runtimeReaderMCPServers:
-		a.refreshRuntimeReader(a.mcpServersReaderQuery())
-	case runtimeReaderMCPTools:
-		a.refreshRuntimeReader(a.mcpToolsReaderQuery(a.dialogs.mcpToolServer))
-	}
-}
-
-func (a *app) refreshSkillReader(affected bool) {
-	if !affected || a.skills == nil || !a.dialogs.readerDialog.Open() {
-		return
-	}
-	switch a.dialogs.runtimeReader {
-	case runtimeReaderDiscoveredSkills:
-		a.refreshRuntimeReader(a.discoveredSkillsReaderQuery())
-	case runtimeReaderSkillDetail:
-		a.refreshRuntimeReader(a.skillDetailReaderQuery(a.dialogs.runtimeSelection.skillName))
-	case runtimeReaderManagedSkills:
-		a.refreshRuntimeReader(a.managedSkillsReaderQuery())
-	case runtimeReaderSkillProposals:
-		a.refreshRuntimeReader(a.skillProposalsReaderQuery())
-	}
-}
-
-func (a *app) refreshGoalReader(affected bool) {
-	if affected && a.goals != nil && a.dialogs.runtimeReader == runtimeReaderGoal && a.dialogs.readerDialog.Open() {
-		a.refreshRuntimeReader(a.goalReaderQuery())
-	}
-}
-
-func (a *app) refreshModelReader(affected bool) {
-	if !affected {
-		return
-	}
-	if a.dialogs.modelDialog.Open() {
+func (a *app) followModelChanges(affected bool) {
+	if affected && a.dialogs.modelDialog.Open() {
 		a.refreshModelPicker()
 	}
-	if !a.dialogs.readerDialog.Open() {
-		return
-	}
-	switch a.dialogs.runtimeReader {
-	case runtimeReaderModels:
-		a.refreshRuntimeReader(a.modelsReaderQuery())
-	case runtimeReaderModelRoles:
-		if a.modelConfig != nil {
-			a.refreshRuntimeReader(a.modelRolesReaderQuery())
-		}
-	case runtimeReaderProviders:
-		if a.modelConfig != nil {
-			a.refreshRuntimeReader(a.providersReaderQuery())
-		}
-	}
-}
-
-func (a *app) refreshApprovalReader(affected bool) {
-	if affected && a.dialogs.runtimeReader == runtimeReaderApprovalRules && a.dialogs.readerDialog.Open() {
-		a.refreshRuntimeReader(a.approvalRulesReaderQuery())
-	}
-}
-
-func (a *app) refreshRuntimeReader(query runtimeReaderQuery) {
-	read := query.read
-	query.read = func(ctx context.Context) (readerDocument, error) {
-		failures := 0
-		for {
-			document, err := read(ctx)
-			if err == nil || !retry.IsReconnectable(err) {
-				return document, err
-			}
-			failures++
-			if err := runtimeRecoveryBackoff.Wait(ctx, failures); err != nil {
-				return readerDocument{}, err
-			}
-		}
-	}
-	a.executeRuntimeReaderQuery(query)
 }
 
 func goalInvalidationAffectsSession(event changefeed.Event, sessionID string) bool {

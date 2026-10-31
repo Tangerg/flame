@@ -7,8 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
@@ -275,7 +277,7 @@ func TestSameSessionProjectionReplacementRetiresALiveTranscriptReader(t *testing
 		operations: operations,
 		session:    sessionState{current: conversation.Session{ID: "session"}},
 		execution:  executionState{conversation: conversation.New()},
-		dialogs:    dialogState{reader: reader},
+		reader:     &readerSurface{pane: reader, tasks: unattachedTasks(operations)},
 	}
 	application.prepareSessionProjectionReplacement(conversation.Session{ID: "session"}, conversation.New())
 
@@ -289,14 +291,61 @@ func TestSameSessionProjectionReplacementPreservesAStaticReader(t *testing.T) {
 	t.Cleanup(reader.Shutdown)
 	reader.Open(readerTarget{document: readerDocument{Title: "authoritative runtime document"}})
 
+	goal := &readerQuery{status: "loading session goal"}
 	application := &app{
 		session:   sessionState{current: conversation.Session{ID: "session"}},
 		execution: executionState{conversation: conversation.New()},
-		dialogs:   dialogState{reader: reader, runtimeReader: runtimeReaderGoal},
+		reader:    &readerSurface{pane: reader, shown: goal},
 	}
 	application.prepareSessionProjectionReplacement(conversation.Session{ID: "session"}, conversation.New())
 
-	if application.dialogs.runtimeReader != runtimeReaderGoal {
-		t.Fatalf("runtime reader mode = %d, want the static reader preserved", application.dialogs.runtimeReader)
+	if application.reader.shown != goal {
+		t.Fatal("same-session replacement dismissed a static runtime reader")
+	}
+}
+
+func testReaderSurface(t *testing.T, operations *operationOwner) *readerSurface {
+	t.Helper()
+	pane := newReaderPane(kit.Dark(), kit.Unicode(), highlight.New("github-dark"), input.Wheel{}, nil)
+	t.Cleanup(pane.Shutdown)
+	return &readerSurface{pane: pane, tasks: unattachedTasks(operations)}
+}
+
+func TestReaderUpdatesOnlyTheDocumentItsOwnerOpened(t *testing.T) {
+	operations := newOperationOwner(t.Context())
+	t.Cleanup(operations.Close)
+	surface := testReaderSurface(t, operations)
+	var stack headless.Stack
+	stack.SetBase(testTranscriptView(t))
+	surface.dialog = newPresentationDialog(kit.DialogConfig{Stack: &stack, Theme: kit.Dark(), Glyphs: kit.Unicode(), Title: "Reader", Body: surface.pane})
+
+	authorization := &readerQuery{status: "MCP authorization"}
+	surface.open(authorization, readerDocument{Title: "authorization pending"})
+	surface.update(authorization, readerDocument{Title: "authorization granted"})
+	if surface.pane.title != "authorization granted" {
+		t.Fatalf("owner update showed %q", surface.pane.title)
+	}
+	surface.open(nil, readerDocument{Title: "another document"})
+	surface.update(authorization, readerDocument{Title: "late authorization"})
+	if surface.pane.title != "another document" {
+		t.Fatalf("a closed owner replaced the shown document with %q", surface.pane.title)
+	}
+	surface.reload()
+}
+
+func TestReaderQueriesFollowTheirTopicAndItsResync(t *testing.T) {
+	follows := followsTopic(protocol.TopicHooksChanged)
+	for _, test := range []struct {
+		event changefeed.Event
+		want  bool
+	}{
+		{changefeed.Event{Type: protocol.RuntimeHooksChanged}, true},
+		{changefeed.Event{Type: protocol.RuntimeResync, Topics: []protocol.RuntimeTopic{protocol.TopicSkillsChanged, protocol.TopicHooksChanged}}, true},
+		{changefeed.Event{Type: protocol.RuntimeSkillsChanged}, false},
+		{changefeed.Event{Type: protocol.RuntimeResync, Topics: []protocol.RuntimeTopic{protocol.TopicSkillsChanged}}, false},
+	} {
+		if got := follows(test.event); got != test.want {
+			t.Errorf("follows(%+v) = %t, want %t", test.event, got, test.want)
+		}
 	}
 }

@@ -15,6 +15,8 @@ type sessionState struct {
 	context         *sessionContextLease
 	invalidated     bool
 	draftTransition *sessionDraftTransition
+	// changesView is the workspace changes read, updated in place as changes arrive.
+	changesView *readerQuery
 }
 
 type openingReceipt struct {
@@ -79,7 +81,6 @@ type dialogState struct {
 	approvalModeDialog  *presentationDialog
 	providerDialog      *kit.Dialog
 	mcpForm             *mcpFormFlow
-	scheduleDialog      *kit.Dialog
 	activeContextEditor *contextEditorSession
 	questionnaire       *questionnaire
 	questionDialog      *kit.Dialog
@@ -90,15 +91,6 @@ type dialogState struct {
 	shortcutDialog      *presentationDialog
 	shortcutViewport    *headless.Viewport
 	searchDialog        *presentationDialog
-	reader              *readerPane
-	readerDialog        *presentationDialog
-	readerSearchDialog  *presentationDialog
-	readerSearchQuery   string
-	workspaceReader     workspaceReaderMode
-	runtimeReader       runtimeReaderMode
-	runtimeSelection    runtimeReaderSelection
-	mcpToolServer       *protocol.MCPServerID
-	mcpAuthorizationID  string
 	queueDialog         *headless.Dialog
 	searchQuery         string
 }

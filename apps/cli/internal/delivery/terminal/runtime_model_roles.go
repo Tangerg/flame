@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/models"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func (a *app) ShowModelRoles() {
@@ -14,12 +15,12 @@ func (a *app) ShowModelRoles() {
 		a.message("this runtime composition has no model configuration service")
 		return
 	}
-	a.executeRuntimeReaderQuery(a.modelRolesReaderQuery())
+	a.reader.show(a.modelRolesReaderQuery())
 }
 
-func (a *app) modelRolesReaderQuery() runtimeReaderQuery {
-	return runtimeReaderQuery{
-		status: "loading model roles", mode: runtimeReaderModelRoles,
+func (a *app) modelRolesReaderQuery() *readerQuery {
+	return &readerQuery{
+		status: "loading model roles", follows: followsTopic(protocol.TopicModelsChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
 			roles, err := a.modelConfig.Roles(ctx)
 			if err != nil {

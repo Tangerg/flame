@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func (a *app) ShowHooks() {
@@ -15,13 +16,13 @@ func (a *app) ShowHooks() {
 		a.message("this runtime composition has no hook service")
 		return
 	}
-	a.executeRuntimeReaderQuery(a.hooksReaderQuery())
+	a.reader.show(a.hooksReaderQuery())
 }
 
-func (a *app) hooksReaderQuery() runtimeReaderQuery {
+func (a *app) hooksReaderQuery() *readerQuery {
 	workspacePath := a.session.current.Workspace.Path
-	return runtimeReaderQuery{
-		status: "loading lifecycle hooks", mode: runtimeReaderHooks,
+	return &readerQuery{
+		status: "loading lifecycle hooks", follows: followsTopic(protocol.TopicHooksChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
 			catalog, err := a.hooks.Catalog(ctx, workspacePath)
 			if err != nil {
@@ -118,8 +119,7 @@ func (a *app) setHookTrust(workspacePath, projectRoot string, trusted bool) {
 				return
 			}
 			if a.session.context.current(presentation) {
-				a.setRuntimeReader(runtimeReaderHooks)
-				a.openReaderDocument(hooksDocument(workspacePath, catalog))
+				a.reader.open(a.hooksReaderQuery(), hooksDocument(workspacePath, catalog))
 			}
 			a.status.note("project hook trust updated")
 		},

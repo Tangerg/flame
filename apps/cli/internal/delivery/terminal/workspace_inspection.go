@@ -11,13 +11,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-type workspaceReaderMode uint8
-
-const (
-	workspaceReaderNone workspaceReaderMode = iota
-	workspaceReaderChanges
-)
-
 func (a *app) ShowWorkspaces() {
 	a.runWorkspaceQuery("loading workspaces",
 		func(ctx context.Context) (readerDocument, error) {
@@ -43,19 +36,19 @@ func (a *app) ShowWorkspaces() {
 				lines = append(lines, label)
 			}
 			return paragraphDocument("Runtime workspaces", fmt.Sprintf("%d known", len(values)), lines), nil
-		}, workspaceReaderNone)
+		})
 }
 
 func (a *app) ShowWorkspaceChanges() {
 	path := a.session.current.Workspace.Path
-	a.runWorkspaceQuery("loading workspace changes",
-		func(ctx context.Context) (readerDocument, error) {
-			changes, err := a.workspaces.Changes(ctx, path)
-			if err != nil {
-				return readerDocument{}, err
-			}
-			return workspaceChangesDocument(path, changes), nil
-		}, workspaceReaderChanges)
+	a.session.changesView = &readerQuery{status: "loading workspace changes", read: func(ctx context.Context) (readerDocument, error) {
+		changes, err := a.workspaces.Changes(ctx, path)
+		if err != nil {
+			return readerDocument{}, err
+		}
+		return workspaceChangesDocument(path, changes), nil
+	}}
+	a.reader.show(a.session.changesView)
 }
 
 func (a *app) ShowWorkspaceDiff(argument string) error {
@@ -74,7 +67,7 @@ func (a *app) ShowWorkspaceDiff(argument string) error {
 				return readerDocument{}, err
 			}
 			return workspaceDiffDocument(request, diff), nil
-		}, workspaceReaderNone)
+		})
 	return nil
 }
 
@@ -102,7 +95,7 @@ func (a *app) PreviewWorkspaceFile(argument string) error {
 				detail += " · truncated"
 			}
 			return codeDocument("File preview", detail, content.Content, request.Path, true), nil
-		}, workspaceReaderNone)
+		})
 	return nil
 }
 
@@ -129,7 +122,7 @@ func (a *app) SearchWorkspace(argument string) error {
 				detail += " · " + request.Path
 			}
 			return paragraphDocument("Workspace search · "+request.Query, detail, lines), nil
-		}, workspaceReaderNone)
+		})
 	return nil
 }
 
@@ -182,7 +175,7 @@ func (a *app) BrowseWorkspace(argument string) error {
 				title += " · " + request.Path
 			}
 			return codeDocument(title, strings.Join(details, " · "), strings.Join(lines, "\n"), "text", false), nil
-		}, workspaceReaderNone)
+		})
 	return nil
 }
 
@@ -206,22 +199,12 @@ func (a *app) ReadWorkspaceFile(argument string) error {
 				detail += " · truncated"
 			}
 			return codeDocument("Workspace file", detail, content.Content, request.Path, true), nil
-		}, workspaceReaderNone)
+		})
 	return nil
 }
 
-func (a *app) runWorkspaceQuery(status string, query func(context.Context) (readerDocument, error), mode workspaceReaderMode) {
-	a.status.note(status)
-	a.tasks.session(readerDocumentOperation, true, query, func(document readerDocument, err error) {
-		if err != nil {
-			a.message("workspace: " + err.Error())
-			return
-		}
-		a.dialogs.workspaceReader = mode
-		a.setRuntimeReader(runtimeReaderNone)
-		a.openReaderDocument(document)
-		a.status.note(strings.ToLower(document.Title))
-	})
+func (a *app) runWorkspaceQuery(status string, read func(context.Context) (readerDocument, error)) {
+	a.reader.show(&readerQuery{status: status, read: read})
 }
 
 func paragraphDocument(title, detail string, lines []string) readerDocument {

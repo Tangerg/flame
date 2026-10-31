@@ -16,15 +16,15 @@ func (a *app) ShowDiscoveredSkills(name string) {
 		return
 	}
 	if name = strings.TrimSpace(name); name != "" {
-		a.executeRuntimeReaderQuery(a.skillDetailReaderQuery(name))
+		a.reader.show(a.skillDetailReaderQuery(name))
 		return
 	}
-	a.executeRuntimeReaderQuery(a.discoveredSkillsReaderQuery())
+	a.reader.show(a.discoveredSkillsReaderQuery())
 }
 
-func (a *app) skillDetailReaderQuery(name string) runtimeReaderQuery {
+func (a *app) skillDetailReaderQuery(name string) *readerQuery {
 	workspace := a.session.current.Workspace.Path
-	return runtimeReaderQuery{status: "loading skill detail", mode: runtimeReaderSkillDetail, selection: runtimeReaderSelection{skillName: name}, read: func(ctx context.Context) (readerDocument, error) {
+	return &readerQuery{status: "loading skill detail", follows: followsTopic(protocol.TopicSkillsChanged), read: func(ctx context.Context) (readerDocument, error) {
 		detail, err := a.skills.InspectSkill(ctx, workspace, name)
 		if err != nil {
 			return readerDocument{}, err
@@ -36,11 +36,11 @@ func (a *app) skillDetailReaderQuery(name string) runtimeReaderQuery {
 	}}
 }
 
-func (a *app) discoveredSkillsReaderQuery() runtimeReaderQuery {
+func (a *app) discoveredSkillsReaderQuery() *readerQuery {
 	workspace := a.session.current.Workspace.Path
-	return runtimeReaderQuery{
-		status: "loading discovered skills",
-		mode:   runtimeReaderDiscoveredSkills,
+	return &readerQuery{
+		status:  "loading discovered skills",
+		follows: followsTopic(protocol.TopicSkillsChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
 			discovered, err := a.skills.Discover(ctx, workspace)
 			if err != nil {
@@ -75,13 +75,13 @@ func (a *app) ShowManagedSkills() {
 		a.message("this runtime composition has no skill service")
 		return
 	}
-	a.executeRuntimeReaderQuery(a.managedSkillsReaderQuery())
+	a.reader.show(a.managedSkillsReaderQuery())
 }
 
-func (a *app) managedSkillsReaderQuery() runtimeReaderQuery {
-	return runtimeReaderQuery{
-		status: "loading managed skills",
-		mode:   runtimeReaderManagedSkills,
+func (a *app) managedSkillsReaderQuery() *readerQuery {
+	return &readerQuery{
+		status:  "loading managed skills",
+		follows: followsTopic(protocol.TopicSkillsChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
 			managed, err := a.skills.Managed(ctx)
 			if err != nil {
@@ -112,14 +112,14 @@ func (a *app) ShowSkillProposals() {
 		a.message("this runtime composition has no skill service")
 		return
 	}
-	a.executeRuntimeReaderQuery(a.skillProposalsReaderQuery())
+	a.reader.show(a.skillProposalsReaderQuery())
 }
 
-func (a *app) skillProposalsReaderQuery() runtimeReaderQuery {
+func (a *app) skillProposalsReaderQuery() *readerQuery {
 	workspace := a.session.current.Workspace.Path
-	return runtimeReaderQuery{
-		status: "loading skill proposals",
-		mode:   runtimeReaderSkillProposals,
+	return &readerQuery{
+		status:  "loading skill proposals",
+		follows: followsTopic(protocol.TopicSkillsChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
 			proposals, err := a.skills.Proposals(ctx, workspace)
 			if err != nil {

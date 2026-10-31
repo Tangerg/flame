@@ -11,12 +11,12 @@ import (
 )
 
 func (a *app) ShowModels() {
-	a.executeRuntimeReaderQuery(a.modelsReaderQuery())
+	a.reader.show(a.modelsReaderQuery())
 }
 
-func (a *app) modelsReaderQuery() runtimeReaderQuery {
-	return runtimeReaderQuery{
-		status: "loading model catalog", mode: runtimeReaderModels,
+func (a *app) modelsReaderQuery() *readerQuery {
+	return &readerQuery{
+		status: "loading model catalog", follows: followsTopic(protocol.TopicModelsChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
 			models, err := a.runtime.ListModels(ctx)
 			if err != nil && len(models) == 0 {

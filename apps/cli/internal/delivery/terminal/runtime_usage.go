@@ -26,18 +26,17 @@ func (a *app) ShowUsage(argument string) error {
 		return err
 	}
 	sessionID := a.session.current.ID
-	a.runRuntimeReaderQuery("loading runtime usage", runtimeReaderNone,
-		func(ctx context.Context) (readerDocument, error) {
-			session, err := a.usage.SessionUsage(ctx, sessionID)
-			if err != nil {
-				return readerDocument{}, err
-			}
-			summary, err := a.usage.Summary(ctx, period)
-			if err != nil {
-				return readerDocument{}, err
-			}
-			return usageDocument(usageReport{session: session, summary: summary})
-		})
+	a.reader.show(&readerQuery{status: "loading runtime usage", read: func(ctx context.Context) (readerDocument, error) {
+		session, err := a.usage.SessionUsage(ctx, sessionID)
+		if err != nil {
+			return readerDocument{}, err
+		}
+		summary, err := a.usage.Summary(ctx, period)
+		if err != nil {
+			return readerDocument{}, err
+		}
+		return usageDocument(usageReport{session: session, summary: summary})
+	}})
 	return nil
 }
 

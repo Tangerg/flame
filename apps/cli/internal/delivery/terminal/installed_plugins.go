@@ -9,12 +9,12 @@ import (
 )
 
 func (a *app) ShowPlugins() {
-	a.executeRuntimeReaderQuery(a.pluginsReaderQuery())
+	a.reader.show(a.pluginsReaderQuery())
 }
 
-func (a *app) pluginsReaderQuery() runtimeReaderQuery {
-	return runtimeReaderQuery{
-		status: "loading installed plugins", mode: runtimeReaderPlugins,
+func (a *app) pluginsReaderQuery() *readerQuery {
+	return &readerQuery{
+		status: "loading installed plugins", follows: followsTopic(protocol.TopicPluginsChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
 			installations, err := a.plugins.ListPlugins(ctx)
 			if err != nil {

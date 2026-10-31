@@ -131,13 +131,13 @@ func (a *app) runPluginView(view pluginview.View, argument string) error {
 
 func (a *app) showPluginView(view pluginview.View, form map[string]string) {
 	a.pluginViews.open, a.pluginViews.form = view.ID, form
-	a.executeRuntimeReaderQuery(a.pluginViewReaderQuery(view, form))
+	a.reader.show(a.pluginViewReaderQuery(view, form))
 }
 
-func (a *app) pluginViewReaderQuery(view pluginview.View, form map[string]string) runtimeReaderQuery {
+func (a *app) pluginViewReaderQuery(view pluginview.View, form map[string]string) *readerQuery {
 	here := a.pluginViewContext()
-	return runtimeReaderQuery{
-		status: "loading " + strings.ToLower(view.Title), mode: runtimeReaderPluginView,
+	return &readerQuery{
+		status: "loading " + strings.ToLower(view.Title), follows: followsTopic(protocol.TopicPluginDataChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
 			rows, err := a.readPluginViewRows(ctx, view, here, form)
 			if err != nil {
@@ -191,18 +191,6 @@ func pluginViewDocument(view pluginview.View, rows []pluginview.Row) readerDocum
 		sections = append(sections, toolSection{Title: row.Text(view.List.Key), Style: toolSectionCode, Text: strings.Join(lines, "\n")})
 	}
 	return readerDocument{Title: view.Title, Detail: detail, Sections: sections}
-}
-
-func (a *app) refreshPluginViewReader(affected bool) {
-	if !affected || a.dialogs.runtimeReader != runtimeReaderPluginView || !a.dialogs.readerDialog.Open() {
-		return
-	}
-	for _, view := range a.pluginViews.views {
-		if view.ID == a.pluginViews.open {
-			a.refreshRuntimeReader(a.pluginViewReaderQuery(view, a.pluginViews.form))
-			return
-		}
-	}
 }
 
 // startPluginViewAction resolves the selected row, asks for the action's form
@@ -347,7 +335,7 @@ func (a *app) runPluginViewAction(view pluginview.View, action protocol.PluginTe
 				return
 			}
 			a.message(view.Title + " · " + strings.ToLower(action.Title) + " done")
-			a.refreshPluginViewReader(true)
+			a.reader.reload()
 		},
 	)
 	if !started {

@@ -280,9 +280,7 @@ func (a *app) submitMCPForm(flow *mcpFormFlow) {
 		}
 		a.message(submission.label + " complete")
 		if a.session.context.current(presentation) {
-			a.setRuntimeReader(runtimeReaderMCPServers)
-			a.dialogs.workspaceReader = workspaceReaderNone
-			a.openReaderDocument(document)
+			a.reader.open(a.mcpServersReaderQuery(), document)
 			a.status.note("MCP server · " + mcp.ServerLabel(result.server.ID))
 		}
 	}
