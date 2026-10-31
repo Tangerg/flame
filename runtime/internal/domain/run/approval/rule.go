@@ -193,12 +193,6 @@ func (r RememberRequest) Rule() (Rule, error) {
 	if !ok {
 		return Rule{}, fmt.Errorf("%w: scope %q has no usable key", ErrInvalidRule, r.Scope)
 	}
-	if err := r.Tool.ValidateFingerprint(r.SourceFingerprint); err != nil {
-		return Rule{}, fmt.Errorf("%w: %w", ErrInvalidRule, err)
-	}
-	if !r.Decision.Valid() {
-		return Rule{}, fmt.Errorf("%w: unknown decision %q", ErrInvalidRule, r.Decision)
-	}
 	return NewRule(r.Scope, key, r.Tool, r.SourceFingerprint, r.Subject, r.Decision)
 }
 
