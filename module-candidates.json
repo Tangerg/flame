@@ -138,6 +138,7 @@
     "v0.1.0-consolidation.20261026.2": "1b9c6f9d03b5c10c359d349b614c8941d2a10b95"
   },
   "github.com/Tangerg/qimu": {
-    "v0.1.0-quality.20261031.module-path.1": "fe68e03796c49d7d2803d2baa445784cb87039da"
+    "v0.1.0-quality.20261031.module-path.1": "fe68e03796c49d7d2803d2baa445784cb87039da",
+    "v0.1.0-quality.20261031.terminal-views.1": "d39bef46ad2d9be95122f4d5a8c5a1611356a6d5"
   }
 }
