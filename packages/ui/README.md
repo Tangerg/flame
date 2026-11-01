@@ -347,6 +347,9 @@ media paragraphs can use the host's full width. `data-prose-level` records an au
 heading level when the host nests its physical heading below a surrounding
 outline. The `inline-code` and `prose-table` data slots also supply those reading
 roles outside a complete prose root, including table lightboxes.
+Explicit row headers share their row's top alignment, block padding and intermediate
+divider. Column headers retain their separate bottom alignment and header boundary;
+the final body row has no header-only trailing rule.
 Paragraphs share one block gap. Headings use unitless leading and keep supporting
 content visibly separated even at the deepest levels; weight and ink distinguish
 levels that share the body size. The host owns the prose size, independently of

@@ -588,15 +588,21 @@ html:not([data-input-modality]) [data-focus-proxy]:focus-within {
   padding-inline-end: 0;
 }
 :where([data-slot="document-body"], [data-slot="prose-table"]) th {
-  padding-block: calc(var(--fs-prose) * 0.375) calc(var(--fs-prose) * 0.5);
-  border-block-end: 1px solid var(--color-border);
   color: var(--color-text-muted);
   font-weight: var(--fw-semibold);
   overflow-wrap: normal;
+}
+:where([data-slot="document-body"], [data-slot="prose-table"])
+  th:not([scope="row"]) {
+  padding-block: calc(var(--fs-prose) * 0.375) calc(var(--fs-prose) * 0.5);
+  border-block-end: 1px solid var(--color-border);
   vertical-align: bottom;
 }
-:where([data-slot="document-body"], [data-slot="prose-table"]) td {
+:where([data-slot="document-body"], [data-slot="prose-table"])
+  :is(th[scope="row"], td) {
   padding-block: calc(var(--fs-prose) * 0.625);
+}
+:where([data-slot="document-body"], [data-slot="prose-table"]) td {
   overflow-wrap: break-word;
 }
 :where([data-slot="document-body"], [data-slot="prose-table"]) td code {
@@ -606,7 +612,7 @@ html:not([data-input-modality]) [data-focus-proxy]:focus-within {
 :where([data-slot="document-body"], [data-slot="prose-table"])
   tbody
   tr:not(:last-child)
-  td {
+  :is(th[scope="row"], td) {
   border-block-end: 1px solid var(--color-divider);
 }
 [data-slot="button"] svg:not([data-glyph="full"]) {

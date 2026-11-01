@@ -30,7 +30,9 @@ limitation retains its separate attribution below. The selection-column follow-u
 is qualified under **Table selection and authored reading (2026-11-02)**. Captured
 report paging and map navigation are qualified under **Report and map navigation
 (2026-11-02)**, published as `26360bcfb`. Location-name reading is qualified under
-**Location names and intrinsic reading (2026-11-02)**. The latest goal restores
+**Location names and intrinsic reading (2026-11-02)**, published as `7cb92f171`.
+Shared row-header alignment is qualified under **Shared table rows and multiline
+evidence (2026-11-02)**. The latest goal restores
 preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
 describe their historical scope.
@@ -3263,6 +3265,100 @@ npm toolchain stay; CLI inputs/results/logs retire after publication. Read-only
 references, user data and unrelated work remain preserved. The publication fetch
 finds zero incoming main commits at `26360bcfb`. Continue from another observed
 workspace or reading defect, without reopening this accepted short-name behavior.
+
+#### Shared table rows and multiline evidence (2026-11-02)
+
+Scope is the shared prose-table grammar used by captured Map and Chart evidence,
+with ordinary Markdown tables and source-material return as affected integrations.
+The existing React/Base UI/StyleX stack and semantic tokens remain authoritative.
+AGENTS.md, PROJECT_RULES.md, DEVELOPMENT.md and the UI/Web/Desktop module contracts
+were inspected. No Runtime, command, navigation, persisted-data or schema change
+is needed.
+
+At original base `7cb92f171`, actual EN/14px Wails places London at the end of a
+four-line description, below the coordinates' beginning. The shared `th` rule
+applies column-header bottom alignment, unequal block padding and its strong
+border to `scope="row"` as well. A Chart legend shows unequal row spacing and a
+header-only trailing rule beneath Reserve after its neighboring data cells end.
+These are one shared layout cause, not separate Map/Chart defects.
+
+| Severity         | Domain | Location                                                          | Before                                                                                                                         | After                                                                                                                          | Why                                                                            |
+| ---------------- | ------ | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| MEDIUM, repaired | Layout | `packages/ui/src/globals.css:590`; Map and Chart body row headers | Every `th` receives column-header geometry, moving row identity away from wrapped evidence and leaving a partial trailing line | Column geometry applies to non-row `th`; explicit row headers share data-cell padding, top alignment and intermediate dividers | Row identity and its evidence need a common starting edge and one row boundary |
+
+Typography, ink, wrapping, table measure, common trailing padding and column
+headers keep their existing definitions. The final body row follows the same
+no-divider rule across its header and data cells. The `prose-table` slot outside
+DocumentBody uses the same grammar. No local override, class, attribute, token,
+component or focus handler is added. The UI README records this shared contract.
+Installed component ESM remains byte-identical after normal build/resource checks.
+
+[W3C's two-header table guidance](https://www.w3.org/WAI/tutorials/tables/two-headers/)
+establishes the row/column association and preserved native semantics; it does not
+prescribe Flame's visual alignment. Read-only HeroUI's actual Table.Cell renderer
+and separate cell/column styles, plus ZCode's actual MarkdownTableHead/Cell renderers
+at `packages/ui/src/components/ai-elements/markdown-table.tsx:1396`, support distinct
+header/body presentation. Earlier helper/export functions in that file are not
+treated as visual UI evidence. Flame keeps its existing spacing and typography.
+
+A bounded Claude Code CLI edits only `packages/ui/src/globals.css` in five turns,
+with Read/Edit/Grep/Glob available and Bash denied. It reports reading the CSS
+only; the primary agent reads the module contract, reviews the actual selectors
+and owns the remaining checks, documentation and native acceptance. No CSS-value
+mirror test is added: happy-dom cannot prove this rendered alignment. Existing
+behavioral checks are retained alongside original/candidate native comparison.
+
+Verification passes the full `npm run check --workspace @flame/ui`: build,
+types, lint, formatting, **13 files / 220 tests** and the independent packed UI/icons
+consumer without a host or StyleX compiler. A disposable, frozen-root dependency
+consumer first prepares the private offline cache; the full check then passes in
+one invocation. The four focused GenUI/Markdown files pass **153 tests**. Web lint,
+design-system/tokens/chrome/bundle/installed-module gates, plugin resource checks
+and original/final `make check-native` pass. Existing macOS-linker warnings
+remain nonfailing. Full Web/Runtime tests, browser visual suites and benchmarks
+are not run. The known unrelated Feedback full-format failure is not rerun.
+
+Observer-free original/candidate asset builds use the same current production
+Wails host binary and private data/profile. Final EN/light/14px/Orange/full-motion
+shows London, coordinates and long explanation beginning together, a continuous
+intermediate row divider, and no partial final-row rule. Chart rows preserve their
+slice patterns, names, 1250/850/0 values and 59.52/40.48/0 percentages. Ordinary
+Markdown column headings and body rows retain their earlier grammar.
+
+ZH/dark/18px/custom-blue/motion-off uses native half-screen placement and twenty
+Zoom In commands (200%). Tab reaches the named table and row choices; Space
+selects Paris with visible focus, while its complete coordinates and description
+remain readable. Native Down reading reaches the Chart's wrapped names and zero
+row, then both complete Markdown rows. Escape restores each popup's own trigger.
+Both accepted scenes qualify full-width README reading, return to selected Paris
+and continued drafting. EN continues
+`Continue reading the captured evidence. The row and source remain together.`
+ZH retains `保持每行身份和证据一致。` and continues
+`继续核对表格与原始材料。 行内容已核对。` Actual Size restores the parallel material pane.
+
+| Domain        | Evidence inspected                                                                                                                    | Result                                                        |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Accessibility | Existing native table/row semantics, named regions, Tab/Space/Escape, visible selection focus and source return; 153 behavioral tests | Preserved in the inspected tasks; VoiceOver is not verified   |
+| Layout        | Original/final Map, Chart and Markdown pixels, long explanation, native narrow window and 200% reading                                | Shared row alignment and boundaries repaired                  |
+| Writing       | Unchanged captions, source identity, full names, values and current locale labels in native AX                                        | Preserved; no helper copy or new string                       |
+| Typography    | Shared prose steps, existing row-header weight, full names and wrapped evidence at 14/18px and 200%                                   | Existing roles retained with aligned cell padding             |
+| Colors        | Existing row-header/data ink, Orange/blue focus and themed dividers in both native appearances                                        | Role mapping preserved; numerical contrast is not requalified |
+| UI            | Immediate selection, popup dismissal, scrolling, native reflow and full-motion/motion-off scenes                                      | Existing controls and motion retained                         |
+
+Approve this scoped table-reading repair. Physical-keyboard equivalence, VoiceOver,
+OS IME, native RTL, forced colors, coarse-pointer hardware, 320px GUI, other-platform
+GUIs and all third-party table markup remain unqualified. The existing pointer-origin
+reverse-Tab attribution remains separate. Native synthetic map points request
+public tiles; no live provider/Runtime write, Send or release installation runs.
+Whole-product and award-level acceptance remain open.
+
+All three native processes exit 0. Cleanup unregisters/removes the private bundle,
+restores all six profile absence baselines and removes nine owned checkout output
+roots plus private assets/home and the disposable consumer. Active development
+dependencies and the private npm toolchain stay; CLI inputs/results/logs and warmed
+QA cache retire after publication. Read-only references, user data and unrelated
+work remain preserved. The publication fetch finds zero incoming main commits at
+`7cb92f171`. Continue from another observed workspace or reading task.
 
 ### Horizontal report tabs and reading keys
 
