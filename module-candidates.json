@@ -130,7 +130,8 @@
     "v0.1.0-quality.20261031.audit-fix.3": "2791e7edd912a65896583f469bd72eb5aa689835",
     "v0.1.0-quality.20261031.module-path.1": "3eb6f35344f312d6dff2ca1ab96084feebd9d417",
     "v0.1.0-quality.20261031.terminal-views.1": "0b45890572ee17441ccb92de091c2deb63984578",
-    "v0.1.0-quality.20261101.terminal-views.2": "e5c31ae5b9987df8f0e2eb5a81d18443bbcc5956"
+    "v0.1.0-quality.20261101.terminal-views.2": "e5c31ae5b9987df8f0e2eb5a81d18443bbcc5956",
+    "v0.1.0-quality.20261101.verified-audit.1": "47dc5e533bf027d4621a9dc3f0bc4dd5ae28987a"
   },
   "github.com/Tangerg/flame/apps/cli": {
     "v0.1.0-architecture.20261026.2": "2a8d0965feab1910047347f87d486331110c9ced",
