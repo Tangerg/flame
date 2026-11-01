@@ -175,6 +175,7 @@ export function TableView({
         <Toolbar label={t("table.pagination", { table: props.caption })}>
           <Button
             disabled={current === 0}
+            focusableWhenDisabled
             onClick={() => set(props.pageState!, current - 1)}
           >
             {t("previous")}
@@ -184,6 +185,7 @@ export function TableView({
           </Metadata>
           <Button
             disabled={current + 1 === pages}
+            focusableWhenDisabled
             onClick={() => set(props.pageState!, current + 1)}
           >
             {t("next")}

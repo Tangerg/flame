@@ -922,6 +922,48 @@ it("clears a popover table query with Escape before the popover dismisses", asyn
   ).toBe("");
 });
 
+it("keeps popover table page bounds focusable and inert inside the popover", async () => {
+  const { dialog, search, page } = await openPopoverTable();
+  const table = within(dialog).getByRole("table", { name: "Devices" });
+  const pagination = within(dialog).getByRole("group", { name: "Devices pages" });
+  const previous = within(pagination).getByRole("button", { name: "Previous" });
+  const next = within(pagination).getByRole("button", { name: "Next" });
+  const atBound = (bound: HTMLElement, expected: string, row: string) => {
+    act(() => search.focus());
+    act(() => bound.focus());
+    expect(window.document.activeElement).toBe(bound);
+    expect(bound.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(bound);
+    fireEvent.keyDown(bound, { key: "Enter" });
+    fireEvent.keyDown(bound, { key: " " });
+    fireEvent.keyUp(bound, { key: " " });
+    expect(page()).toBe(expected);
+    expect(within(table).getByRole("cell", { name: row })).toBeTruthy();
+    expect(window.document.activeElement).toBe(bound);
+  };
+
+  fireEvent.click(next);
+  fireEvent.click(next);
+  fireEvent.click(within(table).getByLabelText("Select switch", { selector: "input" }));
+  atBound(next, "3 of 3", "Switch");
+  expect(
+    within(table).getByRole("checkbox", { name: "Select switch" }).getAttribute("aria-checked"),
+  ).toBe("true");
+
+  fireEvent.click(previous);
+  fireEvent.click(previous);
+  atBound(previous, "1 of 3", "Router");
+
+  fireEvent.keyDown(previous, { key: "Escape" });
+
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() =>
+    expect(window.document.activeElement).toBe(
+      screen.getByRole("button", { name: "Device details" }),
+    ),
+  );
+});
+
 it("clears a popover table query by pointer in its document reading grammar", async () => {
   const original = JSON.stringify(popoverTable);
   const { dialog, search, page } = await openPopoverTable();

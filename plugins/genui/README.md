@@ -73,6 +73,9 @@ the portal, retaining ordinary table columns, spacing and document typography.
 Table filters use the shared SearchField: clearing restores the first page and
 keeps input focus, while a nonempty query consumes Escape before the enclosing
 popup. Sorting, selected rows and captured values retain their existing owners.
+Pagination keeps its boundary buttons in the local keyboard order through the
+shared Button's focusable disabled contract. Unavailable activation stays blocked;
+Tab, Escape and native commands retain their existing owners.
 Progress uses the same themed ProgressBar as application activity. Its complete
 label and localized percentage remain visible above the track, including zero,
 completion and a supplied maximum other than 100. The admitted values and local

@@ -24,8 +24,10 @@ native host complete the outstanding Chinese, large-text, resize/200% and
 observer-free circular-chart reading task; see **Resumed current-host
 qualification (2026-11-02)**. Captured table search recovery and portaled document
 reading are now qualified under **Table lookup and portaled reading (2026-11-02)**;
-the observed pagination-boundary focus remains the next investigation. The latest goal restores preferred bounded Claude
-Code CLI implementation and verified batch publication to main. The desktop UI
+the keyboard pagination-boundary repair is qualified under **Pagination boundaries
+and keyboard return (2026-11-02)**. The existing pointer-origin reverse-Tab
+limitation retains its separate attribution below. The latest goal restores
+preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
 describe their historical scope.
 
@@ -2905,13 +2907,12 @@ return retain the report note, query and selected row. Continued drafts become
 `Keep this review note and the selected evidence.` and `保留筛选与已选证据。`.
 Actual Size is restored before closing the Chinese generation.
 
-Pagination remains an observed follow-up, not a newly introduced repair claim.
+Pagination was an observed follow-up, separate from that search/reading repair.
 After keyboard Next reaches the last page, the disabled control leaves active
 focus on the HTML root; Shift+Tab can still reach Previous. Returning to page one
 with Previous then pressing Tab instead reaches the outer fixture sidebar.
-The page callbacks and native disabled controls are unchanged by this batch.
-Investigate the actual product pager/focus owner next before proposing any local
-handoff or replacement disabled semantics. VoiceOver, OS IME, native RTL,
+The page callbacks and native disabled controls were unchanged by that batch;
+the following subsection records the shared-contract repair. VoiceOver, OS IME, native RTL,
 forced colors, 320px GUI and other-platform GUI remain unqualified. Approve the
 scoped filter-recovery and portaled-reading repair; whole-product and award-level
 acceptance remain open.
@@ -2923,6 +2924,78 @@ dependencies and the temporary npm toolchain stay with the active worktree;
 qualification inputs, CLI output and logs are retired after delivery. Read-only
 references, user data and unrelated primary-checkout work remain preserved.
 The publication fetch finds zero incoming main commits at `52edd038b`.
+
+#### Pagination boundaries and keyboard return (2026-11-02)
+
+At published base `f8654ab3b`, reaching a table boundary disables and unfocuses
+the active page button. The GenUI pager now opts both buttons into the existing
+shared Button `focusableWhenDisabled` contract, already used by Deliverables
+archive paging and image-reading controls. Base UI retains unavailable activation
+and ARIA; the shared primitive leaves Tab, Escape and native commands with their
+existing owners. The existing OpenUI page, query, selection and captured-data
+owners are unchanged. There is no new focus assignment, state, timer, handler,
+dependency, color or persistence migration. Normal generation updates only
+GenUI's installed component ESM; its README records the boundary contract.
+
+One bounded Claude Code CLI task supplies the two props and one real-renderer/store
+regression in 11 turns, editing only the two allowed source/test paths and running
+no commands. The primary agent reviews the implementation and tests and owns all
+verification and native acceptance. The regression fails against the original
+Table (**1 failure**) because the boundary cannot receive focus; exact candidate
+bytes are restored. It checks both bounds, blocked click/Enter/Space, retained
+rows and selected evidence, and popup Escape/trigger return. It does not simulate
+the browser's Tab order; the native task below covers that behavior.
+
+Candidate verification passes **3 files / 105 tests** for GenUI presentation,
+charts and interaction control. `make check-native` passes production staging,
+Web type/build, Desktop test/vet/build and the supported Wails production build.
+Plugin types/lint, owned formatting, generated-resource consistency, Web lint,
+chrome and installed-module gates pass. Existing act and linker warnings remain
+non-failing. The prior unrelated full plugin-format failure in the two Feedback
+files is unchanged and not rerun or described as passing. Shared UI has no source
+change; its standalone suite is not rerun.
+
+Two observer-free native launches use the current production-tagged host and
+built installed component over the same accepted six-row captured report:
+
+- EN/light/14px/Orange/full-motion: keyboard selection of alpha survives paging
+  to page three and back. Next remains focused and visibly outlined when it
+  becomes unavailable. Repeated Enter, Space and a CUA click leave page three
+  unchanged. Pure keyboard Shift+Tab reaches Previous; two activations return to
+  page one with Previous still focused. Unavailable Enter/Space do not change the
+  page, Tab reaches Next locally, and Shift+Tab returns to Previous. Cmd+plus and
+  Cmd+0 work from that disabled button. Escape restores the popup trigger.
+- ZH/dark/18px/custom-blue/motion-off: native half-screen placement and twenty
+  Zoom In commands reach 200%. Keyboard traversal reveals the contained pager;
+  both boundary transitions, inert repeated activation, Tab/Shift+Tab and Escape
+  return pass with visible blue focus. Reopening retains selected alpha. Cmd+0
+  from disabled Previous restores Actual Size and the parallel material pane.
+
+The unchanged notes retain `Keep this note and the selected evidence.` and
+`保留分页选择与备注。`. Continued drafts become
+`Review draft before evidence paging. Paging checked; ready to continue.` and
+`分页查阅草稿。 已核对首尾页，可以继续。`. No Send, live Runtime/provider mutation,
+browser suite, performance benchmark, release acquisition or installation change
+runs. Source/file return remains the prior batch's qualification, not a new claim.
+
+A CUA center click on disabled Next followed by Shift+Tab can still remain on
+Next. This matches the separately investigated pointer-origin finding under
+**Native reverse-Tab attribution (2026-10-30)**; reopening and using an uninterrupted
+keyboard path is reversible in both new scenes. This batch does not repair or
+reclassify that limitation, or qualify physical-keyboard equivalence. VoiceOver,
+OS IME, native RTL, forced colors, numerical pixel contrast, 320px GUI and other
+platform GUIs remain unqualified. Accessibility and UI review approve the scoped
+keyboard continuity; layout, typography, writing and color keep the shared table,
+localized pager and semantic focus owners. Whole-product and award-level
+acceptance remain open.
+
+Both native processes exit successfully. Cleanup unregisters/removes the private
+bundle, restores all six private-profile absence baselines and retires the nine
+owned checkout output/cache roots plus private assets/home. Root development
+dependencies and the temporary npm toolchain stay for the active goal. CLI inputs,
+results and logs are retired after delivery. Read-only references, user data and
+unrelated primary-checkout work remain preserved.
+The publication fetch finds zero incoming main commits at `f8654ab3b`.
 
 ### Horizontal report tabs and reading keys
 
