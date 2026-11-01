@@ -49,6 +49,15 @@
     {
       "id": "computer",
       "title": "Computer use",
+      "localizedTitles": {
+        "zh": "计算机操作",
+        "zh-TW": "電腦操作",
+        "de": "Computersteuerung",
+        "fr": "Contrôle de l’ordinateur",
+        "es": "Control del ordenador",
+        "ja": "コンピューター操作",
+        "ko": "컴퓨터 제어"
+      },
       "scope": "client",
       "placement": "workspaceView",
       "entry": "io.github.tangerg.flame/components/component.js",

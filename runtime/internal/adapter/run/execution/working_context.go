@@ -194,12 +194,16 @@ func (w *WorkingContextComposer) evaluatePromptHooks(
 			contextSourceLifecycleHook.source(string(hookdata.UserPromptSubmit)),
 		)
 	}
-	result.decision.Fold(
-		submitted.Verdict,
-		submitted.Reason,
-		submitted.InjectContext,
-		submitted.RewriteArguments,
-	)
+	if submitted.InjectContext != "" {
+		if result.decision.InjectContext != "" {
+			result.decision.InjectContext += "\n"
+		}
+		result.decision.InjectContext += submitted.InjectContext
+	}
+	if result.decision.Verdict != domainhooks.VerdictBlock && submitted.Verdict == domainhooks.VerdictBlock {
+		result.decision.Verdict, result.decision.Reason = submitted.Verdict, submitted.Reason
+	}
+
 	return result, nil
 }
 

@@ -227,7 +227,7 @@ func TestPluginAcceptanceMCPInvalidServerKeepsSiblingsAcrossRestart(t *testing.T
 	}
 }
 
-func TestPluginAcceptanceMCPSameNameAcrossOriginsExcludesBoth(t *testing.T) {
+func TestPluginAcceptanceMCPSameNameAcrossOriginsPublishesDistinctToolAliases(t *testing.T) {
 	userURL := poMCPRemote(t, "record")
 	installationURL := poMCPRemote(t, "record", "summarize")
 	cfg := poMCPConfig(t)
@@ -263,15 +263,16 @@ func TestPluginAcceptanceMCPSameNameAcrossOriginsExcludesBoth(t *testing.T) {
 	userRef := protocol.ToolRef{Type: protocol.ToolRefMCP, Name: "record", Server: &user}
 	ownedRef := protocol.ToolRef{Type: protocol.ToolRefMCP, Name: "record", Server: &owned}
 	tools := runtime.poMCPTools(nil, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
-	var modelName, unrelated string
+	var externalAlias, installedAlias, unrelated string
 	for _, tool := range tools {
 		switch {
 		case tool.Server == user && tool.Name == "record":
-			modelName = tool.ModelName
+			externalAlias = tool.ModelName
 			if !slices.ContainsFunc(tool.NameConflicts, func(ref protocol.ToolRef) bool { return reflect.DeepEqual(ref, ownedRef) }) {
 				t.Fatalf("user tool diagnostic does not name the installation identity: %+v", tool.NameConflicts)
 			}
 		case tool.Server == owned && tool.Name == "record":
+			installedAlias = tool.ModelName
 			if !slices.ContainsFunc(tool.NameConflicts, func(ref protocol.ToolRef) bool { return reflect.DeepEqual(ref, userRef) }) {
 				t.Fatalf("installation tool diagnostic does not name the user identity: %+v", tool.NameConflicts)
 			}
@@ -284,7 +285,7 @@ func TestPluginAcceptanceMCPSameNameAcrossOriginsExcludesBoth(t *testing.T) {
 			t.Fatalf("unexpected tool %+v", tool)
 		}
 	}
-	if modelName == "" || unrelated == "" {
+	if externalAlias == "" || installedAlias == "" || unrelated == "" || externalAlias == installedAlias {
 		t.Fatalf("listing lacks a projected tool: %+v", tools)
 	}
 
@@ -300,10 +301,66 @@ func TestPluginAcceptanceMCPSameNameAcrossOriginsExcludesBoth(t *testing.T) {
 	waitForRunEvents(t, collectRunEvents(events), "conflict manifest run")
 	mu.Lock()
 	defer mu.Unlock()
-	if !strings.Contains(catalog, unrelated) {
-		t.Fatalf("deferred catalog omits the unrelated installation tool %q:\n%s", unrelated, catalog)
+	names := strings.Fields(strings.ReplaceAll(catalog, ",", " "))
+	for _, exact := range []string{externalAlias, installedAlias, unrelated} {
+		if !slices.Contains(names, exact) {
+			t.Fatalf("model catalog omits %q: %s", exact, catalog)
+		}
 	}
-	if strings.Contains(catalog, modelName) {
-		t.Fatalf("conflicting model name %q remained reachable:\n%s", modelName, catalog)
+	if slices.Contains(names, "reviews_record") {
+		t.Fatalf("ambiguous bare name remained callable: %s", catalog)
 	}
+
+}
+
+func TestMCPInstallationAndExternalServerWithdrawIndependently(t *testing.T) {
+	cfg := poMCPConfig(t)
+	current := poMCPOpen(t, cfg)
+	const name = "reviews"
+	external := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginUser}, Name: name}
+	current.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
+		Name: name, Enabled: true,
+		Connection:       protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: poMCPRemote(t, "record")},
+		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
+	}, "create-external")
+	source := poMCPPackage(t, map[string]string{
+		"plugin.json": poMCPManifest,
+		"mcp.json":    `{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"reviews":` + testMCPServerJSON(t, poMCPRemote(t, "record")) + `}}`,
+	})
+	authorPluginPackage(t, source)
+	installation := poMCPActivate(current, source)
+	backend := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installation.ID}, Name: name}
+	expectOwners := func(expected ...protocol.MCPServerID) {
+		t.Helper()
+		current.poMCPTools(nil, func(tools []protocol.MCPTool) bool {
+			var owners []protocol.MCPServerID
+			for _, tool := range tools {
+				if tool.Server.Name != name || tool.Name != "record" {
+					continue
+				}
+				if len(expected) == 1 && len(tool.NameConflicts) > 0 {
+					return false
+				}
+				owners = append(owners, tool.Server)
+			}
+			if len(owners) != len(expected) {
+				return false
+			}
+			for _, owner := range expected {
+				if !slices.Contains(owners, owner) {
+					return false
+				}
+			}
+			return true
+		})
+	}
+	expectOwners(external, backend)
+	current.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installation.ID, Enabled: false}, "disable-backend")
+	expectOwners(external)
+	current.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installation.ID, Enabled: true}, "enable-backend")
+	expectOwners(backend, external)
+	current.must(delivery.MCPServersDelete, protocol.MCPServerRequest{Server: external}, "remove-external")
+	expectOwners(backend)
+	current = reopenPluginRuntime(t, current, &cfg)
+	expectOwners(backend)
 }

@@ -1,3 +1,6 @@
+import { useMemo } from "react";
+import { useLocale } from "@/lib/i18n/index";
+import { presentationTitle } from "@/lib/i18n/presentationTitle";
 import { type ComponentType, type ReactNode } from "react";
 import { defineExtensionPoint } from "@/extensions/contracts";
 import { useExtensionPoint } from "@/extensions/selectors/extensions";
@@ -24,6 +27,7 @@ export interface WorkspaceViewSpec {
   material?: string;
   id: string;
   title: string;
+  localizedTitles?: Readonly<Record<string, string>>;
   icon?: string;
   badge?: ComponentType;
   order?: number;
@@ -42,5 +46,15 @@ export const WORKSPACE_VIEW = defineExtensionPoint<WorkspaceViewSpec>({
 });
 
 export function useWorkspaceViews(): WorkspaceViewSpec[] {
-  return useExtensionPoint(WORKSPACE_VIEW);
+  const entries = useExtensionPoint(WORKSPACE_VIEW);
+  const locale = useLocale();
+  return useMemo(
+    () =>
+      entries.map((entry) =>
+        entry.localizedTitles
+          ? { ...entry, title: presentationTitle(entry.title, entry.localizedTitles, locale) }
+          : entry,
+      ),
+    [entries, locale],
+  );
 }

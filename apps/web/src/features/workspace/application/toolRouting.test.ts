@@ -6,8 +6,7 @@ prepareTestClient(() => {
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { contributeForTest } from "@/test/kernel";
-import { WORKSPACE_VIEW } from "@/features/workspace/public/views";
+import { openWorkspaceViewAtPath } from "@/features/workspace/public/navigation";
 import { beforeEach, describe, expect, it } from "vitest";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { WorkspaceFileFocus } from "@/features/workspace/adapters/contextDockStore";
@@ -29,15 +28,6 @@ const toolCall = ({
 
 describe("openWorkspaceViewForTool", () => {
   beforeEach(async () => {
-    await contributeForTest((ctx) =>
-      ctx.contribute(WORKSPACE_VIEW, {
-        id: "package:review:diff",
-        title: "Diff",
-        material: "diff",
-        dock: "workspace",
-        component: () => null,
-      }),
-    );
     testClient.navigation.go({ view: null, dock: null });
     testClient.workspace.dock.store.setState({
       dockViewIds: [],
@@ -69,36 +59,10 @@ describe("openWorkspaceViewForTool", () => {
     expect(testClient.navigation.get().view).toBeNull();
   });
 
-  it("opens a fileEdit tool as the diff split and focuses its file", () => {
-    openWorkspaceViewForTool(
-      testClient.workspace.access,
-      toolCall({
-        id: "t2",
-        name: "apply_patch",
-        category: "edit",
-        fn: "src/app.ts",
-        fnKind: "path",
-      }),
-    );
+  it("opens the captured contributed view at the recorded path", () => {
+    openWorkspaceViewAtPath(testClient.workspace.access, "package:review:diff", "src/app.ts");
     expect(testClient.navigation.get().dock).toBe("package:review:diff");
-    expect(testClient.navigation.get().view).toBeNull();
-    expect(testClient.workspace.dock.store.getState().fileFocus).toMatchObject({
-      path: "src/app.ts",
-      revision: 1n,
-    });
-  });
-
-  it("does not feed a multi-file patch label to the diff's active-file focus", () => {
-    testClient.workspace.dock.store.getState().focusFile("src/old.ts");
-    openWorkspaceViewForTool(
-      testClient.workspace.access,
-      toolCall({ id: "t3", name: "apply_patch", category: "edit", fn: "apply_patch" }),
-    );
-    expect(testClient.navigation.get().dock).toBe("package:review:diff");
-    expect(testClient.workspace.dock.store.getState().fileFocus).toMatchObject({
-      path: "",
-      revision: 2n,
-    });
+    expect(testClient.workspace.dock.store.getState().fileFocus.path).toBe("src/app.ts");
   });
 
   it("promotes no view for inline-only categories", () => {

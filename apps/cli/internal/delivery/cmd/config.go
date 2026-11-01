@@ -106,8 +106,11 @@ func loadConfig(v *viper.Viper, cmd *cobra.Command) error {
 		if err := v.ReadConfig(bytes.NewReader(content)); err != nil {
 			return fmt.Errorf("read configuration %q: %w", source.path, err)
 		}
-		// Project preferences cannot choose where a process-owned bearer is sent.
+		// Project preferences cannot grant native code execution or route a process-owned bearer.
 		// Validate the already-read bytes, not a second read of a mutable file.
+		if source.authority == projectConfigAuthority && v.InConfig("plugins.directories") {
+			return errors.New("project configuration cannot select executable plugin directories; use --plugin-dir, user configuration, or an explicit --config")
+		}
 		if source.authority == projectConfigAuthority && (v.InConfig("runtime.endpoint") || v.InConfig("runtime.mode")) {
 			return errors.New("project configuration cannot select a runtime endpoint; use --runtime-url, FLAME_CLI_RUNTIME_ENDPOINT, user configuration, or an explicit --config")
 		}

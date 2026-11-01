@@ -1,6 +1,6 @@
 {
   "protocol": "io.github.tangerg.qimu/portable/1",
-  "reference": "flame.usage-reports.v1",
+  "reference": "flame.usage-reports.v2",
   "composition": "collection",
   "scope": "installation",
   "methods": [
@@ -338,7 +338,7 @@
       }
     },
     {
-      "name": "flame.usage-reports/list.v1",
+      "name": "flame.usage-reports/list.v2",
       "kind": "query",
       "target": "installation",
       "description": "List saved accounting report headers in capture order, newest first.",
@@ -363,8 +363,15 @@
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "items": { "$ref": "#/$defs/rpc.Header" },
-        "type": "array"
+        "additionalProperties": false,
+        "properties": {
+          "reports": {
+            "items": { "$ref": "#/$defs/rpc.Header" },
+            "type": "array"
+          }
+        },
+        "required": ["reports"],
+        "type": "object"
       }
     }
   ]

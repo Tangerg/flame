@@ -3,9 +3,9 @@ module github.com/Tangerg/flame/apps/desktop
 go 1.27.3
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261101.ownership.4
-	github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261101.ownership.2
-	github.com/Tangerg/qimu v0.1.0-quality.20261101.ownership.2
+	github.com/Tangerg/flame/packages/go-sdk v0.1.1-dev.20261101.te31099412660
+	github.com/Tangerg/flame/packages/local-runtime v0.1.1-dev.20261101.t373cde3df814
+	github.com/Tangerg/qimu v0.1.1-dev.20261101.t4c4dcdb5ac85
 	github.com/wailsapp/wails/v3 v3.0.0
 	golang.org/x/tools v0.52.0
 )

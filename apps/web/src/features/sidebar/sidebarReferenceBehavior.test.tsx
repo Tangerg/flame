@@ -18,7 +18,6 @@ const model = vi.hoisted(() => ({
     chooseSessionFolder: vi.fn(),
     startSessionInFolder: vi.fn(),
     selectSession: vi.fn(),
-    renameSession: vi.fn(),
     forkSession: vi.fn(),
     deleteSession: vi.fn(),
     toggleFavorite: vi.fn(),

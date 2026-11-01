@@ -7,10 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"sync"
 	"time"
 
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -24,6 +24,7 @@ const defaultProviderProbeTimeout = 10 * time.Second
 // consumes the projection. Slice results transfer ownership to the caller.
 type providerCatalog interface {
 	Profiles(context.Context) ([]ProviderProfile, error)
+	Profile(context.Context, string) (ProviderProfile, error)
 }
 
 type ProviderProfile struct {

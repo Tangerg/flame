@@ -14,7 +14,7 @@ test("expanded tool groups keep every call reachable while the Dock resizes", as
   const resizer = page.getByRole("separator", { name: "Resize right workspace" });
   for (const key of ["End", "Home"]) {
     await resizer.press(key);
-    for (const name of ["glob", "search_memory", "search_tools"]) {
+    for (const name of ["glob", "memory_search_memory", "search_tools"]) {
       const row = page.locator(`[data-tool="${name}"]`);
       await row.scrollIntoViewIfNeeded();
       expect(

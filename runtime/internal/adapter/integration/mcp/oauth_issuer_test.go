@@ -1,38 +1,32 @@
 package mcp
 
 import (
+	"context"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
-
-	"github.com/Tangerg/go-sdk/auth"
 )
 
 func TestOAuthCallbackPreservesIssuerForSDKValidation(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("the browser-launch fixture uses a POSIX shell")
-	}
-	bin := t.TempDir()
-	launcher := "xdg-open"
-	if runtime.GOOS == "darwin" {
-		launcher = "open"
-	}
-	if err := os.WriteFile(filepath.Join(bin, launcher), []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	for _, issuer := range []string{"", "https://issuer.example", "https://unexpected.example"} {
 		t.Run(issuer, func(t *testing.T) {
 			flow := &oauthFlow{result: make(chan oauthCallback, 1)}
 			query := url.Values{"code": {"authorization-code"}, "state": {"exact-state"}, "iss": {issuer}}
 			request := httptest.NewRequest("GET", "/callback?"+query.Encode(), nil)
 			response := httptest.NewRecorder()
-			flow.handleCallback(response, request)
-			result, err := flow.fetch(t.Context(), &auth.AuthorizationArgs{URL: "https://authorization.example"})
+			result, err := flow.waitForCallback(t.Context(), "https://authorization.example?state=exact-state", func(context.Context, string) error {
+				for _, noise := range []string{"", "?state=wrong&code=bad", "?state=wrong&error=denied"} {
+					rejected := httptest.NewRecorder()
+					flow.handleCallback(rejected, httptest.NewRequest(http.MethodGet, "/callback"+noise, nil))
+					if rejected.Code != http.StatusBadRequest {
+						t.Fatalf("unrelated callback status = %d", rejected.Code)
+					}
+				}
+				flow.handleCallback(response, request)
+				return nil
+			})
 			if err != nil {
 				t.Fatal(err)
 			}

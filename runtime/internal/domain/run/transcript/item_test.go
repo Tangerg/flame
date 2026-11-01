@@ -31,6 +31,32 @@ func TestItemIdentityRejectsNonCanonicalOrUnboundedResourceIdentity(t *testing.T
 	}
 }
 
+func TestToolSettlementPreservesTheCapturedInstallation(t *testing.T) {
+	source, err := tool.ParseRef("mcp:installation:eeb329cd-c7ce-40c9-bd90-6821fef06d30:web:web_search")
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := tool.ParseRef("mcp:installation:8ad9abf5-3a7d-4d0b-bef9-6ef92c20e746:web:web_search")
+	if err != nil {
+		t.Fatal(err)
+	}
+	invocation := transcript.ToolInvocation{Name: source.ModelName(), Source: source}
+	running, err := transcript.NewToolCall(itemIdentity(), invocation, tool.SafetyClassNetwork)
+	if err != nil {
+		t.Fatal(err)
+	}
+	finish := running.OccurredAt().Add(time.Second)
+	invocation.Source = other
+	if _, err := running.CompleteToolCall(invocation, running.OccurredAt(), finish); err == nil {
+		t.Fatal("a different source completed the same unqualified name")
+	}
+	invocation.Source = tool.Ref{}
+	resolved, err := running.CompleteToolCall(invocation, running.OccurredAt(), finish)
+	if err != nil || toolCall(t, resolved.State()).Invocation.Source != source {
+		t.Fatalf("settlement lost the captured installation: %v", err)
+	}
+}
+
 func TestToolApprovalDecisionIsImmutableAndSurvivesSettlement(t *testing.T) {
 	running, err := transcript.NewToolCall(
 		itemIdentity(), transcript.ToolInvocation{Name: "shell"}, tool.SafetyClassExec,

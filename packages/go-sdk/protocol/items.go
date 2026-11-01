@@ -290,9 +290,10 @@ type QuestionOption struct {
 //   - Tool-level failure does NOT go in Result — it rides the toolCall
 //     Item's Error + status:"incomplete".
 type ToolInvocation struct {
+	Source *RecordedToolSource `json:"source,omitzero"`
 	// ArgumentsText is the verbatim rejected input. When present, Arguments is an empty object.
 	ArgumentsText string `json:"argumentsText,omitempty"`
-	Name          string `json:"name"` // stable tool identity; MCP names are authored by mcpserver.ToolName
+	Name          string `json:"name"` // exact name supplied by the model
 	// Category and ResultShape are the built-in tool's declared presentation;
 	// other tools carry neither, and clients render their results verbatim.
 	Category    builtin.ToolCategory  `json:"category,omitempty"`
@@ -302,6 +303,13 @@ type ToolInvocation struct {
 	// explicit empty object or array still carries it: omitzero drops only the
 	// absent value, so "no result yet" stays distinct from "an empty result".
 	Result any `json:"result,omitzero"`
+}
+
+// RecordedToolSource retains the original source reference and its projected
+// base name. Name on the invocation remains exactly what the model called.
+type RecordedToolSource struct {
+	Ref       ToolRef `json:"ref"`
+	ModelName string  `json:"modelName"`
 }
 
 // DiffRow is one structured row of a unified diff. Code

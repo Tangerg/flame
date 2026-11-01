@@ -209,7 +209,11 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_stale",
         "session_not_found",
+        "session_busy",
+        "export_too_large",
         "capability_not_negotiated"
       ],
       "features": [
@@ -225,6 +229,8 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "session_busy",
+        "export_too_large",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1890,7 +1896,9 @@
         "code": -32039,
         "recoveryAction": "promptUser",
         "methods": [
-          "sessions.exportTrajectory"
+          "sessions.export",
+          "sessions.exportTrajectory",
+          "sessions.import"
         ]
       },
       {
@@ -2172,6 +2180,7 @@
           "providers.update",
           "runs.start",
           "sessions.create",
+          "sessions.export",
           "sessions.fork",
           "sessions.update"
         ]
@@ -2215,6 +2224,7 @@
           "providers.update",
           "runs.start",
           "sessions.create",
+          "sessions.export",
           "sessions.fork",
           "sessions.update"
         ]
@@ -2314,7 +2324,9 @@
         "methods": [
           "runs.cancel",
           "runs.start",
+          "sessions.export",
           "sessions.exportTrajectory",
+          "sessions.import",
           "sessions.rollback"
         ]
       },

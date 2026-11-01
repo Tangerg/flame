@@ -378,11 +378,7 @@ func (s *Servers) InspectDocument(ctx context.Context, root, file string, conten
 	if err != nil {
 		return nil, err
 	}
-	version, err := c.ensureContent(ctx, abs, content)
-	if err != nil {
-		return nil, err
-	}
-	return c.diagnosticsVersion(ctx, abs, version, diagnosticsSettle)
+	return c.diagnosticsContent(ctx, abs, content, diagnosticsSettle)
 }
 
 // Supported reports whether any configured server handles file's extension —

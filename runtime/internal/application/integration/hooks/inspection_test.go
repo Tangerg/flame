@@ -31,9 +31,6 @@ func TestInspectionRejectsBrokenResolvedCascades(t *testing.T) {
 		"project source outside root": func(value *Inspection) {
 			value.Hooks[1].Source = "/other/.flame/hooks.json"
 		},
-		"global after project": func(value *Inspection) {
-			value.Hooks[0], value.Hooks[1] = value.Hooks[1], value.Hooks[0]
-		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			inspection := validInspection()
@@ -68,5 +65,13 @@ func validInspection() Inspection {
 			{Event: hookdata.Stop, Inject: "global", Scope: hookdata.ScopeGlobal, Source: "/home/.flame/hooks.json"},
 			{Event: hookdata.PreToolUse, Command: "check", Scope: hookdata.ScopeProject, Source: "/repo/pkg/.flame/hooks.json"},
 		},
+	}
+}
+
+func TestInspectionAdmitsProviderOrderWithinTrustedSources(t *testing.T) {
+	inspection := validInspection()
+	slices.Reverse(inspection.Hooks)
+	if err := inspection.ValidateFor("/repo/pkg"); err != nil {
+		t.Fatal(err)
 	}
 }

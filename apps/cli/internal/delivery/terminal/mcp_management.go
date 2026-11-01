@@ -227,7 +227,7 @@ func mcpToolsDocument(server *protocol.MCPServerID, tools []protocol.MCPTool) (r
 				}
 				sources = append(sources, source)
 			}
-			sections = append(sections, toolSection{Title: "Excluded from model tools", Style: toolSectionParagraph, Text: tool.ModelName + " conflicts with " + strings.Join(sources, ", ")})
+			sections = append(sections, toolSection{Title: "Instance-qualified model name", Style: toolSectionParagraph, Text: tool.ModelName + " distinguishes this source from " + strings.Join(sources, ", ")})
 		}
 		if tool.InputSchema != nil {
 			schema, err := json.Marshal(tool.InputSchema, jsontext.WithIndent("  "), json.Deterministic(true))

@@ -285,3 +285,16 @@ func TestProviderProbeReturnsSanitizedActions(t *testing.T) {
 		})
 	}
 }
+
+func (p *providerFake) Profile(ctx context.Context, id string) (models.ProviderProfile, error) {
+	profiles, err := p.Profiles(ctx)
+	if err != nil {
+		return models.ProviderProfile{}, err
+	}
+	for _, profile := range profiles {
+		if profile.Metadata.ID() == id {
+			return profile, nil
+		}
+	}
+	return models.ProviderProfile{}, models.ErrProviderUnsupported
+}

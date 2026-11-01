@@ -21,6 +21,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -162,9 +163,16 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				t.Fatal(err)
 			}
 			originalTool := ""
+			var originalSource tool.Ref
 			for _, item := range items {
 				if invocation, ok := testsupport.ToolInvocationOf(item); ok && invocation.Name == "schedules_create_schedule" {
 					originalTool = item.ID()
+					originalSource = invocation.Source
+					server, remote, ok := originalSource.MCP()
+					_, installed := server.Origin().Installation()
+					if !ok || !installed || remote.String() != "create_schedule" {
+						t.Fatalf("original Tool lost its installed source: %v", originalSource)
+					}
 					if item.Status() != transcript.ItemRunning {
 						t.Fatalf("original Tool was already terminal: %+v", item)
 					}
@@ -269,6 +277,9 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			}
 			for _, item := range items {
 				if invocation, ok := testsupport.ToolInvocationOf(item); ok && invocation.Name == "schedules_create_schedule" {
+					if invocation.Source != originalSource {
+						t.Fatalf("recovery replaced Tool source %v with %v", originalSource, invocation.Source)
+					}
 					count++
 					if item.ID() != originalTool || item.Status() != wantStatus {
 						t.Fatalf("recovery replaced the original Tool Item: %+v", item)

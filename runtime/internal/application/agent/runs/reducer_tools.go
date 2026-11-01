@@ -5,9 +5,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-func newToolInvocation(name string, arguments tool.Arguments, result *tool.Result) *transcript.ToolInvocation {
+func newToolInvocation(source tool.Ref, name string, arguments tool.Arguments, result *tool.Result) *transcript.ToolInvocation {
 	return &transcript.ToolInvocation{
 		Name:   name,
+		Source: source,
 		Input:  transcript.AdmittedInput(arguments),
 		Result: result,
 	}

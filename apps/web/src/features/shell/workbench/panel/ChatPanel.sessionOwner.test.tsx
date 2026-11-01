@@ -73,8 +73,6 @@ vi.mock("@/extensions/host/Slot", () => ({ Slot: () => null }));
 
 vi.mock("@/features/shell/workbench/panel/ChatStream", () => ({ ChatStream: () => null }));
 
-vi.mock("@/features/shell/workbench/panel/HeaderDiffStat", () => ({ HeaderDiffStat: () => null }));
-
 let nextInstance = 0;
 
 function StatefulWorkspaceView() {

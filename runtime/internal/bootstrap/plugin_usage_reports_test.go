@@ -53,10 +53,10 @@ func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *t
 	if reply.Failure != nil || json.Unmarshal([]byte(reply.Output), &saved) != nil || saved.Id == "" {
 		t.Fatalf("original capture was not reconciled: %+v", reply)
 	}
-	request.Method, request.Input = testsupport.UsageReportsListV1Method, `{}`
+	request.Method, request.Input = testsupport.UsageReportsListV2Method, `{}`
 	listed := r.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
-	var headers []testsupport.UsageReportsHeader
-	if err := json.Unmarshal([]byte(listed.Output), &headers); err != nil || len(headers) != 1 || headers[0].Id != saved.Id || !headers[0].ObservedAt.Equal(saved.ObservedAt) {
+	var headers testsupport.UsageReportsListV2Output
+	if err := json.Unmarshal([]byte(listed.Output), &headers); err != nil || len(headers.Reports) != 1 || headers.Reports[0].Id != saved.Id || !headers.Reports[0].ObservedAt.Equal(saved.ObservedAt) {
 		t.Fatalf("recovery repeated or changed the captured accounting observation: %s: %v", listed.Output, err)
 	}
 }
@@ -122,9 +122,9 @@ func TestUsageReportsInstalledCaptureKeepsCoreFactsAcrossLaterWorkAndRestart(t *
 	}
 	call(testsupport.UsageReportsDeleteV1Method, request, "remove-report")
 	call(testsupport.UsageReportsCaptureV1Method, input, "save-report")
-	var remaining []testsupport.UsageReportsHeader
-	listed := call(testsupport.UsageReportsListV1Method, struct{}{}, "")
-	if err := json.Unmarshal([]byte(listed.Output), &remaining); err != nil || len(remaining) != 0 {
+	var remaining testsupport.UsageReportsListV2Output
+	listed := call(testsupport.UsageReportsListV2Method, struct{}{}, "")
+	if err := json.Unmarshal([]byte(listed.Output), &remaining); err != nil || remaining.Reports == nil || len(remaining.Reports) != 0 {
 		t.Fatalf("capture replay recreated removed evidence: %s %v", listed.Output, err)
 	}
 	current := r.must(delivery.UsageSummary, protocol.UsageSummaryRequest{SinceDays: new(1)}, "").(*protocol.UsageSummary)

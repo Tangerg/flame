@@ -211,17 +211,14 @@ export function openWorkspaceSettingsPane(workspaceAccess: WorkspaceAccess, pane
   workspaceAccess.navigation.openView(WORKSPACE_SETTINGS_VIEW);
 }
 
-export function openWorkspaceDiffForFile(
-  workspaceAccess: WorkspaceAccess,
+export function openWorkspaceViewAtPath(
+  workspace: WorkspaceAccess,
+  viewId: string,
   path: string,
   origin?: HTMLElement,
 ): void {
-  workspaceAccess.navigation.focusFile(path);
-  const views = lookupExtensionPoint(WORKSPACE_VIEW).filter((view) => view.material === "diff");
-  workspaceAccess.navigation.openViewInDock(
-    views.length === 1 ? views[0]!.id : WORKSPACE_DOCK_CATALOG,
-    origin,
-  );
+  workspace.navigation.focusFile(path);
+  workspace.navigation.openViewInDock(viewId, origin);
 }
 
 export function openWorkspaceFile(

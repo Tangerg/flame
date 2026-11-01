@@ -9,4 +9,4 @@ export {
   useWorkspaceProjects,
 } from "@/features/workspace/application/workspaceQueries";
 export type { WorkspaceProjectSummary } from "@/features/workspace/application/workspaceQueries";
-export { useWorkingTreeChanges } from "@/features/workspace/application/workingTreeChanges";
+export { useChangedFiles } from "@/features/workspace/application/workingTreeChanges";

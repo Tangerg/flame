@@ -1,12 +1,6 @@
 package pluginbrowser
 
-import (
-	"testing"
-	"time"
-
-	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	controlhost "github.com/Tangerg/qimu/control/host"
-)
+import "testing"
 
 func TestControlEndpointRequiresAnHTTPAuthorityOrSameOriginPath(t *testing.T) {
 	for _, test := range []struct {
@@ -23,15 +17,8 @@ func TestControlEndpointRequiresAnHTTPAuthorityOrSameOriginPath(t *testing.T) {
 		{endpoint: "https://user:secret@localhost/control"},
 	} {
 		t.Run(test.endpoint, func(t *testing.T) {
-			service, err := New(Config{
-				Bridge: &controlhost.Bridge{}, Registry: &plugins.Registry{},
-				ControlEndpoint: test.endpoint, MaximumMessageBytes: 1, ProofCapacity: 1, PollInterval: time.Millisecond,
-			})
-			if test.valid && (err != nil || service == nil) {
-				t.Fatalf("valid control endpoint = (%v, %v)", service, err)
-			}
-			if !test.valid && (err == nil || service != nil) {
-				t.Fatalf("invalid control endpoint = (%v, %v)", service, err)
+			if got := validControlEndpoint(test.endpoint); got != test.valid {
+				t.Fatalf("validControlEndpoint(%q)=%v", test.endpoint, got)
 			}
 		})
 	}

@@ -398,9 +398,7 @@ func (i ItemStart) validate() error {
 		return errors.New("runs: ToolCall start differs from its durable Item")
 	}
 	call, present := item.ToolCall()
-	if !present || call.Invocation.Name != i.ToolInvocation.Name ||
-		!call.Invocation.Input.Equal(i.ToolInvocation.Input) ||
-		call.SafetyClass != i.SafetyClass {
+	if !present || !call.Invocation.Equal(*i.ToolInvocation) || call.SafetyClass != i.SafetyClass {
 		return errors.New("runs: ToolCall start differs from its durable invocation")
 	}
 	return nil

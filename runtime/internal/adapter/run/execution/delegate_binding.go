@@ -27,6 +27,7 @@ type managedDelegateCall struct {
 
 	identity           delegateCallIdentity
 	parentRelation     agent.ProcessRelation
+	source             tool.Ref
 	target             agent.DeploymentRef
 	call               corechat.ToolCall
 	input              delegateInput
@@ -45,7 +46,7 @@ func (m *managedDelegateCall) toolStart() runs.ToolCallStarted {
 	return runs.ToolCallStarted{
 		CallID: m.callID.String(), ModelCallSequence: m.modelCallSequence,
 		ToolCallIndex: m.toolCallIndex, SourceCallID: m.call.ID,
-		ToolName: m.call.Name, Arguments: m.arguments.Canonical(), SafetyClass: tool.SafetyClassExec,
+		ToolName: m.call.Name, Source: m.source, Arguments: m.arguments.Canonical(), SafetyClass: tool.SafetyClassExec,
 	}
 }
 
@@ -164,6 +165,7 @@ func (i *interactionSession) registerDelegateCalls(
 			return err
 		}
 		managedCall := &managedDelegateCall{
+			source:   deployments.delegateSource,
 			identity: identity, parentRelation: invocation.Relation(), target: target.DeploymentRef(),
 			call: call, input: input, arguments: arguments,
 			modelCallSequence: invocation.ModelCallSequence(), toolCallIndex: toolCallIndex,

@@ -54,7 +54,7 @@ func execute[P, R any](ctx context.Context, s *store, method string, command qim
 	if err != nil {
 		return zero, err
 	}
-	if err := prepared.Complete(context.WithoutCancel(ctx), encoded.JSON()); err != nil {
+	if err := prepared.SettleExternal(ctx, encoded.JSON(), nil); err != nil {
 		return zero, err
 	}
 	return result, nil

@@ -393,7 +393,7 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 	if e.ArgumentsText != "" {
 		input = transcript.RejectedInput(e.ArgumentsText)
 	}
-	invocation := transcript.ToolInvocation{Name: e.ToolName, Input: input}
+	invocation := transcript.ToolInvocation{Name: e.ToolName, Source: e.Source, Input: input}
 	item, reused, err := r.reuseOrCreateToolItem(e.CallID, invocation, e.SafetyClass)
 	if err != nil {
 		return nil, err

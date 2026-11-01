@@ -17,7 +17,11 @@
     "v0.1.0-consolidation.20261026.1": "a7f2797814cbf02349fd4cecba012d836ef943c9",
     "v0.1.0-qimu.20261027.2": "5ce946c14de54b4a6a76767bf43d237aeba8f03c",
     "v0.1.0-quality.20261029.1": "7bf57e9b482db1bc57b162007058a3ee4319fd7e",
-    "v0.1.0-quality.20261101.ownership.2": "e3b58b688eb1a6654e5087932bdbcdeb103a95a8"
+    "v0.1.0-quality.20261101.ownership.2": "e3b58b688eb1a6654e5087932bdbcdeb103a95a8",
+    "v0.1.1-dev.20261101.t373cde3df814": {
+      "tree": "373cde3df8142b3e6f616dabde4ac6245e77be1b",
+      "time": "2026-11-01T00:00:00Z"
+    }
   },
   "github.com/Tangerg/flame/packages/go-sdk": {
     "v0.1.0-architecture.20261026.2": "158b5e3b2b544f6572d4c03ba43abe821df715b5",
@@ -64,7 +68,11 @@
     "v0.1.0-quality.20261031.terminal-views.1": "39cda7155f1f714131699a2ec547d8d510b48008",
     "v0.1.0-quality.20261101.terminal-views.2": "d0af8378109c5fd78dc8c3777cce2419d6b8dec3",
     "v0.1.0-quality.20261101.verified-audit.1": "08bba353e294862113a20dd220949589610528ff",
-    "v0.1.0-quality.20261101.ownership.4": "9ee476a636d491f8e3e00a3d00b4a65282baf7e5"
+    "v0.1.0-quality.20261101.ownership.4": "9ee476a636d491f8e3e00a3d00b4a65282baf7e5",
+    "v0.1.1-dev.20261101.te31099412660": {
+      "tree": "e31099412660513af6d9feb56a10e634b09aa8f8",
+      "time": "2026-11-01T00:00:00Z"
+    }
   },
   "github.com/Tangerg/flame/plugins": {
     "v0.1.0-architecture.20261026.3": "16d3bfa89e76615a92d01a140e677c23d353bfc5",
@@ -134,7 +142,11 @@
     "v0.1.0-quality.20261031.terminal-views.1": "0b45890572ee17441ccb92de091c2deb63984578",
     "v0.1.0-quality.20261101.terminal-views.2": "e5c31ae5b9987df8f0e2eb5a81d18443bbcc5956",
     "v0.1.0-quality.20261101.verified-audit.1": "47dc5e533bf027d4621a9dc3f0bc4dd5ae28987a",
-    "v0.1.0-quality.20261101.ownership.4": "7936a983d783292e4846629d4a10e92e97139621"
+    "v0.1.0-quality.20261101.ownership.4": "7936a983d783292e4846629d4a10e92e97139621",
+    "v0.1.1-dev.20261101.t0daa289123d9": {
+      "tree": "0daa289123d973739afbb4160fc9a55c71c86b94",
+      "time": "2026-11-01T00:00:00Z"
+    }
   },
   "github.com/Tangerg/flame/apps/cli": {
     "v0.1.0-architecture.20261026.2": "2a8d0965feab1910047347f87d486331110c9ced",
@@ -150,6 +162,10 @@
     "v0.1.0-quality.20261031.module-path.1": "fe68e03796c49d7d2803d2baa445784cb87039da",
     "v0.1.0-quality.20261031.terminal-views.1": "d39bef46ad2d9be95122f4d5a8c5a1611356a6d5",
     "v0.1.0-quality.20261101.audit-close.1": "2857e8088c3f0e84a785c67c505a8699c2b2f4e0",
-    "v0.1.0-quality.20261101.ownership.2": "e3b58b688eb1a6654e5087932bdbcdeb103a95a8"
+    "v0.1.0-quality.20261101.ownership.2": "e3b58b688eb1a6654e5087932bdbcdeb103a95a8",
+    "v0.1.1-dev.20261101.t4c4dcdb5ac85": {
+      "tree": "4c4dcdb5ac85f1ee1b0817d7b4d873b09c2b4734",
+      "time": "2026-11-01T00:00:00Z"
+    }
   }
 }

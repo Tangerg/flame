@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"os/exec"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -52,6 +54,8 @@ type oauthCallback struct {
 type oauthFlow struct {
 	redirectURI string
 	server      *http.Server
+	mu          sync.Mutex
+	state       string
 	result      chan oauthCallback
 	serveDone   chan error
 }
@@ -81,32 +85,58 @@ func newOAuthFlow(ctx context.Context) (*oauthFlow, error) {
 // handleCallback captures the authorization code (or error) from the redirect,
 // shows the user a close-this-tab page, and hands the outcome to fetch.
 func (o *oauthFlow) handleCallback(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "GET required", http.StatusMethodNotAllowed)
+		return
+	}
 	q := r.URL.Query()
 	cb := oauthCallback{response: auth.AuthorizationResult{
 		Code: q.Get("code"), State: q.Get("state"), Iss: q.Get("iss"),
 	}}
-	switch {
-	case q.Get("error") != "":
-		cb.err = fmt.Errorf("authorization denied: %s", q.Get("error"))
-	case cb.response.Code == "":
-		cb.err = errors.New("authorization response missing code")
+	denied := q.Get("error")
+	if len(q["state"]) != 1 || len(q["code"]) > 1 || len(q["error"]) > 1 || (denied == "") == (cb.response.Code == "") {
+		http.Error(w, "invalid authorization response", http.StatusBadRequest)
+		return
 	}
+	if denied != "" {
+		cb.err = fmt.Errorf("authorization denied: %s", denied)
+	}
+	o.mu.Lock()
+	if o.state == "" || cb.response.State != o.state {
+		o.mu.Unlock()
+		http.Error(w, "authorization attempt does not match", http.StatusBadRequest)
+		return
+	}
+	o.state = ""
+	o.result <- cb
+	o.mu.Unlock()
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if cb.err != nil {
 		_, _ = w.Write([]byte(oauthResultHTML("Authorization failed — you can close this tab.")))
 	} else {
 		_, _ = w.Write([]byte(oauthResultHTML("Authorization response received — return to Flame to check the result.")))
 	}
-	select {
-	case o.result <- cb:
-	default:
-	}
 }
 
-// fetch is the [auth.AuthorizationCodeFetcher]: open the browser to the
-// authorization URL, then wait for the loopback redirect (or ctx timeout).
 func (o *oauthFlow) fetch(ctx context.Context, args *auth.AuthorizationArgs) (*auth.AuthorizationResult, error) {
-	if err := openBrowser(ctx, args.URL); err != nil {
+	return o.waitForCallback(ctx, args.URL, openBrowser)
+}
+
+func (o *oauthFlow) waitForCallback(ctx context.Context, authorizationURL string, launch func(context.Context, string) error) (*auth.AuthorizationResult, error) {
+	endpoint, err := url.Parse(authorizationURL)
+	if err != nil {
+		return nil, err
+	}
+	state := endpoint.Query().Get("state")
+	if state == "" {
+		return nil, errors.New("mcp oauth: authorization URL lacks state")
+	}
+	o.mu.Lock()
+	o.state = state
+	o.mu.Unlock()
+	defer func() { o.mu.Lock(); o.state = ""; o.mu.Unlock() }()
+	if err := launch(ctx, authorizationURL); err != nil {
 		return nil, fmt.Errorf("mcp oauth: enable a system browser launcher and restart sign-in: %w", err)
 	}
 	select {

@@ -27,18 +27,23 @@ func (b *Bridge) Handler() http.Handler {
 			return
 		}
 		authorization := request.Header.Get("Authorization")
-		if !strings.HasPrefix(authorization, "Bearer ") || len(authorization) > 1024 {
+		scheme, token, found := strings.Cut(authorization, " ")
+		const maxAuthorizationBytes = 1024
+		if !found || !strings.EqualFold(scheme, "Bearer") || len(authorization) > maxAuthorizationBytes {
 			writeProblem(writer, http.StatusUnauthorized, "permission_denied", "Realm authentication is required")
 			return
 		}
-		token := strings.TrimPrefix(authorization, "Bearer ")
 		if _, err := b.session(token, false); err != nil {
 			writeProblem(writer, http.StatusUnauthorized, "permission_denied", "Realm authentication failed")
 			return
 		}
 		body, err := io.ReadAll(http.MaxBytesReader(writer, request.Body, b.config.MaxRequestBytes))
 		if err != nil {
-			writeProblem(writer, http.StatusRequestEntityTooLarge, "capacity", "control request exceeds its byte limit")
+			if _, oversized := errors.AsType[*http.MaxBytesError](err); oversized {
+				writeProblem(writer, http.StatusRequestEntityTooLarge, "capacity", "control request exceeds its byte limit")
+			} else {
+				writeProblem(writer, http.StatusBadRequest, "invalid_plan", "control request body could not be read")
+			}
 			return
 		}
 		var envelope control.HTTPEnvelope

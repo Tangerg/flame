@@ -86,7 +86,7 @@ func (o *observingMutations) Complete(ctx context.Context, _ WorkspaceMutation) 
 type refusedCheckpoint struct{ err error }
 
 func (r refusedCheckpoint) Restore(context.Context, string, string, string) error { return r.err }
-func (refusedCheckpoint) DropSession(string) error                                { return nil }
+func (refusedCheckpoint) DropSession(context.Context, string) error               { return nil }
 
 func TestRollbackRefusalKeepsCleanupFailureDistinctFromCompletedRefusal(t *testing.T) {
 	for _, refusal := range []error{ErrCheckpointUnavailable, ErrCheckpointConflict} {

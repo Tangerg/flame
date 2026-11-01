@@ -1,4 +1,6 @@
 import { mkdtemp, rm } from "node:fs/promises";
+import { DatabaseSync } from "node:sqlite";
+import { LIMITS } from "../contracts/limits";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
@@ -257,4 +259,57 @@ it("cancelled preparation cannot publish or manufacture a settled result", async
       "command",
     ),
   ).toEqual({ found: false });
+});
+
+it("settled history leaves admission open and discarded upload bytes leave no copy in receipts", async () => {
+  const { archive, path } = await fixture();
+  archive.close();
+  const database = new DatabaseSync(path);
+  try {
+    database
+      .prepare(
+        `WITH RECURSIVE history(i) AS (VALUES(1) UNION ALL SELECT i+1 FROM history WHERE i<?)
+      INSERT INTO commands(id,kind,method,digest,invocation,reply)
+      SELECT 'old-'||i, 'command','fixture',?,?,'{"value":true}' FROM history`,
+      )
+      .run(
+        LIMITS.pendingCommands,
+        digestJSON({}),
+        canonicalJSON(original("seed").invocation),
+      );
+  } finally {
+    database.close();
+  }
+  const current = new Archive(path);
+  cleanup.push(() => current.close());
+  const payload = Buffer.from("a nonreplayable upload");
+  const id = digest("history-upload");
+  await current.command(
+    original("begin-after-history"),
+    signal(),
+    () => () => current.beginUpload(id, payload.length, digest(payload)),
+  );
+  const append = original("append-after-history", {
+    base64: payload.toString("base64"),
+  });
+  const evidence = await current.command(
+    append,
+    signal(),
+    () => () => current.appendUpload(id, 0, payload),
+  );
+  await current.command(
+    original("discard-after-history"),
+    signal(),
+    () => () => current.discardUpload(id),
+    "reclaim",
+  );
+  expect(current.uploads()).toEqual([]);
+  current.close();
+  const recovered = new Archive(path);
+  cleanup.push(() => recovered.close());
+  expect(
+    await recovered.command(append, signal(), () => {
+      throw new Error("must not recreate discarded bytes");
+    }),
+  ).toEqual(evidence);
 });

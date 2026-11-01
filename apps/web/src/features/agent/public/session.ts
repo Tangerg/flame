@@ -22,4 +22,3 @@ export { useForkSession } from "@/features/agent/application/session/forkSession
 export type { RestoreType } from "@/features/agent/application/runtimeGateway";
 
 export { useRelocateSession } from "@/features/agent/application/session/relocateSession";
-export { useRenameSession } from "@/features/agent/application/session/renameSession";

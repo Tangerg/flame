@@ -1894,9 +1894,21 @@ MCP identity follows Scope's capability chain through Tool decorators for discov
 
 Each executable retains the catalog revision that admitted its frozen contract. A notification invalidates that revision before refresh I/O; subsequent dispatch through a captured prior catalog is refused rather than retargeted. Already admitted calls may finish. New Runs discover the newly published catalog. Retirement cancels discovery, and shutdown joins both discovery and termination observers. Description and future handshake-policy updates preserve an equivalent live connection; enablement and the domain connection identity decide when dialing is required.
 
+## Portable Session transfer
+
+The portable JSON artifact is bounded to 64 MiB. For a large JSON-RPC import,
+send `X-Method: sessions.import` with the matching envelope method. First-party
+HTTP clients set the method header automatically. The selected Markdown renderer receives a call-scoped range grant over the captured JSON, returns a verified stream and can be disabled independently. The ordinary request budget
+remains 4 MiB, including space for metadata around a large artifact.
+
+Creating or forking a Session with an idempotency key records its original
+response in the same database transaction as the new Session and fork history.
+A retry within the advertised retention period returns that frozen response.
+External effects require their own owner's receipt or reconciliation.
+
 ## Complete AGENTS guidance
 
-Run guidance includes the complete discovered AGENTS.md cascade in source order, with provenance markers. The rendered cascade, including its heading and separators, must fit the 32 KiB guidance budget. An over-budget cascade fails preparation with `prompt_source_too_large`; Runtime does not silently remove ancestor instructions to retain only the most specific files. Shorten the authored documents before retrying. Discovery describes the current documents; it does not prove that a previous Run loaded them.
+Project instruction files must resolve within their project root. User instruction aliases must resolve within the configured home. Run guidance includes the complete discovered AGENTS.md cascade in source order, with provenance markers. The rendered cascade, including its heading and separators, must fit the 32 KiB guidance budget. An over-budget cascade fails preparation with `prompt_source_too_large`; Runtime does not silently remove ancestor instructions to retain only the most specific files. Shorten the authored documents before retrying. Discovery describes the current documents; it does not prove that a previous Run loaded them.
 Discovery and authored-file reads retain the standard cancellation category and
 the caller's cause. Complete reads share one document-size rule with retained
 cascade values. Input, admission, version and close failures remain identifiable
@@ -1912,15 +1924,11 @@ Web search and page retrieval belong to the Web plugin's MCP tools. The former
 `builtIn` references `web_search` and `web_fetch` and their published Core result
 schema are removed. Rebuild clients and use a fresh pre-release data directory;
 old records with those references are rejected without aliases or conversion.
-Runtime excludes remote name collisions
-before model discovery and reserves every built-in name, including unavailable tools.
-Cross-server collisions never reject a connection: all competing remote identities
-are excluded symmetrically. `mcp.tools.list` reports their model names and conflicting
-source references, which CLI and Desktop display alongside the connected catalog.
-Scope rejects a whole MCP source when names collide within that source,
-before returning any executables. Preserving its unrelated tools requires an
-upstream discovery API that can exclude collisions; Flame does not replace
-Scope discovery or assign temporary names to work around it.
+Runtime reserves built-in names and qualifies colliding remote labels with a digest
+of the exact source reference. The visible and deferred catalogs share one naming
+decision, and recovery retains the original candidate references. MCP transport
+uses the server's own remote name. The user-facing catalog reports the published
+name and the other sources sharing its short label.
 Standing allow and deny decisions live only in approval rules and retain the
 source authority fingerprint. Endpoint changes make existing rules stale;
 credential rotation does not. MCP exposure is configured separately through
@@ -2053,7 +2061,8 @@ Run/Goal budget. Evidence deletion follows the retention rules above.
 The installed [Hooks backend](../plugins/hooks/README.md) owns configuration
 sources and bounded command execution. Runtime passes its captured project root
 and trust decision before discovery, retains the exact source through each event
-set, and owns final authorization, approval and argument admission. Disabled
+set, and owns final authorization, approval and argument admission. The selected provider matches
+and folds the captured rules, retaining the event and its original shell receipts. Disabled
 sources contribute no new rules; there is no direct Runtime shell fallback.
 Existing installations explicitly select `flame.hooks.v1`; fresh catalogs select
 the shipped backend. The `hooks.json` document format and Runtime trust store are

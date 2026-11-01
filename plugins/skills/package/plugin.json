@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "flame.skills",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "Optional Skill learning policy and library component. Runtime owns admission, proposals, human approval and active documents.",
   "extensions": {
     "io.github.tangerg.flame": {

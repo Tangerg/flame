@@ -24,11 +24,11 @@
     "output": "schema.json#/$defs/GetV1Output"
   },
   {
-    "name": "flame.usage-reports/list.v1",
+    "name": "flame.usage-reports/list.v2",
     "kind": "query",
     "target": "installation",
     "description": "List saved accounting report headers in capture order, newest first.",
-    "input": "schema.json#/$defs/ListV1Input",
-    "output": "schema.json#/$defs/ListV1Output"
+    "input": "schema.json#/$defs/ListV2Input",
+    "output": "schema.json#/$defs/ListV2Output"
   }
 ]

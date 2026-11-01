@@ -17,10 +17,10 @@
 24 apps/web/src/features/plugins/ui/PendingCommands.tsx:PendingCommands
 74 apps/web/src/features/shell/workbench/panel/ChatPanel.tsx:ChatPanel
 21 apps/web/src/features/shell/workbench/panel/RunErrorBanner.tsx:RunErrorBanner
-25 apps/web/src/features/sidebar/ui/SessionRow.tsx:SessionRow
+22 apps/web/src/features/sidebar/ui/SessionRow.tsx:SessionRow
 23 apps/web/src/features/workspace/domain/eventInvalidation.ts:workspaceQueryAffected
 44 apps/web/src/features/workspace/ui/files/FileTree.tsx:TreeNode
-43 apps/web/src/features/workspace/ui/files/FileWorkspace.tsx:FilePreview
+42 apps/web/src/features/workspace/ui/files/FileWorkspace.tsx:FilePreview
 30 apps/web/src/ui/agent/activity-disclosure.tsx:AgentActivityDisclosure
 27 apps/web/src/ui/agent/navigation-row.tsx:AgentRow
 24 apps/web/src/ui/agent/readingFollow.ts:prepareDisclosureReading
@@ -61,7 +61,6 @@
 46 plugins/deliverables/backend/formats/workbook.ts:editWorkbook
 22 plugins/deliverables/backend/process.ts:runProcess
 29 plugins/deliverables/component/authoring.tsx:RevisionEditor
-90 plugins/deliverables/component/component.tsx:Workspace
 24 plugins/deliverables/component/evidence.tsx:EvidencePanel
 23 plugins/deliverables/component/useDeliverables.ts:<anonymous>
 23 plugins/deliverables/component/useDeliverables.ts:<anonymous>#2

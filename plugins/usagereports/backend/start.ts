@@ -1,3 +1,4 @@
+import manifest from "../package/plugin.json" with { type: "json" };
 import { runtime } from "@flame/backend-sdk";
 import { readFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
@@ -23,7 +24,7 @@ const contract = new Capability(
     ),
   ) as CapabilityDescriptor,
 );
-const backend = new Backend({ name: "flame.usagereports", version: "1.0.0" });
+const backend = new Backend({ name: manifest.name, version: manifest.version });
 let archive: Archive;
 backend.onSetup((context) => {
   archive = new Archive(join(data, "reports.db"), contract);
@@ -43,9 +44,9 @@ backend.implement(
     }),
 );
 backend.implement(
-  contract.method("flame.usage-reports/list.v1"),
+  contract.method("flame.usage-reports/list.v2"),
   (value) => value,
-  () => archive.list(),
+  () => ({ reports: archive.list() }),
 );
 backend.implement(
   contract.method("flame.usage-reports/get.v1"),

@@ -14,6 +14,14 @@ import (
 	skillspec "github.com/Tangerg/scope/skills"
 )
 
+const (
+	minimumToolCalls            = 8
+	runsPerMiningAttempt        = 3
+	minimumConversationMessages = 4
+	archiveCheckInterval        = 6 * time.Hour
+	idleRetention               = 30 * 24 * time.Hour
+)
+
 type learner struct {
 	db          *sql.DB
 	mu          sync.Mutex
@@ -36,14 +44,14 @@ type learningInputs interface {
 }
 
 func (l *learner) mine(ctx context.Context, run skilllearning.Run, inputs learningInputs) (skilllearning.MineResult, error) {
-	if run.ToolCalls < 8 || !l.miningDue(run.SessionID) {
+	if run.ToolCalls < minimumToolCalls || !l.miningDue(run.SessionID) {
 		return skilllearning.MineResult{}, nil
 	}
 	conversation, err := inputs.Conversation(ctx)
 	if err != nil {
 		return skilllearning.MineResult{}, err
 	}
-	if conversation.MessageCount < 4 {
+	if conversation.MessageCount < minimumConversationMessages {
 		return skilllearning.MineResult{}, nil
 	}
 	if len(conversation.Transcript) > skilllearning.MaxTranscriptBytes {
@@ -57,7 +65,7 @@ func (l *learner) mine(ctx context.Context, run skilllearning.Run, inputs learni
 		return skilllearning.MineResult{}, nil
 	}
 	first, _, _ := strings.Cut(document, "\n")
-	name, revision := strings.CutPrefix(strings.TrimSpace(first), "REVISE:")
+	name, revision := strings.CutPrefix(strings.TrimSpace(first), revisionMarker)
 	name = strings.TrimSpace(name)
 	if revision {
 		if name == "" {
@@ -98,7 +106,7 @@ func (l *learner) miningDue(session string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.complexRuns[session]++
-	if l.complexRuns[session] < 3 {
+	if l.complexRuns[session] < runsPerMiningAttempt {
 		return false
 	}
 	// This counter bounds cost, not correctness. Attempts reset it even on
@@ -110,16 +118,15 @@ func (l *learner) miningDue(session string) bool {
 func (l *learner) archive(now time.Time) skilllearning.ArchiveAdvice {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if !l.lastArchive.IsZero() && now.Sub(l.lastArchive) < 6*time.Hour {
+	if !l.lastArchive.IsZero() && now.Sub(l.lastArchive) < archiveCheckInterval {
 		return skilllearning.ArchiveAdvice{}
 	}
 	l.lastArchive = now
-	after := (30 * 24 * time.Hour).Milliseconds()
-	return skilllearning.ArchiveAdvice{AfterMillis: &after}
+	return skilllearning.ArchiveAdvice{InactiveSince: new(now.Add(-idleRetention))}
 }
 
 func noSkill(document string) bool {
-	return strings.EqualFold(strings.TrimSpace(document), "NO_SKILL")
+	return strings.EqualFold(strings.TrimSpace(document), declineSkill)
 }
 
 func unfence(document string) string {

@@ -9,6 +9,9 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -21,8 +24,9 @@ func initializeFirstPartyPlugins(ctx context.Context, stores *persistence.Bundle
 	return plugins.Initialize(ctx, host, stores.Installations, packages, func() ([]string, error) {
 		return distributionSources(ctx, directory)
 	}, stores.ProviderSelections, []plugins.DefaultProvider{
-		{Role: "flame.model-provider.v1", Package: "flame.providers", Contribution: "model-provider"},
-		{Role: "flame.hooks.v1", Package: "flame.hooks", Contribution: "hook-provider"},
+		{Role: pluginsdk.SessionMarkdownReference, Package: "flame.trajectory", Contribution: "markdown-export"},
+		{Role: extension.ModelProviderContract, Package: "flame.providers", Contribution: "model-provider"},
+		{Role: hookprovider.Reference, Package: "flame.hooks", Contribution: "hook-provider"},
 		{Role: "memory", Package: "flame.memory", Contribution: "memory-provider"},
 		{Role: "schedules", Package: "flame.schedules", Contribution: "schedules-provider"},
 		{Role: "flame.code-intelligence.v1", Package: "flame.codeintel", Contribution: "code-intelligence"},

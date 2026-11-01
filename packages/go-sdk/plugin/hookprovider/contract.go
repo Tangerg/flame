@@ -98,8 +98,10 @@ func DiscoverMethod() (*qimumcp.Method[Discovery, []hook.Hook], error) {
 	return qimumcp.NewMethod[Discovery, []hook.Hook](qimumcp.MethodConfig{Name: "flame.hooks/discover.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read ordered lifecycle rules. Exclude all project configuration when the Runtime has not admitted its trust."})
 }
 
-func ExecuteMethod() (*qimumcp.Method[Command, Result], error) {
-	return qimumcp.NewMethod[Command, Result](qimumcp.MethodConfig{Name: "flame.hooks/execute.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Execute one trusted lifecycle command under its original receipt, bounded input, output and process lifetime. Return advice; never grant Runtime authorization."})
+const Reference = "flame.hooks.v1"
+
+func EvaluateMethod() (*qimumcp.Method[Evaluation, Advice], error) {
+	return qimumcp.NewMethod[Evaluation, Advice](qimumcp.MethodConfig{Name: "flame.hooks/evaluate.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Evaluate one captured lifecycle event and return advice. The Runtime retains trust, command material bounds and final authorization."})
 }
 
 func Contract() (*portable.Capability, error) {
@@ -107,9 +109,63 @@ func Contract() (*portable.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	execute, err := ExecuteMethod()
+	execute, err := EvaluateMethod()
 	if err != nil {
 		return nil, err
 	}
-	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.hooks.v1", Composition: portable.Selection, Scope: extension.ScopeInstallation}, discover.Descriptor(), execute.Descriptor())
+	return portable.NewCapability(portable.CapabilityConfig{Reference: Reference, Composition: portable.Selection, Scope: extension.ScopeInstallation}, discover.Descriptor(), execute.Descriptor())
+}
+
+type Evaluation struct {
+	Rules           []hook.Hook `json:"rules"`
+	Input           hook.Input  `json:"input"`
+	DeclarativeOnly bool        `json:"declarativeOnly,omitzero"`
+}
+
+func (e Evaluation) Validate() error {
+	if err := hook.ValidateHookCascade(len(e.Rules)); err != nil {
+		return err
+	}
+	if !e.Input.Event.Valid() || !filepath.IsAbs(e.Input.CWD) {
+		return errors.New("hooks: invalid event or working directory")
+	}
+	if err := e.Input.ValidateCommandMaterial(); err != nil {
+		return err
+	}
+	for _, rule := range e.Rules {
+		if err := rule.Validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type Diagnostic struct {
+	Source  string `json:"source"`
+	Message string `json:"message"`
+}
+type Advice struct {
+	Decision    hook.CommandDecision `json:"decision"`
+	Diagnostics []Diagnostic         `json:"diagnostics"`
+}
+
+func (a Advice) Validate() error {
+	if !a.Decision.Verdict.Valid() || len(a.Diagnostics) > hook.MaxHooksPerCascade {
+		return errors.New("hooks: invalid event advice")
+	}
+	if a.Decision.Verdict == hook.CommandDeny && a.Decision.RewriteArguments != "" {
+		return errors.New("hooks: denied event cannot rewrite arguments")
+	}
+	if len(a.Decision.Reason) > MaxCommandOutputBytes {
+		return errors.New("hooks: event reason exceeds capacity")
+	}
+	for _, diagnostic := range a.Diagnostics {
+		if diagnostic.Message == "" || len(diagnostic.Message) > MaxCommandOutputBytes {
+			return errors.New("hooks: invalid event diagnostic")
+		}
+	}
+	if len(a.Decision.RewriteArguments) > hook.MaxArgumentsBytes || len(a.Decision.InjectContext) > hook.MaxHooksPerCascade*MaxCommandOutputBytes {
+		return errors.New("hooks: event advice exceeds capacity")
+	}
+	return nil
 }

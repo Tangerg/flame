@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/qimu/portable"
 )
@@ -347,12 +348,13 @@ type PluginValueChange struct {
 }
 
 type PluginContribution struct {
-	Background bool                `json:"background,omitzero"`
-	ID         string              `json:"id"`
-	Server     string              `json:"server"`
-	Export     string              `json:"export"`
-	Contract   string              `json:"contract"`
-	Requires   []PluginRequirement `json:"requires"`
+	SelectionRoles []string            `json:"selectionRoles,omitzero"`
+	Background     bool                `json:"background,omitzero"`
+	ID             string              `json:"id"`
+	Server         string              `json:"server"`
+	Export         string              `json:"export"`
+	Contract       string              `json:"contract"`
+	Requires       []PluginRequirement `json:"requires"`
 }
 
 type PluginRequirement struct {
@@ -412,16 +414,20 @@ type PluginPointBinding struct {
 }
 
 type PluginClientComponent struct {
-	Selector       *PluginRendererSelector      `json:"selector,omitzero"`
-	ID             string                       `json:"id"`
-	Title          string                       `json:"title"`
-	Scope          extension.ComponentScope     `json:"scope"`
-	Placement      extension.ComponentPlacement `json:"placement"`
-	Entry          string                       `json:"entry"`
-	Export         string                       `json:"export"`
-	Contribution   string                       `json:"contribution,omitzero"`
-	Material       string                       `json:"material,omitzero"`
-	SettingsIntent extension.SettingsIntent     `json:"settingsIntent,omitzero"`
+	ToolCategory builtin.ToolCategory `json:"toolCategory,omitzero"`
+	TargetView   string               `json:"targetView,omitzero"`
+
+	Selector        *PluginRendererSelector      `json:"selector,omitzero"`
+	ID              string                       `json:"id"`
+	Title           string                       `json:"title"`
+	LocalizedTitles map[string]string            `json:"localizedTitles,omitzero"`
+	Scope           extension.ComponentScope     `json:"scope"`
+	Placement       extension.ComponentPlacement `json:"placement"`
+	Entry           string                       `json:"entry"`
+	Export          string                       `json:"export"`
+	Contribution    string                       `json:"contribution,omitzero"`
+	Material        string                       `json:"material,omitzero"`
+	SettingsIntent  string                       `json:"settingsIntent,omitzero"`
 }
 
 // PluginTerminalView is a management surface a release contributes to terminal

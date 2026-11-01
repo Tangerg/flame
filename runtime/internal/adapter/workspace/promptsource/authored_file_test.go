@@ -16,7 +16,7 @@ func TestReadAuthoredPromptFilePreservesCancellationCause(t *testing.T) {
 	ctx, cancel := context.WithCancelCause(t.Context())
 	cancel(cause)
 
-	if _, err := readAuthoredPromptFile(ctx, "unused"); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+	if _, err := readAuthoredPromptFile(ctx, nil, "unused"); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
 		t.Fatalf("readAuthoredPromptFile error = %v, want cancellation category and owner cause", err)
 	}
 }
@@ -41,7 +41,12 @@ func TestAuthoredPromptAdmissionPreservesInputFailure(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			content, err := readAuthoredPromptFile(t.Context(), path)
+			root, err := os.OpenRoot(filepath.Dir(path))
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = root.Close() })
+			content, err := readAuthoredPromptFile(t.Context(), root, filepath.Base(path))
 			if len(content) != 0 || !errors.Is(err, test.category) || !errors.Is(err, test.cause) {
 				t.Fatalf("prompt admission lost classification or input cause: %v", err)
 			}

@@ -1,4 +1,6 @@
 export const zh: Record<string, string> = {
+  "worktree.open": "查看工作区差异（{{count}} 个文件）",
+  "worktree.files": "{{count}} 个文件",
   "panel.title": "工作区 diff",
   refresh: "刷新",
   "scope.label": "比较范围",

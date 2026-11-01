@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )

@@ -158,6 +158,7 @@ func NewBridge(config BridgeConfig) (*Bridge, error) {
 }
 
 func (*Bridge) Profile() qimu.Profile          { return qimu.BrowserJS }
+func (b *Bridge) MaximumRequestBytes() int64   { return b.config.MaxRequestBytes }
 func (*Bridge) RealmBound() bool               { return true }
 func (b *Bridge) Authority() control.Authority { return b.authority }
 func RealmID(realm control.Realm) qimu.RealmID { return qimu.RealmID(realm.ID + ":" + realm.Epoch) }

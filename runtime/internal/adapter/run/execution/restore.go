@@ -262,6 +262,7 @@ func restoreManagedDelegateCall(
 		return nil, fmt.Errorf("delegate child %s has no unfinished parent tool", child.ProcessID())
 	}
 	return &managedDelegateCall{
+		source:            deployments.delegateSource,
 		identity:          delegateCallIdentity{parentID: parentID, childKey: child.ChildKey()},
 		parentRelation:    parentSnapshot.Relation(),
 		target:            target.DeploymentRef(),

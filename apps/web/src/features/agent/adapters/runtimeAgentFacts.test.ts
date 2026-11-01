@@ -1,3 +1,5 @@
+import { projectToolCall } from "@/features/agent/application/fold/projections";
+import { durableItemSource } from "@/features/agent/application/fold/source";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 let testClient: TestClient;
@@ -287,6 +289,39 @@ describe("Runtime → Agent fact adapter", () => {
       type: "child",
       rootRun: runtimeRunFact(runningRoot()),
       run: mapped,
+    });
+  });
+
+  it("projects captured source identity into the read model without changing the alias", () => {
+    const installationId = "eeb329cd-c7ce-40c9-bd90-6821fef06d30";
+    const name = "web_web_search__b3cbf166d115fd3b";
+    const item = runtimeItem({
+      type: "toolCall",
+      id: "tool",
+      runId: "run",
+      status: "completed",
+      startedAt: "2026-08-12T08:00:00Z",
+      finishedAt: "2026-08-12T08:00:01Z",
+      tool: {
+        name,
+        arguments: {},
+        result: "recorded",
+        source: {
+          modelName: "web_web_search",
+          ref: {
+            type: "mcp",
+            name: "web_search",
+            server: { name: "web", origin: { type: "installation", installationId } },
+          },
+        },
+      },
+    });
+    if (item.type !== "toolCall") throw new Error("missing tool call");
+    const tool = projectToolCall(item, undefined, durableItemSource(item));
+    expect(tool.name).toBe(name);
+    expect(tool.source).toEqual({
+      modelName: "web_web_search",
+      ref: { type: "mcp", name: "web_search", serverName: "web", installationId },
     });
   });
 

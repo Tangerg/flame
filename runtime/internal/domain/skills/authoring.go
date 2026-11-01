@@ -17,6 +17,7 @@ import (
 )
 
 var (
+	ErrUnsafeProposal    = errors.New("skills: dangerous instruction")
 	ErrInvalidName       = errors.New("skills: invalid name")
 	ErrConflict          = errors.New("skills: destination already exists")
 	ErrProposalChanged   = errors.New("skills: proposal content changed")
@@ -235,7 +236,7 @@ func (p Proposal) Validate() error {
 			MaxAuthoredSkillDocumentBytes,
 		)
 	}
-	return nil
+	return p.CheckSafety()
 }
 
 // dangerousSkillPattern carries only what a published Skill must not teach but
@@ -267,4 +268,11 @@ func (p Proposal) SafetyIssue() ProposalSafetyIssue {
 		}
 	}
 	return ProposalSafe
+}
+
+func (p Proposal) CheckSafety() error {
+	if p.SafetyIssue() != ProposalSafe {
+		return fmt.Errorf("%w: %q", ErrUnsafeProposal, p.Name)
+	}
+	return nil
 }

@@ -6,7 +6,7 @@ import {
   waveStepCount,
   type MessageRenderUnit,
 } from "@/features/agent/presentation/messageRenderUnits";
-import { toolCategoryForName } from "@/features/agent/application/fold/reducer.fixtures";
+import { toolCategoryForName } from "@/test/toolCategory.generated";
 const NO_AWAITING: ReadonlyMap<string, string> = new Map();
 
 const text = (value: string, status: "running" | "complete" = "complete"): ContentBlock => ({

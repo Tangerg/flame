@@ -283,6 +283,7 @@ export function projectToolCall(
     id: item.id,
     runId: item.runId,
     name: item.tool.name,
+    ...(item.tool.source ? { source: item.tool.source } : {}),
     ...(item.tool.category !== undefined ? { category: item.tool.category } : {}),
     ...(item.tool.resultShape !== undefined ? { resultShape: item.tool.resultShape } : {}),
     fn: toolLabel(item.tool),

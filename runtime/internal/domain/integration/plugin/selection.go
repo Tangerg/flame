@@ -20,7 +20,7 @@ type SelectionRecord struct {
 }
 
 func NewProviderSelection(record SelectionRecord) (ProviderSelection, error) {
-	if record.Role == "" || len(record.Role) > 256 || !utf8.ValidString(record.Role) || strings.ContainsAny(record.Role, " \t\r\n") {
+	if record.Role == "" || utf8.RuneCountInString(record.Role) > 256 || !utf8.ValidString(record.Role) || strings.ContainsAny(record.Role, " \t\r\n") {
 		return ProviderSelection{}, fmt.Errorf("%w: provider role reference", ErrInvalid)
 	}
 	if err := record.Installation.Validate(); err != nil {

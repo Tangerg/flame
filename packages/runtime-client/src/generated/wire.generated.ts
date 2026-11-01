@@ -433,7 +433,7 @@ export interface CommandResult {
   output: string;
 }
 
-export type ComponentPlacement = "export" | "workspaceView" | "settingsPane" | "clientEffect" | "sessionAction" | "fileRenderer" | "toolResultRenderer";
+export type ComponentPlacement = "workspaceChangesAction" | "sharedClientEffect" | "export" | "workspaceView" | "settingsPane" | "clientEffect" | "sessionAction" | "fileRenderer" | "toolResultRenderer";
 
 export type ComponentScope = "installation" | "workspace" | "session" | "client" | "file" | "toolResult";
 
@@ -1289,12 +1289,15 @@ export interface PluginClientComponent {
   entry: string;
   export: string;
   id: string;
+  localizedTitles?: Record<string, string>;
   material?: string;
   placement: ComponentPlacement;
   scope: ComponentScope;
   selector?: PluginRendererSelector;
-  settingsIntent?: SettingsIntent;
+  settingsIntent?: string;
+  targetView?: string;
   title: string;
+  toolCategory?: ToolCategory;
 }
 
 export interface PluginCollaborator {
@@ -1337,6 +1340,7 @@ export interface PluginContribution {
   export: string;
   id: string;
   requires: PluginRequirement[];
+  selectionRoles?: string[];
   server: string;
 }
 
@@ -1717,6 +1721,11 @@ export interface ReadinessStatus {
   status: HealthStatus;
 }
 
+export interface RecordedToolSource {
+  modelName: string;
+  ref: ToolRef;
+}
+
 export interface RecordedUsage {
   coverage: UsageCoverage;
   recordedCostUsd?: number;
@@ -2078,8 +2087,6 @@ export interface SetPluginEnablementRequest {
   installationId: string;
 }
 
-export type SettingsIntent = "modelProviders" | "mcpServers";
-
 export interface Skill {
   description?: string;
   installation?: SkillInstallation;
@@ -2265,6 +2272,7 @@ export interface ToolInvocation {
   name: string;
   result?: unknown;
   resultShape?: ResultShape;
+  source?: RecordedToolSource;
 }
 
 export type ToolRef =
@@ -2435,7 +2443,7 @@ export const WIRE_ENUMS = {
   CancelRunResponseType: ["root", "child"],
   CapabilityRequirementType: ["feature", "interruptType", "runtimeTopic"],
   ChangeStatus: ["added", "deleted", "modified", "moved"],
-  ComponentPlacement: ["export", "workspaceView", "settingsPane", "clientEffect", "sessionAction", "fileRenderer", "toolResultRenderer"],
+  ComponentPlacement: ["workspaceChangesAction", "sharedClientEffect", "export", "workspaceView", "settingsPane", "clientEffect", "sessionAction", "fileRenderer", "toolResultRenderer"],
   ComponentScope: ["installation", "workspace", "session", "client", "file", "toolResult"],
   ContentBlockType: ["text", "image"],
   DiffBaselineType: ["head", "mergeBase", "emptyTree"],
@@ -2505,7 +2513,6 @@ export const WIRE_ENUMS = {
   RuntimeTopic: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed"],
   SafetyClass: ["safe", "write", "exec", "network"],
   SessionStatus: ["running", "waiting", "idle"],
-  SettingsIntent: ["modelProviders", "mcpServers"],
   SkillLifecycle: ["active", "archived"],
   SkillProposalOrigin: ["requested", "mined"],
   SkillProposalScope: ["project", "user"],

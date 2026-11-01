@@ -124,3 +124,16 @@ func TestProbeVerifiesThroughTheProviderAdapter(t *testing.T) {
 		})
 	}
 }
+
+func (f capabilityAdapters) Profile(ctx context.Context, id string) (modelprovider.Profile, error) {
+	profiles, err := f.Profiles(ctx)
+	if err != nil {
+		return modelprovider.Profile{}, err
+	}
+	for _, profile := range profiles {
+		if profile.ID == id {
+			return profile, nil
+		}
+	}
+	return modelprovider.Profile{}, modelsapp.ErrProviderUnsupported
+}

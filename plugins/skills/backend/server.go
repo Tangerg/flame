@@ -28,7 +28,7 @@ func newServer(learning *learner) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	server := sdk.NewServer(&sdk.Implementation{Name: "flame.skills", Version: "3.0.0"}, nil)
+	server := sdk.NewServer(&sdk.Implementation{Name: "flame.skills", Version: "4.0.0"}, nil)
 	backend, err := qimumcp.NewBackend(server)
 	if err != nil {
 		return nil, err
@@ -93,7 +93,7 @@ func learningCommand[P, R any](ctx context.Context, l *learner, method string, c
 	if err != nil {
 		return zero, err
 	}
-	if err := prepared.Complete(ctx, outcome.JSON()); err != nil {
+	if err := prepared.SettleExternal(ctx, outcome.JSON(), nil); err != nil {
 		return zero, err
 	}
 	return value, nil

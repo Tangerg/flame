@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -16,14 +15,14 @@ import (
 
 func TestSettingsIntentReachesPublicAndNativeProjections(t *testing.T) {
 	release := testsupport.Release(t, "settings", plugin.Declaration{Name: "settings", Components: []plugin.ClientComponent{{
-		ID: "models", Title: "Model settings", Scope: "client", Placement: "settingsPane", SettingsIntent: extension.SettingsIntentModelProviders,
+		ID: "models", Title: "Model settings", Scope: "client", Placement: "settingsPane", SettingsIntent: "model-providers",
 		Entry: plugin.Namespace + "/components/settings.js", Export: "Settings",
 	}}})
 	wire, err := presentPluginRelease(release)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(wire.Components) != 1 || wire.Components[0].SettingsIntent != extension.SettingsIntentModelProviders {
+	if len(wire.Components) != 1 || wire.Components[0].SettingsIntent != "model-providers" {
 		t.Fatalf("public component intent: %+v", wire.Components)
 	}
 	if err := protocol.ValidateWireTree(wire); err != nil {
@@ -37,10 +36,10 @@ func TestSettingsIntentReachesPublicAndNativeProjections(t *testing.T) {
 	if err := json.Unmarshal(metadata, &native); err != nil {
 		t.Fatal(err)
 	}
-	if native.Component.SettingsIntent != extension.SettingsIntentModelProviders {
+	if native.Component.SettingsIntent != "model-providers" {
 		t.Fatalf("native component intent: %+v", native.Component)
 	}
-	wire.Components[0].SettingsIntent = "invented"
+	wire.Components[0].SettingsIntent = "bad intent"
 	if err := protocol.ValidateWireTree(wire); err == nil {
 		t.Fatal("wire accepted an unknown settings intent")
 	}

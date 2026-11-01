@@ -1,3 +1,4 @@
+import type { WorkspaceAccess } from "@/features/workspace/public/workspace";
 import { type ThemeAccess } from "@/features/theme/public/theme";
 import { asyncDisposeSymbol } from "dougong";
 import { type FlameClient } from "@flame/runtime-client";
@@ -11,11 +12,12 @@ import { type ReactNode } from "react";
 export function createInstalledPlugins(
   runtimeClient: () => FlameClient,
   runtimeEndpoint: () => string,
+  workspace: WorkspaceAccess,
   themeAccess: ThemeAccess,
   saveFile: ComponentContext["saveFile"],
   wrap: (children: ReactNode) => ReactNode = (children) => children,
 ) {
-  const access = createInstalledPackageState();
+  const access = createInstalledPackageState(runtimeEndpoint);
   const modules = new ComponentModules(wrap);
   let current: ContributionLifetime | undefined;
   let retiring = Promise.resolve();
@@ -55,6 +57,7 @@ export function createInstalledPlugins(
                 modules,
                 runtime.connectionGeneration()!,
                 runtimeEndpoint(),
+                workspace,
                 themeAccess,
                 saveFile,
               );

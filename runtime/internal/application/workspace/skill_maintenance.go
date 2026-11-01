@@ -13,7 +13,7 @@ import (
 // second result contains every public file identity changed before return, even
 // when a later step fails.
 type idleSkillSweeper interface {
-	SweepIdle(ctx context.Context, now time.Time, archiveAfter time.Duration) ([]string, []string, error)
+	SweepIdle(ctx context.Context, now time.Time, inactiveSince time.Time) ([]string, []string, error)
 }
 
 // SkillMaintenance owns automatic Skill-library curation. It is deliberately
@@ -38,8 +38,8 @@ func NewSkillMaintenance(sweeper idleSkillSweeper, observations *AuthoredWatch, 
 // ArchiveIdle applies automatic user-library curation and reports the names it
 // archived. A sweep may commit file changes before returning an error, so every
 // non-empty identity set invalidates the public Skill projections.
-func (s *SkillMaintenance) ArchiveIdle(ctx context.Context, now time.Time, archiveAfter time.Duration) ([]string, error) {
-	archived, identities, err := s.sweeper.SweepIdle(ctx, now, archiveAfter)
+func (s *SkillMaintenance) ArchiveIdle(ctx context.Context, now time.Time, inactiveSince time.Time) ([]string, error) {
+	archived, identities, err := s.sweeper.SweepIdle(ctx, now, inactiveSince)
 	if len(identities) > 0 {
 		s.observations.Accept(AuthoredChange{Resource: AuthoredSkills, Identities: identities})
 		s.invalidations.Notify(invalidation.Notice{Resource: invalidation.Skills})

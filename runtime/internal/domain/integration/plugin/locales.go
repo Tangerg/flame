@@ -27,9 +27,7 @@ func (b *Builder) AdmitLocale(value Locale) error {
 	if len(b.declaration.Locales) >= maxLocales {
 		return refuse(DiagnosticComponentLimit, "locale capacity")
 	}
-	tag, err := language.Parse(value.Tag)
-	base, _, _ := tag.Raw()
-	if err != nil || tag.String() != value.Tag || base.String() == "und" || tag == baseLocale || len(value.Tag) > MaxLocaleTagBytes {
+	if !validTranslationTag(value.Tag) {
 		return refuse(DiagnosticInvalidDeclaration, "locale tag %q", value.Tag)
 	}
 	if slices.ContainsFunc(b.declaration.Locales, func(current Locale) bool { return current.Tag == value.Tag }) {
@@ -55,4 +53,10 @@ func (i Installation) AuthorizeLocale(release Release, digest integrity.Digest, 
 		}
 	}
 	return Locale{}, fmt.Errorf("%w: locale %q", ErrNotFound, tag)
+}
+
+func validTranslationTag(value string) bool {
+	tag, err := language.Parse(value)
+	base, _, _ := tag.Raw()
+	return err == nil && tag.String() == value && base.String() != "und" && tag != baseLocale && len(value) <= MaxLocaleTagBytes
 }

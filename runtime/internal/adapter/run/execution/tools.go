@@ -52,6 +52,7 @@ type ToolAuthorizationRequest struct {
 	WorkspaceCWD      string
 	CallID            string
 	Tool              tool.Ref
+	QualifiedName     bool
 	SourceFingerprint integrity.Digest
 	Arguments         tool.Arguments
 	SafetyClass       tool.SafetyClass
@@ -100,7 +101,7 @@ func validateToolApprovalPrompt(request ToolAuthorizationRequest, prompt runs.Ap
 	if err := prompt.Validate(); err != nil {
 		return err
 	}
-	if prompt.CallID != request.CallID || prompt.Tool != request.Tool || prompt.SourceFingerprint != request.SourceFingerprint ||
+	if prompt.CallID != request.CallID || prompt.Tool != request.Tool || prompt.QualifiedName != request.QualifiedName || prompt.SourceFingerprint != request.SourceFingerprint ||
 		prompt.Arguments != request.Arguments.Canonical() || prompt.SafetyClass != request.SafetyClass {
 		return errors.New("execution: Tool approval prompt differs from its invocation")
 	}

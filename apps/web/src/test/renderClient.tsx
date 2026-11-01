@@ -124,6 +124,7 @@ export function createTestClient(
   const installedPlugins = createInstalledPlugins(
     client,
     runtime.endpoint.currentRuntimeEndpoint,
+    workspace.access,
     theme.access,
     (request) => host.saveFile(request),
     (children) => <Wrapper>{children}</Wrapper>,

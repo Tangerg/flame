@@ -1,5 +1,5 @@
 // Package process binds Qimu's approved execution to a durable local runner
-// and the public Portable MCP protocol. It never selects a provider.
+// and a consumer-selected stream protocol. It never selects a provider.
 package process
 
 import (
@@ -12,12 +12,9 @@ import (
 	"sync"
 	"time"
 
-	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/qimu/runner"
 	"github.com/Tangerg/qimu/sqlite"
 )
@@ -32,7 +29,7 @@ type Program struct {
 	Directory          string
 	CredentialRevision string
 	Metadata           map[string]jsonvalue.Value
-	// Exports maps logical declarations to physical MCP exports. It cannot
+	// Exports maps logical declarations to physical exports. It cannot
 	// change their contracts or choose a provider. Omitted entries keep the name.
 	Exports map[string]string
 	// ReleaseContent transfers an acquired immutable-content lease to the instance.
@@ -57,35 +54,40 @@ type Runner interface {
 }
 
 type Config struct {
-	Runner        Runner
-	Store         *sqlite.Store
-	Source        Source
-	CloseTimeout  time.Duration
-	MaxFrameBytes int
-	// Configure projects a consumer's exact approved binding into MCP's setup
-	// protocol. It may rename slots and attach consumer authority, but may not
-	// select replacement providers. It must register acquired resources with Setup.
-	Configure func(context.Context, *qimu.Setup, *sdk.ClientSession) ([]mcp.SetupContribution, sdk.ParamsBase, error)
+	Runner       Runner
+	Store        *sqlite.Store
+	Source       Source
+	CloseTimeout time.Duration
 }
 
-type Driver struct {
-	config Config
-	mu     sync.Mutex
-	live   map[string]*execution
+// Bind validates the captured contract before launching anything. A partially
+// connected session remains owned by the driver even if setup returns an error.
+type Protocol[S io.Closer] interface {
+	Name() qimu.Profile
+	Bind(*qimu.Setup, Program) (Connect[S], error)
+}
+type Connect[S io.Closer] func(context.Context, io.ReadWriteCloser) (S, []qimu.ExportValue, error)
+
+type Driver[S io.Closer] struct {
+	profile Protocol[S]
+	config  Config
+	mu      sync.Mutex
+	live    map[string]*execution[S]
 }
 
-type execution struct {
-	driver   *Driver
+type execution[S io.Closer] struct {
+	channel  io.Closer
+	driver   *Driver[S]
 	attempt  sqlite.Attempt
 	ready    chan struct{}
 	mu       sync.Mutex
-	session  *sdk.ClientSession
+	session  S
 	started  bool
 	resource *qimu.ResourceHandle
 	cancel   context.CancelCauseFunc
 }
 
-// MCP's reader and writer refer to the same attached stream. They share its
+// A protocol and the driver may both close the attached stream. They share its
 // single close result instead of closing one underlying socket twice.
 type transport struct {
 	io.ReadWriteCloser
@@ -98,11 +100,11 @@ func (t *transport) Close() error {
 	return t.err
 }
 
-func New(config Config) (*Driver, error) {
-	if nilDependency(config.Runner) || config.Store == nil || nilDependency(config.Source) || config.CloseTimeout <= 0 || config.MaxFrameBytes <= 0 {
+func New[S io.Closer](config Config, profile Protocol[S]) (*Driver[S], error) {
+	if nilDependency(config.Runner) || config.Store == nil || nilDependency(config.Source) || config.CloseTimeout <= 0 || nilDependency(profile) || profile.Name().Validate() != nil {
 		return nil, fmt.Errorf("%w: process driver requires runner, store, source and explicit limits", qimu.ErrInvalid)
 	}
-	return &Driver{config: config, live: make(map[string]*execution)}, nil
+	return &Driver[S]{profile: profile, config: config, live: make(map[string]*execution[S])}, nil
 }
 
 func nilDependency(dependency any) bool {
@@ -118,9 +120,9 @@ func nilDependency(dependency any) bool {
 	}
 }
 
-func (*Driver) Profile() qimu.Profile { return qimu.MCPProcess }
+func (d *Driver[S]) Profile() qimu.Profile { return d.profile.Name() }
 
-func (d *Driver) Prepare(ctx context.Context, setup *qimu.Setup) ([]qimu.ExportValue, error) {
+func (d *Driver[S]) Prepare(ctx context.Context, setup *qimu.Setup) ([]qimu.ExportValue, error) {
 	if setup == nil || setup.Epoch() != d.config.Store.Epoch() {
 		return nil, qimu.ErrFenced
 	}
@@ -147,35 +149,12 @@ func (d *Driver) Prepare(ctx context.Context, setup *qimu.Setup) ([]qimu.ExportV
 	if err != nil {
 		return nil, err
 	}
-	contracts := make(map[string]*portable.Capability, len(unit.Exports))
-	required := make([]mcp.CapabilityExport, 0, len(unit.Exports))
-	physicalContracts := make(map[string]*portable.Capability)
-	for _, export := range unit.Exports {
-		valueContract, err := setup.ValueContract(export.Contract)
-		if err != nil {
-			return nil, err
-		}
-		descriptor, err := setup.ContractDescriptor(valueContract)
-		if err != nil {
-			return nil, err
-		}
-		contract, err := portable.ParseCapability(descriptor)
-		if err != nil {
-			return nil, err
-		}
-		if contract == nil || valueContract.Mode != qimu.PortableMode || valueContract.Kind != qimu.ServiceKind || contract.Descriptor().Reference != valueContract.Name || contract.Identity().Digest() != valueContract.Digest {
-			return nil, qimu.ErrContractMismatch
-		}
-		contracts[export.Name] = contract
-		physical := physicalExport(program, export.Name)
-		if original := physicalContracts[physical]; original != nil {
-			if original.Identity() != contract.Identity() {
-				return nil, qimu.ErrContractMismatch
-			}
-		} else {
-			physicalContracts[physical] = contract
-			required = append(required, mcp.CapabilityExport{Name: physical, Contract: contract.Descriptor()})
-		}
+	connect, err := d.profile.Bind(setup, program)
+	if err != nil {
+		return nil, err
+	}
+	if connect == nil {
+		return nil, qimu.ErrInvalid
 	}
 	if err := d.config.Runner.Fence(ctx, setup.Epoch()); err != nil {
 		return nil, err
@@ -187,19 +166,19 @@ func (d *Driver) Prepare(ctx context.Context, setup *qimu.Setup) ([]qimu.ExportV
 	if identity.Fenced || identity.Epoch != setup.Epoch() {
 		return nil, qimu.ErrFenced
 	}
-	attempt := sqlite.Attempt{ID: setup.InstanceID(), Epoch: setup.Epoch(), Source: setup.Binding().Source, Binding: setup.Snapshot(), Realm: identity.ID, Profile: qimu.MCPProcess}
+	attempt := sqlite.Attempt{ID: setup.InstanceID(), Epoch: setup.Epoch(), Source: setup.Binding().Source, Binding: setup.Snapshot(), Realm: identity.ID, Profile: d.Profile()}
 	if err := d.config.Store.RecordAttempt(ctx, attempt); err != nil {
 		return nil, err
 	}
 	ownedCtx, cancel := context.WithCancelCause(setup.Lifetime().Context())
 	stopPreparation := context.AfterFunc(ctx, func() { cancel(context.Cause(ctx)) })
 	defer stopPreparation()
-	e := &execution{driver: d, attempt: attempt, ready: make(chan struct{}), cancel: cancel}
+	e := &execution[S]{driver: d, attempt: attempt, ready: make(chan struct{}), cancel: cancel}
 	var resources []*qimu.ResourceHandle
 	if content != nil {
 		resources = append(resources, content)
 	}
-	resource, err := setup.Own(qimu.Resource{Name: "mcp process " + attempt.ID, Cancel: cancel, Close: e.close}, resources...)
+	resource, err := setup.Own(qimu.Resource{Name: "process " + attempt.ID, Cancel: cancel, Close: e.close}, resources...)
 	if err != nil {
 		cancel(err)
 		// No creation was dispatched; this proof is local, exact and final.
@@ -234,75 +213,33 @@ func (d *Driver) Prepare(ctx context.Context, setup *qimu.Setup) ([]qimu.ExportV
 		return nil, err
 	}
 	channel := &transport{ReadWriteCloser: attached}
-	client, err := mcp.NewProcessClient()
-	if err != nil {
-		return nil, errors.Join(err, channel.Close())
-	}
-	session, err := client.Connect(ownedCtx, &sdk.IOTransport{Reader: channel, Writer: channel, MaxLineLength: d.config.MaxFrameBytes}, nil)
-	if err != nil {
-		return nil, errors.Join(err, channel.Close())
-	}
+	e.mu.Lock()
+	e.channel = channel
+	e.mu.Unlock()
+	stopConnect := context.AfterFunc(ownedCtx, func() { _ = channel.Close() })
+	defer stopConnect()
+	session, values, err := connect(ownedCtx, channel)
 	e.mu.Lock()
 	e.session = session
 	e.mu.Unlock()
-	if err := mcp.VerifyCapabilities(ownedCtx, session, required); err != nil {
-		return nil, err
+	if err == nil && nilDependency(session) {
+		return nil, qimu.ErrInvalid
 	}
-	var metadata sdk.ParamsBase
-	var contributions []mcp.SetupContribution
-	if d.config.Configure != nil {
-		contributions, metadata, err = d.config.Configure(ownedCtx, setup, session)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		if len(unit.Imports) != 0 {
-			return nil, errors.New("process: declared imports require an approved callback configuration")
-		}
-		for _, export := range unit.Exports {
-			contributions = append(contributions, mcp.SetupContribution{ID: export.Name, Export: physicalExport(program, export.Name), Requires: []mcp.SetupDependency{}})
-		}
-	}
-	if err := mcp.SetUp(ownedCtx, session, contributions, metadata); err != nil {
-		return nil, err
-	}
-	if err := setup.OnActivate(func(activateCtx context.Context) error { return mcp.Activate(activateCtx, session) }); err != nil {
-		return nil, err
-	}
-	values := make([]qimu.ExportValue, 0, len(unit.Exports))
-	for _, export := range unit.Exports {
-		binding, err := mcp.NewCapabilityBinding(session, physicalExport(program, export.Name), contracts[export.Name])
-		if err != nil {
-			return nil, err
-		}
-		var published any
-		if value, present := program.Metadata[export.Name]; present {
-			published = value
-		}
-		values = append(values, qimu.ExportValue{Name: export.Name, Contract: export.Contract, Metadata: published, Value: binding, Durable: true})
-	}
-	return values, nil
-}
-
-func physicalExport(program Program, logical string) string {
-	if physical, mapped := program.Exports[logical]; mapped {
-		return physical
-	}
-	return logical
+	return values, err
 }
 
 // SessionBorrow holds actual work on the approved Use until Close. A consumer
 // must not retain Session or start new calls after closing this borrow.
-type SessionBorrow struct {
+type SessionBorrow[S io.Closer] struct {
 	work    *qimu.Work
-	session *sdk.ClientSession
+	session S
 }
 
-func (b *SessionBorrow) Context() context.Context    { return b.work.Context() }
-func (b *SessionBorrow) Session() *sdk.ClientSession { return b.session }
-func (b *SessionBorrow) Close()                      { b.work.Finish() }
+func (b *SessionBorrow[S]) Context() context.Context { return b.work.Context() }
+func (b *SessionBorrow[S]) Session() S               { return b.session }
+func (b *SessionBorrow[S]) Close()                   { b.work.Finish() }
 
-func (d *Driver) BorrowSession(ctx context.Context, use *qimu.Use, unit qimu.UnitRef) (*SessionBorrow, error) {
+func (d *Driver[S]) BorrowSession(ctx context.Context, use *qimu.Use, unit qimu.UnitRef) (*SessionBorrow[S], error) {
 	if use == nil {
 		return nil, qimu.ErrInvalid
 	}
@@ -310,7 +247,7 @@ func (d *Driver) BorrowSession(ctx context.Context, use *qimu.Use, unit qimu.Uni
 	if err != nil {
 		return nil, err
 	}
-	borrow := &SessionBorrow{work: work}
+	borrow := &SessionBorrow[S]{work: work}
 	err = qimu.BorrowInstance(work.Context(), use, unit, func(ctx context.Context, instanceID string) error {
 		d.mu.Lock()
 		execution := d.live[instanceID]
@@ -321,7 +258,7 @@ func (d *Driver) BorrowSession(ctx context.Context, use *qimu.Use, unit qimu.Uni
 		execution.mu.Lock()
 		borrow.session = execution.session
 		execution.mu.Unlock()
-		if borrow.session == nil {
+		if nilDependency(borrow.session) {
 			return qimu.ErrUnavailable
 		}
 		return nil
@@ -333,7 +270,7 @@ func (d *Driver) BorrowSession(ctx context.Context, use *qimu.Use, unit qimu.Uni
 	return borrow, nil
 }
 
-func (e *execution) close(ctx context.Context) (qimu.ReleaseState, error) {
+func (e *execution[S]) close(ctx context.Context) (qimu.ReleaseState, error) {
 	e.cancel(qimu.ErrClosed)
 	ctx, cancel := context.WithTimeout(ctx, e.driver.config.CloseTimeout)
 	defer cancel()
@@ -343,12 +280,16 @@ func (e *execution) close(ctx context.Context) (qimu.ReleaseState, error) {
 		return qimu.ResourceUnconfirmed, context.Cause(ctx)
 	}
 	e.mu.Lock()
-	session, started := e.session, e.started
-	e.session = nil
+	session, channel, started := e.session, e.channel, e.started
+	var empty S
+	e.session, e.channel = empty, nil
 	e.mu.Unlock()
 	var transportErr error
-	if session != nil {
+	if !nilDependency(session) {
 		transportErr = session.Close()
+	}
+	if channel != nil {
+		transportErr = errors.Join(transportErr, channel.Close())
 	}
 	if !started {
 		proof := sqlite.ExitProof{AttemptID: e.attempt.ID, Realm: e.attempt.Realm, ExitID: e.attempt.ID + ":not-dispatched", Kind: "not-dispatched", Evidence: []byte(`{"dispatched":false}`)}
@@ -369,13 +310,13 @@ func (e *execution) close(ctx context.Context) (qimu.ReleaseState, error) {
 	return qimu.ResourceReleased, transportErr
 }
 
-func (d *Driver) forget(id string) {
+func (d *Driver[S]) forget(id string) {
 	d.mu.Lock()
 	delete(d.live, id)
 	d.mu.Unlock()
 }
 
-func (d *Driver) release(ctx context.Context, attempt sqlite.Attempt, observed runner.Observation) error {
+func (d *Driver[S]) release(ctx context.Context, attempt sqlite.Attempt, observed runner.Observation) error {
 	if observed.AttemptID != attempt.ID || observed.Epoch != attempt.Epoch || observed.RunnerID != attempt.Realm || observed.State != runner.Exited || observed.ProofID == "" {
 		return runner.ErrUnknown
 	}
@@ -390,7 +331,7 @@ func (d *Driver) release(ctx context.Context, attempt sqlite.Attempt, observed r
 	return d.acknowledgeExit(ctx, attempt, proof)
 }
 
-func (d *Driver) acknowledgeExit(ctx context.Context, attempt sqlite.Attempt, proof sqlite.ExitProof) error {
+func (d *Driver[S]) acknowledgeExit(ctx context.Context, attempt sqlite.Attempt, proof sqlite.ExitProof) error {
 	receipt := runner.ExitReceipt{AttemptID: attempt.ID, Epoch: attempt.Epoch, RunnerID: attempt.Realm, ProofID: proof.ExitID}
 	if err := d.config.Runner.AcknowledgeExit(ctx, receipt); err != nil {
 		return err
@@ -400,7 +341,7 @@ func (d *Driver) acknowledgeExit(ctx context.Context, attempt sqlite.Attempt, pr
 
 // Reconcile consumes late evidence for the original resource. It never repeats
 // cleanup or launches a replacement under that attempt identity.
-func (d *Driver) Reconcile(ctx context.Context, id string) error {
+func (d *Driver[S]) Reconcile(ctx context.Context, id string) error {
 	d.mu.Lock()
 	e := d.live[id]
 	d.mu.Unlock()
@@ -423,14 +364,14 @@ func (d *Driver) Reconcile(ctx context.Context, id string) error {
 
 // Recover seals old creation before examining absence. Only the same live
 // runner can prove an old attempt did not start or has actually exited.
-func (d *Driver) Recover(ctx context.Context) error {
+func (d *Driver[S]) Recover(ctx context.Context) error {
 	records, err := d.config.Store.Attempts(ctx)
 	if err != nil {
 		return err
 	}
 	pending := false
 	for _, record := range records {
-		if (!record.Released || record.PendingHandoff) && record.Attempt.Profile == qimu.MCPProcess {
+		if (!record.Released || record.PendingHandoff) && record.Attempt.Profile == d.Profile() {
 			pending = true
 			break
 		}
@@ -447,14 +388,14 @@ func (d *Driver) Recover(ctx context.Context) error {
 	}
 	var failures error
 	for _, record := range records {
-		if record.Attempt.Profile == qimu.MCPProcess {
+		if record.Attempt.Profile == d.Profile() {
 			failures = errors.Join(failures, d.recoverAttempt(ctx, identity, record))
 		}
 	}
 	return failures
 }
 
-func (d *Driver) recoverAttempt(ctx context.Context, identity runner.Identity, record sqlite.AttemptRecord) error {
+func (d *Driver[S]) recoverAttempt(ctx context.Context, identity runner.Identity, record sqlite.AttemptRecord) error {
 	attempt := record.Attempt
 	if record.PendingHandoff {
 		return d.acknowledgeExit(ctx, attempt, *record.Proof)
@@ -487,7 +428,7 @@ func (d *Driver) recoverAttempt(ctx context.Context, identity runner.Identity, r
 	return d.release(ctx, attempt, observed)
 }
 
-func (d *Driver) releaseAbsentAttempt(ctx context.Context, attempt sqlite.Attempt) error {
+func (d *Driver[S]) releaseAbsentAttempt(ctx context.Context, attempt sqlite.Attempt) error {
 	request := runner.AbsenceRequest{AttemptID: attempt.ID, Epoch: attempt.Epoch, RunnerID: attempt.Realm}
 	proof, err := d.config.Runner.ProveAbsent(ctx, request)
 	if err == nil {

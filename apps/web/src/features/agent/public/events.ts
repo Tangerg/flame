@@ -1,3 +1,4 @@
+import type { CapturedToolSource } from "@flame/component-sdk";
 import { type ResultShape } from "@/foundation/protocolValues.generated";
 import { type ItemStatus as AgentItemStatus } from "@/foundation/protocolValues.generated";
 export type { AgentItemStatus };
@@ -40,6 +41,7 @@ export interface AgentQuestion {
 }
 
 export interface AgentToolInvocation {
+  source?: CapturedToolSource;
   argumentsText?: string;
   name: string;
   category?: ToolCategory;

@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	"path/filepath"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -21,6 +21,7 @@ import (
 
 type modelProviderAdapters interface {
 	Profiles(context.Context) ([]modelprovider.Profile, error)
+	Profile(context.Context, string) (modelprovider.Profile, error)
 	RemoteModels(context.Context, modelprovider.Connection) ([]string, error)
 	Verify(context.Context, modelprovider.Connection) error
 	OpenChat(context.Context, modelchoice.Selection, modelprovider.Connection) (modeladapter.ResolvedChat, error)

@@ -20,7 +20,7 @@ func (c *client) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 	case "textDocument/publishDiagnostics":
 		params, err := decodePublishDiagnostics(req.Params)
 		if err != nil {
-			c.storeDiagnosticsError(err)
+			c.storeDocumentError(params.URI, err)
 			return
 		}
 		c.storeDiagnostics(params)
@@ -52,7 +52,7 @@ func decodePublishDiagnostics(raw *jsontext.Value) (publishDiagnosticsParams, er
 		return publishDiagnosticsParams{}, fmt.Errorf("decode publishDiagnostics params: %w", err)
 	}
 	if err := params.validate(); err != nil {
-		return publishDiagnosticsParams{}, fmt.Errorf("validate publishDiagnostics params: %w", err)
+		return params, fmt.Errorf("validate publishDiagnostics params: %w", err)
 	}
 	return params, nil
 }
@@ -96,7 +96,7 @@ func (c *client) storeDiagnostics(p publishDiagnosticsParams) {
 	// reintroduce the growth closing the document was meant to bound.
 	if doc, isOpen := c.open[p.URI]; isOpen {
 		if p.Version > doc.version {
-			c.diagnosticsErr = fmt.Errorf("diagnostics version %d exceeds synchronized version %d", p.Version, doc.version)
+			c.diags[p.URI] = diagSet{protocolErr: fmt.Errorf("diagnostics version %d exceeds synchronized version %d", p.Version, doc.version)}
 			c.signalDiagnosticsUpdateLocked()
 			c.mu.Unlock()
 			return
@@ -109,6 +109,19 @@ func (c *client) storeDiagnostics(p publishDiagnosticsParams) {
 	c.diagnosticsErr = nil
 	c.signalDiagnosticsUpdateLocked()
 	c.mu.Unlock()
+}
+
+func (c *client) storeDocumentError(uri string, err error) {
+	if uri == "" {
+		c.storeDiagnosticsError(err)
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if _, open := c.open[uri]; open {
+		c.diags[uri] = diagSet{protocolErr: err}
+		c.signalDiagnosticsUpdateLocked()
+	}
 }
 
 func (c *client) storeDiagnosticsError(err error) {

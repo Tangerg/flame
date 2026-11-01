@@ -15,6 +15,7 @@ import (
 type client struct {
 	spec ServerSpec
 	root string
+	save saveSynchronization
 
 	conn        *jsonrpc2.Conn
 	cancel      context.CancelFunc
@@ -51,6 +52,7 @@ type openDoc struct {
 }
 
 type diagSet struct {
+	protocolErr error
 	version     int
 	diagnostics []Diagnostic
 }

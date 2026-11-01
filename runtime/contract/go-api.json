@@ -1115,9 +1115,19 @@
           "value": "\"settingsPane\""
         },
         {
+          "name": "ComponentPlacementSharedClientEffect",
+          "type": "ComponentPlacement",
+          "value": "\"sharedClientEffect\""
+        },
+        {
           "name": "ComponentPlacementToolResultRenderer",
           "type": "ComponentPlacement",
           "value": "\"toolResultRenderer\""
+        },
+        {
+          "name": "ComponentPlacementWorkspaceChangesAction",
+          "type": "ComponentPlacement",
+          "value": "\"workspaceChangesAction\""
         },
         {
           "name": "ComponentPlacementWorkspaceView",
@@ -1165,6 +1175,11 @@
           "value": "\"model\""
         },
         {
+          "name": "ModelProviderContract",
+          "type": "untyped string",
+          "value": "\"flame.model-provider.v1\""
+        },
+        {
           "name": "RendererFileExtension",
           "type": "RendererSelectorKind",
           "value": "\"fileExtension\""
@@ -1203,16 +1218,6 @@
           "name": "ScopeInstallation",
           "type": "untyped string",
           "value": "\"installation\""
-        },
-        {
-          "name": "SettingsIntentMCPServers",
-          "type": "SettingsIntent",
-          "value": "\"mcpServers\""
-        },
-        {
-          "name": "SettingsIntentModelProviders",
-          "type": "SettingsIntent",
-          "value": "\"modelProviders\""
         },
         {
           "name": "TerminalActionRow",
@@ -1282,6 +1287,14 @@
       ],
       "functions": [
         {
+          "name": "ModelProviderRole",
+          "signature": "func(provider string) string"
+        },
+        {
+          "name": "ProviderFromRole",
+          "signature": "func(role string) (string, bool)"
+        },
+        {
           "name": "ValidateInvocation",
           "signature": "func(invocation portable.Invocation) error"
         }
@@ -1326,21 +1339,6 @@
         },
         {
           "name": "ResultShape",
-          "kind": "defined",
-          "underlying": "string",
-          "methods": [
-            {
-              "name": "Valid",
-              "signature": "func() bool"
-            },
-            {
-              "name": "Values",
-              "signature": "func() []string"
-            }
-          ]
-        },
-        {
-          "name": "SettingsIntent",
           "kind": "defined",
           "underlying": "string",
           "methods": [
@@ -1771,6 +1769,10 @@
             {
               "name": "JSONSchemaEnum",
               "signature": "func() []string"
+            },
+            {
+              "name": "Valid",
+              "signature": "func() bool"
             }
           ]
         },
@@ -1815,10 +1817,6 @@
             }
           ],
           "methods": [
-            {
-              "name": "Matches",
-              "signature": "func(in Input) bool"
-            },
             {
               "name": "Validate",
               "signature": "func() error"
@@ -2716,6 +2714,16 @@
           "value": "\"failed\""
         },
         {
+          "name": "SessionDocumentChunkBytes",
+          "type": "untyped int",
+          "value": "65536"
+        },
+        {
+          "name": "SessionMarkdownReference",
+          "type": "untyped string",
+          "value": "\"flame.session-markdown.v1\""
+        },
+        {
           "name": "ToolCommandPrefix",
           "type": "untyped string",
           "value": "\"tool:\""
@@ -2747,6 +2755,10 @@
         {
           "name": "DefiniteToolFailure",
           "signature": "func(cause error) error"
+        },
+        {
+          "name": "IdentifyDocument",
+          "signature": "func(body []byte) DocumentIdentity"
         },
         {
           "name": "InvocationID",
@@ -2813,6 +2825,10 @@
           "signature": "func(output chat.ToolOutput, failed bool) (ToolReceipt, error)"
         },
         {
+          "name": "ReadDocumentRangeMethod",
+          "signature": "func() (*mcp.Method[DocumentRange, string], error)"
+        },
+        {
           "name": "ReadToolReceipt",
           "signature": "func(ctx context.Context, session *mcp.ClientSession, callID string, remote string, admitted jsonvalue.Value) (*chat.ToolOutput, error)"
         },
@@ -2821,12 +2837,20 @@
           "signature": "func(server *mcp.Server, tools ...tool.Tool) error"
         },
         {
+          "name": "RenderSessionMarkdownMethod",
+          "signature": "func() (*mcp.StreamingMethod[DocumentIdentity, string, DocumentIdentity], error)"
+        },
+        {
           "name": "SelectedModelMethod",
           "signature": "func() (*mcp.Method[ModelCallRequest, ModelResult], error)"
         },
         {
           "name": "SelectedModelStreamMethod",
           "signature": "func() (*mcp.StreamingMethod[ModelCallRequest, chat.ResponseDelta, ModelResult], error)"
+        },
+        {
+          "name": "SessionMarkdownContract",
+          "signature": "func() (*portable.Capability, error)"
         },
         {
           "name": "StreamModel",
@@ -2874,6 +2898,48 @@
         }
       ],
       "types": [
+        {
+          "name": "DocumentIdentity",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
+            },
+            {
+              "name": "Bytes",
+              "type": "int64",
+              "tag": "json:\"bytes\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Read",
+              "signature": "func(source []byte, r DocumentRange) (string, error)"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "DocumentRange",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
+            },
+            {
+              "name": "Offset",
+              "type": "int64",
+              "tag": "json:\"offset\""
+            }
+          ]
+        },
         {
           "name": "ModelCallBudget",
           "kind": "struct",
@@ -3357,6 +3423,11 @@
           "value": "65536"
         },
         {
+          "name": "Reference",
+          "type": "untyped string",
+          "value": "\"flame.hooks.v1\""
+        },
+        {
           "name": "TimedOut",
           "type": "FailureKind",
           "value": "\"timedOut\""
@@ -3372,11 +3443,33 @@
           "signature": "func() (*mcp.Method[Discovery, []hook.Hook], error)"
         },
         {
-          "name": "ExecuteMethod",
-          "signature": "func() (*mcp.Method[Command, Result], error)"
+          "name": "EvaluateMethod",
+          "signature": "func() (*mcp.Method[Evaluation, Advice], error)"
         }
       ],
       "types": [
+        {
+          "name": "Advice",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Decision",
+              "type": "hook.CommandDecision",
+              "tag": "json:\"decision\""
+            },
+            {
+              "name": "Diagnostics",
+              "type": "[]Diagnostic",
+              "tag": "json:\"diagnostics\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
         {
           "name": "Command",
           "kind": "struct",
@@ -3410,6 +3503,22 @@
           ]
         },
         {
+          "name": "Diagnostic",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Source",
+              "type": "string",
+              "tag": "json:\"source\""
+            },
+            {
+              "name": "Message",
+              "type": "string",
+              "tag": "json:\"message\""
+            }
+          ]
+        },
+        {
           "name": "Discovery",
           "kind": "struct",
           "fields": [
@@ -3432,6 +3541,33 @@
               "name": "IncludeProject",
               "type": "bool",
               "tag": "json:\"includeProject\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Evaluation",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Rules",
+              "type": "[]hook.Hook",
+              "tag": "json:\"rules\""
+            },
+            {
+              "name": "Input",
+              "type": "hook.Input",
+              "tag": "json:\"input\""
+            },
+            {
+              "name": "DeclarativeOnly",
+              "type": "bool",
+              "tag": "json:\"declarativeOnly,omitzero\""
             }
           ],
           "methods": [
@@ -4668,15 +4804,15 @@
           "kind": "struct",
           "fields": [
             {
-              "name": "AfterMillis",
-              "type": "*int64",
-              "tag": "json:\"afterMillis,omitzero\" jsonschema:\"minimum=1\""
+              "name": "InactiveSince",
+              "type": "*time.Time",
+              "tag": "json:\"inactiveSince,omitzero\""
             }
           ],
           "methods": [
             {
-              "name": "Duration",
-              "signature": "func() (time.Duration, error)"
+              "name": "Validate",
+              "signature": "func(observedAt time.Time) error"
             }
           ]
         },
@@ -4878,6 +5014,10 @@
             {
               "name": "NewlyAdmitted",
               "signature": "func() bool"
+            },
+            {
+              "name": "SettleExternal",
+              "signature": "func(ctx context.Context, reply []byte, record func(context.Context) error) error"
             }
           ]
         }
@@ -5770,6 +5910,11 @@
           "name": "MaximumRuntimeEventSequence",
           "type": "untyped int",
           "value": "9007199254740991"
+        },
+        {
+          "name": "MaximumSessionArtifactBytes",
+          "type": "untyped int",
+          "value": "67108864"
         },
         {
           "name": "MessagePhaseCommentary",
@@ -10671,6 +10816,16 @@
           "kind": "struct",
           "fields": [
             {
+              "name": "ToolCategory",
+              "type": "builtin.ToolCategory",
+              "tag": "json:\"toolCategory,omitzero\""
+            },
+            {
+              "name": "TargetView",
+              "type": "string",
+              "tag": "json:\"targetView,omitzero\""
+            },
+            {
               "name": "Selector",
               "type": "*PluginRendererSelector",
               "tag": "json:\"selector,omitzero\""
@@ -10684,6 +10839,11 @@
               "name": "Title",
               "type": "string",
               "tag": "json:\"title\""
+            },
+            {
+              "name": "LocalizedTitles",
+              "type": "map[string]string",
+              "tag": "json:\"localizedTitles,omitzero\""
             },
             {
               "name": "Scope",
@@ -10717,7 +10877,7 @@
             },
             {
               "name": "SettingsIntent",
-              "type": "extension.SettingsIntent",
+              "type": "string",
               "tag": "json:\"settingsIntent,omitzero\""
             }
           ]
@@ -10816,6 +10976,11 @@
           "name": "PluginContribution",
           "kind": "struct",
           "fields": [
+            {
+              "name": "SelectionRoles",
+              "type": "[]string",
+              "tag": "json:\"selectionRoles,omitzero\""
+            },
             {
               "name": "Background",
               "type": "bool",
@@ -12057,6 +12222,22 @@
               "name": "Path",
               "type": "string",
               "tag": "json:\"path\""
+            }
+          ]
+        },
+        {
+          "name": "RecordedToolSource",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Ref",
+              "type": "ToolRef",
+              "tag": "json:\"ref\""
+            },
+            {
+              "name": "ModelName",
+              "type": "string",
+              "tag": "json:\"modelName\""
             }
           ]
         },
@@ -13865,6 +14046,11 @@
           "name": "ToolInvocation",
           "kind": "struct",
           "fields": [
+            {
+              "name": "Source",
+              "type": "*RecordedToolSource",
+              "tag": "json:\"source,omitzero\""
+            },
             {
               "name": "ArgumentsText",
               "type": "string",

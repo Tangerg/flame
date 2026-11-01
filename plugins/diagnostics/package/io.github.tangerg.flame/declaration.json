@@ -4,6 +4,15 @@
     {
       "id": "diagnostics",
       "title": "Diagnostics",
+      "localizedTitles": {
+        "zh": "客户端诊断",
+        "zh-TW": "用戶端診斷",
+        "de": "Clientdiagnose",
+        "fr": "Diagnostic du client",
+        "es": "Diagnóstico del cliente",
+        "ja": "クライアント診断",
+        "ko": "클라이언트 진단"
+      },
       "scope": "installation",
       "placement": "workspaceView",
       "entry": "io.github.tangerg.flame/components/component.js",

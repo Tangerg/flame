@@ -164,7 +164,7 @@
       "placement": "toolResultRenderer",
       "selector": {
         "type": "toolName",
-        "name": "web_search"
+        "name": "web_web_search"
       },
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "RecordedResult"
@@ -188,7 +188,7 @@
       "placement": "toolResultRenderer",
       "selector": {
         "type": "toolName",
-        "name": "web_fetch"
+        "name": "web_web_fetch"
       },
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "RecordedResult"
@@ -200,7 +200,7 @@
       "placement": "toolResultRenderer",
       "selector": {
         "type": "toolName",
-        "name": "web_browse"
+        "name": "web_web_browse"
       },
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "RecordedResult"
@@ -212,7 +212,7 @@
       "placement": "toolResultRenderer",
       "selector": {
         "type": "toolName",
-        "name": "search_memory"
+        "name": "memory_search_memory"
       },
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "RecordedResult"

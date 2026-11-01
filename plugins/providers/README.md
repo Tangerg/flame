@@ -7,7 +7,7 @@ No provider is inferred from a model name.
 
 The installed settings component manages credentials, connection probes and the
 utility and embedding roles through the same public Runtime operations used by
-other consumers. It declares the `modelProviders` settings intent so setup and
+other consumers. It declares the `model-providers` settings intent so setup and
 Composer navigation find its actual installation entry. The graphical client
 retains only its ordinary model and provider catalogs for basic composition.
 
@@ -39,10 +39,13 @@ accounting and execution recovery. Installing this backend grants none of those
 authorities to the provider. A missing or disabled selected adapter is a visible
 failure; it cannot select a replacement model.
 
-Fresh Runtime databases select this adapter from the shipped catalog. Existing
-installations must explicitly install, enable and select its `model-provider`
-contribution for `flame.model-provider.v1`. Disabling it refuses new model work;
-Session history and plugin management remain available. A waiting Run retains its
+Fresh Runtime databases grant the shipped adapter the individual provider IDs in
+its published scope resource. The backend registry generates that resource with
+`go generate ./plugins/providers/backend`. Production and third-party installations
+can coexist: select a contribution separately for each `flame.model-provider.v1/<provider-id>`
+role in plugin management or with `flame plugins select-provider`. Credentials
+travel only to the selected contribution for that exact provider. Disabling one
+adapter leaves other providers available. A waiting Run retains its
 exact release and original construction receipt. Finish waiting work with its
 matching Runtime build before upgrading; no compatibility checkpoint reader is
 provided.

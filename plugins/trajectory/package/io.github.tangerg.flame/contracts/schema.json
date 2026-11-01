@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "DocumentIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "digest": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "digest",
+        "bytes"
+      ],
+      "type": "object"
+    },
+    "RenderV1Chunk": {
+      "type": "string"
+    },
+    "RenderV1Input": {
+      "$ref": "#/$defs/DocumentIdentity"
+    },
+    "RenderV1Output": {
+      "$ref": "#/$defs/DocumentIdentity"
+    }
+  }
+}

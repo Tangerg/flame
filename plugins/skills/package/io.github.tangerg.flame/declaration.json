@@ -4,6 +4,15 @@
     {
       "id": "skills",
       "title": "Skills",
+      "localizedTitles": {
+        "zh": "技能",
+        "zh-TW": "技能",
+        "de": "Fähigkeiten",
+        "fr": "Compétences",
+        "es": "Habilidades",
+        "ja": "スキル",
+        "ko": "스킬"
+      },
       "scope": "client",
       "placement": "workspaceView",
       "entry": "io.github.tangerg.flame/components/component.js",

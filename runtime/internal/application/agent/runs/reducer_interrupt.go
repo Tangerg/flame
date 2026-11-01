@@ -202,17 +202,17 @@ func (r *reducer) approvalInterrupt(prompt ApprovalPrompt) (transcript.Item, tra
 func (r *reducer) approvalItem(prompt ApprovalPrompt, ref *openTool) (transcript.Item, bool, error) {
 	arguments, err := parseToolArguments(prompt.Arguments)
 	if err != nil {
-		return transcript.Item{}, false, fmt.Errorf("approval tool %q arguments: %w", prompt.Tool.ModelName(), err)
+		return transcript.Item{}, false, fmt.Errorf("approval tool %q arguments: %w", prompt.Tool.PublishedName(prompt.QualifiedName), err)
 	}
 	if ref != nil {
 		call, _ := ref.item.ToolCall()
-		if call.Invocation.Name != prompt.Tool.ModelName() {
+		if !call.Invocation.MatchesSource(prompt.Tool.PublishedName(prompt.QualifiedName), prompt.Tool) {
 			return transcript.Item{}, false, errors.New("approval prompt changes Tool identity")
 		}
 		return ref.item, false, nil
 	}
 	item, reused, err := r.reuseOrCreateToolItem(
-		prompt.CallID, *newToolInvocation(prompt.Tool.ModelName(), arguments, nil), prompt.SafetyClass,
+		prompt.CallID, *newToolInvocation(prompt.Tool, prompt.Tool.PublishedName(prompt.QualifiedName), arguments, nil), prompt.SafetyClass,
 	)
 	if err != nil {
 		return transcript.Item{}, false, err

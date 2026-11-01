@@ -43,6 +43,16 @@ export interface CapturedFile {
   readonly truncated: boolean;
 }
 
+export interface WorkspaceChangesActionInput {
+  readonly changes: readonly {
+    readonly path: string;
+    readonly added?: number;
+    readonly removed?: number;
+    readonly binary?: boolean;
+  }[];
+  openView(origin?: HTMLElement): void;
+}
+
 export interface RecordedFileChange {
   readonly path: string;
   readonly status: ChangeStatus;
@@ -51,7 +61,20 @@ export interface RecordedFileChange {
   readonly removed: number;
 }
 
+export interface CapturedToolSource {
+  readonly modelName: string;
+  readonly ref:
+    | Readonly<{ type: "builtIn"; name: string }>
+    | Readonly<{
+        type: "mcp";
+        name: string;
+        serverName: string;
+        installationId?: string;
+      }>;
+}
+
 export interface CapturedToolResult {
+  readonly source?: CapturedToolSource;
   readonly id: string;
   readonly runId: string;
   readonly name: string;

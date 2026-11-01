@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -155,6 +156,9 @@ func validateInput(ctx context.Context, binding *qimumcp.Binding, input jsonvalu
 func admitCallRequest(request plugins.CallRequest, streaming bool) (*portable.Method, error) {
 	if request.Contract == nil {
 		return nil, plugin.ErrInvalid
+	}
+	if request.Contract.Descriptor().Reference == hookprovider.Reference {
+		return nil, fmt.Errorf("%w: lifecycle hook evaluation requires host-admitted project trust", plugin.ErrInvalid)
 	}
 	if err := request.Installation.Validate(); err != nil {
 		return nil, err

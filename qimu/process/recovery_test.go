@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/integrity"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/process"
 	"github.com/Tangerg/qimu/runner"
 	"github.com/Tangerg/qimu/sqlite"
@@ -97,7 +98,7 @@ func TestRecoveryRequiresOriginalSealedNonCreationEvidence(t *testing.T) {
 				}
 			}
 			source := &source{}
-			driver, err := process.New(process.Config{Runner: current, Store: store, Source: source, CloseTimeout: time.Second, MaxFrameBytes: 1 << 20})
+			driver, err := qimumcp.NewProcessDriver(process.Config{Runner: current, Store: store, Source: source, CloseTimeout: time.Second}, qimumcp.ProcessOptions{MaxFrameBytes: 1 << 20})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -142,7 +143,7 @@ func recordAttempt(t *testing.T, store *sqlite.Store, identity runner.Identity) 
 	contract := qimu.ContractRef{Name: capability.Descriptor().Reference, Version: "1", Digest: integrity.Hash(capability.Identity().JSON()), Kind: qimu.ServiceKind, Mode: qimu.PortableMode}
 	root := qimu.ExportRef{InstallationID: "original", Release: integrity.Hash([]byte("release")), UnitID: "backend", Export: "echo", Contract: contract}
 	binding := qimu.BindingSnapshot{FormatVersion: 1, Roots: []qimu.ExportRef{root}, Units: []qimu.UnitBinding{{Source: root.Unit(), Configuration: integrity.Hash([]byte(`{}`)), Imports: []qimu.ImportDeclaration{}}}}
-	attempt := sqlite.Attempt{ID: "approved-before-crash", Epoch: store.Epoch(), Source: root.Unit(), Binding: binding, Realm: identity.ID, Profile: qimu.MCPProcess}
+	attempt := sqlite.Attempt{ID: "approved-before-crash", Epoch: store.Epoch(), Source: root.Unit(), Binding: binding, Realm: identity.ID, Profile: qimumcp.ProcessProfile}
 	if err := store.RecordAttempt(t.Context(), attempt); err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +204,7 @@ func TestRecoverOriginalExitHandoffAcrossHostRestart(t *testing.T) {
 			}
 			store = open()
 			defer store.Close()
-			driver, err := process.New(process.Config{Runner: original, Store: store, Source: &source{}, CloseTimeout: time.Second, MaxFrameBytes: 1 << 20})
+			driver, err := qimumcp.NewProcessDriver(process.Config{Runner: original, Store: store, Source: &source{}, CloseTimeout: time.Second}, qimumcp.ProcessOptions{MaxFrameBytes: 1 << 20})
 			if err != nil {
 				t.Fatal(err)
 			}

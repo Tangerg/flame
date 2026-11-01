@@ -12,7 +12,6 @@ import (
 	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
 	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
-	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 )
 
@@ -81,7 +80,11 @@ func (s hookSourceFixture) AcquireHooks(context.Context) (adapterhooks.Use, erro
 func (s hookSourceFixture) Discover(context.Context, hookprovider.Discovery) ([]hookdata.Hook, error) {
 	return append([]hookdata.Hook(nil), s.rules...), nil
 }
-func (s hookSourceFixture) RunHookCommand(context.Context, apphooks.CommandRequest) apphooks.CommandResult {
-	return apphooks.CommandResult{Err: s.failure, ExitCode: 7}
+func (s hookSourceFixture) Evaluate(_ context.Context, in hookprovider.Evaluation) (hookprovider.Advice, error) {
+	result := hookprovider.Advice{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandAllow}}
+	if s.failure != nil {
+		result.Diagnostics = []hookprovider.Diagnostic{{Source: in.Rules[0].Source, Message: s.failure.Error()}}
+	}
+	return result, nil
 }
 func (hookSourceFixture) Close() error { return nil }

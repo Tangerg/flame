@@ -23,7 +23,7 @@ type Source interface {
 // Use retains the captured provider until discovery and every event have joined.
 type Use interface {
 	Discover(context.Context, hookprovider.Discovery) ([]hook.Hook, error)
-	RunHookCommand(context.Context, apphooks.CommandRequest) apphooks.CommandResult
+	Evaluate(context.Context, hookprovider.Evaluation) (hookprovider.Advice, error)
 	Close() error
 }
 
@@ -49,7 +49,23 @@ func (r *Resolver) For(ctx context.Context, cwd string) (*apphooks.Bound, error)
 	if err != nil || use == nil {
 		return nil, err
 	}
-	return apphooks.NewBound(inspection.Hooks, apphooks.NewRunner(use, r.onError), use.Close), nil
+	evaluate := use.Evaluate
+	if slices.ContainsFunc(inspection.Hooks, func(rule hook.Hook) bool { return rule.Scope == hook.ScopeProject }) {
+		evaluate = func(ctx context.Context, event hookprovider.Evaluation) (hookprovider.Advice, error) {
+			trusted, err := r.trusted(ctx, inspection.ProjectRoot)
+			if err != nil {
+				return hookprovider.Advice{}, err
+			}
+			if !trusted {
+				event.Rules = slices.DeleteFunc(slices.Clone(event.Rules), func(rule hook.Hook) bool { return rule.Scope == hook.ScopeProject })
+			}
+			if len(event.Rules) == 0 {
+				return hookprovider.Advice{Decision: hook.CommandDecision{Verdict: hook.CommandAllow}}, nil
+			}
+			return use.Evaluate(ctx, event)
+		}
+	}
+	return apphooks.NewBound(inspection.Hooks, evaluate, r.onError, use.Close), nil
 }
 
 func (r *Resolver) Inspect(ctx context.Context, cwd string) (_ apphooks.Inspection, returned error) {

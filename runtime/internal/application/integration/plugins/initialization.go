@@ -39,10 +39,8 @@ func Initialize(ctx context.Context, host *qimu.Host, store initializationStore,
 	if len(paths) == 0 || len(paths) > plugin.MaxInstallations {
 		return errors.New("plugins: distribution requires a bounded first-party catalog")
 	}
-	for _, source := range paths {
-		if err := installFirstParty(ctx, host, store, packages, source); err != nil {
-			return err
-		}
+	if err := installDistribution(ctx, host, store, packages, paths); err != nil {
+		return err
 	}
 	if err := selectInitialProviders(ctx, store, selections, defaults); err != nil {
 		return err
@@ -50,17 +48,45 @@ func Initialize(ctx context.Context, host *qimu.Host, store initializationStore,
 	return host.Admission().Admit(ctx, func(admitted context.Context) error { return store.MarkInitialized(admitted) })
 }
 
-func installFirstParty(ctx context.Context, host *qimu.Host, store Store, packages packages, source string) (err error) {
-	candidate, err := packages.Materialize(ctx, source)
-	if err != nil {
-		return fmt.Errorf("plugins: admit first-party package: %w", err)
+// Preflight holds the same immutable candidates through publication. Failure to
+// identify any source leaves existing installation decisions untouched.
+func installDistribution(ctx context.Context, host *qimu.Host, store Store, packages packages, paths []string) (err error) {
+	distribution := make([]distributionCandidate, 0, len(paths))
+	defer func() {
+		for _, source := range distribution {
+			err = errors.Join(err, source.candidate.Discard())
+		}
+	}()
+	names := make(map[string]string, len(paths))
+	for _, source := range paths {
+		candidate, err := packages.Materialize(ctx, source)
+		if err != nil {
+			return fmt.Errorf("plugins: preflight distribution source %q: %w", source, err)
+		}
+		distribution = append(distribution, distributionCandidate{source: source, candidate: candidate})
+		name := candidate.Release().Declaration().Name
+		if previous, exists := names[name]; exists {
+			return fmt.Errorf("plugins: distribution sources %q and %q publish the same package %q", previous, source, name)
+		}
+		names[name] = source
 	}
-	defer func() { err = errors.Join(err, candidate.Discard()) }()
-	release := candidate.Release()
-	if len(release.Declaration().Diagnostics) != 0 {
-		return errors.New("plugins: first-party package has admission diagnostics")
+	for _, source := range distribution {
+		if err := source.install(ctx, host, store, packages); err != nil {
+			return fmt.Errorf("plugins: initialize distribution source %q: %w", source.source, err)
+		}
 	}
-	id, err := identity.ParseInstallation(uuid.NewSHA1(uuid.NameSpaceURL, []byte("io.github.tangerg.flame/first-party/"+release.Declaration().Name)).String())
+	return nil
+}
+
+type distributionCandidate struct {
+	source    string
+	candidate Candidate
+}
+
+func (entry distributionCandidate) install(ctx context.Context, host *qimu.Host, store Store, packages packages) error {
+	release := entry.candidate.Release()
+	source := entry.source
+	id, err := firstPartyID(release.Declaration().Name)
 	if err != nil {
 		return err
 	}
@@ -76,11 +102,15 @@ func installFirstParty(ctx context.Context, host *qimu.Host, store Store, packag
 	if err != nil {
 		return err
 	}
-	installation, err = installation.Enable(release)
-	if err != nil {
-		return err
+	// Keep identifiable failed releases visible to installation inspection and repair.
+	// Only a release without admission findings can participate in default roles.
+	if len(release.Declaration().Diagnostics) == 0 {
+		installation, err = installation.Enable(release)
+		if err != nil {
+			return err
+		}
 	}
-	if _, err := candidate.Publish(ctx); err != nil {
+	if _, err := entry.candidate.Publish(ctx); err != nil {
 		return err
 	}
 	projection, err := ProjectFrameworkRelease(release)
@@ -94,17 +124,17 @@ func installFirstParty(ctx context.Context, host *qimu.Host, store Store, packag
 	if err != nil {
 		return err
 	}
-	if _, err := host.Install(ctx, qimu.InstallationConfig{ID: id.Host(), Plugin: projection.Plugin, Configuration: configuration, Enabled: true}); err != nil {
+	if _, err := host.Install(ctx, qimu.InstallationConfig{ID: id.Host(), Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()}); err != nil {
 		return err
 	}
 	return packages.Prepare(ctx, installation, release)
 }
 
+func firstPartyID(name string) (identity.InstallationID, error) {
+	return identity.ParseInstallation(uuid.NewSHA1(uuid.NameSpaceURL, []byte("io.github.tangerg.flame/first-party/"+name)).String())
+}
+
 func selectInitialProviders(ctx context.Context, store Store, selections SelectionStore, defaults []DefaultProvider) error {
-	snapshots, err := store.List(ctx)
-	if err != nil {
-		return err
-	}
 	seen := make(map[string]bool, len(defaults))
 	existing, err := selections.List(ctx)
 	if err != nil {
@@ -115,17 +145,15 @@ func selectInitialProviders(ctx context.Context, store Store, selections Selecti
 			return errors.New("plugins: duplicate distribution provider role")
 		}
 		seen[initial.Role] = true
-		var chosen *plugin.Snapshot
-		for index := range snapshots {
-			if snapshots[index].Selected.Declaration().Name != initial.Package {
-				continue
-			}
-			if chosen != nil {
-				return errors.New("plugins: distribution provider package is ambiguous")
-			}
-			chosen = &snapshots[index]
+		id, err := firstPartyID(initial.Package)
+		if err != nil {
+			return err
 		}
-		if chosen == nil {
+		chosen, found, err := store.Get(ctx, id)
+		if err != nil {
+			return err
+		}
+		if !found || !chosen.Installation.Enabled() {
 			continue
 		}
 		contribution, err := plugin.ParseContributionID(initial.Contribution)
@@ -144,26 +172,28 @@ func selectInitialProviders(ctx context.Context, store Store, selections Selecti
 		if descriptor.Reference != initial.Role || descriptor.Composition != portable.Selection {
 			return errors.New("plugins: distribution provider does not declare its selected role")
 		}
-		selection, err := plugin.NewProviderSelection(plugin.SelectionRecord{Role: initial.Role, Installation: chosen.Installation.ID(), Contribution: contribution})
-		if err != nil {
-			return err
-		}
-		completed := false
-		for _, current := range existing {
-			if current.Snapshot().Role != initial.Role {
-				continue
+		for _, role := range declared.SelectionRoles() {
+			if err := initializeSelection(ctx, selections, existing, plugin.SelectionRecord{Role: role, Installation: chosen.Installation.ID(), Contribution: contribution}); err != nil {
+				return err
 			}
-			if current.Snapshot() != selection.Snapshot() {
-				return errors.New("plugins: unfinished distribution provider differs from its original choice")
-			}
-			completed = true
-		}
-		if completed {
-			continue
-		}
-		if err := selections.Save(ctx, selection); err != nil {
-			return err
 		}
 	}
 	return nil
+}
+
+func initializeSelection(ctx context.Context, selections SelectionStore, existing []plugin.ProviderSelection, record plugin.SelectionRecord) error {
+	for _, current := range existing {
+		if current.Snapshot().Role != record.Role {
+			continue
+		}
+		if current.Snapshot() != record {
+			return errors.New("plugins: unfinished distribution provider differs from its original choice")
+		}
+		return nil
+	}
+	selection, err := plugin.NewProviderSelection(record)
+	if err != nil {
+		return err
+	}
+	return selections.Save(ctx, selection)
 }

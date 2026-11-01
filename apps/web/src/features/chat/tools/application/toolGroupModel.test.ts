@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { t } from "@/lib/i18n/index";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { toolGroupModel } from "@/features/chat/tools/application/toolGroupModel";
-import { toolCategoryForName } from "@/features/agent/application/fold/reducer.fixtures";
+import { toolCategoryForName } from "@/test/toolCategory.generated";
 
 // The Runtime stamps a category on built-in calls only; fixtures reproduce that.
 const tool = ({ runId = "run_1", ...overrides }: Partial<ToolCall> = {}): ToolCall => {

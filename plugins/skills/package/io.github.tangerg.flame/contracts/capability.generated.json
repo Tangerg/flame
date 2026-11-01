@@ -5,10 +5,10 @@
   "scope": "installation",
   "methods": [
     {
-      "name": "flame.skill-learning/archive.v1",
+      "name": "flame.skill-learning/archive.v2",
       "kind": "command",
       "target": "installation",
-      "description": "Return an optional inactivity threshold when an archive check is due at the caller's time. The caller alone admits and commits archival.",
+      "description": "Return an optional absolute activity cutoff for the supplied observation time. The caller alone admits and commits archival.",
       "input": {
         "$defs": {
           "skilllearning.ArchiveRequest": {
@@ -43,15 +43,9 @@
           "skilllearning.ArchiveAdvice": {
             "additionalProperties": false,
             "properties": {
-              "afterMillis": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "minimum": 1,
-                "type": "integer"
+              "inactiveSince": {
+                "format": "date-time",
+                "type": "string"
               }
             },
             "type": "object"
@@ -60,15 +54,9 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
-          "afterMillis": {
-            "allOf": [
-              {
-                "maximum": 9223372036854775807,
-                "minimum": -9223372036854775808
-              }
-            ],
-            "minimum": 1,
-            "type": "integer"
+          "inactiveSince": {
+            "format": "date-time",
+            "type": "string"
           }
         },
         "type": "object"

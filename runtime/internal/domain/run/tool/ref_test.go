@@ -88,6 +88,9 @@ func TestRefPreservesSourceAcrossModelNameCollisions(t *testing.T) {
 		if pair[0] == pair[1] || pair[0].ModelName() != pair[1].ModelName() {
 			t.Fatalf("identity/projection = %v", pair)
 		}
+		if pair[0].PublishedName(true) == pair[1].PublishedName(true) {
+			t.Fatalf("qualified names collide: %v", pair)
+		}
 		for _, ref := range pair {
 			parsed, err := ParseRef(ref.String())
 			if err != nil || parsed != ref {

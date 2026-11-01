@@ -62,7 +62,8 @@ import {
 } from "@/features/workspace/public/navigation";
 import { type WorkspaceFileViewer } from "@/features/workspace/application/navigationState";
 import { FileTree } from "@/features/workspace/ui/files/FileTree";
-import { selectFileRenderer } from "@/features/workspace/application/fileRenderer";
+import { useRendererChoice } from "@/features/plugins/public/renderers";
+import { fileRendererCandidates } from "@/features/workspace/application/fileRenderer";
 import { type ViewHeaderProps } from "@/features/workspace/ui/ViewHeader";
 import { SystemMessage } from "@/ui/index";
 import { useAsyncFeedback } from "@/lib/useAsyncFeedback";
@@ -318,6 +319,31 @@ function FileBrowser({
   );
 }
 
+function coversWholeFile(file: { truncated?: boolean }, moreBefore: boolean, moreAfter: boolean) {
+  return !file.truncated && !moreBefore && !moreAfter;
+}
+
+function FilePreviewMode({
+  mode,
+  onChange,
+}: {
+  mode: "source" | "rendered";
+  onChange: (mode: "source" | "rendered") => void;
+}) {
+  const t = useT();
+  return (
+    <Segmented
+      value={mode}
+      onChange={onChange}
+      ariaLabel={t("file.mode")}
+      options={[
+        { value: "rendered", label: t("file.mode.rendered") },
+        { value: "source", label: t("file.mode.source") },
+      ]}
+    />
+  );
+}
+
 function FilePreview({
   viewer,
   backRef,
@@ -360,8 +386,13 @@ function FilePreview({
   const moreAfter = data !== undefined && lastShown < data.totalLines;
 
   const renderers = useExtensionPoint(WORKSPACE_FILE_RENDERER);
-  const renderer = selectFileRenderer(renderers, fileExtension(viewer.path));
-  const wholeFile = data !== undefined && !data.truncated && !moreBefore && !moreAfter;
+  const extension = fileExtension(viewer.path);
+  const { renderer, control } = useRendererChoice(
+    "file",
+    extension,
+    fileRendererCandidates(renderers, extension),
+  );
+  const wholeFile = !!data && coversWholeFile(data, moreBefore, moreAfter);
   const [modeFor, setModeFor] = useState<{ intent: object; mode: "rendered" | "source" }>(() => ({
     intent: viewer,
     mode: targetLine > 0 ? "source" : "rendered",
@@ -416,6 +447,7 @@ function FilePreview({
   };
 
   const unsupported = workspaceAccess.errors.isUnsupportedFile(error);
+  const canRender = wholeFile && !unsupported;
   const kind = fileKind(viewer.path);
   const icon = fileIconName(viewer.path);
   const { name } = splitFilePath(viewer.path);
@@ -480,20 +512,11 @@ function FilePreview({
       }
       sub={sub}
       controls={
-        renderer && wholeFile && !unsupported ? (
-          <Segmented
-            value={mode}
-            onChange={setMode}
-            ariaLabel={t("file.mode")}
-            options={[
-              { value: "rendered", label: t("file.mode.rendered") },
-              { value: "source", label: t("file.mode.source") },
-            ]}
-          />
-        ) : undefined
+        canRender && renderer ? <FilePreviewMode mode={mode} onChange={setMode} /> : undefined
       }
       actions={
         <>
+          {canRender && control}
           {!unsupported && (
             <GoToLine onGo={(line) => openWorkspaceFile(workspaceAccess, viewer.path, line)} />
           )}

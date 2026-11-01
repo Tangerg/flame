@@ -73,48 +73,61 @@ func ResolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID string) 
 // The application resolves the boundary and commits the branch through
 // its persistence port.
 func (c *Coordinator) Fork(ctx context.Context, spec ForkSpec) (session.Session, error) {
+	creation, err := c.PrepareFork(ctx, spec)
+	if err != nil {
+		return session.Session{}, err
+	}
+	return creation.apply(ctx)
+}
+
+func (c *Coordinator) PrepareFork(ctx context.Context, spec ForkSpec) (Creation, error) {
 	if err := identity.ValidateSession(spec.ParentID); err != nil {
-		return session.Session{}, fmt.Errorf("sessions: fork: %w", err)
+		return Creation{}, fmt.Errorf("sessions: fork: %w", err)
 	}
 	snapshot, err := c.snapshots.ReadSnapshot(ctx, spec.ParentID)
 	if err != nil {
-		return session.Session{}, err
+		return Creation{}, err
 	}
 	boundary, err := ResolveForkBoundary(snapshot.Messages, snapshot.Runs, spec.FromRunID)
 	if err != nil {
-		return session.Session{}, err
+		return Creation{}, err
 	}
 	// A child starts fresh, so an unrecorded boundary and a recorded empty one seed
 	// the same nothing — the distinction a rollback needs has no branch to make here.
 	plan, err := c.planBoundary(ctx, boundary.RunID)
 	if err != nil {
-		return session.Session{}, err
+		return Creation{}, err
 	}
 	planReplacement, err := c.prepareInitialPlanReplacement(plan.Steps)
 	if err != nil {
-		return session.Session{}, err
+		return Creation{}, err
 	}
 	child, err := snapshot.Session.Fork(c.newID(), spec.Title, c.now())
 	if err != nil {
-		return session.Session{}, err
+		return Creation{}, err
 	}
 	forked, err := c.copyForkSnapshot(snapshot, child, boundary, plan.Steps)
 	if err != nil {
-		return session.Session{}, err
+		return Creation{}, err
 	}
 	fork, err := NewForkPlan(spec.ParentID, forked, planReplacement)
 	if err != nil {
-		return session.Session{}, err
+		return Creation{}, err
 	}
-	if _, err := c.writes.ApplyFork(ctx, fork); err != nil {
-		return session.Session{}, err
+	view, err := c.view(child, activityIdle)
+	if err != nil {
+		return Creation{}, err
 	}
-	c.publishSessionMoved(child.ID())
-	if len(forked.Runs) > 0 {
-		c.publishRunsMoved(child.ID(), forked.Runs)
-	}
-	if planReplacement != nil {
-		c.publishPlanMoved(child.ID())
-	}
-	return child, nil
+	return Creation{value: child, View: view, write: func(tx context.Context) error {
+		_, err := c.writes.ApplyFork(tx, fork)
+		return err
+	}, publish: func() {
+		c.publishSessionMoved(child.ID())
+		if len(forked.Runs) > 0 {
+			c.publishRunsMoved(child.ID(), forked.Runs)
+		}
+		if planReplacement != nil {
+			c.publishPlanMoved(child.ID())
+		}
+	}}, nil
 }

@@ -4,9 +4,18 @@
     {
       "id": "settings",
       "title": "MCP servers",
+      "localizedTitles": {
+        "zh": "MCP 服务器",
+        "zh-TW": "MCP 伺服器",
+        "de": "MCP-Server",
+        "fr": "Serveurs MCP",
+        "es": "Servidores MCP",
+        "ja": "MCP サーバー",
+        "ko": "MCP 서버"
+      },
       "scope": "client",
       "placement": "settingsPane",
-      "settingsIntent": "mcpServers",
+      "settingsIntent": "mcp-servers",
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "MCPServers"
     }

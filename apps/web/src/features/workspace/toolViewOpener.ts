@@ -4,7 +4,6 @@ import { TOOL_VIEW_OPENER } from "@/features/chat/public/tools/types";
 import {
   hasWorkspaceViewForTool,
   openWorkspaceViewForTool,
-  workspaceViewLabelForTool,
 } from "@/features/workspace/application/toolRouting";
 export default function createToolViewOpener(workspaceAccess: WorkspaceAccess) {
   return definePlugin({
@@ -14,7 +13,7 @@ export default function createToolViewOpener(workspaceAccess: WorkspaceAccess) {
         id: "workspace-tool-view",
         order: 0,
         predicate: hasWorkspaceViewForTool,
-        label: workspaceViewLabelForTool,
+        label: () => "tool.open.currentFile",
         open: (tool, origin) => openWorkspaceViewForTool(workspaceAccess, tool, origin),
       });
     },

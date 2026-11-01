@@ -17,7 +17,7 @@ import (
 const (
 	// MaximumDocumentBytes is the complete encoded size accepted by every CLI
 	// Session export/import boundary.
-	MaximumDocumentBytes = 64 << 20
+	MaximumDocumentBytes = protocol.MaximumSessionArtifactBytes
 )
 
 func ParseDocumentFormat(value string) (protocol.ExportFormat, error) {
@@ -66,8 +66,7 @@ func validateDocumentBody(format protocol.ExportFormat, body []byte) ([]byte, er
 	if len(body) > MaximumDocumentBytes {
 		return nil, fmt.Errorf("session document exceeds %d bytes", MaximumDocumentBytes)
 	}
-	body = bytes.TrimSpace(body)
-	if len(body) == 0 {
+	if len(bytes.TrimSpace(body)) == 0 {
 		return nil, errors.New("session document is empty")
 	}
 	if !utf8.Valid(body) {

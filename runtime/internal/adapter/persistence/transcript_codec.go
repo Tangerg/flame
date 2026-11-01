@@ -97,6 +97,7 @@ type questionOptionPayload struct {
 }
 
 type toolInvocationPayload struct {
+	Source        tool.Ref       `json:"source,omitzero"`
 	ArgumentsText string         `json:"argumentsText,omitempty"`
 	Name          string         `json:"name"`
 	Arguments     jsontext.Value `json:"arguments"`
@@ -331,7 +332,7 @@ func decodeQuestionPayload(payload questionPayload) (transcript.Question, error)
 func encodeToolInvocationPayload(invocation transcript.ToolInvocation) toolInvocationPayload {
 	rejected, _ := invocation.Input.Rejected()
 	payload := toolInvocationPayload{
-		Name: invocation.Name, ArgumentsText: rejected, Arguments: jsontext.Value(invocation.Input.Arguments().Canonical()),
+		Name: invocation.Name, Source: invocation.Source, ArgumentsText: rejected, Arguments: jsontext.Value(invocation.Input.Arguments().Canonical()),
 	}
 	if invocation.Result != nil {
 		payload.Result = jsontext.Value(invocation.Result.Canonical())
@@ -344,7 +345,7 @@ func decodeToolInvocationPayload(payload toolInvocationPayload) (transcript.Tool
 	if err != nil {
 		return transcript.ToolInvocation{}, fmt.Errorf("tool arguments: %w", err)
 	}
-	invocation := transcript.ToolInvocation{Name: payload.Name, Input: transcript.AdmittedInput(arguments)}
+	invocation := transcript.ToolInvocation{Name: payload.Name, Source: payload.Source, Input: transcript.AdmittedInput(arguments)}
 	if payload.ArgumentsText != "" {
 		if !arguments.Equal(tool.Arguments{}) {
 			return transcript.ToolInvocation{}, errors.New("tool arguments must be empty beside rejected arguments text")

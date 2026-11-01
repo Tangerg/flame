@@ -1,13 +1,21 @@
-# Managed MCP processes
+# Managed processes
 
-`process.Driver` implements the `mcp-process` profile using the independent
-`qimu-runner` and the public `qimu/mcp` author protocol. It receives an already
-approved Qimu `Setup`; it performs no global provider lookup.
+`process.New` combines an independent runner, durable attempt store, executable
+source, and a host-selected `Protocol[S]` with a distinct profile identity. The
+driver owns process admission, cancellation, closing and recovery. The protocol
+binds the approved Unit to a connection function before launch. The function
+receives the attached byte stream and returns its typed session and exact Qimu
+exports. Return a partially opened session even on setup failure so the driver
+can close it.
+
+The optional `qimu/mcp.NewProcessDriver` supplies the MCP handshake, contract
+verification, activation and service bindings. A project using a different protocol
+can register its own driver under its own profile name, with the same process
+lifetime and recovery guarantees.
 
 Supply the same SQLite store and Admission used by the Host. `Source` resolves
-immutable executable bytes and exact published descriptors. Configuration hashes
-exclude secret values; environment credentials are supplied only to the runner.
-The caller explicitly supplies frame and retirement limits.
+the immutable executable. Credentials are supplied to the runner; configuration
+identity uses their opaque revision. The caller sets a retirement deadline.
 
 Each creation is protected by a durable attempt before runner dispatch. The
 actual process, handshake, setup and exports belong to the instance Lifetime.

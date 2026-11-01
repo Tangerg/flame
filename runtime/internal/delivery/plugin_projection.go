@@ -74,7 +74,7 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 		if value.Selector != nil {
 			selector = &protocol.PluginRendererSelector{Type: value.Selector.Kind, Name: value.Selector.Name, Shape: value.Selector.Shape}
 		}
-		result.Components = append(result.Components, protocol.PluginClientComponent{Selector: selector, ID: value.ID.String(), Title: value.Title, Scope: value.Scope, Placement: value.Placement, Entry: value.Entry, Export: value.Export, Contribution: value.Contribution.String(), Material: value.Material, SettingsIntent: value.SettingsIntent})
+		result.Components = append(result.Components, protocol.PluginClientComponent{Selector: selector, ID: value.ID.String(), Title: value.Title, LocalizedTitles: value.LocalizedTitles, ToolCategory: value.ToolCategory, TargetView: value.TargetView, Scope: value.Scope, Placement: value.Placement, Entry: value.Entry, Export: value.Export, Contribution: value.Contribution.String(), Material: value.Material, SettingsIntent: value.SettingsIntent})
 	}
 	result.TerminalViews = make([]protocol.PluginTerminalView, 0, len(v.TerminalViews))
 	for _, value := range v.TerminalViews {
@@ -90,7 +90,7 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 	}
 	result.Contributions = make([]protocol.PluginContribution, 0, len(v.Contributions))
 	for _, value := range v.Contributions {
-		presented := protocol.PluginContribution{Background: value.Background, ID: value.ID.String(), Server: value.Server.String(), Export: value.Export, Contract: string(value.Contract.JSON()), Requires: []protocol.PluginRequirement{}}
+		presented := protocol.PluginContribution{SelectionRoles: value.SelectionRoles(), Background: value.Background, ID: value.ID.String(), Server: value.Server.String(), Export: value.Export, Contract: string(value.Contract.JSON()), Requires: []protocol.PluginRequirement{}}
 		for _, requirement := range value.Requires {
 			presented.Requires = append(presented.Requires, protocol.PluginRequirement{ID: requirement.ID.String(), Contract: string(requirement.Contract.JSON()), Optional: requirement.Optional})
 		}

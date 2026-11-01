@@ -171,6 +171,7 @@ type QuestionOption struct {
 }
 
 type ToolInvocation struct {
+	Source  tool.Ref
 	Name    string
 	Input   ToolInput
 	Result  *tool.Result
@@ -202,8 +203,14 @@ func (i ToolInput) Equal(other ToolInput) bool {
 
 // Equal compares the semantic Tool invocation value without exposing the
 // canonical storage representation of arguments or results to callers.
+// Earlier Items may lack captured provenance. Only two explicit and different
+// sources contradict the same published call identity.
+func (t ToolInvocation) MatchesSource(name string, source tool.Ref) bool {
+	return t.Name == name && (t.Source == (tool.Ref{}) || source == (tool.Ref{}) || t.Source == source)
+}
+
 func (t ToolInvocation) Equal(other ToolInvocation) bool {
-	if t.Name != other.Name || !t.Input.Equal(other.Input) {
+	if t.Name != other.Name || t.Source != other.Source || !t.Input.Equal(other.Input) {
 		return false
 	}
 	if (t.Result == nil) != (other.Result == nil) {

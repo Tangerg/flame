@@ -12,7 +12,8 @@
       ],
       "dynamicImports": [],
       "exports": [
-        "WorkspaceDiff"
+        "WorkspaceDiff",
+        "WorktreeChanges"
       ]
     }
   ],

@@ -114,8 +114,8 @@ share the same gate.
 
 ## Drivers and resource lifetimes
 
-The first-party profile names are `native-go`, `mcp-process`, `browser-js` and
-`static-resource`. A driver implements `Profile` and `Prepare`; a native Unit can
+Profile names are open. Built-in profiles include `native-go`, `browser-js` and
+`static-resource`. The optional MCP adapter owns `mcp-process`. A driver implements `Profile` and `Prepare`; a native Unit can
 instead supply its `SetupFunc`. Drivers receive an approved `Setup`, including
 the exact Unit binding, complete snapshot, configuration, Realm, epoch and scope.
 They do not perform another global lookup.

@@ -1,4 +1,6 @@
 export const de: Record<string, string> = {
+  "worktree.open": "Arbeitsbereichsänderungen anzeigen ({{count}})",
+  "worktree.files": "Dateien: {{count}}",
   "panel.title": "Workspace-Diff",
   refresh: "Aktualisieren",
   "scope.label": "Vergleichsbereich",

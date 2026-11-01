@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+	"testing/iotest"
 	"time"
 
 	"github.com/Tangerg/qimu"
@@ -491,6 +493,29 @@ func TestControlHTTPAuthenticationAndStrictInput(t *testing.T) {
 	encoded, _ := json.Marshal(map[string]any{"method": "validatePlan", "input": plan})
 	if response := call(e.credentials.Token, string(encoded)); response.Code != http.StatusOK || response.Body.String() != "null" {
 		t.Fatalf("actual HTTP plan validation: %d %s", response.Code, response.Body.String())
+	}
+}
+
+func TestControlHTTPAdmissionKeepsBodyAndAuthenticationFailuresDistinct(t *testing.T) {
+	e := openBridge(t, filepath.Join(t.TempDir(), "store.db"), true)
+	e.start("http-admission")
+	for _, test := range []struct {
+		name   string
+		body   io.Reader
+		status int
+	}{
+		{"case-insensitive scheme", bytes.NewBufferString(`{"method":"poll","input":{}}`), http.StatusOK},
+		{"truncated body", iotest.ErrReader(io.ErrUnexpectedEOF), http.StatusBadRequest},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/qimu/control", test.body)
+			req.Header.Set("Authorization", "bearer "+e.credentials.Token)
+			response := httptest.NewRecorder()
+			e.bridge.Handler().ServeHTTP(response, req)
+			if response.Code != test.status {
+				t.Fatalf("got %d %s, want %d", response.Code, response.Body.String(), test.status)
+			}
+		})
 	}
 }
 

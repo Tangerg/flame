@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -445,5 +446,18 @@ func TestPreparedCommandRefusesChangedSetupWithTheSameReleases(t *testing.T) {
 	}
 	if f.invocations.Load() != 0 {
 		t.Fatal("graph validation dispatched an operation")
+	}
+}
+
+func TestGenericPluginCallsCannotAcquireHostHookTrust(t *testing.T) {
+	contract, err := hookprovider.Contract()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, stream := range []bool{false, true} {
+		_, err := admitCallRequest(plugins.CallRequest{Contract: contract}, stream)
+		if !errors.Is(err, plugin.ErrInvalid) || !strings.Contains(err.Error(), "host-admitted project trust") {
+			t.Fatalf("public hook call: %v", err)
+		}
 	}
 }

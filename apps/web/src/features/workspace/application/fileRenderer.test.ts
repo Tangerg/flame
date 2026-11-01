@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { type WorkspaceFileRendererSpec } from "@/features/workspace/public/views";
-import { selectFileRenderer } from "@/features/workspace/application/fileRenderer";
+import { resolveRenderer } from "@/features/plugins/public/renderers";
+import { fileRendererCandidates } from "@/features/workspace/application/fileRenderer";
 const markdown: WorkspaceFileRendererSpec = {
   id: "markdown",
   title: "Markdown",
@@ -15,3 +16,7 @@ describe("file renderer selection", () => {
     expect(selectFileRenderer([markdown, { ...markdown, id: "other" }], "md")).toBeUndefined();
   });
 });
+
+function selectFileRenderer(renderers: readonly WorkspaceFileRendererSpec[], target: string) {
+  return resolveRenderer(fileRendererCandidates(renderers, target), null);
+}

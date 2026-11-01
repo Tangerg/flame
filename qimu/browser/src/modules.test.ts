@@ -38,6 +38,44 @@ const source =
   );
 
 describe("Realm module ownership", () => {
+  it("keeps independently admitted installation and path identities distinct", async () => {
+    const first = unit("view.js");
+    const second = unit("editor/view.js");
+    const nested = {
+      ...first,
+      instance: {
+        ...first.instance,
+        source: { ...first.instance.source, installationId: "team/editor" },
+      },
+    };
+    const plain = {
+      ...second,
+      instance: {
+        ...second.instance,
+        source: { ...second.instance.source, installationId: "team" },
+      },
+    };
+    const modules = new RealmModules(async (entry) => ({
+      url:
+        "data:text/javascript," +
+        encodeURIComponent(
+          "export default " + JSON.stringify(entry.module.path),
+        ),
+      digest: entry.module.digest,
+      close() {},
+    }));
+    const one = new Lifetime("one"),
+      two = new Lifetime("two");
+    expect((await modules.evaluate(nested, one, plan(nested))).default).toBe(
+      "view.js",
+    );
+    expect((await modules.evaluate(plain, two, plan(plain))).default).toBe(
+      "editor/view.js",
+    );
+    await one.close();
+    await two.close();
+  });
+
   it("evaluates once and retires only after every actual lease releases", async () => {
     const close = vi.fn();
     const modules = new RealmModules(async () => ({

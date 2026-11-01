@@ -1,3 +1,4 @@
+import { createPresentationPreferences } from "./presentationPreferences";
 import { create } from "zustand";
 import { createDataQuery } from "@/extensions/dataQuery";
 import { type Methods } from "@flame/runtime-client";
@@ -20,12 +21,13 @@ export interface PackageRealizationFailure {
   retry(): void;
 }
 
-export function createInstalledPackageState() {
+export function createInstalledPackageState(endpoint: () => string) {
   const useState = create<{
     operations: PackageOperations | null;
     failure: PackageRealizationFailure | null;
   }>(() => ({ operations: null, failure: null }));
   return {
+    presentationPreferences: createPresentationPreferences(endpoint),
     useOperations: () => useState((state) => state.operations),
     useFailure: () => useState((state) => state.failure),
     captureOperations: () => useState.getState().operations,

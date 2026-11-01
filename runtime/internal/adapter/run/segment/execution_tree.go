@@ -10,31 +10,8 @@ import (
 
 func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTreeCommit) (commitErr error) {
 	update, commits := tree.Update, tree.Events
-	if err := update.Validate(); err != nil {
+	if err := tree.Validate(); err != nil {
 		return err
-	}
-	if tree.Context != nil {
-		if err := tree.Context.ValidateOwnership(update.Head.RootID, update.Head.SessionID); err != nil {
-			return err
-		}
-	}
-	for _, started := range tree.StartedChildren {
-		if started.Reservation().SessionID != update.Head.SessionID {
-			return errors.New("segment: foreign child Run publication")
-		}
-	}
-	for _, aborted := range tree.AbortedChildren {
-		if aborted.SessionID != update.Head.SessionID {
-			return errors.New("segment: foreign child Run withdrawal")
-		}
-	}
-	for _, commit := range commits {
-		if commit.SessionID != update.Head.SessionID || commit.CommitID.IsZero() || commit.State == runs.StateSuspend || commit.ObsoleteCheckpointRootID != "" {
-			return errors.New("segment: invalid execution tree product commit")
-		}
-		if err := commit.Validate(); err != nil {
-			return err
-		}
 	}
 	defer func() {
 		if commitErr != nil && !errors.Is(commitErr, qimu.ErrRecoveryRequired) {
@@ -46,42 +23,7 @@ func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTr
 	var applyErr error
 	err := e.runCheckpointTx(ctx, update.Head.CommitID, tree.Context, func(ctx context.Context) (err error) {
 		defer func() { applyErr = err }()
-		if err := e.executionTrees.SaveExecutionTree(ctx, update); err != nil {
-			return err
-		}
-		for _, acceptance := range tree.InputAcceptances {
-			if acceptance.Operation != runs.CommandSteerInput || acceptance.SessionID != update.Head.SessionID {
-				return errors.New("segment: foreign input acceptance")
-			}
-			if err := e.commandAcceptances.Save(ctx, acceptance); err != nil {
-				return err
-			}
-		}
-		if tree.Context != nil {
-			if err := e.executorCheckpoints.SaveCheckpoint(ctx, *tree.Context); err != nil {
-				return err
-			}
-		}
-		for _, started := range tree.StartedChildren {
-			if err := e.applyStartedChildRun(ctx, started); err != nil {
-				return err
-			}
-		}
-		for _, aborted := range tree.AbortedChildren {
-			record, err := childRunStartReservationRecord(aborted)
-			if err != nil {
-				return err
-			}
-			if _, err := e.childRunStarts.Conclude(ctx, record, runs.ChildRunStartAborted); err != nil {
-				return err
-			}
-		}
-		for _, commit := range commits {
-			if err := e.applyCommit(ctx, commit); err != nil {
-				return err
-			}
-		}
-		return nil
+		return e.applyExecutionTree(ctx, tree)
 	})
 	if err == nil {
 		return nil
@@ -94,60 +36,105 @@ func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTr
 	}
 	readCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), stagedToolResultCleanupTimeout)
 	defer cancel()
-	head, found, readErr := e.executionTrees.LoadExecutionTree(readCtx, update.Head.SessionID, update.Head.RootID)
-	if readErr == nil && found && head.SameCommit(update.Head) {
-		for _, acceptance := range tree.InputAcceptances {
-			record, lookupErr := e.commandAcceptances.Lookup(readCtx, acceptance.Key)
-			if lookupErr != nil || !record.Found || !record.Acceptance.Equal(acceptance) {
-				return errors.Join(err, lookupErr)
-			}
-		}
-		for _, started := range tree.StartedChildren {
-			confirmed, lookupErr := e.reconcileOpeningCommit(readCtx, started.Opening())
-			if lookupErr != nil || !confirmed {
-				return errors.Join(err, lookupErr)
-			}
-		}
-		for _, aborted := range tree.AbortedChildren {
-			record, recordErr := childRunStartReservationRecord(aborted)
-			if recordErr != nil {
-				return errors.Join(err, recordErr)
-			}
-			confirmed, lookupErr := e.childRunStarts.Concluded(readCtx, record, runs.ChildRunStartAborted)
-			if lookupErr != nil || !confirmed {
-				return errors.Join(err, lookupErr)
-			}
-		}
-		last := make(map[string]runs.EventCommit)
-		for _, commit := range commits {
-			last[commit.RunID] = commit
-		}
-		for _, commit := range last {
-			if commit.ResultPublication != nil {
-				continue
-			}
-			confirmed, lookupErr := e.runState.RunCommitCommitted(readCtx, commit.SessionID, commit.RunID, commit.SegmentID, commit.CommitID)
-			if lookupErr != nil || !confirmed {
-				return errors.Join(err, lookupErr)
-			}
-		}
-		for _, commit := range commits {
-			if commit.ResultPublication == nil {
-				continue
-			}
-			var confirmed bool
-			var lookupErr error
-			if last[commit.RunID].State == runs.StateTerminalize {
-				// The exact terminal receipt above fences this now-closed Segment.
-				confirmed, lookupErr = e.executionTrees.ExecutionResultCommitted(readCtx, commit.SessionID, *commit.ResultPublication)
-			} else {
-				confirmed, lookupErr = e.runState.ResultPublicationCommitted(readCtx, commit.SessionID, commit.RunID, commit.SegmentID, commit.ResultPublication.ID, commit.ResultPublication.Digest)
-			}
-			if lookupErr != nil || !confirmed {
-				return errors.Join(err, lookupErr)
-			}
-		}
-		return nil
+	return e.reconcileExecutionTree(readCtx, tree, err)
+}
+
+func (e *Effects) applyExecutionTree(ctx context.Context, tree runs.ExecutionTreeCommit) error {
+	if err := e.executionTrees.SaveExecutionTree(ctx, tree.Update); err != nil {
+		return err
 	}
-	return errors.Join(err, readErr)
+	for _, acceptance := range tree.InputAcceptances {
+		if err := e.commandAcceptances.Save(ctx, acceptance); err != nil {
+			return err
+		}
+	}
+	if tree.Context != nil {
+		if err := e.executorCheckpoints.SaveCheckpoint(ctx, *tree.Context); err != nil {
+			return err
+		}
+	}
+	for _, started := range tree.StartedChildren {
+		if err := e.applyStartedChildRun(ctx, started); err != nil {
+			return err
+		}
+	}
+	for _, aborted := range tree.AbortedChildren {
+		record, err := childRunStartReservationRecord(aborted)
+		if err != nil {
+			return err
+		}
+		if _, err := e.childRunStarts.Conclude(ctx, record, runs.ChildRunStartAborted); err != nil {
+			return err
+		}
+	}
+	for _, commit := range tree.Events {
+		if err := e.applyCommit(ctx, commit); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (e *Effects) reconcileExecutionTree(readCtx context.Context, tree runs.ExecutionTreeCommit, err error) error {
+	update, commits := tree.Update, tree.Events
+	head, found, readErr := e.executionTrees.LoadExecutionTree(readCtx, update.Head.SessionID, update.Head.RootID)
+	if readErr != nil || !found || !head.SameCommit(update.Head) {
+		return errors.Join(err, readErr)
+	}
+	for _, acceptance := range tree.InputAcceptances {
+		record, lookupErr := e.commandAcceptances.Lookup(readCtx, acceptance.Key)
+		if lookupErr != nil || !record.Found || !record.Acceptance.Equal(acceptance) {
+			return errors.Join(err, lookupErr)
+		}
+	}
+	for _, started := range tree.StartedChildren {
+		confirmed, lookupErr := e.reconcileOpeningCommit(readCtx, started.Opening())
+		if lookupErr != nil || !confirmed {
+			return errors.Join(err, lookupErr)
+		}
+	}
+	for _, aborted := range tree.AbortedChildren {
+		record, recordErr := childRunStartReservationRecord(aborted)
+		if recordErr != nil {
+			return errors.Join(err, recordErr)
+		}
+		confirmed, lookupErr := e.childRunStarts.Concluded(readCtx, record, runs.ChildRunStartAborted)
+		if lookupErr != nil || !confirmed {
+			return errors.Join(err, lookupErr)
+		}
+	}
+	return e.reconcileExecutionTreeEvents(readCtx, commits, err)
+}
+
+func (e *Effects) reconcileExecutionTreeEvents(readCtx context.Context, commits []runs.EventCommit, err error) error {
+	last := make(map[string]runs.EventCommit)
+	for _, commit := range commits {
+		last[commit.RunID] = commit
+	}
+	for _, commit := range last {
+		if commit.ResultPublication != nil {
+			continue
+		}
+		confirmed, lookupErr := e.runState.RunCommitCommitted(readCtx, commit.SessionID, commit.RunID, commit.SegmentID, commit.CommitID)
+		if lookupErr != nil || !confirmed {
+			return errors.Join(err, lookupErr)
+		}
+	}
+	for _, commit := range commits {
+		if commit.ResultPublication == nil {
+			continue
+		}
+		var confirmed bool
+		var lookupErr error
+		if last[commit.RunID].State == runs.StateTerminalize {
+			// The exact terminal receipt above fences this now-closed Segment.
+			confirmed, lookupErr = e.executionTrees.ExecutionResultCommitted(readCtx, commit.SessionID, *commit.ResultPublication)
+		} else {
+			confirmed, lookupErr = e.runState.ResultPublicationCommitted(readCtx, commit.SessionID, commit.RunID, commit.SegmentID, commit.ResultPublication.ID, commit.ResultPublication.Digest)
+		}
+		if lookupErr != nil || !confirmed {
+			return errors.Join(err, lookupErr)
+		}
+	}
+	return nil
 }

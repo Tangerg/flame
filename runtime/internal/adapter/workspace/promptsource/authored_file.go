@@ -5,17 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/qimu/cancellation"
 )
 
-func readAuthoredPromptFile(ctx context.Context, path string) ([]byte, error) {
+func readAuthoredPromptFile(ctx context.Context, root *os.Root, path string) ([]byte, error) {
 	if cause := cancellation.Err(ctx); cause != nil {
 		return nil, cause
 	}
-	file, opened, err := filesystem.OpenFile(path, workspaceapp.MaxAuthoredPromptDocumentBytes)
+	file, opened, err := filesystem.OpenFileAt(root, path, workspaceapp.MaxAuthoredPromptDocumentBytes)
 	if err != nil {
 		switch {
 		case errors.Is(err, filesystem.ErrNotRegular), errors.Is(err, filesystem.ErrChanged):
@@ -29,7 +30,7 @@ func readAuthoredPromptFile(ctx context.Context, path string) ([]byte, error) {
 		cancellation.Reader(ctx, file),
 		workspaceapp.MaxAuthoredPromptDocumentBytes+1,
 	))
-	verifyErr := filesystem.VerifyPathVersion(file, opened, path)
+	verifyErr := filesystem.VerifyAtVersion(file, opened, root, path)
 	if errors.Is(verifyErr, filesystem.ErrChanged) {
 		verifyErr = fmt.Errorf("%w: %w", workspaceapp.ErrInvalidPromptSource, verifyErr)
 	}

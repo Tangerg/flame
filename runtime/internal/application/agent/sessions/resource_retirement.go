@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"log/slog"
 	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 )
@@ -52,7 +52,7 @@ func (r ResourceRetirement) Validate() error {
 // pending and is attempted again.
 type Cleanup struct {
 	Resource string
-	Retire   func(sessionID string) error
+	Retire   func(context.Context, string) error
 }
 
 // ResourceRetirer alone completes committed resource retirements. Until every
@@ -101,7 +101,7 @@ func (r *ResourceRetirer) complete(ctx context.Context, retirement ResourceRetir
 	}
 	var errs []error
 	for _, cleanup := range r.cleanups {
-		if err := cleanup.Retire(retirement.SessionID()); err != nil {
+		if err := cleanup.Retire(ctx, retirement.SessionID()); err != nil {
 			errs = append(errs, fmt.Errorf("sessions: retire %s: %w", cleanup.Resource, err))
 		}
 	}

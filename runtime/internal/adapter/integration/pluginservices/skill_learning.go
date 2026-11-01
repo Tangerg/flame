@@ -31,7 +31,7 @@ type learningProposals interface {
 }
 
 type learningArchives interface {
-	ArchiveIdle(context.Context, time.Time, time.Duration) ([]string, error)
+	ArchiveIdle(context.Context, time.Time, time.Time) ([]string, error)
 }
 
 type SkillLearningConfig struct {
@@ -127,16 +127,13 @@ func (s *SkillLearning) mine(ctx context.Context, binding plugins.ContributionBi
 		return errors.New("skill learning: revision has no admitted current source")
 	}
 	proposal := skills.Proposal{Scope: skills.ScopeUser, Name: advice.Skill.Name, Description: advice.Skill.Description, Instructions: advice.Skill.Instructions, Origin: skills.ProposalOriginMined, SourceSession: input.SessionID, Revises: advice.Revises}
-	if err := proposal.Validate(); err != nil {
-		return fmt.Errorf("skill learning: invalid proposal: %w", err)
-	}
-	if proposal.SafetyIssue() != skills.ProposalSafe {
-		return nil
-	}
 	if err := ctx.Err(); err != nil {
 		return errors.Join(err, context.Cause(ctx))
 	}
 	if _, err := s.proposals.SubmitProposal(ctx, input.WorkspaceCWD, proposal); err != nil {
+		if errors.Is(err, skills.ErrUnsafeProposal) {
+			return nil
+		}
 		return fmt.Errorf("skill learning: submit proposal: %w", err)
 	}
 	kind := "new"
@@ -152,18 +149,17 @@ func (s *SkillLearning) archive(ctx context.Context, binding plugins.Contributio
 	if err != nil {
 		return err
 	}
-	reply, err := invokeResolvedCommand[skilllearning.ArchiveRequest, skilllearning.ArchiveAdvice](operation.Start(ctx, extension.Automatic, "plugins.automatic", uuid.NewString()), s.commands, method.Name(), skilllearning.ArchiveRequest{Now: now}, func(advice skilllearning.ArchiveAdvice) error { _, err := advice.Duration(); return err }, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, nil)
+	reply, err := invokeResolvedCommand[skilllearning.ArchiveRequest, skilllearning.ArchiveAdvice](operation.Start(ctx, extension.Automatic, "plugins.automatic", uuid.NewString()), s.commands, method.Name(), skilllearning.ArchiveRequest{Now: now}, func(advice skilllearning.ArchiveAdvice) error { return advice.Validate(now) }, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, nil)
 	if err != nil {
 		return fmt.Errorf("skill learning: archive advice: %w", err)
 	}
-	after, err := reply.value.Duration()
-	if err != nil || after == 0 {
-		return err
+	if reply.value.InactiveSince == nil {
+		return nil
 	}
 	if err := ctx.Err(); err != nil {
 		return errors.Join(err, context.Cause(ctx))
 	}
-	archived, err := s.archives.ArchiveIdle(ctx, now, after)
+	archived, err := s.archives.ArchiveIdle(ctx, now, *reply.value.InactiveSince)
 	recordArchivedIdleSkills(ctx, len(archived))
 	return err
 }

@@ -39,6 +39,7 @@ func main() {
 	validators := flag.String("validators", "", "directory the generated Go wire validator is written to; skipped when empty")
 	ts := flag.String("ts", "", "directory the TypeScript protocol binding is written to; skipped when empty")
 	clientValues := flag.String("client-values", "", "file for consumer-neutral client scalar contracts; skipped when empty")
+	toolCategoryFixture := flag.String("tool-category-fixture", "", "file for the built-in tool categories used by client fixtures")
 	localBinding := flag.String("go-local", "", "local typed Go binding output directory")
 	remoteBinding := flag.String("go-client", "", "remote typed Go client output directory")
 	sampleSource := flag.String("samples", "", "directory of canonical Runtime JSON samples; required with -ts")
@@ -47,6 +48,9 @@ func main() {
 	err := writeGoBindings(*localBinding, *remoteBinding)
 	if err == nil {
 		err = run(*out, *validators, *ts, *sampleSource, *clientValues)
+	}
+	if err == nil && *toolCategoryFixture != "" {
+		err = writeToolCategoryFixture(*toolCategoryFixture)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "contractgen:", err)

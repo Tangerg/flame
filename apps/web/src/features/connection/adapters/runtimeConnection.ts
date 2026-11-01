@@ -1,8 +1,11 @@
 import { RpcCancellationError, type RequestMeta } from "@flame/runtime-client";
 import { type ClientBootstrap, type ClientHost } from "@/platform/host";
 import { tupleKey } from "@/lib/tupleKey";
-import { type FlameClient, type SidecarClient } from "@flame/runtime-client";
-import { type RuntimeMutationJournalStorage } from "@/features/connection/adapters/runtimeMutationJournalStorage";
+import {
+  type FlameClient,
+  type MutationJournalStorage,
+  type SidecarClient,
+} from "@flame/runtime-client";
 import {
   createRuntimeEndpoint,
   type RuntimeEndpointConfiguration,
@@ -16,7 +19,7 @@ import { createHttpTransport, createFlameClient, createSidecarClient } from "@fl
 export function createRuntimeConnection(
   host: ClientHost,
   requestMeta: (surface: "desktop" | "web") => RequestMeta,
-  storage: RuntimeMutationJournalStorage,
+  storage: MutationJournalStorage,
 ) {
   const projection = createRuntimeConnectionProjection();
   let configuration: RuntimeEndpointConfiguration | null = null;

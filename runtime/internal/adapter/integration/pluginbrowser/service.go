@@ -3,6 +3,7 @@ package pluginbrowser
 import (
 	"context"
 	"errors"
+	"math"
 	"net/url"
 	"strings"
 	"time"
@@ -17,12 +18,11 @@ import (
 )
 
 type Config struct {
-	Bridge              *controlhost.Bridge
-	Registry            *plugins.Registry
-	ControlEndpoint     string
-	MaximumMessageBytes int
-	ProofCapacity       int
-	PollInterval        time.Duration
+	Bridge          *controlhost.Bridge
+	Registry        *plugins.Registry
+	ControlEndpoint string
+	ProofCapacity   int
+	PollInterval    time.Duration
 }
 
 type Service struct {
@@ -31,7 +31,7 @@ type Service struct {
 }
 
 func New(config Config) (*Service, error) {
-	if config.Bridge == nil || config.Registry == nil || config.MaximumMessageBytes < 1 || config.ProofCapacity < 1 || config.PollInterval < time.Millisecond {
+	if config.Bridge == nil || config.Registry == nil || config.Bridge.MaximumRequestBytes() < 1 || config.Bridge.MaximumRequestBytes() > math.MaxInt || config.ProofCapacity < 1 || config.PollInterval < time.Millisecond {
 		return nil, errors.New("plugin browser: bridge, registry and explicit transport budgets are required")
 	}
 	if !validControlEndpoint(config.ControlEndpoint) {
@@ -69,7 +69,7 @@ func (s *Service) Open(ctx context.Context, request app.OpenRequest) (app.Sessio
 	if err != nil {
 		return app.Session{}, consumerError(err)
 	}
-	return app.Session{Authority: credentials.Authority, Realm: credentials.Realm, Credential: credentials.Token, ControlEndpoint: s.config.ControlEndpoint, MaximumMessageBytes: s.config.MaximumMessageBytes, ProofCapacity: s.config.ProofCapacity, PollInterval: s.config.PollInterval, ComponentContract: s.contract}, nil
+	return app.Session{Authority: credentials.Authority, Realm: credentials.Realm, Credential: credentials.Token, ControlEndpoint: s.config.ControlEndpoint, MaximumMessageBytes: int(s.config.Bridge.MaximumRequestBytes()), ProofCapacity: s.config.ProofCapacity, PollInterval: s.config.PollInterval, ComponentContract: s.contract}, nil
 }
 
 func (s *Service) Acquire(ctx context.Context, request app.ComponentRequest) (control.UseGrant, error) {

@@ -148,7 +148,7 @@ func TestArchiveAdviceHasOneDecisionPerInterval(t *testing.T) {
 	var calls sync.WaitGroup
 	for range 20 {
 		calls.Go(func() {
-			if l.archive(now).AfterMillis != nil {
+			if l.archive(now).InactiveSince != nil {
 				advised.Add(1)
 			}
 		})
@@ -158,12 +158,12 @@ func TestArchiveAdviceHasOneDecisionPerInterval(t *testing.T) {
 		t.Fatalf("concurrent decisions = %d", advised.Load())
 	}
 	for _, delta := range []time.Duration{-time.Hour, 0, 6*time.Hour - time.Nanosecond} {
-		if l.archive(now.Add(delta)).AfterMillis != nil {
+		if l.archive(now.Add(delta)).InactiveSince != nil {
 			t.Fatalf("early archive advice at %v", delta)
 		}
 	}
 	advice := l.archive(now.Add(6 * time.Hour))
-	if duration, err := advice.Duration(); err != nil || duration != 30*24*time.Hour {
-		t.Fatalf("next archive advice = %+v, %v", advice, err)
+	if advice.InactiveSince == nil || !advice.InactiveSince.Equal(now.Add(6*time.Hour-30*24*time.Hour)) {
+		t.Fatalf("next archive advice = %+v", advice)
 	}
 }

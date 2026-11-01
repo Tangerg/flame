@@ -234,3 +234,16 @@ func TestListModelsMarksOnlyTheRuntimeDefaultSelection(t *testing.T) {
 		t.Fatalf("models = %+v, want only m-beta marked default", got)
 	}
 }
+
+func (s stubCatalog) Profile(ctx context.Context, id string) (models.ProviderProfile, error) {
+	profiles, err := s.Profiles(ctx)
+	if err != nil {
+		return models.ProviderProfile{}, err
+	}
+	for _, profile := range profiles {
+		if profile.Metadata.ID() == id {
+			return profile, nil
+		}
+	}
+	return models.ProviderProfile{}, models.ErrProviderUnsupported
+}

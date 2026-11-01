@@ -172,8 +172,6 @@ vi.mock("@/features/workspace/public/views", async (importOriginal) => {
 
 vi.mock("@/extensions/host/Slot", () => ({ Slot: () => null }));
 
-vi.mock("@/features/shell/workbench/panel/HeaderDiffStat", () => ({ HeaderDiffStat: () => null }));
-
 vi.mock("@/features/shell/workbench/panel/RunStatusPill", () => ({ RunStatusPill: () => null }));
 
 vi.mock("@/features/shell/workbench/panel/RunAnnouncer", () => ({ RunAnnouncer: () => null }));

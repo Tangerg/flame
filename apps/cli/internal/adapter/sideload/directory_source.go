@@ -365,11 +365,11 @@ func resolveEntry(directory, entry string) (executableSource, string, error) {
 	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 		return executableSource{}, "", fmt.Errorf("entry %q escapes its plugin directory", entry)
 	}
-	identity, err := inspectExecutable(entry, realExecutable)
+	source, err := captureExecutable(realDirectory, relative)
 	if err != nil {
 		return executableSource{}, "", err
 	}
-	return executableSource{path: realExecutable, identity: identity}, realDirectory, nil
+	return source, realDirectory, nil
 }
 
 func validateEntryPath(directory, entry string) (string, string, error) {
@@ -383,14 +383,6 @@ func validateEntryPath(directory, entry string) (string, string, error) {
 		return "", "", fmt.Errorf("entry %q contains unsafe path segments", entry)
 	}
 	return entry, expected, nil
-}
-
-func inspectExecutable(entry, path string) (os.FileInfo, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, fmt.Errorf("inspect entry %q: %w", entry, err)
-	}
-	return info, validateExecutable(entry, info)
 }
 
 func validateExecutable(entry string, info os.FileInfo) error {

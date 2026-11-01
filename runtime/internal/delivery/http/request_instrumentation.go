@@ -8,6 +8,7 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -38,18 +39,20 @@ func (s *Server) instrumentRequests(next http.Handler) http.Handler {
 		// Continue the client's trace when it sent one, else start fresh —
 		// this is where the request's trace_id comes into being.
 		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
-		ctx, span := tracer.Start(ctx, r.Method+" "+r.URL.Path,
+		ctx, span := tracer.Start(ctx, r.Method,
 			trace.WithSpanKind(trace.SpanKindServer),
 			trace.WithAttributes(
 				attribute.String("http.request.method", r.Method),
-				attribute.String("url.path", r.URL.Path),
 			),
 		)
 		r = r.WithContext(ctx)
 
 		response := &recordingResponseWriter{ResponseWriter: w, status: http.StatusOK}
 		defer func() {
+			route := httpRoute(r)
+			span.SetName(r.Method + " " + route)
 			span.SetAttributes(
+				attribute.String("http.route", route),
 				attribute.Int("http.response.status_code", response.status),
 				attribute.Int64("duration_ms", time.Since(start).Milliseconds()),
 				attribute.Int("http.response.body.size", response.bytes),
@@ -67,7 +70,7 @@ func (s *Server) instrumentRequests(next http.Handler) http.Handler {
 				// and the client is told nothing beyond "internal error". Without
 				// the stack here a handler defect leaves nothing to act on.
 				slog.ErrorContext(ctx, "http: handler panicked",
-					"http.request.method", r.Method, "url.path", r.URL.Path,
+					"http.request.method", r.Method, "http.route", httpRoute(r),
 					"error", err, "stack", string(debug.Stack()))
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
@@ -79,6 +82,17 @@ func (s *Server) instrumentRequests(next http.Handler) http.Handler {
 
 		next.ServeHTTP(response, r)
 	})
+}
+
+// A resource lease is a credential embedded in a path segment. Only the
+// registered template may cross a telemetry boundary, including on failure.
+func httpRoute(request *http.Request) string {
+	if rc := chi.RouteContext(request.Context()); rc != nil {
+		if pattern := rc.RoutePattern(); pattern != "" {
+			return pattern
+		}
+	}
+	return "unmatched"
 }
 
 const requestIDPrefix = "req_"

@@ -2707,9 +2707,9 @@ func (p PluginClientComponent) validateWire() error {
 		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
 		optionalTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
 		optionalTextPattern("material", p.Material, "^[a-z][a-z0-9._-]{0,63}$"),
+		closedEnum("toolCategory", string(p.ToolCategory), []string{"shell", "edit", "read", "search", "task"}, true),
 		closedEnum("scope", string(p.Scope), []string{"installation", "workspace", "session", "client", "file", "toolResult"}, false),
-		closedEnum("placement", string(p.Placement), []string{"export", "workspaceView", "settingsPane", "clientEffect", "sessionAction", "fileRenderer", "toolResultRenderer"}, false),
-		closedEnum("settingsIntent", string(p.SettingsIntent), []string{"modelProviders", "mcpServers"}, true),
+		closedEnum("placement", string(p.Placement), []string{"workspaceChangesAction", "sharedClientEffect", "export", "workspaceView", "settingsPane", "clientEffect", "sessionAction", "fileRenderer", "toolResultRenderer"}, false),
 	)
 }
 

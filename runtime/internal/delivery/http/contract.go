@@ -35,6 +35,7 @@ func requestHeaders() []string {
 		headerIdempotencyKey,
 		headerIdempotencyNamespace,
 		headerLastEventID,
+		headerMethod,
 	}
 }
 

@@ -263,3 +263,23 @@ func TestDiscoverAgentDocsRequiresAbsoluteCompositionPaths(t *testing.T) {
 		t.Fatal("DiscoverAgentDocs accepted a relative home")
 	}
 }
+
+func TestProjectInstructionsStayInTheirAuthoringRoot(t *testing.T) {
+	for _, nested := range []bool{false, true} {
+		root := t.TempDir()
+		mkGitDir(t, root)
+		external := t.TempDir()
+		writeFile(t, filepath.Join(external, "AGENTS.md"), "outside canary")
+		link, target := filepath.Join(root, "AGENTS.md"), filepath.Join(external, "AGENTS.md")
+		if nested {
+			link, target = filepath.Join(root, ".flame"), external
+		}
+		if err := os.Symlink(target, link); err != nil {
+			t.Skipf("symlinks unavailable: %v", err)
+		}
+		docs, err := promptsource.DiscoverAgentDocs(t.Context(), root, "")
+		if len(docs) != 0 || !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
+			t.Fatalf("escaped instructions: %v, %v", docs, err)
+		}
+	}
+}

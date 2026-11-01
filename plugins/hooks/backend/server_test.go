@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -84,23 +85,28 @@ func hookMethod[P, R any](t *testing.T, session *sdk.ClientSession, method *qimu
 func TestOriginalHookCommandReceiptSurvivesRestartWithoutRepeatingItsEffect(t *testing.T) {
 	cwd := t.TempDir()
 	path := filepath.Join(t.TempDir(), "hooks.db")
-	_, session, close := connectHooks(t, path)
-	method, err := hookprovider.ExecuteMethod()
+	db, session, close := connectHooks(t, path)
+	method, err := hookprovider.EvaluateMethod()
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := hookprovider.Command{Command: `printf x >> effect; printf '%s' '{"decision":"deny","reason":"policy"}'`, CWD: cwd, Input: hook.Input{Event: hook.PreToolUse, CWD: cwd}, TimeoutMillis: 1000}
+	request := hookprovider.Evaluation{Rules: []hook.Hook{{Event: hook.PreToolUse, Scope: hook.ScopeGlobal, Source: cwd, Command: `printf x >> effect; printf '%s' '{"decision":"deny","reason":"policy"}'`, TimeoutMillis: 1000}}, Input: hook.Input{Event: hook.PreToolUse, CWD: cwd}}
 	first, err := hookMethod(t, session, method).CallCommand(hookContext(t), "original", request)
-	if err != nil || first.Decision == nil || first.Decision.Verdict != hook.CommandDeny {
+	if err != nil || first.Decision.Verdict != hook.CommandDeny {
 		t.Fatalf("original=%+v, %v", first, err)
 	}
+	// Model a crash after the shell receipt commits but before the enclosing event reply.
+	if _, err := db.ExecContext(t.Context(), "UPDATE commands SET reply=NULL WHERE id=?", "original"); err != nil {
+		t.Fatal(err)
+	}
+
 	close()
 	_, session, _ = connectHooks(t, path)
 	replayed, err := hookMethod(t, session, method).CallCommand(hookContext(t), "original", request)
-	if err != nil || replayed.Decision == nil || replayed.Decision.Reason != "policy" {
+	if err != nil || replayed.Decision.Reason != "policy" {
 		t.Fatalf("original receipt=%+v, %v", replayed, err)
 	}
-	request.Command = `printf y >> effect`
+	request.Rules[0].Command = `printf y >> effect`
 	if _, err := hookMethod(t, session, method).CallCommand(hookContext(t), "original", request); err == nil {
 		t.Fatal("original command identity accepted changed input")
 	}
@@ -113,11 +119,11 @@ func TestOriginalHookCommandReceiptSurvivesRestartWithoutRepeatingItsEffect(t *t
 func TestPendingHookCommandCannotDispatchAndTimeoutKeepsItsKnownOutcome(t *testing.T) {
 	cwd := t.TempDir()
 	db, session, _ := connectHooks(t, filepath.Join(t.TempDir(), "hooks.db"))
-	method, err := hookprovider.ExecuteMethod()
+	method, err := hookprovider.EvaluateMethod()
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := hookprovider.Command{Command: `printf x > effect`, CWD: cwd, Input: hook.Input{Event: hook.PreToolUse, CWD: cwd}, TimeoutMillis: 1000}
+	request := hookprovider.Evaluation{Rules: []hook.Hook{{Event: hook.PreToolUse, Scope: hook.ScopeGlobal, Source: cwd, Command: `printf x > effect`, TimeoutMillis: 1000}}, Input: hook.Input{Event: hook.PreToolUse, CWD: cwd}}
 	input, err := jsonvalue.Encode(request)
 	if err != nil {
 		t.Fatal(err)
@@ -131,10 +137,10 @@ func TestPendingHookCommandCannotDispatchAndTimeoutKeepsItsKnownOutcome(t *testi
 	if _, err := os.Stat(filepath.Join(cwd, "effect")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("pending command produced an effect: %v", err)
 	}
-	request.Command, request.TimeoutMillis = "sleep 5", 40
+	request.Rules[0].Command, request.Rules[0].TimeoutMillis = "sleep 5", 40
 	for range 2 {
 		result, err := hookMethod(t, session, method).CallCommand(hookContext(t), "timeout", request)
-		if err != nil || result.Failure == nil || result.Failure.Kind != hookprovider.TimedOut {
+		if err != nil || len(result.Diagnostics) != 1 || !strings.Contains(result.Diagnostics[0].Message, "timed out") {
 			t.Fatalf("timeout outcome=%+v, %v", result, err)
 		}
 	}

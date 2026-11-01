@@ -4,6 +4,7 @@ import { defineExtensionPoint } from "@/extensions/contracts";
 export interface SessionActionSpec {
   id: string;
   title: string;
+  localizedTitles?: Readonly<Record<string, string>>;
   component: ComponentType<{ session: CapturedSession }>;
 }
 

@@ -26,7 +26,7 @@ import { createProviderCatalogPlugin } from "@/features/providers/index";
 import approvalsSettings from "@/features/approvals/index";
 import connectionSettings from "@/features/connection/settings/index";
 import personalizationSettings from "@/features/settings/personalization/index";
-import { createPluginsPlugin } from "@/features/plugins/index";
+import { createInstalledPluginLoader, pluginManagementPane } from "@/features/plugins/index";
 import {
   WORKSPACE_FILES_CHANGED_KEY,
   WORKSPACE_LIST_FILES_KEY,
@@ -200,7 +200,7 @@ function workspaceDataPlugin(
         id: "providers",
         label: providersDeclaration.components[0]!.title,
         material: "providers",
-        intent: "modelProviders",
+        intent: "model-providers",
         group: "extensions",
         component: () =>
           createElement(InstalledComponent, {
@@ -219,7 +219,7 @@ function workspaceDataPlugin(
       mcpLifetime.contribute(SETTINGS_PANE, {
         id: "mcp-servers",
         label: mcpDeclaration.components[0]!.title,
-        intent: "mcpServers",
+        intent: "mcp-servers",
         group: "extensions",
         component: () =>
           createElement(InstalledComponent, {
@@ -603,7 +603,8 @@ export async function installVisualWorkspaceFixture(
     approvalsSettings,
     connectionSettings,
     personalizationSettings,
-    createPluginsPlugin(visual.installedPlugins),
+    createInstalledPluginLoader(visual.installedPlugins),
+    pluginManagementPane,
     visualNotifier,
     visualShortcuts,
     workspaceDataPlugin(readDiff, runtimeClient),

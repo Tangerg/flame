@@ -25,6 +25,7 @@ import (
 	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/distribution"
 	"github.com/Tangerg/qimu/integrity"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 const portableManifest = `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"test.content","version":"1.0.0"}`
@@ -84,7 +85,7 @@ func testReleaseStore(t *testing.T) (*Releases, *installationFixture, *persisten
 	if err != nil {
 		t.Fatal(err)
 	}
-	host, err := qimu.NewHost(t.Context(), qimu.HostConfig{Admission: db.Admission, Epoch: db.Qimu.Epoch(), Installations: db.Qimu, ExecutionProtection: db.Qimu, Drivers: []qimu.Driver{unopenedProfile(qimu.MCPProcess), unopenedProfile(qimu.BrowserJS)}})
+	host, err := qimu.NewHost(t.Context(), qimu.HostConfig{Admission: db.Admission, Epoch: db.Qimu.Epoch(), Installations: db.Qimu, ExecutionProtection: db.Qimu, Drivers: []qimu.Driver{unopenedProfile(qimumcp.ProcessProfile), unopenedProfile(qimu.BrowserJS)}})
 	if err != nil {
 		t.Fatal(err)
 	}

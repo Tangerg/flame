@@ -459,7 +459,7 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained
 	// search_tools is the sole model-facing entry to every capability withheld
 	// from the initial manifest. The tools themselves remain in the same Run
 	// registry, so promotion changes visibility rather than execution authority.
-	if err := tools.excludeCollisions(ctx); err != nil {
+	if err := tools.bindModelNames(retained); err != nil {
 		return manifestBuilder{}, err
 	}
 	search, err := NewDiscovery(tools.deferred)

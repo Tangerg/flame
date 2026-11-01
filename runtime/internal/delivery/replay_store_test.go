@@ -25,6 +25,22 @@ func newMemoryIdempotencyStore() *memoryIdempotencyStore {
 	return &memoryIdempotencyStore{records: make(map[string]memoryIdempotencyRecord)}
 }
 
+func (m *memoryIdempotencyStore) Transact(ctx context.Context, write func(context.Context) error) error {
+	return write(ctx)
+}
+func (m *memoryIdempotencyStore) Lookup(_ context.Context, key, fingerprint string) (operation.ReplayRecord, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	current, ok := m.records[key]
+	if !ok || len(current.Payload) > 0 && !time.Now().Before(current.expiresAt) {
+		return operation.ReplayRecord{}, false, nil
+	}
+	if current.Fingerprint != fingerprint {
+		return operation.ReplayRecord{}, false, portable.ErrInvocationConflict
+	}
+	return current.ReplayRecord, true, nil
+}
+
 func (m *memoryIdempotencyStore) Claim(_ context.Context, key, fingerprint string) (operation.ReplayRecord, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

@@ -49,7 +49,7 @@ func TestInstalledHooksRetainRulesAndOriginalCommandReceipt(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(cfg.defaultWorkspacePath, ".git"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	command := `printf 'once\n' >> hook-effects; printf '%s' '{"decision":"ask","reason":"confirm original","injectContext":"captured"}'`
+	command := `printf 'once\n' >> hook-effects; printf '%s' '{"decision":"ask","reason":"confirm original","injectContext":"captured","rewriteArguments":"{\"command\":\"echo policy\"}"}'`
 	document, err := json.Marshal(map[string]any{"hooks": []any{map[string]string{"event": "PreToolUse", "matcher": "shell", "command": command}}})
 	if err != nil {
 		t.Fatal(err)
@@ -71,7 +71,7 @@ func TestInstalledHooksRetainRulesAndOriginalCommandReceipt(t *testing.T) {
 	input := hook.Input{Event: hook.PreToolUse, SessionID: "session:hooks", CWD: cfg.defaultWorkspacePath, Tool: &hook.ToolInput{Name: "shell", Arguments: `{"command":"echo original"}`}}
 	for range 2 {
 		decision := bound.Run(t.Context(), input)
-		if decision.Verdict != domainhooks.VerdictAsk || decision.Reason != "confirm original" || decision.InjectContext != "captured" {
+		if decision.Verdict != domainhooks.VerdictAsk || decision.Reason != "confirm original" || decision.InjectContext != "captured" || decision.RewriteArguments != `{"command":"echo policy"}` {
 			t.Fatalf("captured command changed its result: %+v", decision)
 		}
 	}

@@ -184,11 +184,11 @@ func admitTerminalList(contract *portable.Capability, list TerminalList) error {
 		if err != nil {
 			return err
 		}
-		if _, ok := input.property(list.Paging.Input); !ok {
-			return fmt.Errorf("paging input %q is not an input property", list.Paging.Input)
+		if cursor, ok := input.property(list.Paging.Input); !ok || !slices.Equal(cursor.types(), []string{"string"}) {
+			return fmt.Errorf("paging input %q must be a string input property", list.Paging.Input)
 		}
-		if _, ok := output.property(list.Paging.Output); !ok {
-			return fmt.Errorf("paging output %q is not an output property", list.Paging.Output)
+		if cursor, ok := output.property(list.Paging.Output); !ok || !slices.Equal(cursor.types(), []string{"string"}) {
+			return fmt.Errorf("paging output %q must be a string output property", list.Paging.Output)
 		}
 		bound = append(bound, list.Paging.Input)
 	}
@@ -263,6 +263,10 @@ func terminalMethod(contract *portable.Capability, name string) (*portable.Metho
 	if !found {
 		return nil, fmt.Errorf("method %q is not in the contribution contract", name)
 	}
+	descriptor := method.Descriptor()
+	if descriptor.Target != extension.ScopeInstallation || len(descriptor.Stream) != 0 {
+		return nil, fmt.Errorf("terminal method %q requires unary delivery and an installation target", name)
+	}
 	return method, nil
 }
 
@@ -272,8 +276,10 @@ func terminalMethod(contract *portable.Capability, name string) (*portable.Metho
 func admitBindings(input schemaNode, bindings []InputBinding, row *schemaNode, alsoBound []string) error {
 	paths := slices.Clone(alsoBound)
 	for _, binding := range bindings {
-		if slices.Contains(paths, binding.Path) {
-			return fmt.Errorf("input %q is bound twice", binding.Path)
+		if slices.ContainsFunc(paths, func(path string) bool {
+			return path == binding.Path || strings.HasPrefix(path, binding.Path+"/") || strings.HasPrefix(binding.Path, path+"/")
+		}) {
+			return fmt.Errorf("input %q overlaps another binding", binding.Path)
 		}
 		property, ok := input.property(binding.Path)
 		if !ok {

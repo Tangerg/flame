@@ -12,6 +12,15 @@
     {
       "id": "memory",
       "title": "Agent memory",
+      "localizedTitles": {
+        "zh": "智能体记忆",
+        "zh-TW": "代理程式記憶",
+        "de": "Agentengedächtnis",
+        "fr": "Mémoire de l’agent",
+        "es": "Memoria del agente",
+        "ja": "エージェントメモリ",
+        "ko": "에이전트 메모리"
+      },
       "scope": "client",
       "placement": "workspaceView",
       "entry": "io.github.tangerg.flame/components/component.js",

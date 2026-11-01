@@ -4,7 +4,7 @@ export const de: Record<string, string> = {
   "mcp.tools.policyHint":
     "Wird sofort gespeichert. Die Sichtbarkeit gilt für neue Ausführungen. Automatische Genehmigung setzt eine globale Erlaubnisregel; spezifischere Regeln gelten weiterhin.",
   "mcp.tools.nameConflict":
-    "Ausgeblendet, weil {{name}} mit {{sources}} kollidiert.",
+    "Verfügbar als {{name}}. Der Kurzname wird auch von {{sources}} verwendet.",
   "mcp.add": "Server hinzufügen",
   "mcp.save": "Speichern",
   "mcp.saving": "Speichern…",

@@ -17,6 +17,7 @@ import {
 } from "@flame/runtime-client";
 import {
   PROBLEM_RECOVERY,
+  type RecordedToolSource,
   RUN_PROBLEM_RECOVERY,
   type RecoveryAction,
 } from "@flame/runtime-client/wire";
@@ -159,9 +160,27 @@ function runtimeQuestion(question: Question): AgentQuestion {
   };
 }
 
+function capturedToolSource({
+  ref,
+  modelName,
+}: RecordedToolSource): NonNullable<AgentToolInvocation["source"]> {
+  if (ref.type === "builtIn") return { modelName, ref: { type: ref.type, name: ref.name } };
+  const origin = ref.server.origin;
+  return {
+    modelName,
+    ref: {
+      type: ref.type,
+      name: ref.name,
+      serverName: ref.server.name,
+      ...(origin.type === "installation" ? { installationId: origin.installationId } : {}),
+    },
+  };
+}
+
 function runtimeTool(tool: ToolInvocation): AgentToolInvocation {
   return {
     name: tool.name,
+    ...(tool.source ? { source: capturedToolSource(tool.source) } : {}),
     arguments: { ...tool.arguments },
     ...(tool.category !== undefined ? { category: tool.category } : {}),
     ...(tool.resultShape !== undefined ? { resultShape: tool.resultShape } : {}),

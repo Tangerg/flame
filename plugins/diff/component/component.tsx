@@ -1,3 +1,4 @@
+import { summarizeWorkingTreeChanges } from "./workingTreeChanges";
 import {
   useCallback,
   useEffect,
@@ -10,6 +11,7 @@ import {
   failureText,
   scrollPositions,
   type ComponentContext,
+  type WorkspaceChangesActionInput,
   type ScrollPosition,
   type Translate,
   useTranslator,
@@ -696,5 +698,39 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
         </>
       )}
     </Panel>
+  );
+}
+
+export function WorktreeChanges({
+  context,
+  input,
+}: {
+  context: ComponentContext;
+  input?: WorkspaceChangesActionInput;
+}) {
+  const t = useTranslator(CATALOGS, context.locale);
+  const summary = summarizeWorkingTreeChanges(input?.changes);
+  if (!input || !summary) return null;
+  const counted =
+    (summary.added !== undefined && summary.added !== 0) ||
+    (summary.removed !== undefined && summary.removed !== 0);
+  return (
+    <Button
+      size="sm"
+      chip
+      face="mono"
+      title={t("worktree.open", { count: summary.files })}
+      aria-label={t("worktree.open", { count: summary.files })}
+      onClick={(event) => {
+        context.signal.throwIfAborted();
+        input.openView(event.currentTarget);
+      }}
+    >
+      {counted ? (
+        <DiffStat added={summary.added} removed={summary.removed} />
+      ) : (
+        t("worktree.files", { count: summary.files })
+      )}
+    </Button>
   );
 }

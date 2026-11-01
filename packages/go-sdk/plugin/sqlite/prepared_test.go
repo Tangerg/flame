@@ -106,3 +106,44 @@ func TestPreparedCompletionIsAtomicWithItsMutationAndImmutable(t *testing.T) {
 		t.Fatalf("original result=%v, %s, %v", duplicate, original, err)
 	}
 }
+
+func TestExternalSettlementCommitsEvidenceOnceOutsideCancelledCall(t *testing.T) {
+	db, err := sqlite.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "external.db"), []string{CommandsSchema, `CREATE TABLE evidence(id TEXT PRIMARY KEY)`})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	prepared, _, err := AdmitCommand(t.Context(), db, "send", "known", receiptInput(t, "input"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outcome, err := qimumcp.EncodeReply("upstream-accepted", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	call, cancel := context.WithCancel(t.Context())
+	cancel()
+	evidence := func(ctx context.Context) error {
+		if _, ok := ctx.Deadline(); !ok {
+			t.Fatal("settlement has no deadline")
+		}
+		_, err := sqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO evidence VALUES('remote-id')`)
+		return err
+	}
+	failure := errors.New("local failure")
+	err = prepared.SettleExternal(call, outcome.JSON(), func(ctx context.Context) error {
+		if err := evidence(ctx); err != nil {
+			return err
+		}
+		return failure
+	})
+	if !errors.Is(err, failure) {
+		t.Fatalf("settlement: %v", err)
+	}
+	if err := prepared.SettleExternal(call, outcome.JSON(), evidence); err != nil {
+		t.Fatal(err)
+	}
+	if err := prepared.SettleExternal(call, outcome.JSON(), evidence); err != nil {
+		t.Fatalf("settled evidence was replayed: %v", err)
+	}
+}

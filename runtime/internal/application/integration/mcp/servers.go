@@ -402,7 +402,7 @@ func (c *Coordinator) Tools(_ context.Context, server *mcpserver.ID) ([]ToolView
 		if err != nil {
 			return nil, err
 		}
-		views = append(views, ToolView{AdvertisedTool: advertised, ModelName: ref.ModelName(), Conflicts: conflicts[ref]})
+		views = append(views, ToolView{AdvertisedTool: advertised, ModelName: ref.NameForCatalog(conflicts), Conflicts: conflicts[ref]})
 	}
 	return views, nil
 }

@@ -4,6 +4,15 @@
     {
       "id": "usage",
       "title": "Usage",
+      "localizedTitles": {
+        "zh": "用量",
+        "zh-TW": "用量",
+        "de": "Nutzung",
+        "fr": "Utilisation",
+        "es": "Uso",
+        "ja": "使用量",
+        "ko": "사용량"
+      },
       "scope": "installation",
       "placement": "workspaceView",
       "entry": "io.github.tangerg.flame/components/component.js",

@@ -29,17 +29,17 @@ const (
 
 // usageRecord tracks one skill's activity for the idle-lifecycle curator.
 // FirstSeen anchors the grace floor for a never-used skill; LastUsed drives the
-// archive threshold. Times are Unix seconds.
+// archive threshold. The observed instant is preserved across archive decisions.
 type usageRecord struct {
-	FirstSeen int64 `json:"firstSeen"`
-	LastUsed  int64 `json:"lastUsed,omitzero"`
+	FirstSeen time.Time `json:"firstSeen"`
+	LastUsed  time.Time `json:"lastUsed,omitzero"`
 }
 
 // lastActivity is the most recent signal of relevance — a load if the skill has
 // been used, else when the store first saw it (so a brand-new, never-used skill
 // gets the grace floor before it can be judged idle).
-func (u usageRecord) lastActivity() int64 {
-	if u.LastUsed > u.FirstSeen {
+func (u usageRecord) lastActivity() time.Time {
+	if u.LastUsed.After(u.FirstSeen) {
 		return u.LastUsed
 	}
 	return u.FirstSeen
@@ -68,28 +68,28 @@ func (s *Store) RecordUse(ctx context.Context, name string, now time.Time) error
 		return err
 	}
 	record := usage[name]
-	ts := now.Unix()
-	if record.FirstSeen == 0 {
+	ts := now.UTC()
+	if record.FirstSeen.IsZero() {
 		record.FirstSeen = ts
 		record.LastUsed = ts
-	} else {
+	} else if ts.After(record.LastUsed) {
 		// Observation time is sampled before acquiring the library lease.
-		record.LastUsed = max(record.LastUsed, ts)
+		record.LastUsed = ts
 	}
 	usage[name] = record
 	return writeUsage(ctx, root, usage)
 }
 
-// SweepIdle archives Agent-authored skills idle past archiveAfter, returning the
+// SweepIdle archives Agent-authored skills idle at or before the advised cutoff, returning the
 // names it archived and every public file identity it changed. A valid proposal origin is the provenance gate; a
 // human-authored Skill has none and is never auto-curated. Archiving moves the
 // Skill to _archive (never deletes)
 // and drops its usage record, so a later restore starts with a fresh grace floor
 // rather than being re-archived on the next sweep. A skill with no record yet is
-// seeded at now (persisted), giving it the full archiveAfter grace anchored from
+// seeded at now (persisted), giving it the full inactivity grace anchored from
 // its first sweep before it can be judged idle. now is explicit so the policy
 // stays testable.
-func (s *Store) SweepIdle(ctx context.Context, now time.Time, archiveAfter time.Duration) ([]string, []string, error) {
+func (s *Store) SweepIdle(ctx context.Context, now time.Time, inactiveSince time.Time) ([]string, []string, error) {
 	if err := contextError(ctx, "sweep skills"); err != nil {
 		return nil, nil, err
 	}
@@ -130,10 +130,10 @@ func (s *Store) SweepIdle(ctx context.Context, now time.Time, archiveAfter time.
 			continue // provenance gate: only agent-authored skills auto-curate
 		}
 		record := usage[name]
-		if record.FirstSeen == 0 {
-			record.FirstSeen = now.Unix()
+		if record.FirstSeen.IsZero() {
+			record.FirstSeen = now.UTC()
 		}
-		if now.Sub(time.Unix(record.lastActivity(), 0)) >= archiveAfter {
+		if !record.lastActivity().After(inactiveSince) {
 			changed, err := s.archiveActive(root, name)
 			identities = append(identities, changed...)
 			if err != nil {

@@ -249,7 +249,7 @@ func newDelegateProjection(t *testing.T, current session.Session, executor *Inte
 			t.Error(err)
 		}
 	})
-	retirer, err := sessions.NewResourceRetirer(stores.ResourceRetirements, sessions.Cleanup{Resource: "sandbox", Retire: isolation.Discard})
+	retirer, err := sessions.NewResourceRetirer(stores.ResourceRetirements, sessions.Cleanup{Resource: "sandbox", Retire: func(_ context.Context, id string) error { return isolation.Discard(id) }})
 	if err != nil {
 		t.Fatal(err)
 	}

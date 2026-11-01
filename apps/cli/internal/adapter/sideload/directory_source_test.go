@@ -371,12 +371,12 @@ func TestExecutableCommandHonorsCancellation(t *testing.T) {
 	root := t.TempDir()
 	slow := filepath.Join(root, "slow")
 	writeExecutable(t, slow, "#!/bin/sh\nsleep 2\n")
-	identity, err := os.Stat(slow)
+	source, err := captureExecutable(root, filepath.Base(slow))
 	if err != nil {
 		t.Fatal(err)
 	}
 	executor := executableCommand{
-		pluginID: "test.slow", command: "slow", source: executableSource{path: slow, identity: identity},
+		pluginID: "test.slow", command: "slow", source: source,
 		directory: root, timeout: 20 * time.Millisecond,
 	}
 	_, err = executor.Execute(t.Context(), extensions.CommandRequest{LocalDirectory: root})
@@ -450,5 +450,28 @@ func TestCommandEnvironmentUsesAnExplicitAllowlist(t *testing.T) {
 	}
 	if slices.ContainsFunc(environment, func(value string) bool { return strings.HasPrefix(value, "FLAME_TEST_SECRET=") }) {
 		t.Fatalf("secret leaked into command environment: %v", environment)
+	}
+}
+
+func TestDiscoveredCommandRefusesChangedBytesWithRestoredMetadata(t *testing.T) {
+	root := t.TempDir()
+	declared := validManifest("test.changed")
+	script := "#!/bin/sh\nprintf '{\"protocol\":2,\"message\":\"first\"}'\n"
+	writePlugin(t, root, "command", declared, script)
+	commands, closeKernel := loadFixtureCommands(t, root)
+	defer closeKernel()
+	path := filepath.Join(root, "command", declared.Entry)
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(strings.Replace(script, "first", "other", 1)), info.Mode()); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(path, info.ModTime(), info.ModTime()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := commands[0].Execute(t.Context(), extensions.CommandRequest{LocalDirectory: root}); err == nil || !strings.Contains(err.Error(), "entry changed") {
+		t.Fatalf("changed executable error = %v", err)
 	}
 }

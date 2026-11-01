@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/qimu"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/qimu"
 	"github.com/samber/lo"
 )
 
@@ -53,12 +53,7 @@ func (s *Selections) Select(ctx context.Context, record plugin.SelectionRecord) 
 		if !found {
 			return fmt.Errorf("%w: contribution is not declared", plugin.ErrInvalid)
 		}
-		contract, err := portable.ParseCapability(contribution.Contract.JSON())
-		if err != nil {
-			return err
-		}
-		descriptor := contract.Descriptor()
-		if descriptor.Reference != record.Role || descriptor.Composition != portable.Selection {
+		if !slices.Contains(contribution.SelectionRoles(), record.Role) {
 			return fmt.Errorf("%w: contribution does not provide the requested selection role", plugin.ErrInvalid)
 		}
 		return s.store.Save(ctx, selection)

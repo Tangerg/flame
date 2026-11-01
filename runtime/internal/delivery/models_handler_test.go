@@ -125,3 +125,16 @@ func TestSetUtilityRoleStoresConfiguredProvider(t *testing.T) {
 		t.Fatalf("utility role calls = %d, want 1", saver.calls)
 	}
 }
+
+func (m *modelProviderFake) Profile(ctx context.Context, id string) (models.ProviderProfile, error) {
+	profiles, err := m.Profiles(ctx)
+	if err != nil {
+		return models.ProviderProfile{}, err
+	}
+	for _, profile := range profiles {
+		if profile.Metadata.ID() == id {
+			return profile, nil
+		}
+	}
+	return models.ProviderProfile{}, models.ErrProviderUnsupported
+}

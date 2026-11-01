@@ -8,11 +8,11 @@
     "output": "schema.json#/$defs/DiscoverV1Output"
   },
   {
-    "name": "flame.hooks/execute.v1",
+    "name": "flame.hooks/evaluate.v1",
     "kind": "command",
     "target": "installation",
-    "description": "Execute one trusted lifecycle command under its original receipt, bounded input, output and process lifetime. Return advice; never grant Runtime authorization.",
-    "input": "schema.json#/$defs/ExecuteV1Input",
-    "output": "schema.json#/$defs/ExecuteV1Output"
+    "description": "Evaluate one captured lifecycle event and return advice. The Runtime retains trust, command material bounds and final authorization.",
+    "input": "schema.json#/$defs/EvaluateV1Input",
+    "output": "schema.json#/$defs/EvaluateV1Output"
   }
 ]

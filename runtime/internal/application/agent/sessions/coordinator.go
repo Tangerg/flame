@@ -172,7 +172,7 @@ type WorkspaceCheckpoints interface {
 	Restore(ctx context.Context, sessionID, cwd, runID string) error
 	// DropSession executes an already-committed resource retirement. The
 	// mutation owner retains responsibility and admission until cleanup succeeds.
-	DropSession(sessionID string) error
+	DropSession(ctx context.Context, sessionID string) error
 }
 
 // sandboxDiscarder destroys the isolated copy owned by the addressed Session.

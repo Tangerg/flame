@@ -12,6 +12,9 @@ import (
 func toolRefFromWire(ref protocol.ToolRef) (tool.Ref, error) {
 	switch ref.Type {
 	case protocol.ToolRefBuiltIn:
+		if ref.Server != nil {
+			return tool.Ref{}, fmt.Errorf("delivery: built-in Tool cannot have an MCP server")
+		}
 		return tool.BuiltIn(builtincontract.Name(ref.Name))
 	case protocol.ToolRefMCP:
 		if ref.Server == nil {
@@ -35,15 +38,21 @@ func presentToolRef(ref tool.Ref) (protocol.ToolRef, error) {
 	if err := ref.Validate(); err != nil {
 		return protocol.ToolRef{}, fmt.Errorf("delivery: project tool reference: %w", err)
 	}
-	switch ref.Kind() {
-	case tool.BuiltInKind:
-		name, _ := ref.BuiltIn()
-		return protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: string(name)}, nil
-	case tool.MCPKind:
-		server, remote, _ := ref.MCP()
-		id := presentMCPServerID(server)
-		return protocol.ToolRef{Type: protocol.ToolRefMCP, Name: remote.String(), Server: &id}, nil
-	default:
-		return protocol.ToolRef{}, fmt.Errorf("delivery: unsupported tool source %q", ref.Kind())
+	return projectCapturedRef(ref), nil
+}
+
+func projectCapturedRef(ref tool.Ref) protocol.ToolRef {
+	if name, ok := ref.BuiltIn(); ok {
+		return protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: string(name)}
 	}
+	server, remote, _ := ref.MCP()
+	id := presentMCPServerID(server)
+	return protocol.ToolRef{Type: protocol.ToolRefMCP, Name: remote.String(), Server: &id}
+}
+
+func recordedSource(ref tool.Ref) *protocol.RecordedToolSource {
+	if ref == (tool.Ref{}) {
+		return nil
+	}
+	return &protocol.RecordedToolSource{Ref: projectCapturedRef(ref), ModelName: ref.ModelName()}
 }

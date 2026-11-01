@@ -3,7 +3,6 @@ package runtimebinding
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
 
@@ -120,7 +119,7 @@ func (r *Connection) ExportSession(ctx context.Context, request session.ExportRe
 				response.Artifact.Session.ID, request.SessionID,
 			)
 		}
-		body, err = json.Marshal(response.Artifact, jsontext.WithIndent("  "), json.Deterministic(true))
+		body, err = json.Marshal(response.Artifact, json.Deterministic(true))
 		if err != nil {
 			return session.Document{}, runtimeContractViolation("export session artifact cannot be encoded: %v", err)
 		}

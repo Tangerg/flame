@@ -1,5 +1,5 @@
 import { parseJSON } from "@qimu/sdk/json";
-import { type ToolInvocation } from "@flame/runtime-client";
+import type { AgentToolInvocation } from "@/features/agent/public/events";
 import { describe, expect, it } from "vitest";
 import {
   argsText,
@@ -7,9 +7,9 @@ import {
   toolLabel,
   toolLabelKind,
 } from "@/features/agent/application/fold/projections";
-import { toolCategoryForName } from "@/features/agent/application/fold/reducer.fixtures";
-const tool = (name: string, args: Record<string, unknown>, result?: unknown): ToolInvocation =>
-  ({ name, category: toolCategoryForName(name), arguments: args, result }) as ToolInvocation;
+import { toolCategoryForName } from "@/test/toolCategory.generated";
+const tool = (name: string, args: Record<string, unknown>, result?: unknown): AgentToolInvocation =>
+  ({ name, category: toolCategoryForName(name), arguments: args, result }) as AgentToolInvocation;
 
 it("renders original opaque Tool arguments and output without numeric conversion", () => {
   const value = parseJSON('{"wide":9007199254740993,"decimal":1.0}') as Record<string, unknown>;
@@ -30,7 +30,10 @@ describe("toolLabel — name-keyed specialised tools", () => {
 
   it("does not read a category-less tool as the built-in of the same name", () => {
     expect(
-      toolLabel({ name: "read_shell_output", arguments: { shell_id: "bg_1" } } as ToolInvocation),
+      toolLabel({
+        name: "read_shell_output",
+        arguments: { shell_id: "bg_1" },
+      } as AgentToolInvocation),
     ).toBe("read_shell_output");
   });
 

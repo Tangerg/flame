@@ -35,20 +35,21 @@ import { usePluginErrorStore } from "@/extensions/errors";
 import { RuntimeConnectionGeneration, RUNTIME_STREAM } from "@/features/connection/public/services";
 import { type ContributionLifetime } from "@/extensions/definePlugin";
 import { PACKAGES_KEY } from "@/features/plugins/adapters/packages";
-import { createPluginsPlugin } from "@/features/plugins/index";
+import { createInstalledPluginLoader } from "@/features/plugins/index";
 import { contributePaletteTheme } from "@/features/theme/public/appearance";
 import { retainThemeSelection } from "@/features/theme/public/appearance";
 let installed: InstalledPluginsOwner;
-const pluginsPane = (client: () => FlameClient) => {
+const installedLoader = (client: () => FlameClient) => {
   const owned = createInstalledPlugins(
     client,
     () => "http://runtime.test",
+    testClient.workspace.access,
     testClient.theme.access,
     async () => "requested",
   );
   installed = owned;
   onTestFinished(() => owned.dispose());
-  return createPluginsPlugin(owned);
+  return createInstalledPluginLoader(owned);
 };
 
 vi.mock("@/features/theme/public/appearance", () => ({
@@ -171,7 +172,7 @@ it("loads only an admitted locale's exact release and withdraws it with its Runt
   onTestFinished(() => setLocale("en"));
   await loadPluginsForTest(
     runtimePlugin(),
-    pluginsPane(() => runtime),
+    installedLoader(() => runtime),
   );
   await vi.waitFor(() => expect(contributionsTo(LOCALE)).toHaveLength(1));
   const digest = admitted.selected.digest;
@@ -225,7 +226,7 @@ it("mounts an admitted client effect independently of navigation and withdraws i
   onTestFinished(() => load.mockRestore());
   await loadPluginsForTest(
     runtimePlugin(),
-    pluginsPane(() => client(async () => ({ data: [admitted, withheld] }))),
+    installedLoader(() => client(async () => ({ data: [admitted, withheld] }))),
   );
   testClient.navigation.go({ session: "source" });
   testClient.render(createElement(Slot, { name: "app.overlay" }));
@@ -256,7 +257,7 @@ it("keeps package realization owned by its generation when the query cache is ca
   onTestFinished(() => pending.resolve({ data: [row] }));
   await loadPluginsForTest(
     runtimePlugin(),
-    pluginsPane(() => client(list)),
+    installedLoader(() => client(list)),
   );
   await vi.waitFor(() => expect(list).toHaveBeenCalledOnce());
 
@@ -298,7 +299,7 @@ it("joins the retired Runtime before publishing the latest package generation", 
   });
   await loadPluginsForTest(
     runtime,
-    pluginsPane(() => selected),
+    installedLoader(() => selected),
   );
   await vi.waitFor(() => expect(original).toHaveBeenCalledOnce());
   const retired = installed.access.captureOperations()!;
@@ -337,7 +338,7 @@ it("keeps a failed realization local to this client and retries it on request", 
     }));
   await loadPluginsForTest(
     runtimePlugin(),
-    pluginsPane(() => client(list, subscribe)),
+    installedLoader(() => client(list, subscribe)),
   );
   await vi.waitFor(() => expect(installed.access.failure()?.reason).toBe("event stream refused"));
   expect(contributionsTo(COLOR_THEME)).toEqual([]);
@@ -358,7 +359,7 @@ it("withdraws its realization failure when the owning generation retires", async
   const subscribe = vi.fn().mockRejectedValue(new Error("event stream refused"));
   await loadPluginsForTest(
     runtimePlugin(),
-    pluginsPane(() => client(async () => ({ data: [] }), subscribe)),
+    installedLoader(() => client(async () => ({ data: [] }), subscribe)),
   );
   await vi.waitFor(() => expect(installed.access.failure()).not.toBeNull());
   await resetKernelForTest();
@@ -374,7 +375,7 @@ it("consumes a realization retry once and refuses it after retirement", async ()
     }));
   await loadPluginsForTest(
     runtimePlugin(),
-    pluginsPane(() => client(async () => ({ data: [] }), subscribe)),
+    installedLoader(() => client(async () => ({ data: [] }), subscribe)),
   );
   await vi.waitFor(() => expect(installed.access.failure()).not.toBeNull());
   const failed = installed.access.failure()!;
@@ -418,7 +419,7 @@ it("withdraws every contribution and reports failure when one cleanup rejects", 
   });
   await loadPluginsForTest(
     runtimePlugin(),
-    pluginsPane(() =>
+    installedLoader(() =>
       client(
         async () => ({
           data: [
@@ -458,7 +459,7 @@ it("preserves a snapshot failure when closing its subscription also fails", asyn
   });
   await loadPluginsForTest(
     runtimePlugin(),
-    pluginsPane(() =>
+    installedLoader(() =>
       client(async () => {
         throw new Error("snapshot refused");
       }, subscribe),
@@ -502,7 +503,7 @@ it.each(["resolve", "reject"] as const)(
     });
     await loadPluginsForTest(
       runtimePlugin(),
-      pluginsPane(() => client(list, subscribe)),
+      installedLoader(() => client(list, subscribe)),
     );
     await vi.waitFor(() => expect(subscribe).toHaveBeenCalledOnce());
     let stopped = false;
@@ -568,7 +569,7 @@ it.each(["initial snapshot", "event refresh", "event stream"] as const)(
     });
     await loadPluginsForTest(
       runtimePlugin(),
-      pluginsPane(() => client(list, subscribe)),
+      installedLoader(() => client(list, subscribe)),
     );
     ready.resolve();
     await vi.waitFor(() => expect(installed.access.failure()?.reason).toBe(failure.message));
@@ -639,7 +640,7 @@ it("presents and retains only the contributions Runtime admits", async () => {
       title: "Provider settings",
       scope: "client",
       placement: "settingsPane",
-      settingsIntent: "modelProviders",
+      settingsIntent: "model-providers",
       material: "providers",
       entry: "io.github.tangerg.flame/components/component.js",
       export: "Settings",
@@ -665,7 +666,7 @@ it("presents and retains only the contributions Runtime admits", async () => {
   );
   await loadPluginsForTest(
     runtimePlugin(),
-    pluginsPane(() => client(async () => ({ data: [admitted, withheld] }))),
+    installedLoader(() => client(async () => ({ data: [admitted, withheld] }))),
   );
   await vi.waitFor(() =>
     expect(contributionsTo(COLOR_THEME).map((entry) => entry.item.label)).toEqual([
@@ -709,7 +710,7 @@ it("presents and retains only the contributions Runtime admits", async () => {
       id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:settings",
       label: "Provider settings",
       group: "extensions",
-      intent: "modelProviders",
+      intent: "model-providers",
     },
   ]);
   expect(retainThemeSelection).toHaveBeenLastCalledWith(

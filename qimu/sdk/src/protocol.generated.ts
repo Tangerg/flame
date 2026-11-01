@@ -155,8 +155,7 @@ export interface PreparedContribution {
   readonly metadataJson: string;
 }
 
-export type Profile =
-  "native-go" | "mcp-process" | "browser-js" | "static-resource";
+export type Profile = string;
 
 export interface ProofAcknowledgement {
   readonly closeId: string;

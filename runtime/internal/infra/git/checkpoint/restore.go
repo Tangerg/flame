@@ -22,12 +22,11 @@ func (s *Store) Restore(ctx context.Context, sessionID, cwd, runID string) error
 	if err := s.checkStorageBoundary(ctx, cwd); err != nil {
 		return err
 	}
-	mu := s.treeLockFor(cwd)
-	mu.Lock()
-	defer mu.Unlock()
-	repoMu := s.repoLockFor(sessionID)
-	repoMu.Lock()
-	defer repoMu.Unlock()
+	release, err := s.acquireWorkspace(ctx, sessionID, cwd)
+	if err != nil {
+		return err
+	}
+	defer release()
 	gitDir := s.gitDir(sessionID, cwd)
 	present, err := repoExists(gitDir)
 	if err != nil {

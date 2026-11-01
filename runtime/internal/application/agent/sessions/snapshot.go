@@ -13,42 +13,25 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
-// ExportResult is the complete result of a session archive use case. The
-// archive and its session view are derived while the same admission is held, so
-// callers cannot pair one revision's archive with a later revision's view.
-type ExportResult struct {
-	Session  View
-	Snapshot PortableSnapshot
-	Items    []transcript.Item
-}
-
 // ExportSession reserves the session's single-writer slot and derives its
 // portable archive and presentation from one coherent canonical state. Active
 // and parked runs are rejected because their executor state is process-local
 // and therefore cannot be represented by a portable session artifact.
-func (c *Coordinator) ExportSession(ctx context.Context, sessionID string) (ExportResult, error) {
+func (c *Coordinator) ExportSession(ctx context.Context, sessionID string) (PortableSnapshot, error) {
 	admission, err := c.ClaimIdleSession(ctx, sessionID)
 	if err != nil {
-		return ExportResult{}, err
+		return PortableSnapshot{}, err
 	}
 	defer admission.Release()
 	snapshot, err := c.snapshots.ReadSnapshot(ctx, sessionID)
 	if err != nil {
-		return ExportResult{}, err
+		return PortableSnapshot{}, err
 	}
 	portable, err := snapshot.PortableSnapshot()
 	if err != nil {
-		return ExportResult{}, fmt.Errorf("sessions: prepare portable snapshot: %w", err)
+		return PortableSnapshot{}, fmt.Errorf("sessions: prepare portable snapshot: %w", err)
 	}
-	items, err := snapshot.HydratedItems()
-	if err != nil {
-		return ExportResult{}, err
-	}
-	view, err := c.view(snapshot.Session, activityIdle)
-	if err != nil {
-		return ExportResult{}, err
-	}
-	return ExportResult{Session: view, Snapshot: portable, Items: items}, nil
+	return portable, nil
 }
 
 // Validate checks the complete Session and the snapshot's referential integrity

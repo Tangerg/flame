@@ -18,6 +18,10 @@ func TestMain(tests *testing.M) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	packages := filepath.Join(filepath.Dir(executable), "plugins")
+	if os.Getenv("FLAME_TEST_FIRST_PARTY_DIRECTORY") == packages {
+		os.Exit(tests.Run())
+	}
 	_, source, _, _ := runtime.Caller(0)
 	repository := filepath.Clean(filepath.Join(filepath.Dir(source), "../.."))
 	runner, err := localruntime.RunnerExecutable(executable)
@@ -39,7 +43,6 @@ func TestMain(tests *testing.M) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	packages := filepath.Join(filepath.Dir(executable), "plugins")
 	command := exec.Command("node", filepath.Join(repository, "plugins/scripts/build-packages.mjs"), "--os", runtime.GOOS, "--arch", runtime.GOARCH, "--output", packages)
 	command.Stdout, command.Stderr = os.Stdout, os.Stderr
 	if err := command.Run(); err != nil {

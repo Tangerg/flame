@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/qimu/portable"
@@ -29,12 +31,13 @@ func (id ContributionID) Validate() error {
 // Contribution is an admitted contract-to-export declaration. Composition and
 // role semantics belong to Contract; they are not independently authored here.
 type Contribution struct {
-	Background bool
-	ID         ContributionID
-	Server     mcpserver.ServerName
-	Export     string
-	Contract   jsonvalue.Value
-	Requires   []Requirement
+	ModelProviders []string
+	Background     bool
+	ID             ContributionID
+	Server         mcpserver.ServerName
+	Export         string
+	Contract       jsonvalue.Value
+	Requires       []Requirement
 }
 
 // Requirement names one collaborator of this contribution. An optional
@@ -46,6 +49,7 @@ type Requirement struct {
 }
 
 func (v Contribution) clone() Contribution {
+	v.ModelProviders = slices.Clone(v.ModelProviders)
 	v.Requires = slices.Clone(v.Requires)
 	return v
 }
@@ -63,6 +67,9 @@ func (b *Builder) AdmitContribution(value Contribution) error {
 		return refuse(DiagnosticInvalidDeclaration, "invalid contribution contract: %v", err)
 	}
 	value.Contract = contract.Identity()
+	if err := value.admitModelProviders(contract); err != nil {
+		return refuse(DiagnosticInvalidDeclaration, "contribution %q: %v", value.ID, err)
+	}
 	seen := make(map[ContributionID]bool, len(value.Requires))
 	for i, requirement := range value.Requires {
 		if err := requirement.ID.Validate(); err != nil {
@@ -107,4 +114,45 @@ func (r Release) HasImplementation(server mcpserver.ServerName, required *portab
 	return required != nil && slices.ContainsFunc(r.declaration.Contributions, func(value Contribution) bool {
 		return value.Server == server && value.Contract == required.Identity()
 	})
+}
+
+func (c *Contribution) admitModelProviders(contract *portable.Capability) error {
+	descriptor := contract.Descriptor()
+	if _, reserved := extension.ProviderFromRole(descriptor.Reference); reserved {
+		return fmt.Errorf("model provider selection roles are reserved for the model adapter contract")
+	}
+	if descriptor.Reference != extension.ModelProviderContract {
+		if len(c.ModelProviders) != 0 {
+			return fmt.Errorf("model provider scopes require the model adapter contract")
+		}
+		return nil
+	}
+	if descriptor.Composition != portable.Selection || len(c.ModelProviders) == 0 {
+		return fmt.Errorf("model adapter requires explicit provider scopes")
+	}
+	slices.Sort(c.ModelProviders)
+	for i, id := range c.ModelProviders {
+		if err := modelchoice.ValidateProviderIdentity(id); err != nil {
+			return err
+		}
+		if i > 0 && c.ModelProviders[i-1] == id {
+			return fmt.Errorf("duplicate model provider scope %q", id)
+		}
+	}
+	return nil
+}
+
+func (c Contribution) SelectionRoles() []string {
+	if len(c.ModelProviders) == 0 {
+		contract, err := portable.ParseCapability(c.Contract.JSON())
+		if err != nil || contract.Descriptor().Composition != portable.Selection {
+			return nil
+		}
+		return []string{contract.Descriptor().Reference}
+	}
+	roles := make([]string, 0, len(c.ModelProviders))
+	for _, provider := range c.ModelProviders {
+		roles = append(roles, extension.ModelProviderRole(provider))
+	}
+	return roles
 }

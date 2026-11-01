@@ -54,7 +54,7 @@ func (s *Handler) ExportTrajectory(ctx context.Context, request protocol.ExportT
 		return nil, fmt.Errorf("sessions.exportTrajectory: encode evidence: %w", err)
 	}
 	response := &protocol.ExportTrajectoryResponse{Trajectory: trajectory}
-	if err := json.MarshalWrite(&trajectorySizeWriter{remaining: sessions.MaximumTrajectoryExportBytes}, response); err != nil {
+	if err := json.MarshalWrite(&encodedSizeLimit{remaining: sessions.MaximumTrajectoryExportBytes}, response); err != nil {
 		return nil, wireTrajectoryExportError(err)
 	}
 	return response, nil
@@ -153,9 +153,9 @@ func presentTrajectoryExport(result sessions.TrajectoryExport) (protocol.Session
 	return out, nil
 }
 
-type trajectorySizeWriter struct{ remaining int }
+type encodedSizeLimit struct{ remaining int }
 
-func (w *trajectorySizeWriter) Write(value []byte) (int, error) {
+func (w *encodedSizeLimit) Write(value []byte) (int, error) {
 	if len(value) > w.remaining {
 		return 0, sessions.ErrExportTooLarge
 	}

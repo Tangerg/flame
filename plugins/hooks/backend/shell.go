@@ -177,6 +177,7 @@ func exitCodeOf(err error) int {
 }
 
 type commandRequest struct {
+	Ordinal int
 	Command string
 	CWD     string
 	Input   hook.Input

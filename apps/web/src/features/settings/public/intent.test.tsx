@@ -17,7 +17,7 @@ afterEach(async () => {
   await client.dispose();
 });
 
-it.each(["modelProviders", "mcpServers"] as const)(
+it.each(["model-providers", "mcp-servers", "vendor.settings"] as const)(
   "opens the exact installed settings entry and returns to management after withdrawal for %s",
   async (intent) => {
     const hook = client.renderHook(() => useSettingsPaneForIntent(intent));
@@ -40,7 +40,7 @@ it.each(["modelProviders", "mcpServers"] as const)(
   },
 );
 
-it.each(["modelProviders", "mcpServers"] as const)(
+it.each(["model-providers", "mcp-servers", "vendor.settings"] as const)(
   "requires an unambiguous declared intent instead of inferring from titles or artwork for %s",
   async (intent) => {
     await contributeForTest((context) => {

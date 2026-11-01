@@ -10,7 +10,7 @@ import {
   toolIntent,
   toolMetaItems,
 } from "@/features/agent/presentation/toolPresentation";
-import { toolCategoryForName } from "@/features/agent/application/fold/reducer.fixtures";
+import { toolCategoryForName } from "@/test/toolCategory.generated";
 
 // The Runtime stamps a category on built-in calls only; fixtures reproduce that.
 const tool = ({ runId = "run_1", ...overrides }: Partial<ToolCall>): ToolCall => {

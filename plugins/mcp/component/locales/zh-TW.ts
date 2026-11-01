@@ -3,7 +3,7 @@ export const zhTW: Record<string, string> = {
   "mcp.tools.policyHint":
     "即時儲存。工具可見性對新執行生效。自動核准設定全域允許規則；更具體的規則仍然生效。",
   "mcp.tools.nameConflict":
-    "工具名稱 {{name}} 與 {{sources}} 衝突，已從模型工具清單排除。",
+    "可透過 {{name}} 呼叫。{{sources}} 也使用這個簡短名稱。",
   "mcp.add": "新增伺服器",
   "mcp.save": "儲存",
   "mcp.saving": "正在儲存…",

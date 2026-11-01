@@ -274,7 +274,7 @@ and values reach that owner unchanged, including empty and whitespace values;
 an empty value sets `KEY=` rather than removing the variable.
 `flame approvals ls` lists global rules; `--session` adds that session's visible
 rules. `/mcp-tools` includes disabled tools across configured servers, and tool
-listings explain name collisions that exclude connected tools from the model.
+listings show each instance-qualified model name and the sources sharing its short label.
 A server's inline status problem is rendered from its closed category; a category
 outside the one its state allows is reported as a Runtime contract violation rather
 than printed as raw text. Runtime and clients must use the same protocol revision, and obsolete Runtime
@@ -379,3 +379,16 @@ or restart, repeating that action resumes the original request instead of
 preparing a new one; only an owner acknowledgement or business refusal retires it.
 An open view re-reads its rows on `plugins.dataChanged`, and the view commands are
 rebuilt on `plugins.changed`.
+
+An automatically discovered project configuration cannot grant native command
+execution through `plugins.directories`. Declare executable roots in user
+configuration, an explicitly selected `--config`, or trusted `--plugin-dir`
+flags. Discovery captures each entry's content digest. Execution verifies a
+private copy before starting it, with the original plugin directory as its
+working directory. Scripts locate sibling resources through that working
+directory; their executable path names the private copy.
+
+An admitted terminal view is always addressable as
+`/view:<installation-id>:<view-id>`. An unambiguous local view name remains a
+short command when no native command claims it. Paginated row actions require a
+complete, non-cyclic result set so a truncated prefix cannot select the wrong row.

@@ -72,10 +72,11 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 			return zero, runs.RecoveryUnavailable, errors.New("execution: captured Tool Item is unavailable")
 		}
 		original, found := item.ToolCall()
-		if !found || original.Invocation.Name != metadata.Start.ToolName {
+		if !found || !original.Invocation.MatchesSource(metadata.Start.ToolName, metadata.Receipt.Tool) {
 			return zero, runs.RecoveryUnavailable, errors.New("execution: captured Tool attribution differs from the original Item")
 		}
 		drained = append(drained, runs.DrainedTool{ItemID: item.ID(), CallID: invocation.CallID, SourceCallID: metadata.Start.SourceCallID})
+		metadata.Start.Source = metadata.Receipt.Tool
 		tools = append(tools, runs.RecoveredTool{Start: metadata.Start, Invocation: invocation})
 		pendingCalls[invocation.CallID] = true
 	}

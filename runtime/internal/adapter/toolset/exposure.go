@@ -1,9 +1,7 @@
 package toolset
 
 import (
-	"context"
 	"fmt"
-	"log/slog"
 	"slices"
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
@@ -12,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	oteltool "github.com/Tangerg/scope/otel/tool"
 )
@@ -168,36 +167,62 @@ func (m *manifestBuilder) builtIn(executable toolcontract.Tool) toolcontract.Too
 	return identified
 }
 
-// Filter before constructing discovery so excluded tools cannot be advertised.
-func (m *manifestBuilder) excludeCollisions(ctx context.Context) error {
+type namedRemoteTool struct {
+	toolcontract.Tool
+	name string
+}
+
+func (t namedRemoteTool) Definition() chat.ToolDefinition {
+	definition := t.Tool.Definition()
+	definition.Name = t.name
+	return definition
+}
+func (t namedRemoteTool) Unwrap() toolcontract.Tool { return t.Tool }
+
+// A recovering Run keeps the original competition even after one source
+// becomes unavailable. Revocation removes authority without renaming its peers.
+func (m *manifestBuilder) bindModelNames(retained *Retained) error {
 	if m.err != nil {
 		return m.err
 	}
-	refs := make([]tool.Ref, 0, len(m.visible)+len(m.deferred))
-	for _, executable := range append(slices.Clone(m.visible), m.deferred...) {
-		ref, err := Identify(executable)
-		if err != nil {
-			return err
+	var refs []tool.Ref
+	if retained != nil {
+		refs = slices.Clone(retained.MCP)
+	}
+	for _, set := range [][]toolcontract.Tool{m.visible, m.deferred} {
+		for _, executable := range set {
+			ref, err := Identify(executable)
+			if err != nil {
+				return err
+			}
+			refs = append(refs, ref)
 		}
-		refs = append(refs, ref)
 	}
 	conflicts := tool.NameConflicts(refs)
-	for ref, others := range conflicts {
-		slog.WarnContext(ctx, "toolset: excluded colliding remote tool", "tool", ref, "conflicts", others)
+	assigned := make(map[string]tool.Ref)
+	for _, set := range [][]toolcontract.Tool{m.visible, m.deferred} {
+		for index, executable := range set {
+			ref, err := Identify(executable)
+			if err != nil {
+				return err
+			}
+			name := ref.NameForCatalog(conflicts)
+			if other, found := assigned[name]; found {
+				return fmt.Errorf("toolset: duplicate published name %q for %s and %s", name, other, ref)
+			}
+			assigned[name] = ref
+			if name != executable.Definition().Name {
+				set[index] = namedRemoteTool{Tool: executable, name: name}
+			}
+		}
 	}
-	remove := func(executable toolcontract.Tool) bool {
-		ref, _ := Identify(executable)
-		return len(conflicts[ref]) != 0
-	}
-	m.visible = slices.DeleteFunc(m.visible, remove)
-	m.deferred = slices.DeleteFunc(m.deferred, remove)
 	return nil
 }
 
 // MCPTools projects the live MCP catalog from the single snapshot each Run
 // manifest freezes: every advertised tool, exposure-disabled ones included so
 // a client can enable them again, scoped to server when non-nil, and the
-// name conflicts the manifest exclusion rule derives from the exposed tools.
+// name conflicts the manifest naming rule derives from the exposed tools.
 // One atomic load supplies both, so the read model can never
 // pair one catalog's tools with another catalog's conflicts.
 func (r *Resolver) MCPTools(server *mcpserver.ID) ([]mcpserver.AdvertisedTool, map[tool.Ref][]tool.Ref, error) {

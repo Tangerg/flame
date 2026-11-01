@@ -4,11 +4,30 @@
     {
       "id": "diff",
       "title": "Workspace diff",
+      "localizedTitles": {
+        "zh": "工作区差异",
+        "zh-TW": "工作區差異",
+        "de": "Arbeitsbereichsänderungen",
+        "fr": "Différences de l’espace de travail",
+        "es": "Cambios del espacio de trabajo",
+        "ja": "ワークスペースの差分",
+        "ko": "작업 공간 변경 사항"
+      },
       "scope": "workspace",
       "placement": "workspaceView",
       "material": "diff",
+      "toolCategory": "edit",
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "WorkspaceDiff"
+    },
+    {
+      "id": "worktree-changes",
+      "title": "Working tree changes",
+      "scope": "workspace",
+      "placement": "workspaceChangesAction",
+      "targetView": "diff",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "WorktreeChanges"
     }
   ]
 }

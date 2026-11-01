@@ -43,7 +43,7 @@ func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 	web := testsupport.MCPTool(testsupport.UserMCPServer("web"), "web_fetch")
 	approval := runs.ApprovalPrompt{
 		CallID: "tool_approval_1", Arguments: `{"url":"https://example.com"}`,
-		SafetyClass: tool.SafetyClassNetwork, Risk: tool.RiskHigh, Tool: web, SourceFingerprint: testsupport.ToolFingerprint(web),
+		SafetyClass: tool.SafetyClassNetwork, Risk: tool.RiskHigh, Tool: web, QualifiedName: true, SourceFingerprint: testsupport.ToolFingerprint(web),
 	}
 	raw, err = json.Marshal(promptWireFrom(approval))
 	if err != nil {
@@ -53,7 +53,7 @@ func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DecodePrompt approval: %v", err)
 	}
-	if decoded, ok := got.(runs.ApprovalPrompt); !ok || decoded.Tool != web || decoded.SafetyClass != tool.SafetyClassNetwork || decoded.Risk != tool.RiskHigh {
+	if decoded, ok := got.(runs.ApprovalPrompt); !ok || !decoded.QualifiedName || decoded.Tool != web || decoded.SafetyClass != tool.SafetyClassNetwork || decoded.Risk != tool.RiskHigh {
 		t.Fatalf("decoded approval = %#v", got)
 	}
 

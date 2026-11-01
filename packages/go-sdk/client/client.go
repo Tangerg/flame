@@ -30,7 +30,7 @@ type RemoteConfig struct {
 	Endpoint string
 	Token    string
 	// MaxMessageBytes optionally bounds one buffered reply or SSE frame. Zero
-	// adds no client limit; the Runtime protocol imposes no export-size limit.
+	// adds no client limit; Runtime enforces the selected operation’s own bounds.
 	MaxMessageBytes int
 }
 

@@ -15,7 +15,7 @@ type fakeIdleSkillSweeper struct {
 	now      time.Time
 }
 
-func (f *fakeIdleSkillSweeper) SweepIdle(_ context.Context, now time.Time, _ time.Duration) ([]string, []string, error) {
+func (f *fakeIdleSkillSweeper) SweepIdle(_ context.Context, now time.Time, _ time.Time) ([]string, []string, error) {
 	f.now = now
 	identities := make([]string, len(f.archived))
 	for index, name := range f.archived {
@@ -36,7 +36,7 @@ func TestIdleSkillArchiveNotifiesEveryCommittedPartialSweep(t *testing.T) {
 	}
 	now := time.Date(2026, 8, 13, 9, 0, 0, 0, time.UTC)
 
-	archived, err := maintenance.ArchiveIdle(t.Context(), now, 30*24*time.Hour)
+	archived, err := maintenance.ArchiveIdle(t.Context(), now, now.Add(-30*24*time.Hour))
 	if !errors.Is(err, wantErr) {
 		t.Fatalf("ArchiveIdle error = %v, want %v", err, wantErr)
 	}
@@ -52,7 +52,7 @@ func TestIdleSkillArchiveNotifiesEveryCommittedPartialSweep(t *testing.T) {
 
 	sweeper.archived = nil
 	sweeper.err = nil
-	if _, err := maintenance.ArchiveIdle(t.Context(), now.Add(time.Hour), 30*24*time.Hour); err != nil {
+	if _, err := maintenance.ArchiveIdle(t.Context(), now.Add(time.Hour), now.Add(time.Hour-30*24*time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	if len(notices) != 1 {

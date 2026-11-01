@@ -2,11 +2,13 @@ package plugin
 
 import (
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/qimu/integrity"
@@ -17,16 +19,20 @@ var componentExport = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]{0,63}$`)
 // ClientComponent describes a public rendering entry with an optional own
 // callable contribution. It owns no business state or backend activation policy.
 type ClientComponent struct {
-	Selector       *RendererSelector
-	ID             ContributionID
-	Title          string
-	Scope          extension.ComponentScope
-	Placement      extension.ComponentPlacement
-	Entry          string
-	Export         string
-	Contribution   ContributionID
-	Material       string
-	SettingsIntent extension.SettingsIntent
+	ToolCategory builtin.ToolCategory
+	TargetView   string
+
+	Selector        *RendererSelector
+	ID              ContributionID
+	Title           string
+	LocalizedTitles map[string]string
+	Scope           extension.ComponentScope
+	Placement       extension.ComponentPlacement
+	Entry           string
+	Export          string
+	Contribution    ContributionID
+	Material        string
+	SettingsIntent  string
 }
 
 // componentPlacement is what one host placement admits: the contexts it renders
@@ -58,6 +64,8 @@ var componentPlacements = map[extension.ComponentPlacement]componentPlacement{
 		material: true,
 		refusal:  "settings component requires client, workspace or installation context",
 	},
+	extension.ComponentPlacementWorkspaceChangesAction: {scopes: []extension.ComponentScope{extension.ComponentScopeWorkspace}, refusal: "workspace changes action requires workspace context"},
+	extension.ComponentPlacementSharedClientEffect:     {scopes: []extension.ComponentScope{extension.ComponentScopeClient}, refusal: "shared effect requires client context"},
 	extension.ComponentPlacementClientEffect: {
 		scopes:  []extension.ComponentScope{extension.ComponentScopeClient},
 		refusal: "client effect requires client context without view metadata",
@@ -102,11 +110,8 @@ func (c ClientComponent) validate() error {
 			return err
 		}
 	}
-	if c.SettingsIntent != "" && (c.Placement != extension.ComponentPlacementSettingsPane || !c.SettingsIntent.Valid()) {
-		return refuse(DiagnosticInvalidDeclaration, "invalid settings intent for component %q", c.ID)
-	}
-	if c.Title == "" || len(c.Title) > MaxPresentationTitleBytes || !utf8.ValidString(c.Title) || !c.Scope.Valid() {
-		return refuse(DiagnosticInvalidDeclaration, "invalid component %q", c.ID)
+	if err := c.validatePresentation(); err != nil {
+		return err
 	}
 	if !ValidResourcePath(c.Entry) || !strings.HasPrefix(c.Entry, Namespace+"/") || !strings.HasSuffix(c.Entry, ".js") || !componentExport.MatchString(c.Export) {
 		return refuse(DiagnosticInvalidDeclaration, "invalid component %q entry", c.ID)
@@ -134,11 +139,7 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 	if value.Contribution != "" && !slices.ContainsFunc(b.declaration.Contributions, func(current Contribution) bool { return current.ID == value.Contribution }) {
 		return refuse(DiagnosticInvalidDependencies, "component %q has no declared callable contribution", value.ID)
 	}
-	if value.Selector != nil {
-		copy := *value.Selector
-		value.Selector = &copy
-	}
-	b.declaration.Components = append(b.declaration.Components, value)
+	b.declaration.Components = append(b.declaration.Components, value.clone())
 	return nil
 }
 
@@ -148,12 +149,42 @@ func (i Installation) AuthorizeComponent(release Release, digest integrity.Diges
 	}
 	for _, value := range release.declaration.Components {
 		if value.ID == id {
-			if value.Selector != nil {
-				copy := *value.Selector
-				value.Selector = &copy
-			}
-			return value, nil
+			return value.clone(), nil
 		}
 	}
 	return ClientComponent{}, fmt.Errorf("%w: component %q", ErrNotFound, id)
+}
+
+func validComponentTitle(title string) bool {
+	return title != "" && len(title) <= MaxPresentationTitleBytes && utf8.ValidString(title)
+}
+
+func (c ClientComponent) clone() ClientComponent {
+	c.LocalizedTitles = maps.Clone(c.LocalizedTitles)
+	if c.Selector != nil {
+		selector := *c.Selector
+		c.Selector = &selector
+	}
+	return c
+}
+
+func (c ClientComponent) validatePresentation() error {
+	if c.SettingsIntent != "" && (c.Placement != extension.ComponentPlacementSettingsPane || !identity.ValidDeclarationID(c.SettingsIntent)) {
+		return refuse(DiagnosticInvalidDeclaration, "invalid settings intent for component %q", c.ID)
+	}
+	if !validComponentTitle(c.Title) || !c.Scope.Valid() || len(c.LocalizedTitles) > maxLocales {
+		return refuse(DiagnosticInvalidDeclaration, "invalid component %q", c.ID)
+	}
+	for tag, title := range c.LocalizedTitles {
+		if !validTranslationTag(tag) || !validComponentTitle(title) {
+			return refuse(DiagnosticInvalidDeclaration, "invalid localized title for component %q", c.ID)
+		}
+	}
+	if c.ToolCategory != "" && (c.Placement != extension.ComponentPlacementWorkspaceView || !slices.Contains(c.ToolCategory.Values(), string(c.ToolCategory))) {
+		return refuse(DiagnosticInvalidDeclaration, "invalid tool category for component %q", c.ID)
+	}
+	if (c.Placement == extension.ComponentPlacementWorkspaceChangesAction) != (c.TargetView != "") || (c.TargetView != "" && !identity.ValidDeclarationID(c.TargetView)) {
+		return refuse(DiagnosticInvalidDeclaration, "invalid target view for component %q", c.ID)
+	}
+	return nil
 }

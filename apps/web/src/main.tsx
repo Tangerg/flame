@@ -89,6 +89,7 @@ const notifications = createNotifications(host, agent.access, workspace.access, 
 const installedPlugins = createInstalledPlugins(
   connection.client,
   connection.endpoint,
+  workspace.access,
   theme.access,
   (request) => host.saveFile(request),
   (children) => (

@@ -101,20 +101,23 @@ func (c *connector) send(ctx context.Context, method, id string, input jsonvalue
 	if err != nil {
 		return wire.Result{}, err
 	}
-	return result, sqlite.RunInTx(ctx, c.db, func(ctx context.Context) error {
-		if result.TaskID != "" {
-			binding := taskBinding{Agent: request.Agent, Authority: selected.authority, Endpoint: endpoint, TaskID: a2a.TaskID(result.TaskID), ContextID: result.ContextID}
-			data, err := json.Marshal(binding)
-			if err != nil {
-				return err
-			}
-			if _, err := sqlite.Connection(ctx, c.db).ExecContext(ctx, `INSERT INTO bindings(request_id,binding) VALUES(?,?)`, id, string(data)); err != nil {
-				return err
-			}
+	encoded, err := qimumcp.EncodeReply(result, nil, nil)
+	if err != nil {
+		return wire.Result{}, err
+	}
+	err = prepared.SettleExternal(ctx, encoded.JSON(), func(ctx context.Context) error {
+		if result.TaskID == "" {
+			return nil
 		}
-		_, err := complete(ctx, prepared, result, nil)
+		binding := taskBinding{Agent: request.Agent, Authority: selected.authority, Endpoint: endpoint, TaskID: a2a.TaskID(result.TaskID), ContextID: result.ContextID}
+		data, err := json.Marshal(binding)
+		if err != nil {
+			return err
+		}
+		_, err = sqlite.Connection(ctx, c.db).ExecContext(ctx, `INSERT INTO bindings(request_id,binding) VALUES(?,?)`, id, string(data))
 		return err
 	})
+	return result, err
 }
 
 func (c *connector) status(ctx context.Context, request wire.TaskRequest) (_ wire.Result, err error) {
@@ -239,7 +242,7 @@ func complete(ctx context.Context, prepared *pluginstorage.PreparedCommand, resu
 	if err != nil {
 		return wire.Result{}, err
 	}
-	if err := prepared.Complete(ctx, encoded.JSON()); err != nil {
+	if err := prepared.SettleExternal(ctx, encoded.JSON(), nil); err != nil {
 		return wire.Result{}, err
 	}
 	return qimumcp.DecodeReply[wire.Result](encoded.JSON())

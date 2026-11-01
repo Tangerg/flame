@@ -90,7 +90,7 @@ func (r *reducer) reuseOrCreateToolItem(callID string, invocation transcript.Too
 	if r.resume != nil {
 		if item, ok := r.resume.callItems[callID]; ok {
 			original, _ := item.ToolCall()
-			if original.Invocation.Name != invocation.Name {
+			if !original.Invocation.MatchesSource(invocation.Name, invocation.Source) {
 				return transcript.Item{}, false, fmt.Errorf("resumed Tool call %q changes its name", callID)
 			}
 			r.resume.consumeToolCall(callID)

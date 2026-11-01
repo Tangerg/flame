@@ -31,8 +31,6 @@ export type MessagePhase = "commentary" | "finalAnswer";
 
 export type RememberScopeKind = "session" | "project" | "global";
 
-export type SettingsIntent = "modelProviders" | "mcpServers";
-
 export type ResultShape = "search" | "patch" | "command";
 
 export type RestoreType = "history" | "files" | "both";

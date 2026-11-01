@@ -5,7 +5,7 @@ Generated from the feature's Go-owned method contracts.
 | Method | Kind | Target | Description |
 | --- | --- | --- | --- |
 | `flame.hooks/discover.v1` | query | installation | Read ordered lifecycle rules. Exclude all project configuration when the Runtime has not admitted its trust. |
-| `flame.hooks/execute.v1` | command | installation | Execute one trusted lifecycle command under its original receipt, bounded input, output and process lifetime. Return advice; never grant Runtime authorization. |
+| `flame.hooks/evaluate.v1` | command | installation | Evaluate one captured lifecycle event and return advice. The Runtime retains trust, command material bounds and final authorization. |
 
 Capability `flame.hooks.v1` uses `selection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.qimu/portable/1`.
 

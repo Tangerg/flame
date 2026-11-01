@@ -1,4 +1,6 @@
 export const es: Record<string, string> = {
+  "worktree.open": "Ver cambios ({{count}})",
+  "worktree.files": "Archivos: {{count}}",
   "panel.title": "Diff del espacio de trabajo",
   refresh: "Actualizar",
   "scope.label": "Alcance de la comparación",

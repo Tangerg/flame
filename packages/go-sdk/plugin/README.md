@@ -837,13 +837,21 @@ and execution budgets retain their respective owners.
 ## Lifecycle hook sources
 
 `plugin/hookprovider` publishes `flame.hooks.v1`. An installed source discovers
-ordered `hook.Hook` values and executes trusted commands with private original
+ordered `hook.Hook` values and evaluates trusted lifecycle events with private original
 receipts. `Discovery.IncludeProject` is the Runtime's trust decision: an
 untrusted project must not be read or parsed during execution discovery.
 Inspection may request the complete cascade without authorizing its commands.
 
 `hook` owns portable rules, bounded event material and command advice. Runtime
-owns project trust, event ordering, decision folding, final Tool admission and
-approval. A command's `allow` advice cannot override those owners. Cancellation
+owns project trust, event delivery, final Tool admission and approval. The selected
+provider matches rules and combines their outcomes inside a single event receipt. A command's `allow` advice cannot override those owners. Cancellation
 must stop and join the command's process group; an admitted command without a
 known original receipt cannot run again under that identity.
+
+
+A model adapter contribution declares `modelProviders` as a path beneath
+`io.github.tangerg.flame/` containing its JSON array of supported provider IDs.
+Generate this resource from the backend registry; installation advertises the
+resulting per-provider selection roles. Credential-bearing operations require an
+explicit selection for the requested provider; enabling a package alone never
+selects it. Existing construction receipts retain their original release.

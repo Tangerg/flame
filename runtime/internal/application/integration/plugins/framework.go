@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -15,6 +16,7 @@ import (
 	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
 )
 
@@ -115,14 +117,18 @@ type ComponentConfiguration struct {
 }
 
 type ComponentMetadata struct {
-	ID             string                       `json:"id"`
-	Title          string                       `json:"title"`
-	Scope          extension.ComponentScope     `json:"scope"`
-	Placement      extension.ComponentPlacement `json:"placement"`
-	Contribution   string                       `json:"contribution,omitempty"`
-	Material       string                       `json:"material,omitempty"`
-	SettingsIntent extension.SettingsIntent     `json:"settingsIntent,omitempty"`
-	Selector       *ComponentSelector           `json:"selector,omitempty"`
+	ToolCategory builtin.ToolCategory `json:"toolCategory,omitzero"`
+	TargetView   string               `json:"targetView,omitzero"`
+
+	ID              string                       `json:"id"`
+	Title           string                       `json:"title"`
+	LocalizedTitles map[string]string            `json:"localizedTitles,omitzero"`
+	Scope           extension.ComponentScope     `json:"scope"`
+	Placement       extension.ComponentPlacement `json:"placement"`
+	Contribution    string                       `json:"contribution,omitempty"`
+	Material        string                       `json:"material,omitempty"`
+	SettingsIntent  string                       `json:"settingsIntent,omitempty"`
+	Selector        *ComponentSelector           `json:"selector,omitempty"`
 }
 
 type ComponentSelector struct {
@@ -137,7 +143,7 @@ func PublicComponentConfiguration(release plugin.Release, id plugin.Contribution
 		if component.ID != id {
 			continue
 		}
-		metadata := ComponentMetadata{ID: id.String(), Title: component.Title, Scope: component.Scope, Placement: component.Placement, Contribution: component.Contribution.String(), Material: component.Material, SettingsIntent: component.SettingsIntent}
+		metadata := ComponentMetadata{ID: id.String(), Title: component.Title, LocalizedTitles: component.LocalizedTitles, ToolCategory: component.ToolCategory, TargetView: component.TargetView, Scope: component.Scope, Placement: component.Placement, Contribution: component.Contribution.String(), Material: component.Material, SettingsIntent: component.SettingsIntent}
 		if component.Selector != nil {
 			metadata.Selector = &ComponentSelector{Kind: component.Selector.Kind, Name: component.Selector.Name}
 		}
@@ -221,7 +227,7 @@ func ProjectFrameworkDeclaration(declaration plugin.Declaration) (FrameworkDefin
 	}
 	units := make([]qimu.Unit, 0, len(declaration.Servers)+1)
 	for _, server := range declaration.Servers {
-		unit := qimu.UnitDeclaration{ID: BackendUnit(server.Name), Profile: qimu.MCPProcess, Imports: []qimu.ImportDeclaration{}, Exports: []qimu.ExportDeclaration{}}
+		unit := qimu.UnitDeclaration{ID: BackendUnit(server.Name), Profile: qimumcp.ProcessProfile, Imports: []qimu.ImportDeclaration{}, Exports: []qimu.ExportDeclaration{}}
 		for _, contribution := range declaration.Contributions {
 			if contribution.Server != server.Name {
 				continue

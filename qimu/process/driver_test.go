@@ -179,7 +179,7 @@ func newEnvironment(t *testing.T, wait bool) *environment {
 	if wait {
 		source.program.Env = append(source.program.Env, "QIMU_PROCESS_WAIT=1")
 	}
-	driver, err := process.New(process.Config{Runner: client, Store: store, Source: source, CloseTimeout: 3 * time.Second, MaxFrameBytes: 1 << 20})
+	driver, err := mcp.NewProcessDriver(process.Config{Runner: client, Store: store, Source: source, CloseTimeout: 3 * time.Second}, mcp.ProcessOptions{MaxFrameBytes: 1 << 20})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +197,7 @@ func newEnvironment(t *testing.T, wait bool) *environment {
 	if err := host.Register(contract); err != nil {
 		t.Fatal(err)
 	}
-	plugin, err := qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte("echo release")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "backend", Profile: qimu.MCPProcess, Exports: []qimu.ExportDeclaration{{Name: "echo", Contract: ref}}}}}})
+	plugin, err := qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte("echo release")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "backend", Profile: mcp.ProcessProfile, Exports: []qimu.ExportDeclaration{{Name: "echo", Contract: ref}}}}}})
 	if err != nil {
 		t.Fatal(err)
 	}

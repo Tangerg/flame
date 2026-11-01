@@ -6,11 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
-	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 )
 
 type sourceFixture struct {
@@ -47,8 +47,12 @@ func (u *sourceUseFixture) Discover(ctx context.Context, q hookprovider.Discover
 	}
 	return result, s.failure
 }
-func (*sourceUseFixture) RunHookCommand(context.Context, apphooks.CommandRequest) apphooks.CommandResult {
-	return apphooks.CommandResult{Decision: hook.CommandDecision{Verdict: hook.CommandAllow}}
+func (*sourceUseFixture) Evaluate(_ context.Context, in hookprovider.Evaluation) (hookprovider.Advice, error) {
+	var text []string
+	for _, rule := range in.Rules {
+		text = append(text, rule.Inject)
+	}
+	return hookprovider.Advice{Decision: hook.CommandDecision{Verdict: hook.CommandAllow, InjectContext: strings.Join(text, "\n")}}, nil
 }
 func (u *sourceUseFixture) Close() error {
 	if !u.closed {
@@ -101,6 +105,11 @@ func TestResolverRechecksTrustAndRetainsOneSourceForItsEvents(t *testing.T) {
 	if source.closed != 2 {
 		t.Fatal("event sources were not released")
 	}
+	trusted = false
+	if got := after.Run(t.Context(), hook.Input{Event: hook.SessionStart}).InjectContext; got != "global" {
+		t.Fatalf("revoked project rule contributed %q", got)
+	}
+
 }
 
 func TestResolverInspectionClosesAndTransfersTheSourceSnapshot(t *testing.T) {
@@ -167,6 +176,9 @@ func TestResolverPassesCallerContextAndRefusesUntrustedProjectContributions(t *t
 
 func TestResolverAbsenceLeavesTrustManagementAvailable(t *testing.T) {
 	cwd := t.TempDir()
+	if err := os.Mkdir(filepath.Join(cwd, ".git"), 0700); err != nil {
+		t.Fatal(err)
+	}
 	source := &sourceFixture{absent: true}
 	resolver, err := NewResolver("", func(context.Context, string) (bool, error) { return true, nil }, source, nil)
 	if err != nil {

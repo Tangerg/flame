@@ -4,11 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	"github.com/Tangerg/qimu/portable"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/qimu/sqlite"
 )
 
 func TestIdempotencyStoreReplayConflictAndExpiry(t *testing.T) {
@@ -154,5 +156,66 @@ func TestIdempotencyNamespaceRejectsCorruptIdentity(t *testing.T) {
 	}
 	if _, err := idempotencyNamespace(t.Context(), db); err == nil {
 		t.Fatal("read corrupt namespace succeeded")
+	}
+}
+
+func TestAtomicReplaySurvivesFailedWriteAndReopen(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "replay.db")
+	open := func() (*sql.DB, *operation.Replay) {
+		t.Helper()
+		db, err := openDatabase(t.Context(), path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r, err := operation.NewReplay(newIdempotencyStore(db))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return db, r
+	}
+	db, r := open()
+	ctx := t.Context()
+	interrupt := errors.New("injected commit failure")
+	published := 0
+	prepare := func(fail bool) func() (operation.PreparedOutcome, error) {
+		return func() (operation.PreparedOutcome, error) {
+			return operation.PreparedOutcome{Payload: []byte("original"), Commit: func(tx context.Context) error {
+				if _, err := sqlite.Connection(tx, db).ExecContext(tx, `INSERT INTO feedback_entries(text,created_at_ns) VALUES ('atomic replay test',1)`); err != nil {
+					return err
+				}
+				if fail {
+					return interrupt
+				}
+				return nil
+			}, Publish: func() { published++ }}, nil
+		}
+	}
+	if _, err := r.InvokeAtomic(ctx, "key", "create", prepare(true)); !errors.Is(err, interrupt) {
+		t.Fatal(err)
+	}
+	if published != 0 {
+		t.Fatal("rolled-back write was published")
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, r = open()
+	if body, err := r.InvokeAtomic(ctx, "key", "create", prepare(false)); err != nil || string(body) != "original" {
+		t.Fatalf("retry: %q, %v", body, err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, r = open()
+	defer db.Close()
+	if body, err := r.InvokeAtomic(ctx, "key", "create", func() (operation.PreparedOutcome, error) {
+		t.Fatal("replayed preparation")
+		return operation.PreparedOutcome{}, nil
+	}); err != nil || string(body) != "original" {
+		t.Fatalf("replay: %q, %v", body, err)
+	}
+	var count int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM feedback_entries WHERE text='atomic replay test'`).Scan(&count); err != nil || count != 1 || published != 1 {
+		t.Fatalf("writes=%d publications=%d err=%v", count, published, err)
 	}
 }

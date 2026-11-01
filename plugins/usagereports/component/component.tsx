@@ -55,10 +55,10 @@ import { de } from "./locales/de";
 const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 
 const captureMethod = "flame.usage-reports/capture.v1";
-const listMethod = "flame.usage-reports/list.v1";
+const listMethod = "flame.usage-reports/list.v2";
 const getMethod = "flame.usage-reports/get.v1";
 const deleteMethod = "flame.usage-reports/delete.v1";
-type Header = MethodOutputs[typeof listMethod][number];
+type Header = MethodOutputs[typeof listMethod]["reports"][number];
 type Report = MethodOutputs[typeof getMethod];
 type Period = MethodInputs[typeof captureMethod]["period"];
 type BoundContext = ComponentContext & {
@@ -169,10 +169,10 @@ function Archive({ context }: { context: BoundContext }) {
         error: undefined,
       }));
       try {
-        const result = await operations.query(listMethod, {}, signal);
+        const { reports } = await operations.query(listMethod, {}, signal);
         if (signal.aborted) return;
-        setArchive({ loading: false, accepted: result });
-        return result;
+        setArchive({ loading: false, accepted: reports });
+        return reports;
       } catch (error) {
         if (!signal.aborted)
           setArchive((previous) => ({

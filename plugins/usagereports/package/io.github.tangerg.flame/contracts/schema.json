@@ -64,16 +64,25 @@
       ],
       "type": "object"
     },
-    "ListV1Input": {
+    "ListV2Input": {
       "additionalProperties": false,
       "properties": {},
       "type": "object"
     },
-    "ListV1Output": {
-      "items": {
-        "$ref": "#/$defs/Header"
+    "ListV2Output": {
+      "additionalProperties": false,
+      "properties": {
+        "reports": {
+          "items": {
+            "$ref": "#/$defs/Header"
+          },
+          "type": "array"
+        }
       },
-      "type": "array"
+      "required": [
+        "reports"
+      ],
+      "type": "object"
     },
     "ModelUsage": {
       "additionalProperties": false,

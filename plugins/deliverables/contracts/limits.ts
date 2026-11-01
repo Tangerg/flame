@@ -16,7 +16,7 @@ export const LIMITS = Object.freeze({
   inputBytes: 2 * 1024 * 1024,
   reportBytes: 1024 * 1024,
   archiveBytes: 512 * 1024 * 1024,
-  records: 10000,
+  pendingCommands: 10000,
   documents: 256,
   revisions: 2048,
   assessments: 64,

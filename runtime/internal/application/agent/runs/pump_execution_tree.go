@@ -24,10 +24,10 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 	}
 	commit := ExecutionTreeCommit{Update: tree.Update, Context: tree.Context, InputAcceptances: tree.InputAcceptances}
 	for _, acceptance := range tree.InputAcceptances {
-		if err := acceptance.Validate(); err != nil {
+		if err := tree.Update.validateSteerAcceptance(acceptance); err != nil {
 			return err
 		}
-		if acceptance.Operation != CommandSteerInput || acceptance.SessionID != s.spec.SessionID || acceptance.RunID != s.routes.root.runID {
+		if acceptance.RunID != s.routes.root.runID {
 			return errors.New("runs: foreign steer acceptance")
 		}
 	}
@@ -69,12 +69,8 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 		}
 		children = append(children, managed)
 	}
-	type projection struct {
-		route   *executorRoute
-		reducer *reducer
-		batch   reductionBatch
-	}
-	var projections []projection
+
+	var projections []routedTreeProjection
 	staged := make(map[*executorRoute]*reducer)
 	for _, event := range tree.Facts {
 		route := startedRoutes[event.Member.MemberID]
@@ -120,7 +116,7 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 		}
 		commit.Events = append(commit.Events, eventCommit)
 		staged[route] = candidate
-		projections = append(projections, projection{route, candidate, batch})
+		projections = append(projections, routedTreeProjection{route, candidate, batch})
 	}
 	if err := s.segments.publications.events.CommitExecutionTree(s.ownerCtx, commit); err != nil {
 		return err
@@ -141,26 +137,39 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 		}
 	}
 	for _, projected := range projections {
-		projected.route.reducer = projected.reducer
-		for _, reduced := range projected.batch.events {
-			if reduced.Commit != nil && reduced.Commit.State == StateTerminalize {
-				projected.route.boundary = boundaryFinished
-				s.owner.recordTerminalRun(*reduced.Commit.Run)
-				s.segments.publications.publishRunMoved(s.spec.SessionID, projected.route.runID)
-				if reduced.Commit.ChargesGoal() {
-					s.segments.publications.publishGoalMoved(s.spec.SessionID)
-				}
+		if err := s.publishTreeProjection(projected); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type routedTreeProjection struct {
+	route   *executorRoute
+	reducer *reducer
+	batch   reductionBatch
+}
+
+func (s *segmentPump) publishTreeProjection(projected routedTreeProjection) error {
+	projected.route.reducer = projected.reducer
+	for _, reduced := range projected.batch.events {
+		if reduced.Commit != nil && reduced.Commit.State == StateTerminalize {
+			projected.route.boundary = boundaryFinished
+			s.owner.recordTerminalRun(*reduced.Commit.Run)
+			s.segments.publications.publishRunMoved(s.spec.SessionID, projected.route.runID)
+			if reduced.Commit.ChargesGoal() {
+				s.segments.publications.publishGoalMoved(s.spec.SessionID)
 			}
 		}
-		for _, reduced := range projected.batch.events {
-			if reduced.Commit != nil {
-				for _, write := range reduced.Commit.Items {
-					s.owner.recordChildCancellationItem(projected.route.runID, write.Item())
-				}
+	}
+	for _, reduced := range projected.batch.events {
+		if reduced.Commit != nil {
+			for _, write := range reduced.Commit.Items {
+				s.owner.recordChildCancellationItem(projected.route.runID, write.Item())
 			}
-			if err := s.publisher.append(projected.route, reduced); err != nil {
-				return err
-			}
+		}
+		if err := s.publisher.append(projected.route, reduced); err != nil {
+			return err
 		}
 	}
 	return nil

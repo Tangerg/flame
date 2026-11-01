@@ -24,7 +24,7 @@ import (
 	"github.com/Tangerg/scope/models/catalog"
 )
 
-const Reference = "flame.model-provider.v1"
+const Reference = extension.ModelProviderContract
 
 type Authentication string
 

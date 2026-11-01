@@ -44,7 +44,6 @@ export function SessionList({
           indented={indented}
           showTime={showTime}
           onSelect={actions.selectSession}
-          onRename={actions.renameSession}
           onFork={actions.forkSession}
           onDelete={actions.deleteSession}
           onToggleFavorite={actions.toggleFavorite}

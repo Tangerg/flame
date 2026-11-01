@@ -45,7 +45,7 @@ func testView(t *testing.T) View {
 		}},
 	}
 	views, problems := Views([]protocol.PluginInstallation{
-		{ID: "installation", Enabled: true, Selected: protocol.PluginRelease{Name: "flame.memory", Digest: "digest", TerminalViews: []protocol.PluginTerminalView{declared}, Contributions: []protocol.PluginContribution{{ID: "memory-provider", Contract: string(contract.Identity().JSON())}}}},
+		{ID: "installation", Enabled: true, Presentation: protocol.PluginPresentationAdmitted, Selected: protocol.PluginRelease{Name: "flame.memory", Digest: "digest", TerminalViews: []protocol.PluginTerminalView{declared}, Contributions: []protocol.PluginContribution{{ID: "memory-provider", Contract: string(contract.Identity().JSON())}}}},
 		{ID: "disabled", Selected: protocol.PluginRelease{TerminalViews: []protocol.PluginTerminalView{declared}}},
 	})
 	if len(problems) != 0 || len(views) != 1 {
@@ -118,5 +118,18 @@ func TestPageDecodesRowsAndCursor(t *testing.T) {
 	}
 	if len(page.Rows) != 1 || page.Rows[0].Text("Content") != "fact" || page.Next != "c2" {
 		t.Fatalf("page = %+v", page)
+	}
+}
+
+func TestPageReadsNestedDataAndRejectsAnInvalidCursor(t *testing.T) {
+	view := testView(t)
+	view.List.Rows = "page/items"
+	view.List.Paging.Output = "page/next"
+	page, err := view.Page(&protocol.CallPluginResponse{Output: `{"page":{"items":[{"ID":"selected"}],"next":"continue"}}`})
+	if err != nil || len(page.Rows) != 1 || page.Rows[0].Text("ID") != "selected" || page.Next != "continue" {
+		t.Fatalf("page = %+v, err = %v", page, err)
+	}
+	if _, err := view.Page(&protocol.CallPluginResponse{Output: `{"page":{"items":[],"next":3}}`}); err == nil {
+		t.Fatal("non-string cursor ended pagination silently")
 	}
 }

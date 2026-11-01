@@ -28,6 +28,15 @@
     {
       "id": "trajectory",
       "title": "Session trajectory",
+      "localizedTitles": {
+        "zh": "会话轨迹",
+        "zh-TW": "工作階段軌跡",
+        "de": "Sitzungsverlauf",
+        "fr": "Parcours de la session",
+        "es": "Trayectoria de sesión",
+        "ja": "セッションの軌跡",
+        "ko": "세션 기록"
+      },
       "scope": "session",
       "placement": "workspaceView",
       "entry": "io.github.tangerg.flame/components/component.js",
@@ -36,10 +45,27 @@
     {
       "id": "rename-session",
       "title": "Name this investigation",
+      "localizedTitles": {
+        "zh": "重命名会话",
+        "zh-TW": "重新命名工作階段",
+        "de": "Sitzung umbenennen",
+        "fr": "Renommer la session",
+        "es": "Renombrar sesión",
+        "ja": "セッション名を変更",
+        "ko": "세션 이름 변경"
+      },
       "scope": "session",
       "placement": "sessionAction",
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "RenameSession"
+    }
+  ],
+  "contributions": [
+    {
+      "id": "markdown-export",
+      "server": "trajectory",
+      "export": "markdown",
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
     }
   ]
 }

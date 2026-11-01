@@ -122,15 +122,15 @@ func TestSettingsIntentRequiresADeclaredSettingsPane(t *testing.T) {
 	for _, test := range []struct {
 		name      string
 		placement extension.ComponentPlacement
-		intent    extension.SettingsIntent
+		intent    string
 		valid     bool
 	}{
-		{name: "mcp settings", placement: "settingsPane", intent: extension.SettingsIntentMCPServers, valid: true},
-		{name: "model settings", placement: "settingsPane", intent: extension.SettingsIntentModelProviders, valid: true},
+		{name: "mcp settings", placement: "settingsPane", intent: "mcp-servers", valid: true},
+		{name: "model settings", placement: "settingsPane", intent: "model-providers", valid: true},
 		{name: "ordinary settings", placement: "settingsPane", valid: true},
-		{name: "unknown intent", placement: "settingsPane", intent: "invented"},
-		{name: "workspace placement", placement: "workspaceView", intent: extension.SettingsIntentModelProviders},
-		{name: "export placement", placement: "export", intent: extension.SettingsIntentModelProviders},
+		{name: "unknown intent", placement: "settingsPane", intent: "vendor.settings", valid: true},
+		{name: "workspace placement", placement: "workspaceView", intent: "model-providers"},
+		{name: "export placement", placement: "export", intent: "model-providers"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			builder, err := NewBuilder("settings", "", "")
@@ -142,5 +142,35 @@ func TestSettingsIntentRequiresADeclaredSettingsPane(t *testing.T) {
 				t.Fatalf("admission: %v, valid %v", err, test.valid)
 			}
 		})
+	}
+}
+
+func TestComponentTitlesAreOwnedByTheAdmittedRelease(t *testing.T) {
+	builder, err := NewBuilder("locales", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	titles := map[string]string{"zh": "工作区"}
+	component := ClientComponent{ID: "workspace", Title: "Workspace", LocalizedTitles: titles, Scope: "workspace", Placement: "workspaceView", Entry: Namespace + "/view.js", Export: "View"}
+	if err := builder.AdmitComponent(component); err != nil {
+		t.Fatal(err)
+	}
+	titles["zh"] = "changed"
+	declaration, err := builder.Declaration()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if declaration.Components[0].LocalizedTitles["zh"] != "工作区" {
+		t.Fatal("caller mutated the admitted title")
+	}
+	declaration.Components[0].LocalizedTitles["zh"] = "outside"
+	again, err := builder.Declaration()
+	if err != nil || again.Components[0].LocalizedTitles["zh"] != "工作区" {
+		t.Fatal("declaration shared mutable translations", err)
+	}
+	component.ID = "bad"
+	component.LocalizedTitles = map[string]string{"en": "competing base title"}
+	if err := builder.AdmitComponent(component); err == nil {
+		t.Fatal("base title had a competing translation")
 	}
 }

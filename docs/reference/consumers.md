@@ -38,6 +38,10 @@ manifests. `tooling/moduleproxy` uses official `x/mod/zip` rules to publish immu
 files are not shipped inside the public SDK. Candidate versions cannot
 be reused for changed source, and any release tag must identify that frozen source.
 `make setup` populates the task-local file proxy from the checked-out commit.
+For a patch-distributed candidate, record the module directory’s Git tree ID and
+UTC publication time in `module-candidates.json`. A recipient who commits the
+patch obtains the same module tree without reproducing the publisher’s commit
+metadata. The Go archive is still built by x/mod from those exact Git objects.
 
 ```sh
 node plugins/scripts/build-author-kit.mjs \

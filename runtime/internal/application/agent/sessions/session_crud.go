@@ -76,15 +76,43 @@ func (c *Coordinator) InspectWorkspace(cwd string) (workspaceapp.Resolved, error
 
 // Create starts and persists a fresh root Session in an admitted workspace.
 func (c *Coordinator) Create(ctx context.Context, title, cwd string) (session.Session, error) {
-	created, _, err := c.prepareInitial(ctx, c.newID(), title, cwd, modelchoice.Selection{})
+	creation, err := c.PrepareCreate(ctx, title, cwd)
 	if err != nil {
 		return session.Session{}, err
 	}
-	if err := c.sessions.Insert(ctx, created); err != nil {
+	return creation.apply(ctx)
+}
+
+// Creation separates provider/workspace admission from the short database
+// write. A keyed command commits its original view alongside this write;
+// invalidations become visible only after that transaction succeeds.
+type Creation struct {
+	value   session.Session
+	View    View
+	write   func(context.Context) error
+	publish func()
+}
+
+func (c Creation) Commit(ctx context.Context) error { return c.write(ctx) }
+func (c Creation) Publish()                         { c.publish() }
+func (c Creation) apply(ctx context.Context) (session.Session, error) {
+	if err := c.Commit(ctx); err != nil {
 		return session.Session{}, err
 	}
-	c.publishSessionMoved(created.ID())
-	return created, nil
+	c.Publish()
+	return c.value, nil
+}
+
+func (c *Coordinator) PrepareCreate(ctx context.Context, title, cwd string) (Creation, error) {
+	created, _, err := c.prepareInitial(ctx, c.newID(), title, cwd, modelchoice.Selection{})
+	if err != nil {
+		return Creation{}, err
+	}
+	view, err := c.view(created, activityIdle)
+	if err != nil {
+		return Creation{}, err
+	}
+	return Creation{value: created, View: view, write: func(tx context.Context) error { return c.sessions.Insert(tx, created) }, publish: func() { c.publishSessionMoved(created.ID()) }}, nil
 }
 
 // PrepareOpening creates a captured Session without writing it. An existing

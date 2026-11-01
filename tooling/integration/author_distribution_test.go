@@ -58,8 +58,21 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 	if err != nil || len(files) != 1 {
 		t.Fatalf("release archive = %v, %v", files, err)
 	}
-	if name == "usagereports" && filepath.Base(files[0]) != "plugin-flame.usagereports-1.0.0.zip" {
-		t.Fatal("portable author artifact acquired a platform identity")
+	if name == "usagereports" {
+		manifest, err := os.ReadFile(filepath.Join(repository, "plugins", name, "package", "plugin.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var identity struct {
+			Name    string `json:"name"`
+			Version string `json:"version"`
+		}
+		if err := json.Unmarshal(manifest, &identity); err != nil {
+			t.Fatal(err)
+		}
+		if filepath.Base(files[0]) != "plugin-"+identity.Name+"-"+identity.Version+".zip" {
+			t.Fatal("portable author artifact differs from its manifest identity")
+		}
 	}
 	cfg := flameruntime.Config{DataDirectory: tempRuntimeDirectory(t), UserHomePath: tempRuntimeDirectory(t), ConfigDirectories: []string{tempRuntimeDirectory(t)}}
 	host, err := flameruntime.Open(t.Context(), cfg)

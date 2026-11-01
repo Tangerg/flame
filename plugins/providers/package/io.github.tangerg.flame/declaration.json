@@ -4,9 +4,18 @@
     {
       "id": "settings",
       "title": "Providers",
+      "localizedTitles": {
+        "zh": "模型供应商",
+        "zh-TW": "模型供應商",
+        "de": "Modellanbieter",
+        "fr": "Fournisseurs de modèles",
+        "es": "Proveedores de modelos",
+        "ja": "モデルプロバイダー",
+        "ko": "모델 제공자"
+      },
       "scope": "client",
       "placement": "settingsPane",
-      "settingsIntent": "modelProviders",
+      "settingsIntent": "model-providers",
       "material": "providers",
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "Providers"
@@ -17,6 +26,7 @@
       "id": "model-provider",
       "server": "providers",
       "export": "model-provider",
+      "modelProviders": "io.github.tangerg.flame/model-providers.generated.json",
       "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
     }
   ]

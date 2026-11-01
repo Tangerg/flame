@@ -466,7 +466,7 @@ func testResourceRetirer(retirements resourceRetirements, deps Dependencies) *Re
 		cleanups = append(cleanups, Cleanup{Resource: "checkpoints", Retire: deps.Checkpoints.DropSession})
 	}
 	if deps.Sandbox != nil {
-		cleanups = append(cleanups, Cleanup{Resource: "sandbox", Retire: deps.Sandbox.Discard})
+		cleanups = append(cleanups, Cleanup{Resource: "sandbox", Retire: func(_ context.Context, id string) error { return deps.Sandbox.Discard(id) }})
 	}
 	retirer, err := NewResourceRetirer(retirements, cleanups...)
 	if err != nil {
@@ -482,7 +482,7 @@ func (unavailableCheckpoints) Restore(context.Context, string, string, string) e
 	return ErrCheckpointUnavailable
 }
 
-func (unavailableCheckpoints) DropSession(string) error { return nil }
+func (unavailableCheckpoints) DropSession(context.Context, string) error { return nil }
 
 // noSandbox is a Runtime built without isolated working copies.
 type noSandbox struct{}

@@ -106,7 +106,11 @@ func startClient(ctx context.Context, spec ServerSpec, root string) (*client, er
 }
 
 func (c *client) initialize(ctx context.Context) error {
-	var res jsontext.Value
+	var res struct {
+		Capabilities struct {
+			TextDocumentSync jsontext.Value `json:"textDocumentSync"`
+		} `json:"capabilities"`
+	}
 	params := initializeParams{
 		ProcessID:        os.Getpid(),
 		RootURI:          pathToURI(c.root),
@@ -116,6 +120,11 @@ func (c *client) initialize(ctx context.Context) error {
 	if err := c.conn.Call(ctx, "initialize", params, &res); err != nil {
 		return fmt.Errorf("lsp: initialize %s: %w", c.spec.Name, err)
 	}
+	save, err := negotiatedSave(res.Capabilities.TextDocumentSync)
+	if err != nil {
+		return fmt.Errorf("lsp: server document synchronization: %w", err)
+	}
+	c.save = save
 	if err := c.conn.Notify(ctx, "initialized", struct{}{}); err != nil {
 		return fmt.Errorf("lsp: initialized %s: %w", c.spec.Name, err)
 	}

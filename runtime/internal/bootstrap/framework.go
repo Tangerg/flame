@@ -27,7 +27,7 @@ import (
 
 type frameworkComposition struct {
 	host      *qimu.Host
-	process   *process.Driver
+	process   *process.Driver[*sdk.ClientSession]
 	installed *mcpadapter.Installed
 	registry  *plugins.Registry
 	browser   *browseradapter.Service
@@ -111,7 +111,7 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 	if err != nil {
 		return frameworkComposition{}, err
 	}
-	profile, err := process.New(process.Config{Runner: cfg.processRunner, Store: cfg.stores.Qimu, Source: source, Configure: source.Configure, CloseTimeout: 10 * time.Second, MaxFrameBytes: sdk.DefaultMaxLineLength})
+	profile, err := qimumcp.NewProcessDriver(process.Config{Runner: cfg.processRunner, Store: cfg.stores.Qimu, Source: source, CloseTimeout: 10 * time.Second}, qimumcp.ProcessOptions{Configure: source.Configure, MaxFrameBytes: sdk.DefaultMaxLineLength})
 	if err != nil {
 		return frameworkComposition{}, err
 	}
@@ -142,7 +142,7 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 	if err := host.RegisterDriver(bridge); err != nil {
 		return frameworkComposition{}, err
 	}
-	browser, err := browseradapter.New(browseradapter.Config{Bridge: bridge, Registry: registry, ControlEndpoint: flamehttp.PluginControlPath, MaximumMessageBytes: 4 << 20, ProofCapacity: 4096, PollInterval: 100 * time.Millisecond})
+	browser, err := browseradapter.New(browseradapter.Config{Bridge: bridge, Registry: registry, ControlEndpoint: flamehttp.PluginControlPath, ProofCapacity: 4096, PollInterval: 100 * time.Millisecond})
 	if err != nil {
 		return frameworkComposition{}, err
 	}
@@ -210,7 +210,7 @@ func restoreFramework(ctx context.Context, stores *persistence.Bundle, host *qim
 type frameworkRecovery struct {
 	mu      sync.Mutex
 	stores  *persistence.Bundle
-	process *process.Driver
+	process *process.Driver[*sdk.ClientSession]
 	pending bool
 	ready   chan struct{}
 }

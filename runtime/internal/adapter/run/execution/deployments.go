@@ -24,6 +24,7 @@ type interactionDeploymentSet struct {
 	// retain each group's authority rather than reconstructing their union.
 	manifests         map[domaintool.Group]toolset.Manifest
 	root              agent.Deployment
+	delegateSource    domaintool.Ref
 	delegatesByParent map[agent.DeploymentRef]map[string]agent.Deployment
 	managedChildren   map[agent.DeploymentRef]struct{}
 	toolChildren      map[agent.DeploymentRef]struct{}
@@ -131,10 +132,15 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 	if err != nil {
 		return nil, err
 	}
+	delegateSource, err := domaintool.BuiltIn(builtincontract.DelegateTask)
+	if err != nil {
+		return nil, err
+	}
 	builder := &interactionDeploymentBuilder{
 		executor: i, session: session, start: start, model: model, counter: counter,
 		instructions: instructions, rootManifest: rootManifest,
 		deployments: &interactionDeploymentSet{
+			delegateSource:    delegateSource,
 			manifests:         map[domaintool.Group]toolset.Manifest{domaintool.GroupRoot: rootManifest},
 			toolChildren:      make(map[agent.DeploymentRef]struct{}),
 			toolContracts:     make(map[agent.DeploymentRef]map[domaintool.Ref]toolcontract.Contract),
@@ -177,7 +183,7 @@ func (i *interactionDeploymentBuilder) build(ctx context.Context) (*interactionD
 		}
 		if next.Valid() {
 			i.deployments.delegatesByParent[deployment.DeploymentRef()] = map[string]agent.Deployment{
-				string(builtincontract.DelegateTask): next,
+				i.deployments.delegateSource.ModelName(): next,
 			}
 		}
 		next = deployment
@@ -340,7 +346,7 @@ func (i *interactionDeploymentBuilder) delegateLayer(
 		return nil, nil
 	}
 	delegate, err := interaction.NewDelegate(interaction.DelegateConfig{
-		Name: string(builtincontract.DelegateTask), Description: delegateDescription,
+		Name: i.deployments.delegateSource.ModelName(), Description: delegateDescription,
 		Deployment: next,
 	})
 	if err != nil {

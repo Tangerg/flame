@@ -33,14 +33,9 @@ const MaxNameBytes = 256
 
 const (
 	NativeGo       Profile = "native-go"
-	MCPProcess     Profile = "mcp-process"
 	BrowserJS      Profile = "browser-js"
 	StaticResource Profile = "static-resource"
 )
-
-func (Profile) Values() []string {
-	return []string{string(NativeGo), string(MCPProcess), string(BrowserJS), string(StaticResource)}
-}
 
 func ValidName(value string) bool {
 	return value != "" && len(value) <= MaxNameBytes && utf8.ValidString(value) &&

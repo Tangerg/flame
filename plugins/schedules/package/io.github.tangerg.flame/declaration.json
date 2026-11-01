@@ -13,6 +13,15 @@
     {
       "id": "schedules",
       "title": "Schedules",
+      "localizedTitles": {
+        "zh": "计划任务",
+        "zh-TW": "排程工作",
+        "de": "Zeitpläne",
+        "fr": "Tâches planifiées",
+        "es": "Tareas programadas",
+        "ja": "スケジュール",
+        "ko": "예약 작업"
+      },
       "scope": "client",
       "placement": "workspaceView",
       "entry": "io.github.tangerg.flame/components/component.js",

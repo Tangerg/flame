@@ -197,6 +197,9 @@ type ExportSessionResponse struct {
 // process and effect identities never authorize execution or recovery.
 const SessionArtifactVersion = 31
 
+// MaximumSessionArtifactBytes bounds the complete portable JSON document across bindings.
+const MaximumSessionArtifactBytes = 64 << 20
+
 // SessionArtifact is the portable, round-trippable form of a session: its
 // identity plus the full conversation — chat messages (the model's context),
 // items + runs (the UI transcript), and any structurally bound full tool-result

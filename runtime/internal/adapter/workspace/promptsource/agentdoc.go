@@ -87,14 +87,22 @@ type agentDocScan struct {
 
 // discoverHome applies the user-level order: Flame-specific first, then the
 // first non-empty generic candidate.
-func (a *agentDocScan) discoverHome(ctx context.Context, home string) error {
+func (a *agentDocScan) discoverHome(ctx context.Context, home string) (err error) {
 	if home == "" {
 		return nil
 	}
-	if _, err := a.try(ctx, filepath.Join(home, ".flame", "AGENTS.md"), workspaceapp.AgentDocScopeHome); err != nil {
+	root, err := openDocumentRoot(home)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
 		return err
 	}
-	return a.tryFirst(ctx, workspaceapp.AgentDocScopeHome,
+	defer func() { err = errors.Join(err, root.Close()) }()
+	if _, err := a.try(ctx, root, filepath.Join(home, ".flame", "AGENTS.md"), workspaceapp.AgentDocScopeHome); err != nil {
+		return err
+	}
+	return a.tryFirst(ctx, root, workspaceapp.AgentDocScopeHome,
 		filepath.Join(home, ".agents", "AGENTS.md"),
 		filepath.Join(home, ".agents", "agents.md"),
 	)
@@ -102,20 +110,28 @@ func (a *agentDocScan) discoverHome(ctx context.Context, home string) error {
 
 // discoverProjectTree walks root to leaf so the most specific files remain at
 // the end of the cascade consumed by prompt assembly.
-func (a *agentDocScan) discoverProjectTree(ctx context.Context, cwd string) error {
+func (a *agentDocScan) discoverProjectTree(ctx context.Context, cwd string) (err error) {
 	root, err := project.Root(cwd)
 	if err != nil {
 		return fmt.Errorf("promptsource: locate project root for %q: %w", cwd, err)
 	}
+	boundary, err := openDocumentRoot(root)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, boundary.Close()) }()
 	for _, dir := range project.Chain(cwd, root) {
 		scope := workspaceapp.AgentDocScopeProjectRoot
 		if dir == cwd {
 			scope = workspaceapp.AgentDocScopeCWD
 		}
-		if _, err := a.try(ctx, filepath.Join(dir, ".flame", "AGENTS.md"), scope); err != nil {
+		if _, err := a.try(ctx, boundary, filepath.Join(dir, ".flame", "AGENTS.md"), scope); err != nil {
 			return err
 		}
-		if err := a.tryFirst(ctx, scope,
+		if err := a.tryFirst(ctx, boundary, scope,
 			filepath.Join(dir, "AGENTS.md"),
 			filepath.Join(dir, "agents.md"),
 		); err != nil {
@@ -125,18 +141,30 @@ func (a *agentDocScan) discoverProjectTree(ctx context.Context, cwd string) erro
 	return nil
 }
 
+func openDocumentRoot(path string) (*os.Root, error) {
+	physical, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return nil, err
+	}
+	return os.OpenRoot(physical)
+}
+
 // try reports whether a non-empty candidate matched. A duplicate physical
 // source still counts as a match so a first-match group never falls through to
 // a lower-precedence alias merely because the source was already admitted.
-func (a *agentDocScan) try(ctx context.Context, path string, scope workspaceapp.AgentDocScope) (bool, error) {
+func (a *agentDocScan) try(ctx context.Context, root *os.Root, path string, scope workspaceapp.AgentDocScope) (bool, error) {
 	abs, found, err := resolveAgentDocCandidate(ctx, path)
 	if err != nil || !found {
 		return false, err
 	}
+	relative, err := filepath.Rel(root.Name(), abs)
+	if err != nil || !filepath.IsLocal(relative) {
+		return false, fmt.Errorf("%w: project instruction %q: %w", workspaceapp.ErrInvalidPromptSource, path, workspaceapp.ErrPathOutsideRoot)
+	}
 	if _, dup := a.seen[abs]; dup {
 		return true, nil
 	}
-	content, size, ok, err := readIfNonEmpty(ctx, abs)
+	content, size, ok, err := readIfNonEmpty(ctx, root, relative)
 	if err != nil {
 		return false, fmt.Errorf("promptsource: read agent document: %w", err)
 	}
@@ -191,9 +219,9 @@ func (a *agentDocScan) admit(path, content string, size int, scope workspaceapp.
 	return nil
 }
 
-func (a *agentDocScan) tryFirst(ctx context.Context, scope workspaceapp.AgentDocScope, candidates ...string) error {
+func (a *agentDocScan) tryFirst(ctx context.Context, root *os.Root, scope workspaceapp.AgentDocScope, candidates ...string) error {
 	for _, c := range candidates {
-		matched, err := a.try(ctx, c, scope)
+		matched, err := a.try(ctx, root, c, scope)
 		if err != nil {
 			return err
 		}
@@ -206,8 +234,8 @@ func (a *agentDocScan) tryFirst(ctx context.Context, scope workspaceapp.AgentDoc
 
 // readIfNonEmpty returns trimmed, admitted content and its complete encoded
 // size. Empty files remain absent; an existing invalid file remains observable.
-func readIfNonEmpty(ctx context.Context, path string) (string, int, bool, error) {
-	data, err := readAuthoredPromptFile(ctx, path)
+func readIfNonEmpty(ctx context.Context, root *os.Root, path string) (string, int, bool, error) {
+	data, err := readAuthoredPromptFile(ctx, root, path)
 	if err != nil {
 		return "", 0, false, err
 	}

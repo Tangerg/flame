@@ -102,7 +102,7 @@ func TestStore_BindsSessionCheckpointsToTheirWorkspace(t *testing.T) {
 		t.Fatalf("second workspace restored %q, want second-v1", got)
 	}
 
-	if err := s.DropSession("ses1"); err != nil {
+	if err := s.DropSession(t.Context(), "ses1"); err != nil {
 		t.Fatalf("drop Session checkpoints: %v", err)
 	}
 	if _, err := os.Stat(s.sessionDir("ses1")); !errors.Is(err, os.ErrNotExist) {
@@ -642,5 +642,27 @@ func TestStore_HonorsGitignore(t *testing.T) {
 	}
 	if read(t, cwd, "ignored.txt") != "keep me" {
 		t.Error("ignored.txt should survive restore (gitignored, never snapshotted)")
+	}
+}
+
+func TestCheckpointWaitingForWorkspaceCanBeCanceled(t *testing.T) {
+	store, workspace := newTestStore(t)
+	held, err := store.acquireWorkspace(t.Context(), "owner", workspace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer held()
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cause := errors.New("stop checkpoint")
+	out := make(chan error, 1)
+	go func() { out <- store.Snapshot(ctx, "waiter", workspace, "run_a") }()
+	cancel(cause)
+	select {
+	case err := <-out:
+		if !errors.Is(err, cause) {
+			t.Fatalf("waiter returned %v", err)
+		}
+	case <-t.Context().Done():
+		t.Fatal("canceled checkpoint did not return")
 	}
 }

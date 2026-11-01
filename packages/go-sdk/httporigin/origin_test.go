@@ -1,8 +1,10 @@
 package httporigin
 
 import (
+	"encoding/json/v2"
 	"errors"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 )
@@ -78,5 +80,26 @@ func TestOriginCanonicalizesEquivalentIPAndPort(t *testing.T) {
 	}
 	if Same("https://[fe80::1%25ethA]:443", "https://[fe80::1%25etha]:443") {
 		t.Fatal("collapsed zone identities")
+	}
+}
+
+func TestRuntimeEndpointAdmission(t *testing.T) {
+	data, err := os.ReadFile("testdata/runtime-endpoints.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cases []struct {
+		Input    string `json:"input"`
+		Accepted bool   `json:"accepted"`
+	}
+	if err := json.Unmarshal(data, &cases); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range cases {
+		endpoint, err := ParseEndpoint(tc.Input)
+		accepted := err == nil && !endpoint.HasQuery() && !endpoint.HasFragment()
+		if accepted != tc.Accepted {
+			t.Errorf("endpoint %q accepted=%v, want %v", tc.Input, accepted, tc.Accepted)
+		}
 	}
 }

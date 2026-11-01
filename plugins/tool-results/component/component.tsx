@@ -243,11 +243,15 @@ function httpResponse(response: Record<string, unknown>) {
   return { status, duration, truncated, headers: headers.join("\n"), body };
 }
 
-function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
+function resultContent(
+  renderer: string,
+  tool: CapturedToolResult,
+  t: Translate,
+): ResultContent {
   const source = tool.result ?? "";
-  switch (tool.name) {
+  switch (renderer) {
     case "shell":
-    case "read_shell_output":
+    case "read-shell-output":
       return { kind: "output", text: source };
     case "read":
       return {
@@ -255,36 +259,34 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
         label: t("caption.source"),
         rows: sourceRows(source.replace(/\n$/, ""), tool.range?.start ?? 1),
       };
-    case "ask_user":
+    case "ask-user":
       return {
         kind: "rows",
         label: t("caption.answer"),
         rows: proseRows(source),
       };
-    case "load_skill":
-    case "read_skill_resource": {
+    case "load-skill":
+    case "read-skill-resource": {
       const page = skillPage(source, "content");
       const body = page?.content ?? source;
       const rows =
-        tool.name === "load_skill" ? proseRows(body) : sourceRows(body);
+        renderer === "load-skill" ? proseRows(body) : sourceRows(body);
       return {
         kind: "rows",
         label: t(
-          tool.name === "load_skill"
-            ? "caption.instructions"
-            : "caption.result",
+          renderer === "load-skill" ? "caption.instructions" : "caption.result",
         ),
         rows: page ? skillPageRows(page, rows) : rows,
         continues: page?.next_cursor !== undefined,
       };
     }
-    case "search_memory":
+    case "search-memory":
       return {
         kind: "rows",
         label: t("caption.memories"),
         rows: proseRows(source),
       };
-    case "list_skills": {
+    case "list-skills": {
       const page = skillPage(source, "skills");
       return {
         kind: "rows",
@@ -303,12 +305,12 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
         emptyMessage: t("skills.empty"),
       };
     }
-    case "read_tool_result":
-    case "search_tools":
-    case "codeintel_lsp":
-    case "stop_shell":
-    case "propose_skill":
-    case "delegate_task":
+    case "read-tool-result":
+    case "search-tools":
+    case "lsp":
+    case "stop-shell":
+    case "propose-skill":
+    case "delegate-task":
       return {
         kind: "rows",
         label: t("caption.result"),
@@ -316,7 +318,7 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
       };
   }
   const result = parsed(source);
-  if (tool.name === "web_http_request") {
+  if (renderer === "http-request") {
     const response = httpResponse(result);
     return response
       ? {
@@ -332,7 +334,7 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
         }
       : { kind: "rows", label: t("caption.result"), rows: sourceRows(source) };
   }
-  if (tool.name === "web_fetch" || tool.name === "web_browse") {
+  if (renderer === "web-fetch" || renderer === "web-browse") {
     const page = webPage(result);
     return page
       ? {
@@ -361,7 +363,7 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
         }
       : { kind: "rows", label: t("caption.result"), rows: sourceRows(source) };
   }
-  if (tool.name === "web_search" && Array.isArray(result.results))
+  if (renderer === "web-search" && Array.isArray(result.results))
     return {
       kind: "rows",
       label: t("caption.results"),
@@ -746,8 +748,8 @@ export function RecordedResult({ context }: { context: ComponentContext }) {
   const content = useMemo(() => {
     if (!tool || tool.status === "running" || typeof tool.result !== "string")
       throw new Error("A settled captured Tool result is required");
-    return resultContent(tool, t);
-  }, [tool, t]);
+    return resultContent(context.component.componentId, tool, t);
+  }, [context.component.componentId, tool, t]);
   if (content.kind === "changes")
     return !content.changes.length ? (
       <Metadata>{t("changes.empty")}</Metadata>

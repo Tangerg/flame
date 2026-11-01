@@ -13,7 +13,7 @@ import {
   runtimeRunFact,
 } from "@/features/agent/adapters/runtimeAgentFacts";
 import { type AgentSessionSnapshot } from "@/features/agent/application/runtimeGateway";
-import { toolCategoryForName } from "@/features/agent/application/fold/reducer.fixtures";
+import { toolCategoryForName } from "@/test/toolCategory.generated";
 import { type GoalReadModel } from "@/features/goal/application/goalReadModel";
 import { VISUAL_CONTEXT_TOKENS } from "./agentFixtureFacts";
 import { GENUI_REPORT } from "./genuiReport";
@@ -96,7 +96,7 @@ const SAFETY_CLASS: Record<string, "safe" | "write" | "exec" | "network"> = {
   load_skill: "safe",
   read_skill_resource: "safe",
   propose_skill: "safe",
-  search_memory: "safe",
+  memory_search_memory: "safe",
   search_tools: "safe",
   read_tool_result: "safe",
   ask_user: "safe",
@@ -108,8 +108,8 @@ const SAFETY_CLASS: Record<string, "safe" | "write" | "exec" | "network"> = {
   apply_patch: "write",
   shell: "exec",
   stop_shell: "exec",
-  web_search: "network",
-  web_fetch: "network",
+  web_web_search: "network",
+  web_web_fetch: "network",
   web_http_request: "exec",
 };
 
@@ -332,7 +332,7 @@ const GLOB_CALL = settledTool(
 
 const MEMORY_CALL = settledTool(
   "item_search_memory",
-  "search_memory",
+  "memory_search_memory",
   { query: "compaction cutpoint" },
   [
     "1. The compaction cutpoint is chosen by the Runtime, never by the client.",
@@ -353,7 +353,7 @@ const TOOL_SEARCH_CALL = settledTool(
 
 const WEB_SEARCH_CALL = settledTool(
   "item_remote_web_search",
-  "web_search",
+  "web_web_search",
   { query: "sqlite wal checkpoint starvation" },
   JSON.stringify({
     results: [
@@ -373,7 +373,7 @@ const WEB_SEARCH_CALL = settledTool(
 
 const WEB_FETCH_CALL = settledTool(
   "item_remote_web_fetch",
-  "web_fetch",
+  "web_web_fetch",
   { url: "https://www.sqlite.org/wal.html" },
   JSON.stringify({
     format: "markdown",
@@ -1938,7 +1938,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
       NARRATIVE_COMPACTION,
       narrativeTool(
         "item_n_search",
-        "web_search",
+        "web_web_search",
         { query: "stripe idempotency key retry" },
         {
           results: [

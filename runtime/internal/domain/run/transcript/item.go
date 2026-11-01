@@ -232,7 +232,10 @@ func (i Item) settleToolCall(
 	if !ok || i.status != ItemRunning {
 		return Item{}, errors.New("transcript: only a running ToolCall can settle")
 	}
-	if invocation.Name != call.Invocation.Name {
+	if invocation.Source == (tool.Ref{}) {
+		invocation.Source = call.Invocation.Source
+	}
+	if !call.Invocation.MatchesSource(invocation.Name, invocation.Source) {
 		return Item{}, errors.New("transcript: ToolCall settlement changes tool identity")
 	}
 	if finishedAt.IsZero() || finishedAt.Before(i.identity.OccurredAt) {

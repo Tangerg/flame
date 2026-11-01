@@ -92,6 +92,7 @@ type interruptWire struct {
 
 type approvalPromptWire struct {
 	Tool              tool.Ref         `json:"tool"`
+	QualifiedName     bool             `json:"qualifiedName,omitzero"`
 	SourceFingerprint integrity.Digest `json:"sourceFingerprint,omitzero"`
 	CallID            string           `json:"callId"`
 	Arguments         string           `json:"arguments"`
@@ -125,7 +126,7 @@ func promptWireFrom(interrupt runs.Interrupt) interruptWire {
 	switch prompt := interrupt.(type) {
 	case runs.ApprovalPrompt:
 		result.Approval = &approvalPromptWire{
-			Tool: prompt.Tool, SourceFingerprint: prompt.SourceFingerprint, CallID: prompt.CallID, Arguments: prompt.Arguments,
+			Tool: prompt.Tool, QualifiedName: prompt.QualifiedName, SourceFingerprint: prompt.SourceFingerprint, CallID: prompt.CallID, Arguments: prompt.Arguments,
 			SafetyClass: prompt.SafetyClass, Risk: prompt.Risk, Reason: prompt.Reason, Rememberable: prompt.Rememberable,
 		}
 	case runs.QuestionPrompt:
@@ -144,7 +145,7 @@ func (i interruptWire) interrupt() (runs.Interrupt, error) {
 	case i.Kind == run.InterruptApproval && i.Approval != nil && i.Question == nil:
 		prompt := i.Approval
 		return runs.ApprovalPrompt{
-			Tool: prompt.Tool, SourceFingerprint: prompt.SourceFingerprint, CallID: prompt.CallID, Arguments: prompt.Arguments,
+			Tool: prompt.Tool, QualifiedName: prompt.QualifiedName, SourceFingerprint: prompt.SourceFingerprint, CallID: prompt.CallID, Arguments: prompt.Arguments,
 			SafetyClass: prompt.SafetyClass, Risk: prompt.Risk, Reason: prompt.Reason, Rememberable: prompt.Rememberable,
 		}, nil
 	case i.Kind == run.InterruptQuestion && i.Question != nil && i.Approval == nil:

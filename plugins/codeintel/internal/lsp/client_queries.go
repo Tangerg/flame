@@ -64,17 +64,34 @@ func (c *client) callHierarchy(ctx context.Context, abs string, pos Position, ou
 	if _, err := c.ensureOpen(ctx, abs); err != nil {
 		return nil, err
 	}
-	var items []callHierarchyItem
+	var items []jsontext.Value
 	if err := c.conn.Call(ctx, "textDocument/prepareCallHierarchy", positionParams{
 		TextDocument: textDocumentIdentifier{URI: pathToURI(abs)},
 		Position:     pos,
 	}, &items); err != nil {
 		return nil, fmt.Errorf("lsp: prepareCallHierarchy: %w", err)
 	}
-	if len(items) == 0 {
-		return nil, nil
+	var symbols []Symbol
+	seen := make(map[Symbol]bool)
+	for _, item := range items {
+		if item.Kind() != '{' {
+			return nil, fmt.Errorf("lsp: prepareCallHierarchy returned a non-object root")
+		}
+		related, err := c.relatedCalls(ctx, callHierarchyItemParams{Item: item}, outgoing)
+		if err != nil {
+			return nil, err
+		}
+		for _, symbol := range related {
+			if !seen[symbol] {
+				seen[symbol] = true
+				symbols = append(symbols, symbol)
+			}
+		}
 	}
-	params := callHierarchyItemParams{Item: items[0]}
+	return symbols, nil
+}
+
+func (c *client) relatedCalls(ctx context.Context, params callHierarchyItemParams, outgoing bool) ([]Symbol, error) {
 	if outgoing {
 		var calls []callHierarchyOutgoingCall
 		if err := c.conn.Call(ctx, "callHierarchy/outgoingCalls", params, &calls); err != nil {

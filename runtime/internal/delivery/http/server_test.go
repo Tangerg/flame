@@ -604,3 +604,34 @@ func TestMethodNotAllowedHasAllow(t *testing.T) {
 		t.Fatalf("Allow = %q, must list POST", allow)
 	}
 }
+
+func TestLargeRPCBudgetOnlyForTheDeclaredSessionImport(t *testing.T) {
+	ts, _ := newTestServer(t)
+	defer ts.Close()
+	for _, tc := range []struct {
+		method, hint string
+		want         int
+	}{
+		{"sessions.import", "sessions.import", netHTTP.StatusOK},
+		{"sessions.import", "", netHTTP.StatusRequestEntityTooLarge},
+		{"runtime.discover", "sessions.import", netHTTP.StatusBadRequest},
+	} {
+		body := `{"jsonrpc":"2.0","id":"1","method":"` + tc.method + `","params":{}` + strings.Repeat(" ", 5<<20) + "}"
+		req, err := netHTTP.NewRequestWithContext(t.Context(), "POST", ts.URL+"/v2/rpc", strings.NewReader(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		if tc.hint != "" {
+			req.Header.Set("X-Method", tc.hint)
+		}
+		res, err := ts.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = res.Body.Close()
+		if res.StatusCode != tc.want {
+			t.Fatalf("%s (%q): %d, want %d", tc.method, tc.hint, res.StatusCode, tc.want)
+		}
+	}
+}

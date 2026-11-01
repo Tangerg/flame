@@ -2,8 +2,8 @@ package bootstrap
 
 import (
 	"context"
-
 	"errors"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -50,4 +50,17 @@ func (staticTestChatResolver) Verify(context.Context, modelprovider.Connection) 
 }
 func (staticTestChatResolver) OpenEmbedding(context.Context, modelchoice.Selection, modelprovider.Connection) (modeladapter.ResolvedEmbedding, error) {
 	return modeladapter.ResolvedEmbedding{}, errors.New("unexpected embedding")
+}
+
+func (r staticTestChatResolver) Profile(ctx context.Context, id string) (modelprovider.Profile, error) {
+	profiles, err := r.Profiles(ctx)
+	if err != nil {
+		return modelprovider.Profile{}, err
+	}
+	for _, profile := range profiles {
+		if profile.ID == id {
+			return profile, nil
+		}
+	}
+	return modelprovider.Profile{}, errors.New("unsupported test provider")
 }

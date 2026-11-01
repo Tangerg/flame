@@ -1,8 +1,7 @@
 import { type WorkspaceFileRendererSpec } from "@/features/workspace/public/views";
-export function selectFileRenderer(
+export function fileRendererCandidates(
   renderers: readonly WorkspaceFileRendererSpec[],
   extension: string,
-): WorkspaceFileRendererSpec | undefined {
-  const matching = renderers.filter((renderer) => renderer.extension === extension);
-  return matching.length === 1 ? matching[0] : undefined;
+): WorkspaceFileRendererSpec[] {
+  return renderers.filter((renderer) => renderer.extension === extension);
 }

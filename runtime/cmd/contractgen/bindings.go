@@ -108,9 +108,9 @@ func writeGoBindings(local, remote string) error {
 			fmt.Fprintf(&body, "rpcPath = %q\n", endpoint.Path)
 		}
 	}
-	fmt.Fprintf(&body, "headerIdempotencyKey = %q\nheaderIdempotencyNamespace = %q\nheaderLastEventID = %q\nheaderRequestID = %q\n",
+	fmt.Fprintf(&body, "headerIdempotencyKey = %q\nheaderIdempotencyNamespace = %q\nheaderLastEventID = %q\nheaderRequestID = %q\nheaderMethod = %q\n",
 		httpContract.Headers.IdempotencyKey, httpContract.Headers.IdempotencyNamespace,
-		httpContract.Headers.LastEventID, httpContract.Headers.RequestID)
+		httpContract.Headers.LastEventID, httpContract.Headers.RequestID, httpContract.Headers.Method)
 	fmt.Fprintf(&body, "notificationRunEvent = %q\nnotificationRuntimeEvent = %q\nnotificationPluginStream = %q\n)\n", dispatch.NotificationRunEvent, dispatch.NotificationRuntimeEvent, dispatch.NotificationPluginStream)
 	return writeGoProjection(remote, "metadata.generated.go", body.String())
 }

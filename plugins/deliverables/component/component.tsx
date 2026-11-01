@@ -6,11 +6,9 @@ import {
   useTranslator,
 } from "@flame/component-sdk";
 import {
-  Badge,
   Button,
   Callout,
   Disclosure,
-  EmptyState,
   Facts,
   FormActions,
   Metadata,
@@ -18,7 +16,6 @@ import {
   PanelHeader,
   PanelSection,
   RecordBody,
-  RecordButton,
   RecordGroup,
   RecordSummary,
   SearchField,
@@ -34,6 +31,12 @@ import {
 import { engineCatalogSchema } from "../contracts/evidence";
 import { METHODS } from "../contracts/methods";
 import { CreateForm, RevisionEditor, Source } from "./authoring";
+import {
+  ArchiveList,
+  RevisionHistory,
+  ArchiveReadStatus,
+  formatTimestamp,
+} from "./archive";
 import { ImportForm } from "./importing";
 import { EvidencePanel, Findings } from "./evidence";
 import {
@@ -52,14 +55,6 @@ import { fr } from "./locales/fr";
 import { de } from "./locales/de";
 
 const catalogs = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
-
-function formatTimestamp(value: string, format: Intl.DateTimeFormat): string {
-  const date = new Date(value);
-  // The wire also allows opaque text; interpret only the producer's canonical ISO form.
-  return Number.isFinite(date.getTime()) && date.toISOString() === value
-    ? format.format(date)
-    : value;
-}
 
 function commandLabel(method: CommandMethod, t: Translate): string {
   switch (method) {
@@ -498,6 +493,89 @@ function Inspector({
   );
 }
 
+function readCatalog(
+  value: NonNullable<DeliverablesState["catalog"]>["value"],
+) {
+  if (!value) return;
+  try {
+    return {
+      formats: formatCatalogSchema.parse(JSON.parse(value.formatsJSON)),
+      engines: engineCatalogSchema.parse(JSON.parse(value.enginesJSON)),
+    };
+  } catch (error) {
+    return { error: failureText(error) };
+  }
+}
+
+function inspectRevision(document: DocumentRead | undefined): {
+  value?: Inspection;
+  error?: string;
+} {
+  if (!document) return {};
+  try {
+    const value = inspectionSchema.parse(JSON.parse(document.inspectionJSON));
+    if (value.format !== document.revision.format)
+      throw new Error(
+        "deliverables: inspection format differs from its native revision",
+      );
+    return { value };
+  } catch (error) {
+    return { error: failureText(error) };
+  }
+}
+
+function Capabilities({
+  catalog,
+  limits,
+  t,
+}: {
+  catalog: ReturnType<typeof readCatalog>;
+  limits?: string;
+  t: Translate;
+}) {
+  return (
+    <Disclosure title={t("capabilities.title")}>
+      {catalog?.engines && (
+        <>
+          <Facts
+            values={[
+              [t("preview.platform"), catalog.engines.platform],
+              [
+                t("capabilities.configured"),
+                t(catalog.engines.configured ? "yes" : "no"),
+              ],
+            ]}
+          />
+          {!catalog.engines.configured && (
+            <Callout kind="note">{t("capabilities.setup")}</Callout>
+          )}
+          <Source
+            label={t("capabilities.engines")}
+            value={JSON.stringify(catalog.engines.configuration, null, 2)}
+          />
+          {catalog.engines.limitations.map((limitation) => (
+            <Metadata key={limitation}>{limitation}</Metadata>
+          ))}
+        </>
+      )}
+      {catalog?.formats?.formats.map((entry) => (
+        <Disclosure key={entry.format} title={t(`format.${entry.format}`)}>
+          {entry.limitations.map((limitation) => (
+            <Metadata key={limitation}>{limitation}</Metadata>
+          ))}
+          {entry.createSchemaJSON && (
+            <Source label={t("author.schema")} value={entry.createSchemaJSON} />
+          )}
+          <Source label={t("edit.schema")} value={entry.editSchemaJSON} />
+        </Disclosure>
+      ))}
+      {limits !== undefined && (
+        <Source label={t("capabilities.limits")} value={limits} />
+      )}
+    </Disclosure>
+  );
+}
+
 function Workspace({ context }: { context: ComponentContext }) {
   const t = useTranslator(catalogs, context.locale);
   const dateTime = useMemo(
@@ -510,71 +588,17 @@ function Workspace({ context }: { context: ComponentContext }) {
   );
   const state = useDeliverables(context);
   const historyEntry = useRef<HTMLElement>(null);
-  const [search, setSearch] = useState("");
-  const [format, setFormat] = useState("all");
-  const catalog = useMemo(() => {
-    if (!state.catalog?.value) return;
-    try {
-      return {
-        formats: formatCatalogSchema.parse(
-          JSON.parse(state.catalog.value.formatsJSON),
-        ),
-        engines: engineCatalogSchema.parse(
-          JSON.parse(state.catalog.value.enginesJSON),
-        ),
-      };
-    } catch (error) {
-      return { error: failureText(error) };
-    }
-  }, [state.catalog?.value]);
-  const entries =
-    state.list?.value?.entries.filter(
-      (entry) =>
-        (format === "all" || entry.format === format) &&
-        entry.title.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
-    ) ?? [];
-  const document = state.read?.value;
-  const inspection = useMemo(() => {
-    if (!document) return {};
-    try {
-      const value = inspectionSchema.parse(JSON.parse(document.inspectionJSON));
-      if (value.format !== document.revision.format)
-        throw new Error(
-          "deliverables: inspection format differs from its native revision",
-        );
-      return { value };
-    } catch (error) {
-      return { error: failureText(error) };
-    }
-  }, [document?.inspectionJSON, document?.revision.format]);
-  const history = state.history?.value?.entries ?? [];
-  const revisions =
-    document &&
-    !history.some((revision) => revision.id === document.revision.id)
-      ? [document.revision, ...history]
-      : history;
-  const selectedDocument =
-    document?.document ??
-    state.list?.value?.entries.find(
-      (entry) => entry.id === state.selection?.id,
-    );
-  const selectedRevision = revisions.find(
-    (revision) => revision.id === state.selection?.revision,
+  const catalog = useMemo(
+    () => readCatalog(state.catalog?.value),
+    [state.catalog?.value],
   );
-  const revisionOptions = revisions.map((revision) => ({
-    value: revision.id,
-    label: `${formatTimestamp(revision.createdAt, dateTime)} · ${t(`operation.${revision.operation}`)} · ${revision.id.slice(0, 12)}`,
-  }));
-  if (
-    state.selection &&
-    !revisionOptions.some(
-      (option) => option.value === state.selection?.revision,
-    )
-  )
-    revisionOptions.unshift({
-      value: state.selection.revision,
-      label: state.selection.revision.slice(0, 12),
-    });
+  const document = state.read?.value;
+  const inspection = useMemo(
+    () => inspectRevision(document),
+    [document?.inspectionJSON, document?.revision.format],
+  );
+  const refreshing = state.list?.loading || state.catalog?.loading;
+  const catalogError = state.catalog?.error ?? catalog?.error;
   return (
     <Panel
       label={t("panel.title")}
@@ -582,10 +606,8 @@ function Workspace({ context }: { context: ComponentContext }) {
       controls={
         <Toolbar label={t("panel.controls")}>
           <Button
-            pending={state.list?.loading || state.catalog?.loading}
-            aria-busy={
-              state.list?.loading || state.catalog?.loading || undefined
-            }
+            pending={refreshing}
+            aria-busy={refreshing || undefined}
             onClick={() => {
               void state.refresh();
             }}
@@ -597,186 +619,22 @@ function Workspace({ context }: { context: ComponentContext }) {
     >
       <Notices state={state} t={t} />
       <PendingCommands state={state} t={t} />
-      {(state.catalog?.error || catalog?.error) && (
-        <Callout kind="warning">
-          {state.catalog?.error ?? catalog?.error}
-        </Callout>
-      )}
+      {catalogError && <Callout kind="warning">{catalogError}</Callout>}
       <Disclosure title={t("author.new")} keepMounted>
         <CreateForm state={state} catalog={catalog?.formats} t={t} />
       </Disclosure>
       <Disclosure title={t("import.open")} keepMounted>
         <ImportForm state={state} t={t} />
       </Disclosure>
-      <PanelSection title={t("list.title")}>
-        <Toolbar label={t("list.filters")}>
-          <SearchField
-            aria-label={t("list.search")}
-            value={search}
-            clearLabel={t("search.clear")}
-            onChange={(event) => setSearch(event.target.value)}
-            onClear={() => setSearch("")}
-          />
-          <Select
-            label={t("list.format")}
-            value={format}
-            onValueChange={setFormat}
-            options={[
-              { value: "all", label: t("list.all") },
-              ...["docx", "xlsx", "pptx", "pdf"].map((value) => ({
-                value,
-                label: t(`format.${value}`),
-              })),
-            ]}
-          />
-        </Toolbar>
-        {state.list?.loading && (
-          <Metadata role="status">{t("reading")}</Metadata>
-        )}
-        {state.list?.error && (
-          <Callout kind="warning">{state.list.error}</Callout>
-        )}
-        <RecordGroup variant="list" hidden={!entries.length}>
-          {entries.map((entry) => (
-            <RecordButton
-              key={entry.id}
-              aria-current={
-                state.selection?.id === entry.id ? "true" : undefined
-              }
-              onClick={() => state.open({ id: entry.id, revision: entry.head })}
-            >
-              <RecordSummary
-                title={entry.title}
-                description={formatTimestamp(entry.createdAt, dateTime)}
-                status={<Badge>{entry.format.toUpperCase()}</Badge>}
-              />
-            </RecordButton>
-          ))}
-        </RecordGroup>
-        {state.list?.value && !entries.length && (
-          <EmptyState title={t("list.empty")} sub={t("list.emptyHelp")} />
-        )}
-        {(state.listPrevious || state.list?.value?.next) && (
-          <Toolbar label={t("list.paging")}>
-            <Button
-              disabled={!state.listPrevious}
-              pending={state.list?.loading}
-              aria-busy={state.list?.loading || undefined}
-              focusableWhenDisabled
-              onClick={() => {
-                void state.page("list", "previous");
-              }}
-            >
-              {t("previous")}
-            </Button>
-            <Button
-              disabled={!state.list?.value?.next}
-              pending={state.list?.loading}
-              aria-busy={state.list?.loading || undefined}
-              focusableWhenDisabled
-              onClick={() => {
-                void state.page("list", "next");
-              }}
-            >
-              {t("next")}
-            </Button>
-          </Toolbar>
-        )}
-      </PanelSection>
-      {state.selection && (
-        <PanelSection
-          ref={historyEntry}
-          tabIndex={-1}
-          aria-label={t("history.title")}
-          title={t("history.title")}
-        >
-          {state.history?.loading && (
-            <Metadata role="status">{t("reading")}</Metadata>
-          )}
-          {state.history?.error && (
-            <Callout kind="warning">{state.history.error}</Callout>
-          )}
-          <Select
-            label={t("history.choose")}
-            value={state.selection.revision}
-            onValueChange={(revision) => {
-              if (state.selection)
-                state.open({ id: state.selection.id, revision });
-            }}
-            options={revisionOptions}
-          />
-          {(state.historyPrevious || state.history?.value?.next) && (
-            <Toolbar label={t("history.paging")}>
-              <Button
-                disabled={!state.historyPrevious}
-                pending={state.history?.loading}
-                aria-busy={state.history?.loading || undefined}
-                focusableWhenDisabled
-                onClick={() => {
-                  void state.page("history", "previous");
-                }}
-              >
-                {t("previous")}
-              </Button>
-              <Button
-                disabled={!state.history?.value?.next}
-                pending={state.history?.loading}
-                aria-busy={state.history?.loading || undefined}
-                focusableWhenDisabled
-                onClick={() => {
-                  void state.page("history", "next");
-                }}
-              >
-                {t("next")}
-              </Button>
-            </Toolbar>
-          )}
-          <Disclosure title={t("revision.details")}>
-            <Facts
-              values={[
-                [t("document.id"), state.selection.id],
-                [t("document.created"), selectedDocument?.createdAt],
-                [t("revision.id"), state.selection.revision],
-                [t("revision.created"), selectedRevision?.createdAt],
-              ]}
-            />
-            {document && (
-              <>
-                <Facts
-                  values={[
-                    [
-                      t("revision.parent"),
-                      document.revision.parent ?? t("revision.first"),
-                    ],
-                    [t("file.hash"), document.revision.sha256],
-                  ]}
-                />
-                {inspection.value && (
-                  <Facts
-                    values={Object.entries(inspection.value.facts).map(
-                      ([key, value]) => [key, String(value)],
-                    )}
-                  />
-                )}
-                <Source
-                  label={t("content.original")}
-                  value={document.inspectionJSON}
-                />
-                {document.processingJSON && (
-                  <Source
-                    label={t("revision.processing")}
-                    value={document.processingJSON}
-                  />
-                )}
-              </>
-            )}
-          </Disclosure>
-        </PanelSection>
-      )}
-      {state.read?.loading && <Metadata role="status">{t("reading")}</Metadata>}
-      {state.read?.error && (
-        <Callout kind="warning">{state.read.error}</Callout>
-      )}
+      <ArchiveList state={state} dateTime={dateTime} t={t} />
+      <RevisionHistory
+        state={state}
+        dateTime={dateTime}
+        t={t}
+        entry={historyEntry}
+        inspection={inspection.value}
+      />
+      <ArchiveReadStatus read={state.read} t={t} />
       {document && (
         <Inspector
           key={document.revision.id}
@@ -797,51 +655,11 @@ function Workspace({ context }: { context: ComponentContext }) {
           t={t}
         />
       )}
-      <Disclosure title={t("capabilities.title")}>
-        {catalog?.engines && (
-          <>
-            <Facts
-              values={[
-                [t("preview.platform"), catalog.engines.platform],
-                [
-                  t("capabilities.configured"),
-                  t(catalog.engines.configured ? "yes" : "no"),
-                ],
-              ]}
-            />
-            {!catalog.engines.configured && (
-              <Callout kind="note">{t("capabilities.setup")}</Callout>
-            )}
-            <Source
-              label={t("capabilities.engines")}
-              value={JSON.stringify(catalog.engines.configuration, null, 2)}
-            />
-            {catalog.engines.limitations.map((limitation) => (
-              <Metadata key={limitation}>{limitation}</Metadata>
-            ))}
-          </>
-        )}
-        {catalog?.formats?.formats.map((entry) => (
-          <Disclosure key={entry.format} title={t(`format.${entry.format}`)}>
-            {entry.limitations.map((limitation) => (
-              <Metadata key={limitation}>{limitation}</Metadata>
-            ))}
-            {entry.createSchemaJSON && (
-              <Source
-                label={t("author.schema")}
-                value={entry.createSchemaJSON}
-              />
-            )}
-            <Source label={t("edit.schema")} value={entry.editSchemaJSON} />
-          </Disclosure>
-        ))}
-        {state.catalog?.value && (
-          <Source
-            label={t("capabilities.limits")}
-            value={state.catalog.value.limitsJSON}
-          />
-        )}
-      </Disclosure>
+      <Capabilities
+        catalog={catalog}
+        limits={state.catalog?.value?.limitsJSON}
+        t={t}
+      />
     </Panel>
   );
 }

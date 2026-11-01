@@ -113,7 +113,7 @@ function modelCapabilities(model: SelectableModel, t: Translate): string {
 }
 
 export function ModelPicker() {
-  const providersPane = useSettingsPaneForIntent("modelProviders");
+  const providersPane = useSettingsPaneForIntent("model-providers");
   const t = useT();
   const workspace = useWorkspace();
   const { data, isPending, isError, isFetching, refetch } = useModels();

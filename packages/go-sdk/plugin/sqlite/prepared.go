@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/Tangerg/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/qimu/mcp"
@@ -95,7 +96,23 @@ func ResumeCommand(ctx context.Context, db *sql.DB, method, id string) (*Prepare
 // owner-provided reconciliation evidence before its caller can proceed.
 func (c *PreparedCommand) NewlyAdmitted() bool { return c != nil && c.fresh }
 
+// An upstream acknowledgement survives cancellation of the request which obtained
+// it. Its local write-set still has a finite lifetime if storage is unavailable.
+const externalSettlementTimeout = 10 * time.Second
+
+func (c *PreparedCommand) SettleExternal(ctx context.Context, reply []byte, record func(context.Context) error) error {
+	settlement, cancel := context.WithTimeout(context.WithoutCancel(ctx), externalSettlementTimeout)
+	defer cancel()
+	return c.complete(settlement, reply, record, sqlite.RunIndependentTx)
+}
+
 func (c *PreparedCommand) Complete(ctx context.Context, reply []byte) error {
+	return c.complete(ctx, reply, nil, sqlite.RunInTx)
+}
+
+type replyTransaction func(context.Context, *sql.DB, func(context.Context) error) error
+
+func (c *PreparedCommand) complete(ctx context.Context, reply []byte, record func(context.Context) error, transact replyTransaction) error {
 	if c == nil {
 		return errors.New("managed plugin: prepared command is required")
 	}
@@ -107,7 +124,7 @@ func (c *PreparedCommand) Complete(ctx context.Context, reply []byte) error {
 			return err
 		}
 	}
-	return sqlite.RunInTx(ctx, c.db, func(ctx context.Context) error {
+	return transact(ctx, c.db, func(ctx context.Context) error {
 		var method, input string
 		var original []byte
 		if err := sqlite.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, c.id).Scan(&method, &input, &original); err != nil {
@@ -121,6 +138,11 @@ func (c *PreparedCommand) Complete(ctx context.Context, reply []byte) error {
 				return portable.ErrInvocationConflict
 			}
 			return nil
+		}
+		if record != nil {
+			if err := record(ctx); err != nil {
+				return err
+			}
 		}
 		_, err := sqlite.Connection(ctx, c.db).ExecContext(ctx, `UPDATE commands SET reply=? WHERE id=? AND reply IS NULL`, string(reply), c.id)
 		return err

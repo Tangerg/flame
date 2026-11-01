@@ -8,27 +8,33 @@ const PluginsPane = lazy(() =>
   import("@/features/plugins/ui/PluginsPane").then(({ PluginsPane }) => ({ default: PluginsPane })),
 );
 
-export function createPluginsPlugin(installed: InstalledPluginsOwner) {
+export function createInstalledPluginLoader(installed: InstalledPluginsOwner) {
   return definePlugin({
-    name: "flame.builtin.plugins-pane",
+    name: "flame.builtin.installed-plugin-loader",
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
       installed.start(ctx, ctx.runtime);
       ctx.cleanup(installed.dispose);
-      registerSettingsPane(ctx, {
-        id: PLUGINS_PANE,
-        label: "settings.pane.plugins",
-        keywords: [
-          "packages.installTitle",
-          "packages.installedTitle",
-          "packages.providers.title",
-          "plugins.loadedTitle",
-        ],
-        group: "integrations",
-        icon: "blocks",
-        order: 99,
-        component: PluginsPane,
-      });
     },
   });
 }
+
+export const pluginManagementPane = definePlugin({
+  name: "flame.builtin.plugins-pane",
+  setup(ctx) {
+    registerSettingsPane(ctx, {
+      id: PLUGINS_PANE,
+      label: "settings.pane.plugins",
+      keywords: [
+        "packages.installTitle",
+        "packages.installedTitle",
+        "packages.providers.title",
+        "plugins.loadedTitle",
+      ],
+      group: "integrations",
+      icon: "blocks",
+      order: 99,
+      component: PluginsPane,
+    });
+  },
+});

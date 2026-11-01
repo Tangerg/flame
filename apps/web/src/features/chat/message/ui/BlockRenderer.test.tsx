@@ -22,7 +22,7 @@ import { renderBlock, renderMessageBlocks } from "@/features/chat/message/ui/Blo
 import { definePlugin } from "@/extensions/definePlugin";
 import { TOOL_STANDING_SURFACE } from "@/features/chat/public/tools/types";
 import { loadPluginsForTest } from "@/test/kernel";
-import { toolCategoryForName } from "@/features/agent/application/fold/reducer.fixtures";
+import { toolCategoryForName } from "@/test/toolCategory.generated";
 const CTX: BlockCtx = {
   sessionId: "ses-1",
   expandedIds: new Set(),

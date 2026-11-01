@@ -7,4 +7,5 @@ export const NotificationAuthorizationValues = [
   "denied",
 ] as const;
 
-export type NotificationAuthorization = (typeof NotificationAuthorizationValues)[number];
+export type NotificationAuthorization =
+  (typeof NotificationAuthorizationValues)[number];

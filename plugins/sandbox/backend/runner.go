@@ -119,7 +119,7 @@ func (r *runner) complete(ctx context.Context, prepared *pluginstorage.PreparedC
 		return sandbox.Result{}, err
 	}
 	encoded := reply.JSON()
-	if err := prepared.Complete(ctx, encoded); err != nil {
+	if err := prepared.SettleExternal(ctx, encoded, nil); err != nil {
 		return sandbox.Result{}, err
 	}
 	return readOutcome(encoded)

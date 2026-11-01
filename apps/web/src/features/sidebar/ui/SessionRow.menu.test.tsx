@@ -23,7 +23,7 @@ function renderRow(title: string) {
         favorite: false,
       }}
       active={false}
-      onRename={vi.fn()}
+      onFork={vi.fn()}
       onSelect={vi.fn()}
     />,
   );

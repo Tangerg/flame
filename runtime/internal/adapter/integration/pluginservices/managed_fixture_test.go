@@ -160,7 +160,7 @@ func (f *managedFixture) open(t *testing.T, connect bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	driver, err := process.New(process.Config{Runner: f.runner, Store: stores.Qimu, Source: source, Configure: source.Configure, CloseTimeout: 5 * time.Second, MaxFrameBytes: sdk.DefaultMaxLineLength})
+	driver, err := qimumcp.NewProcessDriver(process.Config{Runner: f.runner, Store: stores.Qimu, Source: source, CloseTimeout: 5 * time.Second}, qimumcp.ProcessOptions{Configure: source.Configure, MaxFrameBytes: sdk.DefaultMaxLineLength})
 	if err != nil {
 		t.Fatal(err)
 	}

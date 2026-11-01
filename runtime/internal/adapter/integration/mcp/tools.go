@@ -37,7 +37,7 @@ func sourceTools(ctx context.Context, owner *connections, descriptor ServerConfi
 				return rejectedRemoteToolPlaceholder
 			}
 			ref, _ := domaintool.MCP(server, remoteName)
-			return ref.ModelName()
+			return ref.DiscoveryName()
 		},
 		ConcurrencyPolicy: scopemcp.AnnotatedReadOnlyConcurrencyPolicy,
 		RequestMeta:       scopemcp.RequestMetaFromContext,

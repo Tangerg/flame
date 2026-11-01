@@ -1,29 +1,34 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { normalizeRuntimeEndpoint, requireRuntimeEndpoint } from "./endpoint";
 import { createHttpTransport } from "./transports/http";
 import { createSidecarClient } from "./sidecar";
 
 describe("Runtime address ownership", () => {
-  it("canonicalizes a path prefix and rejects ambiguous or credential-bearing addresses", () => {
+  it("canonicalizes accepted addresses without reinterpreting escaped delimiters", () => {
     expect(normalizeRuntimeEndpoint(" HTTPS://EXAMPLE.COM:443/runtime/ ")).toBe(
       "https://example.com/runtime",
     );
     expect(normalizeRuntimeEndpoint("https://example.com/%3F%23")).toBe(
       "https://example.com/%3F%23",
     );
-    for (const input of [
-      "/runtime",
-      "file:///runtime",
-      "https://user:secret@example.com",
-      "https://example.com?token=secret",
-      "https://example.com#token",
-      "https://example.com/?",
-      "https://example.com/#",
-    ]) {
-      expect(normalizeRuntimeEndpoint(input)).toBeNull();
-      expect(() => requireRuntimeEndpoint(input)).toThrow("without credentials");
-      expect(() => createHttpTransport({ baseUrl: input })).toThrow("without credentials");
-      expect(() => createSidecarClient({ baseUrl: input })).toThrow("without credentials");
-    }
+  });
+
+  const fixtures: { input: string; accepted: boolean }[] = JSON.parse(
+    readFileSync(
+      new URL("../../go-sdk/httporigin/testdata/runtime-endpoints.json", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  it.each(fixtures.filter(({ accepted }) => accepted))("accepts $input", ({ input }) => {
+    expect(normalizeRuntimeEndpoint(input)).not.toBeNull();
+  });
+
+  it.each(fixtures.filter(({ accepted }) => !accepted))("rejects $input", ({ input }) => {
+    expect(normalizeRuntimeEndpoint(input)).toBeNull();
+    expect(() => requireRuntimeEndpoint(input)).toThrow("without credentials");
+    expect(() => createHttpTransport({ baseUrl: input })).toThrow("without credentials");
+    expect(() => createSidecarClient({ baseUrl: input })).toThrow("without credentials");
   });
 });

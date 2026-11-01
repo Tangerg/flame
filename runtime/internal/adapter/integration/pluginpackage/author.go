@@ -19,6 +19,7 @@ import (
 	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/distribution"
 	"github.com/Tangerg/qimu/integrity"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 type BuildTarget struct {
@@ -127,7 +128,7 @@ func authorManifest(ctx context.Context, root *os.Root, declaration plugin.Decla
 			unit.Imports = append(unit.Imports, distribution.Import{Slot: imported.Slot, Contract: imported.Contract, Optional: imported.Optional})
 		}
 		switch unit.Profile {
-		case qimu.MCPProcess:
+		case qimumcp.ProcessProfile:
 			name, err := plugins.BackendServer(unit.ID)
 			if err != nil {
 				return manifest, err
@@ -204,7 +205,7 @@ func validateProjection(ctx context.Context, root *os.Root, release plugin.Relea
 	// the sole author projection, not a second interpretation of unit entries.
 	var target BuildTarget
 	for _, unit := range manifest.Units {
-		if unit.Profile != qimu.MCPProcess {
+		if unit.Profile != qimumcp.ProcessProfile {
 			continue
 		}
 		for _, variant := range unit.Variants {

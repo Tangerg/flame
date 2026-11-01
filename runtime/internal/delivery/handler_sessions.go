@@ -151,12 +151,9 @@ func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSession
 }
 
 func (s *Handler) CreateSession(ctx context.Context, in protocol.CreateSessionRequest) (*protocol.Session, error) {
-	view, err := s.sessions.CreateView(ctx, in.Title, s.sessionWorkspacePath(in.Workspace))
-	if err != nil {
-		return nil, err
-	}
-	out := presentSession(view)
-	return &out, nil
+	plan, err := s.prepareCreate(ctx, in)
+	return applySessionCreation(ctx, plan, err)
+
 }
 
 func (s *Handler) DeleteSession(ctx context.Context, id string) error {
@@ -213,19 +210,35 @@ func (s *Handler) UpdateSession(ctx context.Context, in protocol.UpdateSessionRe
 // all of its mutable history tail are excluded. Forking deletes nothing, so
 // unlike rollback it needs no session_busy guard.
 func (s *Handler) ForkSession(ctx context.Context, in protocol.ForkSessionRequest) (*protocol.Session, error) {
-	child, err := s.sessions.ForkView(ctx, sessions.ForkSpec{
-		ParentID:  in.SessionID,
-		FromRunID: in.FromRunID,
-		Title:     in.Title,
-	})
+	plan, err := s.prepareFork(ctx, in)
+	return applySessionCreation(ctx, plan, err)
+}
+
+func (s *Handler) prepareCreate(ctx context.Context, in protocol.CreateSessionRequest) (sessions.Creation, error) {
+	return s.sessions.PrepareCreate(ctx, in.Title, s.sessionWorkspacePath(in.Workspace))
+}
+
+func (s *Handler) prepareFork(ctx context.Context, in protocol.ForkSessionRequest) (sessions.Creation, error) {
+	plan, err := s.sessions.PrepareFork(ctx, sessions.ForkSpec{ParentID: in.SessionID, FromRunID: in.FromRunID, Title: in.Title})
 	if err != nil {
 		if in.FromRunID != "" {
 			err = wireBoundaryErr(err)
 		}
+		return sessions.Creation{}, wireSessionErr(err)
+	}
+	return plan, nil
+}
+
+func applySessionCreation(ctx context.Context, creation sessions.Creation, err error) (*protocol.Session, error) {
+	if err != nil {
+		return nil, err
+	}
+	if err := creation.Commit(ctx); err != nil {
 		return nil, wireSessionErr(err)
 	}
-	out := presentSession(child)
-	return &out, nil
+	creation.Publish()
+	view := presentSession(creation.View)
+	return &view, nil
 }
 
 // presentSession projects the complete Application read model into the

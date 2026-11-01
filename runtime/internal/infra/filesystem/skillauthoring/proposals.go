@@ -27,9 +27,6 @@ func (s *Store) SubmitProposal(ctx context.Context, proposal skills.Proposal) (s
 	if proposal.Scope != s.scope {
 		return skills.ProposalRef{}, nil, fmt.Errorf("skillauthoring: proposal scope %q does not match store scope %q", proposal.Scope, s.scope)
 	}
-	if issue := proposal.SafetyIssue(); issue != skills.ProposalSafe {
-		return skills.ProposalRef{}, nil, proposalSafetyError(proposal.Name, issue)
-	}
 	content, err := renderProposal(proposal)
 	if err != nil {
 		return skills.ProposalRef{}, nil, err

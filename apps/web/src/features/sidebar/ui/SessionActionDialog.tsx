@@ -3,7 +3,8 @@ import { type CapturedSession } from "@flame/component-sdk";
 import { type SessionActionSpec } from "@/features/navigation/public/sessionActions";
 import { PluginBoundary } from "@/extensions/host/PluginBoundary";
 import { ModalDialog } from "@flame/ui";
-import { useT } from "@/lib/i18n/index";
+import { presentationTitle } from "@/lib/i18n/presentationTitle";
+import { useLocale, useT } from "@/lib/i18n/index";
 export function SessionActionDialog({
   action,
   session,
@@ -14,10 +15,11 @@ export function SessionActionDialog({
   close(): void;
 }) {
   const t = useT();
+  const title = presentationTitle(action.title, action.localizedTitles, useLocale());
   return (
     <ModalDialog
       open
-      title={action.title}
+      title={title}
       description={session.title.trim() || t("session.untitled")}
       closeLabel={t("common.close")}
       size="lg"
@@ -25,7 +27,7 @@ export function SessionActionDialog({
         if (!open) close();
       }}
     >
-      <PluginBoundary plugin={action.id} label={action.title}>
+      <PluginBoundary plugin={action.id} label={title}>
         <Suspense fallback={<p role="status">{t("packages.module.loading")}</p>}>
           {createElement(action.component, { session })}
         </Suspense>

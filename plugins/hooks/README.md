@@ -13,8 +13,10 @@ Commands run in the installed process environment, including its launch PATH;
 other ambient Runtime variables are not inherited. Set required variables
 explicitly in the trusted authored command.
 
-Runtime owns project trust, event order, final decision folding, Tool argument
-admission and human approval. `allow` advice cannot override those guarantees.
+Runtime owns project trust, event delivery, bounded material, Tool argument
+admission and human approval. The captured provider orders and matches its rules,
+executes each admitted shell effect at most once, and combines the outcomes into
+one event receipt. Direct public plugin calls cannot originate trusted lifecycle events. `allow` advice cannot override those guarantees.
 Observe-only events cannot change an already committed outcome. A captured rule
 set retains its exact source until all of its events finish and close.
 

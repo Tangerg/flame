@@ -11,6 +11,7 @@ import (
 	"log/slog"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/qimu/portable"
 	"go.opentelemetry.io/otel/trace"
@@ -31,15 +32,18 @@ func (e *Endpoint) replayOperation(ctx context.Context, method *Method, paramete
 	}
 	var result Result
 	executed := false
-	payload, err := e.idempotency.Invoke(ctx, key, fingerprint, func() ([]byte, error) {
-		result = execute()
-		executed = true
-		encoded, err := encodeStoredOutcome(result)
-		if err != nil {
-			return nil, fmt.Errorf("idempotency: encode operation outcome: %w", err)
-		}
-		return encoded, nil
-	})
+	var payload []byte
+	if handler, ok := e.target.(*Handler); ok && (method.Meta.Name == SessionsCreate || method.Meta.Name == sessionsFork) {
+		payload, err = e.idempotency.InvokeAtomic(ctx, key, fingerprint, func() (operation.PreparedOutcome, error) {
+			return handler.prepareSessionOutcome(ctx, method, parameters)
+		})
+	} else {
+		payload, err = e.idempotency.Invoke(ctx, key, fingerprint, func() ([]byte, error) {
+			result = execute()
+			executed = true
+			return encodeStoredOutcome(result)
+		})
+	}
 	if err != nil {
 		if executed || errors.Is(err, operation.ErrOutcomePending) {
 			slog.ErrorContext(ctx, "delivery: idempotency receipt is unconfirmed after a completed operation", "method", method.Meta.Name, "error", err)
@@ -60,6 +64,30 @@ func (e *Endpoint) replayOperation(ctx context.Context, method *Method, paramete
 		return result
 	}
 	return replayOutcome(method, payload)
+}
+
+func (h *Handler) prepareSessionOutcome(ctx context.Context, method *Method, request any) (operation.PreparedOutcome, error) {
+	var creation sessions.Creation
+	var err error
+	switch in := request.(type) {
+	case protocol.CreateSessionRequest:
+		creation, err = h.prepareCreate(ctx, in)
+	case protocol.ForkSessionRequest:
+		creation, err = h.prepareFork(ctx, in)
+
+	default:
+		return operation.PreparedOutcome{}, fmt.Errorf("idempotency: invalid Session creation request %T", request)
+	}
+	if err != nil {
+		payload, encodeErr := encodeStoredOutcome(failed(projectError(err)))
+		return operation.PreparedOutcome{Payload: payload}, encodeErr
+	}
+	view := presentSession(creation.View)
+	if err := method.Meta.ValidateResult(&view); err != nil {
+		return operation.PreparedOutcome{}, err
+	}
+	payload, err := encodeStoredOutcome(Result{Value: &view})
+	return operation.PreparedOutcome{Payload: payload, Commit: creation.Commit, Publish: creation.Publish}, err
 }
 
 func replayOutcome(method *Method, payload []byte) Result {

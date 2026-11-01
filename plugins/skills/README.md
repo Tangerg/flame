@@ -10,8 +10,8 @@ After successful root Run completion, the selected backend considers a Run
 complex at eight completed Tool calls. Every third complex Run in a Session may
 mine a reusable procedure from at least four committed messages. A revision first
 reads the actual current user Skill and keeps that name. The backend also advises
-an archive check at most once per six hours, with a thirty-day inactivity threshold.
-These cost controls reset when the backend restarts; they are not product history.
+an archive check at most once per six hours, with an inclusive last-activity cutoff thirty days before the captured observation time.
+The plugin computes the cutoff once; the host checks it precedes the captured time and compares it with the exact activity timestamp under the library lease. A first observation starts the grace interval, including for a never-loaded skill. These cost controls reset when the backend restarts; they are not product history.
 
 Mining uses a call-scoped grant for one conversation read, one current Skill read
 and at most two utility-model calls. The complete model input is limited to

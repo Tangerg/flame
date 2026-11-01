@@ -1,12 +1,15 @@
+import { useMemo } from "react";
+import { useLocale } from "@/lib/i18n/index";
+import { presentationTitle } from "@/lib/i18n/presentationTitle";
 import { type ComponentType } from "react";
-import { type SettingsIntent } from "@/foundation/protocolValues.generated";
 import { defineExtensionPoint } from "@/extensions/contracts";
 import { useExtensionPoint } from "@/extensions/selectors/extensions";
 export interface SettingsPaneSpec {
   id: string;
   material?: string;
-  intent?: SettingsIntent;
+  intent?: string;
   label: string;
+  localizedTitles?: Readonly<Record<string, string>>;
   description?: string;
   icon?: string;
   order?: number;
@@ -21,5 +24,15 @@ export const SETTINGS_PANE = defineExtensionPoint<SettingsPaneSpec>({
 });
 
 export function useSettingsPanes(): SettingsPaneSpec[] {
-  return useExtensionPoint(SETTINGS_PANE);
+  const entries = useExtensionPoint(SETTINGS_PANE);
+  const locale = useLocale();
+  return useMemo(
+    () =>
+      entries.map((entry) =>
+        entry.localizedTitles
+          ? { ...entry, label: presentationTitle(entry.label, entry.localizedTitles, locale) }
+          : entry,
+      ),
+    [entries, locale],
+  );
 }

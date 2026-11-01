@@ -3,8 +3,9 @@ package sessions
 import (
 	"context"
 	"errors"
-	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"testing"
+
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 func TestResourceRetirementRequiresItsExactCommittedAuthority(t *testing.T) {
@@ -74,7 +75,7 @@ func TestStartupRecoveryKeepsOnlyTheFailingSessionFenced(t *testing.T) {
 		ledger.rows[sessionID] = retirement
 	}
 	refusal := errors.New("sandbox directory is not removable")
-	retirer, err := NewResourceRetirer(ledger, Cleanup{Resource: "sandbox", Retire: func(sessionID string) error {
+	retirer, err := NewResourceRetirer(ledger, Cleanup{Resource: "sandbox", Retire: func(_ context.Context, sessionID string) error {
 		if sessionID == "ses_broken" {
 			return refusal
 		}

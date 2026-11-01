@@ -162,7 +162,7 @@ func presentTool(invocation transcript.ToolInvocation) protocol.ToolInvocation {
 	}
 	rejected, _ := invocation.Input.Rejected()
 	return protocol.ToolInvocation{
-		Name: invocation.Name, Category: builtincontract.Name(invocation.Name).Category(),
+		Name: invocation.Name, Source: recordedSource(invocation.Source), Category: builtincontract.Name(invocation.Name).Category(),
 		ResultShape:   builtincontract.Name(invocation.Name).ResultShape(),
 		ArgumentsText: rejected, Arguments: invocation.Input.Arguments().Map(), Result: result,
 	}

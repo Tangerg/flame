@@ -497,7 +497,7 @@ func buildAssemblyCore(
 func sessionResourceCleanups(checkpoints *workspaceadapter.Checkpoints, isolation workspaceIsolation) []sessions.Cleanup {
 	return []sessions.Cleanup{
 		{Resource: "checkpoints", Retire: checkpoints.DropSession},
-		{Resource: "sandbox", Retire: isolation.Discard},
+		{Resource: "sandbox", Retire: func(_ context.Context, id string) error { return isolation.Discard(id) }},
 	}
 }
 

@@ -159,10 +159,7 @@ func ValidateHookCascade(count int) error {
 // malformed matchers and negative timeouts are configuration errors rather
 // than policies that quietly never run.
 func (h Hook) Validate() error {
-	switch h.Event {
-	case PreToolUse, PostToolUse, UserPromptSubmit, SessionStart,
-		PreCompact, Stop, Notification:
-	default:
+	if !h.Event.Valid() {
 		return fmt.Errorf("%w: unsupported event %q", ErrInvalidHook, h.Event)
 	}
 	hasCommand := strings.TrimSpace(h.Command) != ""
@@ -301,24 +298,7 @@ func boundedCommandText(value string, limit int, alreadyTruncated bool) (string,
 	return valid, truncated
 }
 
-// Matches reports whether h applies to in.
-func (h Hook) Matches(in Input) bool {
-	if h.Event != in.Event {
-		return false
-	}
-	if in.Event != PreToolUse && in.Event != PostToolUse {
-		return true // non-tool events: matcher is irrelevant
-	}
-	if h.Matcher == "" {
-		return true
-	}
-	name := ""
-	if in.Tool != nil {
-		name = in.Tool.Name
-	}
-	ok, err := path.Match(h.Matcher, name)
-	return err == nil && ok
-}
+func (e Event) Valid() bool { return slices.Contains(e.JSONSchemaEnum(), string(e)) }
 
 func (Event) JSONSchemaEnum() []string {
 	return []string{string(PreToolUse), string(PostToolUse), string(UserPromptSubmit), string(SessionStart), string(PreCompact), string(Stop), string(Notification)}

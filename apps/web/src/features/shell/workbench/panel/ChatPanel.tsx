@@ -56,7 +56,6 @@ import { RunAnnouncer } from "@/features/shell/workbench/panel/RunAnnouncer";
 import { RunStatusPill } from "@/features/shell/workbench/panel/RunStatusPill";
 import { SessionIdentity } from "@/features/shell/workbench/panel/SessionIdentity";
 import { DockResizer } from "@/features/shell/workbench/panel/DockResizer";
-import { HeaderDiffStat } from "@/features/shell/workbench/panel/HeaderDiffStat";
 import { WorkspaceViewBody } from "@/features/shell/workbench/panel/WorkspaceViewBody";
 import { WorkspaceWindowHeader } from "@/features/shell/workbench/panel/WorkspaceWindowHeader";
 import { useT } from "@/lib/i18n/index";
@@ -415,7 +414,6 @@ export function ChatPanel({ onSend, ref }: Props) {
                   <RunStatusPill />
                   <span {...stylex.props(sh.spacer)} />
                   <Slot name="chat.header.meta" />
-                  <HeaderDiffStat />
                 </AgentSurfaceHeader>
                 <Slot name="chat.search" />
                 <ChatStream onSend={onSend} />

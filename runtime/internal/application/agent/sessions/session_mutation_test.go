@@ -567,7 +567,7 @@ func (*mutationCheckpoints) Restore(context.Context, string, string, string) err
 	panic("unused")
 }
 
-func (m *mutationCheckpoints) DropSession(sessionID string) error {
+func (m *mutationCheckpoints) DropSession(ctx context.Context, sessionID string) error {
 	*m.operations = append(*m.operations, "checkpoint.drop:"+sessionID)
 	return m.err
 }

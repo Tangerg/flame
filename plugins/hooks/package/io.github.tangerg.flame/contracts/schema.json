@@ -1,34 +1,22 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Command": {
+    "Advice": {
       "additionalProperties": false,
       "properties": {
-        "command": {
-          "type": "string"
+        "decision": {
+          "$ref": "#/$defs/CommandDecision"
         },
-        "cwd": {
-          "type": "string"
-        },
-        "input": {
-          "$ref": "#/$defs/Input"
-        },
-        "timeoutMillis": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
+        "diagnostics": {
+          "items": {
+            "$ref": "#/$defs/Diagnostic"
+          },
+          "type": "array"
         }
       },
       "required": [
-        "command",
-        "cwd",
-        "input",
-        "timeoutMillis"
+        "decision",
+        "diagnostics"
       ],
       "type": "object"
     },
@@ -59,6 +47,22 @@
       },
       "required": [
         "verdict"
+      ],
+      "type": "object"
+    },
+    "Diagnostic": {
+      "additionalProperties": false,
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "message"
       ],
       "type": "object"
     },
@@ -94,34 +98,31 @@
       ],
       "type": "object"
     },
-    "ExecuteV1Input": {
-      "$ref": "#/$defs/Command"
+    "EvaluateV1Input": {
+      "$ref": "#/$defs/Evaluation"
     },
-    "ExecuteV1Output": {
-      "$ref": "#/$defs/Result"
+    "EvaluateV1Output": {
+      "$ref": "#/$defs/Advice"
     },
-    "Failure": {
+    "Evaluation": {
       "additionalProperties": false,
       "properties": {
-        "kind": {
-          "allOf": [
-            {
-              "enum": [
-                "failed",
-                "canceled",
-                "timedOut"
-              ]
-            }
-          ],
-          "type": "string"
+        "declarativeOnly": {
+          "type": "boolean"
         },
-        "message": {
-          "type": "string"
+        "input": {
+          "$ref": "#/$defs/Input"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/Hook"
+          },
+          "type": "array"
         }
       },
       "required": [
-        "kind",
-        "message"
+        "rules",
+        "input"
       ],
       "type": "object"
     },
@@ -224,33 +225,6 @@
       },
       "required": [
         "event"
-      ],
-      "type": "object"
-    },
-    "Result": {
-      "additionalProperties": false,
-      "properties": {
-        "decision": {
-          "$ref": "#/$defs/CommandDecision"
-        },
-        "exitCode": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "failure": {
-          "$ref": "#/$defs/Failure"
-        },
-        "stderr": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "exitCode"
       ],
       "type": "object"
     },

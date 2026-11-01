@@ -938,8 +938,24 @@
       },
       "errors": [
         {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        },
+        {
           "code": -32002,
           "message": "session_not_found"
+        },
+        {
+          "code": -32018,
+          "message": "session_busy"
+        },
+        {
+          "code": -32039,
+          "message": "export_too_large"
         },
         {
           "code": -32006,
@@ -1002,6 +1018,14 @@
         }
       },
       "errors": [
+        {
+          "code": -32018,
+          "message": "session_busy"
+        },
+        {
+          "code": -32039,
+          "message": "export_too_large"
+        },
         {
           "code": -32006,
           "message": "capability_not_negotiated"
@@ -8982,6 +9006,20 @@
           }
         ]
       },
+      "RecordedToolSource": {
+        "properties": {
+          "modelName": {},
+          "ref": {
+            "$ref": "#/components/schemas/ToolRef"
+          }
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/RecordedToolSource"
+          }
+        ]
+      },
       "RememberScope": {
         "properties": {
           "scope": {}
@@ -9152,7 +9190,10 @@
           "category": {},
           "name": {},
           "result": {},
-          "resultShape": {}
+          "resultShape": {},
+          "source": {
+            "$ref": "#/components/schemas/RecordedToolSource"
+          }
         },
         "unevaluatedProperties": false,
         "allOf": [

@@ -28,3 +28,10 @@ publication transaction. Unknown outcomes remain pending, including after restar
 Use [`qimu/sqlite`](../../../../qimu/sqlite/README.md) for schema admission and
 transaction ownership. The plugin's private database remains separate from
 Runtime's framework and product database.
+
+After an external service has returned an authoritative acknowledgement, use
+`PreparedCommand.SettleExternal` to persist it independently of caller cancellation.
+An optional database write records associated business evidence in that same
+bounded transaction. An interrupted exchange with no authoritative outcome stays
+pending and cannot be dispatched again. Use `Complete` for work that belongs to
+an existing local domain transaction.

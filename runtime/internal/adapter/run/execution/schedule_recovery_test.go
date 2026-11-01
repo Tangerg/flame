@@ -177,6 +177,14 @@ func TestScheduleInvestigationRespectsCancellationTimeoutAndLaterUnknown(t *test
 				}
 				<-reported
 				observed := <-events
+				starts := payloadsOf[runs.ToolCallStarted](observed)
+				for _, prepared := range payloadsOf[runs.ToolCallPrepared](observed) {
+					starts = append(starts, prepared.Start)
+				}
+				expected, err := domaintool.MCP(configuration.Source.ID(configuration.Name), testsupport.RemoteToolName(remote))
+				if err != nil || len(starts) != 1 || starts[0].Source != expected {
+					t.Fatalf("captured %d starts, want one from %v, %v", len(starts), expected, err)
+				}
 				ends := payloadsOf[runs.SegmentEnded](observed)
 				if mode == "known refusal" {
 					finished := payloadsOf[runs.ToolCallFinished](observed)

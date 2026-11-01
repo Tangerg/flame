@@ -19,6 +19,15 @@
     {
       "id": "deliverables",
       "title": "Professional deliverables",
+      "localizedTitles": {
+        "zh": "专业成果交付",
+        "zh-TW": "專業成果交付",
+        "de": "Arbeitsergebnisse",
+        "fr": "Livrables professionnels",
+        "es": "Entregables profesionales",
+        "ja": "成果物",
+        "ko": "전문 결과물"
+      },
       "scope": "client",
       "placement": "workspaceView",
       "entry": "io.github.tangerg.flame/components/component.js",

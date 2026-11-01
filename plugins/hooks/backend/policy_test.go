@@ -1,4 +1,4 @@
-package hooks
+package main
 
 import (
 	"context"
@@ -8,18 +8,17 @@ import (
 	"testing"
 
 	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
-	hookdomain "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 )
 
 func ctxBG() context.Context { return context.Background() }
 
 type commandStub struct {
 	mu       sync.Mutex
-	results  []CommandResult
-	requests []CommandRequest
+	results  []commandResult
+	requests []commandRequest
 }
 
-func (c *commandStub) RunHookCommand(_ context.Context, req CommandRequest) CommandResult {
+func (c *commandStub) RunHookCommand(_ context.Context, req commandRequest) commandResult {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if req.Input.Tool != nil {
@@ -27,7 +26,7 @@ func (c *commandStub) RunHookCommand(_ context.Context, req CommandRequest) Comm
 	}
 	c.requests = append(c.requests, req)
 	if len(c.results) == 0 {
-		return CommandResult{}
+		return commandResult{}
 	}
 	out := c.results[0]
 	c.results = c.results[1:]
@@ -41,13 +40,13 @@ func (c *commandStub) calls() int {
 }
 
 func TestRunner_DeclarativeInject(t *testing.T) {
-	r := NewRunner(nil, nil)
+	r := newPolicyEvaluator(nil, nil)
 	hooks := []hookdata.Hook{{Event: hookdata.SessionStart, Inject: "remember: use tabs"}}
 	dec := r.Run(ctxBG(), hooks, hookdata.Input{Event: hookdata.SessionStart})
 	if dec.InjectContext != "remember: use tabs" {
 		t.Fatalf("InjectContext = %q", dec.InjectContext)
 	}
-	if dec.Verdict == hookdomain.VerdictBlock {
+	if dec.Verdict == hookdata.CommandDeny {
 		t.Error("declarative inject should not block")
 	}
 }
@@ -55,20 +54,20 @@ func TestRunner_DeclarativeInject(t *testing.T) {
 func TestRunnerTreatsAbsentCommandRunnerAsDeclarativeOnly(t *testing.T) {
 	for _, commands := range []commandRunner{nil, (*commandStub)(nil)} {
 		var observed error
-		runner := NewRunner(commands, func(_ context.Context, _ string, err error) { observed = err })
+		runner := newPolicyEvaluator(commands, func(_ context.Context, _ string, err error) { observed = err })
 		decision := runner.Run(t.Context(), []hookdata.Hook{
 			{Event: hookdata.SessionStart, Command: "hook"},
 			{Event: hookdata.SessionStart, Inject: "retained context"},
 		}, hookdata.Input{Event: hookdata.SessionStart})
-		if observed == nil || decision.InjectContext != "retained context" || decision.Verdict == hookdomain.VerdictBlock {
+		if observed == nil || decision.InjectContext != "retained context" || decision.Verdict == hookdata.CommandDeny {
 			t.Fatalf("declarative-only execution = %+v, %v", decision, observed)
 		}
 	}
 }
 
 func TestRunner_CommandReceivesTypedEvent(t *testing.T) {
-	cmds := &commandStub{results: []CommandResult{{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandAllow, InjectContext: "saw-event"}}}}
-	r := NewRunner(cmds, nil)
+	cmds := &commandStub{results: []commandResult{{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandAllow, InjectContext: "saw-event"}}}}
+	r := newPolicyEvaluator(cmds, nil)
 	hooks := []hookdata.Hook{{
 		Event:   hookdata.UserPromptSubmit,
 		Command: "hook",
@@ -82,20 +81,9 @@ func TestRunner_CommandReceivesTypedEvent(t *testing.T) {
 	}
 }
 
-func TestBoundOwnsRetainedHookConfiguration(t *testing.T) {
-	hooks := []hookdata.Hook{{Event: hookdata.SessionStart, Inject: "original context"}}
-	bound := NewBound(hooks, NewRunner(nil, nil), nil)
-	hooks[0] = hookdata.Hook{Event: hookdata.Stop, Inject: "reused configuration"}
-
-	decision := bound.Run(t.Context(), hookdata.Input{Event: hookdata.SessionStart})
-	if decision.InjectContext != "original context" {
-		t.Fatalf("retained hook configuration changed: %+v", decision)
-	}
-}
-
 func TestRunnerProjectsBoundedMaterialForCommandHooks(t *testing.T) {
-	cmds := &commandStub{results: []CommandResult{{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandAllow}}}}
-	r := NewRunner(cmds, nil)
+	cmds := &commandStub{results: []commandResult{{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandAllow}}}}
+	r := newPolicyEvaluator(cmds, nil)
 	r.Run(ctxBG(), []hookdata.Hook{{
 		Event: hookdata.UserPromptSubmit, Command: "hook",
 	}}, hookdata.Input{
@@ -114,7 +102,7 @@ func TestRunnerProjectsBoundedMaterialForCommandHooks(t *testing.T) {
 func TestRunnerRejectsLossyArgumentsWithoutDroppingDeclarativeContext(t *testing.T) {
 	cmds := &commandStub{}
 	var observed error
-	r := NewRunner(cmds, func(_ context.Context, _ string, err error) {
+	r := newPolicyEvaluator(cmds, func(_ context.Context, _ string, err error) {
 		observed = err
 	})
 	decision := r.Run(ctxBG(), []hookdata.Hook{
@@ -135,19 +123,19 @@ func TestRunnerRejectsLossyArgumentsWithoutDroppingDeclarativeContext(t *testing
 }
 
 func TestRunner_StdoutDenyBlocks(t *testing.T) {
-	r := NewRunner(&commandStub{results: []CommandResult{{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandDeny, Reason: "no rm allowed"}}}}, nil)
+	r := newPolicyEvaluator(&commandStub{results: []commandResult{{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandDeny, Reason: "no rm allowed"}}}}, nil)
 	hooks := []hookdata.Hook{{
 		Event:   hookdata.PreToolUse,
 		Command: "hook",
 	}}
 	dec := r.Run(ctxBG(), hooks, hookdata.Input{Event: hookdata.PreToolUse, Tool: &hookdata.ToolInput{Name: "shell"}})
-	if dec.Verdict != hookdomain.VerdictBlock || dec.Reason != "no rm allowed" {
+	if dec.Verdict != hookdata.CommandDeny || dec.Reason != "no rm allowed" {
 		t.Fatalf("got verdict=%v reason=%q, want deny", dec.Verdict, dec.Reason)
 	}
 }
 
 func TestRunner_Exit2Blocks(t *testing.T) {
-	r := NewRunner(&commandStub{results: []CommandResult{{
+	r := newPolicyEvaluator(&commandStub{results: []commandResult{{
 		Stderr:   "blocked by policy",
 		ExitCode: blockExitCode,
 		Err:      errors.New("exit status 2"),
@@ -157,7 +145,7 @@ func TestRunner_Exit2Blocks(t *testing.T) {
 		Command: "hook",
 	}}
 	dec := r.Run(ctxBG(), hooks, hookdata.Input{Event: hookdata.PreToolUse, Tool: &hookdata.ToolInput{Name: "shell"}})
-	if dec.Verdict != hookdomain.VerdictBlock || dec.Reason != "blocked by policy" {
+	if dec.Verdict != hookdata.CommandDeny || dec.Reason != "blocked by policy" {
 		t.Fatalf("got verdict=%v reason=%q, want exit-2 block w/ stderr reason", dec.Verdict, dec.Reason)
 	}
 }
@@ -165,14 +153,14 @@ func TestRunner_Exit2Blocks(t *testing.T) {
 func TestRunnerAdmitsCommandMaterialFromTheProcessOutcome(t *testing.T) {
 	for _, test := range []struct {
 		exitCode int
-		verdict  hookdomain.Verdict
+		verdict  hookdata.CommandVerdict
 		failure  bool
 	}{
-		{2, hookdomain.VerdictBlock, false},
-		{3, hookdomain.VerdictAllow, true},
+		{2, hookdata.CommandDeny, false},
+		{3, hookdata.CommandAllow, true},
 	} {
 		var observed error
-		runner := NewRunner(&commandStub{results: []CommandResult{{
+		runner := newPolicyEvaluator(&commandStub{results: []commandResult{{
 			ExitCode: test.exitCode, Stderr: "process diagnostic",
 			Decision: hookdata.CommandDecision{Verdict: hookdata.CommandAllow, RewriteArguments: `{"unadmitted":true}`},
 		}}}, func(_ context.Context, _ string, err error) { observed = err })
@@ -186,16 +174,16 @@ func TestRunnerAdmitsCommandMaterialFromTheProcessOutcome(t *testing.T) {
 }
 
 func TestRunner_AskEscalates(t *testing.T) {
-	r := NewRunner(&commandStub{results: []CommandResult{{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandAsk, Reason: "review"}}}}, nil)
+	r := newPolicyEvaluator(&commandStub{results: []commandResult{{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandAsk, Reason: "review"}}}}, nil)
 	hooks := []hookdata.Hook{{Event: hookdata.PreToolUse, Command: "hook"}}
 	dec := r.Run(ctxBG(), hooks, hookdata.Input{Event: hookdata.PreToolUse, Tool: &hookdata.ToolInput{Name: "shell"}})
-	if dec.Verdict != hookdomain.VerdictAsk {
+	if dec.Verdict != hookdata.CommandAsk {
 		t.Fatalf("got verdict=%v, want ask", dec.Verdict)
 	}
 }
 
 func TestRunner_RewriteArguments(t *testing.T) {
-	r := NewRunner(&commandStub{results: []CommandResult{{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandAllow, RewriteArguments: `{"path":"safe"}`}}}}, nil)
+	r := newPolicyEvaluator(&commandStub{results: []commandResult{{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandAllow, RewriteArguments: `{"path":"safe"}`}}}}, nil)
 	hooks := []hookdata.Hook{{Event: hookdata.PreToolUse, Command: "hook"}}
 	dec := r.Run(ctxBG(), hooks, hookdata.Input{Event: hookdata.PreToolUse, Tool: &hookdata.ToolInput{Name: "write"}})
 	if dec.RewriteArguments != `{"path":"safe"}` {
@@ -206,19 +194,19 @@ func TestRunner_RewriteArguments(t *testing.T) {
 func TestRunner_NonBlockingErrorProceeds(t *testing.T) {
 	var mu sync.Mutex
 	var errs []string
-	cmds := &commandStub{results: []CommandResult{{
+	cmds := &commandStub{results: []commandResult{{
 		Stderr:   "boom",
 		ExitCode: 3,
 		Err:      errors.New("exit status 3"),
 	}}}
-	r := NewRunner(cmds, func(_ context.Context, _ string, err error) {
+	r := newPolicyEvaluator(cmds, func(_ context.Context, _ string, err error) {
 		mu.Lock()
 		errs = append(errs, err.Error())
 		mu.Unlock()
 	})
 	hooks := []hookdata.Hook{{Event: hookdata.PreToolUse, Command: "hook"}}
 	dec := r.Run(ctxBG(), hooks, hookdata.Input{Event: hookdata.PreToolUse, Tool: &hookdata.ToolInput{Name: "shell"}})
-	if dec.Verdict == hookdomain.VerdictBlock {
+	if dec.Verdict == hookdata.CommandDeny {
 		t.Error("a non-2 exit must NOT block (broken hook can't brick the agent)")
 	}
 	if len(errs) != 1 || !strings.Contains(errs[0], "boom") {
@@ -231,16 +219,16 @@ func TestRunnerPreservesCommandFailureEvidence(t *testing.T) {
 	cleanupFailure := errors.New("cleanup failed")
 	for _, test := range []struct {
 		name   string
-		result CommandResult
+		result commandResult
 		causes []error
 	}{
-		{"stderr", CommandResult{ExitCode: 3, Stderr: "diagnostic", Err: errors.Join(processFailure, cleanupFailure)}, []error{processFailure, cleanupFailure}},
-		{"timeout", CommandResult{TimedOut: true, Err: errors.Join(context.DeadlineExceeded, cleanupFailure)}, []error{context.DeadlineExceeded, cleanupFailure}},
+		{"stderr", commandResult{ExitCode: 3, Stderr: "diagnostic", Err: errors.Join(processFailure, cleanupFailure)}, []error{processFailure, cleanupFailure}},
+		{"timeout", commandResult{TimedOut: true, Err: errors.Join(context.DeadlineExceeded, cleanupFailure)}, []error{context.DeadlineExceeded, cleanupFailure}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			test.result.Decision = hookdata.CommandDecision{Verdict: hookdata.CommandAllow, InjectContext: "unadmitted", RewriteArguments: `{}`}
 			var observed error
-			runner := NewRunner(&commandStub{results: []CommandResult{test.result}}, func(_ context.Context, _ string, err error) { observed = err })
+			runner := newPolicyEvaluator(&commandStub{results: []commandResult{test.result}}, func(_ context.Context, _ string, err error) { observed = err })
 			decision := runner.Run(t.Context(), []hookdata.Hook{{Event: hookdata.PreToolUse, Command: "hook"}}, hookdata.Input{
 				Event: hookdata.PreToolUse, Tool: &hookdata.ToolInput{Name: "shell"},
 			})
@@ -249,7 +237,7 @@ func TestRunnerPreservesCommandFailureEvidence(t *testing.T) {
 					t.Fatalf("observed failure = %v, want retained cause %v", observed, cause)
 				}
 			}
-			if decision.Verdict == hookdomain.VerdictBlock || decision.InjectContext != "" || decision.RewriteArguments != "" {
+			if decision.Verdict == hookdata.CommandDeny || decision.InjectContext != "" || decision.RewriteArguments != "" {
 				t.Fatalf("failed command advanced decision material: %+v", decision)
 			}
 		})
@@ -258,14 +246,14 @@ func TestRunnerPreservesCommandFailureEvidence(t *testing.T) {
 
 func TestRunner_InvalidVerdictIsObservableAndIgnored(t *testing.T) {
 	var got error
-	r := NewRunner(
-		&commandStub{results: []CommandResult{{Decision: hookdata.CommandDecision{Verdict: "future"}}}},
+	r := newPolicyEvaluator(
+		&commandStub{results: []commandResult{{Decision: hookdata.CommandDecision{Verdict: "future"}}}},
 		func(_ context.Context, _ string, err error) { got = err },
 	)
 	decision := r.Run(ctxBG(), []hookdata.Hook{{
 		Event: hookdata.PreToolUse, Command: "hook",
 	}}, hookdata.Input{Event: hookdata.PreToolUse, Tool: &hookdata.ToolInput{Name: "shell"}})
-	if decision.Verdict != hookdomain.VerdictAllow || decision.InjectContext != "" || decision.RewriteArguments != "" {
+	if decision.Verdict != hookdata.CommandAllow || decision.InjectContext != "" || decision.RewriteArguments != "" {
 		t.Fatalf("invalid verdict changed decision: %+v", decision)
 	}
 	if got == nil || !strings.Contains(got.Error(), "invalid command verdict") {
@@ -275,10 +263,10 @@ func TestRunner_InvalidVerdictIsObservableAndIgnored(t *testing.T) {
 
 func TestRunner_TimeoutIsNonBlocking(t *testing.T) {
 	var got error
-	r := NewRunner(&commandStub{results: []CommandResult{{TimedOut: true}}}, func(_ context.Context, _ string, err error) { got = err })
+	r := newPolicyEvaluator(&commandStub{results: []commandResult{{TimedOut: true}}}, func(_ context.Context, _ string, err error) { got = err })
 	hooks := []hookdata.Hook{{Event: hookdata.PreToolUse, Command: "hook", TimeoutMillis: 40}}
 	dec := r.Run(ctxBG(), hooks, hookdata.Input{Event: hookdata.PreToolUse, Tool: &hookdata.ToolInput{Name: "shell"}})
-	if dec.Verdict == hookdomain.VerdictBlock {
+	if dec.Verdict == hookdata.CommandDeny {
 		t.Error("a timed-out hook must not block")
 	}
 	if got == nil || !strings.Contains(got.Error(), "timed out") {
@@ -287,16 +275,16 @@ func TestRunner_TimeoutIsNonBlocking(t *testing.T) {
 }
 
 func TestRunner_MatcherGatesByToolName(t *testing.T) {
-	cmds := &commandStub{results: []CommandResult{{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandDeny, Reason: "x"}}}}
-	r := NewRunner(cmds, nil)
+	cmds := &commandStub{results: []commandResult{{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandDeny, Reason: "x"}}}}
+	r := newPolicyEvaluator(cmds, nil)
 	hooks := []hookdata.Hook{{Event: hookdata.PreToolUse, Matcher: "shell", Command: "hook"}}
 
 	denied := r.Run(ctxBG(), hooks, hookdata.Input{Event: hookdata.PreToolUse, Tool: &hookdata.ToolInput{Name: "shell"}})
-	if denied.Verdict != hookdomain.VerdictBlock {
+	if denied.Verdict != hookdata.CommandDeny {
 		t.Error("matcher shell should fire for shell")
 	}
 	passed := r.Run(ctxBG(), hooks, hookdata.Input{Event: hookdata.PreToolUse, Tool: &hookdata.ToolInput{Name: "read"}})
-	if passed.Verdict == hookdomain.VerdictBlock {
+	if passed.Verdict == hookdata.CommandDeny {
 		t.Error("matcher shell must NOT fire for read")
 	}
 	if cmds.calls() != 1 {
@@ -305,7 +293,7 @@ func TestRunner_MatcherGatesByToolName(t *testing.T) {
 }
 
 func TestRunner_FirstBlockWins_ContextConcatenated(t *testing.T) {
-	r := NewRunner(&commandStub{results: []CommandResult{
+	r := newPolicyEvaluator(&commandStub{results: []commandResult{
 		{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandDeny, Reason: "first"}},
 		{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandDeny, Reason: "second"}},
 	}}, nil)
@@ -325,14 +313,42 @@ func TestRunner_FirstBlockWins_ContextConcatenated(t *testing.T) {
 }
 
 func TestRunner_WrongEventDoesNotFire(t *testing.T) {
-	cmds := &commandStub{results: []CommandResult{{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandDeny}}}}
-	r := NewRunner(cmds, nil)
+	cmds := &commandStub{results: []commandResult{{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandDeny}}}}
+	r := newPolicyEvaluator(cmds, nil)
 	hooks := []hookdata.Hook{{Event: hookdata.Stop, Command: "hook"}}
 	dec := r.Run(ctxBG(), hooks, hookdata.Input{Event: hookdata.PreToolUse, Tool: &hookdata.ToolInput{Name: "shell"}})
-	if dec.Verdict == hookdomain.VerdictBlock {
+	if dec.Verdict == hookdata.CommandDeny {
 		t.Error("a Stop hook must not fire on PreToolUse")
 	}
 	if cmds.calls() != 0 {
 		t.Fatalf("commands called %d times, want none", cmds.calls())
+	}
+}
+func TestFoldDecidesTheSameCallWhateverOrderHooksFire(t *testing.T) {
+	deny := func(d *eventAdvice) { d.Fold(hookdata.CommandDeny, "blocked by policy", "", "") }
+	ask := func(d *eventAdvice) { d.Fold(hookdata.CommandAsk, "please review", "", "") }
+	rewrite := func(d *eventAdvice) { d.Fold(hookdata.CommandAllow, "", "", `{"path":"/tmp"}`) }
+
+	for _, test := range []struct {
+		name  string
+		order []func(*eventAdvice)
+	}{
+		{name: "deny first", order: []func(*eventAdvice){deny, ask, rewrite}},
+		{name: "ask then deny", order: []func(*eventAdvice){ask, deny}},
+		{name: "rewrite then deny", order: []func(*eventAdvice){rewrite, deny}},
+		{name: "ask, rewrite, then deny", order: []func(*eventAdvice){ask, rewrite, deny}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			decision := eventAdvice{CommandDecision: hookdata.CommandDecision{Verdict: hookdata.CommandAllow}}
+			for _, fold := range test.order {
+				fold(&decision)
+			}
+			if decision.Verdict != hookdata.CommandDeny || decision.Reason != "blocked by policy" {
+				t.Fatalf("decision = %+v, want a denial stating its reason", decision)
+			}
+			if decision.RewriteArguments != "" {
+				t.Fatalf("denied decision still rewrites: %+v", decision)
+			}
+		})
 	}
 }

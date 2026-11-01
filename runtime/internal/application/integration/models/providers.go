@@ -5,10 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"log/slog"
 	"slices"
 
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/secrets"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
@@ -88,7 +88,7 @@ func (c *Coordinator) ListProviders(ctx context.Context) ([]ProviderSummary, err
 // UpdateProvider validates and persists one supported provider, returning
 // its redacted stored result.
 func (c *Coordinator) UpdateProvider(ctx context.Context, cmd UpdateProviderCommand) (ProviderSummary, error) {
-	profile, err := c.supportedProfile(ctx, cmd.ID)
+	profile, err := c.catalog.Profile(ctx, cmd.ID)
 	if err != nil {
 		return ProviderSummary{}, err
 	}
@@ -171,7 +171,7 @@ func (c *Coordinator) ListModels(ctx context.Context, providerID string) ([]Mode
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	profile, err := c.supportedProfile(ctx, providerID)
+	profile, err := c.catalog.Profile(ctx, providerID)
 	if err != nil {
 		return nil, err
 	}
@@ -214,21 +214,8 @@ func (c *Coordinator) ListModels(ctx context.Context, providerID string) ([]Mode
 	return out, nil
 }
 
-func (c *Coordinator) supportedProfile(ctx context.Context, id string) (ProviderProfile, error) {
-	profiles, err := c.catalog.Profiles(ctx)
-	if err != nil {
-		return ProviderProfile{}, err
-	}
-	for _, profile := range profiles {
-		if profile.Metadata.ID() == id {
-			return profile, nil
-		}
-	}
-	return ProviderProfile{}, fmt.Errorf("%w: provider %q", ErrProviderUnsupported, id)
-}
-
 func (c *Coordinator) supportedProvider(ctx context.Context, id string) (ProviderMetadata, error) {
-	profile, err := c.supportedProfile(ctx, id)
+	profile, err := c.catalog.Profile(ctx, id)
 	return profile.Metadata, err
 }
 

@@ -4,22 +4,28 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 )
 
 func activateModelProviders(r *poMCPRuntime) *protocol.PluginInstallation {
 	r.t.Helper()
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: filepath.Join(firstPartyPackages, "providers")}, "provider-install").(*protocol.PluginInstallation)
 	installed = r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "provider-enable").(*protocol.PluginInstallation)
-	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "flame.model-provider.v1", InstallationID: installed.ID, Contribution: "model-provider"}, "select-model-provider")
+	for _, contribution := range installed.Selected.Contributions {
+		for i, role := range contribution.SelectionRoles {
+			r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: role, InstallationID: installed.ID, Contribution: contribution.ID}, fmt.Sprintf("select-model-provider-%s-%d", installed.ID, i))
+		}
+	}
 	return installed
 }
 
@@ -142,5 +148,20 @@ func TestInstalledModelProviderRestartsWaitingRunWithOriginalCredentialsAndEndpo
 	finished := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: runID}, "").(*protocol.RunRef)
 	if finished.Status != protocol.RunStatusFinished || finished.Outcome == nil || finished.Outcome.Type != protocol.OutcomeCompleted || calls.Load() != 2 || replacementCalls.Load() != 0 {
 		t.Fatalf("original provider was replaced or repeated: %+v original=%d replacement=%d", finished, calls.Load(), replacementCalls.Load())
+	}
+}
+
+func TestSelectedModelAdaptersCoexistPerProvider(t *testing.T) {
+	cfg := poMCPConfig(t)
+	cfg.modelProviders = nil
+	r := poMCPOpen(t, cfg)
+	first := activateModelProviders(r)
+	other := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: filepath.Join(firstPartyPackages, "providers")}, "other-install").(*protocol.PluginInstallation)
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: other.ID, Enabled: true}, "other-enable")
+	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: extension.ModelProviderRole("openai"), InstallationID: other.ID, Contribution: "model-provider"}, "other-openai")
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: first.ID, Enabled: false}, "withdraw-first")
+	result := r.must("providers.list", struct{}{}, "").(*protocol.Page[protocol.Provider])
+	if len(result.Data) != 1 || result.Data[0].ID != "openai" {
+		t.Fatalf("available providers after withdrawal = %+v", result.Data)
 	}
 }

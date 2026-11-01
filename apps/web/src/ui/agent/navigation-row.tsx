@@ -9,7 +9,6 @@ import { Tooltip } from "@flame/ui/tooltip";
 import { color, leading, motion, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 import { AgentOverflowLabel } from "@/ui/agent/overflow-label";
 const rowStyles = stylex.create({
-  editor: { display: "flex", alignItems: "center", width: "100%" },
   base: {
     height: "auto",
     minHeight: "max(var(--density-row-height), var(--control-target-min))",
@@ -212,22 +211,6 @@ export function AgentRow({
       >
         {action}
       </span>
-    </div>
-  );
-}
-
-export function AgentRowEditor({
-  children,
-  indent = "none",
-}: {
-  children: ReactNode;
-  indent?: "none" | "nested";
-}) {
-  return (
-    <div
-      {...stylex.props(rowStyles.base, rowStyles.editor, indent === "nested" && rowStyles.nested)}
-    >
-      {children}
     </div>
   );
 }

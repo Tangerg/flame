@@ -4,7 +4,6 @@ package skilllearning
 
 import (
 	"errors"
-	"math"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
@@ -56,17 +55,17 @@ type ArchiveRequest struct {
 }
 
 type ArchiveAdvice struct {
-	AfterMillis *int64 `json:"afterMillis,omitzero" jsonschema:"minimum=1"`
+	InactiveSince *time.Time `json:"inactiveSince,omitzero"`
 }
 
-func (a ArchiveAdvice) Duration() (time.Duration, error) {
-	if a.AfterMillis == nil {
-		return 0, nil
+func (a ArchiveAdvice) Validate(observedAt time.Time) error {
+	if observedAt.IsZero() {
+		return errors.New("skill learning: archive observation time is required")
 	}
-	if *a.AfterMillis <= 0 || *a.AfterMillis > math.MaxInt64/int64(time.Millisecond) {
-		return 0, errors.New("skill learning: invalid archive inactivity duration")
+	if a.InactiveSince != nil && (a.InactiveSince.IsZero() || !a.InactiveSince.Before(observedAt)) {
+		return errors.New("skill learning: archive cutoff must precede the captured observation")
 	}
-	return time.Duration(*a.AfterMillis) * time.Millisecond, nil
+	return nil
 }
 
 type Conversation struct {
@@ -87,7 +86,7 @@ func MineMethod() (*qimumcp.Method[Run, MineResult], error) {
 }
 
 func ArchiveMethod() (*qimumcp.Method[ArchiveRequest, ArchiveAdvice], error) {
-	return qimumcp.NewMethod[ArchiveRequest, ArchiveAdvice](qimumcp.MethodConfig{Name: "flame.skill-learning/archive.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Return an optional inactivity threshold when an archive check is due at the caller's time. The caller alone admits and commits archival."})
+	return qimumcp.NewMethod[ArchiveRequest, ArchiveAdvice](qimumcp.MethodConfig{Name: "flame.skill-learning/archive.v2", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Return an optional absolute activity cutoff for the supplied observation time. The caller alone admits and commits archival."})
 }
 
 func ConversationMethod() (*qimumcp.Method[struct{}, Conversation], error) {

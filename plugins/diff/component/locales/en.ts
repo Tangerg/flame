@@ -1,4 +1,6 @@
 export const en: Record<string, string> = {
+  "worktree.open": "Review working tree changes ({{count}})",
+  "worktree.files": "Files: {{count}}",
   "panel.title": "Workspace diff",
   refresh: "Refresh",
   "scope.label": "Comparison scope",

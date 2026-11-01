@@ -174,6 +174,7 @@ const (
 	headerIdempotencyNamespace = "Idempotency-Namespace"
 	headerLastEventID          = "Last-Event-Id"
 	headerRequestID            = "Request-Id"
+	headerMethod               = "X-Method"
 	notificationRunEvent       = "notifications.run.event"
 	notificationRuntimeEvent   = "notifications.runtime.event"
 	notificationPluginStream   = "notifications.plugin.stream"

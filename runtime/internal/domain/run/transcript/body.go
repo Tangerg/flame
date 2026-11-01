@@ -250,6 +250,14 @@ func (t ToolInvocation) Validate(pending bool) error {
 	if strings.TrimSpace(t.Name) == "" || t.Name != strings.TrimSpace(t.Name) {
 		return errors.New("transcript: Tool name is required without surrounding whitespace")
 	}
+	if t.Source != (tool.Ref{}) {
+		if err := t.Source.Validate(); err != nil {
+			return err
+		}
+		if !t.Source.MatchesPublishedName(t.Name) {
+			return errors.New("transcript: Tool name differs from its captured source")
+		}
+	}
 	if pending && (t.Result != nil || t.Offload != nil) {
 		return errors.New("transcript: pending Tool invocation carries a result")
 	}

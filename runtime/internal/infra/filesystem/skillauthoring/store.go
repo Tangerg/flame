@@ -141,19 +141,10 @@ func validateSkill(ctx context.Context, name string, content []byte) (*skillspec
 		return nil, fmt.Errorf("skillauthoring: validate skill %q: skill instructions are required", name)
 	}
 	proposal := skills.Proposal{Name: skill.Name, Description: skill.Description, Instructions: skill.Instructions}
-	if issue := proposal.SafetyIssue(); issue != skills.ProposalSafe {
-		return nil, proposalSafetyError(name, issue)
+	if err := proposal.CheckSafety(); err != nil {
+		return nil, err
 	}
 	return skill, nil
-}
-
-func proposalSafetyError(name string, issue skills.ProposalSafetyIssue) error {
-	switch issue {
-	case skills.ProposalDangerousInstruction:
-		return fmt.Errorf("skillauthoring: reject skill %q: dangerous instruction", name)
-	default:
-		return fmt.Errorf("skillauthoring: reject skill %q: unknown safety issue", name)
-	}
 }
 
 func contextError(ctx context.Context, operation string) error {

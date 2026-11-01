@@ -3,14 +3,18 @@ package execution
 import (
 	"context"
 	json "encoding/json/v2"
+	"errors"
 	"fmt"
 	"reflect"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
 
+	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -277,3 +281,40 @@ func TestInteractionDirectToolCompletionUsesCommittedResults(t *testing.T) {
 type directResultTool struct{ toolcontract.Tool }
 
 func (directResultTool) ReturnsDirectResult() bool { return true }
+
+func TestHookRewriteIsReadmittedBeforeTheAuthorizerObservesTheTool(t *testing.T) {
+	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "fixture_resource"}, func(context.Context, resourceInput) (string, error) {
+		t.Fatal("admission invoked tool")
+		return "", nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	binding, err := toolcontract.Bind(executable)
+	if err != nil {
+		t.Fatal(err)
+	}
+	original, err := domaintool.ParseArguments(`{"resource":"original"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref := testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "resource")
+	for _, replacement := range []string{`{"resource":"rewritten"}`, `{"resource":17}`} {
+		var approved ToolAuthorizationRequest
+		bound := apphooks.NewBound([]hookdata.Hook{{Event: hookdata.PreToolUse, Command: "policy"}}, func(_ context.Context, _ hookprovider.Evaluation) (hookprovider.Advice, error) {
+			return hookprovider.Advice{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandAllow, RewriteArguments: replacement}}, nil
+		}, nil, nil)
+		hooks := newTestWorkingContextComposer(t, WorkingContextConfig{Hooks: provenanceHookResolver{bound: bound}})
+		admission := toolAdmission{binding: binding, executable: executable, ref: ref, fingerprint: testsupport.ToolFingerprint(ref), interpreter: testInteractionToolInterpreter{}, hooks: hooks, authorizer: capturingToolAuthorizer{request: &approved}, input: InteractionToolHookInput{SessionID: "session:hooks", CWD: t.TempDir(), WorkspaceCWD: t.TempDir(), ToolName: ref.ModelName(), Arguments: original}}
+		_, _, err := admission.prepare(t.Context(), "call_hook")
+		if replacement == `{"resource":17}` {
+			if !errors.Is(err, domaintool.ErrInvalidArguments) || approved.CallID != "" {
+				t.Fatalf("invalid rewrite reached approval: %+v, %v", approved, err)
+			}
+			continue
+		}
+		if err != nil || approved.Arguments.Canonical() != replacement {
+			t.Fatalf("authorizer saw %q, err=%v", approved.Arguments.Canonical(), err)
+		}
+	}
+}

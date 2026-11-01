@@ -88,8 +88,13 @@ func TestTerminalViewsResolveFormKindsFromTheContract(t *testing.T) {
 
 func TestTerminalViewsRefuseBindingsTheContractCannotHonor(t *testing.T) {
 	for name, change := range map[string]func(*TerminalView){
-		"unknown contribution": func(v *TerminalView) { v.Contribution = "missing" },
-		"list is a command":    func(v *TerminalView) { v.List.Method = "memory/update" },
+
+		"overlapping input paths": func(v *TerminalView) {
+			v.Actions[0].Input = append(v.Actions[0].Input, InputBinding{Path: "Model", Value: Binding{Source: extension.TerminalBindingValue, Literal: literal(t, map[string]string{"Provider": "x"})}})
+		},
+		"cursor output is not a string": func(v *TerminalView) { v.List.Paging.Output = "Rows" },
+		"unknown contribution":          func(v *TerminalView) { v.Contribution = "missing" },
+		"list is a command":             func(v *TerminalView) { v.List.Method = "memory/update" },
 		"unbound required list input": func(v *TerminalView) {
 			v.List.Input = v.List.Input[:1]
 		},

@@ -1,0 +1,18 @@
+[
+  { "input": "https://example.test/path", "accepted": true },
+  { "input": "http://127.0.0.1:17171", "accepted": true },
+  { "input": "https://[::1]:65535/path", "accepted": true },
+  { "input": "https://example.test/%3F%23", "accepted": true },
+  { "input": "http://127.0.0.1:0", "accepted": false },
+  { "input": "https:example.test", "accepted": false },
+  { "input": "https://@example.test", "accepted": false },
+  { "input": "/runtime", "accepted": false },
+  { "input": "file:///runtime", "accepted": false },
+  { "input": "https://user:secret@example.com", "accepted": false },
+  { "input": "https://example.com?token=secret", "accepted": false },
+  { "input": "https://example.com#token", "accepted": false },
+  { "input": "https://example.com/?", "accepted": false },
+  { "input": "https://example.com/#", "accepted": false },
+  { "input": "https:///example.test", "accepted": false },
+  { "input": "https://example.test:65536", "accepted": false }
+]

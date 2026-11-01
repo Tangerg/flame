@@ -85,6 +85,11 @@ func TestSessionExportImport_RoundTrip(t *testing.T) {
 	}
 	wantToolResult := `{"exit_code":0,"stderr":"","stdout":"total 0\n"}`
 	assertArtifactToolResult(t, art.Items, "item2", wantToolResult)
+	for _, item := range art.Items {
+		if item.Tool != nil && item.Tool.Source != nil {
+			t.Fatalf("export synthesized a source for historical tool %q", item.Tool.Name)
+		}
+	}
 
 	if deleteErr := rt.sess.Delete(ctx, ses.ID()); deleteErr != nil {
 		t.Fatalf("delete: %v", deleteErr)
@@ -126,7 +131,7 @@ func TestSessionExportImport_RoundTrip(t *testing.T) {
 	assertArtifactToolResult(t, reexported.Artifact.Items, "item2", wantToolResult)
 }
 
-func TestSessionExportImportCarriesOffloadedToolResultsAcrossDatabases(t *testing.T) {
+func TestSessionExportImportCarriesQualifiedToolSourceAndOffloadedResultAcrossDatabases(t *testing.T) {
 	source, sourceRuntime := rollbackHarness(t)
 	destination, destinationRuntime := rollbackHarness(t)
 	ctx := t.Context()
@@ -150,17 +155,22 @@ func TestSessionExportImportCarriesOffloadedToolResultsAcrossDatabases(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
+	captured, err := tool.ParseRef("mcp:installation:eeb329cd-c7ce-40c9-bd90-6821fef06d30:web:web_search")
+	if err != nil {
+		t.Fatal(err)
+	}
+	published := captured.PublishedName(true)
 	item := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: ses.ID(), RunID: "run_offload", ID: "item_offload",
 		OccurredAt: time.Unix(2, 0).UTC(), FinishedAt: time.Unix(3, 0).UTC(),
 		Status: transcript.ItemCompleted, Kind: transcript.ToolCall,
-		Tool: &transcript.ToolInvocation{Name: "vendor_tool", Result: &previewValue, Offload: ref},
+		Tool: &transcript.ToolInvocation{Name: published, Source: captured, Result: &previewValue, Offload: ref},
 	})
 	if appendItemErr := sourceRuntime.hist.AppendItem(ctx, item); appendItemErr != nil {
 		t.Fatalf("append source item: %v", appendItemErr)
 	}
 	if seedHistoryErr := sourceRuntime.SeedHistory(ctx, ses.ID(), []chat.Message{
-		chat.NewToolMessage(chat.ToolResult{ID: "call_offload", Name: "vendor_tool", Output: chat.NewTextToolOutput(preview)}),
+		chat.NewToolMessage(chat.ToolResult{ID: "call_offload", Name: published, Output: chat.NewTextToolOutput(preview)}),
 	}); seedHistoryErr != nil {
 		t.Fatalf("seed source history: %v", seedHistoryErr)
 	}
@@ -179,6 +189,30 @@ func TestSessionExportImportCarriesOffloadedToolResultsAcrossDatabases(t *testin
 		t.Fatal("artifact item duplicated the full body instead of carrying its bounded preview")
 	}
 
+	exportedTool := exported.Artifact.Items[0].Tool
+	if exportedTool.Name != published || exportedTool.Source == nil || exportedTool.Source.ModelName != captured.ModelName() {
+		t.Fatalf("exported source = %+v for %q", exportedTool.Source, exportedTool.Name)
+	}
+	for _, corrupt := range []func(*protocol.ToolInvocation){
+		func(call *protocol.ToolInvocation) { call.Name = "foreign" },
+		func(call *protocol.ToolInvocation) { call.Source.ModelName = "foreign" },
+		func(call *protocol.ToolInvocation) {
+			call.Source.Ref.Server.Origin.InstallationID = "8ad9abf5-3a7d-4d0b-bef9-6ef92c20e746"
+		},
+	} {
+		encoded, err := json.Marshal(exported.Artifact)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var artifact protocol.SessionArtifact
+		if err := json.Unmarshal(encoded, &artifact); err != nil {
+			t.Fatal(err)
+		}
+		corrupt(artifact.Items[0].Tool)
+		if _, err := destination.ImportSession(ctx, protocol.ImportSessionRequest{Artifact: artifact}); err == nil {
+			t.Fatal("accepted a source that did not own the captured name")
+		}
+	}
 	if _, importSessionErr := destination.ImportSession(ctx, protocol.ImportSessionRequest{Artifact: *exported.Artifact}); importSessionErr != nil {
 		t.Fatalf("import destination: %v", importSessionErr)
 	}
@@ -199,6 +233,20 @@ func TestSessionExportImportCarriesOffloadedToolResultsAcrossDatabases(t *testin
 	}
 	if got, ok := invocation.Result.String(); !ok || got != body {
 		t.Fatalf("destination transcript result = %q, want rehydrated tool result", got)
+	}
+	if invocation.Name != published || invocation.Source != captured {
+		t.Fatalf("destination restored %q from %v", invocation.Name, invocation.Source)
+	}
+	listed, err := destination.ListItems(ctx, protocol.ListItemsRequest{Scope: protocol.ItemListScope{Type: protocol.ItemScopeSession, SessionID: ses.ID()}})
+	if err != nil || len(listed.Data) != 1 || listed.Data[0].Tool == nil {
+		t.Fatalf("list imported item: %+v, %v", listed, err)
+	}
+	call := listed.Data[0].Tool
+	if call.Name != published || call.Source == nil || call.Source.ModelName != captured.ModelName() {
+		t.Fatalf("public tool = %+v", call)
+	}
+	if presented, err := toolRefFromWire(call.Source.Ref); err != nil || presented != captured {
+		t.Fatalf("presented source = %v, %v", presented, err)
 	}
 	messages, err := destinationRuntime.ReadHistory(ctx, ses.ID())
 	if err != nil {
@@ -464,40 +512,17 @@ func TestRestoreSessionApplicationBoundaryRejectsOpenInterrupts(t *testing.T) {
 	}
 }
 
-// TestSessionExport_Markdown renders a human transcript.
-func TestSessionExport_Markdown(t *testing.T) {
+func TestSessionMarkdownRequiresAnInstalledRenderer(t *testing.T) {
 	s, rt := rollbackHarness(t)
-	ctx := context.Background()
-	ses, _ := insertSessionFixture(ctx, rt.sess, "Doc", "/proj")
-	putRun(t, rt, ses.ID(), "run1", 1, 0)
-	putUserItem(t, rt, ses.ID(), "run1", "item1", "explain this")
-	compaction, err := transcript.NewCompaction(transcript.ItemIdentity{
-		SessionID: ses.ID(), RunID: "run1", ItemID: "item_compaction", OccurredAt: time.Unix(3, 0),
-	}, "Earlier messages established the migration constraints.", 7)
+	ses, err := insertSessionFixture(t.Context(), rt.sess, "Doc", "/proj")
 	if err != nil {
-		t.Fatalf("build compaction: %v", err)
+		t.Fatal(err)
 	}
-	if err := rt.hist.AppendItem(ctx, compaction); err != nil {
-		t.Fatalf("seed compaction: %v", err)
+	if _, err = s.ExportSession(t.Context(), protocol.ExportSessionRequest{SessionID: ses.ID(), Format: protocol.ExportFormatMarkdown}); !errors.Is(err, protocol.ErrPluginUnavailable) {
+		t.Fatalf("unavailable renderer: %v", err)
 	}
-
-	exp, err := s.ExportSession(ctx, protocol.ExportSessionRequest{SessionID: ses.ID(), Format: protocol.ExportFormatMarkdown})
-	if err != nil {
-		t.Fatalf("export md: %v", err)
-	}
-	if exp.Format != protocol.ExportFormatMarkdown || exp.Artifact != nil {
-		t.Fatalf("export = %+v, want md (no artifact)", exp)
-	}
-	for _, want := range []string{
-		"# Doc",
-		"explain this",
-		"## Context compacted",
-		"dropped messages: 7",
-		"Earlier messages established the migration constraints.",
-	} {
-		if !strings.Contains(exp.Markdown, want) {
-			t.Errorf("markdown = %q, want %q", exp.Markdown, want)
-		}
+	if _, err = s.ExportSession(t.Context(), protocol.ExportSessionRequest{SessionID: ses.ID(), Format: protocol.ExportFormatJSON}); err != nil {
+		t.Fatal(err)
 	}
 }
 

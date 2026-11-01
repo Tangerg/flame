@@ -648,7 +648,7 @@ func (incompleteCheckpointRestorer) Restore(context.Context, string, string, str
 	return sessions.ErrCheckpointRestoreIncomplete
 }
 
-func (incompleteCheckpointRestorer) DropSession(string) error { return nil }
+func (incompleteCheckpointRestorer) DropSession(context.Context, string) error { return nil }
 
 func TestRollback_IncompleteRestoreKeepsRecoveryIntent(t *testing.T) {
 	s, rt := rollbackHarness(t)

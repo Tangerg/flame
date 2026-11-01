@@ -132,6 +132,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
   const installedPlugins = createInstalledPlugins(
     runtimeClient,
     runtime.endpoint.currentRuntimeEndpoint,
+    workspace.access,
     theme.access,
     (request) => host.saveFile(request),
     (children) => <Wrapper>{children}</Wrapper>,

@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/otel/codes"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
@@ -290,5 +291,27 @@ func TestRecordingResponseWriterPreservesFlushErrors(t *testing.T) {
 	writer := &recordingResponseWriter{ResponseWriter: failingFlushWriter{ResponseRecorder: httptest.NewRecorder(), failure: cause}}
 	if err := nethttp.NewResponseController(writer).Flush(); !errors.Is(err, cause) {
 		t.Fatalf("flush error=%v, want underlying transport failure", err)
+	}
+}
+
+func TestResourceLeaseNeverAppearsInHTTPSpans(t *testing.T) {
+	exporter := captureHTTPSpans(t)
+	router := chi.NewRouter()
+	router.Use((&Server{}).instrumentRequests)
+	router.Get(endpointPath(endpointPluginResources), func(w nethttp.ResponseWriter, _ *nethttp.Request) { w.WriteHeader(nethttp.StatusGone) })
+	const token = "synthetic-lease-credential"
+	for _, path := range []string{pluginResourcePrefix + token + "/a.js", "/unknown/" + token} {
+		router.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(nethttp.MethodGet, path, nil))
+	}
+	spans := exporter.GetSpans()
+	if len(spans) != 2 || spans[0].Name != "GET "+endpointPath(endpointPluginResources) || spans[1].Name != "GET unmatched" {
+		t.Fatalf("unexpected routes: %v", spans)
+	}
+	for _, span := range spans {
+		for _, attribute := range span.Attributes {
+			if strings.Contains(attribute.Value.Emit(), token) {
+				t.Fatal("credential in span attribute")
+			}
+		}
 	}
 }

@@ -14,13 +14,14 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/qimu"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/qimu/sqlite"
 )
 
 type bindingPlanningDriver struct{}
 
-func (bindingPlanningDriver) Profile() qimu.Profile { return qimu.MCPProcess }
+func (bindingPlanningDriver) Profile() qimu.Profile { return qimumcp.ProcessProfile }
 func (bindingPlanningDriver) Prepare(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
 	return nil, errors.New("durable binding fixture does not execute a backend")
 }

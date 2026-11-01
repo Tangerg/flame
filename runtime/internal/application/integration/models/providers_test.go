@@ -3,11 +3,11 @@ package models
 import (
 	"context"
 	"errors"
-	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"slices"
 	"testing"
 	"time"
 
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -530,4 +530,17 @@ func TestUpdateValidatesInstalledEndpointPolicyBeforeWriting(t *testing.T) {
 	if err != nil || result.Endpoint != policy || len(registry.updates) != 1 {
 		t.Fatal(result, err, registry.updates)
 	}
+}
+
+func (t testCatalog) Profile(ctx context.Context, id string) (ProviderProfile, error) {
+	profiles, err := t.Profiles(ctx)
+	if err != nil {
+		return ProviderProfile{}, err
+	}
+	for _, profile := range profiles {
+		if profile.Metadata.ID() == id {
+			return profile, nil
+		}
+	}
+	return ProviderProfile{}, ErrProviderUnsupported
 }

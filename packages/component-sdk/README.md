@@ -12,9 +12,19 @@ the host's Extensions group. Client, workspace and installation contexts use the
 same captured identity, resource lease and command lifetime as workspace views.
 Disabling the installation removes its entry. Locale changes update the display
 projection while preserving accepted work and its original cancellation signal.
-The optional `settingsIntent` declaration identifies `modelProviders` for model
-configuration navigation and `mcpServers` for the tools shortcut. The host opens a unique
+The optional `settingsIntent` is a package-declared identifier. Clients can address any admitted intent, including `model-providers` for model
+configuration navigation and `mcp-servers` for the tools shortcut. The host opens a unique
 available entry; absence or ambiguity opens plugin management.
+
+Components can declare static `localizedTitles` keyed by canonical locale tag.
+The English `title` owns the fallback. The installed catalogue can label and
+search an entry before it evaluates JavaScript.
+
+A `workspaceChangesAction` in workspace scope targets an exact workspace-view
+ID from the same release. Its input contains the captured file changes and a
+lifetime-bound `openView` operation. A workspace view may declare a
+`toolCategory` to expose its own action on matching recorded tool calls.
+Withdrawing the release withdraws those controls and their observations.
 
 State that must survive a view close uses `defineComponent(source => View)`. The
 host constructs that source once after native component acquisition and retains
@@ -35,7 +45,7 @@ renderer selector. The Host mounts it for the admitted release independently of
 Session navigation. It receives no implied active Session or workspace snapshot.
 The Trajectory package uses this lifetime for its export commands.
 
-Only `clientEffect` components use `context.registerCommand({id, label, combo?, run})`.
+Client effects (including shared client effects) use `context.registerCommand({id, label, combo?, run})`.
 It contributes an actual command
 and optional shortcut through the Host's existing command catalog. IDs are local
 to the installed component; the Host namespaces their persistent shortcut identity
@@ -46,7 +56,13 @@ component's signal. Accepted work is joined; withdrawal refuses new dispatches a
 ends the captured signal. Failures retain their cause and appear in the command's
 notification and plugin diagnostics while its source remains current.
 
-`clientEffect` components also use `context.subscribeRootRunSettlements(listener)`.
+A `sharedClientEffect` runs once per package and local contribution in one
+workbench, even when that package is installed twice. When multiple admitted
+installations compete, the Plugins pane can select one explicitly. A withdrawn
+explicit selection remains unavailable until the user selects another or resets
+to automatic; repeatable per-installation commands retain `clientEffect`.
+
+Client effects also use `context.subscribeRootRunSettlements(listener)`.
 The Host supplies detached readonly `{sessionId, status, errorMessage}` facts from
 its existing root-run attention owner. The callback receives the captured signal
 and is joined by that lifetime. Unsubscription refuses late producer callbacks;

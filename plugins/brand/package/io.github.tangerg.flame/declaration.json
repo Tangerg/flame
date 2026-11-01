@@ -4,6 +4,15 @@
     {
       "id": "brand",
       "title": "Brand identity",
+      "localizedTitles": {
+        "zh": "品牌标识",
+        "zh-TW": "品牌識別",
+        "de": "Markenidentität",
+        "fr": "Identité visuelle",
+        "es": "Identidad de marca",
+        "ja": "ブランドアイデンティティ",
+        "ko": "브랜드 아이덴티티"
+      },
       "scope": "client",
       "placement": "settingsPane",
       "entry": "io.github.tangerg.flame/components/component.js",

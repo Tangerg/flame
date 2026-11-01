@@ -13,6 +13,9 @@ export function RecordedToolComponent({
     const value = structuredClone(tool);
     return Object.freeze({
       ...value,
+      source: value.source
+        ? Object.freeze({ ...value.source, ref: Object.freeze(value.source.ref) })
+        : undefined,
       range: value.range ? Object.freeze(value.range) : undefined,
       changes: value.changes
         ? Object.freeze(value.changes.map((change) => Object.freeze(change)))

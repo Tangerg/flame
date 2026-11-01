@@ -91,7 +91,7 @@ func (r *requests) execute(ctx context.Context, method, id string, input jsonval
 	if err != nil {
 		return wire.HTTPResponse{}, err
 	}
-	if err := prepared.Complete(ctx, encoded.JSON()); err != nil {
+	if err := prepared.SettleExternal(ctx, encoded.JSON(), nil); err != nil {
 		return wire.HTTPResponse{}, err
 	}
 	return qimumcp.DecodeReply[wire.HTTPResponse](encoded.JSON())

@@ -4,15 +4,9 @@
     "ArchiveAdvice": {
       "additionalProperties": false,
       "properties": {
-        "afterMillis": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
+        "inactiveSince": {
+          "format": "date-time",
+          "type": "string"
         }
       },
       "type": "object"
@@ -30,10 +24,10 @@
       ],
       "type": "object"
     },
-    "ArchiveV1Input": {
+    "ArchiveV2Input": {
       "$ref": "#/$defs/ArchiveRequest"
     },
-    "ArchiveV1Output": {
+    "ArchiveV2Output": {
       "$ref": "#/$defs/ArchiveAdvice"
     },
     "MineResult": {

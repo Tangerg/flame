@@ -29,7 +29,7 @@ import {
   selectWorkspaceDockView,
   showWorkspaceDock,
   toggleWorkspaceDock,
-  openWorkspaceDiffForFile,
+  openWorkspaceViewAtPath,
   openWorkspaceClientDiagnostics,
 } from "@/features/workspace/application/navigation";
 function reset() {
@@ -419,21 +419,9 @@ it("restores the file inspected before a task opened a different file", () => {
   task.remove();
 });
 
-it("opens the contribution catalogue when Diff has no admitted renderer or several choices", async () => {
-  openWorkspaceDiffForFile(testClient.workspace.access, "a.ts");
-  expect(testClient.navigation.get().dock).toBe(WORKSPACE_DOCK_CATALOG);
-  await contributeForTest((ctx) => {
-    for (const id of ["package:first:diff", "package:second:diff"])
-      ctx.contribute(WORKSPACE_VIEW, {
-        id,
-        title: id,
-        material: "diff",
-        dock: "workspace",
-        component: () => null,
-      });
-  });
-  openWorkspaceDiffForFile(testClient.workspace.access, "b.ts");
-  expect(testClient.navigation.get().dock).toBe(WORKSPACE_DOCK_CATALOG);
+it("opens the exact view that owns an action when installations offer the same material", () => {
+  openWorkspaceViewAtPath(testClient.workspace.access, "package:second:diff", "b.ts");
+  expect(testClient.navigation.get().dock).toBe("package:second:diff");
 });
 
 it("opens only a unique admitted client diagnostics contribution", async () => {

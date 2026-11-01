@@ -4,7 +4,14 @@ This optional package supplies a public Session trajectory view, a contextual
 `sessionAction` component for naming an investigation, and a `clientEffect` for
 export commands. The first two declare Session scope; the effect declares client
 scope and remains mounted across Session navigation. All share one namespace-local
-prebuilt ESM module. The package has no backend.
+prebuilt ESM module. The Go backend owns the Markdown conversion selected for this distribution.
+
+When the host is asked for Markdown, it captures one idle Session archive and offers
+a per-call callback for bounded ranges of those immutable bytes. Only the captured
+renderer can read the grant. The renderer verifies its digest, emits bounded UTF-8
+fragments, and confirms the size and digest of its output. The host returns a complete
+document after final verification. Disabling the selected renderer withdraws new
+Markdown exports. Portable JSON remains available through the core Session API.
 
 The effect registers Markdown, JSON and complete trajectory exports in the actual
 command catalog, with ordinary user shortcut overrides. Dispatch captures the
@@ -25,7 +32,7 @@ Navigation and refreshed row data cannot replace the open target. The action doe
 not fetch another revision while constructing its menu or silently overwrite a conflict.
 
 The component owns its form and calls the canonical public `sessions.update` command,
-the same Session owner used by built-in editing and `flame session rename`. It submits
+the same Session owner used by `flame session rename`. It submits
 an explicit title only, with the inspected revision. Unknown acknowledgement retains
 the original mutation handle/key and offers same-command reconciliation; a new edit
 is blocked until settlement. Accepted data is shown only from the canonical response.

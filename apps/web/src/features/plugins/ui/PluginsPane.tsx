@@ -1,3 +1,4 @@
+import { SharedEffectSettings } from "./SharedEffects";
 import { iconGlyph } from "@/ui/icons/index";
 import { PackageManager } from "@/features/plugins/ui/PackageManager";
 import * as stylex from "@stylexjs/stylex";
@@ -109,6 +110,7 @@ export function PluginsPane() {
 
   return (
     <>
+      <SharedEffectSettings />
       <PackageManager />
       <PanelSection
         title={

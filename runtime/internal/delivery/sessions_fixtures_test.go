@@ -1055,7 +1055,7 @@ func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.Works
 	if s.runs != nil {
 		runStore = s.runs
 	}
-	cleanups := []sessions.Cleanup{{Resource: "sandbox", Retire: s.Discard}}
+	cleanups := []sessions.Cleanup{{Resource: "sandbox", Retire: func(_ context.Context, id string) error { return s.Discard(id) }}}
 	if checkpoints != nil {
 		cleanups = append(cleanups, sessions.Cleanup{Resource: "checkpoints", Retire: checkpoints.DropSession})
 	}

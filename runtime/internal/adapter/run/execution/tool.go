@@ -99,7 +99,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	rawArguments := arguments.Canonical()
 	start := runs.ToolCallStarted{
 		CallID: callID, ModelCallSequence: reference.ModelCallSequence(),
-		ToolCallIndex: reference.ToolCallIndex(), SourceCallID: call.ID, ToolName: call.Name,
+		ToolCallIndex: reference.ToolCallIndex(), SourceCallID: call.ID, ToolName: call.Name, Source: o.ref,
 		Arguments: rawArguments, SafetyClass: o.interpreter.SafetyClass(o.ref),
 	}
 	var prepared runs.ExecutionFact = start
@@ -430,7 +430,7 @@ func (o *observedInteractionTool) authorizationRequest(
 	}
 	return ToolAuthorizationRequest{
 		SessionID: o.start.SessionID, WorkspaceCWD: o.start.WorkspaceCWD,
-		CallID: callID, Tool: o.ref, SourceFingerprint: o.sourceFingerprint, Arguments: arguments,
+		CallID: callID, Tool: o.ref, QualifiedName: name != o.ref.ModelName(), SourceFingerprint: o.sourceFingerprint, Arguments: arguments,
 		SafetyClass:     o.interpreter.SafetyClass(o.ref),
 		FileMutation:    fileMutationScope(o.inner, arguments, o.start.CWD),
 		ShellCommand:    o.interpreter.ShellCommand(o.ref, arguments.Canonical()),
@@ -517,14 +517,14 @@ func (o *observedInteractionTool) resolveToolApproval(
 			}
 		}
 		if _, err := o.prepareInvocation(corechat.ToolCall{
-			ID: request.CallID, Name: request.Tool.ModelName(), Arguments: arguments.Canonical(),
+			ID: request.CallID, Name: request.Tool.PublishedName(request.QualifiedName), Arguments: arguments.Canonical(),
 		}, arguments, nil); err != nil {
 			return arguments, false, "", err
 		}
 	}
 	decision, err := o.authorizer.ResolveToolApproval(ctx, request, prompt, resolution)
 	if err != nil {
-		return tool.Arguments{}, false, "", hostFailure(fmt.Errorf("execution: resolve Tool %q approval: %w", request.Tool.ModelName(), err))
+		return tool.Arguments{}, false, "", hostFailure(fmt.Errorf("execution: resolve Tool %q approval: %w", request.Tool.PublishedName(request.QualifiedName), err))
 	}
 	arguments := request.Arguments
 	if rewritten, ok := decision.EffectiveArguments(); ok {

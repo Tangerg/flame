@@ -163,6 +163,44 @@ type referenceContext struct {
 
 type didSaveParams struct {
 	TextDocument textDocumentIdentifier `json:"textDocument"`
+	Text         *string                `json:"text,omitzero"`
+}
+
+type saveSynchronization struct {
+	Enabled     bool
+	IncludeText bool
+}
+
+func negotiatedSave(sync jsontext.Value) (saveSynchronization, error) {
+	var options struct {
+		Save jsontext.Value `json:"save"`
+	}
+	// The legacy numeric form only specifies the change synchronization kind.
+	if len(sync) == 0 || sync.Kind() != '{' {
+		return saveSynchronization{}, nil
+	}
+	if err := json.Unmarshal(sync, &options); err != nil {
+		return saveSynchronization{}, err
+	}
+	if len(options.Save) == 0 {
+		return saveSynchronization{}, nil
+	}
+	switch options.Save.Kind() {
+	case 't':
+		return saveSynchronization{Enabled: true}, nil
+	case 'f', 'n':
+		return saveSynchronization{}, nil
+	case '{':
+		var detail struct {
+			IncludeText bool `json:"includeText"`
+		}
+		if err := json.Unmarshal(options.Save, &detail); err != nil {
+			return saveSynchronization{}, err
+		}
+		return saveSynchronization{Enabled: true, IncludeText: detail.IncludeText}, nil
+	default:
+		return saveSynchronization{}, errors.New("invalid server save synchronization option")
+	}
 }
 
 type documentSymbolParams struct {
@@ -207,7 +245,7 @@ func (c callHierarchyItem) symbol() Symbol {
 }
 
 type callHierarchyItemParams struct {
-	Item callHierarchyItem `json:"item"`
+	Item jsontext.Value `json:"item"`
 }
 
 // callHierarchyIncomingCall is one caller (`from`) of the queried symbol;
@@ -236,6 +274,9 @@ func (p publishDiagnosticsParams) validate() error {
 	}
 	if strings.TrimSpace(p.URI) == "" {
 		return errors.New("uri is empty")
+	}
+	if p.Diagnostics == nil {
+		return errors.New("diagnostics must be an array")
 	}
 	for index, diagnostic := range p.Diagnostics {
 		if err := diagnostic.validate(); err != nil {

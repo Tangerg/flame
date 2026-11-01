@@ -43,11 +43,11 @@ type retirementResources struct {
 	afterDrop, afterDiscard func()
 }
 
-func (r *retirementResources) DropSession(id string) error {
+func (r *retirementResources) DropSession(ctx context.Context, id string) error {
 	if r.dropErr != nil {
 		return r.dropErr
 	}
-	if err := r.Checkpoints.DropSession(id); err != nil {
+	if err := r.Checkpoints.DropSession(ctx, id); err != nil {
 		return err
 	}
 	if r.afterDrop != nil {
@@ -141,7 +141,7 @@ func openRetirementFixture(t *testing.T, root, cut string) *retirementFixture {
 	}
 	retirer, err := sessions.NewResourceRetirer(ledger,
 		sessions.Cleanup{Resource: "checkpoints", Retire: resources.DropSession},
-		sessions.Cleanup{Resource: "sandbox", Retire: resources.Discard},
+		sessions.Cleanup{Resource: "sandbox", Retire: func(_ context.Context, id string) error { return resources.Discard(id) }},
 	)
 	if err != nil {
 		t.Fatal(err)

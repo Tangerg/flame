@@ -16,7 +16,7 @@ const (
 	sessionsFork     Name = "sessions.fork"
 	sessionsRollback Name = "sessions.rollback"
 	sessionsExport   Name = "sessions.export"
-	sessionsImport   Name = "sessions.import"
+	SessionsImport   Name = "sessions.import"
 )
 
 func registerSessions(registry *Registry) {
@@ -142,7 +142,7 @@ func registerSessions(registry *Registry) {
 
 	registry.query(MethodMeta{
 		Name: sessionsExport, GoName: "ExportSession",
-		Errors:          []string{protocol.ErrSessionNotFound.Error()},
+		Errors:          pluginProviderErrors(protocol.ErrSessionNotFound.Error(), protocol.ErrSessionBusy.Error(), protocol.ErrExportTooLarge.Error()),
 		CapabilityRules: requires(protocol.FeatureSessionExport),
 	}, func(service interface {
 		ExportSession(context.Context, protocol.ExportSessionRequest) (*protocol.ExportSessionResponse, error)
@@ -151,7 +151,8 @@ func registerSessions(registry *Registry) {
 	})
 
 	registry.command(MethodMeta{
-		Name: sessionsImport, GoName: "ImportSession",
+		Name: SessionsImport, GoName: "ImportSession",
+		Errors:          []string{protocol.ErrSessionBusy.Error(), protocol.ErrExportTooLarge.Error()},
 		CapabilityRules: requires(protocol.FeatureSessionExport),
 	}, func(service interface {
 		ImportSession(context.Context, protocol.ImportSessionRequest) (*protocol.ImportSessionResponse, error)

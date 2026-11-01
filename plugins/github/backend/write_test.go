@@ -343,3 +343,45 @@ func TestGitHubWriteInvalidatesReadProjectionsBeforeExternalIO(t *testing.T) {
 		t.Fatalf("unknown write acquired a receipt: %+v %v", receipt, err)
 	}
 }
+
+func TestConfirmedDeleteSurvivesCancellationBeforeSettlement(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "github.db")
+	token := "fixture"
+	writes := 0
+	c, _, close := connectGitHubWrites(t, path, roundTrip(func(*http.Request) (*http.Response, error) {
+		writes++
+		return &http.Response{StatusCode: http.StatusNoContent, Header: make(http.Header), Body: http.NoBody}, nil
+	}), &token)
+	contracts, err := rpc.NewContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	method, err := portable.AdmitMethod(contracts.DeleteComment.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, err := jsonvalue.Encode(contractwire.CommentInput{Repository: "fixture/repo", CommentID: 42})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	deleted, err := mutate(ctx, c, method, "confirmed-delete", input, func(ctx context.Context, input contractwire.CommentInput) (contractwire.DeletedComment, error) {
+		result, err := c.deleteComment(ctx, input)
+		cancel()
+		return result, err
+	})
+	if err != nil || !deleted.Deleted {
+		t.Fatalf("delete = %+v, %v", deleted, err)
+	}
+	close()
+	c.store, err = openStore(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.store.db.Close()
+	replay, err := mutate(t.Context(), c, method, "confirmed-delete", input, c.deleteComment)
+	if err != nil || replay != deleted || writes != 1 {
+		t.Fatalf("replay=%+v err=%v HTTP writes=%d", replay, err, writes)
+	}
+}

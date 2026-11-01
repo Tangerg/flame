@@ -56,7 +56,7 @@ import { messageRegenerate } from "@/features/chat/message-actions/index";
 import { createGoalPlugin } from "@/features/goal/index";
 import narrativeRails from "@/features/chat/narrative-rails/index";
 import planProgress from "@/features/chat/plan-progress/index";
-import { createPluginsPlugin } from "@/features/plugins/index";
+import { createInstalledPluginLoader, pluginManagementPane } from "@/features/plugins/index";
 import { createProviderCatalogPlugin } from "@/features/providers/index";
 import contextUsage from "@/features/chat/context-usage/index";
 import shortcuts from "@/features/command/shortcuts/index";
@@ -104,6 +104,7 @@ export function createBuiltinPlugins(
     createNavigationBootstrapPlugin(directory),
     createAgentBootstrapPlugin(agent, runtimeClient),
     createRuntimePlugin(connection),
+    createInstalledPluginLoader(installedPlugins),
     createWorkspaceBootstrapPlugin(workspace, runtimeClient),
     createWorkspaceService(navigation, workspace),
     createWorkspaceEventsPlugin(agentAccess, runtimeAccess, runtimeClient),
@@ -139,7 +140,7 @@ export function createBuiltinPlugins(
     approvalsPane,
     personalization,
     connectionSettings,
-    createPluginsPlugin(installedPlugins),
+    pluginManagementPane,
     createProviderCatalogPlugin(runtimeClient),
     fileView,
     subagentsView,

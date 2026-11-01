@@ -83,9 +83,9 @@ func (c *Checkpoints) Restore(ctx context.Context, sessionID, cwd, runID string)
 
 // DropSession removes a session's shadow repo (on session delete).
 // Best-effort no-op when checkpoints are disabled.
-func (c *Checkpoints) DropSession(sessionID string) error {
+func (c *Checkpoints) DropSession(ctx context.Context, sessionID string) error {
 	if !c.CheckpointsEnabled() {
 		return nil
 	}
-	return c.store.DropSession(sessionID)
+	return c.store.DropSession(ctx, sessionID)
 }

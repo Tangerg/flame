@@ -88,11 +88,11 @@ func (t *ToolAuthorizer) AuthorizeTool(
 	case approval.GatePass:
 		return allowTool(), nil
 	case approval.GateDeny:
-		return denyTool(approvalDenialMessage(plan.Denial, request.Tool.ModelName())), nil
+		return denyTool(approvalDenialMessage(plan.Denial, request.Tool.PublishedName(request.QualifiedName))), nil
 	case approval.GatePrompt:
 		prompt := runs.ApprovalPrompt{
 			CallID: request.CallID,
-			Tool:   request.Tool, SourceFingerprint: request.SourceFingerprint,
+			Tool:   request.Tool, QualifiedName: request.QualifiedName, SourceFingerprint: request.SourceFingerprint,
 			Arguments:    request.Arguments.Canonical(),
 			SafetyClass:  plan.SafetyClass,
 			Risk:         plan.Risk,
@@ -136,6 +136,9 @@ func (t *ToolAuthorizer) ResolveToolApproval(
 }
 
 func validateToolAuthorizationRequest(request ToolAuthorizationRequest) error {
+	if request.QualifiedName && request.Tool.Kind() != tool.MCPKind {
+		return errors.New("execution: qualified name requires a remote tool")
+	}
 	if err := request.Tool.ValidateFingerprint(request.SourceFingerprint); err != nil {
 		return err
 	}

@@ -201,6 +201,7 @@ export const VISUAL_PACKAGES: PluginInstallation[] = (
           server,
           export: server,
           contract: operation.contract,
+          selectionRoles: [pluginContract(operation.contract).reference],
           requires: [],
         },
       ],
@@ -220,7 +221,7 @@ export const VISUAL_PACKAGES: PluginInstallation[] = (
 
 export const VISUAL_PLUGIN_PROVIDERS: PluginProviderSelection[] = VISUAL_PACKAGES.map(
   (installation) => ({
-    role: pluginContract(installation.selected.contributions[0]!.contract).reference,
+    role: installation.selected.contributions[0]!.selectionRoles![0]!,
     installationId: installation.id,
     contribution: installation.selected.contributions[0]!.id,
   }),

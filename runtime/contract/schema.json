@@ -1611,6 +1611,8 @@
     "ComponentPlacement": {
       "type": "string",
       "enum": [
+        "workspaceChangesAction",
+        "sharedClientEffect",
         "export",
         "workspaceView",
         "settingsPane",
@@ -6769,6 +6771,12 @@
           "type": "string",
           "pattern": "^[a-z][a-z0-9._-]{0,63}$"
         },
+        "localizedTitles": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
         "material": {
           "type": "string",
           "pattern": "^[a-z][a-z0-9._-]{0,63}$"
@@ -6783,10 +6791,16 @@
           "$ref": "#/$defs/PluginRendererSelector"
         },
         "settingsIntent": {
-          "$ref": "#/$defs/SettingsIntent"
+          "type": "string"
+        },
+        "targetView": {
+          "type": "string"
         },
         "title": {
           "type": "string"
+        },
+        "toolCategory": {
+          "$ref": "#/$defs/ToolCategory"
         }
       },
       "required": [
@@ -7016,6 +7030,12 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/PluginRequirement"
+          }
+        },
+        "selectionRoles": {
+          "type": "array",
+          "items": {
+            "type": "string"
           }
         },
         "server": {
@@ -9501,6 +9521,21 @@
         "status"
       ]
     },
+    "RecordedToolSource": {
+      "type": "object",
+      "properties": {
+        "modelName": {
+          "type": "string"
+        },
+        "ref": {
+          "$ref": "#/$defs/ToolRef"
+        }
+      },
+      "required": [
+        "modelName",
+        "ref"
+      ]
+    },
     "RememberScope": {
       "type": "object",
       "properties": {
@@ -11705,13 +11740,6 @@
         "installationId"
       ]
     },
-    "SettingsIntent": {
-      "type": "string",
-      "enum": [
-        "modelProviders",
-        "mcpServers"
-      ]
-    },
     "Skill": {
       "type": "object",
       "properties": {
@@ -12794,6 +12822,9 @@
         "result": {},
         "resultShape": {
           "$ref": "#/$defs/ResultShape"
+        },
+        "source": {
+          "$ref": "#/$defs/RecordedToolSource"
         }
       },
       "required": [

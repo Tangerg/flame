@@ -171,7 +171,7 @@ func artifactItemFromTranscript(item transcript.Item) (protocol.ArtifactItem, er
 		}
 		invocation := payload.Invocation
 		rejected, _ := invocation.Input.Rejected()
-		tool := protocol.ToolInvocation{Name: invocation.Name, ArgumentsText: rejected, Arguments: invocation.Input.Arguments().Map()}
+		tool := protocol.ToolInvocation{Name: invocation.Name, Source: recordedSource(invocation.Source), ArgumentsText: rejected, Arguments: invocation.Input.Arguments().Map()}
 		if invocation.Result != nil {
 			tool.Result = invocation.Result.Any()
 		}

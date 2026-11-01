@@ -2,9 +2,9 @@ package delivery
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"strings"
 
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
@@ -18,8 +18,7 @@ import (
 // session identity + chat history + canonical items + runs + portable offloaded tool
 // bodies — that ImportSession restores. format=md produces a human-readable
 // transcript (not re-importable).
-// Returned inline: flame is a local loopback runtime, so there's no out-of-band
-// file channel nor a giant-payload concern.
+// Portable JSON uses the same encoded document budget on import and export.
 func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSessionRequest) (*protocol.ExportSessionResponse, error) {
 	result, err := s.sessions.ExportSession(ctx, request.SessionID)
 	if err != nil {
@@ -33,23 +32,35 @@ func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSess
 	if format == "" {
 		format = protocol.ExportFormatJSON
 	}
-	presentedSession := presentSession(result.Session)
 
-	switch format {
-	case protocol.ExportFormatMarkdown:
-		return &protocol.ExportSessionResponse{
-			Format:   format,
-			Markdown: renderSessionMarkdown(presentedSession, result.Items),
-		}, nil
-	case protocol.ExportFormatJSON:
-	default:
+	if format != protocol.ExportFormatJSON && format != protocol.ExportFormatMarkdown {
 		return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unsupported export format %q", format))
 	}
-	artifact, err := artifactFromPortable(result.Snapshot)
+	artifact, err := artifactFromPortable(result)
 	if err != nil {
 		return nil, fmt.Errorf("sessions.export: encode artifact: %w", err)
 	}
 
+	if format == protocol.ExportFormatMarkdown {
+		if s.pluginCalls == nil {
+			return nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "no session Markdown renderer is available")
+		}
+		document, err := json.Marshal(artifact)
+		if err != nil {
+			return nil, err
+		}
+		if len(document) > protocol.MaximumSessionArtifactBytes {
+			return nil, protocol.ErrExportTooLarge
+		}
+		rendered, err := s.pluginCalls.RenderSessionMarkdown(ctx, artifact.Session.ID, document)
+		if err != nil {
+			return nil, wirePluginError(err)
+		}
+		return &protocol.ExportSessionResponse{Format: format, Markdown: rendered}, nil
+	}
+	if err := validatePortableSize(artifact); err != nil {
+		return nil, err
+	}
 	return &protocol.ExportSessionResponse{
 		Format: format, Artifact: &artifact,
 	}, nil
@@ -62,6 +73,9 @@ func (s *Handler) ImportSession(ctx context.Context, request protocol.ImportSess
 	artifact := request.Artifact
 	if artifact.Version != protocol.SessionArtifactVersion {
 		return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unsupported artifact version %d (want %d)", artifact.Version, protocol.SessionArtifactVersion))
+	}
+	if err := validatePortableSize(artifact); err != nil {
+		return nil, err
 	}
 	portable, err := portableArtifactFromWire(artifact)
 	if err != nil {
@@ -95,72 +109,10 @@ func (s *Handler) ImportSession(ctx context.Context, request protocol.ImportSess
 	return &protocol.ImportSessionResponse{Session: &presented}, nil
 }
 
-// renderSessionMarkdown produces a human-readable transcript of a session — a
-// header plus each canonical item rendered by type. It is not re-importable
-// (use format=json for that).
-func renderSessionMarkdown(session protocol.Session, items []transcript.Item) string {
-	var b strings.Builder
-	title := session.Title
-	if title == "" {
-		title = session.ID
+func validatePortableSize(artifact protocol.SessionArtifact) error {
+	err := json.MarshalWrite(&encodedSizeLimit{remaining: protocol.MaximumSessionArtifactBytes}, artifact)
+	if errors.Is(err, sessions.ErrExportTooLarge) {
+		return protocol.NewFailure(protocol.ErrExportTooLarge, fmt.Sprintf("session archive exceeds %d bytes", protocol.MaximumSessionArtifactBytes))
 	}
-	fmt.Fprintf(&b, "# %s\n\n", title)
-	if session.Workspace.Ref.Path != "" {
-		fmt.Fprintf(&b, "- workspace: `%s`\n", session.Workspace.Ref.Path)
-	}
-	if session.Model != "" {
-		fmt.Fprintf(&b, "- model: `%s`\n", session.Model)
-	}
-	b.WriteString("\n")
-
-	for _, record := range items {
-		item := presentItem(record)
-		switch item.Type {
-		case protocol.ItemTypeUserMessage:
-			fmt.Fprintf(&b, "## User\n\n%s\n\n", contentText(item))
-		case protocol.ItemTypeAgentMessage:
-			fmt.Fprintf(&b, "## Assistant\n\n%s\n\n", contentText(item))
-		case protocol.ItemTypeReasoning:
-			if !item.Redacted && item.Text != "" {
-				fmt.Fprintf(&b, "> _(reasoning)_ %s\n\n", item.Text)
-			}
-		case protocol.ItemTypeToolCall:
-			if item.Tool != nil {
-				fmt.Fprintf(&b, "→ **tool** `%s`\n\n", item.Tool.Name)
-			}
-		case protocol.ItemTypeQuestion:
-			if item.Question != nil {
-				b.WriteString("## Question\n\n")
-				for _, field := range item.Question.Fields {
-					fmt.Fprintf(&b, "- %s\n", field.Prompt)
-				}
-				b.WriteString("\n")
-			}
-		case protocol.ItemTypeCompaction:
-			fmt.Fprintf(
-				&b,
-				"## Context compacted\n\n- dropped messages: %d\n\n%s\n\n",
-				item.DroppedMessages,
-				item.Summary,
-			)
-		}
-	}
-	return strings.TrimRight(b.String(), "\n") + "\n"
-}
-
-// contentText returns the text of an item (image blocks render as "[image]").
-func contentText(item protocol.Item) string {
-	if item.Text != "" {
-		return item.Text
-	}
-	var parts []string
-	for _, block := range item.Content {
-		switch block.Type {
-		case protocol.ContentBlockText:
-			parts = append(parts, block.Text)
-		case protocol.ContentBlockImage:
-			parts = append(parts, "[image]")
-		}
-	}
-	return strings.Join(parts, "\n")
+	return err
 }

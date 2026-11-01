@@ -42,7 +42,7 @@ func TestTrajectoryEncodingLimitCountsEscapedJSON(t *testing.T) {
 	if len(value.Text) >= 100 {
 		t.Fatal("fixture already exceeds the source budget")
 	}
-	err := json.MarshalWrite(&trajectorySizeWriter{remaining: 100}, value)
+	err := json.MarshalWrite(&encodedSizeLimit{remaining: 100}, value)
 	if !errors.Is(err, sessions.ErrExportTooLarge) {
 		t.Fatalf("escaped JSON bypassed final encoding budget: %v", err)
 	}

@@ -1,4 +1,6 @@
 export const ja: Record<string, string> = {
+  "worktree.open": "変更を確認（{{count}} 件）",
+  "worktree.files": "{{count}} ファイル",
   "panel.title": "ワークスペース diff",
   refresh: "更新",
   "scope.label": "比較範囲",

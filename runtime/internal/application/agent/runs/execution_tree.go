@@ -76,6 +76,52 @@ type ExecutionTreeCommit struct {
 	Events           []EventCommit
 }
 
+func (u ExecutionTreeUpdate) validateSteerAcceptance(acceptance CommandAcceptance) error {
+	if acceptance.Operation != CommandSteerInput || acceptance.SessionID != u.Head.SessionID {
+		return errors.New("runs: foreign steer acceptance")
+	}
+	return acceptance.Validate()
+}
+
+func (t ExecutionTreeCommit) Validate() error {
+	if err := t.Update.Validate(); err != nil {
+		return err
+	}
+	if t.Context != nil {
+		if err := t.Context.ValidateOwnership(t.Update.Head.RootID, t.Update.Head.SessionID); err != nil {
+			return err
+		}
+	}
+	for _, acceptance := range t.InputAcceptances {
+		if err := t.Update.validateSteerAcceptance(acceptance); err != nil {
+			return err
+		}
+	}
+	return t.validatePublications()
+}
+
+func (t ExecutionTreeCommit) validatePublications() error {
+	for _, started := range t.StartedChildren {
+		if started.Reservation().SessionID != t.Update.Head.SessionID {
+			return errors.New("runs: foreign child Run publication")
+		}
+	}
+	for _, aborted := range t.AbortedChildren {
+		if aborted.SessionID != t.Update.Head.SessionID {
+			return errors.New("runs: foreign child Run withdrawal")
+		}
+	}
+	for _, commit := range t.Events {
+		if commit.SessionID != t.Update.Head.SessionID || commit.CommitID.IsZero() || commit.State == StateSuspend || commit.ObsoleteCheckpointRootID != "" {
+			return errors.New("runs: invalid execution tree product commit")
+		}
+		if err := commit.Validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (e ExecutionTreeSettled) clone() ExecutionTreeSettled {
 	e.InputAcceptances = slices.Clone(e.InputAcceptances)
 	for index := range e.InputAcceptances {

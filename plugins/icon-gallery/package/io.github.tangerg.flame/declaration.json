@@ -4,6 +4,15 @@
     {
       "id": "icon-gallery",
       "title": "Icon gallery",
+      "localizedTitles": {
+        "zh": "图标库",
+        "zh-TW": "圖示庫",
+        "de": "Symbolgalerie",
+        "fr": "Galerie d’icônes",
+        "es": "Galería de iconos",
+        "ja": "アイコンギャラリー",
+        "ko": "아이콘 갤러리"
+      },
       "scope": "installation",
       "placement": "workspaceView",
       "entry": "io.github.tangerg.flame/components/component.js",

@@ -15,7 +15,6 @@ import {
 import { useCreateSession } from "@/features/agent/public/session";
 import { useDeleteSession } from "@/features/agent/public/session";
 import { useForkSession } from "@/features/agent/public/session";
-import { useRenameSession } from "@/features/agent/public/session";
 import { useToggleFavorite } from "@/features/agent/public/session";
 import { focusComposer } from "@/features/composer/public/focus";
 import { openSettingsView } from "@/features/workspace/public/deeplinks";
@@ -31,7 +30,6 @@ export interface WorkIndexActions {
   chooseSessionFolder: () => void;
   startSessionInFolder: (cwd: string) => void;
   selectSession: (id: string) => void;
-  renameSession: (id: string, expectedRevision: number, title: string) => Promise<boolean>;
   forkSession: (id: string) => void;
   deleteSession: (id: string) => void;
   toggleFavorite: (id: string, expectedRevision: number, favorite: boolean) => void;
@@ -69,7 +67,6 @@ export function useWorkIndexActions(): WorkIndexActions {
   const activeCwd = resolvedWorkspaceCwd(activeWorkspace);
   const remove = useDeleteSession();
   const fork = useForkSession();
-  const rename = useRenameSession();
   const toggleFavorite = useToggleFavorite();
 
   return useMemo(
@@ -94,7 +91,6 @@ export function useWorkIndexActions(): WorkIndexActions {
         });
       },
       selectSession: agentAccess.selectAgentSession,
-      renameSession: rename,
       forkSession: (id) => {
         void fork(id);
       },
@@ -115,7 +111,6 @@ export function useWorkIndexActions(): WorkIndexActions {
       create,
       fork,
       remove,
-      rename,
       runtimeAvailable,
       toggleFavorite,
       agentAccess,

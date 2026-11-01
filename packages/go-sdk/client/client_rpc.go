@@ -47,10 +47,9 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 	if err != nil {
 		return callResult{}, err
 	}
-	streaming := false
 	dispatched := false
 	defer func() {
-		if !streaming {
+		if result.Events == nil {
 			call.finish(nil)
 		}
 		if dispatched && operation == commandOperation && err != nil && !knownTransportRefusal(err) {
@@ -61,35 +60,10 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 	if err != nil {
 		return callResult{}, err
 	}
-	body, err := encodeRemoteRequest(id, name, parameters, options.RequestMeta)
-	if err != nil {
-		return callResult{}, protocol.InvalidParameters(err)
-	}
-	request, err := http.NewRequestWithContext(call.ctx, http.MethodPost, r.endpoint, bytes.NewReader(body))
+	request, err := r.newRPCRequest(call.ctx, id, name, parameters, options)
 	if err != nil {
 		return callResult{}, err
 	}
-	// A response lost after dispatch is an unknown acknowledgement. Recovery
-	// belongs to the caller's retained command identity, never net/http replay.
-	request.GetBody = nil
-	request.Header.Set("Content-Type", protocol.RPCDocumentMediaType)
-	request.Header.Set("Accept", protocol.RPCDocumentMediaType+", "+protocol.RPCStreamMediaType)
-	if r.callbackCall != "" {
-		request.Header.Set("Authorization", r.token)
-		request.Header.Set(qimumcp.CallHeader, r.callbackCall)
-		if invocation, invocationErr := qimumcp.InvocationFromContext(call.ctx); invocationErr == nil {
-			value, encodeErr := json.Marshal(invocation)
-			if encodeErr != nil {
-				return callResult{}, encodeErr
-			}
-			request.Header.Set(qimumcp.InvocationHeader, string(value))
-		}
-	} else if r.token != "" {
-		request.Header.Set("Authorization", "Bearer "+r.token)
-	}
-	setOptionalHeader(request.Header, headerIdempotencyKey, options.IdempotencyKey)
-	setOptionalHeader(request.Header, headerIdempotencyNamespace, options.IdempotencyNamespace)
-	setOptionalHeader(request.Header, headerLastEventID, options.AfterEventID)
 	if err := call.ctx.Err(); err != nil {
 		return callResult{}, context.Cause(call.ctx)
 	}
@@ -101,6 +75,44 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 	if err := call.attach(response.Body); err != nil {
 		return callResult{}, err
 	}
+	return r.readAcknowledgement(call, response, id, meta, parameters, operation)
+}
+
+func (r *Client) newRPCRequest(ctx context.Context, id jsonrpc.ID, name string, parameters any, options callConfig) (*http.Request, error) {
+	body, err := encodeRemoteRequest(id, name, parameters, options.RequestMeta)
+	if err != nil {
+		return nil, protocol.InvalidParameters(err)
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, r.endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	// A response lost after dispatch is an unknown acknowledgement. Recovery
+	// belongs to the caller's retained command identity, never net/http replay.
+	request.GetBody = nil
+	request.Header.Set(headerMethod, name)
+	request.Header.Set("Content-Type", protocol.RPCDocumentMediaType)
+	request.Header.Set("Accept", protocol.RPCDocumentMediaType+", "+protocol.RPCStreamMediaType)
+	if r.callbackCall != "" {
+		request.Header.Set("Authorization", r.token)
+		request.Header.Set(qimumcp.CallHeader, r.callbackCall)
+		if invocation, invocationErr := qimumcp.InvocationFromContext(ctx); invocationErr == nil {
+			value, encodeErr := json.Marshal(invocation)
+			if encodeErr != nil {
+				return nil, encodeErr
+			}
+			request.Header.Set(qimumcp.InvocationHeader, string(value))
+		}
+	} else if r.token != "" {
+		request.Header.Set("Authorization", "Bearer "+r.token)
+	}
+	setOptionalHeader(request.Header, headerIdempotencyKey, options.IdempotencyKey)
+	setOptionalHeader(request.Header, headerIdempotencyNamespace, options.IdempotencyNamespace)
+	setOptionalHeader(request.Header, headerLastEventID, options.AfterEventID)
+	return request, nil
+}
+
+func (r *Client) readAcknowledgement(call *remoteCall, response *http.Response, id jsonrpc.ID, meta methodMeta, parameters any, operation operation) (callResult, error) {
 	mediaType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
 	if response.StatusCode != protocol.RPCCallStatus {
 		if r.callbackCall != "" && response.StatusCode == http.StatusGone {
@@ -125,9 +137,13 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 	if mediaType != protocol.RPCStreamMediaType || meta.Kind != streamMethod {
 		return callResult{}, invalidRemote("response content type does not match the operation")
 	}
+	return r.readStreamAcknowledgement(call, response.Body, id, meta, parameters, operation)
+}
+
+func (r *Client) readStreamAcknowledgement(call *remoteCall, body io.Reader, id jsonrpc.ID, meta methodMeta, parameters any, operation operation) (callResult, error) {
 	// SSE's web-standard decoder repairs malformed UTF-8. Runtime JSON is exact,
 	// so reject those bytes before the SSE reader can replace their meaning.
-	reader := sse.NewReader(transform.NewReader(response.Body, encoding.UTF8Validator))
+	reader := sse.NewReader(transform.NewReader(body, encoding.UTF8Validator))
 	reader.MaxLineBytes = math.MaxInt - 2
 	if r.maxMessageBytes > 0 {
 		reader.MaxLineBytes = r.maxMessageBytes
@@ -148,7 +164,6 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 			return callResult{}, err
 		}
 		result.Events = remoteEvents(call, reader, meta.Event, operation, result.Value)
-		streaming = true
 		return result, nil
 	}
 	return callResult{}, call.readError(io.ErrUnexpectedEOF)

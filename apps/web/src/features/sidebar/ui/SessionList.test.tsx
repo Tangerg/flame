@@ -22,7 +22,6 @@ const session = (id: number): WorkSession => ({
 
 const actions = {
   selectSession: vi.fn(),
-  renameSession: vi.fn(),
   forkSession: vi.fn(),
   deleteSession: vi.fn(),
   toggleFavorite: vi.fn(),

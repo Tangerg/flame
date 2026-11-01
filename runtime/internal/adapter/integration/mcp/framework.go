@@ -18,7 +18,7 @@ import (
 // Discovery and calls borrow Uses; catalog observations keep no execution lease.
 type Installed struct {
 	host     *qimu.Host
-	driver   *process.Driver
+	driver   *process.Driver[*sdk.ClientSession]
 	source   *ProcessSource
 	registry *plugins.Registry
 	owner    *qimu.Lifetime
@@ -30,7 +30,7 @@ type Installed struct {
 
 type InstalledConfig struct {
 	Host     *qimu.Host
-	Driver   *process.Driver
+	Driver   *process.Driver[*sdk.ClientSession]
 	Source   *ProcessSource
 	Registry *plugins.Registry
 	Lifetime *qimu.Lifetime
@@ -53,7 +53,7 @@ type installedSession struct {
 	instanceID string
 	session    *sdk.ClientSession
 	projection processProjection
-	borrow     *process.SessionBorrow
+	borrow     *process.SessionBorrow[*sdk.ClientSession]
 }
 
 // A catalog observation cannot extend an instance's lifetime. Every call must

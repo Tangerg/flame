@@ -27,14 +27,12 @@ type View struct {
 	capability     *portable.Capability
 }
 
-// Views collects the terminal views of every enabled installation's selected
-// release. A view whose contribution or contract cannot be resolved is reported
-// rather than silently dropped.
+// Presentation admission includes the availability of the selected release.
 func Views(installations []protocol.PluginInstallation) ([]View, []error) {
 	var views []View
 	var problems []error
 	for _, installation := range installations {
-		if !installation.Enabled {
+		if installation.Presentation != protocol.PluginPresentationAdmitted {
 			continue
 		}
 		release := installation.Selected
@@ -182,28 +180,38 @@ func (v View) request(method string, bindings []protocol.PluginTerminalInput, co
 	return protocol.CallPluginRequest{
 		InstallationID: v.InstallationID, Digest: v.Digest, Contribution: v.Contribution, Contract: v.contract,
 		Method: method, Input: string(encoded),
-		Target: portable.Target{Scope: v.capability.Descriptor().Scope, Reference: v.InstallationID},
+		Target: portable.Target{Scope: compiled.Descriptor().Target, Reference: v.InstallationID},
 	}, nil
 }
 
 // Page decodes a list response's rows and next cursor.
 func (v View) Page(response *protocol.CallPluginResponse) (Page, error) {
-	if response == nil || response.Failure != nil {
-		return Page{}, errors.New("list response carries no rows")
+	if response == nil {
+		return Page{}, errors.New("missing list response")
 	}
-	var output map[string]jsontext.Value
+	if failure := response.Failure; failure != nil {
+		return Page{}, fmt.Errorf("plugin list refused (%s): %s", failure.Code, failure.Message)
+	}
+	var output Row
 	if err := json.Unmarshal([]byte(response.Output), &output); err != nil {
 		return Page{}, fmt.Errorf("list output: %w", err)
 	}
 	var page Page
-	if raw, found := output[v.List.Rows]; found {
-		if err := json.Unmarshal(raw, &page.Rows); err != nil {
-			return Page{}, fmt.Errorf("list rows: %w", err)
-		}
+	rows, found := output.Field(v.List.Rows)
+	if !found || rows.Kind() != '[' {
+		return Page{}, fmt.Errorf("list output %q must contain the row array", v.List.Rows)
 	}
-	if v.List.Paging != nil {
-		if raw, found := output[v.List.Paging.Output]; found {
-			_ = json.Unmarshal(raw, &page.Next)
+	if err := json.Unmarshal(rows, &page.Rows); err != nil {
+		return Page{}, fmt.Errorf("list rows: %w", err)
+	}
+	if paging := v.List.Paging; paging != nil {
+		if raw, found := output.Field(paging.Output); found {
+			if raw.Kind() != '"' {
+				return Page{}, fmt.Errorf("list cursor %q must be a string", paging.Output)
+			}
+			if err := json.Unmarshal(raw, &page.Next); err != nil {
+				return Page{}, fmt.Errorf("list cursor: %w", err)
+			}
 		}
 	}
 	return page, nil

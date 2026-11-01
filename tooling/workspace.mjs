@@ -254,6 +254,8 @@ export async function generate(repository = root) {
         "../packages/runtime-client",
         "--client-values",
         "../apps/web/src/foundation/protocolValues.generated.ts",
+        "--tool-category-fixture",
+        "../apps/web/src/test/toolCategory.generated.ts",
         "--samples",
         "contract/samples",
         "--go-local",
@@ -357,6 +359,31 @@ export function goWorkspaceMembers(repository = root) {
     );
     return { directory, manifest };
   });
+}
+// A directory tree survives patch application and rebasing without pinning
+// an unpublished commit from another checkout.
+function resolveModuleSource(repository, key, pinned, directory) {
+  const isCommit = typeof pinned === "string";
+  if (
+    !isCommit &&
+    (!/^[a-f0-9]{40}$/.test(pinned.tree) || typeof pinned.time !== "string")
+  )
+    throw new Error(`module proxy: invalid tree pin for ${key}`);
+  const source = run(
+    "git",
+    ["rev-parse", isCommit ? `${pinned}^{commit}` : `${pinned.tree}^{tree}`],
+    repository,
+    process.env,
+    true,
+  )
+    .toString()
+    .trim();
+  if (isCommit) return { source, directory, timeArgs: [] };
+  if (pinned.tree !== source)
+    throw new Error(
+      `module proxy: pin for ${key} does not identify a directory tree`,
+    );
+  return { source, directory: "", timeArgs: ["--tree-time", pinned.time] };
 }
 export async function moduleArtifacts({
   repository = root,
@@ -491,17 +518,17 @@ export async function moduleArtifacts({
         throw new Error(
           `module proxy: ${key} has no pinned source in module-candidates.json`,
         );
-      const source = run(
-        "git",
-        ["rev-parse", `${pinned}^{commit}`],
+      const { source, directory, timeArgs } = resolveModuleSource(
         repository,
-        process.env,
-        true,
-      )
-        .toString()
-        .trim();
+        key,
+        pinned,
+        member.directory,
+      );
       visiting.add(key);
-      const manifest = await manifestAt(source, `${member.directory}/go.mod`);
+      const manifest = await manifestAt(
+        source,
+        directory ? `${directory}/go.mod` : "go.mod",
+      );
       if (manifest.Module.Path !== path)
         throw new Error(`module proxy: source module does not match ${key}`);
       for (const dependency of manifest.Require ?? []) {
@@ -526,7 +553,8 @@ export async function moduleArtifacts({
           "--version",
           version,
           "--subdir",
-          member.directory,
+          directory,
+          ...timeArgs,
         ],
         repository,
         toolEnv,

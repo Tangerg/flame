@@ -45,13 +45,13 @@ type flakyCompletionStore struct {
 }
 
 type claimLostOnceStore struct {
-	backing *memoryIdempotencyStore
-	once    sync.Once
-	claims  atomic.Int32
+	*memoryIdempotencyStore
+	once   sync.Once
+	claims atomic.Int32
 }
 
 type unacknowledgedCompletionStore struct {
-	backing        *memoryIdempotencyStore
+	*memoryIdempotencyStore
 	durablePayload []byte
 	durableErr     error
 	once           sync.Once
@@ -72,21 +72,21 @@ func (c *claimLostOnceStore) Claim(
 	fingerprint string,
 ) (operation.ReplayRecord, bool, error) {
 	c.claims.Add(1)
-	return c.backing.Claim(ctx, key, fingerprint)
+	return c.memoryIdempotencyStore.Claim(ctx, key, fingerprint)
 }
 
 func (c *claimLostOnceStore) Complete(ctx context.Context, record operation.ReplayRecord) error {
 	lost := false
 	c.once.Do(func() {
-		c.backing.mu.Lock()
-		delete(c.backing.records, record.Key)
-		c.backing.mu.Unlock()
+		c.memoryIdempotencyStore.mu.Lock()
+		delete(c.memoryIdempotencyStore.records, record.Key)
+		c.memoryIdempotencyStore.mu.Unlock()
 		lost = true
 	})
 	if lost {
 		return operation.ErrClaimLost
 	}
-	return c.backing.Complete(ctx, record)
+	return c.memoryIdempotencyStore.Complete(ctx, record)
 }
 
 func (c *unacknowledgedCompletionStore) Claim(
@@ -94,7 +94,7 @@ func (c *unacknowledgedCompletionStore) Claim(
 	key string,
 	fingerprint string,
 ) (operation.ReplayRecord, bool, error) {
-	return c.backing.Claim(ctx, key, fingerprint)
+	return c.memoryIdempotencyStore.Claim(ctx, key, fingerprint)
 }
 
 func (c *unacknowledgedCompletionStore) Complete(ctx context.Context, record operation.ReplayRecord) error {
@@ -105,7 +105,7 @@ func (c *unacknowledgedCompletionStore) Complete(ctx context.Context, record ope
 		if c.durablePayload != nil {
 			durable.Payload = c.durablePayload
 		}
-		c.durableErr = c.backing.Complete(ctx, durable)
+		c.durableErr = c.memoryIdempotencyStore.Complete(ctx, durable)
 	})
 	if intercepted {
 		if c.durableErr != nil {
@@ -113,7 +113,7 @@ func (c *unacknowledgedCompletionStore) Complete(ctx context.Context, record ope
 		}
 		return errors.New("completion acknowledgement was lost")
 	}
-	return c.backing.Complete(ctx, record)
+	return c.memoryIdempotencyStore.Complete(ctx, record)
 }
 
 func (c *cancellationAwareCompletionStore) Complete(ctx context.Context, record operation.ReplayRecord) error {
@@ -398,7 +398,7 @@ func TestAwaitShutdownFlushHonorsOwnerCancellation(t *testing.T) {
 
 func TestLostCompletionClaimCannotBeRecreated(t *testing.T) {
 	service := &countingCancelService{}
-	store := &claimLostOnceStore{backing: newMemoryIdempotencyStore()}
+	store := &claimLostOnceStore{memoryIdempotencyStore: newMemoryIdempotencyStore()}
 	endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyStore: store})
 	options := Options{IdempotencyKey: "lost-claim"}
 	request := protocol.CancelRunRequest{RunID: "run_1"}
@@ -444,7 +444,7 @@ func TestPendingCompletionPreservesTheExecutionOutcome(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			service := &countingCancelService{}
-			store := &unacknowledgedCompletionStore{backing: newMemoryIdempotencyStore(), durablePayload: test.payload}
+			store := &unacknowledgedCompletionStore{memoryIdempotencyStore: newMemoryIdempotencyStore(), durablePayload: test.payload}
 			endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyStore: store})
 			options := Options{IdempotencyKey: "execution-result"}
 			request := protocol.CancelRunRequest{RunID: "run_1"}

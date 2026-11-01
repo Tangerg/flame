@@ -3,11 +3,13 @@ package terminal
 import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
+	"github.com/Tangerg/flame/apps/cli/internal/application/pluginview"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -132,7 +134,7 @@ func TestPluginViewListsRowsThroughTheDeclaredContract(t *testing.T) {
 	typeNotesCommand(t, host, "")
 	host.Shows(t, "note_release")
 	host.Shows(t, "confirm release steps")
-	host.Shows(t, "/notes edit <id>")
+	host.Shows(t, "notes edit <id>")
 	catalog.mu.Lock()
 	list := catalog.calls[len(catalog.calls)-1]
 	catalog.mu.Unlock()
@@ -158,12 +160,65 @@ func TestPluginViewActionFillsTheFormFromTheSelectedRow(t *testing.T) {
 	typeNotesCommand(t, host, " edit note_rel")
 	host.Shows(t, "Edit · Notes · note_release")
 	host.Shows(t, "confirm release steps")
-	host.Type(" today")
+	host.Type(" today ")
 	host.Press(input.Enter)
 	update := awaitValue(t, plugin.updates, "note update")
-	if update["ID"] != "note_release" || update["Revision"] != float64(1) || update["Content"] != "confirm release steps today" {
+	if update["ID"] != "note_release" || update["Revision"] != float64(1) || update["Content"] != "confirm release steps today " {
 		t.Fatalf("update input = %v", update)
 	}
 	host.Shows(t, "Notes · edit done")
 	stop()
+}
+
+func TestPluginViewNeverSelectsFromAnIncompleteList(t *testing.T) {
+	installation := notesInstallation(t)
+	declaration := &installation.Selected.TerminalViews[0].List
+	declaration.Paging = &protocol.PluginTerminalPaging{Input: "CWD", Output: "next"}
+	declaration.Input = nil
+	views, problems := pluginview.Views([]protocol.PluginInstallation{*installation})
+	if len(problems) > 0 {
+		t.Fatal(problems)
+	}
+	for _, cyclic := range []bool{false, true} {
+		calls := 0
+		service := &installedPluginCatalog{respond: func(protocol.CallPluginRequest) (*protocol.CallPluginResponse, error) {
+			calls++
+			next := fmt.Sprint(calls)
+			if cyclic {
+				next = "again"
+			}
+			return &protocol.CallPluginResponse{Output: fmt.Sprintf(`{"Rows":[{"ID":"victim-other"}],"next":%q}`, next)}, nil
+		}}
+		screens := pluginScreens{service: service}
+		rows, err := screens.readPluginViewRows(t.Context(), views[0], pluginview.Context{}, nil)
+		if err == nil || len(rows) != 0 {
+			t.Fatalf("incomplete result = %v, %v", rows, err)
+		}
+		if cyclic && calls != 2 {
+			t.Fatalf("cycle generated %d requests", calls)
+		}
+	}
+}
+
+func TestTerminalViewNamesAreAddressableAndFollowAdmission(t *testing.T) {
+	admitted := notesInstallation(t)
+	other := *admitted
+	other.ID = "12345678-1234-1234-1234-123456789abd"
+	withheld := *admitted
+	withheld.Presentation = protocol.PluginPresentationWithheld
+	views, problems := pluginview.Views([]protocol.PluginInstallation{*admitted, other, withheld})
+	if len(views) != 2 || len(problems) != 0 {
+		t.Fatalf("views=%d problems=%v", len(views), problems)
+	}
+	catalog := newCommandCatalog()
+	screens := pluginScreens{views: views}
+	screens.registerViewCommands(&catalog)
+	for _, view := range views {
+		if _, found := catalog.lookup(viewCommandName(view)); !found {
+			t.Fatalf("missing qualified command for %s", view.InstallationID)
+		}
+	}
+	if _, found := catalog.lookup(views[0].ID); found {
+		t.Fatal("ambiguous short name was registered")
+	}
 }

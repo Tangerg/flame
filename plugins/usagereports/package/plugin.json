@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "flame.usagereports",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Capture and browse immutable daily and weekly core accounting reports in a private archive.",
   "extensions": {
     "io.github.tangerg.flame": {

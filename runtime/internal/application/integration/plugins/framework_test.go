@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/integrity"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/samber/lo"
 )
 
@@ -38,7 +39,7 @@ func testFramework(t testing.TB, store Store, dependencies ...*installationDepen
 		observed = dependencies[0]
 		observed.admission = admission
 	}
-	config := qimu.HostConfig{Admission: admission, MaxInstallations: 128, Drivers: []qimu.Driver{planningDriver{qimu.MCPProcess}, planningDriver{qimu.BrowserJS}, planningDriver{qimu.StaticResource}}}
+	config := qimu.HostConfig{Admission: admission, MaxInstallations: 128, Drivers: []qimu.Driver{planningDriver{qimumcp.ProcessProfile}, planningDriver{qimu.BrowserJS}, planningDriver{qimu.StaticResource}}}
 	if memory != nil {
 		config.Installations = &frameworkTestStore{memory: memory, admission: admission, observed: observed}
 	}

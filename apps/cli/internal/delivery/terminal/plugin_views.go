@@ -66,16 +66,26 @@ func (p *pluginScreens) loadPluginViews() {
 	)
 }
 
-// registerViewCommands adds one command per view through add.
-func (p *pluginScreens) registerViewCommands(add func(owner string, descriptor extensions.CommandDescriptor, run func(string, func())) error) {
+func viewCommandName(view pluginview.View) string {
+	return extensions.InstalledViewCommandPrefix + view.InstallationID + ":" + view.ID
+}
+
+func (p *pluginScreens) registerViewCommands(catalog *commandCatalog) {
+	names := make(map[string]int)
 	for _, view := range p.views {
-		descriptor := extensions.CommandDescriptor{Name: view.ID, Title: view.Title + " · " + pluginViewUsage(view), Category: commandCategoryExtensions, Arguments: extensions.OptionalArguments}
-		if err := add(view.InstallationID, descriptor, func(argument string, accept func()) {
+		names[view.ID]++
+	}
+	for _, view := range p.views {
+		descriptor := extensions.CommandDescriptor{Name: viewCommandName(view), Title: view.Title + " · " + pluginViewUsage(view), Category: commandCategoryExtensions, Arguments: extensions.OptionalArguments}
+		if _, taken := catalog.lookup(view.ID); !taken && names[view.ID] == 1 {
+			descriptor.Aliases = []string{view.ID}
+		}
+		if err := catalog.add(view.InstallationID, descriptor, func(argument string, accept func()) {
 			accept()
 			if err := p.runPluginView(view, argument); err != nil {
 				p.message(err.Error())
 			}
-		}); err != nil {
+		}, nil); err != nil {
 			p.message(err.Error())
 		}
 	}
@@ -112,7 +122,7 @@ func (p *pluginScreens) runPluginView(view pluginview.View, argument string) err
 		return err
 	}
 	if len(words) > len(fields) {
-		return fmt.Errorf("/%s %s", view.ID, pluginViewUsage(view))
+		return fmt.Errorf("/%s %s", viewCommandName(view), pluginViewUsage(view))
 	}
 	form := make(map[string]string, len(fields))
 	for index, field := range fields {
@@ -126,7 +136,7 @@ func (p *pluginScreens) runPluginView(view pluginview.View, argument string) err
 }
 
 func (p *pluginScreens) showPluginView(view pluginview.View, form map[string]string) {
-	p.open, p.form = view.ID, form
+	p.open, p.form = viewCommandName(view), form
 	p.reader.show(p.pluginViewReaderQuery(view, form))
 }
 
@@ -146,6 +156,7 @@ func (p *pluginScreens) pluginViewReaderQuery(view pluginview.View, form map[str
 
 func (p *pluginScreens) readPluginViewRows(ctx context.Context, view pluginview.View, here pluginview.Context, form map[string]string) ([]pluginview.Row, error) {
 	var rows []pluginview.Row
+	seen := make(map[string]bool)
 	cursor := ""
 	for range maxPluginViewPages {
 		request, err := view.ListRequest(here, form, cursor)
@@ -164,13 +175,17 @@ func (p *pluginScreens) readPluginViewRows(ctx context.Context, view pluginview.
 		if page.Next == "" || view.List.Paging == nil {
 			return rows, nil
 		}
+		if seen[page.Next] {
+			return nil, errors.New("plugin view pagination repeated a cursor")
+		}
+		seen[page.Next] = true
 		cursor = page.Next
 	}
-	return rows, nil
+	return nil, fmt.Errorf("plugin view exceeds the %d-page limit; narrow the query", maxPluginViewPages)
 }
 
 func pluginViewDocument(view pluginview.View, rows []pluginview.Row) readerDocument {
-	detail := fmt.Sprintf("%d rows · /%s %s", len(rows), view.ID, pluginViewUsage(view))
+	detail := fmt.Sprintf("%d rows · /%s %s", len(rows), viewCommandName(view), pluginViewUsage(view))
 	if len(rows) == 0 {
 		return paragraphDocument(view.Title, detail, []string{"Nothing to show."})
 	}
@@ -197,7 +212,7 @@ func (p *pluginScreens) startPluginViewAction(view pluginview.View, action proto
 		return p.preparePluginViewAction(view, action, nil, "")
 	}
 	if key == "" {
-		return fmt.Errorf("/%s %s needs a %s", view.ID, action.ID, strings.ToLower(view.List.Key))
+		return fmt.Errorf("/%s %s needs a %s", viewCommandName(view), action.ID, strings.ToLower(view.List.Key))
 	}
 	if p.workbench != nil {
 		if _, pending := p.workbench.PendingInstalledCommand(pluginViewIntent(view, action, key)); pending {
@@ -206,7 +221,7 @@ func (p *pluginScreens) startPluginViewAction(view pluginview.View, action proto
 		}
 	}
 	form := p.form
-	if p.open != view.ID {
+	if p.open != viewCommandName(view) {
 		fields, err := view.ListForm(p.pluginViewContext())
 		if err != nil {
 			return err
@@ -241,15 +256,17 @@ func (p *pluginScreens) startPluginViewAction(view pluginview.View, action proto
 // selectPluginViewRow finds the row whose key is key, or the one row whose key
 // begins with it.
 func selectPluginViewRow(view pluginview.View, rows []pluginview.Row, key string) (pluginview.Row, error) {
-	var prefixed []pluginview.Row
+	var exact, prefixed []pluginview.Row
 	for _, row := range rows {
 		value := row.Text(view.List.Key)
 		if value == key {
-			return row, nil
-		}
-		if strings.HasPrefix(value, key) {
+			exact = append(exact, row)
+		} else if strings.HasPrefix(value, key) {
 			prefixed = append(prefixed, row)
 		}
+	}
+	if len(exact) > 0 {
+		prefixed = exact
 	}
 	switch len(prefixed) {
 	case 1:
@@ -324,7 +341,7 @@ func (p *pluginScreens) runPluginViewAction(view pluginview.View, action protoco
 				message := action.Title + " failed: " + err.Error()
 				if p.workbench != nil {
 					if _, pending := p.workbench.PendingInstalledCommand(intent); pending {
-						message += " · retry /" + view.ID + " " + action.ID + " " + key + " to reconcile the original call"
+						message += " · retry /" + viewCommandName(view) + " " + action.ID + " " + key + " to reconcile the original call"
 					}
 				}
 				p.message(message)
@@ -384,7 +401,7 @@ func (p *pluginScreens) openPluginViewForm(view pluginview.View, action protocol
 		}
 		entered := make(map[string]string, len(values))
 		for path, value := range values {
-			entered[path] = strings.TrimSpace(*value)
+			entered[path] = *value
 		}
 		dismiss()
 		submit(entered)

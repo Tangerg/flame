@@ -18,6 +18,7 @@ import (
 
 type providerCapabilities interface {
 	Profiles(context.Context) ([]modelprovider.Profile, error)
+	Profile(context.Context, string) (modelprovider.Profile, error)
 	RemoteModels(context.Context, modelprovider.Connection) ([]string, error)
 	Verify(context.Context, modelprovider.Connection) error
 }
@@ -40,62 +41,76 @@ func (c *Capabilities) Profiles(ctx context.Context) ([]modelsapp.ProviderProfil
 	}
 	result := make([]modelsapp.ProviderProfile, 0, len(profiles))
 	for _, profile := range profiles {
-		if err := profile.Validate(); err != nil {
-			return nil, err
-		}
-		meta, err := providerMetadata(profile)
+		converted, err := projectProviderProfile(profile)
 		if err != nil {
 			return nil, err
 		}
-		models := make([]modelsapp.Model, 0, len(profile.Models))
-		for _, entry := range profile.Models {
-			model, err := catalogModel(profile.ID, entry)
-			if err != nil {
-				return nil, fmt.Errorf("model: catalog facts for %s/%s: %w", profile.ID, entry.ID, err)
-			}
-			models = append(models, model)
-		}
-		result = append(result, modelsapp.ProviderProfile{Metadata: meta, Models: models, Endpoint: profile.Endpoint})
+		result = append(result, converted)
 	}
 	return result, nil
+}
+
+func (c *Capabilities) Profile(ctx context.Context, id string) (modelsapp.ProviderProfile, error) {
+	profile, err := c.adapters.Profile(ctx, id)
+	if err != nil {
+		return modelsapp.ProviderProfile{}, err
+	}
+	if profile.ID != id {
+		return modelsapp.ProviderProfile{}, errors.New("model: adapter returned a different provider")
+	}
+	return projectProviderProfile(profile)
+}
+func projectProviderProfile(profile modelprovider.Profile) (modelsapp.ProviderProfile, error) {
+	if err := profile.Validate(); err != nil {
+		return modelsapp.ProviderProfile{}, err
+	}
+	meta, err := providerMetadata(profile)
+	if err != nil {
+		return modelsapp.ProviderProfile{}, err
+	}
+	models := make([]modelsapp.Model, 0, len(profile.Models))
+	for _, entry := range profile.Models {
+		model, err := catalogModel(profile.ID, entry)
+		if err != nil {
+			return modelsapp.ProviderProfile{}, fmt.Errorf("model: catalog facts for %s/%s: %w", profile.ID, entry.ID, err)
+		}
+		models = append(models, model)
+	}
+	return modelsapp.ProviderProfile{Metadata: meta, Models: models, Endpoint: profile.Endpoint}, nil
 }
 
 func (c *Capabilities) AdmitSelection(ctx context.Context, selection modelchoice.Selection) error {
 	if err := selection.ValidateExact(); err != nil {
 		return err
 	}
-	profiles, err := c.adapters.Profiles(ctx)
+	profile, err := c.adapters.Profile(ctx, selection.Provider())
 	if err != nil {
+		if errors.Is(err, modelsapp.ErrProviderUnsupported) {
+			return fmt.Errorf("%w: %w", modelchoice.ErrUnsupported, err)
+		}
 		return err
 	}
-	for _, profile := range profiles {
-		if profile.ID != selection.Provider() {
-			continue
-		}
-		if err := profile.Validate(); err != nil {
-			return err
-		}
-		var metadata *catalog.Model
-		for _, entry := range profile.Models {
-			if entry.ID == selection.Model() {
-				owned := entry.Clone()
-				metadata = &owned
-				break
-			}
-		}
-		_, err := modelcatalog.NewAdmission(selection, metadata)
+	if profile.ID != selection.Provider() {
+		return modelsapp.ErrProviderUnsupported
+	}
+	if err := profile.Validate(); err != nil {
 		return err
 	}
-	return fmt.Errorf("%w: %w: %s", modelchoice.ErrUnsupported, modelsapp.ErrProviderUnsupported, selection.Provider())
+	var metadata *catalog.Model
+	for _, entry := range profile.Models {
+		if entry.ID == selection.Model() {
+			owned := entry.Clone()
+			metadata = &owned
+			break
+		}
+	}
+	_, err = modelcatalog.NewAdmission(selection, metadata)
+	return err
 }
 
 func (c *Capabilities) Probe(ctx context.Context, entry provider.Provider) error {
-	profiles, err := c.adapters.Profiles(ctx)
-	if err != nil {
+	if _, err := c.Profile(ctx, entry.ID()); err != nil {
 		return err
-	}
-	if !slices.ContainsFunc(profiles, func(profile modelprovider.Profile) bool { return profile.ID == entry.ID() }) {
-		return modelsapp.ErrProviderUnsupported
 	}
 	connection, err := connectionFromProvider(entry.ID(), entry)
 	if err != nil {

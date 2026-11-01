@@ -336,3 +336,24 @@ type ToolHost func(context.Context) (sdk.ParamsBase, func() error, error)
 // On failure preparation must release any resources it acquired. host opens the
 // canonical installed grant when the preparation wants it.
 type ToolPreparation func(context.Context, Executable, ToolHost) (ToolCall, func() error, error)
+
+// A projection receives only the named callbacks on its original borrowed
+// session. This grant never exposes the Runtime's general RPC surface.
+func (p *Pool) OpenCallbacks(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, callbacks ...qimumcp.Callback) (sdk.ParamsBase, func(), error) {
+	if p.callbacks == nil {
+		return sdk.ParamsBase{}, nil, ErrUnavailable
+	}
+	if _, err := p.SessionActor(ctx, id, session); err != nil {
+		return sdk.ParamsBase{}, nil, err
+	}
+	ref, closeGrant, err := p.callbacks.Open(ctx, session, callbackPayloadLimits, callbacks...)
+	if err != nil {
+		return sdk.ParamsBase{}, nil, err
+	}
+	metadata, err := qimumcp.CallbackMetadata(ref)
+	if err != nil {
+		closeGrant()
+		return sdk.ParamsBase{}, nil, err
+	}
+	return metadata, closeGrant, nil
+}

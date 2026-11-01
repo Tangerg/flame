@@ -58,19 +58,22 @@ func TestWorktreeArchivesTheSameFrozenModuleAsItsPrimaryCheckout(t *testing.T) {
 
 func TestPublishedVersionKeepsItsMetadataWhenAnotherModuleChanges(t *testing.T) {
 	name := filepath.Join(t.TempDir(), "candidate.info")
-	first, err := versionInfo(name, "v0.1.0-candidate.1", "2026-10-20T00:00:00Z")
+	first, err := versionInfo(name, "v0.1.0-candidate.1", "2026-10-20T00:00:00Z", true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := publishImmutable(name, first); err != nil {
 		t.Fatal(err)
 	}
-	repeated, err := versionInfo(name, "v0.1.0-candidate.1", "2026-10-21T00:00:00Z")
+	repeated, err := versionInfo(name, "v0.1.0-candidate.1", "2026-10-21T00:00:00Z", true)
 	if err != nil || !bytes.Equal(first, repeated) {
 		t.Fatalf("version metadata changed: %s, %v", repeated, err)
 	}
 	if err := publishImmutable(name, repeated); err != nil {
 		t.Fatal(err)
+	}
+	if _, err := versionInfo(name, "v0.1.0-candidate.1", "2026-10-21T00:00:00Z", false); err == nil {
+		t.Fatal("a tree publication accepted a different time for the same version")
 	}
 }
 
@@ -80,7 +83,7 @@ func TestVersionPublicationRefusesInvalidExistingMetadata(t *testing.T) {
 		if err := os.WriteFile(name, []byte(content), 0600); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := versionInfo(name, "v0.1.0-candidate.1", "2026-10-21T00:00:00Z"); err == nil {
+		if _, err := versionInfo(name, "v0.1.0-candidate.1", "2026-10-21T00:00:00Z", true); err == nil {
 			t.Fatal("invalid published metadata was accepted")
 		}
 		stored, err := os.ReadFile(name)

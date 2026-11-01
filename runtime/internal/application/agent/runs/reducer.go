@@ -243,9 +243,11 @@ func (r *reducer) reduceFact(ev ExecutionFact) (factReduction, error) {
 		if err := e.Caller.Validate(); err != nil {
 			return factReduction{}, err
 		}
-		if e.Caller.Snapshot().Invocation.ID != e.Start.CallID || e.Caller.Snapshot().Tool.ModelName() != e.Start.ToolName {
+		caller := e.Caller.Snapshot()
+		if caller.Invocation.ID != e.Start.CallID || !e.Start.MatchesCapturedRef(caller.Tool) {
 			return factReduction{}, fmt.Errorf("%w: prepared Tool caller differs from execution", errExecutorContract)
 		}
+		e.Start.Source = caller.Tool
 		reduced, err := r.startToolCall(e.Start)
 		if err != nil {
 			return reduced, err
@@ -660,7 +662,7 @@ func (r *reducer) finishToolResults(batch ToolResultsCommitted) (factReduction, 
 		}
 		if ref, open := r.tools.get(start.CallID); open {
 			call, _ := ref.item.ToolCall()
-			if ref.modelCallSequence != sequence || ref.toolCallIndex != start.ToolCallIndex || ref.sourceCallID != start.SourceCallID || call.Invocation.Name != start.ToolName {
+			if ref.modelCallSequence != sequence || ref.toolCallIndex != start.ToolCallIndex || ref.sourceCallID != start.SourceCallID || !call.Invocation.MatchesSource(start.ToolName, start.Source) {
 				return factReduction{}, errors.New("runs: result publication differs from its open call")
 			}
 			continue

@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/integrity"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 func TestRealProcessDriverRejectsNativeObjectsBeforeCreationOrBusiness(t *testing.T) {
@@ -22,7 +23,7 @@ func TestRealProcessDriverRejectsNativeObjectsBeforeCreationOrBusiness(t *testin
 			if err := e.host.Register(native); err != nil {
 				t.Fatal(err)
 			}
-			declaration := qimu.UnitDeclaration{ID: "backend", Profile: qimu.MCPProcess, Exports: []qimu.ExportDeclaration{{Name: "native", Contract: native.Ref()}}}
+			declaration := qimu.UnitDeclaration{ID: "backend", Profile: qimumcp.ProcessProfile, Exports: []qimu.ExportDeclaration{{Name: "native", Contract: native.Ref()}}}
 			if direction == "import" {
 				declaration.Exports = []qimu.ExportDeclaration{{Name: "echo", Contract: e.ref.Contract}}
 				declaration.Imports = []qimu.ImportDeclaration{{Slot: "shared", Contract: native.Ref(), Optional: true}}

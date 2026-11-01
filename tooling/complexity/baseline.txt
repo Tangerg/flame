@@ -8,7 +8,6 @@
 36 apps/desktop/cmd/bridgegen/source.go:readMethods
 37 apps/desktop/cmd/bridgegen/typescript.go:zod
 37 examples/plugins/reviews/backend/cmd/reviews/server.go:newServer
-38 packages/go-sdk/client/client_rpc.go:Client.invokeOperation
 28 packages/go-sdk/client/plugin_streams.go:PluginStreamingMethod.Stream
 29 plugins/github/backend/issue_writes.go:connector.updateIssue
 25 plugins/github/contractgen/main.go:define
@@ -55,7 +54,7 @@
 28 qimu/point.go:Host.validatePlanLocked
 28 qimu/point.go:snapshotMetadata
 24 qimu/portable/limits.go:checkJSON
-45 qimu/process/driver.go:Driver.Prepare
+26 qimu/process/driver.go:Driver.Prepare
 24 qimu/runner/runner.go:Open
 26 qimu/sqlite/installation.go:Store.CommitInstallation
 47 qimu/sqlite/store.go:Open
@@ -71,7 +70,7 @@
 27 runtime/internal/adapter/integration/pluginpackage/author.go:BuildRelease
 24 runtime/internal/adapter/integration/pluginpackage/author.go:authorManifest
 24 runtime/internal/adapter/integration/pluginpackage/executions.go:Releases.Connection
-55 runtime/internal/adapter/integration/pluginpackage/manifest.go:parseExtensions
+44 runtime/internal/adapter/integration/pluginpackage/manifest.go:parseExtensions
 30 runtime/internal/adapter/integration/pluginpackage/manifest.go:parseMetadata
 22 runtime/internal/adapter/integration/pluginpackage/modules.go:componentModule
 24 runtime/internal/adapter/integration/pluginservices/commands.go:CommandCalls.admitCommandRoute
@@ -97,13 +96,11 @@
 23 runtime/internal/adapter/run/execution/model_context_compaction.go:newModelContextCompaction
 32 runtime/internal/adapter/run/execution/preflight.go:InteractionExecutor.PrepareContinuation
 30 runtime/internal/adapter/run/execution/recovery_probe.go:InteractionExecutor.CanResumeWaitingExecution
-21 runtime/internal/adapter/run/execution/result_commit.go:toolResultMetadata.validate
 30 runtime/internal/adapter/run/execution/tool.go:observedInteractionTool.Call
 23 runtime/internal/adapter/run/execution/tool.go:wrapInteractionTools
 39 runtime/internal/adapter/run/execution/tool_receipts.go:interactionSession.investigateToolReceipts
 22 runtime/internal/adapter/run/execution/tree.go:interactionSession.captureHumanInputBarrier
 26 runtime/internal/adapter/run/segment/effects_commit.go:Effects.applyCommit
-58 runtime/internal/adapter/run/segment/execution_tree.go:Effects.CommitExecutionTree
 24 runtime/internal/adapter/toolset/code_intelligence.go:withCodeIntelligence
 25 runtime/internal/adapter/workspace/files.go:fileSelection.list
 26 runtime/internal/application/agent/runs/accepted_revival.go:Coordinator.reviveAcceptedContinuation
@@ -112,8 +109,7 @@
 24 runtime/internal/application/agent/runs/continuation_validation.go:validatePendingRunTree
 24 runtime/internal/application/agent/runs/coordinator.go:Segments.commitOpening
 22 runtime/internal/application/agent/runs/execution_fact_commit.go:cloneExecutionFact
-21 runtime/internal/application/agent/runs/projection_event.go:ItemStart.validate
-51 runtime/internal/application/agent/runs/pump_execution_tree.go:segmentPump.commitExecutionTree
+42 runtime/internal/application/agent/runs/pump_execution_tree.go:segmentPump.commitExecutionTree
 27 runtime/internal/application/agent/runs/recovery.go:newRecoveryPlanner
 34 runtime/internal/application/agent/runs/recovery_commit.go:RecoveryCommit.Validate
 29 runtime/internal/application/agent/runs/reducer.go:reducer.failModelCall

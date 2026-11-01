@@ -1,13 +1,16 @@
 package toolset
 
 import (
+	"slices"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-func TestResolverExcludesCollidingRemoteIdentities(t *testing.T) {
+func TestResolverQualifiesCollidingRemoteIdentities(t *testing.T) {
 	for _, test := range []struct {
 		name      string
 		tools     []toolcontract.Tool
@@ -57,6 +60,9 @@ func TestResolverExcludesCollidingRemoteIdentities(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
+				if !definitionNames(manifestTools(manifest))[ref.PublishedName(true)] {
+					t.Errorf("missing source-qualified executable for %s", ref)
+				}
 				if len(conflicts[ref]) == 0 {
 					t.Errorf("diagnostic does not identify %s: %v", ref, conflicts)
 				}
@@ -68,5 +74,46 @@ func TestResolverExcludesCollidingRemoteIdentities(t *testing.T) {
 				t.Fatalf("manifest is not executable: %v", err)
 			}
 		})
+	}
+}
+
+func TestRetainedInstallationToolsKeepDistinctNamesAcrossCatalogChanges(t *testing.T) {
+	raw := mcpToolStub{name: "github_read", server: "github", remote: "read"}
+	makeTool := func() releasedMCPToolStub {
+		id := testsupport.InstallationID(t)
+		source, err := mcpserver.InstallationSource(id, testsupport.Digest("1"), testsupport.Digest("2"), testsupport.Digest("3"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return releasedMCPToolStub{mcpToolStub: raw, source: source}
+	}
+	first, second := makeTool(), makeTool()
+	firstRef, err := Identify(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondRef, err := Identify(second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, values := range [][]toolcontract.Tool{{first, second}, {second, first}, {first}} {
+		builder := manifestBuilder{deferred: values}
+		if err := builder.bindModelNames(&Retained{MCP: []domaintool.Ref{firstRef, secondRef}}); err != nil {
+			t.Fatal(err)
+		}
+		discovery, err := NewDiscovery(builder.deferred)
+		if err != nil {
+			t.Fatal(err)
+		}
+		names := discovery.DeferredToolNames()
+		for _, executable := range builder.deferred {
+			ref, err := Identify(executable)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if executable.Definition().Name != ref.PublishedName(true) || !slices.Contains(names, ref.PublishedName(true)) {
+				t.Fatalf("unaddressable retained tool %s: %v", ref, names)
+			}
+		}
 	}
 }

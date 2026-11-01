@@ -128,12 +128,71 @@
       }
     },
     {
-      "name": "flame.hooks/execute.v1",
+      "name": "flame.hooks/evaluate.v1",
       "kind": "command",
       "target": "installation",
-      "description": "Execute one trusted lifecycle command under its original receipt, bounded input, output and process lifetime. Return advice; never grant Runtime authorization.",
+      "description": "Evaluate one captured lifecycle event and return advice. The Runtime retains trust, command material bounds and final authorization.",
       "input": {
         "$defs": {
+          "hook.Hook": {
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "type": "string"
+              },
+              "event": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "PreToolUse",
+                      "PostToolUse",
+                      "UserPromptSubmit",
+                      "SessionStart",
+                      "PreCompact",
+                      "Stop",
+                      "Notification"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "inject": {
+                "type": "string"
+              },
+              "matcher": {
+                "type": "string"
+              },
+              "scope": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "global",
+                      "project"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              },
+              "timeoutMillis": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              }
+            },
+            "required": [
+              "event",
+              "scope",
+              "source"
+            ],
+            "type": "object"
+          },
           "hook.Input": {
             "additionalProperties": false,
             "properties": {
@@ -198,34 +257,25 @@
             ],
             "type": "object"
           },
-          "hookprovider.Command": {
+          "hookprovider.Evaluation": {
             "additionalProperties": false,
             "properties": {
-              "command": {
-                "type": "string"
-              },
-              "cwd": {
-                "type": "string"
+              "declarativeOnly": {
+                "type": "boolean"
               },
               "input": {
                 "$ref": "#/$defs/hook.Input"
               },
-              "timeoutMillis": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "minimum": 1,
-                "type": "integer"
+              "rules": {
+                "items": {
+                  "$ref": "#/$defs/hook.Hook"
+                },
+                "type": "array"
               }
             },
             "required": [
-              "command",
-              "cwd",
-              "input",
-              "timeoutMillis"
+              "rules",
+              "input"
             ],
             "type": "object"
           }
@@ -233,31 +283,22 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
-          "command": {
-            "type": "string"
-          },
-          "cwd": {
-            "type": "string"
+          "declarativeOnly": {
+            "type": "boolean"
           },
           "input": {
             "$ref": "#/$defs/hook.Input"
           },
-          "timeoutMillis": {
-            "allOf": [
-              {
-                "maximum": 9223372036854775807,
-                "minimum": -9223372036854775808
-              }
-            ],
-            "minimum": 1,
-            "type": "integer"
+          "rules": {
+            "items": {
+              "$ref": "#/$defs/hook.Hook"
+            },
+            "type": "array"
           }
         },
         "required": [
-          "command",
-          "cwd",
-          "input",
-          "timeoutMillis"
+          "rules",
+          "input"
         ],
         "type": "object"
       },
@@ -293,55 +334,38 @@
             ],
             "type": "object"
           },
-          "hookprovider.Failure": {
-            "additionalProperties": false,
-            "properties": {
-              "kind": {
-                "allOf": [
-                  {
-                    "enum": [
-                      "failed",
-                      "canceled",
-                      "timedOut"
-                    ]
-                  }
-                ],
-                "type": "string"
-              },
-              "message": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind",
-              "message"
-            ],
-            "type": "object"
-          },
-          "hookprovider.Result": {
+          "hookprovider.Advice": {
             "additionalProperties": false,
             "properties": {
               "decision": {
                 "$ref": "#/$defs/hook.CommandDecision"
               },
-              "exitCode": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
+              "diagnostics": {
+                "items": {
+                  "$ref": "#/$defs/hookprovider.Diagnostic"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "decision",
+              "diagnostics"
+            ],
+            "type": "object"
+          },
+          "hookprovider.Diagnostic": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
               },
-              "failure": {
-                "$ref": "#/$defs/hookprovider.Failure"
-              },
-              "stderr": {
+              "source": {
                 "type": "string"
               }
             },
             "required": [
-              "exitCode"
+              "source",
+              "message"
             ],
             "type": "object"
           }
@@ -352,24 +376,16 @@
           "decision": {
             "$ref": "#/$defs/hook.CommandDecision"
           },
-          "exitCode": {
-            "allOf": [
-              {
-                "maximum": 9223372036854775807,
-                "minimum": -9223372036854775808
-              }
-            ],
-            "type": "integer"
-          },
-          "failure": {
-            "$ref": "#/$defs/hookprovider.Failure"
-          },
-          "stderr": {
-            "type": "string"
+          "diagnostics": {
+            "items": {
+              "$ref": "#/$defs/hookprovider.Diagnostic"
+            },
+            "type": "array"
           }
         },
         "required": [
-          "exitCode"
+          "decision",
+          "diagnostics"
         ],
         "type": "object"
       }

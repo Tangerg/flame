@@ -11,9 +11,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/distribution"
 	"github.com/Tangerg/qimu/integrity"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 // Connection transfers the original content lease to the real process owner.
@@ -99,7 +99,7 @@ func (r *Releases) Connection(ctx context.Context, installation plugin.Installat
 
 func selectedVariant(manifest distribution.Manifest, server mcpserver.ServerName) (distribution.Variant, error) {
 	for _, unit := range manifest.Units {
-		if unit.ID != plugins.BackendUnit(server) || unit.Profile != qimu.MCPProcess {
+		if unit.ID != plugins.BackendUnit(server) || unit.Profile != qimumcp.ProcessProfile {
 			continue
 		}
 		for _, variant := range unit.Variants {

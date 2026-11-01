@@ -1,0 +1,22 @@
+[
+  "alibaba",
+  "anthropic",
+  "anthropic-compatible",
+  "azureopenai",
+  "deepseek",
+  "fireworks",
+  "google",
+  "groq",
+  "huggingface",
+  "minimax",
+  "mistral",
+  "moonshot",
+  "openai",
+  "openai-compatible",
+  "openrouter",
+  "perplexity",
+  "together",
+  "xai",
+  "xiaomi",
+  "zhipu"
+]

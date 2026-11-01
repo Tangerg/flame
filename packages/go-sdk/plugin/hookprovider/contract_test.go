@@ -13,7 +13,7 @@ func TestContractCarriesBoundedOriginalHookMaterial(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	method, found := contract.Method("flame.hooks/execute.v1")
+	method, found := contract.Method("flame.hooks/evaluate.v1")
 	if !found {
 		t.Fatal("missing execution contract")
 	}
@@ -22,7 +22,7 @@ func TestContractCarriesBoundedOriginalHookMaterial(t *testing.T) {
 	if err := input.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	encoded, err := jsonvalue.Encode(input)
+	encoded, err := jsonvalue.Encode(Evaluation{Rules: []hook.Hook{{Event: input.Input.Event, Command: input.Command, Scope: hook.ScopeGlobal, Source: directory}}, Input: input.Input})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,18 +65,6 @@ func TestCommandOutcomePreservesFailureWithoutInventingAnAllow(t *testing.T) {
 	}
 	result := Result{ExitCode: -1, Failure: &Failure{Kind: TimedOut, Message: "deadline exceeded"}}
 	if err := result.Validate(); err != nil {
-		t.Fatal(err)
-	}
-	contract, err := Contract()
-	if err != nil {
-		t.Fatal(err)
-	}
-	method, _ := contract.Method("flame.hooks/execute.v1")
-	encoded, err := jsonvalue.Encode(result)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := method.ValidateOutput(encoded.JSON()); err != nil {
 		t.Fatal(err)
 	}
 	result.Decision = &hook.CommandDecision{Verdict: "future"}

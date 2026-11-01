@@ -13,7 +13,7 @@ export {
   DOCK_MEASURE_PROPERTY,
   type AgentDockTab,
 } from "@/ui/agent/context-dock";
-export { AgentRow, AgentRowEditor } from "@/ui/agent/navigation-row";
+export { AgentRow } from "@/ui/agent/navigation-row";
 export { AgentStatusPill } from "@/ui/agent/status-pill";
 export { ToolText } from "@/ui/agent/tool-text";
 export { AgentDockToggle, AgentSurfaceHeader } from "@/ui/agent/surface-header";

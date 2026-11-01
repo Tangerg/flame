@@ -15,7 +15,7 @@ export {
   closeWorkspaceFile,
   forgetWorkspaceSessionScopes,
   openWorkspaceFile,
-  openWorkspaceDiffForFile,
+  openWorkspaceViewAtPath,
   openWorkspaceSettingsPane,
   openWorkspaceView,
   openWorkspaceViewInDock,

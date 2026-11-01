@@ -4,18 +4,20 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
 type wireContribution struct {
-	Background bool                  `json:"background,omitzero"`
-	ID         plugin.ContributionID `json:"id"`
-	Server     mcpserver.ServerName  `json:"server"`
-	Export     string                `json:"export"`
-	Contract   string                `json:"contract"`
-	Requires   []wireRequirement     `json:"requires,omitzero"`
+	ModelProviders string                `json:"modelProviders,omitzero"`
+	Background     bool                  `json:"background,omitzero"`
+	ID             plugin.ContributionID `json:"id"`
+	Server         mcpserver.ServerName  `json:"server"`
+	Export         string                `json:"export"`
+	Contract       string                `json:"contract"`
+	Requires       []wireRequirement     `json:"requires,omitzero"`
 }
 
 type wireManagedBackend struct {
@@ -42,16 +44,20 @@ type wirePointValue struct {
 }
 
 type wireComponent struct {
-	Selector       *wireRendererSelector        `json:"selector,omitzero"`
-	ID             plugin.ContributionID        `json:"id"`
-	Title          string                       `json:"title"`
-	Scope          extension.ComponentScope     `json:"scope"`
-	Placement      extension.ComponentPlacement `json:"placement"`
-	Entry          string                       `json:"entry"`
-	Export         string                       `json:"export"`
-	Contribution   *plugin.ContributionID       `json:"contribution,omitzero"`
-	Material       *string                      `json:"material,omitzero"`
-	SettingsIntent *extension.SettingsIntent    `json:"settingsIntent,omitzero"`
+	ToolCategory builtin.ToolCategory `json:"toolCategory,omitzero"`
+	TargetView   string               `json:"targetView,omitzero"`
+
+	Selector        *wireRendererSelector        `json:"selector,omitzero"`
+	ID              plugin.ContributionID        `json:"id"`
+	Title           string                       `json:"title"`
+	LocalizedTitles map[string]string            `json:"localizedTitles,omitzero"`
+	Scope           extension.ComponentScope     `json:"scope"`
+	Placement       extension.ComponentPlacement `json:"placement"`
+	Entry           string                       `json:"entry"`
+	Export          string                       `json:"export"`
+	Contribution    *plugin.ContributionID       `json:"contribution,omitzero"`
+	Material        *string                      `json:"material,omitzero"`
+	SettingsIntent  *string                      `json:"settingsIntent,omitzero"`
 }
 
 type wireInput struct {

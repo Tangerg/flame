@@ -16,7 +16,6 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -35,11 +34,6 @@ type executableCommand struct {
 	source    executableSource
 	directory string
 	timeout   time.Duration
-}
-
-type executableSource struct {
-	path     string
-	identity os.FileInfo
 }
 
 type commandRequest struct {
@@ -61,21 +55,6 @@ func (e executableCommand) Execute(ctx context.Context, request extensions.Comma
 	if err := validateCommandRequest(request); err != nil {
 		return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s request: %w", e.pluginID, e.command, err)
 	}
-	executable, opened, err := filesystem.OpenFileExpected(e.source.path, e.source.identity, 0)
-	if err != nil {
-		switch {
-		case errors.Is(err, filesystem.ErrChanged):
-			return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s entry changed since discovery", e.pluginID, e.command)
-		case errors.Is(err, filesystem.ErrNotRegular):
-			return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s entry is not a regular file", e.pluginID, e.command)
-		default:
-			return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s open discovered entry: %w", e.pluginID, e.command, err)
-		}
-	}
-	defer func() { _ = executable.Close() }()
-	if err := validateExecutable(e.source.path, opened); err != nil {
-		return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s: %w", e.pluginID, e.command, err)
-	}
 	ctx, cancel := context.WithTimeout(ctx, e.timeout)
 	defer cancel()
 	payload, err := json.Marshal(commandRequest{
@@ -89,10 +68,17 @@ func (e executableCommand) Execute(ctx context.Context, request extensions.Comma
 	if len(payload) > maxCommandRequestBytes {
 		return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s request exceeds %d bytes", e.pluginID, e.command, maxCommandRequestBytes)
 	}
-	// #nosec G204 -- discovery confines the manifest entry to the explicitly
-	// configured plugin directory, and Execute reopens the same discovered
-	// executable identity immediately before process admission.
-	process := exec.CommandContext(ctx, e.source.path)
+	privateDir, err := os.MkdirTemp("", "flame-terminal-command-")
+	if err != nil {
+		return extensions.CommandResult{}, fmt.Errorf("create private command directory: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(privateDir) }()
+	entry, err := e.source.stage(privateDir)
+	if err != nil {
+		return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s: %w", e.pluginID, e.command, err)
+	}
+	// #nosec G204 -- stage verified the private executable against the discovery digest.
+	process := exec.CommandContext(ctx, entry)
 	configureProcess(process)
 	process.Dir = e.directory
 	process.Env = commandEnvironment(e.pluginID, e.command)

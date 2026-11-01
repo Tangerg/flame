@@ -42,7 +42,6 @@ vi.mock("@/features/agent/public/run", async (importOriginal) => ({
 }));
 vi.mock("@/features/shell/workbench/panel/RunStatusPill", () => ({ RunStatusPill: () => null }));
 vi.mock("@/features/shell/workbench/panel/RunAnnouncer", () => ({ RunAnnouncer: () => null }));
-vi.mock("@/features/shell/workbench/panel/HeaderDiffStat", () => ({ HeaderDiffStat: () => null }));
 vi.mock("@/features/shell/workbench/panel/ChatStream", () => ({
   ChatStream: () => (
     <>

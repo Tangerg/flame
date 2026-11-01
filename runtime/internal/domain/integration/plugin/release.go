@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/process"
@@ -162,10 +163,7 @@ func (d Declaration) clone() Declaration {
 	d.PointValues = slices.Clone(d.PointValues)
 	d.Components = slices.Clone(d.Components)
 	for i := range d.Components {
-		if d.Components[i].Selector != nil {
-			copy := *d.Components[i].Selector
-			d.Components[i].Selector = &copy
-		}
+		d.Components[i] = d.Components[i].clone()
 	}
 	d.Servers = slices.Clone(d.Servers)
 	for index := range d.Servers {
@@ -408,6 +406,13 @@ func (b *Builder) Declaration() (Declaration, error) {
 	for index, diagnostic := range b.declaration.Diagnostics {
 		if err := diagnostic.Validate(); err != nil {
 			return Declaration{}, fmt.Errorf("diagnostic %d: %w", index, err)
+		}
+	}
+	for _, component := range b.declaration.Components {
+		if component.TargetView != "" && !slices.ContainsFunc(b.declaration.Components, func(view ClientComponent) bool {
+			return view.ID.String() == component.TargetView && view.Placement == extension.ComponentPlacementWorkspaceView && view.Scope == extension.ComponentScopeWorkspace
+		}) {
+			return Declaration{}, refuse(DiagnosticInvalidDependencies, "workspace action %q targets an unavailable workspace view %q", component.ID, component.TargetView)
 		}
 	}
 	return b.declaration.clone(), nil

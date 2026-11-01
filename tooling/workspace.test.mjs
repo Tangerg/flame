@@ -94,11 +94,13 @@ test("module artifacts use pinned dependency graphs and frozen tool source", asy
     );
     await write("b/b.go", 'package b\nconst Value = "second"\n');
     const second = commit("later working graph");
+    const tree = git("rev-parse", second + ":b");
+    const time = "2026-11-01T00:00:00Z";
     await write(
       "module-candidates.json",
       JSON.stringify({
         "example.com/a": { "v1.0.0": first },
-        "example.com/b": { "v1.0.0": first, "v1.1.0": second },
+        "example.com/b": { "v1.0.0": first, "v1.1.0": { tree, time } },
       }),
     );
     const coordination = commit("freeze candidate coordination");
@@ -123,7 +125,7 @@ test("module artifacts use pinned dependency graphs and frozen tool source", asy
       "example.com/b@v1.1.0",
     ]);
     assert.equal(artifacts.modules["example.com/b@v1.0.0"].revision, first);
-    assert.equal(artifacts.modules["example.com/b@v1.1.0"].revision, second);
+    assert.equal(artifacts.modules["example.com/b@v1.1.0"].revision, tree);
     assert.match(
       await readFile(
         join(repository, "proxy/example.com/a/@v/v1.0.0.mod"),

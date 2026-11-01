@@ -71,7 +71,7 @@ test("search results omit absent snippets while preserving recorded empty lines"
     );
     const web = structuredClone(
       fixture.RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-remote"].items.find(
-        (item) => item.type === "toolCall" && item.tool.name === "web_search",
+        (item) => item.type === "toolCall" && item.tool.name === "web_web_search",
       ),
     );
     if (glob?.type !== "toolCall" || read?.type !== "toolCall" || web?.type !== "toolCall")

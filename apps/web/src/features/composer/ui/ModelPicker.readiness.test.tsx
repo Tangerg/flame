@@ -44,7 +44,7 @@ async function mount(read: () => Promise<SelectableModel[]>, explicit = true) {
     ctx.contribute(SETTINGS_PANE, {
       id: "package:chosen:models",
       label: "Model settings",
-      intent: "modelProviders",
+      intent: "model-providers",
       component: () => null,
     });
   });

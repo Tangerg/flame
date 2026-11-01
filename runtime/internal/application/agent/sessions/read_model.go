@@ -188,11 +188,12 @@ func (c *Coordinator) View(ctx context.Context, id string) (View, error) {
 
 // CreateView admits a fresh session and returns its fully resolved read model.
 func (c *Coordinator) CreateView(ctx context.Context, title, cwd string) (View, error) {
-	value, err := c.Create(ctx, title, cwd)
+	creation, err := c.PrepareCreate(ctx, title, cwd)
 	if err != nil {
 		return View{}, err
 	}
-	return c.view(value, activityIdle)
+	_, err = creation.apply(ctx)
+	return creation.View, err
 }
 
 // UpdateView applies an edit and returns its fully resolved read model.
@@ -211,11 +212,12 @@ func (c *Coordinator) UpdateView(ctx context.Context, id string, patch Patch) (V
 // ForkView branches a session and returns the child session's fully resolved
 // read model.
 func (c *Coordinator) ForkView(ctx context.Context, spec ForkSpec) (View, error) {
-	value, err := c.Fork(ctx, spec)
+	creation, err := c.PrepareFork(ctx, spec)
 	if err != nil {
 		return View{}, err
 	}
-	return c.view(value, activityIdle)
+	_, err = creation.apply(ctx)
+	return creation.View, err
 }
 
 func (c *Coordinator) views(ctx context.Context, values []session.Session) ([]View, error) {

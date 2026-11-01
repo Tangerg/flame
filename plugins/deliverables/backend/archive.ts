@@ -35,7 +35,7 @@ type Row = Record<string, SQLOutputValue>;
 
 const tables = Object.freeze({
   commands:
-    "CREATE TABLE commands (sequence INTEGER PRIMARY KEY, id TEXT UNIQUE NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('command','tool')), method TEXT NOT NULL, input TEXT NOT NULL CHECK(json_valid(input)), digest TEXT NOT NULL, invocation TEXT NOT NULL CHECK(json_valid(invocation)), reply TEXT CHECK(reply IS NULL OR json_valid(reply)))",
+    "CREATE TABLE commands (sequence INTEGER PRIMARY KEY, id TEXT UNIQUE NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('command','tool')), method TEXT NOT NULL, digest TEXT NOT NULL CHECK(length(digest)=64), invocation TEXT NOT NULL CHECK(json_valid(invocation)), reply TEXT CHECK(reply IS NULL OR json_valid(reply)))",
   documents:
     "CREATE TABLE documents (sequence INTEGER PRIMARY KEY, id TEXT UNIQUE NOT NULL, header TEXT NOT NULL CHECK(json_valid(header)))",
   revisions:
@@ -156,18 +156,17 @@ export class Archive {
       );
   }
 
-  #capacity(extra = 0): void {
+  #capacity(): void {
     const usage = this.#db
       .prepare(
         `SELECT
-      (SELECT coalesce(sum(length(CAST(input AS BLOB))+length(CAST(invocation AS BLOB))+coalesce(length(CAST(reply AS BLOB)),?)),0) FROM commands) +
       (SELECT coalesce(sum(length(bytes)+length(CAST(inspection AS BLOB))+length(CAST(metadata AS BLOB))+coalesce(length(CAST(processing AS BLOB)),0)),0) FROM revisions) +
       (SELECT coalesce(sum(length(bytes)+length(CAST(metadata AS BLOB))),0) FROM assets) +
       (SELECT coalesce(sum(length(CAST(payload AS BLOB))),0) FROM assessments) +
       (SELECT coalesce(sum(size),0) FROM uploads) AS used`,
       )
-      .get(BigInt(LIMITS.reportBytes * 2))!;
-    if ((usage.used as bigint) + BigInt(extra) > BigInt(LIMITS.archiveBytes))
+      .get()!;
+    if ((usage.used as bigint) > BigInt(LIMITS.archiveBytes))
       throw new Refusal(
         "archive_capacity",
         "deliverable archive capacity is exhausted; remove retained files or discard uploads",
@@ -204,15 +203,6 @@ export class Archive {
   }
 
   #reply(row: Row): Reply | undefined {
-    const original: Original = {
-      id: text(row.id),
-      kind: text(row.kind) as Original["kind"],
-      method: text(row.method),
-      input: text(row.input),
-      inputDigest: text(row.digest),
-      invocation: json(row.invocation) as Invocation,
-    };
-    this.#original(original);
     if (row.reply === null) return undefined;
     const reply = json(row.reply) as Reply;
     if (
@@ -248,7 +238,6 @@ export class Archive {
         if (
           previous.kind !== original.kind ||
           previous.method !== original.method ||
-          previous.input !== original.input ||
           previous.digest !== original.inputDigest ||
           previous.invocation !== canonicalJSON(original.invocation)
         )
@@ -260,34 +249,27 @@ export class Archive {
           );
         return { fresh: false as const, reply };
       }
-      const reserve =
-        capacity === "ordinary"
-          ? LIMITS.inputBytes + LIMITS.reportBytes * 2 + 4096
-          : 0;
+      // Settled receipts must remain retrievable after their files are removed.
+      // Only unresolved work occupies admission slots; cleanup reserves the last.
+      const pending = this.#db
+        .prepare("SELECT count(*) AS n FROM commands WHERE reply IS NULL")
+        .get()!.n as bigint;
       if (
-        (this.#db.prepare("SELECT count(*) AS n FROM commands").get()!
-          .n as bigint) >=
-        BigInt(LIMITS.records - (capacity === "ordinary" ? 1 : 0))
+        pending >=
+        BigInt(LIMITS.pendingCommands - (capacity === "ordinary" ? 1 : 0))
       )
         throw new Refusal(
           "receipt_capacity",
-          "retained original command capacity is exhausted",
+          "too many pending deliverable operations",
         );
-      this.#capacity(
-        Buffer.byteLength(original.input) +
-          Buffer.byteLength(canonicalJSON(original.invocation)) +
-          LIMITS.reportBytes * 2 +
-          reserve,
-      );
       this.#db
         .prepare(
-          "INSERT INTO commands(id,kind,method,input,digest,invocation) VALUES(?,?,?,?,?,?)",
+          "INSERT INTO commands(id,kind,method,digest,invocation) VALUES(?,?,?,?,?)",
         )
         .run(
           original.id,
           original.kind,
           original.method,
-          original.input,
           original.inputDigest,
           canonicalJSON(original.invocation),
         );
@@ -303,11 +285,7 @@ export class Archive {
           const value = publish();
           const reply: Reply = { value };
           this.#settle(original.id, reply);
-          this.#capacity(
-            capacity === "ordinary"
-              ? LIMITS.inputBytes + LIMITS.reportBytes * 2 + 4096
-              : 0,
-          );
+          this.#capacity();
           return reply;
         }),
       );

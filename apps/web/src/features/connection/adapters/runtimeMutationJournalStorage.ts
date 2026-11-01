@@ -2,8 +2,6 @@ import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
 import { pluginStoragePrefix } from "@/extensions/storage";
 import type { MutationJournalStorage } from "@flame/runtime-client";
 
-export type RuntimeMutationJournalStorage = MutationJournalStorage;
-
 // Unsettled commands must remain readable when storage is full. The durable
 // boundary propagates browser errors and never writes to probe a read.
 export function createRuntimeMutationJournalStorage(

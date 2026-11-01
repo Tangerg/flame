@@ -50,3 +50,14 @@ func TestExplicitNullContributionMetadataSurvivesAuthorEncoding(t *testing.T) {
 		t.Fatalf("the author writer changed explicit null to omission: %s, %v", encoded, err)
 	}
 }
+
+func TestThirdPartyProcessProfileUsesPortableExecutableVariants(t *testing.T) {
+	manifest := Manifest{SchemaVersion: ManifestSchemaVersion, Package: "example.pipe", Version: "1", Artifacts: []Artifact{{Path: "bin/report", Executable: true, Digest: integrity.Hash([]byte("report")), Size: 6}}, Units: []Unit{{ID: "render", Profile: "report-stdio-v1", Variants: []Variant{{OS: "linux", Arch: "amd64", Path: "bin/report"}}}}}
+	if err := manifest.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	manifest.Units[0].Variants = nil
+	if err := manifest.Validate(); err == nil {
+		t.Fatal("process without executable entry accepted")
+	}
+}

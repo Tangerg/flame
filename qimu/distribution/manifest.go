@@ -336,7 +336,7 @@ func (m Module) validate(artifacts map[string]Artifact) error {
 // validateProfileShape checks the entry a distribution profile requires.
 func (u Unit) validateProfileShape() error {
 	switch u.Profile {
-	case qimu.MCPProcess:
+	default:
 		if len(u.Variants) == 0 || u.Module != nil {
 			return fmt.Errorf("%w: process unit entry", ErrInvalid)
 		}
@@ -362,8 +362,6 @@ func (u Unit) validateProfileShape() error {
 		if u.Module != nil || len(u.Variants) != 0 {
 			return fmt.Errorf("%w: native unit is supplied by the host build", ErrInvalid)
 		}
-	default:
-		return fmt.Errorf("%w: unsupported distribution profile %q", ErrInvalid, u.Profile)
 	}
 	return nil
 }

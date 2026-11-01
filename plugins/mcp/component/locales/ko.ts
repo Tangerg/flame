@@ -3,7 +3,7 @@ export const ko: Record<string, string> = {
   "mcp.tools.policyHint":
     "즉시 저장됩니다. 도구 표시 설정은 새 실행에 적용됩니다. 자동 승인은 전역 허용 규칙을 설정하며, 더 구체적인 규칙도 적용됩니다.",
   "mcp.tools.nameConflict":
-    "{{name}} 이름이 {{sources}}와 충돌하여 숨겨졌습니다.",
+    "{{name}} 이름으로 사용할 수 있습니다. {{sources}}도 같은 짧은 이름을 사용합니다.",
   "mcp.add": "서버 추가",
   "mcp.save": "저장",
   "mcp.saving": "저장 중…",

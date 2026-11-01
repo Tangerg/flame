@@ -1,7 +1,11 @@
 {
   "protocol": "io.github.tangerg.flame/plugin/1",
   "managedBackends": [
-    { "id": "usagereports", "runtime": "node", "entry": "backend/start.mjs" }
+    {
+      "id": "usagereports",
+      "runtime": "node",
+      "entry": "backend/start.mjs"
+    }
   ],
   "contributions": [
     {
@@ -15,12 +19,90 @@
     {
       "id": "usage-reports",
       "title": "Saved usage reports",
+      "localizedTitles": {
+        "zh": "已保存的用量报告",
+        "zh-TW": "已儲存的用量報告",
+        "de": "Gespeicherte Nutzungsberichte",
+        "fr": "Rapports d’utilisation enregistrés",
+        "es": "Informes de uso guardados",
+        "ja": "保存済みの使用量レポート",
+        "ko": "저장된 사용량 보고서"
+      },
       "scope": "client",
       "placement": "workspaceView",
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "UsageReports",
       "contribution": "usage-reports",
       "material": "usage"
+    }
+  ],
+  "terminalViews": [
+    {
+      "id": "usage-reports",
+      "title": "Saved usage reports",
+      "contribution": "usage-reports",
+      "list": {
+        "method": "flame.usage-reports/list.v2",
+        "rows": "reports",
+        "key": "id",
+        "columns": [
+          {
+            "title": "Period",
+            "field": "period"
+          },
+          {
+            "title": "Captured",
+            "field": "observedAt"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "id": "capture-daily",
+          "title": "Capture daily report",
+          "method": "flame.usage-reports/capture.v1",
+          "target": "view",
+          "input": {
+            "period": {
+              "value": "daily"
+            }
+          }
+        },
+        {
+          "id": "capture-weekly",
+          "title": "Capture weekly report",
+          "method": "flame.usage-reports/capture.v1",
+          "target": "view",
+          "input": {
+            "period": {
+              "value": "weekly"
+            }
+          }
+        },
+        {
+          "id": "read",
+          "title": "Read report",
+          "method": "flame.usage-reports/get.v1",
+          "target": "row",
+          "input": {
+            "id": {
+              "row": "id"
+            }
+          }
+        },
+        {
+          "id": "remove",
+          "title": "Remove saved report",
+          "method": "flame.usage-reports/delete.v1",
+          "target": "row",
+          "confirm": true,
+          "input": {
+            "id": {
+              "row": "id"
+            }
+          }
+        }
+      ]
     }
   ]
 }

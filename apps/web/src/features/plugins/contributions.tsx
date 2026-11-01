@@ -1,3 +1,11 @@
+import { SHARED_CLIENT_EFFECT, SharedEffects } from "./ui/SharedEffects";
+import { tupleKey } from "@/lib/tupleKey";
+import { WorkspaceChangesAction } from "./ui/WorkspaceChangesAction";
+import { TOOL_VIEW_OPENER } from "@/features/chat/public/tools/types";
+import type { WorkspaceAccess } from "@/features/workspace/public/workspace";
+import { openWorkspaceViewAtPath } from "@/features/workspace/public/navigation";
+import { presentationTitle } from "@/lib/i18n/presentationTitle";
+import { activeLocale } from "@/lib/i18n/index";
 import { type ThemeAccess } from "@/features/theme/public/theme";
 import { lazy, Suspense, type ReactNode } from "react";
 import { ComponentModules } from "@/features/plugins/adapters/componentModules";
@@ -51,6 +59,24 @@ function packageScopedId(installationId: string, localId: string): string {
   return `${packageIdPrefix}${installationId}:${localId}`;
 }
 
+function operationBinding(
+  installation: PluginInstallation,
+  entry: PluginInstallation["selected"]["components"][number],
+) {
+  const release = installation.selected;
+  const contribution = release.contributions.find((value) => value.id === entry.contribution);
+  if (entry.contribution && !contribution)
+    throw new Error("The component's declared callable contribution is unavailable.");
+  return contribution
+    ? {
+        installationId: installation.id,
+        digest: release.digest,
+        contribution: contribution.id,
+        contract: contribution.contract,
+      }
+    : undefined;
+}
+
 function createPackageReconciler(
   scope: ContributionLifetime,
   client: FlameClient,
@@ -58,6 +84,7 @@ function createPackageReconciler(
   generation: RuntimeConnectionGeneration,
   moduleScope: ContributionLifetime,
   endpoint: string,
+  workspace: WorkspaceAccess,
   themeAccess: ThemeAccess,
   saveFile: ComponentContext["saveFile"],
 ): (installations: PluginInstallation[]) => Promise<void> {
@@ -70,7 +97,7 @@ function createPackageReconciler(
   );
   const resources = new Map<string, { signature: string; lifetime: ContributionLifetime }>();
   const reconcileLocales = createLocaleReconciler(scope, (error) =>
-    reportPluginError("flame.builtin.plugins-pane", "setup", error),
+    reportPluginError("flame.builtin.installed-plugin-loader", "setup", error),
   );
   return async (installations: PluginInstallation[]) => {
     const admitted = installations.filter((item) => item.presentation === "admitted");
@@ -128,18 +155,7 @@ function createPackageReconciler(
           componentId: entry.id,
         };
         const compose = compositions.renderer(lifetime, [component]);
-        const contribution = release.contributions.find((value) => value.id === entry.contribution);
-        if (entry.contribution && !contribution)
-          throw new Error("The component's declared callable contribution is unavailable.");
-        const binding = contribution
-          ? {
-              installationId: installation.id,
-              digest: release.digest,
-              contribution: contribution.id,
-              contract: contribution.contract,
-            }
-          : undefined;
-
+        const binding = operationBinding(installation, entry);
         if (placement === "fileRenderer") {
           if (!entry.selector || entry.selector.type !== "fileExtension")
             throw new Error("File component requires an extension selector");
@@ -291,6 +307,7 @@ function createPackageReconciler(
             {
               id,
               title: `${release.name} · ${entry.title}`,
+              localizedTitles: entry.localizedTitles,
               component: Action,
             },
             { key: id },
@@ -319,9 +336,19 @@ function createPackageReconciler(
             binding,
             lifetime,
           };
+          if (placement === "workspaceChangesAction")
+            return {
+              default: () => (
+                <WorkspaceChangesAction
+                  {...rendering}
+                  scope={contextScope}
+                  targetView={packageScopedId(installation.id, entry.targetView!)}
+                />
+              ),
+            };
           return {
             default: () =>
-              placement === "clientEffect" ? (
+              placement === "clientEffect" || placement === "sharedClientEffect" ? (
                 <RenderingComponent {...rendering} />
               ) : (
                 <InstalledComponent {...rendering} scope={contextScope} />
@@ -334,11 +361,36 @@ function createPackageReconciler(
             scope={componentFailureScope(component, generation)}
             reload={() => modules.reload()}
           >
-            <Suspense fallback={placement === "clientEffect" ? null : <ComponentLoading />}>
+            <Suspense
+              fallback={
+                placement === "clientEffect" ||
+                placement === "sharedClientEffect" ||
+                placement === "workspaceChangesAction" ? null : (
+                  <ComponentLoading />
+                )
+              }
+            >
               <View />
             </Suspense>
           </ComponentBoundary>
         );
+        if (placement === "workspaceChangesAction") {
+          contributeLayout(lifetime, "chat.header.meta", { id, component: PlacedComponent });
+          continue;
+        }
+        if (placement === "sharedClientEffect") {
+          lifetime.contribute(
+            SHARED_CLIENT_EFFECT,
+            {
+              id,
+              group: tupleKey(release.name, entry.id),
+              title: entry.title,
+              component: PlacedComponent,
+            },
+            { key: id },
+          );
+          continue;
+        }
         if (placement === "clientEffect") {
           contributeLayout(lifetime, "app.overlay", { id, component: PlacedComponent });
           continue;
@@ -349,6 +401,8 @@ function createPackageReconciler(
             {
               id,
               label: entry.title,
+              localizedTitles: entry.localizedTitles,
+              keywords: [entry.title, entry.id],
               material: entry.material,
               intent: entry.settingsIntent,
               group: "extensions",
@@ -358,11 +412,32 @@ function createPackageReconciler(
           );
           continue;
         }
+        if (entry.toolCategory) {
+          lifetime.contribute(
+            TOOL_VIEW_OPENER,
+            {
+              id,
+              predicate: (tool) => tool.category === entry.toolCategory,
+              label: () => presentationTitle(entry.title, entry.localizedTitles, activeLocale()),
+              open: (tool, origin) => {
+                lifetime.signal.throwIfAborted();
+                openWorkspaceViewAtPath(
+                  workspace,
+                  id,
+                  tool.fnKind === "path" ? tool.fn : "",
+                  origin,
+                );
+              },
+            },
+            { key: id },
+          );
+        }
         lifetime.contribute(
           WORKSPACE_VIEW,
           {
             id,
             title: `${release.name} · ${entry.title}`,
+            localizedTitles: entry.localizedTitles,
             material: entry.material,
             dock: contextScope === "session" ? "session" : undefined,
             component: PlacedComponent,
@@ -390,9 +465,14 @@ export function registerPackageContributions(
   modules: ComponentModules,
   generation: RuntimeConnectionGeneration,
   endpoint: string,
+  workspace: WorkspaceAccess,
   themeAccess: ThemeAccess,
   saveFile: ComponentContext["saveFile"],
 ): void {
+  contributeLayout(scope, "app.overlay", {
+    id: "installed-shared-effects",
+    component: SharedEffects,
+  });
   scope.cleanup(
     packages.publishOperations({
       ...client.plugins,
@@ -435,6 +515,7 @@ export function registerPackageContributions(
       generation,
       scope,
       endpoint,
+      workspace,
       themeAccess,
       saveFile,
     );

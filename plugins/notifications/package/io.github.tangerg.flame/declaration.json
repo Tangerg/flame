@@ -5,16 +5,26 @@
       "id": "completion-notifications",
       "title": "Completion notifications",
       "scope": "client",
-      "placement": "clientEffect",
+      "placement": "sharedClientEffect",
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "CompletionNotifications"
     },
     {
       "id": "notification-settings",
       "title": "Notifications",
+      "localizedTitles": {
+        "zh": "通知",
+        "zh-TW": "通知",
+        "de": "Benachrichtigungen",
+        "fr": "Notifications",
+        "es": "Notificaciones",
+        "ja": "通知",
+        "ko": "알림"
+      },
       "scope": "installation",
       "placement": "settingsPane",
       "material": "notifications",
+      "settingsIntent": "notifications",
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "NotificationSettings"
     }

@@ -355,6 +355,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     });
     const headers = requestHeaders({
       [HTTP_HEADERS.contentType]: RPC_HTTP.documentMediaType,
+      [HTTP_HEADERS.method]: method,
       Accept: `${RPC_HTTP.documentMediaType}, ${RPC_HTTP.streamMediaType}`,
     });
     if (options.idempotencyKey) headers[HTTP_HEADERS.idempotencyKey] = options.idempotencyKey;

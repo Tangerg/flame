@@ -172,6 +172,8 @@ class ComponentInstance {
     ]);
     const track: ComponentContext["track"] = (operation) =>
       trackContributionIO(this.sources.lifetime, () => operation(signal));
+    const effect =
+      this.sources.placement === "clientEffect" || this.sources.placement === "sharedClientEffect";
     const openSession = this.sources.openSession;
     const component = Object.freeze({ ...this.sources.component });
     return Object.freeze({
@@ -215,28 +217,26 @@ class ComponentInstance {
             openSession(sessionId);
           }
         : undefined,
-      registerCommand:
-        this.sources.placement === "clientEffect"
-          ? createClientCommandRegistration(
-              this.sources.lifetime,
-              signal,
-              component,
-              this.sources.captureSessionId,
-            )
-          : () => {
-              throw new Error("Client command registration requires clientEffect placement.");
-            },
-      subscribeRootRunSettlements:
-        this.sources.placement === "clientEffect"
-          ? createComponentSettlementSubscription(
-              this.sources.lifetime,
-              signal,
-              component,
-              this.sources.subscribeRootRunSettlements,
-            )
-          : () => {
-              throw new Error("Root run observation requires clientEffect placement.");
-            },
+      registerCommand: effect
+        ? createClientCommandRegistration(
+            this.sources.lifetime,
+            signal,
+            component,
+            this.sources.captureSessionId,
+          )
+        : () => {
+            throw new Error("Client command registration requires clientEffect placement.");
+          },
+      subscribeRootRunSettlements: effect
+        ? createComponentSettlementSubscription(
+            this.sources.lifetime,
+            signal,
+            component,
+            this.sources.subscribeRootRunSettlements,
+          )
+        : () => {
+            throw new Error("Root run observation requires clientEffect placement.");
+          },
       notifications: createComponentNotifications(
         this.sources.lifetime,
         signal,

@@ -29,8 +29,7 @@ export function ProviderSelections({
   const roles = new Set((providers.data ?? []).map((value) => value.role));
   for (const installation of installations)
     for (const contribution of installation.selected.contributions) {
-      if (pluginContract(contribution.contract).composition === "selection")
-        roles.add(pluginContract(contribution.contract).reference);
+      for (const role of contribution.selectionRoles ?? []) roles.add(role);
       for (const required of contribution.requires)
         if (pluginContract(required.contract).composition === "selection")
           roles.add(pluginContract(required.contract).reference);
@@ -106,11 +105,7 @@ function ProviderRole({
   const t = useT();
   const candidates: Candidate[] = installations.flatMap((installation) =>
     installation.selected.contributions
-      .filter(
-        (value) =>
-          pluginContract(value.contract).composition === "selection" &&
-          pluginContract(value.contract).reference === role,
-      )
+      .filter((value) => value.selectionRoles?.includes(role))
       .map((value) => ({ installation, contribution: value.id, server: value.server })),
   );
   type State = {

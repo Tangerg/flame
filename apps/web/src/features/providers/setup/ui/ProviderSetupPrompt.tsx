@@ -20,7 +20,7 @@ const ps = stylex.create({
 });
 
 export function ProviderSetupPrompt() {
-  const providersPane = useSettingsPaneForIntent("modelProviders");
+  const providersPane = useSettingsPaneForIntent("model-providers");
   const workspaceAccess = useWorkspace();
 
   const t = useT();

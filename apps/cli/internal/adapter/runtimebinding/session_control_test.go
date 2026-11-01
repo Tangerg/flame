@@ -150,7 +150,7 @@ func TestSessionTransferPreservesRuntimeNativeFormats(t *testing.T) {
 		t.Fatalf("Markdown export = (%q, %v)", markdown.Bytes(), err)
 	}
 	artifact, err := runtime.ExportSession(t.Context(), session.ExportRequest{SessionID: "ses_1", Format: protocol.ExportFormatJSON})
-	versionField := fmt.Sprintf(`"version": %d`, protocol.SessionArtifactVersion)
+	versionField := fmt.Sprintf(`"version":%d`, protocol.SessionArtifactVersion)
 	if err != nil || !strings.Contains(string(artifact.Bytes()), versionField) || !artifact.Importable() {
 		t.Fatalf("JSON export = (%q, %v)", artifact.Bytes(), err)
 	}

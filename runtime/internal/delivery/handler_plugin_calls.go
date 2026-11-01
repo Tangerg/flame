@@ -16,6 +16,7 @@ import (
 )
 
 type pluginCallUseCases interface {
+	RenderSessionMarkdown(context.Context, string, []byte) (string, error)
 	Command(context.Context, string) (*plugin.Command, error)
 	RetireCommand(context.Context, string) error
 	NotifyChange(context.Context, plugin.ContributionID) error

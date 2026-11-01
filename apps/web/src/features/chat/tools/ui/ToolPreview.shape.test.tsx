@@ -13,7 +13,8 @@ import { type ToolResultRendererSpec } from "@/features/chat/public/tools/types"
 import { definePlugin } from "@/extensions/definePlugin";
 import { TOOL_RESULT_RENDERER } from "@/features/chat/public/tools/types";
 import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
-import { selectToolResultRenderer } from "@/features/chat/tools/application/toolResultRenderer";
+import { resolveRenderer } from "@/features/plugins/public/renderers";
+import { toolRendererCandidates } from "@/features/chat/tools/application/toolResultRenderer";
 import { ToolPreview } from "@/features/chat/tools/ui/ToolPreview";
 const tool: ToolCall = {
   id: "t1",
@@ -56,6 +57,36 @@ describe("optional result rendering", () => {
     expect(selectToolResultRenderer([shaped, named], tool)).toBe(named);
     expect(selectToolResultRenderer([named, shaped], tool)).toBe(named);
     expect(selectToolResultRenderer([shaped], tool)).toBe(shaped);
+  });
+  it.each([
+    ["eeb329cd-c7ce-40c9-bd90-6821fef06d30", "web_web_search__b3cbf166d115fd3b"],
+    ["8ad9abf5-3a7d-4d0b-bef9-6ef92c20e746", "web_web_search__3cfff49d81f6f7fd"],
+  ])("renders an installed card for the captured alias from %s", async (installationId, name) => {
+    const modelName = "web_web_search";
+    const call: ToolCall = {
+      ...tool,
+      name,
+      source: {
+        modelName,
+        ref: { type: "mcp", name: "web_search", serverName: "web", installationId },
+      },
+    };
+    const spec = renderer("search-card", { type: "toolName", name: modelName });
+    const card: ToolResultRendererSpec = {
+      ...spec,
+      component: ({ tool: recorded }) => <div>{recorded.name} search card</div>,
+    };
+    await loadPluginsForTest(
+      definePlugin({
+        name: "test.search-card",
+        setup(ctx) {
+          ctx.contribute(TOOL_RESULT_RENDERER, card, { key: card.id });
+        },
+      }),
+    );
+    testClient.render(<ToolPreview tool={call} />);
+    expect(screen.getByText(name + " search card")).toBeTruthy();
+    expect(selectToolResultRenderer([card], { ...call, source: undefined })).toBeUndefined();
   });
   it("uses generic content for competing names or competing shapes", () => {
     const shaped = renderer("shape", { type: "resultShape", shape: "search" });
@@ -166,3 +197,10 @@ describe("optional result rendering", () => {
     },
   );
 });
+
+function selectToolResultRenderer(
+  renderers: readonly ToolResultRendererSpec[],
+  target: Parameters<typeof toolRendererCandidates>[1],
+) {
+  return resolveRenderer(toolRendererCandidates(renderers, target), null);
+}

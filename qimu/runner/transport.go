@@ -17,7 +17,7 @@ import (
 	"github.com/Tangerg/qimu"
 )
 
-const maxControlBytes = 4 << 20
+const maxControlFrameBytes = 4 << 20
 
 type controlRequest struct {
 	Operation string          `json:"operation"`
@@ -106,7 +106,7 @@ func (s *Server) handle(ctx context.Context, connection net.Conn) {
 			_ = writeResponse(connection, nil, identityErr)
 			return
 		}
-		_ = json.NewEncoder(connection).Encode(controlResponse{Identity: &identity})
+		_ = writeFrame(connection, controlResponse{Identity: &identity})
 		return
 	case "fence":
 		err = s.Fence(ctx, request.Epoch)
@@ -120,7 +120,7 @@ func (s *Server) handle(ctx context.Context, connection net.Conn) {
 			_ = writeResponse(connection, nil, proofErr)
 			return
 		}
-		_ = json.NewEncoder(connection).Encode(controlResponse{Absence: &proof})
+		_ = writeFrame(connection, controlResponse{Absence: &proof})
 		return
 	case "acknowledge_exit":
 		if request.Receipt == nil {
@@ -302,7 +302,7 @@ func (c *Client) request(ctx context.Context, request controlRequest) (controlRe
 	defer connection.Close()
 	stop := context.AfterFunc(ctx, func() { _ = connection.Close() })
 	defer stop()
-	if err := writeRequest(connection, request); err != nil {
+	if err := writeFrame(connection, request); err != nil {
 		return controlResponse{}, err
 	}
 	line, err := readLine(bufio.NewReader(connection))
@@ -325,7 +325,7 @@ func (c *Client) Attach(ctx context.Context, id string) (io.ReadWriteCloser, err
 		return nil, err
 	}
 	stop := context.AfterFunc(ctx, func() { _ = connection.Close() })
-	if err := writeRequest(connection, controlRequest{Operation: "attach", AttemptID: id}); err != nil {
+	if err := writeFrame(connection, controlRequest{Operation: "attach", AttemptID: id}); err != nil {
 		stop()
 		_ = connection.Close()
 		return nil, err
@@ -349,7 +349,7 @@ func readLine(reader *bufio.Reader) ([]byte, error) {
 	var result []byte
 	for {
 		fragment, err := reader.ReadSlice('\n')
-		if len(result)+len(fragment) > maxControlBytes {
+		if len(result)+len(fragment) > maxControlFrameBytes {
 			return nil, qimu.ErrCapacity
 		}
 		result = append(result, fragment...)
@@ -362,15 +362,19 @@ func readLine(reader *bufio.Reader) ([]byte, error) {
 	}
 }
 
-func writeRequest(writer io.Writer, request controlRequest) error {
-	data, err := json.Marshal(request)
+func writeFrame(writer io.Writer, message any) error {
+	data, err := json.Marshal(message)
 	if err != nil {
 		return err
 	}
-	if len(data) > maxControlBytes {
+	if len(data) >= maxControlFrameBytes {
 		return qimu.ErrCapacity
 	}
-	_, err = writer.Write(append(data, '\n'))
+	frame := append(data, '\n')
+	n, err := writer.Write(frame)
+	if err == nil && n != len(frame) {
+		return io.ErrShortWrite
+	}
 	return err
 }
 
@@ -379,7 +383,7 @@ func writeResponse(writer io.Writer, observation *Observation, err error) error 
 	if err != nil {
 		response.Error = errorCode(err)
 	}
-	return json.NewEncoder(writer).Encode(response)
+	return writeFrame(writer, response)
 }
 
 func decodeResponse(data []byte) (controlResponse, error) {
@@ -387,45 +391,36 @@ func decodeResponse(data []byte) (controlResponse, error) {
 	if err := jsonv2.Unmarshal(data, &response, jsonv2.RejectUnknownMembers(true)); err != nil {
 		return response, err
 	}
-	switch response.Error {
-	case "":
+	if response.Error == "" {
 		return response, nil
-	case "unknown":
-		return response, ErrUnknown
-	case "conflict":
-		return response, ErrConflict
-	case "fenced":
-		return response, ErrFenced
-	case "attached":
-		return response, ErrAttached
-	case "not_found":
-		return response, ErrNotFound
-	case "closed":
-		return response, qimu.ErrClosed
-	case "capacity":
-		return response, qimu.ErrCapacity
-	default:
-		return response, errors.New("runner: control request failed")
 	}
+	for _, refusal := range controlRefusals {
+		if refusal.code == response.Error {
+			return response, refusal.cause
+		}
+	}
+	return response, errors.New("runner: control request failed")
+}
+
+var controlRefusals = [...]struct {
+	code  string
+	cause error
+}{
+	{"unknown", ErrUnknown},
+	{"conflict", ErrConflict},
+	{"fenced", ErrFenced},
+	{"attached", ErrAttached},
+	{"not_found", ErrNotFound},
+	{"closed", qimu.ErrClosed},
+	{"capacity", qimu.ErrCapacity},
+	{"invalid", qimu.ErrInvalid},
 }
 
 func errorCode(err error) string {
-	switch {
-	case errors.Is(err, ErrUnknown):
-		return "unknown"
-	case errors.Is(err, ErrConflict):
-		return "conflict"
-	case errors.Is(err, ErrFenced):
-		return "fenced"
-	case errors.Is(err, ErrAttached):
-		return "attached"
-	case errors.Is(err, ErrNotFound):
-		return "not_found"
-	case errors.Is(err, qimu.ErrClosed):
-		return "closed"
-	case errors.Is(err, qimu.ErrCapacity):
-		return "capacity"
-	default:
-		return "failed"
+	for _, refusal := range controlRefusals {
+		if errors.Is(err, refusal.cause) {
+			return refusal.code
+		}
 	}
+	return "failed"
 }

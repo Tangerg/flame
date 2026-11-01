@@ -319,3 +319,17 @@ func TestConfigurationRejectsUnknownFlags(t *testing.T) {
 		t.Fatalf("unknown flag: %v", err)
 	}
 }
+
+func TestExecutablePluginRootsRequireAnExplicitOrUserConfig(t *testing.T) {
+	workspace := t.TempDir()
+	path := filepath.Join(workspace, ".flame.yaml")
+	if err := os.WriteFile(path, []byte("plugins:\n  directories: [commands]\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := executeCommand(t, instantRuntime(), "", "-C", workspace, "config", "show"); err == nil {
+		t.Fatal("automatic project configuration selected native executable roots")
+	}
+	if _, _, err := executeCommand(t, instantRuntime(), "", "--config", path, "config", "show"); err != nil {
+		t.Fatalf("explicit configuration refused: %v", err)
+	}
+}

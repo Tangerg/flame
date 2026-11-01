@@ -35,9 +35,10 @@ func InterruptUnavailable(context.Context, toolcontract.Invocation, Interrupt) (
 // Arguments are the effective arguments after PreToolUse rewriting, so a
 // continuation (including one restored after restart) can resume without
 // running the hook or policy decision a second time. Tool names the gated call;
-// its model-visible name is Tool.ModelName.
+// its qualification belongs to the frozen deployment.
 type ApprovalPrompt struct {
 	Tool              tool.Ref
+	QualifiedName     bool
 	SourceFingerprint integrity.Digest
 	CallID            string
 	Arguments         string
@@ -111,7 +112,9 @@ func validateInterrupt(interrupt Interrupt) error {
 func (ApprovalPrompt) Type() run.InterruptType { return run.InterruptApproval }
 func (QuestionPrompt) Type() run.InterruptType { return run.InterruptQuestion }
 
-func (a ApprovalPrompt) ToolCall() (name, arguments string) { return a.Tool.ModelName(), a.Arguments }
+func (a ApprovalPrompt) ToolCall() (name, arguments string) {
+	return a.Tool.PublishedName(a.QualifiedName), a.Arguments
+}
 func (q QuestionPrompt) ToolCall() (name, arguments string) { return q.ToolName, q.Arguments }
 
 func (a ApprovalPrompt) clone() Interrupt { return a }
@@ -125,6 +128,9 @@ func (q QuestionPrompt) clone() Interrupt {
 }
 
 func (a ApprovalPrompt) Validate() error {
+	if a.QualifiedName && a.Tool.Kind() != tool.MCPKind {
+		return errors.New("runs: only a remote tool has a qualified name")
+	}
 	if err := a.Tool.ValidateFingerprint(a.SourceFingerprint); err != nil {
 		return err
 	}

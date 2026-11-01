@@ -42,6 +42,25 @@ func idempotencyNamespace(ctx context.Context, db *sql.DB) (operation.ReplayName
 	return parsed, nil
 }
 
+func (i *idempotencyStore) Transact(ctx context.Context, write func(context.Context) error) error {
+	return sqlite.RunInTx(ctx, i.db, write)
+}
+
+func (i *idempotencyStore) Lookup(ctx context.Context, key, fingerprint string) (operation.ReplayRecord, bool, error) {
+	record := operation.ReplayRecord{Key: key}
+	err := sqlite.Connection(ctx, i.db).QueryRowContext(ctx, `SELECT fingerprint,payload FROM idempotency_records WHERE key=? AND (kind<>? OR expires_at>?)`, key, idempotencyResponse, time.Now().Unix()).Scan(&record.Fingerprint, &record.Payload)
+	if errors.Is(err, sql.ErrNoRows) {
+		return operation.ReplayRecord{}, false, nil
+	}
+	if err != nil {
+		return operation.ReplayRecord{}, false, err
+	}
+	if record.Fingerprint != fingerprint {
+		return operation.ReplayRecord{}, false, portable.ErrInvocationConflict
+	}
+	return record, true, nil
+}
+
 func (i *idempotencyStore) Claim(ctx context.Context, key, fingerprint string) (record operation.ReplayRecord, claimed bool, err error) {
 	now := time.Now().Unix()
 	// Route the claim's prune+insert+lookup through the shared tx seam rather than a

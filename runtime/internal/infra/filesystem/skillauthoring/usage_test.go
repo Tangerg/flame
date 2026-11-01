@@ -45,7 +45,7 @@ func TestRecordUseAccumulatesUsage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("usage file not written: %v", err)
 	}
-	var usage map[string]map[string]any
+	var usage map[string]map[string]time.Time
 	if err := json.Unmarshal(data, &usage); err != nil {
 		t.Fatalf("usage file not valid JSON: %v", err)
 	}
@@ -53,11 +53,11 @@ func TestRecordUseAccumulatesUsage(t *testing.T) {
 	if !ok {
 		t.Fatalf("no usage record for run-tests: %s", data)
 	}
-	if last, _ := record["lastUsed"].(float64); int64(last) != base.Add(time.Hour).Unix() {
-		t.Fatalf("lastUsed = %v, want %d", record["lastUsed"], base.Add(time.Hour).Unix())
+	if last := record["lastUsed"]; !last.Equal(base.Add(time.Hour)) {
+		t.Fatalf("lastUsed = %v, want %s", record["lastUsed"], base.Add(time.Hour))
 	}
-	if first, _ := record["firstSeen"].(float64); int64(first) != base.Unix() {
-		t.Fatalf("firstSeen = %v, want %d (anchored at first use)", record["firstSeen"], base.Unix())
+	if first := record["firstSeen"]; !first.Equal(base) {
+		t.Fatalf("firstSeen = %v, want %s", record["firstSeen"], base)
 	}
 }
 
@@ -76,9 +76,9 @@ func TestRecordUseRejectsOversizedUsageMetadata(t *testing.T) {
 
 func TestRecordUseRejectsOverCapacityUsageMap(t *testing.T) {
 	root := t.TempDir()
-	usage := make(map[string]map[string]int64, skills.MaxSkillsPerSource+1)
+	usage := make(map[string]map[string]time.Time, skills.MaxSkillsPerSource+1)
 	for index := range skills.MaxSkillsPerSource + 1 {
-		usage[fmt.Sprintf("skill-%03d", index)] = map[string]int64{"firstSeen": 1}
+		usage[fmt.Sprintf("skill-%03d", index)] = map[string]time.Time{"firstSeen": time.Unix(1, 0).UTC()}
 	}
 	data, err := json.Marshal(usage)
 	if err != nil {
@@ -114,7 +114,7 @@ func TestCorruptUsageCannotBeReplacedByFreshHistory(t *testing.T) {
 			if err := store.RecordUse(t.Context(), "agent-skill", sweepBase); err == nil {
 				t.Fatal("corrupt activity metadata was silently replaced")
 			}
-			if _, _, err := store.SweepIdle(t.Context(), sweepBase, sweepArchive); err == nil {
+			if _, _, err := store.SweepIdle(t.Context(), sweepBase, sweepBase.Add(-sweepArchive)); err == nil {
 				t.Fatal("curation accepted corrupt activity metadata")
 			}
 			if _, err := store.Archive(t.Context(), "agent-skill"); err == nil {

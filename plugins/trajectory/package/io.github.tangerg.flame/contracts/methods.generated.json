@@ -1,0 +1,11 @@
+[
+  {
+    "name": "flame.session-markdown/render.v1",
+    "kind": "query",
+    "target": "session",
+    "description": "Render a coherent session snapshot into ordered Markdown fragments and report the completed document identity.",
+    "input": "schema.json#/$defs/RenderV1Input",
+    "output": "schema.json#/$defs/RenderV1Output",
+    "stream": "schema.json#/$defs/RenderV1Chunk"
+  }
+]

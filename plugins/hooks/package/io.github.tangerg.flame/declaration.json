@@ -4,6 +4,15 @@
     {
       "id": "settings",
       "title": "Lifecycle hooks",
+      "localizedTitles": {
+        "zh": "生命周期钩子",
+        "zh-TW": "生命週期掛鉤",
+        "de": "Lifecycle-Hooks",
+        "fr": "Hooks du cycle de vie",
+        "es": "Hooks del ciclo de vida",
+        "ja": "ライフサイクルフック",
+        "ko": "수명 주기 훅"
+      },
       "scope": "client",
       "placement": "settingsPane",
       "material": "hooks",

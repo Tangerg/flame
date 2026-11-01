@@ -42,7 +42,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 	}
 	ids := map[string]string{}
 	backendCount := 0
-	var memory, diagnostics, usage, scheduling protocol.PluginInstallation
+	var memory, diagnostics, usage, scheduling, reports protocol.PluginInstallation
 	for _, item := range initial.Data {
 		ids[item.Selected.Name] = item.ID
 		backendCount += len(item.Selected.Servers)
@@ -53,6 +53,9 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 			t.Fatalf("default installation = %+v", item)
 		}
 
+		if item.Selected.Name == "flame.usagereports" {
+			reports = item
+		}
 		if item.Selected.Name == "flame.memory" {
 			memory = item
 		}
@@ -63,7 +66,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 			usage = item
 		}
 	}
-	for _, item := range []protocol.PluginInstallation{memory, scheduling} {
+	for _, item := range []protocol.PluginInstallation{memory, scheduling, reports} {
 		if len(item.Selected.TerminalViews) != 1 || len(item.Selected.Diagnostics) != 0 {
 			t.Fatalf("%s terminal views = %+v, diagnostics = %+v", item.Selected.Name, item.Selected.TerminalViews, item.Selected.Diagnostics)
 		}
@@ -99,6 +102,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
+	checkUsageReportsList(t, current, reports)
 	contract, err := portable.ParseCapability([]byte(SchedulesCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
@@ -192,5 +196,29 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 	reset, err := current.ListPlugins(t.Context(), protocol.CallOptions{})
 	if err != nil || len(reset.Data) != len(initial.Data) {
 		t.Fatalf("empty database did not receive defaults: (%v, %v)", reset, err)
+	}
+}
+
+func checkUsageReportsList(t *testing.T, current *flameruntime.Runtime, reports protocol.PluginInstallation) {
+	t.Helper()
+	contract, err := portable.ParseCapability([]byte(UsageReportsCapabilityJSON))
+	if err != nil {
+		t.Fatal(err)
+	}
+	view := reports.Selected.TerminalViews[0]
+	if view.List.Method != UsageReportsListV2Method {
+		t.Fatalf("terminal list uses %q", view.List.Method)
+	}
+	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{
+		InstallationID: reports.ID, Digest: reports.Selected.Digest, Contribution: view.Contribution,
+		Contract: contract.Identity().String(), Method: view.List.Method, Input: "{}",
+		Target: portable.Target{Scope: "installation", Reference: reports.ID},
+	}, protocol.PluginCallOptions{})
+	if err != nil || reply.Failure != nil {
+		t.Fatalf("terminal archive list: %+v, %v", reply, err)
+	}
+	var output UsageReportsListV2Output
+	if err := json.Unmarshal([]byte(reply.Output), &output); err != nil || output.Reports == nil || len(output.Reports) != 0 {
+		t.Fatalf("fresh report archive: %+v, %v", output, err)
 	}
 }

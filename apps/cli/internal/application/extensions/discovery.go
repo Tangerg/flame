@@ -46,6 +46,9 @@ func Discover(ctx context.Context, sources ...Source) (Discovery, error) {
 			continue
 		}
 		discovered, err := source.Discover(ctx)
+		if cause := context.Cause(ctx); cause != nil {
+			return Discovery{}, cause
+		}
 		if err != nil {
 			result.Issues = append(result.Issues, SourceIssue{Source: source.ID(), Err: fmt.Errorf("discover plugins from %q: %w", source.ID(), err)})
 			continue
@@ -61,5 +64,8 @@ func Discover(ctx context.Context, sources ...Source) (Discovery, error) {
 	}
 	result.Plugins = slices.Clip(result.Plugins)
 	result.Issues = slices.Clip(result.Issues)
+	if err := context.Cause(ctx); err != nil {
+		return Discovery{}, err
+	}
 	return result, nil
 }

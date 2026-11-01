@@ -12,7 +12,6 @@ import { act } from "@testing-library/react";
 import { queryClient } from "@/lib/queryClient";
 import { type AgentRuntimeGateway } from "@/features/agent/application/runtimeGateway";
 import { useToggleFavorite } from "@/features/agent/application/session/favoriteSession";
-import { useRenameSession } from "@/features/agent/application/session/renameSession";
 import {
   AGENT_SESSIONS_KEY,
   type AgentSessionSummary,
@@ -47,7 +46,7 @@ afterEach(() => {
 });
 
 describe("Session summary mutations", () => {
-  it("preserves the captured revision when the cache has advanced before rename submission", async () => {
+  it("preserves the captured revision when the cache has advanced before favorite submission", async () => {
     queryClient.setQueryData(
       [AGENT_SESSIONS_KEY],
       [{ ...session(), revision: 4, title: "Remote title" }],
@@ -62,38 +61,22 @@ describe("Session summary mutations", () => {
     restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       updateSession,
     } as unknown as AgentRuntimeGateway);
-    const { result } = testClient.renderHook(() => useRenameSession());
-    let saved: boolean | undefined;
+    const { result } = testClient.renderHook(() => useToggleFavorite());
     await act(async () => {
-      saved = await result.current("ses_deleted", 3, "Local draft");
+      await result.current("ses_deleted", 3, false);
     });
-    expect(saved).toBe(false);
     expect(updateSession).toHaveBeenCalledExactlyOnceWith({
       sessionId: "ses_deleted",
       expectedRevision: 3,
-      title: "Local draft",
+      favorite: false,
     });
     expect(queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])).toEqual([
       { ...session(), revision: 4, title: "Remote title" },
     ]);
   });
 
-  it.each([
-    {
-      name: "rename",
-      run: async () => {
-        const { result } = testClient.renderHook(() => useRenameSession());
-        await result.current("ses_deleted", 3, "after");
-      },
-    },
-    {
-      name: "favorite",
-      run: async () => {
-        const { result } = testClient.renderHook(() => useToggleFavorite());
-        await result.current("ses_deleted", 3, true);
-      },
-    },
-  ])("revalidates authoritative membership when $name loses a delete race", async ({ run }) => {
+  it("revalidates authoritative membership when a favorite loses a delete race", async () => {
+    const { result } = testClient.renderHook(() => useToggleFavorite());
     queryClient.setQueryData([AGENT_SESSIONS_KEY], [session()]);
     const invalidate = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -101,7 +84,7 @@ describe("Session summary mutations", () => {
       updateSession: vi.fn().mockRejectedValue(new Error("deleted concurrently")),
     } as unknown as AgentRuntimeGateway);
 
-    await run();
+    await result.current("ses_deleted", 3, true);
 
     expect(invalidate).toHaveBeenCalledWith({ queryKey: [AGENT_SESSIONS_KEY] });
   });
@@ -110,35 +93,34 @@ describe("Session summary mutations", () => {
     queryClient.setQueryData([AGENT_SESSIONS_KEY], [session()]);
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const rename = Promise.withResolvers<AgentSessionSummary>();
+    const unpin = Promise.withResolvers<AgentSessionSummary>();
     const updateSession = vi
       .fn()
-      .mockImplementationOnce(() => rename.promise)
+      .mockImplementationOnce(() => unpin.promise)
       .mockRejectedValueOnce(new Error("revision conflict"));
     restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       updateSession,
     } as unknown as AgentRuntimeGateway);
-    const renameHook = testClient.renderHook(() => useRenameSession());
     const favoriteHook = testClient.renderHook(() => useToggleFavorite());
-    let renaming!: Promise<boolean>;
+    let unpinning!: Promise<void>;
     let favoriting!: Promise<void>;
     await act(async () => {
-      renaming = renameHook.result.current("ses_deleted", 3, "after");
+      unpinning = favoriteHook.result.current("ses_deleted", 3, false);
       favoriting = favoriteHook.result.current("ses_deleted", 3, true);
       await vi.waitFor(() => expect(updateSession).toHaveBeenCalledTimes(1));
     });
     expect(updateSession).toHaveBeenNthCalledWith(1, {
       sessionId: "ses_deleted",
       expectedRevision: 3,
-      title: "after",
+      favorite: false,
     });
     expect(queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])).toEqual([
       session(),
     ]);
     const normalized = { ...session(), title: "after (normalized)", revision: 4 };
     await act(async () => {
-      rename.resolve(normalized);
-      await Promise.all([renaming, favoriting]);
+      unpin.resolve(normalized);
+      await Promise.all([unpinning, favoriting]);
     });
     expect(updateSession).toHaveBeenNthCalledWith(2, {
       sessionId: "ses_deleted",
@@ -148,7 +130,6 @@ describe("Session summary mutations", () => {
     expect(queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])).toEqual([
       normalized,
     ]);
-    expect(await renaming).toBe(true);
     const saved = { ...normalized, favorite: true, revision: 5 };
     updateSession.mockResolvedValueOnce(saved);
     await act(async () => {
@@ -166,23 +147,22 @@ describe("Session summary mutations", () => {
     queryClient.setQueryData([AGENT_SESSIONS_KEY], [session()]);
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const renamed = { ...session(), title: "after", revision: 4 };
+    const committed = { ...session(), title: "after", revision: 4 };
     const updateSession = vi
       .fn()
-      .mockResolvedValueOnce(renamed)
+      .mockResolvedValueOnce(committed)
       .mockRejectedValueOnce(new Error("remote writer won"));
     restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       updateSession,
     } as unknown as AgentRuntimeGateway);
-    const renameHook = testClient.renderHook(() => useRenameSession());
     const favoriteHook = testClient.renderHook(() => useToggleFavorite());
 
-    const renaming = renameHook.result.current("ses_deleted", 3, "after");
+    const unpinning = favoriteHook.result.current("ses_deleted", 3, false);
     const favoriting = favoriteHook.result.current("ses_deleted", 3, true);
-    await act(async () => Promise.all([renaming, favoriting]));
+    await act(async () => Promise.all([unpinning, favoriting]));
 
     expect(queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])).toEqual([
-      renamed,
+      committed,
     ]);
   });
 
@@ -194,10 +174,9 @@ describe("Session summary mutations", () => {
     restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       updateSession: retiredUpdateCall,
     } as unknown as AgentRuntimeGateway);
-    const renameHook = testClient.renderHook(() => useRenameSession());
     const favoriteHook = testClient.renderHook(() => useToggleFavorite());
 
-    const renaming = renameHook.result.current("ses_deleted", 3, "retired title");
+    const unpinning = favoriteHook.result.current("ses_deleted", 3, false);
     await vi.waitFor(() => expect(retiredUpdateCall).toHaveBeenCalledTimes(1));
 
     const successorUpdate = vi
@@ -211,7 +190,7 @@ describe("Session summary mutations", () => {
       const favoriting = favoriteHook.result.current("ses_deleted", 3, true);
       await vi.waitFor(() => expect(successorUpdate).toHaveBeenCalledTimes(1));
       retiredUpdate.resolve({ ...session(), title: "retired title", revision: 99 });
-      await act(async () => Promise.all([renaming, favoriting]));
+      await act(async () => Promise.all([unpinning, favoriting]));
 
       expect(queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])).toEqual([
         { ...session(), favorite: true, revision: 4 },

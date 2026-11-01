@@ -25,7 +25,7 @@ export function SidebarActions() {
 
   const t = useT();
   const actions = useWorkIndexActions();
-  const toolsPane = useSettingsPaneForIntent("mcpServers");
+  const toolsPane = useSettingsPaneForIntent("mcp-servers");
   const combo = useCommandCombo(SESSION_SEARCH_COMMAND);
 
   return (

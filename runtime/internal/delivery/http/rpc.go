@@ -50,14 +50,20 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, problemUnsupportedMediaType, "content-type must be application/json", false)
 		return
 	}
-	if r.ContentLength > maxRPCBodyBytes {
+	bodyLimit := int64(maxRPCBodyBytes)
+	hint := r.Header.Get(headerMethod)
+	if hint == delivery.SessionsImport.String() {
+		// The ordinary envelope budget remains available for metadata around the artifact.
+		bodyLimit += protocol.MaximumSessionArtifactBytes
+	}
+	if r.ContentLength > bodyLimit {
 		writeProblem(w, problemRequestTooLarge, "request body exceeds limit", false)
 		return
 	}
 
 	// Read one byte past the cap so a chunked / uncounted body that
 	// overflows surfaces as 413 rather than silently truncating.
-	body, err := io.ReadAll(io.LimitReader(r.Body, maxRPCBodyBytes+1))
+	body, err := io.ReadAll(io.LimitReader(r.Body, bodyLimit+1))
 	if err != nil {
 		if _, tooLarge := errors.AsType[*http.MaxBytesError](err); tooLarge {
 			writeProblem(w, problemRequestTooLarge, "request body exceeds limit", false)
@@ -67,7 +73,7 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, problemInvalidRequest, "request body could not be read", false)
 		return
 	}
-	if len(body) > maxRPCBodyBytes {
+	if int64(len(body)) > bodyLimit {
 		writeProblem(w, problemRequestTooLarge, "request body exceeds limit", false)
 		return
 	}
@@ -83,6 +89,10 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if hint != "" && hint != request.Method {
+		writeProblem(w, problemInvalidRequest, "method header does not match the RPC envelope", false)
+		return
+	}
 	options := delivery.Options{
 		IdempotencyKey:       r.Header.Get(headerIdempotencyKey),
 		IdempotencyNamespace: r.Header.Get(headerIdempotencyNamespace),

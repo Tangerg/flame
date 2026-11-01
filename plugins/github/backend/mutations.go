@@ -73,7 +73,7 @@ func mutate[P, R any](ctx context.Context, c *connector, method *portable.Method
 	if err != nil {
 		return zero, err
 	}
-	if err := sqlite.RunInTx(ctx, c.store.db, func(ctx context.Context) error { return prepared.Complete(ctx, reply.JSON()) }); err != nil {
+	if err := prepared.SettleExternal(ctx, reply.JSON(), nil); err != nil {
 		return zero, err
 	}
 	return decodeWriteReply[R](method, reply.JSON())

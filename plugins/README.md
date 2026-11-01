@@ -129,9 +129,19 @@ Run `make generate` from the repository root after changing definitions. It
 publishes consumer contracts before backend, CLI and component projections;
 the package builder copies those namespace resources into the output.
 Runtime and CLI build targets place it in `plugins` beside their executable.
-Runtime installs and enables this catalog only when initializing a fresh
-database. Restart preserves user decisions. Package updates still require explicit
+Runtime preflights the distribution's source identities before publishing any new
+installation. An unreadable or unidentifiable source reports its path. A release with
+admission findings is installed disabled, with its diagnostics available in plugin
+management for staging a repaired release. Healthy packages stay eligible for their
+declared default roles. No provider is required for management or history reads;
+new model work requires an active provider. Restart preserves user decisions. Package updates still require explicit
 release selection.
+
+Installed native JavaScript components run as trusted host code. Their placement
+in a file or tool-result renderer does not impose a read-only permission: the
+component receives the live Flame client. Install native components only from
+publishers trusted with that client. Third-party untrusted HTML is supported only
+through the isolated, bridge-free preview; it cannot use native component APIs.
 
 The source folders contain no compiled backend; installation never builds code or
 installs dependencies. Executables are shipped in the admitted package. `--replace`

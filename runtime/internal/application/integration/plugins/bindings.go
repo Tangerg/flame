@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/qimu"
 
@@ -36,10 +37,17 @@ func (b ContributionBinding) SameContribution(other ContributionBinding) bool {
 }
 
 func SelectedContribution(ctx context.Context, host *qimu.Host, store Store, selections SelectionStore, required *portable.Capability) (ContributionBinding, bool, error) {
+	if required == nil {
+		return ContributionBinding{}, false, plugin.ErrInvalid
+	}
+	return SelectedContributionForRole(ctx, host, store, selections, required, required.Descriptor().Reference)
+}
+
+func SelectedContributionForRole(ctx context.Context, host *qimu.Host, store Store, selections SelectionStore, required *portable.Capability, role string) (ContributionBinding, bool, error) {
 	if host == nil || required == nil || required.Descriptor().Composition != portable.Selection {
 		return ContributionBinding{}, false, plugin.ErrInvalid
 	}
-	choice, found, err := selections.Get(ctx, required.Descriptor().Reference)
+	choice, found, err := selections.Get(ctx, role)
 	if err != nil || !found {
 		return ContributionBinding{}, false, err
 	}
@@ -52,7 +60,7 @@ func SelectedContribution(ctx context.Context, host *qimu.Host, store Store, sel
 	if !declared || !snapshot.Installation.ServerEnabled(contribution.Server) {
 		return ContributionBinding{}, false, nil
 	}
-	if contribution.Contract != required.Identity() {
+	if contribution.Contract != required.Identity() || !slices.Contains(contribution.SelectionRoles(), role) {
 		return ContributionBinding{}, false, fmt.Errorf("%w: selected contribution contract differs from the consumer requirement", plugin.ErrUnavailable)
 	}
 	id, err := snapshot.Installation.ServerID(contribution.Server)

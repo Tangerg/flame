@@ -2,22 +2,20 @@ package pluginpackage
 
 import (
 	"testing"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 )
 
 func TestSettingsIntentAdmissionDoesNotEvaluateTheComponent(t *testing.T) {
 	for _, test := range []struct {
 		name, placement, intent string
 		admitted                bool
-		want                    extension.SettingsIntent
+		want                    string
 	}{
-		{"mcp settings", "settingsPane", `,"settingsIntent":"mcpServers"`, true, extension.SettingsIntentMCPServers},
-		{"model settings", "settingsPane", `,"settingsIntent":"modelProviders"`, true, extension.SettingsIntentModelProviders},
+		{"mcp settings", "settingsPane", `,"settingsIntent":"mcp-servers"`, true, "mcp-servers"},
+		{"model settings", "settingsPane", `,"settingsIntent":"model-providers"`, true, "model-providers"},
 		{"empty", "settingsPane", `,"settingsIntent":""`, false, ""},
 		{"null", "settingsPane", `,"settingsIntent":null`, false, ""},
-		{"unknown", "settingsPane", `,"settingsIntent":"unknown"`, false, ""},
-		{"wrong placement", "workspaceView", `,"settingsIntent":"modelProviders"`, false, ""},
+		{"third-party intent", "settingsPane", `,"settingsIntent":"vendor.settings"`, true, "vendor.settings"},
+		{"wrong placement", "workspaceView", `,"settingsIntent":"model-providers"`, false, ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			files := map[string]string{

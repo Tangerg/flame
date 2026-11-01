@@ -22,6 +22,8 @@ func TestDecodePublishDiagnosticsValidatesNotification(t *testing.T) {
 		raw  *jsontext.Value
 		want string
 	}{
+		{name: "absent array", raw: rawMessage(`{"uri":"file:///main.go","version":2}`), want: "array"},
+		{name: "null array", raw: rawMessage(`{"uri":"file:///main.go","version":2,"diagnostics":null}`), want: "array"},
 		{name: "missing", want: "missing"},
 		{name: "null", raw: rawMessage("null"), want: "uri is empty"},
 		{name: "malformed", raw: rawMessage("{"), want: "decode"},

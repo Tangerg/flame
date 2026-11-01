@@ -97,8 +97,10 @@ func (c CommandDescriptor) validateAliases() error {
 	return nil
 }
 
+const InstalledViewCommandPrefix = "view:"
+
 func validCommandIdentity(value string) bool {
-	return value != "" && utf8.ValidString(value) && !strings.ContainsRune(value, '/') &&
+	return value != "" && !strings.HasPrefix(value, InstalledViewCommandPrefix) && utf8.ValidString(value) && !strings.ContainsRune(value, '/') &&
 		!strings.ContainsFunc(value, func(character rune) bool { return unicode.IsSpace(character) || !unicode.IsPrint(character) })
 }
 

@@ -9,13 +9,7 @@ import {
   type WorkspaceFileChange,
   useWorkspaceFileChanges,
 } from "@/features/workspace/application/workspaceQueries";
-export interface WorkingTreeChanges {
-  files: number;
-  added: number | undefined;
-  removed: number | undefined;
-}
-
-function useChangedFiles(): WorkspaceFileChange[] | undefined {
+export function useChangedFiles(): WorkspaceFileChange[] | undefined {
   const gitEnabled = useRuntimeCapability("git");
   const workspace = useActiveSessionWorkspace();
   const cwd = resolvedWorkspaceCwd(workspace);
@@ -32,26 +26,4 @@ export function useWorkingTreeFiles(): ReadonlyMap<string, WorkspaceFileChange> 
     () => (data ? new Map(data.map((file) => [file.path, file])) : NO_CHANGES),
     [data],
   );
-}
-
-export function summarizeWorkingTreeChanges(
-  data: readonly WorkspaceFileChange[] | undefined,
-): WorkingTreeChanges | null {
-  if (!data || data.length === 0) return null;
-  return data.reduce<WorkingTreeChanges>(
-    (sum, file) => ({
-      files: sum.files,
-      added:
-        sum.added === undefined || file.added === undefined ? undefined : sum.added + file.added,
-      removed:
-        sum.removed === undefined || file.removed === undefined
-          ? undefined
-          : sum.removed + file.removed,
-    }),
-    { files: data.length, added: 0, removed: 0 },
-  );
-}
-
-export function useWorkingTreeChanges(): WorkingTreeChanges | null {
-  return summarizeWorkingTreeChanges(useChangedFiles());
 }

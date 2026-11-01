@@ -5,12 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/keylock"
-	"github.com/Tangerg/qimu/portable"
-	"github.com/samber/lo"
 	"slices"
 	"sync"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/keylock"
+	"github.com/Tangerg/qimu/portable"
+	"github.com/samber/lo"
 )
 
 var (
@@ -33,6 +34,8 @@ type ReplayRecord struct {
 }
 
 type ReplayStore interface {
+	Lookup(context.Context, string, string) (ReplayRecord, bool, error)
+	Transact(context.Context, func(context.Context) error) error
 	// An existing empty payload is unresolved; it never authorizes execution.
 	Claim(context.Context, string, string) (ReplayRecord, bool, error)
 	// Exact completion is idempotent. A lost claim cannot be recreated here.
@@ -83,10 +86,7 @@ func (r *Replay) Invoke(ctx context.Context, key, fingerprint string, execute fu
 		return nil, fmt.Errorf("idempotency: claim replay key: %w", err)
 	}
 	if !claimed {
-		if len(record.Payload) == 0 {
-			return nil, ErrInProgress
-		}
-		return bytes.Clone(record.Payload), nil
+		return settledPayload(record)
 	}
 	payload, err := execute()
 	if err != nil {
@@ -101,6 +101,71 @@ func (r *Replay) Invoke(ctx context.Context, key, fingerprint string, execute fu
 		return nil, settlementError(err)
 	}
 	return payload, nil
+}
+
+type PreparedOutcome struct {
+	Payload []byte
+	Commit  func(context.Context) error
+	Publish func()
+}
+
+// Local database commands can couple their outcome to their only effect.
+// Preparation can call external providers, so it runs outside the transaction.
+func (r *Replay) InvokeAtomic(ctx context.Context, key, fingerprint string, prepare func() (PreparedOutcome, error)) ([]byte, error) {
+	release, err := r.inFlight.Acquire(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	previous, found, err := r.store.Lookup(ctx, key, fingerprint)
+	if err != nil {
+		return nil, err
+	}
+	if found {
+		return settledPayload(previous)
+	}
+	prepared, err := prepare()
+	if err != nil {
+		return nil, err
+	}
+	var payload []byte
+	var committed bool
+	err = r.store.Transact(ctx, func(tx context.Context) error {
+		record, claimed, err := r.store.Claim(tx, key, fingerprint)
+		if err != nil {
+			return err
+		}
+		if !claimed {
+			payload, err = settledPayload(record)
+			return err
+		}
+		if prepared.Commit != nil {
+			if err := prepared.Commit(tx); err != nil {
+				return err
+			}
+		}
+		record.Payload = prepared.Payload
+		if err := r.store.Complete(tx, record); err != nil {
+			return err
+		}
+		payload = record.Payload
+		committed = true
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if committed && prepared.Publish != nil {
+		prepared.Publish()
+	}
+	return payload, nil
+}
+
+func settledPayload(record ReplayRecord) ([]byte, error) {
+	if len(record.Payload) == 0 {
+		return nil, ErrInProgress
+	}
+	return bytes.Clone(record.Payload), nil
 }
 
 func settlementError(err error) error {

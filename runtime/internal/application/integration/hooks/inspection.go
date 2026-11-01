@@ -14,8 +14,8 @@ import (
 var errInvalidInspection = errors.New("hooks: invalid inspection")
 
 // ValidateFor protects the resolved Hook cascade returned for workspaceRoot.
-// Hook order is executable policy: global entries run before project entries,
-// while order within each phase remains the authored loader order.
+// The installed provider owns order; Runtime admits scope and source,
+// including the project boundary used for trust.
 func (i Inspection) ValidateFor(workspaceRoot string) error {
 	if !canonicalAbsolutePath(workspaceRoot) {
 		return fmt.Errorf("%w: workspace root %q is not a canonical absolute path", errInvalidInspection, workspaceRoot)
@@ -34,7 +34,6 @@ func (i Inspection) ValidateFor(workspaceRoot string) error {
 		return fmt.Errorf("%w: trusted project has no root", errInvalidInspection)
 	}
 
-	previousPhase := -1
 	for index, hook := range i.Hooks {
 		if err := hook.Validate(); err != nil {
 			return fmt.Errorf("%w: hook %d: %w", errInvalidInspection, index+1, err)
@@ -42,11 +41,9 @@ func (i Inspection) ValidateFor(workspaceRoot string) error {
 		if !canonicalAbsolutePath(hook.Source) {
 			return fmt.Errorf("%w: hook %d source %q is not a canonical absolute path", errInvalidInspection, index+1, hook.Source)
 		}
-		phase := 0
 		switch hook.Scope {
 		case hookdata.ScopeGlobal:
 		case hookdata.ScopeProject:
-			phase = 1
 			if i.ProjectRoot == "" {
 				return fmt.Errorf("%w: project hook %d has no project root", errInvalidInspection, index+1)
 			}
@@ -56,10 +53,7 @@ func (i Inspection) ValidateFor(workspaceRoot string) error {
 		default:
 			return fmt.Errorf("%w: hook %d has unknown scope %q", errInvalidInspection, index+1, hook.Scope)
 		}
-		if phase < previousPhase {
-			return fmt.Errorf("%w: global hook %d follows the project phase", errInvalidInspection, index+1)
-		}
-		previousPhase = phase
+
 	}
 	return nil
 }

@@ -22,8 +22,8 @@ Protocol `2026-10-30.2` · 105 methods
 | `sessions.delete` | command | unary | replayResponse | none | none | — | — | `session_not_found` |
 | `sessions.fork` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `run_not_found` |
 | `sessions.rollback` | command | unary | replayResponse | none | none | — | `checkpoints` | `session_not_found`, `run_not_found`, `session_busy`, `checkpoint_unavailable`, `checkpoint_conflict`, `capability_not_negotiated` |
-| `sessions.export` | query | unary | none | none | none | — | `sessionExport` | `session_not_found`, `capability_not_negotiated` |
-| `sessions.import` | command | unary | replayResponse | none | none | — | `sessionExport` | `capability_not_negotiated` |
+| `sessions.export` | query | unary | none | none | none | — | `sessionExport` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `session_busy`, `export_too_large`, `capability_not_negotiated` |
+| `sessions.import` | command | unary | replayResponse | none | none | — | `sessionExport` | `session_busy`, `export_too_large`, `capability_not_negotiated` |
 | `modelInvocations.endpoints` | query | unary | none | none | cursor | — | — | `capability_not_negotiated` |
 | `modelInvocations.list` | query | unary | none | none | cursor | — | — | `run_not_found`, `capability_not_negotiated` |
 | `runs.start` | command | stream | ownerRun | run | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |

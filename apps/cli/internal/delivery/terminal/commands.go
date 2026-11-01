@@ -130,11 +130,6 @@ func (a *app) registerCommands() {
 			a.message(err.Error())
 		}
 	}
-	if a.screens.plugins != nil {
-		a.screens.plugins.registerViewCommands(func(owner string, descriptor extensions.CommandDescriptor, run func(string, func())) error {
-			return a.commands.add(owner, descriptor, run, nil)
-		})
-	}
 	a.extensions.registerCommands(func(owner string, descriptor extensions.CommandDescriptor, run func(string, func()), available func() extensions.CommandAvailability) error {
 		var evaluate func(*app) extensions.CommandAvailability
 		if available != nil {
@@ -142,6 +137,9 @@ func (a *app) registerCommands() {
 		}
 		return a.commands.add(owner, descriptor, run, evaluate)
 	})
+	if a.screens.plugins != nil {
+		a.screens.plugins.registerViewCommands(&a.commands)
+	}
 }
 
 type commandOperation struct {

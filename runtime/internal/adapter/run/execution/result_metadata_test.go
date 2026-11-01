@@ -16,7 +16,12 @@ func TestPendingToolMetadataPreservesProjectionAndRejectsForeignOwnership(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	identity, err := logicalToolCallID(processID, 2, 1, "provider_reused", "write")
+	source, err := tool.ParseRef("mcp:installation:eeb329cd-c7ce-40c9-bd90-6821fef06d30:files:write")
+	if err != nil {
+		t.Fatal(err)
+	}
+	published := source.PublishedName(true)
+	identity, err := logicalToolCallID(processID, 2, 1, "provider_reused", published)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +31,7 @@ func TestPendingToolMetadataPreservesProjectionAndRejectsForeignOwnership(t *tes
 	}
 	want := toolResultMetadata{
 		MemberID: processID.String(),
-		Start:    runs.ToolCallStarted{CallID: identity.String(), SourceCallID: "provider_reused", ModelCallSequence: 2, ToolCallIndex: 1, ToolName: "write", Arguments: `{"path":"edited"}`},
+		Start:    runs.ToolCallStarted{CallID: identity.String(), SourceCallID: "provider_reused", ModelCallSequence: 2, ToolCallIndex: 1, ToolName: published, Source: source, Arguments: `{"path":"edited"}`},
 		Result:   &preview, Offload: &transcript.ToolResultRef{ID: "ABCD"},
 		OutputText: "UI preview", MutatedPaths: []string{"/workspace/a", "/workspace/b"},
 		Failure: &tool.Failure{Kind: tool.FailureExecution, Detail: "second write failed"},
@@ -54,8 +59,11 @@ func TestPendingToolMetadataPreservesProjectionAndRejectsForeignOwnership(t *tes
 	}{
 		{"foreign member", func(value *toolResultMetadata) {
 			foreign, _ := agent.ParseProcessID("process:foreign")
-			id, _ := logicalToolCallID(foreign, 2, 1, "provider_reused", "write")
+			id, _ := logicalToolCallID(foreign, 2, 1, "provider_reused", published)
 			value.MemberID, value.Start.CallID = foreign.String(), id.String()
+		}},
+		{"changed source", func(value *toolResultMetadata) {
+			value.Start.Source, _ = tool.ParseRef("mcp:user:files:write")
 		}},
 		{"changed call", func(value *toolResultMetadata) { value.Start.SourceCallID = "different" }},
 		{"invalid offload", func(value *toolResultMetadata) { value.Offload.ID = "invalid" }},

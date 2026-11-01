@@ -26,7 +26,8 @@ func main() {
 }
 func run() error {
 	repository := flag.String("repository", "", "Git source repository")
-	revision := flag.String("revision", "", "frozen commit")
+	revision := flag.String("revision", "", "frozen Git source")
+	treeTime := flag.String("tree-time", "", "publication time of a frozen module directory tree")
 	output := flag.String("output", "", "file proxy directory")
 	modulePath := flag.String("module", "", "module path")
 	subdir := flag.String("subdir", "", "module source directory")
@@ -51,7 +52,7 @@ func run() error {
 		return err
 	}
 	var archive bytes.Buffer
-	commit, err := archiveModule(&archive, module.Version{Path: *modulePath, Version: *version}, *repository, *revision, *subdir)
+	frozen, err := archiveModule(&archive, module.Version{Path: *modulePath, Version: *version}, *repository, *revision, *subdir)
 	if err != nil {
 		return err
 	}
@@ -64,15 +65,15 @@ func run() error {
 		command.Dir = *repository
 		return command.Output()
 	}
-	mod, err := read("show", commit+":"+source)
+	mod, err := read("show", frozen+":"+source)
 	if err != nil {
 		return err
 	}
-	timestamp, err := read("show", "-s", "--format=%cI", commit)
+	timestamp, err := publicationTime(*subdir, *treeTime, frozen, read)
 	if err != nil {
 		return err
 	}
-	info, err := versionInfo(filepath.Join(directory, escapedVersion+".info"), *version, strings.TrimSpace(string(timestamp)))
+	info, err := versionInfo(filepath.Join(directory, escapedVersion+".info"), *version, timestamp, *treeTime == "")
 	if err != nil {
 		return err
 	}
@@ -102,14 +103,28 @@ func run() error {
 	return os.WriteFile(filepath.Join(directory, "list"), []byte(strings.Join(versions, "\n")+"\n"), 0o644)
 }
 
+func publicationTime(subdir, treeTime, source string, read func(...string) ([]byte, error)) (string, error) {
+	if treeTime != "" {
+		if subdir != "" {
+			return "", errors.New("module proxy: a tree pin already names the module directory")
+		}
+		if _, err := time.Parse(time.RFC3339, treeTime); err != nil {
+			return "", err
+		}
+		return treeTime, nil
+	}
+	value, err := read("show", "-s", "--format=%cI", source)
+	return strings.TrimSpace(string(value)), err
+}
+
 func archiveModule(writer io.Writer, version module.Version, repository, revision, subdir string) (string, error) {
-	resolve := exec.Command("git", "rev-parse", revision+"^{commit}")
+	resolve := exec.Command("git", "rev-parse", revision+"^{}")
 	resolve.Dir = repository
 	frozen, err := resolve.Output()
 	if err != nil {
 		return "", fmt.Errorf("module proxy: resolve frozen source: %w", err)
 	}
-	commit := strings.TrimSpace(string(frozen))
+	source := strings.TrimSpace(string(frozen))
 	command := exec.Command("git", "rev-parse", "--path-format=absolute", "--git-common-dir")
 	command.Dir = repository
 	data, err := command.Output()
@@ -122,13 +137,13 @@ func archiveModule(writer io.Writer, version module.Version, repository, revisio
 	}
 	// x/mod recognizes the primary checkout, while linked worktrees identify a
 	// private Git directory. The shared store owns the same immutable commit.
-	return commit, modzip.CreateFromVCS(writer, version, filepath.Dir(common), commit, subdir)
+	return source, modzip.CreateFromVCS(writer, version, filepath.Dir(common), source, subdir)
 }
 
 // The archive and manifest must still match this frozen source byte for byte.
 // An already-published version owns its recorded timestamp even when a later
 // commit changes only another module in the repository.
-func versionInfo(name, version, timestamp string) ([]byte, error) {
+func versionInfo(name, version, timestamp string, usePublishedTime bool) ([]byte, error) {
 	existing, err := os.ReadFile(name)
 	if err == nil {
 		var info struct{ Version, Time string }
@@ -140,6 +155,9 @@ func versionInfo(name, version, timestamp string) ([]byte, error) {
 		}
 		if _, err := time.Parse(time.RFC3339, info.Time); err != nil {
 			return nil, fmt.Errorf("module proxy: invalid published timestamp: %w", err)
+		}
+		if !usePublishedTime && info.Time != timestamp {
+			return nil, fmt.Errorf("module proxy: immutable publication time differs: %s", name)
 		}
 		return existing, nil
 	}

@@ -3,10 +3,10 @@ package runs
 import (
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"slices"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
@@ -169,9 +169,14 @@ type ToolCallStarted struct {
 	// a child member causal edge to this
 	// canonical Item without parsing CallID or relying on event timing.
 	SourceCallID string
+	Source       tool.Ref `json:"source,omitzero"`
 	ToolName     string
 	Arguments    string
 	SafetyClass  tool.SafetyClass
+}
+
+func (t ToolCallStarted) MatchesCapturedRef(ref tool.Ref) bool {
+	return ref.MatchesPublishedName(t.ToolName) && (t.Source == (tool.Ref{}) || t.Source == ref)
 }
 
 type ToolCallFinished struct {

@@ -13,7 +13,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	sdkplugin "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -209,54 +208,23 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 			}
 		}
 	}
+	resources := declarationResources{root: root}
 	admitContributions(members["contributions"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "contributions"}, func(w wireContribution) error {
-		if !plugin.ValidResourcePath(w.Contract) || !strings.HasPrefix(w.Contract, plugin.Namespace+"/") {
-			return plugin.ErrInvalid
-		}
-		body, err := read(ctx, root, w.Contract, maxManifestBytes)
+		value, err := resources.contribution(ctx, w)
 		if err != nil {
 			return err
-		}
-		contract, err := portable.ParseCapability(body)
-		if err != nil {
-			return err
-		}
-		value := plugin.Contribution{Background: w.Background, ID: w.ID, Server: w.Server, Export: w.Export, Contract: contract.Identity()}
-		for _, required := range w.Requires {
-			if !plugin.ValidResourcePath(required.Contract) || !strings.HasPrefix(required.Contract, plugin.Namespace+"/") {
-				return plugin.ErrInvalid
-			}
-			body, err := read(ctx, root, required.Contract, maxManifestBytes)
-			if err != nil {
-				return err
-			}
-			dependency, err := portable.ParseCapability(body)
-			if err != nil {
-				return err
-			}
-			value.Requires = append(value.Requires, plugin.Requirement{ID: required.ID, Contract: dependency.Identity(), Optional: required.Optional})
 		}
 		return release.AdmitContribution(value)
 	})
-	readPoint := func(resource string) (*portable.Point, error) {
-		if !plugin.ValidResourcePath(resource) || !strings.HasPrefix(resource, plugin.Namespace+"/") {
-			return nil, plugin.ErrInvalid
-		}
-		body, err := read(ctx, root, resource, maxManifestBytes)
-		if err != nil {
-			return nil, err
-		}
-		return portable.ParsePoint(body)
-	}
 	admitContributions(members["points"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "points"}, func(w wirePoint) error {
-		contract, err := readPoint(w.Contract)
+		contract, err := resources.point(ctx, w.Contract)
 		if err != nil {
 			return err
 		}
 		return release.AdmitPoint(plugin.Point{ID: w.ID, Contract: contract.Identity()})
 	})
 	admitContributions(members["pointValues"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "pointValues"}, func(w wirePointValue) error {
-		contract, err := readPoint(w.Contract)
+		contract, err := resources.point(ctx, w.Contract)
 		if err != nil {
 			return err
 		}
@@ -282,7 +250,7 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 			}
 			material = *w.Material
 		}
-		var settingsIntent extension.SettingsIntent
+		var settingsIntent string
 		if w.SettingsIntent != nil {
 			if *w.SettingsIntent == "" {
 				return plugin.ErrInvalid
@@ -299,7 +267,7 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		if w.Selector != nil {
 			selector = &plugin.RendererSelector{Kind: w.Selector.Type, Name: w.Selector.Name, Shape: w.Selector.Shape}
 		}
-		return release.AdmitComponent(plugin.ClientComponent{Selector: selector, ID: w.ID, Title: w.Title, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: contribution, Material: material, SettingsIntent: settingsIntent})
+		return release.AdmitComponent(plugin.ClientComponent{Selector: selector, ID: w.ID, Title: w.Title, LocalizedTitles: w.LocalizedTitles, ToolCategory: w.ToolCategory, TargetView: w.TargetView, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: contribution, Material: material, SettingsIntent: settingsIntent})
 	})
 	admitContributions(members["terminalViews"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "terminalViews"}, func(w wireTerminalView) error {
 		view, err := w.domain()
@@ -338,6 +306,56 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		}
 	}
 	return nil
+}
+
+type declarationResources struct{ root *os.Root }
+
+func (r declarationResources) read(ctx context.Context, resource string) ([]byte, error) {
+	if !plugin.ValidResourcePath(resource) || !strings.HasPrefix(resource, plugin.Namespace+"/") {
+		return nil, plugin.ErrInvalid
+	}
+	return read(ctx, r.root, resource, maxManifestBytes)
+}
+
+func (r declarationResources) point(ctx context.Context, resource string) (*portable.Point, error) {
+	body, err := r.read(ctx, resource)
+	if err != nil {
+		return nil, err
+	}
+	return portable.ParsePoint(body)
+}
+
+func (r declarationResources) capability(ctx context.Context, resource string) (*portable.Capability, error) {
+	body, err := r.read(ctx, resource)
+	if err != nil {
+		return nil, err
+	}
+	return portable.ParseCapability(body)
+}
+
+func (r declarationResources) contribution(ctx context.Context, w wireContribution) (plugin.Contribution, error) {
+	contract, err := r.capability(ctx, w.Contract)
+	if err != nil {
+		return plugin.Contribution{}, err
+	}
+	value := plugin.Contribution{Background: w.Background, ID: w.ID, Server: w.Server, Export: w.Export, Contract: contract.Identity()}
+	if w.ModelProviders != "" {
+		body, err := r.read(ctx, w.ModelProviders)
+		if err != nil {
+			return plugin.Contribution{}, err
+		}
+		if err := json.Unmarshal(body, &value.ModelProviders); err != nil {
+			return plugin.Contribution{}, fmt.Errorf("read model adapter provider scopes: %w", err)
+		}
+	}
+	for _, requirement := range w.Requires {
+		dependency, err := r.capability(ctx, requirement.Contract)
+		if err != nil {
+			return plugin.Contribution{}, err
+		}
+		value.Requires = append(value.Requires, plugin.Requirement{ID: requirement.ID, Contract: dependency.Identity(), Optional: requirement.Optional})
+	}
+	return value, nil
 }
 
 func report(release *plugin.Builder, component plugin.Component, code plugin.DiagnosticCode) {

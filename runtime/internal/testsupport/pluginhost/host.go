@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/qimu"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 type Fixture struct {
@@ -29,7 +30,7 @@ func New(t testing.TB, store *persistence.Bundle) *Fixture {
 		Epoch:               store.Qimu.Epoch(),
 		Installations:       store.Qimu,
 		ExecutionProtection: store.Qimu,
-		Drivers:             []qimu.Driver{refusalDriver{qimu.MCPProcess}, refusalDriver{qimu.BrowserJS}, refusalDriver{qimu.StaticResource}},
+		Drivers:             []qimu.Driver{refusalDriver{qimumcp.ProcessProfile}, refusalDriver{qimu.BrowserJS}, refusalDriver{qimu.StaticResource}},
 	})
 	if err != nil {
 		t.Fatal(err)

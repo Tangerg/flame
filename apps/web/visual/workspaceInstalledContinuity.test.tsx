@@ -85,10 +85,6 @@ vi.mock("@/features/shell/workbench/panel/ChatStream", () => ({
   ChatStream: () => (model.stream ? <model.stream /> : null),
 }));
 
-vi.mock("@/features/shell/workbench/panel/HeaderDiffStat", () => ({
-  HeaderDiffStat: () => null,
-}));
-
 let host: Host;
 
 let lifetime: ContributionLifetime;

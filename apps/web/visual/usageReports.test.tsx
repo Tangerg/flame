@@ -32,7 +32,7 @@ import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
 import { VISUAL_MEMORY_BINDING, VISUAL_USAGE } from "./componentSnapshots";
 import { createVisualRuntimeTransport } from "./createVisualRuntimeTransport";
 import { REVIEW_DIFF } from "./diffSnapshot";
-type Header = MethodOutputs["flame.usage-reports/list.v1"][number];
+type Header = MethodOutputs["flame.usage-reports/list.v2"]["reports"][number];
 
 type Report = MethodOutputs["flame.usage-reports/get.v1"];
 
@@ -209,7 +209,9 @@ it("recovers the original capture and preserves exact numbers, zero prices and m
       return mutationResult<CallPluginResponse>(capture, "original-capture");
     return Promise.resolve({
       output: stringifyJSON(
-        request.method === "flame.usage-reports/get.v1" ? report : saved ? [header] : [],
+        request.method === "flame.usage-reports/get.v1"
+          ? report
+          : { reports: saved ? [header] : [] },
       ),
     }) as never;
   });
@@ -259,11 +261,11 @@ it("reads a named report at the pane top and returns to the same archive row", a
   const list = deferred<CallPluginResponse>();
   const read = deferred<CallPluginResponse>();
   mount((request) =>
-    request.method === "flame.usage-reports/list.v1" ? list.promise : read.promise,
+    request.method === "flame.usage-reports/list.v2" ? list.promise : read.promise,
   );
   expect(screen.getByText("Reading saved reports…")).toBeTruthy();
   expect(screen.queryByText("No saved reports")).toBeNull();
-  list.resolve({ output: stringifyJSON([daily, weekly]) });
+  list.resolve({ output: stringifyJSON({ reports: [daily, weekly] }) });
 
   const pane = screen.getByRole("region", { name: "Saved usage reports" }).parentElement!;
   pane.style.overflowY = "auto";
@@ -299,7 +301,8 @@ it("reads a named report at the pane top and returns to the same archive row", a
 function heldReads() {
   const reads: Array<ReturnType<typeof deferred<CallPluginResponse>>> = [];
   const { calls } = mount((request) => {
-    if (request.method === "flame.usage-reports/list.v1") return reply([daily, weekly]);
+    if (request.method === "flame.usage-reports/list.v2")
+      return reply({ reports: [daily, weekly] });
     const read = deferred<CallPluginResponse>();
     reads.push(read);
     return read.promise;
@@ -459,8 +462,8 @@ it("retires a pending report refresh on Back and returns to the same archive row
 it("keeps a failed archive read distinct from an empty archive and retains accepted rows", async () => {
   const outcomes: Array<() => Promise<CallPluginResponse>> = [
     () => Promise.reject(new Error("archive offline")),
-    () => reply([]),
-    () => reply([daily]),
+    () => reply({ reports: [] }),
+    () => reply({ reports: [daily] }),
     () => Promise.reject(new Error("archive offline again")),
   ];
   mount(() => outcomes.shift()!());
@@ -489,8 +492,8 @@ it("removes only the confirmed captured report after a named decision", async ()
   const removal = deferred<CallPluginResponse>();
   const { calls } = mount((request) => {
     switch (request.method) {
-      case "flame.usage-reports/list.v1":
-        return reply(members);
+      case "flame.usage-reports/list.v2":
+        return reply({ reports: members });
       case "flame.usage-reports/get.v1":
         return reply(saved(reportId(request) === daily.id ? daily : weekly));
       default:
@@ -560,8 +563,10 @@ it.each([
     const { calls } = mount(
       (request) => {
         switch (request.method) {
-          case "flame.usage-reports/list.v1":
-            return listFails ? Promise.reject(new Error("archive offline")) : reply(members);
+          case "flame.usage-reports/list.v2":
+            return listFails
+              ? Promise.reject(new Error("archive offline"))
+              : reply({ reports: members });
           case "flame.usage-reports/get.v1":
             return reply(saved(reportId(request) === daily.id ? daily : weekly));
           default:

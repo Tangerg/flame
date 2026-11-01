@@ -2,11 +2,9 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
-export interface Command {
-  command: string;
-  cwd: string;
-  input: Input;
-  timeoutMillis: JSONNumber;
+export interface Advice {
+  decision: CommandDecision;
+  diagnostics: Diagnostic[];
 }
 
 export interface CommandDecision {
@@ -14,6 +12,11 @@ export interface CommandDecision {
   reason?: string;
   rewriteArguments?: string;
   verdict: string & ("allow" | "deny" | "ask");
+}
+
+export interface Diagnostic {
+  message: string;
+  source: string;
 }
 
 export type DiscoverV1Input = Discovery;
@@ -27,13 +30,14 @@ export interface Discovery {
   projectRoot: string;
 }
 
-export type ExecuteV1Input = Command;
+export type EvaluateV1Input = Evaluation;
 
-export type ExecuteV1Output = Result;
+export type EvaluateV1Output = Advice;
 
-export interface Failure {
-  kind: string & ("failed" | "canceled" | "timedOut");
-  message: string;
+export interface Evaluation {
+  declarativeOnly?: boolean;
+  input: Input;
+  rules: Hook[];
 }
 
 export interface Hook {
@@ -56,13 +60,6 @@ export interface Input {
   tool?: ToolInput;
 }
 
-export interface Result {
-  decision?: CommandDecision;
-  exitCode: JSONNumber;
-  failure?: Failure;
-  stderr?: string;
-}
-
 export interface ToolInput {
   arguments?: string;
   name: string;
@@ -72,15 +69,15 @@ export interface ToolInput {
 
 export interface MethodInputs {
   "flame.hooks/discover.v1": DiscoverV1Input;
-  "flame.hooks/execute.v1": ExecuteV1Input;
+  "flame.hooks/evaluate.v1": EvaluateV1Input;
 }
 export interface MethodOutputs {
   "flame.hooks/discover.v1": DiscoverV1Output;
-  "flame.hooks/execute.v1": ExecuteV1Output;
+  "flame.hooks/evaluate.v1": EvaluateV1Output;
 }
 export const METHODS = {
   "flame.hooks/discover.v1": { kind: "query", target: "installation" },
-  "flame.hooks/execute.v1": { kind: "command", target: "installation" },
+  "flame.hooks/evaluate.v1": { kind: "command", target: "installation" },
 } as const;
-export const CAPABILITY = { protocol: "io.github.tangerg.qimu/portable/1", reference: "flame.hooks.v1", composition: "selection", scope: "installation", contract: "9dc27dd6eb0712fab8ec7d5f16a598b5c966de3bb332d5a39e2668fe0a265ad6" } as const;
-export const CAPABILITY_JSON = "{\"composition\":\"selection\",\"methods\":[{\"description\":\"\",\"input\":{\"$defs\":{\"hookprovider.Discovery\":{\"additionalProperties\":false,\"properties\":{\"cwd\":{\"type\":\"string\"},\"home\":{\"type\":\"string\"},\"includeProject\":{\"type\":\"boolean\"},\"projectRoot\":{\"type\":\"string\"}},\"required\":[\"cwd\",\"projectRoot\",\"includeProject\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"cwd\":{\"type\":\"string\"},\"home\":{\"type\":\"string\"},\"includeProject\":{\"type\":\"boolean\"},\"projectRoot\":{\"type\":\"string\"}},\"required\":[\"cwd\",\"projectRoot\",\"includeProject\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.hooks/discover.v1\",\"output\":{\"$defs\":{\"hook.Hook\":{\"additionalProperties\":false,\"properties\":{\"command\":{\"type\":\"string\"},\"event\":{\"allOf\":[{\"enum\":[\"PreToolUse\",\"PostToolUse\",\"UserPromptSubmit\",\"SessionStart\",\"PreCompact\",\"Stop\",\"Notification\"]}],\"type\":\"string\"},\"inject\":{\"type\":\"string\"},\"matcher\":{\"type\":\"string\"},\"scope\":{\"allOf\":[{\"enum\":[\"global\",\"project\"]}],\"type\":\"string\"},\"source\":{\"type\":\"string\"},\"timeoutMillis\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"event\",\"scope\",\"source\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"items\":{\"$ref\":\"#/$defs/hook.Hook\"},\"type\":\"array\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"hook.Input\":{\"additionalProperties\":false,\"properties\":{\"cwd\":{\"type\":\"string\"},\"event\":{\"allOf\":[{\"enum\":[\"PreToolUse\",\"PostToolUse\",\"UserPromptSubmit\",\"SessionStart\",\"PreCompact\",\"Stop\",\"Notification\"]}],\"type\":\"string\"},\"prompt\":{\"type\":\"string\"},\"promptTruncated\":{\"type\":\"boolean\"},\"reason\":{\"type\":\"string\"},\"sessionId\":{\"type\":\"string\"},\"tool\":{\"$ref\":\"#/$defs/hook.ToolInput\"}},\"required\":[\"event\"],\"type\":\"object\"},\"hook.ToolInput\":{\"additionalProperties\":false,\"properties\":{\"arguments\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"result\":{\"type\":\"string\"},\"resultTruncated\":{\"type\":\"boolean\"}},\"required\":[\"name\"],\"type\":\"object\"},\"hookprovider.Command\":{\"additionalProperties\":false,\"properties\":{\"command\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"input\":{\"$ref\":\"#/$defs/hook.Input\"},\"timeoutMillis\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"command\",\"cwd\",\"input\",\"timeoutMillis\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"command\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"input\":{\"$ref\":\"#/$defs/hook.Input\"},\"timeoutMillis\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"command\",\"cwd\",\"input\",\"timeoutMillis\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.hooks/execute.v1\",\"output\":{\"$defs\":{\"hook.CommandDecision\":{\"additionalProperties\":false,\"properties\":{\"injectContext\":{\"type\":\"string\"},\"reason\":{\"type\":\"string\"},\"rewriteArguments\":{\"type\":\"string\"},\"verdict\":{\"allOf\":[{\"enum\":[\"allow\",\"deny\",\"ask\"]}],\"type\":\"string\"}},\"required\":[\"verdict\"],\"type\":\"object\"},\"hookprovider.Failure\":{\"additionalProperties\":false,\"properties\":{\"kind\":{\"allOf\":[{\"enum\":[\"failed\",\"canceled\",\"timedOut\"]}],\"type\":\"string\"},\"message\":{\"type\":\"string\"}},\"required\":[\"kind\",\"message\"],\"type\":\"object\"},\"hookprovider.Result\":{\"additionalProperties\":false,\"properties\":{\"decision\":{\"$ref\":\"#/$defs/hook.CommandDecision\"},\"exitCode\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"failure\":{\"$ref\":\"#/$defs/hookprovider.Failure\"},\"stderr\":{\"type\":\"string\"}},\"required\":[\"exitCode\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"decision\":{\"$ref\":\"#/$defs/hook.CommandDecision\"},\"exitCode\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"failure\":{\"$ref\":\"#/$defs/hookprovider.Failure\"},\"stderr\":{\"type\":\"string\"}},\"required\":[\"exitCode\"],\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.qimu/portable/1\",\"reference\":\"flame.hooks.v1\",\"scope\":\"installation\"}";
+export const CAPABILITY = { protocol: "io.github.tangerg.qimu/portable/1", reference: "flame.hooks.v1", composition: "selection", scope: "installation", contract: "8bd2b825daff8140a96442c4c0f616f54ccb9d65c3e9ac383737bceecfdb67d9" } as const;
+export const CAPABILITY_JSON = "{\"composition\":\"selection\",\"methods\":[{\"description\":\"\",\"input\":{\"$defs\":{\"hookprovider.Discovery\":{\"additionalProperties\":false,\"properties\":{\"cwd\":{\"type\":\"string\"},\"home\":{\"type\":\"string\"},\"includeProject\":{\"type\":\"boolean\"},\"projectRoot\":{\"type\":\"string\"}},\"required\":[\"cwd\",\"projectRoot\",\"includeProject\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"cwd\":{\"type\":\"string\"},\"home\":{\"type\":\"string\"},\"includeProject\":{\"type\":\"boolean\"},\"projectRoot\":{\"type\":\"string\"}},\"required\":[\"cwd\",\"projectRoot\",\"includeProject\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.hooks/discover.v1\",\"output\":{\"$defs\":{\"hook.Hook\":{\"additionalProperties\":false,\"properties\":{\"command\":{\"type\":\"string\"},\"event\":{\"allOf\":[{\"enum\":[\"PreToolUse\",\"PostToolUse\",\"UserPromptSubmit\",\"SessionStart\",\"PreCompact\",\"Stop\",\"Notification\"]}],\"type\":\"string\"},\"inject\":{\"type\":\"string\"},\"matcher\":{\"type\":\"string\"},\"scope\":{\"allOf\":[{\"enum\":[\"global\",\"project\"]}],\"type\":\"string\"},\"source\":{\"type\":\"string\"},\"timeoutMillis\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"event\",\"scope\",\"source\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"items\":{\"$ref\":\"#/$defs/hook.Hook\"},\"type\":\"array\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"hook.Hook\":{\"additionalProperties\":false,\"properties\":{\"command\":{\"type\":\"string\"},\"event\":{\"allOf\":[{\"enum\":[\"PreToolUse\",\"PostToolUse\",\"UserPromptSubmit\",\"SessionStart\",\"PreCompact\",\"Stop\",\"Notification\"]}],\"type\":\"string\"},\"inject\":{\"type\":\"string\"},\"matcher\":{\"type\":\"string\"},\"scope\":{\"allOf\":[{\"enum\":[\"global\",\"project\"]}],\"type\":\"string\"},\"source\":{\"type\":\"string\"},\"timeoutMillis\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"event\",\"scope\",\"source\"],\"type\":\"object\"},\"hook.Input\":{\"additionalProperties\":false,\"properties\":{\"cwd\":{\"type\":\"string\"},\"event\":{\"allOf\":[{\"enum\":[\"PreToolUse\",\"PostToolUse\",\"UserPromptSubmit\",\"SessionStart\",\"PreCompact\",\"Stop\",\"Notification\"]}],\"type\":\"string\"},\"prompt\":{\"type\":\"string\"},\"promptTruncated\":{\"type\":\"boolean\"},\"reason\":{\"type\":\"string\"},\"sessionId\":{\"type\":\"string\"},\"tool\":{\"$ref\":\"#/$defs/hook.ToolInput\"}},\"required\":[\"event\"],\"type\":\"object\"},\"hook.ToolInput\":{\"additionalProperties\":false,\"properties\":{\"arguments\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"result\":{\"type\":\"string\"},\"resultTruncated\":{\"type\":\"boolean\"}},\"required\":[\"name\"],\"type\":\"object\"},\"hookprovider.Evaluation\":{\"additionalProperties\":false,\"properties\":{\"declarativeOnly\":{\"type\":\"boolean\"},\"input\":{\"$ref\":\"#/$defs/hook.Input\"},\"rules\":{\"items\":{\"$ref\":\"#/$defs/hook.Hook\"},\"type\":\"array\"}},\"required\":[\"rules\",\"input\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"declarativeOnly\":{\"type\":\"boolean\"},\"input\":{\"$ref\":\"#/$defs/hook.Input\"},\"rules\":{\"items\":{\"$ref\":\"#/$defs/hook.Hook\"},\"type\":\"array\"}},\"required\":[\"rules\",\"input\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.hooks/evaluate.v1\",\"output\":{\"$defs\":{\"hook.CommandDecision\":{\"additionalProperties\":false,\"properties\":{\"injectContext\":{\"type\":\"string\"},\"reason\":{\"type\":\"string\"},\"rewriteArguments\":{\"type\":\"string\"},\"verdict\":{\"allOf\":[{\"enum\":[\"allow\",\"deny\",\"ask\"]}],\"type\":\"string\"}},\"required\":[\"verdict\"],\"type\":\"object\"},\"hookprovider.Advice\":{\"additionalProperties\":false,\"properties\":{\"decision\":{\"$ref\":\"#/$defs/hook.CommandDecision\"},\"diagnostics\":{\"items\":{\"$ref\":\"#/$defs/hookprovider.Diagnostic\"},\"type\":\"array\"}},\"required\":[\"decision\",\"diagnostics\"],\"type\":\"object\"},\"hookprovider.Diagnostic\":{\"additionalProperties\":false,\"properties\":{\"message\":{\"type\":\"string\"},\"source\":{\"type\":\"string\"}},\"required\":[\"source\",\"message\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"decision\":{\"$ref\":\"#/$defs/hook.CommandDecision\"},\"diagnostics\":{\"items\":{\"$ref\":\"#/$defs/hookprovider.Diagnostic\"},\"type\":\"array\"}},\"required\":[\"decision\",\"diagnostics\"],\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.qimu/portable/1\",\"reference\":\"flame.hooks.v1\",\"scope\":\"installation\"}";

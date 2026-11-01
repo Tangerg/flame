@@ -13,7 +13,8 @@ import { type CapturedToolResult, type ComponentContext } from "@flame/component
 import skillPages from "@flame/runtime-client/testing/skill-pages.json";
 import { RecordedResult } from "../../../plugins/tool-results/component/component";
 import declaration from "../../../plugins/tool-results/package/io.github.tangerg.flame/declaration.json";
-import { selectToolResultRenderer } from "@/features/chat/tools/application/toolResultRenderer";
+import { resolveRenderer } from "@/features/plugins/public/renderers";
+import { toolRendererCandidates } from "@/features/chat/tools/application/toolResultRenderer";
 import { type ToolResultRendererSpec } from "@/features/chat/public/tools/types";
 afterEach(() => {
   cleanup();
@@ -39,7 +40,13 @@ function capturedContext(
     component: Object.freeze({
       installationId: "captured-tool-results",
       digest: "a".repeat(64),
-      componentId: "recorded-result",
+      componentId:
+        declaration.components.find(({ selector }) => selector.name === name)?.id ??
+        declaration.components.find(
+          ({ selector }) =>
+            selector.shape !== undefined && selector.shape === WIRE_RESULT_SHAPE[name],
+        )?.id ??
+        "unrecognized",
     }),
     locale: "en",
     signal: new AbortController().signal,
@@ -177,7 +184,7 @@ it("keeps web titles, URLs and excerpts distinct, complete and inert while filte
     },
   ];
   testClient.render(
-    <RecordedResult context={capturedContext("web_search", JSON.stringify({ results }))} />,
+    <RecordedResult context={capturedContext("web_web_search", JSON.stringify({ results }))} />,
   );
   const result = screen.getByRole("region", { name: "Result" });
   expect(within(result).getByText(title, { exact: true })).toBeTruthy();
@@ -204,7 +211,7 @@ it("distinguishes an absent excerpt from a recorded empty paragraph", () => {
     { title: "Recorded blank", url: "https://example.test/empty", snippet: "" },
   ];
   testClient.render(
-    <RecordedResult context={capturedContext("web_search", JSON.stringify({ results }))} />,
+    <RecordedResult context={capturedContext("web_web_search", JSON.stringify({ results }))} />,
   );
   const result = screen.getByRole("region", { name: "Result" });
   expect(within(result).getByText("Without a body", { exact: true })).toBeTruthy();
@@ -227,7 +234,7 @@ it("preserves complete literal JSON prose despite keys that resemble other resul
     null,
     2,
   );
-  for (const name of ["ask_user", "load_skill", "search_memory"]) {
+  for (const name of ["ask_user", "load_skill", "memory_search_memory"]) {
     const rendered = testClient.render(<RecordedResult context={capturedContext(name, source)} />);
     const result = screen.getByRole("region", { name: "Result" });
     expect(Array.from(result.querySelectorAll("p"), (paragraph) => paragraph.textContent)).toEqual([
@@ -533,7 +540,7 @@ it.each(["list_skills", "load_skill", "read_skill_resource"])(
 
 it.each([
   { name: "glob", result: JSON.stringify({ hits: [] }), label: "Matches" },
-  { name: "web_search", result: JSON.stringify({ results: [] }), label: "Results" },
+  { name: "web_web_search", result: JSON.stringify({ results: [] }), label: "Results" },
 ])(
   "states that $name returned nothing before, during and after Find",
   async ({ name, result, label }) => {
@@ -684,7 +691,7 @@ it("leads each recognised result with its caption actions and copies the recorde
       offset: 0,
       totalRunes: Array.from(content).length,
     });
-    testClient.render(<RecordedResult context={capturedContext("web_fetch", page)} />);
+    testClient.render(<RecordedResult context={capturedContext("web_web_fetch", page)} />);
     const result = screen.getByRole("region", { name: "Result" });
     expect(
       screen.getByText("markdown", { exact: true }).closest("[data-slot='code-caption']"),
@@ -699,7 +706,7 @@ it("leads each recognised result with its caption actions and copies the recorde
   }
 });
 
-it.each(["web_fetch", "web_browse"])(
+it.each(["web_web_fetch", "web_web_browse"])(
   "keeps a captured %s page continuation visible without fetching more content",
   (name) => {
     const page = {
@@ -743,7 +750,7 @@ it("preserves complete web source when metadata is malformed or unrecognised", (
   ]) {
     const source = JSON.stringify(value);
     const rendered = testClient.render(
-      <RecordedResult context={capturedContext("web_fetch", source)} />,
+      <RecordedResult context={capturedContext("web_web_fetch", source)} />,
     );
     const result = screen.getByRole("region", { name: "Result" });
     expect(Array.from(result.querySelectorAll("pre"), (line) => line.textContent).join("\n")).toBe(
@@ -822,7 +829,7 @@ it("continues paged result reading at the first newly revealed row through the f
   expect(screen.queryByRole("button", { name: /more matching rows/ })).toBeNull();
 });
 
-it.each(["read", "glob", "web_search"])(
+it.each(["read", "glob", "web_web_search"])(
   "%s starts a changed filter at its first matching row without moving input focus",
   (name) => {
     const rows = Array.from(
@@ -1145,7 +1152,7 @@ it.each([
     copied: "src/a.go:3\nfailed here\nsrc/b.go",
   },
   {
-    name: "web_search",
+    name: "web_web_search",
     result: JSON.stringify({
       results: [
         { title: "Review", url: "https://example.test/review", snippet: "Recorded excerpt." },
@@ -1319,3 +1326,10 @@ it("copies the presented result rows when Select All precedes a filter or page c
   expect(partial.setData).not.toHaveBeenCalled();
   document.getSelection()?.removeAllRanges();
 });
+
+function selectToolResultRenderer(
+  renderers: readonly ToolResultRendererSpec[],
+  target: Parameters<typeof toolRendererCandidates>[1],
+) {
+  return resolveRenderer(toolRendererCandidates(renderers, target), null);
+}

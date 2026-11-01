@@ -228,7 +228,7 @@ type UpdateMCPServerRequest struct {
 // Server ascending and then Name ascending.
 type MCPTool struct {
 	ModelName string `json:"modelName"`
-	// NameConflicts lists identities that exclude this tool from current model manifests.
+	// NameConflicts lists other sources that share this tool’s unqualified model name.
 	NameConflicts []ToolRef      `json:"nameConflicts"`
 	Server        MCPServerID    `json:"server"`
 	Name          string         `json:"name"`

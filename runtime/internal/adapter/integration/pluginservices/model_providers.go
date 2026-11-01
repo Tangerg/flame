@@ -1,8 +1,10 @@
 package pluginservices
 
 import (
+	"cmp"
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"sync"
 
@@ -78,25 +80,32 @@ func (p *ModelProviders) Held(_ context.Context, installation qimu.InstallationI
 	return result, nil
 }
 
-func (p *ModelProviders) acquire(ctx context.Context, original *plugins.ContributionBinding) (*providerUse, error) {
+func (p *ModelProviders) selectedBinding(ctx context.Context, role string) (plugins.ContributionBinding, bool, error) {
+	return plugins.SelectedContributionForRole(ctx, p.config.Framework, p.config.Installations, p.config.Selections, p.contract, role)
+}
+
+func (p *ModelProviders) acquireSelected(ctx context.Context, provider string) (*providerUse, error) {
 	var binding plugins.ContributionBinding
-	if original != nil {
-		binding = *original
-	} else {
-		err := p.config.Admission.Admit(ctx, func(ctx context.Context) error {
-			selected, found, err := plugins.SelectedContribution(ctx, p.config.Framework, p.config.Installations, p.config.Selections, p.contract)
-			if err != nil {
-				return err
-			}
-			if !found {
-				return plugin.ErrUnavailable
-			}
-			binding = selected
-			return nil
-		})
+	err := p.config.Admission.Admit(ctx, func(ctx context.Context) error {
+		var found bool
+		var err error
+		binding, found, err = p.selectedBinding(ctx, extension.ModelProviderRole(provider))
 		if err != nil {
-			return nil, err
+			return err
 		}
+		if !found {
+			return plugin.ErrUnavailable
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return p.acquire(ctx, binding)
+}
+
+func (p *ModelProviders) acquire(ctx context.Context, binding plugins.ContributionBinding) (*providerUse, error) {
+	if binding.Activation == nil {
 		activation, err := p.config.Connections.AwaitInstallationActivation(ctx, binding.ServerID)
 		if err != nil {
 			if errors.Is(err, mcp.ErrUnavailable) {
@@ -137,12 +146,75 @@ func (p *ModelProviders) acquire(ctx context.Context, original *plugins.Contribu
 	return use, err
 }
 
-func (p *ModelProviders) Profiles(ctx context.Context) (_ []modelprovider.Profile, returned error) {
-	use, err := p.acquire(ctx, nil)
+func (p *ModelProviders) Profiles(ctx context.Context) ([]modelprovider.Profile, error) {
+	bySource := make(map[plugins.ContributionBinding][]string)
+	err := p.config.Admission.Admit(ctx, func(ctx context.Context) error {
+		selected, err := p.config.Selections.List(ctx)
+		if err != nil {
+			return err
+		}
+		for _, selection := range selected {
+			role := selection.Snapshot().Role
+			id, ok := extension.ProviderFromRole(role)
+			if !ok {
+				continue
+			}
+			binding, found, err := p.selectedBinding(ctx, role)
+			if errors.Is(err, plugin.ErrUnavailable) {
+				continue
+			}
+			if err != nil {
+				return err
+			}
+			if found {
+				bySource[binding] = append(bySource[binding], id)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	var result []modelprovider.Profile
+	for source, ids := range bySource {
+		profiles, err := p.selectedProfiles(ctx, source, ids)
+		if errors.Is(err, plugin.ErrUnavailable) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, profiles...)
+	}
+	slices.SortFunc(result, func(a, b modelprovider.Profile) int { return cmp.Compare(a.ID, b.ID) })
+	if len(result) == 0 {
+		return nil, plugin.ErrUnavailable
+	}
+	return result, nil
+}
+
+func (p *ModelProviders) selectedProfiles(ctx context.Context, source plugins.ContributionBinding, ids []string) (_ []modelprovider.Profile, returned error) {
+	use, err := p.acquire(ctx, source)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { returned = errors.Join(returned, use.Close(ctx)) }()
+	profiles, err := use.profiles(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]modelprovider.Profile, 0, len(ids))
+	for _, id := range ids {
+		profile, found := profiles[id]
+		if !found {
+			return nil, fmt.Errorf("%w: selected adapter did not advertise provider %q", modelapp.ErrProviderUnsupported, id)
+		}
+		result = append(result, profile)
+	}
+	return result, nil
+}
+
+func (use *providerUse) profiles(ctx context.Context) (map[string]modelprovider.Profile, error) {
 	method, err := modelprovider.ProfilesMethod()
 	if err != nil {
 		return nil, err
@@ -151,21 +223,42 @@ func (p *ModelProviders) Profiles(ctx context.Context) (_ []modelprovider.Profil
 	if err != nil {
 		return nil, err
 	}
-	seen := make(map[string]bool, len(profiles))
+	byID := make(map[string]modelprovider.Profile, len(profiles))
 	for _, profile := range profiles {
 		if err := profile.Validate(); err != nil {
 			return nil, err
 		}
-		if seen[profile.ID] {
+		if _, duplicate := byID[profile.ID]; duplicate {
 			return nil, errors.New("model providers: repeated provider identity")
 		}
-		seen[profile.ID] = true
+		byID[profile.ID] = profile
 	}
-	return profiles, nil
+	return byID, nil
+}
+
+func (p *ModelProviders) Profile(ctx context.Context, id string) (_ modelprovider.Profile, returned error) {
+	use, err := p.acquireSelected(ctx, id)
+	if err != nil {
+		return modelprovider.Profile{}, err
+	}
+	defer func() { returned = errors.Join(returned, use.Close(ctx)) }()
+	return use.profile(ctx, id)
+}
+
+func (u *providerUse) profile(ctx context.Context, id string) (modelprovider.Profile, error) {
+	profiles, err := u.profiles(ctx)
+	if err != nil {
+		return modelprovider.Profile{}, err
+	}
+	profile, found := profiles[id]
+	if !found {
+		return modelprovider.Profile{}, modelapp.ErrProviderUnsupported
+	}
+	return profile, nil
 }
 
 func (p *ModelProviders) openUse(ctx context.Context, connection modelprovider.Connection) (_ *providerUse, _ modelprovider.Profile, returned error) {
-	use, err := p.acquire(ctx, nil)
+	use, err := p.acquireSelected(ctx, connection.Provider)
 	if err != nil {
 		return nil, modelprovider.Profile{}, err
 	}
@@ -174,20 +267,8 @@ func (p *ModelProviders) openUse(ctx context.Context, connection modelprovider.C
 			returned = errors.Join(returned, use.Close(ctx))
 		}
 	}()
-	method, err := modelprovider.ProfilesMethod()
+	profile, err := use.profile(ctx, connection.Provider)
 	if err != nil {
-		return nil, modelprovider.Profile{}, err
-	}
-	profiles, err := providerMethod(ctx, use, method, "", struct{}{})
-	if err != nil {
-		return nil, modelprovider.Profile{}, err
-	}
-	index := slices.IndexFunc(profiles, func(profile modelprovider.Profile) bool { return profile.ID == connection.Provider })
-	if index < 0 {
-		return nil, modelprovider.Profile{}, modelapp.ErrProviderUnsupported
-	}
-	profile := profiles[index]
-	if err := profile.Validate(); err != nil {
 		return nil, modelprovider.Profile{}, err
 	}
 	if profile.Authentication == modelprovider.KeyRequired && connection.APIKey == "" {
@@ -238,7 +319,7 @@ func (p *ModelProviders) RestoreChat(ctx context.Context, selection modelchoice.
 	if err := capture.ValidateSelection(selection); err != nil {
 		return models.ResolvedChat{}, err
 	}
-	use, err := p.acquire(ctx, &capture.Binding)
+	use, err := p.acquire(ctx, capture.Binding)
 	if err != nil {
 		return models.ResolvedChat{}, err
 	}

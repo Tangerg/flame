@@ -17,8 +17,7 @@ export interface ModuleLease {
 }
 
 interface Evaluation {
-  readonly release: string;
-  readonly authority: LocalPlan["authority"];
+  readonly digest: string;
   readonly promise: Promise<Record<string, unknown>>;
   leases: number;
   retired: boolean;
@@ -30,8 +29,10 @@ export class RealmModules {
     unit: PlannedUnit,
     signal: AbortSignal,
   ) => Promise<ModuleLease>;
-  readonly #evaluated = new Map<string, Evaluation>();
-  readonly #releases = new Map<string, string>();
+  readonly #installations = new Map<
+    string,
+    { release: string; modules: Map<string, Evaluation> }
+  >();
   #authority?: LocalPlan["authority"];
 
   constructor(
@@ -46,32 +47,7 @@ export class RealmModules {
     plan: LocalPlan,
   ): Promise<Readonly<Record<string, unknown>>> {
     owner.assertOpen();
-    const installation = unit.instance.source.installationId;
-    const assertEvaluationDomain = () => {
-      if (
-        (this.#authority && !sameAuthority(this.#authority, plan.authority)) ||
-        (this.#releases.has(installation) &&
-          this.#releases.get(installation) !== unit.instance.source.release)
-      )
-        throw new QimuError(
-          "reload_required",
-          "evaluated installation requires a new realm after release or authority replacement",
-        );
-    };
-    assertEvaluationDomain();
-    const key = `${installation}/${unit.module.path}`;
-    const previous = this.#evaluated.get(key);
-    if (
-      previous &&
-      (previous.retired ||
-        previous.release !== unit.instance.source.release ||
-        !sameAuthority(previous.authority, plan.authority))
-    ) {
-      throw new QimuError(
-        "reload_required",
-        "evaluated module requires a new realm before replacement or reuse",
-      );
-    }
+    this.#lookup(unit, plan.authority);
     let lease: ModuleLease | undefined;
     let evaluation: Evaluation | undefined;
     const retire = () => {
@@ -106,7 +82,6 @@ export class RealmModules {
       }
     });
     owner.assertOpen();
-    assertEvaluationDomain();
     if (lease!.digest !== unit.module.digest)
       throw new QimuError(
         "contract_mismatch",
@@ -118,17 +93,7 @@ export class RealmModules {
         "permission_denied",
         "module lease uses an unsupported URL scheme",
       );
-    evaluation = this.#evaluated.get(key);
-    if (
-      evaluation &&
-      (evaluation.retired ||
-        evaluation.release !== unit.instance.source.release ||
-        !sameAuthority(evaluation.authority, plan.authority))
-    )
-      throw new QimuError(
-        "reload_required",
-        "module acquisition completed after its evaluation domain retired",
-      );
+    evaluation = this.#lookup(unit, plan.authority);
     if (!evaluation) {
       // The browser owns ESM evaluation. An attempted evaluation is never made
       // retryable by deleting a Promise or appending a cache-busting query.
@@ -136,15 +101,19 @@ export class RealmModules {
         Record<string, unknown>
       >;
       this.#authority = plan.authority;
-      this.#releases.set(installation, unit.instance.source.release);
+      const source = unit.instance.source;
+      let installation = this.#installations.get(source.installationId);
+      if (!installation) {
+        installation = { release: source.release, modules: new Map() };
+        this.#installations.set(source.installationId, installation);
+      }
       evaluation = {
-        release: unit.instance.source.release,
-        authority: plan.authority,
+        digest: unit.module.digest,
         promise,
         leases: 0,
         retired: false,
       };
-      this.#evaluated.set(key, evaluation);
+      installation.modules.set(unit.module.path, evaluation);
     }
     evaluation.leases++;
     let exports: Record<string, unknown>;
@@ -160,6 +129,34 @@ export class RealmModules {
     }
     owner.assertOpen();
     return exports;
+  }
+
+  #lookup(
+    unit: PlannedUnit,
+    authority: LocalPlan["authority"],
+  ): Evaluation | undefined {
+    const source = unit.instance.source;
+    const installation = this.#installations.get(source.installationId);
+    if (
+      (this.#authority && !sameAuthority(this.#authority, authority)) ||
+      (installation && installation.release !== source.release)
+    )
+      throw new QimuError(
+        "reload_required",
+        "installation or authority changed after module evaluation",
+      );
+    const evaluation = installation?.modules.get(unit.module.path);
+    if (evaluation?.retired)
+      throw new QimuError(
+        "reload_required",
+        "retired module requires a new realm",
+      );
+    if (evaluation && evaluation.digest !== unit.module.digest)
+      throw new QimuError(
+        "contract_mismatch",
+        "module digest changed within an immutable release",
+      );
+    return evaluation;
   }
 
   async load(

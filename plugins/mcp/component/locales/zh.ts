@@ -95,7 +95,7 @@ export const zh: Record<string, string> = {
   "mcp.tools.policyHint":
     "即时保存。工具可见性对新运行生效。自动批准设置全局允许规则；更具体的规则仍然生效。",
   "mcp.tools.nameConflict":
-    "工具名称 {{name}} 与 {{sources}} 冲突，已从模型工具列表排除。",
+    "可通过 {{name}} 调用。{{sources}} 也使用这个简短名称。",
   "mcpStatus.mcp_authorization_required": "该服务器需要先登录才能使用。",
   "mcpStatus.mcp_authorization_failed": "登录未完成，请重试。",
   "mcpStatus.mcp_tool_discovery_failed":

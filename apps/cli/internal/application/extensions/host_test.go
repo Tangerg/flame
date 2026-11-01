@@ -367,3 +367,23 @@ func testCommand(name string) SlashCommand {
 func addTestCleanup(scope *Scope, cleanup func() error) {
 	scope.disposables = append(scope.disposables, &disposal{do: cleanup})
 }
+
+type cancelingSource struct {
+	cancel context.CancelCauseFunc
+	cause  error
+}
+
+func (s cancelingSource) ID() string { return "cancel" }
+func (s cancelingSource) Discover(context.Context) (SourceResult, error) {
+	s.cancel(s.cause)
+	return SourceResult{}, s.cause
+}
+
+func TestDiscoveryReturnsCancellationFromItsLastSource(t *testing.T) {
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cause := errors.New("discovery canceled")
+	result, err := Discover(ctx, cancelingSource{cancel: cancel, cause: cause})
+	if !errors.Is(err, cause) || len(result.Issues) != 0 {
+		t.Fatalf("discovery=%+v, err=%v", result, err)
+	}
+}

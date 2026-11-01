@@ -13,6 +13,6 @@ the accepted prefix and original in-flight command; they never restart that
 prefix after an unknown result. Accepted writes refresh read projections without
 making a failed read appear to undo a successful command.
 
-The `mcpServers` settings intent routes the graphical client's tools shortcut to
+The `mcp-servers` settings intent routes the graphical client's tools shortcut to
 the unique installed entry. Missing or ambiguous entries lead to plugin management.
 No backend, private server registry or independent authorization store is added.

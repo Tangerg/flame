@@ -33,6 +33,8 @@ retired reads, retains the last accepted report after a read failure, and displa
 wide integers and exact JSON numbers without rounding them through JavaScript
 `number`. Missing values remain missing; recorded zero remains zero.
 
+The installed terminal view lists saved report headers, opens an exact report, captures a daily or weekly report and confirms deletion before changing the archive. The GUI and terminal consume the same list method and report identity.
+
 Regenerate the typed contribution after changing its methods:
 
 ```sh

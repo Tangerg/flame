@@ -2,6 +2,8 @@ package lsp
 
 import (
 	"context"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"net"
 	"os"
@@ -25,7 +27,7 @@ func connectedTestClient(t *testing.T, handler rpcHandler) (*client, *jsonrpc2.C
 	wait := make(chan processEnd)
 	close(wait)
 	c := &client{
-		spec: ServerSpec{Name: "test", LanguageID: "go"}, shutdownBase: context.WithoutCancel(t.Context()),
+		save: saveSynchronization{Enabled: true}, spec: ServerSpec{Name: "test", LanguageID: "go"}, shutdownBase: context.WithoutCancel(t.Context()),
 		cancel: func() {}, wait: wait, stopProcess: func() error { return nil },
 		open: make(map[string]openDoc), diags: make(map[string]diagSet), updated: make(chan struct{}),
 	}
@@ -181,5 +183,66 @@ func TestWorkspaceSymbolsPreservesPartialFailure(t *testing.T) {
 				t.Fatalf("canceled partial search = %+v, %v", symbols, err)
 			}
 		})
+	}
+}
+
+func TestSaveIncludesExactCapturedEmptyTextWhenServerRequestsIt(t *testing.T) {
+	saved := make(chan didSaveParams, 1)
+	c, _ := connectedTestClient(t, func(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+		if req.Method == "textDocument/didSave" {
+			var params didSaveParams
+			if err := json.Unmarshal(*req.Params, &params); err != nil {
+				t.Error(err)
+			}
+			saved <- params
+		}
+		replyEmpty(ctx, conn, req)
+	})
+	options, err := negotiatedSave(jsontext.Value(`{"save":{"includeText":true}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.save = options
+	path := filepath.Join(t.TempDir(), "unwritten.go")
+	_, err = c.diagnosticsContent(t.Context(), path, []byte{}, 0)
+	if _, ok := errors.AsType[*DiagnosticsPendingError](err); !ok {
+		t.Fatalf("diagnostics: %v", err)
+	}
+	select {
+	case params := <-saved:
+		if params.Text == nil || *params.Text != "" || params.TextDocument.URI != pathToURI(path) {
+			t.Fatalf("incorrect didSave payload: %+v", params)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("didSave was not delivered")
+	}
+}
+
+func TestCallHierarchyIncludesEveryPreparedRootAndPreservesServerData(t *testing.T) {
+	c, _ := connectedTestClient(t, func(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+		switch req.Method {
+		case "textDocument/prepareCallHierarchy":
+			_ = conn.Reply(ctx, req.ID, []map[string]string{{"name": "first", "data": "one"}, {"name": "second", "data": "two"}})
+		case "callHierarchy/outgoingCalls":
+			var params struct {
+				Item struct {
+					Data string `json:"data"`
+				} `json:"item"`
+			}
+			if err := json.Unmarshal(*req.Params, &params); err != nil {
+				t.Error(err)
+			}
+			_ = conn.Reply(ctx, req.ID, []callHierarchyOutgoingCall{{To: callHierarchyItem{Name: params.Item.Data, URI: "file:///root.go"}}})
+		default:
+			replyEmpty(ctx, conn, req)
+		}
+	})
+	path := filepath.Join(t.TempDir(), "source.go")
+	if err := os.WriteFile(path, []byte("package main"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	result, err := c.callHierarchy(t.Context(), path, Position{}, true)
+	if err != nil || len(result) != 2 || result[0].Name != "one" || result[1].Name != "two" {
+		t.Fatalf("roots = %+v, %v", result, err)
 	}
 }

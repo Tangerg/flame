@@ -527,7 +527,17 @@ func portableToolFromArtifact(path string, artifact protocol.ToolInvocation) (tr
 		}
 		input = transcript.RejectedInput(artifact.ArgumentsText)
 	}
-	return transcript.ToolInvocation{Name: artifact.Name, Input: input, Result: result}, nil
+	var source tool.Ref
+	if artifact.Source != nil {
+		source, err = toolRefFromWire(artifact.Source.Ref)
+		if err != nil {
+			return transcript.ToolInvocation{}, invalidArtifact(path+".source.ref", "%v", err)
+		}
+		if source.ModelName() != artifact.Source.ModelName || !source.MatchesPublishedName(artifact.Name) {
+			return transcript.ToolInvocation{}, invalidArtifact(path+".source", "tool name does not match its captured source")
+		}
+	}
+	return transcript.ToolInvocation{Name: artifact.Name, Source: source, Input: input, Result: result}, nil
 }
 
 func portableRunFailureFromArtifact(path string, artifact *protocol.ArtifactProblem) (*run.Failure, error) {

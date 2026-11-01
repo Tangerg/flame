@@ -37,3 +37,11 @@ func TestDocumentRejectsOversizedPortableContent(t *testing.T) {
 		t.Fatal("oversized session document was accepted")
 	}
 }
+
+func TestSessionDocumentPreservesFormatOwnedWhitespace(t *testing.T) {
+	b := []byte("  # Session\n\n")
+	doc, err := NewDocument(protocol.ExportFormatMarkdown, b)
+	if err != nil || !bytes.Equal(doc.Bytes(), b) {
+		t.Fatalf("document=%q err=%v", doc.Bytes(), err)
+	}
+}

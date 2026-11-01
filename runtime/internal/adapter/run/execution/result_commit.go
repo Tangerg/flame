@@ -38,6 +38,24 @@ type toolReceiptEvidence struct {
 	Authority integrity.Digest `json:"authority"`
 }
 
+func (r toolReceiptEvidence) validateStart(start runs.ToolCallStarted) error {
+	if _, err := agent.ParseProcessID(r.ProcessID); err != nil {
+		return err
+	}
+	if _, err := agent.ParseEffectID(r.EffectID); err != nil {
+		return err
+	}
+	server, _, found := r.Tool.MCP()
+	_, installed := server.Origin().Installation()
+	if !found || !installed || !start.MatchesCapturedRef(r.Tool) {
+		return errors.New("execution: invalid Tool receipt evidence")
+	}
+	if err := r.Release.Validate(); err != nil {
+		return err
+	}
+	return r.Authority.Validate()
+}
+
 func (t toolResultMetadata) clone() toolResultMetadata {
 	if t.Receipt != nil {
 		t.Receipt = new(*t.Receipt)
@@ -57,25 +75,14 @@ func (t toolResultMetadata) clone() toolResultMetadata {
 
 func (t toolResultMetadata) validate() error {
 	if t.Receipt != nil {
-		if _, err := agent.ParseProcessID(t.Receipt.ProcessID); err != nil {
-			return err
-		}
-		if _, err := agent.ParseEffectID(t.Receipt.EffectID); err != nil {
-			return err
-		}
-		server, _, found := t.Receipt.Tool.MCP()
-		_, installed := server.Origin().Installation()
-		if !found || !installed || t.Receipt.Tool.ModelName() != t.Start.ToolName {
-			return errors.New("execution: invalid Tool receipt evidence")
-		}
-		if err := t.Receipt.Release.Validate(); err != nil {
-			return err
-		}
-		if err := t.Receipt.Authority.Validate(); err != nil {
+		if err := t.Receipt.validateStart(t.Start); err != nil {
 			return err
 		}
 	}
 	processID, err := agent.ParseProcessID(t.MemberID)
+	if t.Start.Source != (tool.Ref{}) && !t.Start.Source.MatchesPublishedName(t.Start.ToolName) {
+		return errors.New("execution: captured tool name changed")
+	}
 	if err != nil || t.Start.ModelCallSequence == 0 || t.Start.SourceCallID == "" || t.Start.ToolName == "" {
 		return errors.New("execution: invalid Tool metadata attribution")
 	}

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
@@ -95,7 +96,15 @@ func TestWorkingContextAttributesHookAndRecalledMemoryInPlace(t *testing.T) {
 	}
 	recalledMemoryID := testAgentMemoryItemID(t, '2')
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{
-		Hooks: provenanceHookResolver{bound: apphooks.NewBound(hooks, apphooks.NewRunner(nil, nil), nil)},
+		Hooks: provenanceHookResolver{bound: apphooks.NewBound(hooks, func(_ context.Context, in hookprovider.Evaluation) (hookprovider.Advice, error) {
+			var injected string
+			for _, rule := range in.Rules {
+				if rule.Event == in.Input.Event {
+					injected = rule.Inject
+				}
+			}
+			return hookprovider.Advice{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandAllow, InjectContext: injected}}, nil
+		}, nil, nil)},
 		AgentMemorySearch: &fakeAgentMemorySearcher{
 			items: []MemoryPromptItem{testMemoryPromptItem(MemoryPromptItem{ID: recalledMemoryID, Content: "recalled fact"})},
 		},
