@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -33,14 +34,14 @@ func TestGoalReadsKeepLifecycleAndUsageInOneSnapshot(t *testing.T) {
 			goals := newGoalStore(writer)
 			seedSession(t, newSessionStore(writer), "ses_goal_snapshot")
 			now := time.Date(2026, 10, 9, 1, 0, 0, 0, time.UTC)
-			initial, err := goal.New("ses_goal_snapshot", "finish", testReasoningSelection(t, "provider", "model", ""), run.Capabilities{}, "goal_snapshot", now)
+			initial, err := goaltest.New("ses_goal_snapshot", "finish", testReasoningSelection(t, "provider", "model", ""), run.Capabilities{}, "goal_snapshot", now)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if applied, err := goals.Save(t.Context(), goalReplacement(t, initial, unwrittenVersion(t, initial.SessionID()))); err != nil || !applied {
 				t.Fatalf("save initial Goal = %t, %v", applied, err)
 			}
-			paused, err := initial.Pause(goal.ReasonStoppedByUser, now.Add(time.Minute))
+			paused, err := goaltest.Paused(initial, goal.ReasonStoppedByUser, now.Add(time.Minute))
 			if err != nil {
 				t.Fatal(err)
 			}

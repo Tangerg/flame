@@ -2,7 +2,9 @@ package delivery
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -20,7 +22,7 @@ type stubSkillProposals struct {
 	root       string
 }
 
-func (s *stubSkillProposals) SubmitProposal(context.Context, string, skills.Proposal) (skills.ProposalRef, []string, error) {
+func (s *stubSkillProposals) SubmitProposal(context.Context, string, skills.Proposal) (skills.ProposalRef, error) {
 	panic("unexpected SubmitProposal")
 }
 
@@ -38,18 +40,18 @@ func (s *stubSkillProposals) ApproveProposal(_ context.Context, root string, ref
 	return []string{filepath.Join(root, "run-tests", "SKILL.md")}, nil
 }
 
-func (s *stubSkillProposals) RejectProposal(_ context.Context, root string, ref skills.ProposalRef) ([]string, error) {
+func (s *stubSkillProposals) RejectProposal(_ context.Context, root string, ref skills.ProposalRef) error {
 	s.root = root
 	if s.rejectErr != nil {
-		return nil, s.rejectErr
+		return s.rejectErr
 	}
 	s.rejected = append(s.rejected, ref)
-	return []string{filepath.Join(root, "_proposals", ref.Name, "SKILL.md")}, nil
+	return nil
 }
 
 func TestSkillProposalListMapsCompleteReviewContent(t *testing.T) {
 	root := t.TempDir()
-	ref := skills.NewProposalRef(skills.ScopeProject, "run-tests", []byte("content"))
+	ref := skills.CommandRef(skills.ScopeProject, "run-tests", fmt.Sprintf("%x", sha256.Sum256([]byte("content"))))
 	stub := &stubSkillProposals{list: []skills.ProposalReview{{
 		Ref:           ref,
 		Description:   "Run the project tests before final verification.",
@@ -86,7 +88,7 @@ func TestSkillProposalApproveRejectValidateAndDelegate(t *testing.T) {
 	root := t.TempDir()
 	stub := &stubSkillProposals{}
 	s := newWorkspaceHandlerWithConfig(root, workspaceTestConfig{Proposals: stub})
-	ref := skills.NewProposalRef(skills.ScopeUser, "run-tests", []byte("content"))
+	ref := skills.CommandRef(skills.ScopeUser, "run-tests", fmt.Sprintf("%x", sha256.Sum256([]byte("content"))))
 	wire := wireProposalRef(root, ref)
 
 	invalid := wire
@@ -114,7 +116,7 @@ func TestSkillProposalStaleReviewMapsRevisionConflict(t *testing.T) {
 			root := t.TempDir()
 			stub := &stubSkillProposals{approveErr: cause, rejectErr: cause}
 			handler := newWorkspaceHandlerWithConfig(root, workspaceTestConfig{Proposals: stub})
-			ref := wireProposalRef(root, skills.NewProposalRef(skills.ScopeProject, "run-tests", []byte("content")))
+			ref := wireProposalRef(root, skills.CommandRef(skills.ScopeProject, "run-tests", fmt.Sprintf("%x", sha256.Sum256([]byte("content")))))
 			for _, err := range []error{handler.ApproveSkillProposal(t.Context(), ref), handler.RejectSkillProposal(t.Context(), ref)} {
 				if !errors.Is(err, protocol.ErrRevisionConflict) || !errors.Is(err, cause) {
 					t.Fatalf("stale review = %v, want revision_conflict preserving %v", err, cause)

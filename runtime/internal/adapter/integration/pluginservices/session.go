@@ -36,6 +36,40 @@ func contributionSession(ctx context.Context, host *qimu.Host, store plugins.Sto
 	return binding, session, err
 }
 
+func workflowSession(ctx context.Context, c *CommandCalls, contract *portable.Capability, source extension.ContributionSource) (plugins.ContributionBinding, *mcp.BorrowedSession, error) {
+	var binding plugins.ContributionBinding
+	var found bool
+	var err error
+	if source == (extension.ContributionSource{}) {
+		binding, found, err = plugins.SelectedContribution(ctx, c.framework, c.installations, c.selections, contract)
+	} else {
+		binding, found, err = plugins.CapturedContribution(ctx, c.framework, c.installations, contract, source)
+		if err == nil && !found {
+			return binding, nil, fmt.Errorf("%w: original %s contributor %s from installation %s at release %s", plugin.ErrUnavailable, contract.Descriptor().Reference, source.Contribution, source.InstallationID, source.Release)
+		}
+	}
+	if err != nil {
+		return binding, nil, err
+	}
+	if !found {
+		return binding, nil, plugin.ErrUnavailable
+	}
+	activation, err := c.pool.AwaitInstallationActivation(ctx, binding.ServerID)
+	if err != nil {
+		return binding, nil, errors.Join(plugin.ErrUnavailable, err)
+	}
+	original, err := plugins.OriginalActivation([]plugin.Activation{activation}, binding.InstallationID, binding.Digest, binding.ServerName)
+	if err != nil {
+		return binding, nil, errors.Join(plugin.ErrUnavailable, err)
+	}
+	binding.Activation = &original
+	borrow, err := borrowContribution(ctx, c.pool, binding)
+	if err != nil {
+		return binding, nil, errors.Join(plugin.ErrUnavailable, err)
+	}
+	return binding, borrow, nil
+}
+
 func query[P, R any](ctx context.Context, location plugins.ContributionBinding, session *sdk.ClientSession, name string, input P, metadata sdk.ParamsBase) (R, error) {
 	var zero R
 	ctx, err := queryContext(ctx, location)

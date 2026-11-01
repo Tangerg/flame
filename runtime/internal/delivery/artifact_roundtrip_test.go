@@ -574,12 +574,13 @@ func seedOffloadedToolResult(t *testing.T, rt *stubRuntime, sessionID string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	source := testsupport.MCPTool(testsupport.InstallationMCPServer(testsupport.InstallationID(t), "vendor"), "tool")
 	if err := rt.hist.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: sessionID, RunID: "run_done", ID: "item_offload",
 		Kind: transcript.ToolCall, Status: transcript.ItemCompleted,
 		OccurredAt: time.Unix(10, 0).UTC(), FinishedAt: time.Unix(11, 0).UTC(),
 		Tool: &transcript.ToolInvocation{
-			Name: "vendor_tool", Result: &previewValue, Offload: &transcript.ToolResultRef{ID: id},
+			Name: source.ModelName(), Source: source, Result: &previewValue, Offload: &transcript.ToolResultRef{ID: id},
 		},
 	})); err != nil {
 		t.Fatalf("seed offloaded item: %v", err)

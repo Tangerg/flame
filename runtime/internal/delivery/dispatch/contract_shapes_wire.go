@@ -126,6 +126,7 @@ func registerMCPUnions(s *Shapes) {
 			{Tag: string(protocol.MCPAuthorizationAttemptSucceeded)},
 			{Tag: string(protocol.MCPAuthorizationAttemptFailed), Required: []string{"error"}, AllowedValues: allowedMCPStatusProblems(protocol.MCPStatusAuthorizationFailed)},
 			{Tag: string(protocol.MCPAuthorizationAttemptCanceled)},
+			{Tag: string(protocol.MCPAuthorizationAttemptUnconfirmed)},
 		},
 	})
 }
@@ -523,7 +524,6 @@ func registerObjectConstraints(s *Shapes) {
 	}{
 		{goType: typeOf[protocol.ModelTokenLimits](), requiredAny: []string{"contextWindow", "maxInputTokens", "maxOutputTokens"}},
 		{goType: typeOf[protocol.FeedbackRequest](), requiredAny: []string{"rating", "text"}},
-		{goType: typeOf[protocol.FeedbackEntry](), requiredAny: []string{"rating", "text"}},
 	} {
 		s.constraint(ObjectConstraintSpec{
 			GoType: constrained.goType,
@@ -877,6 +877,9 @@ func registerObjectConstraints(s *Shapes) {
 			Required: []string{"finishedAt"},
 		}, {
 			When:     []delivery.FieldCondition{{Field: "status.type", Operator: delivery.OperatorEquals, Value: string(protocol.MCPAuthorizationAttemptFailed)}},
+			Required: []string{"finishedAt"},
+		}, {
+			When:     []delivery.FieldCondition{{Field: "status.type", Operator: delivery.OperatorEquals, Value: string(protocol.MCPAuthorizationAttemptUnconfirmed)}},
 			Required: []string{"finishedAt"},
 		}, {
 			When:     []delivery.FieldCondition{{Field: "status.type", Operator: delivery.OperatorEquals, Value: string(protocol.MCPAuthorizationAttemptCanceled)}},

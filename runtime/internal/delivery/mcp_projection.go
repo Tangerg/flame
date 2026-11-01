@@ -124,6 +124,8 @@ func presentMCPAuthorizationAttempt(attempt mcpapp.AuthorizationAttempt) (protoc
 	case mcpapp.AuthorizationAttemptFailed:
 		status.Type = protocol.MCPAuthorizationAttemptFailed
 		status.Error = &protocol.MCPStatusProblem{Type: protocol.MCPStatusAuthorizationFailed}
+	case mcpapp.AuthorizationAttemptUnconfirmed:
+		status.Type = protocol.MCPAuthorizationAttemptUnconfirmed
 	case mcpapp.AuthorizationAttemptCanceled:
 		status.Type = protocol.MCPAuthorizationAttemptCanceled
 	default:

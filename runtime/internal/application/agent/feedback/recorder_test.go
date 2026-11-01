@@ -3,74 +3,51 @@ package feedback
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"testing"
 	"time"
 
-	feedbackdomain "github.com/Tangerg/flame/runtime/internal/domain/feedback"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/flame/runtime/internal/domain/annotation"
+	"github.com/Tangerg/qimu/jsonvalue"
 )
 
-type storeFake struct {
-	entries []feedbackdomain.Entry
+type prepared struct {
+	source  extension.AnnotationSource
+	content jsonvalue.Value
 	err     error
 }
 
-func (s *storeFake) Append(_ context.Context, entry feedbackdomain.Entry) error {
-	s.entries = append(s.entries, entry)
-	return s.err
+func (p prepared) PrepareFeedback(context.Context, extension.FeedbackDraft) (extension.AnnotationSource, jsonvalue.Value, error) {
+	return p.source, p.content, p.err
 }
 
-func TestRecorderPersistsValidatedEntry(t *testing.T) {
-	store := &storeFake{}
-	at := time.Date(2026, 10, 31, 9, 0, 0, 0, time.FixedZone("CST", 8*3600))
-	recorder, err := NewRecorder(store, func() time.Time { return at })
+type observed []annotation.Entry
+
+func (o *observed) Append(_ context.Context, e annotation.Entry) error {
+	*o = append(*o, e)
+	return nil
+}
+
+func TestOnlyOriginalProviderCanSupplyObservation(t *testing.T) {
+	src := extension.AnnotationSource{ContributionSource: extension.ContributionSource{InstallationID: "installed", Release: "original", Contribution: "observer"}, ContractReference: "contract"}
+	content, _ := jsonvalue.Parse([]byte(`{"future":"meaning"}`))
+	var ledger observed
+	at := time.Now().UTC()
+	ctx := operation.Bind(t.Context(), "feedback.create", "retry")
+	recorder, err := NewRecorder(prepared{source: src, content: content}, &ledger, func() time.Time { return at })
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := recorder.Record(t.Context(), Command{ItemID: "item_1", Rating: feedbackdomain.RatingPositive}); err != nil {
-		t.Fatalf("Record: %v", err)
-	}
-	if len(store.entries) != 1 || store.entries[0].ItemID != "item_1" || !store.entries[0].CreatedAt.Equal(at) || store.entries[0].CreatedAt.Location() != time.UTC {
-		t.Fatalf("entries = %+v", store.entries)
-	}
-}
-
-func TestRecorderRejectsEmptySignalWithoutPersisting(t *testing.T) {
-	store := &storeFake{}
-	recorder, err := NewRecorder(store, time.Now)
-	if err != nil {
+	if err := recorder.Record(ctx, extension.FeedbackDraft{ItemID: "item_1"}); err != nil {
 		t.Fatal(err)
 	}
-	err = recorder.Record(t.Context(), Command{ItemID: "item_1"})
-	if !errors.Is(err, feedbackdomain.ErrInvalid) {
-		t.Fatalf("Record = %v, want ErrInvalid", err)
+	if len(ledger) != 1 || ledger[0].Source != src || ledger[0].Content != content || ledger[0].CreatedAt != at || ledger[0].CommandID != operation.Identity(ctx) || ledger[0].Subject.ItemID != "item_1" {
+		t.Fatalf("altered provider evidence: %+v", ledger)
 	}
-	if len(store.entries) != 0 {
-		t.Fatalf("entries = %+v, want none", store.entries)
-	}
-}
-
-func TestNewRecorderRejectsTypedNilStore(t *testing.T) {
-	var store *storeFake
-	if _, err := NewRecorder(store, time.Now); err == nil {
-		t.Fatal("typed-nil feedback store was accepted")
-	}
-}
-
-func TestRecorderAcceptsGeneralFeedbackAndPreservesStoreFailure(t *testing.T) {
-	wantErr := errors.New("feedback write failed")
-	store := &storeFake{err: wantErr}
-	recorder, err := NewRecorder(store, time.Now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := recorder.Record(t.Context(), Command{Text: "General product feedback"}); !errors.Is(err, wantErr) {
-		t.Fatalf("Record = %v, want store failure", err)
-	}
-	if len(store.entries) != 1 {
-		t.Fatalf("received %d entries, want one", len(store.entries))
-	}
-	entry := store.entries[0]
-	if entry.SessionID != "" || entry.RunID != "" || entry.ItemID != "" || entry.CreatedAt.IsZero() {
-		t.Fatalf("general feedback gained an execution owner: %+v", entry)
+	failure := errors.New("original source unavailable")
+	recorder, _ = NewRecorder(prepared{err: failure}, &ledger, time.Now)
+	if err := recorder.Record(ctx, extension.FeedbackDraft{}); !errors.Is(err, failure) || len(ledger) != 1 {
+		t.Fatalf("unavailable source advanced observations: %v", err)
 	}
 }

@@ -8,11 +8,67 @@
     "output": "schema.json#/$defs/ArchiveV2Output"
   },
   {
-    "name": "flame.skill-learning/mine.v1",
+    "name": "flame.skill-learning/mine.v2",
     "kind": "command",
     "target": "installation",
-    "description": "Apply learning cadence to a completed Run and return optional proposal advice using call-scoped history, current skill and model callbacks. Never publish or store active skills.",
-    "input": "schema.json#/$defs/MineV1Input",
-    "output": "schema.json#/$defs/MineV1Output"
+    "description": "Mine a completed Run using bounded collaborators. Commit an admitted proposal and its original mining receipt in the same transaction.",
+    "input": "schema.json#/$defs/MineV2Input",
+    "output": "schema.json#/$defs/MineV2Output"
+  },
+  {
+    "name": "flame.skills/approve.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Record a human decision for the current proposal and retain its original publication permit.",
+    "input": "schema.json#/$defs/ApproveV1Input",
+    "output": "schema.json#/$defs/ApproveV1Output"
+  },
+  {
+    "name": "flame.skills/capture.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Record an interaction's original Skill source choices for exact receipt recovery.",
+    "input": "schema.json#/$defs/CaptureV1Input",
+    "output": "schema.json#/$defs/CaptureV1Output"
+  },
+  {
+    "name": "flame.skills/confirm.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Close the original publication after the authorized filesystem owner confirms publication or a definite precondition conflict.",
+    "input": "schema.json#/$defs/ConfirmV1Input",
+    "output": "schema.json#/$defs/ConfirmV1Output"
+  },
+  {
+    "name": "flame.skills/discover.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Select among the host-admitted Skill readers for a human catalog.",
+    "input": "schema.json#/$defs/DiscoverV1Input",
+    "output": "schema.json#/$defs/DiscoverV1Output"
+  },
+  {
+    "name": "flame.skills/propose.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Stage a reviewed library draft under its immutable originating command.",
+    "input": "schema.json#/$defs/ProposeV1Input",
+    "output": "schema.json#/$defs/ProposeV1Output"
+  },
+  {
+    "name": "flame.skills/reject.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Withdraw an exact pending proposal before approval.",
+    "input": "schema.json#/$defs/RejectV1Input",
+    "output": "schema.json#/$defs/RejectV1Output"
+  },
+  {
+    "name": "flame.skills/reviews.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "List outstanding proposal commands in the admitted libraries, including publications awaiting confirmation.",
+    "input": "schema.json#/$defs/ReviewsV1Input",
+    "output": "schema.json#/$defs/ReviewsV1Output"
   }
 ]

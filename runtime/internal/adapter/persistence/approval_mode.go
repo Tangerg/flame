@@ -92,12 +92,14 @@ func (p *ModeStore) StartPlanMode(ctx context.Context, sessionID string) (bool, 
 }
 
 // EndPlanMode reports whether the Session left Plan mode now.
-func (p *ModeStore) EndPlanMode(ctx context.Context, sessionID string) (bool, error) {
+func (p *ModeStore) EndPlanMode(ctx context.Context, sessionID string, revision uint64) (bool, error) {
 	if err := validateSessionResource("leave Session Plan mode", sessionID); err != nil {
 		return false, err
 	}
 	result, err := sqlite.Connection(ctx, p.db).ExecContext(ctx,
-		`DELETE FROM session_plan_modes WHERE session_id = ?`, sessionID,
+		`DELETE FROM session_plan_modes WHERE session_id = ? AND EXISTS (
+			SELECT 1 FROM session_plans p WHERE p.session_id = session_plan_modes.session_id AND p.revision = ?
+		)`, sessionID, revision,
 	)
 	if err != nil {
 		return false, fmt.Errorf("sqlite: leave session Plan mode: %w", err)
@@ -110,7 +112,10 @@ func (p *ModeStore) EndPlanMode(ctx context.Context, sessionID string) (bool, er
 // Runtime state and is deliberately not inherited from the Session that an
 // imported archive replaces.
 func (p *ModeStore) DeleteSession(ctx context.Context, sessionID string) error {
-	_, err := p.EndPlanMode(ctx, sessionID)
+	if err := validateSessionResource("delete Session Plan mode", sessionID); err != nil {
+		return err
+	}
+	_, err := sqlite.Connection(ctx, p.db).ExecContext(ctx, `DELETE FROM session_plan_modes WHERE session_id = ?`, sessionID)
 	return err
 }
 

@@ -3,6 +3,7 @@ package sessions
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 	"time"
 
@@ -123,6 +124,9 @@ func TestStateRejectsInvalidSessionIdentityBeforePersistence(t *testing.T) {
 }
 
 func mustPlanCoordinator(deps PlanDependencies) *PlanCoordinator {
+	if deps.Author == nil {
+		deps.Author = testsupport.PlanAuthor{}
+	}
 	coordinator, err := NewPlanCoordinator(deps)
 	if err != nil {
 		panic(err)

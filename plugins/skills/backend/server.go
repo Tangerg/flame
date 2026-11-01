@@ -28,17 +28,30 @@ func newServer(learning *learner) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	server := sdk.NewServer(&sdk.Implementation{Name: "flame.skills", Version: "4.0.0"}, nil)
+	server := sdk.NewServer(&sdk.Implementation{Name: "flame.skills", Version: "5.0.0"}, nil)
 	backend, err := qimumcp.NewBackend(server)
 	if err != nil {
 		return nil, err
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, learning.db),
+		registerReviews(backend, learning.db),
+		registerDiscovery(backend, learning.db),
 		mine.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[skilllearning.Run]) (skilllearning.MineResult, error) {
 			return learningCommand(ctx, learning, mine.Name(), command, skilllearning.Run.Validate, func(ctx context.Context, run skilllearning.Run) (skilllearning.MineResult, error) {
-				return learning.mine(ctx, run, remoteInputs{})
+				result, err := learning.mine(ctx, run, remoteInputs{})
+				if err != nil || result.Proposal == nil {
+					return result, err
+				}
+				allowed, err := admitMined(ctx, *result.Proposal)
+				if err != nil || !allowed {
+					return skilllearning.MineResult{}, err
+				}
+				return result, nil
+			}, func(ctx context.Context, run skilllearning.Run, result skilllearning.MineResult) error {
+				return learning.recordMined(ctx, string(command.ID), run, result)
 			})
+
 		}),
 		archive.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[skilllearning.ArchiveRequest]) (skilllearning.ArchiveAdvice, error) {
 			return learningCommand(ctx, learning, archive.Name(), command, func(request skilllearning.ArchiveRequest) error {
@@ -48,7 +61,7 @@ func newServer(learning *learner) (*sdk.Server, error) {
 				return nil
 			}, func(_ context.Context, request skilllearning.ArchiveRequest) (skilllearning.ArchiveAdvice, error) {
 				return learning.archive(request.Now), nil
-			})
+			}, nil)
 		}),
 		backend.BindCapability("skill-learning", contract),
 	); err != nil {
@@ -60,7 +73,7 @@ func newServer(learning *learner) (*sdk.Server, error) {
 	return server, nil
 }
 
-func learningCommand[P, R any](ctx context.Context, l *learner, method string, command qimumcp.Command[P], validate func(P) error, execute func(context.Context, P) (R, error)) (R, error) {
+func learningCommand[P, R any](ctx context.Context, l *learner, method string, command qimumcp.Command[P], validate func(P) error, execute func(context.Context, P) (R, error), record func(context.Context, P, R) error) (R, error) {
 	var zero R
 	input, err := command.RequestInput()
 	if err != nil {
@@ -93,8 +106,29 @@ func learningCommand[P, R any](ctx context.Context, l *learner, method string, c
 	if err != nil {
 		return zero, err
 	}
-	if err := prepared.SettleExternal(ctx, outcome.JSON(), nil); err != nil {
+	var commit func(context.Context) error
+	if record != nil {
+		commit = func(tx context.Context) error { return record(tx, request, value) }
+	}
+	if err := prepared.SettleExternal(ctx, outcome.JSON(), commit); err != nil {
+		if _, known := errors.AsType[*portable.Refusal](err); known {
+			refusal, encodeErr := qimumcp.EncodeReply(zero, err, nil)
+			if encodeErr != nil {
+				return zero, encodeErr
+			}
+			if settleErr := prepared.SettleExternal(ctx, refusal.JSON(), nil); settleErr != nil {
+				return zero, settleErr
+			}
+		}
 		return zero, err
 	}
 	return value, nil
+}
+
+func (l *learner) recordMined(ctx context.Context, id string, run skilllearning.Run, result skilllearning.MineResult) error {
+	if result.Proposal == nil {
+		return nil
+	}
+	_, err := (reviewQueue{db: l.db}).stageCommand(ctx, id, result.Proposal.Draft(run))
+	return err
 }

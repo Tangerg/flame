@@ -24,11 +24,12 @@ func openStore(t *testing.T) *sql.DB {
 }
 
 func TestRemovedMCPSourceCannotRetainApproval(t *testing.T) {
+	grantOwner := testsupport.InstallationID(t)
 	db := openStore(t)
 	servers := newMCPServerStore(db)
 	rules := newApprovalRuleStore(db)
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("github"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: "https://old.example/mcp"}}
-	if err := servers.Save(t.Context(), server); err != nil {
+	if _, err := servers.Grant(t.Context(), grantOwner, server); err != nil {
 		t.Fatal(err)
 	}
 	ref := testsupport.MCPTool(server.ID(), "create_issue")
@@ -39,13 +40,13 @@ func TestRemovedMCPSourceCannotRetainApproval(t *testing.T) {
 	if err := rules.Put(t.Context(), rule); err != nil {
 		t.Fatal(err)
 	}
-	if err := servers.Remove(t.Context(), server.Name); err != nil {
+	if err := servers.RetireGrants(t.Context(), grantOwner, server.Name, ""); err != nil {
 		t.Fatal(err)
 	}
 	moved := server.Connection.(mcpserver.HTTPConnection)
 	moved.URL = "https://new.example/mcp"
 	server.Connection = moved
-	if err := servers.Save(t.Context(), server); err != nil {
+	if _, err := servers.Grant(t.Context(), grantOwner, server); err != nil {
 		t.Fatal(err)
 	}
 	visible, err := rules.Visible(t.Context(), "", "", approval.MaximumVisibleRules)
@@ -63,9 +64,10 @@ func TestUserServerRemovalCascadesEveryRelation(t *testing.T) {
 	db := openStore(t)
 	servers := newMCPServerStore(db)
 	rules := newApprovalRuleStore(db)
+	grantOwner := testsupport.InstallationID(t)
 	authorization := newMCPAuthorizationStore(db)
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: "https://files.example/mcp"}}
-	if err := servers.Save(t.Context(), server); err != nil {
+	if _, err := servers.Grant(t.Context(), grantOwner, server); err != nil {
 		t.Fatal(err)
 	}
 	ref := testsupport.MCPTool(server.ID(), "write")
@@ -86,12 +88,12 @@ func TestUserServerRemovalCascadesEveryRelation(t *testing.T) {
 	if _, err := authorization.BeginOAuthSession(t.Context(), target); err != nil {
 		t.Fatal(err)
 	}
-	requireRows(t, db, map[string]int{"mcp_sources": 1, "mcp_servers": 1, "approval_rules": 1, "mcp_tool_exposure": 1, "mcp_oauth_sessions": 1})
+	requireRows(t, db, map[string]int{"mcp_sources": 1, "mcp_launch_grants": 1, "approval_rules": 1, "mcp_tool_exposure": 1, "mcp_oauth_sessions": 1})
 
-	if err := servers.Remove(t.Context(), server.Name); err != nil {
+	if err := servers.RetireGrants(t.Context(), grantOwner, server.Name, ""); err != nil {
 		t.Fatal(err)
 	}
-	requireRows(t, db, map[string]int{"mcp_sources": 0, "mcp_servers": 0, "approval_rules": 0, "mcp_tool_exposure": 0, "mcp_oauth_sessions": 0})
+	requireRows(t, db, map[string]int{"mcp_sources": 0, "mcp_launch_grants": 0, "approval_rules": 0, "mcp_tool_exposure": 0, "mcp_oauth_sessions": 0})
 	if err := rules.Put(t.Context(), rule); err == nil {
 		t.Fatal("a removed server regained a standing decision")
 	}
@@ -103,6 +105,7 @@ func TestUserServerRemovalCascadesEveryRelation(t *testing.T) {
 // A user server and an installation server may share a local name; each keeps
 // its own relations, and removing one never touches the other.
 func TestEqualNamesAcrossOriginsKeepSeparateRelations(t *testing.T) {
+	grantOwner := testsupport.InstallationID(t)
 	db := openStore(t)
 	servers := newMCPServerStore(db)
 	rules := newApprovalRuleStore(db)
@@ -124,7 +127,7 @@ func TestEqualNamesAcrossOriginsKeepSeparateRelations(t *testing.T) {
 		t.Fatal(err)
 	}
 	user := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Connection: mcpserver.StdioConnection{Command: "files"}}
-	if err := servers.Save(t.Context(), user); err != nil {
+	if _, err := servers.Grant(t.Context(), grantOwner, user); err != nil {
 		t.Fatal(err)
 	}
 	userRef := testsupport.MCPTool(user.ID(), "read")
@@ -149,7 +152,7 @@ func TestEqualNamesAcrossOriginsKeepSeparateRelations(t *testing.T) {
 		t.Fatalf("rules = %+v, %v", visible, err)
 	}
 
-	if err := servers.Remove(t.Context(), user.Name); err != nil {
+	if err := servers.RetireGrants(t.Context(), grantOwner, user.Name, ""); err != nil {
 		t.Fatal(err)
 	}
 	visible, err = rules.Visible(t.Context(), "", "", approval.MaximumVisibleRules)

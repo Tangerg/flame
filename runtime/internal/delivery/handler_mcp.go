@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
 // mcp.* is runtime-global, so these methods take no workspace reference.
@@ -171,6 +172,8 @@ func (s *Handler) GetMCPAuthorizationAttempt(ctx context.Context, attemptID stri
 
 func wireMCPError(err error) error {
 	switch {
+	case errors.Is(err, plugin.ErrUnavailable):
+		return protocol.NewFailure(errors.Join(protocol.ErrPluginUnavailable, err), "select an enabled external MCP connector")
 	case errors.Is(err, mcpapp.ErrOwnedByInstallation):
 		return protocol.NewFailure(errors.Join(protocol.ErrMCPOwnedByInstallation, err), err.Error())
 	case errors.Is(err, mcpapp.ErrUnknownServer):

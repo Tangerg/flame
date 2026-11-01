@@ -1,19 +1,18 @@
 package skills
 
 import (
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 )
 
-func TestProposalReferenceBindsExactContent(t *testing.T) {
-	content := []byte("proposal bytes")
-	ref := NewProposalRef(ScopeProject, "reviewed-skill", content)
+func TestProposalReferenceRequiresCanonicalCommand(t *testing.T) {
+	content := []byte("original command")
+	ref := CommandRef(ScopeProject, "reviewed-skill", fmt.Sprintf("%x", sha256.Sum256(content)))
 	if err := ref.Validate(); err != nil {
 		t.Fatalf("Validate() error = %v", err)
-	}
-	if !ref.Matches(content) || ref.Matches([]byte("different bytes")) {
-		t.Fatal("ProposalRef did not bind the exact proposal content")
 	}
 	uppercase := ref
 	uppercase.Revision = strings.ToUpper(uppercase.Revision)
@@ -48,7 +47,7 @@ func TestProposalValidatesMeaningAndSafety(t *testing.T) {
 		t.Fatal("proposal without origin passed validation")
 	}
 
-	invalidRef := NewProposalRef(Scope("other"), "safe-skill", nil)
+	invalidRef := CommandRef(Scope("other"), "safe-skill", fmt.Sprintf("%x", sha256.Sum256(nil)))
 	if err := invalidRef.Validate(); err == nil {
 		t.Fatal("invalid proposal scope passed validation")
 	}
@@ -79,7 +78,7 @@ func TestEntryValidatesManagedLibraryRows(t *testing.T) {
 }
 
 func TestProposalReviewValidatesReferenceAndContent(t *testing.T) {
-	ref := NewProposalRef(ScopeProject, "review", []byte("proposal"))
+	ref := CommandRef(ScopeProject, "review", fmt.Sprintf("%x", sha256.Sum256([]byte("proposal"))))
 	valid := ProposalReview{
 		Ref: ref, Description: "Review the current project changes.",
 		Origin:       ProposalOriginRequested,

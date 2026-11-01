@@ -143,11 +143,8 @@ func (m *mcpRegistryFake) Save(_ context.Context, srv mcpserver.Server) error {
 	return nil
 }
 
-func (m *mcpRegistryFake) Remove(_ context.Context, name mcpserver.ServerName) error {
-	id, err := mcpserver.NewID(mcpserver.UserOrigin(), name)
-	if err != nil {
-		return err
-	}
+func (m *mcpRegistryFake) Remove(_ context.Context, current mcpserver.Server) error {
+	id := current.ID()
 	m.mu.Lock()
 	delete(m.servers, id)
 	m.mu.Unlock()
@@ -162,6 +159,7 @@ func (m *mcpRegistryFake) Remove(_ context.Context, name mcpserver.ServerName) e
 func handlerWithMCP(t testing.TB, cfg mcpapp.Config) *Handler {
 	t.Helper()
 	ports := &fakeMCPPorts{}
+	cfg.External = ports
 	if cfg.Registry == nil {
 		cfg.Registry = &mcpRegistryFake{}
 	}
@@ -217,4 +215,15 @@ func (m *mcpRegistryFake) SetToolExposure(_ context.Context, ref tool.Ref, disab
 		delete(m.exposure, ref)
 	}
 	return nil
+}
+
+func (*fakeMCPPorts) Invalidate()                                      {}
+func (*fakeMCPPorts) Affected([]mcpserver.ID) bool                     { return false }
+func (*fakeMCPPorts) List(context.Context) ([]mcpserver.Server, error) { return nil, nil }
+func (*fakeMCPPorts) AdmitProbe(context.Context) (func(), error)       { return func() {}, nil }
+func (*fakeMCPPorts) StartAuthorization(context.Context, mcpserver.Server, mcpapp.AuthorizationAttemptID) (mcpapp.AuthorizationAttempt, func(context.Context, mcpapp.AuthorizationAttemptStatus) error, error) {
+	return mcpapp.AuthorizationAttempt{}, nil, mcpapp.ErrAuthorizationUnsupported
+}
+func (*fakeMCPPorts) ReadAuthorization(context.Context, mcpapp.AuthorizationAttemptID) (mcpapp.AuthorizationAttempt, error) {
+	return mcpapp.AuthorizationAttempt{}, mcpapp.ErrAuthorizationAttemptNotFound
 }

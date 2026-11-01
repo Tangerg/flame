@@ -21,7 +21,6 @@ func TestValidateSteps(t *testing.T) {
 		{name: "missing description", steps: []Step{{Status: StatusPending}}, wantErr: true},
 		{name: "blank description", steps: []Step{{Description: "  ", Status: StatusPending}}, wantErr: true},
 		{name: "unknown status", steps: []Step{{Description: "inspect", Status: "done"}}, wantErr: true},
-		{name: "two in progress", steps: []Step{{Description: "inspect", Status: StatusInProgress}, {Description: "implement", Status: StatusInProgress}}, wantErr: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

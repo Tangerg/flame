@@ -2,7 +2,10 @@ package promptsource
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
+	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	"maps"
 	"slices"
 
@@ -32,7 +35,7 @@ type resolvedSkills struct {
 	byName map[string]selectedSkill
 }
 
-func resolveSkills(ctx context.Context, workspaceRoot, userDir string, packages PackageSkills, retained []plugin.Dependency) (*resolvedSkills, error) {
+func resolveSkills(ctx context.Context, workspaceRoot, userDir string, sources SkillSources, retained []plugin.Dependency) (*resolvedSkills, error) {
 	project, err := openRuntimeSkillSource(ProjectSkillDir(workspaceRoot), workspaceRoot)
 	if err != nil {
 		return nil, err
@@ -41,6 +44,7 @@ func resolveSkills(ctx context.Context, workspaceRoot, userDir string, packages 
 	if err != nil {
 		return nil, err
 	}
+	packages := sources.Packages
 	var bundles []PackageSkillBundle
 	if packages != nil {
 		bundles, err = packages.SkillBundles(ctx, retained)
@@ -50,42 +54,19 @@ func resolveSkills(ctx context.Context, workspaceRoot, userDir string, packages 
 	} else if len(retained) != 0 {
 		return nil, workspaceapp.ErrSkillUnavailable
 	}
-	if project == nil && user == nil && len(bundles) == 0 {
+	if project == nil && user == nil && len(bundles) == 0 && (sources.Capture == nil || sources.Capture.Command == "") {
 		return nil, nil
 	}
-	selected := &resolvedSkills{byName: make(map[string]selectedSkill)}
-	for _, bundle := range bundles {
-		origin, err := workspaceapp.InstallationSkillSource(bundle.Dependency)
-		if err != nil {
-			return nil, err
-		}
-		source := &packageSkillSource{bundle: bundle, authority: packages}
-		for _, skill := range bundle.Skills {
-			if _, found := selected.byName[skill.Name]; found {
-				selected.byName[skill.Name] = selectedSkill{packageCopy: true}
-				continue
-			}
-			selected.byName[skill.Name] = selectedSkill{source: source, origin: origin, packageCopy: true}
-		}
+	set := candidates{readers: make(map[skilllearning.Choice]selectedSkill), installed: make(map[string]bool)}
+	set.input.Library = fmt.Sprintf("%x", sha256.Sum256([]byte(workspaceRoot)))
+	if err := set.bundles(bundles, packages); err != nil {
+		return nil, err
 	}
-	for _, layer := range []struct {
-		source *SkillSource
-		origin workspaceapp.SkillSource
-	}{
-		{user, workspaceapp.UserSkillSource()}, {project, workspaceapp.ProjectSkillSource()},
-	} {
-		if layer.source == nil {
-			continue
-		}
-		entries, err := layer.source.directoryEntries(ctx)
-		if err != nil {
-			return nil, err
-		}
-		for _, name := range skillCandidateNames(entries) {
-			selected.byName[name] = selectedSkill{source: layer.source, origin: layer.origin, packageCopy: selected.byName[name].packageCopy}
-		}
+	if err := set.directories(ctx, user, project); err != nil {
+		return nil, err
 	}
-	return selected, nil
+	return set.selectReaders(ctx, sources)
+
 }
 
 func (s *resolvedSkills) names() []string {

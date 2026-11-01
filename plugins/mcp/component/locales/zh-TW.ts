@@ -21,6 +21,7 @@ export const zhTW: Record<string, string> = {
   "mcp.transport.http": "Streamable HTTP",
   "mcp.signIn": "登入",
   "mcp.signingIn": "登入中…",
+  "mcp.signIn.unconfirmed": "重新啟動後無法確認上次登入的結果。",
   "mcp.signIn.aria": "登入 {{server}}",
   "mcp.signingIn.aria": "{{server}} 登入中…",
   "mcp.reconnect": "重新連線",

@@ -76,29 +76,3 @@ func UsageOf(sessionID, incarnationID string, runs []run.Run) (Usage, error) {
 	}
 	return used, nil
 }
-
-// RecordRun applies a terminal Run of this Goal: an active Goal pauses after a
-// Run that did not complete. The boolean reports whether the Goal changed; the
-// Run itself is what the Goal's usage is folded from.
-func (g Goal) RecordRun(value run.Run) (Goal, bool, error) {
-	if value.SessionID() != g.sessionID || value.GoalIncarnationID() != g.incarnationID.String() {
-		return Goal{}, false, fmt.Errorf("%w: Run belongs to another Goal", errRunIdentityConflict)
-	}
-	outcome, terminal := value.Outcome()
-	if !terminal {
-		return Goal{}, false, fmt.Errorf("goal: Run %q is not terminal", value.ID())
-	}
-	if g.status != StatusActive || outcome == run.OutcomeCompleted {
-		return g, false, nil
-	}
-	next, err := g.next(value.FinishedAt())
-	if err != nil {
-		return Goal{}, false, err
-	}
-	next.status = StatusPaused
-	next.reason, err = newReason(StatusPaused, ReasonRunNotCompleted, outcome, "")
-	if err != nil {
-		return Goal{}, false, err
-	}
-	return next, true, next.validate()
-}

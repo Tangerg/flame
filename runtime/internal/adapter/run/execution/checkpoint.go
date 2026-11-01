@@ -31,6 +31,7 @@ type installationDependencyWire struct {
 }
 
 type interactionCheckpointPayloadWire struct {
+	SkillDiscoveries    map[domaintool.Group]string         `json:"skill_discoveries,omitzero"`
 	ModelProvider       jsontext.Value                      `json:"model_provider"`
 	ToolProposals       *[]contributionBindingWire          `json:"tool_proposals"`
 	ModelInputs         *[]contributionBindingWire          `json:"model_inputs"`
@@ -99,6 +100,7 @@ type interactionCheckpointState struct {
 	modelInputs         []plugins.ContributionBinding
 	modelContexts       []plugins.ContributionBinding
 	modelObservers      []plugins.ContributionBinding
+	skillDiscoveries    map[domaintool.Group]string
 	mcpManifests        map[domaintool.Group][]domaintool.Ref
 	options             corechat.Options
 	toolMetadata        map[string]toolResultMetadata
@@ -161,6 +163,7 @@ func encodeInteractionCheckpointPayload(
 	toolMetadata []toolResultMetadata,
 	options corechat.Options,
 	mcpManifests map[domaintool.Group][]string,
+	skillDiscoveries map[domaintool.Group]string,
 	handoff *interactionHandoffWire,
 	observers []plugins.ContributionBinding,
 	contexts []plugins.ContributionBinding,
@@ -176,12 +179,13 @@ func encodeInteractionCheckpointPayload(
 		frozenInstructions = []corechat.Message{}
 	}
 	wire := interactionCheckpointPayloadWire{
-		ToolProposals:  new(contributionBindingsWire(toolProposals)),
-		ModelObservers: new(contributionBindingsWire(observers)),
-		ModelContexts:  new(contributionBindingsWire(contexts)),
-		ModelInputs:    new(contributionBindingsWire(inputs)),
-		MCPManifests:   new(mcpManifests),
-		ToolMetadata:   toolMetadata, Options: new(options.Clone()),
+		ToolProposals:    new(contributionBindingsWire(toolProposals)),
+		ModelObservers:   new(contributionBindingsWire(observers)),
+		ModelContexts:    new(contributionBindingsWire(contexts)),
+		ModelInputs:      new(contributionBindingsWire(inputs)),
+		MCPManifests:     new(mcpManifests),
+		SkillDiscoveries: skillDiscoveries,
+		ToolMetadata:     toolMetadata, Options: new(options.Clone()),
 		Instructions: new(frozenInstructions),
 	}
 	providerJSON, err := encodeModelProvider(provider)
@@ -432,7 +436,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if wire.Options == nil || wire.Instructions == nil {
 		return interactionCheckpointState{}, errors.New("execution: frozen options and instructions are required")
 	}
-	manifests, err := decodeMCPManifests(*wire.MCPManifests)
+	manifests, err := decodeCapturedToolGroups(*wire.MCPManifests, wire.SkillDiscoveries)
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
@@ -492,13 +496,14 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 		return interactionCheckpointState{}, err
 	}
 	return interactionCheckpointState{
-		modelProvider:  provider,
-		toolProposals:  proposals,
-		modelObservers: observers,
-		modelContexts:  contexts,
-		modelInputs:    inputs,
-		mcpManifests:   manifests,
-		handoff:        handoff, callsByProcess: callsByProcess,
+		modelProvider:    provider,
+		toolProposals:    proposals,
+		modelObservers:   observers,
+		modelContexts:    contexts,
+		modelInputs:      inputs,
+		mcpManifests:     manifests,
+		skillDiscoveries: wire.SkillDiscoveries,
+		handoff:          handoff, callsByProcess: callsByProcess,
 		contextByProcess: contextByProcess, instructions: instructions, options: wire.Options.Clone(), pendingSteers: pendingSteers,
 		pendingContinuation: pendingContinuation, toolMetadata: metadata,
 	}, nil

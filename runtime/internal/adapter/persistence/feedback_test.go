@@ -1,62 +1,40 @@
 package persistence
 
 import (
+	"errors"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"path/filepath"
-	"slices"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/feedback"
+	"github.com/Tangerg/flame/runtime/internal/domain/annotation"
+	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/qimu/jsonvalue"
 )
 
-func TestFeedbackStoreAppendsEntry(t *testing.T) {
+func TestAnnotationRetryKeepsOriginalSourceAndTimestamp(t *testing.T) {
 	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = db.Close() })
-	store := newFeedbackStore(db)
-	entry, err := feedback.NewEntry("ses_1", "run_1", "item_1", feedback.RatingNegative, "wrong answer", time.Now().UTC())
-	if err != nil {
+	defer db.Close()
+	store := annotationStore{db: db}
+	content, _ := jsonvalue.Parse([]byte(`{"rating":"negative"}`))
+	original := annotation.Entry{CommandID: "first", Subject: annotation.Subject{SessionID: "ses_time"}, Source: extension.AnnotationSource{ContributionSource: extension.ContributionSource{InstallationID: "f630f241-28b4-4fba-89bb-ddac2710a683", Release: integrity.Hash([]byte("first")).String(), Contribution: "notes"}, ContractReference: "test.annotations.v1"}, Content: content, CreatedAt: time.Unix(1, 123456789).UTC()}
+	if err := store.Append(t.Context(), original); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Append(t.Context(), entry); err != nil {
-		t.Fatalf("Append: %v", err)
-	}
-	var count int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM feedback_entries WHERE item_id = ? AND rating = ?`, "item_1", feedback.RatingNegative).Scan(&count); err != nil {
+	retry := original
+	retry.CreatedAt = original.CreatedAt.Add(time.Second)
+	if err := store.Append(t.Context(), retry); err != nil {
 		t.Fatal(err)
 	}
-	if count != 1 {
-		t.Fatalf("count = %d, want 1", count)
+	retry.Source.Release = integrity.Hash([]byte("other")).String()
+	if err := store.Append(t.Context(), retry); !errors.Is(err, annotation.ErrConflict) {
+		t.Fatalf("changed source: %v", err)
 	}
-}
-
-func TestFeedbackRoundTripPreservesObservationTime(t *testing.T) {
-	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	store := newFeedbackStore(db)
-	createdAt := time.Unix(1, 123456789).UTC()
-	entry, err := feedback.NewEntry("ses_time", "run_time", "item_time", feedback.RatingPositive, "useful", createdAt)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := store.Append(t.Context(), entry); err != nil {
-		t.Fatal(err)
-	}
-	earlier := entry
-	earlier.CreatedAt = createdAt.Add(-time.Nanosecond)
-	if err := store.Append(t.Context(), earlier); err != nil {
-		t.Fatal(err)
-	}
-	entries, err := store.ListSession(t.Context(), entry.SessionID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want := []feedback.Entry{earlier, entry}; !slices.Equal(entries, want) {
-		t.Fatalf("restored observations = %+v, want exact observations in time order %+v", entries, want)
+	got, err := store.ListSession(t.Context(), "ses_time")
+	if err != nil || len(got) != 1 || got[0] != original {
+		t.Fatalf("%+v, %v", got, err)
 	}
 }

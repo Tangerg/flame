@@ -591,3 +591,23 @@ it("keeps an unconfirmed proposal command and its original identity across catal
   fireEvent.click(available);
   await screen.findByText("2 available Skills");
 });
+
+it("keeps the selected original command when two providers submit the same scoped name", async () => {
+  const { workspace } = await mountSkills();
+  const first = VISUAL_SKILL_PROPOSALS.data[0]!;
+  const second = { ...first, revision: "f".repeat(64), instructions: "Review the second source." };
+  vi.spyOn(workspace.skills, "listProposals").mockResolvedValue({
+    ...VISUAL_SKILL_PROPOSALS,
+    data: [first, second],
+  });
+  const approve = vi.spyOn(workspace.skills, "approveProposal");
+  fireEvent.click(screen.getByRole("radio", { name: "Skill proposals" }));
+  await screen.findByText("2 pending proposals");
+  fireEvent.click(screen.getAllByRole("button", { name: "Approve" })[1]!);
+  fireEvent.click(screen.getByRole("button", { name: "Confirm approve" }));
+  expect(approve).toHaveBeenCalledWith({
+    scope: second.scope,
+    name: second.name,
+    revision: second.revision,
+  });
+});

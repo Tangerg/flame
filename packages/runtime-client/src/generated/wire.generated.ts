@@ -264,6 +264,13 @@ export interface AgentDoc {
 
 export type AgentDocScope = "cwd" | "projectRoot" | "home";
 
+export interface AnnotationSource {
+  contractRef: string;
+  contribution: string;
+  installationId: string;
+  release: string;
+}
+
 export interface AppliedChange {
   added: number;
   from?: string;
@@ -433,7 +440,7 @@ export interface CommandResult {
   output: string;
 }
 
-export type ComponentPlacement = "workspaceChangesAction" | "sharedClientEffect" | "export" | "workspaceView" | "settingsPane" | "clientEffect" | "sessionAction" | "fileRenderer" | "toolResultRenderer";
+export type ComponentPlacement = "workspaceChangesAction" | "sharedClientEffect" | "export" | "workspaceView" | "settingsPane" | "clientEffect" | "messageAction" | "sessionAction" | "fileRenderer" | "toolResultRenderer";
 
 export type ComponentScope = "installation" | "workspace" | "session" | "client" | "file" | "toolResult";
 
@@ -450,6 +457,12 @@ export type ContentBlock =
   | { type: "image"; data: string; mime: string };
 
 export type ContentBlockType = "text" | "image";
+
+export interface ContributionSource {
+  contribution: string;
+  installationId: string;
+  release: string;
+}
 
 export interface CreateMCPAuthorizationAttemptRequest {
   server: MCPServerID;
@@ -543,15 +556,6 @@ export interface FeaturePreference {
   enabled: boolean;
 }
 
-export interface FeedbackEntry {
-  createdAt: string;
-  itemId?: string;
-  rating?: FeedbackRating;
-  runId?: string;
-  sessionId?: string;
-  text?: string;
-}
-
 export type FeedbackRating = "positive" | "negative";
 
 export interface FeedbackRequest {
@@ -559,6 +563,7 @@ export interface FeedbackRequest {
   rating?: FeedbackRating;
   runId?: string;
   sessionId?: string;
+  source?: ContributionSource;
   text?: string;
 }
 
@@ -647,6 +652,7 @@ export interface GetSessionSnapshotRequest {
 }
 
 export interface Goal {
+  author?: ContributionSource;
   createdAt: string;
   model?: string;
   objective: string;
@@ -913,9 +919,10 @@ export type MCPAuthorizationAttemptStatus =
   | { type: "pending" }
   | { type: "succeeded" }
   | { type: "failed"; error: { type: "mcp_authorization_failed" } }
-  | { type: "canceled" };
+  | { type: "canceled" }
+  | { type: "unconfirmed" };
 
-export type MCPAuthorizationAttemptStatusType = "pending" | "succeeded" | "failed" | "canceled";
+export type MCPAuthorizationAttemptStatusType = "unconfirmed" | "pending" | "succeeded" | "failed" | "canceled";
 
 export type MCPAuthorizationChange =
   | { type: "set"; value: string }
@@ -2005,10 +2012,21 @@ export interface Session {
   workspace: WorkspaceInfo;
 }
 
+export interface SessionAnnotation {
+  commandId: string;
+  content: unknown;
+  createdAt: string;
+  itemId?: string;
+  runId?: string;
+  sessionId?: string;
+  source: AnnotationSource;
+}
+
 export interface SessionArtifact {
   items: ArtifactItem[];
   messages: unknown[];
   plan?: PlanStep[];
+  planSource?: ContributionSource;
   runs: ArtifactRun[];
   session: ArtifactSession;
   toolResults: ArtifactToolResult[];
@@ -2028,8 +2046,8 @@ export interface SessionSnapshot {
 export type SessionStatus = "running" | "waiting" | "idle";
 
 export interface SessionTrajectory {
+  annotations: SessionAnnotation[];
   collectedAt: string;
-  feedback: FeedbackEntry[];
   items: Item[];
   limitations: string[];
   messages: unknown[];
@@ -2443,7 +2461,7 @@ export const WIRE_ENUMS = {
   CancelRunResponseType: ["root", "child"],
   CapabilityRequirementType: ["feature", "interruptType", "runtimeTopic"],
   ChangeStatus: ["added", "deleted", "modified", "moved"],
-  ComponentPlacement: ["workspaceChangesAction", "sharedClientEffect", "export", "workspaceView", "settingsPane", "clientEffect", "sessionAction", "fileRenderer", "toolResultRenderer"],
+  ComponentPlacement: ["workspaceChangesAction", "sharedClientEffect", "export", "workspaceView", "settingsPane", "clientEffect", "messageAction", "sessionAction", "fileRenderer", "toolResultRenderer"],
   ComponentScope: ["installation", "workspace", "session", "client", "file", "toolResult"],
   ContentBlockType: ["text", "image"],
   DiffBaselineType: ["head", "mergeBase", "emptyTree"],
@@ -2468,7 +2486,7 @@ export const WIRE_ENUMS = {
   ItemType: ["userMessage", "agentMessage", "reasoning", "question", "toolCall", "compaction"],
   LivenessState: ["ok"],
   LossReason: ["restart", "isolatedWorkspace", "workspaceUnavailable", "otherBuild", "waitingStateUnavailable", "configurationChanged", "unresolvedEffects", "unresolvedModelCall"],
-  MCPAuthorizationAttemptStatusType: ["pending", "succeeded", "failed", "canceled"],
+  MCPAuthorizationAttemptStatusType: ["unconfirmed", "pending", "succeeded", "failed", "canceled"],
   MCPHandshakeTimeoutType: ["unbounded", "bounded"],
   MCPOriginType: ["user", "installation"],
   MCPSecretChangeType: ["set", "clear"],

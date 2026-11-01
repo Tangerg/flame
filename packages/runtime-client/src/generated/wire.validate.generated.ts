@@ -22,6 +22,7 @@ export type WireTypeName =
   | "ActivityType"
   | "AgentDoc"
   | "AgentDocScope"
+  | "AnnotationSource"
   | "AppliedChange"
   | "ApprovalDecision"
   | "ApprovalGate"
@@ -59,6 +60,7 @@ export type WireTypeName =
   | "ConfigurePluginRequest"
   | "ContentBlock"
   | "ContentBlockType"
+  | "ContributionSource"
   | "CreateMCPAuthorizationAttemptRequest"
   | "CreateSessionRequest"
   | "DeleteSessionRequest"
@@ -80,7 +82,6 @@ export type WireTypeName =
   | "ExportTrajectoryResponse"
   | "FeatureCapability"
   | "FeaturePreference"
-  | "FeedbackEntry"
   | "FeedbackRating"
   | "FeedbackRequest"
   | "FieldError"
@@ -356,6 +357,7 @@ export type WireTypeName =
   | "ServerCapabilities"
   | "ServerInfo"
   | "Session"
+  | "SessionAnnotation"
   | "SessionArtifact"
   | "SessionSnapshot"
   | "SessionStatus"
@@ -476,6 +478,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     scope: ref(() => CHECKS.AgentDocScope),
   }, ["path", "scope"]),
   AgentDocScope: enumOf(["cwd", "projectRoot", "home"]),
+  AnnotationSource: object({
+    contractRef: text(),
+    contribution: text(),
+    installationId: text(),
+    release: text(),
+  }, ["contractRef", "contribution", "installationId", "release"]),
   AppliedChange: object({
     added: integer(),
     from: text(),
@@ -968,7 +976,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     exitCode: integer(),
     output: text(),
   }, ["output"]),
-  ComponentPlacement: enumOf(["workspaceChangesAction", "sharedClientEffect", "export", "workspaceView", "settingsPane", "clientEffect", "sessionAction", "fileRenderer", "toolResultRenderer"]),
+  ComponentPlacement: enumOf(["workspaceChangesAction", "sharedClientEffect", "export", "workspaceView", "settingsPane", "clientEffect", "messageAction", "sessionAction", "fileRenderer", "toolResultRenderer"]),
   ComponentScope: enumOf(["installation", "workspace", "session", "client", "file", "toolResult"]),
   ConfigurePluginRequest: object({
     digest: allOf([text(), pattern("^[0-9a-f]{64}$")]),
@@ -997,6 +1005,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ]),
   ]),
   ContentBlockType: enumOf(["text", "image"]),
+  ContributionSource: object({
+    contribution: text(),
+    installationId: text(),
+    release: text(),
+  }, ["contribution", "installationId", "release"]),
   CreateMCPAuthorizationAttemptRequest: object({
     server: ref(() => CHECKS.MCPServerID),
   }, ["server"]),
@@ -1110,17 +1123,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   FeaturePreference: object({
     enabled: flag(),
   }, ["enabled"]),
-  FeedbackEntry: allOf([
-    object({
-      createdAt: text(),
-      itemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      rating: ref(() => CHECKS.FeedbackRating),
-      runId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      text: text(),
-    }, ["createdAt"]),
-    anyOf([fields({}, ["rating"]), fields({}, ["text"])]),
-  ]),
   FeedbackRating: enumOf(["positive", "negative"]),
   FeedbackRequest: allOf([
     object({
@@ -1128,6 +1130,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       rating: ref(() => CHECKS.FeedbackRating),
       runId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      source: ref(() => CHECKS.ContributionSource),
       text: allOf([text(), pattern("\\S")]),
     }, []),
     anyOf([fields({}, ["rating"]), fields({}, ["text"])]),
@@ -1270,6 +1273,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["sessionId"]),
   Goal: allOf([
     object({
+      author: ref(() => CHECKS.ContributionSource),
       createdAt: text(),
       model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       objective: allOf([text(), pattern("\\S")]),
@@ -1914,6 +1918,14 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ifThen(
       fields({
         status: fields({
+          type: literal("unconfirmed"),
+        }, ["type"]),
+      }, ["status"]),
+      fields({}, ["finishedAt"]),
+    ),
+    ifThen(
+      fields({
+        status: fields({
           type: literal("canceled"),
         }, ["type"]),
       }, ["status"]),
@@ -1950,9 +1962,13 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         error: absent(),
         type: literal("canceled"),
       }, ["type"]),
+      fields({
+        error: absent(),
+        type: literal("unconfirmed"),
+      }, ["type"]),
     ]),
   ]),
-  MCPAuthorizationAttemptStatusType: enumOf(["pending", "succeeded", "failed", "canceled"]),
+  MCPAuthorizationAttemptStatusType: enumOf(["unconfirmed", "pending", "succeeded", "failed", "canceled"]),
   MCPAuthorizationChange: allOf([
     object({
       type: ref(() => CHECKS.MCPSecretChangeType),
@@ -2548,7 +2564,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     placement: ref(() => CHECKS.ComponentPlacement),
     scope: ref(() => CHECKS.ComponentScope),
     selector: ref(() => CHECKS.PluginRendererSelector),
-    settingsIntent: text(),
+    settingsIntent: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
     targetView: text(),
     title: text(),
     toolCategory: ref(() => CHECKS.ToolCategory),
@@ -4066,10 +4082,20 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     updatedAt: text(),
     workspace: ref(() => CHECKS.WorkspaceInfo),
   }, ["createdAt", "id", "model", "provider", "revision", "status", "title", "updatedAt", "workspace"]),
+  SessionAnnotation: object({
+    commandId: text(),
+    content: anything(),
+    createdAt: text(),
+    itemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    runId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    source: ref(() => CHECKS.AnnotationSource),
+  }, ["commandId", "content", "createdAt", "source"]),
   SessionArtifact: object({
     items: array(ref(() => CHECKS.ArtifactItem)),
     messages: array(anything()),
     plan: array(ref(() => CHECKS.PlanStep)),
+    planSource: ref(() => CHECKS.ContributionSource),
     runs: array(ref(() => CHECKS.ArtifactRun)),
     session: ref(() => CHECKS.ArtifactSession),
     toolResults: array(ref(() => CHECKS.ArtifactToolResult)),
@@ -4086,8 +4112,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["interrupts", "items", "runs", "session"]),
   SessionStatus: enumOf(["running", "waiting", "idle"]),
   SessionTrajectory: object({
+    annotations: array(ref(() => CHECKS.SessionAnnotation)),
     collectedAt: text(),
-    feedback: array(ref(() => CHECKS.FeedbackEntry)),
     items: array(ref(() => CHECKS.Item)),
     limitations: array(text()),
     messages: array(anything()),
@@ -4095,11 +4121,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     modelInvocations: array(ref(() => CHECKS.ModelInvocation)),
     plan: array(ref(() => CHECKS.PlanStep)),
     runs: array(ref(() => CHECKS.RunRef)),
-    schemaVersion: allOf([integer(), minimum("3"), maximum("3")]),
+    schemaVersion: allOf([integer(), minimum("4"), maximum("4")]),
     session: ref(() => CHECKS.Session),
     toolAttempts: array(ref(() => CHECKS.ToolAttempt)),
     toolResults: array(ref(() => CHECKS.ArtifactToolResult)),
-  }, ["collectedAt", "feedback", "items", "limitations", "messages", "modelEndpoints", "modelInvocations", "plan", "runs", "schemaVersion", "session", "toolAttempts", "toolResults"]),
+  }, ["annotations", "collectedAt", "items", "limitations", "messages", "modelEndpoints", "modelInvocations", "plan", "runs", "schemaVersion", "session", "toolAttempts", "toolResults"]),
   SessionUsage: object({
     byModel: array(ref(() => CHECKS.UsageBucket)),
     coverage: ref(() => CHECKS.UsageCoverage),

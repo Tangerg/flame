@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -216,6 +217,10 @@ func mapSkillProposalErr(err error) error {
 	switch {
 	case err == nil:
 		return nil
+	case errors.Is(err, plugin.ErrUnavailable), errors.Is(err, plugin.ErrDisabled), errors.Is(err, plugin.ErrCommandUnconfirmed), errors.Is(err, plugin.ErrCommandRetired), errors.Is(err, plugin.ErrStale):
+		return wirePluginError(err)
+	case errors.Is(err, skills.ErrPublicationUnconfirmed):
+		return wirePluginError(errors.Join(plugin.ErrCommandUnconfirmed, err))
 	case errors.Is(err, skills.ErrConflict), errors.Is(err, skills.ErrProposalChanged), errors.Is(err, skills.ErrNotFound):
 		return protocol.NewFailure(errors.Join(protocol.ErrRevisionConflict, err), fmt.Sprintf("proposal review is stale: %v", err))
 	default:

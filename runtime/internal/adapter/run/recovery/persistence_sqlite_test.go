@@ -3,6 +3,7 @@ package recovery
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"reflect"
 	"testing"
 	"time"
@@ -200,7 +201,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	goalValue, err := goal.New("session", "finish recovery", selection, run.Capabilities{}, "lease_recovery", createdAt)
+	goalValue, err := goaltest.New("session", "finish recovery", selection, run.Capabilities{}, "lease_recovery", createdAt)
 	if err != nil {
 		t.Fatalf("New Goal: %v", err)
 	}
@@ -383,6 +384,13 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID); !errors.Is(loadCheckpointErr, runs.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("orphan checkpoint after recovery = %v", loadCheckpointErr)
 	}
+	receipt, queued, err := goalStore.PendingGoalRun(ctx, "session")
+	if err != nil || !queued || receipt.RunID != "run_lost" {
+		t.Fatalf("lost Run receipt: %+v %v %v", receipt, queued, err)
+	}
+	if err := mustGoalRuns(t, goalStore).Drain(ctx, goalStore, goaltest.Workflow{}, "session", nil); err != nil {
+		t.Fatal(err)
+	}
 	currentGoal, err := goalStore.Get(ctx, goalValue.SessionID())
 	storedGoal, found := currentGoal.Goal()
 	if err != nil || !found || storedGoal.Used().Runs != 1 || storedGoal.Status() != goal.StatusPaused || storedGoal.Reason().Code() != goal.ReasonRunNotCompleted {
@@ -497,7 +505,7 @@ func mustConversationStore(t *testing.T, messages *persistence.MessageStore) *pe
 	return store
 }
 
-func mustGoalRuns(tb testing.TB, store goals.Store) *goals.RunRecorder {
+func mustGoalRuns(tb testing.TB, store goals.RunEvidence) *goals.RunRecorder {
 	tb.Helper()
 	recorder, err := goals.NewRunRecorder(store)
 	if err != nil {

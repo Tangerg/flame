@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
 	"time"
 )
 
@@ -139,12 +140,12 @@ type RunMetrics struct {
 type RunOutcomeType string
 
 const (
-	OutcomeCompleted RunOutcomeType = "completed"
-	OutcomeTimedOut  RunOutcomeType = "timedOut"
-	OutcomeFailed    RunOutcomeType = "failed"
+	OutcomeCompleted RunOutcomeType = RunOutcomeType(runoutcome.Completed)
+	OutcomeTimedOut  RunOutcomeType = RunOutcomeType(runoutcome.TimedOut)
+	OutcomeFailed    RunOutcomeType = RunOutcomeType(runoutcome.Failed)
 
-	OutcomeCanceled RunOutcomeType = "canceled"
-	OutcomeLost     RunOutcomeType = "lost"
+	OutcomeCanceled RunOutcomeType = RunOutcomeType(runoutcome.Canceled)
+	OutcomeLost     RunOutcomeType = RunOutcomeType(runoutcome.Lost)
 )
 
 type UnresolvedEffect struct {

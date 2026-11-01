@@ -1,0 +1,50 @@
+[
+  {
+    "name": "flame.external-mcp/attempt.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read a retained external authorization attempt.",
+    "input": "schema.json#/$defs/AttemptV1Input",
+    "output": "schema.json#/$defs/AttemptV1Output"
+  },
+  {
+    "name": "flame.external-mcp/authorize.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Begin an authorization attempt against the current enabled entry.",
+    "input": "schema.json#/$defs/AuthorizeV1Input",
+    "output": "schema.json#/$defs/AuthorizeV1Output"
+  },
+  {
+    "name": "flame.external-mcp/change.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Compare and change one external directory entry.",
+    "input": "schema.json#/$defs/ChangeV1Input",
+    "output": "schema.json#/$defs/ChangeV1Output"
+  },
+  {
+    "name": "flame.external-mcp/list.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "List external servers and their opaque host launch grants.",
+    "input": "schema.json#/$defs/ListV1Input",
+    "output": "schema.json#/$defs/ListV1Output"
+  },
+  {
+    "name": "flame.external-mcp/recover.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Cancel uncompleted attempts admitted by a previous Runtime incarnation.",
+    "input": "schema.json#/$defs/RecoverV1Input",
+    "output": "schema.json#/$defs/RecoverV1Output"
+  },
+  {
+    "name": "flame.external-mcp/settle.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Record the original authorization attempt's terminal result.",
+    "input": "schema.json#/$defs/SettleV1Input",
+    "output": "schema.json#/$defs/SettleV1Output"
+  }
+]

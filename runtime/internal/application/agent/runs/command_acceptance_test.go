@@ -165,3 +165,30 @@ func TestCommandAcceptanceValidateRejectsEachMissingFact(t *testing.T) {
 		})
 	}
 }
+
+func TestGoalRoundReplayReturnsOnlyItsOriginalRun(t *testing.T) {
+	id := GoalRoundIdentity("ses_1", "first-incarnation", 1, "original instruction")
+	accepted := validCommandAcceptance()
+	accepted.Key, accepted.Fingerprint, accepted.Operation, accepted.UserItemID = id.Key, id.Fingerprint, CommandGoalRoundOpening, ""
+	if err := accepted.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	reader := &recordingAcceptanceReader{record: CommandAcceptanceRecord{Found: true, Acceptance: accepted, CurrentRun: new(run.Run)}}
+	coordinator := mustNewCoordinator(runDeps{CommandAcceptances: reader})
+	result, err := coordinator.Start(t.Context(), StartCommand{SessionID: accepted.SessionID, GoalIncarnationID: "first-incarnation", Acceptance: id})
+	if err != nil || !result.Reopened || result.RunID != accepted.RunID || result.UserItemID != "" || len(reader.keys) != 1 {
+		t.Fatalf("autonomous replay = %+v, %v", result, err)
+	}
+	user := accepted
+	user.Operation = CommandStartOpening
+	if err := user.Validate(); err == nil {
+		t.Fatal("public Start accepted an autonomous receipt without a user Item")
+	}
+	changed := GoalRoundIdentity("ses_1", "first-incarnation", 1, "different")
+	if changed.Key != id.Key || changed.Fingerprint == id.Fingerprint {
+		t.Fatal("round content did not remain pinned")
+	}
+	if GoalRoundIdentity("ses_1", "next-incarnation", 1, "original instruction").Key == id.Key {
+		t.Fatal("new incarnation reused a prior round")
+	}
+}

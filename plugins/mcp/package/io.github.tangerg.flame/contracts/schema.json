@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Attempt": {
+      "additionalProperties": false,
+      "properties": {
+        "finishedAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "startedAt": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "status",
+        "startedAt"
+      ],
+      "type": "object"
+    },
+    "AttemptResult": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "$ref": "#/$defs/Attempt"
+        }
+      },
+      "type": "object"
+    },
+    "AttemptV1Input": {
+      "$ref": "#/$defs/Request"
+    },
+    "AttemptV1Output": {
+      "$ref": "#/$defs/AttemptResult"
+    },
+    "AuthorizeV1Input": {
+      "$ref": "#/$defs/Start"
+    },
+    "AuthorizeV1Output": {
+      "$ref": "#/$defs/AttemptResult"
+    },
+    "Change": {
+      "additionalProperties": false,
+      "properties": {
+        "expected": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "replacement": {
+          "$ref": "#/$defs/Entry"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "ChangeV1Input": {
+      "$ref": "#/$defs/Change"
+    },
+    "ChangeV1Output": {
+      "type": "string"
+    },
+    "Completion": {
+      "additionalProperties": false,
+      "properties": {
+        "epoch": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "epoch",
+        "status"
+      ],
+      "type": "object"
+    },
+    "Directory": {
+      "additionalProperties": false,
+      "properties": {
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/Entry"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "entries"
+      ],
+      "type": "object"
+    },
+    "Entry": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "handshakeSeconds": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "launchGrant": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "launchGrant",
+        "enabled",
+        "description",
+        "handshakeSeconds"
+      ],
+      "type": "object"
+    },
+    "ListV1Input": {
+      "$ref": "#/$defs/Selector"
+    },
+    "ListV1Output": {
+      "$ref": "#/$defs/Directory"
+    },
+    "RecoverV1Input": {
+      "$ref": "#/$defs/Recovery"
+    },
+    "RecoverV1Output": {
+      "type": "string"
+    },
+    "Recovery": {
+      "additionalProperties": false,
+      "properties": {
+        "epoch": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "epoch"
+      ],
+      "type": "object"
+    },
+    "Request": {
+      "additionalProperties": false,
+      "properties": {
+        "epoch": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "epoch"
+      ],
+      "type": "object"
+    },
+    "Selector": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "SettleV1Input": {
+      "$ref": "#/$defs/Completion"
+    },
+    "SettleV1Output": {
+      "type": "string"
+    },
+    "Start": {
+      "additionalProperties": false,
+      "properties": {
+        "attemptId": {
+          "type": "string"
+        },
+        "epoch": {
+          "type": "string"
+        },
+        "grant": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "grant",
+        "epoch",
+        "attemptId"
+      ],
+      "type": "object"
+    }
+  }
+}

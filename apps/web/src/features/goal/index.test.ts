@@ -16,6 +16,9 @@ import {
   RUNTIME_STREAM,
   type RuntimeConnectionGeneration as RuntimeConnectionGenerationValue,
 } from "@/features/connection/public/services";
+import { GOAL_WORKFLOW } from "@/features/plugins/public/workflows";
+import { SLASH_COMMAND } from "@/features/composer/public/extensionPoints";
+import { contributionsTo } from "@/extensions/kernel";
 import { createGoalPlugin } from "@/features/goal/index";
 import { rejected } from "@/test/rejected";
 let runtimeClient: () => FlameClient = () => {
@@ -70,6 +73,7 @@ describe("Goal plugin Runtime generation wiring", () => {
         testClient.runtime,
         getRuntimeClient,
         testClient.goals,
+        testClient.installedPlugins.access.workflows,
       ),
     );
     const predecessor = rejected(testClient.goals.commands.capture()!.stop("ses_goal"));
@@ -130,12 +134,28 @@ describe("Goal plugin Runtime generation wiring", () => {
         testClient.runtime,
         getRuntimeClient,
         testClient.goals,
+        testClient.installedPlugins.access.workflows,
       ),
     );
 
     runtimeClient = () => {
       throw new Error("Desktop container is closed");
     };
+    const providers = testClient.installedPlugins.access.workflows;
+    const source = { installationId: "first", release: "release", contribution: "author" };
+    const selection = [
+      {
+        role: GOAL_WORKFLOW,
+        installationId: source.installationId,
+        contribution: source.contribution,
+      },
+    ];
+    const slash = () => contributionsTo(SLASH_COMMAND).filter((entry) => entry.key === "/goal");
+    expect(slash()).toHaveLength(0);
+    providers.publish([{ source, roles: [GOAL_WORKFLOW] }], selection);
+    expect(slash()).toHaveLength(1);
+    providers.publish([], selection);
+    expect(slash()).toHaveLength(0);
     const captured = testClient.goals.commands.capture()!;
     generation = null;
 

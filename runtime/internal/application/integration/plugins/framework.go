@@ -16,7 +16,6 @@ import (
 	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
 )
 
@@ -194,8 +193,8 @@ type FrameworkDefinition struct {
 	Contracts []ContractDocument
 }
 
-func ProjectFrameworkRelease(release plugin.Release) (FrameworkRelease, error) {
-	projection, err := ProjectFrameworkDeclaration(release.Declaration())
+func ProjectFrameworkRelease(release plugin.Release, backendProfile qimu.Profile) (FrameworkRelease, error) {
+	projection, err := ProjectFrameworkDeclaration(release.Declaration(), backendProfile)
 	if err != nil {
 		return FrameworkRelease{}, err
 	}
@@ -206,7 +205,7 @@ func ProjectFrameworkRelease(release plugin.Release) (FrameworkRelease, error) {
 	return FrameworkRelease{Plugin: plugin, Contracts: projection.Contracts}, nil
 }
 
-func ProjectFrameworkDeclaration(declaration plugin.Declaration) (FrameworkDefinition, error) {
+func ProjectFrameworkDeclaration(declaration plugin.Declaration, backendProfile qimu.Profile) (FrameworkDefinition, error) {
 	contracts := map[qimu.ContractRef][]byte{}
 	addCapability := func(encoded jsonvalue.Value) (qimu.ContractRef, error) {
 		contract, err := portable.ParseCapability(encoded.JSON())
@@ -227,7 +226,7 @@ func ProjectFrameworkDeclaration(declaration plugin.Declaration) (FrameworkDefin
 	}
 	units := make([]qimu.Unit, 0, len(declaration.Servers)+1)
 	for _, server := range declaration.Servers {
-		unit := qimu.UnitDeclaration{ID: BackendUnit(server.Name), Profile: qimumcp.ProcessProfile, Imports: []qimu.ImportDeclaration{}, Exports: []qimu.ExportDeclaration{}}
+		unit := qimu.UnitDeclaration{ID: BackendUnit(server.Name), Profile: backendProfile, Imports: []qimu.ImportDeclaration{}, Exports: []qimu.ExportDeclaration{}}
 		for _, contribution := range declaration.Contributions {
 			if contribution.Server != server.Name {
 				continue

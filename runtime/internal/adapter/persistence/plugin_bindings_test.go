@@ -63,7 +63,7 @@ func newBindingFixture(t *testing.T) bindingFixture {
 	if err := store.PluginReleases.Admit(t.Context(), release); err != nil {
 		t.Fatal(err)
 	}
-	projection, err := plugins.ProjectFrameworkRelease(release)
+	projection, err := plugins.ProjectFrameworkRelease(release, qimumcp.ProcessProfile)
 	if err != nil {
 		t.Fatal(err)
 	}

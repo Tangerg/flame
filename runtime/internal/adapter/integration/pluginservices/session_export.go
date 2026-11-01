@@ -5,12 +5,11 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
-	"errors"
 	"iter"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/qimu/mcp"
@@ -94,8 +93,8 @@ func readRenderedDocument(source iter.Seq2[qimumcp.StreamValue[jsontext.Value, j
 			if err := json.Unmarshal(*value.Chunk, &chunk); err != nil {
 				return "", err
 			}
-			if len(chunk) == 0 || len(chunk) > pluginsdk.SessionDocumentChunkBytes || len(chunk) > protocol.MaximumSessionArtifactBytes-body.Len() {
-				return "", errors.New("session export: invalid rendered chunk")
+			if err := pluginsdk.ValidateRenderedChunk(body.Len(), len(chunk)); err != nil {
+				return "", err
 			}
 			body.WriteString(chunk)
 		case value.Result != nil:

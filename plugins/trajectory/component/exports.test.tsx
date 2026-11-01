@@ -24,7 +24,19 @@ const trajectory = {
   session: { id: "captured" },
   runs: [{ id: "child" }],
   modelInvocations: [{ callId: "unknown", state: "unknown" }],
-  feedback: [{ rating: "negative", text: "incorrect result" }],
+  annotations: [
+    {
+      commandId: "rating",
+      source: {
+        installationId: "source",
+        release: "digest",
+        contribution: "feedback",
+        contractRef: "flame.feedback.v1",
+      },
+      content: { rating: "negative", text: "incorrect result" },
+      createdAt: "2026-07-07T10:04:00Z",
+    },
+  ],
   limitations: ["retained evidence"],
 };
 

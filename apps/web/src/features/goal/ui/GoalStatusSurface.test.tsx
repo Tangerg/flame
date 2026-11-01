@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RpcError } from "@flame/runtime-client";
 import { drainBrowserTasks } from "@/test/browserTasks";
 import { type GoalReadModel } from "@/features/goal/application/goalReadModel";
+import { GOAL_WORKFLOW } from "@/features/plugins/public/workflows";
 import { GoalStatusSurface } from "@/features/goal/ui/GoalStatusSurface";
 const model = vi.hoisted(() => ({
   clearGoal: vi.fn(async () => {}),
@@ -20,6 +21,7 @@ const model = vi.hoisted(() => ({
   runtimeAvailable: true,
   generation: 1,
   goal: {
+    author: { installationId: "goal-owner", release: "original-release", contribution: "goals" },
     sessionId: "session-a",
     objective: "Ship alpha",
     status: "active",
@@ -59,7 +61,23 @@ describe("Goal status surface", () => {
   });
 
   beforeEach(() => {
+    const author = {
+      installationId: "goal-owner",
+      release: "original-release",
+      contribution: "goals",
+    };
+    testClient.installedPlugins.access.workflows.publish(
+      [{ source: author, roles: [GOAL_WORKFLOW] }],
+      [
+        {
+          role: GOAL_WORKFLOW,
+          installationId: author.installationId,
+          contribution: author.contribution,
+        },
+      ],
+    );
     model.goal = {
+      author,
       sessionId: "session-a",
       objective: "Ship alpha",
       status: "active",
@@ -74,6 +92,30 @@ describe("Goal status surface", () => {
     model.generation = 1;
   });
 
+  it("retains the objective as read-only and withdraws editing when its original release disappears", async () => {
+    const workflows = testClient.installedPlugins.access.workflows;
+    const original = model.goal.author!;
+    const successor = { ...original, release: "successor" };
+    const selection = [
+      {
+        role: GOAL_WORKFLOW,
+        installationId: successor.installationId,
+        contribution: successor.contribution,
+      },
+    ];
+    testClient.render(<GoalStatusSurface />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit goal" }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    act(() => workflows.publish([{ source: successor, roles: [GOAL_WORKFLOW] }], selection));
+    expect(screen.getByTitle("Ship alpha").textContent).toContain("Ship alpha");
+    expect(screen.queryByRole("button", { name: "Pause goal" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit goal" })).toBeNull();
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    act(() => workflows.publish([{ source: original, roles: [GOAL_WORKFLOW] }], []));
+    expect(screen.getByRole("button", { name: "Pause goal" })).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(model.updateGoal).not.toHaveBeenCalled();
+  });
   it("pauses an active goal from the standing surface", async () => {
     testClient.render(<GoalStatusSurface />);
     fireEvent.click(screen.getByRole("button", { name: "Pause goal" }));

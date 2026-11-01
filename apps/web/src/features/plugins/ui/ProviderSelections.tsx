@@ -1,3 +1,4 @@
+import { backendAvailable } from "../adapters/workflowAuthors";
 import { tupleKey } from "@/lib/tupleKey";
 import { pluginContract } from "@flame/runtime-client";
 import { useLayoutEffect, useRef, useState } from "react";
@@ -153,11 +154,7 @@ function ProviderRole({
       value.installation.id === current?.installationId &&
       value.contribution === current.contribution,
   );
-  const active =
-    chosen?.installation.enabled &&
-    !chosen.installation.disabledServers.includes(chosen.server) &&
-    chosen.installation.realization.type !== "releaseUnavailable" &&
-    !chosen.installation.realization.unavailableBackends?.includes(chosen.server);
+  const active = chosen && backendAvailable(chosen.installation, chosen.server);
   async function observe(mutation: MutationPromise<PluginProviderSelection>, signal: AbortSignal) {
     command.current = { operations, mutation };
     update({ busy: true, failure: undefined });

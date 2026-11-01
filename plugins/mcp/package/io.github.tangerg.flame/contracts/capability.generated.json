@@ -1,0 +1,475 @@
+{
+  "protocol": "io.github.tangerg.qimu/portable/1",
+  "reference": "flame.external-mcp.v1",
+  "composition": "selection",
+  "scope": "installation",
+  "methods": [
+    {
+      "name": "flame.external-mcp/attempt.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read a retained external authorization attempt.",
+      "input": {
+        "$defs": {
+          "mcpconnector.Request": {
+            "additionalProperties": false,
+            "properties": {
+              "epoch": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "epoch"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "epoch": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "epoch"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "mcpconnector.Attempt": {
+            "additionalProperties": false,
+            "properties": {
+              "finishedAt": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "startedAt": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "status",
+              "startedAt"
+            ],
+            "type": "object"
+          },
+          "mcpconnector.AttemptResult": {
+            "additionalProperties": false,
+            "properties": {
+              "attempt": {
+                "$ref": "#/$defs/mcpconnector.Attempt"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "attempt": {
+            "$ref": "#/$defs/mcpconnector.Attempt"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.external-mcp/authorize.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Begin an authorization attempt against the current enabled entry.",
+      "input": {
+        "$defs": {
+          "mcpconnector.Start": {
+            "additionalProperties": false,
+            "properties": {
+              "attemptId": {
+                "type": "string"
+              },
+              "epoch": {
+                "type": "string"
+              },
+              "grant": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "grant",
+              "epoch",
+              "attemptId"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "attemptId": {
+            "type": "string"
+          },
+          "epoch": {
+            "type": "string"
+          },
+          "grant": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "grant",
+          "epoch",
+          "attemptId"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "mcpconnector.Attempt": {
+            "additionalProperties": false,
+            "properties": {
+              "finishedAt": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "startedAt": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "status",
+              "startedAt"
+            ],
+            "type": "object"
+          },
+          "mcpconnector.AttemptResult": {
+            "additionalProperties": false,
+            "properties": {
+              "attempt": {
+                "$ref": "#/$defs/mcpconnector.Attempt"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "attempt": {
+            "$ref": "#/$defs/mcpconnector.Attempt"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.external-mcp/change.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Compare and change one external directory entry.",
+      "input": {
+        "$defs": {
+          "mcpconnector.Change": {
+            "additionalProperties": false,
+            "properties": {
+              "expected": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "replacement": {
+                "$ref": "#/$defs/mcpconnector.Entry"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          },
+          "mcpconnector.Entry": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "handshakeSeconds": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "launchGrant": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "revision": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "launchGrant",
+              "enabled",
+              "description",
+              "handshakeSeconds"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "expected": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "replacement": {
+            "$ref": "#/$defs/mcpconnector.Entry"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string"
+      }
+    },
+    {
+      "name": "flame.external-mcp/list.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "List external servers and their opaque host launch grants.",
+      "input": {
+        "$defs": {
+          "mcpconnector.Selector": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "mcpconnector.Directory": {
+            "additionalProperties": false,
+            "properties": {
+              "entries": {
+                "items": {
+                  "$ref": "#/$defs/mcpconnector.Entry"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "entries"
+            ],
+            "type": "object"
+          },
+          "mcpconnector.Entry": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "handshakeSeconds": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "launchGrant": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "revision": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "launchGrant",
+              "enabled",
+              "description",
+              "handshakeSeconds"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/$defs/mcpconnector.Entry"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.external-mcp/recover.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Cancel uncompleted attempts admitted by a previous Runtime incarnation.",
+      "input": {
+        "$defs": {
+          "mcpconnector.Recovery": {
+            "additionalProperties": false,
+            "properties": {
+              "epoch": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "epoch"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "epoch": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "epoch"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string"
+      }
+    },
+    {
+      "name": "flame.external-mcp/settle.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Record the original authorization attempt's terminal result.",
+      "input": {
+        "$defs": {
+          "mcpconnector.Completion": {
+            "additionalProperties": false,
+            "properties": {
+              "epoch": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "epoch",
+              "status"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "epoch": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "epoch",
+          "status"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string"
+      }
+    }
+  ]
+}

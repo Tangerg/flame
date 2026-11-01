@@ -92,13 +92,11 @@ func (c *Coordinator) PrepareFork(ctx context.Context, spec ForkSpec) (Creation,
 	if err != nil {
 		return Creation{}, err
 	}
-	// A child starts fresh, so an unrecorded boundary and a recorded empty one seed
-	// the same nothing — the distinction a rollback needs has no branch to make here.
 	plan, err := c.planBoundary(ctx, boundary.RunID)
 	if err != nil {
 		return Creation{}, err
 	}
-	planReplacement, err := c.prepareInitialPlanReplacement(plan.Steps)
+	planReplacement, err := c.prepareInitialPlanReplacement(plan.Document)
 	if err != nil {
 		return Creation{}, err
 	}
@@ -110,6 +108,7 @@ func (c *Coordinator) PrepareFork(ctx context.Context, spec ForkSpec) (Creation,
 	if err != nil {
 		return Creation{}, err
 	}
+	forked.PlanSource = plan.Source
 	fork, err := NewForkPlan(spec.ParentID, forked, planReplacement)
 	if err != nil {
 		return Creation{}, err

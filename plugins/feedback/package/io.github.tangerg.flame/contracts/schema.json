@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "ContributionSource": {
+      "additionalProperties": false,
+      "properties": {
+        "contribution": {
+          "type": "string"
+        },
+        "installationId": {
+          "type": "string"
+        },
+        "release": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "installationId",
+        "release",
+        "contribution"
+      ],
+      "type": "object"
+    },
+    "FeedbackDraft": {
+      "additionalProperties": false,
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "rating": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/ContributionSource"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "FeedbackSignal": {
+      "additionalProperties": false,
+      "properties": {
+        "rating": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "PrepareV1Input": {
+      "$ref": "#/$defs/FeedbackDraft"
+    },
+    "PrepareV1Output": {
+      "$ref": "#/$defs/FeedbackSignal"
+    }
+  }
+}

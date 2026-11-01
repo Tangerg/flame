@@ -2,6 +2,7 @@ package goals
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"testing"
 	"time"
 
@@ -46,7 +47,7 @@ func TestOutcomeReporterOwnsTerminalGoalTransition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g, err := goal.New("ses_1", "finish", selection, run.Capabilities{}, "lease-current", now.Add(-time.Hour))
+	g, err := goaltest.New("ses_1", "finish", selection, run.Capabilities{}, "lease-current", now.Add(-time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +56,7 @@ func TestOutcomeReporterOwnsTerminalGoalTransition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reporter, err := NewOutcomeReporter(store)
+	reporter, err := NewOutcomeReporter(store, goaltest.Workflow{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +112,7 @@ func TestGoalStateUseCasesRequireStorage(t *testing.T) {
 		if reader, err := NewReader(store); reader != nil || err == nil {
 			t.Fatalf("NewReader = (%v, %v), want construction failure", reader, err)
 		}
-		if reporter, err := NewOutcomeReporter(store); reporter != nil || err == nil {
+		if reporter, err := NewOutcomeReporter(store, goaltest.Workflow{}); reporter != nil || err == nil {
 			t.Fatalf("NewOutcomeReporter = (%v, %v), want construction failure", reporter, err)
 		}
 	}

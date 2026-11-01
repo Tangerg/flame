@@ -1,0 +1,10 @@
+[
+  {
+    "name": "flame.goal-workflow/decide.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Decide a lifecycle transition for the captured objective or retain its current state.",
+    "input": "schema.json#/$defs/DecideV1Input",
+    "output": "schema.json#/$defs/DecideV1Output"
+  }
+]

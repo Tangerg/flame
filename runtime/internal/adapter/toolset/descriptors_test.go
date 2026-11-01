@@ -2,7 +2,9 @@ package toolset
 
 import (
 	"context"
+	"crypto/sha256"
 	json "encoding/json/v2"
+	"fmt"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -13,6 +15,7 @@ import (
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
@@ -64,7 +67,7 @@ func (allWiredToolResults) Fetch(context.Context, string, transcript.ToolResultI
 type allWiredSkillProposals struct{}
 
 func (allWiredSkillProposals) SubmitProposal(_ context.Context, _ string, proposal skills.Proposal) (skills.ProposalRef, error) {
-	return skills.NewProposalRef(proposal.Scope, proposal.Name, []byte(proposal.Instructions)), nil
+	return skills.CommandRef(proposal.Scope, proposal.Name, fmt.Sprintf("%x", sha256.Sum256([]byte(proposal.Instructions)))), nil
 }
 
 func definitionNames(ts []toolcontract.Tool) map[string]bool {
@@ -157,6 +160,7 @@ func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 	policy := testApprovalPolicy(t)
 	built, err := Build(BuildConfig{Lifetime: t.Context(),
 		UserHome:       t.TempDir(),
+		SkillSources:   promptsource.SkillSources{Discover: testsupport.FixtureSkillSelection[promptsource.SkillCapture]},
 		SkillsUserDir:  t.TempDir(), // backs skill
 		PlanMode:       policy,
 		Plan:           rolePlanStore{},

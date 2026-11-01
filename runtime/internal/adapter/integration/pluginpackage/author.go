@@ -47,7 +47,7 @@ func BuildRelease(ctx context.Context, source string, target BuildTarget, archiv
 	if err != nil {
 		return distribution.Release{}, err
 	}
-	projection, err := plugins.ProjectFrameworkDeclaration(declaration)
+	projection, err := plugins.ProjectFrameworkDeclaration(declaration, qimumcp.ProcessProfile)
 	if err != nil {
 		return distribution.Release{}, err
 	}
@@ -197,7 +197,7 @@ func authorManifest(ctx context.Context, root *os.Root, declaration plugin.Decla
 // validateProjection prevents consumer metadata from declaring a second set of
 // executable units. Runtime may apply Flame policy only to this original graph.
 func validateProjection(ctx context.Context, root *os.Root, release plugin.Release, manifest distribution.Manifest) error {
-	projection, err := plugins.ProjectFrameworkDeclaration(release.Declaration())
+	projection, err := plugins.ProjectFrameworkDeclaration(release.Declaration(), qimumcp.ProcessProfile)
 	if err != nil {
 		return err
 	}
@@ -242,4 +242,8 @@ func validateProjection(ctx context.Context, root *os.Root, release plugin.Relea
 		return fmt.Errorf("%w: neutral declaration differs from Flame projection", plugin.ErrInvalid)
 	}
 	return nil
+}
+
+func (*Releases) Project(release plugin.Release) (plugins.FrameworkRelease, error) {
+	return plugins.ProjectFrameworkRelease(release, qimumcp.ProcessProfile)
 }

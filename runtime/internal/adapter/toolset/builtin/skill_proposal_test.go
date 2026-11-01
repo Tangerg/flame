@@ -2,8 +2,10 @@ package builtin
 
 import (
 	"context"
+	"crypto/sha256"
 	json "encoding/json/v2"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -23,7 +25,7 @@ func (r *recordingSubmitter) SubmitProposal(_ context.Context, cwd string, propo
 	r.calls++
 	r.cwd = cwd
 	r.proposal = proposal
-	return skills.NewProposalRef(proposal.Scope, proposal.Name, []byte(proposal.Instructions)), nil
+	return skills.CommandRef(proposal.Scope, proposal.Name, fmt.Sprintf("%x", sha256.Sum256([]byte(proposal.Instructions)))), nil
 }
 
 func TestProposalSchemaRejectsInvalidDomainValuesBeforeSubmission(t *testing.T) {

@@ -1,0 +1,208 @@
+{
+  "protocol": "io.github.tangerg.qimu/portable/1",
+  "reference": "flame.plan-workflow.v1",
+  "composition": "selection",
+  "scope": "installation",
+  "methods": [
+    {
+      "name": "flame.plan-workflow/author.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Admit a complete checklist and issue its immutable version.",
+      "input": {
+        "$defs": {
+          "planworkflow.Proposal": {
+            "additionalProperties": false,
+            "properties": {
+              "steps": {
+                "items": {
+                  "$ref": "#/$defs/planworkflow.Step"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "steps"
+            ],
+            "type": "object"
+          },
+          "planworkflow.Step": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "description",
+              "status"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "steps": {
+            "items": {
+              "$ref": "#/$defs/planworkflow.Step"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "steps"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "integrity.Digest": {
+            "allOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            ],
+            "type": "string"
+          },
+          "planworkflow.Decision": {
+            "additionalProperties": false,
+            "properties": {
+              "document": {
+                "$ref": "#/$defs/planworkflow.Document"
+              },
+              "refusal": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "planworkflow.Document": {
+            "additionalProperties": false,
+            "properties": {
+              "digest": {
+                "$ref": "#/$defs/integrity.Digest"
+              },
+              "steps": {
+                "items": {
+                  "$ref": "#/$defs/planworkflow.Step"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "steps",
+              "digest"
+            ],
+            "type": "object"
+          },
+          "planworkflow.Step": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "description",
+              "status"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "document": {
+            "$ref": "#/$defs/planworkflow.Document"
+          },
+          "refusal": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.plan-workflow/review.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Prepare the human review of one exact immutable plan.",
+      "input": {
+        "$defs": {
+          "integrity.Digest": {
+            "allOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            ],
+            "type": "string"
+          },
+          "planworkflow.Document": {
+            "additionalProperties": false,
+            "properties": {
+              "digest": {
+                "$ref": "#/$defs/integrity.Digest"
+              },
+              "steps": {
+                "items": {
+                  "$ref": "#/$defs/planworkflow.Step"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "steps",
+              "digest"
+            ],
+            "type": "object"
+          },
+          "planworkflow.Step": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "description",
+              "status"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "digest": {
+            "$ref": "#/$defs/integrity.Digest"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/$defs/planworkflow.Step"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "steps",
+          "digest"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string"
+      }
+    }
+  ]
+}

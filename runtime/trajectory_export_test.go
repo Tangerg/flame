@@ -5,6 +5,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -12,11 +13,13 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
-	"github.com/Tangerg/flame/runtime/internal/domain/feedback"
+	"github.com/Tangerg/flame/runtime/internal/domain/annotation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/history"
 )
@@ -119,13 +122,10 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, entry := range []feedback.Entry{
-		{RunID: root.ID(), Text: "run feedback", CreatedAt: at},
-		{ItemID: "item_export_child", Text: "item feedback", CreatedAt: at},
-		{SessionID: ses.ID, RunID: "run_already_removed", Text: "retained orphan feedback", CreatedAt: at},
-		{Text: "general feedback", CreatedAt: at},
-	} {
-		if err := db.Feedback.Append(t.Context(), entry); err != nil {
+	for i, subject := range []annotation.Subject{{RunID: root.ID()}, {ItemID: "item_export_child"}, {SessionID: ses.ID, RunID: "run_already_removed"}, {}} {
+		content, _ := jsonvalue.Encode(map[string]string{"text": "retained observation"})
+		entry := annotation.Entry{CommandID: fmt.Sprintf("note-%d", i), Source: extension.AnnotationSource{ContributionSource: extension.ContributionSource{InstallationID: "f630f241-28b4-4fba-89bb-ddac2710a683", Release: integrity.Hash([]byte("original release")).String(), Contribution: "notes"}, ContractReference: "test.notes.v1"}, Subject: subject, Content: content, CreatedAt: at}
+		if err := db.Annotations.Append(t.Context(), entry); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -163,9 +163,9 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 	trajectory := exported.Trajectory
 	if trajectory.SchemaVersion != protocol.SessionTrajectoryVersion || trajectory.Session.ID != ses.ID ||
 		len(trajectory.Runs) != 2 || len(trajectory.Items) != 2 || len(trajectory.ModelInvocations) != 102 ||
-		len(trajectory.ToolAttempts) != 2 || len(trajectory.Messages) != 1 || len(trajectory.Feedback) != 4 {
+		len(trajectory.ToolAttempts) != 2 || len(trajectory.Messages) != 1 || len(trajectory.Annotations) != 4 {
 		t.Fatalf("incomplete exported evidence: runs=%d items=%d models=%d tools=%d messages=%d feedback=%d",
-			len(trajectory.Runs), len(trajectory.Items), len(trajectory.ModelInvocations), len(trajectory.ToolAttempts), len(trajectory.Messages), len(trajectory.Feedback))
+			len(trajectory.Runs), len(trajectory.Items), len(trajectory.ModelInvocations), len(trajectory.ToolAttempts), len(trajectory.Messages), len(trajectory.Annotations))
 	}
 	if trajectory.ModelInvocations[0].CallID != "model:export:000" || trajectory.ToolAttempts[0].CallID != "tool:export:1" {
 		t.Fatal("export changed persisted execution identities")
@@ -178,12 +178,13 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 		trajectory.ToolAttempts[0].State != protocol.ToolAttemptIncomplete || trajectory.ToolAttempts[1].State != protocol.ToolAttemptCompleted {
 		t.Fatalf("Tool attempt history = %+v", trajectory.ToolAttempts)
 	}
-	if !slices.ContainsFunc(trajectory.Feedback, func(entry protocol.FeedbackEntry) bool {
-		return entry.Text == "  misses the requested behavior  " && entry.Rating == protocol.FeedbackNegative
+	if !slices.ContainsFunc(trajectory.Annotations, func(entry protocol.SessionAnnotation) bool {
+		var signal protocol.FeedbackRequest
+		return json.Unmarshal(entry.Content, &signal) == nil && signal.Text == "  misses the requested behavior  " && signal.Rating == protocol.FeedbackNegative && entry.Source.ContractReference == "flame.feedback.v1"
 	}) {
 		t.Fatal("export rewrote the user's independent quality signal")
 	}
-	for _, entry := range trajectory.Feedback {
+	for _, entry := range trajectory.Annotations {
 		if entry.CreatedAt.After(trajectory.CollectedAt) {
 			t.Fatal("export collection timestamp precedes included feedback")
 		}

@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"os"
 	"path/filepath"
 	"slices"
@@ -24,7 +25,7 @@ func TestSkillDetailDistinguishesInvalidMissingAndUnavailableResources(t *testin
 	if err := os.WriteFile(filepath.Join(directory, "SKILL.md"), []byte("---\nname: secret-token\ndescription: [\n---\nbroken"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	h := newWorkspaceHandlerWithConfig(root, workspaceTestConfig{Skills: promptsource.NewSkills(user, nil)})
+	h := newWorkspaceHandlerWithConfig(root, workspaceTestConfig{Skills: promptsource.NewSkills(user, promptsource.SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[promptsource.SkillCapture]})})
 	for _, tt := range []struct {
 		name        string
 		want, cause error

@@ -214,12 +214,12 @@ func (p *ModelProviders) selectedProfiles(ctx context.Context, source plugins.Co
 	return result, nil
 }
 
-func (use *providerUse) profiles(ctx context.Context) (map[string]modelprovider.Profile, error) {
+func (u *providerUse) profiles(ctx context.Context) (map[string]modelprovider.Profile, error) {
 	method, err := modelprovider.ProfilesMethod()
 	if err != nil {
 		return nil, err
 	}
-	profiles, err := providerMethod(ctx, use, method, "", struct{}{})
+	profiles, err := providerMethod(ctx, u, method, "", struct{}{})
 	if err != nil {
 		return nil, err
 	}

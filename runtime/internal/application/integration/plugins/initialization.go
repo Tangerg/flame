@@ -113,7 +113,7 @@ func (entry distributionCandidate) install(ctx context.Context, host *qimu.Host,
 	if _, err := entry.candidate.Publish(ctx); err != nil {
 		return err
 	}
-	projection, err := ProjectFrameworkRelease(release)
+	projection, err := packages.Project(release)
 	if err != nil {
 		return err
 	}

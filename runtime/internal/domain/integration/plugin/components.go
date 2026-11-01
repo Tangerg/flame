@@ -70,6 +70,7 @@ var componentPlacements = map[extension.ComponentPlacement]componentPlacement{
 		scopes:  []extension.ComponentScope{extension.ComponentScopeClient},
 		refusal: "client effect requires client context without view metadata",
 	},
+	extension.ComponentPlacementMessageAction: {scopes: []extension.ComponentScope{extension.ComponentScopeSession}, refusal: "message action requires captured session context"},
 	extension.ComponentPlacementSessionAction: {
 		scopes:  []extension.ComponentScope{extension.ComponentScopeSession},
 		refusal: "session action requires session context",

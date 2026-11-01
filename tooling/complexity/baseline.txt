@@ -78,7 +78,6 @@
 24 runtime/internal/adapter/integration/pluginservices/model_context.go:CallComposition.PrepareContext
 31 runtime/internal/adapter/integration/pluginservices/model_observers.go:streamedObservedModel.Stream
 27 runtime/internal/adapter/integration/pluginservices/model_selection.go:CallComposition.SelectModel
-21 runtime/internal/adapter/integration/pluginservices/skill_learning_callbacks.go:SkillLearning.grant
 28 runtime/internal/adapter/integration/pluginservices/streams.go:installedStream.Stream
 29 runtime/internal/adapter/persistence/execution_tree.go:ExecutorCheckpointStore.saveExecutionTreeRecord
 22 runtime/internal/adapter/persistence/model_endpoint.go:ModelInvocationStore.RecoverModelInvocation
@@ -136,7 +135,6 @@
 24 runtime/internal/domain/run/transcript/body.go:ToolCallBody.validate
 21 runtime/internal/infra/filesystem/fileobservation/paths_darwin.go:pathHints.run
 25 runtime/internal/infra/filesystem/skillauthoring/lifecycle.go:Store.moveLifecycle
-22 runtime/internal/infra/filesystem/skillauthoring/proposals.go:Store.ApproveProposal
 22 runtime/internal/testsupport/item.go:MustRestoreItem
 22 runtime/internal/testsupport/run.go:MustRestoreRun
 21 tooling/moduleproxy/main.go:run

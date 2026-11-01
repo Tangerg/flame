@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/qimu"
@@ -18,18 +19,23 @@ type SelectionStore interface {
 	Save(context.Context, plugin.ProviderSelection) error
 }
 
+type connectorSelection interface {
+	WithdrawExternal() error
+	ReconcileExternal(context.Context) error
+}
 type Selections struct {
+	connector     connectorSelection
 	store         SelectionStore
 	installations Store
 	admission     *qimu.Admission
 	publish       invalidation.Publish
 }
 
-func NewSelections(store SelectionStore, installations Store, admission *qimu.Admission, publish invalidation.Publish) (*Selections, error) {
-	if lo.IsNil(store) || lo.IsNil(installations) || admission == nil {
+func NewSelections(store SelectionStore, installations Store, admission *qimu.Admission, publish invalidation.Publish, connector connectorSelection) (*Selections, error) {
+	if lo.IsNil(store) || lo.IsNil(installations) || admission == nil || lo.IsNil(connector) {
 		return nil, errors.New("plugins: provider selections, installations and admission are required")
 	}
-	return &Selections{store: store, installations: installations, admission: admission, publish: publish}, nil
+	return &Selections{connector: connector, store: store, installations: installations, admission: admission, publish: publish}, nil
 }
 
 func (s *Selections) List(ctx context.Context) ([]plugin.ProviderSelection, error) {
@@ -56,10 +62,19 @@ func (s *Selections) Select(ctx context.Context, record plugin.SelectionRecord) 
 		if !slices.Contains(contribution.SelectionRoles(), record.Role) {
 			return fmt.Errorf("%w: contribution does not provide the requested selection role", plugin.ErrInvalid)
 		}
-		return s.store.Save(ctx, selection)
+		if err := s.store.Save(ctx, selection); err != nil {
+			return err
+		}
+		if record.Role == mcpconnector.Reference {
+			return s.connector.WithdrawExternal()
+		}
+		return nil
 	})
 	if err == nil {
 		s.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins})
+		if record.Role == mcpconnector.Reference {
+			err = s.connector.ReconcileExternal(context.WithoutCancel(ctx))
+		}
 	}
 	return selection, err
 }

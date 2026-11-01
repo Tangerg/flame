@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -41,6 +42,7 @@ func (s Status) Valid() bool {
 
 // Snapshot is the technical reconstruction boundary, not a mutation surface.
 type Snapshot struct {
+	Author     extension.ContributionSource
 	SessionID  string
 	Objective  string
 	Status     Status
@@ -61,6 +63,7 @@ type Snapshot struct {
 // Goal is one committed autonomous objective. Private fields make every next
 // committed value pass through a domain transition.
 type Goal struct {
+	author        extension.ContributionSource
 	sessionID     string
 	objective     string
 	status        Status
@@ -84,6 +87,7 @@ type Current struct {
 // Version is the typed CAS identity of a Current Goal. Presence is explicit;
 // revision zero and an empty incarnation are not absence sentinels.
 type Version struct {
+	author        extension.ContributionSource
 	sessionID     string
 	incarnationID goalref.IncarnationID
 	revision      exactint.Counter
@@ -94,7 +98,6 @@ var (
 	errSessionRequired     = errors.New("goal: session ID is required")
 	errObjectiveRequired   = errors.New("goal: objective is required")
 	ErrInvalid             = errors.New("goal: invalid Goal")
-	errInvalidTransition   = errors.New("goal: invalid lifecycle transition")
 	ErrNotResumable        = errors.New("goal: status is not resumable")
 	ErrNotEditable         = errors.New("goal: status is not editable")
 	errRunIdentityConflict = errors.New("goal: Run identity conflict")
@@ -134,29 +137,6 @@ func (c Current) Version() Version {
 	return c.goal.Version()
 }
 
-// New constructs revision one of a fresh objective incarnation. Command text
-// is canonicalized here so every delivery enters the same aggregate semantics;
-// Restore remains strict about already-persisted snapshots.
-func New(
-	sessionID, objective string,
-	selection modelchoice.Selection,
-	capabilities run.Capabilities,
-	incarnationID string,
-	now time.Time,
-) (Goal, error) {
-	return Restore(Snapshot{
-		SessionID:      sessionID,
-		Objective:      strings.TrimSpace(objective),
-		Status:         StatusActive,
-		ModelSelection: selection,
-		Capabilities:   capabilities.Normalized(),
-		IncarnationID:  incarnationID,
-		Revision:       exactint.First().Value(),
-		CreatedAt:      now.UTC(),
-		UpdatedAt:      now.UTC(),
-	})
-}
-
 // Restore reconstructs one committed Goal from a technical snapshot.
 func Restore(snapshot Snapshot) (Goal, error) {
 	incarnationID, err := goalref.ParseIncarnation(snapshot.IncarnationID)
@@ -175,7 +155,7 @@ func Restore(snapshot Snapshot) (Goal, error) {
 			return Goal{}, err
 		}
 	}
-	value := Goal{
+	value := Goal{author: snapshot.Author,
 		sessionID:     snapshot.SessionID,
 		objective:     snapshot.Objective,
 		status:        snapshot.Status,
@@ -195,6 +175,12 @@ func Restore(snapshot Snapshot) (Goal, error) {
 }
 
 func (g Goal) validate() error {
+	if g.author != (extension.ContributionSource{}) {
+		if err := g.author.Validate(); err != nil {
+			return fmt.Errorf("%w: author: %w", ErrInvalid, err)
+		}
+	}
+
 	if err := validateSessionIdentity(g.sessionID); err != nil {
 		return err
 	}
@@ -233,22 +219,11 @@ func (g Goal) validate() error {
 	if g.updatedAt.Before(g.createdAt) {
 		return fmt.Errorf("%w: update time precedes creation", ErrInvalid)
 	}
-	switch g.status {
-	case StatusActive, StatusComplete:
-		if g.reason != (Reason{}) {
-			return fmt.Errorf("%w: %s Goal must not carry a stop reason", ErrInvalid, g.status)
-		}
-	case StatusPaused, StatusBlocked:
-		validated, err := newReason(g.status, g.reason.code, g.reason.runOutcome, g.reason.explanation)
-		if err != nil || validated != g.reason {
-			return fmt.Errorf("%w: invalid %s reason: %v", ErrInvalid, g.status, err)
-		}
-	}
-	return nil
+	return g.reason.validateFor(g.status)
 }
 
 func (g Goal) Snapshot() Snapshot {
-	return Snapshot{
+	return Snapshot{Author: g.author,
 		SessionID: g.sessionID, Objective: g.objective, Status: g.status,
 		ReasonCode: g.reason.code, ReasonRunOutcome: g.reason.runOutcome, ReasonExplanation: g.reason.explanation,
 		ModelSelection: g.selection, Capabilities: g.capabilities.Clone(),
@@ -279,7 +254,7 @@ func (g Goal) CreatedAt() time.Time                  { return g.createdAt }
 func (g Goal) UpdatedAt() time.Time                  { return g.updatedAt }
 
 func (g Goal) Version() Version {
-	return Version{sessionID: g.sessionID, incarnationID: g.incarnationID, revision: g.revision, committed: true}
+	return Version{author: g.author, sessionID: g.sessionID, incarnationID: g.incarnationID, revision: g.revision, committed: true}
 }
 
 func (v Version) IsUnwritten() bool             { return !v.committed }
@@ -318,6 +293,9 @@ func (v Version) AdvancesTo(next Goal) error {
 	if next.sessionID != v.sessionID {
 		return fmt.Errorf("%w: replacement belongs to another Session", ErrInvalid)
 	}
+	if v.committed && v.incarnationID == next.incarnationID && v.author != next.author {
+		return fmt.Errorf("%w: incarnation author changed", ErrInvalid)
+	}
 	if !v.committed || next.incarnationID != v.incarnationID {
 		if next.revision != exactint.First() {
 			return fmt.Errorf("%w: fresh incarnation must start at revision %d", ErrInvalid, exactint.First().Value())
@@ -335,149 +313,6 @@ func (v Version) String() string {
 		return fmt.Sprintf("%s/unwritten", v.sessionID)
 	}
 	return fmt.Sprintf("%s/%s@%d", v.sessionID, v.incarnationID.String(), v.revision.Value())
-}
-
-func (g Goal) Complete(now time.Time) (Goal, error) {
-	if g.status != StatusActive {
-		return Goal{}, fmt.Errorf("%w: cannot complete %s Goal", errInvalidTransition, g.status)
-	}
-	next, err := g.next(now)
-	if err != nil {
-		return Goal{}, err
-	}
-	next.status, next.reason = StatusComplete, Reason{}
-	return next, next.validate()
-}
-
-func (g Goal) Pause(code ReasonCode, now time.Time) (Goal, error) {
-	if g.status != StatusActive {
-		return Goal{}, fmt.Errorf("%w: cannot pause %s Goal", errInvalidTransition, g.status)
-	}
-	reason, err := newReason(StatusPaused, code, "", "")
-	if err != nil {
-		return Goal{}, err
-	}
-	next, err := g.next(now)
-	if err != nil {
-		return Goal{}, err
-	}
-	next.status, next.reason = StatusPaused, reason
-	return next, next.validate()
-}
-
-// Stop returns the user-authored paused state after an owned drive has been
-// quiesced. The terminal Run may already have derived a pause, block, or
-// transient completion while quiescing; the explicit user command is the final
-// lifecycle decision and replaces that reason without losing its accounting.
-func (g Goal) Stop(now time.Time) (Goal, error) {
-	next, err := g.next(now)
-	if err != nil {
-		return Goal{}, err
-	}
-	next.status = StatusPaused
-	next.reason, err = newReason(StatusPaused, ReasonStoppedByUser, "", "")
-	if err != nil {
-		return Goal{}, err
-	}
-	return next, next.validate()
-}
-
-// Block records the model's explanation for why it cannot continue.
-func (g Goal) Block(explanation string, now time.Time) (Goal, error) {
-	if g.status != StatusActive {
-		return Goal{}, fmt.Errorf("%w: cannot block %s Goal", errInvalidTransition, g.status)
-	}
-	reason, err := newReason(StatusBlocked, ReasonBlockedByModel, "", explanation)
-	if err != nil {
-		return Goal{}, err
-	}
-	next, err := g.next(now)
-	if err != nil {
-		return Goal{}, err
-	}
-	next.status, next.reason = StatusBlocked, reason
-	return next, next.validate()
-}
-
-func (g Goal) Resume(now time.Time) (Goal, error) {
-	if g.status != StatusPaused && g.status != StatusBlocked {
-		return Goal{}, ErrNotResumable
-	}
-	next, err := g.next(now)
-	if err != nil {
-		return Goal{}, err
-	}
-	next.status, next.reason = StatusActive, Reason{}
-	return next, next.validate()
-}
-
-func (g Goal) ReviseObjective(objective, incarnationID string, now time.Time) (Goal, error) {
-	return g.reviseObjective(objective, incarnationID, false, now)
-}
-
-// ReviseObjectiveAndResume keeps edit+reactivation to one durable replacement.
-func (g Goal) ReviseObjectiveAndResume(objective, incarnationID string, now time.Time) (Goal, error) {
-	if g.status != StatusPaused {
-		return Goal{}, fmt.Errorf("%w: only a paused Goal can revise and resume", errInvalidTransition)
-	}
-	return g.reviseObjective(objective, incarnationID, true, now)
-}
-
-func (g Goal) reviseObjective(objective, incarnationID string, resume bool, now time.Time) (Goal, error) {
-	if g.status == StatusComplete {
-		return Goal{}, ErrNotEditable
-	}
-	objective = strings.TrimSpace(objective)
-	if objective == "" {
-		return Goal{}, errObjectiveRequired
-	}
-	parsedIncarnationID, err := goalref.ParseIncarnation(incarnationID)
-	if err != nil {
-		return Goal{}, fmt.Errorf("%w: %w", ErrInvalid, err)
-	}
-	if parsedIncarnationID == g.incarnationID {
-		return Goal{}, fmt.Errorf("%w: revised objective requires a fresh incarnation", ErrInvalid)
-	}
-	updatedAt, err := g.transitionTime(now)
-	if err != nil {
-		return Goal{}, err
-	}
-	next := g.Clone()
-	next.objective, next.incarnationID = objective, parsedIncarnationID
-	next.revision, next.updatedAt = exactint.First(), updatedAt
-	// Usage is folded from the incarnation's Runs, and a fresh incarnation has
-	// none yet; carrying the old total would answer differently than any read.
-	next.used = Usage{}
-	if resume {
-		next.status, next.reason = StatusActive, Reason{}
-	}
-	return next, next.validate()
-}
-
-func (g Goal) next(now time.Time) (Goal, error) {
-	revision, err := g.revision.Next()
-	if err != nil {
-		return Goal{}, fmt.Errorf("%w: %w", ErrInvalid, err)
-	}
-	updatedAt, err := g.transitionTime(now)
-	if err != nil {
-		return Goal{}, err
-	}
-	next := g.Clone()
-	next.revision = revision
-	next.updatedAt = updatedAt
-	return next, nil
-}
-
-func (g Goal) transitionTime(now time.Time) (time.Time, error) {
-	now = now.UTC()
-	if now.IsZero() {
-		return time.Time{}, fmt.Errorf("%w: transition time is required", ErrInvalid)
-	}
-	if now.Before(g.updatedAt) {
-		return time.Time{}, fmt.Errorf("%w: transition time precedes current state", ErrInvalid)
-	}
-	return now, nil
 }
 
 func validateSessionIdentity(value string) error {

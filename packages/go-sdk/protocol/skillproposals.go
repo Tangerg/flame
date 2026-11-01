@@ -1,13 +1,15 @@
 package protocol
 
+import "github.com/Tangerg/flame/packages/go-sdk/skill"
+
 // SkillProposalOrigin identifies why the runtime submitted a proposal.
 //
 //flame:enum
 type SkillProposalOrigin string
 
 const (
-	SkillProposalOriginRequested SkillProposalOrigin = "requested"
-	SkillProposalOriginMined     SkillProposalOrigin = "mined"
+	SkillProposalOriginRequested SkillProposalOrigin = SkillProposalOrigin(skill.Requested)
+	SkillProposalOriginMined     SkillProposalOrigin = SkillProposalOrigin(skill.Mined)
 )
 
 // SkillProposalScope names the library a proposal would join. Proposals are
@@ -18,14 +20,12 @@ const (
 type SkillProposalScope string
 
 const (
-	SkillProposalScopeProject SkillProposalScope = "project"
-	SkillProposalScopeUser    SkillProposalScope = "user"
+	SkillProposalScopeProject SkillProposalScope = SkillProposalScope(skill.Project)
+	SkillProposalScopeUser    SkillProposalScope = SkillProposalScope(skill.User)
 )
 
-// SkillProposal is complete immutable Skill content awaiting review. Name,
-// Revision, and Scope form the content-addressed reference used by approve and
-// reject operations. List results contain one current revision per Scope/Name,
-// ordered project scope first, then user scope, and by Name within each scope.
+// Revision identifies the original proposal command. The retained input fixes
+// the content, target library, and source release seen by a reviewer.
 type SkillProposal struct {
 	Name          string              `json:"name"`
 	Revision      string              `json:"revision"`

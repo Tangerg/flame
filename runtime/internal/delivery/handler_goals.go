@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -104,6 +106,8 @@ func mapGoalErr(err error) error {
 		return nil
 	}
 	switch {
+	case errors.Is(err, plugin.ErrUnavailable):
+		return wirePluginError(err)
 	case errors.Is(err, goals.ErrGoalActive):
 		return protocol.NewFailure(errors.Join(protocol.ErrSessionBusy, err), err.Error())
 	case errors.Is(err, goals.ErrNoGoal),
@@ -139,6 +143,9 @@ func presentGoal(g goal.Goal) (*protocol.Goal, error) {
 		Used:            protocol.GoalUsage{Runs: used.Runs, CostUSD: used.Cost.OptionalUSD(), Steps: used.Steps},
 		CreatedAt:       g.CreatedAt(),
 		UpdatedAt:       g.UpdatedAt(),
+	}
+	if original := g.Snapshot().Author; original != (extension.ContributionSource{}) {
+		w.Author = new(original)
 	}
 	return &w, nil
 }

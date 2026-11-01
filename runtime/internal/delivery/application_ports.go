@@ -5,10 +5,10 @@ import (
 	"io"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/feedback"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
@@ -123,7 +123,8 @@ type usageUseCases interface {
 }
 
 type feedbackUseCases interface {
-	Record(ctx context.Context, command feedback.Command) error
+	Prepare(context.Context, extension.FeedbackDraft) (func(context.Context) error, error)
+	Record(ctx context.Context, command extension.FeedbackDraft) error
 }
 
 type workspaceFileUseCases interface {

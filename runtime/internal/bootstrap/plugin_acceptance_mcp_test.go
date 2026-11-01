@@ -1,9 +1,11 @@
 package bootstrap
 
 import (
+	"bytes"
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,9 +15,11 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -163,6 +167,14 @@ func poMCPConfig(t *testing.T) assemblyConfig {
 	return cfg
 }
 
+func installExternalConnector(r *poMCPRuntime) *protocol.PluginInstallation {
+	r.t.Helper()
+	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: filepath.Join(firstPartyPackages, "mcp")}, "install-external-connector").(*protocol.PluginInstallation)
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-external-connector")
+	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: mcpconnector.Reference, InstallationID: installed.ID, Contribution: mcpconnector.Export}, "select-external-connector")
+	return installed
+}
+
 func poMCPActivate(r *poMCPRuntime, source string) *protocol.PluginInstallation {
 	r.t.Helper()
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
@@ -247,6 +259,7 @@ func TestPluginAcceptanceMCPSameNameAcrossOriginsPublishesDistinctToolAliases(t 
 	}
 	cfg.modelProviders = testChatResolver(client)
 	runtime := poMCPOpen(t, cfg)
+	installExternalConnector(runtime)
 	runtime.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
 		Name: "reviews", Enabled: true,
 		Connection:       protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: userURL},
@@ -315,9 +328,44 @@ func TestPluginAcceptanceMCPSameNameAcrossOriginsPublishesDistinctToolAliases(t 
 
 func TestMCPInstallationAndExternalServerWithdrawIndependently(t *testing.T) {
 	cfg := poMCPConfig(t)
+	const proof = "installed-tool-still-executes"
+	var target atomic.Value
+	target.Store("")
+	var executed atomic.Bool
+	model, err := chatclient.New(delegateRestartModel{chat.ModelFunc(func(_ context.Context, req *chat.Request) (*chat.Response, error) {
+		name := target.Load().(string)
+		if name == "" || len(req.Tools) == 0 {
+			return completedTextResponse("ready"), nil
+		}
+		for _, msg := range req.Messages {
+			for _, part := range msg.Parts {
+				if part.ToolResult != nil && part.ToolResult.Name == name {
+					reply, err := json.Marshal(part.ToolResult.Output)
+					if err != nil {
+						return nil, err
+					}
+					executed.Store(!part.ToolResult.IsError && bytes.Contains(reply, []byte(proof)))
+					return completedTextResponse("finished"), nil
+				}
+			}
+		}
+		call := chat.ToolCall{ID: "find-independent-tool", Name: "search_tools", Arguments: `{"query":"select:` + name + `"}`}
+		if slices.ContainsFunc(req.Tools, func(d chat.ToolDefinition) bool { return d.Name == name }) {
+			call = chat.ToolCall{ID: "invoke-independent-tool", Name: name, Arguments: `{"value":"` + proof + `"}`}
+		}
+		msg := chat.NewAssistantMessage(chat.NewToolCallPart(call))
+		return chat.NewResponse(&chat.Output{Message: &msg, FinishReason: chat.FinishReasonToolCalls}, nil)
+	})}, chatclient.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.modelProviders = testChatResolver(model)
+	cfg.approvalMode = approval.ModeYolo
+
 	current := poMCPOpen(t, cfg)
 	const name = "reviews"
 	external := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginUser}, Name: name}
+	connector := installExternalConnector(current)
 	current.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
 		Name: name, Enabled: true,
 		Connection:       protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: poMCPRemote(t, "record")},
@@ -355,6 +403,27 @@ func TestMCPInstallationAndExternalServerWithdrawIndependently(t *testing.T) {
 		})
 	}
 	expectOwners(external, backend)
+	current.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: connector.ID, Enabled: false}, "withdraw-external-connector")
+	expectOwners(backend)
+	modelTools := current.poMCPTools(&backend, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	target.Store(modelTools[0].ModelName)
+	ctx := protocolLifecycleContext(t.Context())
+	session, err := current.api.CreateSession(ctx, protocol.CreateSessionRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, events, err := current.api.StartRun(ctx, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Execute the installed tool."}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForRunEvents(t, collectRunEvents(events), "tool call with external connector disabled")
+	if !executed.Load() {
+		t.Fatal("installed tool did not return its original result")
+	}
+	current = reopenPluginRuntime(t, current, &cfg)
+	expectOwners(backend)
+	current.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: connector.ID, Enabled: true}, "restore-external-connector")
+	expectOwners(backend, external)
 	current.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installation.ID, Enabled: false}, "disable-backend")
 	expectOwners(external)
 	current.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installation.ID, Enabled: true}, "enable-backend")
@@ -363,4 +432,74 @@ func TestMCPInstallationAndExternalServerWithdrawIndependently(t *testing.T) {
 	expectOwners(backend)
 	current = reopenPluginRuntime(t, current, &cfg)
 	expectOwners(backend)
+}
+
+func TestExternalConnectorKeepsLaunchSecretsOutOfPluginAndRestoresAuthorizationReceipt(t *testing.T) {
+	cfg := poMCPConfig(t)
+	r := poMCPOpen(t, cfg)
+	installed := installExternalConnector(r)
+	const secret = "external-mcp-test-private-header"
+	seen := make(chan struct{}, 1)
+	remote := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, q *http.Request) {
+		if q.Header.Get("X-Fixture-Key") == secret {
+			select {
+			case seen <- struct{}{}:
+			default:
+			}
+		}
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer remote.Close()
+	server := r.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
+		Name: "signed", Enabled: true,
+		Connection:       protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: remote.URL, Headers: &protocol.MCPHeadersChange{Type: protocol.MCPSecretSet, Value: map[string]string{"X-Fixture-Key": secret}}},
+		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
+	}, "create-protected-remote").(*protocol.MCPServer)
+	select {
+	case <-seen:
+	case <-time.After(10 * time.Second):
+		t.Fatal("approved transport did not receive its header")
+	}
+	attempt, err := r.api.CreateMCPAuthorizationAttempt(t.Context(), server.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(10 * time.Second)
+	for attempt.Status.Type == protocol.MCPAuthorizationAttemptPending {
+		if time.Now().After(deadline) {
+			t.Fatal("authorization never settled")
+		}
+		attempt, err = r.api.GetMCPAuthorizationAttempt(t.Context(), attempt.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if attempt.Status.Type != protocol.MCPAuthorizationAttemptFailed {
+		t.Fatalf("unavailable OAuth endpoint settled as %s", attempt.Status.Type)
+	}
+	r = reopenPluginRuntime(t, r, &cfg)
+	restored, err := r.api.GetMCPAuthorizationAttempt(t.Context(), attempt.ID)
+	if err != nil || !reflect.DeepEqual(restored, attempt) {
+		t.Fatalf("original authorization receipt lost: %+v %v", restored, err)
+	}
+	data := filepath.Join(cfg.stores.DataDirectory, "plugins", "data", installed.ID)
+	var files int
+	err = filepath.WalkDir(data, func(path string, e os.DirEntry, err error) error {
+		if err != nil || e.IsDir() {
+			return err
+		}
+		body, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		files++
+		if bytes.Contains(body, []byte(secret)) || bytes.Contains(body, []byte(remote.URL)) {
+			return errors.New("plugin received private transport material")
+		}
+		return nil
+	})
+	if err != nil || files == 0 {
+		t.Fatalf("connector data separation: files=%d, error=%v", files, err)
+	}
 }

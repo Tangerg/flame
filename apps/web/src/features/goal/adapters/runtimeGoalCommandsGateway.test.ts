@@ -37,7 +37,7 @@ describe("Runtime Goal Adapter", () => {
     ).toEqual({ sessionId: "ses_goal" });
   });
 
-  it("projects the mounted Goal and clears it when the capability is unavailable", () => {
+  it("retains the mounted Goal as read-only material when commands are unavailable", () => {
     const goal = {
       sessionId: "ses_goal",
       objective: "ship it",
@@ -53,6 +53,9 @@ describe("Runtime Goal Adapter", () => {
       goal: { objective: "ship it" },
     });
 
-    expect(runtimeGoalMaterial(goal, false)).toEqual({ available: false, goal: null });
+    expect(runtimeGoalMaterial(goal, false)).toMatchObject({
+      available: false,
+      goal: { objective: "ship it" },
+    });
   });
 });

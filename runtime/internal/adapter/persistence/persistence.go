@@ -44,7 +44,7 @@ type Bundle struct {
 	ExecutorCheckpoints   *ExecutorCheckpointStore
 	Interrupts            *InterruptStore
 	Transcript            *TranscriptStore
-	Feedback              *feedbackStore
+	Annotations           *annotationStore
 	Providers             *ProviderStore
 	MCPServers            *MCPServerStore
 	Installations         *InstallationStore
@@ -133,7 +133,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		ExecutorCheckpoints:   newExecutorCheckpointStore(db),
 		Interrupts:            newInterruptStore(db),
 		Transcript:            newTranscriptStore(db),
-		Feedback:              newFeedbackStore(db),
+		Annotations:           &annotationStore{db: db},
 		Providers:             newProviderStore(db),
 		MCPServers:            newMCPServerStore(db),
 		Installations:         installations,

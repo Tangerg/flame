@@ -9,7 +9,7 @@ import (
 const feedbackCreate Name = "feedback.create"
 
 func registerFeedback(registry *Registry) {
-	registry.commandAck(MethodMeta{Name: feedbackCreate, GoName: "CreateFeedback"},
+	registry.commandAck(MethodMeta{Name: feedbackCreate, GoName: "CreateFeedback", Errors: pluginProviderErrors()},
 		func(service interface {
 			CreateFeedback(context.Context, protocol.FeedbackRequest) error
 		}, ctx context.Context, request protocol.FeedbackRequest) error {

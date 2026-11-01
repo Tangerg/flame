@@ -12,6 +12,7 @@ package sessions
 import (
 	"context"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -68,7 +69,7 @@ type TranscriptStore interface {
 // (no Plan to move with a boundary).
 // Boundary transfers the recorded steps to the caller.
 type planBoundaries interface {
-	Boundary(ctx context.Context, runID string) ([]plan.Step, bool, error)
+	Boundary(ctx context.Context, runID string) (plan.Document, bool, error)
 }
 
 // RunStore is the lifecycle coordinator's read view of a session's Runs. Every
@@ -155,7 +156,8 @@ type Snapshot struct {
 	// snapshot that carried them could hand a restored value a position in the
 	// revision space that the restoring runtime never issued, and a client would
 	// then ignore the newer value as stale.
-	Plan []plan.Step
+	Plan       []plan.Step
+	PlanSource extension.ContributionSource
 }
 
 // WorkspaceCheckpoints is the coordinator's view of a session's working-tree

@@ -43,7 +43,7 @@ func registerMCP(registry *Registry) {
 
 	registry.command(MethodMeta{
 		Name: MCPServersCreate, GoName: "CreateMCPServer",
-		Errors:          []string{protocol.ErrMCPServerAlreadyExists.Error()},
+		Errors:          []string{protocol.ErrMCPServerAlreadyExists.Error(), protocol.ErrPluginUnavailable.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
 		CreateMCPServer(context.Context, protocol.MCPServerCandidate) (*protocol.MCPServer, error)
@@ -74,6 +74,7 @@ func registerMCP(registry *Registry) {
 	// A connection probe persists nothing, so a retry is not a replay concern.
 	registry.query(MethodMeta{
 		Name: mcpServersTest, GoName: "TestMCPServer",
+		Errors:          []string{protocol.ErrPluginUnavailable.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
 		TestMCPServer(context.Context, protocol.MCPServerCandidate) (*protocol.MCPTestResult, error)

@@ -2,6 +2,10 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
+export type ApproveV1Input = ReviewRef;
+
+export type ApproveV1Output = Permit;
+
 export interface ArchiveAdvice {
   inactiveSince?: string;
 }
@@ -14,20 +18,101 @@ export type ArchiveV2Input = ArchiveRequest;
 
 export type ArchiveV2Output = ArchiveAdvice;
 
+export interface Candidate {
+  name: string;
+  scope: string;
+  source: string;
+}
+
+export interface Candidates {
+  items: Candidate[];
+  library: string;
+}
+
+export type CaptureV1Input = Candidates;
+
+export type CaptureV1Output = Catalog;
+
+export interface Catalog {
+  entries: Choice[];
+}
+
+export interface Choice {
+  name: string;
+  source: string;
+}
+
+export type ConfirmV1Input = Publication;
+
+export interface ConfirmV1Output {
+}
+
+export type DiscoverV1Input = Candidates;
+
+export type DiscoverV1Output = Catalog;
+
+export interface Draft {
+  library: string;
+  origin: string;
+  previous: string;
+  revises: boolean;
+  scope: string;
+  skill: Skill;
+  sourceSession: string;
+}
+
+export interface Libraries {
+  project: string;
+  user: string;
+}
+
 export interface MineResult {
   proposal?: Proposal;
 }
 
-export type MineV1Input = Run;
+export type MineV2Input = Run;
 
-export type MineV1Output = MineResult;
+export type MineV2Output = MineResult;
+
+export interface Permit {
+  decision: string;
+}
 
 export interface Proposal {
+  previous?: string;
   revises: boolean;
   skill: Skill;
 }
 
+export type ProposeV1Input = Draft;
+
+export type ProposeV1Output = ReviewRef;
+
+export interface Publication {
+  permit: Permit;
+  proposal: ReviewRef;
+  published: boolean;
+}
+
+export interface Queue {
+  proposals: ReviewRef[];
+}
+
+export type RejectV1Input = ReviewRef;
+
+export interface RejectV1Output {
+}
+
+export interface ReviewRef {
+  command: string;
+}
+
+export type ReviewsV1Input = Libraries;
+
+export type ReviewsV1Output = Queue;
+
 export interface Run {
+  library: string;
   sessionId: string;
   toolCalls: JSONNumber;
 }
@@ -40,15 +125,36 @@ export interface Skill {
 
 export interface MethodInputs {
   "flame.skill-learning/archive.v2": ArchiveV2Input;
-  "flame.skill-learning/mine.v1": MineV1Input;
+  "flame.skill-learning/mine.v2": MineV2Input;
+  "flame.skills/approve.v1": ApproveV1Input;
+  "flame.skills/capture.v1": CaptureV1Input;
+  "flame.skills/confirm.v1": ConfirmV1Input;
+  "flame.skills/discover.v1": DiscoverV1Input;
+  "flame.skills/propose.v1": ProposeV1Input;
+  "flame.skills/reject.v1": RejectV1Input;
+  "flame.skills/reviews.v1": ReviewsV1Input;
 }
 export interface MethodOutputs {
   "flame.skill-learning/archive.v2": ArchiveV2Output;
-  "flame.skill-learning/mine.v1": MineV1Output;
+  "flame.skill-learning/mine.v2": MineV2Output;
+  "flame.skills/approve.v1": ApproveV1Output;
+  "flame.skills/capture.v1": CaptureV1Output;
+  "flame.skills/confirm.v1": ConfirmV1Output;
+  "flame.skills/discover.v1": DiscoverV1Output;
+  "flame.skills/propose.v1": ProposeV1Output;
+  "flame.skills/reject.v1": RejectV1Output;
+  "flame.skills/reviews.v1": ReviewsV1Output;
 }
 export const METHODS = {
   "flame.skill-learning/archive.v2": { kind: "command", target: "installation" },
-  "flame.skill-learning/mine.v1": { kind: "command", target: "installation" },
+  "flame.skill-learning/mine.v2": { kind: "command", target: "installation" },
+  "flame.skills/approve.v1": { kind: "command", target: "installation" },
+  "flame.skills/capture.v1": { kind: "command", target: "installation" },
+  "flame.skills/confirm.v1": { kind: "command", target: "installation" },
+  "flame.skills/discover.v1": { kind: "query", target: "installation" },
+  "flame.skills/propose.v1": { kind: "command", target: "installation" },
+  "flame.skills/reject.v1": { kind: "command", target: "installation" },
+  "flame.skills/reviews.v1": { kind: "query", target: "installation" },
 } as const;
-export const CAPABILITY = { protocol: "io.github.tangerg.qimu/portable/1", reference: "flame.skill-learning.v1", composition: "selection", scope: "installation", contract: "ecaf5d23f0fff2824f234e52a9c8579c713758359e99a01f37d09a0bba8da828" } as const;
-export const CAPABILITY_JSON = "{\"composition\":\"selection\",\"methods\":[{\"description\":\"\",\"input\":{\"$defs\":{\"skilllearning.ArchiveRequest\":{\"additionalProperties\":false,\"properties\":{\"now\":{\"format\":\"date-time\",\"type\":\"string\"}},\"required\":[\"now\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"now\":{\"format\":\"date-time\",\"type\":\"string\"}},\"required\":[\"now\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.skill-learning/archive.v2\",\"output\":{\"$defs\":{\"skilllearning.ArchiveAdvice\":{\"additionalProperties\":false,\"properties\":{\"inactiveSince\":{\"format\":\"date-time\",\"type\":\"string\"}},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"inactiveSince\":{\"format\":\"date-time\",\"type\":\"string\"}},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"skilllearning.Run\":{\"additionalProperties\":false,\"properties\":{\"sessionId\":{\"type\":\"string\"},\"toolCalls\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"}},\"required\":[\"sessionId\",\"toolCalls\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"sessionId\":{\"type\":\"string\"},\"toolCalls\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"}},\"required\":[\"sessionId\",\"toolCalls\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.skill-learning/mine.v1\",\"output\":{\"$defs\":{\"skilllearning.MineResult\":{\"additionalProperties\":false,\"properties\":{\"proposal\":{\"$ref\":\"#/$defs/skilllearning.Proposal\"}},\"type\":\"object\"},\"skilllearning.Proposal\":{\"additionalProperties\":false,\"properties\":{\"revises\":{\"type\":\"boolean\"},\"skill\":{\"$ref\":\"#/$defs/skilllearning.Skill\"}},\"required\":[\"skill\",\"revises\"],\"type\":\"object\"},\"skilllearning.Skill\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"instructions\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"name\",\"description\",\"instructions\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"proposal\":{\"$ref\":\"#/$defs/skilllearning.Proposal\"}},\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.qimu/portable/1\",\"reference\":\"flame.skill-learning.v1\",\"scope\":\"installation\"}";
+export const CAPABILITY = { protocol: "io.github.tangerg.qimu/portable/1", reference: "flame.skill-learning.v2", composition: "selection", scope: "installation", contract: "a62a583d3106701e88b62498ec41f74c83c4aacdf3a6210ee94c7573129f5802" } as const;
+export const CAPABILITY_JSON = "{\"composition\":\"selection\",\"methods\":[{\"description\":\"\",\"input\":{\"$defs\":{\"skilllearning.ArchiveRequest\":{\"additionalProperties\":false,\"properties\":{\"now\":{\"format\":\"date-time\",\"type\":\"string\"}},\"required\":[\"now\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"now\":{\"format\":\"date-time\",\"type\":\"string\"}},\"required\":[\"now\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.skill-learning/archive.v2\",\"output\":{\"$defs\":{\"skilllearning.ArchiveAdvice\":{\"additionalProperties\":false,\"properties\":{\"inactiveSince\":{\"format\":\"date-time\",\"type\":\"string\"}},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"inactiveSince\":{\"format\":\"date-time\",\"type\":\"string\"}},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"skilllearning.Run\":{\"additionalProperties\":false,\"properties\":{\"library\":{\"type\":\"string\"},\"sessionId\":{\"type\":\"string\"},\"toolCalls\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"}},\"required\":[\"library\",\"sessionId\",\"toolCalls\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"library\":{\"type\":\"string\"},\"sessionId\":{\"type\":\"string\"},\"toolCalls\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"}},\"required\":[\"library\",\"sessionId\",\"toolCalls\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.skill-learning/mine.v2\",\"output\":{\"$defs\":{\"skilllearning.MineResult\":{\"additionalProperties\":false,\"properties\":{\"proposal\":{\"$ref\":\"#/$defs/skilllearning.Proposal\"}},\"type\":\"object\"},\"skilllearning.Proposal\":{\"additionalProperties\":false,\"properties\":{\"previous\":{\"type\":\"string\"},\"revises\":{\"type\":\"boolean\"},\"skill\":{\"$ref\":\"#/$defs/skilllearning.Skill\"}},\"required\":[\"skill\",\"revises\"],\"type\":\"object\"},\"skilllearning.Skill\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"instructions\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"name\",\"description\",\"instructions\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"proposal\":{\"$ref\":\"#/$defs/skilllearning.Proposal\"}},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"skilllearning.ReviewRef\":{\"additionalProperties\":false,\"properties\":{\"command\":{\"type\":\"string\"}},\"required\":[\"command\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"command\":{\"type\":\"string\"}},\"required\":[\"command\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.skills/approve.v1\",\"output\":{\"$defs\":{\"skilllearning.Permit\":{\"additionalProperties\":false,\"properties\":{\"decision\":{\"type\":\"string\"}},\"required\":[\"decision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"decision\":{\"type\":\"string\"}},\"required\":[\"decision\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"skilllearning.Candidate\":{\"additionalProperties\":false,\"properties\":{\"name\":{\"type\":\"string\"},\"scope\":{\"type\":\"string\"},\"source\":{\"type\":\"string\"}},\"required\":[\"name\",\"source\",\"scope\"],\"type\":\"object\"},\"skilllearning.Candidates\":{\"additionalProperties\":false,\"properties\":{\"items\":{\"items\":{\"$ref\":\"#/$defs/skilllearning.Candidate\"},\"type\":\"array\"},\"library\":{\"type\":\"string\"}},\"required\":[\"library\",\"items\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"items\":{\"items\":{\"$ref\":\"#/$defs/skilllearning.Candidate\"},\"type\":\"array\"},\"library\":{\"type\":\"string\"}},\"required\":[\"library\",\"items\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.skills/capture.v1\",\"output\":{\"$defs\":{\"skilllearning.Catalog\":{\"additionalProperties\":false,\"properties\":{\"entries\":{\"items\":{\"$ref\":\"#/$defs/skilllearning.Choice\"},\"type\":\"array\"}},\"required\":[\"entries\"],\"type\":\"object\"},\"skilllearning.Choice\":{\"additionalProperties\":false,\"properties\":{\"name\":{\"type\":\"string\"},\"source\":{\"type\":\"string\"}},\"required\":[\"name\",\"source\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"entries\":{\"items\":{\"$ref\":\"#/$defs/skilllearning.Choice\"},\"type\":\"array\"}},\"required\":[\"entries\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"skilllearning.Permit\":{\"additionalProperties\":false,\"properties\":{\"decision\":{\"type\":\"string\"}},\"required\":[\"decision\"],\"type\":\"object\"},\"skilllearning.Publication\":{\"additionalProperties\":false,\"properties\":{\"permit\":{\"$ref\":\"#/$defs/skilllearning.Permit\"},\"proposal\":{\"$ref\":\"#/$defs/skilllearning.ReviewRef\"},\"published\":{\"type\":\"boolean\"}},\"required\":[\"proposal\",\"permit\",\"published\"],\"type\":\"object\"},\"skilllearning.ReviewRef\":{\"additionalProperties\":false,\"properties\":{\"command\":{\"type\":\"string\"}},\"required\":[\"command\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"permit\":{\"$ref\":\"#/$defs/skilllearning.Permit\"},\"proposal\":{\"$ref\":\"#/$defs/skilllearning.ReviewRef\"},\"published\":{\"type\":\"boolean\"}},\"required\":[\"proposal\",\"permit\",\"published\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.skills/confirm.v1\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"skilllearning.Candidate\":{\"additionalProperties\":false,\"properties\":{\"name\":{\"type\":\"string\"},\"scope\":{\"type\":\"string\"},\"source\":{\"type\":\"string\"}},\"required\":[\"name\",\"source\",\"scope\"],\"type\":\"object\"},\"skilllearning.Candidates\":{\"additionalProperties\":false,\"properties\":{\"items\":{\"items\":{\"$ref\":\"#/$defs/skilllearning.Candidate\"},\"type\":\"array\"},\"library\":{\"type\":\"string\"}},\"required\":[\"library\",\"items\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"items\":{\"items\":{\"$ref\":\"#/$defs/skilllearning.Candidate\"},\"type\":\"array\"},\"library\":{\"type\":\"string\"}},\"required\":[\"library\",\"items\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.skills/discover.v1\",\"output\":{\"$defs\":{\"skilllearning.Catalog\":{\"additionalProperties\":false,\"properties\":{\"entries\":{\"items\":{\"$ref\":\"#/$defs/skilllearning.Choice\"},\"type\":\"array\"}},\"required\":[\"entries\"],\"type\":\"object\"},\"skilllearning.Choice\":{\"additionalProperties\":false,\"properties\":{\"name\":{\"type\":\"string\"},\"source\":{\"type\":\"string\"}},\"required\":[\"name\",\"source\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"entries\":{\"items\":{\"$ref\":\"#/$defs/skilllearning.Choice\"},\"type\":\"array\"}},\"required\":[\"entries\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"skilllearning.Draft\":{\"additionalProperties\":false,\"properties\":{\"library\":{\"type\":\"string\"},\"origin\":{\"type\":\"string\"},\"previous\":{\"type\":\"string\"},\"revises\":{\"type\":\"boolean\"},\"scope\":{\"type\":\"string\"},\"skill\":{\"$ref\":\"#/$defs/skilllearning.Skill\"},\"sourceSession\":{\"type\":\"string\"}},\"required\":[\"library\",\"scope\",\"skill\",\"origin\",\"sourceSession\",\"revises\",\"previous\"],\"type\":\"object\"},\"skilllearning.Skill\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"instructions\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"name\",\"description\",\"instructions\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"library\":{\"type\":\"string\"},\"origin\":{\"type\":\"string\"},\"previous\":{\"type\":\"string\"},\"revises\":{\"type\":\"boolean\"},\"scope\":{\"type\":\"string\"},\"skill\":{\"$ref\":\"#/$defs/skilllearning.Skill\"},\"sourceSession\":{\"type\":\"string\"}},\"required\":[\"library\",\"scope\",\"skill\",\"origin\",\"sourceSession\",\"revises\",\"previous\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.skills/propose.v1\",\"output\":{\"$defs\":{\"skilllearning.ReviewRef\":{\"additionalProperties\":false,\"properties\":{\"command\":{\"type\":\"string\"}},\"required\":[\"command\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"command\":{\"type\":\"string\"}},\"required\":[\"command\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"skilllearning.ReviewRef\":{\"additionalProperties\":false,\"properties\":{\"command\":{\"type\":\"string\"}},\"required\":[\"command\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"command\":{\"type\":\"string\"}},\"required\":[\"command\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.skills/reject.v1\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"skilllearning.Libraries\":{\"additionalProperties\":false,\"properties\":{\"project\":{\"type\":\"string\"},\"user\":{\"type\":\"string\"}},\"required\":[\"project\",\"user\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"project\":{\"type\":\"string\"},\"user\":{\"type\":\"string\"}},\"required\":[\"project\",\"user\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.skills/reviews.v1\",\"output\":{\"$defs\":{\"skilllearning.Queue\":{\"additionalProperties\":false,\"properties\":{\"proposals\":{\"items\":{\"$ref\":\"#/$defs/skilllearning.ReviewRef\"},\"type\":\"array\"}},\"required\":[\"proposals\"],\"type\":\"object\"},\"skilllearning.ReviewRef\":{\"additionalProperties\":false,\"properties\":{\"command\":{\"type\":\"string\"}},\"required\":[\"command\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"proposals\":{\"items\":{\"$ref\":\"#/$defs/skilllearning.ReviewRef\"},\"type\":\"array\"}},\"required\":[\"proposals\"],\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.qimu/portable/1\",\"reference\":\"flame.skill-learning.v2\",\"scope\":\"installation\"}";

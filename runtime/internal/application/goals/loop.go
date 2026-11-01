@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"iter"
 	"log/slog"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -125,7 +128,7 @@ func (d *Driver) ensureDriveLocked(ctx context.Context, sessionID, incarnationID
 			return ErrGoalConflict
 		}
 		if completed, err := drive.resultIfCompleted(); completed {
-			if err != nil {
+			if err != nil && !errors.Is(err, plugin.ErrUnavailable) {
 				return err
 			}
 			d.mutations.forget(sessionID, drive)
@@ -222,7 +225,11 @@ func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (settlement runSett
 			return runSettlement{}, nil
 		}
 
-		result, refreshOwnedGoalErr = d.runs.Start(ctx, d.command(*g))
+		command, err := d.command(ctx, *g)
+		if err != nil {
+			return runSettlement{}, err
+		}
+		result, refreshOwnedGoalErr = d.runs.Start(ctx, command)
 		if !errors.Is(refreshOwnedGoalErr, runs.ErrRunAdmissionBusy) {
 			if refreshOwnedGoalErr != nil {
 				return d.resolveGoalRunStartError(ctx, g, span, refreshOwnedGoalErr)
@@ -234,6 +241,9 @@ func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (settlement runSett
 		// admission.
 	}
 
+	if result.Reopened {
+		return runSettlement{}, nil
+	}
 	finished := drainRootBoundary(result.Events, result.RunID)
 	if ctx.Err() != nil {
 		if finished == nil {
@@ -307,6 +317,9 @@ func recordTerminalRunAttributes(span trace.Span, finished *run.Run) {
 }
 
 func (d *Driver) refreshOwnedGoal(ctx context.Context, current *goal.Goal) (bool, error) {
+	if err := d.settle(ctx, current.SessionID()); err != nil {
+		return false, err
+	}
 	reread, found, err := loadGoal(ctx, d.goals, current.SessionID())
 	if err != nil {
 		if ctx.Err() != nil {
@@ -377,24 +390,22 @@ func (d *Driver) resolveTerminalRun(
 // command builds the next autonomous Run under the exact client contract frozen
 // on the Goal incarnation. Waiting is therefore a first-class Goal boundary: a
 // capable client may answer it and resume the same Goal provenance.
-func (d *Driver) command(g goal.Goal) runs.StartCommand {
-	return runs.StartCommand{
-		SessionID:      g.SessionID(),
-		ModelSelection: g.ModelSelection(),
-		Capabilities:   g.Capabilities(),
-		Input: []transcript.ContentBlock{{
-			Kind: transcript.TextContent,
-			Text: d.instructions(RunInstructionInput{
-				Objective:  g.Objective(),
-				Continuing: g.Used().Runs > 0,
-			}),
-		}},
-		// GoalIncarnationID stamps the run with the incarnation that launched it, so
-		// A terminal outcome report only signals THIS Goal: a straggler Run from a superseded
-		// goal (stopped, then replaced by a fresh Start) cannot mark the new goal
-		// complete/blocked — its incarnation no longer matches.
-		GoalIncarnationID: g.IncarnationID(),
+func (d *Driver) command(ctx context.Context, g goal.Goal) (runs.StartCommand, error) {
+	state := g.Snapshot()
+	current := state.WorkflowValue()
+	ordinal := uint64(g.Used().Runs) + 1
+	issued, err := d.workflow.DecideGoal(ctx, state.Author, goalworkflow.Request{Signal: goalworkflow.NextRun, Current: &current, Ordinal: ordinal})
+	if err != nil {
+		return runs.StartCommand{}, err
 	}
+	if issued.Next != nil || issued.Refusal != "" || issued.Source != state.Author || strings.TrimSpace(issued.Instructions) == "" {
+		return runs.StartCommand{}, errors.New("goals: workflow did not admit this round for its original owner")
+	}
+	return runs.StartCommand{
+		SessionID: g.SessionID(), ModelSelection: g.ModelSelection(), Capabilities: g.Capabilities(),
+		Input:             []transcript.ContentBlock{{Kind: transcript.TextContent, Text: issued.Instructions}},
+		GoalIncarnationID: g.IncarnationID(), Acceptance: runs.GoalRoundIdentity(g.SessionID(), g.IncarnationID(), ordinal, issued.Instructions),
+	}, nil
 }
 
 // drainRootBoundary consumes a root run's whole-tree stream to its close and
@@ -444,7 +455,7 @@ func (d *Driver) pauseOwned(
 ) (runSettlement, error) {
 	for current.Status() == goal.StatusActive {
 		expected := current.Version()
-		candidate, transitionErr := current.Pause(code, d.now())
+		candidate, transitionErr := transition(ctx, d.workflow, *current, goalworkflow.Request{Signal: goalworkflow.Pause, Reason: goalworkflow.GoalReasonCode(code)}, current.IncarnationID(), d.now())
 		if transitionErr != nil {
 			return runSettlement{}, transitionErr
 		}

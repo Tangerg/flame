@@ -2,6 +2,7 @@ package goal
 
 import (
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -11,14 +12,14 @@ type ReasonCode string
 
 const (
 	ReasonNone                   ReasonCode = ""
-	ReasonStoppedByUser          ReasonCode = "stoppedByUser"
-	ReasonRuntimeRestarted       ReasonCode = "runtimeRestarted"
-	ReasonRunStartFailed         ReasonCode = "runStartFailed"
-	ReasonAwaitingInput          ReasonCode = "awaitingInput"
-	ReasonTerminalOutcomeMissing ReasonCode = "terminalOutcomeMissing"
-	ReasonRunNotCompleted        ReasonCode = "runNotCompleted"
+	ReasonStoppedByUser          ReasonCode = ReasonCode(goalworkflow.GoalReasonStoppedByUser)
+	ReasonRuntimeRestarted       ReasonCode = ReasonCode(goalworkflow.GoalReasonRuntimeRestarted)
+	ReasonRunStartFailed         ReasonCode = ReasonCode(goalworkflow.GoalReasonRunStartFailed)
+	ReasonAwaitingInput          ReasonCode = ReasonCode(goalworkflow.GoalReasonAwaitingInput)
+	ReasonTerminalOutcomeMissing ReasonCode = ReasonCode(goalworkflow.GoalReasonTerminalOutcomeMissing)
+	ReasonRunNotCompleted        ReasonCode = ReasonCode(goalworkflow.GoalReasonRunNotCompleted)
 
-	ReasonBlockedByModel ReasonCode = "blockedByModel"
+	ReasonBlockedByModel ReasonCode = ReasonCode(goalworkflow.GoalReasonBlockedByModel)
 )
 
 func (r ReasonCode) Valid() bool {
@@ -95,4 +96,19 @@ func newReason(status Status, code ReasonCode, runOutcome run.Outcome, explanati
 		return Reason{}, fmt.Errorf("%w: status %q cannot carry a stop reason", ErrInvalid, status)
 	}
 	return Reason{code: code, runOutcome: runOutcome, explanation: explanation}, nil
+}
+
+func (r Reason) validateFor(status Status) error {
+	switch status {
+	case StatusActive, StatusComplete:
+		if r != (Reason{}) {
+			return fmt.Errorf("%w: %s Goal must not carry a stop reason", ErrInvalid, status)
+		}
+	case StatusPaused, StatusBlocked:
+		validated, err := newReason(status, r.code, r.runOutcome, r.explanation)
+		if err != nil || validated != r {
+			return fmt.Errorf("%w: invalid %s reason: %v", ErrInvalid, status, err)
+		}
+	}
+	return nil
 }

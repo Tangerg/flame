@@ -60,7 +60,7 @@ func ownForkPlanReplacement(steps []plan.Step, replacement *plan.Replacement) (*
 }
 
 func validateForkPlanReplacement(steps []plan.Step, replacement *plan.Replacement) error {
-	if len(steps) == 0 {
+	if steps == nil {
 		if replacement != nil {
 			return errors.New("sessions: fork plan has a Plan replacement without inherited steps")
 		}
@@ -109,13 +109,13 @@ func (f ForkPlan) PlanReplacement() *plan.Replacement {
 // decide different transitions, but what a caller receives afterwards is one
 // projection, so it is written once rather than beside each decision.
 func capturedSnapshot(captured Snapshot, replacement *plan.Replacement) Snapshot {
-	var steps []plan.Step
+	var doc plan.Document
 	if replacement != nil {
-		steps = replacement.State().Steps()
+		doc = replacement.State().Document()
 	}
 	return Snapshot{
 		Session: captured.Session, Messages: cloneSnapshotMessages(captured.Messages),
 		Runs: slices.Clone(captured.Runs), Items: slices.Clone(captured.Items),
-		ToolResults: slices.Clone(captured.ToolResults), Plan: steps,
+		ToolResults: slices.Clone(captured.ToolResults), Plan: doc.Steps, PlanSource: doc.Source,
 	}
 }

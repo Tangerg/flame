@@ -829,7 +829,8 @@ func (t *testRegistry) Save(_ context.Context, server mcpserver.Server) error {
 	return nil
 }
 
-func (t *testRegistry) Remove(_ context.Context, name mcpserver.ServerName) error {
+func (t *testRegistry) Remove(_ context.Context, current mcpserver.Server) error {
+	name := current.Name
 	id, err := mcpserver.NewID(mcpserver.UserOrigin(), name)
 	if err != nil {
 		return err

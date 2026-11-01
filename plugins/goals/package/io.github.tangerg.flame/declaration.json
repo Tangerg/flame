@@ -1,0 +1,11 @@
+{
+  "protocol": "io.github.tangerg.flame/plugin/1",
+  "contributions": [
+    {
+      "id": "goal-workflow",
+      "server": "goals",
+      "export": "goals",
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+    }
+  ]
+}

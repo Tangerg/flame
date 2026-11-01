@@ -2,6 +2,7 @@ package promptsource
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -122,6 +123,14 @@ func (r *SkillSource) Lookup(ctx context.Context, name string) (sdk.Summary, err
 func (r *SkillSource) Load(ctx context.Context, name string) (*sdk.Skill, error) {
 	skill, _, err := r.document(ctx, name)
 	return skill, err
+}
+
+func (r *SkillSource) CurrentDocument(ctx context.Context, name string) (*sdk.Skill, string, error) {
+	skill, content, err := r.document(ctx, name)
+	if err != nil {
+		return nil, "", err
+	}
+	return skill, fmt.Sprintf("%x", sha256.Sum256(content)), nil
 }
 
 func (r *SkillSource) document(ctx context.Context, name string) (*sdk.Skill, []byte, error) {

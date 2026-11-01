@@ -11,9 +11,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/integrity"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/samber/lo"
 )
+
+const planningBackendProfile qimu.Profile = "test-backend"
 
 type planningDriver struct{ profile qimu.Profile }
 
@@ -39,7 +40,7 @@ func testFramework(t testing.TB, store Store, dependencies ...*installationDepen
 		observed = dependencies[0]
 		observed.admission = admission
 	}
-	config := qimu.HostConfig{Admission: admission, MaxInstallations: 128, Drivers: []qimu.Driver{planningDriver{qimumcp.ProcessProfile}, planningDriver{qimu.BrowserJS}, planningDriver{qimu.StaticResource}}}
+	config := qimu.HostConfig{Admission: admission, MaxInstallations: 128, Drivers: []qimu.Driver{planningDriver{planningBackendProfile}, planningDriver{qimu.BrowserJS}, planningDriver{qimu.StaticResource}}}
 	if memory != nil {
 		config.Installations = &frameworkTestStore{memory: memory, admission: admission, observed: observed}
 	}
@@ -75,7 +76,7 @@ func testFramework(t testing.TB, store Store, dependencies ...*installationDepen
 	var records []qimu.InstallationRecord
 	var definitions []*qimu.Plugin
 	for _, snapshot := range snapshots {
-		projection, err := ProjectFrameworkRelease(snapshot.Selected)
+		projection, err := ProjectFrameworkRelease(snapshot.Selected, planningBackendProfile)
 		if err != nil {
 			t.Fatal(err)
 		}

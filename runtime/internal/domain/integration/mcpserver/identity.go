@@ -176,6 +176,7 @@ func (i ID) String() string {
 // code and the recipient its credentials follow, so none of them can be
 // claimed by a user record or omitted from an installation record.
 type Source struct {
+	connector identity.InstallationID
 	origin    Origin
 	release   integrity.Digest
 	authority integrity.Digest
@@ -184,6 +185,12 @@ type Source struct {
 
 func UserSource() Source { return Source{origin: UserOrigin()} }
 
+func ConnectorSource(id identity.InstallationID) (Source, error) {
+	if err := id.Validate(); err != nil {
+		return Source{}, err
+	}
+	return Source{origin: UserOrigin(), connector: id}, nil
+}
 func InstallationSource(installation identity.InstallationID, release, authority, recipient integrity.Digest) (Source, error) {
 	origin, err := InstallationOrigin(installation)
 	if err != nil {

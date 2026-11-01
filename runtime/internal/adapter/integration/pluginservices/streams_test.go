@@ -4,6 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
 	"iter"
 	"net/http"
 	"net/http/httptest"
@@ -13,7 +14,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -450,7 +450,7 @@ func TestPreparedCommandRefusesChangedSetupWithTheSameReleases(t *testing.T) {
 }
 
 func TestGenericPluginCallsCannotAcquireHostHookTrust(t *testing.T) {
-	contract, err := hookprovider.Contract()
+	contract, err := hookmcp.Contract()
 	if err != nil {
 		t.Fatal(err)
 	}

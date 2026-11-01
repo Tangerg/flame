@@ -5,6 +5,7 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -81,6 +82,13 @@ func portableArtifactFromWire(art protocol.SessionArtifact) (sessions.PortableSn
 			},
 		})
 	}
+	var source extension.ContributionSource
+	if art.PlanSource != nil {
+		source = *art.PlanSource
+		if err := source.Validate(); err != nil || art.Plan == nil {
+			return sessions.PortableSnapshot{}, invalidArtifact("artifact.planSource", "a valid author and captured plan are required")
+		}
+	}
 	plan, err := portablePlanFromArtifact(art.Plan)
 	if err != nil {
 		return sessions.PortableSnapshot{}, err
@@ -90,7 +98,7 @@ func portableArtifactFromWire(art protocol.SessionArtifact) (sessions.PortableSn
 			ID: art.Session.ID, Title: art.Session.Title, CWD: art.Session.Workspace.Path, Selection: selection,
 			CreatedAt: art.Session.CreatedAt, UpdatedAt: art.Session.UpdatedAt, Favorite: art.Session.Favorite,
 		},
-		Messages: messages, Runs: runs, Items: items, ToolResults: toolResults, Plan: plan,
+		Messages: messages, Runs: runs, Items: items, ToolResults: toolResults, Plan: plan, PlanSource: source,
 	}, nil
 }
 
@@ -128,6 +136,9 @@ func portableMessageFromArtifact(path string, encoded jsontext.Value) (chat.Mess
 // portablePlanFromArtifact reads the archived Plan. The artifact carries the one
 // product value directly, so there is no key union or duplicate-key precedence rule.
 func portablePlanFromArtifact(entries []protocol.PlanStep) ([]plan.Step, error) {
+	if entries == nil {
+		return nil, nil
+	}
 	steps := make([]plan.Step, 0, len(entries))
 	for index, entry := range entries {
 		status, known := planStatusFromWire(entry.Status)

@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -11,6 +12,7 @@ func TestGoalContinuesAfterEarlierManualQuestionIsCanceled(t *testing.T) {
 	t.Setenv("FLAME_HOME", testsupport.TempDirectory(t))
 	model := newLifecycleModel()
 	host, api := openProtocolRuntime(t, model)
+	poMCPActivate(&poMCPRuntime{t: t, host: host, api: api, endpoint: host.Endpoint()}, filepath.Join(firstPartyPackages, "goals"))
 	t.Cleanup(func() {
 		if err := host.Close(); err != nil {
 			t.Error(err)

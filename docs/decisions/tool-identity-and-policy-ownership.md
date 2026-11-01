@@ -6,7 +6,9 @@ names, transcript labels and UI strings are projections; none can replace that
 identity or grant authority.
 
 The built-in descriptor catalog supplies behavior for domain-owned built-in
-names. The MCP registry owns server configuration and source authority. Standing
+names. The selected external MCP connector owns the user directory and authorization attempts.
+An installation owns its backend units. Runtime binds transport grants and execution
+evidence to the exact source. Standing
 approval rules belong to the approval use case, bound to exact source authority,
 subject and scope. MCP exposure is a separate decision about visibility; it does
 not authorize execution. Configuration views edit these owners through their

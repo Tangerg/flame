@@ -19,17 +19,17 @@ import (
 // for the rest, which is what an imported run looks like.
 type recordedBoundaries map[string][]plan.Step
 
-func (r recordedBoundaries) Boundary(_ context.Context, runID string) ([]plan.Step, bool, error) {
+func (r recordedBoundaries) Boundary(_ context.Context, runID string) (plan.Document, bool, error) {
 	items, recorded := r[runID]
-	return items, recorded, nil
+	return plan.Document{Steps: items}, recorded, nil
 }
 
 // refusingBoundaries fails any lookup, so a test can assert the coordinator does
 // not need one.
 type refusingBoundaries struct{}
 
-func (refusingBoundaries) Boundary(context.Context, string) ([]plan.Step, bool, error) {
-	return nil, false, errors.New("boundary lookup should not have been needed")
+func (refusingBoundaries) Boundary(context.Context, string) (plan.Document, bool, error) {
+	return plan.Document{}, false, errors.New("boundary lookup should not have been needed")
 }
 
 type fixedBoundary struct {
@@ -37,8 +37,8 @@ type fixedBoundary struct {
 	recorded bool
 }
 
-func (f fixedBoundary) Boundary(context.Context, string) ([]plan.Step, bool, error) {
-	return f.steps, f.recorded, nil
+func (f fixedBoundary) Boundary(context.Context, string) (plan.Document, bool, error) {
+	return plan.Document{Steps: f.steps}, f.recorded, nil
 }
 
 func boundaryCoordinator(stores testStores, boundaries planBoundaries) *Coordinator {
@@ -191,5 +191,22 @@ func TestForkSeedsTheBoundaryPlanList(t *testing.T) {
 	steps := replacementSteps(applied.PlanReplacement())
 	if len(steps) != 1 || steps[0].Description != "the plan at the boundary" {
 		t.Fatalf("fork Plan replacement = %+v, want the boundary list, not the parent's live one", steps)
+	}
+	for _, test := range []struct {
+		name       string
+		boundaries recordedBoundaries
+		known      bool
+	}{
+		{"unrecorded", recordedBoundaries{}, false}, {"recorded empty", recordedBoundaries{"run_1": []plan.Step{}}, true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			parent := boundaryCoordinator(stores, test.boundaries)
+			if _, err := parent.Fork(t.Context(), ForkSpec{ParentID: "ses_A"}); err != nil {
+				t.Fatal(err)
+			}
+			if got := applied.PlanReplacement() != nil; got != test.known {
+				t.Fatalf("fork contains captured version=%t, want %t", got, test.known)
+			}
+		})
 	}
 }

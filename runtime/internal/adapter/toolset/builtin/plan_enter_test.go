@@ -20,7 +20,7 @@ func (m *modePolicy) EnterPlanMode(_ context.Context, sessionID string) (bool, e
 }
 
 func TestNewNilPolicyOmitsTool(t *testing.T) {
-	tool, err := newEnter(nil)
+	tool, err := newEnter(nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func TestNewNilPolicyOmitsTool(t *testing.T) {
 }
 
 func TestDefinitionUsesEmptyInput(t *testing.T) {
-	tool, err := newEnter(&modePolicy{})
+	tool, err := newEnter(&modePolicy{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestDefinitionUsesEmptyInput(t *testing.T) {
 }
 
 func TestEnterRequiresSession(t *testing.T) {
-	tool, err := newEnter(&modePolicy{changed: true})
+	tool, err := newEnter(&modePolicy{changed: true}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestEnterRequiresSession(t *testing.T) {
 
 func TestEnterUsesCurrentSession(t *testing.T) {
 	policy := &modePolicy{changed: true}
-	tool, err := newEnter(policy)
+	tool, err := newEnter(policy, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestEnterUsesCurrentSession(t *testing.T) {
 }
 
 func TestAlreadyEnteredIsIdempotent(t *testing.T) {
-	tool, err := newEnter(&modePolicy{})
+	tool, err := newEnter(&modePolicy{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

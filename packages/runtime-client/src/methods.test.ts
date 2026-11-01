@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   ExportTrajectoryRequest,
   ExportTrajectoryResponse,
-  FeedbackEntry,
+  SessionAnnotation,
   ListSessionTrajectoryRequest,
   ModelInvocation,
   Session,
@@ -344,14 +344,20 @@ describe("methods factory", () => {
     const methods = createMethods(client);
     const controller = new AbortController();
     const params: ExportTrajectoryRequest = { sessionId: asSessionId("ses_01") };
-    const feedback: FeedbackEntry = {
+    const annotation: SessionAnnotation = {
+      commandId: "observed",
+      source: {
+        installationId: "source",
+        release: "digest",
+        contribution: "feedback",
+        contractRef: "flame.feedback.v1",
+      },
       sessionId: "ses_01",
-      rating: "positive",
-      text: "  Useful trace\nKeep exact evidence.  ",
+      content: { rating: "positive", text: "  Useful trace\nKeep exact evidence.  " },
       createdAt: "2026-07-07T10:04:00Z",
     };
     const trajectory: SessionTrajectory = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       collectedAt: "2026-07-07T10:05:00Z",
       session: session as Session,
       runs: [],
@@ -359,7 +365,7 @@ describe("methods factory", () => {
       modelInvocations: [],
       modelEndpoints: [],
       toolAttempts: [],
-      feedback: [feedback],
+      annotations: [annotation],
       limitations: [],
       messages: [],
       toolResults: [],

@@ -752,3 +752,7 @@ func TestReplacementRequiresQuiescenceButSameReleaseEnablementDoesNot(t *testing
 		t.Fatalf("configure a depended release = %v", err)
 	}
 }
+
+func (installationPackages) Project(release plugin.Release) (FrameworkRelease, error) {
+	return ProjectFrameworkRelease(release, planningBackendProfile)
+}

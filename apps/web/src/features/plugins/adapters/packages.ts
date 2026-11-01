@@ -1,3 +1,4 @@
+import { WorkflowProviders } from "../application/workflowProviders";
 import { createPresentationPreferences } from "./presentationPreferences";
 import { create } from "zustand";
 import { createDataQuery } from "@/extensions/dataQuery";
@@ -26,7 +27,9 @@ export function createInstalledPackageState(endpoint: () => string) {
     operations: PackageOperations | null;
     failure: PackageRealizationFailure | null;
   }>(() => ({ operations: null, failure: null }));
+  const workflows = new WorkflowProviders();
   return {
+    workflows,
     presentationPreferences: createPresentationPreferences(endpoint),
     useOperations: () => useState((state) => state.operations),
     useFailure: () => useState((state) => state.failure),
@@ -40,6 +43,7 @@ export function createInstalledPackageState(endpoint: () => string) {
     failure: () => useState.getState().failure,
     setFailure: (failure: PackageRealizationFailure | null) => useState.setState({ failure }),
     clear() {
+      workflows.publish([], []);
       useState.setState({ operations: null, failure: null });
     },
   };

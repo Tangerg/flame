@@ -56,7 +56,7 @@ func New(t testing.TB, store *persistence.Bundle) *Fixture {
 		if err != nil {
 			t.Fatal(err)
 		}
-		projection, err := plugins.ProjectFrameworkRelease(release)
+		projection, err := plugins.ProjectFrameworkRelease(release, qimumcp.ProcessProfile)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -79,7 +79,7 @@ func (f *Fixture) Apply(ctx context.Context, installation plugin.Installation) e
 	if err != nil {
 		return err
 	}
-	projection, err := plugins.ProjectFrameworkRelease(release)
+	projection, err := plugins.ProjectFrameworkRelease(release, qimumcp.ProcessProfile)
 	if err != nil {
 		return err
 	}

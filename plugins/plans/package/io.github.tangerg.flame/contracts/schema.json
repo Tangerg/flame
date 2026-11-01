@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "AuthorV1Input": {
+      "$ref": "#/$defs/Proposal"
+    },
+    "AuthorV1Output": {
+      "$ref": "#/$defs/Decision"
+    },
+    "Decision": {
+      "additionalProperties": false,
+      "properties": {
+        "document": {
+          "$ref": "#/$defs/Document"
+        },
+        "refusal": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Digest": {
+      "allOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      ],
+      "type": "string"
+    },
+    "Document": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/Step"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "steps",
+        "digest"
+      ],
+      "type": "object"
+    },
+    "Proposal": {
+      "additionalProperties": false,
+      "properties": {
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/Step"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "steps"
+      ],
+      "type": "object"
+    },
+    "ReviewV1Input": {
+      "$ref": "#/$defs/Document"
+    },
+    "ReviewV1Output": {
+      "type": "string"
+    },
+    "Step": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "description",
+        "status"
+      ],
+      "type": "object"
+    }
+  }
+}

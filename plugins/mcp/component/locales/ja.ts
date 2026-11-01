@@ -22,6 +22,8 @@ export const ja: Record<string, string> = {
   "mcp.transport.http": "Streamable HTTP",
   "mcp.signIn": "サインイン",
   "mcp.signingIn": "サインイン中…",
+  "mcp.signIn.unconfirmed":
+    "再起動後、前回のサインインの結果を確認できませんでした。",
   "mcp.signIn.aria": "{{server}} にサインイン",
   "mcp.signingIn.aria": "{{server}} にサインイン中…",
   "mcp.reconnect": "再接続",

@@ -236,7 +236,7 @@ func newDelegateProjection(t *testing.T, current session.Session, executor *Inte
 	if err != nil {
 		t.Fatal(err)
 	}
-	plans, err := sessions.NewPlanCoordinator(sessions.PlanDependencies{Store: stores.Plan, Now: time.Now})
+	plans, err := sessions.NewPlanCoordinator(sessions.PlanDependencies{Store: stores.Plan, Now: time.Now, Author: testsupport.PlanAuthor{}})
 	if err != nil {
 		t.Fatal(err)
 	}

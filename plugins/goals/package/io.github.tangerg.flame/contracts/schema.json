@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "DecideV1Input": {
+      "$ref": "#/$defs/Request"
+    },
+    "DecideV1Output": {
+      "$ref": "#/$defs/Decision"
+    },
+    "Decision": {
+      "additionalProperties": false,
+      "properties": {
+        "instructions": {
+          "type": "string"
+        },
+        "next": {
+          "$ref": "#/$defs/Value"
+        },
+        "refusal": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Request": {
+      "additionalProperties": false,
+      "properties": {
+        "current": {
+          "$ref": "#/$defs/Value"
+        },
+        "explanation": {
+          "type": "string"
+        },
+        "objective": {
+          "type": "string"
+        },
+        "ordinal": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "type": "integer"
+        },
+        "outcome": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "signal": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "signal"
+      ],
+      "type": "object"
+    },
+    "Value": {
+      "additionalProperties": false,
+      "properties": {
+        "explanation": {
+          "type": "string"
+        },
+        "objective": {
+          "type": "string"
+        },
+        "outcome": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "objective",
+        "status"
+      ],
+      "type": "object"
+    }
+  }
+}

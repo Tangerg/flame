@@ -226,13 +226,17 @@ func (s *SessionStores) ReadSnapshot(ctx context.Context, sessionID string) (ses
 		if err != nil {
 			return err
 		}
-		steps, err := s.plan.List(ctx, sessionID)
+		planHead, err := s.plan.State(ctx, sessionID)
 		if err != nil {
 			return err
 		}
+		var doc plan.Document
+		if p, ok := planHead.State(); ok {
+			doc = p.Document()
+		}
 		snapshot = sessions.Snapshot{
 			Session: ses, Messages: messages, Items: items, Runs: runs,
-			ToolResults: toolResults, Plan: steps,
+			ToolResults: toolResults, Plan: doc.Steps, PlanSource: doc.Source,
 		}
 		return nil
 	})
@@ -348,13 +352,8 @@ func (s *SessionStores) ApplyRestore(ctx context.Context, restore sessions.Resto
 		if err := s.saveSessionReplacement(ctx, sessionReplacement); err != nil {
 			return err
 		}
-		// Keep the live Plan row when a replacement was prepared: deleting it would
-		// reset the session's revision space before the CAS update.
-		if planReplacement == nil {
-			if err := s.clearSessionOwnedState(ctx, sessionID); err != nil {
-				return err
-			}
-		} else if err := s.clearSessionOwnedStateExceptPlan(ctx, sessionID); err != nil {
+		// An absent archived Plan carries no authority to erase the destination's current version.
+		if err := s.clearSessionOwnedStateExceptPlan(ctx, sessionID); err != nil {
 			return err
 		}
 		if err := s.restorePlanAndHistory(ctx, sessionID, snapshot.Messages, planReplacement); err != nil {

@@ -47,25 +47,22 @@ func TestCoordinatorRejectsMissingCollaborators(t *testing.T) {
 
 func TestRegistryRejectsMissingCollaborators(t *testing.T) {
 	for _, selections := range []SelectionStore{nil, (*requirementSelections)(nil)} {
-		if registry, err := NewRegistry(testFramework(t, nil), userMemory{}, &installationMemory{}, &singleServerPackages{}, selections, &requirementCompositions{}); err == nil || registry != nil {
+		if registry, err := NewRegistry(testFramework(t, nil), &installationMemory{}, &singleServerPackages{}, selections, &requirementCompositions{}); err == nil || registry != nil {
 			t.Fatalf("missing selection store constructed a registry: %v, %v", registry, err)
 		}
 	}
 	for _, test := range []struct {
 		name          string
-		user          userServers
 		installations Store
 		packages      packageSources
 	}{
-		{"user", nil, &installationMemory{}, &singleServerPackages{}},
-		{"typed nil user", (*userMemory)(nil), &installationMemory{}, &singleServerPackages{}},
-		{"installations", userMemory{}, nil, &singleServerPackages{}},
-		{"typed nil installations", userMemory{}, (*installationMemory)(nil), &singleServerPackages{}},
-		{"packages", userMemory{}, &installationMemory{}, nil},
-		{"typed nil packages", userMemory{}, &installationMemory{}, (*singleServerPackages)(nil)},
+		{"installations", nil, &singleServerPackages{}},
+		{"typed nil installations", (*installationMemory)(nil), &singleServerPackages{}},
+		{"packages", &installationMemory{}, nil},
+		{"typed nil packages", &installationMemory{}, (*singleServerPackages)(nil)},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			registry, err := NewRegistry(testFramework(t, nil), test.user, test.installations, test.packages, requirementSelections{}, &requirementCompositions{})
+			registry, err := NewRegistry(testFramework(t, nil), test.installations, test.packages, requirementSelections{}, &requirementCompositions{})
 			if err == nil || registry != nil {
 				t.Fatalf("invalid registry constructed: %v, %v", registry, err)
 			}

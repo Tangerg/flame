@@ -74,7 +74,6 @@
 23 plugins/genui/contracts/expression.ts:expressionReferences
 42 plugins/genui/contracts/validation.ts:validateField
 37 plugins/mcp/component/serverForm.tsx:ServerForm
-27 plugins/mcp/component/serverRow.tsx:ServerRow
 43 plugins/memory/component/component.tsx:Memory
 31 plugins/providers/component/providerRow.tsx:ProviderRow
 33 plugins/providers/component/roles.tsx:RoleSection

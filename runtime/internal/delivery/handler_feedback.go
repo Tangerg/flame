@@ -2,26 +2,14 @@ package delivery
 
 import (
 	"context"
-	"errors"
-
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/feedback"
-	feedbackdomain "github.com/Tangerg/flame/runtime/internal/domain/feedback"
 )
 
-// CreateFeedback records an ungated quality signal in the runtime's durable
-// feedback ledger. The write-only protocol shape intentionally has no readback,
-// but a successful ack always means the application receiver accepted it.
 func (s *Handler) CreateFeedback(ctx context.Context, in protocol.FeedbackRequest) error {
-	err := s.feedback.Record(ctx, feedback.Command{
-		SessionID: in.SessionID,
-		RunID:     in.RunID,
-		ItemID:    in.ItemID,
-		Rating:    feedbackdomain.Rating(in.Rating),
-		Text:      in.Text,
-	})
-	if errors.Is(err, feedbackdomain.ErrInvalid) {
-		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
-	}
-	return err
+	return s.feedback.Record(ctx, feedbackCommand(in))
+}
+
+func feedbackCommand(in protocol.FeedbackRequest) extension.FeedbackDraft {
+	return extension.FeedbackDraft{SessionID: in.SessionID, RunID: in.RunID, ItemID: in.ItemID, Source: in.Source, Rating: string(in.Rating), Text: in.Text}
 }

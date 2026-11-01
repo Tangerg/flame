@@ -27,6 +27,9 @@ type Server struct {
 	// Name is unique within Source's origin. Required.
 	Name ServerName
 
+	// The connector supplies this revision to fence edits prepared from an earlier directory entry.
+	DirectoryRevision string
+
 	// Enabled gates whether the server is dialed. A disabled server stays in
 	// the registry but contributes no tools.
 	Enabled bool

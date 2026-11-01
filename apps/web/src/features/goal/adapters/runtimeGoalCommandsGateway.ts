@@ -26,6 +26,7 @@ function goalMutationIdentity(
 export function toGoalReadModel(goal: Goal): GoalReadModel {
   return {
     sessionId: goal.sessionId,
+    ...(goal.author ? { author: goal.author } : {}),
     objective: goal.objective,
     status: goal.status,
     ...(goal.reason ? { reason: { ...goal.reason } } : {}),
@@ -45,7 +46,7 @@ export function toGoalCommandReceipt(goal: Pick<Goal, "sessionId">): GoalCommand
 export function runtimeGoalMaterial(goal: Goal | undefined, available: boolean): GoalState {
   return {
     available,
-    goal: available && goal ? toGoalReadModel(goal) : null,
+    goal: goal ? toGoalReadModel(goal) : null,
   };
 }
 

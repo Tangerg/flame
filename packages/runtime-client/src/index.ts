@@ -40,7 +40,7 @@ export type {
   SessionTrajectory,
   ExportTrajectoryRequest,
   ExportTrajectoryResponse,
-  FeedbackEntry,
+  SessionAnnotation,
   SessionSnapshot,
   ListSessionTrajectoryRequest,
   TrajectoryEntry,

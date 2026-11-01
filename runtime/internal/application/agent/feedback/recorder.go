@@ -3,55 +3,50 @@ package feedback
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"time"
 
-	feedbackdomain "github.com/Tangerg/flame/runtime/internal/domain/feedback"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/flame/runtime/internal/domain/annotation"
+	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/samber/lo"
 )
 
-// Command is the application input for recording one quality signal.
-type Command struct {
-	SessionID string
-	RunID     string
-	ItemID    string
-	Rating    feedbackdomain.Rating
-	Text      string
+type preparer interface {
+	PrepareFeedback(context.Context, extension.FeedbackDraft) (extension.AnnotationSource, jsonvalue.Value, error)
+}
+type ledger interface {
+	Append(context.Context, annotation.Entry) error
 }
 
-// store is the durable receiver this feedback use case needs.
-type store interface {
-	Append(ctx context.Context, entry feedbackdomain.Entry) error
-}
-
-// Recorder owns the feedback write use case.
 type Recorder struct {
-	store store
-	now   func() time.Time
+	source preparer
+	ledger ledger
+	now    func() time.Time
 }
 
-// NewRecorder wires the complete durable receiver for feedback records.
-func NewRecorder(store store, now func() time.Time) (*Recorder, error) {
-	if lo.IsNil(store) {
-		return nil, errors.New("feedback: store is required")
+func NewRecorder(source preparer, annotations ledger, now func() time.Time) (*Recorder, error) {
+	if lo.IsNil(source) || lo.IsNil(annotations) || now == nil {
+		return nil, errors.New("feedback: provider, annotation ledger and clock are required")
 	}
-	if now == nil {
-		return nil, errors.New("feedback: clock is required")
-	}
-	return &Recorder{store: store, now: now}, nil
+	return &Recorder{source: source, ledger: annotations, now: now}, nil
 }
-
-// Record validates and appends one immutable feedback observation.
-func (r *Recorder) Record(ctx context.Context, command Command) error {
-	entry, err := feedbackdomain.NewEntry(
-		command.SessionID,
-		command.RunID,
-		command.ItemID,
-		command.Rating,
-		command.Text,
-		r.now().UTC(),
-	)
+func (r *Recorder) Record(ctx context.Context, in extension.FeedbackDraft) error {
+	write, err := r.Prepare(ctx, in)
 	if err != nil {
 		return err
 	}
-	return r.store.Append(ctx, entry)
+	return write(ctx)
+}
+
+func (r *Recorder) Prepare(ctx context.Context, in extension.FeedbackDraft) (func(context.Context) error, error) {
+	if operation.Identity(ctx) == "" {
+		ctx = operation.Bind(ctx, "feedback.create", "")
+	}
+	source, content, err := r.source.PrepareFeedback(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	note := annotation.Entry{CommandID: operation.Identity(ctx), Source: source, Subject: annotation.Subject{SessionID: in.SessionID, RunID: in.RunID, ItemID: in.ItemID}, Content: content, CreatedAt: r.now().UTC()}
+	return func(tx context.Context) error { return r.ledger.Append(tx, note) }, nil
 }

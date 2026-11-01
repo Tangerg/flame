@@ -96,15 +96,30 @@ func TestSourceToolsForwardsInvocationMetadataWithoutLeakingBetweenCalls(t *test
 	}
 }
 
-func TestSourceToolsDoesNotPublishPartialCatalogAfterScopeRejection(t *testing.T) {
+func TestSourceToolsAdmitsDistinctRemoteIdentitiesWithCollidingNormalizedNames(t *testing.T) {
 	session := toolCatalogSession(t,
 		&sdkmcp.Tool{Name: "read.file", InputSchema: jsontext.Value(`{"type":"object"}`)},
 		&sdkmcp.Tool{Name: "read_file", InputSchema: jsontext.Value(`{"type":"object"}`)},
 		&sdkmcp.Tool{Name: "other", InputSchema: jsontext.Value(`{"type":"object"}`)},
 	)
 	tools, err := sourceTools(t.Context(), nil, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}}, session)
-	if err == nil || len(tools) != 0 {
-		t.Fatalf("Scope discovery rejection published a partial catalog: %v, %v", tools, err)
+	if err != nil || len(tools) != 3 {
+		t.Fatalf("lost an advertised remote identity: %d, %v", len(tools), err)
+	}
+	names := map[string]string{}
+	for _, candidate := range tools {
+		ref, found, err := IdentifyTool(candidate)
+		if err != nil || !found {
+			t.Fatal(ref, found, err)
+		}
+		_, name, isMCP := ref.MCP()
+		if !isMCP || candidate.Definition().Name != ref.DiscoveryName() {
+			t.Fatal("incorrect discovery identity", ref, candidate.Definition().Name)
+		}
+		names[name.String()] = candidate.Definition().Name
+	}
+	if names["other"] != "catalog_other" || names["read_file"] != "catalog_read_file" || names["read.file"] == "" || names["read.file"] == names["read_file"] {
+		t.Fatalf("remote names were collapsed: %v", names)
 	}
 }
 
@@ -115,7 +130,7 @@ func TestSourceToolsCompilesSchemasBeforePublishing(t *testing.T) {
 		`{"type":"object","properties":{"value":{"$ref":"https://example.invalid/schema.json"}}}`,
 	} {
 		t.Run(schema, func(t *testing.T) {
-			session := toolCatalogSession(t, &sdkmcp.Tool{Name: "read", InputSchema: jsontext.Value(schema)})
+			session := toolCatalogSession(t, &sdkmcp.Tool{Name: "healthy", InputSchema: jsontext.Value(`{"type":"object"}`)}, &sdkmcp.Tool{Name: "read", InputSchema: jsontext.Value(schema)})
 			tools, err := sourceTools(t.Context(), nil, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}}, session)
 			if len(tools) != 0 || !errors.Is(err, toolcontract.ErrInvalidTool) || !errors.Is(err, jsonschema.ErrInvalid) {
 				t.Fatalf("sourceTools = %v, %v; want Scope schema admission failure", tools, err)

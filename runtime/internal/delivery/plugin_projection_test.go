@@ -41,7 +41,7 @@ func TestSettingsIntentReachesPublicAndNativeProjections(t *testing.T) {
 	}
 	wire.Components[0].SettingsIntent = "bad intent"
 	if err := protocol.ValidateWireTree(wire); err == nil {
-		t.Fatal("wire accepted an unknown settings intent")
+		t.Fatal("wire accepted a malformed settings intent")
 	}
 }
 

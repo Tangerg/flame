@@ -25,13 +25,15 @@ import (
 // BuildConfig is the tool-environment construction input (the working-directory
 // scope + the capability tables). Driven by the runtime config.
 type BuildConfig struct {
+	GoalAvailable func(context.Context) (bool, error)
 	// Lifetime is the process-owned root for local capability resources that
 	// outlive the startup call and individual Tool invocations.
 	Lifetime         context.Context
 	UserHome         string
-	PackageSkills    promptsource.PackageSkills
+	SkillSources     promptsource.SkillSources
 	SkillsUserDir    string
 	CodeIntelligence CodeIntelligence
+	PlanAvailable    func(context.Context) (bool, error)
 	Plan             builtin.PlanUseCases   // backs set_plan + exit_plan_mode; nil → both are omitted
 	PlanMode         builtin.PlanModePolicy // session-scoped Plan mode; nil → enter/exit are omitted
 	Interrupt        runs.InterruptFunc
@@ -124,7 +126,7 @@ func Build(config BuildConfig) (_ Built, err error) {
 
 	// Plan mode and Plan state form one lifecycle. The family keeps
 	// exit_plan_mode bound to the exact store maintained by set_plan.
-	planFamily, err := builtin.BuildPlan(config.PlanMode, config.Plan, interrupt)
+	planFamily, err := builtin.BuildPlan(config.PlanMode, config.Plan, config.PlanAvailable, interrupt)
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build Plan family: %w", err)
 	}
@@ -154,9 +156,11 @@ func Build(config BuildConfig) (_ Built, err error) {
 
 	resolver, err := newResolver(resolverDeps{
 		SkillUsage:    config.SkillUsage,
-		SkillsUserDir: config.SkillsUserDir, PackageSkills: config.PackageSkills,
+		SkillsUserDir: config.SkillsUserDir, SkillSources: config.SkillSources,
 		Shell:           shellTools,
 		AskUser:         askUserTool,
+		GoalAvailable:   config.GoalAvailable,
+		PlanAvailable:   config.PlanAvailable,
 		EnterPlan:       planFamily.Enter,
 		ExitPlan:        planFamily.Exit,
 		Plan:            planFamily.Set,

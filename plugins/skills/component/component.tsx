@@ -334,7 +334,11 @@ export function Skills({ context }: { context: ComponentContext }) {
           >
             {matching.map((item) => (
               <SkillRow
-                key={`${snapshot!.type}:${"scope" in item ? `${item.scope}:${item.name}` : item.name}`}
+                key={
+                  "revision" in item
+                    ? item.revision
+                    : `${snapshot!.type}:${item.name}`
+                }
                 item={item}
                 review={snapshot!.type === "review"}
                 focusAfterRemoval={searchField}

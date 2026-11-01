@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "flame.mcp",
-  "version": "1.0.0",
-  "description": "MCP server configuration, authorization and tool policy settings.",
+  "version": "2.0.0",
+  "description": "External MCP server directory and authorization workflow.",
   "extensions": {
     "io.github.tangerg.flame": {
       "declaration": "io.github.tangerg.flame/declaration.json"

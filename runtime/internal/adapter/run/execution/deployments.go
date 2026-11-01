@@ -378,7 +378,7 @@ func (i *InteractionExecutor) resolveInteractionManifest(
 		if !found {
 			return toolset.Manifest{}, errors.New("execution: captured Tool group is missing")
 		}
-		retained = &toolset.Retained{MCP: captured, Bindings: checkpoint.bindings, Resources: checkpoint.resources}
+		retained = &toolset.Retained{SkillDiscovery: checkpoint.skillDiscoveries[group], MCP: captured, Bindings: checkpoint.bindings, Resources: checkpoint.resources}
 	}
 	if i.config.ToolResolver == nil {
 		return toolset.Manifest{}, nil

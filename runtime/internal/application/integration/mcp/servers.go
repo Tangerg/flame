@@ -101,6 +101,14 @@ func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server, r
 	if err := c.store.Save(write.requestCtx, srv); err != nil {
 		return Server{}, err
 	}
+	committed, found, err := c.registry.Definition(write.requestCtx, srv.ID())
+	if err != nil {
+		return Server{}, err
+	}
+	if !found {
+		return Server{}, ErrUnknownServer
+	}
+	srv = committed
 	reconcileErr := c.applyRegistryChange(srv)
 	var redialErr error
 	start := make(chan struct{})
@@ -135,12 +143,13 @@ func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ID) error
 		return err
 	}
 	defer write.close()
-	if _, found, err := c.registry.Definition(write.requestCtx, name); err != nil {
+	current, found, err := c.registry.Definition(write.requestCtx, name)
+	if err != nil {
 		return err
 	} else if !found {
 		return ErrUnknownServer
 	}
-	if err := c.store.Remove(write.requestCtx, name.Name()); err != nil {
+	if err := c.store.Remove(write.requestCtx, current); err != nil {
 		return err
 	}
 	// Detachment retires live executables; exposure still closes if it fails.
@@ -234,6 +243,11 @@ func (c *Coordinator) TestServer(ctx context.Context, input ServerInput) (TestRe
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
+	release, err := c.external.AdmitProbe(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer release()
 	srv, err := c.validatedServer(ctx, input)
 	if err != nil {
 		return "", err

@@ -30,6 +30,7 @@ type frameworkComposition struct {
 	process   *process.Driver[*sdk.ClientSession]
 	installed *mcpadapter.Installed
 	registry  *plugins.Registry
+	external  *mcpadapter.ExternalConnector
 	browser   *browseradapter.Service
 	control   http.Handler
 	commands  *plugins.Commands
@@ -127,7 +128,7 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 		_, releaseErr := owner.BeginClose(qimu.ErrClosed).WaitReleased(ctx)
 		return errors.Join(diagnostic, releaseErr)
 	}))
-	registry, err := plugins.NewRegistry(host, cfg.stores.MCPServers, cfg.stores.Installations, packages, cfg.stores.ProviderSelections, cfg.stores.PluginCompositions)
+	registry, err := plugins.NewRegistry(host, cfg.stores.Installations, packages, cfg.stores.ProviderSelections, cfg.stores.PluginCompositions)
 	if err != nil {
 		return frameworkComposition{}, err
 	}
@@ -146,7 +147,7 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 	if err != nil {
 		return frameworkComposition{}, err
 	}
-	if err := restoreFramework(ctx, cfg.stores, host); err != nil {
+	if err := restoreFramework(ctx, cfg.stores, host, profile.Profile()); err != nil {
 		return frameworkComposition{}, err
 	}
 	recovery := &frameworkRecovery{stores: cfg.stores, process: profile, pending: true, ready: make(chan struct{})}
@@ -165,16 +166,20 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 	if err != nil {
 		return frameworkComposition{}, err
 	}
+	external, err := mcpadapter.NewExternalConnector(installed, cfg.stores.Installations, cfg.stores.ProviderSelections, cfg.stores.MCPServers)
+	if err != nil {
+		return frameworkComposition{}, err
+	}
 	control := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		bridge.Handler().ServeHTTP(writer, request)
 		// Original cleanup proofs can arrive while recovery admission is shut.
 		// Only complete reconstruction of every retained owner opens it again.
 		_ = recovery.restore(request.Context())
 	})
-	return frameworkComposition{host: host, process: profile, registry: registry, installed: installed, browser: browser, control: control, commands: commands, callers: callers, ready: recovery.ready}, nil
+	return frameworkComposition{host: host, process: profile, registry: registry, external: external, installed: installed, browser: browser, control: control, commands: commands, callers: callers, ready: recovery.ready}, nil
 }
 
-func restoreFramework(ctx context.Context, stores *persistence.Bundle, host *qimu.Host) error {
+func restoreFramework(ctx context.Context, stores *persistence.Bundle, host *qimu.Host, backendProfile qimu.Profile) error {
 	records, err := stores.Qimu.RecoverInstallations(ctx)
 	if err != nil {
 		return err
@@ -189,7 +194,7 @@ func restoreFramework(ctx context.Context, stores *persistence.Bundle, host *qim
 		if err != nil {
 			return err
 		}
-		projection, err := plugins.ProjectFrameworkRelease(release)
+		projection, err := plugins.ProjectFrameworkRelease(release, backendProfile)
 		if err != nil {
 			return err
 		}

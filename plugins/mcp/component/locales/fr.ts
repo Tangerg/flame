@@ -24,6 +24,8 @@ export const fr: Record<string, string> = {
   "mcp.transport.http": "Streamable HTTP",
   "mcp.signIn": "Se connecter",
   "mcp.signingIn": "Connexion…",
+  "mcp.signIn.unconfirmed":
+    "Le résultat de la dernière connexion n’a pas pu être confirmé après le redémarrage.",
   "mcp.signIn.aria": "Se connecter à {{server}}",
   "mcp.signingIn.aria": "Connexion à {{server}}…",
   "mcp.reconnect": "Reconnecter",

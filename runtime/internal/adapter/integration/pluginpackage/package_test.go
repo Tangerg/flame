@@ -50,7 +50,7 @@ func (s *installationFixture) Save(ctx context.Context, installation plugin.Inst
 	if err != nil {
 		return err
 	}
-	projected, err := plugins.ProjectFrameworkRelease(release)
+	projected, err := plugins.ProjectFrameworkRelease(release, qimumcp.ProcessProfile)
 	if err != nil {
 		return err
 	}

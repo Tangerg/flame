@@ -338,6 +338,7 @@ func TestPluginAcceptanceDiscoveryMCPReconnectKeepsDeclarations(t *testing.T) {
 	}
 	cfg.modelProviders = testChatResolver(client)
 	runtime := poMCPOpen(t, cfg)
+	installExternalConnector(runtime)
 	runtime.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
 		Name: "reviews", Enabled: true,
 		Connection:       protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: server.URL},

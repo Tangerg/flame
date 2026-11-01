@@ -1,3 +1,4 @@
+import type { WorkflowAuthor } from "@/features/plugins/public/workflows";
 import { type GoalStatus, type GoalReason } from "@flame/runtime-client/wire";
 import { useAgentSessionSharedMaterial } from "@/features/agent/public/sessionMaterial";
 import { type AgentProjectionMaterial } from "@/features/agent/public/sessionMaterial";
@@ -10,6 +11,7 @@ interface GoalUsage {
 }
 
 export interface GoalReadModel {
+  author?: WorkflowAuthor;
   sessionId: string;
   objective: string;
   status: GoalStatus;

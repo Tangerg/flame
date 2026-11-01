@@ -1,8 +1,14 @@
 # Skills
 
-`flame.skills` provides the library and proposal component plus an optional
-`flame.skill-learning.v1` backend. Runtime remains the sole owner of proposals,
-active documents, human approval, usage observations and archive commits.
+`flame.skills` implements `flame.skill-learning.v2`. Its private database owns proposal slots, review decisions and their command receipts. Runtime admits the available readers, preserves user authorization and writes approved files under the selected library root.
+
+## Source discovery and review
+
+The provider selects a project Skill ahead of a user Skill and a user Skill ahead of an installed Skill. Multiple installed copies without an authored override produce a diagnostic. Human catalog reads query the provider. Each Run tool group retains its original discovery command and activation in its checkpoint. Recovery reads the original receipt and resolves the chosen opaque references against admitted readers. New precedence choices apply to new Runs.
+
+The review revision exposed to GUI, CLI and Agent is the originating command ID. Its retained input captures the content, provenance, target library, reviewed preimage and provider release. Switching the selected provider starts a separate queue. Previously reviewed work remains actionable while its original release is enabled. Disabling, replacing or uninstalling it prevents its pending commands from publishing. Forking a Session preserves the original proposal and source Session.
+
+An approved command reserves its proposal while the host compares the active file against the captured preimage. The host records physical publication receipts in its private data directory. If it crashes after writing the approved bytes, it can reconcile them under the original permit. If the outcome is unknown and the file has since changed, the host reports that uncertainty and leaves the file in place.
 
 ## Learning policy
 
@@ -22,16 +28,7 @@ a revision. Only the existing human approval operation publishes the proposal.
 Archive advice passes through Runtime's existing provenance, usage, library-lease
 and invalidation rules; human-authored Skills remain outside automatic archival.
 
-`PLUGIN_DATA/learning.db` stores original command inputs and immutable advice
-receipts. It contains no Skill or proposal library. A pending command is
-unconfirmed and is never redelivered to the model, including after restart.
-Reading an advice receipt does not publish a Skill. Mining and archive advice are
-independent commands, so a mining failure does not prevent the archive check.
-
-Disable or deselect this provider to stop new automatic learning. Library
-inspection, proposal review and human decisions continue through the same public
-Runtime operations. The former static Runtime mining and archive schedulers are
-removed; no fallback worker or compatibility path remains.
+`PLUGIN_DATA/learning.db` commits local decisions and receipts in one transaction. The mining command records its accepted proposal and completed model receipt in one private SQLite transaction. Its proposal revision is that mining command itself. A crash before commit exposes neither outcome. A crash after commit leaves both available even if the host never received the reply. Mining and archive checks run independently. Recovery reads the original mining receipt before considering a proposal and never repeats an unconfirmed model call.
 
 Generate and package through the root `make generate` and plugin build commands.
 The SDK owns the consumer and callback contracts; generated package JSON and

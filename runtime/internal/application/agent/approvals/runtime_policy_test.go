@@ -70,7 +70,7 @@ func (m *memoryModeStore) StartPlanMode(_ context.Context, sessionID string) (bo
 	return true, nil
 }
 
-func (m *memoryModeStore) EndPlanMode(_ context.Context, sessionID string) (bool, error) {
+func (m *memoryModeStore) EndPlanMode(_ context.Context, sessionID string, _ uint64) (bool, error) {
 	if !m.planning[sessionID] {
 		return false, nil
 	}
@@ -100,7 +100,7 @@ func TestPlanModeIsSessionScopedAndLeavesTheSessionFollowingTheDefault(t *testin
 	if changed, enterPlanModeErr := policy.EnterPlanMode(t.Context(), "session-a"); enterPlanModeErr != nil || changed {
 		t.Fatalf("second EnterPlanMode = %v, %v, want unchanged", changed, enterPlanModeErr)
 	}
-	restored, changed, err := policy.ExitPlanMode(t.Context(), "session-a")
+	restored, changed, err := policy.ExitPlanMode(t.Context(), "session-a", 1)
 	if err != nil || !changed || restored != approval.ModeYolo {
 		t.Fatalf("ExitPlanMode = %v, %v, %v; want the current default Yolo", restored, changed, err)
 	}
@@ -110,7 +110,7 @@ func TestPlanModeIsSessionScopedAndLeavesTheSessionFollowingTheDefault(t *testin
 	if mode, _ := policy.Mode(t.Context(), "session-a"); mode != approval.ModeSafe {
 		t.Fatalf("session-a mode after a later default change = %v, want Safe", mode)
 	}
-	if _, changed, err := policy.ExitPlanMode(t.Context(), "session-a"); err != nil || changed {
+	if _, changed, err := policy.ExitPlanMode(t.Context(), "session-a", 1); err != nil || changed {
 		t.Fatalf("ExitPlanMode outside Plan = %v, %v, want unchanged", changed, err)
 	}
 }

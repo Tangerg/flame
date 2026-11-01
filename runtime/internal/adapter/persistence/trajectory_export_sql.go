@@ -7,7 +7,7 @@ import (
 	"github.com/Tangerg/qimu/sqlite"
 )
 
-const sessionFeedbackPredicate = `session_id = ?
+const sessionAnnotationPredicate = `session_id = ?
 	OR run_id IN (SELECT run_id FROM runs WHERE session_id = ?)
 	OR item_id IN (SELECT item_id FROM history_items WHERE session_id = ?)`
 
@@ -32,14 +32,15 @@ func (s *SessionStore) TrajectoryExportSize(ctx context.Context, sessionID strin
 			+ length(CAST(provider AS BLOB)) + length(CAST(model AS BLOB))) FROM runs WHERE session_id = ?
 		UNION ALL SELECT COUNT(*), SUM(length(CAST(body AS BLOB))
 			+ length(CAST(id AS BLOB))) FROM tool_result_blobs WHERE session_id = ?
-		UNION ALL SELECT COUNT(*), SUM(length(CAST(steps AS BLOB))) FROM session_plans WHERE session_id = ?
+		UNION ALL SELECT COUNT(*), SUM(length(CAST(steps AS BLOB))) FROM session_plans JOIN plan_documents ON digest = document WHERE session_id = ?
 		UNION ALL SELECT COUNT(*), SUM(COALESCE(length(CAST(usage AS BLOB)), 0) + COALESCE(length(CAST(known_response AS BLOB)), 0) + length(CAST(call_id AS BLOB))
 			+ COALESCE(length(CAST(run_id AS BLOB)),0) + COALESCE(length(CAST(segment_id AS BLOB)),0) + length(CAST(state AS BLOB))
 			+ COALESCE(length(CAST(endpoint_json AS BLOB)),0) + length(CAST(endpoint_failure AS BLOB))) FROM model_invocations WHERE session_id = ?
 		UNION ALL SELECT COUNT(*), SUM(length(CAST(call_id AS BLOB)) + length(CAST(item_id AS BLOB))
 			+ length(CAST(run_id AS BLOB)) + length(CAST(segment_id AS BLOB)) + length(CAST(state AS BLOB))) FROM tool_invocations WHERE session_id = ?
-		UNION ALL SELECT COUNT(*), SUM(length(CAST(text AS BLOB)) + length(CAST(session_id AS BLOB))
-			+ length(CAST(run_id AS BLOB)) + length(CAST(item_id AS BLOB)) + length(CAST(rating AS BLOB))) FROM feedback_entries WHERE ` + sessionFeedbackPredicate + `
+		UNION ALL SELECT COUNT(*), SUM(length(CAST(content AS BLOB)) + length(CAST(session_id AS BLOB))
+			+ length(CAST(run_id AS BLOB)) + length(CAST(item_id AS BLOB)) + length(CAST(command_id AS BLOB))
+			+ length(installation)+length(release)+length(contribution)+length(contract)) FROM session_annotations WHERE ` + sessionAnnotationPredicate + `
 	)`
 	args := make([]any, 11)
 	for i := range args {

@@ -120,6 +120,28 @@ func TestPlanStore_RoundTrip(t *testing.T) {
 	}
 }
 
+func TestPlanBoundaryAndSessionShareOneImmutableDocument(t *testing.T) {
+	ctx := t.Context()
+	plans, runs := newPlanBoundaryStores(t)
+	const sessionID, runID = "ses_immutable", "run_immutable"
+	savePlan(t, ctx, plans, sessionID, []plan.Step{{Description: "review first", Status: plan.StatusPending}})
+	if err := runs.Admit(ctx, runDraft(runID, sessionID)); err != nil {
+		t.Fatal(err)
+	}
+	if err := terminalizeStoredRun(t, ctx, runs, finishedRun(runID, sessionID, run.OutcomeCompleted)); err != nil {
+		t.Fatal(err)
+	}
+	var same bool
+	if err := plans.db.QueryRowContext(ctx, `SELECT p.document = b.document FROM session_plans p, plan_boundaries b WHERE p.session_id = ? AND b.run_id = ?`, sessionID, runID).Scan(&same); err != nil || !same {
+		t.Fatalf("shared reference = %v, %v", same, err)
+	}
+	savePlan(t, ctx, plans, sessionID, []plan.Step{{Description: "review second", Status: plan.StatusPending}})
+	old, known, err := plans.Boundary(ctx, runID)
+	if err != nil || !known || len(old.Steps) != 1 || old.Steps[0].Description != "review first" {
+		t.Fatalf("captured %v, %t, %v", old, known, err)
+	}
+}
+
 func TestPlanStoreRejectsUnknownStoredStepFields(t *testing.T) {
 	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
@@ -131,7 +153,7 @@ func TestPlanStoreRejectsUnknownStoredStepFields(t *testing.T) {
 		Description: "preserve exact plan meaning", Status: plan.StatusPending,
 	}})
 	if _, err := db.ExecContext(t.Context(),
-		`UPDATE session_plans SET steps = ? WHERE session_id = ?`,
+		`UPDATE plan_documents SET steps = ? WHERE digest = (SELECT document FROM session_plans WHERE session_id = ?)`,
 		`[{"description":"preserve exact plan meaning","status":"pending","futureOwner":"lost"}]`,
 		"ses_plan_codec",
 	); err != nil {
@@ -162,10 +184,7 @@ func TestPlanStoreRejectsMissingStoredCollections(t *testing.T) {
 			if err := terminalizeStoredRun(t, t.Context(), runs, finished); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := db.ExecContext(t.Context(), `UPDATE session_plans SET steps = ? WHERE session_id = ?`, encoded, sessionID); err != nil {
-				t.Fatal(err)
-			}
-			if _, err := db.ExecContext(t.Context(), `UPDATE plan_boundaries SET steps = ? WHERE run_id = ?`, encoded, runID); err != nil {
+			if _, err := db.ExecContext(t.Context(), `UPDATE plan_documents SET steps = ? WHERE digest = (SELECT document FROM session_plans WHERE session_id = ?)`, encoded, sessionID); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := plans.State(t.Context(), sessionID); err == nil {
@@ -223,11 +242,11 @@ func TestPlanBoundaryIsRecordedByTheRunThatEnds(t *testing.T) {
 	if err != nil || !recorded {
 		t.Fatalf("Boundary(run_1) = %v, recorded %v, err %v", got, recorded, err)
 	}
-	if len(got) != 1 || got[0].Description != "survey the code" {
+	if len(got.Steps) != 1 || got.Steps[0].Description != "survey the code" {
 		t.Fatalf("Boundary(run_1) = %+v, want the list as it stood then", got)
 	}
 	got, recorded, err = plans.Boundary(ctx, "run_2")
-	if err != nil || !recorded || len(got) != 2 {
+	if err != nil || !recorded || len(got.Steps) != 2 {
 		t.Fatalf("Boundary(run_2) = %+v, recorded %v, err %v, want both items", got, recorded, err)
 	}
 }
@@ -249,7 +268,7 @@ func TestPlanBoundaryDistinguishesEmptyFromUnrecorded(t *testing.T) {
 		t.Fatalf("terminalize: %v", err)
 	}
 	got, recorded, err := plans.Boundary(ctx, "run_1")
-	if err != nil || !recorded || len(got) != 0 {
+	if err != nil || !recorded || len(got.Steps) != 0 {
 		t.Fatalf("Boundary(list never written) = %+v, recorded %v, err %v, want a recorded empty list", got, recorded, err)
 	}
 

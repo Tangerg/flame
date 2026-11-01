@@ -15,7 +15,7 @@ func TestOpenAdmitsOnlyTheExactCurrentSchema(t *testing.T) {
 		{"former model purpose", `ALTER TABLE model_invocations RENAME COLUMN logical_purpose TO former_purpose`},
 		{"former column", `ALTER TABLE model_invocations DROP COLUMN usage`},
 		{"former installation trust state", `ALTER TABLE plugin_installations RENAME COLUMN enabled TO admission_state`},
-		{"retired object", `CREATE INDEX idx_feedback_entries_created ON feedback_entries(created_at_ns DESC)`},
+		{"retired object", `CREATE TABLE feedback_entries(id INTEGER PRIMARY KEY)`},
 		{"retired automation receipt", `CREATE TABLE automation_starts (run_id TEXT PRIMARY KEY, request_digest TEXT NOT NULL, session_id TEXT NOT NULL, segment_id TEXT NOT NULL)`},
 		{"former host without command routing", `DROP TABLE plugin_commands`},
 		{"former host input including call context", `ALTER TABLE plugin_commands RENAME COLUMN business_input_json TO input_json`},
@@ -29,7 +29,7 @@ func TestOpenAdmitsOnlyTheExactCurrentSchema(t *testing.T) {
 		{"former command without export", `ALTER TABLE plugin_commands RENAME COLUMN export_name TO former_export`},
 		{"former command without retirement", `DROP TRIGGER plugin_command_phase; CREATE TRIGGER plugin_command_phase BEFORE UPDATE OF phase ON plugin_commands WHEN NOT (NEW.phase=OLD.phase OR (OLD.phase='prepared' AND NEW.phase='dispatched') OR (OLD.phase='dispatched' AND NEW.phase='observed')) BEGIN SELECT RAISE(ABORT,'command phase cannot regress'); END`},
 		{"former Tool result time unit", `ALTER TABLE tool_result_blobs RENAME COLUMN created_at_ns TO created_at`},
-		{"former feedback time unit", `ALTER TABLE feedback_entries RENAME COLUMN created_at_ns TO created_at`},
+		{"former feedback time unit", `ALTER TABLE session_annotations RENAME COLUMN created_at_ns TO created_at`},
 		{"former history without committed resource retirement", `DROP TABLE committed_session_resource_retirements`},
 	} {
 		t.Run(change.name, func(t *testing.T) {

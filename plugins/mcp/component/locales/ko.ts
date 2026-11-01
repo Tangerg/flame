@@ -22,6 +22,8 @@ export const ko: Record<string, string> = {
   "mcp.transport.http": "Streamable HTTP",
   "mcp.signIn": "로그인",
   "mcp.signingIn": "로그인 중…",
+  "mcp.signIn.unconfirmed":
+    "다시 시작한 후 이전 로그인 결과를 확인할 수 없습니다.",
   "mcp.signIn.aria": "{{server}}에 로그인",
   "mcp.signingIn.aria": "{{server}}에 로그인 중…",
   "mcp.reconnect": "다시 연결",

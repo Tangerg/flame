@@ -1,8 +1,7 @@
 package skillauthoring
 
 const (
-	proposalsSubdir = "_proposals"
-	archivedSubdir  = "_archive"
+	archivedSubdir = "_archive"
 
 	metadataOrigin        = "origin"
 	metadataSourceSession = "source_session"

@@ -152,6 +152,29 @@
         "home"
       ]
     },
+    "AnnotationSource": {
+      "type": "object",
+      "properties": {
+        "contractRef": {
+          "type": "string"
+        },
+        "contribution": {
+          "type": "string"
+        },
+        "installationId": {
+          "type": "string"
+        },
+        "release": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "contractRef",
+        "contribution",
+        "installationId",
+        "release"
+      ]
+    },
     "AppliedChange": {
       "type": "object",
       "properties": {
@@ -1617,6 +1640,7 @@
         "workspaceView",
         "settingsPane",
         "clientEffect",
+        "messageAction",
         "sessionAction",
         "fileRenderer",
         "toolResultRenderer"
@@ -1723,6 +1747,25 @@
       "enum": [
         "text",
         "image"
+      ]
+    },
+    "ContributionSource": {
+      "type": "object",
+      "properties": {
+        "contribution": {
+          "type": "string"
+        },
+        "installationId": {
+          "type": "string"
+        },
+        "release": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "contribution",
+        "installationId",
+        "release"
       ]
     },
     "CreateMCPAuthorizationAttemptRequest": {
@@ -2110,55 +2153,6 @@
         "enabled"
       ]
     },
-    "FeedbackEntry": {
-      "type": "object",
-      "properties": {
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "itemId": {
-          "type": "string",
-          "maxLength": 256,
-          "pattern": "^[^\\p{C}\\p{Z}]*$"
-        },
-        "rating": {
-          "$ref": "#/$defs/FeedbackRating"
-        },
-        "runId": {
-          "type": "string",
-          "maxLength": 256,
-          "pattern": "^[^\\p{C}\\p{Z}]*$"
-        },
-        "sessionId": {
-          "type": "string",
-          "maxLength": 256,
-          "pattern": "^[^\\p{C}\\p{Z}]*$"
-        },
-        "text": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "createdAt"
-      ],
-      "allOf": [
-        {
-          "anyOf": [
-            {
-              "required": [
-                "rating"
-              ]
-            },
-            {
-              "required": [
-                "text"
-              ]
-            }
-          ]
-        }
-      ]
-    },
     "FeedbackRating": {
       "type": "string",
       "enum": [
@@ -2186,6 +2180,9 @@
           "type": "string",
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "source": {
+          "$ref": "#/$defs/ContributionSource"
         },
         "text": {
           "type": "string",
@@ -2656,6 +2653,9 @@
     "Goal": {
       "type": "object",
       "properties": {
+        "author": {
+          "$ref": "#/$defs/ContributionSource"
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time"
@@ -4587,6 +4587,30 @@
               "status": {
                 "properties": {
                   "type": {
+                    "const": "unconfirmed"
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "finishedAt"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "properties": {
+                  "type": {
                     "const": "canceled"
                   }
                 },
@@ -4695,12 +4719,24 @@
           "required": [
             "type"
           ]
+        },
+        {
+          "properties": {
+            "error": false,
+            "type": {
+              "const": "unconfirmed"
+            }
+          },
+          "required": [
+            "type"
+          ]
         }
       ]
     },
     "MCPAuthorizationAttemptStatusType": {
       "type": "string",
       "enum": [
+        "unconfirmed",
         "pending",
         "succeeded",
         "failed",
@@ -6791,7 +6827,8 @@
           "$ref": "#/$defs/PluginRendererSelector"
         },
         "settingsIntent": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{0,63}$"
         },
         "targetView": {
           "type": "string"
@@ -11345,6 +11382,43 @@
         "workspace"
       ]
     },
+    "SessionAnnotation": {
+      "type": "object",
+      "properties": {
+        "commandId": {
+          "type": "string"
+        },
+        "content": {},
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "itemId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "runId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "sessionId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "source": {
+          "$ref": "#/$defs/AnnotationSource"
+        }
+      },
+      "required": [
+        "commandId",
+        "content",
+        "createdAt",
+        "source"
+      ]
+    },
     "SessionArtifact": {
       "type": "object",
       "properties": {
@@ -11363,6 +11437,9 @@
           "items": {
             "$ref": "#/$defs/PlanStep"
           }
+        },
+        "planSource": {
+          "$ref": "#/$defs/ContributionSource"
         },
         "runs": {
           "type": "array",
@@ -11449,15 +11526,15 @@
     "SessionTrajectory": {
       "type": "object",
       "properties": {
+        "annotations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SessionAnnotation"
+          }
+        },
         "collectedAt": {
           "type": "string",
           "format": "date-time"
-        },
-        "feedback": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/FeedbackEntry"
-          }
         },
         "items": {
           "type": "array",
@@ -11501,8 +11578,8 @@
         },
         "schemaVersion": {
           "type": "integer",
-          "minimum": 3,
-          "maximum": 3
+          "minimum": 4,
+          "maximum": 4
         },
         "session": {
           "$ref": "#/$defs/Session"
@@ -11521,8 +11598,8 @@
         }
       },
       "required": [
+        "annotations",
         "collectedAt",
-        "feedback",
         "items",
         "limitations",
         "messages",

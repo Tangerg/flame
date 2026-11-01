@@ -102,6 +102,13 @@ export interface CapturedToolResult {
   readonly approvalDecision?: "approve" | "deny";
 }
 
+export interface CapturedMessage {
+  readonly sessionId: string;
+  readonly itemId: string;
+  readonly runId?: string;
+  readonly role: string;
+}
+
 export type CapturedSession = Readonly<
   Pick<Session, "id" | "revision" | "title">
 >;
@@ -187,6 +194,7 @@ export interface ComponentContext {
   readonly component: Readonly<ComponentReference>;
   readonly file?: Readonly<CapturedFile>;
   readonly toolResult?: Readonly<CapturedToolResult>;
+  readonly message?: CapturedMessage;
   readonly interaction?: CapturedToolInteraction;
   readonly runtime: FlameClient;
   readonly telemetry: ClientTelemetry;

@@ -1105,6 +1105,11 @@
           "value": "\"fileRenderer\""
         },
         {
+          "name": "ComponentPlacementMessageAction",
+          "type": "ComponentPlacement",
+          "value": "\"messageAction\""
+        },
+        {
           "name": "ComponentPlacementSessionAction",
           "type": "ComponentPlacement",
           "value": "\"sessionAction\""
@@ -1301,6 +1306,27 @@
       ],
       "types": [
         {
+          "name": "AnnotationSource",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ContributionSource",
+              "type": "ContributionSource"
+            },
+            {
+              "name": "ContractReference",
+              "type": "string",
+              "tag": "json:\"contractRef\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
           "name": "ComponentPlacement",
           "kind": "defined",
           "underlying": "string",
@@ -1323,6 +1349,69 @@
             {
               "name": "Values",
               "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "ContributionSource",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            },
+            {
+              "name": "Release",
+              "type": "string",
+              "tag": "json:\"release\""
+            },
+            {
+              "name": "Contribution",
+              "type": "string",
+              "tag": "json:\"contribution\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "FeedbackDraft",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Source",
+              "type": "*ContributionSource",
+              "tag": "json:\"source,omitempty\""
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"sessionId,omitempty\""
+            },
+            {
+              "name": "RunID",
+              "type": "string",
+              "tag": "json:\"runId,omitempty\""
+            },
+            {
+              "name": "ItemID",
+              "type": "string",
+              "tag": "json:\"itemId,omitempty\""
+            },
+            {
+              "name": "Rating",
+              "type": "string",
+              "tag": "json:\"rating,omitempty\""
+            },
+            {
+              "name": "Text",
+              "type": "string",
+              "tag": "json:\"text,omitempty\""
             }
           ]
         },
@@ -1603,6 +1692,269 @@
           "name": "State",
           "kind": "defined",
           "underlying": "uint8"
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/goalworkflow",
+      "imports": [
+        "github.com/Tangerg/flame/packages/go-sdk/extension",
+        "github.com/Tangerg/flame/packages/go-sdk/runoutcome"
+      ],
+      "constants": [
+        {
+          "name": "Block",
+          "type": "Signal",
+          "value": "\"block\""
+        },
+        {
+          "name": "BlockedReasonRequired",
+          "type": "Refusal",
+          "value": "\"blockedReasonRequired\""
+        },
+        {
+          "name": "Complete",
+          "type": "Signal",
+          "value": "\"complete\""
+        },
+        {
+          "name": "GoalActive",
+          "type": "GoalStatus",
+          "value": "\"active\""
+        },
+        {
+          "name": "GoalBlocked",
+          "type": "GoalStatus",
+          "value": "\"blocked\""
+        },
+        {
+          "name": "GoalCompleting",
+          "type": "GoalStatus",
+          "value": "\"completing\""
+        },
+        {
+          "name": "GoalPaused",
+          "type": "GoalStatus",
+          "value": "\"paused\""
+        },
+        {
+          "name": "GoalReasonAwaitingInput",
+          "type": "GoalReasonCode",
+          "value": "\"awaitingInput\""
+        },
+        {
+          "name": "GoalReasonBlockedByModel",
+          "type": "GoalReasonCode",
+          "value": "\"blockedByModel\""
+        },
+        {
+          "name": "GoalReasonRunNotCompleted",
+          "type": "GoalReasonCode",
+          "value": "\"runNotCompleted\""
+        },
+        {
+          "name": "GoalReasonRunStartFailed",
+          "type": "GoalReasonCode",
+          "value": "\"runStartFailed\""
+        },
+        {
+          "name": "GoalReasonRuntimeRestarted",
+          "type": "GoalReasonCode",
+          "value": "\"runtimeRestarted\""
+        },
+        {
+          "name": "GoalReasonStoppedByUser",
+          "type": "GoalReasonCode",
+          "value": "\"stoppedByUser\""
+        },
+        {
+          "name": "GoalReasonTerminalOutcomeMissing",
+          "type": "GoalReasonCode",
+          "value": "\"terminalOutcomeMissing\""
+        },
+        {
+          "name": "Invalid",
+          "type": "Refusal",
+          "value": "\"invalid\""
+        },
+        {
+          "name": "NextRun",
+          "type": "Signal",
+          "value": "\"nextRun\""
+        },
+        {
+          "name": "NotResumable",
+          "type": "Refusal",
+          "value": "\"notResumable\""
+        },
+        {
+          "name": "Pause",
+          "type": "Signal",
+          "value": "\"pause\""
+        },
+        {
+          "name": "Reference",
+          "type": "untyped string",
+          "value": "\"flame.goal-workflow.v1\""
+        },
+        {
+          "name": "Resume",
+          "type": "Signal",
+          "value": "\"resume\""
+        },
+        {
+          "name": "Revise",
+          "type": "Signal",
+          "value": "\"revise\""
+        },
+        {
+          "name": "ReviseAndResume",
+          "type": "Signal",
+          "value": "\"reviseAndResume\""
+        },
+        {
+          "name": "Start",
+          "type": "Signal",
+          "value": "\"start\""
+        },
+        {
+          "name": "Stop",
+          "type": "Signal",
+          "value": "\"stop\""
+        },
+        {
+          "name": "TerminalRun",
+          "type": "Signal",
+          "value": "\"terminalRun\""
+        }
+      ],
+      "types": [
+        {
+          "name": "AuthoredDecision",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Source",
+              "type": "extension.ContributionSource"
+            },
+            {
+              "name": "Decision",
+              "type": "Decision"
+            }
+          ]
+        },
+        {
+          "name": "Decision",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Instructions",
+              "type": "string",
+              "tag": "json:\"instructions,omitzero\""
+            },
+            {
+              "name": "Next",
+              "type": "*Value",
+              "tag": "json:\"next,omitzero\""
+            },
+            {
+              "name": "Refusal",
+              "type": "Refusal",
+              "tag": "json:\"refusal,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "GoalReasonCode",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "GoalStatus",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "Refusal",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "Request",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Ordinal",
+              "type": "uint64",
+              "tag": "json:\"ordinal,omitzero\""
+            },
+            {
+              "name": "Current",
+              "type": "*Value",
+              "tag": "json:\"current,omitzero\""
+            },
+            {
+              "name": "Signal",
+              "type": "Signal",
+              "tag": "json:\"signal\""
+            },
+            {
+              "name": "Objective",
+              "type": "string",
+              "tag": "json:\"objective,omitzero\""
+            },
+            {
+              "name": "Reason",
+              "type": "GoalReasonCode",
+              "tag": "json:\"reason,omitzero\""
+            },
+            {
+              "name": "Outcome",
+              "type": "runoutcome.Kind",
+              "tag": "json:\"outcome,omitzero\""
+            },
+            {
+              "name": "Explanation",
+              "type": "string",
+              "tag": "json:\"explanation,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "Signal",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "Value",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Objective",
+              "type": "string",
+              "tag": "json:\"objective\""
+            },
+            {
+              "name": "Status",
+              "type": "GoalStatus",
+              "tag": "json:\"status\""
+            },
+            {
+              "name": "Reason",
+              "type": "GoalReasonCode",
+              "tag": "json:\"reason,omitzero\""
+            },
+            {
+              "name": "Outcome",
+              "type": "runoutcome.Kind",
+              "tag": "json:\"outcome,omitzero\""
+            },
+            {
+              "name": "Explanation",
+              "type": "string",
+              "tag": "json:\"explanation,omitzero\""
+            }
+          ]
         }
       ]
     },
@@ -2214,6 +2566,273 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/mcpconnector",
+      "constants": [
+        {
+          "name": "Applied",
+          "type": "Decision",
+          "value": "\"applied\""
+        },
+        {
+          "name": "AttemptRetentionSeconds",
+          "type": "untyped int",
+          "value": "600"
+        },
+        {
+          "name": "Canceled",
+          "type": "Outcome",
+          "value": "\"canceled\""
+        },
+        {
+          "name": "Conflict",
+          "type": "Decision",
+          "value": "\"conflict\""
+        },
+        {
+          "name": "Export",
+          "type": "untyped string",
+          "value": "\"external-servers\""
+        },
+        {
+          "name": "Failed",
+          "type": "Outcome",
+          "value": "\"failed\""
+        },
+        {
+          "name": "Pending",
+          "type": "Outcome",
+          "value": "\"pending\""
+        },
+        {
+          "name": "Reference",
+          "type": "untyped string",
+          "value": "\"flame.external-mcp.v1\""
+        },
+        {
+          "name": "Succeeded",
+          "type": "Outcome",
+          "value": "\"succeeded\""
+        },
+        {
+          "name": "Unavailable",
+          "type": "Decision",
+          "value": "\"unavailable\""
+        },
+        {
+          "name": "Unconfirmed",
+          "type": "Outcome",
+          "value": "\"unconfirmed\""
+        }
+      ],
+      "types": [
+        {
+          "name": "Attempt",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Status",
+              "type": "Outcome",
+              "tag": "json:\"status\""
+            },
+            {
+              "name": "StartedAt",
+              "type": "string",
+              "tag": "json:\"startedAt\""
+            },
+            {
+              "name": "FinishedAt",
+              "type": "string",
+              "tag": "json:\"finishedAt,omitempty\""
+            }
+          ]
+        },
+        {
+          "name": "AttemptResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Attempt",
+              "type": "*Attempt",
+              "tag": "json:\"attempt,omitempty\""
+            }
+          ]
+        },
+        {
+          "name": "Change",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Expected",
+              "type": "string",
+              "tag": "json:\"expected,omitempty\""
+            },
+            {
+              "name": "Replacement",
+              "type": "*Entry",
+              "tag": "json:\"replacement,omitempty\""
+            }
+          ]
+        },
+        {
+          "name": "Completion",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Epoch",
+              "type": "string",
+              "tag": "json:\"epoch\""
+            },
+            {
+              "name": "Status",
+              "type": "Outcome",
+              "tag": "json:\"status\""
+            }
+          ]
+        },
+        {
+          "name": "Decision",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "Directory",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Entries",
+              "type": "[]Entry",
+              "tag": "json:\"entries\""
+            }
+          ]
+        },
+        {
+          "name": "Entry",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Revision",
+              "type": "string",
+              "tag": "json:\"revision,omitempty\""
+            },
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "LaunchGrant",
+              "type": "string",
+              "tag": "json:\"launchGrant\""
+            },
+            {
+              "name": "Enabled",
+              "type": "bool",
+              "tag": "json:\"enabled\""
+            },
+            {
+              "name": "Description",
+              "type": "string",
+              "tag": "json:\"description\""
+            },
+            {
+              "name": "HandshakeSeconds",
+              "type": "int64",
+              "tag": "json:\"handshakeSeconds\""
+            }
+          ]
+        },
+        {
+          "name": "Outcome",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "Recovery",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Epoch",
+              "type": "string",
+              "tag": "json:\"epoch\""
+            }
+          ]
+        },
+        {
+          "name": "Request",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Epoch",
+              "type": "string",
+              "tag": "json:\"epoch\""
+            }
+          ]
+        },
+        {
+          "name": "Selector",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name,omitempty\""
+            }
+          ]
+        },
+        {
+          "name": "Start",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Grant",
+              "type": "string",
+              "tag": "json:\"grant\""
+            },
+            {
+              "name": "Epoch",
+              "type": "string",
+              "tag": "json:\"epoch\""
+            },
+            {
+              "name": "AttemptID",
+              "type": "string",
+              "tag": "json:\"attemptId\""
+            }
+          ]
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/packages/go-sdk/model",
       "imports": [
         "github.com/Tangerg/scope/core/chat"
@@ -2679,10 +3298,156 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/planworkflow",
+      "imports": [
+        "github.com/Tangerg/flame/packages/go-sdk/extension",
+        "github.com/Tangerg/qimu/integrity"
+      ],
+      "constants": [
+        {
+          "name": "PlanStatusCompleted",
+          "type": "PlanStatus",
+          "value": "\"completed\""
+        },
+        {
+          "name": "PlanStatusInProgress",
+          "type": "PlanStatus",
+          "value": "\"in_progress\""
+        },
+        {
+          "name": "PlanStatusPending",
+          "type": "PlanStatus",
+          "value": "\"pending\""
+        },
+        {
+          "name": "Reference",
+          "type": "untyped string",
+          "value": "\"flame.plan-workflow.v1\""
+        }
+      ],
+      "variables": [
+        {
+          "name": "ErrRefused",
+          "type": "error"
+        }
+      ],
+      "functions": [
+        {
+          "name": "Seal",
+          "signature": "func(proposal Proposal) (Document, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "AuthoredDocument",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Document",
+              "type": "Document"
+            },
+            {
+              "name": "Source",
+              "type": "extension.ContributionSource"
+            }
+          ],
+          "methods": [
+            {
+              "name": "Verify",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Decision",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Document",
+              "type": "*Document",
+              "tag": "json:\"document,omitzero\""
+            },
+            {
+              "name": "Refusal",
+              "type": "string",
+              "tag": "json:\"refusal,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Open",
+              "signature": "func() (Document, error)"
+            }
+          ]
+        },
+        {
+          "name": "Document",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Proposal",
+              "type": "Proposal"
+            },
+            {
+              "name": "Digest",
+              "type": "integrity.Digest",
+              "tag": "json:\"digest\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Verify",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PlanStatus",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "Proposal",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Steps",
+              "type": "[]Step",
+              "tag": "json:\"steps\""
+            }
+          ]
+        },
+        {
+          "name": "Step",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Description",
+              "type": "string",
+              "tag": "json:\"description\""
+            },
+            {
+              "name": "Status",
+              "type": "PlanStatus",
+              "tag": "json:\"status\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin",
       "imports": [
         "context",
+        "github.com/Tangerg/flame/packages/go-sdk/extension",
         "github.com/Tangerg/flame/packages/go-sdk/model",
+        "github.com/Tangerg/flame/packages/go-sdk/protocol",
         "github.com/Tangerg/go-sdk/mcp",
         "github.com/Tangerg/qimu/jsonvalue",
         "github.com/Tangerg/qimu/mcp",
@@ -2697,6 +3462,11 @@
           "name": "DeclarationProtocol",
           "type": "untyped string",
           "value": "\"io.github.tangerg.flame/plugin/1\""
+        },
+        {
+          "name": "FeedbackReference",
+          "type": "untyped string",
+          "value": "\"flame.feedback.v1\""
         },
         {
           "name": "ModelCanceled",
@@ -2755,6 +3525,10 @@
         {
           "name": "DefiniteToolFailure",
           "signature": "func(cause error) error"
+        },
+        {
+          "name": "FeedbackContract",
+          "signature": "func() (*portable.Capability, error)"
         },
         {
           "name": "IdentifyDocument",
@@ -2825,6 +3599,10 @@
           "signature": "func(output chat.ToolOutput, failed bool) (ToolReceipt, error)"
         },
         {
+          "name": "PrepareFeedbackMethod",
+          "signature": "func() (*mcp.Method[extension.FeedbackDraft, FeedbackSignal], error)"
+        },
+        {
           "name": "ReadDocumentRangeMethod",
           "signature": "func() (*mcp.Method[DocumentRange, string], error)"
         },
@@ -2889,6 +3667,10 @@
           "signature": "func(original *chat.Request, transformed *chat.Request) error"
         },
         {
+          "name": "ValidateRenderedChunk",
+          "signature": "func(previous int, size int) error"
+        },
+        {
           "name": "ValidateToolProposal",
           "signature": "func(original chat.ToolCall, transformed chat.ToolCall) error"
         },
@@ -2937,6 +3719,22 @@
               "name": "Offset",
               "type": "int64",
               "tag": "json:\"offset\""
+            }
+          ]
+        },
+        {
+          "name": "FeedbackSignal",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Rating",
+              "type": "protocol.FeedbackRating",
+              "tag": "json:\"rating,omitempty\""
+            },
+            {
+              "name": "Text",
+              "type": "string",
+              "tag": "json:\"text,omitempty\""
             }
           ]
         },
@@ -3395,11 +4193,27 @@
       ]
     },
     {
-      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider",
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/goalworkflow/mcp",
       "imports": [
-        "github.com/Tangerg/flame/packages/go-sdk/hook",
+        "github.com/Tangerg/flame/packages/go-sdk/goalworkflow",
         "github.com/Tangerg/qimu/mcp",
         "github.com/Tangerg/qimu/portable"
+      ],
+      "functions": [
+        {
+          "name": "Contract",
+          "signature": "func() (*portable.Capability, error)"
+        },
+        {
+          "name": "DecideMethod",
+          "signature": "func() (*mcp.Method[goalworkflow.Request, goalworkflow.Decision], error)"
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider",
+      "imports": [
+        "github.com/Tangerg/flame/packages/go-sdk/hook"
       ],
       "constants": [
         {
@@ -3431,20 +4245,6 @@
           "name": "TimedOut",
           "type": "FailureKind",
           "value": "\"timedOut\""
-        }
-      ],
-      "functions": [
-        {
-          "name": "Contract",
-          "signature": "func() (*portable.Capability, error)"
-        },
-        {
-          "name": "DiscoverMethod",
-          "signature": "func() (*mcp.Method[Discovery, []hook.Hook], error)"
-        },
-        {
-          "name": "EvaluateMethod",
-          "signature": "func() (*mcp.Method[Evaluation, Advice], error)"
         }
       ],
       "types": [
@@ -3633,6 +4433,79 @@
             {
               "name": "Validate",
               "signature": "func() error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp",
+      "imports": [
+        "github.com/Tangerg/flame/packages/go-sdk/hook",
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider",
+        "github.com/Tangerg/qimu/mcp",
+        "github.com/Tangerg/qimu/portable"
+      ],
+      "functions": [
+        {
+          "name": "Contract",
+          "signature": "func() (*portable.Capability, error)"
+        },
+        {
+          "name": "DiscoverMethod",
+          "signature": "func() (*mcp.Method[hookprovider.Discovery, []hook.Hook], error)"
+        },
+        {
+          "name": "EvaluateMethod",
+          "signature": "func() (*mcp.Method[hookprovider.Evaluation, hookprovider.Advice], error)"
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/mcpconnector/mcp",
+      "imports": [
+        "github.com/Tangerg/flame/packages/go-sdk/mcpconnector",
+        "github.com/Tangerg/qimu/mcp",
+        "github.com/Tangerg/qimu/portable"
+      ],
+      "functions": [
+        {
+          "name": "NewMethods",
+          "signature": "func() (Methods, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Methods",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Recover",
+              "type": "*mcp.Method[mcpconnector.Recovery, mcpconnector.Decision]"
+            },
+            {
+              "name": "List",
+              "type": "*mcp.Method[mcpconnector.Selector, mcpconnector.Directory]"
+            },
+            {
+              "name": "Change",
+              "type": "*mcp.Method[mcpconnector.Change, mcpconnector.Decision]"
+            },
+            {
+              "name": "Start",
+              "type": "*mcp.Method[mcpconnector.Start, mcpconnector.AttemptResult]"
+            },
+            {
+              "name": "Finish",
+              "type": "*mcp.Method[mcpconnector.Completion, mcpconnector.Decision]"
+            },
+            {
+              "name": "Get",
+              "type": "*mcp.Method[mcpconnector.Request, mcpconnector.AttemptResult]"
+            },
+            {
+              "name": "Contract",
+              "type": "*portable.Capability"
             }
           ]
         }
@@ -4728,6 +5601,28 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/planworkflow/mcp",
+      "imports": [
+        "github.com/Tangerg/flame/packages/go-sdk/planworkflow",
+        "github.com/Tangerg/qimu/mcp",
+        "github.com/Tangerg/qimu/portable"
+      ],
+      "functions": [
+        {
+          "name": "AuthorMethod",
+          "signature": "func() (*mcp.Method[planworkflow.Proposal, planworkflow.Decision], error)"
+        },
+        {
+          "name": "Contract",
+          "signature": "func() (*portable.Capability, error)"
+        },
+        {
+          "name": "ReviewMethod",
+          "signature": "func() (*mcp.Method[planworkflow.Document, string], error)"
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/process",
       "constants": [
         {
@@ -4745,6 +5640,7 @@
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning",
       "imports": [
+        "github.com/Tangerg/flame/packages/go-sdk/skill",
         "github.com/Tangerg/qimu/mcp",
         "github.com/Tangerg/qimu/portable",
         "time"
@@ -4774,12 +5670,38 @@
           "name": "MaxTranscriptBytes",
           "type": "untyped int",
           "value": "2097152"
+        },
+        {
+          "name": "Reference",
+          "type": "untyped string",
+          "value": "\"flame.skill-learning.v2\""
+        },
+        {
+          "name": "StaleReview",
+          "type": "untyped string",
+          "value": "\"stale_review\""
         }
       ],
       "functions": [
         {
+          "name": "AdmitMethod",
+          "signature": "func() (*mcp.Method[Proposal, Admission], error)"
+        },
+        {
+          "name": "ApproveMethod",
+          "signature": "func() (*mcp.Method[ReviewRef, Permit], error)"
+        },
+        {
           "name": "ArchiveMethod",
           "signature": "func() (*mcp.Method[ArchiveRequest, ArchiveAdvice], error)"
+        },
+        {
+          "name": "CaptureMethod",
+          "signature": "func() (*mcp.Method[Candidates, Catalog], error)"
+        },
+        {
+          "name": "ConfirmMethod",
+          "signature": "func() (*mcp.Method[Publication, struct{}], error)"
         },
         {
           "name": "Contract",
@@ -4790,15 +5712,42 @@
           "signature": "func() (*mcp.Method[struct{}, Conversation], error)"
         },
         {
+          "name": "DiscoverMethod",
+          "signature": "func() (*mcp.Method[Candidates, Catalog], error)"
+        },
+        {
           "name": "MineMethod",
           "signature": "func() (*mcp.Method[Run, MineResult], error)"
         },
         {
+          "name": "ProposeMethod",
+          "signature": "func() (*mcp.Method[Draft, ReviewRef], error)"
+        },
+        {
+          "name": "QueueMethod",
+          "signature": "func() (*mcp.Method[Libraries, Queue], error)"
+        },
+        {
           "name": "ReadSkillMethod",
           "signature": "func() (*mcp.Method[ReadSkill, ReadResult], error)"
+        },
+        {
+          "name": "RejectMethod",
+          "signature": "func() (*mcp.Method[ReviewRef, struct{}], error)"
         }
       ],
       "types": [
+        {
+          "name": "Admission",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Accepted",
+              "type": "bool",
+              "tag": "json:\"accepted\""
+            }
+          ]
+        },
         {
           "name": "ArchiveAdvice",
           "kind": "struct",
@@ -4828,6 +5777,70 @@
           ]
         },
         {
+          "name": "Candidate",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Source",
+              "type": "string",
+              "tag": "json:\"source\""
+            },
+            {
+              "name": "Scope",
+              "type": "skill.Scope",
+              "tag": "json:\"scope\""
+            }
+          ]
+        },
+        {
+          "name": "Candidates",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Library",
+              "type": "string",
+              "tag": "json:\"library\""
+            },
+            {
+              "name": "Items",
+              "type": "[]Candidate",
+              "tag": "json:\"items\""
+            }
+          ]
+        },
+        {
+          "name": "Catalog",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Entries",
+              "type": "[]Choice",
+              "tag": "json:\"entries\""
+            }
+          ]
+        },
+        {
+          "name": "Choice",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Source",
+              "type": "string",
+              "tag": "json:\"source\""
+            }
+          ]
+        },
+        {
           "name": "Conversation",
           "kind": "struct",
           "fields": [
@@ -4844,6 +5857,63 @@
           ]
         },
         {
+          "name": "Draft",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Library",
+              "type": "string",
+              "tag": "json:\"library\""
+            },
+            {
+              "name": "Scope",
+              "type": "skill.Scope",
+              "tag": "json:\"scope\""
+            },
+            {
+              "name": "Skill",
+              "type": "Skill",
+              "tag": "json:\"skill\""
+            },
+            {
+              "name": "Origin",
+              "type": "skill.ProposalOrigin",
+              "tag": "json:\"origin\""
+            },
+            {
+              "name": "SourceSession",
+              "type": "string",
+              "tag": "json:\"sourceSession\""
+            },
+            {
+              "name": "Revises",
+              "type": "bool",
+              "tag": "json:\"revises\""
+            },
+            {
+              "name": "Previous",
+              "type": "string",
+              "tag": "json:\"previous\""
+            }
+          ]
+        },
+        {
+          "name": "Libraries",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"project\""
+            },
+            {
+              "name": "User",
+              "type": "string",
+              "tag": "json:\"user\""
+            }
+          ]
+        },
+        {
           "name": "MineResult",
           "kind": "struct",
           "fields": [
@@ -4855,9 +5925,25 @@
           ]
         },
         {
+          "name": "Permit",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Decision",
+              "type": "string",
+              "tag": "json:\"decision\""
+            }
+          ]
+        },
+        {
           "name": "Proposal",
           "kind": "struct",
           "fields": [
+            {
+              "name": "Previous",
+              "type": "string",
+              "tag": "json:\"previous,omitzero\""
+            },
             {
               "name": "Skill",
               "type": "Skill",
@@ -4868,12 +5954,55 @@
               "type": "bool",
               "tag": "json:\"revises\""
             }
+          ],
+          "methods": [
+            {
+              "name": "Draft",
+              "signature": "func(run Run) Draft"
+            }
+          ]
+        },
+        {
+          "name": "Publication",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Proposal",
+              "type": "ReviewRef",
+              "tag": "json:\"proposal\""
+            },
+            {
+              "name": "Permit",
+              "type": "Permit",
+              "tag": "json:\"permit\""
+            },
+            {
+              "name": "Published",
+              "type": "bool",
+              "tag": "json:\"published\""
+            }
+          ]
+        },
+        {
+          "name": "Queue",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Proposals",
+              "type": "[]ReviewRef",
+              "tag": "json:\"proposals\""
+            }
           ]
         },
         {
           "name": "ReadResult",
           "kind": "struct",
           "fields": [
+            {
+              "name": "Revision",
+              "type": "string",
+              "tag": "json:\"revision,omitzero\""
+            },
             {
               "name": "Skill",
               "type": "*Skill",
@@ -4893,9 +6022,25 @@
           ]
         },
         {
+          "name": "ReviewRef",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Command",
+              "type": "string",
+              "tag": "json:\"command\""
+            }
+          ]
+        },
+        {
           "name": "Run",
           "kind": "struct",
           "fields": [
+            {
+              "name": "Library",
+              "type": "string",
+              "tag": "json:\"library\""
+            },
             {
               "name": "SessionID",
               "type": "string",
@@ -5747,6 +6892,11 @@
           "value": "\"succeeded\""
         },
         {
+          "name": "MCPAuthorizationAttemptUnconfirmed",
+          "type": "MCPAuthorizationAttemptStatusType",
+          "value": "\"unconfirmed\""
+        },
+        {
           "name": "MCPHandshakeBounded",
           "type": "MCPHandshakeTimeoutType",
           "value": "\"bounded\""
@@ -6589,7 +7739,7 @@
         {
           "name": "SessionTrajectoryVersion",
           "type": "untyped int",
-          "value": "3"
+          "value": "4"
         },
         {
           "name": "SkillLifecycleActive",
@@ -8275,42 +9425,6 @@
           ]
         },
         {
-          "name": "FeedbackEntry",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "SessionID",
-              "type": "string",
-              "tag": "json:\"sessionId,omitempty\""
-            },
-            {
-              "name": "RunID",
-              "type": "string",
-              "tag": "json:\"runId,omitempty\""
-            },
-            {
-              "name": "ItemID",
-              "type": "string",
-              "tag": "json:\"itemId,omitempty\""
-            },
-            {
-              "name": "Rating",
-              "type": "FeedbackRating",
-              "tag": "json:\"rating,omitempty\""
-            },
-            {
-              "name": "Text",
-              "type": "string",
-              "tag": "json:\"text,omitempty\""
-            },
-            {
-              "name": "CreatedAt",
-              "type": "time.Time",
-              "tag": "json:\"createdAt\""
-            }
-          ]
-        },
-        {
           "name": "FeedbackRating",
           "kind": "defined",
           "underlying": "string"
@@ -8319,6 +9433,11 @@
           "name": "FeedbackRequest",
           "kind": "struct",
           "fields": [
+            {
+              "name": "Source",
+              "type": "*extension.ContributionSource",
+              "tag": "json:\"source,omitempty\""
+            },
             {
               "name": "SessionID",
               "type": "string",
@@ -8643,6 +9762,11 @@
           "name": "Goal",
           "kind": "struct",
           "fields": [
+            {
+              "name": "Author",
+              "type": "*extension.ContributionSource",
+              "tag": "json:\"author,omitzero\""
+            },
             {
               "name": "SessionID",
               "type": "string",
@@ -13152,6 +14276,47 @@
           ]
         },
         {
+          "name": "SessionAnnotation",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "CommandID",
+              "type": "string",
+              "tag": "json:\"commandId\""
+            },
+            {
+              "name": "Source",
+              "type": "extension.AnnotationSource",
+              "tag": "json:\"source\""
+            },
+            {
+              "name": "Content",
+              "type": "jsontext.Value",
+              "tag": "json:\"content\""
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"sessionId,omitempty\""
+            },
+            {
+              "name": "RunID",
+              "type": "string",
+              "tag": "json:\"runId,omitempty\""
+            },
+            {
+              "name": "ItemID",
+              "type": "string",
+              "tag": "json:\"itemId,omitempty\""
+            },
+            {
+              "name": "CreatedAt",
+              "type": "time.Time",
+              "tag": "json:\"createdAt\""
+            }
+          ]
+        },
+        {
           "name": "SessionArtifact",
           "kind": "struct",
           "fields": [
@@ -13188,7 +14353,12 @@
             {
               "name": "Plan",
               "type": "[]PlanStep",
-              "tag": "json:\"plan,omitempty\""
+              "tag": "json:\"plan,omitzero\""
+            },
+            {
+              "name": "PlanSource",
+              "type": "*extension.ContributionSource",
+              "tag": "json:\"planSource,omitzero\""
             }
           ]
         },
@@ -13298,9 +14468,9 @@
               "tag": "json:\"toolAttempts\""
             },
             {
-              "name": "Feedback",
-              "type": "[]FeedbackEntry",
-              "tag": "json:\"feedback\""
+              "name": "Annotations",
+              "type": "[]SessionAnnotation",
+              "tag": "json:\"annotations\""
             },
             {
               "name": "Limitations",
@@ -14735,6 +15905,43 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/runoutcome",
+      "constants": [
+        {
+          "name": "Canceled",
+          "type": "Kind",
+          "value": "\"canceled\""
+        },
+        {
+          "name": "Completed",
+          "type": "Kind",
+          "value": "\"completed\""
+        },
+        {
+          "name": "Failed",
+          "type": "Kind",
+          "value": "\"failed\""
+        },
+        {
+          "name": "Lost",
+          "type": "Kind",
+          "value": "\"lost\""
+        },
+        {
+          "name": "TimedOut",
+          "type": "Kind",
+          "value": "\"timedOut\""
+        }
+      ],
+      "types": [
+        {
+          "name": "Kind",
+          "kind": "defined",
+          "underlying": "string"
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/packages/go-sdk/sandbox",
       "imports": [
         "context",
@@ -14835,6 +16042,53 @@
               "signature": "func() error"
             }
           ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/skill",
+      "constants": [
+        {
+          "name": "Installation",
+          "type": "Scope",
+          "value": "\"installation\""
+        },
+        {
+          "name": "MaxPendingProposalsPerScope",
+          "type": "untyped int",
+          "value": "128"
+        },
+        {
+          "name": "Mined",
+          "type": "ProposalOrigin",
+          "value": "\"mined\""
+        },
+        {
+          "name": "Project",
+          "type": "Scope",
+          "value": "\"project\""
+        },
+        {
+          "name": "Requested",
+          "type": "ProposalOrigin",
+          "value": "\"requested\""
+        },
+        {
+          "name": "User",
+          "type": "Scope",
+          "value": "\"user\""
+        }
+      ],
+      "types": [
+        {
+          "name": "ProposalOrigin",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "Scope",
+          "kind": "defined",
+          "underlying": "string"
         }
       ]
     },

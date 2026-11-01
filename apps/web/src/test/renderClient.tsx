@@ -1,8 +1,6 @@
 import { createImageExport } from "@/foundation/imageExport";
 import { createGoals } from "@/features/goal/application/goals";
 import { GoalProvider } from "@/features/goal/public/goals";
-import { MessageFeedbackOwner } from "@/features/chat/message-actions/application/feedback";
-import { MessageFeedbackProvider } from "@/features/chat/message-actions/public/feedback";
 import { ApplicationCalloutLabels } from "@/app/calloutLabels";
 import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { type createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
@@ -50,7 +48,6 @@ export function createTestClient(
   } = {},
 ) {
   const theme = createTheme(document, window);
-  const feedback = new MessageFeedbackOwner(null);
   const navigation = createMemoryNavigator();
   const projection = createRuntimeConnectionProjection();
   const replacements = new Set<() => void>();
@@ -133,36 +130,34 @@ export function createTestClient(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <MessageFeedbackProvider value={feedback}>
-          <GoalProvider value={goals.access}>
-            <ApplicationCalloutLabels>
-              <ThemeProvider value={theme.access}>
-                <RuntimeProvider value={runtime}>
-                  <agent.Provider>
-                    <ComposerProvider value={composer.access}>
-                      <WorkspaceProvider value={workspace.access}>
-                        <WorkingDirectoryProvider value={directory.access}>
-                          <ImageSaveProvider
-                            saveImage={
-                              options.saveImage ??
-                              createImageExport(IMAGE_FILENAME_STEM, host.saveFile)
-                            }
-                          >
-                            <NotificationProvider value={notifications.access}>
-                              <InstalledPluginsProvider value={installedPlugins.access}>
-                                {children}
-                              </InstalledPluginsProvider>
-                            </NotificationProvider>
-                          </ImageSaveProvider>
-                        </WorkingDirectoryProvider>
-                      </WorkspaceProvider>
-                    </ComposerProvider>
-                  </agent.Provider>
-                </RuntimeProvider>
-              </ThemeProvider>
-            </ApplicationCalloutLabels>
-          </GoalProvider>
-        </MessageFeedbackProvider>
+        <GoalProvider value={goals.access}>
+          <ApplicationCalloutLabels>
+            <ThemeProvider value={theme.access}>
+              <RuntimeProvider value={runtime}>
+                <agent.Provider>
+                  <ComposerProvider value={composer.access}>
+                    <WorkspaceProvider value={workspace.access}>
+                      <WorkingDirectoryProvider value={directory.access}>
+                        <ImageSaveProvider
+                          saveImage={
+                            options.saveImage ??
+                            createImageExport(IMAGE_FILENAME_STEM, host.saveFile)
+                          }
+                        >
+                          <NotificationProvider value={notifications.access}>
+                            <InstalledPluginsProvider value={installedPlugins.access}>
+                              {children}
+                            </InstalledPluginsProvider>
+                          </NotificationProvider>
+                        </ImageSaveProvider>
+                      </WorkingDirectoryProvider>
+                    </WorkspaceProvider>
+                  </ComposerProvider>
+                </agent.Provider>
+              </RuntimeProvider>
+            </ThemeProvider>
+          </ApplicationCalloutLabels>
+        </GoalProvider>
       </QueryClientProvider>
     );
   }
@@ -178,7 +173,6 @@ export function createTestClient(
   return {
     theme,
     goals,
-    feedback,
     navigation,
     runtime,
     projection,
@@ -214,7 +208,6 @@ export function createTestClient(
     },
     async dispose() {
       goals.dispose();
-      feedback.dispose();
       notifications.dispose();
       theme.dispose();
       composer.dispose();

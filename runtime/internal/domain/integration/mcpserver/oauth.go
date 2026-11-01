@@ -35,7 +35,7 @@ func (o OAuthTarget) Fingerprint() integrity.Digest {
 	if installed {
 		return identity.DigestStrings(append(fields, o.Source.recipient.String())...)
 	}
-	fields = append(fields, o.URL)
+	fields = append(fields, o.Source.connector.String(), o.URL)
 	for _, name := range slices.Sorted(maps.Keys(o.Headers)) {
 		fields = append(fields, name, o.Headers[name])
 	}

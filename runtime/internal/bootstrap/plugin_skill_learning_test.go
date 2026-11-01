@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -94,6 +95,22 @@ func TestCompletedRunsUseSelectedSkillLearningAndHumanPublication(t *testing.T) 
 		t.Fatalf("unapproved skill was published: %v", err)
 	}
 	proposal := proposals[0]
+	mine, err := skilllearning.MineMethod()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original, found, err := cfg.stores.PluginCommands.Get(t.Context(), proposal.Revision)
+	if err != nil || !found || original.Snapshot().Method != mine.Name() || original.Snapshot().Provider.InstallationID.String() != installed.ID {
+		t.Fatalf("mined review not bound directly to its mining command: %+v %v", original, err)
+	}
+
+	r.must(delivery.Name("sessions.fork"), protocol.ForkSessionRequest{SessionID: session.ID, Title: "Fork holding the same review"}, "fork-review")
+	r = reopenPluginRuntime(t, r, &cfg)
+	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
+	again := r.must(delivery.SkillsProposalsList, protocol.WorkspaceQuery{Workspace: target}, "").(*protocol.Page[protocol.SkillProposal]).Data
+	if len(again) != 1 || again[0] != proposal {
+		t.Fatalf("fork/restart changed original proposal: %+v", again)
+	}
 	r.must(delivery.SkillsProposalsApprove, protocol.SkillProposalRef{Workspace: target, Name: proposal.Name, Revision: proposal.Revision, Scope: proposal.Scope}, "approve-learning")
 	content, err := os.ReadFile(path)
 	if err != nil || !strings.Contains(string(content), "Run go test ./...") {

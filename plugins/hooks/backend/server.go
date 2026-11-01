@@ -7,6 +7,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
 	"slices"
 	"time"
 
@@ -23,15 +24,15 @@ func newServer(db *sql.DB) (*sdk.Server, error) {
 	if db == nil {
 		return nil, errors.New("hooks: private command store is required")
 	}
-	contract, err := hookprovider.Contract()
+	contract, err := hookmcp.Contract()
 	if err != nil {
 		return nil, err
 	}
-	read, err := hookprovider.DiscoverMethod()
+	read, err := hookmcp.DiscoverMethod()
 	if err != nil {
 		return nil, err
 	}
-	execute, err := hookprovider.EvaluateMethod()
+	execute, err := hookmcp.EvaluateMethod()
 	if err != nil {
 		return nil, err
 	}

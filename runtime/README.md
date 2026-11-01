@@ -1037,8 +1037,9 @@ verification requirements. The default suite is offline. Module rules live in
 The source map follows responsibility within each ring: Run execution and input
 translation live in `internal/adapter/run`, model translation in
 `internal/adapter/integration/model`, and Hook management in
-`internal/application/integration/hooks`. Feedback has its own Domain value and
-Application recorder because its lifetime is independent of Session cleanup.
+`internal/application/integration/hooks`. Feedback decisions come from the selected provider. The annotation ledger records
+the accepted bytes with their original installation, release, contribution and
+command identity. These observations may outlive their referenced Session.
 The architecture gate rejects unclassified production packages and imports.
 
 Lifecycle Hook configuration requires an explicit `hooks` array in every non-empty
@@ -1170,7 +1171,7 @@ Title generation is nested under `run segment maintenance`, with `run.id`, `gen_
 document with `schemaVersion` (`protocol.SessionTrajectoryVersion`) and a collection timestamp. It includes the Session,
 all root and child Runs, Items, retained conversation messages, offloaded Tool bodies,
 current Plan, logical model attempts, Session-associated physical model endpoints,
-Tool attempts, and matching user feedback. Child evidence
+Tool attempts, and matching source-attributed annotations. Child evidence
 requires negotiated `childRuns`; the export never silently omits it. The existing
 `sessions.export` / `sessions.import` portable artifact keeps its own version and
 separate import contract.
@@ -1570,22 +1571,9 @@ An unset utility role uses the Runtime composition's default model selection. It
 
 ## Automatic Skill learning
 
-The selected `flame.skill-learning.v1` provider runs after successful root Run
-completion. The first-party `flame.skills` backend owns mining prompts, the
-per-session complex-Run cadence, revision generation and archive-check timing.
-Runtime grants one committed-history read, one admitted current user-Skill read,
-and at most two bounded utility-model calls for each mining attempt. A revision
-must name the source actually read through that grant. Cancellation and plugin
-retirement revoke and join these callbacks.
+The selected `flame.skill-learning.v2` provider owns learning cadence, mining prompts, source precedence, proposal slots and human review decisions. Runtime grants access to one committed conversation, an admitted current Skill and the configured utility model. A revision binds the exact bytes supplied by that read.
 
-The backend returns advice and retains immutable command receipts. It has no
-proposal library and cannot publish an active Skill. Runtime validates and submits
-mined proposals with forced user scope and source-Session provenance; the existing
-human approval command remains the publication boundary. Archive advice enters
-the existing library lease, provenance and usage checks. Mining failure does not
-skip archive advice or Memory maintenance. Disabling the selected provider stops
-new learning while discovery, proposal review and library operations remain
-available. See [`../plugins/skills/README.md`](../plugins/skills/README.md).
+A proposal revision identifies its original provider command. Explicit review resolves that retained command and its original release. The host checks the authorized target and file preimage, records the physical effect in the private runtime data directory, and acknowledges the original decision. Forks and restarts preserve the source Session and review identity. Revoking the original release prevents further publication from its queue. Existing active and archived documents remain in their authored libraries. The provider independently advises on archival using the host's usage observations. See [the Skills package](../plugins/skills/README.md).
 
 ## Discovered Skill inspection
 

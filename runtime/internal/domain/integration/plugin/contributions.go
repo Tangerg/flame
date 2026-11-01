@@ -48,10 +48,10 @@ type Requirement struct {
 	Optional bool
 }
 
-func (v Contribution) clone() Contribution {
-	v.ModelProviders = slices.Clone(v.ModelProviders)
-	v.Requires = slices.Clone(v.Requires)
-	return v
+func (c Contribution) clone() Contribution {
+	c.ModelProviders = slices.Clone(c.ModelProviders)
+	c.Requires = slices.Clone(c.Requires)
+	return c
 }
 
 func (b *Builder) AdmitContribution(value Contribution) error {

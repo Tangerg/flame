@@ -47,13 +47,13 @@ func repositoryLayer(path string) (string, bool) {
 
 func sdkLayer(path string) string {
 	switch path {
-	case "exactint", "identity", "instant", "extension", "model", "hook", "httporigin", "question", "builtin", "plugin/process":
+	case "skill", "plugin/hookprovider", "runoutcome", "goalworkflow", "planworkflow", "mcpconnector", "exactint", "identity", "instant", "extension", "model", "hook", "httporigin", "question", "builtin", "plugin/process":
 		return ringValue
 	case "pagination", "capture":
 		return ringMechanism
 	case "protocol":
 		return ringProtocol
-	case "plugin", "plugin/memory", "plugin/codeintel", "plugin/skilllearning", "plugin/modelprovider", "plugin/hookprovider", "plugin/sqlite", "filesystem", "model/catalog", "sandbox", "httpresponse", "procgroup", "client":
+	case "plugin/goalworkflow/mcp", "plugin/planworkflow/mcp", "plugin/mcpconnector/mcp", "plugin", "plugin/memory", "plugin/codeintel", "plugin/skilllearning", "plugin/modelprovider", "plugin/hookprovider/mcp", "plugin/sqlite", "filesystem", "model/catalog", "sandbox", "httpresponse", "procgroup", "client":
 		return ringInfra
 	case "cmd/flame-sdk":
 		return ringGenerator

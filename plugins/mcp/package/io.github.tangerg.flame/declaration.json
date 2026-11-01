@@ -19,5 +19,13 @@
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "MCPServers"
     }
+  ],
+  "contributions": [
+    {
+      "id": "external-servers",
+      "server": "connector",
+      "export": "external-servers",
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+    }
   ]
 }

@@ -473,22 +473,20 @@ func currentSchema() []string {
 		// (env/headers) are JSON. A nullable positive handshake timeout is
 		// nanoseconds (NULL means unbounded). transport is "stdio" |
 		// "streamableHttp".
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS mcp_servers (
-			source_id          INTEGER PRIMARY KEY,
-			origin             TEXT    NOT NULL DEFAULT '%[1]s' CHECK (origin = '%[1]s'),
-			transport          TEXT    NOT NULL,
-			enabled            INTEGER NOT NULL DEFAULT 1,
-			description        TEXT    NOT NULL DEFAULT '',
-			url                TEXT    NOT NULL DEFAULT '',
-			authorization      TEXT    NOT NULL DEFAULT '',
-			headers            TEXT    NOT NULL DEFAULT '',
-			command            TEXT    NOT NULL DEFAULT '',
-			args               TEXT    NOT NULL DEFAULT '',
-			env                TEXT    NOT NULL DEFAULT '',
-			dir                TEXT    NOT NULL DEFAULT '',
-			timeout            INTEGER CHECK (timeout IS NULL OR timeout > 0),
-			FOREIGN KEY (source_id, origin) REFERENCES mcp_sources(id, origin) ON DELETE CASCADE
-		)`, mcpserver.OriginUser),
+		`CREATE TABLE IF NOT EXISTS mcp_launch_grants (
+			grant_id TEXT PRIMARY KEY,
+			connector TEXT NOT NULL,
+			source_id INTEGER NOT NULL REFERENCES mcp_sources(id) ON DELETE CASCADE,
+			material BLOB NOT NULL,
+			UNIQUE(connector,source_id,material)
+		)`,
+		`CREATE TRIGGER IF NOT EXISTS revoke_uninstalled_mcp_connector
+			AFTER DELETE ON plugin_installations
+			BEGIN DELETE FROM mcp_launch_grants WHERE connector=OLD.id; END`,
+		fmt.Sprintf(`CREATE TRIGGER IF NOT EXISTS retire_ungranted_mcp_source
+			AFTER DELETE ON mcp_launch_grants
+			WHEN NOT EXISTS (SELECT 1 FROM mcp_launch_grants WHERE source_id=OLD.source_id)
+			BEGIN DELETE FROM mcp_sources WHERE id=OLD.source_id AND origin='%s'; END`, mcpserver.OriginUser),
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS mcp_tool_exposure (
             source_id INTEGER NOT NULL REFERENCES mcp_sources(id) ON DELETE CASCADE,
             tool_name TEXT NOT NULL CHECK (
@@ -513,12 +511,16 @@ func currentSchema() []string {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_messages_conversation
 			ON messages(conversation_id, seq)`,
-		// A Plan is one complete ordered value per session. revision is assigned by
-		// the replacement, not a clock, so clients can reject a late older snapshot.
+		// Repeated snapshots and Run boundaries refer to the same immutable authored content.
+		`CREATE TABLE IF NOT EXISTS plan_documents (
+			digest TEXT PRIMARY KEY NOT NULL,
+			steps TEXT NOT NULL
+		)`,
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS session_plans (
-			session_id TEXT    PRIMARY KEY,
-			steps      TEXT    NOT NULL,
-			revision   INTEGER NOT NULL CHECK (revision BETWEEN %d AND %d),
+			session_id TEXT PRIMARY KEY,
+			document TEXT NOT NULL REFERENCES plan_documents(digest),
+			source TEXT NOT NULL DEFAULT '{}',
+			revision INTEGER NOT NULL CHECK (revision BETWEEN %d AND %d),
 			updated_at INTEGER NOT NULL
 		)`, firstExactInteger, exactint.Maximum),
 		// A row means the session is in Plan mode; leaving Plan mode returns it to
@@ -528,23 +530,18 @@ func currentSchema() []string {
 		`CREATE TABLE IF NOT EXISTS session_plan_modes (
 			session_id TEXT PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE
 		)`,
-		// One row per terminal Run: the session's Plan as it stood when that Run
-		// ended. session_plans is a latest-value projection with no history, so without
-		// this row "the Plan at Run X" is unknowable — rollback and fork both
-		// restore or copy a Run boundary. It is the state half of what
-		// runs.message_mark is for the conversation, written by the same terminal
-		// transition.
-		//
-		// The FK cascade IS the lifecycle: a Run dropped by a rollback or replaced by
-		// an import takes its boundary with it, so no write-set has to remember to.
-		// A MISSING row is not an empty list — it is "this moment was never captured",
-		// which is the honest state of an imported Run (the portable Artifact carries
-		// the live value only). Readers leave the live list alone rather than guessing
-		// at empty, the same way an unknown message watermark leaves the log alone.
+		// A missing row has unknown history. A captured NULL is an unwritten Plan at a known boundary.
 		`CREATE TABLE IF NOT EXISTS plan_boundaries (
 			run_id TEXT PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE,
-			steps  TEXT NOT NULL
+			document TEXT REFERENCES plan_documents(digest),
+			source TEXT NOT NULL DEFAULT '{}'
 		)`,
+		`CREATE TABLE IF NOT EXISTS goal_run_receipts (
+			run_id TEXT PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE,
+			expected_revision INTEGER NOT NULL CHECK(expected_revision>0),
+			consumed INTEGER NOT NULL DEFAULT 0 CHECK(consumed IN (0,1))
+		)`,
+		`CREATE INDEX IF NOT EXISTS pending_goal_run_receipts ON goal_run_receipts(run_id) WHERE consumed=0`,
 		// One autonomous goal per session (Goal mode). The FK is the durable
 		// ownership invariant: a Goal cannot survive or be created after its
 		// Session. Its usage is not stored: it is folded from the incarnation's
@@ -559,6 +556,7 @@ func currentSchema() []string {
 			model      TEXT    NOT NULL DEFAULT '',
 			reasoning_effort TEXT NOT NULL DEFAULT '',
 			capabilities TEXT  NOT NULL DEFAULT '' CHECK (capabilities = '' OR json_valid(capabilities)),
+			author TEXT NOT NULL DEFAULT '{}',
 			incarnation_id   TEXT    NOT NULL CHECK (incarnation_id <> ''),
 			revision   INTEGER NOT NULL CHECK (revision > 0),
 			created_at INTEGER NOT NULL,
@@ -621,10 +619,10 @@ func currentSchema() []string {
 					AND payload IS NULL AND expires_at IS NULL
 					AND operation IS NOT NULL AND session_id IS NOT NULL AND run_id IS NOT NULL
 					AND segment_id IS NOT NULL AND user_item_id IS NOT NULL
-					AND ((operation IN ('%[4]s','%[5]s') AND steer_input IS NULL)
+					AND ((operation IN ('%[4]s','%[5]s','%[7]s') AND steer_input IS NULL)
 						OR (operation = '%[6]s' AND steer_input IS NOT NULL)))
 			)
-		)`, idempotencyPendingResponse, idempotencyResponse, idempotencyRunAcceptance, runs.CommandStartOpening, runs.CommandResumeOpening, runs.CommandSteerInput),
+		)`, idempotencyPendingResponse, idempotencyResponse, idempotencyRunAcceptance, runs.CommandStartOpening, runs.CommandResumeOpening, runs.CommandSteerInput, runs.CommandGoalRoundOpening),
 		`CREATE INDEX IF NOT EXISTS idx_idempotency_records_expires_at
 			ON idempotency_records(expires_at) WHERE expires_at IS NOT NULL`,
 		// Optional agent-memory embedding role. Single row, pinned by CHECK(id =
@@ -672,13 +670,11 @@ func currentSchema() []string {
 		// Append-only quality signals submitted through feedback.create. They are
 		// deliberately not foreign-keyed: a user may report a general issue or
 		// submit feedback after the referenced runtime records are cleaned up.
-		`CREATE TABLE IF NOT EXISTS feedback_entries (
-			id         INTEGER PRIMARY KEY AUTOINCREMENT,
-			session_id TEXT    NOT NULL DEFAULT '',
-			run_id     TEXT    NOT NULL DEFAULT '',
-			item_id    TEXT    NOT NULL DEFAULT '',
-			rating     TEXT    NOT NULL DEFAULT '',
-			text       TEXT    NOT NULL DEFAULT '',
+		`CREATE TABLE IF NOT EXISTS session_annotations (
+			command_id TEXT PRIMARY KEY NOT NULL,
+			installation TEXT NOT NULL, release TEXT NOT NULL, contribution TEXT NOT NULL, contract TEXT NOT NULL,
+			session_id TEXT NOT NULL, run_id TEXT NOT NULL, item_id TEXT NOT NULL,
+			content TEXT NOT NULL CHECK(json_valid(content)),
 			created_at_ns INTEGER NOT NULL
 		)`,
 	}

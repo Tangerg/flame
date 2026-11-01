@@ -33,7 +33,3 @@ export function canRegenerateMessage(
     conversation.some(({ id, runId }) => id === message.id && runId === message.runId)
   );
 }
-
-export function canRateMessage(message: Message): boolean {
-  return message.role === "assistant";
-}

@@ -41,7 +41,7 @@ func (m *modeStore) StartPlanMode(_ context.Context, sessionID string) (bool, er
 	return changed, nil
 }
 
-func (m *modeStore) EndPlanMode(_ context.Context, sessionID string) (bool, error) {
+func (m *modeStore) EndPlanMode(_ context.Context, sessionID string, _ uint64) (bool, error) {
 	changed := m.planning[sessionID]
 	delete(m.planning, sessionID)
 	return changed, nil
@@ -49,6 +49,9 @@ func (m *modeStore) EndPlanMode(_ context.Context, sessionID string) (bool, erro
 
 type planReader struct{ steps []plandomain.Step }
 
+func (p planReader) Review(_ context.Context, state plandomain.State) (string, error) {
+	return state.Steps()[0].Description, nil
+}
 func (p planReader) State(context.Context, string) (plandomain.Current, error) {
 	if len(p.steps) == 0 {
 		return plandomain.Current{}, nil
@@ -113,10 +116,10 @@ func TestExitRequiresSessionAndPlanMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := callTextTool(t.Context(), tool, `{}`); err == nil || !strings.Contains(err.Error(), "no active session") {
+	if _, err := callTextTool(t.Context(), tool, `{"revision":1}`); err == nil || !strings.Contains(err.Error(), "no active session") {
 		t.Fatalf("missing-session error = %v", err)
 	}
-	if _, err := callTextTool(planContext(t, "session-1"), tool, `{}`); err == nil || !strings.Contains(err.Error(), "not in Plan mode") {
+	if _, err := callTextTool(planContext(t, "session-1"), tool, `{"revision":1}`); err == nil || !strings.Contains(err.Error(), "not in Plan mode") {
 		t.Fatalf("non-Plan error = %v", err)
 	}
 }
@@ -130,7 +133,7 @@ func TestExitRejectsEmptyCanonicalPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := callTextTool(planContext(t, "session-1"), tool, `{}`); err == nil || !strings.Contains(err.Error(), "current Plan is empty") {
+	if _, err := callTextTool(planContext(t, "session-1"), tool, `{"revision":1}`); err == nil || !strings.Contains(err.Error(), "current Plan is empty") {
 		t.Fatalf("empty Plan error = %v", err)
 	}
 }
@@ -151,7 +154,7 @@ func TestRejectionKeepsPlanMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := callTextTool(planContext(t, sessionID), tool, `{}`)
+	result, err := callTextTool(planContext(t, sessionID), tool, `{"revision":1}`)
 	if err != nil || !strings.Contains(result, "remains in Plan mode") {
 		t.Fatalf("Call = %q, %v", result, err)
 	}
@@ -170,7 +173,7 @@ func TestApprovalReturnsTheSessionToTheCurrentDefault(t *testing.T) {
 		t.Fatal(err)
 	}
 	interrupt := func(_ context.Context, _ toolcontract.Invocation, pending runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
-		if got := pending.(runs.QuestionPrompt).Arguments; got != `{}` {
+		if got := pending.(runs.QuestionPrompt).Arguments; got != `{"revision":1}` {
 			t.Fatalf("interrupt arguments = %q", got)
 		}
 		return testsupport.QuestionAnswer(t, [][]string{{approveLabel}}), nil, nil
@@ -179,7 +182,7 @@ func TestApprovalReturnsTheSessionToTheCurrentDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := callTextTool(planContext(t, sessionID), tool, `{}`)
+	result, err := callTextTool(planContext(t, sessionID), tool, `{"revision":1}`)
 	if err != nil || !strings.Contains(result, "default permission mode yolo") {
 		t.Fatalf("Call = %q, %v", result, err)
 	}
