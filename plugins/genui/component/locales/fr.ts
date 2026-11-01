@@ -19,6 +19,7 @@ export const fr: Record<string, string> = {
   "validation.maximum": "Saisissez une valeur inférieure ou égale à {{limit}}.",
   "table.empty": "Aucune ligne à afficher.",
   "table.search": "Rechercher dans {{table}}",
+  "table.clearSearch": "Effacer la recherche",
   "table.selection": "Sélection",
   "table.sort": "Trier par {{column}}",
   "table.select": "Sélectionner {{row}}",

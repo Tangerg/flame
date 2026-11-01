@@ -19,6 +19,7 @@ export const es: Record<string, string> = {
   "validation.maximum": "Introduce un valor no superior a {{limit}}.",
   "table.empty": "No hay filas para mostrar.",
   "table.search": "Buscar en {{table}}",
+  "table.clearSearch": "Borrar búsqueda",
   "table.selection": "Selección",
   "table.sort": "Ordenar por {{column}}",
   "table.select": "Seleccionar {{row}}",

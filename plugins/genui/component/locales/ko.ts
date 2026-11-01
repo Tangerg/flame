@@ -19,6 +19,7 @@ export const ko: Record<string, string> = {
   "validation.maximum": "{{limit}} 이하의 값을 입력하세요.",
   "table.empty": "표시할 행이 없습니다.",
   "table.search": "{{table}} 검색",
+  "table.clearSearch": "검색 지우기",
   "table.selection": "선택",
   "table.sort": "{{column}} 기준 정렬",
   "table.select": "{{row}} 선택",

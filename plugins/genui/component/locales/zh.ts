@@ -19,6 +19,7 @@ export const zh: Record<string, string> = {
   "validation.maximum": "请输入不大于 {{limit}} 的值。",
   "table.empty": "没有可显示的数据行。",
   "table.search": "搜索{{table}}",
+  "table.clearSearch": "清除搜索",
   "table.selection": "选择",
   "table.sort": "按{{column}}排序",
   "table.select": "选择{{row}}",

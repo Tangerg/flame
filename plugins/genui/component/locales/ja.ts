@@ -19,6 +19,7 @@ export const ja: Record<string, string> = {
   "validation.maximum": "{{limit}} 以下の値を入力してください。",
   "table.empty": "表示する行がありません。",
   "table.search": "{{table}}を検索",
+  "table.clearSearch": "検索をクリア",
   "table.selection": "選択",
   "table.sort": "{{column}}で並べ替え",
   "table.select": "{{row}}を選択",

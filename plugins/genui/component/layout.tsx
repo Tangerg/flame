@@ -3,6 +3,7 @@ import {
   Button,
   ContentVisibility,
   Disclosure,
+  DocumentBody,
   Metadata,
   PanelSection,
   Popover,
@@ -270,9 +271,6 @@ export function PopoverView({
         align="start"
         sideOffset={8}
         style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: GAP.medium,
           padding: "calc(var(--spacing) * 4)",
           width: "min(24rem, var(--available-width))",
           maxHeight: "var(--available-height)",
@@ -280,9 +278,21 @@ export function PopoverView({
           overscrollBehavior: "contain",
         }}
       >
-        <ContentVisibility visible={open}>
-          {renderNode(props.children)}
-        </ContentVisibility>
+        {/* The portal escapes the report's DocumentBody reading grammar. */}
+        <DocumentBody>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: GAP.medium,
+              minWidth: 0,
+            }}
+          >
+            <ContentVisibility visible={open}>
+              {renderNode(props.children)}
+            </ContentVisibility>
+          </div>
+        </DocumentBody>
       </Popover.Content>
     </Popover.Root>
   );

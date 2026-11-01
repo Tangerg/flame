@@ -19,6 +19,7 @@ export const zhTW: Record<string, string> = {
   "validation.maximum": "請輸入不大於 {{limit}} 的值。",
   "table.empty": "沒有可顯示的資料列。",
   "table.search": "搜尋{{table}}",
+  "table.clearSearch": "清除搜尋",
   "table.selection": "選取",
   "table.sort": "依{{column}}排序",
   "table.select": "選取{{row}}",

@@ -619,7 +619,7 @@ it("composes controls, conditional views and repeated nodes from their declared 
   await waitFor(() => expect(screen.queryByRole("dialog", { name: "Review hint" })).toBeNull());
 });
 
-async function popoverScene() {
+function popoverGeometry() {
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
     this: HTMLElement,
   ) {
@@ -640,6 +640,10 @@ async function popoverScene() {
         : field;
     });
   }
+}
+
+async function popoverScene() {
+  popoverGeometry();
   const context = capturedContext(
     JSON.stringify(
       document(
@@ -839,6 +843,108 @@ it("dismisses a generated popover on an outside pointer without retargeting late
   expect((screen.getByRole("textbox", { name: "Review note" }) as HTMLInputElement).value).toBe(
     "Edited review note",
   );
+});
+
+const popoverTable = document(
+  [
+    {
+      id: "details",
+      type: "Popover",
+      props: { field: "open", label: "Device details" },
+      children: [
+        {
+          id: "devices",
+          type: "Table",
+          props: {
+            caption: "Devices",
+            rowKey: "id",
+            columns: [{ key: "name", label: "Name" }],
+            rows: [
+              { id: "router", name: "Router" },
+              { id: "relay", name: "Relay" },
+              { id: "switch", name: "Switch" },
+            ],
+            searchState: "search",
+            pageState: "page",
+            selectState: "selected",
+            pageSize: 1,
+          },
+        },
+      ],
+    },
+  ],
+  [
+    { id: "open", value: false },
+    { id: "search", value: "" },
+    { id: "page", value: 0 },
+    { id: "selected", value: [] },
+  ],
+);
+
+async function openPopoverTable() {
+  popoverGeometry();
+  show(popoverTable);
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "Device details" }));
+  const dialog = screen.getByRole("dialog", { name: "Device details" });
+  return {
+    dialog,
+    search: within(dialog).getByRole("searchbox", { name: "Search Devices" }) as HTMLInputElement,
+    page: () =>
+      within(within(dialog).getByRole("group", { name: "Devices pages" })).getByRole("status")
+        .textContent,
+  };
+}
+
+it("clears a popover table query with Escape before the popover dismisses", async () => {
+  const { search, page } = await openPopoverTable();
+  fireEvent.change(search, { target: { value: "no such device" } });
+  act(() => search.focus());
+
+  fireEvent.keyDown(search, { key: "Escape" });
+
+  expect(screen.getByRole("dialog", { name: "Device details" })).toBeTruthy();
+  expect(search.value).toBe("");
+  expect(window.document.activeElement).toBe(search);
+  expect(page()).toBe("1 of 3");
+
+  fireEvent.keyDown(search, { key: "Escape" });
+
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() =>
+    expect(window.document.activeElement).toBe(
+      screen.getByRole("button", { name: "Device details" }),
+    ),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Device details" }));
+  expect(
+    (screen.getByRole("searchbox", { name: "Search Devices" }) as HTMLInputElement).value,
+  ).toBe("");
+});
+
+it("clears a popover table query by pointer in its document reading grammar", async () => {
+  const original = JSON.stringify(popoverTable);
+  const { dialog, search, page } = await openPopoverTable();
+  const table = within(dialog).getByRole("table", { name: "Devices" });
+  expect(table.closest('[data-slot="document-body"]')).not.toBeNull();
+  fireEvent.change(search, { target: { value: "R" } });
+  const pagination = within(dialog).getByRole("group", { name: "Devices pages" });
+  fireEvent.click(within(pagination).getByRole("button", { name: "Next" }));
+  expect(page()).toBe("2 of 2");
+  fireEvent.click(within(table).getByLabelText("Select relay", { selector: "input" }));
+
+  fireEvent.click(within(dialog).getByRole("button", { name: "Clear search" }));
+
+  expect(screen.getByRole("dialog", { name: "Device details" })).toBe(dialog);
+  expect(search.value).toBe("");
+  expect(window.document.activeElement).toBe(search);
+  expect(page()).toBe("1 of 3");
+  expect(within(table).getByRole("cell", { name: "Router" })).toBeTruthy();
+  fireEvent.click(within(pagination).getByRole("button", { name: "Next" }));
+  expect(
+    within(table).getByRole("checkbox", { name: "Select relay" }).getAttribute("aria-checked"),
+  ).toBe("true");
+  expect(JSON.stringify(popoverTable)).toBe(original);
 });
 
 it("filters, sorts, pages and selects rows without changing the captured data", async () => {

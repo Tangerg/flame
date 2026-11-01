@@ -22,7 +22,9 @@ The 2026-11-02 resume uses the new managed worktree
 `codex/flame-ui-polish`, starting from main `8027bd713`. The current source and
 native host complete the outstanding Chinese, large-text, resize/200% and
 observer-free circular-chart reading task; see **Resumed current-host
-qualification (2026-11-02)**. The latest goal restores preferred bounded Claude
+qualification (2026-11-02)**. Captured table search recovery and portaled document
+reading are now qualified under **Table lookup and portaled reading (2026-11-02)**;
+the observed pagination-boundary focus remains the next investigation. The latest goal restores preferred bounded Claude
 Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
 describe their historical scope.
@@ -2824,6 +2826,103 @@ Verdict: **Approve for the inspected popup and file-return tasks**. The whole-pr
 UI goal remains active. Native light review also identifies the generated report's
 plain green HTML progress meter beside otherwise themed controls; its repair is
 recorded under **Generated-report progress reading** above.
+
+#### Table lookup and portaled reading (2026-11-02)
+
+At published base `52edd038b`, actual EN/light Wails reproduces two problems in a
+captured Table inside a generated Popover. A nonmatching query followed by Escape
+closes the whole popup; reopening still shows the nonmatching query. The table's
+columns also run together because the portal escapes DocumentView's DocumentBody.
+The data and native cancel affordance remain present, so these are two scoped
+MEDIUM reading/recovery findings rather than a missing-data or keyboard-access claim.
+
+`plugins/genui/component/table.tsx:40` gives search edits and explicit clearing
+one existing OpenUI query/page update path. Its shared SearchField owns the
+clear control, nonempty-query Escape and input focus; no local query, page or
+selection mirror or custom key handler is added. Eight existing locale catalogs
+name the clear action. Sorting, selected rows, captured values and unresolved
+action recovery retain their original owners.
+
+`plugins/genui/component/layout.tsx:282` wraps authored popup content in the
+existing DocumentBody. An inner flex group retains the original content gap;
+the portal, available width/height, padding, contained scrolling and visibility
+retirement keep their existing boundaries. This restores shared document table
+spacing, separation, foreground roles and prose sizing without copied table CSS
+or a generic-Popover change. Normal generation updates only GenUI's installed
+component ESM. The module README documents both contracts.
+
+The primary agent supplies the native reproduction, owner analysis and acceptance
+boundary to one bounded Claude Code CLI task. Its 48-turn result edits only the
+eleven allowed source/test/catalog paths and runs no commands. Primary review
+strengthens the reading-root assertion to the documented table styling root,
+reviews the actual diff and runs every check below; the CLI report is not the
+acceptance evidence. HeroUI's actual SearchField/ClearButton source and
+[SearchField documentation](https://heroui.com/en/docs/react/components/search-field)
+inform the input/clear grouping; Radix's layer/return references and the prior
+ZCode, ChatGPT, Arc and Ace research retain their stated scope. Flame keeps its
+own shared controls, Base UI, StyleX, Orange and semantic theme owners.
+
+| Domain        | Inspected task evidence                                                                                 | Result                                                           |
+| ------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Accessibility | Keyboard open, named search/clear, Space selection, local Escape then trigger return, visible focus     | Search recovery repaired; pagination boundary tracked separately |
+| Layout        | Original/candidate columns, compact native window, 200% popup scrolling and full-width material return  | Portaled reading grammar repaired                                |
+| Writing       | Eight-locale clear action, existing captions, empty state and literal captured values                   | Clear action has an ordinary localized name                      |
+| Typography    | Shared DocumentBody, table spacing and host 14/18px reading roles                                       | Reuses the existing prose owner                                  |
+| Colors        | Light/Orange and dark/custom-blue focus, selected checkbox and neutral popup surface                    | No palette change; numerical contrast not remeasured             |
+| UI            | Immediate query/selection changes, full-motion and motion-off scenes, pointer wheel and popup dismissal | Existing motion and layer owners retained                        |
+
+Two new real-renderer/store regressions fail against the original Table/layout
+sources (**2 failures**); candidate bytes are restored exactly. Candidate
+verification passes **3 files / 104 tests** covering GenUI presentation, charts
+and interaction control. `make check-native` passes production staging and
+Desktop test/vet/build plus the supported Wails build. Plugin types/lint, owned
+formatting, eight-locale completeness and generated-resource consistency pass.
+Web lint, locale, design-system, token, chrome, installed-module and bundle gates
+pass. Existing React act and native linker warnings are non-failing.
+
+**Pre-existing failed check:** full `@flame/plugins` `format:check` reports only
+`plugins/feedback/component/component.tsx` and `component.test.tsx`. Both files
+match the initial main `8027bd713` byte for byte and are left untouched. The
+separate owned-file format check passes; the full check is not called passing.
+
+Three private Wails generations cover original reproduction, final EN/light/14px/
+Orange/full-motion and final ZH/dark/18px/custom-blue/motion-off. The Chinese
+generation uses native half-screen placement and twenty Zoom In commands (200%).
+All generations are observer-free and use current production components, the
+built installed resource and a current production-tagged host over accepted
+captured inputs. No browser suite, benchmark, live provider/Runtime mutation,
+release acquisition/admission or Send is run.
+
+In both final scenes, the first Escape empties a nonmatching query while the
+popup and search focus remain. Empty-query Escape returns to the trigger.
+Pointer clear from the filtered final page restores page one and search focus;
+the selected alpha row remains selected. EN additionally qualifies keyboard
+sorting and retained ordered results. The Chinese popup scrolls to the complete
+rows and pager while retaining search focus. Related README reading and material
+return retain the report note, query and selected row. Continued drafts become
+`Draft before evidence lookup. Ready to continue.` and
+`数据查阅草稿。 已核对筛选与证据。`. The notes retain
+`Keep this review note and the selected evidence.` and `保留筛选与已选证据。`.
+Actual Size is restored before closing the Chinese generation.
+
+Pagination remains an observed follow-up, not a newly introduced repair claim.
+After keyboard Next reaches the last page, the disabled control leaves active
+focus on the HTML root; Shift+Tab can still reach Previous. Returning to page one
+with Previous then pressing Tab instead reaches the outer fixture sidebar.
+The page callbacks and native disabled controls are unchanged by this batch.
+Investigate the actual product pager/focus owner next before proposing any local
+handoff or replacement disabled semantics. VoiceOver, OS IME, native RTL,
+forced colors, 320px GUI and other-platform GUI remain unqualified. Approve the
+scoped filter-recovery and portaled-reading repair; whole-product and award-level
+acceptance remain open.
+
+All three native generations exit. Cleanup unregisters/removes the private
+bundle, restores all six private-profile absence baselines and removes owned
+checkout build/cache outputs plus the private assets/home. Development
+dependencies and the temporary npm toolchain stay with the active worktree;
+qualification inputs, CLI output and logs are retired after delivery. Read-only
+references, user data and unrelated primary-checkout work remain preserved.
+The publication fetch finds zero incoming main commits at `52edd038b`.
 
 ### Horizontal report tabs and reading keys
 

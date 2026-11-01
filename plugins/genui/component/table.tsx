@@ -3,7 +3,7 @@ import {
   Checkbox,
   Metadata,
   ScrollRegion,
-  TextField,
+  SearchField,
   Toolbar,
 } from "@flame/ui";
 import type { Translate } from "@flame/component-sdk";
@@ -37,6 +37,10 @@ export function TableView({
     ? (fieldValue(props.selectState) as string[])
     : [];
   const set = update;
+  const search = (value: string) => {
+    set(props.searchState!, value);
+    if (props.pageState) set(props.pageState, 0);
+  };
   const divider = sort.lastIndexOf(":");
   const sortKey = divider < 0 ? undefined : sort.slice(0, divider);
   const descending = sort.slice(divider + 1) === "desc";
@@ -69,15 +73,13 @@ export function TableView({
   return (
     <div style={{ minWidth: 0 }}>
       {props.searchState && (
-        <TextField
-          type="search"
+        <SearchField
           aria-label={t("table.search", { table: props.caption })}
           placeholder={t("table.search", { table: props.caption })}
           value={query}
-          onChange={(event) => {
-            set(props.searchState!, event.currentTarget.value);
-            if (props.pageState) set(props.pageState, 0);
-          }}
+          onChange={(event) => search(event.currentTarget.value)}
+          onClear={() => search("")}
+          clearLabel={t("table.clearSearch")}
         />
       )}
       <ScrollRegion label={props.caption}>

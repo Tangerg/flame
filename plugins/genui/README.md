@@ -68,6 +68,11 @@ use Base UI's existing layer boundary. The declared open field and all drafts
 remain in the OpenUI store. Closing removes popup content through the primitive's
 ordinary lifetime; hidden views retire open descendants without reopening over
 later authoring. Available-height scrolling keeps larger popup content reachable.
+Authored popup content re-enters the shared DocumentBody reading grammar after
+the portal, retaining ordinary table columns, spacing and document typography.
+Table filters use the shared SearchField: clearing restores the first page and
+keeps input focus, while a nonempty query consumes Escape before the enclosing
+popup. Sorting, selected rows and captured values retain their existing owners.
 Progress uses the same themed ProgressBar as application activity. Its complete
 label and localized percentage remain visible above the track, including zero,
 completion and a supplied maximum other than 100. The admitted values and local
