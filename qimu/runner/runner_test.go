@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -341,6 +342,13 @@ func TestSeparateRunnerSurvivesClientAndLosesNoAttemptOnRestart(t *testing.T) {
 }
 
 func TestRunnerProcessHelper(t *testing.T) {
+	// Arguments select this mode without adding variables to an empty environment.
+	if flag.Arg(0) == "report-environment" {
+		if err := os.WriteFile("observed", []byte(os.Getenv("QIMU_ENV_TEST_MARKER")), 0600); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
 	switch os.Getenv("QIMU_RUNNER_HELPER") {
 	case "echo":
 		file, err := os.OpenFile(os.Getenv("QIMU_RUNNER_COUNT"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
@@ -445,14 +453,8 @@ func TestExplicitEmptyEnvironmentSurvivesTransport(t *testing.T) {
 		{"inherit", nil, "parent"}, {"empty", []string{}, ""}, {"explicit", []string{"QIMU_ENV_TEST_MARKER=child"}, "child"},
 	} {
 		request := launchFixture(t, tc.name, 1, t.TempDir())
-		request.Command = "/bin/sh"
-		program, err := os.ReadFile(request.Command)
-		if err != nil {
-			t.Fatal(err)
-		}
-		request.ExecutableDigest = integrity.Hash(program)
 		request.Env = tc.env
-		request.Args = []string{"-c", `printf '%s' "$QIMU_ENV_TEST_MARKER" > observed`}
+		request.Args = append(request.Args, "--", "report-environment")
 		if _, err := client.Launch(ctx, request); err != nil {
 			t.Fatal(err)
 		}
@@ -462,6 +464,9 @@ func TestExplicitEmptyEnvironmentSurvivesTransport(t *testing.T) {
 				t.Fatal(err)
 			}
 			if o.State == Exited {
+				if o.ExitCode == nil || *o.ExitCode != 0 {
+					t.Fatalf("%s: helper failed: %+v", tc.name, o)
+				}
 				break
 			}
 			time.Sleep(time.Millisecond)
