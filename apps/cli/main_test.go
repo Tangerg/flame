@@ -30,7 +30,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
-	"github.com/Tangerg/oolong/ptytest"
+	"github.com/Tangerg/oolong/ui/uitest/ptytest"
 )
 
 type terminalModeCase struct {

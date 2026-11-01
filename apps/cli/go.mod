@@ -83,7 +83,7 @@ require (
 	github.com/Tangerg/oolong/latex v0.25.0
 	github.com/Tangerg/oolong/markdown v0.25.0
 	github.com/Tangerg/oolong/mermaid v0.25.0
-	github.com/Tangerg/oolong/ptytest v0.25.0
+	github.com/Tangerg/oolong/ui v0.26.0
 	github.com/Tangerg/qimu v0.1.1-dev.20261101.t4c4dcdb5ac85
 	github.com/Tangerg/scope/tools v0.58.0
 	github.com/mattn/go-shellwords v1.0.16

@@ -30,7 +30,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.yaml.in/yaml/v4 v4.0.0-rc.6 // indirect
+	go.yaml.in/yaml/v4 v4.0.0-rc.7 // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
@@ -43,6 +43,7 @@ require (
 require (
 	github.com/Tangerg/flame/packages/go-sdk v0.1.1-dev.20261101.te31099412660
 	github.com/Tangerg/flame/packages/local-runtime v0.1.1-dev.20261101.t373cde3df814
+	github.com/Tangerg/frame v0.0.1
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/qimu v0.1.1-dev.20261101.t4c4dcdb5ac85
 	github.com/Tangerg/scope/agent v0.58.0
@@ -51,7 +52,7 @@ require (
 	github.com/Tangerg/scope/models/catalog v0.58.0
 	github.com/Tangerg/scope/otel v0.58.0
 	github.com/Tangerg/scope/otel/agent v0.58.0
-	github.com/Tangerg/scope/skills v0.58.1-0.20261029173355-e9f5d3bf7cfa
+	github.com/Tangerg/scope/skills v0.59.0
 	github.com/Tangerg/scope/tools v0.58.0
 	github.com/Tangerg/scope/tools/skills v0.58.0
 	github.com/Tangerg/sse v0.0.6

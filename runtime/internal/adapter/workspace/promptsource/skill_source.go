@@ -9,12 +9,13 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
-	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/frame/cancellation"
 	sdk "github.com/Tangerg/scope/skills"
 )
 
@@ -23,8 +24,7 @@ import (
 // the complete-list, document, and model-resource contract required by its
 // model and UI consumers.
 type SkillSource struct {
-	root      string
-	resources sdk.ResourceSource
+	root string
 }
 
 // NewSkillSource admits documents and resources beneath an explicit physical
@@ -50,11 +50,79 @@ func NewSkillSource(root, boundary string) (*SkillSource, error) {
 			workspaceapp.ErrPathOutsideRoot,
 		)
 	}
-	repository, err := sdk.NewDirectoryRepository(physicalRoot, sdk.RepositoryConfig{})
+	return &SkillSource{root: physicalRoot}, nil
+}
+
+// The configured directory is live and may not exist at startup. Open its
+// already-resolved components without granting a replacement symlink authority.
+func (r *SkillSource) openRoot() (*os.Root, error) {
+	volume := filepath.VolumeName(r.root)
+	root, err := os.OpenRoot(volume + string(filepath.Separator))
 	if err != nil {
-		return nil, fmt.Errorf("runtime skill source: open %q: %w", physicalRoot, err)
+		return nil, err
 	}
-	return &SkillSource{root: physicalRoot, resources: repository}, nil
+	for part := range strings.SplitSeq(r.root[len(volume):], string(filepath.Separator)) {
+		if part == "" {
+			continue
+		}
+		next, openErr := openSkillDirectory(root, part)
+		if err := errors.Join(openErr, root.Close()); err != nil {
+			if next != nil {
+				err = errors.Join(err, next.Close())
+			}
+			return nil, err
+		}
+		root = next
+	}
+	return root, nil
+}
+
+func openSkillDirectory(parent *os.Root, name string) (*os.Root, error) {
+	before, err := parent.Lstat(name)
+	if err != nil {
+		return nil, err
+	}
+	if before.Mode()&fs.ModeSymlink != 0 {
+		return nil, fmt.Errorf("runtime skill source: directory %q was redirected: %w", name, workspaceapp.ErrPathOutsideRoot)
+	}
+	child, err := parent.OpenRoot(name)
+	if err != nil {
+		return nil, err
+	}
+	after, err := child.Stat(".")
+	if err != nil {
+		return nil, errors.Join(err, child.Close())
+	}
+	if !os.SameFile(before, after) {
+		return nil, errors.Join(filesystem.ErrChanged, child.Close())
+	}
+	return child, nil
+}
+
+// Scope borrows the root for one operation. An acquired resource file has
+// an independent lifetime; the overlay itself owns no open descriptor.
+func (r *SkillSource) openRepository(ctx context.Context, name string) (*sdk.Repository, *os.Root, error) {
+	if err := sdk.ValidateName(name); err != nil {
+		return nil, nil, err
+	}
+	if err := cancellation.Err(ctx); err != nil {
+		return nil, nil, err
+	}
+	root, err := r.openRoot()
+	if err != nil {
+		if cancelErr := cancellation.Err(ctx); cancelErr != nil {
+			return nil, nil, errors.Join(err, cancelErr)
+		}
+		if errors.Is(err, fs.ErrNotExist) {
+			err = errors.Join(sdk.ErrSkillNotFound, err)
+		}
+		return nil, nil, err
+	}
+	repository, err := sdk.NewDirectoryRepository(root, sdk.RepositoryConfig{})
+	if err != nil {
+		return nil, nil, errors.Join(err, root.Close())
+	}
+	return repository, root, nil
 }
 
 func (r *SkillSource) List(ctx context.Context) ([]sdk.Summary, error) {
@@ -116,7 +184,15 @@ func (r *SkillSource) loadSummary(ctx context.Context, name string) (sdk.Summary
 }
 
 func (r *SkillSource) Lookup(ctx context.Context, name string) (sdk.Summary, error) {
-	return r.resources.Lookup(ctx, name)
+	repository, root, err := r.openRepository(ctx, name)
+	if err != nil {
+		return sdk.Summary{}, err
+	}
+	summary, lookupErr := repository.Lookup(ctx, name)
+	if err := errors.Join(lookupErr, root.Close(), cancellation.Err(ctx)); err != nil {
+		return sdk.Summary{}, err
+	}
+	return summary, nil
 }
 
 func (r *SkillSource) Load(ctx context.Context, name string) (*sdk.Skill, error) {
@@ -162,7 +238,7 @@ func (o *openedSkillDocument) close() error {
 }
 
 func (r *SkillSource) openSkillDocument(name string) (*openedSkillDocument, error) {
-	root, err := os.OpenRoot(r.root)
+	root, err := r.openRoot()
 	if err != nil {
 		return nil, fmt.Errorf("runtime skill source: open %q: %w", r.root, err)
 	}
@@ -218,19 +294,20 @@ func readSkillDocument(ctx context.Context, name string, source *openedSkillDocu
 }
 
 func (r *SkillSource) OpenResource(ctx context.Context, name, resource string) (fs.File, error) {
-	file, err := r.resources.OpenResource(ctx, name, resource)
+	repository, root, err := r.openRepository(ctx, name)
 	if err != nil {
+		return nil, err
+	}
+	file, openErr := repository.OpenResource(ctx, name, resource)
+	if err := errors.Join(openErr, root.Close(), cancellation.Err(ctx)); err != nil {
+		if file != nil {
+			err = errors.Join(err, file.Close())
+		}
 		return nil, err
 	}
 	info, err := file.Stat()
 	if err != nil {
 		return nil, errors.Join(fmt.Errorf("runtime skill source: inspect resource %q/%q: %w", name, resource, err), file.Close())
-	}
-	if !info.Mode().IsRegular() {
-		return nil, errors.Join(
-			fmt.Errorf("runtime skill source: resource %q/%q is not a regular file", name, resource),
-			file.Close(),
-		)
 	}
 	if info.Size() > domainskills.MaxSkillResourceBytes {
 		return nil, errors.Join(
@@ -255,7 +332,7 @@ func (r *SkillSource) directoryEntries(ctx context.Context) ([]fs.DirEntry, erro
 	if err := skillSourceContextError(ctx, "list"); err != nil {
 		return nil, err
 	}
-	root, err := os.OpenRoot(r.root)
+	root, err := r.openRoot()
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
@@ -293,12 +370,8 @@ func validRuntimeSkillName(name string) bool {
 }
 
 func skillSourceContextError(ctx context.Context, operation string) error {
-	if err := ctx.Err(); err != nil {
-		cause := context.Cause(ctx)
-		if !errors.Is(cause, err) {
-			cause = errors.Join(err, cause)
-		}
-		return fmt.Errorf("runtime skill source: %s: %w", operation, cause)
+	if err := cancellation.Err(ctx); err != nil {
+		return fmt.Errorf("runtime skill source: %s: %w", operation, err)
 	}
 	return nil
 }

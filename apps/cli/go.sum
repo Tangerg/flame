@@ -22,8 +22,8 @@ github.com/Tangerg/oolong/markdown v0.25.0 h1:FOhvdJbuLcYwBkT/pDHPJFjWD8xnaAKD1s
 github.com/Tangerg/oolong/markdown v0.25.0/go.mod h1:zMx3gX2J45iW+Rfwbh4qyIgFJSYVU8aCOBP2UjRasCI=
 github.com/Tangerg/oolong/mermaid v0.25.0 h1:ZhKgZ757WB1ILUweaFo/dokxjv0WnAbcRxn8lkZaZtY=
 github.com/Tangerg/oolong/mermaid v0.25.0/go.mod h1:eS67jTpkxiA68JwzTDH2b8FhR9I+Nce0oTsfrSzlu8M=
-github.com/Tangerg/oolong/ptytest v0.25.0 h1:mQ/TiRgUSbDUPsGVTOF5jCiCIiTfYYAUVJbMTZARIWU=
-github.com/Tangerg/oolong/ptytest v0.25.0/go.mod h1:SZ/8GHAScDpUplmr0GbL4OMWHRlkNrSRmklA82gMf0c=
+github.com/Tangerg/oolong/ui v0.26.0 h1:P0lFx83xQH873kORjpQHjZyR5uAMKKPEEWO7HdqaLYo=
+github.com/Tangerg/oolong/ui v0.26.0/go.mod h1:1W5YhVk/lHJJ4i6nhyByoHVpWfaIlH1/0ZEMymMKmb4=
 github.com/Tangerg/qimu v0.1.1-dev.20261101.t4c4dcdb5ac85 h1:dz0S5hhcslP+Q3IGGXDyHux0fdQ6WQn1CkIeRPoY8ik=
 github.com/Tangerg/qimu v0.1.1-dev.20261101.t4c4dcdb5ac85/go.mod h1:bx9YHbhbzbKczrXsNw6bnPLQ6IWRlaXWnW9/vU+dMKo=
 github.com/Tangerg/scope/agent v0.58.0 h1:xDyCAIBxQXQhdouxsFbKId6dVJ8ctbvwY2JWM3AXV7o=

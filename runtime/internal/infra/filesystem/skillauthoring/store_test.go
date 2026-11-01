@@ -93,8 +93,16 @@ func TestSubmitProposalThenApproveProposal(t *testing.T) {
 		t.Fatal("approval should remove the proposal")
 	}
 
-	// The approved skill is discoverable + valid per the read-only spec loader.
-	source, err := skillspec.NewDirectoryRepository(root, skillspec.RepositoryConfig{})
+	library, err := os.OpenRoot(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := library.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	source, err := skillspec.NewDirectoryRepository(library, skillspec.RepositoryConfig{})
 	if err != nil {
 		t.Fatalf("NewDirectoryRepository: %v", err)
 	}
