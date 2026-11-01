@@ -319,6 +319,8 @@ export function MapView({
                       variant="bare"
                       active={selected === marker.id}
                       onClick={() => choose(marker.id)}
+                      // anywhere would shrink the auto table column below whole words.
+                      style={{ overflowWrap: "break-word" }}
                     >
                       {marker.label}
                     </Button>

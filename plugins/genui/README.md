@@ -113,6 +113,9 @@ The shared focus proxy draws on a neutral backing outside each control's disable
 opacity, retaining its perimeter against the map image. The renderer's projected
 anchor and viewport determine which overlay markers are mounted; the complete
 location table retains every captured point and its existing selection control.
+Location-name buttons preserve whole-word contributions to the table's intrinsic
+column width. Long names keep ordinary wrapping and the existing local scroll
+region rather than reducing short names to a character-wide column.
 
 Image and Markdown-image thumbnails open their original source in the shared
 image reader. The authored alternative text and caption retain their meaning;

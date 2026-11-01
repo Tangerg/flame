@@ -29,7 +29,8 @@ and keyboard return (2026-11-02)**. The existing pointer-origin reverse-Tab
 limitation retains its separate attribution below. The selection-column follow-up
 is qualified under **Table selection and authored reading (2026-11-02)**. Captured
 report paging and map navigation are qualified under **Report and map navigation
-(2026-11-02)**. The latest goal restores
+(2026-11-02)**, published as `26360bcfb`. Location-name reading is qualified under
+**Location names and intrinsic reading (2026-11-02)**. The latest goal restores
 preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
 describe their historical scope.
@@ -3189,6 +3190,79 @@ roots plus private assets/home. Development dependencies and the private npm
 toolchain stay for the active goal; CLI inputs/results/logs are retired after
 publication. Read-only references, user data and unrelated work remain preserved.
 The publication fetch finds zero incoming main commits at `7130b2d70`.
+
+#### Location names and intrinsic reading (2026-11-02)
+
+The preceding EN/14px native scene at `26360bcfb` displays the short location
+name as `Londo / n`; Chinese 18px/200% splits both London and the Place heading.
+A fresh original current-host launch reproduces the English split. The location
+table's auto layout receives the shared bare Button's `overflow-wrap: anywhere`
+minimum contribution, allowing the name column to collapse within a word. Its
+existing prose grammar and ScrollRegion already own table reading and overflow.
+
+Only the Map table's row-name Button changes to `overflow-wrap: break-word`.
+Whole words now contribute to intrinsic column width, while ordinary wrapping
+and emergency breaks remain available. Shared Button defaults, table geometry,
+captions, names, selected-state owner, map behavior and local scrolling stay with
+their existing owners. No fixed width, nowrap, breakpoint, state, handler,
+dependency or persisted-data migration is added. Normal generation changes the
+same native style in the installed GenUI ESM; the module README records it.
+
+[CSS Text Level 3 overflow wrapping](https://www.w3.org/TR/css-text-3/#overflow-wrap-property)
+distinguishes the intrinsic-size contribution of anywhere and break-word.
+Read-only HeroUI's actual `table/selection.tsx` demo and
+`packages/styles/components/table.css` separate table overflow from the outer
+workspace; Arc's actual sortable table CSS preserves whole headers and local
+scrolling. Flame retains its own content-driven grammar and does not import their
+fixed minimum widths, mobile restructuring or component system.
+
+The bounded Claude Code CLI edits only `plugins/genui/component/map.tsx`.
+Its available tools are restricted to Read/Edit/Grep/Glob with Bash explicitly
+denied; it reports 13 turns and no commands or acceptance checks. Primary review
+verifies the two-line source diff and owns documentation, regeneration and all
+acceptance. No test is added to mirror a CSS declaration. Existing real-renderer
+coverage passes **3 GenUI files / 109 tests**, including selection, offscreen
+markers, bound controls, restored links and immutable captured data. Plugin
+types/lint/resources, owned formatting, Web chrome/bundle/installed-module gates
+and both original/final `make check-native` invocations pass. Known act/linker
+warnings remain nonfailing. Shared UI standalone/packed checks and the known
+unrelated Feedback full-format failure are not rerun.
+
+Observer-free original/candidate assets use the same current Wails host binary.
+Accepted EN/light/14px/Orange/full-motion pixels show London on one line with all
+three columns; ZH/dark/18px/custom-blue/motion-off, native half-screen placement
+and twenty Zoom In commands (200%) show complete Place and London text without
+horizontal scrolling for the short-name table. A second captured table contains
+`London delivery review office` and
+`CapturedSourceReviewLocationWithNoSeparators`. The latter deliberately contributes
+a wider intrinsic column: the existing focused region's Left/Right reading reaches
+coordinates/descriptions, and returning to the name buttons retains visible focus
+and selection. At 200%, its beginning and suffix are read at separate horizontal
+positions. This is bounded wide-content reading, not simultaneous visibility of
+every column or an assertion that all long names remain on one screen.
+
+Both accepted scenes qualify keyboard selection, Escape to the correct trigger,
+full-width README reading and return to the same selected Paris. EN continues
+`Continue reviewing the selected location. Selection retained.` Chinese retains
+`保留地点阅读上下文。` and continues `继续核对地点与来源。 地点已保留。` Actual Size restores
+the parallel material pane. Mouse/wheel reading, keyboard forward/reverse return,
+native resize, theme and text-size coverage remain scoped to these captured tasks.
+
+Layout/typography review accepts complete short names and header alignment; color,
+UI, writing and accessibility preserve existing roles, contrast, focus, motion
+and authored facts. Physical keyboard equivalence, VoiceOver, OS IME, native RTL,
+forced colors, coarse-pointer hardware, 320px GUI and other-platform GUIs remain
+unqualified. Existing pointer-origin reverse-Tab attribution stays separate.
+No browser visual suite, benchmark, Send, live Runtime/provider write or release
+installation runs. Whole-product and award-level acceptance remain open.
+
+All three native processes exit 0. Cleanup unregisters/removes the private bundle,
+restores six profile absence baselines and retires nine owned checkout output
+roots plus private assets/home. Active development dependencies and the private
+npm toolchain stay; CLI inputs/results/logs retire after publication. Read-only
+references, user data and unrelated work remain preserved. The publication fetch
+finds zero incoming main commits at `26360bcfb`. Continue from another observed
+workspace or reading defect, without reopening this accepted short-name behavior.
 
 ### Horizontal report tabs and reading keys
 
