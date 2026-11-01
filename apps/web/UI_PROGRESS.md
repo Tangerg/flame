@@ -37,8 +37,10 @@ and read-only map targets are qualified under **External sources and linked map
 targets (2026-11-02)**, published as `3de198b27`. Memory reading is qualified under
 **Memory read and page continuity (2026-11-02)**, published as `e2f58d756`. The
 form-command follow-up is published as `c7b97cfc5` under **Memory submission and
-original-result actions (2026-11-02)**. Record-command continuity is recorded under
-**Memory record actions and result continuity (2026-11-02)**. The latest goal restores
+original-result actions (2026-11-02)**. Record-command continuity is published as
+`45274f08a` under **Memory record actions and result continuity (2026-11-02)**.
+Command result wording is qualified under **Memory command outcome wording
+(2026-11-02)**. The latest goal restores
 preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
 describe their historical scope.
@@ -4766,6 +4768,147 @@ no accepted product input; publication is followed by fresh remote, cleanliness
 and preservation checks. Continue from a fresh task observation, preserving this
 accepted hierarchy and the preceding color/focus work.
 
+### Memory command outcome wording (2026-11-02)
+
+Scope is the installed Memory command's submitting, known refusal, unknown result
+and successful completion, through record actions, an independent draft and return
+to conversation. This follows the actual Chinese ambiguity observed in the previous
+native qualification: `拒绝 <ID> · 已拒绝。` does not say whether the request was
+refused or the record was rejected. AGENTS, PROJECT_RULES, DEVELOPMENT and the
+Memory/Web/Desktop READMEs establish the owner and verification boundaries. Existing
+React, Base UI, shared UI and StyleX presentation remain in place.
+
+The eight Memory catalogs now name the refused request, use result-unknown wording
+while its original reply is unavailable, and show completion after the original
+promise succeeds. English reads `request refused.`, `result unknown.` and
+`completed.`; Simplified and Traditional Chinese distinguish `请求被拒绝。` /
+`請求被拒絕。` from `已完成。`. Japanese, Korean, Spanish, French and German carry
+the same meanings. The two fallback errors also name the request. Only these five
+existing values change per catalog. Labels, target IDs, placeholders, submitting
+copy and the original-result action remain intact. Concrete provider detail stays
+verbatim in its existing result group.
+
+Completion describes a known successful original reply, including a no-op. It does
+not infer a saved, removed or changed record from a list read. The existing hook,
+feedback state, inputs/revisions, command key/binding, receipt lookup, focus and
+accepted-page owners are unchanged. Normal generation updates only the Memory ESM;
+there is no new wrapper, message, timer, helper paragraph or theme override.
+
+Read-only HeroUI's actual `apps/docs/src/demos/en/toast/promise.tsx` separates the
+operation/result subject and preserves the concrete error message. Its generic
+promise success model cannot represent Flame's unknown acknowledgement, so the
+public MutationPromise contract and Memory README determine that boundary here.
+The owning better-writing principles favor an explicit error subject, a stable
+vocabulary and complete localized strings. Earlier ZCode, actual ChatGPT UI,
+Radix, Arc, color and Ace research keeps its recorded scope; no static image is
+used to establish command or focus behavior.
+
+Verification passed:
+
+- The original-source focused baseline passes **64 Memory tests**. The final
+  `npm run test --workspace @flame/web -- --project frontend --no-file-parallelism`
+  run names `visual/memoryDrafts.test.tsx`, `visual/trajectoryNavigation.test.tsx`,
+  `src/features/plugins/ui/InstalledComponent.test.tsx`,
+  `src/ui/agent/context-dock.test.tsx`,
+  `src/features/workspace/adapters/contextDockStore.test.ts` and
+  `src/platform/desktopHost.test.ts`: **6 files / 157 tests**, including **66 Memory
+  cases**, with no skips in this final suite.
+- The two added integrated Chinese cases render the actual component and issue
+  Reject. They preserve concrete refusal detail, the captured ID/revision/decision,
+  exactly two original dispatches and same-key recovery. A subscription removes
+  the row before receipt, while feedback stays submitting; only the original
+  outcome can advance it to unknown and then complete. Replaying the eight exact
+  original catalogs fails both cases on the missing explicit request subject.
+  `finally` restores and verifies every final candidate byte sequence. The replay's
+  64 excluded cases are outside that focused control, not skipped final coverage.
+- `make check-native` passes the production Web staging and actual Desktop
+  test/vet/build/Wails path. Web and plugin `typecheck` / `lint`, plugin
+  `check:i18n` and `check:resources`, and Web `check:design-system`, `check:tokens`,
+  `check:chrome`, `check:locales`, `check:hmr`, `check:layers`, `check:bundle` and
+  `check:plugin-modules` pass. The i18n check covers 20 catalogs across eight
+  locales; generated resource parity reproduces the installed bytes. Native
+  verification retains the existing macOS SDK 26 vs link-target 11 and duplicate
+  Objective-C library warnings. The private app uses exact Wails v3.0.0, Go 1.27.3
+  and the production/macOS-13 build flags. The private visual bundle retains its
+  known aggregate-chunk warning; the production budget guard passes.
+- One restricted Claude Code CLI invocation reports 39 turns, with no checks or
+  Git operations. Root reviews the actual nine-path implementation, normalizes
+  formatting and owns regression replay, all checks, native acceptance, docs,
+  generation, cleanup and delivery. The CLI report is not acceptance evidence.
+
+The two native processes use a private app ID/home and a captured provider behind
+the actual public client and InstalledComponent. The first original command returns
+a canonical business refusal without changing the page. The next stores one
+private reply/page update, publishes a canonical data-change notice and loses its
+first two acknowledgements. Original namespace, key, binding and JSON are checked;
+a replacement command cannot resolve it. Rechecks return the stored reply without
+another write. This qualifies UI semantics and recovery, not live backend receipt
+transactions, restart or durability. No Runtime, installation, user data or message
+submission is involved.
+
+Final native paths:
+
+- English/light/Flame Orange, 14px, wide split: Reject names the refused request
+  and concrete provider reason while the pending record and independent memory
+  draft remain. The subsequent keyboard Approve changes the accepted record before
+  acknowledgement; it still says result unknown. Tab reaches Check original
+  result, repeated unknown retains its key and control, and original recovery
+  enters the completed result. The independent draft stays intact, remains editable
+  and saves through submitting to completed, closing back to Add memory before the
+  later read. An Unpin menu command shows submitting and completed; a later Search
+  choice/query stays focused. Expanded record facts, query and completed result
+  survive Files → full width → Dock → Memory. The conversation draft remains
+  editable after return without sending.
+- Chinese/dark/custom blue, 18px, native left-half window and twenty native zoom
+  increments to 200%: narrow layout offers full-width reading. Reject's known
+  refusal shows the complete ID and unchanged provider reason below sticky controls.
+  The actual Tab order is inspected through Record details and Approve to Reject
+  before keyboard activation. Its next accepted page removes the rejected record
+  while the focused result still says submitting. Unknown, the complete original
+  key and recovery fit together in the reading unit. Repeated original lookup
+  stays on the same action; completion focuses `拒绝 <ID> · 已完成。`, with the
+  remaining active record retained. Actual wheel scrolling reaches complete
+  record/source facts. Files and explicit Back to Agent memory retain expanded
+  details and reading position. Closing the reader and twenty native zoom decrements
+  restore the 100% split, known result and original Chinese conversation draft;
+  native Unicode paste continues editing without sending. Physical IME is not
+  implied by this input.
+
+Cross-discipline review of this task:
+
+| Domain        | Evidence inspected                                                                                       | Result                                                                                                              |
+| ------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Existing MemoryFeedback/MemoryAction semantics, 66 Memory cases, native Tab/Return/recovery/return paths | Named actions, alert/status distinction and retained focus pass; VoiceOver is not verified.                         |
+| Layout        | Existing fitting group, wide split, native left-half/200% full reader and wheel/return                   | Target, status, reason, original key and recovery remain reachable in exercised frames; 320px/RTL are not verified. |
+| Writing       | Five values in all eight catalogs, exact Chinese regression control and two native command paths         | Request refusal, unknown and completion are distinct; raw detail scope remains the separate finding below.          |
+| Typography    | English 14px, Chinese 18px/200%, mixed provider detail, complete long record IDs and original keys       | Existing wrapping preserves full values; type scale remains unchanged.                                              |
+| Color         | Light Orange and dark custom blue, keyboard result/recovery focus and destructive Reject                 | Existing semantic tokens retained; fresh rendered contrast measurements are not verified.                           |
+| UI            | Actual pending, known/unknown/recovered feedback, menu command, continued drafting and material return   | Copy changes preserve the existing interaction and normal-motion presentation; no new motion is added.              |
+
+| Severity              | Domain  | Location                                                                                       | Before                                                                                                             | After                                                                                                      | Why                                                                                                        |
+| --------------------- | ------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| MEDIUM · resolved     | Writing | `plugins/memory/component/locales/zh.ts:77` and the corresponding values in all eight catalogs | `Reject <ID> · refused.` / `拒绝 <ID> · 已拒绝。` omit the refused subject.                                        | Explicit request refusal, result unknown and completed wording.                                            | The action on the record and the outcome of its request must remain distinguishable.                       |
+| MEDIUM · pre-existing | Writing | `plugins/memory/component/MemoryReport.tsx:221`                                                | Native Chinese details show `范围 project`, while the target header and editor already use localized scope labels. | Next: inspect Project/User read → details → edit/cancel identity, then reuse the current scope vocabulary. | An object's scope should agree with its task context instead of exposing the raw enum as the visible name. |
+
+Verdict: **Approve for the changed command-outcome wording in the recorded paths**.
+The scope-identity finding remains next; it is not a new regression or a claim that
+all product surfaces have reached a visual ceiling. Other-language/platform native
+GUIs, physical IME, VoiceOver, reduced-motion rerun, 320px/RTL, fresh pixel contrast
+and live business durability are not verified. No browser visual suite, performance
+benchmark, full Web suite or all-workspace Go suite runs. There is no protocol,
+storage or data migration.
+
+Both owned native windows close with exit 0; exact executable audit finds no
+remaining process. LaunchServices is unregistered. The app, private Web/home,
+CLI inputs/results, source replay, configs and reviewed logs are removed. Nine
+owned checkout outputs and six private Library paths return to their absent
+baselines. Only active `bin` and npm CLI `_npx` prerequisites remain for this
+continuing goal; root dependencies, user data, references and unrelated processes
+are retained. Fresh fetch finds zero incoming main commits at `45274f08a` and a
+clean primary main checkout. Delivery uses only the batch's explicit paths,
+fast-forwards main and pushes, followed by clean-worktree, remote and resource
+audits.
+
 ### Memory record actions and result continuity (2026-11-02)
 
 Scope is the installed Memory catalog's Approve/Reject and Pin/Unpin path, its
@@ -4918,6 +5061,7 @@ known command-refusal status repeat the same word, producing
 the current result, but explicitly naming the refused request would improve
 clarity. This is the next observed task, keeping known refusal distinct from
 unknown acknowledgement and from a successfully applied record rejection.
+This finding is resolved in **Memory command outcome wording (2026-11-02)** above.
 
 Review verdict: **Approve for the changed focus, fitting-unit and return contracts
 in the recorded scenes**. This does not accept the remaining writing finding or

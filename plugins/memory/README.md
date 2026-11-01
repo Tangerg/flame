@@ -239,7 +239,10 @@ Pin/Unpin selection hands the closing menu to that result even when settlement
 finishes immediately. Its selection intent lasts only until popup close;
 ordinary Escape retains the menu's default return, and Delete keeps its form task.
 A command retains its action, target and editor/record origin for feedback and
-reconciliation. Draft feedback stays beside the form actions; independent record
+reconciliation. Refusal names the request, an unknown result retains original
+recovery, and completion means the original command has a known successful reply.
+Rejecting a record and refusal of that request therefore have distinct wording.
+Draft feedback stays beside the form actions; independent record
 feedback stays with the catalog. An acknowledged form closes before the subsequent
 catalog read, whose loading or failure cannot revoke the known result. Changing
 scope retires the old scope's notices. New forms clear earlier form feedback.

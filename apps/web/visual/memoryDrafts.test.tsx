@@ -31,7 +31,10 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-async function openMemory(list?: (request: CallPluginRequest) => Promise<CallPluginResponse>) {
+async function openMemory(
+  list?: (request: CallPluginRequest) => Promise<CallPluginResponse>,
+  locale = "en",
+) {
   const owner = new AbortController();
   const transport = createVisualRuntimeTransport(
     structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
@@ -75,7 +78,7 @@ async function openMemory(list?: (request: CallPluginRequest) => Promise<CallPlu
     runtime,
     workspace: { ref: { path: "/Users/visual/scope" } },
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
-    locale: "en",
+    locale,
     signal: owner.signal,
     track: (operation) => operation(owner.signal),
     saveFile: async () => "requested",
@@ -300,7 +303,7 @@ it("keeps the original unknown command and later search focus through local reco
   const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this page" });
   fireEvent.change(search, { target: { value: "absent" } });
   fireEvent.click(within(editor).getByRole("button", { name: "Save" }));
-  await within(editor).findByText(/confirmation unknown/);
+  await within(editor).findByText(/result unknown/);
   const issued = call.mock.calls.length;
   fireEvent.click(within(catalog()).getByRole("button", { name: "Clear search and filters" }));
   expect(search.value).toBe("");
@@ -316,7 +319,7 @@ it("keeps the original unknown command and later search focus through local reco
   await waitFor(() => expect(settle).toHaveBeenCalledTimes(2));
   search.focus();
   await act(async () => recovered.resolve(await reply(...settle.mock.calls[1]!)));
-  await within(catalog()).findByText("Add project memory · confirmed.");
+  await within(catalog()).findByText("Add project memory · completed.");
   expect(screen.queryByRole("region", { name: "Add memory" })).toBeNull();
   expect(document.activeElement).toBe(search);
   expect(settle.mock.calls.map(([, key]) => key)).toEqual(["memory-command-1", "memory-command-1"]);
@@ -420,12 +423,12 @@ it("consumes Escape without cancelling an unresolved editor command", async () =
   expect(pressEscape(content)).toEqual({ consumed: true, reachedOuter: false });
   expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
   await act(async () => fail(new MutationLookupError(new Error("receipt unavailable"))));
-  await within(editor).findByText(/Add project memory · confirmation unknown/);
+  await within(editor).findByText(/Add project memory · result unknown/);
   expect(pressEscape(content)).toEqual({ consumed: true, reachedOuter: false });
   expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
   expect(content.value).toBe("Keep my unsaved memory draft.");
   fireEvent.click(within(editor).getByRole("button", { name: "Check original result" }));
-  await within(catalog()).findByText("Add project memory · confirmed.");
+  await within(catalog()).findByText("Add project memory · completed.");
   expect(screen.queryByRole("region", { name: "Add memory" })).toBeNull();
 });
 
@@ -460,7 +463,7 @@ it("keeps one focused primary action through submission, unknown result and rech
   await act(async () =>
     submitted.reject(new MutationLookupError(new Error("receipt unavailable"))),
   );
-  await within(editor).findByText("Add project memory · confirmation unknown.");
+  await within(editor).findByText("Add project memory · result unknown.");
   expect(within(editor).getByRole("button", { name: "Check original result" })).toBe(save);
   expect(screen.getAllByRole("button", { name: "Check original result" })).toHaveLength(1);
   expect(save.getAttribute("aria-disabled")).not.toBe("true");
@@ -483,7 +486,7 @@ it("keeps one focused primary action through submission, unknown result and rech
   await act(async () =>
     observed.reject(new MutationLookupError(new Error("receipt still unavailable"))),
   );
-  await within(editor).findByText("Add project memory · confirmation unknown.");
+  await within(editor).findByText("Add project memory · result unknown.");
   expect(within(editor).getByRole("button", { name: "Check original result" })).toBe(save);
   expect(document.activeElement).toBe(save);
   expect(within(editor).getByText("Original command: memory-command-1")).toBeTruthy();
@@ -494,7 +497,7 @@ it("keeps one focused primary action through submission, unknown result and rech
   const search = screen.getByRole("searchbox", { name: "Search this page" });
   search.focus();
   await act(async () => recovered.resolve(await reply(...settle.mock.calls[2]!)));
-  await within(catalog()).findByText("Add project memory · confirmed.");
+  await within(catalog()).findByText("Add project memory · completed.");
   expect(screen.queryByRole("region", { name: "Add memory" })).toBeNull();
   await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
   expect(document.activeElement).toBe(search);
@@ -517,7 +520,7 @@ it("returns a known refusal to the same focused Save for resubmission", async ()
   await within(editor).findByText("Add project memory · submitting…");
   expect(document.activeElement).toBe(save);
   await act(async () => submitted.reject(new Error("Memory capacity is full.")));
-  await within(editor).findByText("Add project memory · refused.");
+  await within(editor).findByText("Add project memory · request refused.");
   expect(within(editor).getByText("Memory capacity is full.")).toBeTruthy();
   expect(
     within(within(editor).getByRole("group", { name: "Save memory content" })).getByText(
@@ -531,7 +534,7 @@ it("returns a known refusal to the same focused Save for resubmission", async ()
   expect(screen.queryByRole("button", { name: "Check original result" })).toBeNull();
   expect(content.value).toBe("Keep my unsaved memory draft.");
   fireEvent.click(save);
-  await within(catalog()).findByText("Add project memory · confirmed.");
+  await within(catalog()).findByText("Add project memory · completed.");
   expect(screen.queryByRole("region", { name: "Add memory" })).toBeNull();
   expect(commands(call)).toHaveLength(2);
   expect(settle.mock.calls.map(([, key]) => key)).toEqual(["memory-command-1", "memory-command-2"]);
@@ -549,17 +552,17 @@ it("names the captured target and keeps editor and record feedback apart", async
   const content = within(editor).getByRole("textbox", { name: "Memory content" });
   fireEvent.change(content, { target: { value: "Keep my edited content." } });
   fireEvent.click(within(editor).getByRole("button", { name: "Save" }));
-  await within(editor).findByText(`Edit ${active.ID} · refused.`);
+  await within(editor).findByText(`Edit ${active.ID} · request refused.`);
   expect(within(editor).getByText("Memory capacity is full.")).toBeTruthy();
   expect(within(catalog()).queryByText(/refused/)).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Approve" }));
-  await within(catalog()).findByText(`Approve ${pending.ID} · confirmed.`);
+  await within(catalog()).findByText(`Approve ${pending.ID} · completed.`);
   expect(within(editor).queryByText(/Approve/)).toBeNull();
-  expect(within(editor).getByText(`Edit ${active.ID} · refused.`)).toBeTruthy();
+  expect(within(editor).getByText(`Edit ${active.ID} · request refused.`)).toBeTruthy();
   expect(screen.getByRole("region", { name: "Edit memory" })).toBe(editor);
   expect(content).toHaveProperty("value", "Keep my edited content.");
   fireEvent.click(within(editor).getByRole("button", { name: "Save" }));
-  await within(catalog()).findByText(`Edit ${active.ID} · confirmed.`);
+  await within(catalog()).findByText(`Edit ${active.ID} · completed.`);
   expect(screen.queryByRole("region", { name: "Edit memory" })).toBeNull();
   expect(settle.mock.calls.map(([request]) => JSON.parse(request.input))).toEqual([
     { ID: active.ID, ExpectedRevision: active.Revision, Content: "Keep my edited content." },
@@ -589,7 +592,7 @@ it("keeps a draft and its actions after an independent record refusal", async ()
   settle.mockRejectedValueOnce(new Error("Memory was already reviewed."));
   const { editor, content } = startDraft();
   fireEvent.click(screen.getByRole("button", { name: "Approve" }));
-  await within(catalog()).findByText(`Approve ${pending.ID} · refused.`);
+  await within(catalog()).findByText(`Approve ${pending.ID} · request refused.`);
   expect(within(catalog()).getByText("Memory was already reviewed.")).toBeTruthy();
   expect(within(editor).queryByText(/refused/)).toBeNull();
   expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
@@ -632,7 +635,7 @@ it("settles authoring before the catalog read and preserves a later focus choice
   save.focus();
   fireEvent.click(save);
   await screen.findByText("Reading recorded memory…");
-  await within(catalog()).findByText("Add project memory · confirmed.");
+  await within(catalog()).findByText("Add project memory · completed.");
   expect(screen.queryByRole("region", { name: "Add memory" })).toBeNull();
   expect(add.disabled).toBe(false);
   await waitFor(() => expect(document.activeElement).toBe(add));
@@ -646,7 +649,7 @@ it("settles authoring before the catalog read and preserves a later focus choice
 it("keeps known results visible without a catalog and retires notices with their scope", async () => {
   const { call, settle } = await openMemory();
   fireEvent.click(screen.getByRole("button", { name: "Approve" }));
-  await within(catalog()).findByText(`Approve ${pending.ID} · confirmed.`);
+  await within(catalog()).findByText(`Approve ${pending.ID} · completed.`);
   const admitted = call.getMockImplementation()!;
   call.mockImplementation((request, options) =>
     request.method === "flame.memory/list.v2"
@@ -655,7 +658,7 @@ it("keeps known results visible without a catalog and retires notices with their
   );
   fireEvent.click(screen.getByRole("radio", { name: "User" }));
   await screen.findByText("Memory catalog is unavailable.");
-  expect(screen.queryByText(`Approve ${pending.ID} · confirmed.`)).toBeNull();
+  expect(screen.queryByText(`Approve ${pending.ID} · completed.`)).toBeNull();
   settle.mockResolvedValueOnce({
     output: JSON.stringify({
       Item: { ...active, Scope: "user", Content: "Keep my unsaved memory draft." },
@@ -665,7 +668,7 @@ it("keeps known results visible without a catalog and retires notices with their
   const { editor } = startDraft();
   fireEvent.click(within(editor).getByRole("button", { name: "Save" }));
   await screen.findByRole("heading", { name: "Saved memory" });
-  await within(catalog()).findByText("Add user memory · confirmed.");
+  await within(catalog()).findByText("Add user memory · completed.");
   expect(screen.queryByText("No memory items in this target.")).toBeNull();
   expect(JSON.parse(settle.mock.calls.at(-1)![0].input)).toMatchObject({
     Scope: "user",
@@ -710,8 +713,8 @@ it.each(["approve", "unpin"] as const)(
     }
     await within(catalog()).findByText(
       action === "approve"
-        ? `Approve ${pending.ID} · confirmed.`
-        : `Unpin ${active.ID} · confirmed.`,
+        ? `Approve ${pending.ID} · completed.`
+        : `Unpin ${active.ID} · completed.`,
     );
     expect(settle).toHaveBeenCalledOnce();
     expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
@@ -724,7 +727,7 @@ it("closes a submitted draft only after its own command succeeds", async () => {
   const { settle } = await openMemory();
   const { add, editor } = startDraft();
   fireEvent.click(within(editor).getByRole("button", { name: "Save" }));
-  await within(catalog()).findByText("Add project memory · confirmed.");
+  await within(catalog()).findByText("Add project memory · completed.");
   expect(settle.mock.calls[0]![0].method).toBe("flame.memory/add.v2");
   expect(JSON.parse(settle.mock.calls[0]![0].input)).toMatchObject({
     Content: "Keep my unsaved memory draft.",
@@ -756,7 +759,7 @@ it("distinguishes a record pin from saving content for the same memory", async (
   fireEvent.change(content, { target: { value: "Keep my edited content." } });
   await openActions();
   fireEvent.click(screen.getByRole("menuitem", { name: "Unpin" }));
-  await within(catalog()).findByText(`Unpin ${active.ID} · confirmed.`);
+  await within(catalog()).findByText(`Unpin ${active.ID} · completed.`);
   expect(screen.getByRole("region", { name: "Edit memory" })).toBe(editor);
   expect(content.value).toBe("Keep my edited content.");
   await waitFor(() =>
@@ -795,7 +798,7 @@ it.each(["editor", "record"] as const)(
         ? within(editor).getByRole("button", { name: "Save" })
         : screen.getByRole("button", { name: "Approve" }),
     );
-    await screen.findByText(/confirmation unknown/);
+    await screen.findByText(/result unknown/);
     expect(content.value).toBe("Keep my unsaved memory draft.");
     clickBlocked(within(editor).getByRole("button", { name: "Cancel" }));
     expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
@@ -815,8 +818,8 @@ it.each(["editor", "record"] as const)(
     fireEvent.click(recover!);
     await within(catalog()).findByText(
       source === "editor"
-        ? "Add project memory · confirmed."
-        : `Approve ${pending.ID} · confirmed.`,
+        ? "Add project memory · completed."
+        : `Approve ${pending.ID} · completed.`,
     );
     expect(settle.mock.calls.map(([, key]) => key)).toEqual([
       "memory-command-1",
@@ -837,9 +840,7 @@ async function approveUntilUnknown(...rechecks: Array<Promise<CallPluginResponse
   for (const recheck of rechecks) opened.settle.mockImplementationOnce(() => recheck);
   const draft = startDraft();
   fireEvent.click(screen.getByRole("button", { name: "Approve" }));
-  const unknown = await within(catalog()).findByText(
-    `Approve ${pending.ID} · confirmation unknown.`,
-  );
+  const unknown = await within(catalog()).findByText(`Approve ${pending.ID} · result unknown.`);
   const result = unknown.closest("section")!;
   const recover = within(catalog()).getByRole("button", { name: "Check original result" });
   return { ...opened, ...draft, reply, result, recover };
@@ -873,9 +874,7 @@ it.each(["confirmed", "refused"] as const)(
     expect(within(catalog()).getByRole("button", { name: "Check original result" })).toBe(recover);
     expect(document.activeElement).toBe(recover);
     expect(
-      within(catalog())
-        .getByText(`Approve ${pending.ID} · confirmation unknown.`)
-        .closest("section"),
+      within(catalog()).getByText(`Approve ${pending.ID} · result unknown.`).closest("section"),
     ).toBe(result);
     fireEvent.click(recover);
     await waitFor(() => expect(settle).toHaveBeenCalledTimes(3));
@@ -886,7 +885,9 @@ it.each(["confirmed", "refused"] as const)(
         ? recovered.resolve(await reply(...settle.mock.calls[2]!))
         : recovered.reject(new Error("Memory was already reviewed.")),
     );
-    await within(catalog()).findByText(`Approve ${pending.ID} · ${outcome}.`);
+    await within(catalog()).findByText(
+      `Approve ${pending.ID} · ${outcome === "confirmed" ? "completed" : "request refused"}.`,
+    );
     expect(screen.queryByRole("button", { name: "Check original result" })).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(result));
     expect(result.getAttribute("role")).toBe(outcome === "confirmed" ? "status" : "alert");
@@ -921,7 +922,7 @@ it.each(["search", "draft"] as const)(
       later === "search" ? screen.getByRole("searchbox", { name: "Search this page" }) : content;
     chosen.focus();
     await act(async () => recovered.resolve(await reply(...settle.mock.calls[1]!)));
-    await within(catalog()).findByText(`Approve ${pending.ID} · confirmed.`);
+    await within(catalog()).findByText(`Approve ${pending.ID} · completed.`);
     await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
     expect(document.activeElement).toBe(chosen);
     expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
@@ -1002,7 +1003,13 @@ it.each([
           ),
     );
     await within(catalog()).findByText(
-      `${name} ${pending.ID} · ${outcome === "unknown" ? "confirmation unknown" : outcome}.`,
+      `${name} ${pending.ID} · ${
+        outcome === "unknown"
+          ? "result unknown"
+          : outcome === "confirmed"
+            ? "completed"
+            : "request refused"
+      }.`,
     );
     expect(document.activeElement).toBe(result);
     expect(result.getAttribute("role")).toBe(outcome === "refused" ? "alert" : "status");
@@ -1039,6 +1046,89 @@ it.each([
   },
 );
 
+it.each([
+  {
+    locale: "zh",
+    reject: "拒绝",
+    saved: "已保存的记忆",
+    reading: "正在读取已记录的记忆…",
+    submitting: "提交中…",
+    refused: "请求被拒绝。",
+    unknown: "结果未知。",
+    completed: "已完成。",
+    ambiguous: "已拒绝。",
+    original: "原始记忆命令",
+    key: "原始命令：memory-command-2",
+    check: "查看原始结果",
+  },
+  {
+    locale: "zh-TW",
+    reject: "拒絕",
+    saved: "已儲存的記憶",
+    reading: "正在讀取已記錄的記憶…",
+    submitting: "提交中…",
+    refused: "請求被拒絕。",
+    unknown: "結果未知。",
+    completed: "已完成。",
+    ambiguous: "已拒絕。",
+    original: "原始記憶命令",
+    key: "原始命令：memory-command-2",
+    check: "查看原始結果",
+  },
+])("names a refused $locale Reject request apart from its recovered completion", async (copy) => {
+  let page = VISUAL_MEMORY_PAGE;
+  const list = vi.fn(async () => ({ output: JSON.stringify(page) }));
+  const { settle, call, transport } = await openMemory(list, copy.locale);
+  await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(screen.queryByText(copy.reading)).toBeNull());
+  const records = () => screen.getByRole("heading", { name: copy.saved }).closest("section")!;
+  const label = `${copy.reject} ${pending.ID}`;
+  settle.mockRejectedValueOnce(new Error("Memory was already reviewed."));
+  fireEvent.click(within(records()).getByRole("button", { name: copy.reject }));
+  const refusal = (await within(records()).findByText(`${label} · ${copy.refused}`)).closest(
+    "section",
+  )!;
+  expect(refusal.getAttribute("role")).toBe("alert");
+  expect(within(refusal).getByText("Memory was already reviewed.")).toBeTruthy();
+  expect(screen.queryByText(`${label} · ${copy.ambiguous}`)).toBeNull();
+  expect(screen.getByText(pending.Content, { exact: true })).toBeTruthy();
+
+  const decided = Promise.withResolvers<CallPluginResponse>();
+  settle.mockImplementationOnce(() => decided.promise);
+  const control = within(records()).getByRole("button", { name: copy.reject });
+  fireEvent.click(control);
+  await within(records()).findByText(`${label} · ${copy.submitting}`);
+  page = { ...page, Rows: page.Rows.filter((row) => row.ID !== pending.ID) };
+  transport.removeSchedule("sch_nightly");
+  await waitFor(() => expect(control.isConnected).toBe(false));
+  expect(within(records()).getByText(`${label} · ${copy.submitting}`)).toBeTruthy();
+  expect(screen.queryByText(`${label} · ${copy.completed}`)).toBeNull();
+  await act(async () => decided.reject(new MutationLookupError(new Error("receipt unavailable"))));
+  const unknown = (await within(records()).findByText(`${label} · ${copy.unknown}`)).closest(
+    "section",
+  )!;
+  expect(unknown.getAttribute("role")).toBe("status");
+  expect(
+    within(within(records()).getByRole("group", { name: copy.original })).getByText(copy.key),
+  ).toBeTruthy();
+  fireEvent.click(within(records()).getByRole("button", { name: copy.check }));
+  const completed = (await within(records()).findByText(`${label} · ${copy.completed}`)).closest(
+    "section",
+  )!;
+  expect(completed.getAttribute("role")).toBe("status");
+  expect(screen.queryByRole("button", { name: copy.check })).toBeNull();
+  expect(screen.queryByText("Memory was already reviewed.")).toBeNull();
+  expect(settle.mock.calls.map(([, key]) => key)).toEqual([
+    "memory-command-1",
+    "memory-command-2",
+    "memory-command-2",
+  ]);
+  expect(commands(call)).toHaveLength(2);
+  expect(settle.mock.calls.map(([request]) => JSON.parse(request.input))).toEqual(
+    Array(3).fill({ ID: pending.ID, ExpectedRevision: pending.Revision, Decision: "reject" }),
+  );
+});
+
 it.each(["search", "draft"] as const)(
   "leaves a later %s focus in place when a review settles and its row leaves",
   async (later) => {
@@ -1047,7 +1137,7 @@ it.each(["search", "draft"] as const)(
       later === "search" ? screen.getByRole("searchbox", { name: "Search this page" }) : content;
     chosen.focus();
     await act(async () => decided.resolve(await reply(...settle.mock.calls[0]!)));
-    await within(catalog()).findByText(`Approve ${pending.ID} · confirmed.`);
+    await within(catalog()).findByText(`Approve ${pending.ID} · completed.`);
     await waitFor(() => expect(control.isConnected).toBe(false));
     await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
     expect(document.activeElement).toBe(chosen);
@@ -1077,7 +1167,7 @@ it.each(["action", "search", "draft"] as const)(
     await act(async () =>
       decided.reject(new MutationLookupError(new Error("receipt unavailable"))),
     );
-    await within(catalog()).findByText(`Approve ${pending.ID} · confirmation unknown.`);
+    await within(catalog()).findByText(`Approve ${pending.ID} · result unknown.`);
     expect(document.activeElement).toBe(later === "action" ? result : chosen);
     expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
     expect(content.value).toBe("Keep my unsaved memory draft.");
@@ -1093,7 +1183,7 @@ it("does not attach an unrelated prior result to a background record removal", a
   settle.mockRejectedValueOnce(new Error("Pinned item changed."));
   await openActions();
   fireEvent.click(screen.getByRole("menuitem", { name: "Unpin" }));
-  const notice = await within(catalog()).findByText(`Unpin ${active.ID} · refused.`);
+  const notice = await within(catalog()).findByText(`Unpin ${active.ID} · request refused.`);
   await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
   const unrelated = notice.closest("section");
   const control = screen.getByRole("button", { name: "Approve" });
@@ -1126,7 +1216,7 @@ it("closes a selected pin into its catalog result while Escape and Delete keep t
   clickBlocked(within(catalog()).getByRole("button", { name: "Approve" }));
   expect(commands(call)).toHaveLength(1);
   await act(async () => decided.resolve(await reply(...settle.mock.calls[0]!)));
-  await within(catalog()).findByText(`Unpin ${active.ID} · confirmed.`);
+  await within(catalog()).findByText(`Unpin ${active.ID} · completed.`);
   await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
   expect(document.activeElement).toBe(result);
 
@@ -1167,7 +1257,7 @@ it.each(["Approve", "Reject"] as const)(
     const control = screen.getByRole("button", { name });
     control.focus();
     fireEvent.click(control);
-    const notice = await within(catalog()).findByText(`${name} ${pending.ID} · confirmed.`);
+    const notice = await within(catalog()).findByText(`${name} ${pending.ID} · completed.`);
     await waitFor(() => expect(screen.queryByRole("button", { name })).toBeNull());
     expect(screen.queryByText(pending.Content, { exact: true }) !== null).toBe(name === "Approve");
     expect(document.activeElement).toBe(notice.closest("section"));
@@ -1182,7 +1272,9 @@ it.each(["confirmed", "refused"] as const)(
     if (outcome === "refused") settle.mockRejectedValueOnce(new Error("Memory changed."));
     await openActions();
     fireEvent.click(screen.getByRole("menuitem", { name: "Unpin" }));
-    const notice = await within(catalog()).findByText(`Unpin ${active.ID} · ${outcome}.`);
+    const notice = await within(catalog()).findByText(
+      `Unpin ${active.ID} · ${outcome === "confirmed" ? "completed" : "request refused"}.`,
+    );
     await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
     await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
     expect(document.activeElement).toBe(notice.closest("section"));
@@ -1214,7 +1306,7 @@ it("keeps a later search when an unpinned record leaves the current filter", asy
     Rows: page.Rows.map((row) => (row.ID === active.ID ? { ...row, Pinned: false } : row)),
   };
   await act(async () => decided.resolve({ output: JSON.stringify({ ...active, Pinned: false }) }));
-  await within(catalog()).findByText(`Unpin ${active.ID} · confirmed.`);
+  await within(catalog()).findByText(`Unpin ${active.ID} · completed.`);
   await waitFor(() => expect(trigger.isConnected).toBe(false));
   expect(document.activeElement).toBe(search);
   expect(search.value).toBe("cutpoint");
@@ -1251,7 +1343,7 @@ it("requires confirmation for the captured memory and excludes another form", as
   await openActions();
   fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
   fireEvent.click(screen.getByRole("button", { name: "Delete memory" }));
-  await within(catalog()).findByText(`Delete ${active.ID} · confirmed.`);
+  await within(catalog()).findByText(`Delete ${active.ID} · completed.`);
   expect(screen.queryByRole("region", { name: "Confirm memory deletion" })).toBeNull();
   expect(settle).toHaveBeenCalledOnce();
   expect(settle.mock.calls[0]![0]).toMatchObject({ method: "flame.memory/delete.v2" });
@@ -1268,7 +1360,7 @@ it("retains a deletion target until its original command is confirmed", async ()
   fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
   const confirm = screen.getByRole("button", { name: "Delete memory" });
   fireEvent.click(confirm);
-  await screen.findByText(/confirmation unknown/);
+  await screen.findByText(/result unknown/);
   const confirmation = screen.getByRole("region", { name: "Confirm memory deletion" });
   expect(confirmation.textContent).toContain(VISUAL_MEMORY_PAGE.Rows[1]!.Content);
   expect(within(confirmation).getByText(active.ID, { exact: true })).toBeTruthy();
@@ -1284,7 +1376,7 @@ it("retains a deletion target until its original command is confirmed", async ()
   expect(recover).toBe(confirm);
   expect(screen.getAllByRole("button", { name: "Check original result" })).toHaveLength(1);
   fireEvent.click(recover);
-  await within(catalog()).findByText(`Delete ${active.ID} · confirmed.`);
+  await within(catalog()).findByText(`Delete ${active.ID} · completed.`);
   expect(screen.queryByRole("region", { name: "Confirm memory deletion" })).toBeNull();
   expect(settle.mock.calls.map(([, key]) => key)).toEqual(["memory-command-1", "memory-command-1"]);
   expect(settle.mock.calls.map(([request]) => JSON.parse(request.input))).toEqual([
