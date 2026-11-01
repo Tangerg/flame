@@ -934,6 +934,298 @@ it.each(["search", "draft"] as const)(
   },
 );
 
+async function reviewPendingOnly(name: "Approve" | "Reject" = "Approve") {
+  let page: MemoryOutputs["flame.memory/list.v2"] = VISUAL_MEMORY_PAGE;
+  const accepted = async (): Promise<CallPluginResponse> => ({ output: JSON.stringify(page) });
+  const list = vi.fn(accepted);
+  const opened = await openMemory(list);
+  await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
+  fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+  await chooseFilter("Memory status", "Pending review");
+  const draft = startDraft();
+  const reply = opened.settle.getMockImplementation()!;
+  const decided = Promise.withResolvers<CallPluginResponse>();
+  opened.settle.mockImplementationOnce(() => decided.promise);
+  const control = within(catalog()).getByRole("button", { name });
+  control.focus();
+  fireEvent.click(control);
+  await waitFor(() => expect(opened.settle).toHaveBeenCalledOnce());
+  page = {
+    ...VISUAL_MEMORY_PAGE,
+    Rows:
+      name === "Reject"
+        ? VISUAL_MEMORY_PAGE.Rows.filter((row) => row.ID !== pending.ID)
+        : VISUAL_MEMORY_PAGE.Rows.map((row) =>
+            row.ID === pending.ID ? { ...row, Status: "active" as const } : row,
+          ),
+  };
+  return { ...opened, ...draft, list, reply, decided, control, accepted };
+}
+
+it.each([
+  ["Approve", "confirmed"],
+  ["Approve", "refused"],
+  ["Approve", "unknown"],
+  ["Reject", "confirmed"],
+  ["Reject", "refused"],
+  ["Reject", "unknown"],
+] as const)(
+  "keeps a focused %s waiting and hands its %s outcome to the catalog result",
+  async (name, outcome) => {
+    const { settle, call, list, reply, decided, control, editor, content, accepted } =
+      await reviewPendingOnly(name);
+    const reject = within(catalog()).getByRole("button", {
+      name: name === "Approve" ? "Reject" : "Approve",
+    });
+    expect(document.activeElement).toBe(control);
+    clickBlocked(control);
+    fireEvent.keyDown(control, { key: "Enter" });
+    fireEvent.keyDown(control, { key: " " });
+    fireEvent.keyUp(control, { key: " " });
+    clickBlocked(reject);
+    expect(commands(call)).toHaveLength(1);
+    expect(document.activeElement).toBe(control);
+    const result = within(catalog())
+      .getByText(`${name} ${pending.ID} · submitting…`)
+      .closest("section")!;
+    const read = Promise.withResolvers<CallPluginResponse>();
+    if (outcome === "confirmed") list.mockImplementationOnce(() => read.promise);
+
+    await act(async () =>
+      outcome === "confirmed"
+        ? decided.resolve(await reply(...settle.mock.calls[0]!))
+        : decided.reject(
+            outcome === "refused"
+              ? new Error("Memory was already reviewed.")
+              : new MutationLookupError(new Error("receipt unavailable")),
+          ),
+    );
+    await within(catalog()).findByText(
+      `${name} ${pending.ID} · ${outcome === "unknown" ? "confirmation unknown" : outcome}.`,
+    );
+    expect(document.activeElement).toBe(result);
+    expect(result.getAttribute("role")).toBe(outcome === "refused" ? "alert" : "status");
+    expect(within(catalog()).getByRole("button", { name })).toBe(control);
+    if (outcome === "confirmed") await act(async () => read.resolve(await accepted()));
+    await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
+    expect(control.isConnected).toBe(outcome !== "confirmed");
+    expect(within(catalog()).queryByText(pending.Content, { exact: true }) !== null).toBe(
+      outcome !== "confirmed",
+    );
+    expect(within(result).queryByText("Memory was already reviewed.") !== null).toBe(
+      outcome === "refused",
+    );
+    const original = within(catalog()).queryByRole("group", { name: "Original Memory command" });
+    expect(original !== null).toBe(outcome === "unknown");
+    const key = within(catalog()).queryByText("Original command: memory-command-1");
+    expect(key !== null).toBe(outcome === "unknown");
+    expect(key !== null && original?.contains(key)).toBe(outcome === "unknown");
+    expect(
+      within(catalog()).queryByRole("button", { name: "Check original result" }) !== null,
+    ).toBe(outcome === "unknown");
+    expect(original !== null && result.parentElement!.contains(original)).toBe(
+      outcome === "unknown",
+    );
+    expect(document.activeElement).toBe(result);
+    expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
+    expect(content.value).toBe("Keep my unsaved memory draft.");
+    expect(commands(call)).toHaveLength(1);
+    expect(JSON.parse(commands(call)[0]![0].input)).toEqual({
+      ID: pending.ID,
+      ExpectedRevision: pending.Revision,
+      Decision: name === "Approve" ? "approve" : "reject",
+    });
+  },
+);
+
+it.each(["search", "draft"] as const)(
+  "leaves a later %s focus in place when a review settles and its row leaves",
+  async (later) => {
+    const { settle, call, reply, decided, control, editor, content } = await reviewPendingOnly();
+    const chosen =
+      later === "search" ? screen.getByRole("searchbox", { name: "Search this page" }) : content;
+    chosen.focus();
+    await act(async () => decided.resolve(await reply(...settle.mock.calls[0]!)));
+    await within(catalog()).findByText(`Approve ${pending.ID} · confirmed.`);
+    await waitFor(() => expect(control.isConnected).toBe(false));
+    await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
+    expect(document.activeElement).toBe(chosen);
+    expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
+    expect(content.value).toBe("Keep my unsaved memory draft.");
+    expect(commands(call)).toHaveLength(1);
+  },
+);
+
+it.each(["action", "search", "draft"] as const)(
+  "keeps the %s reading choice when a subscription removes a pending command's row",
+  async (later) => {
+    const { transport, call, decided, control, editor, content } = await reviewPendingOnly();
+    const chosen =
+      later === "search"
+        ? screen.getByRole("searchbox", { name: "Search this page" })
+        : later === "draft"
+          ? content
+          : control;
+    chosen.focus();
+    const result = within(catalog())
+      .getByText(`Approve ${pending.ID} · submitting…`)
+      .closest("section")!;
+    transport.removeSchedule("sch_nightly");
+    await waitFor(() => expect(control.isConnected).toBe(false));
+    expect(document.activeElement).toBe(later === "action" ? result : chosen);
+    await act(async () =>
+      decided.reject(new MutationLookupError(new Error("receipt unavailable"))),
+    );
+    await within(catalog()).findByText(`Approve ${pending.ID} · confirmation unknown.`);
+    expect(document.activeElement).toBe(later === "action" ? result : chosen);
+    expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
+    expect(content.value).toBe("Keep my unsaved memory draft.");
+    expect(commands(call)).toHaveLength(1);
+  },
+);
+
+it("does not attach an unrelated prior result to a background record removal", async () => {
+  let page = VISUAL_MEMORY_PAGE;
+  const list = vi.fn(async () => ({ output: JSON.stringify(page) }));
+  const { settle, call, transport } = await openMemory(list);
+  await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+  settle.mockRejectedValueOnce(new Error("Pinned item changed."));
+  await openActions();
+  fireEvent.click(screen.getByRole("menuitem", { name: "Unpin" }));
+  const notice = await within(catalog()).findByText(`Unpin ${active.ID} · refused.`);
+  await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+  const unrelated = notice.closest("section");
+  const control = screen.getByRole("button", { name: "Approve" });
+  control.focus();
+  page = { ...page, Rows: page.Rows.filter((row) => row.ID !== pending.ID) };
+  transport.removeSchedule("sch_nightly");
+  await waitFor(() => expect(control.isConnected).toBe(false));
+  expect(document.activeElement).not.toBe(unrelated);
+  expect(commands(call)).toHaveLength(1);
+});
+
+it("closes a selected pin into its catalog result while Escape and Delete keep their opener", async () => {
+  const { settle, call } = await openMemory();
+  const reply = settle.getMockImplementation()!;
+  const decided = Promise.withResolvers<CallPluginResponse>();
+  settle.mockImplementationOnce(() => decided.promise);
+  const trigger = await openActions();
+  fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(trigger));
+  expect(commands(call)).toHaveLength(0);
+
+  await openActions();
+  fireEvent.click(screen.getByRole("menuitem", { name: "Unpin" }));
+  await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+  const result = within(catalog())
+    .getByText(`Unpin ${active.ID} · submitting…`)
+    .closest("section")!;
+  await waitFor(() => expect(document.activeElement).toBe(result));
+  clickBlocked(within(catalog()).getByRole("button", { name: "Approve" }));
+  expect(commands(call)).toHaveLength(1);
+  await act(async () => decided.resolve(await reply(...settle.mock.calls[0]!)));
+  await within(catalog()).findByText(`Unpin ${active.ID} · confirmed.`);
+  await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
+  expect(document.activeElement).toBe(result);
+
+  await openActions();
+  fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(trigger));
+  await openActions();
+  await waitFor(() => expect(screen.getByRole("menu").contains(document.activeElement)).toBe(true));
+  fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
+  const confirmation = screen.getByRole("region", { name: "Confirm memory deletion" });
+  const cancel = within(confirmation).getByRole("button", { name: "Cancel" });
+  cancel.focus();
+  fireEvent.click(cancel);
+  await waitFor(() => expect(document.activeElement).toBe(trigger));
+  expect(commands(call)).toHaveLength(1);
+});
+
+it.each(["Approve", "Reject"] as const)(
+  "hands an immediately settled %s to its committed result before the row changes",
+  async (name) => {
+    let page = VISUAL_MEMORY_PAGE;
+    const list = vi.fn(async () => ({ output: JSON.stringify(page) }));
+    const { settle, call } = await openMemory(list);
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+    settle.mockImplementationOnce(async () => {
+      page = {
+        ...page,
+        Rows:
+          name === "Reject"
+            ? page.Rows.filter((row) => row.ID !== pending.ID)
+            : page.Rows.map((row) =>
+                row.ID === pending.ID ? { ...row, Status: "active" as const } : row,
+              ),
+      };
+      return { output: "{}" };
+    });
+    const control = screen.getByRole("button", { name });
+    control.focus();
+    fireEvent.click(control);
+    const notice = await within(catalog()).findByText(`${name} ${pending.ID} · confirmed.`);
+    await waitFor(() => expect(screen.queryByRole("button", { name })).toBeNull());
+    expect(screen.queryByText(pending.Content, { exact: true }) !== null).toBe(name === "Approve");
+    expect(document.activeElement).toBe(notice.closest("section"));
+    expect(commands(call)).toHaveLength(1);
+  },
+);
+
+it.each(["confirmed", "refused"] as const)(
+  "keeps an immediately %s menu command in its result task",
+  async (outcome) => {
+    const { settle, call } = await openMemory();
+    if (outcome === "refused") settle.mockRejectedValueOnce(new Error("Memory changed."));
+    await openActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Unpin" }));
+    const notice = await within(catalog()).findByText(`Unpin ${active.ID} · ${outcome}.`);
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
+    expect(document.activeElement).toBe(notice.closest("section"));
+    expect(commands(call)).toHaveLength(1);
+  },
+);
+
+it("keeps a later search when an unpinned record leaves the current filter", async () => {
+  let page = VISUAL_MEMORY_PAGE;
+  const list = vi.fn(async () => ({ output: JSON.stringify(page) }));
+  const { settle, call } = await openMemory(list);
+  await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+  fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+  fireEvent.click(screen.getByLabelText("Pinned only", { selector: "input" }));
+  expect(screen.getByRole("checkbox", { name: "Pinned only" }).getAttribute("aria-checked")).toBe(
+    "true",
+  );
+  const decided = Promise.withResolvers<CallPluginResponse>();
+  settle.mockImplementationOnce(() => decided.promise);
+  const trigger = await openActions();
+  fireEvent.click(screen.getByRole("menuitem", { name: "Unpin" }));
+  const notice = await within(catalog()).findByText(`Unpin ${active.ID} · submitting…`);
+  await waitFor(() => expect(document.activeElement).toBe(notice.closest("section")));
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this page" });
+  search.focus();
+  fireEvent.change(search, { target: { value: "cutpoint" } });
+  page = {
+    ...page,
+    Rows: page.Rows.map((row) => (row.ID === active.ID ? { ...row, Pinned: false } : row)),
+  };
+  await act(async () => decided.resolve({ output: JSON.stringify({ ...active, Pinned: false }) }));
+  await within(catalog()).findByText(`Unpin ${active.ID} · confirmed.`);
+  await waitFor(() => expect(trigger.isConnected).toBe(false));
+  expect(document.activeElement).toBe(search);
+  expect(search.value).toBe("cutpoint");
+  expect(commands(call)).toHaveLength(1);
+  expect(JSON.parse(commands(call)[0]![0].input)).toEqual({
+    ID: active.ID,
+    ExpectedRevision: active.Revision,
+    Pinned: false,
+  });
+});
+
 it("requires confirmation for the captured memory and excludes another form", async () => {
   const { settle, call } = await openMemory();
   const trigger = await openActions();

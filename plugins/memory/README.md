@@ -229,6 +229,15 @@ unit, including when asynchronous feedback arrives at large zoom.
 When a focused record-recovery action retires after a known result, its existing
 confirmation or refusal receives focus. A later search or draft focus choice
 survives that settlement; the independent form remains open.
+Record review waits keep their initiating button focusable and inert. A settled
+command hands that focus to the existing catalog result before its accepted read
+changes the row. If a subscription read removes the focused control before the
+receipt, the same result receives focus while still showing the command's pending
+state. A read never confirms the command. Review and recovery controls share the
+local removal-lifetime guarantee; later search and draft choices retain focus.
+Pin/Unpin selection hands the closing menu to that result even when settlement
+finishes immediately. Its selection intent lasts only until popup close;
+ordinary Escape retains the menu's default return, and Delete keeps its form task.
 A command retains its action, target and editor/record origin for feedback and
 reconciliation. Draft feedback stays beside the form actions; independent record
 feedback stays with the catalog. An acknowledged form closes before the subsequent

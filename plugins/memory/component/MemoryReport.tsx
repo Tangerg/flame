@@ -1,4 +1,4 @@
-import { type ReactNode, type Ref } from "react";
+import { type ReactNode, type Ref, type RefObject, useState } from "react";
 import { type Translate } from "@flame/component-sdk";
 import { type MethodInputs } from "../package/io.github.tangerg.flame/contracts/methods.generated";
 import { Brain } from "@flame/icons/react";
@@ -16,7 +16,14 @@ import {
   RecordGroup,
   Toolbar,
 } from "@flame/ui";
+import { MemoryAction } from "./MemoryAction";
 import { type MemoryItem, type MemoryPage, type MutationName } from "./types";
+type RecordCommand = <K extends MutationName>(
+  method: K,
+  input: MethodInputs[K],
+  label: string,
+  control?: HTMLElement,
+) => void;
 export function MemoryReport({
   page,
   pageNumber,
@@ -32,6 +39,8 @@ export function MemoryReport({
   pinned,
   clearSearchAndFilters,
   feedback,
+  resultFocus,
+  initiator,
   t,
 }: {
   page?: MemoryPage;
@@ -41,17 +50,15 @@ export function MemoryReport({
   authoring: boolean;
   edit(item: MemoryItem, opener: HTMLElement): void;
   remove(item: MemoryItem, opener: HTMLElement): void;
-  command<K extends MutationName>(
-    method: K,
-    input: MethodInputs[K],
-    label: string,
-  ): void;
+  command: RecordCommand;
   search: string;
   status: string;
   origin: string;
   pinned: boolean;
   clearSearchAndFilters(): void;
   feedback: ReactNode;
+  resultFocus: RefObject<HTMLElement | null>;
+  initiator: RefObject<HTMLElement | undefined>;
   t: Translate;
 }) {
   const rows = page?.Rows ?? [];
@@ -138,11 +145,14 @@ export function MemoryReport({
                     <Toolbar label={t("actions.for", { id: item.ID })}>
                       {item.Status === "pending" ? (
                         <>
-                          <Button
+                          <MemoryAction
+                            result={resultFocus}
+                            initiator={initiator}
                             variant="soft"
                             size="md"
                             disabled={disabled}
-                            onClick={() =>
+                            focusableWhenDisabled
+                            onClick={(event) =>
                               command(
                                 "flame.memory/review.v2",
                                 {
@@ -151,17 +161,21 @@ export function MemoryReport({
                                   Decision: "approve",
                                 },
                                 t("command.approve", { id: item.ID }),
+                                event.currentTarget,
                               )
                             }
                           >
                             {t("approve")}
-                          </Button>
-                          <Button
+                          </MemoryAction>
+                          <MemoryAction
+                            result={resultFocus}
+                            initiator={initiator}
                             variant="wash"
                             tone="negative"
                             size="md"
                             disabled={disabled}
-                            onClick={() =>
+                            focusableWhenDisabled
+                            onClick={(event) =>
                               command(
                                 "flame.memory/review.v2",
                                 {
@@ -170,11 +184,12 @@ export function MemoryReport({
                                   Decision: "reject",
                                 },
                                 t("command.reject", { id: item.ID }),
+                                event.currentTarget,
                               )
                             }
                           >
                             {t("reject")}
-                          </Button>
+                          </MemoryAction>
                         </>
                       ) : (
                         <>
@@ -186,34 +201,14 @@ export function MemoryReport({
                           >
                             {t("edit.action")}
                           </Button>
-                          <ActionMenu
-                            label={t("actions.more", { id: item.ID })}
+                          <MemoryMenu
+                            item={item}
                             disabled={disabled}
-                            items={[
-                              {
-                                label: item.Pinned
-                                  ? t("action.unpin")
-                                  : t("action.pin"),
-                                onSelect: () =>
-                                  command(
-                                    "flame.memory/update.v2",
-                                    {
-                                      ID: item.ID,
-                                      ExpectedRevision: item.Revision,
-                                      Pinned: !item.Pinned,
-                                    },
-                                    item.Pinned
-                                      ? t("command.unpin", { id: item.ID })
-                                      : t("command.pin", { id: item.ID }),
-                                  ),
-                              },
-                              {
-                                label: t("action.delete"),
-                                tone: "negative",
-                                disabled: authoring,
-                                onSelect: (opener) => remove(item, opener),
-                              },
-                            ]}
+                            authoring={authoring}
+                            result={resultFocus}
+                            command={command}
+                            remove={remove}
+                            t={t}
                           />
                         </>
                       )}
@@ -241,5 +236,65 @@ export function MemoryReport({
         )}
       </PanelSection>
     </>
+  );
+}
+
+function MemoryMenu({
+  item,
+  disabled,
+  authoring,
+  result,
+  command,
+  remove,
+  t,
+}: {
+  item: MemoryItem;
+  disabled: boolean;
+  authoring: boolean;
+  result: RefObject<HTMLElement | null>;
+  command: RecordCommand;
+  remove(item: MemoryItem, opener: HTMLElement): void;
+  t: Translate;
+}) {
+  const [selectedCommand, setSelectedCommand] = useState(false);
+  return (
+    <ActionMenu
+      label={t("actions.more", { id: item.ID })}
+      disabled={disabled}
+      finalFocus={
+        selectedCommand
+          ? () => {
+              // Settlement can finish before the popup closes; selection owns this handoff.
+              setSelectedCommand(false);
+              return result.current ?? true;
+            }
+          : undefined
+      }
+      items={[
+        {
+          label: item.Pinned ? t("action.unpin") : t("action.pin"),
+          onSelect: () => {
+            setSelectedCommand(true);
+            command(
+              "flame.memory/update.v2",
+              {
+                ID: item.ID,
+                ExpectedRevision: item.Revision,
+                Pinned: !item.Pinned,
+              },
+              item.Pinned
+                ? t("command.unpin", { id: item.ID })
+                : t("command.pin", { id: item.ID }),
+            );
+          },
+        },
+        {
+          label: t("action.delete"),
+          tone: "negative",
+          disabled: authoring,
+          onSelect: (opener) => remove(item, opener),
+        },
+      ]}
+    />
   );
 }

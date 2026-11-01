@@ -1,27 +1,25 @@
-import {
-  type ReactNode,
-  type RefObject,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-} from "react";
-import { Button, Metadata, RecordBody, RecordGroup, Toolbar } from "@flame/ui";
+import { type RefObject, useRef } from "react";
+import { Metadata, RecordBody, RecordGroup, Toolbar } from "@flame/ui";
 import { type Translate } from "@flame/component-sdk";
+import { MemoryAction } from "./MemoryAction";
 import { type Command, type Feedback } from "./types";
 export function MemoryFeedback({
   feedback,
   original,
   pending,
   reconcile,
+  result: destination,
   t,
 }: {
   feedback?: Feedback;
   original?: Command;
   pending: boolean;
   reconcile(): void;
+  result?: RefObject<HTMLElement | null>;
   t: Translate;
 }) {
-  const result = useRef<HTMLElement>(null);
+  const own = useRef<HTMLElement>(null);
+  const result = destination ?? own;
   if (!feedback && !original) return null;
   const key = original && (
     <Metadata>
@@ -29,7 +27,8 @@ export function MemoryFeedback({
     </Metadata>
   );
   return (
-    <RecordGroup>
+    // A caller-owned destination sits outside any form, so this group is its reading unit.
+    <RecordGroup data-focus-unit={destination ? "" : undefined}>
       <RecordGroup
         ref={result}
         tabIndex={-1}
@@ -44,57 +43,13 @@ export function MemoryFeedback({
       {original?.source === "record" ? (
         <Toolbar label={t("feedback.original.label")}>
           {key}
-          <RecordRecovery result={result} pending={pending} onClick={reconcile}>
+          <MemoryAction result={result} pending={pending} onClick={reconcile}>
             {t("feedback.check")}
-          </RecordRecovery>
+          </MemoryAction>
         </Toolbar>
       ) : (
         key
       )}
     </RecordGroup>
-  );
-}
-
-function RecordRecovery({
-  result,
-  pending,
-  onClick,
-  children,
-}: {
-  result: RefObject<HTMLElement | null>;
-  pending: boolean;
-  onClick(): void;
-  children: ReactNode;
-}) {
-  const action = useRef<HTMLButtonElement>(null);
-  const ownedFocus = useRef(false);
-  useLayoutEffect(() => {
-    const button = action.current;
-    if (!button) return;
-    ownedFocus.current = false;
-    // Capture ownership before removal; passive cleanup sees the committed result.
-    return () => {
-      ownedFocus.current = button === button.ownerDocument.activeElement;
-    };
-  }, []);
-  useEffect(() => {
-    const button = action.current;
-    const block = result.current;
-    if (!button || !block) return;
-    return () => {
-      const active = block.ownerDocument.activeElement;
-      if (
-        !button.isConnected &&
-        ownedFocus.current &&
-        block.isConnected &&
-        active === block.ownerDocument.body
-      )
-        block.focus();
-    };
-  }, [result]);
-  return (
-    <Button ref={action} pending={pending} onClick={onClick}>
-      {children}
-    </Button>
   );
 }

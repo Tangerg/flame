@@ -67,6 +67,8 @@ export function Memory({ context }: { context: ComponentContext }) {
     current,
     summary,
     recordFeedback,
+    recordResult,
+    initiator,
   } = useMemory(context);
   const recovering = unknown?.source === "editor";
   function clearFiltersAndFocusSearch() {
@@ -402,9 +404,12 @@ export function Memory({ context }: { context: ComponentContext }) {
                 original={unknown?.source === "record" ? unknown : undefined}
                 pending={pending}
                 reconcile={reconcile}
+                result={recordResult}
                 t={t}
               />
             }
+            resultFocus={recordResult}
+            initiator={initiator}
             authoring={Boolean(edit)}
             disabled={locked || read.loading || Boolean(read.error)}
             edit={(item, opener) => {
@@ -422,7 +427,9 @@ export function Memory({ context }: { context: ComponentContext }) {
                 opener,
               });
             }}
-            command={change}
+            command={(method, input, label, control) =>
+              change(method, input, label, "record", control)
+            }
             t={t}
           />
           {current &&

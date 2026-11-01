@@ -82,6 +82,8 @@ export function useMemory(context: ComponentContext) {
   const command = useRef<Command>(undefined);
   const observing = useRef(false);
   const arrival = useRef<HTMLElement>(undefined);
+  const initiator = useRef<HTMLElement>(undefined);
+  const recordResult = useRef<HTMLElement>(null);
   const summary = useRef<HTMLSpanElement>(null);
   const load = useCallback(
     async (owner: AbortSignal, cursors = [""], pageControl?: HTMLElement) => {
@@ -199,6 +201,13 @@ export function useMemory(context: ComponentContext) {
     if (!owner || owner.signal.aborted || context.signal.aborted) return;
     return AbortSignal.any([context.signal, owner.signal]);
   }
+  function handOff() {
+    const control = initiator.current;
+    initiator.current = undefined;
+    // Runs before the accepted read can replace the row; a later focus choice keeps the document.
+    if (control && control === control.ownerDocument.activeElement)
+      recordResult.current?.focus();
+  }
   async function observe(original: Command, owner: AbortSignal) {
     if (observing.current) return;
     observing.current = true;
@@ -207,6 +216,7 @@ export function useMemory(context: ComponentContext) {
     try {
       await original.promise;
       if (owner.aborted) return;
+      handOff();
       command.current = undefined;
       setUnknown(undefined);
       if (original.source === "editor") {
@@ -217,6 +227,7 @@ export function useMemory(context: ComponentContext) {
       void load(owner);
     } catch (error) {
       if (owner.aborted) return;
+      handOff();
       if (mutationSettlementIsUnknown(error)) {
         setUnknown(() => original);
         report(original, "unknown");
@@ -235,6 +246,7 @@ export function useMemory(context: ComponentContext) {
     input: MethodInputs[K],
     label: string,
     source: Command["source"] = "record",
+    control?: HTMLElement,
   ) {
     const owner = observerSignal();
     if (!owner || command.current || observing.current || cwd === undefined)
@@ -246,6 +258,7 @@ export function useMemory(context: ComponentContext) {
         label,
       };
       command.current = original;
+      initiator.current = control;
       void observe(original, owner);
     } catch (error) {
       const update =
@@ -309,5 +322,7 @@ export function useMemory(context: ComponentContext) {
     current,
     summary,
     recordFeedback,
+    recordResult,
+    initiator,
   };
 }

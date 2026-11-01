@@ -36,8 +36,9 @@ evidence (2026-11-02)**, published as `d40b86262`. External-source navigation
 and read-only map targets are qualified under **External sources and linked map
 targets (2026-11-02)**, published as `3de198b27`. Memory reading is qualified under
 **Memory read and page continuity (2026-11-02)**, published as `e2f58d756`. The
-form-command follow-up is recorded under **Memory submission and original-result
-actions (2026-11-02)**. The latest goal restores
+form-command follow-up is published as `c7b97cfc5` under **Memory submission and
+original-result actions (2026-11-02)**. Record-command continuity is recorded under
+**Memory record actions and result continuity (2026-11-02)**. The latest goal restores
 preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
 describe their historical scope.
@@ -4765,6 +4766,179 @@ no accepted product input; publication is followed by fresh remote, cleanliness
 and preservation checks. Continue from a fresh task observation, preserving this
 accepted hierarchy and the preceding color/focus work.
 
+### Memory record actions and result continuity (2026-11-02)
+
+Scope is the installed Memory catalog's Approve/Reject and Pin/Unpin path, its
+existing result/recovery, independent authoring and accepted reads. Repository
+AGENTS, PROJECT_RULES, DEVELOPMENT and the Memory/Web/Desktop READMEs establish
+the contracts. React, shared Button/ActionMenu/Panel, Base UI and StyleX remain
+the presentation stack; Runtime and the provider retain business authority.
+
+The previous accepted native source still loses Approve focus when it becomes
+native disabled. A fresh Wails baseline using exact `c7b97cfc5` Memory sources
+also selects Unpin, drops focus to the HTML root and leaves subsequent Tab at
+the fixture sidebar; the refusal cannot restore the task. Source/caller review
+finds two additional boundaries: fast menu replies can finish before popup close,
+and a subscription can accept a page before the original receipt. With Pending
+review selected, the latter removes a focused submitting control before it can
+hand off. These are observed failures, not deductions from disabled props alone.
+
+Review controls now remain focusable and inert through waits. The original
+HTMLElement, captured from its activation event, is the one review focus owner.
+Settlement consumes that intent and focuses the existing catalog result only
+while the control still owns focus, before its subsequent accepted read changes
+the row. No document-body guess, background-read handoff or later-search/draft
+override enters that path. Original input, revision, binding, key, promise and
+reconciliation remain with their accepted owners.
+
+`MemoryAction` consolidates the existing recovery-button removal lifetime with
+the review controls. Layout cleanup records real focus ownership before removal;
+passive cleanup resolves the connected result after commit and acts only if the
+button is disconnected and the body is unclaimed. A review additionally requires
+the hook's same initiating-control ref. An idle control therefore cannot attach
+an unrelated prior result to its background removal. Resolving the result at
+removal is necessary because review rows mount before their first feedback.
+Recovery retains its command-owned case, and the superseded RecordRecovery is
+removed. There is no extra wrapper DOM, listener, timer or focus service.
+
+`MemoryMenu` owns one actual selection focus intent until popup close. Only
+Pin/Unpin selection supplies the existing `ActionMenu.finalFocus` destination;
+settlement speed cannot erase it. Consuming it on close restores ordinary Escape
+and default return policy, including a later menu opened after a known result.
+Delete retains its independent captured confirmation. This is UI selection
+lifetime, with no mirrored command phase, optimistic record or retry owner.
+
+The catalog's existing feedback group is its fitting reading unit, so status,
+provider detail, original identity and recovery travel together through Panel's
+existing focus reveal. Forms retain their already accepted FormActions unit.
+No style, token, copy, animation, shared API, SDK or backend change is required
+for these focus contracts.
+
+Read-only HeroUI's actual loading-button example informs stable pending controls;
+its disabled dropdown example distinguishes unavailable actions. Flame's actual
+Schedules feedback and shared ActionMenu finalFocus demonstrate the popup task
+handoff. The earlier ZCode, ChatGPT, Radix, Arc, color and Ace research retains
+its recorded scope. Static reference images remain composition evidence, never
+keyboard or focus evidence.
+
+Verification:
+
+- Six related Web files pass **155 tests**, including **64 Memory cases**. They
+  cover both review decisions through confirmed/refused/unknown states, exact
+  inputs/revisions, blocked repeats, immediate replies, row filtering/removal,
+  selected-menu vs Escape/Delete return, subscription-before-receipt removal,
+  original recovery and later search/draft choices. The unrelated-result guard
+  prevents a demonstrated regression from the first extracted lifetime helper.
+- Exact original Memory sources fail **11** focused cases. The intermediate
+  pending-only menu policy fails the two immediate-result cases; removal before
+  receipt fails with body focus before the shared local lifetime is connected.
+  A focused idle row also exposes the unrelated-result defect before its owner
+  guard. Each controlled source replay restores final candidate bytes in `finally`.
+- The introduced conditional assertions are corrected to unconditional semantic
+  checks. An original-source control also fails the new headless autofocus
+  assumption; the Cancel-return test explicitly establishes its focus as existing
+  tests do. Native confirmation entry remains an actual GUI qualification below.
+- Final `make check-native`, Web/plugin typechecks and lints, plugin i18n/resource
+  parity, and Web design-system, tokens, chrome, locales, HMR, layers, bundle and
+  plugin-module checks pass. Normal generation changes only Memory's ESM. Native
+  verification retains the existing macOS SDK/link-target warnings; the actual
+  private app uses the pinned Wails v3.0.0 and production/macOS-13 flags.
+- Two restricted Claude Code CLI sessions report 42 and 16 turns, with no checks
+  executed. Root reviews their diffs, adds boundary regressions, repairs fast
+  menu settlement and initiating-control ownership, and owns all verification,
+  generated output, native acceptance and publication.
+
+The private provider carries canonical refusal, unavailable-acknowledgement and
+success envelopes through the real public client and InstalledComponent. Each
+original key/namespace retains frozen input/binding and one immutable reply;
+rechecks cannot become a replacement write. The private page advances once.
+For the second command it publishes a canonical data-change event and lets its
+read arrive before the delayed acknowledgement. The GUI can therefore show an
+accepted changed page while its command remains submitting/unknown. This
+qualifies UI ownership and focus, not live backend receipt durability. No Runtime,
+provider installation, real user data or message submission is involved.
+
+Final native scenes:
+
+- English/light/Flame Orange, 14px, wide split workspace: keyboard Approve holds
+  focus while repeat Enter/Space and the open draft's Escape are blocked. Known
+  refusal enters the concrete catalog result. On a new original command, the
+  subscription first removes the record from Pending review while its status is
+  still submitting; focus goes to that submitting result. Unknown and repeated
+  unknown preserve the same key, then known recovery focuses the confirmed result.
+  The independent draft stays intact and editable. Clearing local filters reveals
+  the accepted active record and its source facts. Unpin closes into its pending
+  result, then respects a later Search query through confirmation/read. Ordinary
+  menu Escape, an outside search click and a later Delete confirmation retain their
+  proper scope: Delete actually starts on Cancel, and Escape returns its exact
+  opener. Cancelling the independent draft restores Add. Files/full-width/Dock/
+  Memory return retains query, known result and object state; the original
+  conversation draft remains editable without sending.
+- Chinese/dark/custom blue, 18px, real macOS left-half window and twenty native
+  zoom increments to 200%: keyboard Reject keeps its focus while activation is
+  blocked. Concrete refusal, original identity and the later recovery all fit
+  below sticky controls. A subscription removes the named rejected record before
+  acknowledgement while its result still says submitting; focus enters that
+  stable result. Unknown/repeated unknown retain the same key/action; known
+  recovery focuses confirmation. Local filter reset shows only the remaining
+  active record. Unpin and Pin close into their own result, retain complete IDs
+  and update the accepted badge. Actual wheel scrolling, full-width Files and
+  explicit Memory return preserve the result. Closing the reader and returning
+  native zoom to 100% restores the split workspace and Chinese composer draft,
+  which remains editable without sending.
+
+- English/light/14px with immediate private replies and reads: Unpin's known
+  refusal focuses its result without a visible wait. The next Unpin removes its
+  menu/row from Pinned only and enters unknown with that result still focused.
+  Repeated original-key lookup stays on the same recovery control; confirmation
+  retires it into the existing result. A later Pin immediately confirms and
+  focuses its own result. Ordinary Escape after both refusal and success returns
+  the trigger; Delete still actually starts on Cancel and returns its opener,
+  and a later outside search choice stays in Search.
+
+The six better-* domains are reviewed for this complete task, with these limits:
+
+| Domain        | Evidence inspected                                                                                                     | Result                                                                                                         |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Accessibility | MemoryAction/MemoryMenu/handOff, 64 Memory cases and the three final native paths, including actual confirmation entry | Changed focus, keyboard gates and return contracts pass; VoiceOver is not verified.                            |
+| Layout        | Existing feedback fitting group and Panel owner, wide split and left-half/200% full reader, real wheel/zoom/return     | Status, key, recovery and targets remain readable in the exercised frames; 320px and RTL GUI are not verified. |
+| Writing       | Existing English/Chinese action, status, target and concrete provider detail                                           | Pre-existing rejection/refusal ambiguity remains below; no catalog copy changes in this focus batch.           |
+| Typography    | Native English 14px and Chinese 18px, long IDs/keys, mixed-language refusal and source facts                           | Full values wrap in the exercised frames; type scale remains unchanged.                                        |
+| Color         | Orange/light and blue/dark, distinct destructive action and visible keyboard/result focus                              | Existing semantic mapping is retained; fresh rendered contrast ratios are not verified.                        |
+| UI            | Native pending/fast result, menu dismissal, control retirement and continued drafting with normal motion enabled       | Task continuity passes without new animation, decoration, wrapper or component system.                         |
+
+Resolved findings are loss of the review continuation (`MemoryReport.tsx:154`,
+`useMemory.ts:204`), menu task return keyed only to pending
+(`MemoryReport.tsx:242`), and subscription removal before receipt
+(`MemoryAction.tsx:4`). Their source and runtime evidence are recorded above.
+One **MEDIUM, pre-existing writing finding** remains at
+`plugins/memory/component/locales/zh.ts:77`: the native Reject action and its
+known command-refusal status repeat the same word, producing
+`拒绝 … · 已拒绝。`. Concrete provider detail and the still-pending record distinguish
+the current result, but explicitly naming the refused request would improve
+clarity. This is the next observed task, keeping known refusal distinct from
+unknown acknowledgement and from a successfully applied record rejection.
+
+Review verdict: **Approve for the changed focus, fitting-unit and return contracts
+in the recorded scenes**. This does not accept the remaining writing finding or
+declare an award-level visual ceiling. Physical IME, other-language/platform GUIs,
+fresh pixel contrast and live backend receipt durability remain unqualified.
+No browser visual suite, performance benchmark, full Web suite or all-workspace
+Go suite runs. There is no protocol, storage, backend or data migration.
+
+All four owned native processes (one exact-source baseline and three final
+scenes) close through their native windows with exit 0; the exact executable
+process audit is empty. LaunchServices is unregistered. All six private Library
+paths and nine owned checkout output roots are restored to their absent
+baselines; the app, private Web assets and home are removed. Reviewed logs,
+CLI inputs/results and original-source replay files are retired before commit.
+Only active toolchain `bin` and npm CLI `_npx` prerequisites remain for the
+continuing goal. Root dependencies, user data, read-only references and unrelated
+processes are preserved. A fresh fetch finds zero incoming main commits at
+`c7b97cfc5`, with the primary main checkout clean. Delivery uses explicit paths,
+fast-forwards main and pushes the verified batch, followed by fresh remote,
+cleanliness and resource audits.
+
 ### Memory submission and original-result actions (2026-11-02)
 
 Baseline native Wails reproduced a complete form-task interruption: Save and
@@ -4789,7 +4963,7 @@ unknown command blocks the form and keeps its recovery in the catalog.
 `MemoryFeedback` retains status, concrete refusal details and original identity.
 Editor identity uses plain Metadata; its recovery appears only in the form's
 primary action. Record recovery retains its named toolbar. A small local
-`RecordRecovery` component owns the retiring control's actual focus lifetime:
+`RecordRecovery` component at this receipt owns the retiring control's actual focus lifetime:
 layout cleanup captures whether its button still owns focus; passive cleanup
 focuses the existing connected result block only after the button has left and
 the body is unclaimed. Pending/repeated unknown, later search/draft choices and
@@ -4797,6 +4971,7 @@ whole-feedback retirement cannot trigger that handoff. The result is an ordinary
 programmatic focus destination, without a new Tab stop. RecordForm retains form
 success/cancellation restoration. No new command state, timer, retry owner,
 shared API, command path, style or dependency is introduced.
+The later record-actions follow-up consolidates this lifetime in `MemoryAction`.
 
 Native 200% deletion also exposes misplaced feedback: the focused action remains
 visible while its command identity/status scrolls behind the fixed controls.
@@ -4895,9 +5070,8 @@ Scoped better-* review:
 
 This accepts the changed form/recovery task in these scenes. It is not a claim
 that the entire Memory surface or product has reached a visual ceiling. The
-unmodified initial record Approve/Reject/menu command lifecycle remains separate:
-native Approve still drops focus when it becomes disabled. That concrete reading
-interruption is the next candidate, subject to fresh owner/caller inspection.
+initial record Approve/Reject/menu command lifecycle is qualified by the later
+**Memory record actions and result continuity (2026-11-02)** follow-up.
 VoiceOver, physical IME composition, fresh rendered contrast measurements,
 other-language/native-platform GUIs and real provider/backend durability remain
 unqualified. No browser visual suite or performance benchmark runs. There is no
