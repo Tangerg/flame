@@ -22,3 +22,7 @@ func lockDirectory(path string) (*os.File, error) {
 func unlockDirectory(file *os.File) error {
 	return errors.Join(syscall.Flock(int(file.Fd()), syscall.LOCK_UN), file.Close())
 }
+
+func openExecutable(path string) (*os.File, error) {
+	return os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+}

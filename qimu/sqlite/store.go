@@ -90,7 +90,7 @@ CREATE TABLE qimu_meta (singleton INTEGER PRIMARY KEY CHECK(singleton=1),store_i
 CREATE TABLE qimu_owners (id TEXT PRIMARY KEY,next_sequence INTEGER NOT NULL DEFAULT 0,compacted_through INTEGER NOT NULL DEFAULT 0 CHECK(compacted_through<=next_sequence));
 CREATE TABLE qimu_submissions (owner_id TEXT NOT NULL REFERENCES qimu_owners(id),sequence INTEGER NOT NULL,digest TEXT NOT NULL,request BLOB NOT NULL,state TEXT NOT NULL CHECK(state IN ('prepared','committed','not_committed')),evidence BLOB,synchronized INTEGER NOT NULL DEFAULT 0 CHECK(synchronized IN (0,1)),PRIMARY KEY(owner_id,sequence));
 CREATE TABLE qimu_evidence_references (owner_id TEXT NOT NULL,sequence INTEGER NOT NULL,holder TEXT NOT NULL,PRIMARY KEY(owner_id,sequence,holder),FOREIGN KEY(owner_id,sequence) REFERENCES qimu_submissions(owner_id,sequence));
-CREATE TABLE qimu_attempts (id TEXT PRIMARY KEY,epoch INTEGER NOT NULL,request BLOB NOT NULL,request_digest TEXT NOT NULL,state TEXT NOT NULL CHECK(state IN ('approved','released')),proof BLOB);
+CREATE TABLE qimu_attempts (id TEXT PRIMARY KEY,epoch INTEGER NOT NULL,request BLOB NOT NULL,request_digest TEXT NOT NULL,state TEXT NOT NULL CHECK(state IN ('approved','handoff','released')),proof BLOB);
 CREATE TABLE qimu_installations (id TEXT PRIMARY KEY,record BLOB NOT NULL);
 CREATE TABLE qimu_use_approvals (id TEXT PRIMARY KEY,request BLOB NOT NULL,request_digest TEXT NOT NULL,state TEXT NOT NULL CHECK(state IN ('approved','released')),proof BLOB);
 CREATE TABLE qimu_realms (id TEXT NOT NULL,epoch TEXT NOT NULL,operation_id TEXT NOT NULL UNIQUE,resume_verifier TEXT NOT NULL,PRIMARY KEY(id,epoch));
@@ -191,11 +191,11 @@ func Open(ctx context.Context, config Config) (result *Store, err error) {
 		}
 	}
 	err = store.transaction(ctx, func(tx Executor) error {
-		var count int
-		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&count); err != nil {
+		actualShape, err := readSchemaShape(ctx, tx)
+		if err != nil {
 			return err
 		}
-		if count == 0 {
+		if actualShape.IsZero() {
 			if _, err := tx.ExecContext(ctx, schema); err != nil {
 				return err
 			}
@@ -223,10 +223,6 @@ func Open(ctx context.Context, config Config) (result *Store, err error) {
 			}
 			return nil
 		}
-		actualShape, err := readSchemaShape(ctx, tx)
-		if err != nil {
-			return err
-		}
 		if actualShape != expectedShape {
 			return errors.New("sqlite: incompatible database schema; open a fresh data directory")
 		}
@@ -245,7 +241,7 @@ func Open(ctx context.Context, config Config) (result *Store, err error) {
 		return nil, err
 	}
 	var unresolved int
-	if err := store.db.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM qimu_submissions WHERE state='prepared' OR synchronized=0)+(SELECT count(*) FROM qimu_attempts WHERE state='approved')+(SELECT count(*) FROM qimu_use_approvals WHERE state='approved')`).Scan(&unresolved); err != nil {
+	if err := store.db.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM qimu_submissions WHERE state='prepared' OR synchronized=0)+(SELECT count(*) FROM qimu_attempts WHERE state IN ('approved','handoff'))+(SELECT count(*) FROM qimu_use_approvals WHERE state='approved')`).Scan(&unresolved); err != nil {
 		return nil, err
 	}
 	if unresolved != 0 {
@@ -290,6 +286,9 @@ func readSchemaShape(ctx context.Context, executor Executor) (integrity.Digest, 
 	}
 	if err := rows.Err(); err != nil {
 		return integrity.Digest{}, err
+	}
+	if len(objects) == 0 {
+		return integrity.Digest{}, nil
 	}
 	data, err := json.Marshal(objects)
 	if err != nil {

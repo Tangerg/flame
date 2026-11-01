@@ -52,6 +52,7 @@ type Runner interface {
 	Attach(context.Context, string) (io.ReadWriteCloser, error)
 	Inspect(context.Context, string) (runner.Observation, error)
 	CloseAttempt(context.Context, string) (runner.Observation, error)
+	AcknowledgeExit(context.Context, runner.ExitReceipt) error
 	ProveAbsent(context.Context, runner.AbsenceRequest) (runner.AbsenceProof, error)
 }
 
@@ -382,7 +383,19 @@ func (d *Driver) release(ctx context.Context, attempt sqlite.Attempt, observed r
 	if err != nil {
 		return err
 	}
-	return d.config.Store.ReleaseAttempt(ctx, attempt.ID, sqlite.ExitProof{AttemptID: attempt.ID, Realm: attempt.Realm, ExitID: observed.ProofID, Kind: "runner-wait", Evidence: evidence})
+	proof := sqlite.ExitProof{AttemptID: attempt.ID, Realm: attempt.Realm, ExitID: observed.ProofID, Kind: "runner-wait", Evidence: evidence}
+	if err := d.config.Store.AcceptExit(ctx, attempt.ID, proof); err != nil {
+		return err
+	}
+	return d.acknowledgeExit(ctx, attempt, proof)
+}
+
+func (d *Driver) acknowledgeExit(ctx context.Context, attempt sqlite.Attempt, proof sqlite.ExitProof) error {
+	receipt := runner.ExitReceipt{AttemptID: attempt.ID, Epoch: attempt.Epoch, RunnerID: attempt.Realm, ProofID: proof.ExitID}
+	if err := d.config.Runner.AcknowledgeExit(ctx, receipt); err != nil {
+		return err
+	}
+	return d.config.Store.ReleaseAttempt(ctx, attempt.ID, proof)
 }
 
 // Reconcile consumes late evidence for the original resource. It never repeats
@@ -417,7 +430,7 @@ func (d *Driver) Recover(ctx context.Context) error {
 	}
 	pending := false
 	for _, record := range records {
-		if !record.Released && record.Attempt.Profile == qimu.MCPProcess {
+		if (!record.Released || record.PendingHandoff) && record.Attempt.Profile == qimu.MCPProcess {
 			pending = true
 			break
 		}
@@ -434,48 +447,58 @@ func (d *Driver) Recover(ctx context.Context) error {
 	}
 	var failures error
 	for _, record := range records {
-		attempt := record.Attempt
-		if record.Released || attempt.Profile != qimu.MCPProcess {
-			continue
+		if record.Attempt.Profile == qimu.MCPProcess {
+			failures = errors.Join(failures, d.recoverAttempt(ctx, identity, record))
 		}
-		if attempt.Epoch >= d.config.Store.Epoch() {
-			failures = errors.Join(failures, runner.ErrUnknown)
-			continue
-		}
-		if attempt.Realm != identity.ID {
-			// A restarted runner may retain an original, already durable Wait
-			// proof. It may not close or infer an unowned surviving process.
-			observed, inspectErr := d.config.Runner.Inspect(ctx, attempt.ID)
-			if inspectErr == nil {
-				inspectErr = d.release(ctx, attempt, observed)
-			}
-			if inspectErr != nil {
-				inspectErr = errors.Join(runner.ErrUnknown, inspectErr)
-			}
-			failures = errors.Join(failures, inspectErr)
-			continue
-		}
-		observed, err := d.config.Runner.CloseAttempt(ctx, attempt.ID)
-		if errors.Is(err, runner.ErrNotFound) {
-			request := runner.AbsenceRequest{AttemptID: attempt.ID, Epoch: attempt.Epoch, RunnerID: attempt.Realm}
-			proof, proofErr := d.config.Runner.ProveAbsent(ctx, request)
-			if proofErr == nil {
-				proofErr = proof.Validate(request)
-			}
-			if proofErr != nil {
-				failures = errors.Join(failures, runner.ErrUnknown, proofErr)
-				continue
-			}
-			evidence, encodeErr := json.Marshal(proof)
-			if encodeErr != nil {
-				failures = errors.Join(failures, encodeErr)
-				continue
-			}
-			err = d.config.Store.ReleaseAttempt(ctx, attempt.ID, sqlite.ExitProof{AttemptID: attempt.ID, Realm: attempt.Realm, ExitID: proof.ProofID, Kind: "sealed-not-started", Evidence: evidence})
-		} else if err == nil {
-			err = d.release(ctx, attempt, observed)
-		}
-		failures = errors.Join(failures, err)
 	}
 	return failures
+}
+
+func (d *Driver) recoverAttempt(ctx context.Context, identity runner.Identity, record sqlite.AttemptRecord) error {
+	attempt := record.Attempt
+	if record.PendingHandoff {
+		return d.acknowledgeExit(ctx, attempt, *record.Proof)
+	}
+	if record.Released {
+		return nil
+	}
+	if attempt.Epoch >= d.config.Store.Epoch() {
+		return runner.ErrUnknown
+	}
+	if attempt.Realm != identity.ID {
+		// A replacement authority may replay the original durable exit but
+		// cannot stop a surviving process whose wait identity it never owned.
+		observed, err := d.config.Runner.Inspect(ctx, attempt.ID)
+		if err == nil {
+			err = d.release(ctx, attempt, observed)
+		}
+		if err != nil {
+			return errors.Join(runner.ErrUnknown, err)
+		}
+		return nil
+	}
+	observed, err := d.config.Runner.CloseAttempt(ctx, attempt.ID)
+	if errors.Is(err, runner.ErrNotFound) {
+		return d.releaseAbsentAttempt(ctx, attempt)
+	}
+	if err != nil {
+		return err
+	}
+	return d.release(ctx, attempt, observed)
+}
+
+func (d *Driver) releaseAbsentAttempt(ctx context.Context, attempt sqlite.Attempt) error {
+	request := runner.AbsenceRequest{AttemptID: attempt.ID, Epoch: attempt.Epoch, RunnerID: attempt.Realm}
+	proof, err := d.config.Runner.ProveAbsent(ctx, request)
+	if err == nil {
+		err = proof.Validate(request)
+	}
+	if err != nil {
+		return errors.Join(runner.ErrUnknown, err)
+	}
+	evidence, err := json.Marshal(proof)
+	if err != nil {
+		return err
+	}
+	return d.config.Store.ReleaseAttempt(ctx, attempt.ID, sqlite.ExitProof{AttemptID: attempt.ID, Realm: attempt.Realm, ExitID: proof.ProofID, Kind: "sealed-not-started", Evidence: evidence})
 }

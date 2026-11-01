@@ -69,6 +69,55 @@ export interface SetupContribution {
     bindings: SetupBinding[];
   }>;
 }
+function validateRequirements(
+  dependencies: SetupContribution["requires"],
+): void {
+  const requirements = new Set<string>();
+  for (const dependency of dependencies) {
+    exactFields(dependency, ["id", "contract", "optional", "bindings"]);
+    if (
+      typeof dependency.id !== "string" ||
+      !validToken(dependency.id) ||
+      requirements.has(dependency.id) ||
+      typeof dependency.optional !== "boolean" ||
+      !Array.isArray(dependency.bindings)
+    )
+      throw new Error("plugin: invalid setup dependency");
+    requirements.add(dependency.id);
+    const contract = new Capability(dependency.contract);
+    if (
+      (!dependency.optional && !dependency.bindings.length) ||
+      (contract.descriptor.composition === "selection" &&
+        dependency.bindings.length > 1)
+    )
+      throw new Error("plugin: invalid dependency cardinality");
+    for (const binding of dependency.bindings)
+      validateSetupBinding(binding, contract);
+  }
+}
+
+function validateSetupBinding(
+  binding: SetupBinding,
+  contract: Capability,
+): void {
+  exactFields(binding, [
+    "installationId",
+    "digest",
+    "contribution",
+    "contract",
+  ]);
+  if (
+    typeof binding.installationId !== "string" ||
+    !validToken(binding.installationId) ||
+    typeof binding.contribution !== "string" ||
+    !validToken(binding.contribution) ||
+    typeof binding.digest !== "string" ||
+    !/^[a-f0-9]{64}$/.test(binding.digest) ||
+    new Capability(binding.contract).identity !== contract.identity
+  )
+    throw new Error("plugin: invalid captured dependency binding");
+}
+
 export interface ActivationResource {
   close(): void | Promise<void>;
   start?(): void | Promise<void>;
@@ -460,44 +509,7 @@ export class Backend {
       }
       if ((value.requires.length || value.background) && !this.#setup)
         throw new Error("plugin: declared collaborators require setup");
-      const requirements = new Set<string>();
-      for (const dependency of value.requires) {
-        exactFields(dependency, ["id", "contract", "optional", "bindings"]);
-        if (
-          typeof dependency.id !== "string" ||
-          !validToken(dependency.id) ||
-          requirements.has(dependency.id) ||
-          typeof dependency.optional !== "boolean" ||
-          !Array.isArray(dependency.bindings)
-        )
-          throw new Error("plugin: invalid setup dependency");
-        requirements.add(dependency.id);
-        const contract = new Capability(dependency.contract);
-        if (
-          (!dependency.optional && !dependency.bindings.length) ||
-          (contract.descriptor.composition === "selection" &&
-            dependency.bindings.length > 1)
-        )
-          throw new Error("plugin: invalid dependency cardinality");
-        for (const binding of dependency.bindings) {
-          exactFields(binding, [
-            "installationId",
-            "digest",
-            "contribution",
-            "contract",
-          ]);
-          if (
-            typeof binding.installationId !== "string" ||
-            !validToken(binding.installationId) ||
-            typeof binding.contribution !== "string" ||
-            !validToken(binding.contribution) ||
-            typeof binding.digest !== "string" ||
-            !/^[a-f0-9]{64}$/.test(binding.digest) ||
-            new Capability(binding.contract).identity !== contract.identity
-          )
-            throw new Error("plugin: invalid captured dependency binding");
-        }
-      }
+      validateRequirements(value.requires);
     }
   }
   #register(bound: BoundMethod): void {

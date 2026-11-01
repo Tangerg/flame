@@ -2,6 +2,7 @@ package process_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -77,17 +78,8 @@ func TestRecoveryRequiresOriginalSealedNonCreationEvidence(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, capability, err := echoContract()
-			if err != nil {
-				t.Fatal(err)
-			}
-			contract := qimu.ContractRef{Name: capability.Descriptor().Reference, Version: "1", Digest: integrity.Hash(capability.Identity().JSON()), Kind: qimu.ServiceKind, Mode: qimu.PortableMode}
-			root := qimu.ExportRef{InstallationID: "original", Release: integrity.Hash([]byte("release")), UnitID: "backend", Export: "echo", Contract: contract}
-			binding := qimu.BindingSnapshot{FormatVersion: 1, Roots: []qimu.ExportRef{root}, Units: []qimu.UnitBinding{{Source: root.Unit(), Configuration: integrity.Hash([]byte(`{}`)), Imports: []qimu.ImportDeclaration{}}}}
-			attempt := sqlite.Attempt{ID: "approved-before-crash", Epoch: store.Epoch(), Source: root.Unit(), Binding: binding, Realm: identity.ID, Profile: qimu.MCPProcess}
-			if err := store.RecordAttempt(t.Context(), attempt); err != nil {
-				t.Fatal(err)
-			}
+			attempt := recordAttempt(t, store, identity)
+
 			// The Host crashes after its durable approval and before Launch.
 			if err := store.Close(); err != nil {
 				t.Fatal(err)
@@ -128,7 +120,7 @@ func TestRecoveryRequiresOriginalSealedNonCreationEvidence(t *testing.T) {
 				if !records[0].Released || records[0].Proof == nil || records[0].Proof.Kind != "sealed-not-started" || records[0].Proof.Realm != identity.ID || len(dependencies) != 0 {
 					t.Fatalf("original non-creation evidence was not settled: %+v %+v", records, dependencies)
 				}
-			} else if records[0].Released || records[0].Proof != nil || len(dependencies) != 1 || dependencies[0] != root.Unit().Dependency() {
+			} else if records[0].Released || records[0].Proof != nil || len(dependencies) != 1 || dependencies[0] != attempt.Source.Dependency() {
 				t.Fatalf("unknown execution lost its exact protection: %+v %+v", records, dependencies)
 			}
 			if source.programCalls.Load() != 0 {
@@ -136,6 +128,91 @@ func TestRecoveryRequiresOriginalSealedNonCreationEvidence(t *testing.T) {
 			}
 			if _, err := original.Inspect(t.Context(), attempt.ID); !errors.Is(err, runner.ErrNotFound) {
 				t.Fatalf("the original runner received a replacement creation: %v", err)
+			}
+		})
+	}
+}
+
+func recordAttempt(t *testing.T, store *sqlite.Store, identity runner.Identity) sqlite.Attempt {
+	t.Helper()
+	_, capability, err := echoContract()
+	if err != nil {
+		t.Fatal(err)
+	}
+	contract := qimu.ContractRef{Name: capability.Descriptor().Reference, Version: "1", Digest: integrity.Hash(capability.Identity().JSON()), Kind: qimu.ServiceKind, Mode: qimu.PortableMode}
+	root := qimu.ExportRef{InstallationID: "original", Release: integrity.Hash([]byte("release")), UnitID: "backend", Export: "echo", Contract: contract}
+	binding := qimu.BindingSnapshot{FormatVersion: 1, Roots: []qimu.ExportRef{root}, Units: []qimu.UnitBinding{{Source: root.Unit(), Configuration: integrity.Hash([]byte(`{}`)), Imports: []qimu.ImportDeclaration{}}}}
+	attempt := sqlite.Attempt{ID: "approved-before-crash", Epoch: store.Epoch(), Source: root.Unit(), Binding: binding, Realm: identity.ID, Profile: qimu.MCPProcess}
+	if err := store.RecordAttempt(t.Context(), attempt); err != nil {
+		t.Fatal(err)
+	}
+	return attempt
+}
+
+func TestRecoverOriginalExitHandoffAcrossHostRestart(t *testing.T) {
+	for _, alreadyAcknowledged := range []bool{false, true} {
+		name := "needs-runner-ack"
+		if alreadyAcknowledged {
+			name = "needs-host-confirmation"
+		}
+		t.Run(name, func(t *testing.T) {
+			directory, err := os.MkdirTemp("", "qimu-receipt-")
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { os.RemoveAll(directory) })
+			ctx := t.Context()
+			hostPath := filepath.Join(directory, "state.sqlite")
+			open := func() *sqlite.Store {
+				store, err := sqlite.Open(ctx, sqlite.Config{Path: hostPath, Admission: qimu.NewAdmission()})
+				if err != nil {
+					t.Fatal(err)
+				}
+				return store
+			}
+			original := recoveryRunner(t, filepath.Join(directory, "runner"))
+			store := open()
+			if err := original.Fence(ctx, store.Epoch()); err != nil {
+				t.Fatal(err)
+			}
+			identity, err := original.Identity(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			attempt := recordAttempt(t, store, identity)
+			req := runner.LaunchRequest{AttemptID: attempt.ID, Epoch: attempt.Epoch, Command: filepath.Join(directory, "missing"), ExecutableDigest: integrity.Hash([]byte("missing")), Configuration: attempt.Binding.Units[0].Configuration}
+			exit, err := original.Launch(ctx, req)
+			if err == nil || exit.State != runner.Exited {
+				t.Fatalf("failed start: %+v %v", exit, err)
+			}
+			evidence, err := json.Marshal(exit)
+			if err != nil {
+				t.Fatal(err)
+			}
+			proof := sqlite.ExitProof{AttemptID: attempt.ID, Realm: attempt.Realm, ExitID: exit.ProofID, Kind: "runner-wait", Evidence: evidence}
+			if err := store.AcceptExit(ctx, attempt.ID, proof); err != nil {
+				t.Fatal(err)
+			}
+			if alreadyAcknowledged {
+				if err := original.AcknowledgeExit(ctx, runner.ExitReceipt{AttemptID: attempt.ID, Epoch: attempt.Epoch, RunnerID: attempt.Realm, ProofID: exit.ProofID}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := store.Close(); err != nil {
+				t.Fatal(err)
+			}
+			store = open()
+			defer store.Close()
+			driver, err := process.New(process.Config{Runner: original, Store: store, Source: &source{}, CloseTimeout: time.Second, MaxFrameBytes: 1 << 20})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := driver.Recover(ctx); err != nil {
+				t.Fatal(err)
+			}
+			records, err := store.Attempts(ctx)
+			if err != nil || len(records) != 1 || records[0].PendingHandoff || !records[0].Released || records[0].Proof.ExitID != exit.ProofID {
+				t.Fatalf("unsettled original handoff: %+v %v", records, err)
 			}
 		})
 	}

@@ -60,9 +60,10 @@ type ExitProof struct {
 }
 
 type AttemptRecord struct {
-	Attempt  Attempt    `json:"attempt"`
-	Released bool       `json:"released"`
-	Proof    *ExitProof `json:"proof,omitempty"`
+	Attempt        Attempt    `json:"attempt"`
+	Released       bool       `json:"released"`
+	PendingHandoff bool       `json:"pendingHandoff"`
+	Proof          *ExitProof `json:"proof,omitempty"`
 }
 
 // RecordAttempt must complete before the runner or Realm can create anything.
@@ -137,7 +138,8 @@ func (s *Store) Attempts(ctx context.Context) (records []AttemptRecord, err erro
 			if err := record.Attempt.Validate(); err != nil {
 				return err
 			}
-			record.Released = state == "released"
+			record.PendingHandoff = state == "handoff"
+			record.Released = record.PendingHandoff || state == "released"
 			if record.Released {
 				if err := jsonv2.Unmarshal(proof, &record.Proof, jsonv2.RejectUnknownMembers(true)); err != nil {
 					return err
@@ -180,6 +182,16 @@ func (s *Store) ExecutionDependencies(ctx context.Context) ([]qimu.Dependency, e
 }
 
 func (s *Store) ReleaseAttempt(ctx context.Context, id string, proof ExitProof) error {
+	return s.recordRelease(ctx, id, proof, "released")
+}
+
+// AcceptExit commits the original proof before its runner may reclaim capacity.
+// Recovery retains the outstanding acknowledgement across either process crashing.
+func (s *Store) AcceptExit(ctx context.Context, id string, proof ExitProof) error {
+	return s.recordRelease(ctx, id, proof, "handoff")
+}
+
+func (s *Store) recordRelease(ctx context.Context, id string, proof ExitProof, target string) error {
 	if !validID(id) || proof.AttemptID != id || !validID(proof.Realm) || !validID(proof.ExitID) || !validID(proof.Kind) || len(proof.Evidence) == 0 || len(proof.Evidence) > s.maxRequestBytes {
 		return errors.New("sqlite: exact exit evidence is required")
 	}
@@ -201,13 +213,17 @@ func (s *Store) ReleaseAttempt(ctx context.Context, id string, proof ExitProof) 
 			if attempt.Realm != proof.Realm {
 				return ErrConflict
 			}
-			if state == "released" {
+			if state == "released" || state == "handoff" {
 				if !bytes.Equal(previous, encoded) {
 					return ErrConflict
 				}
+				if state == "handoff" && target == "released" {
+					_, err := tx.ExecContext(ctx, `UPDATE qimu_attempts SET state='released' WHERE id=?`, id)
+					return err
+				}
 				return nil
 			}
-			_, err := tx.ExecContext(ctx, `UPDATE qimu_attempts SET state='released',proof=? WHERE id=? AND state='approved'`, encoded, id)
+			_, err := tx.ExecContext(ctx, `UPDATE qimu_attempts SET state=?,proof=? WHERE id=? AND state='approved'`, target, encoded, id)
 			return err
 		})
 		if err != nil && !errors.Is(err, ErrConflict) && !errors.Is(err, sql.ErrNoRows) {

@@ -21,7 +21,7 @@ Wait observes the matching exit. A process that already crashed keeps its origin
 exit diagnostic.
 
 The client API is `Dial`, `Identity`, `Fence`, `Launch`, `Attach`, `Inspect`,
-`CloseAttempt` and `ProveAbsent`. `Identity` identifies the actual runner incarnation. Record that
+`CloseAttempt`, `AcknowledgeExit` and `ProveAbsent`. `Identity` identifies the actual runner incarnation. Record that
 identity as the execution Realm, and verify the returned running observation before
 publishing any plugin export. `Fence` advances the approved Host epoch only after
 older Launch operations have settled. Old processes retain their original close
@@ -33,7 +33,7 @@ working directory and environment, plus configuration and credential revisions.
 It copies and verifies the executable into a private read-only snapshot before
 creation. There is no PATH lookup or shell interpretation. Environment values are
 not persisted or included in the journal digest; credential revisions identify a
-changed injection. Secrets must not be put in command-line arguments. Diagnostics
+changed injection. An absent environment inherits the runner environment; an explicit empty list clears it. Secrets must not be put in command-line arguments. Diagnostics
 do not log arguments or environment values.
 
 The launch attempt retains its executable snapshot until `Start` succeeds. Every
@@ -46,7 +46,16 @@ the direct-child exit proof.
 The attempt record is synchronized to disk before the first creation effect. The
 same attempt never creates twice, including after a failed start or completed exit.
 Repeated requests return its original result, current state or Unknown. Capacity is
-explicit: unresolved identities are never evicted to make space for new execution.
+explicit: unresolved identities and exits awaiting handoff occupy a slot. The Host
+commits the exact exit proof before acknowledging it. The runner then moves the
+original terminal record to a disk receipt outside the capacity budget. A repeated
+launch reads the same receipt, and an existence check cannot mistake it for a
+never-created child. Attempt IDs are global, so a small disk receipt containing
+the request digest and terminal observation survives later creation epochs and
+runner restarts. Reusing the ID with another epoch or request is a conflict.
+A crash between handoff and confirmation is reconciled by repeating that exact
+acknowledgement against the original state directory.
+This journal format and the corresponding private Host schema require fresh state.
 
 `ProveAbsent` covers a Host attempt whose creation request never reached this
 original runner. It checks the exact runner identity, a synchronized fence beyond

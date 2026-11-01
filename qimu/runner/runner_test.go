@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/qimu"
 	"github.com/Tangerg/qimu/integrity"
 )
 
@@ -427,5 +428,208 @@ func TestAttachmentDisconnectClosesOriginalProcess(t *testing.T) {
 	observation, err := client.CloseAttempt(ctx, request.AttemptID)
 	if err != nil || observation.State != Exited || observation.ProofID == "" {
 		t.Fatalf("disconnect did not settle original exit: %+v %v", observation, err)
+	}
+}
+
+func TestExplicitEmptyEnvironmentSurvivesTransport(t *testing.T) {
+	t.Setenv("QIMU_ENV_TEST_MARKER", "parent")
+	_, client, ctx := serveFixture(t)
+	if err := client.Fence(ctx, 1); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		env  []string
+		want string
+	}{
+		{"inherit", nil, "parent"}, {"empty", []string{}, ""}, {"explicit", []string{"QIMU_ENV_TEST_MARKER=child"}, "child"},
+	} {
+		request := launchFixture(t, tc.name, 1, t.TempDir())
+		request.Command = "/bin/sh"
+		program, err := os.ReadFile(request.Command)
+		if err != nil {
+			t.Fatal(err)
+		}
+		request.ExecutableDigest = integrity.Hash(program)
+		request.Env = tc.env
+		request.Args = []string{"-c", `printf '%s' "$QIMU_ENV_TEST_MARKER" > observed`}
+		if _, err := client.Launch(ctx, request); err != nil {
+			t.Fatal(err)
+		}
+		for {
+			o, err := client.Inspect(ctx, request.AttemptID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if o.State == Exited {
+				break
+			}
+			time.Sleep(time.Millisecond)
+		}
+		got, err := os.ReadFile(filepath.Join(request.Directory, "observed"))
+		if err != nil || string(got) != tc.want {
+			t.Fatalf("%s: %q %v", tc.name, got, err)
+		}
+		if tc.env == nil {
+			request.Env = []string{}
+			if _, err := client.Launch(ctx, request); !errors.Is(err, ErrConflict) {
+				t.Fatalf("different environment mode: %v", err)
+			}
+		}
+	}
+}
+
+func TestReturnedExitIsDetachedFromJournal(t *testing.T) {
+	s, c, ctx := serveFixture(t)
+	if err := c.Fence(ctx, 1); err != nil {
+		t.Fatal(err)
+	}
+	r := launchFixture(t, "exit-alias", 1, t.TempDir())
+	if _, err := c.Launch(ctx, r); err != nil {
+		t.Fatal(err)
+	}
+	o, err := s.CloseAttempt(ctx, r.AttemptID)
+	if err != nil || o.ExitCode == nil {
+		t.Fatal(err)
+	}
+	original := *o.ExitCode
+	*o.ExitCode = 101
+	again, err := s.Inspect(ctx, r.AttemptID)
+	if err != nil || *again.ExitCode != original {
+		t.Fatalf("borrowed journal value: %+v %v", again, err)
+	}
+}
+
+func TestFailedStartRequiresDurableExitBeforePublishingProof(t *testing.T) {
+	s, c, ctx := serveFixture(t)
+	if err := c.Fence(ctx, 1); err != nil {
+		t.Fatal(err)
+	}
+	r := launchFixture(t, "failed-proof", 1, t.TempDir())
+	if _, err := c.Launch(ctx, r); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.CloseAttempt(ctx, r.AttemptID); err != nil {
+		t.Fatal(err)
+	}
+	journal := filepath.Join(s.config.Directory, "attempts.json")
+	if err := os.Rename(journal, journal+".bak"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(journal, 0700); err != nil {
+		t.Fatal(err)
+	}
+	s.mu.Lock()
+	o, err := s.failedStart(r.AttemptID, "fixture refused start", errors.New("invalid executable"))
+	s.mu.Unlock()
+	if !errors.Is(err, ErrUnknown) || o.State != Unknown || o.ProofID != "" {
+		t.Fatalf("failed persist: %+v %v", o, err)
+	}
+	if o, err := c.Inspect(ctx, r.AttemptID); err != nil || o.State != Unknown || o.ProofID != "" {
+		t.Fatalf("inspect: %+v %v", o, err)
+	}
+	if o, err := c.CloseAttempt(ctx, r.AttemptID); !errors.Is(err, ErrUnknown) || o.ProofID != "" {
+		t.Fatalf("close: %+v %v", o, err)
+	}
+}
+
+func TestOnlyAcceptedExitReleasesCapacityAndPreventsReplay(t *testing.T) {
+	s, c, ctx := serveFixture(t)
+	s.config.MaxAttempts = 1
+	if err := c.Fence(ctx, 1); err != nil {
+		t.Fatal(err)
+	}
+	first := launchFixture(t, "first", 1, t.TempDir())
+	if _, err := c.Launch(ctx, first); err != nil {
+		t.Fatal(err)
+	}
+	o, err := c.CloseAttempt(ctx, first.AttemptID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	next := first
+	next.AttemptID = "second"
+	if _, err := c.Launch(ctx, next); !errors.Is(err, qimu.ErrCapacity) {
+		t.Fatalf("unclaimed exit lost protection: %v", err)
+	}
+	receipt := ExitReceipt{AttemptID: o.AttemptID, Epoch: o.Epoch, RunnerID: o.RunnerID, ProofID: o.ProofID}
+	wrong := receipt
+	wrong.ProofID += "other"
+	if err := c.AcknowledgeExit(ctx, wrong); !errors.Is(err, ErrConflict) {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if err := c.AcknowledgeExit(ctx, receipt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := c.Launch(ctx, next); err != nil {
+		t.Fatal(err)
+	}
+	replayed, err := c.Launch(ctx, first)
+	if err != nil || replayed.ProofID != o.ProofID {
+		t.Fatalf("original replay: %+v %v", replayed, err)
+	}
+	if err := c.Fence(ctx, 2); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.ProveAbsent(ctx, AbsenceRequest{AttemptID: o.AttemptID, Epoch: o.Epoch, RunnerID: o.RunnerID}); !errors.Is(err, ErrUnknown) {
+		t.Fatalf("false absence: %v", err)
+	}
+	if _, err := c.CloseAttempt(ctx, next.AttemptID); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestHandedOffIdentitySurvivesRunnerRestartAndNewEpoch(t *testing.T) {
+	ctx := t.Context()
+	cfg := Config{Directory: t.TempDir(), MaxAttempts: 1}
+	open := func(epoch uint64) *Server {
+		s, err := Open(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if err := s.Close(); err != nil {
+				t.Error(err)
+			}
+		})
+		if err := s.Fence(ctx, epoch); err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+	first := open(1)
+	req := launchFixture(t, "retained-attempt", 1, t.TempDir())
+	if _, err := first.Launch(ctx, req); err != nil {
+		t.Fatal(err)
+	}
+	exit, err := first.CloseAttempt(ctx, req.AttemptID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipt := ExitReceipt{AttemptID: exit.AttemptID, Epoch: exit.Epoch, RunnerID: exit.RunnerID, ProofID: exit.ProofID}
+	if err := first.AcknowledgeExit(ctx, receipt); err != nil {
+		t.Fatal(err)
+	}
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	replacement := open(2)
+	// The first acknowledgement reply was lost before the Host confirmed it.
+	if err := replacement.AcknowledgeExit(ctx, receipt); err != nil {
+		t.Fatal(err)
+	}
+	replayed, err := replacement.Launch(ctx, req)
+	if err != nil || replayed.State != Exited || replayed.ProofID != exit.ProofID {
+		t.Fatalf("original receipt: %+v %v", replayed, err)
+	}
+	req.Epoch = 2
+	if _, err := replacement.Launch(ctx, req); !errors.Is(err, ErrConflict) {
+		t.Fatalf("repurposed attempt ID: %v", err)
+	}
+	req.AttemptID = "new-attempt"
+	if o, err := replacement.Launch(ctx, req); err != nil || o.State != Running {
+		t.Fatalf("free capacity: %+v %v", o, err)
 	}
 }

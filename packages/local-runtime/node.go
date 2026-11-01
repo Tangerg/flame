@@ -107,6 +107,9 @@ func (n Node) Verify(ctx context.Context) (err error) {
 	if n.command == "" {
 		return errors.New("node companion: distribution selection is required")
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	root, err := os.OpenRoot(n.distribution)
 	if err != nil {
 		return fmt.Errorf("node companion: open distribution: %w", err)
@@ -116,18 +119,11 @@ func (n Node) Verify(ctx context.Context) (err error) {
 	if err != nil || !filepath.IsLocal(relative) {
 		return errors.New("node companion: executable is outside distribution")
 	}
-	var current string
-	for _, segment := range strings.Split(relative, string(filepath.Separator)) {
-		current = filepath.Join(current, segment)
-		info, err := root.Lstat(current)
-		if err != nil {
-			return fmt.Errorf("node companion: inspect executable path: %w", err)
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			return errors.New("node companion: executable path is redirected")
-		}
+	selected, err := inspectExecutable(root, relative)
+	if err != nil {
+		return err
 	}
-	file, err := root.Open(relative)
+	file, err := root.OpenFile(relative, readOnlyFlags, 0)
 	if err != nil {
 		return fmt.Errorf("node companion: open executable: %w", err)
 	}
@@ -135,6 +131,9 @@ func (n Node) Verify(ctx context.Context) (err error) {
 	info, err := file.Stat()
 	if err != nil {
 		return err
+	}
+	if !os.SameFile(selected, info) {
+		return errors.New("node companion: executable changed while opening")
 	}
 	if !info.Mode().IsRegular() || runtime.GOOS != "windows" && info.Mode().Perm()&0111 == 0 {
 		return errors.New("node companion: executable must be a regular executable file")
@@ -158,4 +157,24 @@ func (n Node) Verify(ctx context.Context) (err error) {
 		return errors.New("node companion: selected executable checksum mismatch")
 	}
 	return nil
+}
+
+func inspectExecutable(root *os.Root, relative string) (os.FileInfo, error) {
+	var current string
+	var selected os.FileInfo
+	for segment := range strings.SplitSeq(relative, string(filepath.Separator)) {
+		current = filepath.Join(current, segment)
+		info, err := root.Lstat(current)
+		if err != nil {
+			return nil, fmt.Errorf("node companion: inspect executable path: %w", err)
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return nil, errors.New("node companion: executable path is redirected")
+		}
+		selected = info
+	}
+	if !selected.Mode().IsRegular() {
+		return nil, errors.New("node companion: executable must be a regular executable file")
+	}
+	return selected, nil
 }

@@ -94,6 +94,179 @@ const supported = new Set([
   "maxProperties",
 ]);
 
+function pointerToken(key: string): string {
+  return key.replaceAll("~", "~0").replaceAll("/", "~1");
+}
+function schemaObject(value: unknown): value is RecordValue {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    !numeric(value)
+  );
+}
+function localReference(value: unknown): string {
+  if (typeof value !== "string" || (value !== "#" && !value.startsWith("#/")))
+    throw new Error("portable: schema references must be local JSON pointers");
+  return value;
+}
+interface Subschema {
+  value: unknown;
+  suffix: string;
+  edge?: "same" | "descend";
+}
+function* subschemas(key: string, field: unknown): Generator<Subschema> {
+  if (maps.has(key)) {
+    if (!schemaObject(field))
+      throw new Error("portable: schema map must be an object");
+    const edge =
+      key === "properties" || key === "patternProperties"
+        ? "descend"
+        : undefined;
+    for (const [name, value] of Object.entries(field))
+      yield { value, suffix: "/" + pointerToken(name), edge };
+  } else if (singles.has(key)) {
+    yield {
+      value: field,
+      suffix: "",
+      edge: ["not", "if", "then", "else"].includes(key) ? "same" : "descend",
+    };
+  } else if (arrays.has(key)) {
+    if (!Array.isArray(field) || field.length === 0)
+      throw new Error("portable: schema composition requires a nonempty array");
+    for (const [index, value] of field.entries())
+      yield { value, suffix: "/" + index, edge: "same" };
+  }
+}
+
+function admitNumericConstraints(key: string, field: unknown): void {
+  if (
+    [
+      "minimum",
+      "maximum",
+      "exclusiveMinimum",
+      "exclusiveMaximum",
+      "multipleOf",
+    ].includes(key) &&
+    (!numeric(field) ||
+      (key === "multipleOf" && compareJSONNumbers(field, 0) <= 0))
+  )
+    throw new Error("plugin: numeric schema constraint is invalid");
+  if (
+    [
+      "minLength",
+      "maxLength",
+      "minItems",
+      "maxItems",
+      "minProperties",
+      "maxProperties",
+    ].includes(key) &&
+    (typeof field !== "number" || !Number.isSafeInteger(field) || field < 0)
+  )
+    throw new Error("plugin: schema size constraint is invalid");
+}
+
+function admitChoiceConstraints(key: string, field: unknown): void {
+  if (
+    key === "required" &&
+    (!Array.isArray(field) ||
+      field.some((name) => typeof name !== "string") ||
+      new Set(field).size !== field.length)
+  )
+    throw new Error("plugin: schema required members are invalid");
+  if (key === "enum" && (!Array.isArray(field) || field.length === 0))
+    throw new Error("plugin: schema enum is invalid");
+  if (
+    key === "enum" &&
+    (field as unknown[]).some((item, index, values) =>
+      values.slice(0, index).some((previous) => equal(item, previous)),
+    )
+  )
+    throw new Error("plugin: schema enum has duplicate values");
+  if (key === "type") {
+    const types = Array.isArray(field) ? field : [field];
+    if (
+      types.length === 0 ||
+      types.some(
+        (type) =>
+          typeof type !== "string" ||
+          ![
+            "null",
+            "boolean",
+            "object",
+            "array",
+            "number",
+            "integer",
+            "string",
+          ].includes(type),
+      ) ||
+      new Set(types).size !== types.length
+    )
+      throw new Error("plugin: schema type is invalid");
+  }
+}
+
+function admitAnnotations(key: string, field: unknown): void {
+  if (
+    [
+      "pattern",
+      "format",
+      "$id",
+      "$schema",
+      "$comment",
+      "title",
+      "description",
+      "contentEncoding",
+      "contentMediaType",
+    ].includes(key) &&
+    typeof field !== "string"
+  )
+    throw new Error("plugin: schema string constraint is invalid");
+  if (
+    ["uniqueItems", "readOnly", "writeOnly", "deprecated"].includes(key) &&
+    typeof field !== "boolean"
+  )
+    throw new Error("plugin: schema boolean constraint is invalid");
+  if (key === "examples" && !Array.isArray(field))
+    throw new Error("plugin: schema examples must be an array");
+  if (
+    key === "$schema" &&
+    field !== "https://json-schema.org/draft/2020-12/schema"
+  )
+    throw new Error("plugin: unsupported schema dialect");
+  if (key === "$id")
+    throw new Error("plugin: nested schema resources are unsupported");
+  if (key === "pattern") {
+    checkPattern(field as string);
+    new RegExp(field as string, "u");
+  }
+}
+
+function admitSchema(value: unknown): void {
+  if (typeof value === "boolean") return;
+  if (!schemaObject(value))
+    throw new Error("plugin: schema must be an object or boolean");
+  for (const [key, field] of Object.entries(value)) {
+    if (!supported.has(key))
+      throw new Error(`plugin: unsupported schema keyword ${key}`);
+    if (key === "patternProperties") {
+      for (const name of Object.keys(field as RecordValue)) checkPattern(name);
+    }
+    for (const child of subschemas(key, field)) admitSchema(child.value);
+    admitNumericConstraints(key, field);
+    admitChoiceConstraints(key, field);
+    admitAnnotations(key, field);
+  }
+  if (value.$ref !== undefined) {
+    const ref = localReference(value.$ref);
+    delete value.$ref;
+    value.allOf = [
+      ...((value.allOf as unknown[] | undefined) ?? []),
+      { $ref: ref },
+    ];
+  }
+}
+
 // jsonschema supplies traversal and composition. Its supported instance-local
 // hooks adapt numeric comparison to the public exact JSON representation.
 export function compileSchema(source: unknown): (value: unknown) => void {
@@ -177,144 +350,8 @@ export function compileSchema(source: unknown): (value: unknown) => void {
       : "";
   }) as CustomProperty;
 
-  function admit(value: unknown): unknown {
-    if (typeof value === "boolean") return value;
-    if (
-      value === null ||
-      typeof value !== "object" ||
-      Array.isArray(value) ||
-      numeric(value)
-    )
-      throw new Error("plugin: schema must be an object or boolean");
-    const schema = value as RecordValue;
-    for (const [key, field] of Object.entries(schema)) {
-      if (!supported.has(key))
-        throw new Error(`plugin: unsupported schema keyword ${key}`);
-      if (maps.has(key)) {
-        if (field === null || typeof field !== "object" || Array.isArray(field))
-          throw new Error("plugin: schema map is invalid");
-        for (const [name, child] of Object.entries(field)) {
-          if (key === "patternProperties") checkPattern(name);
-          (field as RecordValue)[name] = admit(child);
-        }
-      } else if (singles.has(key)) schema[key] = admit(field);
-      else if (arrays.has(key)) {
-        if (!Array.isArray(field) || field.length === 0)
-          throw new Error("plugin: schema composition is invalid");
-        schema[key] = field.map(admit);
-      }
-      if (
-        [
-          "minimum",
-          "maximum",
-          "exclusiveMinimum",
-          "exclusiveMaximum",
-          "multipleOf",
-        ].includes(key) &&
-        (!numeric(field) ||
-          (key === "multipleOf" && compareJSONNumbers(field, 0) <= 0))
-      )
-        throw new Error("plugin: numeric schema constraint is invalid");
-      if (
-        [
-          "minLength",
-          "maxLength",
-          "minItems",
-          "maxItems",
-          "minProperties",
-          "maxProperties",
-        ].includes(key) &&
-        (typeof field !== "number" || !Number.isSafeInteger(field) || field < 0)
-      )
-        throw new Error("plugin: schema size constraint is invalid");
-      if (
-        key === "required" &&
-        (!Array.isArray(field) ||
-          field.some((name) => typeof name !== "string") ||
-          new Set(field).size !== field.length)
-      )
-        throw new Error("plugin: schema required members are invalid");
-      if (key === "enum" && (!Array.isArray(field) || field.length === 0))
-        throw new Error("plugin: schema enum is invalid");
-      if (
-        key === "enum" &&
-        (field as unknown[]).some((item, index, values) =>
-          values.slice(0, index).some((previous) => equal(item, previous)),
-        )
-      )
-        throw new Error("plugin: schema enum has duplicate values");
-      if (key === "type") {
-        const types = Array.isArray(field) ? field : [field];
-        if (
-          types.length === 0 ||
-          types.some(
-            (type) =>
-              typeof type !== "string" ||
-              ![
-                "null",
-                "boolean",
-                "object",
-                "array",
-                "number",
-                "integer",
-                "string",
-              ].includes(type),
-          ) ||
-          new Set(types).size !== types.length
-        )
-          throw new Error("plugin: schema type is invalid");
-      }
-      if (
-        [
-          "pattern",
-          "format",
-          "$id",
-          "$schema",
-          "$comment",
-          "title",
-          "description",
-          "contentEncoding",
-          "contentMediaType",
-        ].includes(key) &&
-        typeof field !== "string"
-      )
-        throw new Error("plugin: schema string constraint is invalid");
-      if (
-        ["uniqueItems", "readOnly", "writeOnly", "deprecated"].includes(key) &&
-        typeof field !== "boolean"
-      )
-        throw new Error("plugin: schema boolean constraint is invalid");
-      if (key === "examples" && !Array.isArray(field))
-        throw new Error("plugin: schema examples must be an array");
-      if (
-        key === "$schema" &&
-        field !== "https://json-schema.org/draft/2020-12/schema"
-      )
-        throw new Error("plugin: unsupported schema dialect");
-      if (key === "$id")
-        throw new Error("plugin: nested schema resources are unsupported");
-      if (key === "pattern") {
-        checkPattern(field as string);
-        new RegExp(field as string, "u");
-      }
-    }
-    if (schema.$ref !== undefined) {
-      if (
-        typeof schema.$ref !== "string" ||
-        (schema.$ref !== "#" && !schema.$ref.startsWith("#/"))
-      )
-        throw new Error("plugin: schema references must be local");
-      const ref = schema.$ref;
-      delete schema.$ref;
-      schema.allOf = [
-        ...((schema.allOf as unknown[] | undefined) ?? []),
-        { $ref: ref },
-      ];
-    }
-    return schema;
-  }
-
-  const schema = admit(document) as Schema;
+  admitSchema(document);
+  const schema = document as Schema;
   function checkReferences(value: unknown): void {
     if (!value || typeof value !== "object") return;
     if (Array.isArray(value)) {
@@ -386,78 +423,50 @@ interface SchemaNode {
   unique: boolean;
 }
 
+function countEqualityWork(
+  node: SchemaNode,
+  key: string,
+  field: unknown,
+): void {
+  if (key === "enum") {
+    if (!Array.isArray(field) || !field.length)
+      throw new Error("portable: enum requires a nonempty array");
+    const weight = checkValue(field).weight - 1;
+    if ((field.length - 1) * weight > PORTABLE_LIMITS.maxEqualityWork)
+      exceeded("schema equality work", PORTABLE_LIMITS.maxEqualityWork);
+    node.local += weight;
+  } else if (key === "const") node.local += checkValue(field).weight;
+  else if (key === "uniqueItems") node.unique = field === true;
+}
+
 // This profile graph only bounds traversal. It never evaluates a predicate or
 // substitutes a verdict for the schema engine. The Go owner uses the same bound.
 function schemaWork(document: unknown): { work: number[]; unique: boolean } {
   const nodes: SchemaNode[] = [];
   const paths = new Map<string, number>();
   const references: { source: number; path: string }[] = [];
-  const pointer = (value: string) =>
-    value.replaceAll("~", "~0").replaceAll("/", "~1");
   function visit(value: unknown, path: string): number {
     const index = nodes.length;
     const node: SchemaNode = { same: [], descend: [], local: 1, unique: false };
     nodes.push(node);
     paths.set(path, index);
     if (typeof value === "boolean") return index;
-    if (
-      !value ||
-      typeof value !== "object" ||
-      Array.isArray(value) ||
-      numeric(value)
-    )
+    if (!schemaObject(value))
       throw new Error("portable: schema must be an object or boolean");
     for (const [key, field] of Object.entries(value)) {
-      const childPath = path + "/" + pointer(key);
       if (key === "$ref") {
-        if (
-          typeof field !== "string" ||
-          (field !== "#" && !field.startsWith("#/"))
-        )
-          throw new Error(
-            "portable: schema references must be local JSON pointers",
-          );
         references.push({
           source: index,
-          path: decodeURIComponent(field.slice(1)),
+          path: decodeURIComponent(localReference(field).slice(1)),
         });
         if (references.length > PORTABLE_LIMITS.maxReferences)
           exceeded("schema references", PORTABLE_LIMITS.maxReferences);
-      } else if (maps.has(key)) {
-        if (
-          !field ||
-          typeof field !== "object" ||
-          Array.isArray(field) ||
-          numeric(field)
-        )
-          throw new Error("portable: schema map must be an object");
-        for (const [name, child] of Object.entries(field)) {
-          const target = visit(child, childPath + "/" + pointer(name));
-          if (key === "properties" || key === "patternProperties")
-            node.descend.push(target);
-        }
-      } else if (singles.has(key)) {
-        const target = visit(field, childPath);
-        if (["not", "if", "then", "else"].includes(key)) node.same.push(target);
-        else node.descend.push(target);
-      } else if (arrays.has(key)) {
-        if (!Array.isArray(field) || field.length === 0)
-          throw new Error(
-            "portable: schema composition requires a nonempty array",
-          );
-        for (const [number, child] of field.entries())
-          node.same.push(visit(child, childPath + "/" + number));
-      } else if (key === "enum") {
-        if (!Array.isArray(field) || field.length === 0)
-          throw new Error("portable: enum requires a nonempty array");
-        const weight = checkValue(field).weight - 1;
-        if ((field.length - 1) * weight > PORTABLE_LIMITS.maxEqualityWork)
-          exceeded("schema equality work", PORTABLE_LIMITS.maxEqualityWork);
-        node.local += weight;
-      } else if (key === "const") {
-        node.local += checkValue(field).weight;
-      } else if (key === "uniqueItems") {
-        node.unique = field === true;
+      }
+      countEqualityWork(node, key, field);
+      const childPath = path + "/" + pointerToken(key);
+      for (const child of subschemas(key, field)) {
+        const target = visit(child.value, childPath + child.suffix);
+        if (child.edge) node[child.edge].push(target);
       }
     }
     return index;

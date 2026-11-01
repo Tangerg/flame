@@ -46,7 +46,7 @@ type LaunchRequest struct {
 	Command            string           `json:"command"`
 	ExecutableDigest   integrity.Digest `json:"executableDigest"`
 	Args               []string         `json:"args,omitempty"`
-	Env                []string         `json:"env,omitempty"`
+	Env                []string         `json:"env"`
 	Directory          string           `json:"directory,omitempty"`
 	Configuration      integrity.Digest `json:"configuration"`
 	CredentialRevision string           `json:"credentialRevision,omitempty"`
@@ -61,6 +61,13 @@ type Observation struct {
 	ExitCode  *int   `json:"exitCode,omitempty"`
 	ProofID   string `json:"proofId,omitempty"`
 	Reason    string `json:"reason,omitempty"`
+}
+
+func (o Observation) clone() Observation {
+	if o.ExitCode != nil {
+		o.ExitCode = new(*o.ExitCode)
+	}
+	return o
 }
 
 type Identity struct {
@@ -88,6 +95,8 @@ type storedAttempt struct {
 	Observation   Observation      `json:"observation"`
 	RequestDigest integrity.Digest `json:"requestDigest"`
 }
+
+const journalVersion = 2
 
 type journal struct {
 	Version  int                      `json:"version"`
@@ -147,7 +156,7 @@ func Open(config Config) (_ *Server, err error) {
 	if err != nil {
 		return nil, err
 	}
-	server := &Server{config: config, id: randomID(), lock: lock, processes: map[string]*process{}, fenced: true, journal: journal{Version: 1, Attempts: map[string]storedAttempt{}}}
+	server := &Server{config: config, id: randomID(), lock: lock, processes: map[string]*process{}, fenced: true, journal: journal{Version: journalVersion, Attempts: map[string]storedAttempt{}}}
 	defer func() {
 		if err != nil {
 			err = errors.Join(err, unlockDirectory(lock))
@@ -158,7 +167,7 @@ func Open(config Config) (_ *Server, err error) {
 		if err := jsonv2.Unmarshal(data, &server.journal, jsonv2.RejectUnknownMembers(true)); err != nil {
 			return nil, fmt.Errorf("runner: invalid journal: %w", err)
 		}
-		if server.journal.Version != 1 || server.journal.Attempts == nil || len(server.journal.Attempts) > config.MaxAttempts {
+		if server.journal.Version != journalVersion || server.journal.Attempts == nil || len(server.journal.Attempts) > config.MaxAttempts {
 			return nil, errors.New("runner: incompatible journal")
 		}
 		for id, attempt := range server.journal.Attempts {
@@ -222,14 +231,8 @@ func (s *Server) Launch(ctx context.Context, request LaunchRequest) (_ Observati
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if old, exists := s.journal.Attempts[request.AttemptID]; exists {
-		if old.RequestDigest != digest {
-			return Observation{}, ErrConflict
-		}
-		if live := s.processes[request.AttemptID]; live != nil && !slices.Equal(live.environment, request.Env) {
-			return Observation{}, ErrConflict
-		}
-		return old.Observation, nil
+	if previous, found, err := s.replayLaunch(request, digest); err != nil || found {
+		return previous, err
 	}
 	if s.closed || s.fenced || request.Epoch != s.journal.Epoch {
 		return Observation{}, ErrFenced
@@ -297,49 +300,70 @@ func (s *Server) Launch(ctx context.Context, request LaunchRequest) (_ Observati
 	return observation, nil
 }
 
+func (s *Server) replayLaunch(request LaunchRequest, digest integrity.Digest) (Observation, bool, error) {
+	old, found, err := s.lookupAttempt(request.AttemptID)
+	if err != nil || !found {
+		return Observation{}, false, err
+	}
+	if old.RequestDigest != digest {
+		return Observation{}, true, ErrConflict
+	}
+	if live := s.processes[request.AttemptID]; live != nil && !slices.Equal(live.environment, request.Env) {
+		return Observation{}, true, ErrConflict
+	}
+	return old.Observation.clone(), true, nil
+}
+
 func (s *Server) Inspect(_ context.Context, id string) (Observation, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	item, exists := s.journal.Attempts[id]
+	item, exists, err := s.lookupAttempt(id)
+	if err != nil {
+		return Observation{}, err
+	}
 	if !exists {
 		return Observation{}, ErrNotFound
 	}
-	return item.Observation, nil
+	return item.Observation.clone(), nil
 }
 
 func (s *Server) CloseAttempt(ctx context.Context, id string) (Observation, error) {
 	s.mu.Lock()
-	item, exists := s.journal.Attempts[id]
+	item, exists, err := s.lookupAttempt(id)
+	if err != nil {
+		s.mu.Unlock()
+		return Observation{}, err
+	}
 	if !exists {
 		s.mu.Unlock()
 		return Observation{}, ErrNotFound
 	}
 	if item.Observation.State == Unknown {
 		s.mu.Unlock()
-		return item.Observation, ErrUnknown
+		return item.Observation.clone(), ErrUnknown
 	}
 	if item.Observation.State == Exited {
 		s.mu.Unlock()
-		return item.Observation, nil
+		return item.Observation.clone(), nil
 	}
 	live := s.processes[id]
 	if live == nil {
 		s.mu.Unlock()
-		return item.Observation, ErrUnknown
+		return item.Observation.clone(), ErrUnknown
 	}
 	if !live.closing {
 		live.closing = true
 		_ = live.stdin.Close()
 		if err := live.command.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
 			s.mu.Unlock()
-			return item.Observation, err
+			return item.Observation.clone(), err
 		}
 	}
 	done := live.done
 	s.mu.Unlock()
 	select {
 	case <-ctx.Done():
-		return item.Observation, ctx.Err()
+		return item.Observation.clone(), ctx.Err()
 	case <-done:
 		return s.Inspect(context.Background(), id)
 	}
@@ -371,14 +395,7 @@ func (s *Server) wait(id string, live *process, path string) {
 		}
 	}
 	item.Observation.Reason += cleanupDiagnostic
-	s.journal.Attempts[id] = item
-	if persistErr := s.persist(); persistErr != nil {
-		s.fenced = true
-		item.Observation.State = Unknown
-		item.Observation.ProofID = ""
-		item.Observation.Reason = "exit evidence could not be persisted" + cleanupDiagnostic
-		s.journal.Attempts[id] = item
-	}
+	_, _ = s.publishTerminal(id, item)
 	attached := live.attached
 	delete(s.processes, id)
 	close(live.done)
@@ -400,16 +417,26 @@ func (s *Server) failedStart(id, reason string, cause error) (Observation, error
 	item.Observation.State = Exited
 	item.Observation.ProofID = randomID()
 	item.Observation.Reason = reason
+	observed, err := s.publishTerminal(id, item)
+	return observed, errors.Join(cause, err)
+}
+
+func (s *Server) publishTerminal(id string, item storedAttempt) (Observation, error) {
 	s.journal.Attempts[id] = item
 	if err := s.persist(); err != nil {
 		s.fenced = true
-		return item.Observation, errors.Join(ErrUnknown, cause, err)
+		item.Observation.State = Unknown
+		item.Observation.ProofID = ""
+		item.Observation.ExitCode = nil
+		item.Observation.Reason = "exit evidence could not be persisted"
+		s.journal.Attempts[id] = item
+		return item.Observation.clone(), errors.Join(ErrUnknown, err)
 	}
-	return item.Observation, cause
+	return item.Observation.clone(), nil
 }
 
 func (s *Server) snapshotExecutable(request LaunchRequest) (_ string, err error) {
-	input, err := os.Open(request.Command)
+	input, err := openExecutable(request.Command)
 	if err != nil {
 		return "", err
 	}
@@ -450,11 +477,15 @@ func (s *Server) snapshotExecutable(request LaunchRequest) (_ string, err error)
 }
 
 func (s *Server) persist() error {
-	data, err := json.Marshal(s.journal)
+	return storeRecord(filepath.Join(s.config.Directory, "attempts.json"), s.journal)
+}
+
+func storeRecord(path string, value any) error {
+	data, err := json.Marshal(value)
 	if err != nil {
 		return err
 	}
-	file, err := os.CreateTemp(s.config.Directory, ".journal-")
+	file, err := os.CreateTemp(filepath.Dir(path), ".record-")
 	if err != nil {
 		return err
 	}
@@ -467,10 +498,14 @@ func (s *Server) persist() error {
 	if err := errors.Join(file.Sync(), file.Close()); err != nil {
 		return err
 	}
-	if err := os.Rename(name, filepath.Join(s.config.Directory, "attempts.json")); err != nil {
+	if err := os.Rename(name, path); err != nil {
 		return err
 	}
-	directory, err := os.Open(s.config.Directory)
+	return syncDirectory(filepath.Dir(path))
+}
+
+func syncDirectory(path string) error {
+	directory, err := os.Open(path)
 	if err != nil {
 		return err
 	}
@@ -519,7 +554,11 @@ func validateLaunch(request LaunchRequest) error {
 
 func requestIdentity(request LaunchRequest) (integrity.Digest, error) {
 	copy := request
-	copy.Env = nil
+	// The inheritance mode is launch authority even when the explicit
+	// environment contains no keys. Secret values never enter the journal.
+	if request.Env != nil {
+		copy.Env = []string{}
+	}
 	data, err := json.Marshal(copy)
 	if err != nil {
 		return integrity.Digest{}, err

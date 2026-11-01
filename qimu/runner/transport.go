@@ -24,6 +24,7 @@ type controlRequest struct {
 	Epoch     uint64          `json:"epoch,omitempty"`
 	AttemptID string          `json:"attemptId,omitempty"`
 	Launch    *LaunchRequest  `json:"launch,omitempty"`
+	Receipt   *ExitReceipt    `json:"receipt,omitempty"`
 	Absence   *AbsenceRequest `json:"absence,omitempty"`
 }
 
@@ -121,6 +122,12 @@ func (s *Server) handle(ctx context.Context, connection net.Conn) {
 		}
 		_ = json.NewEncoder(connection).Encode(controlResponse{Absence: &proof})
 		return
+	case "acknowledge_exit":
+		if request.Receipt == nil {
+			err = qimu.ErrInvalid
+		} else {
+			err = s.AcknowledgeExit(ctx, *request.Receipt)
+		}
 	case "launch":
 		if request.Launch == nil {
 			err = qimu.ErrInvalid
@@ -190,7 +197,10 @@ func (s *Server) Listen(socket string) (net.Listener, error) {
 func (s *Server) attach(id string, connection io.Closer) (*process, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	item, exists := s.journal.Attempts[id]
+	item, exists, err := s.lookupAttempt(id)
+	if err != nil {
+		return nil, err
+	}
 	if !exists {
 		return nil, ErrNotFound
 	}
@@ -257,6 +267,11 @@ func (c *Client) Inspect(ctx context.Context, id string) (Observation, error) {
 }
 func (c *Client) CloseAttempt(ctx context.Context, id string) (Observation, error) {
 	return c.control(ctx, controlRequest{Operation: "close", AttemptID: id})
+}
+
+func (c *Client) AcknowledgeExit(ctx context.Context, receipt ExitReceipt) error {
+	_, err := c.control(ctx, controlRequest{Operation: "acknowledge_exit", Receipt: &receipt})
+	return err
 }
 
 func (c *Client) ProveAbsent(ctx context.Context, request AbsenceRequest) (AbsenceProof, error) {

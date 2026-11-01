@@ -141,6 +141,9 @@ func requireCurrentSchema(ctx context.Context, tx Executor, stmts []string) (boo
 			_ = rows.Close()
 			return false, fmt.Errorf("sqlite: inspect schema: %w", err)
 		}
+		if _, present := stored[name]; present {
+			return false, errors.Join(fmt.Errorf("sqlite: multiple schema objects named %s", name), rows.Close())
+		}
 		stored[name] = definition
 	}
 	if err := errors.Join(rows.Err(), rows.Close()); err != nil {

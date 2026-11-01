@@ -82,7 +82,14 @@ func openBridge(t *testing.T, path string, cleanup bool) *bridgeEnvironment {
 	if cleanup {
 		t.Cleanup(func() {
 			for _, plan := range e.plans {
-				_, _ = bridge.Prove(context.Background(), e.credentials.Token, executionProof(plan))
+				ack, err := bridge.Prove(e.ctx, e.credentials.Token, executionProof(plan))
+				if err != nil || !ack.Recorded {
+					t.Errorf("execution proof: %+v %v", ack, err)
+					continue
+				}
+				if err := host.WaitInstanceRetired(e.ctx, plan.Execution.ID); err != nil {
+					t.Errorf("join proven instance: %v", err)
+				}
 			}
 			closeCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()

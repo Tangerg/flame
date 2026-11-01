@@ -438,3 +438,30 @@ func TestExecutionProtectionOutlivesBusinessAndEpoch(t *testing.T) {
 		t.Fatalf("exit identity replaced: %v", err)
 	}
 }
+
+func TestInitialStoreRefusesAnyForeignSchemaObject(t *testing.T) {
+	for _, ddl := range []string{`CREATE VIEW outside AS SELECT 1`, `CREATE TABLE sqliteX(id)`, `CREATE TABLE sqliteY(id); CREATE TRIGGER sqliteZ AFTER INSERT ON sqliteY BEGIN SELECT 1; END`} {
+		path := filepath.Join(t.TempDir(), "store.sqlite")
+		db, err := sql.Open("sqlite", path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := db.Exec(ddl); err != nil {
+			t.Fatal(err)
+		}
+		for range 2 {
+			store, err := Open(t.Context(), testConfig(path, qimu.NewAdmission()))
+			if err == nil {
+				store.Close()
+				t.Fatal("foreign schema accepted", ddl)
+			}
+			var initialized int
+			if err := db.QueryRow("SELECT COUNT(*) FROM sqlite_schema WHERE name='qimu_meta'").Scan(&initialized); err != nil || initialized != 0 {
+				t.Fatalf("unexpected initialization: %d %v", initialized, err)
+			}
+		}
+		if err := db.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+}

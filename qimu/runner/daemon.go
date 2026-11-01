@@ -159,6 +159,13 @@ func (d *Daemon) CloseAttempt(ctx context.Context, id string) (Observation, erro
 	return d.client.CloseAttempt(ctx, id)
 }
 
+func (d *Daemon) AcknowledgeExit(ctx context.Context, receipt ExitReceipt) error {
+	if err := d.connect(ctx); err != nil {
+		return err
+	}
+	return d.client.AcknowledgeExit(ctx, receipt)
+}
+
 func (d *Daemon) ProveAbsent(ctx context.Context, request AbsenceRequest) (AbsenceProof, error) {
 	if err := d.connect(ctx); err != nil {
 		return AbsenceProof{}, err

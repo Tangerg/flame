@@ -51,7 +51,7 @@ func (s *Server) ProveAbsent(ctx context.Context, request AbsenceRequest) (Absen
 	if s.closed || s.fenced || s.id != request.RunnerID || s.journal.Epoch <= request.Epoch {
 		return AbsenceProof{}, ErrUnknown
 	}
-	if _, exists := s.journal.Attempts[request.AttemptID]; exists {
+	if _, exists, err := s.lookupAttempt(request.AttemptID); err != nil || exists {
 		return AbsenceProof{}, ErrUnknown
 	}
 	return absentProof(request, s.journal.Epoch)
