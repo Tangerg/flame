@@ -31,15 +31,23 @@ func requireConstructed(kind, text string) error {
 	return nil
 }
 
-// Operational identities are kept as validated strings by the value that owns
-// them; these rules are the one admission each of them shares.
-func ValidateSession(text string) error {
-	return ValidateResource("session", text, MaximumResourceCharacters)
-}
+// Forked Runs and their transcript Items retain both identities together.
+// Distinct types prevent interchanging two otherwise opaque wire strings.
+type SessionID struct{ value }
+type RunID struct{ value }
 
-func ValidateRun(text string) error {
-	return ValidateResource("run", text, MaximumResourceCharacters)
+func ParseSession(text string) (SessionID, error) {
+	v, err := parse("session", text, MaximumResourceCharacters)
+	return SessionID{v}, err
 }
+func ParseRun(text string) (RunID, error) {
+	v, err := parse("run", text, MaximumResourceCharacters)
+	return RunID{v}, err
+}
+func (id SessionID) String() string     { return id.text }
+func (id RunID) String() string         { return id.text }
+func ValidateSession(text string) error { _, err := ParseSession(text); return err }
+func ValidateRun(text string) error     { _, err := ParseRun(text); return err }
 
 func ValidateSegment(text string) error {
 	return ValidateResource("segment", text, MaximumResourceCharacters)

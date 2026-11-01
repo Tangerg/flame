@@ -9,11 +9,18 @@ import (
 	"strings"
 )
 
+type BodyMode uint8
+
+const (
+	Document BodyMode = iota
+	DocumentOrEvents
+)
+
 // LimitBody bounds one non-streaming response document or one SSE event. SSE
 // streams may carry arbitrarily many events; their budget resets only at a
 // blank-line event boundary. The caller owns the protocol-specific limit and
 // error vocabulary.
-func LimitBody(response *http.Response, maxFrameBytes int64, tooLarge error) {
+func LimitBody(response *http.Response, mode BodyMode, maxFrameBytes int64, tooLarge error) {
 	validateFrameLimit(maxFrameBytes, tooLarge)
 	if response == nil || response.Body == nil {
 		return
@@ -24,7 +31,7 @@ func LimitBody(response *http.Response, maxFrameBytes int64, tooLarge error) {
 		limit:       maxFrameBytes,
 		remaining:   maxFrameBytes,
 		tooLarge:    tooLarge,
-		eventStream: err == nil && strings.EqualFold(mediaType, "text/event-stream"),
+		eventStream: mode == DocumentOrEvents && response.StatusCode >= 200 && response.StatusCode < 300 && err == nil && strings.EqualFold(mediaType, "text/event-stream"),
 	}
 }
 

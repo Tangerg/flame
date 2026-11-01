@@ -161,6 +161,7 @@ var problemCodes = map[string]int{
 	"workspace_unavailable":               -32005,
 }
 var refusalProblems = map[string]int{
+	"urn:flame:transport:forbidden_origin":       403,
 	"urn:flame:transport:invalid_request":        400,
 	"urn:flame:transport:request_too_large":      413,
 	"urn:flame:transport:unauthorized":           401,

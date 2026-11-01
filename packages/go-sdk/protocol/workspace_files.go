@@ -28,6 +28,7 @@ type ListFilesRequest struct {
 	Workspace      WorkspaceRef `json:"workspace"`
 	Path           string       `json:"path,omitempty"`
 	Glob           string       `json:"glob,omitempty"`
+	NameQuery      *string      `json:"nameQuery,omitzero"`
 	Recursive      bool         `json:"recursive,omitzero"`
 	IncludeIgnored bool         `json:"includeIgnored,omitzero"`
 	PageQuery

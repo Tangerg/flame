@@ -69,3 +69,14 @@ func TestParseEndpointOwnsTheSharedAdmissionRule(t *testing.T) {
 		t.Fatalf("IPv6 loopback origin = %v, %v", origin.Origin(), err)
 	}
 }
+
+func TestOriginCanonicalizesEquivalentIPAndPort(t *testing.T) {
+	for _, pair := range [][2]string{{"https://example.org:00443/a", "https://example.org/b"}, {"https://[::1]", "https://[0:0:0:0:0:0:0:1]"}} {
+		if !Same(pair[0], pair[1]) {
+			t.Fatalf("equivalent origins %v", pair)
+		}
+	}
+	if Same("https://[fe80::1%25ethA]:443", "https://[fe80::1%25etha]:443") {
+		t.Fatal("collapsed zone identities")
+	}
+}

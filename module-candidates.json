@@ -16,7 +16,8 @@
     "v0.1.0-layout.20261024.1": "ce8357e57bfb463ff93c0f188cb3dbed91ef82a2",
     "v0.1.0-consolidation.20261026.1": "a7f2797814cbf02349fd4cecba012d836ef943c9",
     "v0.1.0-qimu.20261027.2": "5ce946c14de54b4a6a76767bf43d237aeba8f03c",
-    "v0.1.0-quality.20261029.1": "7bf57e9b482db1bc57b162007058a3ee4319fd7e"
+    "v0.1.0-quality.20261029.1": "7bf57e9b482db1bc57b162007058a3ee4319fd7e",
+    "v0.1.0-quality.20261101.ownership.2": "4235d271186ced96ddb496a2cc08836f8f397ca6"
   },
   "github.com/Tangerg/flame/packages/go-sdk": {
     "v0.1.0-architecture.20261026.2": "158b5e3b2b544f6572d4c03ba43abe821df715b5",
@@ -146,6 +147,7 @@
   "github.com/Tangerg/qimu": {
     "v0.1.0-quality.20261031.module-path.1": "fe68e03796c49d7d2803d2baa445784cb87039da",
     "v0.1.0-quality.20261031.terminal-views.1": "d39bef46ad2d9be95122f4d5a8c5a1611356a6d5",
-    "v0.1.0-quality.20261101.audit-close.1": "2857e8088c3f0e84a785c67c505a8699c2b2f4e0"
+    "v0.1.0-quality.20261101.audit-close.1": "2857e8088c3f0e84a785c67c505a8699c2b2f4e0",
+    "v0.1.0-quality.20261101.ownership.2": "4235d271186ced96ddb496a2cc08836f8f397ca6"
   }
 }

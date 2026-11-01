@@ -72,8 +72,8 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 	// A response lost after dispatch is an unknown acknowledgement. Recovery
 	// belongs to the caller's retained command identity, never net/http replay.
 	request.GetBody = nil
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Accept", "application/json, text/event-stream")
+	request.Header.Set("Content-Type", protocol.RPCDocumentMediaType)
+	request.Header.Set("Accept", protocol.RPCDocumentMediaType+", "+protocol.RPCStreamMediaType)
 	if r.callbackCall != "" {
 		request.Header.Set("Authorization", r.token)
 		request.Header.Set(qimumcp.CallHeader, r.callbackCall)
@@ -102,7 +102,7 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 		return callResult{}, err
 	}
 	mediaType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
-	if response.StatusCode != http.StatusOK {
+	if response.StatusCode != protocol.RPCCallStatus {
 		if r.callbackCall != "" && response.StatusCode == http.StatusGone {
 			return callResult{}, qimumcp.ErrStaleCall
 		}
@@ -111,7 +111,7 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 	if err != nil {
 		return callResult{}, invalidRemote("response content type is invalid")
 	}
-	if mediaType == "application/json" {
+	if mediaType == protocol.RPCDocumentMediaType {
 		encoded, err := readRemoteMessage(response.Body, r.maxMessageBytes)
 		if err != nil {
 			return callResult{}, call.readError(err)
@@ -122,7 +122,7 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 		}
 		return result, err
 	}
-	if mediaType != "text/event-stream" || meta.Kind != streamMethod {
+	if mediaType != protocol.RPCStreamMediaType || meta.Kind != streamMethod {
 		return callResult{}, invalidRemote("response content type does not match the operation")
 	}
 	// SSE's web-standard decoder repairs malformed UTF-8. Runtime JSON is exact,
@@ -221,11 +221,7 @@ func decodeRemoteValue(encoded []byte, valueType reflect.Type) (any, error) {
 	if err := protocol.DecodeResponse(encoded, value.Interface()); err != nil {
 		return nil, invalidRemote("invalid typed response")
 	}
-	decoded := value.Elem().Interface()
-	if err := protocol.ValidateWireTree(decoded); err != nil {
-		return nil, invalidRemote("response violates the runtime contract")
-	}
-	return decoded, nil
+	return value.Elem().Interface(), nil
 }
 
 func readRemoteMessage(reader io.Reader, limit int) ([]byte, error) {
@@ -244,7 +240,7 @@ func readRemoteMessage(reader io.Reader, limit int) ([]byte, error) {
 
 func decodeTransportError(response *http.Response, mediaType string, limit int) error {
 	failure := &TransportError{StatusCode: response.StatusCode, RequestID: response.Header.Get(headerRequestID)}
-	if mediaType != "application/problem+json" {
+	if mediaType != protocol.HTTPProblemMediaType {
 		return failure
 	}
 	encoded, err := readRemoteMessage(response.Body, limit)

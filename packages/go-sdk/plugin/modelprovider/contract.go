@@ -53,13 +53,14 @@ type EmbeddingProfile struct {
 }
 
 type Profile struct {
-	ID               string            `json:"id"`
-	Authentication   Authentication    `json:"authentication"`
-	EndpointRequired bool              `json:"endpointRequired"`
-	ModelSource      ModelSource       `json:"modelSource"`
-	DefaultModel     string            `json:"defaultModel,omitempty"`
-	Embedding        *EmbeddingProfile `json:"embedding,omitzero"`
-	Models           []catalog.Model   `json:"models"`
+	ID               string                     `json:"id"`
+	Authentication   Authentication             `json:"authentication"`
+	Endpoint         modelchoice.EndpointPolicy `json:"endpoint,omitzero"`
+	EndpointRequired bool                       `json:"endpointRequired"`
+	ModelSource      ModelSource                `json:"modelSource"`
+	DefaultModel     string                     `json:"defaultModel,omitempty"`
+	Embedding        *EmbeddingProfile          `json:"embedding,omitzero"`
+	Models           []catalog.Model            `json:"models"`
 }
 
 func (p Profile) Validate() error {
@@ -68,6 +69,9 @@ func (p Profile) Validate() error {
 	}
 	if p.Authentication != KeyRequired && p.Authentication != KeyOptional {
 		return errors.New("model provider: invalid authentication policy")
+	}
+	if err := p.Endpoint.Validate(); err != nil {
+		return err
 	}
 	switch p.ModelSource {
 	case BundledModels:

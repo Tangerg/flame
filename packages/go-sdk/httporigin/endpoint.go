@@ -96,8 +96,13 @@ func (e Endpoint) IsOrigin() bool {
 }
 
 func (e Endpoint) Origin() Origin {
-	host := strings.ToLower(e.url.Hostname())
-	port := e.url.Port()
+	host := e.url.Hostname()
+	if address, err := netip.ParseAddr(host); err == nil {
+		host = address.String()
+	} else {
+		host = strings.ToLower(host)
+	}
+	port := strings.TrimLeft(e.url.Port(), "0")
 	if port == "" {
 		if e.Secure() {
 			port = "443"

@@ -1,5 +1,7 @@
 package protocol
 
+import flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
+
 // TestProviderRequest identifies the configured provider to probe.
 type TestProviderRequest struct {
 	Provider string `json:"provider"`
@@ -17,7 +19,8 @@ type Provider struct {
 	// "openai-compatible" / "anthropic-compatible" passthroughs and Azure
 	// (per-resource URL). The client must collect a base URL when configuring
 	// them, and (since they carry no catalog) a free-form model id.
-	RequiresBaseURL bool `json:"requiresBaseUrl,omitzero"`
+	Endpoint        flamemodel.EndpointPolicy `json:"endpoint,omitzero"`
+	RequiresBaseURL bool                      `json:"requiresBaseUrl,omitzero"`
 	// EmbeddingCapable marks providers with an embeddings adapter — the set the
 	// agent-memory embedding-role picker offers (models.setEmbeddingRole).
 	// DefaultEmbeddingModel is a sensible default model id to prefill. It is
