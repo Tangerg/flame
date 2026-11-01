@@ -2,15 +2,22 @@ import { describe, expect, it } from "vitest";
 import { t } from "@/lib/i18n/index";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { toolGroupModel } from "@/features/chat/tools/application/toolGroupModel";
-const tool = ({ runId = "run_1", ...overrides }: Partial<ToolCall> = {}): ToolCall => ({
-  id: "tool-1",
-  runId,
-  name: "read",
-  fn: "read",
-  args: "",
-  status: "ok",
-  ...overrides,
-});
+import { toolCategoryForName } from "@/features/agent/application/fold/reducer.fixtures";
+
+// The Runtime stamps a category on built-in calls only; fixtures reproduce that.
+const tool = ({ runId = "run_1", ...overrides }: Partial<ToolCall> = {}): ToolCall => {
+  const category = toolCategoryForName(overrides.name ?? "read");
+  return {
+    id: "tool-1",
+    runId,
+    name: "read",
+    fn: "read",
+    args: "",
+    status: "ok",
+    ...(category !== undefined ? { category } : {}),
+    ...overrides,
+  };
+};
 
 describe("toolGroupModel", () => {
   it("follows attention when the group is not pinned", () => {

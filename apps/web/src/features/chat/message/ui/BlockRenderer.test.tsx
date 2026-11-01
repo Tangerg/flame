@@ -22,6 +22,7 @@ import { renderBlock, renderMessageBlocks } from "@/features/chat/message/ui/Blo
 import { definePlugin } from "@/extensions/definePlugin";
 import { TOOL_STANDING_SURFACE } from "@/features/chat/public/tools/types";
 import { loadPluginsForTest } from "@/test/kernel";
+import { toolCategoryForName } from "@/features/agent/application/fold/reducer.fixtures";
 const CTX: BlockCtx = {
   sessionId: "ses-1",
   expandedIds: new Set(),
@@ -76,6 +77,7 @@ describe("activity header semantics", () => {
     const read: ToolCall = {
       ...tool("wave-read"),
       name: "read",
+      category: "read",
       fn: "src/first.ts",
       fnKind: "path",
       safetyClass: "safe",
@@ -184,6 +186,7 @@ describe("activity header semantics", () => {
         args: "{}",
         status: "ok",
         safetyClass: name === "shell" ? "exec" : "safe",
+        category: toolCategoryForName(name),
       }));
       const blocks: Message["blocks"] = calls.map((call) => ({
         kind: "tool",
@@ -281,6 +284,7 @@ it("animates opaque tool arrivals without remounting their surface when regroupe
     id: "read-first",
     runId: "root-run",
     name: "read",
+    category: "read",
     fn: "Read first file",
     args: "{}",
     safetyClass: "safe",
