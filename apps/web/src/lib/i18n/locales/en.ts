@@ -1,4 +1,5 @@
 export const en: Record<string, string> = {
+  "link.openFailed": "Couldn't open the link.",
   "packages.installTitle": "Install a plugin",
   "packages.installedTitle": "Installed packages",
   "packages.refreshError.title": "Couldn't refresh installed packages",

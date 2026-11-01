@@ -1,4 +1,5 @@
 {
+  "link.openFailed": "无法打开链接。",
   "packages.installTitle": "安装插件",
   "packages.installedTitle": "已安装的插件",
   "packages.refreshError.title": "无法刷新已安装的插件",

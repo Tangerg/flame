@@ -1,4 +1,5 @@
 {
+  "link.openFailed": "無法開啟連結。",
   "packages.installTitle": "安裝外掛",
   "packages.installedTitle": "已安裝的外掛",
   "packages.refreshError.title": "無法重新整理已安裝的外掛",

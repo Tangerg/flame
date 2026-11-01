@@ -113,6 +113,13 @@ The shared focus proxy draws on a neutral backing outside each control's disable
 opacity, retaining its perimeter against the map image. The renderer's projected
 anchor and viewport determine which overlay markers are mounted; the complete
 location table retains every captured point and its existing selection control.
+Read-only markers retain native link semantics and their original external
+destinations. The public shared button dress supplies their raised circular
+target; an underline distinguishes navigation from local selection. The anchor
+also consumes the host's coarse-pointer minimum rather than borrowing button
+semantics for sizing. Local open-URL actions briefly attach their hidden native
+anchor so the host's document navigation boundary can handle activation, then
+remove it. Neither path owns another platform opener or advances captured facts.
 Location-name buttons preserve whole-word contributions to the table's intrinsic
 column width. Long names keep ordinary wrapping and the existing local scroll
 region rather than reducing short names to a character-wide column.

@@ -6,6 +6,16 @@ semantics; Web owns inputs, view projections, navigation and presentation.
 The [native host](../desktop/README.md) supplies macOS capabilities without owning
 another UI application.
 
+Desktop web and mail links use one document activation adapter in
+`src/platform/externalLinks.ts`, installed by the composition root. It hands
+external HTTP(S) and mailto destinations to Wails' system-browser API while
+retaining native anchors, their captured addresses and ordinary keyboard
+activation. Cancelled events, downloads and local navigation keep their existing
+owners. Browser mode retains its native link behavior. A refused desktop open
+keeps a localized, dismissible error with its destination; it never retries or
+navigates the application to the external page. Teardown removes both listeners
+and retires later feedback.
+
 Shared Callouts receive their kind titles from the application locale through
 `CalloutLabelsProvider` at window and installed-component roots. The i18n React
 binding observes dictionary additions and removals, so lazy activation and locale

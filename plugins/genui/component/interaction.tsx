@@ -93,7 +93,14 @@ export function GenUIInteractionProvider({
             link.href = safeURL(url);
             link.target = "_blank";
             link.rel = "noopener noreferrer";
-            link.click();
+            link.hidden = true;
+            // The host owns external navigation through document link activation.
+            document.body.append(link);
+            try {
+              link.click();
+            } finally {
+              link.remove();
+            }
           },
         },
       ),

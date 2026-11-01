@@ -29,6 +29,9 @@ import App from "@/App";
 import { createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
 import { createBuiltinPlugins } from "@/app/builtinPlugins";
 import { createClientHost } from "@/platform/clientHost";
+import { installExternalLinks } from "@/platform/externalLinks";
+import { t } from "@/lib/i18n/index";
+import { toast } from "sonner";
 import { ClientRenderer } from "@/app/renderer";
 import { FAILURE_SCOPE, RootBoundary, StartupFailure } from "@/app/StartupFailure";
 import { applyWindowChrome, watchWindowChrome } from "@/app/windowChrome";
@@ -38,6 +41,10 @@ import "@/styles/markdown.css";
 import "@/styles/overlays.css";
 import "@/styles/globals.css";
 const host = createClientHost();
+const disposeExternalLinks = installExternalLinks(document, host.kind, (error, url) => {
+  console.error("[desktop] external link open failed:", error);
+  toast.error(t("link.openFailed"), { description: url, duration: Infinity, closeButton: true });
+});
 const theme = createTheme(document, window);
 
 const connection = createRuntimeConnection(
@@ -170,6 +177,7 @@ const renderer = new ClientRenderer({
   closeConnection: async () => {
     const failures: unknown[] = [];
     for (const dispose of [
+      disposeExternalLinks,
       goals.dispose,
       notifications.dispose,
       composer.dispose,

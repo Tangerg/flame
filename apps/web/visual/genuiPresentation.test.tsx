@@ -24,6 +24,7 @@ import {
   type UiNode,
 } from "../../../plugins/genui/contracts/document";
 import { GENUI_REPORT } from "./genuiReport";
+import { preventBrowserNavigation } from "@/test/browserTasks";
 import { limits } from "../../../plugins/genui/contracts/expression";
 
 let testClient: TestClient;
@@ -101,6 +102,44 @@ function show(value: AcceptedDocument, locale = "en") {
   const context = capturedContext(JSON.stringify(value), locale);
   return { context, ...testClient.render(<GenUIResult context={context} />) };
 }
+
+it("delivers a local open action through document link navigation without retaining its anchor", async () => {
+  onTestFinished(preventBrowserNavigation());
+  const url = "https://www.openstreetmap.org/?mlat=51.5074&mlon=-0.1278";
+  const value = document(
+    [
+      { id: "note", type: "Input", props: { field: "note", label: "Review note" } },
+      { id: "open", type: "Button", props: { label: "Open captured source", action: "open" } },
+    ],
+    [{ id: "note", value: "Keep the captured context." }],
+    [{ id: "open", steps: [{ type: "openUrl", url: { literal: url } }] }],
+  );
+  const destinations: Array<{ href: string; target: string; rel: string }> = [];
+  let dispatched: HTMLAnchorElement | undefined;
+  const readLink = (event: MouseEvent) => {
+    if (!(event.target instanceof HTMLAnchorElement)) return;
+    event.preventDefault();
+    dispatched = event.target;
+    destinations.push({ href: dispatched.href, target: dispatched.target, rel: dispatched.rel });
+  };
+  window.document.addEventListener("click", readLink);
+  onTestFinished(() => window.document.removeEventListener("click", readLink));
+  const { context } = show(value);
+  const open = screen.getByRole<HTMLButtonElement>("button", { name: "Open captured source" });
+  await waitFor(() => expect(open.disabled).toBe(false));
+  act(() => open.focus());
+  fireEvent.click(open);
+  await waitFor(() =>
+    expect(destinations).toEqual([{ href: url, target: "_blank", rel: "noopener noreferrer" }]),
+  );
+  expect(dispatched?.isConnected).toBe(false);
+  expect(window.document.activeElement).toBe(open);
+  expect(screen.getByRole("textbox", { name: "Review note" })).toHaveProperty(
+    "value",
+    "Keep the captured context.",
+  );
+  expect(context.toolResult!.result).toBe(JSON.stringify(value));
+});
 
 it("keeps original action recovery when a real Table search rejects an oversized value", async () => {
   const value = document(

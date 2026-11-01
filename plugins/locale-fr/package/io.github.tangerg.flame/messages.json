@@ -1,4 +1,5 @@
 {
+  "link.openFailed": "Impossible d’ouvrir le lien.",
   "packages.installTitle": "Installer une extension",
   "packages.installedTitle": "Paquets installés",
   "packages.refreshError.title": "Impossible d’actualiser les paquets installés",

@@ -14,8 +14,10 @@ import {
   type PigeonProps,
   type TileComponentProps,
 } from "pigeon-maps";
+import * as stylex from "@stylexjs/stylex";
 import {
   Button,
+  dress,
   Metadata,
   RecordGroup,
   ScrollRegion,
@@ -29,6 +31,10 @@ import {
 import type { DisplayProps } from "../contracts/catalog";
 import { stateKey } from "../contracts/document";
 import { useGenUIInteraction } from "./interaction";
+
+const markerLink = stylex.props(
+  dress({ variant: "raised", size: "icon-sm", round: true }),
+);
 
 type TileStatus = "loading" | "ready" | "failed";
 const TileResources = createContext<{
@@ -275,6 +281,15 @@ export function MapView({
                   rel="noreferrer noopener"
                   data-chrome-focus=""
                   aria-label={marker.label}
+                  {...markerLink}
+                  // The underline distinguishes navigation from selectable marker buttons.
+                  style={{
+                    ...markerLink.style,
+                    minWidth: "var(--control-target-min)",
+                    minHeight: "var(--control-target-min)",
+                    textDecorationLine: "underline",
+                    textDecorationColor: "currentColor",
+                  }}
                 >
                   {index + 1}
                 </a>

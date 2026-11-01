@@ -1,4 +1,5 @@
 {
+  "link.openFailed": "リンクを開けませんでした。",
   "packages.installTitle": "プラグインをインストール",
   "packages.installedTitle": "インストール済みパッケージ",
   "packages.refreshError.title": "インストール済みパッケージを更新できませんでした",

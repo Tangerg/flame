@@ -1,4 +1,5 @@
 {
+  "link.openFailed": "Der Link konnte nicht geöffnet werden.",
   "packages.installTitle": "Plugin installieren",
   "packages.installedTitle": "Installierte Pakete",
   "packages.refreshError.title": "Installierte Pakete konnten nicht aktualisiert werden",

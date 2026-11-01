@@ -32,7 +32,9 @@ report paging and map navigation are qualified under **Report and map navigation
 (2026-11-02)**, published as `26360bcfb`. Location-name reading is qualified under
 **Location names and intrinsic reading (2026-11-02)**, published as `7cb92f171`.
 Shared row-header alignment is qualified under **Shared table rows and multiline
-evidence (2026-11-02)**. The latest goal restores
+evidence (2026-11-02)**, published as `d40b86262`. External-source navigation
+and read-only map targets are qualified under **External sources and linked map
+targets (2026-11-02)**. The latest goal restores
 preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
 describe their historical scope.
@@ -3176,9 +3178,10 @@ popup trigger. Accepted captured facts remain immutable in the regressions.
 
 Accessibility/UI/color review approves the scoped visible navigation; layout,
 typography and writing preserve authored content, existing labels and semantic
-roles. Map route geometry, free panning, clustering, external-link opening,
-VoiceOver, OS IME, native RTL, forced colors, coarse-pointer hardware, 320px GUI
-and other-platform GUIs are unqualified. The native fixture requests public map
+roles. External-link opening is qualified by the later **External sources and
+linked map targets (2026-11-02)** follow-up. Map route geometry, free panning,
+clustering, VoiceOver, OS IME, native RTL, forced colors, coarse-pointer hardware,
+320px GUI and other-platform GUIs remain unqualified. The native fixture requests public map
 tiles for synthetic London/Paris; it does not run a live provider/Runtime write,
 Send or release installation. Whole-product and award-level acceptance stay open.
 Continue only from another observed reading or workspace defect.
@@ -3359,6 +3362,118 @@ dependencies and the private npm toolchain stay; CLI inputs/results/logs and war
 QA cache retire after publication. Read-only references, user data and unrelated
 work remain preserved. The publication fetch finds zero incoming main commits at
 `7cb92f171`. Continue from another observed workspace or reading task.
+
+#### External sources and linked map targets (2026-11-02)
+
+Original current-host Wails at `d40b86262` paints read-only map locations as narrow,
+underlined number links beside the selectable map's full circular controls.
+Option+Tab reaches their existing accessible names, but neither Enter nor a
+pointer click opens their original destination. The installed macOS Wails
+delegate has no new-window handler. Ordinary Tab skipping links is the platform's
+current navigation setting; no local Tab workaround is added.
+
+`src/platform/externalLinks.ts` now owns desktop document link activation.
+One bubbling click/auxclick registration captures the resolved HTTP(S) or mailto
+address before yielding, cancels in-app navigation and uses the public Wails
+`Browser.OpenURL` API. Cancelled events, download anchors, local navigation,
+unsupported protocols and credential-bearing destinations are not sent to the OS.
+Keyboard activation retains native anchor behavior. Browser mode adds no
+listener. Disposal removes both listeners and retires later error feedback;
+there is no retry, fallback opener, focus transition or parallel navigation state.
+The composition root installs this once and supplies a persistent, dismissible
+localized failure with the original destination, complete across eight catalogs.
+
+Read-only Map anchors consume the public shared `dress` factory and already-used
+StyleX runtime. Their raised circular target keeps the original href/target/rel,
+link role, underline and neutral focus backing. The anchor consumes the existing
+coarse-pointer minimum without a button role or key handler. Selectable markers,
+projection culling, table reading and selected-state ownership are preserved.
+GenUI's local open action now briefly attaches its hidden native anchor so that
+document activation reaches the same host boundary, then removes it in finally.
+No Runtime, schema, persistence, service or installed-module-profile migration
+is introduced. Only the existing StyleX dependency declaration is added; normal
+generation changes GenUI's ESM, while Wails remains a Web platform dependency.
+
+Read-only HeroUI's actual `link/basic.tsx` demonstrates native destination
+semantics. ZCode's actual `desktopWindowChrome.ts` new-window/navigation handlers
+inform host-owned external dispatch; its embedded-browser purchase exceptions
+are not adopted. The [Wails v3 frontend runtime reference](https://v3.wails.io/reference/frontend-runtime/#browser)
+defines the system-browser API. These are reference and contract evidence,
+not Flame native acceptance. Existing better-interface research supplies the
+native-semantics, visible-target, focus and theme criteria.
+
+A bounded Claude Code CLI invocation restricts available tools to
+Read/Edit/Grep/Glob, explicitly excludes Bash and edits only its four allowed
+adapter/test/main/map paths; it reports 37 turns and runs no checks. Primary
+review owns the destination capture, coarse target floor, style composition,
+early disposal, local-action integration, test isolation and final acceptance.
+The real-renderer open-action regression fails against the exact original
+interaction source, including an isolated replay; candidate bytes are restored.
+It verifies document dispatch, anchor retirement, focus, note and captured facts.
+
+Early adapter harnesses fail on happy-dom's anchor defaults and concurrent
+dynamic imports escaping the SDK mock, emitting unwanted test HTTP probes.
+An isolated repeated-import experiment reproduces the latter and is removed.
+The final harness prevents native test navigation, completes each simulated
+gesture's import and rejects/asserts absence of network access. No production
+cache, event workaround or weakened assertion is added. The final **8 files /
+153 tests** pass, including all GenUI, desktop/browser, renderer and footnote
+paths. Both original/final `make check-native`, final Web/plugin types,
+plugin lint/resources, Web lint/design-system/tokens/chrome/locales/HMR/layers,
+bundle and installed-module gates pass. Owned formatting passes. The known
+macOS linker warnings remain nonfailing. Shared UI source is unchanged, so its
+standalone/packed checks are not rerun; the unrelated Feedback full-format
+failure is unchanged and not rerun.
+
+Observer-free native comparisons use the current production Wails host with
+private assets/profile and deterministic captured reports. The candidate fixture
+installs the shipped adapter with the same actual host detection and localized
+failure policy as production main. This qualifies real native OS dispatch and
+workspace reading, not a live provider/Runtime operation or release installation.
+EN/light/14px/Orange/full-motion qualifies Option+Tab/Enter opening London,
+pointer opening Paris, the generated open action and a transcript source link.
+Each new browser tab has its expected original coordinates or copyright URL.
+The web page may add its own map fragment; Flame retains the captured query.
+Footnote and back-reference navigation remain in the original Wails document.
+
+A synthetic admitted URL containing a semicolon exercises Wails' actual URL
+refusal. It opens no tab, retains the complete address and displays one persistent
+error. EN Alt+T, Option+Tab and Enter dismiss it and return to the earlier
+footnote; ZH pointer dismissal works at large zoom. No automatic retry occurs.
+ZH/dark/18px/custom-blue/motion-off qualifies native half-screen placement and
+twenty Zoom In commands (200%): complete circular link focus, keyboard external
+opening, contained wheel reading through both location rows, local Paris
+selection and the localized failure/address remain readable. Ordinary Tab and
+Space continue to select map buttons without opening external pages.
+
+Both scenes qualify full-width README reading and return to the selected Paris.
+EN retains `Retain the external source and review context.` and continues
+`Continue reviewing captured locations. Sources retained; continue drafting.`
+ZH retains `保留来源地址和地点阅读上下文。` and continues
+`继续核对地点与外部来源。 来源已保留，继续整理结论。`
+Actual Size restores the parallel material pane. Chinese input uses paste;
+physical IME behavior is not inferred from it.
+
+Accessibility/UI review approves the inspected link, local-selection, refusal
+and return tasks. Layout and typography preserve complete names, coordinates,
+descriptions, source addresses and reading hierarchy through native reflow.
+Existing semantic Orange/blue, neutral surfaces and motion owners remain;
+numerical contrast and motion-timeline measurement are not requalified.
+Native mail-client dispatch, modifier/middle-button hardware, VoiceOver, OS IME,
+RTL, forced colors, coarse-pointer hardware, 320px GUI and other-platform GUIs
+remain unqualified; modifier/middle and mail dispatch have adapter regression
+coverage. The existing pointer-origin reverse-Tab attribution stays separate.
+No browser visual suite, benchmark, Send or live Runtime/provider write runs.
+Whole-product and award-level acceptance remain open.
+
+All three owned native processes exit 0. All five created browser tabs close,
+preserving the original user tab. Cleanup unregisters/removes the private bundle,
+restores six profile absence baselines and removes nine owned checkout output
+roots plus private assets/home. Active dependencies and the temporary npm
+toolchain remain for this goal; CLI inputs/results/logs and warmed QA cache retire
+after publication. References and unrelated work stay preserved. The publication
+fetch finds zero incoming main commits at `d40b86262`. Continue from another
+observed workspace or reading task.
 
 ### Horizontal report tabs and reading keys
 
