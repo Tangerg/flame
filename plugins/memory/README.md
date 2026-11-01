@@ -246,7 +246,8 @@ Draft feedback stays beside the form actions; independent record
 feedback stays with the catalog. An acknowledged form closes before the subsequent
 catalog read, whose loading or failure cannot revoke the known result. Changing
 scope retires the old scope's notices. New forms clear earlier form feedback.
-Editors identify the captured record and scope. Local Escape cancels only the
+Record details and update/delete forms use the captured item's localized scope
+and ID. Local Escape cancels only the
 current form, after search and nested choices have handled their own key. Pending
 and unknown commands consume that Escape without discarding their task. Composition
 keys leave it untouched. Cancellation returns to the connected available opener or

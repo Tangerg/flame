@@ -234,11 +234,7 @@ export function Memory({ context }: { context: ComponentContext }) {
         >
           <RecordTitle>{t("delete.title")}</RecordTitle>
           <RecordMeta>
-            <span>
-              {edit.item.Scope === "project"
-                ? t("scope.project")
-                : t("scope.user")}
-            </span>
+            <span>{t(`scope.${edit.item.Scope}`)}</span>
             <span>{edit.item.ID}</span>
           </RecordMeta>
           <RecordBody>{edit.item.Content}</RecordBody>
@@ -302,6 +298,7 @@ export function Memory({ context }: { context: ComponentContext }) {
           </RecordTitle>
           {edit.type === "update" && (
             <RecordMeta>
+              <span>{t(`scope.${edit.item.Scope}`)}</span>
               <span>{edit.item.ID}</span>
             </RecordMeta>
           )}

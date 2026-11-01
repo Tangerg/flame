@@ -571,6 +571,171 @@ it("names the captured target and keeps editor and record feedback apart", async
   ]);
 });
 
+const userMemory: typeof active = {
+  ...active,
+  ID: "mem_00000000000000000000000000000005",
+  Revision: 12,
+  Scope: "user",
+  Origin: "user",
+  Pinned: false,
+  SessionID: "",
+  Content: "Answer my questions in concise English.",
+};
+
+function facts(row: Element) {
+  return Object.fromEntries(
+    [...row.querySelectorAll("dl > div")].map((fact) => [
+      fact.querySelector("dt")!.textContent,
+      fact.querySelector("dd")!.textContent,
+    ]),
+  );
+}
+
+const englishScope = {
+  locale: "en",
+  saved: "Saved memory",
+  reading: "Reading recorded memory…",
+  segment: "User",
+  details: "Record details",
+  scopeFact: "Scope",
+  edit: "Edit",
+  editor: "Edit memory",
+  content: "Memory content",
+  cancel: "Cancel",
+  save: "Save",
+  more: (id: string) => `More actions for ${id}`,
+  delete: "Delete",
+  confirmation: "Confirm memory deletion",
+  edited: (id: string) => `Edit ${id} · completed.`,
+};
+
+const chineseScope: typeof englishScope = {
+  locale: "zh",
+  saved: "已保存的记忆",
+  reading: "正在读取已记录的记忆…",
+  segment: "用户",
+  details: "记录详情",
+  scopeFact: "范围",
+  edit: "编辑",
+  editor: "编辑记忆",
+  content: "记忆内容",
+  cancel: "取消",
+  save: "保存",
+  more: (id: string) => `${id} 的更多操作`,
+  delete: "删除",
+  confirmation: "确认删除记忆",
+  edited: (id: string) => `编辑 ${id} · 已完成。`,
+};
+
+it.each([
+  {
+    ...englishScope,
+    target: "Project memory · /Users/visual/scope",
+    scope: "Project memory",
+    item: active,
+    cwd: "/Users/visual/scope",
+  },
+  { ...englishScope, target: "User memory", scope: "User memory", item: userMemory, cwd: "" },
+  {
+    ...chineseScope,
+    target: "项目记忆 · /Users/visual/scope",
+    scope: "项目记忆",
+    item: active,
+    cwd: "/Users/visual/scope",
+  },
+  { ...chineseScope, target: "用户记忆", scope: "用户记忆", item: userMemory, cwd: "" },
+])("names each $target record by its captured scope in $locale", async (copy) => {
+  const { item } = copy;
+  const rows = { project: active, user: userMemory };
+  const list = vi.fn(async (request: CallPluginRequest) => {
+    const { Scope } = JSON.parse(request.input) as { Scope: keyof typeof rows };
+    return { output: JSON.stringify({ ...VISUAL_MEMORY_PAGE, Rows: [rows[Scope]] }) };
+  });
+  const { settle, call } = await openMemory(list, copy.locale);
+  await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+  const targetReads = item.Scope === "user" ? 2 : 0;
+  if (item.Scope === "user") {
+    fireEvent.click(screen.getByRole("radio", { name: copy.segment }));
+  }
+  await waitFor(() => expect(list).toHaveBeenCalledTimes(2 + targetReads));
+  await waitFor(() => expect(screen.queryByText(copy.reading)).toBeNull());
+  const records = () => screen.getByRole("heading", { name: copy.saved }).closest("section")!;
+  await within(records()).findByText(item.Content, { exact: true });
+  expect(screen.getByText(copy.target, { exact: true })).toBeTruthy();
+  const row = () => records().querySelector<HTMLElement>(`[data-memory-id="${item.ID}"]`)!;
+  fireEvent.click(within(row()).getByRole("button", { name: new RegExp(`^${copy.details}`) }));
+  await waitFor(() =>
+    expect(facts(row())).toMatchObject({ ID: item.ID, [copy.scopeFact]: copy.scope }),
+  );
+  expect(Object.values(facts(row()))).not.toContain(item.Scope);
+
+  const edit = within(row()).getByRole("button", { name: copy.edit });
+  edit.focus();
+  fireEvent.click(edit);
+  const editor = screen.getByRole("region", { name: copy.editor });
+  const editorScope = within(editor).getByText(copy.scope, { exact: true });
+  expect(within(editor).getByText(item.ID, { exact: true }).parentElement).toBe(
+    editorScope.parentElement,
+  );
+  expect(within(editor).queryByText(item.Scope, { exact: true })).toBeNull();
+  fireEvent.change(within(editor).getByRole("textbox", { name: copy.content }), {
+    target: { value: "Discard this memory edit." },
+  });
+  const cancelEdit = within(editor).getByRole("button", { name: copy.cancel });
+  cancelEdit.focus();
+  fireEvent.click(cancelEdit);
+  await waitFor(() => expect(document.activeElement).toBe(edit));
+  expect(screen.queryByRole("region", { name: copy.editor })).toBeNull();
+  expect(within(records()).getByText(item.Content, { exact: true })).toBeTruthy();
+
+  const trigger = within(row()).getByRole("button", { name: copy.more(item.ID) });
+  fireEvent.click(trigger);
+  await screen.findByRole("menu");
+  fireEvent.click(screen.getByRole("menuitem", { name: copy.delete }));
+  const confirmation = screen.getByRole("region", { name: copy.confirmation });
+  const deletionScope = within(confirmation).getByText(copy.scope, { exact: true });
+  expect(within(confirmation).getByText(item.ID, { exact: true }).parentElement).toBe(
+    deletionScope.parentElement,
+  );
+  const cancelDelete = within(confirmation).getByRole("button", { name: copy.cancel });
+  cancelDelete.focus();
+  fireEvent.click(cancelDelete);
+  await waitFor(() => expect(document.activeElement).toBe(trigger));
+  await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+  expect(screen.queryByRole("region", { name: copy.confirmation })).toBeNull();
+  expect(commands(call)).toHaveLength(0);
+
+  const content = "Keep this edited memory in its original scope.";
+  settle.mockImplementationOnce(async () => {
+    rows[item.Scope] = { ...item, Revision: Number(item.Revision) + 1, Content: content };
+    return { output: JSON.stringify(rows[item.Scope]) };
+  });
+  fireEvent.click(within(row()).getByRole("button", { name: copy.edit }));
+  const reopened = screen.getByRole("region", { name: copy.editor });
+  const field = within(reopened).getByRole<HTMLTextAreaElement>("textbox", {
+    name: copy.content,
+  });
+  expect(field.value).toBe(item.Content);
+  fireEvent.change(field, { target: { value: content } });
+  const settledReads = list.mock.calls.length;
+  fireEvent.click(within(reopened).getByRole("button", { name: copy.save }));
+  await within(records()).findByText(copy.edited(item.ID));
+  await waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(settledReads));
+  await within(records()).findByText(content, { exact: true });
+  await waitFor(() => expect(screen.queryByText(copy.reading)).toBeNull());
+  expect(within(records()).queryByText(item.Content, { exact: true })).toBeNull();
+  expect(facts(row())).toMatchObject({ ID: item.ID, [copy.scopeFact]: copy.scope });
+  expect(commands(call)).toHaveLength(1);
+  expect(commands(call)[0]![0].method).toBe("flame.memory/update.v2");
+  expect(JSON.parse(commands(call)[0]![0].input)).toEqual({
+    ID: item.ID,
+    ExpectedRevision: item.Revision,
+    Content: content,
+  });
+  const reads = list.mock.calls.slice(targetReads).map(([request]) => JSON.parse(request.input));
+  expect(reads).toEqual(Array(reads.length).fill({ Scope: item.Scope, CWD: copy.cwd, Cursor: "" }));
+});
+
 it("does not carry a cancelled task's refusal into a new task", async () => {
   const { settle } = await openMemory();
   settle.mockRejectedValueOnce(new Error("Memory capacity is full."));

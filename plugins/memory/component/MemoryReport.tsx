@@ -218,7 +218,7 @@ export function MemoryReport({
                   <Facts
                     values={[
                       [t("fact.id"), item.ID],
-                      [t("fact.scope"), item.Scope],
+                      [t("fact.scope"), t(`scope.${item.Scope}`)],
                       [
                         t("fact.origin"),
                         item.Origin === "auto"

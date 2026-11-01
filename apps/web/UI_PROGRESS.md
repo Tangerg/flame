@@ -39,8 +39,9 @@ targets (2026-11-02)**, published as `3de198b27`. Memory reading is qualified un
 form-command follow-up is published as `c7b97cfc5` under **Memory submission and
 original-result actions (2026-11-02)**. Record-command continuity is published as
 `45274f08a` under **Memory record actions and result continuity (2026-11-02)**.
-Command result wording is qualified under **Memory command outcome wording
-(2026-11-02)**. The latest goal restores
+Command result wording is published as `3970aaf55` under **Memory command outcome
+wording (2026-11-02)**. Captured scope identity is qualified under **Memory captured
+scope identity (2026-11-02)**. The latest goal restores
 preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
 describe their historical scope.
@@ -4768,6 +4769,136 @@ no accepted product input; publication is followed by fresh remote, cleanliness
 and preservation checks. Continue from a fresh task observation, preserving this
 accepted hierarchy and the preceding color/focus work.
 
+### Memory captured scope identity (2026-11-02)
+
+Scope is Project/User memory → record details → edit/cancel → deletion/cancel →
+save → accepted read → material/conversation return. The previous native Chinese
+scene shows `范围 project`; source inspection also finds that update forms omit
+the captured scope despite the module's documented identity contract. Target
+navigation and deletion confirmation already have localized Project/User names.
+AGENTS, PROJECT_RULES, DEVELOPMENT and the Memory/Web/Desktop READMEs establish
+the task, data and verification boundaries.
+
+`MemoryReport.tsx:221` now renders the record's existing `scope.${item.Scope}`
+name. The update form's existing RecordMeta places that same captured scope before
+its full ID (`component.tsx:301`); deletion uses the equivalent direct catalog key.
+All eight existing dictionaries already own both names, so no new string, helper,
+state, prop, wrapper or styling policy is needed. The accepted item supplies record
+identity; selected read scope remains its separate navigation fact. Wire Scope/CWD,
+original IDs/revisions, commands/recovery and accepted-page/focus owners remain
+unchanged. Normal generation changes only Memory's installed ESM.
+
+Read-only ZCode's actual `packages/ui/src/settings/SkillsSection.tsx:267` renders
+workspace/personal scope from its captured detail object, and its detail field at
+line 916 uses that name. Flame reuses its own two closed scope keys and existing
+delete identity pattern, without importing ZCode's fallback or source model.
+Better-writing's one-vocabulary principle applies to navigation, facts and form
+identity together. Existing shared RecordMeta/Facts supply wrapping, type and color;
+earlier HeroUI, actual ChatGPT UI, Radix, Arc, color and Ace research retains its
+recorded scope. Static composition references do not establish focus behavior.
+
+Verification:
+
+- Baseline: **66 Memory cases pass**. Final related Web run passes **6 files / 161
+  tests**, including **70 Memory cases**, with no skips. Command is
+  `npm run test --workspace @flame/web -- --project frontend --no-file-parallelism`
+  with `visual/memoryDrafts.test.tsx`, `visual/trajectoryNavigation.test.tsx`,
+  `src/features/plugins/ui/InstalledComponent.test.tsx`,
+  `src/ui/agent/context-dock.test.tsx`,
+  `src/features/workspace/adapters/contextDockStore.test.ts` and
+  `src/platform/desktopHost.test.ts`.
+- Four new rendered task cases cover English/Chinese × Project/User. Their query
+  fixture returns genuinely distinct IDs, revisions and scope-qualified records.
+  Each checks header/fact identity, an edit discarded without mutation, deletion
+  confirmation cancelled to its opener, then a saved edit against the original
+  ID/revision. Accepted content and localized scope survive the read. Every target
+  read retains its exact Scope/CWD/Cursor; update input stays ID/revision/content.
+- Replaying original MemoryReport alone fails all four cases on the raw fact value;
+  replaying original component alone fails all four on the missing editor scope.
+  Each control restores and byte-checks both final sources in `finally`. The 66
+  excluded cases in these focused controls are not skipped final coverage.
+- Initial verification exposes two introduced test issues: a conditional read-wait
+  assertion violates the existing lint rule, and direct arithmetic on the public
+  JSONNumber revision type blocks Web staging. Root moves the assertion outside
+  the branch and explicitly converts the controlled fixture's small revisions
+  (7 and 12) for its next mock snapshot. No production coercion or assertion
+  weakening is introduced. Final Web typecheck, related suite and native check
+  are rerun after these corrections.
+- Final `make check-native`, Web/plugin typechecks and lints, plugin i18n/resource
+  parity, and Web design-system, tokens, chrome, locales, HMR, layers, bundle and
+  plugin-module guards pass. I18n covers 20 catalogs across eight locales; existing
+  scope keys remain complete. Native checks retain known macOS SDK 26/link-target
+  11 and duplicate Objective-C library warnings. The private app uses exact Wails
+  v3.0.0, Go 1.27.3 and production/macOS-13 flags. Its private visual aggregate
+  bundle retains the recorded chunk warning; the production budget guard passes.
+- The restricted Claude Code CLI invocation reports 25 turns and edits only the
+  two components and integration test. It runs no checks or Git commands. Root
+  reviews its actual diff, fixes the two test issues and owns all builds, original
+  source controls, native acceptance, docs, generation, cleanup and delivery.
+
+The private Wails app uses an absent-baseline ID/home and a captured provider
+behind the actual public client and InstalledComponent. Project and User pages
+carry distinct IDs/revisions. Reads validate project path vs empty User CWD;
+mutations validate their exact original ID/revision/content shape, namespace,
+key and frozen binding/input. One stored reply advances its private item once;
+subsequent accepted reads retain its scope. This proves UI targeting and
+presentation, not live backend transaction, restart or receipt durability.
+No Runtime, provider installation, real user data or message submission is used.
+
+Native acceptance passes:
+
+- English/light/Flame Orange, 14px, wide split: Project detail, edit metadata and
+  deletion confirmation show Project memory with the same complete ID. Editing and
+  deleting are cancelled with Escape, returning Edit and More respectively. User
+  selection reads its own item, whose detail/edit/confirmation say User memory.
+  Both cancelled drafts leave original content intact. Keyboard Save keeps its
+  pending focus, then completion returns to retained Search while the original
+  opener is unavailable during the read. The User query `shared`, expanded facts,
+  full ID and accepted edited content persist through Files → Memory. The original
+  conversation draft remains editable without sending.
+- Chinese/dark/custom blue, 18px, native left-half window, twenty native zoom
+  increments to 200%: full-width reading exposes complete Project/User names and
+  long IDs. Real wheel scrolling reaches facts and the editor's full identity;
+  native Unicode paste changes a draft, and Escape returns its captured opener.
+  Both deletion confirmations identify the right scope/ID, actually enter on
+  Cancel and restore More on Escape. A User edit saves through pending to completed,
+  retains `shared`, the exact User record and localized facts, and returns to
+  Search. Files and explicit Back to Agent memory preserve that target, query,
+  details and reading position. Closing the reader and twenty native zoom
+  decrements restore the 100% split and original Chinese conversation draft,
+  which remains editable. Unicode paste is not physical IME qualification.
+
+| Domain        | Evidence inspected                                                                                   | Result                                                                                                      |
+| ------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Accessibility | Facts/RecordMeta semantics, 70 Memory cases, actual Tab/Return/Escape, confirmation entry and return | Identity is exposed in native AX; named controls and exercised focus paths pass. VoiceOver is not verified. |
+| Layout        | Shared records/form styles, wide split, left-half/200% reader, actual wheel and material return      | Complete values/actions are reachable; form entry framing remains the separate finding below.               |
+| Writing       | Both existing scope keys in all eight catalogs, header/detail/form consistency, four task cases      | Captured record identity uses one current vocabulary; raw wire values retain their owners.                  |
+| Typography    | English 14px, Chinese 18px/200%, complete IDs and scope metadata                                     | Existing wrapping preserves values; no type scale change.                                                   |
+| Color         | Existing muted metadata, light Orange and dark blue, focused Search and destructive confirmation     | Semantic tokens retained; fresh rendered contrast ratios are not verified.                                  |
+| UI            | Actual edit/cancel/delete/cancel/save/read/return with normal motion                                 | Existing task and command transitions remain intact; no new animation or decorative control.                |
+
+| Severity              | Domain  | Location                                                                                                | Before                                                                                                                                                                    | After                                                                                                                                     | Why                                                                                                                                                                                                       |
+| --------------------- | ------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MEDIUM · resolved     | Writing | `plugins/memory/component/MemoryReport.tsx:221`, `component.tsx:301`                                    | Details expose the raw enum; update metadata omits its captured scope.                                                                                                    | Reuse localized scope names from the record alongside its full ID.                                                                        | Target navigation, record reading and editing need consistent object identity.                                                                                                                            |
+| MEDIUM · pre-existing | Layout  | `plugins/memory/component/component.tsx:235`, `component.tsx:296`, shared `packages/ui/src/form.tsx:33` | At 18px/200%, title, identity and content are independent form children with section gaps; entry focus on the textarea or Cancel places identity above the reading frame. | Next: inspect cohesive heading/identity/body grouping using existing record composition, then qualify full form entry and command states. | All content is reachable with visible scrolling, but reading the object and acting on it require separate frames. Delete's rendered identity/control structure is equivalent before and after this batch. |
+
+Verdict: **Approve for captured scope identity in the recorded tasks**. The form
+framing finding remains next. This does not claim an award-level ceiling or
+all-language/platform coverage. Not verified: other-language/platform native GUIs,
+VoiceOver, physical IME, fresh pixel contrast, 320px/RTL, a reduced-motion rerun
+and live backend durability. No browser visual suite, performance benchmark,
+full Web suite or all-workspace Go suite runs. No protocol/storage/data migration.
+
+Both native windows close with exit 0 and the exact executable audit is empty.
+LaunchServices is unregistered. The private app, Web/home, CLI files, replay sources,
+configs and reviewed logs are removed. Nine checkout outputs and six private
+Library paths are restored to absent baselines. Only active `bin` and npm CLI
+`_npx` prerequisites remain for the continuing goal; root dependencies, references,
+user data and unrelated processes are preserved. Fresh fetch finds no incoming
+main commits at `3970aaf55`, with the primary main checkout clean. Delivery stages
+only this batch's paths, fast-forwards main and pushes, then audits remote,
+cleanliness and owned resources again.
+
 ### Memory command outcome wording (2026-11-02)
 
 Scope is the installed Memory command's submitting, known refusal, unknown result
@@ -4891,8 +5022,9 @@ Cross-discipline review of this task:
 | MEDIUM · pre-existing | Writing | `plugins/memory/component/MemoryReport.tsx:221`                                                | Native Chinese details show `范围 project`, while the target header and editor already use localized scope labels. | Next: inspect Project/User read → details → edit/cancel identity, then reuse the current scope vocabulary. | An object's scope should agree with its task context instead of exposing the raw enum as the visible name. |
 
 Verdict: **Approve for the changed command-outcome wording in the recorded paths**.
-The scope-identity finding remains next; it is not a new regression or a claim that
-all product surfaces have reached a visual ceiling. Other-language/platform native
+The scope-identity finding is resolved in **Memory captured scope identity
+(2026-11-02)** above. This is not a claim that all product surfaces have reached a
+visual ceiling. Other-language/platform native
 GUIs, physical IME, VoiceOver, reduced-motion rerun, 320px/RTL, fresh pixel contrast
 and live business durability are not verified. No browser visual suite, performance
 benchmark, full Web suite or all-workspace Go suite runs. There is no protocol,
