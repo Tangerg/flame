@@ -1417,8 +1417,43 @@ describe("shared controls", () => {
     render(
       <Checkbox checked={false} onCheckedChange={change} label="Pinned only" />,
     );
+    expect(screen.getByText("Pinned only")).toBeTruthy();
     fireEvent.click(screen.getByRole("checkbox", { name: "Pinned only" }));
     expect(change).toHaveBeenCalledWith(true, expect.anything());
+    change.mockClear();
+    fireEvent.click(screen.getByText("Pinned only"));
+    expect(change).toHaveBeenCalledExactlyOnceWith(true, expect.anything());
+  });
+  it("names a checkbox without duplicating its name as visible text", () => {
+    const row = "evidence-runtime-receipt-7f3c9a1e5b2d4c6f";
+    const change = vi.fn();
+    const view = render(
+      <Checkbox
+        checked={false}
+        onCheckedChange={change}
+        ariaLabel={`Select ${row}`}
+      />,
+    );
+    const checkbox = screen.getByRole("checkbox", { name: `Select ${row}` });
+    const target = checkbox.closest("label")!;
+    expect(target.textContent).toBe("");
+    expect(screen.queryByText(new RegExp(row))).toBeNull();
+
+    fireEvent.click(target);
+    expect(change).toHaveBeenCalledWith(true, expect.anything());
+
+    change.mockClear();
+    view.rerender(
+      <Checkbox
+        checked={false}
+        disabled
+        onCheckedChange={change}
+        ariaLabel={`Select ${row}`}
+      />,
+    );
+    fireEvent.click(target);
+    fireEvent.click(screen.getByRole("checkbox", { name: `Select ${row}` }));
+    expect(change).not.toHaveBeenCalled();
   });
   it("uses the consumer's font scale with the icon library's optical master", () => {
     const view = render(

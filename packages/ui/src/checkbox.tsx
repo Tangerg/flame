@@ -17,6 +17,11 @@ const styles = stylex.create({
     cursor: "default",
   },
   off: { cursor: "not-allowed", opacity: "var(--control-disabled-opacity)" },
+  target: {
+    minWidth: "max(var(--control-height-xs), var(--control-target-min))",
+    minHeight: "max(var(--control-height-xs), var(--control-target-min))",
+    justifyContent: "center",
+  },
   box: {
     transitionProperty: "color, background-color, border-color",
     transitionDuration: motion.color,
@@ -25,28 +30,36 @@ const styles = stylex.create({
   mark: { color: color.onAccent },
 });
 
-interface CheckboxProps {
+type CheckboxProps = {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
-  label: ReactNode;
   disabled?: boolean;
   className?: string;
-}
+} & (
+  { label: ReactNode; ariaLabel?: never } | { label?: never; ariaLabel: string }
+);
 
 export function Checkbox({
   checked,
   onCheckedChange,
   label,
+  ariaLabel,
   disabled,
   className,
 }: CheckboxProps) {
-  const row = stylex.props(styles.row, type.uiMd, disabled && styles.off);
+  const row = stylex.props(
+    styles.row,
+    type.uiMd,
+    ariaLabel !== undefined && styles.target,
+    disabled && styles.off,
+  );
   return (
     <label {...row} className={cn(row.className, className)}>
       <CheckboxPrimitive.Root
         checked={checked}
         onCheckedChange={onCheckedChange}
         disabled={disabled}
+        aria-label={ariaLabel}
         data-focus-outset={checked ? "" : undefined}
         {...stylex.props(
           CHOICE_SURFACE.mark,
@@ -59,7 +72,7 @@ export function Checkbox({
           <Icon glyph={Check} size="xs" {...stylex.props(styles.mark)} />
         </CheckboxPrimitive.Indicator>
       </CheckboxPrimitive.Root>
-      <span>{label}</span>
+      {ariaLabel === undefined && <span>{label}</span>}
     </label>
   );
 }

@@ -26,7 +26,8 @@ qualification (2026-11-02)**. Captured table search recovery and portaled docume
 reading are now qualified under **Table lookup and portaled reading (2026-11-02)**;
 the keyboard pagination-boundary repair is qualified under **Pagination boundaries
 and keyboard return (2026-11-02)**. The existing pointer-origin reverse-Tab
-limitation retains its separate attribution below. The latest goal restores
+limitation retains its separate attribution below. The selection-column follow-up
+is qualified under **Table selection and authored reading (2026-11-02)**. The latest goal restores
 preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
 describe their historical scope.
@@ -2996,6 +2997,93 @@ dependencies and the temporary npm toolchain stay for the active goal. CLI input
 results and logs are retired after delivery. Read-only references, user data and
 unrelated primary-checkout work remain preserved.
 The publication fetch finds zero incoming main commits at `f8654ab3b`.
+
+#### Table selection and authored reading (2026-11-02)
+
+The preceding native task at published base `5f364eea2` displays `Select alpha`
+beside the authored evidence value. Table row keys are stable identifiers, not
+required display columns; repeating them visibly consumes reading space and
+wraps independently at 18px/200%. This MEDIUM layout/comprehension finding belongs
+to the form-oriented Checkbox composition used by the Table, not to its data or
+selection owner.
+
+Shared `packages/ui/src/checkbox.tsx` now accepts either its existing visible
+ReactNode `label` or an `ariaLabel`, following the Switch/Slider vocabulary. The
+type contract requires one naming mode. The latter names the existing Base UI
+control without rendering duplicate text. Its wrapping label retains native
+activation; its centered target uses the maximum of `--control-height-xs` and
+the coarse-pointer target role. Primary review corrects the initial target-only
+minimum because that role is zero on a desktop pointer. Mark geometry, checked
+and disabled behavior, focus and motion remain shared.
+
+GenUI changes only the naming prop. The same localized stable ID, immutable
+captured rows and OpenUI selection values remain authoritative. No guessed first
+column, schema field, select-all, state, event handler or dependency is added.
+The Selection heading and authored data remain visible. Normal generation changes
+only that prop in GenUI's installed ESM. Both module READMEs record the contract.
+HeroUI's actual table selection demo and [Checkbox documentation](https://heroui.com/en/docs/react/components/checkbox),
+Arc's actual `SelectBox`/target styles, and [Radix's alternative labeling guidance](https://www.radix-ui.com/primitives/docs/utilities/visually-hidden)
+inform the separation of names, controls and row content. They do not supply
+Flame's implementation or native evidence.
+
+A bounded Claude Code CLI task edits only the six allowed component/test paths
+in 42 turns and runs no commands. The primary agent reviews the diff, adjusts the
+target, simplifies type fixtures and owns checks and native acceptance. The new
+shared regression fails against the original component because the new naming
+mode is unavailable. With the corrected event harness, the new real-renderer
+Table regression fails against the original Table's duplicated visible ID; exact
+candidate bytes are restored. It covers selection through sorting, filtering,
+paging, popup reopen and immutable captured data.
+
+Three existing tests stop targeting Base UI's hidden input by its former implicit
+label and instead find the named checkbox. An event trace exposes happy-dom
+activating its wrapping label before React cancels the mark click, then dispatching
+a second input activation. The local helper activates the named label once;
+all existing state assertions remain. No production click workaround is added.
+Actual Wails below independently checks clicks on the visible mark.
+
+Verification passes **3 GenUI files / 106 tests**, **13 shared UI files / 220 tests**,
+UI build/type/lint/format and the independent packed UI/icons consumer. The first
+full UI-check invocation fails on missing offline npm cache. After private cache
+preparation, its consumer also reveals pre-existing image examples omitting the
+current required `labels` prop. Those two test inputs now supply their actual
+contract; assertions are retained. The final independent consumer passes. This
+records passing stages and the repaired consumer, not a second full invocation.
+`make check-native`, plugin types/lint/resources, owned formatting, Web lint,
+design-system/token/chrome, bundle and installed-module gates pass. The known
+unrelated Feedback full-format failure is unchanged and not rerun.
+
+Two observer-free current-host launches qualify EN/light/14px/Orange/full-motion
+and ZH/dark/18px/custom-blue/motion-off over accepted captured rows with long stable
+IDs. Native clicks select once and cancel once; Space selects with a visible
+perimeter. The full names remain in AX while pixels show authored values beside
+compact controls. Ordinary visible form labels still render and toggle. EN
+qualifies filtered paging, Clear, keyboard sorting, selected-row persistence and
+README/full-width return. ZH qualifies native half-screen placement and twenty
+Zoom In commands (200%), contained wheel reading, the complete pager, keyboard
+page return and selected evidence after full-width README return. Actual Size
+restores the parallel material pane. Notes remain `Retain the evidence selection.`
+and `保留已选证据和备注。`; continued drafts become
+`Draft before selecting captured evidence. Selected evidence retained; continue drafting.`
+and `选择证据前的草稿。 已返回，继续整理结论。`.
+
+Accessibility review preserves names, roles, selection and keyboard focus; layout,
+writing and typography remove repeated technical reading without changing authored
+values or type roles. Color/UI review keeps the shared Orange/blue check, perimeter
+and immediate feedback in full-motion and motion-off scenes. Numerical contrast,
+VoiceOver, OS IME, native RTL, coarse-pointer hardware, 320px GUI and other-platform
+GUIs are unqualified. The existing pointer-origin reverse-Tab limitation remains
+separate. No browser suite, benchmark, Send, live provider/Runtime write or release
+installation runs. Approve this scoped selection/reading task; whole-product and
+award-level acceptance remain open. Continue with another observed workspace flow.
+
+Both native processes exit successfully. Cleanup unregisters/removes the private
+bundle, restores all six profile absence baselines and removes nine owned checkout
+output/cache roots plus private assets/home and the disposable consumer. Development
+dependencies and the temporary npm toolchain stay for the active goal; CLI inputs,
+logs and warmed QA cache are retired after delivery. References, user data and
+unrelated work stay preserved. The publication fetch finds zero incoming main
+commits at `5f364eea2`.
 
 ### Horizontal report tabs and reading keys
 

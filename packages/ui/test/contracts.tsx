@@ -1,5 +1,6 @@
 import { Brain } from "@flame/icons/react";
 import {
+  Checkbox,
   DiffFileHeader,
   IconButton,
   PanelHeader,
@@ -21,6 +22,13 @@ void (
 void (<IconButton icon={Brain} title="Memory" />);
 // @ts-expect-error Icon controls require a product-specific accessible name.
 void (<IconButton icon={Brain} />);
+const checkbox = { checked: false, onCheckedChange() {} };
+void (<Checkbox {...checkbox} label="Pinned" />);
+void (<Checkbox {...checkbox} ariaLabel="Select" />);
+// @ts-expect-error A checkbox requires a visible label or an accessible name.
+void (<Checkbox {...checkbox} />);
+// @ts-expect-error A checkbox cannot have both naming modes.
+void (<Checkbox {...checkbox} label="Pinned" ariaLabel="Select" />);
 void (<SearchField value="" aria-label="Search" readOnly />);
 // @ts-expect-error Search values have one controlled owner.
 void (<SearchField defaultValue="uncontrolled" aria-label="Search" />);

@@ -148,7 +148,7 @@ export function TableView({
                     {props.selectState && (
                       <td>
                         <Checkbox
-                          label={t("table.select", { row: id })}
+                          ariaLabel={t("table.select", { row: id })}
                           checked={selected.includes(id)}
                           onCheckedChange={(checked) =>
                             set(

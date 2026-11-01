@@ -45,6 +45,13 @@ the existing `:focus-within` proxies.
 Validation, inset/outset placement and focus proxies keep their existing roles;
 components do not maintain another modality or ring owner.
 
+`Checkbox` accepts either a visible `label` or an `ariaLabel` when adjacent
+content already identifies the object. The latter keeps a named, controlled
+checkbox without repeating a technical identifier in the reading surface.
+Its mark retains the shared focus and disabled behavior, with a centered target
+using the existing control-size and pointer-target roles. Ordinary form labels
+keep their existing presentation.
+
 `Tooltip` and `RichTooltip` accept the primitive's `disabled` state. Consumers
 that reveal a label only while it is truncated keep the same trigger mounted
 and disable its tooltip when the complete text fits. Plain `Tooltip` labels wrap

@@ -896,6 +896,13 @@ async function openPopoverTable() {
   };
 }
 
+function toggleTableRow(table: HTMLElement, name: string) {
+  const checkbox = within(table).getByRole("checkbox", { name });
+  // happy-dom activates the label before React can cancel the mark's click.
+  // Use its native activation once; Wails acceptance also covers the visible mark.
+  fireEvent.click(checkbox.closest("label")!);
+}
+
 it("clears a popover table query with Escape before the popover dismisses", async () => {
   const { search, page } = await openPopoverTable();
   fireEvent.change(search, { target: { value: "no such device" } });
@@ -944,7 +951,7 @@ it("keeps popover table page bounds focusable and inert inside the popover", asy
 
   fireEvent.click(next);
   fireEvent.click(next);
-  fireEvent.click(within(table).getByLabelText("Select switch", { selector: "input" }));
+  toggleTableRow(table, "Select switch");
   atBound(next, "3 of 3", "Switch");
   expect(
     within(table).getByRole("checkbox", { name: "Select switch" }).getAttribute("aria-checked"),
@@ -973,7 +980,7 @@ it("clears a popover table query by pointer in its document reading grammar", as
   const pagination = within(dialog).getByRole("group", { name: "Devices pages" });
   fireEvent.click(within(pagination).getByRole("button", { name: "Next" }));
   expect(page()).toBe("2 of 2");
-  fireEvent.click(within(table).getByLabelText("Select relay", { selector: "input" }));
+  toggleTableRow(table, "Select relay");
 
   fireEvent.click(within(dialog).getByRole("button", { name: "Clear search" }));
 
@@ -989,6 +996,86 @@ it("clears a popover table query by pointer in its document reading grammar", as
   expect(JSON.stringify(popoverTable)).toBe(original);
 });
 
+it("names table selection by stable row identifier without reading it as table text", async () => {
+  const alpha = "evidence-runtime-receipt-7f3c9a1e5b2d4c6f8a0b1c2d3e4f5a6b";
+  const beta = "evidence-runtime-receipt-1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d";
+  const ledger = document(
+    [
+      {
+        id: "details",
+        type: "Popover",
+        props: { field: "open", label: "Ledger details" },
+        children: [
+          {
+            id: "ledger",
+            type: "Table",
+            props: {
+              caption: "Ledger",
+              rowKey: "id",
+              columns: [{ key: "name", label: "Evidence" }],
+              rows: [
+                { id: beta, name: "Beta" },
+                { id: alpha, name: "Alpha" },
+              ],
+              searchState: "search",
+              sortState: "sort",
+              pageState: "page",
+              selectState: "selected",
+              pageSize: 1,
+            },
+          },
+        ],
+      },
+    ],
+    [
+      { id: "open", value: false },
+      { id: "search", value: "" },
+      { id: "sort", value: "" },
+      { id: "page", value: 0 },
+      { id: "selected", value: [] },
+    ],
+  );
+  const original = JSON.stringify(ledger);
+  popoverGeometry();
+  show(ledger);
+  await act(async () => {});
+  const open = () => {
+    fireEvent.click(screen.getByRole("button", { name: "Ledger details" }));
+    const dialog = screen.getByRole("dialog", { name: "Ledger details" });
+    return { dialog, table: within(dialog).getByRole("table", { name: "Ledger" }) };
+  };
+  const selection = (table: HTMLElement, row: string) =>
+    within(table).getByRole("checkbox", { name: `Select ${row}` });
+
+  let { dialog, table } = open();
+  fireEvent.click(within(table).getByRole("button", { name: "Sort by Evidence" }));
+  expect(within(table).getByRole("cell", { name: "Alpha" })).toBeTruthy();
+  toggleTableRow(table, `Select ${alpha}`);
+  expect(selection(table, alpha).getAttribute("aria-checked")).toBe("true");
+  expect(selection(table, alpha).closest("tr")?.getAttribute("aria-selected")).toBe("true");
+  expect(selection(table, alpha).closest("td")?.textContent).toBe("");
+  expect(table.textContent).not.toContain(alpha);
+
+  const search = within(dialog).getByRole("searchbox", { name: "Search Ledger" });
+  fireEvent.change(search, { target: { value: "Beta" } });
+  expect(selection(table, beta).getAttribute("aria-checked")).toBe("false");
+  fireEvent.change(search, { target: { value: "" } });
+  expect(selection(table, alpha).getAttribute("aria-checked")).toBe("true");
+  const next = within(dialog).getByRole("button", { name: "Next" });
+  fireEvent.click(next);
+  expect(within(table).getByRole("cell", { name: "Beta" })).toBeTruthy();
+  expect(table.textContent).not.toContain(beta);
+
+  act(() => next.focus());
+  fireEvent.keyDown(next, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  ({ dialog, table } = open());
+  fireEvent.click(within(dialog).getByRole("button", { name: "Previous" }));
+  expect(selection(table, alpha).getAttribute("aria-checked")).toBe("true");
+  expect(table.textContent).not.toContain(alpha);
+  expect(JSON.stringify(ledger)).toBe(original);
+});
+
 it("filters, sorts, pages and selects rows without changing the captured data", async () => {
   const original = JSON.stringify(GENUI_REPORT);
   show(GENUI_REPORT);
@@ -997,7 +1084,7 @@ it("filters, sorts, pages and selects rows without changing the captured data", 
   const pagination = screen.getByRole("group", { name: "Plugin delivery responsibilities pages" });
   fireEvent.click(within(pagination).getByRole("button", { name: "Next" }));
   expect(within(table).getByRole("cell", { name: "Browser automation" })).toBeTruthy();
-  fireEvent.click(within(table).getByLabelText("Select browser", { selector: "input" }));
+  toggleTableRow(table, "Select browser");
   expect(screen.getByText("Selected evidence rows").nextElementSibling?.textContent).toBe("1");
   const search = screen.getByRole("searchbox", { name: "Search Plugin delivery responsibilities" });
   fireEvent.change(search, { target: { value: "Exact identifiers" } });

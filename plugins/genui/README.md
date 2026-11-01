@@ -73,6 +73,9 @@ the portal, retaining ordinary table columns, spacing and document typography.
 Table filters use the shared SearchField: clearing restores the first page and
 keeps input focus, while a nonempty query consumes Escape before the enclosing
 popup. Sorting, selected rows and captured values retain their existing owners.
+Row selection uses the stable identifier as the checkbox's localized accessible
+name. The visible selection column contains the control; authored columns remain
+the reading content, without duplicated technical identifiers.
 Pagination keeps its boundary buttons in the local keyboard order through the
 shared Button's focusable disabled contract. Unavailable activation stays blocked;
 Tab, Escape and native commands retain their existing owners.
