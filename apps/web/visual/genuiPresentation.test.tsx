@@ -1325,7 +1325,82 @@ it("renders controlled accordion and carousel panels with keyboard selection", a
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
   expect(screen.getByText("Slide one").closest("[hidden]")).toBeTruthy();
   expect(screen.getByText("Slide two").closest("[hidden]")).toBeNull();
-  expect(screen.getByRole("button", { name: "Next" }).hasAttribute("disabled")).toBe(true);
+  expect(screen.getByRole("button", { name: "Next" }).getAttribute("aria-disabled")).toBe("true");
+});
+
+it("keeps carousel page bounds focusable and inert inside a popover", async () => {
+  popoverGeometry();
+  const value = document(
+    [
+      {
+        id: "slides",
+        type: "Popover",
+        props: { field: "open", label: "Review slides" },
+        children: [
+          {
+            id: "carousel",
+            type: "Carousel",
+            props: { field: "slide" },
+            children: [
+              { id: "noteSlide", type: "Input", props: { field: "note", label: "Slide note" } },
+              { id: "middleSlide", type: "Text", props: { text: "Slide two" } },
+              { id: "lastSlide", type: "Text", props: { text: "Slide three" } },
+            ],
+          },
+        ],
+      },
+    ],
+    [
+      { id: "open", value: false },
+      { id: "slide", value: 0 },
+      { id: "note", value: "Captured note" },
+    ],
+  );
+  const original = JSON.stringify(value);
+  show(value);
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "Review slides" }));
+  const dialog = screen.getByRole("dialog", { name: "Review slides" });
+  const note = within(dialog).getByRole("textbox", { name: "Slide note" }) as HTMLInputElement;
+  fireEvent.change(note, { target: { value: "Edited slide note" } });
+  const previous = within(dialog).getByRole("button", { name: "Previous" });
+  const next = within(dialog).getByRole("button", { name: "Next" });
+  const page = () => within(dialog).getByRole("status").textContent;
+  const atBound = (bound: HTMLElement, expected: string, visible: HTMLElement) => {
+    act(() => bound.blur());
+    act(() => bound.focus());
+    expect(window.document.activeElement).toBe(bound);
+    expect(bound.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(bound);
+    fireEvent.keyDown(bound, { key: "Enter" });
+    fireEvent.keyDown(bound, { key: " " });
+    fireEvent.keyUp(bound, { key: " " });
+    expect(page()).toBe(expected);
+    expect(visible.closest("[hidden]")).toBeNull();
+    expect(window.document.activeElement).toBe(bound);
+  };
+
+  atBound(previous, "1 of 3", note);
+  fireEvent.click(next);
+  fireEvent.click(next);
+  atBound(next, "3 of 3", within(dialog).getByText("Slide three"));
+  expect(note.closest("[hidden]")).toBeTruthy();
+  expect(note.value).toBe("Edited slide note");
+
+  fireEvent.click(previous);
+  fireEvent.click(previous);
+  atBound(previous, "1 of 3", note);
+  expect(note.value).toBe("Edited slide note");
+
+  fireEvent.keyDown(previous, { key: "Escape" });
+
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() =>
+    expect(window.document.activeElement).toBe(
+      screen.getByRole("button", { name: "Review slides" }),
+    ),
+  );
+  expect(JSON.stringify(value)).toBe(original);
 });
 
 it("shows map tile failures without hiding location data and retries only when requested", async () => {
@@ -1378,6 +1453,114 @@ it("shows map tile failures without hiding location data and retries only when r
       ?.getAttribute("aria-selected"),
   ).toBe("true");
   expect(screen.getByRole("button", { name: "Zoom in" })).toBeTruthy();
+});
+
+it("keeps map zoom bounds focusable and offers marker controls only inside the viewport", async () => {
+  const value = document(
+    [
+      {
+        id: "map",
+        type: "Map",
+        props: {
+          caption: "Review locations",
+          selectedState: "place",
+          markers: [
+            { id: "london", label: "London", latitude: 51.5074, longitude: -0.1278 },
+            { id: "paris", label: "Paris", latitude: 48.8566, longitude: 2.3522 },
+          ],
+        },
+      },
+    ],
+    [{ id: "place", value: "" }],
+  );
+  const original = JSON.stringify(value);
+  show(value);
+  await act(async () => {});
+  const places = screen.getByRole("table", { name: "Locations in Review locations" });
+  const marker = (name: string, pressed: boolean) =>
+    screen.queryByRole("button", { name, pressed });
+  const row = (name: string) =>
+    within(places).getByRole("button", { name }).closest("tr")?.getAttribute("aria-selected");
+  const zoomIn = screen.getByRole("button", { name: "Zoom in" });
+  const zoomOut = screen.getByRole("button", { name: "Zoom out" });
+  const toBound = (bound: HTMLElement) => {
+    for (let step = 0; step < 20 && bound.getAttribute("aria-disabled") !== "true"; step++) {
+      fireEvent.click(bound);
+    }
+    act(() => bound.blur());
+    act(() => bound.focus());
+    expect(window.document.activeElement).toBe(bound);
+    expect(bound.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(bound);
+    fireEvent.keyDown(bound, { key: "Enter" });
+    fireEvent.keyDown(bound, { key: " " });
+    fireEvent.keyUp(bound, { key: " " });
+    for (const key of ["Tab", "ArrowDown", "Escape"]) {
+      expect(fireEvent.keyDown(bound, { key, cancelable: true })).toBe(true);
+    }
+    expect(bound.getAttribute("aria-disabled")).toBe("true");
+    expect(window.document.activeElement).toBe(bound);
+  };
+
+  fireEvent.click(marker("London", false)!);
+  expect(marker("London", true)).toBeTruthy();
+  expect(marker("Paris", false)).toBeTruthy();
+
+  toBound(zoomIn);
+  expect(zoomOut.getAttribute("aria-disabled")).not.toBe("true");
+  for (const name of ["London", "Paris"]) {
+    expect(marker(name, true)).toBeNull();
+    expect(marker(name, false)).toBeNull();
+  }
+  expect(row("London")).toBe("true");
+  fireEvent.click(within(places).getByRole("button", { name: "Paris" }));
+  expect(row("Paris")).toBe("true");
+  fireEvent.click(within(places).getByRole("button", { name: "London" }));
+  expect(row("London")).toBe("true");
+  expect(row("Paris")).toBe("false");
+
+  toBound(zoomOut);
+  expect(zoomIn.getAttribute("aria-disabled")).not.toBe("true");
+  expect(marker("London", true)).toBeTruthy();
+  expect(marker("Paris", false)).toBeTruthy();
+  expect(JSON.stringify(value)).toBe(original);
+});
+
+it("retires offscreen map links and restores their original destinations on zoom out", async () => {
+  const value = document([
+    {
+      id: "map",
+      type: "Map",
+      props: {
+        caption: "Source locations",
+        markers: [
+          { id: "london", label: "London", latitude: 51.5074, longitude: -0.1278 },
+          { id: "paris", label: "Paris", latitude: 48.8566, longitude: 2.3522 },
+        ],
+      },
+    },
+  ]);
+  const original = JSON.stringify(value);
+  show(value);
+  await act(async () => {});
+  const paris = screen.getByRole("link", { name: "Paris" });
+  const href = paris.getAttribute("href");
+  const zoomIn = screen.getByRole("button", { name: "Zoom in" });
+  const zoomOut = screen.getByRole("button", { name: "Zoom out" });
+  for (let step = 0; step < 14; step++) fireEvent.click(zoomIn);
+
+  expect(paris.isConnected).toBe(false);
+  expect(screen.queryByRole("link", { name: "Paris" })).toBeNull();
+  const places = screen.getByRole("table", { name: "Locations in Source locations" });
+  expect(within(places).getByRole("rowheader", { name: "Paris" })).toBeTruthy();
+
+  for (let step = 0; step < 14; step++) fireEvent.click(zoomOut);
+
+  const restored = screen.getByRole("link", { name: "Paris" });
+  expect(restored.getAttribute("href")).toBe(href);
+  expect(restored.getAttribute("target")).toBe("_blank");
+  expect(restored.getAttribute("rel")).toBe("noreferrer noopener");
+  expect(JSON.stringify(value)).toBe(original);
 });
 
 it("keeps image loading and failures explicit and retries the original URL on user request", async () => {

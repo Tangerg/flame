@@ -234,7 +234,11 @@ export function CarouselView({
       aria-roledescription={t("carousel.description")}
     >
       <Toolbar label={label}>
-        <Button disabled={current === 0} onClick={() => select(current - 1)}>
+        <Button
+          disabled={current === 0}
+          focusableWhenDisabled
+          onClick={() => select(current - 1)}
+        >
           {t("previous")}
         </Button>
         <Metadata role="status">
@@ -242,6 +246,7 @@ export function CarouselView({
         </Metadata>
         <Button
           disabled={current + 1 === props.children.length}
+          focusableWhenDisabled
           onClick={() => select(current + 1)}
         >
           {t("next")}

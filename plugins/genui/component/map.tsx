@@ -5,6 +5,7 @@ import {
   useLayoutEffect,
   useMemo,
   useState,
+  type ReactNode,
 } from "react";
 import {
   Map as PigeonMap,
@@ -64,6 +65,29 @@ function TileView({ tile, tileLoaded }: TileComponentProps) {
   );
 }
 
+// Keep the keyboard perimeter independent of tiles and the button's disabled opacity.
+function MapControlFace({
+  children,
+  round = false,
+}: {
+  children: ReactNode;
+  round?: boolean;
+}) {
+  return (
+    <span
+      data-focus-proxy=""
+      style={{
+        display: "inline-flex",
+        borderRadius: round ? "50%" : "var(--button-radius)",
+        backgroundColor: "var(--color-bg)",
+        boxShadow: "0 0 0 var(--spacing) var(--color-bg)",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
 function MapControls({
   mapState,
   mapProps,
@@ -78,34 +102,63 @@ function MapControls({
       style={{ position: "absolute", top: 8, left: 8 }}
     >
       <Toolbar label={t("map.controls")}>
-        <Button
-          variant="outline"
-          aria-label={t("map.zoomIn")}
-          disabled={mapState.zoom >= (mapProps.maxZoom ?? 18)}
-          onClick={() =>
-            setCenterZoom(
-              mapState.center,
-              Math.min(mapState.zoom + 1, mapProps.maxZoom ?? 18),
-            )
-          }
-        >
-          +
-        </Button>
-        <Button
-          variant="outline"
-          aria-label={t("map.zoomOut")}
-          disabled={mapState.zoom <= (mapProps.minZoom ?? 1)}
-          onClick={() =>
-            setCenterZoom(
-              mapState.center,
-              Math.max(mapState.zoom - 1, mapProps.minZoom ?? 1),
-            )
-          }
-        >
-          −
-        </Button>
+        <MapControlFace>
+          <Button
+            variant="raised"
+            data-chrome-focus=""
+            aria-label={t("map.zoomIn")}
+            disabled={mapState.zoom >= (mapProps.maxZoom ?? 18)}
+            focusableWhenDisabled
+            onClick={() =>
+              setCenterZoom(
+                mapState.center,
+                Math.min(mapState.zoom + 1, mapProps.maxZoom ?? 18),
+              )
+            }
+          >
+            +
+          </Button>
+        </MapControlFace>
+        <MapControlFace>
+          <Button
+            variant="raised"
+            data-chrome-focus=""
+            aria-label={t("map.zoomOut")}
+            disabled={mapState.zoom <= (mapProps.minZoom ?? 1)}
+            focusableWhenDisabled
+            onClick={() =>
+              setCenterZoom(
+                mapState.center,
+                Math.max(mapState.zoom - 1, mapProps.minZoom ?? 1),
+              )
+            }
+          >
+            −
+          </Button>
+        </MapControlFace>
       </Toolbar>
     </div>
+  );
+}
+
+// Overlay paints at any translated position, so a marker beyond the clipped
+// viewport would stay focusable while invisible.
+function MapMarker({
+  left,
+  top,
+  offset,
+  mapState,
+  children,
+}: PigeonProps & { children: ReactNode }) {
+  if (left === undefined || top === undefined || !offset || !mapState)
+    throw new Error("genui: map marker requires map context");
+  const x = left + offset[0];
+  const y = top + offset[1];
+  if (x < 0 || y < 0 || x > mapState.width || y > mapState.height) return null;
+  return (
+    <Overlay left={left} top={top}>
+      <MapControlFace round>{children}</MapControlFace>
+    </Overlay>
   );
 }
 
@@ -198,16 +251,17 @@ export function MapView({
             />
           )}
           {props.markers.map((marker, index) => (
-            <Overlay
+            <MapMarker
               key={marker.id}
               anchor={[marker.latitude, marker.longitude]}
               offset={[16, 16]}
             >
               {props.selectedState ? (
                 <Button
-                  variant={selected === marker.id ? "primary" : "outline"}
+                  variant={selected === marker.id ? "primary" : "raised"}
                   round
                   size="icon-sm"
+                  data-chrome-focus=""
                   aria-label={marker.label}
                   aria-pressed={selected === marker.id}
                   onClick={() => choose(marker.id)}
@@ -219,12 +273,13 @@ export function MapView({
                   href={`https://www.openstreetmap.org/?mlat=${marker.latitude}&mlon=${marker.longitude}`}
                   target="_blank"
                   rel="noreferrer noopener"
+                  data-chrome-focus=""
                   aria-label={marker.label}
                 >
                   {index + 1}
                 </a>
               )}
-            </Overlay>
+            </MapMarker>
           ))}
         </PigeonMap>
       </TileResources>

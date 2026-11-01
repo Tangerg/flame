@@ -79,6 +79,8 @@ the reading content, without duplicated technical identifiers.
 Pagination keeps its boundary buttons in the local keyboard order through the
 shared Button's focusable disabled contract. Unavailable activation stays blocked;
 Tab, Escape and native commands retain their existing owners.
+Carousel page bounds use the same contract, retaining the current page and its
+field values while unavailable controls remain in the local keyboard order.
 Progress uses the same themed ProgressBar as application activity. Its complete
 label and localized percentage remain visible above the track, including zero,
 completion and a supplied maximum other than 100. The admitted values and local
@@ -104,6 +106,13 @@ attribution; tile errors remain visible and can be explicitly retried. A supplie
 route is displayed as supplied geometry, not represented as newly computed road
 routing. Image search, geocoding, routing and remote business facts belong to
 existing tools or provider plugins, rather than hidden GenUI service calls.
+Map zoom bounds also keep focus through the shared disabled contract. Zoom and
+unselected selectable markers use the shared opaque raised surface so their
+symbols do not inherit a tile's background.
+The shared focus proxy draws on a neutral backing outside each control's disabled
+opacity, retaining its perimeter against the map image. The renderer's projected
+anchor and viewport determine which overlay markers are mounted; the complete
+location table retains every captured point and its existing selection control.
 
 Image and Markdown-image thumbnails open their original source in the shared
 image reader. The authored alternative text and caption retain their meaning;

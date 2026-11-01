@@ -27,7 +27,9 @@ reading are now qualified under **Table lookup and portaled reading (2026-11-02)
 the keyboard pagination-boundary repair is qualified under **Pagination boundaries
 and keyboard return (2026-11-02)**. The existing pointer-origin reverse-Tab
 limitation retains its separate attribution below. The selection-column follow-up
-is qualified under **Table selection and authored reading (2026-11-02)**. The latest goal restores
+is qualified under **Table selection and authored reading (2026-11-02)**. Captured
+report paging and map navigation are qualified under **Report and map navigation
+(2026-11-02)**. The latest goal restores
 preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
 describe their historical scope.
@@ -3084,6 +3086,109 @@ dependencies and the temporary npm toolchain stay for the active goal; CLI input
 logs and warmed QA cache are retired after delivery. References, user data and
 unrelated work stay preserved. The publication fetch finds zero incoming main
 commits at `5f364eea2`.
+
+#### Report and map navigation (2026-11-02)
+
+Original current-host Wails at `7130b2d70` drops keyboard focus to the HTML root
+when Carousel Next reaches page 3/3 or Map Zoom in reaches 18. In Chinese dark
+18px, transparent controls also borrow bright map tiles as their background.
+After zooming, Tab can reach an overlay marker outside the clipped map, leaving
+no visible focused object. These are scoped navigation and contrast defects in
+the captured-report reader, independent of the existing pointer-origin reverse-Tab
+attribution.
+
+Carousel and Map zoom now use the shared Button's existing
+`focusableWhenDisabled` contract. Bounds stay inert while retaining their local
+keyboard position; selection and zoom keep their existing owners and limits.
+Zoom and unselected selectable markers use the shared raised surface. A small
+map control face places the existing shared focus proxy on neutral canvas backing
+outside the button's disabled opacity. It owns only this tile-independent paint
+guarantee; shared tokens, button interaction and focus styling remain authoritative.
+
+`MapMarker` consumes the installed PigeonMap renderer's projected anchor and
+viewport, mounting overlays only when their anchor is inside that viewport. It
+does not duplicate projection, mirror viewport state or install an observer.
+The complete location table retains all captured points and their selection
+controls; zooming back restores the existing selected marker. Read-only marker
+links retain their original href, target and rel. There is no schema, persistence,
+Runtime, command, dependency or route migration. Normal generation updates only
+GenUI's installed ESM.
+
+The [W3C Carousel pattern](https://www.w3.org/WAI/ARIA/apg/patterns/carousel/)
+supports ordinary Tab order and focus retention after next/previous activation.
+[Radix Toolbar guidance](https://www.radix-ui.com/primitives/docs/components/toolbar)
+informs the control grouping without replacing Flame's existing keyboard model.
+Read-only ZCode `packages/ui/src/components/ai-elements/image-preview-dialog.tsx`
+lines 420–584 are actual rendered media controls with their own background and
+zoom tray, rather than the earlier download helpers. Existing HeroUI/Radix
+semantic-color research informs the map surface and perimeter separation;
+the installed PigeonMap implementation establishes the projection contract.
+These references supply design and contract evidence, not native Flame acceptance.
+
+A bounded Claude Code CLI task edits only the allowed layout, map and presentation
+test files in 38 turns. Its report discloses one attempted Bash echo outside the
+requested tool scope; no test, build or Git command is delegated. The primary agent
+reviews the actual diff, corrects the focus harness, adds the read-only-link
+regression and owns the map backing, checks and native acceptance. Future bounded
+CLI tasks must restrict the available tool set, since an allow list alone did not
+exclude Bash in this invocation.
+
+Three new regressions fail against the exact original layout/map sources. With
+only the focusable zoom props applied, two still fail on retained offscreen marker
+and link controls. Candidate bytes are restored after each replay. Final checks
+pass **3 GenUI files / 109 tests**, plugin types/lint/resources, owned formatting,
+Web lint/design-system/tokens/chrome/bundle/installed-module gates and
+`make check-native` (including its staged Web and desktop checks). Existing act and
+macOS linker warnings remain nonfailing. Shared UI source is unchanged; its
+standalone/packed checks are not rerun. The known unrelated Feedback full-format
+failure is unchanged and not rerun. No browser visual suite or benchmark runs.
+
+Observer-free native comparisons use one current production Wails host binary,
+serving separately rebuilt original and candidate assets through a private file
+root. Final acceptance covers EN/light/14px/Orange and
+ZH/dark/18px/custom-blue/motion-off. Maximum and minimum zoom retain their focused
+disabled control; repeated Enter/Space does not advance. At maximum zoom, Tab from
+Zoom out reaches the location-table reading region, skipping offscreen markers.
+The table can still select Paris, which returns selected when zooming out. Default
+zoom restores readable separate markers. Carousel bounds retain focus, reverse
+navigation returns to page one and edited page notes survive.
+
+The first backing draft used nonexistent `--color-canvas`; native pixels exposed
+the mistake, and the accepted source uses the actual `--color-bg` canvas role.
+Lossy native JPEG samples at the same dark-scene positions show the original
+enabled glyph/tile near **1.00:1**, the raised enabled glyph/surface near **11.82:1**,
+and the final disabled boundary's full blue perimeter `[65, 99, 245]` against
+neutral backing `[17, 13, 15]` near **3.98:1**. These are approximate raster samples,
+not a computed-style contrast matrix or whole-product conformance claim.
+
+Chinese native half-screen placement and twenty Zoom In commands (200%) qualify
+contained popup scrolling, readable map controls, marker focus/selection, both
+Carousel bounds, full-width README reading and return. The outer note remains
+`导航上下文已保留。`, page note `摘要备注继续保留。`, selected Paris and the existing composer
+draft remain after return; editing continues. Actual Size restores the parallel
+material pane. EN independently qualifies README/full-width return, selected Paris,
+page note `The page note survives source return.` and continued composer text
+`Continue the captured navigation review. Ready to continue.` Escape restores the
+popup trigger. Accepted captured facts remain immutable in the regressions.
+
+Accessibility/UI/color review approves the scoped visible navigation; layout,
+typography and writing preserve authored content, existing labels and semantic
+roles. Map route geometry, free panning, clustering, external-link opening,
+VoiceOver, OS IME, native RTL, forced colors, coarse-pointer hardware, 320px GUI
+and other-platform GUIs are unqualified. The native fixture requests public map
+tiles for synthetic London/Paris; it does not run a live provider/Runtime write,
+Send or release installation. Whole-product and award-level acceptance stay open.
+Continue only from another observed reading or workspace defect.
+
+All owned native windows/processes are retired; the final EN process exits 0 and
+ZH retirement is checked by its exact executable path. An observation after
+closing ZH briefly relaunches the default foundation fixture; that window is also
+closed before cleanup. Cleanup unregisters/removes the private bundle, restores
+all six private-profile absence baselines and removes nine owned checkout output
+roots plus private assets/home. Development dependencies and the private npm
+toolchain stay for the active goal; CLI inputs/results/logs are retired after
+publication. Read-only references, user data and unrelated work remain preserved.
+The publication fetch finds zero incoming main commits at `7130b2d70`.
 
 ### Horizontal report tabs and reading keys
 
