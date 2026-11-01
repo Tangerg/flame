@@ -158,7 +158,7 @@ func TestUpdatePreservesAcceptedScheduleAfterCallerReuse(t *testing.T) {
 	}
 	accepted := updated.Snapshot()
 	title, instructions, cwd = "reused", "reused", "/reused"
-	provider, model, effort, cron = "other-provider", "other-model", "low", "@hourly"
+	provider, model, effort, cron = "other-provider", "other-model", "low", "0 * * * *"
 	enabled = true
 	if updated.Snapshot() != accepted || store.updated.Snapshot() != accepted {
 		t.Fatal("caller reuse changed the returned or stored Schedule")
@@ -183,7 +183,7 @@ func TestCreateValidatesBeforeResolvingCWD(t *testing.T) {
 			return "", errors.New("unexpected resolution")
 		}),
 	})
-	_, err := c.Create(t.Context(), schedule.Draft{CWD: "missing", Cron: "@daily", TimeZone: "UTC", Enabled: true})
+	_, err := c.Create(t.Context(), schedule.Draft{CWD: "missing", Cron: "0 0 * * *", TimeZone: "UTC", Enabled: true})
 	if !errors.Is(err, schedule.ErrInstructionsRequired) {
 		t.Fatalf("Create error = %v, want ErrInstructionsRequired", err)
 	}
@@ -299,7 +299,7 @@ func TestListPagePagesNewestFirstAndRefusesAForeignCursor(t *testing.T) {
 func mustStoredSchedule(t testing.TB, snapshot schedule.Snapshot) schedule.Schedule {
 	t.Helper()
 	if snapshot.Cron == "" {
-		snapshot.Cron = "@daily"
+		snapshot.Cron = "0 0 * * *"
 	}
 	if snapshot.TimeZone == "" {
 		snapshot.TimeZone = "UTC"

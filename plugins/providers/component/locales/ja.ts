@@ -6,7 +6,16 @@ export const ja: Record<string, string> = {
     "{{provider}} の保存済み API キーが失われます。再接続するには貼り付け直す必要があります。",
   "providers.apiKey.placeholder": "API キー",
   "providers.apiKey.aria": "{{provider}} の API キー",
-  "providers.baseUrl.placeholder": "ベース URL",
+  "providers.baseUrl.mount":
+    "ゲートウェイのマウント先を入力してください。SDK は {{suffix}} を追加します。",
+  "providers.baseUrl.apiBase":
+    "ゲートウェイのバージョンパスを含む完全な API ベース URL を指定してください。",
+  "providers.baseUrl.appends":
+    "SDK は {{suffix}} を追加します。実際の API パスは {{path}} です。",
+  "providers.baseUrl.suffix":
+    "エンドポイントのパスは {{suffix}} で終わる必要があります。",
+  "providers.baseUrl.invalid":
+    "認証情報、クエリ、フラグメントを含まない HTTP(S) URL を入力してください。",
   "providers.baseUrl.aria": "{{provider}} のベース URL",
   "providers.key": "キー {{masked}}",
   "providers.ready": "利用可能",

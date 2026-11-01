@@ -1,10 +1,9 @@
+import { createStorage } from "@/extensions/storage";
 import { runtimeRequestMeta } from "@/app/runtimeProtocol";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
 import { createBrowserHost } from "@/platform/browserHost";
-import { type KeyValueStore } from "@/extensions/storage";
 import { createRuntimeMutationJournalStorage } from "@/features/connection/adapters/runtimeMutationJournalStorage";
-import { createStorage } from "@/extensions/storage";
 
 let connection: ReturnType<typeof createRuntimeConnection>;
 
@@ -12,7 +11,7 @@ beforeEach(async () => {
   connection = createRuntimeConnection(
     createBrowserHost(),
     runtimeRequestMeta,
-    createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+    createRuntimeMutationJournalStorage("test.runtime"),
   );
   await connection.initialize();
 });
@@ -22,83 +21,46 @@ afterEach(async () => {
 });
 
 describe("Runtime mutation journal storage adapter", () => {
-  it("owns verified opaque records in the supplied Runtime storage", () => {
-    const stored = new Map<string, unknown>();
-    const ctx: { storage: KeyValueStore } = {
-      storage: {
-        get: (key) => stored.get(key),
-        set: (key, value) => stored.set(key, value),
-        remove: (key) => stored.delete(key),
-        keys: () => [...stored.keys()],
-        clear: () => stored.clear(),
+  it("can inspect and retire existing commands when new writes exceed quota", () => {
+    const backing = window.localStorage;
+    const write = vi.fn((key: string, value: string) => backing.setItem(key, value));
+    const port: Storage = {
+      get length() {
+        return backing.length;
       },
+      clear: () => backing.clear(),
+      key: (index) => backing.key(index),
+      getItem: (key) => backing.getItem(key),
+      removeItem: (key) => backing.removeItem(key),
+      setItem: write,
     };
-    const storage = createRuntimeMutationJournalStorage(ctx.storage);
-    expect(storage).not.toBeNull();
-    stored.set("mutation-journal.probe:stale", "stale-probe");
-    storage?.set("entry:key-1", { version: 1 });
-    expect(storage?.get("entry:key-1")).toEqual({ version: 1 });
-    expect(storage?.keys()).toEqual(["entry:key-1"]);
-    expect(stored.has("mutation-journal.entry:key-1")).toBe(true);
-    storage?.remove("entry:key-1");
-    expect(storage?.get("entry:key-1")).toBeUndefined();
-
-    expect(createRuntimeMutationJournalStorage(ctx.storage).keys()).toEqual([]);
+    const storage = createRuntimeMutationJournalStorage("quota-test", () => port);
+    storage.set("entry:existing", { command: "original" });
+    const quota = new DOMException("Quota exceeded", "QuotaExceededError");
+    write.mockClear().mockImplementation(() => {
+      throw quota;
+    });
+    expect(storage.keys()).toEqual(["entry:existing"]);
+    expect(storage.get("entry:existing")).toEqual({ command: "original" });
+    expect(write).not.toHaveBeenCalled();
+    expect(() => storage.set("entry:new", "x")).toThrow("Quota exceeded");
+    storage.remove("entry:existing");
+    expect(storage.keys()).toEqual([]);
   });
 
-  it("ignores records outside the only current storage shape", () => {
-    const stored = new Map<string, unknown>([
-      ["mutation-journal-v1", { version: 1 }],
-      ["mutation-journal-v3.entry:old", { version: 2 }],
-    ]);
-    const ctx: { storage: KeyValueStore } = {
-      storage: {
-        get: (key) => stored.get(key),
-        set: (key, value) => stored.set(key, value),
-        remove: (key) => stored.delete(key),
-        keys: () => [...stored.keys()],
-        clear: () => stored.clear(),
-      },
-    };
-    const storage = createRuntimeMutationJournalStorage(ctx.storage);
-
-    expect(storage?.keys()).toEqual([]);
-    expect(storage?.get("entry:old")).toBeUndefined();
-  });
-
-  it("surfaces Host storage writes and removals that were swallowed", () => {
-    const stored = new Map<string, unknown>();
-    let discardWrites = true;
-    let discardRemovals = false;
-    let hideKeys = false;
-    const ctx: { storage: KeyValueStore } = {
-      storage: {
-        get: (key) => stored.get(key),
-        set: (key, value) => {
-          if (!discardWrites) stored.set(key, value);
-        },
-        remove: (key) => {
-          if (!discardRemovals) stored.delete(key);
-        },
-        keys: () => (hideKeys ? [] : [...stored.keys()]),
-        clear: () => stored.clear(),
-      },
-    };
-    const storage = createRuntimeMutationJournalStorage(ctx.storage);
-
-    expect(() => storage.set("entry:key-1", { version: 1 })).toThrow("not persisted");
-    discardWrites = false;
-    storage.set("entry:key-1", { version: 1 });
-    hideKeys = true;
-    expect(() => storage.keys()).toThrow("enumeration is incomplete");
-    hideKeys = false;
-    discardRemovals = true;
-    expect(() => storage.remove("entry:key-1")).toThrow("not persisted");
+  it("preserves the cause of failed reads, enumeration and removal", () => {
+    const cause = new Error("storage unavailable");
+    const storage = createRuntimeMutationJournalStorage("test", () => {
+      throw cause;
+    });
+    expect(() => storage.keys()).toThrow(cause);
+    expect(() => storage.get("entry:1")).toThrow(cause);
+    expect(() => storage.remove("entry:1")).toThrow(cause);
   });
 
   it("captures journal storage before constructing its first client", async () => {
     await connection.dispose();
-    const storage = createRuntimeMutationJournalStorage(createStorage("test.runtime"));
+    const storage = createRuntimeMutationJournalStorage("test.runtime");
     connection = createRuntimeConnection(createBrowserHost(), runtimeRequestMeta, storage);
     await connection.initialize();
     const first = connection.client();
@@ -108,4 +70,12 @@ describe("Runtime mutation journal storage adapter", () => {
     await connection.dispose();
     expect(close).toHaveBeenCalledOnce();
   });
+});
+
+it("keeps pending journal evidence from the original namespace readable", () => {
+  const prior = createStorage("retained");
+  prior.set("mutation-journal.entry:one", { evidence: "original" });
+  const current = createRuntimeMutationJournalStorage("retained");
+  expect(current.get("entry:one")).toEqual({ evidence: "original" });
+  current.remove("entry:one");
 });

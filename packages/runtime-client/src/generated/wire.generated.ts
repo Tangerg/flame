@@ -35,6 +35,13 @@ export const MAXIMUM_EXACT_JSON_INTEGER = 9007199254740991;
 // Runtime subscriptions consume the shared exact-integer envelope.
 export const MAXIMUM_RUNTIME_EVENT_SEQUENCE = MAXIMUM_EXACT_JSON_INTEGER;
 
+export const RPC_HTTP = {
+  callStatus: 200,
+  documentMediaType: "application/json",
+  streamMediaType: "text/event-stream",
+  problemMediaType: "application/problem+json",
+} as const;
+
 // HTTP entrypoints implemented by this runtime build.
 export const HTTP_ENDPOINTS = {
   pluginControl: {
@@ -50,7 +57,7 @@ export const HTTP_ENDPOINTS = {
     path: "/v2/plugin-resources/{lease}/*",
     authentication: "resourceLease",
     projects: "plugins.readResource",
-    responseStatuses: [200, 410],
+    responseStatuses: [200, 410, 500],
   },
   rpc: {
     kind: "rpc",
@@ -499,6 +506,12 @@ export interface EmbeddingRole {
   provider?: string;
 }
 
+export interface EndpointPolicy {
+  appendsPath?: string;
+  example: string;
+  requiredSuffix?: string;
+}
+
 export type ExportFormat = "md" | "json";
 
 export interface ExportSessionRequest {
@@ -803,6 +816,7 @@ export interface ListFilesRequest {
   glob?: string;
   includeIgnored?: boolean;
   limit?: number;
+  nameQuery?: string;
   path?: string;
   recursive?: boolean;
   workspace: WorkspaceRef;
@@ -1632,6 +1646,7 @@ export interface Provider {
   credentialRequirement: ProviderCredentialRequirement;
   defaultEmbeddingModel?: string;
   embeddingCapable?: boolean;
+  endpoint?: EndpointPolicy;
   id: string;
   requiresBaseUrl?: boolean;
 }

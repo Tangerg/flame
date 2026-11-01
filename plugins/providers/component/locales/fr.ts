@@ -6,7 +6,15 @@ export const fr: Record<string, string> = {
     "{{provider}} perd sa clé API enregistrée. Vous devrez la recoller pour vous reconnecter.",
   "providers.apiKey.placeholder": "Clé API",
   "providers.apiKey.aria": "Clé API {{provider}}",
-  "providers.baseUrl.placeholder": "URL de base",
+  "providers.baseUrl.mount":
+    "Saisissez le chemin de la passerelle. Le SDK ajoute {{suffix}}.",
+  "providers.baseUrl.apiBase":
+    "Saisissez la base complète de l’API, avec le chemin de version de la passerelle.",
+  "providers.baseUrl.appends":
+    "Le SDK ajoute {{suffix}}. Le chemin de l’API est {{path}}.",
+  "providers.baseUrl.suffix": "Le chemin doit se terminer par {{suffix}}.",
+  "providers.baseUrl.invalid":
+    "Saisissez une URL HTTP(S) sans identifiants, paramètres ni fragment.",
   "providers.baseUrl.aria": "URL de base {{provider}}",
   "providers.key": "clé {{masked}}",
   "providers.ready": "prêt",

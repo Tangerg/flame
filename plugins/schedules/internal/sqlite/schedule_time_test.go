@@ -12,7 +12,7 @@ import (
 func TestScheduleRoundTripDistinguishesEpochFromAbsentTime(t *testing.T) {
 	store := newScheduleStore(t)
 	scheduled, err := schedule.New("sch_epoch_manual", schedule.Draft{
-		Instructions: "review", Cron: "@hourly", TimeZone: "UTC",
+		Instructions: "review", Cron: "0 * * * *", TimeZone: "UTC",
 	}, time.Unix(0, 0).UTC())
 	if err != nil {
 		t.Fatal(err)
@@ -42,7 +42,7 @@ func TestScheduleDueAndPendingPreserveEpochBoundary(t *testing.T) {
 		{"sch_at_epoch", time.Unix(0, 0).UTC()},
 	} {
 		scheduled, err := schedule.New(test.id, schedule.Draft{
-			Instructions: "review", Cron: "@hourly", TimeZone: "UTC", Enabled: true,
+			Instructions: "review", Cron: "0 * * * *", TimeZone: "UTC", Enabled: true,
 		}, test.dueAt.Add(-time.Second))
 		if err != nil {
 			t.Fatal(err)

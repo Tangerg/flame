@@ -28,10 +28,6 @@ export interface ImageViewportLabels {
   zoomIn: string;
   zoomOut: string;
 }
-const defaultLabels: ImageViewportLabels = {
-  zoomIn: "Zoom in image",
-  zoomOut: "Zoom out image",
-};
 interface FittedImageSize {
   item: ImageSource;
   width: number;
@@ -106,11 +102,11 @@ const styles = stylex.create({
 export function ImageViewport({
   image: item,
   label,
-  labels = defaultLabels,
+  labels,
 }: {
   image: ImageSource;
   label: string;
-  labels?: ImageViewportLabels;
+  labels: ImageViewportLabels;
 }) {
   const panRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);

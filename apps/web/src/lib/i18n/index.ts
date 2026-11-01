@@ -13,11 +13,18 @@ function detectInitial(): Locale {
     if (stored) return stored;
   } catch {}
   const nav = typeof navigator !== "undefined" ? navigator.language : "";
-  const low = nav.toLowerCase();
-  if (low.startsWith("zh")) {
-    return low.includes("tw") || low.includes("hk") || low.includes("mo") ? "zh-TW" : "zh";
+  return browserLocale(nav);
+}
+
+export function browserLocale(language: string): Locale {
+  if (!language) return "en";
+  try {
+    const locale = new Intl.Locale(language);
+    if (locale.language === "zh") return locale.maximize().script === "Hant" ? "zh-TW" : "zh";
+    return locale.language;
+  } catch {
+    return "en";
   }
-  return low.split("-")[0] || "en";
 }
 
 const initial = detectInitial();

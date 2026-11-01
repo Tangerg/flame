@@ -25,7 +25,7 @@ func TestScannerRotatesBacklogAndPreservesCapturedWorkAcrossRestart(t *testing.T
 	store := sqlite.NewScheduleStore(db)
 	now := time.Date(2026, 10, 12, 10, 0, 0, 0, time.UTC)
 	create := func(id string, created time.Time, enabled bool) schedule.Schedule {
-		value, err := schedule.New(id, schedule.Draft{Title: id, Instructions: "captured instructions", CWD: "/project", Cron: "@hourly", TimeZone: "UTC", Enabled: enabled}, created)
+		value, err := schedule.New(id, schedule.Draft{Title: id, Instructions: "captured instructions", CWD: "/project", Cron: "0 * * * *", TimeZone: "UTC", Enabled: enabled}, created)
 		if err != nil {
 			t.Fatal(err)
 		}

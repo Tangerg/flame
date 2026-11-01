@@ -11,7 +11,7 @@ func TestScheduleOccurrenceIndexesCannotRewriteItsIdentity(t *testing.T) {
 	store, db := newScheduleStores(t)
 	dueAt := time.Unix(3600, 0).UTC()
 	scheduled, err := schedule.New("sch_identity", schedule.Draft{
-		Instructions: "review", Cron: "@hourly", TimeZone: "UTC", Enabled: true,
+		Instructions: "review", Cron: "0 * * * *", TimeZone: "UTC", Enabled: true,
 	}, dueAt.Add(-time.Second))
 	if err != nil {
 		t.Fatal(err)

@@ -1,11 +1,9 @@
+import { listMethod, updateMethod } from "./board.generated";
 import type { MethodInputs, MethodOutputs } from "./methods.generated";
 
-type UpdateInput =
-  MethodInputs["io.github.tangerg.flame.examples/reviews.update"];
-type UpdateOutput =
-  MethodOutputs["io.github.tangerg.flame.examples/reviews.update"];
-type ListOutput =
-  MethodOutputs["io.github.tangerg.flame.examples/reviews.list"];
+type UpdateInput = MethodInputs[typeof updateMethod];
+type UpdateOutput = MethodOutputs[typeof updateMethod];
+type ListOutput = MethodOutputs[typeof listMethod];
 
 export const update: UpdateInput = {
   id: "example-review",

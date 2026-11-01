@@ -68,9 +68,9 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261101.verified-audit.1
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261101.ownership.4
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
-	github.com/Tangerg/qimu v0.1.0-quality.20261101.audit-close.1
+	github.com/Tangerg/qimu v0.1.0-quality.20261101.ownership.2
 	github.com/Tangerg/scope/core v0.58.0
 	github.com/Tangerg/scope/mcp v0.58.0
 	github.com/Tangerg/scope/models/alibaba v0.58.0

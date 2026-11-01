@@ -72,6 +72,7 @@ export type WireTypeName =
   | "DiscoverResponse"
   | "DroppedRun"
   | "EmbeddingRole"
+  | "EndpointPolicy"
   | "ExportFormat"
   | "ExportSessionRequest"
   | "ExportSessionResponse"
@@ -1080,6 +1081,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, []),
+  EndpointPolicy: object({
+    appendsPath: text(),
+    example: text(),
+    requiredSuffix: text(),
+  }, ["example"]),
   ExportFormat: enumOf(["md", "json"]),
   ExportSessionRequest: object({
     format: ref(() => CHECKS.ExportFormat),
@@ -1808,6 +1814,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     glob: text(),
     includeIgnored: flag(),
     limit: allOf([integer(), minimum("1")]),
+    nameQuery: text(),
     path: text(),
     recursive: flag(),
     workspace: ref(() => CHECKS.WorkspaceRef),
@@ -3392,6 +3399,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     credentialRequirement: ref(() => CHECKS.ProviderCredentialRequirement),
     defaultEmbeddingModel: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     embeddingCapable: flag(),
+    endpoint: ref(() => CHECKS.EndpointPolicy),
     id: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
     requiresBaseUrl: flag(),
   }, ["configured", "credentialRequirement", "id"]),

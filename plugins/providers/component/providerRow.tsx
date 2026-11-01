@@ -15,6 +15,7 @@ import {
 } from "@flame/ui";
 import { ProviderCredentialsDraft } from "./draft";
 import { providerResource, type ProviderSettings } from "./settings";
+import { EndpointField } from "./endpointField";
 import { CommandFeedback } from "./feedback";
 const literal = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
 export function ProviderRow({
@@ -36,10 +37,10 @@ export function ProviderRow({
   const probing = state.probing.has(p.id);
   const busy = Boolean(command) || probing;
   const [confirmingClear, setConfirmingClear] = useState(false);
-  const hintId = useId();
   const feedbackId = useId();
   const dirty = draft.dirty(p);
-  const valid = draft.valid(p);
+  const error = draft.endpointError(p);
+  const valid = error === undefined;
   const fromEnv = p.credential?.source === "env";
   const describedBy =
     feedback?.kind === "error" || command?.phase === "unknown"
@@ -93,29 +94,14 @@ export function ProviderRow({
             )}
           />
         </FormField>
-        <FormField
-          label={t(
-            p.requiresBaseUrl
-              ? "providers.baseUrl.labelRequired"
-              : "providers.baseUrl.label",
-          )}
-        >
-          <TextField
-            font="mono"
-            type="text"
-            required={p.requiresBaseUrl}
-            invalid={dirty && !valid}
-            aria-label={t("providers.baseUrl.aria", { provider: p.id })}
-            aria-describedby={
-              [describedBy, dirty && !valid ? hintId : undefined]
-                .filter(Boolean)
-                .join(" ") || undefined
-            }
-            value={draft.baseURL(p)}
-            onChange={(event) => change(draft.withBaseURL(event.target.value))}
-            placeholder={t("providers.baseUrl.placeholder")}
-          />
-        </FormField>
+        <EndpointField
+          provider={p}
+          draft={draft}
+          error={dirty ? error : undefined}
+          feedback={describedBy}
+          change={change}
+          t={t}
+        />
       </FormRow>
       <FormActions
         label={t("providers.save")}
@@ -167,7 +153,6 @@ export function ProviderRow({
           t={t}
         />
       </div>
-      {dirty && !valid && <p id={hintId}>{t("providers.baseUrl.required")}</p>}
       <ModalDialog
         open={confirmingClear}
         onOpenChange={setConfirmingClear}

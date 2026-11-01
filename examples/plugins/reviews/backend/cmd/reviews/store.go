@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/qimu/sqlite"
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
@@ -60,17 +61,17 @@ func openStore(ctx context.Context, directory string) (_ *store, err error) {
 	if _, err = db.ExecContext(ctx, `PRAGMA busy_timeout = 5000; PRAGMA synchronous = FULL;`); err != nil {
 		return nil, err
 	}
-	schema := map[string]string{"reviews": fmt.Sprintf(`CREATE TABLE reviews (
+	statements := []string{fmt.Sprintf(`CREATE TABLE IF NOT EXISTS reviews (
  id TEXT PRIMARY KEY CHECK (id = '%s'),
  title TEXT NOT NULL CHECK (length(title) > 0),
  status TEXT NOT NULL CHECK (status IN ('%s', '%s')),
  revision INTEGER NOT NULL CHECK (revision BETWEEN 1 AND %d)
-);`, reviews.ExampleReviewID, reviews.Open, reviews.Resolved, int64(exactint.Maximum)), "invocations": `CREATE TABLE invocations (
+)`, reviews.ExampleReviewID, reviews.Open, reviews.Resolved, int64(exactint.Maximum)), `CREATE TABLE IF NOT EXISTS invocations (
  id TEXT PRIMARY KEY,
  input_json TEXT NOT NULL CHECK(json_valid(input_json)),
  result BLOB NOT NULL
-);`}
-	if err = admitSchema(ctx, db, schema); err != nil {
+)`, fmt.Sprintf(`INSERT INTO reviews VALUES ('%s', 'Inspect the plugin ownership boundary', '%s', 1)`, reviews.ExampleReviewID, reviews.Open)}
+	if err = sqlite.InstallSchema(ctx, db, statements); err != nil {
 		return nil, fmt.Errorf("reviews: open private database: %w", err)
 	}
 	return &store{db: db, inputSchema: inputSchema}, nil

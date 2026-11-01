@@ -14,8 +14,8 @@
     "generate": "node scripts/generate-contracts.mjs && npm run build"
   },
   "dependencies": {
-    "@flame/brand-assets": "*",
     "@flame/backend-sdk": "^0.1.0",
+    "@flame/brand-assets": "*",
     "@flame/component-sdk": "*",
     "@flame/icons": "*",
     "@flame/runtime-client": "*",
@@ -28,9 +28,11 @@
     "@qimu/sdk": "0.1.0",
     "docx": "9.15.0",
     "exceljs": "4.4.0",
+    "jpeg-js": "0.4.4",
     "katex": "0.19.0",
     "pdf-lib": "1.17.1",
     "pigeon-maps": "0.22.1",
+    "pngjs": "7.0.0",
     "pptxgenjs": "4.0.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
@@ -42,6 +44,7 @@
   "devDependencies": {
     "@testing-library/react": "^16.3.3",
     "@types/node": "^26.6.5",
+    "@types/pngjs": "6.0.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "happy-dom": "^21.0.4",

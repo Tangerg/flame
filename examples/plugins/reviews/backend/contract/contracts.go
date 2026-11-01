@@ -2,7 +2,7 @@ package reviews
 
 //go:generate sh -c "go run ../cmd/contracts | go tool github.com/Tangerg/qimu/cmd/qimu contract --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../component"
 //go:generate sh -c "go run ../cmd/contracts --analyzers > ../../package/io.github.tangerg.flame/contracts/analyzers.generated.json"
-//go:generate sh -c "go run ../cmd/contracts --analyzers-ts > ../../component/analyzers.generated.ts"
+//go:generate sh -c "go run ../cmd/contracts --board-ts > ../../component/board.generated.ts"
 //go:generate sh -c "go run ../cmd/contracts --analyzer-capability | go tool github.com/Tangerg/qimu/cmd/qimu contract --feature - --out ../../analyzer/package/io.github.tangerg.flame/contracts --ts ../../analyzer"
 //go:generate sh -c "go run ../cmd/contracts --analyzers > ../../analyzer/package/io.github.tangerg.flame/contracts/analyzers.generated.json"
 //go:generate sh -c "go run ../cmd/contracts --analyzer-capability > ../../package/io.github.tangerg.flame/contracts/analyzer-capability.generated.json"

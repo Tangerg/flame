@@ -55,7 +55,7 @@ From `apps/desktop`, regenerate the bridge with:
 ```sh
 go run ./cmd/bridgegen --source . --receiver DesktopHost \
   --out ../web/src/platform/desktop.generated.ts \
-  --foundation ../web/src/foundation/notificationAuthorization.ts
+  --foundation ../../packages/component-sdk/src/notificationAuthorization.generated.ts
 go test ./cmd/bridgegen ./internal/bridge
 ```
 

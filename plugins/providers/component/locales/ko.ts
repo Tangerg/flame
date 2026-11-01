@@ -6,7 +6,15 @@ export const ko: Record<string, string> = {
     "{{provider}}의 저장된 API 키가 사라집니다. 다시 연결하려면 키를 다시 붙여넣어야 합니다.",
   "providers.apiKey.placeholder": "API 키",
   "providers.apiKey.aria": "{{provider}} API 키",
-  "providers.baseUrl.placeholder": "기본 URL",
+  "providers.baseUrl.mount":
+    "게이트웨이 마운트 주소를 입력하세요. SDK가 {{suffix}}를 추가합니다.",
+  "providers.baseUrl.apiBase":
+    "게이트웨이의 버전 경로를 포함한 전체 API 기본 주소를 입력하세요.",
+  "providers.baseUrl.appends":
+    "SDK가 {{suffix}}를 추가합니다. 최종 API 경로는 {{path}}입니다.",
+  "providers.baseUrl.suffix": "엔드포인트 경로는 {{suffix}}로 끝나야 합니다.",
+  "providers.baseUrl.invalid":
+    "인증 정보, 쿼리 또는 프래그먼트가 없는 HTTP(S) URL을 입력하세요.",
   "providers.baseUrl.aria": "{{provider}} 기본 URL",
   "providers.key": "키 {{masked}}",
   "providers.ready": "사용 가능",

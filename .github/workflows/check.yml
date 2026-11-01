@@ -43,7 +43,13 @@ jobs:
             https://github.com/macports/macports-base/releases/download/v2.12.7/MacPorts-2.12.7-15-Sequoia.pkg
           echo "87b2e87ed7adc4aca947b42eb7ff991614cc0edfccb486237f2bbc75f28aae63  $RUNNER_TEMP/MacPorts.pkg" | shasum -a 256 --check
           sudo installer -pkg "$RUNNER_TEMP/MacPorts.pkg" -target /
-          sudo /opt/local/bin/port -N -b install poppler
+          ports=/opt/local/var/macports/sources/flame-ports
+          sudo git init --quiet "$ports"
+          sudo git -C "$ports" fetch --quiet --depth=1 https://github.com/macports/macports-ports.git 5fcc5a568c4d783ec73a8bf27b5f7c66673aac9a
+          sudo git -C "$ports" checkout --quiet --detach FETCH_HEAD
+          (cd "$ports" && sudo /opt/local/bin/portindex)
+          echo "file://$ports [default]" | sudo tee /opt/local/etc/macports/sources.conf
+          sudo /opt/local/bin/port -N install poppler
           office_executable=$(node tooling/office-toolchain.mjs --output "$GITHUB_WORKSPACE/out/toolchains")
           office_root=$(dirname "$(dirname "$office_executable")")
           echo "FLAME_DELIVERABLES_OFFICE=$office_executable" >> "$GITHUB_ENV"
@@ -67,7 +73,7 @@ jobs:
           run('go', ['test', '-count=3', '-run', '^(TestClientRecognizesDefinitiveTransportRefusal|TestRuntimeCanConfigureRequiredKeyProviderAfterStartup)$', '.'], join(root, 'runtime'), { ...proxyEnvironment(join(root, 'out/module-proxy')), GOWORK: 'off' });
           JS
       - name: Qualify native deliverables
-        run: node plugins/scripts/test-backends.mjs
+        run: npm test --workspace @flame/plugins
         env:
           FLAME_DELIVERABLES_NATIVE_TESTS: "1"
           TMPDIR: /tmp
@@ -79,7 +85,9 @@ jobs:
       - name: Report macOS startup diagnostics
         if: always() && runner.os == 'macOS'
         run: |
-          cat "$RUNNER_TEMP/flame-process-diagnostics.log"
+          if [ -f "$RUNNER_TEMP/flame-process-diagnostics.log" ]; then
+            cat "$RUNNER_TEMP/flame-process-diagnostics.log"
+          fi
           if [ -d "$RUNNER_TEMP/flame-process-diagnostics" ]; then
             find "$RUNNER_TEMP/flame-process-diagnostics" -type f -exec cat {} \;
           fi

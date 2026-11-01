@@ -141,8 +141,8 @@ export interface RootRunSettlement {
   readonly errorMessage: string | null;
 }
 
-export type NotificationAuthorization =
-  "unsupported" | "default" | "granted" | "denied";
+import type { NotificationAuthorization } from "./notificationAuthorization.generated";
+export type { NotificationAuthorization } from "./notificationAuthorization.generated";
 
 export interface ComponentNotification {
   readonly id: string;
@@ -383,6 +383,8 @@ export function bindOperations<
         .filter(
           ({ binding: original }) =>
             original.installationId === binding.installationId &&
+            original.digest === binding.digest &&
+            original.contract === contract &&
             original.contribution === binding.contribution &&
             original.method === method &&
             original.target.scope === captured.scope &&

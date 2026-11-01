@@ -1,3 +1,4 @@
+import { readResponseDocument, responseDocumentLimit } from "./document";
 import { requireRuntimeEndpoint } from "../endpoint";
 import {
   context,
@@ -13,6 +14,7 @@ import { stringifyJSON } from "@qimu/sdk/json";
 import {
   errorMessage,
   parseTransportProblem,
+  responseMediaType,
   RpcConnectionError,
   RpcProtocolError,
   RpcTransportError,
@@ -24,9 +26,9 @@ import {
   type TransportResponseMetadata,
   type TransportSendOptions,
 } from "../transport";
-import type { RpcId } from "../types";
+import type { RpcId, RpcResponse } from "../types";
 import { isResponse, parseRpcMessage } from "../types";
-import { HTTP_ENDPOINTS, HTTP_HEADERS } from "@flame/runtime-client/wire";
+import { HTTP_ENDPOINTS, HTTP_HEADERS, RPC_HTTP } from "@flame/runtime-client/wire";
 import {
   isWireStreamingMethodName,
   type WireStreamingMethodName,
@@ -60,10 +62,24 @@ async function refuseResponse(
   throw error;
 }
 
+function readRPCEnvelope(text: string, request: TransportRequest, requestId?: string): RpcResponse {
+  const invalid = (path: string, detail: string) =>
+    new RpcProtocolError("RPC response", [{ path, detail }], requestId);
+  if (!text) throw invalid("$", "must not be empty");
+  const inbound = parseRpcMessage(text);
+  if (!inbound) throw invalid("$", "must contain a valid JSON-RPC envelope");
+  if (!isResponse(inbound) || inbound.id !== request.id)
+    throw invalid("$.id", "must match the outbound request");
+  if (isWireStreamingMethodName(request.method) && "result" in inbound)
+    throw invalid("$", "successful stream acknowledgement requires text/event-stream");
+  return inbound;
+}
+
 export interface HttpTransportConfig {
   baseUrl: string;
   localToken?: string;
   fetch?: typeof fetch;
+  maximumResponseBytes?: number;
   maximumEventStreamFrameCharacters?: number;
   maximumEventStreamFrameBytes?: number;
 }
@@ -98,6 +114,7 @@ async function feedEventStreamText(
 }
 
 export function createHttpTransport(config: HttpTransportConfig): Transport {
+  const documentLimit = responseDocumentLimit(config.maximumResponseBytes);
   const baseUrl = requireRuntimeEndpoint(config.baseUrl);
   const fetchImpl = config.fetch ?? globalThis.fetch.bind(globalThis);
   const maximumEventStreamFrameCharacters =
@@ -337,8 +354,8 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       attributes: { "rpc.system": "jsonrpc", "rpc.method": method },
     });
     const headers = requestHeaders({
-      [HTTP_HEADERS.contentType]: "application/json",
-      Accept: "application/json, text/event-stream",
+      [HTTP_HEADERS.contentType]: RPC_HTTP.documentMediaType,
+      Accept: `${RPC_HTTP.documentMediaType}, ${RPC_HTTP.streamMediaType}`,
     });
     if (options.idempotencyKey) headers[HTTP_HEADERS.idempotencyKey] = options.idempotencyKey;
     if (options.idempotencyNamespace) {
@@ -366,7 +383,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     };
     if (metadata.requestId) span.setAttribute("flame.request_id", metadata.requestId);
 
-    if (res.status === 204 || res.status === 202) {
+    if (res.ok && res.status !== RPC_HTTP.callStatus) {
       const err = new RpcProtocolError(
         "RPC response",
         [{ path: "$", detail: `must answer the call, not end it with http ${res.status}` }],
@@ -375,12 +392,8 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       return refuseResponse(res, span, err);
     }
 
-    const mediaType = res.headers
-      .get(HTTP_HEADERS.contentType)
-      ?.split(";", 1)[0]
-      ?.trim()
-      .toLowerCase();
-    if (res.ok && mediaType === "text/event-stream") {
+    const mediaType = responseMediaType(res);
+    if (res.ok && mediaType === RPC_HTTP.streamMediaType) {
       if (!isWireStreamingMethodName(method)) {
         const err = new RpcProtocolError(
           "RPC response",
@@ -408,32 +421,32 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       return;
     }
 
-    let bytes: ArrayBuffer;
-    try {
-      bytes = await res.arrayBuffer();
-    } catch (cause) {
-      const err = new RpcConnectionError(
-        `failed to read RPC response: ${errorMessage(cause)}`,
-        metadata.requestId,
+    if (res.ok && mediaType !== RPC_HTTP.documentMediaType) {
+      return refuseResponse(
+        res,
+        span,
+        new RpcProtocolError(
+          "RPC response",
+          [{ path: "$", detail: "must use application/json for a JSON-RPC document" }],
+          metadata.requestId,
+        ),
       );
-      endSpan(span, err);
-      throw err;
     }
     let text: string;
     try {
-      text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-    } catch (cause) {
-      const err = new RpcProtocolError(
+      text = await readResponseDocument(
+        res,
+        documentLimit,
         "RPC response",
-        [{ path: "$", detail: "must contain valid UTF-8" }],
         metadata.requestId,
+        requestSignal,
       );
-      err.cause = cause;
-      endSpan(span, err);
-      throw err;
+    } catch (error) {
+      endSpan(span, error);
+      throw error;
     }
     if (!res.ok) {
-      const problem = parseTransportProblem(text);
+      const problem = parseTransportProblem(text, res);
       const requestId = problem?.requestId ?? metadata.requestId;
       const detail = problem?.detail || res.statusText || "transport request failed";
       const err = new RpcTransportError(
@@ -445,33 +458,12 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       endSpan(span, err);
       throw err;
     }
-    if (!text) {
-      const err = new RpcProtocolError(
-        "RPC response",
-        [{ path: "$", detail: "must not be empty" }],
-        metadata.requestId,
-      );
-      endSpan(span, err);
-      throw err;
-    }
-    const inbound = parseRpcMessage(text);
-    if (!inbound) {
-      const err = new RpcProtocolError(
-        "RPC response",
-        [{ path: "$", detail: "must contain a valid JSON-RPC envelope" }],
-        metadata.requestId,
-      );
-      endSpan(span, err);
-      throw err;
-    }
-    if (!isResponse(inbound) || inbound.id !== rpcId) {
-      const err = new RpcProtocolError(
-        "RPC response",
-        [{ path: "$.id", detail: "must match the outbound request" }],
-        metadata.requestId,
-      );
-      endSpan(span, err);
-      throw err;
+    let inbound: RpcResponse;
+    try {
+      inbound = readRPCEnvelope(text, msg, metadata.requestId);
+    } catch (error) {
+      endSpan(span, error);
+      throw error;
     }
     if (
       !(await channel.send({

@@ -313,3 +313,5 @@ Schedule identity parsing, the `sch_` namespace and occurrence framing belong to
 this backend. Core no longer exports a Schedule identity type or Go/TS prefix;
 external consumers obtain business identities from the published feature contract.
 The opaque values and stored private format are unchanged.
+
+Schedules accept five cron fields and a separate IANA time zone. Descriptors and duration-based intervals are rejected before the schedule is stored.

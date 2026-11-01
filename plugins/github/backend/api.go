@@ -111,10 +111,7 @@ func (c *connector) load(ctx context.Context, address, key string) (result respo
 	case http.StatusUnauthorized:
 		return response{}, refused("unauthorized", "credential was rejected")
 	case http.StatusForbidden, http.StatusTooManyRequests:
-		if upstream.StatusCode == http.StatusTooManyRequests || upstream.Header.Get("X-RateLimit-Remaining") == "0" || upstream.Header.Get("Retry-After") != "" {
-			return response{}, refused("rate_limited", "request is rate limited; no retry was attempted")
-		}
-		return response{}, refused("forbidden", "repository access was refused")
+		return response{}, accessRefusal(upstream)
 	case http.StatusNotFound:
 		return response{}, refused("not_found", "resource is absent or not visible to this credential")
 	case http.StatusUnprocessableEntity, http.StatusBadRequest:
@@ -124,6 +121,27 @@ func (c *connector) load(ctx context.Context, address, key string) (result respo
 	default:
 		return response{}, fmt.Errorf("github: unexpected HTTP status %d", upstream.StatusCode)
 	}
+}
+
+// GitHub can signal secondary exhaustion only in the response message, even
+// while the primary budget has capacity. Do not expose arbitrary error bodies.
+func accessRefusal(response *http.Response) error {
+	limited := response.StatusCode == http.StatusTooManyRequests || response.Header.Get("X-RateLimit-Remaining") == "0" || response.Header.Get("Retry-After") != ""
+	if !limited {
+		const maxErrorBytes = 16 << 10
+		var problem struct {
+			Message string `json:"message"`
+		}
+		raw, err := io.ReadAll(io.LimitReader(response.Body, maxErrorBytes+1))
+		if err != nil {
+			return errors.Join(refused("forbidden", "repository access was refused"), err)
+		}
+		limited = len(raw) <= maxErrorBytes && json.Unmarshal(raw, &problem) == nil && strings.Contains(strings.ToLower(problem.Message), "secondary rate limit")
+	}
+	if limited {
+		return refused("rate_limited", "request is rate limited; no retry was attempted")
+	}
+	return refused("forbidden", "repository access was refused")
 }
 
 type userWire struct {

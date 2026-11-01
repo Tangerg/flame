@@ -8,6 +8,12 @@ function makeFetch(status: number, body: unknown): typeof fetch {
     async () =>
       new Response(typeof body === "string" ? body : JSON.stringify(body), {
         status,
+        headers: {
+          "Content-Type":
+            status >= 400 && typeof body === "object" && body !== null && "type" in body
+              ? "application/problem+json"
+              : "application/json",
+        },
       }),
   );
   return stub as unknown as typeof fetch;
@@ -65,6 +71,7 @@ describe("SidecarClient", () => {
       baseUrl: "http://x",
       fetch: makeFetch(500, {
         type: "urn:flame:transport:internal_error",
+        status: 500,
         detail: "probe registry unavailable",
         requestId: "req_123",
       }),

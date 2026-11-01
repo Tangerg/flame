@@ -511,7 +511,7 @@ The Go module under `apps/desktop` remains a small Wails host. Its actual
 `DesktopHost` receiver methods own the method list; `internal/bridge` owns the pure
 wire DTOs and their existing refinements. `cmd/bridgegen` reads the actual method AST,
 uses Qimu’s public schema/TypeScript renderer, and generates
-`platform/desktop.generated.ts` plus `foundation/notificationAuthorization.ts`.
+`platform/desktop.generated.ts` plus the portable component SDK notification enum.
 The host adapter validates those generated wire contracts. Native
 `bridge_contract_test.go` compares the actual binding surface; pure generator drift
 checks run on Linux without compiling Wails. Runtime execution and persistence

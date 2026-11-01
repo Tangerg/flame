@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { type NotificationAuthorization } from "@/foundation/notificationAuthorization";
+import { type NotificationAuthorization } from "@flame/component-sdk/notifications";
 import {
   type NotificationCentre,
   type SystemNotification,

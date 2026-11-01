@@ -1,5 +1,4 @@
 import { createRuntimeMutationJournalStorage } from "@/features/connection/adapters/runtimeMutationJournalStorage";
-import { createStorage } from "@/extensions/storage";
 import { runtimeRequestMeta } from "@/app/runtimeProtocol";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type ClientBootstrap, type ClientHost } from "@/platform/host";
@@ -24,7 +23,7 @@ beforeEach(async () => {
   connection = createRuntimeConnection(
     createBrowserHost(),
     runtimeRequestMeta,
-    createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+    createRuntimeMutationJournalStorage("test.runtime"),
   );
   await connection.initialize();
 });
@@ -45,7 +44,7 @@ describe("Runtime connection ownership", () => {
     const successor = createRuntimeConnection(
       createBrowserHost(),
       runtimeRequestMeta,
-      createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+      createRuntimeMutationJournalStorage("test.runtime"),
     );
     expect(() => successor.client()).toThrow("client host has not completed bootstrap");
     expect(() => successor.endpoint()).toThrow("client host has not completed bootstrap");
@@ -76,7 +75,7 @@ describe("Runtime connection ownership", () => {
     const successor = createRuntimeConnection(
       createBrowserHost(),
       runtimeRequestMeta,
-      createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+      createRuntimeMutationJournalStorage("test.runtime"),
     );
     await successor.initialize();
     const close = vi.spyOn(successor.client(), "close");
@@ -92,7 +91,7 @@ describe("Runtime connection ownership", () => {
     connection = createRuntimeConnection(
       desktop(async () => localBootstrap(token)),
       runtimeRequestMeta,
-      createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+      createRuntimeMutationJournalStorage("test.runtime"),
     );
     await connection.initialize();
     const first = connection.client();
@@ -116,7 +115,7 @@ describe("Runtime connection ownership", () => {
     connection = createRuntimeConnection(
       desktop(bootstrap),
       runtimeRequestMeta,
-      createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+      createRuntimeMutationJournalStorage("test.runtime"),
     );
     const pending = connection.initialize();
     await connection.initialize();
@@ -130,7 +129,7 @@ describe("Runtime connection ownership", () => {
     const predecessor = createRuntimeConnection(
       desktop(() => retired.promise),
       runtimeRequestMeta,
-      createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+      createRuntimeMutationJournalStorage("test.runtime"),
     );
     const pending = predecessor.initialize();
     await predecessor.dispose();
@@ -146,7 +145,7 @@ it("joins retired clients and preserves their cleanup failures through final dis
   const owner = createRuntimeConnection(
     desktop(async () => localBootstrap(token)),
     runtimeRequestMeta,
-    createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+    createRuntimeMutationJournalStorage("test.runtime"),
   );
   await owner.initialize();
   const failure = new Error("transport cleanup failed");

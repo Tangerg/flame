@@ -1,4 +1,4 @@
-import type { ProblemData } from "@flame/runtime-client/wire";
+import { HTTP_HEADERS, RPC_HTTP, type ProblemData } from "@flame/runtime-client/wire";
 import type { WireViolation } from "./validation/wireCheck";
 import { isJSONNumber, parseJSON } from "@qimu/sdk/json";
 
@@ -96,12 +96,21 @@ interface TransportProblem {
   requestId?: string;
 }
 
-export function parseTransportProblem(text: string): TransportProblem | undefined {
+export function responseMediaType(response: Response): string | undefined {
+  return response.headers.get(HTTP_HEADERS.contentType)?.split(";", 1)[0]?.trim().toLowerCase();
+}
+
+export function parseTransportProblem(
+  text: string,
+  response: Response,
+): TransportProblem | undefined {
+  if (responseMediaType(response) !== RPC_HTTP.problemMediaType) return undefined;
   try {
     const value = parseJSON(text);
     if (!value || typeof value !== "object" || Array.isArray(value) || isJSONNumber(value))
       return undefined;
     const fields = value as Record<string, unknown>;
+    if (fields.status !== response.status) return undefined;
     return {
       type: typeof fields.type === "string" ? fields.type : undefined,
       detail: typeof fields.detail === "string" ? fields.detail : undefined,

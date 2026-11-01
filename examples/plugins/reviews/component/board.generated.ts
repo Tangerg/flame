@@ -1,2 +1,6 @@
-// Code generated from Reviews' Go-owned analyzer point. DO NOT EDIT.
+// Code generated from the Reviews contract. DO NOT EDIT.
 export const ANALYZERS_JSON = "{\"applicability\":{\"properties\":{\"attributes\":{\"properties\":{\"reviewStatus\":{\"const\":\"open\"}},\"required\":[\"reviewStatus\"],\"type\":\"object\"}},\"required\":[\"attributes\"],\"type\":\"object\"},\"composition\":\"collection\",\"optional\":true,\"ordering\":\"canonicalKeys\",\"protocol\":\"io.github.tangerg.qimu/portable/1\",\"reference\":\"io.github.tangerg.flame.examples/reviews.analyzers\",\"scope\":\"installation\",\"value\":{\"$defs\":{\"contract.Analyzer\":{\"additionalProperties\":false,\"properties\":{\"contribution\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"title\",\"contribution\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"contribution\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"title\",\"contribution\"],\"type\":\"object\"}}";
+export const listMethod = "io.github.tangerg.flame.examples/reviews.list";
+export const updateMethod = "io.github.tangerg.flame.examples/reviews.update";
+export const analyzeMethod = "io.github.tangerg.flame.examples/reviews.analyzers";
+export const reviewStatuses = ["open","resolved"] as const;

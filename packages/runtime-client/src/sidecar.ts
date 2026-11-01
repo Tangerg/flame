@@ -1,3 +1,4 @@
+import { readResponseDocument, responseDocumentLimit } from "./transports/document";
 import { requireRuntimeEndpoint } from "./endpoint";
 import {
   errorMessage,
@@ -25,6 +26,7 @@ export type { LivenessStatus, ReadinessStatus, RuntimeInfo } from "@flame/runtim
 
 export interface SidecarClientConfig {
   baseUrl: string;
+  maximumResponseBytes?: number;
   fetch?: typeof fetch;
 }
 
@@ -35,6 +37,7 @@ export interface SidecarClient {
 }
 
 export function createSidecarClient(config: SidecarClientConfig): SidecarClient {
+  const documentLimit = responseDocumentLimit(config.maximumResponseBytes);
   const baseUrl = requireRuntimeEndpoint(config.baseUrl);
   const fetchImpl = config.fetch ?? globalThis.fetch.bind(globalThis);
 
@@ -56,29 +59,15 @@ export function createSidecarClient(config: SidecarClientConfig): SidecarClient 
       throw new RpcConnectionError(`sidecar ${path}: ${errorMessage(err)}`);
     }
     const requestId = res.headers.get(HTTP_HEADERS.requestId) ?? undefined;
-    let bytes: ArrayBuffer;
-    try {
-      bytes = await res.arrayBuffer();
-    } catch (err) {
-      throw new RpcConnectionError(
-        `sidecar ${path}: response could not be read: ${errorMessage(err)}`,
-        requestId,
-      );
-    }
-    let text: string;
-    try {
-      text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-    } catch (cause) {
-      const error = new RpcProtocolError(
-        `sidecar ${path} response`,
-        [{ path: "$", detail: "must contain valid UTF-8" }],
-        requestId,
-      );
-      error.cause = cause;
-      throw error;
-    }
+    const text = await readResponseDocument(
+      res,
+      documentLimit,
+      `sidecar ${path} response`,
+      requestId,
+      signal,
+    );
     if (!specification.responseStatuses.some((status) => status === res.status)) {
-      const problem = parseTransportProblem(text);
+      const problem = parseTransportProblem(text, res);
       const requestId = problem?.requestId ?? res.headers.get(HTTP_HEADERS.requestId) ?? undefined;
       const detail = problem?.detail || res.statusText || "sidecar request failed";
       throw new RpcTransportError(

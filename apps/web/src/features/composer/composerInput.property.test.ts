@@ -8,7 +8,6 @@ import {
   removeMention,
 } from "@/features/composer/application/draftContext";
 import { activeMention } from "@/features/composer/application/fileMentions";
-import { fuzzyFile } from "@/features/composer/application/fuzzyFile";
 const EVERY_PATH: ReadonlySet<string> = { has: () => true } as unknown as ReadonlySet<string>;
 
 function corpus(a: Arbitrary): string {
@@ -34,16 +33,6 @@ describe("composer input, over arbitrary text", () => {
   it("answers the paste heuristic for any text", () => {
     forEachSeed(600, (a) => {
       expect(typeof isLargePaste(corpus(a))).toBe("boolean");
-    });
-  });
-
-  it("ranks only its own candidates, within the requested bound", () => {
-    forEachSeed(400, (a) => {
-      const paths = Array.from({ length: a.int(12) }, () => corpus(a));
-      const limit = 1 + a.int(8);
-      const ranked = fuzzyFile(corpus(a), paths, limit);
-      expect(ranked.length).toBeLessThanOrEqual(limit);
-      for (const path of ranked) expect(paths).toContain(path);
     });
   });
 

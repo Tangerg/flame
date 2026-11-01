@@ -4,7 +4,7 @@ import { z } from "zod";
 import {
   NotificationAuthorizationValues,
   type NotificationAuthorization,
-} from "@/foundation/notificationAuthorization";
+} from "@flame/component-sdk/notifications";
 
 interface DesktopBootstrap {
   localRuntime: LocalRuntimeConnection;

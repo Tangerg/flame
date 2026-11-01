@@ -15,19 +15,30 @@ import {
   mutationSettlementIsUnknown,
   type ComponentContext,
 } from "@flame/component-sdk";
-import { ANALYZERS_JSON } from "./analyzers.generated";
+import {
+  ANALYZERS_JSON,
+  analyzeMethod,
+  listMethod,
+  updateMethod,
+  reviewStatuses,
+} from "./board.generated";
 import {
   CAPABILITY_JSON,
   type MethodInputs,
   type MethodOutputs,
 } from "./methods.generated";
 
-const listMethod = "io.github.tangerg.flame.examples/reviews.list";
-const updateMethod = "io.github.tangerg.flame.examples/reviews.update";
-const analyzeMethod = "io.github.tangerg.flame.examples/reviews.analyzers";
 type Review = MethodOutputs[typeof listMethod]["reviews"][number];
 type UpdateResult = MethodOutputs[typeof updateMethod];
 type Status = MethodInputs[typeof updateMethod]["status"];
+const statusLabels = { open: "Open", resolved: "Resolved" } satisfies Record<
+  Status,
+  string
+>;
+const statusOptions = reviewStatuses.map((value) => ({
+  value,
+  label: statusLabels[value],
+}));
 type Analysis = MethodOutputs[typeof analyzeMethod];
 type AnalyzerRead =
   { type: "ready"; available: boolean } | { type: "failed"; message: string };
@@ -287,11 +298,13 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
               <Select
                 label="New status"
                 value={status}
-                onValueChange={(value) => setStatus(value as Status)}
-                options={[
-                  { value: "open", label: "Open" },
-                  { value: "resolved", label: "Resolved" },
-                ]}
+                onValueChange={(value) => {
+                  const selected = reviewStatuses.find(
+                    (status) => status === value,
+                  );
+                  if (selected !== undefined) setStatus(selected);
+                }}
+                options={statusOptions}
                 disabled={pending || unknown.length > 0}
               />
               <Button

@@ -130,6 +130,7 @@ func TestGitHubReadsBoundResponsesAndPreserveExplicitFailures(t *testing.T) {
 		{"unauthorized", 401, nil, "", "unauthorized"},
 		{"forbidden", 403, nil, "", "forbidden"},
 		{"rate limited", 403, http.Header{"X-Ratelimit-Remaining": {"0"}}, "", "rate_limited"},
+		{"secondary rate limit", 403, http.Header{"X-Ratelimit-Remaining": {"197"}}, `{"message":"You have exceeded a secondary rate limit."}`, "rate_limited"},
 		{"too many", 429, nil, "", "rate_limited"},
 		{"not found", 404, nil, "", "not_found"},
 		{"moved", 302, http.Header{"Location": {"https://other.example.test/steal"}}, "", "moved_resource"},

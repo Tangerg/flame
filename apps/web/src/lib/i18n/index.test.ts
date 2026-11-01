@@ -1,10 +1,21 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { act, render, screen } from "@testing-library/react";
-import { activeLocale, mountLocaleBundle, setLocale, useT } from "@/lib/i18n/index";
+import { browserLocale, activeLocale, mountLocaleBundle, setLocale, useT } from "@/lib/i18n/index";
 afterEach(async () => {
   setLocale("en");
   await Promise.resolve();
+});
+
+it.each([
+  ["zh-Hant", "zh-TW"],
+  ["zh-Hans-HK", "zh"],
+  ["zh-HK", "zh-TW"],
+  ["zh-CN", "zh"],
+  ["fr-CA", "fr"],
+  ["!", "en"],
+])("negotiates %s as %s", (language, expected) => {
+  expect(browserLocale(language)).toBe(expected);
 });
 
 describe("the document's declared language", () => {

@@ -220,12 +220,12 @@ func (s *store) closeClient(ctx context.Context, handle modelprovider.Handle) er
 	}
 	s.mu.Lock()
 	entry := s.clients[handle.ID]
-	if entry != nil {
-		entry.closed = true
-	}
 	// The durable tombstone fences lazy reconstruction before accepted calls
 	// join. Existing users hold the concrete client, rather than re-reading it.
 	_, err := s.db.ExecContext(ctx, `UPDATE clients SET snapshot=NULL WHERE id=?`, handle.ID)
+	if err == nil && entry != nil {
+		entry.closed = true
+	}
 	s.mu.Unlock()
 	if err != nil {
 		return err

@@ -14,14 +14,6 @@ export interface EvidenceImageLabels extends ImageViewportLabels {
   description: string;
 }
 
-const defaultLabels: EvidenceImageLabels = {
-  view: "View image",
-  close: "Close image preview",
-  zoomIn: "Zoom in image",
-  zoomOut: "Zoom out image",
-  description: "Image description",
-};
-
 const styles = stylex.create({
   trigger: {
     display: "inline-flex",
@@ -79,7 +71,7 @@ const styles = stylex.create({
 export function EvidenceImage(props: {
   src: string;
   alt: string;
-  labels?: EvidenceImageLabels;
+  labels: EvidenceImageLabels;
 }) {
   return <CapturedImage key={props.src} {...props} />;
 }
@@ -87,11 +79,11 @@ export function EvidenceImage(props: {
 function CapturedImage({
   src,
   alt,
-  labels = defaultLabels,
+  labels,
 }: {
   src: string;
   alt: string;
-  labels?: EvidenceImageLabels;
+  labels: EvidenceImageLabels;
 }) {
   const [open, setOpen] = useState(false);
   const image = useMemo(() => ({ src, alt }), [src, alt]);

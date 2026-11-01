@@ -43,7 +43,7 @@ func (i *invalidationScheduleStore) Delete(context.Context, string) (bool, error
 func TestCommittedScheduleMutationsSignalChanges(t *testing.T) {
 	store := &invalidationScheduleStore{
 		runNowStore: &runNowStore{schedule: mustStoredSchedule(t, schedule.Snapshot{
-			ID: "sch_updated", Revision: 1, Instructions: "before", Cron: "@daily", TimeZone: "UTC",
+			ID: "sch_updated", Revision: 1, Instructions: "before", Cron: "0 0 * * *", TimeZone: "UTC",
 			CreatedAt: testScheduleCreatedAt, NextRunAt: testScheduleCreatedAt.Add(time.Hour),
 		})},
 		deleteFound: true,
@@ -58,7 +58,7 @@ func TestCommittedScheduleMutationsSignalChanges(t *testing.T) {
 	})
 
 	if _, err := coordinator.Create(t.Context(), schedule.Draft{
-		Instructions: "create", Cron: "@daily", TimeZone: "UTC",
+		Instructions: "create", Cron: "0 0 * * *", TimeZone: "UTC",
 	}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestScheduleMutationsPublishOnlyAfterActualCommit(t *testing.T) {
 		t.Run(operation, func(t *testing.T) {
 			store := &invalidationScheduleStore{
 				runNowStore: &runNowStore{schedule: mustStoredSchedule(t, schedule.Snapshot{
-					ID: "sch_1", Revision: 1, Instructions: "before", Cron: "@daily", TimeZone: "UTC",
+					ID: "sch_1", Revision: 1, Instructions: "before", Cron: "0 0 * * *", TimeZone: "UTC",
 					CreatedAt: testScheduleCreatedAt, NextRunAt: testScheduleCreatedAt.Add(time.Hour),
 				})},
 				fail: operation, deleteFound: true,
@@ -96,7 +96,7 @@ func TestScheduleMutationsPublishOnlyAfterActualCommit(t *testing.T) {
 			var err error
 			switch operation {
 			case "create":
-				_, err = coordinator.Create(t.Context(), schedule.Draft{Instructions: "create", Cron: "@daily", TimeZone: "UTC", Enabled: true})
+				_, err = coordinator.Create(t.Context(), schedule.Draft{Instructions: "create", Cron: "0 0 * * *", TimeZone: "UTC", Enabled: true})
 			case "update":
 				title := "after"
 				_, err = coordinator.Update(t.Context(), UpdateCommand{

@@ -259,7 +259,7 @@ the publisher acknowledgement before settlement. Journal routing/fingerprints ar
 durable; authored input and business results are not copied into it. Low-level
 calls and stable-intent commands share that journal and retain routing metadata.
 For a recreated component, `bindOperations(...).pendingCommands(method)` projects
-unresolved commands, including streams, for that original installation/contribution/target.
+unresolved commands, including streams, for the same installation, release digest, contribution, method contract and target. Use the raw management API to inspect retained commands from another release.
 Components that associate pending work with an authored action also check the
 Runtime handle's `matchesIntent(originalIntent)` through
 `context.runtime.plugins.pendingCommands()`. A shared binding does not establish

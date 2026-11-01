@@ -190,3 +190,11 @@ describe("auto-paging promise", () => {
     });
   });
 });
+
+it("checks page-level limits on both the direct page and iterator", async () => {
+  const call = createAutoPagingPromise(async () => ({ data: [1, 2, 3, 4, 5] }), testPolicy);
+  await expect(call).rejects.toMatchObject({ violation: PaginationViolation.pageRowsExceeded });
+  await expect(call.pages()[Symbol.asyncIterator]().next()).rejects.toMatchObject({
+    violation: PaginationViolation.pageRowsExceeded,
+  });
+});

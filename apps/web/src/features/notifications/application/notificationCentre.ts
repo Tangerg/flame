@@ -1,4 +1,4 @@
-import { type NotificationAuthorization } from "@/foundation/notificationAuthorization";
+import { type NotificationAuthorization } from "@flame/component-sdk/notifications";
 
 export interface SystemNotification {
   id: string;

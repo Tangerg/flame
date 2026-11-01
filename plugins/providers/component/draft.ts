@@ -1,3 +1,4 @@
+import type { Provider } from "@flame/runtime-client/wire";
 import type {
   ProviderConfigChange,
   UpdateProviderRequest,
@@ -48,8 +49,52 @@ export class ProviderCredentialsDraft {
     );
   }
 
-  valid(provider: { baseUrl?: string; requiresBaseUrl?: boolean }): boolean {
-    return !provider.requiresBaseUrl || this.baseURL(provider).trim() !== "";
+  endpointPath(
+    provider: Pick<Provider, "baseUrl" | "endpoint">,
+  ): string | undefined {
+    const raw = this.baseURL(provider).trim();
+    if (!/^https?:\/\//i.test(raw) || /[\s\\]/u.test(raw)) return undefined;
+    try {
+      const url = new URL(raw);
+      if (
+        !/^https?:$/.test(url.protocol) ||
+        url.username ||
+        url.password ||
+        url.href.includes("?") ||
+        url.href.includes("#")
+      )
+        return undefined;
+      return (
+        url.pathname.replace(/\/+$/, "") +
+          (provider.endpoint?.appendsPath ?? "") || "/"
+      );
+    } catch {
+      return undefined;
+    }
+  }
+
+  endpointError(
+    provider: Pick<Provider, "baseUrl" | "requiresBaseUrl" | "endpoint">,
+  ): "required" | "invalid" | "suffix" | undefined {
+    const raw = this.baseURL(provider).trim();
+    if (!raw) return provider.requiresBaseUrl ? "required" : undefined;
+    const pathname = this.endpointPath(provider);
+    if (pathname === undefined) return "invalid";
+    const suffix = provider.endpoint?.requiredSuffix;
+    if (!suffix) return undefined;
+    try {
+      return decodeURIComponent(pathname).endsWith(suffix)
+        ? undefined
+        : "suffix";
+    } catch {
+      return "invalid";
+    }
+  }
+
+  valid(
+    provider: Pick<Provider, "baseUrl" | "requiresBaseUrl" | "endpoint">,
+  ): boolean {
+    return this.endpointError(provider) === undefined;
   }
 
   toUpdate(provider: { id: string; baseUrl?: string }): UpdateProviderRequest {

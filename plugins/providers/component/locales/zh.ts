@@ -7,7 +7,13 @@ export const zh: Record<string, string> = {
   "providers.apiKey.placeholder": "API 密钥",
   "providers.apiKey.envPlaceholder": "正在使用环境变量密钥 — 输入以覆盖",
   "providers.apiKey.aria": "{{provider}} API 密钥",
-  "providers.baseUrl.placeholder": "Base URL",
+  "providers.baseUrl.mount": "填写网关挂载地址。SDK 会追加 {{suffix}}。",
+  "providers.baseUrl.apiBase": "填写完整 API 基址，包括网关使用的版本路径。",
+  "providers.baseUrl.appends":
+    "SDK 会追加 {{suffix}}，最终 API 路径为 {{path}}。",
+  "providers.baseUrl.suffix": "地址路径必须以 {{suffix}} 结尾。",
+  "providers.baseUrl.invalid":
+    "请输入不含凭据、查询参数或片段的 HTTP(S) 地址。",
   "providers.baseUrl.aria": "{{provider}} Base URL",
   "providers.key": "密钥 {{masked}}",
   "providers.ready": "就绪",

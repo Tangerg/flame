@@ -1,17 +1,20 @@
 import { useCallback, useMemo, useState } from "react";
-import { useWorkspaceListFiles } from "@/features/workspace/public/queries";
-import { fuzzyFile } from "@/features/composer/application/fuzzyFile";
-import { formatFileReference } from "@/features/composer/application/draftContext";
+import {
+  useWorkspaceListFiles,
+  useWorkspaceFileMatches,
+} from "@/features/workspace/public/queries";
+import {
+  formatFileReference,
+  mentionCandidates,
+} from "@/features/composer/application/draftContext";
 import {
   type SuggestionList,
   useSuggestionIndex,
 } from "@/features/composer/application/suggestions";
 const MENTION_ROWS = 8;
 
-const LISTING_PAGE_SIZE = 2000;
-
-function workspaceListing(cwd: string) {
-  return { cwd, recursive: true, limit: LISTING_PAGE_SIZE };
+function mentionRequest(cwd: string, nameQuery: string) {
+  return { cwd, recursive: true, nameQuery, limit: MENTION_ROWS };
 }
 
 interface Mention {
@@ -52,20 +55,17 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
   const [dismissedStart, setDismissedStart] = useState<number | null>(null);
 
   const mention = useMemo(() => activeMention(value, caret), [value, caret]);
+  if (mention === null && dismissedStart !== null) setDismissedStart(null);
   const open = mention !== null && mention.start !== dismissedStart;
 
   const listing = useWorkspaceListFiles(
-    open && cwd !== undefined ? workspaceListing(cwd) : undefined,
+    open && cwd !== undefined ? mentionRequest(cwd, mention.query) : undefined,
   );
   const files = listing.data;
 
   const items = useMemo(() => {
     if (!open || !mention || !files) return [];
-    return fuzzyFile(
-      mention.query,
-      files.map((f) => f.path),
-      MENTION_ROWS,
-    );
+    return files.map((file) => file.path);
   }, [open, mention, files]);
 
   const status: FileMentionStatus =
@@ -115,14 +115,18 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
   };
 }
 
-const NO_PATHS: ReadonlySet<string> = new Set();
-
 export function useKnownWorkspacePaths(
   cwd: string | undefined,
-  enabled: boolean,
+  value: string,
 ): ReadonlySet<string> {
-  const { data } = useWorkspaceListFiles(
-    enabled && cwd !== undefined ? workspaceListing(cwd) : undefined,
+  const paths = useMemo(
+    () => [...new Set(mentionCandidates(value).map((mention) => mention.path))],
+    [value],
   );
-  return useMemo(() => (data ? new Set(data.map((file) => file.path)) : NO_PATHS), [data]);
+  const matches = useWorkspaceFileMatches(
+    cwd === undefined ? [] : paths.map((path) => mentionRequest(cwd, path)),
+  );
+  return new Set(
+    paths.filter((path, index) => matches[index]?.data?.some((file) => file.path === path)),
+  );
 }

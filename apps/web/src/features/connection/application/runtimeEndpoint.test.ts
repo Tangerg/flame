@@ -22,7 +22,6 @@ import {
   type RuntimeEndpointConfiguration,
 } from "@/features/connection/application/runtimeEndpoint";
 import { createRuntimeMutationJournalStorage } from "@/features/connection/adapters/runtimeMutationJournalStorage";
-import { createStorage } from "@/extensions/storage";
 import { bindRuntimeEndpointConfiguration } from "@/features/connection/adapters/runtimeEndpointConfiguration";
 const DEFAULT_RUNTIME_ENDPOINT = "https://flame.example";
 
@@ -84,7 +83,7 @@ beforeEach(async () => {
       }),
     },
     runtimeRequestMeta,
-    createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+    createRuntimeMutationJournalStorage("test.runtime"),
   );
   await runtimeConnection.initialize();
   config = new Configuration();
@@ -128,7 +127,7 @@ async function bindDesktop(read: () => Promise<unknown>) {
       on: async () => () => {},
     }),
     runtimeRequestMeta,
-    createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+    createRuntimeMutationJournalStorage("test.runtime"),
   );
   await runtimeConnection.initialize();
   const bound = bindConnection();
@@ -267,7 +266,7 @@ describe("runtime endpoint", () => {
     const owner = createRuntimeConnection(
       createBrowserHost(),
       runtimeRequestMeta,
-      createRuntimeMutationJournalStorage(createStorage("test.uninitialized")),
+      createRuntimeMutationJournalStorage("test.uninitialized"),
     );
     expect(() => owner.access.endpoint.currentRuntimeEndpoint()).toThrow(
       "client host has not completed bootstrap",
@@ -513,7 +512,7 @@ it("binds the local token and filesystem capability only to the bootstrapped Run
       }),
     },
     runtimeRequestMeta,
-    createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+    createRuntimeMutationJournalStorage("test.runtime"),
   );
   await runtimeConnection.initialize();
   const connection = connectionHost();

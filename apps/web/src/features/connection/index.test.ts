@@ -1,6 +1,5 @@
 import { runtimeRequestMeta } from "@/app/runtimeProtocol";
 import { createBrowserHost } from "@/platform/browserHost";
-import { createStorage } from "@/extensions/storage";
 import { createRuntimeMutationJournalStorage } from "@/features/connection/adapters/runtimeMutationJournalStorage";
 import { createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
 let connection: ReturnType<typeof createRuntimeConnection>;
@@ -131,7 +130,7 @@ beforeEach(async () => {
   connection = createRuntimeConnection(
     createBrowserHost(),
     runtimeRequestMeta,
-    createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+    createRuntimeMutationJournalStorage("test.runtime"),
   );
   await connection.initialize();
 });

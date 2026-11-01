@@ -215,3 +215,18 @@ func TestAttachmentIdentityPreservesFieldBoundaries(t *testing.T) {
 		t.Fatal("different attachment identity fields produced the same digest")
 	}
 }
+
+func TestTOMLConfigurationIsAnAuthoredTextFile(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "Cargo.toml"), []byte("[package]"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	resolver, err := New(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	item, err := resolver.Resolve(t.Context(), "Cargo.toml")
+	if err != nil || item.Kind != protocol.ContentBlockText || item.MimeType != "application/toml" {
+		t.Fatal(item, err)
+	}
+}

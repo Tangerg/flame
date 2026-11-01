@@ -1,8 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-	"os"
+	"io"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -25,7 +26,7 @@ func (w wailsFileSaver) SaveFile(suggestedFilename string, contents []byte) (boo
 	if destination == "" {
 		return false, nil
 	}
-	if err := os.WriteFile(destination, contents, 0o666); err != nil {
+	if err := publishExport(destination, bytes.NewReader(contents)); err != nil {
 		return false, fmt.Errorf("write selected file: %w", err)
 	}
 	return true, nil

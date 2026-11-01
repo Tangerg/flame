@@ -185,7 +185,7 @@ func TestScheduleRecordRunLeavesCursor(t *testing.T) {
 
 	past := time.Now().Add(-time.Hour).UTC().Truncate(time.Millisecond)
 	created, err := insertSchedule(ctx, s, schedule.Snapshot{
-		Instructions: "p", Cron: "@daily", TimeZone: "UTC", NextRunAt: past,
+		Instructions: "p", Cron: "0 0 * * *", TimeZone: "UTC", NextRunAt: past,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -442,7 +442,7 @@ func TestScheduleOccurrenceSurvivesDispatchAndAcceptsOnce(t *testing.T) {
 func TestAcknowledgedOccurrenceRetainsReplayEvidence(t *testing.T) {
 	store, database := newScheduleStores(t)
 	dueAt := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
-	value, err := insertSchedule(t.Context(), store, schedule.Snapshot{Instructions: "review", Cron: "@hourly", TimeZone: "UTC", NextRunAt: dueAt})
+	value, err := insertSchedule(t.Context(), store, schedule.Snapshot{Instructions: "review", Cron: "0 * * * *", TimeZone: "UTC", NextRunAt: dueAt})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -524,7 +524,7 @@ func TestScheduleStoreRejectsDuplicatePendingRows(t *testing.T) {
 	store := NewScheduleStore(db)
 	dueAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	created, err := insertSchedule(ctx, store, schedule.Snapshot{
-		Instructions: "review", Cron: "@hourly", TimeZone: "UTC", NextRunAt: dueAt,
+		Instructions: "review", Cron: "0 * * * *", TimeZone: "UTC", NextRunAt: dueAt,
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -555,14 +555,14 @@ func TestScheduleStoreRejectsDuplicatePendingRows(t *testing.T) {
 func TestScheduleUpdateNotFound(t *testing.T) {
 	s := newScheduleStore(t)
 	expected, restoreErr := schedule.Restore(schedule.Snapshot{
-		ID: "sch_nope", Instructions: "x", Cron: "@daily", TimeZone: "UTC",
+		ID: "sch_nope", Instructions: "x", Cron: "0 0 * * *", TimeZone: "UTC",
 		CreatedAt: time.Unix(1, 0), Revision: 1,
 	})
 	if restoreErr != nil {
 		t.Fatalf("Restore unknown expected: %v", restoreErr)
 	}
 	unknown, restoreErr := schedule.Restore(schedule.Snapshot{
-		ID: "sch_nope", Instructions: "x", Cron: "@daily", TimeZone: "UTC",
+		ID: "sch_nope", Instructions: "x", Cron: "0 0 * * *", TimeZone: "UTC",
 		CreatedAt: time.Unix(1, 0), Revision: 2,
 	})
 	if restoreErr != nil {
@@ -581,7 +581,7 @@ func TestScheduleUpdateNotFound(t *testing.T) {
 func TestScheduleDueSkipsDisabled(t *testing.T) {
 	ctx := context.Background()
 	s := newScheduleStore(t)
-	if _, err := insertSchedule(ctx, s, schedule.Snapshot{Instructions: "p", Cron: "@daily", TimeZone: "UTC"}); err != nil {
+	if _, err := insertSchedule(ctx, s, schedule.Snapshot{Instructions: "p", Cron: "0 0 * * *", TimeZone: "UTC"}); err != nil {
 		t.Fatal(err)
 	}
 	due, err := s.Due(ctx, time.Now(), 100)
@@ -627,7 +627,7 @@ func TestScheduleUnacknowledgedOccurrenceSurvivesStoreReopen(t *testing.T) {
 	store := NewScheduleStore(db)
 	past := time.Now().Add(-time.Hour).UTC().Truncate(time.Millisecond)
 	created, err := insertSchedule(ctx, store, schedule.Snapshot{
-		Instructions: "p", Cron: "@daily", TimeZone: "UTC", NextRunAt: past,
+		Instructions: "p", Cron: "0 0 * * *", TimeZone: "UTC", NextRunAt: past,
 	})
 	if err != nil {
 		t.Fatalf("create: %v", err)

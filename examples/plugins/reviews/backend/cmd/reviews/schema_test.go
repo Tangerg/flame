@@ -46,3 +46,30 @@ INSERT INTO invocations VALUES('original','{"id":"example-review","expectedRevis
 		t.Fatalf("schema refusal changed receipt: %s, %v", arguments, err)
 	}
 }
+
+func TestForeignSchemaCannotReceiveReviewWrites(t *testing.T) {
+	dir := t.TempDir()
+	current, err := openStore(t.Context(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := current.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", filepath.Join(dir, "reviews.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err := db.Exec(`CREATE TRIGGER sqliteX AFTER UPDATE ON reviews BEGIN DELETE FROM reviews; END`); err != nil {
+		t.Fatal(err)
+	}
+	if store, err := openStore(t.Context(), dir); err == nil {
+		store.Close()
+		t.Fatal("foreign trigger accepted")
+	}
+	var count int
+	if err := db.QueryRow("SELECT COUNT(*) FROM reviews").Scan(&count); err != nil || count != 1 {
+		t.Fatalf("original rows: %d %v", count, err)
+	}
+}

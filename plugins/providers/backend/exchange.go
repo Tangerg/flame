@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/httpresponse"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	qimumcp "github.com/Tangerg/qimu/mcp"
@@ -133,7 +134,7 @@ func (s *store) stream(ctx context.Context, method string, command qimumcp.Comma
 				return modelprovider.ChatResult{Failure: notExecuted(errors.New("model provider: captured stream is unavailable"))}, leave, nil
 			}
 			var accumulated chat.ResponseAccumulator
-			sequence := entry.stream.Stream(ctx, request.Request.Clone())
+			sequence := entry.stream.Stream(httpresponse.WithEventStream(ctx), request.Request.Clone())
 			if sequence == nil {
 				err = errors.New("model provider: missing stream")
 			} else {

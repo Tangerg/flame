@@ -151,6 +151,7 @@ type ProviderSpec struct {
 	BaseURL          *string
 	Credential       *Credential
 	Configured       bool
+	Endpoint         flamemodel.EndpointPolicy
 	RequiresBaseURL  bool
 	EmbeddingCapable bool
 }
@@ -160,6 +161,7 @@ type Provider struct {
 	baseURL          string
 	credential       Credential
 	configured       bool
+	endpoint         flamemodel.EndpointPolicy
 	requiresBaseURL  bool
 	embeddingCapable bool
 }
@@ -167,7 +169,7 @@ type Provider struct {
 func NewProvider(spec ProviderSpec) (Provider, error) {
 	provider := Provider{
 		id: spec.ID, configured: spec.Configured,
-		requiresBaseURL: spec.RequiresBaseURL, embeddingCapable: spec.EmbeddingCapable,
+		endpoint: spec.Endpoint, requiresBaseURL: spec.RequiresBaseURL, embeddingCapable: spec.EmbeddingCapable,
 	}
 	if spec.BaseURL != nil {
 		if strings.TrimSpace(*spec.BaseURL) == "" {
@@ -205,6 +207,8 @@ func (p Provider) ID() string { return p.id }
 // to it, so the CLI reports the verdict instead of re-deriving it from the
 // credential and endpoint it happens to see.
 func (p Provider) Configured() bool { return p.configured }
+
+func (p Provider) Endpoint() flamemodel.EndpointPolicy { return p.endpoint }
 
 func (p Provider) RequiresBaseURL() bool { return p.requiresBaseURL }
 

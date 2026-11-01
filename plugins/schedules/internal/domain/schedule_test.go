@@ -35,7 +35,7 @@ func TestScheduleNewOwnsInitialLifecycle(t *testing.T) {
 
 func TestScheduleRecordRunOwnsDurableTime(t *testing.T) {
 	createdAt := time.Date(2026, 8, 29, 8, 0, 0, 987654321, time.UTC)
-	scheduled, err := New("sch_record", Draft{Instructions: "review", Cron: "@daily", TimeZone: "UTC"}, createdAt)
+	scheduled, err := New("sch_record", Draft{Instructions: "review", Cron: "0 0 * * *", TimeZone: "UTC"}, createdAt)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestScheduleRestoreRejectsContradictoryLifecycle(t *testing.T) {
 
 	createdAt := time.Date(2026, 8, 29, 8, 0, 0, 0, time.UTC)
 	base := Snapshot{
-		ID: "sch_restore", Instructions: "review", Cron: "@daily", TimeZone: "UTC",
+		ID: "sch_restore", Instructions: "review", Cron: "0 0 * * *", TimeZone: "UTC",
 		CreatedAt: createdAt, Revision: 1,
 	}
 	tests := []struct {
@@ -300,7 +300,7 @@ func TestScheduleApplyPatch(t *testing.T) {
 		Title:        "old",
 		Instructions: "summarize",
 		CWD:          "/work",
-		Cron:         "@daily", TimeZone: "UTC",
+		Cron:         "0 0 * * *", TimeZone: "UTC",
 		NextRunAt: time.Unix(60, 0),
 		CreatedAt: time.Unix(1, 0),
 		Revision:  1,
@@ -350,7 +350,7 @@ func TestScheduleScheduledAfter(t *testing.T) {
 	}
 
 	disabled := mustSchedule(t, Snapshot{
-		ID: "sch_2", Instructions: "do it", Cron: "@daily", TimeZone: "UTC",
+		ID: "sch_2", Instructions: "do it", Cron: "0 0 * * *", TimeZone: "UTC",
 		NextRunAt: want, CreatedAt: after.Add(-time.Hour), Revision: 1,
 	})
 	disabledFlag := false
@@ -377,9 +377,14 @@ func mustSchedule(t testing.TB, snapshot Snapshot) Schedule {
 }
 
 func TestRecurrenceAcceptsStandardCron(t *testing.T) {
-	for _, spec := range []string{"0 9 * * 1-5", "@daily"} {
+	for _, spec := range []string{"0 9 * * 1-5", "0 0 * * *"} {
 		if _, err := NewRecurrence(spec, "UTC"); err != nil {
 			t.Errorf("valid cron %q rejected: %v", spec, err)
+		}
+	}
+	for _, invalid := range []string{"@every -24h", "@every 0s", "@every 1s", "@daily"} {
+		if _, err := NewRecurrence(invalid, "UTC"); !errors.Is(err, ErrInvalidCron) {
+			t.Errorf("NewRecurrence(%q) error = %v", invalid, err)
 		}
 	}
 	if _, err := NewRecurrence("not a cron", "UTC"); !errors.Is(err, ErrInvalidCron) {

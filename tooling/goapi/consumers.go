@@ -6,33 +6,11 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 )
-
-// readGoDirectory returns the directory entries in bounded batches instead of
-// materializing the whole directory at once.
-func readGoDirectory(directory string) []os.DirEntry {
-	dir, err := os.Open(directory)
-	if err != nil {
-		fail(err)
-	}
-	defer func() { _ = dir.Close() }()
-	var entries []os.DirEntry
-	for {
-		batch, err := dir.ReadDir(128)
-		entries = append(entries, batch...)
-		if err == io.EOF {
-			return entries
-		}
-		if err != nil {
-			fail(err)
-		}
-	}
-}
 
 // consumerScan records, per Runtime method, the CLI binding and plugin backend
 // call sites that invoke it.
@@ -62,7 +40,11 @@ func collect(root string, methods map[string]string) map[string][]string {
 
 func (s *consumerScan) parse(directory string) []*ast.File {
 	var parsed []*ast.File
-	for _, entry := range readGoDirectory(directory) {
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		fail(err)
+	}
+	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
 			continue
 		}

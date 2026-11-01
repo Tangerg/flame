@@ -22,19 +22,27 @@ func main() {
 
 func run() error {
 	analyzer := flag.Bool("analyzers", false, "Emit Reviews' consumer-owned analyzer point")
-	analyzerTypeScript := flag.Bool("analyzers-ts", false, "Emit the exact analyzer point for TypeScript consumers")
+	board := flag.Bool("board-ts", false, "Emit the Reviews board bindings")
 	analyzerCapability := flag.Bool("analyzer-capability", false, "Emit Reviews' callable analyzer contract")
 	flag.Parse()
-	if *analyzerCapability && (*analyzer || *analyzerTypeScript) || *analyzer && *analyzerTypeScript {
+	if *analyzerCapability && (*analyzer || *board) || *analyzer && *board {
 		return fmt.Errorf("select one contract projection")
 	}
-	if *analyzer || *analyzerTypeScript {
+	if *analyzer || *board {
 		contract, err := reviews.NewAnalyzerPoint()
 		if err != nil {
 			return err
 		}
-		if *analyzerTypeScript {
-			_, err := fmt.Fprintf(os.Stdout, "// Code generated from Reviews' Go-owned analyzer point. DO NOT EDIT.\nexport const ANALYZERS_JSON = %s;\n", strconv.Quote(string(contract.Identity().JSON())))
+		if *board {
+			methods, err := reviews.NewContracts()
+			if err != nil {
+				return err
+			}
+			statuses, err := json.Marshal(reviews.Status("").JSONSchemaEnum())
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprintf(os.Stdout, "// Code generated from the Reviews contract. DO NOT EDIT.\nexport const ANALYZERS_JSON = %s;\nexport const listMethod = %q;\nexport const updateMethod = %q;\nexport const analyzeMethod = %q;\nexport const reviewStatuses = %s as const;\n", strconv.Quote(string(contract.Identity().JSON())), methods.List.Name(), methods.Update.Name(), methods.Analyzers.Name(), statuses)
 			return err
 		}
 		data, err := json.Marshal(contract.Definition(), json.Deterministic(true))

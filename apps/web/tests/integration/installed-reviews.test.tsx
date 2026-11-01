@@ -25,7 +25,7 @@ import {
   type MethodInputs,
   type MethodOutputs,
 } from "../../../../examples/plugins/reviews/component/methods.generated";
-import { ANALYZERS_JSON } from "../../../../examples/plugins/reviews/component/analyzers.generated";
+import { ANALYZERS_JSON } from "../../../../examples/plugins/reviews/component/board.generated";
 let transport: ReturnType<typeof createMemoryTransport>;
 
 let client: ReturnType<typeof createFlameClient>;

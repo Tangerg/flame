@@ -10,7 +10,6 @@
 37 examples/plugins/reviews/backend/cmd/reviews/server.go:newServer
 38 packages/go-sdk/client/client_rpc.go:Client.invokeOperation
 28 packages/go-sdk/client/plugin_streams.go:PluginStreamingMethod.Stream
-21 plugins/github/backend/api.go:connector.load
 29 plugins/github/backend/issue_writes.go:connector.updateIssue
 25 plugins/github/contractgen/main.go:define
 26 plugins/github/internal/contract/contracts.go:NewContracts
@@ -59,7 +58,7 @@
 45 qimu/process/driver.go:Driver.Prepare
 24 qimu/runner/runner.go:Open
 26 qimu/sqlite/installation.go:Store.CommitInstallation
-48 qimu/sqlite/store.go:Open
+47 qimu/sqlite/store.go:Open
 30 qimu/sqlite/submission.go:Owner.commit
 23 runtime/cmd/contractgen/bindings.go:writeGoBindings
 24 runtime/cmd/contractgen/main.go:run
@@ -87,7 +86,7 @@
 22 runtime/internal/adapter/persistence/model_invocation.go:ModelInvocationStore.finish
 27 runtime/internal/adapter/run/execution/checkpoint.go:decodeInteractionCheckpointPayload
 22 runtime/internal/adapter/run/execution/child_admission.go:interactionSession.admitProcess
-78 runtime/internal/adapter/run/execution/cold_recovery.go:InteractionExecutor.PrepareUncertainExecution
+40 runtime/internal/adapter/run/execution/cold_recovery.go:InteractionExecutor.PrepareUncertainExecution
 48 runtime/internal/adapter/run/execution/context_reducer.go:interactionModelContextReducer.ReduceModelContext
 26 runtime/internal/adapter/run/execution/continuation.go:continuationAnswerPlans
 32 runtime/internal/adapter/run/execution/control.go:interactionSession.submitSteer
@@ -106,7 +105,7 @@
 26 runtime/internal/adapter/run/segment/effects_commit.go:Effects.applyCommit
 58 runtime/internal/adapter/run/segment/execution_tree.go:Effects.CommitExecutionTree
 24 runtime/internal/adapter/toolset/code_intelligence.go:withCodeIntelligence
-26 runtime/internal/adapter/workspace/files.go:fileSelection.list
+25 runtime/internal/adapter/workspace/files.go:fileSelection.list
 26 runtime/internal/application/agent/runs/accepted_revival.go:Coordinator.reviveAcceptedContinuation
 26 runtime/internal/application/agent/runs/commit.go:EventCommit.Validate
 24 runtime/internal/application/agent/runs/commit.go:ModelInvocationCommit.Validate
@@ -120,14 +119,14 @@
 29 runtime/internal/application/agent/runs/reducer.go:reducer.failModelCall
 27 runtime/internal/application/agent/runs/reducer.go:reducer.reduceFact
 23 runtime/internal/application/agent/runs/reducer_items.go:reducer.toolStart
-39 runtime/internal/application/agent/runs/resume.go:Coordinator.Resume
+30 runtime/internal/application/agent/runs/resume.go:Coordinator.Resume
 25 runtime/internal/application/agent/sessions/rollback_files.go:Coordinator.Rollback
 23 runtime/internal/application/goals/driver.go:Driver.Start
 21 runtime/internal/application/integration/plugins/framework.go:ProjectFrameworkDeclaration
 21 runtime/internal/application/integration/plugins/installations.go:Coordinator.change
 33 runtime/internal/application/integration/plugins/points.go:ResolvePoint
 21 runtime/internal/application/integration/plugins/requirements.go:requirementCatalog.candidates
-41 runtime/internal/bootstrap/assemble.go:buildAssemblyCore
+33 runtime/internal/bootstrap/assemble.go:buildAssemblyCore
 22 runtime/internal/bootstrap/instance.go:OpenInstance
 21 runtime/internal/delivery/dispatch/contract_shape.go:validateConstraintArguments
 26 runtime/internal/delivery/dispatch/contract_shape.go:validateConstraintTarget
@@ -145,4 +144,3 @@
 22 runtime/internal/testsupport/item.go:MustRestoreItem
 22 runtime/internal/testsupport/run.go:MustRestoreRun
 21 tooling/moduleproxy/main.go:run
-61 tooling/nodequalification/main.go:qualify

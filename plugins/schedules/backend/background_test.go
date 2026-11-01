@@ -26,7 +26,7 @@ func TestBackgroundOwnsCronCaptureAndJoinedLifetime(t *testing.T) {
 	}
 	defer db.Close()
 	store := sqlite.NewScheduleStore(db)
-	definition, err := schedule.New("sch_due", schedule.Draft{Title: "Due", Instructions: "captured instructions", Cron: "@hourly", TimeZone: "UTC", Enabled: true}, time.Now().Add(-2*time.Hour))
+	definition, err := schedule.New("sch_due", schedule.Draft{Title: "Due", Instructions: "captured instructions", Cron: "0 * * * *", TimeZone: "UTC", Enabled: true}, time.Now().Add(-2*time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}

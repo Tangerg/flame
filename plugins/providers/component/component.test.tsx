@@ -467,3 +467,27 @@ it("updates locale copy without restarting source reads or losing the current dr
   expect(f.list).toHaveBeenCalledTimes(before.lists);
   expect(f.subscribe).toHaveBeenCalledTimes(before.subscriptions);
 });
+
+it("keeps the provider's route visible when the endpoint is populated and while it changes", async () => {
+  const f = create([
+    {
+      ...provider,
+      baseUrl: "https://gateway.example/tenant",
+      endpoint: {
+        example: "https://example.invalid/mount",
+        appendsPath: "/v1",
+      },
+    },
+  ]);
+  render(<f.Component context={f.context} />);
+  const input = await screen.findByLabelText(endpointLabel);
+  expect(
+    await screen.findByText(/resulting API path is \/tenant\/v1/),
+  ).toBeTruthy();
+  fireEvent.change(input, {
+    target: { value: "https://gateway.example/tenant/v1" },
+  });
+  expect(
+    await screen.findByText(/resulting API path is \/tenant\/v1\/v1/),
+  ).toBeTruthy();
+});

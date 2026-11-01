@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"github.com/Tangerg/scope/models/catalog"
 	"slices"
@@ -46,11 +47,11 @@ type providerProfile struct {
 	embeddingBuilder embeddingBuildFunc
 }
 
-func bundledProvider(id Provider, defaultModel string, builder buildFunc) providerProfile {
-	return providerProfile{profile: modelprovider.Profile{ID: string(id), Authentication: modelprovider.KeyRequired, ModelSource: modelprovider.BundledModels, DefaultModel: defaultModel, Models: catalog.Default.Models(string(id))}, chatBuilder: builder}
+func bundledProvider(id Provider, endpoint flamemodel.EndpointPolicy, defaultModel string, builder buildFunc) providerProfile {
+	return providerProfile{profile: modelprovider.Profile{ID: string(id), Endpoint: endpoint, Authentication: modelprovider.KeyRequired, ModelSource: modelprovider.BundledModels, DefaultModel: defaultModel, Models: catalog.Default.Models(string(id))}, chatBuilder: builder}
 }
-func endpointProvider(id Provider, endpointRequired bool, builder buildFunc) providerProfile {
-	return providerProfile{profile: modelprovider.Profile{ID: string(id), Authentication: modelprovider.KeyRequired, EndpointRequired: endpointRequired, ModelSource: modelprovider.EndpointModels, Models: []catalog.Model{}}, chatBuilder: builder}
+func endpointProvider(id Provider, endpoint flamemodel.EndpointPolicy, endpointRequired bool, builder buildFunc) providerProfile {
+	return providerProfile{profile: modelprovider.Profile{ID: string(id), Endpoint: endpoint, Authentication: modelprovider.KeyRequired, EndpointRequired: endpointRequired, ModelSource: modelprovider.EndpointModels, Models: []catalog.Model{}}, chatBuilder: builder}
 }
 func (p providerProfile) withEmbedding(defaultModel string, builder embeddingBuildFunc) providerProfile {
 	p.profile.Embedding = &modelprovider.EmbeddingProfile{DefaultModel: defaultModel}

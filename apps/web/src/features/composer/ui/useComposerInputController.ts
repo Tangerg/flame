@@ -82,7 +82,7 @@ export function useComposerInputController({
   );
   const mentions = useFileMentions({ value, caret, cwd, apply: applyMention });
   const slash = useSlashSuggestions({ value, caret, apply: applyMention });
-  const knownPaths = useKnownWorkspacePaths(cwd, value.includes("@"));
+  const knownPaths = useKnownWorkspacePaths(cwd, value);
   const running = useIsCurrentRootRunning();
   const placeholder = running ? t("composer.placeholder.steer") : t("composer.placeholder");
   const submit = useCallback(

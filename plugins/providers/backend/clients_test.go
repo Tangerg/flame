@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -39,9 +40,6 @@ func TestClientSpecKeepsCredentialRedacted(t *testing.T) {
 		}
 	}
 }
-
-// TestChatProviderCatalogSatisfiesConstructionContract holds the constructed
-// catalog to its contract. Invalid combinations cannot be registered.
 
 func TestPerplexityUsesScopeResponsesAndEndpointCatalog(t *testing.T) {
 	profile, _ := providers.lookup(providerPerplexity)
@@ -219,8 +217,6 @@ func findWireAssistant(t *testing.T, messages []map[string]any) map[string]any {
 	return nil
 }
 
-// TestQueries covers the table-reader API providers.list / config.Load lean on.
-
 func TestDirectAnthropicExposesNativeInputTokenCounting(t *testing.T) {
 	var countRequests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -314,5 +310,52 @@ data: {"type":"response.completed","sequence_number":1,"response":{"id":"resp_fl
 	}
 	if counter != nil {
 		t.Fatal("OpenAI-compatible client advertised the native Responses count endpoint")
+	}
+}
+
+func TestPublishedEndpointExamplesRouteThroughGatewayMounts(t *testing.T) {
+	for _, tc := range []struct {
+		provider   Provider
+		customPath string
+		wantPath   string
+	}{
+		{providerOpenAI, "", "/model-service/v1/responses"},
+		{providerAnthropicCompatible, "", "/model-service/v1/messages"},
+		{providerAnthropic, "/tenant/v1", "/tenant/v1/v1/messages"},
+		{providerGoogle, "/mount", "/mount/v1beta/models/deployment:streamGenerateContent"},
+		{providerAzureOpenAI, "", "/openai/v1/chat/completions"},
+	} {
+		t.Run(string(tc.provider), func(t *testing.T) {
+			profile, _ := providers.lookup(tc.provider)
+			var routed atomic.Bool
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != tc.wantPath {
+					t.Errorf("path = %s, want %s", r.URL.Path, tc.wantPath)
+				}
+				routed.Store(true)
+				http.Error(w, "test refusal", http.StatusBadRequest)
+			}))
+			defer server.Close()
+			example, err := url.Parse(profile.profile.Endpoint.Example)
+			if err != nil {
+				t.Fatal(err)
+			}
+			mount := example.Path
+			if tc.customPath != "" {
+				mount = tc.customPath
+			}
+			spec := mustClientSpec(t, tc.provider, "audit-key", server.URL+mount)
+			model, err := buildModel(t.Context(), spec, "deployment")
+			if err != nil {
+				t.Fatal(err)
+			}
+			request, err := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("test")))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := model.Call(t.Context(), request); err == nil || !routed.Load() {
+				t.Fatalf("route=%t, err=%v", routed.Load(), err)
+			}
+		})
 	}
 }

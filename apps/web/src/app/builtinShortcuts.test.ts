@@ -1,5 +1,4 @@
 import { createRuntimeMutationJournalStorage } from "@/features/connection/adapters/runtimeMutationJournalStorage";
-import { createStorage } from "@/extensions/storage";
 import { onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 let testClient: TestClient;
@@ -29,7 +28,7 @@ beforeEach(async () => {
   connection = createRuntimeConnection(
     host,
     runtimeRequestMeta,
-    createRuntimeMutationJournalStorage(createStorage("flame.builtin.runtime")),
+    createRuntimeMutationJournalStorage("flame.builtin.runtime"),
   );
   await connection.initialize();
   const owned = createTestClient({ connection, host, start: false });

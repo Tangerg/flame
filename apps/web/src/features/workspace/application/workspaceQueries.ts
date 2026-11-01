@@ -1,5 +1,10 @@
 import { type FileEntryType } from "@/foundation/protocolValues.generated";
-import { createDataQuery, createParameterizedDataQuery } from "@/extensions/dataQuery";
+import { useQueries } from "@tanstack/react-query";
+import {
+  parameterizedQuery,
+  createDataQuery,
+  createParameterizedDataQuery,
+} from "@/extensions/dataQuery";
 export interface WorkspaceProjectSummary {
   id: string;
   name: string;
@@ -24,6 +29,7 @@ export interface WorkspaceListFilesQuery {
   cwd?: string;
   path?: string;
   recursive?: boolean;
+  nameQuery?: string;
   limit?: number;
 }
 
@@ -70,6 +76,17 @@ export const useWorkspaceListFiles = createParameterizedDataQuery<
   WorkspaceListFilesQuery,
   WorkspaceFileEntry[]
 >(WORKSPACE_LIST_FILES_KEY);
+
+export function useWorkspaceFileMatches(requests: readonly WorkspaceListFilesQuery[]) {
+  return useQueries({
+    queries: requests.map((request) =>
+      parameterizedQuery<WorkspaceListFilesQuery, WorkspaceFileEntry[]>(
+        WORKSPACE_LIST_FILES_KEY,
+        request,
+      ),
+    ),
+  });
+}
 
 export const useWorkspaceReadFile = createParameterizedDataQuery<
   WorkspaceReadFileQuery,

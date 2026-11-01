@@ -1,4 +1,4 @@
-import { type NotificationAuthorization } from "@/foundation/notificationAuthorization";
+import { type NotificationAuthorization } from "@flame/component-sdk/notifications";
 import { type FileSaveResult, type SaveFileRequest } from "@flame/component-sdk";
 interface RuntimeTarget {
   endpoint: string;

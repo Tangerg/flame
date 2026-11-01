@@ -305,7 +305,7 @@ export async function generate(repository = root) {
         "--out",
         "../web/src/platform/desktop.generated.ts",
         "--foundation",
-        "../web/src/foundation/notificationAuthorization.ts",
+        "../../packages/component-sdk/src/notificationAuthorization.generated.ts",
       ],
       "apps/desktop",
     );

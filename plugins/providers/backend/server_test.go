@@ -458,3 +458,32 @@ func TestRetriedOpenAfterCloseCannotRevivePublishedHandle(t *testing.T) {
 		t.Fatalf("closed handle dispatched after a retried open: %+v %v", result, err)
 	}
 }
+
+func TestFailedCloseDoesNotAdvanceCapturedHandle(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "provider.db")
+	s, session, stop := connectProvider(t, path)
+	chat := openChat(t, session, "openai-compatible", "https://example.invalid")
+	_, release, err := s.acquire(t.Context(), chat.Handle, chatClient)
+	if err != nil {
+		t.Fatal(err)
+	}
+	release()
+	cancelled, cancel := context.WithCancel(t.Context())
+	cancel()
+	if err := s.closeClient(cancelled, chat.Handle); err == nil {
+		t.Fatal("wanted cancelled tombstone write")
+	}
+	_, release, oldErr := s.acquire(t.Context(), chat.Handle, chatClient)
+	if oldErr == nil {
+		release()
+	}
+	stop()
+	s, _, _ = connectProvider(t, path)
+	_, release, newErr := s.acquire(t.Context(), chat.Handle, chatClient)
+	if newErr == nil {
+		release()
+	}
+	if oldErr != nil || newErr != nil {
+		t.Fatalf("close changed original handle: before restart %v, after %v", oldErr, newErr)
+	}
+}

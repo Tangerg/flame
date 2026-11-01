@@ -187,10 +187,7 @@ func (c *connector) sendWrite(ctx context.Context, method, path string, payload 
 		case http.StatusUnauthorized:
 			return nil, refused("unauthorized", "credential was rejected")
 		case http.StatusForbidden, http.StatusTooManyRequests:
-			if upstream.StatusCode == http.StatusTooManyRequests || upstream.Header.Get("X-RateLimit-Remaining") == "0" || upstream.Header.Get("Retry-After") != "" {
-				return nil, refused("rate_limited", "write was rate limited; no retry was attempted")
-			}
-			return nil, refused("forbidden", "write was refused by GitHub permissions or policy")
+			return nil, accessRefusal(upstream)
 		case http.StatusNotFound:
 			return nil, refused("not_found", "resource is absent or not visible to this credential")
 		case http.StatusBadRequest, http.StatusUnprocessableEntity:

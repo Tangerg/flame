@@ -129,7 +129,7 @@ func TestSchedulesListIsBoundedAndContinuable(t *testing.T) {
 	for index := range 101 {
 		id := fmt.Sprintf("sch_%03d", index)
 		scheduled, err := scheduledomain.Restore(scheduledomain.Snapshot{
-			ID: id, Instructions: "review", Cron: "@daily", TimeZone: "UTC",
+			ID: id, Instructions: "review", Cron: "0 0 * * *", TimeZone: "UTC",
 			CreatedAt: createdAt.Add(time.Duration(index) * time.Second), Revision: 1,
 		})
 		if err != nil {

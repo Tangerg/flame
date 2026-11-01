@@ -54,7 +54,10 @@ export function registerWorkspaceDataProviders(
         params,
       );
       const resources = await workspace(cwd, signal);
-      return (await resources.files.list(query, signal).autoPagingToArray()).map((e) => ({
+      const listing = resources.files.list(query, signal);
+      const files =
+        query.nameQuery === undefined ? await listing.autoPagingToArray() : (await listing).data;
+      return files.map((e) => ({
         path: e.path,
         name: e.name,
         type: e.type,

@@ -522,6 +522,7 @@ describe("HTTPTransport — streamable HTTP", () => {
       new Response(
         JSON.stringify({
           type: "urn:flame:transport:invalid_request",
+          status: 400,
           detail: "bad request",
           requestId: "req_123",
         }),
@@ -895,3 +896,60 @@ describe("HTTP mutation acknowledgement", () => {
     await client.close();
   });
 });
+
+it.each([
+  [201, "application/json"],
+  [206, "application/json"],
+  [200, "text/html"],
+] as const)("refuses undocumented RPC envelope %i %s", async (status, media) => {
+  const transport = createHttpTransport({
+    baseUrl: "http://x",
+    fetch: async () =>
+      new Response('{"jsonrpc":"2.0","id":"k","result":{}}', {
+        status,
+        headers: { "Content-Type": media },
+      }),
+  });
+  await expect(transport.send(req("k", "sessions.get"))).rejects.toBeInstanceOf(RpcProtocolError);
+  await transport.close();
+});
+
+it("refuses a successful JSON document that impersonates a subscription", async () => {
+  const transport = createHttpTransport({
+    baseUrl: "http://x",
+    fetch: async (_url, options) =>
+      jsonResponse({ jsonrpc: "2.0", id: JSON.parse(String(options?.body)).id, result: {} }),
+  });
+  const client = createFlameClient(transport);
+  try {
+    await expect(client.runtimeEvents.subscribe({ topics: ["sessions.changed"] })).rejects.toThrow(
+      "requires text/event-stream",
+    );
+  } finally {
+    await client.close();
+  }
+});
+
+it.each([200, 503])(
+  "cancels an oversized chunked HTTP %i document before decoding",
+  async (status) => {
+    const cancel = vi.fn();
+    const raw = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(new Uint8Array(2));
+      },
+      cancel,
+    });
+    const transport = createHttpTransport({
+      baseUrl: "http://x",
+      maximumResponseBytes: 3,
+      fetch: async () =>
+        new Response(raw, { status, headers: { "Content-Type": "application/json" } }),
+    });
+    await expect(transport.send(req("k", "sessions.get"))).rejects.toThrow(
+      "exceeds its 3-byte capacity",
+    );
+    expect(cancel).toHaveBeenCalledOnce();
+    await transport.close();
+  },
+);

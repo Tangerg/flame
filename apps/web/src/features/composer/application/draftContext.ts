@@ -16,17 +16,20 @@ export function formatFileReference(path: string): string {
   return ["@", QUOTE, escaped, QUOTE].join("");
 }
 
-export function draftMentions(value: string, knownPaths: ReadonlySet<string>): DraftMention[] {
+export function mentionCandidates(value: string): DraftMention[] {
   const out: DraftMention[] = [];
   REFERENCE.lastIndex = 0;
   for (let match = REFERENCE.exec(value); match !== null; match = REFERENCE.exec(value)) {
     const lead = match[1]?.length ?? 0;
     const path = match[2] !== undefined ? match[2].replace(/\\(.)/g, "$1") : (match[3] ?? "");
-    if (!knownPaths.has(path)) continue;
     const start = match.index + lead;
     out.push({ path, start, end: match.index + match[0].length });
   }
   return out;
+}
+
+export function draftMentions(value: string, knownPaths: ReadonlySet<string>): DraftMention[] {
+  return mentionCandidates(value).filter((mention) => knownPaths.has(mention.path));
 }
 
 export function removeMention(value: string, mention: DraftMention): string {

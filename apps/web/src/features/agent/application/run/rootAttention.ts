@@ -7,12 +7,10 @@ import {
   selectRunProblem,
 } from "@/features/agent/application/view/runTree";
 import { isAgentRunFailure } from "@/features/agent/application/view/runOutcome";
-export interface RootRunSettlement {
-  sessionId: string;
+import type { RootRunSettlement as ComponentRootRunSettlement } from "@flame/component-sdk";
+export interface RootRunSettlement extends ComponentRootRunSettlement {
   runId: string;
   segmentId: string | null;
-  status: "needsInput" | "finished" | "error" | "canceled";
-  errorMessage: string | null;
   /** Present when the Run was lost; the client words it. */
   lossReason?: LossReason;
 }

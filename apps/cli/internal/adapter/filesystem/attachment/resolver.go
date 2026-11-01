@@ -128,9 +128,9 @@ func readAttachmentHeader(file io.Reader, input string) ([]byte, error) {
 }
 
 func (r *Resolver) project(canonical string, info fs.FileInfo, header []byte) (authoring.Attachment, error) {
-	mimeType := classifyMIME(canonical, header)
-	kind, supported := attachmentKind(mimeType)
-	if !supported {
+	format := attachmentFormatFor(canonical, header)
+	mimeType, kind := format.mime, format.kind
+	if kind == "" {
 		return authoring.Attachment{}, fmt.Errorf("%w: %s (%s)", ErrUnsupportedType, canonical, mimeType)
 	}
 	name := filepath.Base(canonical)
@@ -341,37 +341,60 @@ func (r *Resolver) relative(path string) (string, bool) {
 	return relative, true
 }
 
-func classifyMIME(path string, header []byte) string {
-	if known := knownMIME[strings.ToLower(filepath.Ext(path))]; known != "" {
-		return known
-	}
-	byExtension := mime.TypeByExtension(strings.ToLower(filepath.Ext(path)))
-	if byExtension != "" {
-		if base, _, err := mime.ParseMediaType(byExtension); err == nil {
-			return base
-		}
-	}
-	detected := http.DetectContentType(header)
-	if base, _, err := mime.ParseMediaType(detected); err == nil {
-		return base
-	}
-	return detected
+type attachmentFormat struct {
+	mime string
+	kind protocol.ContentBlockType
 }
 
-var knownMIME = map[string]string{
-	".go": "text/x-go", ".md": "text/markdown", ".txt": "text/plain",
-	".json": "application/json", ".yaml": "application/yaml", ".yml": "application/yaml",
-	".toml": "application/toml", ".xml": "application/xml", ".csv": "text/csv",
-	".js": "text/javascript", ".jsx": "text/jsx", ".ts": "text/typescript", ".tsx": "text/tsx",
-	".py": "text/x-python", ".rs": "text/x-rust", ".sh": "text/x-shellscript",
-	".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
-	".webp": "image/webp", ".svg": "image/svg+xml",
+var namedFormats = map[string]attachmentFormat{
+	".go":   {"text/x-go", protocol.ContentBlockText},
+	".md":   {"text/markdown", protocol.ContentBlockText},
+	".txt":  {"text/plain", protocol.ContentBlockText},
+	".json": {"application/json", protocol.ContentBlockText},
+	".yaml": {"application/yaml", protocol.ContentBlockText},
+	".yml":  {"application/yaml", protocol.ContentBlockText},
+	".toml": {"application/toml", protocol.ContentBlockText},
+	".xml":  {"application/xml", protocol.ContentBlockText},
+	".csv":  {"text/csv", protocol.ContentBlockText},
+	".js":   {"text/javascript", protocol.ContentBlockText},
+	".jsx":  {"text/jsx", protocol.ContentBlockText},
+	".ts":   {"text/typescript", protocol.ContentBlockText},
+	".tsx":  {"text/tsx", protocol.ContentBlockText},
+	".py":   {"text/x-python", protocol.ContentBlockText},
+	".rs":   {"text/x-rust", protocol.ContentBlockText},
+	".sh":   {"text/x-shellscript", protocol.ContentBlockText},
+	".png":  {"image/png", protocol.ContentBlockImage},
+	".jpg":  {"image/jpeg", protocol.ContentBlockImage},
+	".jpeg": {"image/jpeg", protocol.ContentBlockImage},
+	".gif":  {"image/gif", protocol.ContentBlockImage},
+	".webp": {"image/webp", protocol.ContentBlockImage},
+	".svg":  {"image/svg+xml", protocol.ContentBlockImage},
+}
+
+func attachmentFormatFor(path string, header []byte) attachmentFormat {
+	ext := strings.ToLower(filepath.Ext(path))
+	if format, ok := namedFormats[ext]; ok {
+		return format
+	}
+	media := mime.TypeByExtension(ext)
+	if media == "" {
+		media = http.DetectContentType(header)
+	}
+	if base, _, err := mime.ParseMediaType(media); err == nil {
+		media = base
+	}
+	for _, declared := range namedFormats {
+		if declared.mime == media {
+			return declared
+		}
+	}
+	kind, _ := attachmentKind(media)
+	return attachmentFormat{mime: media, kind: kind}
 }
 
 func isTextMIME(value string) bool {
 	return strings.HasPrefix(value, "text/") || strings.Contains(value, "json") ||
-		strings.Contains(value, "xml") || strings.Contains(value, "yaml") ||
-		strings.Contains(value, "javascript")
+		strings.Contains(value, "xml") || strings.Contains(value, "yaml") || strings.Contains(value, "javascript")
 }
 
 func ignoredDirectory(name string) bool {

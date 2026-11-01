@@ -74,9 +74,9 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261101.verified-audit.1
-	github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1
-	github.com/Tangerg/flame/runtime v0.1.0-quality.20261101.verified-audit.1
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261101.ownership.4
+	github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261101.ownership.2
+	github.com/Tangerg/flame/runtime v0.1.0-quality.20261101.ownership.4
 	github.com/Tangerg/oolong/components v0.25.0
 	github.com/Tangerg/oolong/core v0.25.0
 	github.com/Tangerg/oolong/highlight v0.25.0
@@ -84,7 +84,7 @@ require (
 	github.com/Tangerg/oolong/markdown v0.25.0
 	github.com/Tangerg/oolong/mermaid v0.25.0
 	github.com/Tangerg/oolong/ptytest v0.25.0
-	github.com/Tangerg/qimu v0.1.0-quality.20261101.audit-close.1
+	github.com/Tangerg/qimu v0.1.0-quality.20261101.ownership.2
 	github.com/Tangerg/scope/tools v0.58.0
 	github.com/mattn/go-shellwords v1.0.16
 	github.com/muesli/cancelreader v0.2.2

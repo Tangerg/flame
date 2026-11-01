@@ -11,7 +11,7 @@ func TestScheduleEditPreservesCursorWithoutTimingTransition(t *testing.T) {
 	title, instructions, cwd := "renamed", "new instructions", "/next"
 	selection := mustModelSelection("provider", "model")
 	enabled := true
-	for _, cron := range []string{"@every 1h", "0 * * * *"} {
+	for _, cron := range []string{"0 * * * *", "15 * * * *"} {
 		for _, after := range []time.Time{created.Add(30 * time.Minute), created.Add(90 * time.Minute)} {
 			for _, tc := range []struct {
 				name  string
@@ -50,20 +50,20 @@ func TestScheduleEditPreservesCursorWithoutTimingTransition(t *testing.T) {
 func TestScheduleEditChangesCursorOnlyForTimingTransition(t *testing.T) {
 	created := time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC)
 	after := created.Add(90 * time.Minute)
-	cron, enable, disable := "@every 2h", true, false
+	cron, enable, disable := "0 */2 * * *", true, false
 	for _, tc := range []struct {
 		name    string
 		enabled bool
 		patch   Patch
 		want    time.Time
 	}{
-		{"new cron", true, Patch{Cron: &cron}, after.Add(2 * time.Hour)},
+		{"new cron", true, Patch{Cron: &cron}, created.Add(3 * time.Hour)},
 		{"disable", true, Patch{Enabled: &disable}, time.Time{}},
-		{"reenable", false, Patch{Enabled: &enable}, after.Add(time.Hour)},
+		{"reenable", false, Patch{Enabled: &enable}, created.Add(2 * time.Hour)},
 		{"disabled cron", false, Patch{Cron: &cron}, time.Time{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			original, err := New("sch_timing", Draft{Instructions: "review", Cron: "@every 1h", TimeZone: "UTC", Enabled: tc.enabled}, created)
+			original, err := New("sch_timing", Draft{Instructions: "review", Cron: "0 * * * *", TimeZone: "UTC", Enabled: tc.enabled}, created)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -79,7 +79,7 @@ func TestScheduleEditChangesCursorOnlyForTimingTransition(t *testing.T) {
 }
 
 func TestScheduleRetainedCursorStillValidatesEdits(t *testing.T) {
-	original, err := New("sch_validation", Draft{Instructions: "review", Cron: "@daily", TimeZone: "UTC", Enabled: true}, time.Unix(1, 0))
+	original, err := New("sch_validation", Draft{Instructions: "review", Cron: "0 0 * * *", TimeZone: "UTC", Enabled: true}, time.Unix(1, 0))
 	if err != nil {
 		t.Fatal(err)
 	}

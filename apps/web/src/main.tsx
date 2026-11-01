@@ -20,7 +20,6 @@ import { createWorkingDirectoryPicker } from "@/features/navigation/adapters/wor
 import { WorkingDirectoryProvider } from "@/features/navigation/public/workingDirectory";
 import { ImageSaveProvider } from "@/features/chat/public/imageSave";
 import { createAppNavigation } from "@/router";
-import { createStorage } from "@/extensions/storage";
 import { createRuntimeMutationJournalStorage } from "@/features/connection/adapters/runtimeMutationJournalStorage";
 import { RuntimeProvider } from "@/features/connection/public/runtime";
 import { runtimeRequestMeta } from "@/app/runtimeProtocol";
@@ -47,7 +46,7 @@ const feedback = new MessageFeedbackOwner(null);
 const connection = createRuntimeConnection(
   host,
   runtimeRequestMeta,
-  createRuntimeMutationJournalStorage(createStorage("flame.builtin.runtime")),
+  createRuntimeMutationJournalStorage("flame.builtin.runtime"),
 );
 
 const navigation = createAppNavigation();

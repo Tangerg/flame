@@ -6,7 +6,15 @@ export const de: Record<string, string> = {
     "{{provider}} verliert seinen gespeicherten API-Schlüssel. Zum erneuten Verbinden musst du ihn wieder einfügen.",
   "providers.apiKey.placeholder": "API-Schlüssel",
   "providers.apiKey.aria": "{{provider}} API-Schlüssel",
-  "providers.baseUrl.placeholder": "Basis-URL",
+  "providers.baseUrl.mount":
+    "Gib den Gateway-Pfad an. Das SDK hängt {{suffix}} an.",
+  "providers.baseUrl.apiBase":
+    "Gib die vollständige API-Basis einschließlich des Versionspfads des Gateways an.",
+  "providers.baseUrl.appends":
+    "Das SDK hängt {{suffix}} an. Der API-Pfad lautet {{path}}.",
+  "providers.baseUrl.suffix": "Der Endpunktpfad muss auf {{suffix}} enden.",
+  "providers.baseUrl.invalid":
+    "Verwende eine HTTP(S)-URL ohne Zugangsdaten, Abfrage oder Fragment.",
   "providers.baseUrl.aria": "{{provider}} Basis-URL",
   "providers.key": "Schlüssel {{masked}}",
   "providers.ready": "bereit",

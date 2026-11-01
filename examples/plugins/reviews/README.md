@@ -42,7 +42,7 @@ Schema and method references are presentation projections. Capability calls and
 receipt queries carry the original export identity; omitting it is refused before
 the business owner. The package declares its generic installed contribution and analyzer point.
 The ordinary board is compiled from `component/board.tsx` through the public SDK.
-The same Go-owned analyzer point also generates `component/analyzers.generated.ts`
+The same Go-owned analyzer point also generates `component/board.generated.ts`
 as an exact JSON string; TypeScript does not copy its applicability predicate.
 On refresh, the board resolves point metadata against its accepted review status
 and publishes that read model with the review. Analyze appears only when that

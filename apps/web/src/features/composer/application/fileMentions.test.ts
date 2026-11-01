@@ -117,12 +117,24 @@ describe("useFileMentions status", () => {
   });
 
   it("keeps the panel open with an empty result instead of vanishing", () => {
-    workspaceFiles.current = [{ path: "src/apple.ts" }];
+    workspaceFiles.current = [];
     const { result } = testClient.renderHook(() =>
       useFileMentions({ value: "@zzz", caret: 4, cwd: "/repo", apply }),
     );
     expect(result.current.open).toBe(true);
     expect(result.current.status).toBe("empty");
+  });
+
+  it("opens a new mention at the previously dismissed position", () => {
+    const { result, rerender } = testClient.renderHook(
+      ({ value }) => useFileMentions({ value, caret: value.length, cwd: "/repo", apply }),
+      { initialProps: { value: "@a" } },
+    );
+    act(() => result.current.dismiss());
+    expect(result.current.open).toBe(false);
+    rerender({ value: "" });
+    rerender({ value: "@b" });
+    expect(result.current.open).toBe(true);
   });
 
   it("reports a listing that has not arrived as loading", () => {

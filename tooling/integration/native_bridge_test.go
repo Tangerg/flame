@@ -28,7 +28,7 @@ func TestActualNativeBridgeProjectionIsCurrent(t *testing.T) {
 		published string
 	}{
 		{desktop, "apps/web/src/platform/desktop.generated.ts"},
-		{authorization, "apps/web/src/foundation/notificationAuthorization.ts"},
+		{authorization, "packages/component-sdk/src/notificationAuthorization.generated.ts"},
 	} {
 		want, err := os.ReadFile(projection.generated)
 		if err != nil {

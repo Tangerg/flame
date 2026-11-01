@@ -6,7 +6,15 @@ export const es: Record<string, string> = {
     "{{provider}} pierde su clave de API guardada. Tendrás que volver a pegarla para reconectar.",
   "providers.apiKey.placeholder": "Clave de API",
   "providers.apiKey.aria": "Clave de API de {{provider}}",
-  "providers.baseUrl.placeholder": "URL base",
+  "providers.baseUrl.mount":
+    "Introduce la ruta de la pasarela. El SDK añade {{suffix}}.",
+  "providers.baseUrl.apiBase":
+    "Usa la base completa de la API, incluida la ruta de versión de la pasarela.",
+  "providers.baseUrl.appends":
+    "El SDK añade {{suffix}}. La ruta de la API es {{path}}.",
+  "providers.baseUrl.suffix": "La ruta debe terminar en {{suffix}}.",
+  "providers.baseUrl.invalid":
+    "Introduce una URL HTTP(S) sin credenciales, consulta ni fragmento.",
   "providers.baseUrl.aria": "URL base de {{provider}}",
   "providers.key": "clave {{masked}}",
   "providers.ready": "listo",

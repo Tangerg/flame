@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
+
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/keymap"
@@ -145,15 +147,21 @@ func (m *modelConfigScreens) openProviderConfig(provider models.Provider) {
 		{Label: "Set endpoint", Value: formChangeSet},
 		{Label: "Clear endpoint", Value: formChangeClear},
 	})
+	endpointDraft := &providerEndpointDraft{value: baseURL, policy: provider.Endpoint()}
 	baseField := headless.NewText(headless.TextConfig{
-		Label: "Endpoint URL", Placeholder: "https://api.example.com", Value: headless.Bind(&baseURL),
+		Placeholder: endpointDraft.policy.Example, Value: endpointDraft,
 		Check: func(value string) error {
-			if baseMode.SetsValue() {
-				return requiredText(value)
+			if !baseMode.SetsValue() {
+				return nil
 			}
-			return nil
+			if err := requiredText(value); err != nil {
+				return err
+			}
+			return endpointDraft.policy.ValidateOverride(strings.TrimSpace(value))
 		},
 	})
+	endpointDraft.field = baseField
+	endpointDraft.Set(baseURL)
 	keyChoice := headless.NewSelect(headless.SelectConfig[formChange]{Same: headless.Equal[formChange], Label: "API key change", Value: headless.Bind(&keyMode), Rows: 3})
 	keyOptions := []headless.Option[formChange]{
 		{Label: "Keep current key", Value: formChangeKeep},
@@ -199,7 +207,7 @@ func (m *modelConfigScreens) openProviderConfig(provider models.Provider) {
 			clearKey()
 			return
 		}
-		update, err := providerUpdate(provider.ID(), baseMode, baseURL, keyMode, apiKey)
+		update, err := providerUpdate(provider.ID(), baseMode, endpointDraft.Value(), keyMode, apiKey)
 		if err != nil {
 			m.message("provider form: " + err.Error())
 			return
@@ -223,6 +231,30 @@ func (m *modelConfigScreens) openProviderConfig(provider models.Provider) {
 	})
 	m.providerDialog = dialog
 	dialog.Controller().Show()
+}
+
+type providerEndpointDraft struct {
+	value  string
+	policy flamemodel.EndpointPolicy
+	field  *headless.Text
+}
+
+func (d *providerEndpointDraft) Value() string { return d.value }
+func (d *providerEndpointDraft) Set(value string) {
+	d.value = value
+	label := "Endpoint URL"
+	switch {
+	case d.policy.AppendsPath != "":
+		label += " (SDK appends " + d.policy.AppendsPath + ")"
+		if effective := d.policy.EffectivePath(strings.TrimSpace(value)); effective != "" {
+			label += " · " + effective
+		}
+	case d.policy.RequiredSuffix != "":
+		label += " (must end with " + d.policy.RequiredSuffix + ")"
+	case d.policy.Example != "":
+		label += " (complete API base)"
+	}
+	d.field.Label = label
 }
 
 func providerUpdate(providerID string, baseMode formChange, baseURL string, keyMode formChange, apiKey string) (models.UpdateProvider, error) {

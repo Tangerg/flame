@@ -1,5 +1,8 @@
 import { PDFDocument, StandardFonts, degrees } from "pdf-lib";
 import { deflateRawSync } from "node:zlib";
+import { PNG } from "pngjs";
+import { encode as encodeJPEG } from "jpeg-js";
+import { imageBytes } from "./images";
 import { describe, expect, it } from "vitest";
 import {
   contentLimits,
@@ -14,6 +17,42 @@ const specification = (format: "docx" | "xlsx" | "pptx") =>
   catalog().formats.find((entry) => entry.format === format)!.exampleJSON!;
 
 describe("native deliverable formats", () => {
+  it("requires decodable authored image bytes with a bounded raster", async () => {
+    const png = PNG.sync.write(new PNG({ width: 1, height: 1 }));
+    const jpeg = encodeJPEG({
+      width: 1,
+      height: 1,
+      data: Buffer.from([0, 0, 0, 255]),
+    }).data;
+    for (const [mime, data] of [
+      ["image/png", png],
+      ["image/jpeg", jpeg],
+    ] as const) {
+      const image = {
+        mime,
+        alt: "test image",
+        base64: Buffer.from(data).toString("base64"),
+      };
+      expect(imageBytes(image)).toEqual(Buffer.from(data));
+      const damaged = {
+        ...image,
+        base64: Buffer.from(
+          data.subarray(0, mime === "image/png" ? 33 : 20),
+        ).toString("base64"),
+      };
+      expect(() => imageBytes(damaged)).toThrow();
+      await expect(
+        createFile(
+          "docx",
+          JSON.stringify({
+            title: "test",
+            blocks: [{ type: "image", image: damaged, width: 10, height: 10 }],
+          }),
+        ),
+      ).rejects.toThrow();
+    }
+  });
+
   it.each(["docx", "xlsx", "pptx"] as const)(
     "creates and inspects the complete %s catalog example",
     async (format) => {

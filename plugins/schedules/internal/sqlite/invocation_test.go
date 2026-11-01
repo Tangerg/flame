@@ -18,7 +18,7 @@ func TestCapturedTriggerSurvivesRestartAndCannotBeRewritten(t *testing.T) {
 	}
 	store := NewScheduleStore(db)
 	now := time.Date(2026, 10, 13, 10, 0, 0, 0, time.UTC)
-	definition, err := schedule.New("sch_trigger", schedule.Draft{Instructions: "captured", Cron: "@hourly", TimeZone: "UTC", Enabled: true}, now)
+	definition, err := schedule.New("sch_trigger", schedule.Draft{Instructions: "captured", Cron: "0 * * * *", TimeZone: "UTC", Enabled: true}, now)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,4 +1,4 @@
-import { type NotificationAuthorization } from "@/foundation/notificationAuthorization";
+import { type NotificationAuthorization } from "@flame/component-sdk/notifications";
 import { downloadBlob } from "@/platform/download";
 import { type ClientHost } from "@/platform/host";
 

@@ -83,10 +83,26 @@ export function createAutoPagingPromise<P extends CursorPage>(
   initialCursor?: string,
 ): AutoPagingPromise<P> {
   const validatedPolicy = createPaginationPolicy(policy);
+  const readPage = async (cursor?: string): Promise<P> => {
+    const page = await fetchPage(cursor);
+    if (page.data.length > validatedPolicy.maximumRowsPerPage) {
+      throw new PaginationError(
+        PaginationViolation.pageRowsExceeded,
+        "page row capacity exceeded",
+        {
+          limit: validatedPolicy.maximumRowsPerPage,
+          observed: page.data.length,
+        },
+      );
+    }
+    const cursorError = cursorSizeError(page.nextCursor, validatedPolicy);
+    if (cursorError) throw cursorError;
+    return page;
+  };
   const initialCursorError = cursorSizeError(initialCursor, validatedPolicy);
   const firstPage = initialCursorError
     ? Promise.reject<P>(initialCursorError)
-    : fetchPage(initialCursor);
+    : readPage(initialCursor);
 
   const pages = (): AsyncIterable<P> => ({
     async *[Symbol.asyncIterator]() {
@@ -100,20 +116,8 @@ export function createAutoPagingPromise<P extends CursorPage>(
 
       let page = await firstPage;
       for (;;) {
-        if (page.data.length > validatedPolicy.maximumRowsPerPage) {
-          throw new PaginationError(
-            PaginationViolation.pageRowsExceeded,
-            "page row capacity exceeded",
-            {
-              limit: validatedPolicy.maximumRowsPerPage,
-              observed: page.data.length,
-            },
-          );
-        }
         const cursor = page.nextCursor;
         if (cursor) {
-          const sizeError = cursorSizeError(cursor, validatedPolicy);
-          if (sizeError) throw sizeError;
           if (seen.has(cursor)) {
             throw new PaginationError(
               PaginationViolation.cursorCycle,
@@ -152,7 +156,7 @@ export function createAutoPagingPromise<P extends CursorPage>(
         }
         yield page;
         if (!cursor) return;
-        page = await fetchPage(cursor);
+        page = await readPage(cursor);
       }
     },
   });

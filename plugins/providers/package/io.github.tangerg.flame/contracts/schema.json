@@ -216,6 +216,24 @@
       },
       "type": "object"
     },
+    "EndpointPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "appendsPath": {
+          "type": "string"
+        },
+        "example": {
+          "type": "string"
+        },
+        "requiredSuffix": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "example"
+      ],
+      "type": "object"
+    },
     "Extensions": {
       "$ref": "#/$defs/Map"
     },
@@ -692,6 +710,9 @@
         },
         "embedding": {
           "$ref": "#/$defs/EmbeddingProfile"
+        },
+        "endpoint": {
+          "$ref": "#/$defs/EndpointPolicy"
         },
         "endpointRequired": {
           "type": "boolean"

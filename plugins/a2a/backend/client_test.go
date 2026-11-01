@@ -3,6 +3,7 @@ package main
 import (
 	json "encoding/json/v2"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -118,5 +119,24 @@ func TestConfigurationRejectsAmbiguousAuthoritiesWithoutExposingSecrets(t *testi
 	right, err := configureAgents([]agentSpec{{Name: "agent", CardURL: "https://example.test/card", AllowedRPCOrigins: []string{"https://rpc.test:443"}, Description: "renamed description"}})
 	if err != nil || left["agent"].authority != right["agent"].authority {
 		t.Fatalf("equivalent grants differ: %v", err)
+	}
+}
+
+func TestAgentCardTotalBudgetIgnoresUntrustedStreamType(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		io.WriteString(w, strings.Repeat("\n", 2<<20)+"{}")
+	}))
+	defer srv.Close()
+	agents, err := configureAgents([]agentSpec{{Name: "a", CardURL: srv.URL}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, _, err := agents["a"].discover(t.Context())
+	if c != nil {
+		c.Destroy()
+	}
+	if !errors.Is(err, errResponseLimit) {
+		t.Fatalf("2 MiB+ card accepted for decoding past 1 MiB document budget: %v", err)
 	}
 }

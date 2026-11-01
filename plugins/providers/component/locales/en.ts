@@ -7,7 +7,15 @@ export const en: Record<string, string> = {
   "providers.apiKey.placeholder": "API key",
   "providers.apiKey.envPlaceholder": "Using environment key — type to override",
   "providers.apiKey.aria": "{{provider}} API key",
-  "providers.baseUrl.placeholder": "Base URL",
+  "providers.baseUrl.mount":
+    "Enter the gateway mount. The SDK appends {{suffix}}.",
+  "providers.baseUrl.apiBase":
+    "Use the complete API base, including the gateway’s version path.",
+  "providers.baseUrl.appends":
+    "The SDK appends {{suffix}}. The resulting API path is {{path}}.",
+  "providers.baseUrl.suffix": "The endpoint path must end with {{suffix}}.",
+  "providers.baseUrl.invalid":
+    "Enter an HTTP(S) URL without credentials, query, or fragment.",
   "providers.baseUrl.aria": "{{provider}} base URL",
   "providers.key": "key {{masked}}",
   "providers.ready": "ready",

@@ -28,8 +28,12 @@ function writeStorage(operation: string, write: (storage: Storage) => void): voi
   }
 }
 
+export function pluginStoragePrefix(pluginName: string): string {
+  return `${tupleKey(ROOT, pluginName)}:`;
+}
+
 export function createStorage(pluginName: string): KeyValueStore {
-  const prefix = `${tupleKey(ROOT, pluginName)}:`;
+  const prefix = pluginStoragePrefix(pluginName);
 
   return {
     get(key: string): unknown {

@@ -1,4 +1,4 @@
-import { type NotificationAuthorization } from "@/foundation/notificationAuthorization";
+import { type NotificationAuthorization } from "@flame/component-sdk/notifications";
 import { normalizeRuntimeEndpoint } from "@flame/runtime-client";
 import { errorMessage, RpcTransportError } from "@flame/runtime-client";
 import { type ClientBootstrap, type ClientHost } from "@/platform/host";

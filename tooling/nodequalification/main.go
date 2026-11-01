@@ -34,6 +34,18 @@ func main() {
 	fmt.Printf("managed Node distribution qualified on %s/%s: host callback, CLI, restart, receipts, removal and retirement\n", runtime.GOOS, runtime.GOARCH)
 }
 
+const readinessPollInterval = 20 * time.Millisecond
+
+type distribution struct {
+	binaryDir string
+	stateDir  string
+	endpoint  string
+	env       []string
+	process   *exec.Cmd
+	exited    <-chan error
+	client    *runtimeclient.Client
+}
+
 func qualify(ctx context.Context, directory string) (err error) {
 	if !filepath.IsAbs(directory) {
 		return errors.New("qualification: distribution must be absolute")
@@ -49,216 +61,252 @@ func qualify(ctx context.Context, directory string) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		cleanupErr := filepath.WalkDir(state, func(path string, entry fs.DirEntry, walkErr error) error {
-			if walkErr != nil {
-				return walkErr
-			}
-			if entry.IsDir() {
-				return os.Chmod(path, 0700)
-			}
-			return nil
-		})
-		err = errors.Join(err, cleanupErr, os.RemoveAll(state))
-	}()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	defer func() { err = errors.Join(err, removeState(state)) }()
+	dist, err := newDistribution(directory, state)
 	if err != nil {
 		return err
+	}
+	defer func() { err = errors.Join(err, dist.stop(ctx)) }()
+	if err := dist.start(ctx); err != nil {
+		return err
+	}
+	return dist.checkReports(ctx)
+}
+
+func removeState(state string) error {
+	err := filepath.WalkDir(state, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return os.Chmod(path, 0700)
+		}
+		return nil
+	})
+	return errors.Join(err, os.RemoveAll(state))
+}
+
+func newDistribution(directory, state string) (*distribution, error) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return nil, err
 	}
 	address := listener.Addr().String()
 	if err := listener.Close(); err != nil {
-		return err
+		return nil, err
 	}
 	env := []string{"PATH=", "FLAME_HOME=" + filepath.Join(state, "home"), "FLAME_PROVIDER=anthropic", "FLAME_MODEL=claude-opus-5", "FLAME_APIKEY=qualification-key", "FLAME_SERVER_LISTEN=" + address, "FLAME_SERVER_NOLOCALTOKEN=true"}
-	if value, found := os.LookupEnv("HOME"); found {
-		env = append(env, "HOME="+value)
+	if home, ok := os.LookupEnv("HOME"); ok {
+		env = append(env, "HOME="+home)
 	}
-	config := filepath.Join(state, "config.yaml")
-	if err := os.WriteFile(config, []byte("{}\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(state, "config.yaml"), []byte("{}\n"), 0600); err != nil {
+		return nil, err
+	}
+	return &distribution{binaryDir: directory, stateDir: state, endpoint: "http://" + address, env: env}, nil
+}
+
+func (d *distribution) start(ctx context.Context) error {
+	cmd := exec.CommandContext(ctx, filepath.Join(d.binaryDir, "flame-runtime"))
+	cmd.Dir, cmd.Env, cmd.Stderr = d.stateDir, d.env, os.Stderr
+	if err := cmd.Start(); err != nil {
 		return err
 	}
-	var process *exec.Cmd
-	var exited chan error
-	var client *runtimeclient.Client
-	stop := func() error {
-		if process == nil {
+	exited := make(chan error, 1)
+	d.process, d.exited = cmd, exited
+	go func() { exited <- cmd.Wait() }()
+	client, err := runtimeclient.Connect(ctx, runtimeclient.RemoteConfig{Endpoint: d.endpoint})
+	if err != nil {
+		return err
+	}
+	d.client = client
+	for {
+		_, err := client.Discover(ctx, protocol.CallOptions{})
+		if err == nil {
 			return nil
 		}
-		var closeErr error
-		if client != nil {
-			closeErr = client.Close()
-			client = nil
-		}
-		signalErr := process.Process.Signal(os.Interrupt)
-		if errors.Is(signalErr, os.ErrProcessDone) {
-			signalErr = nil
+		if _, connecting := errors.AsType[*net.OpError](err); !connecting {
+			return err
 		}
 		select {
-		case waitErr := <-exited:
-			process = nil
-			return errors.Join(closeErr, signalErr, waitErr)
+		case err := <-exited:
+			d.process = nil
+			if err == nil {
+				return errors.New("qualification: Runtime exited before readiness")
+			}
+			return fmt.Errorf("qualification: Runtime exited before readiness: %w", err)
 		case <-ctx.Done():
-			_ = process.Process.Kill()
-			<-exited
-			process = nil
-			return errors.Join(closeErr, ctx.Err())
+			return ctx.Err()
+		case <-time.After(readinessPollInterval):
 		}
 	}
-	defer func() { err = errors.Join(err, stop()) }()
-	start := func() error {
-		process = exec.CommandContext(ctx, filepath.Join(directory, "flame-runtime"))
-		process.Dir, process.Env, process.Stderr = state, env, os.Stderr
-		if err := process.Start(); err != nil {
-			process = nil
-			return err
+}
+
+func (d *distribution) stop(ctx context.Context) error {
+	var err error
+	if d.client != nil {
+		err = d.client.Close()
+		d.client = nil
+	}
+	if d.process == nil {
+		return err
+	}
+	signalErr := d.process.Process.Signal(os.Interrupt)
+	if errors.Is(signalErr, os.ErrProcessDone) {
+		signalErr = nil
+	}
+	select {
+	case waitErr := <-d.exited:
+		d.process = nil
+		return errors.Join(err, signalErr, waitErr)
+	case <-ctx.Done():
+		killErr := d.process.Process.Kill()
+		if errors.Is(killErr, os.ErrProcessDone) {
+			killErr = nil
 		}
-		exited = make(chan error, 1)
-		running := process
-		go func() { exited <- running.Wait() }()
-		client, err = runtimeclient.Connect(ctx, runtimeclient.RemoteConfig{Endpoint: "http://" + address})
+		waitErr := <-d.exited
+		d.process = nil
+		return errors.Join(err, signalErr, ctx.Err(), killErr, waitErr)
+	}
+}
+
+func (d *distribution) waitBackend(ctx context.Context, id string) error {
+	for {
+		servers, err := d.client.ListMCPServers(ctx, protocol.CallOptions{})
 		if err != nil {
 			return err
 		}
-		for {
-			if _, discoverErr := client.Discover(ctx, protocol.CallOptions{}); discoverErr == nil {
+		for _, server := range servers.Data {
+			if server.ID.Origin.InstallationID != id {
+				continue
+			}
+			switch server.Status.Type {
+			case protocol.MCPServerConnected:
 				return nil
-			} else if _, connecting := errors.AsType[*net.OpError](discoverErr); !connecting {
-				return discoverErr
-			}
-			select {
-			case exitErr := <-exited:
-				process = nil
-				return fmt.Errorf("qualification: Runtime exited before readiness: %w", exitErr)
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(20 * time.Millisecond):
+			case protocol.MCPServerFailed:
+				return errors.New("qualification: managed backend activation failed")
 			}
 		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(readinessPollInterval):
+		}
 	}
-	if err := start(); err != nil {
-		return err
-	}
-	installed, err := client.ListPlugins(ctx, protocol.CallOptions{})
+}
+
+func (d *distribution) captureRequest(ctx context.Context) (protocol.CallPluginRequest, error) {
+	installed, err := d.client.ListPlugins(ctx, protocol.CallOptions{})
 	if err != nil {
-		return err
+		return protocol.CallPluginRequest{}, err
 	}
-	var usage protocol.PluginInstallation
-	for _, item := range installed.Data {
-		if item.Selected.Name == "flame.usagereports" {
-			usage = item
+	for _, usage := range installed.Data {
+		if usage.Selected.Name != "flame.usagereports" {
+			continue
 		}
-	}
-	if usage.ID == "" || len(usage.Selected.Components) != 1 {
-		return errors.New("qualification: complete managed usage package is absent")
-	}
-	wait := func() error {
-		for {
-			servers, err := client.ListMCPServers(ctx, protocol.CallOptions{})
-			if err != nil {
-				return err
-			}
-			for _, server := range servers.Data {
-				if server.ID.Origin.InstallationID != usage.ID {
-					continue
-				}
-				if server.Status.Type == protocol.MCPServerConnected {
-					return nil
-				}
-				if server.Status.Type == protocol.MCPServerFailed {
-					return errors.New("qualification: managed backend activation failed")
-				}
-			}
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(20 * time.Millisecond):
-			}
+		if len(usage.Selected.Components) != 1 {
+			break
 		}
-	}
-	if err := wait(); err != nil {
-		return err
-	}
-	contract, err := portable.ParseCapability([]byte(UsageReportsCapabilityJSON))
-	if err != nil {
-		return err
-	}
-	request := protocol.CallPluginRequest{InstallationID: usage.ID, Digest: usage.Selected.Digest, Contribution: "usage-reports", Contract: contract.Identity().String(), Method: UsageReportsCaptureV1Method, Input: `{"period":"daily"}`, Target: portable.Target{Scope: "installation", Reference: usage.ID}}
-	call := func(request protocol.CallPluginRequest, key string) (*protocol.CallPluginResponse, error) {
-		response, err := client.CallPlugin(ctx, request, protocol.PluginCallOptions{IdempotencyKey: key})
+		contract, err := portable.ParseCapability([]byte(UsageReportsCapabilityJSON))
 		if err != nil {
-			return nil, err
+			return protocol.CallPluginRequest{}, err
 		}
-		if response.Failure != nil {
-			return nil, fmt.Errorf("qualification: business refusal %s", response.Failure.Code)
-		}
-		return response, nil
+		return protocol.CallPluginRequest{InstallationID: usage.ID, Digest: usage.Selected.Digest, Contribution: "usage-reports", Contract: contract.Identity().String(), Method: UsageReportsCaptureV1Method, Input: `{"period":"daily"}`, Target: portable.Target{Scope: "installation", Reference: usage.ID}}, nil
 	}
-	original, err := call(request, "original-save")
+	return protocol.CallPluginRequest{}, errors.New("qualification: complete managed usage package is absent")
+}
+
+func (d *distribution) call(ctx context.Context, request protocol.CallPluginRequest, key string) (*protocol.CallPluginResponse, error) {
+	response, err := d.client.CallPlugin(ctx, request, protocol.PluginCallOptions{IdempotencyKey: key})
 	if err != nil {
+		return nil, err
+	}
+	if response.Failure != nil {
+		return nil, fmt.Errorf("qualification: business refusal %s", response.Failure.Code)
+	}
+	return response, nil
+}
+
+func (d *distribution) captureWithCLI(ctx context.Context, request protocol.CallPluginRequest) error {
+	input, err := json.Marshal(request)
+	if err != nil {
+		return err
+	}
+	cli := exec.CommandContext(ctx, filepath.Join(d.binaryDir, "flame"), "--config", filepath.Join(d.stateDir, "config.yaml"), "--runtime-url", d.endpoint, "plugins", "call", "--request", string(input), "--command-id", "cli_0123456789abcdef0123456789abcdef")
+	cli.Dir, cli.Env, cli.Stderr = d.stateDir, d.env, os.Stderr
+	output, err := cli.Output()
+	if err != nil {
+		return fmt.Errorf("qualification: CLI call: %w", err)
+	}
+	var reply protocol.CallPluginResponse
+	if err := json.Unmarshal(output, &reply); err != nil || reply.Failure != nil || reply.Output == "" {
+		return errors.Join(errors.New("qualification: CLI did not capture the installed capability"), err)
+	}
+	return nil
+}
+
+func (d *distribution) checkReports(ctx context.Context) error {
+	request, err := d.captureRequest(ctx)
+	if err != nil {
+		return err
+	}
+	if err := d.waitBackend(ctx, request.InstallationID); err != nil {
+		return err
+	}
+	original, err := d.call(ctx, request, "original-save")
+	if err != nil {
+		return err
+	}
+	if err := d.captureWithCLI(ctx, request); err != nil {
 		return err
 	}
 	var header UsageReportsHeader
 	if err := json.Unmarshal([]byte(original.Output), &header); err != nil {
 		return err
 	}
-	cliInput, err := json.Marshal(request)
-	if err != nil {
-		return err
-	}
-	cli := exec.CommandContext(ctx, filepath.Join(directory, "flame"), "--config", config, "--runtime-url", "http://"+address, "plugins", "call", "--request", string(cliInput), "--command-id", "cli_0123456789abcdef0123456789abcdef")
-	cli.Dir, cli.Env, cli.Stderr = state, env, os.Stderr
-	cliOutput, err := cli.Output()
-	if err != nil {
-		return fmt.Errorf("qualification: CLI call: %w", err)
-	}
-	var cliReply protocol.CallPluginResponse
-	if err := json.Unmarshal(cliOutput, &cliReply); err != nil || cliReply.Failure != nil || cliReply.Output == "" {
-		return errors.Join(errors.New("qualification: CLI did not capture the installed capability"), err)
-	}
-	read := request
-	read.Method = UsageReportsGetV1Method
 	encoded, err := json.Marshal(UsageReportsReportInput{Id: header.Id})
 	if err != nil {
 		return err
 	}
-	read.Input = string(encoded)
-	saved, err := call(read, "")
+	read := request
+	read.Method, read.Input = UsageReportsGetV1Method, string(encoded)
+	saved, err := d.call(ctx, read, "")
 	if err != nil {
 		return err
 	}
-	if err := stop(); err != nil {
+	if err := d.stop(ctx); err != nil {
 		return err
 	}
-	if err := start(); err != nil {
+	if err := d.start(ctx); err != nil {
 		return err
 	}
-	if err := wait(); err != nil {
+	if err := d.waitBackend(ctx, request.InstallationID); err != nil {
 		return err
 	}
-	restored, err := call(read, "")
-	if err != nil {
+	if err := d.verifyOriginal(ctx, read, "", saved.Output); err != nil {
 		return err
 	}
-	if saved.Output != restored.Output {
-		return errors.New("qualification: archived accounting changed across restart")
-	}
-	replay, err := call(request, "original-save")
-	if err != nil {
+	if err := d.verifyOriginal(ctx, request, "original-save", original.Output); err != nil {
 		return err
-	}
-	if replay.Output != original.Output {
-		return errors.New("qualification: original capture replay changed")
 	}
 	remove := read
 	remove.Method = UsageReportsDeleteV1Method
-	if _, err := call(remove, "original-remove"); err != nil {
+	if _, err := d.call(ctx, remove, "original-remove"); err != nil {
 		return err
 	}
-	if _, err := call(request, "original-save"); err != nil {
+	if err := d.verifyOriginal(ctx, request, "original-save", original.Output); err != nil {
 		return err
 	}
-	if _, err := client.SetPluginEnablement(ctx, protocol.SetPluginEnablementRequest{InstallationID: usage.ID, Enabled: false}, protocol.CommandOptions{}); err != nil {
+	_, err = d.client.SetPluginEnablement(ctx, protocol.SetPluginEnablementRequest{InstallationID: request.InstallationID, Enabled: false}, protocol.CommandOptions{})
+	return err
+}
+
+func (d *distribution) verifyOriginal(ctx context.Context, request protocol.CallPluginRequest, key, output string) error {
+	reply, err := d.call(ctx, request, key)
+	if err != nil {
 		return err
 	}
-	return stop()
+	if reply.Output != output {
+		return fmt.Errorf("qualification: %s result changed across restart", request.Method)
+	}
+	return nil
 }

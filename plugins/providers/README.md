@@ -53,3 +53,5 @@ win over this process fallback. Former vendor-specific environment aliases are
 removed; configure their values through `providers.update` or the default
 provider's process setting. Runtime process configuration names both its
 provider and model explicitly.
+
+The configuration screens render the base URL example and path policy published by the installed provider profile. Preserve the gateway mount path. Anthropic and Google append their API version to that mount. OpenAI-compatible gateways take a versioned API base, and Azure uses the resource-specific `/openai/v1` base with a deployment name.

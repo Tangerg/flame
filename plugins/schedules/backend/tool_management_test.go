@@ -221,7 +221,7 @@ func TestModelManualRunRetainsItsCommandAcrossRestartAndDeletedDefinition(t *tes
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	store := scheduledb.NewScheduleStore(db)
-	definition, err := schedule.New("sch_model_manual", schedule.Draft{Instructions: "captured original", Cron: "@hourly", TimeZone: "UTC"}, time.Now())
+	definition, err := schedule.New("sch_model_manual", schedule.Draft{Instructions: "captured original", Cron: "0 * * * *", TimeZone: "UTC"}, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}

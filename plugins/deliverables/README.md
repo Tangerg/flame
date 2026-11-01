@@ -219,9 +219,9 @@ node tooling/office-toolchain.mjs --output /absolute/toolchains
 The command prints the executable path to use for `office-executable`. Add its
 package directory (the parent of `bin`) to `tool-installation-roots`, alongside
 Homebrew's `Cellar` and `opt` directories when using Homebrew Poppler, or `/opt/local`
-when using MacPorts. CI uses `sudo port -N -b install poppler` on both macOS
-architectures, with the three PDF executables under `/opt/local/bin`. Binary-only
-installation fails explicitly if a required archive is unavailable. Homebrew
+when using MacPorts. CI builds against a pinned MacPorts ports tree on both macOS architectures.
+MacPorts can use a matching binary archive or build from the pinned port's
+verified source. The three PDF executables are installed under `/opt/local/bin`. Homebrew
 [no longer publishes new Intel bottles](https://docs.brew.sh/Support-Tiers), so
 MacPorts is the supported Intel installation route. Existing
 macOS installations must replace their `soffice` input and its installation root

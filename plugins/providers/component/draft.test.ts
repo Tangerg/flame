@@ -81,3 +81,24 @@ describe("ProviderCredentialsDraft", () => {
     ).toBe("https://entered");
   });
 });
+
+it("previews the mounted SDK path and keeps intentional versioned proxy mounts available", () => {
+  const root = {
+    endpoint: { example: "https://example.invalid/mount", appendsPath: "/v1" },
+  };
+  const draft = ProviderCredentialsDraft.initial().withBaseURL(
+    "https://example.invalid/mount/v1",
+  );
+  expect(draft.endpointPath(root)).toBe("/mount/v1/v1");
+  expect(draft.valid(root)).toBe(true);
+  const base = {
+    endpoint: {
+      example: "https://example.invalid/openai/v1",
+      requiredSuffix: "/openai/v1",
+    },
+  };
+  expect(draft.endpointError(base)).toBe("suffix");
+  expect(
+    draft.withBaseURL("https://example.invalid/gateway/openai/v1").valid(base),
+  ).toBe(true);
+});

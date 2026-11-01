@@ -38,6 +38,7 @@ export async function runtime(
       fetch: callbackFetch(captured, owner, HTTP_ENDPOINTS.rpc.path),
       maximumEventStreamFrameCharacters: capacity,
       maximumEventStreamFrameBytes: capacity,
+      maximumResponseBytes: capacity,
     }),
     {
       requestMeta: () => ({ protocolVersion: PROTOCOL_VERSION }),

@@ -6,7 +6,13 @@ export const zhTW: Record<string, string> = {
     "{{provider}} 將失去已儲存的 API 金鑰，需要重新貼上才能再次連線。",
   "providers.apiKey.placeholder": "API 金鑰",
   "providers.apiKey.aria": "{{provider}} API 金鑰",
-  "providers.baseUrl.placeholder": "Base URL",
+  "providers.baseUrl.mount": "請填寫閘道掛載位址。SDK 會加上 {{suffix}}。",
+  "providers.baseUrl.apiBase": "請填寫完整 API 基址，包含閘道使用的版本路徑。",
+  "providers.baseUrl.appends":
+    "SDK 會加上 {{suffix}}，最終 API 路徑為 {{path}}。",
+  "providers.baseUrl.suffix": "位址路徑必須以 {{suffix}} 結尾。",
+  "providers.baseUrl.invalid":
+    "請輸入不含憑證、查詢參數或片段的 HTTP(S) 網址。",
   "providers.baseUrl.aria": "{{provider}} Base URL",
   "providers.key": "金鑰 {{masked}}",
   "providers.ready": "就緒",

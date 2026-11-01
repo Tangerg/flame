@@ -29,6 +29,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+const labels = {
+  view: "View image",
+  close: "Close image preview",
+  description: "Image description",
+  zoomIn: "Zoom in image",
+  zoomOut: "Zoom out image",
+};
+
 async function openImage() {
   const trigger = screen.getByRole("button", {
     name: "View image: Boundary map",
@@ -46,7 +54,7 @@ it("opens the original source, zooms and returns to its thumbnail without changi
   render(
     <>
       <input aria-label="Draft" defaultValue="Continue from this evidence" />
-      <EvidenceImage src={source} alt="Boundary map" />
+      <EvidenceImage labels={labels} src={source} alt="Boundary map" />
     </>,
   );
   const thumbnail = screen.getByRole("img", { name: "Boundary map" });
@@ -77,7 +85,7 @@ it("retires a hidden reading view and keeps it closed when its owner returns", a
   const scene = (visible: boolean) => (
     <>
       <ContentVisibility visible={visible}>
-        <EvidenceImage src={source} alt="Boundary map" />
+        <EvidenceImage labels={labels} src={source} alt="Boundary map" />
       </ContentVisibility>
       <button>Later action</button>
     </>
@@ -95,11 +103,15 @@ it("retires a hidden reading view and keeps it closed when its owner returns", a
 });
 
 it("ends an open capture when its source is replaced instead of retargeting the viewer", async () => {
-  const view = render(<EvidenceImage src={source} alt="Boundary map" />);
+  const view = render(
+    <EvidenceImage labels={labels} src={source} alt="Boundary map" />,
+  );
   await openImage();
   const replacement =
     "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
-  view.rerender(<EvidenceImage src={replacement} alt="Next page" />);
+  view.rerender(
+    <EvidenceImage labels={labels} src={replacement} alt="Next page" />,
+  );
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(
     screen.getByRole("img", { name: "Next page" }).getAttribute("src"),

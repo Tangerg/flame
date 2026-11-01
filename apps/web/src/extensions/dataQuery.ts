@@ -1,6 +1,6 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { type Query, type UseQueryResult } from "@tanstack/react-query";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { type Host } from "dougong";
 import { queryClient } from "@/lib/queryClient";
 import { type Contribution } from "@/extensions/contracts";
@@ -151,6 +151,15 @@ export interface ParameterizedQueryOptions<P, T> {
   keepWhenContinuous?: (previous: P, next: P) => boolean;
 }
 
+export function parameterizedQuery<P, T>(key: string, params: P | undefined) {
+  return queryOptions({
+    queryKey: [key, params],
+    queryFn: ({ signal }) => dataQueryOwner.load<T, P>(key, params, signal),
+    enabled: params !== undefined,
+    ...STATIC_QUERY_OPTIONS,
+  });
+}
+
 export function createParameterizedDataQuery<P, T>(
   key: string,
   options?: ParameterizedQueryOptions<P, T>,
@@ -159,10 +168,7 @@ export function createParameterizedDataQuery<P, T>(
   const keep = options?.keepWhenContinuous;
   return (params) =>
     useQuery({
-      queryKey: [key, params],
-      queryFn: ({ signal }) => dataQueryOwner.load<T, P>(key, params, signal),
-      enabled: params !== undefined,
-      ...STATIC_QUERY_OPTIONS,
+      ...parameterizedQuery<P, T>(key, params),
       refetchInterval: interval ? (query) => interval(query.state.data) : undefined,
       placeholderData: keep
         ? (previous, previousQuery) => {

@@ -11,6 +11,10 @@ const client = createFlameClient(createHttpTransport({ baseUrl: "http://127.0.0.
 const discovery = await client.runtime.discover();
 ```
 
+A successful streaming call requires a 200 SSE response. A 200 JSON document may carry
+its refusal. Both RPC and sidecar clients bound ordinary response documents with
+`maximumResponseBytes` (128 MiB by default), including error bodies without a length.
+
 Consumers use explicit public entries: the main API, `json`, `wire`, `methods`,
 `validation`, `testing`, and `testing/samples/*`. Internal implementation paths
 and unit tests are not exports. `testing` supplies the deliberate memory-transport
