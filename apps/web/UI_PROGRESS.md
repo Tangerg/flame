@@ -35,7 +35,9 @@ Shared row-header alignment is qualified under **Shared table rows and multiline
 evidence (2026-11-02)**, published as `d40b86262`. External-source navigation
 and read-only map targets are qualified under **External sources and linked map
 targets (2026-11-02)**, published as `3de198b27`. Memory reading is qualified under
-**Memory read and page continuity (2026-11-02)**. The latest goal restores
+**Memory read and page continuity (2026-11-02)**, published as `e2f58d756`. The
+form-command follow-up is recorded under **Memory submission and original-result
+actions (2026-11-02)**. The latest goal restores
 preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
 describe their historical scope.
@@ -4763,6 +4765,156 @@ no accepted product input; publication is followed by fresh remote, cleanliness
 and preservation checks. Continue from a fresh task observation, preserving this
 accepted hierarchy and the preceding color/focus work.
 
+### Memory submission and original-result actions (2026-11-02)
+
+Baseline native Wails reproduced a complete form-task interruption: Save and
+Check original result become native disabled controls, lose focus to the HTML
+root and leave subsequent Tab at the fixture sidebar. Even a recovered known
+success closes the form without restoring its opener because the form no longer
+owns focus. Unknown form results also keep an unavailable Save beside Cancel,
+with a separate recovery action above them. An intermediate candidate exposes
+the related record-recovery endpoint: its pending button keeps focus, but a known
+result removes it and drops focus to the document while an independent draft stays.
+
+The form's existing primary Button now owns its current task action. Add/Edit
+use Save and Delete keeps its destructive confirmation; an editor-origin unknown
+result changes that same Button to Check original result. It calls the existing
+original handle's reconciliation, without dispatching a new change. Delete
+recovery uses the ordinary primary treatment rather than destructive red. Shared
+pending preserves focus and blocks repeated activation. Cancel and locked form
+actions remain focusable but inert; truly empty/unchanged Save remains native
+disabled. Context retirement still disables the action. An independent record's
+unknown command blocks the form and keeps its recovery in the catalog.
+
+`MemoryFeedback` retains status, concrete refusal details and original identity.
+Editor identity uses plain Metadata; its recovery appears only in the form's
+primary action. Record recovery retains its named toolbar. A small local
+`RecordRecovery` component owns the retiring control's actual focus lifetime:
+layout cleanup captures whether its button still owns focus; passive cleanup
+focuses the existing connected result block only after the button has left and
+the body is unclaimed. Pending/repeated unknown, later search/draft choices and
+whole-feedback retirement cannot trigger that handoff. The result is an ordinary
+programmatic focus destination, without a new Tab stop. RecordForm retains form
+success/cancellation restoration. No new command state, timer, retry owner,
+shared API, command path, style or dependency is introduced.
+
+Native 200% deletion also exposes misplaced feedback: the focused action remains
+visible while its command identity/status scrolls behind the fixed controls.
+Both forms now consume the existing `FormActions.feedback` slot. That shared
+owner already keeps feedback and controls as one fitting unit and remeasures an
+asynchronous result while action focus stays here. No local scroll compensation
+or extra wrapper is needed. Focus outside the action group keeps its later reading
+choice. Group-scoped refusal and original-identity assertions cover this composition.
+
+All eight catalogs shorten uncertainty feedback to its status and remove the
+generic refused hint. The actual action and gates now express the recovery path;
+concrete provider errors stay verbatim. Source lives in the Memory component,
+MemoryFeedback and its existing catalogs, with the module README and normally
+rebuilt component ESM. The accepted read/page implementation and original command
+hook, SDK, protocol and backend remain unchanged.
+
+Read-only HeroUI `button/loading-state.tsx` informs stable pending control
+identity; Flame's existing shared Button, RecordForm focus ownership and original
+mutation lifecycle supply the actual contracts. The earlier ZCode, ChatGPT,
+Radix, Arc, color and Ace studies retain their recorded scope. Better accessibility,
+layout and writing favor a stable current task action, a local result destination
+and concrete feedback over repeated recovery instructions. This is no evidence
+for uninspected reference behavior or a whole-product design verdict.
+
+Verification:
+
+- Six related Web files pass **137 tests**, including **46 Memory cases**. They
+  cover one primary element through submission/refusal/unknown/repeated recheck,
+  same-key recovery, no replacement writes, inert Cancel/blocked writes, captured
+  drafts/targets, record/editor ownership, confirmation/refusal focus, later search
+  and draft choices, and existing reading/return contracts. After correcting
+  conditional test assertions caught by lint, all 46 Memory cases pass again.
+- The exact original component/feedback/eight catalogs fail three focused cases.
+  Removing only the new record-result handoff fails both confirmation and refusal
+  endpoints with body focus. Each replay restores candidate bytes in `finally`.
+- Original and final `make check-native`, Web/plugin typechecks and lints, plugin
+  catalog parity/resources, and Web design-system, token, chrome, locale, HMR,
+  layer, production bundle and plugin-module checks pass. Normal generation changes
+  only the Memory ESM. The native gate keeps its existing SDK/link-target warnings;
+  the isolated actual app uses the exact Wails v3.0.0 and production/macOS-13 flags.
+- Preferred bounded Claude Code CLI calls edit only the allowed component/test/
+  catalog paths; their reports show 45 and 18 turns. Neither executes checks.
+  Root reviews actual diffs, strengthens repeated-unknown coverage, removes style
+  reflection assertions, corrects the introduced lint findings and owns native
+  qualification, generated output and publication.
+
+The isolated provider uses the production InstalledComponent and public SDK/client,
+canonical plugin refusal/internal-error/success envelopes, a frozen request and
+immutable reply per original key/namespace, and delayed reads. The second command
+has two unavailable acknowledgements before its stored reply is delivered; a
+replacement key cannot stand in for that unresolved receipt. Its page advances
+once, in the private provider, and the UI only accepts the subsequent read. No
+live Runtime, provider installation, user data or message submission is involved.
+
+Final native acceptance uses the grouped source in three fresh Wails processes:
+
+- English, light/Flame Orange, 14px, wide split workspace: keyboard Save keeps the
+  same focus through pending and concrete refusal. Corrected content uses a new
+  intentional command; unknown and repeated-unknown recovery retain one primary
+  button and the same original key. Escape, repeated Enter and Cancel cannot
+  replace or cancel it. Confirmation closes Add and restores its opener; the
+  accepted page contains the corrected third record. Editing that exact ID and
+  choosing Search while pending retains the later query/focus through completion
+  and the accepted read. Files, full-width reading, return to Dock and return to
+  Memory preserve the query, updated record and confirmation; the conversation
+  draft remains editable without sending.
+- Chinese, dark/custom blue, 18px, macOS left-half window and actual native 200%
+  zoom: the captured deletion identifies the original record and starts on Cancel.
+  Pending, refusal and unknown keep status/key with the visible action group;
+  the same focused Delete becomes the blue original-result primary action. Two
+  unknown acknowledgements preserve the key. Keyboard Cancel/Enter/Escape remain
+  inert while unresolved. Confirmation removes only the named record, restores
+  Search and leaves one accepted record. Full-width Files and its explicit return
+  preserve that confirmation; closing the reader restores the Chinese composer
+  draft and allows continued input.
+- English independent-record recovery, light/Orange, 14px: an open Add draft
+  stays locked while the catalog's original Approve remains unknown. Keyboard
+  navigation reaches inert Cancel/Save and then the one catalog recovery action.
+  Pending and repeated unknown keep its focus/key. Known confirmation retires
+  that control and focuses the existing result block; Tab continues to the same
+  record's now-active details after its accepted read. The independent draft
+  remains intact and editable; ordinary cancellation restores Add. This native
+  scene qualifies the confirmed endpoint; the refusal endpoint and later draft
+  and search focus choices additionally have the regression coverage above.
+
+Scoped better-* review:
+
+| Domain        | Evidence and verdict                                                                                                                                                                   |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Stable primary and recovery focus, inert keyboard waits, result handoff and later focus choices; pass for the exercised native paths and regression contracts.                         |
+| Layout        | Existing fitting feedback/action group in the split workspace and the narrow full reader at 200%; no competing scroll owner or local sizing rule.                                      |
+| Writing       | Eight catalogs keep concrete state, action and provider detail; redundant generic recovery instructions are removed. Only English and Chinese receive native GUI qualification.        |
+| Typography    | 14px English and 18px Chinese retain target identity, original key, wrapped content and readable feedback in the exercised widths. No type scale changes.                              |
+| Color         | Existing Orange/light and blue/dark semantic treatments remain; destructive Delete changes to ordinary primary recovery. Visible focus is checked, with no new numeric contrast claim. |
+| UI            | One control carries the current task through pending and recovery; existing feedback, press and motion behavior remains. No new decoration, animation or component system.             |
+
+This accepts the changed form/recovery task in these scenes. It is not a claim
+that the entire Memory surface or product has reached a visual ceiling. The
+unmodified initial record Approve/Reject/menu command lifecycle remains separate:
+native Approve still drops focus when it becomes disabled. That concrete reading
+interruption is the next candidate, subject to fresh owner/caller inspection.
+VoiceOver, physical IME composition, fresh rendered contrast measurements,
+other-language/native-platform GUIs and real provider/backend durability remain
+unqualified. No browser visual suite or performance benchmark runs. There is no
+protocol, storage or backend migration.
+
+All seven owned native instances (baseline, intermediate and final scenes) are
+closed, and the exact private executable process audit is empty. LaunchServices
+is unregistered; all six private Library paths and nine checkout output roots
+are restored to their absent baselines. The private app, Web assets and home are
+removed. Logs, CLI inputs/results and replay sources are retired after review;
+only the active toolchain `bin` and npm CLI `_npx` prerequisites are retained for
+the continuing goal. Root dependencies, user data, unrelated processes and
+read-only references remain untouched. A fresh fetch finds zero incoming main
+commits at `e2f58d756`, with the primary main checkout clean. Delivery follows the
+authorized explicit-path commit, fast-forward main and remote push workflow,
+followed by fresh cleanliness, remote equality and resource audits.
+
 ### Memory read and page continuity (2026-11-02)
 
 Actual current Wails showed two related defects: Refresh and Next became native
@@ -4893,9 +5045,9 @@ retired with delivery. The publication fetch finds zero incoming main commits at
 `3de198b27`, and the primary main checkout is clean before integration. This
 batch follows the authorized fast-forward-to-main and push workflow. No protocol,
 stored-data or backend migration is required. Continue from actual native
-evidence for the next complete task; native command waits/unknown reconciliation
-remain unqualified by this read-only batch and should not be changed merely from
-their disabled props.
+evidence for the next complete task. This read-only batch does not qualify command
+waits/reconciliation; the later form/recovery qualification is recorded under
+**Memory submission and original-result actions (2026-11-02)**.
 
 ### Memory filtered-result recovery
 

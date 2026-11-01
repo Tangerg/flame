@@ -218,6 +218,17 @@ captured target and draft. Independent record commands keep that draft; only the
 submitting form's successful original command closes it, including after reconciliation.
 Unknown acknowledgement retains the
 original mutation handle/key, blocks new changes and exposes same-command reconciliation.
+The form's primary action becomes Check original result for its own unknown
+command, keeping one button through submission and recovery. Waiting actions
+retain focus while blocking activation; Cancel stays reachable but unavailable
+until the command is settled. A record-origin command keeps its recovery beside
+the catalog and leaves an independent form blocked. Concrete refusal details and
+the original identity stay visible without repeating generic recovery guidance.
+FormActions groups that feedback with the current controls as one fitting reading
+unit, including when asynchronous feedback arrives at large zoom.
+When a focused record-recovery action retires after a known result, its existing
+confirmation or refusal receives focus. A later search or draft focus choice
+survives that settlement; the independent form remains open.
 A command retains its action, target and editor/record origin for feedback and
 reconciliation. Draft feedback stays beside the form actions; independent record
 feedback stays with the catalog. An acknowledged form closes before the subsequent

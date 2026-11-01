@@ -73,11 +73,9 @@ export const zh: Record<string, string> = {
   "fact.session": "来源会话",
   "fact.day": "日期",
   "feedback.submitting": "{{label}} · 提交中…",
-  "feedback.unknown":
-    "{{label}} · 确认结果未知。提交其他更改前，请先查看原始结果。",
+  "feedback.unknown": "{{label}} · 确认结果未知。",
   "feedback.refused": "{{label}} · 已拒绝。",
   "feedback.confirmed": "{{label}} · 已确认。",
-  "feedback.refusedHint": "请查看已记录的结果，然后重试。",
   "feedback.original.label": "原始记忆命令",
   "feedback.original": "原始命令：{{key}}",
   "feedback.check": "查看原始结果",

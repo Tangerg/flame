@@ -74,11 +74,9 @@ export const en: Record<string, string> = {
   "fact.session": "Source Session",
   "fact.day": "Day",
   "feedback.submitting": "{{label}} · submitting…",
-  "feedback.unknown":
-    "{{label}} · confirmation unknown. Check the original result before submitting another change.",
+  "feedback.unknown": "{{label}} · confirmation unknown.",
   "feedback.refused": "{{label}} · refused.",
   "feedback.confirmed": "{{label}} · confirmed.",
-  "feedback.refusedHint": "Review the recorded result, then try again.",
   "feedback.original.label": "Original Memory command",
   "feedback.original": "Original command: {{key}}",
   "feedback.check": "Check original result",

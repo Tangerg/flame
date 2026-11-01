@@ -74,11 +74,9 @@ export const ko: Record<string, string> = {
   "fact.session": "출처 세션",
   "fact.day": "날짜",
   "feedback.submitting": "{{label}} · 제출 중…",
-  "feedback.unknown":
-    "{{label}} · 확인 결과를 알 수 없습니다. 다른 변경을 제출하기 전에 원래 결과를 확인하세요.",
+  "feedback.unknown": "{{label}} · 확인 결과를 알 수 없습니다.",
   "feedback.refused": "{{label}} · 거부되었습니다.",
   "feedback.confirmed": "{{label}} · 확인됨.",
-  "feedback.refusedHint": "기록된 결과를 확인한 후 다시 시도하세요.",
   "feedback.original.label": "원래 메모리 명령",
   "feedback.original": "원래 명령: {{key}}",
   "feedback.check": "원래 결과 확인",

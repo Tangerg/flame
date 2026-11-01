@@ -68,6 +68,7 @@ export function Memory({ context }: { context: ComponentContext }) {
     summary,
     recordFeedback,
   } = useMemory(context);
+  const recovering = unknown?.source === "editor";
   function clearFiltersAndFocusSearch() {
     clearFilters();
     searchElement.current?.focus();
@@ -240,17 +241,24 @@ export function Memory({ context }: { context: ComponentContext }) {
           </RecordMeta>
           <RecordBody>{edit.item.Content}</RecordBody>
           <Metadata>{t("delete.notice")}</Metadata>
-          <MemoryFeedback
-            feedback={editorFeedback}
-            original={unknown?.source === "editor" ? unknown : undefined}
-            pending={pending}
-            reconcile={reconcile}
-            t={t}
-          />
-          <FormActions label={t("delete.actions.label")}>
+          <FormActions
+            label={t("delete.actions.label")}
+            feedback={
+              (editorFeedback || recovering) && (
+                <MemoryFeedback
+                  feedback={editorFeedback}
+                  original={recovering ? unknown : undefined}
+                  pending={pending}
+                  reconcile={reconcile}
+                  t={t}
+                />
+              )
+            }
+          >
             <Button
               variant="ghost"
               disabled={locked}
+              focusableWhenDisabled
               // oxlint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
               onClick={() => setEdit(undefined)}
@@ -258,19 +266,27 @@ export function Memory({ context }: { context: ComponentContext }) {
               {t("cancel")}
             </Button>
             <Button
-              variant="tonal"
-              tone="negative"
-              disabled={locked}
-              onClick={() =>
-                change(
-                  "flame.memory/delete.v2",
-                  { ID: edit.item.ID, ExpectedRevision: edit.item.Revision },
-                  t("command.delete", { id: edit.item.ID }),
-                  "editor",
-                )
+              variant={recovering ? "primary" : "tonal"}
+              tone={recovering ? undefined : "negative"}
+              pending={pending}
+              disabled={recovering ? context.signal.aborted : locked}
+              focusableWhenDisabled={locked}
+              onClick={
+                recovering
+                  ? reconcile
+                  : () =>
+                      change(
+                        "flame.memory/delete.v2",
+                        {
+                          ID: edit.item.ID,
+                          ExpectedRevision: edit.item.Revision,
+                        },
+                        t("command.delete", { id: edit.item.ID }),
+                        "editor",
+                      )
               }
             >
-              {t("delete.confirm")}
+              {recovering ? t("feedback.check") : t("delete.confirm")}
             </Button>
           </FormActions>
         </RecordForm>
@@ -300,16 +316,23 @@ export function Memory({ context }: { context: ComponentContext }) {
               }
             />
           </FormField>
-          <MemoryFeedback
-            feedback={editorFeedback}
-            original={unknown?.source === "editor" ? unknown : undefined}
-            pending={pending}
-            reconcile={reconcile}
-            t={t}
-          />
-          <FormActions label={t("save.actions.label")}>
+          <FormActions
+            label={t("save.actions.label")}
+            feedback={
+              (editorFeedback || recovering) && (
+                <MemoryFeedback
+                  feedback={editorFeedback}
+                  original={recovering ? unknown : undefined}
+                  pending={pending}
+                  reconcile={reconcile}
+                  t={t}
+                />
+              )
+            }
+          >
             <Button
               disabled={locked}
+              focusableWhenDisabled
               variant="ghost"
               onClick={() => setEdit(undefined)}
             >
@@ -317,37 +340,44 @@ export function Memory({ context }: { context: ComponentContext }) {
             </Button>
             <Button
               variant="primary"
+              pending={pending}
               disabled={
-                locked ||
-                !edit.content.trim() ||
-                (edit.type === "update" &&
-                  edit.content.trim() === edit.item.Content)
+                recovering
+                  ? context.signal.aborted
+                  : locked ||
+                    !edit.content.trim() ||
+                    (edit.type === "update" &&
+                      edit.content.trim() === edit.item.Content)
               }
-              onClick={() =>
-                edit.type === "add"
-                  ? change(
-                      "flame.memory/add.v2",
-                      {
-                        Scope: scope,
-                        CWD: cwd!,
-                        Content: edit.content.trim(),
-                      },
-                      t(`command.add.${scope}`),
-                      "editor",
-                    )
-                  : change(
-                      "flame.memory/update.v2",
-                      {
-                        ID: edit.item.ID,
-                        ExpectedRevision: edit.item.Revision,
-                        Content: edit.content.trim(),
-                      },
-                      t("command.edit", { id: edit.item.ID }),
-                      "editor",
-                    )
+              focusableWhenDisabled={locked}
+              onClick={
+                recovering
+                  ? reconcile
+                  : () =>
+                      edit.type === "add"
+                        ? change(
+                            "flame.memory/add.v2",
+                            {
+                              Scope: scope,
+                              CWD: cwd!,
+                              Content: edit.content.trim(),
+                            },
+                            t(`command.add.${scope}`),
+                            "editor",
+                          )
+                        : change(
+                            "flame.memory/update.v2",
+                            {
+                              ID: edit.item.ID,
+                              ExpectedRevision: edit.item.Revision,
+                              Content: edit.content.trim(),
+                            },
+                            t("command.edit", { id: edit.item.ID }),
+                            "editor",
+                          )
               }
             >
-              {t("save")}
+              {recovering ? t("feedback.check") : t("save")}
             </Button>
           </FormActions>
         </RecordForm>

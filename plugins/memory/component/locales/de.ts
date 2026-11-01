@@ -77,12 +77,9 @@ export const de: Record<string, string> = {
   "fact.session": "Quell-Sitzung",
   "fact.day": "Tag",
   "feedback.submitting": "{{label}} · wird gesendet…",
-  "feedback.unknown":
-    "{{label}} · Bestätigung unbekannt. Prüfe das ursprüngliche Ergebnis, bevor du eine weitere Änderung sendest.",
+  "feedback.unknown": "{{label}} · Bestätigung unbekannt.",
   "feedback.refused": "{{label}} · abgelehnt.",
   "feedback.confirmed": "{{label}} · bestätigt.",
-  "feedback.refusedHint":
-    "Prüfe das aufgezeichnete Ergebnis und versuche es erneut.",
   "feedback.original.label": "Ursprünglicher Memory-Befehl",
   "feedback.original": "Ursprünglicher Befehl: {{key}}",
   "feedback.check": "Ursprüngliches Ergebnis prüfen",

@@ -73,11 +73,9 @@ export const zhTW: Record<string, string> = {
   "fact.session": "來源工作階段",
   "fact.day": "日期",
   "feedback.submitting": "{{label}} · 提交中…",
-  "feedback.unknown":
-    "{{label}} · 確認結果未知。提交其他變更前，請先查看原始結果。",
+  "feedback.unknown": "{{label}} · 確認結果未知。",
   "feedback.refused": "{{label}} · 已拒絕。",
   "feedback.confirmed": "{{label}} · 已確認。",
-  "feedback.refusedHint": "請查看已記錄的結果，然後重試。",
   "feedback.original.label": "原始記憶命令",
   "feedback.original": "原始命令：{{key}}",
   "feedback.check": "查看原始結果",

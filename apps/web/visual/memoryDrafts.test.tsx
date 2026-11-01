@@ -183,6 +183,16 @@ function pressEscape(target: Element, init: KeyboardEventInit = {}) {
   return { consumed: event.defaultPrevented, reachedOuter: outer.mock.calls.length > 0 };
 }
 
+function commands(call: Awaited<ReturnType<typeof openMemory>>["call"]) {
+  return call.mock.calls.filter(([request]) => request.method !== "flame.memory/list.v2");
+}
+
+function clickBlocked(button: HTMLElement) {
+  expect(button.getAttribute("aria-disabled")).toBe("true");
+  expect(button.hasAttribute("disabled")).toBe(false);
+  fireEvent.click(button);
+}
+
 const active = VISUAL_MEMORY_PAGE.Rows[1]!;
 
 const pending = VISUAL_MEMORY_PAGE.Rows[0]!;
@@ -297,9 +307,8 @@ it("keeps the original unknown command and later search focus through local reco
   expect(document.activeElement).toBe(search);
   expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
   expect(content.value).toBe("Keep my unsaved memory draft.");
-  expect(within(editor).getByRole<HTMLButtonElement>("button", { name: "Cancel" }).disabled).toBe(
-    true,
-  );
+  clickBlocked(within(editor).getByRole("button", { name: "Cancel" }));
+  expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
   expect(call.mock.calls).toHaveLength(issued);
   const reconcile = within(editor).getByRole("button", { name: "Check original result" });
   reconcile.focus();
@@ -418,6 +427,117 @@ it("consumes Escape without cancelling an unresolved editor command", async () =
   fireEvent.click(within(editor).getByRole("button", { name: "Check original result" }));
   await within(catalog()).findByText("Add project memory · confirmed.");
   expect(screen.queryByRole("region", { name: "Add memory" })).toBeNull();
+});
+
+it("keeps one focused primary action through submission, unknown result and recheck", async () => {
+  const { settle, call } = await openMemory();
+  const reply = settle.getMockImplementation()!;
+  const submitted = Promise.withResolvers<CallPluginResponse>();
+  const observed = Promise.withResolvers<CallPluginResponse>();
+  const recovered = Promise.withResolvers<CallPluginResponse>();
+  settle
+    .mockImplementationOnce(() => submitted.promise)
+    .mockImplementationOnce(() => observed.promise)
+    .mockImplementationOnce(() => recovered.promise);
+  fireEvent.click(screen.getByRole("button", { name: "Add memory" }));
+  const editor = screen.getByRole("region", { name: "Add memory" });
+  const save = within(editor).getByRole("button", { name: "Save" });
+  expect(save.hasAttribute("disabled")).toBe(true);
+  const content = within(editor).getByRole<HTMLTextAreaElement>("textbox", {
+    name: "Memory content",
+  });
+  fireEvent.change(content, { target: { value: "Keep my unsaved memory draft." } });
+  save.focus();
+  fireEvent.click(save);
+  await within(editor).findByText("Add project memory · submitting…");
+  expect(within(editor).getByRole("button", { name: "Save" })).toBe(save);
+  expect(document.activeElement).toBe(save);
+  clickBlocked(save);
+  clickBlocked(within(editor).getByRole("button", { name: "Cancel" }));
+  expect(pressEscape(save)).toEqual({ consumed: true, reachedOuter: false });
+  expect(commands(call)).toHaveLength(1);
+
+  await act(async () =>
+    submitted.reject(new MutationLookupError(new Error("receipt unavailable"))),
+  );
+  await within(editor).findByText("Add project memory · confirmation unknown.");
+  expect(within(editor).getByRole("button", { name: "Check original result" })).toBe(save);
+  expect(screen.getAllByRole("button", { name: "Check original result" })).toHaveLength(1);
+  expect(save.getAttribute("aria-disabled")).not.toBe("true");
+  expect(document.activeElement).toBe(save);
+  expect(within(editor).getByText("Original command: memory-command-1")).toBeTruthy();
+  expect(screen.queryByRole("group", { name: "Original Memory command" })).toBeNull();
+  clickBlocked(within(editor).getByRole("button", { name: "Cancel" }));
+  expect(pressEscape(save)).toEqual({ consumed: true, reachedOuter: false });
+  fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+  expect(commands(call)).toHaveLength(1);
+
+  fireEvent.click(save);
+  await waitFor(() => expect(settle).toHaveBeenCalledTimes(2));
+  expect(within(editor).getByRole("button", { name: "Check original result" })).toBe(save);
+  expect(document.activeElement).toBe(save);
+  clickBlocked(save);
+  expect(pressEscape(save)).toEqual({ consumed: true, reachedOuter: false });
+  expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
+  expect(content.value).toBe("Keep my unsaved memory draft.");
+  await act(async () =>
+    observed.reject(new MutationLookupError(new Error("receipt still unavailable"))),
+  );
+  await within(editor).findByText("Add project memory · confirmation unknown.");
+  expect(within(editor).getByRole("button", { name: "Check original result" })).toBe(save);
+  expect(document.activeElement).toBe(save);
+  expect(within(editor).getByText("Original command: memory-command-1")).toBeTruthy();
+  fireEvent.click(save);
+  await waitFor(() => expect(settle).toHaveBeenCalledTimes(3));
+  clickBlocked(save);
+  expect(commands(call)).toHaveLength(1);
+  const search = screen.getByRole("searchbox", { name: "Search this page" });
+  search.focus();
+  await act(async () => recovered.resolve(await reply(...settle.mock.calls[2]!)));
+  await within(catalog()).findByText("Add project memory · confirmed.");
+  expect(screen.queryByRole("region", { name: "Add memory" })).toBeNull();
+  await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
+  expect(document.activeElement).toBe(search);
+  expect(settle.mock.calls.map(([, key]) => key)).toEqual([
+    "memory-command-1",
+    "memory-command-1",
+    "memory-command-1",
+  ]);
+  expect(commands(call)).toHaveLength(1);
+});
+
+it("returns a known refusal to the same focused Save for resubmission", async () => {
+  const { settle, call } = await openMemory();
+  const submitted = Promise.withResolvers<CallPluginResponse>();
+  settle.mockImplementationOnce(() => submitted.promise);
+  const { editor, content } = startDraft();
+  const save = within(editor).getByRole("button", { name: "Save" });
+  save.focus();
+  fireEvent.click(save);
+  await within(editor).findByText("Add project memory · submitting…");
+  expect(document.activeElement).toBe(save);
+  await act(async () => submitted.reject(new Error("Memory capacity is full.")));
+  await within(editor).findByText("Add project memory · refused.");
+  expect(within(editor).getByText("Memory capacity is full.")).toBeTruthy();
+  expect(
+    within(within(editor).getByRole("group", { name: "Save memory content" })).getByText(
+      "Memory capacity is full.",
+    ),
+  ).toBeTruthy();
+  expect(within(editor).queryByText("Review the recorded result, then try again.")).toBeNull();
+  expect(within(editor).getByRole("button", { name: "Save" })).toBe(save);
+  expect(save.getAttribute("aria-disabled")).not.toBe("true");
+  expect(document.activeElement).toBe(save);
+  expect(screen.queryByRole("button", { name: "Check original result" })).toBeNull();
+  expect(content.value).toBe("Keep my unsaved memory draft.");
+  fireEvent.click(save);
+  await within(catalog()).findByText("Add project memory · confirmed.");
+  expect(screen.queryByRole("region", { name: "Add memory" })).toBeNull();
+  expect(commands(call)).toHaveLength(2);
+  expect(settle.mock.calls.map(([, key]) => key)).toEqual(["memory-command-1", "memory-command-2"]);
+  expect(JSON.parse(settle.mock.calls[1]![0].input)).toMatchObject({
+    Content: "Keep my unsaved memory draft.",
+  });
 });
 
 it("names the captured target and keeps editor and record feedback apart", async () => {
@@ -677,10 +797,22 @@ it.each(["editor", "record"] as const)(
     );
     await screen.findByText(/confirmation unknown/);
     expect(content.value).toBe("Keep my unsaved memory draft.");
-    expect(within(editor).getByRole<HTMLButtonElement>("button", { name: "Cancel" }).disabled).toBe(
-      true,
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Check original result" }));
+    clickBlocked(within(editor).getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
+    const [recover] = screen.getAllByRole("button", { name: "Check original result" });
+    expect(screen.getAllByRole("button", { name: "Check original result" })).toHaveLength(1);
+    expect(editor.contains(recover!)).toBe(source === "editor");
+    expect(
+      within(catalog()).queryByRole("group", { name: "Original Memory command" }) !== null,
+    ).toBe(source === "record");
+    expect(screen.getByText("Original command: memory-command-1")).toBeTruthy();
+    if (source === "record") {
+      clickBlocked(within(editor).getByRole("button", { name: "Save" }));
+    }
+    expect(pressEscape(content)).toEqual({ consumed: true, reachedOuter: false });
+    expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
+    expect(commands(call)).toHaveLength(1);
+    fireEvent.click(recover!);
     await within(catalog()).findByText(
       source === "editor"
         ? "Add project memory · confirmed."
@@ -695,6 +827,110 @@ it.each(["editor", "record"] as const)(
     ).toHaveLength(1);
     expect(screen.queryByRole("region", { name: "Add memory" }) !== null).toBe(source === "record");
     expect(content.value).toBe("Keep my unsaved memory draft.");
+  },
+);
+
+async function approveUntilUnknown(...rechecks: Array<Promise<CallPluginResponse>>) {
+  const opened = await openMemory();
+  const reply = opened.settle.getMockImplementation()!;
+  opened.settle.mockRejectedValueOnce(new MutationLookupError(new Error("receipt unavailable")));
+  for (const recheck of rechecks) opened.settle.mockImplementationOnce(() => recheck);
+  const draft = startDraft();
+  fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+  const unknown = await within(catalog()).findByText(
+    `Approve ${pending.ID} · confirmation unknown.`,
+  );
+  const result = unknown.closest("section")!;
+  const recover = within(catalog()).getByRole("button", { name: "Check original result" });
+  return { ...opened, ...draft, reply, result, recover };
+}
+
+it.each(["confirmed", "refused"] as const)(
+  "hands a focused record recovery to its %s result while the draft stays",
+  async (outcome) => {
+    const observed = Promise.withResolvers<CallPluginResponse>();
+    const recovered = Promise.withResolvers<CallPluginResponse>();
+    const { settle, call, reply, editor, content, result, recover } = await approveUntilUnknown(
+      observed.promise,
+      recovered.promise,
+    );
+    expect(document.activeElement).not.toBe(result);
+    expect(
+      within(catalog()).getByRole("group", { name: "Original Memory command" }).contains(recover),
+    ).toBe(true);
+    expect(within(editor).queryByRole("button", { name: "Check original result" })).toBeNull();
+    recover.focus();
+    fireEvent.click(recover);
+    await waitFor(() => expect(settle).toHaveBeenCalledTimes(2));
+    expect(within(catalog()).getByRole("button", { name: "Check original result" })).toBe(recover);
+    expect(document.activeElement).toBe(recover);
+    clickBlocked(recover);
+
+    await act(async () =>
+      observed.reject(new MutationLookupError(new Error("receipt still unavailable"))),
+    );
+    await waitFor(() => expect(recover.getAttribute("aria-disabled")).not.toBe("true"));
+    expect(within(catalog()).getByRole("button", { name: "Check original result" })).toBe(recover);
+    expect(document.activeElement).toBe(recover);
+    expect(
+      within(catalog())
+        .getByText(`Approve ${pending.ID} · confirmation unknown.`)
+        .closest("section"),
+    ).toBe(result);
+    fireEvent.click(recover);
+    await waitFor(() => expect(settle).toHaveBeenCalledTimes(3));
+    expect(document.activeElement).toBe(recover);
+
+    await act(async () =>
+      outcome === "confirmed"
+        ? recovered.resolve(await reply(...settle.mock.calls[2]!))
+        : recovered.reject(new Error("Memory was already reviewed.")),
+    );
+    await within(catalog()).findByText(`Approve ${pending.ID} · ${outcome}.`);
+    expect(screen.queryByRole("button", { name: "Check original result" })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(result));
+    expect(result.getAttribute("role")).toBe(outcome === "confirmed" ? "status" : "alert");
+    expect(within(result).queryByText("Memory was already reviewed.") !== null).toBe(
+      outcome === "refused",
+    );
+    await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
+    expect(document.activeElement).toBe(result);
+    expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
+    expect(content.value).toBe("Keep my unsaved memory draft.");
+    expect(within(editor).getByRole("button", { name: "Save" })).toBeTruthy();
+    expect(settle.mock.calls.map(([, key]) => key)).toEqual([
+      "memory-command-1",
+      "memory-command-1",
+      "memory-command-1",
+    ]);
+    expect(commands(call)).toHaveLength(1);
+  },
+);
+
+it.each(["search", "draft"] as const)(
+  "leaves a later %s focus in place when record recovery settles",
+  async (later) => {
+    const recovered = Promise.withResolvers<CallPluginResponse>();
+    const { settle, call, reply, editor, content, recover } = await approveUntilUnknown(
+      recovered.promise,
+    );
+    recover.focus();
+    fireEvent.click(recover);
+    await waitFor(() => expect(settle).toHaveBeenCalledTimes(2));
+    const chosen =
+      later === "search" ? screen.getByRole("searchbox", { name: "Search this page" }) : content;
+    chosen.focus();
+    await act(async () => recovered.resolve(await reply(...settle.mock.calls[1]!)));
+    await within(catalog()).findByText(`Approve ${pending.ID} · confirmed.`);
+    await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
+    expect(document.activeElement).toBe(chosen);
+    expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
+    expect(content.value).toBe("Keep my unsaved memory draft.");
+    expect(settle.mock.calls.map(([, key]) => key)).toEqual([
+      "memory-command-1",
+      "memory-command-1",
+    ]);
+    expect(commands(call)).toHaveLength(1);
   },
 );
 
@@ -738,16 +974,24 @@ it("retains a deletion target until its original command is confirmed", async ()
   settle.mockRejectedValueOnce(new MutationLookupError(new Error("receipt unavailable")));
   await openActions();
   fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
-  fireEvent.click(screen.getByRole("button", { name: "Delete memory" }));
+  const confirm = screen.getByRole("button", { name: "Delete memory" });
+  fireEvent.click(confirm);
   await screen.findByText(/confirmation unknown/);
   const confirmation = screen.getByRole("region", { name: "Confirm memory deletion" });
   expect(confirmation.textContent).toContain(VISUAL_MEMORY_PAGE.Rows[1]!.Content);
   expect(within(confirmation).getByText(active.ID, { exact: true })).toBeTruthy();
-  expect(
-    within(confirmation).getByRole<HTMLButtonElement>("button", { name: "Cancel" }).disabled,
-  ).toBe(true);
+  clickBlocked(within(confirmation).getByRole("button", { name: "Cancel" }));
+  expect(screen.getByRole("region", { name: "Confirm memory deletion" })).toBe(confirmation);
   expect(pressEscape(confirmation)).toEqual({ consumed: true, reachedOuter: false });
-  fireEvent.click(within(confirmation).getByRole("button", { name: "Check original result" }));
+  const recover = within(confirmation).getByRole("button", { name: "Check original result" });
+  expect(
+    within(
+      within(confirmation).getByRole("group", { name: "Memory deletion confirmation" }),
+    ).getByText("Original command: memory-command-1"),
+  ).toBeTruthy();
+  expect(recover).toBe(confirm);
+  expect(screen.getAllByRole("button", { name: "Check original result" })).toHaveLength(1);
+  fireEvent.click(recover);
   await within(catalog()).findByText(`Delete ${active.ID} · confirmed.`);
   expect(screen.queryByRole("region", { name: "Confirm memory deletion" })).toBeNull();
   expect(settle.mock.calls.map(([, key]) => key)).toEqual(["memory-command-1", "memory-command-1"]);

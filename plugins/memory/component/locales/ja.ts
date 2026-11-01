@@ -74,12 +74,9 @@ export const ja: Record<string, string> = {
   "fact.session": "由来セッション",
   "fact.day": "日",
   "feedback.submitting": "{{label}} · 送信中…",
-  "feedback.unknown":
-    "{{label}} · 確認状態が不明です。別の変更を送信する前に元の結果を確認してください。",
+  "feedback.unknown": "{{label}} · 確認状態が不明です。",
   "feedback.refused": "{{label}} · 拒否されました。",
   "feedback.confirmed": "{{label}} · 確認済み。",
-  "feedback.refusedHint":
-    "記録された結果を確認してから、もう一度お試しください。",
   "feedback.original.label": "元のメモリコマンド",
   "feedback.original": "元のコマンド：{{key}}",
   "feedback.check": "元の結果を確認",
