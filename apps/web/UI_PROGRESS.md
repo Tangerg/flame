@@ -17,8 +17,17 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/ui-feedback-local-1026`. Targeted Diff reads and accepted comparison
+The 2026-11-02 resume uses the new managed worktree
+`/Users/tangerg/.codex/worktrees/flame-ui-polish/flame` on
+`codex/flame-ui-polish`, starting from main `8027bd713`. The current source and
+native host complete the outstanding Chinese, large-text, resize/200% and
+observer-free circular-chart reading task; see **Resumed current-host
+qualification (2026-11-02)**. The latest goal restores preferred bounded Claude
+Code CLI implementation and verified batch publication to main. The desktop UI
+goal remains active. Earlier checkout names and publication/pause receipts below
+describe their historical scope.
+
+Targeted Diff reads and accepted comparison
 context are published to main as `f9241b46b`, with receipt `8a16a1824`. Paired
 Diff reading is published as `3a5cdba36`, and Settings task continuity as
 `d3f7ff83e`. Schedules receipt navigation and command focus are published as
@@ -145,15 +154,18 @@ component boundary and qualification limits.
 That repair is published as `fdc45bab2`. The circular-chart follow-up belongs to
 the user-requested **2026-10-30 publication milestone**: see **Complete
 circular-chart legend reading** for passing checks, the completed English native
-task, archived qualification evidence and remaining native qualification. Required
-CUA control remains unavailable. The user explicitly requests committing and
-pushing the current owned changes to main, followed by a milestone pause with
-those native tasks still open. Do not start another batch until the user resumes.
+task, archived qualification evidence and the then-outstanding native qualification.
+CUA control was unavailable at that milestone, and the user requested publication
+followed by a pause. The explicit 2026-11-02 resume ends that pause; its current-host
+qualification below closes the two outstanding circular-chart tasks.
 Earlier completed batches were verified, explicitly committed and pushed to main
 under the goal publication policy. Preserve parallel work in the primary checkout. Do not
-continually merge and revalidate advancing main during a scoped UI task. Claude
-Code CLI remains prohibited, and this run uses no subagents or browser suites.
-The latest feedback is the user attachment
+continually merge and revalidate advancing main during a scoped UI task. The
+2026-11-02 goal supersedes the earlier Claude Code CLI prohibition; prefer it for
+bounded detail implementation. Native acceptance remains with the primary agent.
+The current goal is the user attachment
+`/Users/tangerg/.codex/attachments/23b4e907-0b3c-4b13-af81-f1054501aade/goal-objective.md`.
+Earlier feedback remains in the attachment
 `/Users/tangerg/.codex/attachments/c1c4a0db-545e-422b-8c0f-9b760107be8c/已粘贴的文本.txt`.
 Its findings are source material; current implementation, callers, tests and
 actual Wails behavior determine repairs. Earlier milestone receipts below retain
@@ -3153,6 +3165,80 @@ review finding. The publication fetch finds main already at `fdc45bab2`, with
 zero incoming or unpublished commits before this milestone change. Publication
 is authorized by the later user instruction; native qualification and the broader
 goal remain open during the requested pause.
+
+#### Resumed current-host qualification (2026-11-02)
+
+The resumed goal starts in a fresh managed worktree at main `8027bd713`.
+`chart.tsx`, its 17-test chart contract and the shared ScrollRegion have exactly
+the archived source hashes. The visual entry and native host have changed, so
+the old binary is not used to qualify the current product. A private Vite
+configuration reuses the archived accepted composition document with the current
+fixture, installed GenUI resource, shared controls and styles. A Go overlay uses
+the current production-tagged Wails host with a private asset tree, application
+identity, home and unused Runtime endpoint. No product source change is needed.
+
+Actual CUA input qualifies Chinese/dark/18px/custom-blue/motion-off reading at
+ordinary size and after the native half-screen command and twenty native Zoom In
+commands (200%). The fixture sidebar is collapsed when it would take the reading
+space. The report note becomes `保留完整图例与精确值。`. Tab reaches the selected
+report tab, its panel, plot and data region separately; Right selects the donut
+and complete-set tabs. End reaches the full final category, exact value `1` and
+`0.3906%` in the 256-category table. Long names wrap alongside the slice swatches.
+The first unsettled End capture is discarded; re-entering the data reader and
+End supplies the stable final-row qualification. No persistent blank-reader
+failure is reproduced or patched.
+
+The narrow-workspace material control opens Files full-width. Opening README
+retains its identity, reading content and close action. Closing returns to the
+selected complete-set report and its final reading position, with the note and
+Composer draft retained. Continued editing produces
+`图例验收草稿。 已核对完整图例。`. Pointer wheel reading reveals preceding categories
+while Composer retains focus. Actual Size is restored before quitting.
+
+This complete generation is observer-free: no additional observer script,
+collector, debug bridge or product navigation branch is installed. It therefore
+qualifies both previously outstanding Chinese and ordinary native tasks without
+an instrumented-generation comparison. AX and visible native captures are the
+evidence; no private viewport, scroll-offset or computed-contrast measurement is
+claimed. The task uses deterministic captured inputs, not live provider/Runtime
+writes, package admission or Send. VoiceOver, OS IME, native RTL, forced colors,
+320px GUI and other-platform GUI remain not verified. Earlier English/light
+qualification retains its historical scope.
+
+| Domain        | Current evidence                                                                                  | Result                                             |
+| ------------- | ------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Accessibility | Named plot/data readers, native Tab/Right/End, visible focus, complete values and material return | No actionable finding in the inspected task        |
+| Layout        | Ordinary/half-screen/200% reading, full names, adaptive material opening and retained return      | No actionable finding in the inspected task        |
+| Writing       | Existing translated actions, literal captured names and distinct file/list/close controls         | No copy change needed                              |
+| Typography    | Host 18px roles, wrapping names and exact value/percentage columns                                | No actionable finding in the inspected task        |
+| Colors        | Existing dark semantic tokens, blue focus and patterned swatches                                  | No token change; numerical contrast not remeasured |
+| UI            | Immediate tab selection, motion-off scene, native resizing and pointer wheel reading              | No actionable finding in the inspected task        |
+
+Read-only ZCode's actual pie/list implementation and Arc's donut implementation
+confirm the adjacent figure/identity/value relationship; their aggregation and
+extra state are not adopted. HeroUI Tabs and [semantic-color documentation](https://heroui.com/en/docs/react/getting-started/colors),
+Radix [Tabs](https://www.radix-ui.com/primitives/docs/components/tabs)/[Dialog](https://www.radix-ui.com/primitives/docs/components/dialog) and [color-scale roles](https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale), and Ace [Alpaca](https://acedesign.io/work/alpaca)/[Marketer](https://acedesign.io/work/marketer) original images
+inform grouping, progressive reading and restrained emphasis. The existing
+ChatGPT research remains context; icon modules are not chart behavior evidence.
+The six better-interface domains approve only this inspected reading task.
+Whole-product and award-level acceptance are still unproven.
+
+Fresh verification passes root `make setup` with Node 24.21.0/npm 11.21.1,
+`make stage-web`, **3 files / 102 tests** (GenUI chart, presentation and interaction
+controller), and `make check-native` including Desktop test/vet/build and the
+supported production Wails build. Existing React act and native linker warnings
+are non-failing. The private current-source fixture and signed Wails host build
+successfully. No browser suite, benchmark, new regression test, Claude CLI task
+or subagent runs for this verification-only continuation. The follow-on batch
+must begin with a newly observed problem, rather than repeat this completed work.
+
+The single native generation exits, its private bundle is unregistered and
+removed, and all six private-profile presence baselines are restored. No process
+or listener remains on the private Runtime endpoint. Newly created checkout
+build outputs, native task metadata and the private assets/home are removed;
+development dependencies and the temporary npm toolchain remain for the active
+worktree. Read-only source references, the historical recovery archive and the
+primary checkout are preserved. Publication fetch finds no incoming main commits.
 
 ### Command focus and visible pane boundaries
 
@@ -25161,7 +25247,7 @@ against current owners before selecting a repair.
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.
-- Implementation follows current human steering: Claude Code CLI is prohibited, and the resumed goal requires verified batch commits and publication to main. Earlier milestone pauses and local-only receipts are historical. The primary agent owns research, decisions, diff review, actual Wails acceptance, verification, publication and cleanup. This run uses no subagents.
+- Implementation follows the 2026-11-02 goal: prefer Claude Code CLI for bounded detail development, and complete verified batch commits and publication to main. Earlier CLI prohibitions, milestone pauses and local-only receipts are historical. The primary agent owns research, decisions, diff review, actual Wails acceptance, verification, publication and cleanup.
 - Apply relevant better-series skills and inspect the references in depth. Preserve StyleX, Base UI, semantic tokens and one fact/one owner. Runtime owns durable product semantics; layout work does not authorize rebuilding those state machines in the client.
 - Batch meaningful changes, then review their combined visual and interaction result. Prioritize development and actual native computer use. The user explicitly asked not to run visual/browser suites and to avoid meaningless tests; retain necessary regression coverage and module checks, and reuse valid results when source and dependencies have not changed.
 - A `plugins/*/component` change is not verified by `cd plugins && npm run check` alone: `apps/web/visual/*.test.tsx` imports several plugin sources directly (`../../../plugins/<name>/component/component`) and encodes their behavioural contracts (diff, schedules, memory, usage, …). Run `vitest run visual` (or the affected `visual/*.test.tsx`) for any dock plugin edit before committing; treat a broken contract as a signal to reconsider the change, not just to update the test.
@@ -25169,7 +25255,7 @@ against current owners before selecting a repair.
 - Portable renderer changes include rebuilding and checking their published ESM resources. A source or resource rebuild does not update an existing Runtime installation; verify the actual selected resource when that installation is in scope.
 - When the user requests the frontend, they mean the desktop app. Use actual Wails acceptance for desktop behavior. Visual review uses isolated fixtures; an explicitly requested live model check uses the user's existing configuration without printing or copying credentials.
 - If the Mac is locked, advance independent source, reference and build work, and finish native acceptance after unlock. A native build does not prove native interaction.
-- Commit explicit owned paths on `codex/ui-feedback-local-1026`, publish qualified batches to remote main and preserve the primary checkout's parallel work. Clean owned resources and update this file in place. Do not continually synchronize advancing main during a scoped UI task.
+- Work on `codex/flame-ui-polish` in the new managed worktree. Commit explicit owned paths, integrate qualified batches into main, push remote main and preserve unrelated primary-checkout work. Clean owned resources and update this file in place. Do not continually synchronize advancing main during a scoped UI task.
 - Keep user-facing replies in Chinese and repository content in English. Preserve the approved visual direction and task model. Continue evidence-backed UI batches until the user explicitly stops the resumed goal.
 
 ## Milestone closure (2026-10-23)
