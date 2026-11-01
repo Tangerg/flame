@@ -270,13 +270,13 @@ func validateResumeInput(pending Pending, parkedRuns []run.Run, cmd ResumeComman
 	return nil
 }
 
-func (acceptance ResumeAcceptance) treeContinuation(pending Pending, parkedRuns []run.Run, itemsByID map[string]transcript.Item) (*treeContinuation, error) {
+func (r ResumeAcceptance) treeContinuation(pending Pending, parkedRuns []run.Run, itemsByID map[string]transcript.Item) (*treeContinuation, error) {
 	continuation, err := treeContinuationFromPending(pending, parkedRuns, itemsByID)
 	if err != nil {
 		return nil, fmt.Errorf("runs: prepare tree continuation: %w", err)
 	}
-	continuation.approvalCalls = acceptance.approvalCalls()
-	replacements, err := acceptance.ItemReplacements()
+	continuation.approvalCalls = r.approvalCalls()
+	replacements, err := r.ItemReplacements()
 	if err != nil {
 		return nil, fmt.Errorf("runs: prepare tree continuation: %w", err)
 	}

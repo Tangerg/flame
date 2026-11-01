@@ -200,9 +200,9 @@ func (i *InteractionExecutor) BeginUncertainExecution(ctx context.Context, ref r
 	return nil
 }
 
-func (checkpoint interactionCheckpointState) recoverableReceipts(rootID agent.ProcessID) (map[agent.EffectID]toolResultMetadata, error) {
+func (i interactionCheckpointState) recoverableReceipts(rootID agent.ProcessID) (map[agent.EffectID]toolResultMetadata, error) {
 	proofs := make(map[agent.EffectID]toolResultMetadata)
-	for _, metadata := range checkpoint.toolMetadata {
+	for _, metadata := range i.toolMetadata {
 		if metadata.Receipt == nil {
 			continue
 		}
@@ -222,7 +222,7 @@ func (checkpoint interactionCheckpointState) recoverableReceipts(rootID agent.Pr
 		return nil, nil
 	}
 	rootWaiting := false
-	for _, snapshot := range checkpoint.tree.ProcessSnapshots() {
+	for _, snapshot := range i.tree.ProcessSnapshots() {
 		if snapshot.Relation().ProcessID() == rootID {
 			rootWaiting = snapshot.Status() == agent.StatusWaiting || snapshot.Status().Terminal()
 		}
@@ -235,7 +235,7 @@ func (checkpoint interactionCheckpointState) recoverableReceipts(rootID agent.Pr
 	if !rootWaiting {
 		return nil, nil
 	}
-	inputs, err := interaction.PendingToolInputs(checkpoint.tree)
+	inputs, err := interaction.PendingToolInputs(i.tree)
 	if err != nil {
 		return nil, err
 	}
@@ -324,10 +324,10 @@ func (i *InteractionExecutor) originalSourcesAvailable(ctx context.Context, chec
 	return true, nil
 }
 
-func (session *interactionSession) validateCapturedToolArguments(proofs map[agent.EffectID]toolResultMetadata) error {
+func (i *interactionSession) validateCapturedToolArguments(proofs map[agent.EffectID]toolResultMetadata) error {
 	for _, metadata := range proofs {
 		var owner *observedInteractionTool
-		for _, tools := range session.state.deployments.observedTools {
+		for _, tools := range i.state.deployments.observedTools {
 			if candidate := tools[metadata.Receipt.Tool]; candidate != nil {
 				owner = candidate
 				break
