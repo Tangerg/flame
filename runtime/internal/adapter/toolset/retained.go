@@ -13,9 +13,10 @@ import (
 // collision resolution. Its graphs belong to that execution's checkpoint;
 // restoring them never publishes them as the current catalog for new work.
 type Retained struct {
-	MCP       []domaintool.Ref
-	Bindings  []plugin.Activation
-	Resources []plugin.Dependency
+	SkillDiscovery string
+	MCP            []domaintool.Ref
+	Bindings       []plugin.Activation
+	Resources      []plugin.Dependency
 }
 
 func (r *Retained) validate() error {

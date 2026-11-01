@@ -1,3 +1,4 @@
+import { useGoalAuthorAvailable } from "@/features/plugins/public/workflows";
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useSyncExternalStore } from "react";
 import { ConfirmDialog } from "@/ui/index";
@@ -23,7 +24,9 @@ function SessionGoalModeIndicator({ sessionId }: { sessionId: string }) {
   const snapshot = useSyncExternalStore(owner.subscribe, owner.snapshot, owner.snapshot);
   const material = useGoalMaterial().value;
   const goal = material?.goal ?? null;
-  const available = material?.available === true && goalCanEnterComposerMode(goal);
+  const originalAvailable = useGoalAuthorAvailable(goal?.author);
+  const available =
+    material?.available === true && (!goal || originalAvailable) && goalCanEnterComposerMode(goal);
   const active = snapshot.sessionId === sessionId && snapshot.phase !== "inactive";
 
   useEffect(

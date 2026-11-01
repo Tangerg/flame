@@ -223,7 +223,7 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 		if resolveErr != nil {
 			return plugin.CommandBinding{}, resolveErr
 		}
-		borrowed, sessionErr := c.pool.BorrowSession(ctx, candidate.ServerID)
+		borrowed, sessionErr := borrowContribution(ctx, c.pool, candidate)
 		if sessionErr != nil {
 			return plugin.CommandBinding{}, sessionErr
 		}

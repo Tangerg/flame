@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/qimu"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -52,15 +53,42 @@ func SelectedContributionForRole(ctx context.Context, host *qimu.Host, store Sto
 		return ContributionBinding{}, false, err
 	}
 	record := choice.Snapshot()
+	return resolveContribution(ctx, host, store, required, record, integrity.Digest{})
+}
+
+func CapturedContribution(ctx context.Context, host *qimu.Host, store Store, required *portable.Capability, source extension.ContributionSource) (ContributionBinding, bool, error) {
+	if err := source.Validate(); err != nil {
+		return ContributionBinding{}, false, err
+	}
+	installation, err := identity.ParseInstallation(source.InstallationID)
+	if err != nil {
+		return ContributionBinding{}, false, err
+	}
+	release, err := integrity.ParseDigest(source.Release)
+	if err != nil {
+		return ContributionBinding{}, false, err
+	}
+	record := plugin.SelectionRecord{Role: required.Descriptor().Reference, Installation: installation, Contribution: plugin.ContributionID(source.Contribution)}
+	return resolveContribution(ctx, host, store, required, record, release)
+}
+
+func (b ContributionBinding) ContributionSource() extension.ContributionSource {
+	return extension.ContributionSource{InstallationID: b.InstallationID.String(), Release: b.Digest.String(), Contribution: b.ContributionID.String()}
+}
+
+func resolveContribution(ctx context.Context, host *qimu.Host, store Store, required *portable.Capability, record plugin.SelectionRecord, release integrity.Digest) (ContributionBinding, bool, error) {
 	snapshot, found, err := store.Get(ctx, record.Installation)
 	if err != nil || !found {
 		return ContributionBinding{}, false, err
+	}
+	if !release.IsZero() && release != snapshot.Selected.Digest() {
+		return ContributionBinding{}, false, plugin.ErrUnavailable
 	}
 	contribution, declared := snapshot.Selected.Contribution(record.Contribution)
 	if !declared || !snapshot.Installation.ServerEnabled(contribution.Server) {
 		return ContributionBinding{}, false, nil
 	}
-	if contribution.Contract != required.Identity() || !slices.Contains(contribution.SelectionRoles(), role) {
+	if contribution.Contract != required.Identity() || !slices.Contains(contribution.SelectionRoles(), record.Role) {
 		return ContributionBinding{}, false, fmt.Errorf("%w: selected contribution contract differs from the consumer requirement", plugin.ErrUnavailable)
 	}
 	id, err := snapshot.Installation.ServerID(contribution.Server)

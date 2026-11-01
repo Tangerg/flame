@@ -26,17 +26,16 @@ func (remoteInputs) Conversation(ctx context.Context) (skilllearning.Conversatio
 	return qimumcp.CallHost(ctx, grant, method, "", struct{}{})
 }
 
-func (remoteInputs) ReadSkill(ctx context.Context, name string) (*skilllearning.Skill, error) {
+func (remoteInputs) ReadSkill(ctx context.Context, name string) (skilllearning.ReadResult, error) {
 	grant, err := qimumcp.CallbackFromContext(ctx)
 	if err != nil {
-		return nil, err
+		return skilllearning.ReadResult{}, err
 	}
 	method, err := skilllearning.ReadSkillMethod()
 	if err != nil {
-		return nil, err
+		return skilllearning.ReadResult{}, err
 	}
-	result, err := qimumcp.CallHost(ctx, grant, method, "", skilllearning.ReadSkill{Name: name})
-	return result.Skill, err
+	return qimumcp.CallHost(ctx, grant, method, "", skilllearning.ReadSkill{Name: name})
 }
 
 func (remoteInputs) Complete(ctx context.Context, system, user string) (string, error) {
@@ -62,4 +61,17 @@ func (remoteInputs) Complete(ctx context.Context, system, user string) (string, 
 		return "", errors.New("skill learning: model returned blank text")
 	}
 	return strings.TrimSpace(text), nil
+}
+
+func admitMined(ctx context.Context, proposal skilllearning.Proposal) (bool, error) {
+	grant, err := qimumcp.CallbackFromContext(ctx)
+	if err != nil {
+		return false, err
+	}
+	method, err := skilllearning.AdmitMethod()
+	if err != nil {
+		return false, err
+	}
+	admission, err := qimumcp.CallHost(ctx, grant, method, "", proposal)
+	return admission.Accepted, err
 }

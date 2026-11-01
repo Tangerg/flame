@@ -6,6 +6,7 @@ import (
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -24,20 +25,21 @@ import (
 // depends on, from both package Skills and installation MCP tools; it is the
 // only representation installation admission consults.
 type Manifest struct {
-	Installations []plugin.Dependency
-	Bindings      []plugin.Activation
-	Resources     []plugin.Dependency
-	Visible       []toolcontract.Tool
-	Deferred      []toolcontract.Tool
-	PendingMCP    []mcpserver.ID
-	discovery     *Discovery
-	close         func() error
+	SkillDiscovery string
+	Installations  []plugin.Dependency
+	Bindings       []plugin.Activation
+	Resources      []plugin.Dependency
+	Visible        []toolcontract.Tool
+	Deferred       []toolcontract.Tool
+	PendingMCP     []mcpserver.ID
+	discovery      *Discovery
+	close          func() error
 }
 
 // Clone isolates the slices while retaining the same executable capabilities
 // and resource lifetime. It does not grant an independent Close obligation.
 func (m Manifest) Clone() Manifest {
-	return Manifest{
+	return Manifest{SkillDiscovery: m.SkillDiscovery,
 		Installations: slices.Clone(m.Installations), Visible: slices.Clone(m.Visible),
 		Bindings: cloneManifestBindings(m.Bindings), Resources: slices.Clone(m.Resources),
 		Deferred:   slices.Clone(m.Deferred),
@@ -68,13 +70,14 @@ func (m Manifest) Close() error {
 // executable but are loaded through search_tools. Unavailable tools are simply
 // never added; there is no synthetic visibility state for them.
 type manifestBuilder struct {
-	pendingMCP    []mcpserver.ID
-	installations []plugin.Dependency
-	visible       []toolcontract.Tool
-	deferred      []toolcontract.Tool
-	discovery     *Discovery
-	close         func() error
-	err           error
+	skillDiscovery promptsource.SkillCapture
+	pendingMCP     []mcpserver.ID
+	installations  []plugin.Dependency
+	visible        []toolcontract.Tool
+	deferred       []toolcontract.Tool
+	discovery      *Discovery
+	close          func() error
+	err            error
 }
 
 func (m *manifestBuilder) direct(tools ...toolcontract.Tool) {
@@ -103,6 +106,10 @@ func (m manifestBuilder) manifest(telemetry oteltool.Middleware) (Manifest, erro
 	}
 	installations := slices.Clone(m.installations)
 	var bindings []plugin.Activation
+	if !m.skillDiscovery.Activation.Identity.IsZero() {
+		bindings = append(bindings, m.skillDiscovery.Activation)
+		installations = append(installations, m.skillDiscovery.Activation.Dependencies...)
+	}
 	freeze := func(tools []toolcontract.Tool) ([]toolcontract.Tool, error) {
 		frozen := make([]toolcontract.Tool, len(tools))
 		for index, executable := range tools {
@@ -130,7 +137,7 @@ func (m manifestBuilder) manifest(telemetry oteltool.Middleware) (Manifest, erro
 		return Manifest{}, err
 	}
 
-	return Manifest{Installations: plugin.CompactDependencies(installations), Bindings: bindings, Resources: plugin.CompactDependencies(m.installations), Visible: visible, Deferred: deferred, PendingMCP: slices.Clone(m.pendingMCP), discovery: m.discovery, close: m.close}, nil
+	return Manifest{SkillDiscovery: m.skillDiscovery.Command, Installations: plugin.CompactDependencies(installations), Bindings: bindings, Resources: plugin.CompactDependencies(m.installations), Visible: visible, Deferred: deferred, PendingMCP: slices.Clone(m.pendingMCP), discovery: m.discovery, close: m.close}, nil
 }
 
 func cloneManifestBindings(values []plugin.Activation) []plugin.Activation {

@@ -174,7 +174,7 @@ func (f *managedFixture) open(t *testing.T, connect bool) {
 	if err := stores.PluginReleases.Admit(t.Context(), release); err != nil {
 		t.Fatal(err)
 	}
-	definition, err := plugins.ProjectFrameworkRelease(release)
+	definition, err := plugins.ProjectFrameworkRelease(release, qimumcp.ProcessProfile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +200,7 @@ func (f *managedFixture) open(t *testing.T, connect bool) {
 	if err := stores.RecoverPluginBindings(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	registry, err := plugins.NewRegistry(f.Host, stores.MCPServers, f.store, f.packages, stores.ProviderSelections, stores.PluginCompositions)
+	registry, err := plugins.NewRegistry(f.Host, f.store, f.packages, stores.ProviderSelections, stores.PluginCompositions)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
+	"strings"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -16,20 +18,37 @@ import (
 // bound to a different request or to another operation entirely.
 var ErrCommandKeyConflict = errors.New("runs: idempotency key is already bound to another command")
 
+const goalRoundKeyPrefix = "flame.goal-round/"
+
+func ReservedCommandKey(key string) bool { return strings.HasPrefix(key, goalRoundKeyPrefix) }
+
+func GoalRoundIdentity(sessionID, incarnation string, ordinal uint64, instructions string) *CommandIdentity {
+	scope := sessionID + "\x00" + incarnation + "\x00" + strconv.FormatUint(ordinal, 10)
+	return &CommandIdentity{Key: goalRoundKeyPrefix + integrity.Hash([]byte(scope)).String(), Fingerprint: integrity.Hash([]byte(scope + "\x00" + instructions)).String()}
+}
+
+func startOperation(key, goalIncarnation string) CommandOperation {
+	if ReservedCommandKey(key) && goalIncarnation != "" {
+		return CommandGoalRoundOpening
+	}
+	return CommandStartOpening
+}
+
 // CommandOperation names a Run-owned external command whose acceptance commits
 // with its opening or input-admission boundary.
 type CommandOperation string
 
 const (
 	// CommandStartOpening is a fresh root admission accepted by runs.start.
-	CommandStartOpening  CommandOperation = "start"
-	CommandResumeOpening CommandOperation = "resume"
-	CommandSteerInput    CommandOperation = "steer"
+	CommandStartOpening     CommandOperation = "start"
+	CommandGoalRoundOpening CommandOperation = "goalRound"
+	CommandResumeOpening    CommandOperation = "resume"
+	CommandSteerInput       CommandOperation = "steer"
 )
 
 // Valid reports whether o is an operation whose acceptance this build records.
 func (o CommandOperation) Valid() bool {
-	return o == CommandStartOpening || o == CommandResumeOpening || o == CommandSteerInput
+	return o == CommandStartOpening || o == CommandGoalRoundOpening || o == CommandResumeOpening || o == CommandSteerInput
 }
 
 // CommandAcceptance binds one external command to its original product references.
@@ -57,6 +76,12 @@ func (a CommandAcceptance) Validate() error {
 	}
 	if _, err := integrity.ParseDigest(a.Fingerprint); err != nil {
 		return fmt.Errorf("runs: command acceptance fingerprint: %w", err)
+	}
+	if ReservedCommandKey(a.Key) != (a.Operation == CommandGoalRoundOpening) {
+		return errors.New("runs: command key cannot claim another opening namespace")
+	}
+	if a.Operation == CommandGoalRoundOpening && a.UserItemID != "" {
+		return errors.New("runs: autonomous opening cannot claim a user Item")
 	}
 	if !a.Operation.Valid() {
 		return fmt.Errorf("runs: command acceptance has unknown operation %q", a.Operation)
@@ -148,8 +173,8 @@ func AcceptCommand(key, requestFingerprint string, opening OpeningCommit) (Comma
 		Key:         key,
 		Fingerprint: requestFingerprint,
 	}
-	if _, present := opening.Admission(); present {
-		acceptance.Operation = CommandStartOpening
+	if admission, present := opening.Admission(); present {
+		acceptance.Operation = startOperation(key, admission.GoalIncarnationID)
 	} else if _, present := opening.Resume(); present {
 		acceptance.Operation = CommandResumeOpening
 	} else {

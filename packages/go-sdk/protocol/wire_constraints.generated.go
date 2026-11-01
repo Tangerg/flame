@@ -1253,12 +1253,13 @@ func (m MCPServerState) validateWire() error {
 
 func (m MCPAuthorizationAttemptStatus) validateWire() error {
 	return collectWireViolations("MCPAuthorizationAttemptStatus",
-		closedEnum("type", string(m.Type), []string{"pending", "succeeded", "failed", "canceled"}, false),
+		closedEnum("type", string(m.Type), []string{"unconfirmed", "pending", "succeeded", "failed", "canceled"}, false),
 		forbiddenWhen(wireFieldEquals(m, "type", "pending"), "error", m),
 		forbiddenWhen(wireFieldEquals(m, "type", "succeeded"), "error", m),
 		requiredWhen(wireFieldEquals(m, "type", "failed"), "error", m),
 		allowedValuesWhen(wireFieldEquals(m, "type", "failed"), "error.type", m, []string{"mcp_authorization_failed"}),
 		forbiddenWhen(wireFieldEquals(m, "type", "canceled"), "error", m),
+		forbiddenWhen(wireFieldEquals(m, "type", "unconfirmed"), "error", m),
 	)
 }
 
@@ -1919,19 +1920,6 @@ func (m ModelTokenLimits) validateWire() error {
 	)
 }
 
-func (f FeedbackEntry) validateWire() error {
-	return collectWireViolations("FeedbackEntry",
-		identity("sessionId", f.SessionID),
-		maxLength("sessionId", f.SessionID, 256),
-		identity("runId", f.RunID),
-		maxLength("runId", f.RunID, 256),
-		identity("itemId", f.ItemID),
-		maxLength("itemId", f.ItemID, 256),
-		closedEnum("rating", string(f.Rating), []string{"positive", "negative"}, true),
-		requiredAnyWhen(true, []string{"rating", "text"}, f),
-	)
-}
-
 func (r RunProgress) validateWire() error {
 	return collectWireViolations("RunProgress",
 		optionalNonNegativeNumber("step", r.Step),
@@ -2143,6 +2131,7 @@ func (m MCPAuthorizationAttempt) validateWire() error {
 		forbiddenWhen(wireFieldEquals(m, "status.type", "pending"), "finishedAt", m),
 		requiredWhen(wireFieldEquals(m, "status.type", "succeeded"), "finishedAt", m),
 		requiredWhen(wireFieldEquals(m, "status.type", "failed"), "finishedAt", m),
+		requiredWhen(wireFieldEquals(m, "status.type", "unconfirmed"), "finishedAt", m),
 		requiredWhen(wireFieldEquals(m, "status.type", "canceled"), "finishedAt", m),
 	)
 }
@@ -2368,8 +2357,8 @@ func (p PageQuery) validateWire() error {
 
 func (s SessionTrajectory) validateWire() error {
 	return collectWireViolations("SessionTrajectory",
-		minimumNumber("schemaVersion", s.SchemaVersion, 3),
-		maximumNumber("schemaVersion", s.SchemaVersion, 3),
+		minimumNumber("schemaVersion", s.SchemaVersion, 4),
+		maximumNumber("schemaVersion", s.SchemaVersion, 4),
 	)
 }
 
@@ -2624,6 +2613,17 @@ func (u UsageSummary) validateWire() error {
 	)
 }
 
+func (s SessionAnnotation) validateWire() error {
+	return collectWireViolations("SessionAnnotation",
+		identity("sessionId", s.SessionID),
+		maxLength("sessionId", s.SessionID, 256),
+		identity("runId", s.RunID),
+		maxLength("runId", s.RunID, 256),
+		identity("itemId", s.ItemID),
+		maxLength("itemId", s.ItemID, 256),
+	)
+}
+
 func (s SkillDiagnostic) validateWire() error {
 	return collectWireViolations("SkillDiagnostic",
 		requiredTextPattern("name", s.Name, "\\S"),
@@ -2707,9 +2707,10 @@ func (p PluginClientComponent) validateWire() error {
 		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
 		optionalTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
 		optionalTextPattern("material", p.Material, "^[a-z][a-z0-9._-]{0,63}$"),
+		optionalTextPattern("settingsIntent", p.SettingsIntent, "^[a-z][a-z0-9._-]{0,63}$"),
 		closedEnum("toolCategory", string(p.ToolCategory), []string{"shell", "edit", "read", "search", "task"}, true),
 		closedEnum("scope", string(p.Scope), []string{"installation", "workspace", "session", "client", "file", "toolResult"}, false),
-		closedEnum("placement", string(p.Placement), []string{"workspaceChangesAction", "sharedClientEffect", "export", "workspaceView", "settingsPane", "clientEffect", "sessionAction", "fileRenderer", "toolResultRenderer"}, false),
+		closedEnum("placement", string(p.Placement), []string{"workspaceChangesAction", "sharedClientEffect", "export", "workspaceView", "settingsPane", "clientEffect", "messageAction", "sessionAction", "fileRenderer", "toolResultRenderer"}, false),
 	)
 }
 

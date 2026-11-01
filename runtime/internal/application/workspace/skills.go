@@ -6,11 +6,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/skill"
 	"slices"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/samber/lo"
 )
@@ -34,16 +36,13 @@ type SkillCurator interface {
 	Restore(ctx context.Context, name string) ([]string, error)
 }
 
-// SkillProposals stores the one current immutable proposal for each scoped
-// Skill name. Mutation methods return exact opaque file identities so
-// filesystem observation can accept only the caller's committed paths without
-// swallowing concurrent external edits. ListProposals transfers ownership of
-// the returned reviews to the caller.
+// The workflow owner returns file identities only when publication changed a
+// trusted library. Queue changes use the provider's own invalidations.
 type SkillProposals interface {
-	SubmitProposal(ctx context.Context, projectRoot string, proposal skills.Proposal) (skills.ProposalRef, []string, error)
+	SubmitProposal(ctx context.Context, projectRoot string, proposal skills.Proposal) (skills.ProposalRef, error)
 	ListProposals(ctx context.Context, projectRoot string) ([]skills.ProposalReview, error)
 	ApproveProposal(ctx context.Context, projectRoot string, ref skills.ProposalRef) ([]string, error)
-	RejectProposal(ctx context.Context, projectRoot string, ref skills.ProposalRef) ([]string, error)
+	RejectProposal(ctx context.Context, projectRoot string, ref skills.ProposalRef) error
 }
 
 // Skills owns discovery, library curation, and proposal review.
@@ -181,12 +180,7 @@ func (s *Skills) SubmitProposal(ctx context.Context, cwd string, proposal skills
 	if err != nil {
 		return skills.ProposalRef{}, err
 	}
-	ref, identities, err := s.proposals.SubmitProposal(ctx, root, proposal)
-	s.publishSkillMutation(identities)
-	if err != nil {
-		return ref, err
-	}
-	return ref, nil
+	return s.proposals.SubmitProposal(ctx, root, proposal)
 }
 
 // Proposals returns the current immutable Skill proposals visible from cwd,
@@ -200,7 +194,7 @@ func (s *Skills) Proposals(ctx context.Context, cwd string) ([]skills.ProposalRe
 	if err != nil {
 		return nil, err
 	}
-	if len(proposals) > 2*skills.MaxPendingProposalsPerScope {
+	if len(proposals) > 2*plugin.MaxInstallations*skill.MaxPendingProposalsPerScope {
 		return nil, fmt.Errorf("%w: review catalog contains %d proposals", skills.ErrProposalQueueFull, len(proposals))
 	}
 	for index, proposal := range proposals {
@@ -212,11 +206,12 @@ func (s *Skills) Proposals(ctx context.Context, cwd string) ([]skills.ProposalRe
 		return cmp.Or(
 			cmp.Compare(string(first.Ref.Scope), string(second.Ref.Scope)),
 			cmp.Compare(first.Ref.Name, second.Ref.Name),
+			cmp.Compare(first.Ref.Revision, second.Ref.Revision),
 		)
 	})
 	for index := 1; index < len(proposals); index++ {
 		previous, current := proposals[index-1].Ref, proposals[index].Ref
-		if current.Scope == previous.Scope && current.Name == previous.Name {
+		if current == previous {
 			return nil, fmt.Errorf("workspace: skill proposal catalog repeats current slot %s/%s", current.Scope, current.Name)
 		}
 	}
@@ -255,9 +250,7 @@ func (s *Skills) RejectProposal(ctx context.Context, cwd string, ref skills.Prop
 	if err != nil {
 		return err
 	}
-	identities, err := s.proposals.RejectProposal(ctx, root, ref)
-	s.publishSkillMutation(identities)
-	return err
+	return s.proposals.RejectProposal(ctx, root, ref)
 }
 
 func (s *Skills) publishSkillMutation(identities []string) {

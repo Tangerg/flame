@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/feedback"
+	"github.com/Tangerg/flame/runtime/internal/domain/annotation"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/samber/lo"
 )
@@ -33,7 +33,7 @@ type TrajectoryEvidence struct {
 	ModelInvocations []RecordedModelInvocation
 	ModelEndpoints   []modelref.EndpointObservation
 	ToolAttempts     []RecordedToolAttempt
-	Feedback         []feedback.Entry
+	Annotations      []annotation.Entry
 }
 
 // ReadTrajectoryExport must read every collection in one transaction and reject

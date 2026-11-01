@@ -74,9 +74,9 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.1-dev.20261101.te31099412660
+	github.com/Tangerg/flame/packages/go-sdk v0.1.2-dev.20261101.t2d8806f39315
 	github.com/Tangerg/flame/packages/local-runtime v0.1.1-dev.20261101.t373cde3df814
-	github.com/Tangerg/flame/runtime v0.1.1-dev.20261101.t0daa289123d9
+	github.com/Tangerg/flame/runtime v0.1.2-dev.20261101.t5776a6adec70
 	github.com/Tangerg/oolong/components v0.25.0
 	github.com/Tangerg/oolong/core v0.25.0
 	github.com/Tangerg/oolong/highlight v0.25.0

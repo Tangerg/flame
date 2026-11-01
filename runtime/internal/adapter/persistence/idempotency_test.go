@@ -180,7 +180,8 @@ func TestAtomicReplaySurvivesFailedWriteAndReopen(t *testing.T) {
 	prepare := func(fail bool) func() (operation.PreparedOutcome, error) {
 		return func() (operation.PreparedOutcome, error) {
 			return operation.PreparedOutcome{Payload: []byte("original"), Commit: func(tx context.Context) error {
-				if _, err := sqlite.Connection(tx, db).ExecContext(tx, `INSERT INTO feedback_entries(text,created_at_ns) VALUES ('atomic replay test',1)`); err != nil {
+				if _, err := sqlite.Connection(tx, db).ExecContext(tx, `INSERT INTO session_annotations(command_id,installation,release,contribution,contract,session_id,run_id,item_id,content,created_at_ns)
+VALUES ('atomic replay test','test','digest','contributor','contract','','','','{}',1)`); err != nil {
 					return err
 				}
 				if fail {
@@ -215,7 +216,7 @@ func TestAtomicReplaySurvivesFailedWriteAndReopen(t *testing.T) {
 		t.Fatalf("replay: %q, %v", body, err)
 	}
 	var count int
-	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM feedback_entries WHERE text='atomic replay test'`).Scan(&count); err != nil || count != 1 || published != 1 {
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM session_annotations WHERE command_id='atomic replay test'`).Scan(&count); err != nil || count != 1 || published != 1 {
 		t.Fatalf("writes=%d publications=%d err=%v", count, published, err)
 	}
 }

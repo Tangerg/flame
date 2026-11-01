@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	"sync"
 	"time"
 
@@ -9,7 +10,7 @@ import (
 )
 
 const (
-	authorizationAttemptRetention = 10 * time.Minute
+	authorizationAttemptRetention = mcpconnector.AttemptRetentionSeconds * time.Second
 )
 
 // AuthorizationAttemptStatus is the lifecycle of one interactive MCP OAuth
@@ -19,16 +20,17 @@ const (
 type AuthorizationAttemptStatus string
 
 const (
-	AuthorizationAttemptPending   AuthorizationAttemptStatus = "pending"
-	AuthorizationAttemptSucceeded AuthorizationAttemptStatus = "succeeded"
-	AuthorizationAttemptFailed    AuthorizationAttemptStatus = "failed"
-	AuthorizationAttemptCanceled  AuthorizationAttemptStatus = "canceled"
+	AuthorizationAttemptUnconfirmed AuthorizationAttemptStatus = AuthorizationAttemptStatus(mcpconnector.Unconfirmed)
+	AuthorizationAttemptPending     AuthorizationAttemptStatus = AuthorizationAttemptStatus(mcpconnector.Pending)
+	AuthorizationAttemptSucceeded   AuthorizationAttemptStatus = AuthorizationAttemptStatus(mcpconnector.Succeeded)
+	AuthorizationAttemptFailed      AuthorizationAttemptStatus = AuthorizationAttemptStatus(mcpconnector.Failed)
+	AuthorizationAttemptCanceled    AuthorizationAttemptStatus = AuthorizationAttemptStatus(mcpconnector.Canceled)
 )
 
 // Valid reports whether a belongs to the authorization-attempt lifecycle.
 func (a AuthorizationAttemptStatus) Valid() bool {
 	return a == AuthorizationAttemptPending || a == AuthorizationAttemptSucceeded ||
-		a == AuthorizationAttemptFailed || a == AuthorizationAttemptCanceled
+		a == AuthorizationAttemptFailed || a == AuthorizationAttemptCanceled || a == AuthorizationAttemptUnconfirmed
 }
 
 // AuthorizationAttempt is the application read model for one interactive
@@ -45,7 +47,7 @@ type AuthorizationAttempt struct {
 // AuthorizationAttemptRetention is the terminal-result window this
 // Coordinator enforces and reports to callers.
 func (c *Coordinator) AuthorizationAttemptRetention() time.Duration {
-	return c.authorizationAttempts.retention
+	return c.installedAuthorizations.retention
 }
 
 // CreateAuthorizationAttempt validates a configured server and starts one
@@ -64,15 +66,28 @@ func (c *Coordinator) CreateAuthorizationAttempt(ctx context.Context, server mcp
 	if target.Transport() != mcpserver.TransportStreamableHTTP {
 		return AuthorizationAttempt{}, ErrAuthorizationUnsupported
 	}
-	attempt := c.authorizationAttempts.create(server)
+	var attempt AuthorizationAttempt
+	var settle func(context.Context, AuthorizationAttemptStatus) error
+	if server.Origin().Kind() == mcpserver.OriginUser {
+		attempt, settle, err = c.external.StartAuthorization(write.requestCtx, target, newAuthorizationAttemptID())
+		if err != nil {
+			return AuthorizationAttempt{}, err
+		}
+	} else {
+		attempt = c.installedAuthorizations.create(server)
+		settle = func(_ context.Context, status AuthorizationAttemptStatus) error {
+			c.installedAuthorizations.settle(attempt.ID, status)
+			return nil
+		}
+	}
 	start := make(chan struct{})
 	defer close(start)
 	var event *statusEvent
 	err = c.dispatchConnection(write.ownerCtx, server, c.connections.BeginAuthorize, start, func() { c.statusQueue.publish(event) }, func(outcome connectionOutcome) {
-		c.authorizationAttempts.settle(attempt.ID, authorizationAttemptStatus(outcome))
+		_ = settle(context.WithoutCancel(write.ownerCtx), authorizationAttemptStatus(outcome))
 	})
 	if err != nil {
-		c.authorizationAttempts.discard(attempt.ID)
+		_ = settle(context.WithoutCancel(write.ownerCtx), AuthorizationAttemptFailed)
 		return AuthorizationAttempt{}, err
 	}
 	event = c.statusQueue.prepare(server)
@@ -81,14 +96,14 @@ func (c *Coordinator) CreateAuthorizationAttempt(ctx context.Context, server mcp
 }
 
 // AuthorizationAttempt returns one live or retained terminal attempt.
-func (c *Coordinator) AuthorizationAttempt(_ context.Context, id string) (AuthorizationAttempt, error) {
+func (c *Coordinator) AuthorizationAttempt(ctx context.Context, id string) (AuthorizationAttempt, error) {
 	parsed, err := ParseAuthorizationAttemptID(id)
 	if err != nil {
 		return AuthorizationAttempt{}, ErrAuthorizationAttemptNotFound
 	}
-	attempt, ok := c.authorizationAttempts.get(parsed)
+	attempt, ok := c.installedAuthorizations.get(parsed)
 	if !ok {
-		return AuthorizationAttempt{}, ErrAuthorizationAttemptNotFound
+		return c.external.ReadAuthorization(ctx, parsed)
 	}
 	return attempt, nil
 }
@@ -177,12 +192,6 @@ func (a *authorizationAttemptStore) settle(id AuthorizationAttemptID, status Aut
 	attempt.Status = status
 	attempt.FinishedAt = &finishedAt
 	a.attempts[id] = attempt
-}
-
-func (a *authorizationAttemptStore) discard(id AuthorizationAttemptID) {
-	a.mu.Lock()
-	delete(a.attempts, id)
-	a.mu.Unlock()
 }
 
 func (a *authorizationAttemptStore) purgeExpiredLocked() {

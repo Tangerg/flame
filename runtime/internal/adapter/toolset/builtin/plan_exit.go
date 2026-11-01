@@ -8,7 +8,6 @@ import (
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/planpresentation"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -28,7 +27,9 @@ reads that stored Plan; it takes no Plan text or alternatives, so the approved
 value cannot differ from the stored session Plan. Approval returns the session to the
 default permission mode. Rejection keeps the session in read-only Plan mode.`
 
-type exitArgs struct{}
+type exitArgs struct {
+	Revision uint64 `json:"revision" jsonschema:"minimum=1" jsonschema_description:"The exact Plan revision returned by set_plan."`
+}
 
 type exiter struct {
 	modes planExitPolicy
@@ -48,7 +49,7 @@ func newExit(modes planExitPolicy, plan planStateReader, interrupt runs.Interrup
 	)
 }
 
-func (e *exiter) request(ctx context.Context, _ exitArgs) (runs.Interrupt, error) {
+func (e *exiter) request(ctx context.Context, args exitArgs) (runs.Interrupt, error) {
 	sessionID := executionctx.SessionID(ctx)
 	if sessionID == "" {
 		return nil, errors.New("exit_plan_mode: no active session")
@@ -72,12 +73,20 @@ func (e *exiter) request(ctx context.Context, _ exitArgs) (runs.Interrupt, error
 		return nil, pluginsdk.DefiniteToolFailure(errors.New("exit_plan_mode: current Plan is empty; call set_plan before requesting approval"))
 	}
 
-	arguments := `{}`
+	committed, ok := state.State()
+	if !ok || committed.Revision() != args.Revision {
+		return nil, pluginsdk.DefiniteToolFailure(errors.New("exit_plan_mode: proposed revision is no longer current"))
+	}
+	prompt, err := e.plan.Review(ctx, committed)
+	if err != nil {
+		return nil, pluginsdk.DefiniteToolFailure(err)
+	}
+	arguments := fmt.Sprintf(`{"revision":%d}`, args.Revision)
 	pending := runs.QuestionPrompt{
 		ToolName:  string(builtincontract.ExitPlanMode),
 		Arguments: arguments,
 		Fields: []runs.QuestionFieldSpec{{
-			Prompt: planpresentation.Render(steps),
+			Prompt: prompt,
 			Header: "Plan",
 			Options: []runs.QuestionOptionSpec{
 				{Label: approveLabel, Description: "Approve this Plan and allow execution"},
@@ -91,7 +100,7 @@ func (e *exiter) request(ctx context.Context, _ exitArgs) (runs.Interrupt, error
 	return pending, nil
 }
 
-func (e *exiter) render(ctx context.Context, _ exitArgs, resolution run.InterruptResolution) (string, error) {
+func (e *exiter) render(ctx context.Context, args exitArgs, resolution run.InterruptResolution) (string, error) {
 	if selectedChoice(resolution.Question().Answers()) != approveLabel {
 		return "Plan not approved. The session remains in Plan mode; revise the Plan or continue investigating.", nil
 	}
@@ -99,12 +108,12 @@ func (e *exiter) render(ctx context.Context, _ exitArgs, resolution run.Interrup
 	if sessionID == "" {
 		return "", errors.New("exit_plan_mode: no active session")
 	}
-	restored, changed, err := e.modes.ExitPlanMode(ctx, sessionID)
+	restored, changed, err := e.modes.ExitPlanMode(ctx, sessionID, args.Revision)
 	if err != nil {
 		return "", err
 	}
 	if !changed {
-		return "", errors.New("exit_plan_mode: Plan mode ended before approval was applied")
+		return "", pluginsdk.DefiniteToolFailure(errors.New("exit_plan_mode: the approved version or Plan mode is no longer current"))
 	}
 	return fmt.Sprintf("Plan approved. Plan mode exited; the session follows the default permission mode %s. Execute the Plan.", modeName(restored)), nil
 }

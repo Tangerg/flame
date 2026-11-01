@@ -1,14 +1,16 @@
 package protocol
 
+import "github.com/Tangerg/flame/packages/go-sdk/skill"
+
 // SkillScope identifies the project or user library that owns a Skill.
 //
 //flame:enum
 type SkillScope string
 
 const (
-	SkillScopeProject      SkillScope = "project"
-	SkillScopeUser         SkillScope = "user"
-	SkillScopeInstallation SkillScope = "installation"
+	SkillScopeProject      SkillScope = SkillScope(skill.Project)
+	SkillScopeUser         SkillScope = SkillScope(skill.User)
+	SkillScopeInstallation SkillScope = SkillScope(skill.Installation)
 )
 
 // Skill is one entry in skills.discovered.list. List results contain one entry

@@ -22,8 +22,9 @@ import (
 
 type learningSourceFunc func(context.Context, string) (*skillspec.Skill, error)
 
-func (f learningSourceFunc) Load(ctx context.Context, name string) (*skillspec.Skill, error) {
-	return f(ctx, name)
+func (f learningSourceFunc) CurrentDocument(ctx context.Context, name string) (*skillspec.Skill, string, error) {
+	s, err := f(ctx, name)
+	return s, "captured-document", err
 }
 
 type learningHistoryFunc func(context.Context, string) ([]chat.Message, error)
@@ -99,7 +100,7 @@ func TestLearningGrantBoundsSourceReadsAndRetainsModelAncestry(t *testing.T) {
 	if _, err := qimumcp.CallHost(t.Context(), grant, read, "", skilllearning.ReadSkill{Name: "other-skill"}); err == nil {
 		t.Fatal("second source read accepted")
 	}
-	if name, _ := state.outcome(); name != "run-tests" {
+	if name, _ := state.outcome(); name.name != "run-tests" {
 		t.Fatalf("admitted source = %s", name)
 	}
 	for _, id := range []string{"first", "second"} {

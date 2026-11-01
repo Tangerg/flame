@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
+	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/planpresentation"
@@ -58,16 +59,16 @@ func (s *setter) set(ctx context.Context, args setArgs) (string, error) {
 		return "", errors.New("set_plan: no active session")
 	}
 	steps := args.steps()
-	if err := plandomain.ValidateSteps(steps); err != nil {
+	state, err := s.plans.Replace(ctx, sessionID, steps)
+	if errors.Is(err, planworkflow.ErrRefused) {
 		return "", pluginsdk.DefiniteToolFailure(err)
 	}
-	state, err := s.plans.Replace(ctx, sessionID, steps)
 	if err != nil {
 		return "", err
 	}
 	steps = state.Steps()
 	if rendered := planpresentation.Render(steps); rendered != "" {
-		return "Plan updated:\n" + rendered, nil
+		return fmt.Sprintf("Plan revision %d:\n%s", state.Revision(), rendered), nil
 	}
-	return "Plan cleared.", nil
+	return fmt.Sprintf("Plan cleared at revision %d.", state.Revision()), nil
 }

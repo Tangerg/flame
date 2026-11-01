@@ -1,5 +1,7 @@
 package run
 
+import "github.com/Tangerg/flame/packages/go-sdk/runoutcome"
+
 // State is the lifecycle position of a Run and the single authority for its
 // legal transitions. Why a Finished Run ended is its [Outcome], never a second
 // state value; persistence and the protocol store these same three spellings.
@@ -74,17 +76,17 @@ type Outcome string
 
 const (
 	// OutcomeCompleted — the model returned a stop-marker normally.
-	OutcomeCompleted Outcome = "completed"
+	OutcomeCompleted Outcome = Outcome(runoutcome.Completed)
 	// OutcomeCanceled — the caller canceled, or the context was canceled.
-	OutcomeCanceled Outcome = "canceled"
+	OutcomeCanceled Outcome = Outcome(runoutcome.Canceled)
 	// OutcomeTimedOut — the Run exceeded its governing deadline. This is not a
 	// generic failure: callers may apply a distinct retry and alerting policy.
-	OutcomeTimedOut Outcome = "timedOut"
+	OutcomeTimedOut Outcome = Outcome(runoutcome.TimedOut)
 	// OutcomeFailed — the run aborted on an error.
-	OutcomeFailed Outcome = "failed"
+	OutcomeFailed Outcome = Outcome(runoutcome.Failed)
 	// OutcomeLost — the Run's real outcome cannot be established: recovery
 	// found nothing that can continue it, or its effects have no provable result.
-	OutcomeLost Outcome = "lost"
+	OutcomeLost Outcome = Outcome(runoutcome.Lost)
 )
 
 func (o Outcome) valid() bool {

@@ -56,7 +56,7 @@ type modeStore interface {
 	SetDefaultMode(ctx context.Context, mode approval.Mode) error
 	PlanModeActive(ctx context.Context, sessionID string) (bool, error)
 	StartPlanMode(ctx context.Context, sessionID string) (changed bool, err error)
-	EndPlanMode(ctx context.Context, sessionID string) (changed bool, err error)
+	EndPlanMode(ctx context.Context, sessionID string, revision uint64) (changed bool, err error)
 }
 
 // RuntimePolicy combines two policy facts consumed together at the tool-call
@@ -128,11 +128,11 @@ func (r *RuntimePolicy) EnterPlanMode(ctx context.Context, sessionID string) (ch
 // ExitPlanMode returns the session to the Runtime default, reporting the mode
 // it now follows. It returns changed=false when the session is not in Plan
 // mode.
-func (r *RuntimePolicy) ExitPlanMode(ctx context.Context, sessionID string) (restored approval.Mode, changed bool, err error) {
+func (r *RuntimePolicy) ExitPlanMode(ctx context.Context, sessionID string, revision uint64) (restored approval.Mode, changed bool, err error) {
 	if parseErr := identity.ValidateSession(sessionID); parseErr != nil {
 		return "", false, fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, parseErr)
 	}
-	changed, err = r.modeStore.EndPlanMode(ctx, sessionID)
+	changed, err = r.modeStore.EndPlanMode(ctx, sessionID, revision)
 	if err != nil {
 		return "", false, err
 	}

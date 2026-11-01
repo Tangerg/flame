@@ -1,6 +1,9 @@
 package protocol
 
-import "time"
+import (
+	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
+	"time"
+)
 
 // RunEvent is the params of the notifications.run.event notification —
 // the single downstream stream carrying segment / item / Plan events. RunID is
@@ -170,9 +173,9 @@ type PlanStep struct {
 type PlanStatus string
 
 const (
-	PlanStatusPending    PlanStatus = "pending"
-	PlanStatusInProgress PlanStatus = "in_progress"
-	PlanStatusCompleted  PlanStatus = "completed"
+	PlanStatusPending    PlanStatus = PlanStatus(planworkflow.PlanStatusPending)
+	PlanStatusInProgress PlanStatus = PlanStatus(planworkflow.PlanStatusInProgress)
+	PlanStatusCompleted  PlanStatus = PlanStatus(planworkflow.PlanStatusCompleted)
 )
 
 // ItemDeltaType discriminates the ItemDelta union.

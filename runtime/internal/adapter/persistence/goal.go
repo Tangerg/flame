@@ -36,7 +36,7 @@ func (g *GoalStore) Get(ctx context.Context, sessionID string) (goal.Current, er
 	current := unwritten
 	err = sqlite.RunReadSnapshot(ctx, g.db, func(ctx context.Context) error {
 		row := sqlite.Connection(ctx, g.db).QueryRowContext(ctx,
-			`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, incarnation_id, revision, created_at, updated_at
+			`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, author, incarnation_id, revision, created_at, updated_at
 			 FROM goals WHERE session_id = ?`, sessionID)
 		snapshot, err := scanGoal(row)
 		if errors.Is(err, sql.ErrNoRows) {
@@ -69,17 +69,21 @@ func (g *GoalStore) Save(ctx context.Context, replacement goal.Replacement) (boo
 	record := replacement.State()
 	expected := replacement.ExpectedVersion()
 	snapshot := record.Snapshot()
+	author, err := encodeStoredJSON(snapshot.Author)
+	if err != nil {
+		return false, err
+	}
 	capabilities, err := encodeRunCapabilities(snapshot.Capabilities)
 	if err != nil {
 		return false, fmt.Errorf("sqlite: encode goal capabilities: %w", err)
 	}
 	if expected.IsUnwritten() {
 		res, execContextErr := sqlite.Connection(ctx, g.db).ExecContext(ctx,
-			`INSERT INTO goals(session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, incarnation_id, revision, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`INSERT INTO goals(session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, author, incarnation_id, revision, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			 ON CONFLICT(session_id) DO NOTHING`,
 			snapshot.SessionID, snapshot.Objective, string(snapshot.Status), string(snapshot.ReasonCode), storedGoalReasonDetail(snapshot), snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(),
-			capabilities, snapshot.IncarnationID, snapshot.Revision, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano())
+			capabilities, string(author), snapshot.IncarnationID, snapshot.Revision, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano())
 		if execContextErr != nil {
 			return false, fmt.Errorf("sqlite: insert goal: %w", execContextErr)
 		}
@@ -95,10 +99,10 @@ func (g *GoalStore) Save(ctx context.Context, replacement goal.Replacement) (boo
 		return false, errors.New("sqlite: committed Goal version lost identity")
 	}
 	res, err := sqlite.Connection(ctx, g.db).ExecContext(ctx,
-		`UPDATE goals SET objective = ?, status = ?, reason_code = ?, reason_detail = ?, provider = ?, model = ?, reasoning_effort = ?, capabilities = ?, incarnation_id = ?, revision = ?, created_at = ?, updated_at = ?
+		`UPDATE goals SET objective = ?, status = ?, reason_code = ?, reason_detail = ?, provider = ?, model = ?, reasoning_effort = ?, capabilities = ?, author = ?, incarnation_id = ?, revision = ?, created_at = ?, updated_at = ?
 		 WHERE session_id = ? AND incarnation_id = ? AND revision = ?`,
 		snapshot.Objective, string(snapshot.Status), string(snapshot.ReasonCode), storedGoalReasonDetail(snapshot), snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(),
-		capabilities, snapshot.IncarnationID, snapshot.Revision, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(),
+		capabilities, string(author), snapshot.IncarnationID, snapshot.Revision, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(),
 		snapshot.SessionID, expectedIncarnation, expectedRevision)
 	if err != nil {
 		return false, fmt.Errorf("sqlite: save goal: %w", err)
@@ -154,7 +158,7 @@ func (g *GoalStore) List(ctx context.Context) ([]goal.Goal, error) {
 	var out []goal.Goal
 	err := sqlite.RunReadSnapshot(ctx, g.db, func(ctx context.Context) error {
 		rows, err := sqlite.Connection(ctx, g.db).QueryContext(ctx,
-			`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, incarnation_id, revision, created_at, updated_at FROM goals`)
+			`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, author, incarnation_id, revision, created_at, updated_at FROM goals`)
 		if err != nil {
 			return fmt.Errorf("sqlite: list goals: %w", err)
 		}
@@ -201,7 +205,8 @@ func scanGoal(row scanRow) (goal.Snapshot, error) {
 		capabilitiesJSON                    string
 		createdAt, updatedAt                int64
 	)
-	if err := row.Scan(&sessionID, &objective, &status, &reasonCode, &reasonDetail, &provider, &model, &reasoningEffort, &capabilitiesJSON, &incarnationID, &revision, &createdAt, &updatedAt); err != nil {
+	var authorJSON string
+	if err := row.Scan(&sessionID, &objective, &status, &reasonCode, &reasonDetail, &provider, &model, &reasoningEffort, &capabilitiesJSON, &authorJSON, &incarnationID, &revision, &createdAt, &updatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return goal.Snapshot{}, err
 		}
@@ -221,6 +226,9 @@ func scanGoal(row scanRow) (goal.Snapshot, error) {
 		ModelSelection: selection, Capabilities: capabilities,
 		IncarnationID: incarnationID, Revision: revision,
 		CreatedAt: time.Unix(0, createdAt).UTC(), UpdatedAt: time.Unix(0, updatedAt).UTC(),
+	}
+	if err := decodeStoredJSON([]byte(authorJSON), &snapshot.Author); err != nil {
+		return goal.Snapshot{}, err
 	}
 	switch snapshot.ReasonCode {
 	case goal.ReasonRunNotCompleted:

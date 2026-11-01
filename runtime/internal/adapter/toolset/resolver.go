@@ -36,15 +36,17 @@ import (
 // each running its tools in its own project directory — without a
 // per-session engine.
 type Resolver struct {
+	goalAvailable func(context.Context) (bool, error)
 	telemetry     oteltool.Middleware
-	packageSkills promptsource.PackageSkills
+	skillSources  promptsource.SkillSources
 	skillsUserDir string                     // user-scope skills dir; merged under each Run's project skills
 	skillUsage    builtin.SkillUsageRecorder // records skill loads for the idle-lifecycle curator; nil → off
 	codeIntel     CodeIntelligence           // backs post-patch diagnostics (rebuilt per resolution with the Run's cwd)
 	readTracker   *readTracker               // backs the read-before-patch and stale-read guards
 	pathLocker    *keylock.Set               // serializes same-path fs calls across every concurrent Run resolution
 	shell         []toolcontract.Tool        // shell tools (shell / read_shell_output / stop_shell) over the exec.Shells; cwd read per-call
-	staticSpecs   []staticSpec               // built-once capabilities with one group/placement policy for Run manifests
+	planAvailable func(context.Context) (bool, error)
+	staticSpecs   []staticSpec // built-once capabilities with one group/placement policy for Run manifests
 
 	// createGoal is the root-only Goal entry tool, installed by
 	// UseCreateGoalTool once the Goal Driver exists over Runs. It is the only
@@ -93,6 +95,7 @@ type staticSpec struct {
 	audience        audience
 	placement       placement
 	deferred        bool
+	requiresPlan    bool
 	requiresGoalRun bool
 }
 
@@ -100,7 +103,9 @@ type staticSpec struct {
 // at construction. Filesystem and skill tools are rebuilt per resolution;
 // shell tools are built once but read the Run's cwd per call. Selected code intelligence is borrowed only while a file mutation executes.
 type resolverDeps struct {
-	PackageSkills promptsource.PackageSkills
+	GoalAvailable func(context.Context) (bool, error)
+	PlanAvailable func(context.Context) (bool, error)
+	SkillSources  promptsource.SkillSources
 	SkillsUserDir string
 	SkillUsage    builtin.SkillUsageRecorder
 	Shell         []toolcontract.Tool // shell tools (shell / read_shell_output / stop_shell); nil means omitted
@@ -133,14 +138,16 @@ func newResolver(d resolverDeps) (*Resolver, error) {
 	}
 	resolver := &Resolver{
 		telemetry:     telemetry,
-		skillsUserDir: d.SkillsUserDir, packageSkills: d.PackageSkills,
-		skillUsage: d.SkillUsage,
-		shell:      slices.Clone(d.Shell),
+		skillsUserDir: d.SkillsUserDir, skillSources: d.SkillSources,
+		skillUsage:    d.SkillUsage,
+		shell:         slices.Clone(d.Shell),
+		goalAvailable: d.GoalAvailable,
+		planAvailable: d.PlanAvailable,
 		staticSpecs: []staticSpec{
 			{tool: d.AskUser, audience: audienceBoth, placement: interactionTail},
-			{tool: d.EnterPlan, audience: audienceRoot, placement: interactionTail},
-			{tool: d.ExitPlan, audience: audienceRoot, placement: interactionTail},
-			{tool: d.Plan, audience: audienceRoot, placement: afterSkill},
+			{tool: d.EnterPlan, requiresPlan: true, audience: audienceRoot, placement: interactionTail},
+			{tool: d.ExitPlan, requiresPlan: true, audience: audienceRoot, placement: interactionTail},
+			{tool: d.Plan, requiresPlan: true, audience: audienceRoot, placement: afterSkill},
 			{tool: d.ToolResult, audience: audienceBoth, placement: afterSkill},
 			{tool: d.ProposeSkill, audience: audienceRoot, placement: afterSkill, deferred: true},
 			{tool: d.GoalGet, audience: audienceRoot, placement: rootTail},
@@ -159,9 +166,12 @@ func (r *Resolver) appendStatic(
 	ctx context.Context,
 	into *manifestBuilder,
 	at placement,
-	group domaintool.Group,
+	group domaintool.Group, planAvailable bool,
 ) {
 	for _, spec := range r.staticSpecs {
+		if spec.requiresPlan && !planAvailable {
+			continue
+		}
 		if spec.tool == nil || spec.placement != at || !spec.audience.includes(group) {
 			continue
 		}
@@ -419,42 +429,43 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained
 	tools.deferred = append(tools.deferred, mcpTools...)
 	tools.pendingMCP = pending
 	tools.direct(r.shell...)
-	// Skill tools are working-directory scoped (project skills live under the
-	// Run's cwd), so they are built per resolution like filesystem tools and are
-	// available to both root and delegated groups. No tools when no skills exist.
-	var resources []plugin.Dependency
-	if retained != nil {
-		resources = append([]plugin.Dependency{}, retained.Resources...)
+	if err := r.resolveSkillTools(ctx, cwd, retained, &tools); err != nil {
+		return manifestBuilder{}, err
 	}
-	skillTools, dependencies, err := builtin.BuildReaders(ctx, cwd, r.skillsUserDir, r.skillUsage, r.packageSkills, resources)
-	if err != nil {
-		return manifestBuilder{}, fmt.Errorf("toolset: resolve skill tools: %w", err)
-	}
-	// Skill reads mutate nothing, so a Skill the model named wrongly is a failed
-	// call, not an operation whose outcome the Host cannot prove.
-	for index, skillTool := range skillTools {
-		skillTools[index] = withDefiniteOutcome(skillTool)
-	}
-	tools.installations = dependencies
-	tools.deferTools(skillTools...)
 	// Built-once, session-keyed helpers (plan/result/transcript search)
 	// are projected from the resolver's group and placement policy.
-	r.appendStatic(ctx, &tools, afterSkill, group)
+	planAvailable := true
+	if group == domaintool.GroupRoot && r.planAvailable != nil {
+		planAvailable, err = r.planAvailable(ctx)
+		if err != nil {
+			return manifestBuilder{}, err
+		}
+	}
+	r.appendStatic(ctx, &tools, afterSkill, group, planAvailable)
 	// Both groups can ask the user; Plan-mode controls in this placement remain
 	// root-only. A child question waits at the same durable tree boundary as a
 	// child approval.
-	r.appendStatic(ctx, &tools, interactionTail, group)
+	r.appendStatic(ctx, &tools, interactionTail, group, planAvailable)
 	if group == domaintool.GroupRoot {
 		// Goal lifecycle entry is late-bound because its application Driver owns
 		// Runs, while the resolver itself was needed to build the Agent executor.
 		// Keep only the generic tool at this seam; no Driver or runtime state enters
 		// the Agent module.
 		if createGoal := r.createGoalTool(); createGoal != nil {
-			tools.direct(createGoal)
+			available := true
+			if r.goalAvailable != nil {
+				available, err = r.goalAvailable(ctx)
+				if err != nil {
+					return manifestBuilder{}, err
+				}
+			}
+			if available {
+				tools.direct(createGoal)
+			}
 		}
 		// The remaining Goal state capabilities are
 		// product-root operations rather than generic child execution tools.
-		r.appendStatic(ctx, &tools, rootTail, group)
+		r.appendStatic(ctx, &tools, rootTail, group, planAvailable)
 	}
 	// search_tools is the sole model-facing entry to every capability withheld
 	// from the initial manifest. The tools themselves remain in the same Run
@@ -471,4 +482,30 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained
 		tools.discovery = search
 	}
 	return tools, nil
+}
+
+func (r *Resolver) resolveSkillTools(ctx context.Context, cwd string, retained *Retained, tools *manifestBuilder) error {
+	var resources []plugin.Dependency
+	sources := r.skillSources
+	capture := &promptsource.SkillCapture{}
+	if retained != nil {
+		resources = append([]plugin.Dependency{}, retained.Resources...)
+		capture.Restore = true
+		capture.Command = retained.SkillDiscovery
+	}
+	sources.Capture = capture
+	skillTools, dependencies, err := builtin.BuildReaders(ctx, cwd, r.skillsUserDir, r.skillUsage, sources, resources)
+	tools.skillDiscovery = *capture
+	if err != nil {
+		return fmt.Errorf("toolset: resolve skill tools: %w", err)
+	}
+	// Skill reads mutate nothing, so a Skill the model named wrongly is a failed
+	// call, not an operation whose outcome the Host cannot prove.
+	for index, skillTool := range skillTools {
+		skillTools[index] = withDefiniteOutcome(skillTool)
+	}
+	tools.installations = dependencies
+	tools.deferTools(skillTools...)
+
+	return nil
 }

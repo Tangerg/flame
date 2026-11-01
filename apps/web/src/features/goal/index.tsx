@@ -1,3 +1,4 @@
+import { GOAL_WORKFLOW, type WorkflowProviders } from "@/features/plugins/public/workflows";
 import { type AgentAccess } from "@/features/agent/public/agent";
 import { type ComposerAccess } from "@/features/composer/public/composer";
 import { type RuntimeAccess } from "@/features/connection/public/runtime";
@@ -36,6 +37,7 @@ export function createGoalPlugin(
   runtimeAccess: RuntimeAccess,
   runtimeClient: () => FlameClient,
   goals: Goals,
+  providers: WorkflowProviders,
 ) {
   return definePlugin({
     name: "flame.builtin.goal",
@@ -71,18 +73,36 @@ export function createGoalPlugin(
       for (const key of toolFamilyNames("goals")) {
         ctx.contribute(TOOL_STANDING_SURFACE, GOAL_SURFACE, { key });
       }
+      // A withdrawn /goal draft must never be delivered as an ordinary chat message.
       ctx.contribute(
         COMPOSER_SUBMIT_MODE,
         createGoalComposerSubmitMode(composerMode, {
           getActiveSessionId: agentAccess.getActiveSessionId,
-          goalState: (sessionId) =>
-            agentAccess.getAgentSessionSharedMaterial<GoalState>(sessionId, "goal"),
-          runtimeAvailable: runtimeCommandsAvailable.bind(null, runtimeAccess),
+          goalState: (sessionId) => {
+            const state = agentAccess.getAgentSessionSharedMaterial<GoalState>(sessionId, "goal");
+            if (state?.goal && !providers.admits(GOAL_WORKFLOW, state.goal.author))
+              return { ...state, available: false };
+            return state;
+          },
+          runtimeAvailable: () =>
+            providers.selected(GOAL_WORKFLOW) !== undefined &&
+            runtimeCommandsAvailable(runtimeAccess),
           runOptions: resolveAgentRunStartOptions,
           captureStart: () => {
+            const source = providers.selected(GOAL_WORKFLOW);
             const commands = goals.commands.capture();
             return (input) => {
-              if (!commands) throw new GenerationRetiredError("goal_command_generation");
+              const original = agentAccess.getAgentSessionSharedMaterial<GoalState>(
+                input.sessionId,
+                "goal",
+              )?.goal;
+              if (
+                !commands ||
+                source === undefined ||
+                providers.selected(GOAL_WORKFLOW) !== source ||
+                (original && !providers.admits(GOAL_WORKFLOW, original.author))
+              )
+                throw new GenerationRetiredError("goal_command_generation");
               return commands.start(input);
             };
           },
@@ -93,7 +113,21 @@ export function createGoalPlugin(
           retired: wasGenerationRetired,
         }),
       );
-      ctx.contribute(SLASH_COMMAND, GOAL_SLASH_COMMAND, { key: "/goal" });
+      let previous: string | undefined;
+      let unregister: (() => void) | undefined;
+      const refresh = () => {
+        const source = providers.selected(GOAL_WORKFLOW);
+        if (source === previous) return;
+        previous = source;
+        unregister?.();
+        unregister = undefined;
+        composerMode.reset();
+        if (source === undefined) return;
+        const slash = ctx.contribute(SLASH_COMMAND, GOAL_SLASH_COMMAND, { key: "/goal" });
+        unregister = () => slash.dispose();
+      };
+      ctx.cleanup(providers.subscribe(refresh));
+      refresh();
     },
   });
 }

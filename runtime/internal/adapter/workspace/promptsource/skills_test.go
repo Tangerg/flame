@@ -27,7 +27,7 @@ func TestDiscoveryAndDetailShareExecutionSource(t *testing.T) {
 	project := ProjectSkillDir(workspace)
 	writeRuntimeSkill(t, user, "shared", "user instructions")
 	writeRuntimeSkill(t, project, "shared", "project instructions")
-	catalog := NewSkills(user, nil)
+	catalog := NewSkills(user, SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[SkillCapture]})
 	detail, err := catalog.Get(t.Context(), workspace, "shared")
 	if err != nil {
 		t.Fatal(err)
@@ -43,7 +43,7 @@ func TestDiscoveryAndDetailShareExecutionSource(t *testing.T) {
 	if detail.Source.Scope() != domainskills.ScopeProject || detail.Path != physicalPath || detail.Revision != fmt.Sprintf("%x", sha256.Sum256(content)) {
 		t.Fatalf("detail source = %+v", detail)
 	}
-	source, _, err := OverlaySkillSource(t.Context(), workspace, user, nil, nil, nil)
+	source, _, err := OverlaySkillSource(t.Context(), workspace, user, SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[SkillCapture]}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,11 +80,11 @@ func TestPartialSkillDiscoveryDoesNotExposeShadowedUserBundle(t *testing.T) {
 			if err := malformed.create(filepath.Join(project, "broken", sdk.SkillFile)); err != nil {
 				t.Fatal(err)
 			}
-			found, err := ListSkills(t.Context(), workspace, user, nil)
+			found, err := ListSkills(t.Context(), workspace, user, SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[SkillCapture]})
 			if err != nil || len(found.Skills) != 1 || found.Skills[0].Name != "working" || len(found.Diagnostics) != 1 || found.Diagnostics[0].Name != "broken" {
 				t.Fatalf("partial discovery = %+v, %v", found, err)
 			}
-			source, _, err := OverlaySkillSource(t.Context(), workspace, user, nil, nil, nil)
+			source, _, err := OverlaySkillSource(t.Context(), workspace, user, SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[SkillCapture]}, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -95,7 +95,7 @@ func TestPartialSkillDiscoveryDoesNotExposeShadowedUserBundle(t *testing.T) {
 			if _, err := source.Load(t.Context(), "broken"); !errors.Is(err, sdk.ErrInvalidSkill) {
 				t.Fatalf("model loaded broken or shadowed bundle: %v", err)
 			}
-			if _, err := NewSkills(user, nil).Get(t.Context(), workspace, "broken"); !errors.Is(err, workspaceapp.ErrSkillUnavailable) {
+			if _, err := NewSkills(user, SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[SkillCapture]}).Get(t.Context(), workspace, "broken"); !errors.Is(err, workspaceapp.ErrSkillUnavailable) {
 				t.Fatalf("detail loaded broken or shadowed bundle: %v", err)
 			}
 		})
@@ -118,7 +118,7 @@ func TestRuntimeSkillSourceRejectsOversizedDocument(t *testing.T) {
 	root := t.TempDir()
 	writeRuntimeSkill(t, root, "oversized", strings.Repeat("x", domainskills.MaxAuthoredSkillDocumentBytes))
 
-	source, _, err := OverlaySkillSource(t.Context(), "", root, nil, nil, nil)
+	source, _, err := OverlaySkillSource(t.Context(), "", root, SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[SkillCapture]}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestMergedRuntimeSkillSourcePreservesBundleOwnership(t *testing.T) {
 	projectRoot := ProjectSkillDir(workspace)
 	writeRuntimeSkill(t, projectRoot, "project", "project instructions")
 	writeRuntimeSkill(t, userRoot, "shared", "user instructions")
-	source, _, err := OverlaySkillSource(t.Context(), workspace, userRoot, nil, nil, nil)
+	source, _, err := OverlaySkillSource(t.Context(), workspace, userRoot, SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[SkillCapture]}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func TestMergedRuntimeSkillSourcePreservesBundleOwnership(t *testing.T) {
 	if skill, err := source.Load(t.Context(), "shared"); err != nil || skill.Instructions != "user instructions" {
 		t.Fatalf("existing execution changed its selected bundle: %+v, %v", skill, err)
 	}
-	fresh, _, err := OverlaySkillSource(t.Context(), workspace, userRoot, nil, nil, nil)
+	fresh, _, err := OverlaySkillSource(t.Context(), workspace, userRoot, SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[SkillCapture]}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func TestRuntimeSkillSourceRejectsOverCapacityDirectory(t *testing.T) {
 		writeRuntimeSkill(t, root, fmt.Sprintf("skill-%03d", index), "instructions")
 	}
 
-	if _, err := ListSkills(t.Context(), workspace, "", nil); !errors.Is(err, domainskills.ErrLibraryCapacity) {
+	if _, err := ListSkills(t.Context(), workspace, "", SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[SkillCapture]}); !errors.Is(err, domainskills.ErrLibraryCapacity) {
 		t.Fatalf("ListSkills error = %v, want ErrLibraryCapacity beyond %d entries", err, domainskills.MaxSkillsPerSource)
 	}
 }
@@ -218,7 +218,7 @@ func TestRuntimeSkillSourceCapacityCountsOnlyValidSkills(t *testing.T) {
 		}
 	}
 
-	listed, err := ListSkills(t.Context(), workspace, "", nil)
+	listed, err := ListSkills(t.Context(), workspace, "", SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[SkillCapture]})
 	if err != nil {
 		t.Fatalf("ListSkills rejected invalid candidates below the raw entry limit: %v", err)
 	}
@@ -239,7 +239,7 @@ func TestRuntimeSkillSourceRejectsRawDirectoryFlood(t *testing.T) {
 		}
 	}
 
-	if _, err := ListSkills(t.Context(), workspace, "", nil); !errors.Is(err, domainskills.ErrLibraryCapacity) {
+	if _, err := ListSkills(t.Context(), workspace, "", SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[SkillCapture]}); !errors.Is(err, domainskills.ErrLibraryCapacity) {
 		t.Fatalf("ListSkills raw-directory error = %v, want ErrLibraryCapacity", err)
 	}
 }
@@ -255,10 +255,10 @@ func TestRuntimeSkillSourcesRejectEscapingProjectRoot(t *testing.T) {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
 
-	if _, err := ListSkills(t.Context(), workspace, "", nil); !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
+	if _, err := ListSkills(t.Context(), workspace, "", SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[SkillCapture]}); !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
 		t.Fatalf("ListSkills error = %v, want ErrPathOutsideRoot", err)
 	}
-	if _, _, err := OverlaySkillSource(t.Context(), workspace, "", nil, nil, nil); !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
+	if _, _, err := OverlaySkillSource(t.Context(), workspace, "", SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[SkillCapture]}, nil, nil); !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
 		t.Fatalf("OverlaySkillSource error = %v, want ErrPathOutsideRoot", err)
 	}
 }
@@ -274,7 +274,7 @@ func TestRuntimeSkillSourcesAllowInWorkspaceAlias(t *testing.T) {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
 
-	listed, err := ListSkills(t.Context(), workspace, "", nil)
+	listed, err := ListSkills(t.Context(), workspace, "", SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[SkillCapture]})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -315,10 +315,10 @@ func TestRuntimeSkillSourcesRejectBrokenExistingRoots(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			workspace, user := test.build(t)
-			if _, err := ListSkills(t.Context(), workspace, user, nil); err == nil {
+			if _, err := ListSkills(t.Context(), workspace, user, SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[SkillCapture]}); err == nil {
 				t.Fatal("ListSkills silently treated a broken source as absent")
 			}
-			if _, _, err := OverlaySkillSource(t.Context(), workspace, user, nil, nil, nil); err == nil {
+			if _, _, err := OverlaySkillSource(t.Context(), workspace, user, SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[SkillCapture]}, nil, nil); err == nil {
 				t.Fatal("OverlaySkillSource silently treated a broken source as absent")
 			}
 		})
@@ -340,7 +340,7 @@ func TestRuntimeSkillSourceRejectsOversizedResource(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	source, _, err := OverlaySkillSource(t.Context(), "", root, nil, nil, nil)
+	source, _, err := OverlaySkillSource(t.Context(), "", root, SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[SkillCapture]}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -361,7 +361,7 @@ func TestRuntimeSkillSourceRejectsResourceGrowthAfterOpen(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	source, _, err := OverlaySkillSource(t.Context(), "", root, nil, nil, nil)
+	source, _, err := OverlaySkillSource(t.Context(), "", root, SkillSources{Packages: nil, Discover: testsupport.FixtureSkillSelection[SkillCapture]}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -423,7 +423,7 @@ func TestInstallationSkillCapacityIsPerSelectedSource(t *testing.T) {
 		}
 		fixtures = append(fixtures, bundle)
 	}
-	catalog, err := ListSkills(t.Context(), t.TempDir(), t.TempDir(), fixtures)
+	catalog, err := ListSkills(t.Context(), t.TempDir(), t.TempDir(), SkillSources{Packages: fixtures, Discover: testsupport.FixtureSkillSelection[SkillCapture]})
 	if err != nil || len(catalog.Skills) != 258 {
 		t.Fatalf("independent installation capacity: %d, %v", len(catalog.Skills), err)
 	}
@@ -446,11 +446,11 @@ func TestPackageSkillConflictCanOnlyBeResolvedByAnExplicitSource(t *testing.T) {
 		if overridden {
 			writeRuntimeSkill(t, ProjectSkillDir(workspace), "review", "Inspect the project.")
 		}
-		catalog, err := ListSkills(t.Context(), workspace, "", fixtures)
+		catalog, err := ListSkills(t.Context(), workspace, "", SkillSources{Packages: fixtures, Discover: testsupport.FixtureSkillSelection[SkillCapture]})
 		if err != nil || len(catalog.Diagnostics) != 1 {
 			t.Fatalf("discovery = %+v, %v", catalog, err)
 		}
-		source, dependencies, err := OverlaySkillSource(t.Context(), workspace, "", fixtures, nil, nil)
+		source, dependencies, err := OverlaySkillSource(t.Context(), workspace, "", SkillSources{Packages: fixtures, Discover: testsupport.FixtureSkillSelection[SkillCapture]}, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -484,7 +484,7 @@ func TestExecutionSkillSourceCannotFallThroughAfterOverrideRemoval(t *testing.T)
 			writeRuntimeSkill(t, bundle.Root, "review", "package instructions")
 			writeRuntimeSkill(t, root, "review", "local instructions")
 			packages := packageSkillFixtures{bundle}
-			source, dependencies, err := OverlaySkillSource(t.Context(), workspace, user, packages, nil, nil)
+			source, dependencies, err := OverlaySkillSource(t.Context(), workspace, user, SkillSources{Packages: packages, Discover: testsupport.FixtureSkillSelection[SkillCapture]}, nil, nil)
 			if err != nil || len(dependencies) != 0 {
 				t.Fatalf("local selection = %v, %v", dependencies, err)
 			}
@@ -505,7 +505,7 @@ func TestExecutionSkillSourceCannotFallThroughAfterOverrideRemoval(t *testing.T)
 			if err != nil || len(listed) != 0 {
 				t.Fatalf("catalog switched to an unadmitted package: %+v, %v", listed, err)
 			}
-			fresh, dependencies, err := OverlaySkillSource(t.Context(), workspace, user, packages, nil, nil)
+			fresh, dependencies, err := OverlaySkillSource(t.Context(), workspace, user, SkillSources{Packages: packages, Discover: testsupport.FixtureSkillSelection[SkillCapture]}, nil, nil)
 			if err != nil || len(dependencies) != 1 || dependencies[0] != bundle.Dependency {
 				t.Fatalf("fresh selection did not admit its package: %v, %v", dependencies, err)
 			}
@@ -523,7 +523,7 @@ func TestExecutionSkillSelectionDoesNotAdmitLaterNamesOrOverrides(t *testing.T) 
 	writeRuntimeSkill(t, project, "local", "original local instructions")
 	bundle := PackageSkillBundle{Root: t.TempDir(), Skills: []plugin.Skill{{Name: "review", Description: runtimeSkillDescription}}, Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("release")}}
 	writeRuntimeSkill(t, bundle.Root, "review", "package instructions")
-	source, dependencies, err := OverlaySkillSource(t.Context(), workspace, "", packageSkillFixtures{bundle}, nil, nil)
+	source, dependencies, err := OverlaySkillSource(t.Context(), workspace, "", SkillSources{Packages: packageSkillFixtures{bundle}, Discover: testsupport.FixtureSkillSelection[SkillCapture]}, nil, nil)
 	if err != nil || len(dependencies) != 1 || dependencies[0] != bundle.Dependency {
 		t.Fatalf("package selection = %v, %v", dependencies, err)
 	}
@@ -551,7 +551,7 @@ func TestSkillResourceAuthorityIsRetainedWithoutADiscoverableDocument(t *testing
 	if err := os.WriteFile(filepath.Join(bundle.Root, "review", "reference.txt"), []byte("package resource"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	source, dependencies, err := OverlaySkillSource(t.Context(), "", "", packageSkillFixtures{bundle}, nil, nil)
+	source, dependencies, err := OverlaySkillSource(t.Context(), "", "", SkillSources{Packages: packageSkillFixtures{bundle}, Discover: testsupport.FixtureSkillSelection[SkillCapture]}, nil, nil)
 	if err != nil || len(dependencies) != 1 || dependencies[0] != bundle.Dependency {
 		t.Fatalf("callable resource lost its package authority: %v, %v", dependencies, err)
 	}

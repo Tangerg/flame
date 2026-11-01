@@ -76,43 +76,6 @@ func writeFile(root *os.Root, path string, content []byte) (err error) {
 	return nil
 }
 
-func stageProposal(ctx context.Context, root *os.Root, destination string, content []byte) (err error) {
-	createdSlot := false
-	if mkdirErr := root.Mkdir(destination, 0o755); mkdirErr == nil {
-		createdSlot = true
-	} else if !errors.Is(mkdirErr, fs.ErrExist) {
-		return fmt.Errorf("skillauthoring: create proposal slot: %w", mkdirErr)
-	}
-	temporary := filepath.Join(destination, ".stage-"+rand.Text())
-	published := false
-	defer func() {
-		if cleanupErr := root.Remove(temporary); cleanupErr != nil && !errors.Is(cleanupErr, fs.ErrNotExist) {
-			err = errors.Join(err, fmt.Errorf("skillauthoring: clean proposal staging file: %w", cleanupErr))
-		}
-		if !published && createdSlot {
-			if cleanupErr := root.Remove(destination); cleanupErr != nil && !errors.Is(cleanupErr, fs.ErrNotExist) {
-				err = errors.Join(err, fmt.Errorf("skillauthoring: clean empty proposal slot: %w", cleanupErr))
-			}
-		}
-	}()
-	if err := writeFile(root, temporary, content); err != nil {
-		return err
-	}
-	if err := contextError(ctx, "publish proposal"); err != nil {
-		return err
-	}
-	if err := root.Rename(temporary, filepath.Join(destination, skillspec.SkillFile)); err != nil {
-		existing, found, readErr := readSkill(root, destination)
-		if readErr == nil && found && bytes.Equal(existing, content) {
-			published = true
-			return nil
-		}
-		return fmt.Errorf("skillauthoring: publish proposal %q: %w", filepath.Base(destination), errors.Join(err, readErr))
-	}
-	published = true
-	return nil
-}
-
 func stageSkill(ctx context.Context, root *os.Root, destination string, content []byte) (err error) {
 	temporary := ".skill-stage-" + rand.Text()
 	if mkdirErr := root.Mkdir(temporary, 0o755); mkdirErr != nil {
@@ -137,22 +100,4 @@ func stageSkill(ctx context.Context, root *os.Root, destination string, content 
 		return fmt.Errorf("skillauthoring: publish skill %q: %w", filepath.Base(destination), errors.Join(err, readErr))
 	}
 	return nil
-}
-
-// removeProposal conditionally removes the current proposal only when its
-// bytes still match ref.Revision. The caller owns the scoped library lease, so
-// the compare and removal are one cross-process linearized decision.
-func removeProposal(root *os.Root, ref skills.ProposalRef) (bool, error) {
-	directory := filepath.Join(proposalsSubdir, ref.Name)
-	content, found, err := readSkill(root, directory)
-	if err != nil || !found {
-		return false, err
-	}
-	if !ref.Matches(content) {
-		return false, fmt.Errorf("%w: %q revision %q", skills.ErrProposalChanged, ref.Name, ref.Revision)
-	}
-	if err := root.RemoveAll(directory); err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return false, fmt.Errorf("skillauthoring: remove proposal %q: %w", ref.Name, err)
-	}
-	return true, nil
 }

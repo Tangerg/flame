@@ -52,7 +52,7 @@ func TestRegistryRefusesMissingRequiredBindingBeforeAcquiringLaunchResources(t *
 	root := requirementSnapshot(t, testsupport.InstallationID(t), "consumer", contract, plugin.Requirement{ID: "model", Contract: dependency.Identity()})
 	store := requirementInstallations{snapshots: []plugin.Snapshot{root}}
 	packages := &singleServerPackages{}
-	registry, err := NewRegistry(testFramework(t, store), userMemory{}, store, packages, requirementSelections{}, &requirementCompositions{})
+	registry, err := NewRegistry(testFramework(t, store), store, packages, requirementSelections{}, &requirementCompositions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestRegistryReadFailuresCannotWithdrawInstallationSources(t *testing.T) {
 	} {
 		for _, operation := range []string{"definition", "dispatchable", "connection"} {
 			t.Run(failure.name+"/"+operation, func(t *testing.T) {
-				registry, err := NewRegistry(testFramework(t, nil), userMemory{}, &installationMemory{getErr: failure.err}, &singleServerPackages{}, requirementSelections{}, &requirementCompositions{})
+				registry, err := NewRegistry(testFramework(t, nil), &installationMemory{getErr: failure.err}, &singleServerPackages{}, requirementSelections{}, &requirementCompositions{})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -123,7 +123,7 @@ func TestRegistryDefinitionsDoNotRealizePackageResources(t *testing.T) {
 	if err := store.Save(t.Context(), installation); err != nil {
 		t.Fatal(err)
 	}
-	registry, err := NewRegistry(testFramework(t, store), userMemory{}, store, &singleServerPackages{}, requirementSelections{}, &requirementCompositions{})
+	registry, err := NewRegistry(testFramework(t, store), store, &singleServerPackages{}, requirementSelections{}, &requirementCompositions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,10 +202,11 @@ func TestRegistryResolvesOneServerPerOrigin(t *testing.T) {
 		userOff:  {Source: mcpserver.UserSource(), Name: userOff, Connection: mcpserver.StdioConnection{Command: "paused"}},
 	}
 	packages := &singleServerPackages{}
-	registry, err := NewRegistry(testFramework(t, installations), users, installations, packages, requirementSelections{}, &requirementCompositions{})
+	registry, err := NewRegistry(testFramework(t, installations), installations, packages, requirementSelections{}, &requirementCompositions{})
 	if err != nil {
 		t.Fatal(err)
 	}
+	registry = registry.WithExternalDirectory(users)
 	userID := func(name mcpserver.ServerName) mcpserver.ID {
 		id, err := mcpserver.NewID(mcpserver.UserOrigin(), name)
 		if err != nil {

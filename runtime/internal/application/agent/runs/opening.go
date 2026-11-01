@@ -179,7 +179,7 @@ func (c *Openings) Start(ctx context.Context, cmd StartCommand) (StartResult, er
 			return StartResult{}, err
 		}
 		defer release()
-		reopened, found, err := lookupAcceptedCommand(ctx, c.commandAcceptances, *cmd.Acceptance, CommandStartOpening)
+		reopened, found, err := lookupAcceptedCommand(ctx, c.commandAcceptances, *cmd.Acceptance, startOperation(cmd.Acceptance.Key, cmd.GoalIncarnationID))
 		if err != nil {
 			return StartResult{}, err
 		}

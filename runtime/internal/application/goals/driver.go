@@ -18,10 +18,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
@@ -65,17 +67,6 @@ type SessionExistence interface {
 	Exists(ctx context.Context, sessionID string) (bool, error)
 }
 
-// RunInstructionInput is the semantic context required to construct one
-// autonomous model Run. Goals decides when a first or continuing Run is needed
-// without owning model-facing wording.
-type RunInstructionInput struct {
-	Objective  string
-	Continuing bool
-}
-
-// RunInstructionBuilder renders the instruction for an autonomous Run.
-type RunInstructionBuilder func(RunInstructionInput) string
-
 // Driver owns the per-session autonomous drives. Each active Goal has at most one
 // drive goroutine, spawned into a task group so shutdown cancels and joins them.
 //
@@ -85,6 +76,8 @@ type RunInstructionBuilder func(RunInstructionInput) string
 // lifecycle commands with session write-sets without coupling unrelated
 // sessions; drive goroutines and reported outcomes use the store CAS.
 type Driver struct {
+	workflow       Workflow
+	settle         func(context.Context, string) error
 	goals          Store
 	runs           AutonomousRuns
 	cancellations  RunCancellations
@@ -92,7 +85,6 @@ type Driver struct {
 	tasks          *taskgroup.Group
 	now            func() time.Time
 	newIncarnation func() string
-	instructions   RunInstructionBuilder
 
 	mutations *SessionMutations
 }
@@ -105,8 +97,11 @@ func NewDriver(
 	cancellations RunCancellations,
 	sessions SessionExistence,
 	mutations *SessionMutations,
-	instructions RunInstructionBuilder,
+	workflow Workflow, settle func(context.Context, string) error,
 ) (*Driver, error) {
+	if lo.IsNil(workflow) || settle == nil {
+		return nil, errors.New("goals: workflow and receipt settlement are required")
+	}
 	if lo.IsNil(store) {
 		return nil, errors.New("goals: store is required")
 	}
@@ -122,10 +117,7 @@ func NewDriver(
 	if mutations == nil {
 		return nil, errors.New("goals: shared session mutations are required")
 	}
-	if instructions == nil {
-		return nil, errors.New("goals: run instruction builder is required")
-	}
-	return &Driver{
+	return &Driver{workflow: workflow, settle: settle,
 		goals:          store,
 		runs:           autonomousRuns,
 		cancellations:  cancellations,
@@ -133,7 +125,6 @@ func NewDriver(
 		tasks:          &taskgroup.Group{},
 		now:            time.Now,
 		newIncarnation: uuid.NewString,
-		instructions:   instructions,
 		mutations:      mutations,
 	}, nil
 }
@@ -203,7 +194,7 @@ func (d *Driver) Start(
 	if ok {
 		expected = existing.Version()
 	}
-	g, err := goal.New(sessionID, objective, selection, capabilities, d.newIncarnation(), d.now())
+	g, err := d.beginGoal(ctx, sessionID, objective, selection, capabilities)
 	if err != nil {
 		return goal.Goal{}, err
 	}
@@ -228,6 +219,16 @@ func (d *Driver) Start(
 // idempotent on an already-active goal. Resume preserves the objective
 // incarnation: a Run parked for HITL remains part of this Goal when it resumes,
 // while quiesceDrive is the process-local boundary between old and new drives.
+func (d *Driver) beginGoal(ctx context.Context, sessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities) (goal.Goal, error) {
+	now := d.now()
+	state := goal.Snapshot{SessionID: sessionID, ModelSelection: selection, Capabilities: capabilities.Normalized(), CreatedAt: now}
+	g, changed, err := decideGoal(ctx, d.workflow, state, goalworkflow.Request{Signal: goalworkflow.Start, Objective: objective}, d.newIncarnation(), now)
+	if err == nil && !changed {
+		return goal.Goal{}, errors.New("goals: workflow omitted its initial objective")
+	}
+	return g, err
+}
+
 func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabilities) (goal.Goal, error) {
 	release, err := d.mutations.acquire(ctx, sessionID)
 	if err != nil {
@@ -248,6 +249,9 @@ func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabi
 		return goal.Goal{}, fmt.Errorf("goals: session %q: %w", sessionID, &run.InsufficientCapabilitiesError{Missing: missing})
 	}
 	if g.Status() == goal.StatusActive {
+		if err := d.workflow.RequireGoalAuthor(ctx, g.Snapshot().Author); err != nil {
+			return goal.Goal{}, err
+		}
 		if ensureDriveLockedErr := d.ensureDriveLocked(ctx, sessionID, g.IncarnationID()); ensureDriveLockedErr != nil {
 			return goal.Goal{}, ensureDriveLockedErr
 		}
@@ -273,7 +277,7 @@ func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabi
 		return g, nil
 	}
 	expected := g.Version()
-	replacement, resumeErr := g.Resume(d.now())
+	replacement, resumeErr := transition(ctx, d.workflow, g, goalworkflow.Request{Signal: goalworkflow.Resume}, g.IncarnationID(), d.now())
 	if resumeErr != nil {
 		return goal.Goal{}, resumeErr
 	}
@@ -331,7 +335,7 @@ func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) 
 		return current, quiesceErr
 	}
 	expected := current.Version()
-	replacement, transitionErr := current.Stop(d.now())
+	replacement, transitionErr := transition(ctx, d.workflow, current, goalworkflow.Request{Signal: goalworkflow.Stop}, current.IncarnationID(), d.now())
 	if transitionErr != nil {
 		return goal.Goal{}, errors.Join(transitionErr, quiesceErr)
 	}
@@ -391,9 +395,9 @@ func (d *Driver) UpdateObjective(
 	incarnationID, updatedAt := d.newIncarnation(), d.now()
 	var replacement goal.Goal
 	if wasActive && current.Status() == goal.StatusPaused {
-		replacement, err = current.ReviseObjectiveAndResume(objective, incarnationID, updatedAt)
+		replacement, err = transition(ctx, d.workflow, current, goalworkflow.Request{Signal: goalworkflow.ReviseAndResume, Objective: objective}, incarnationID, updatedAt)
 	} else {
-		replacement, err = current.ReviseObjective(objective, incarnationID, updatedAt)
+		replacement, err = transition(ctx, d.workflow, current, goalworkflow.Request{Signal: goalworkflow.Revise, Objective: objective}, incarnationID, updatedAt)
 	}
 	if err != nil {
 		return goal.Goal{}, errors.Join(err, quiesceErr)
@@ -541,6 +545,17 @@ func (d *Driver) reconcileGoal(ctx context.Context, g goal.Goal) error {
 	if drive := d.mutations.activeDrive(g.SessionID()); drive != nil && !drive.completed() {
 		return nil
 	}
+	if err := d.settle(ctx, g.SessionID()); err != nil {
+		if errors.Is(err, plugin.ErrUnavailable) {
+			return nil
+		}
+		return err
+	}
+	fresh, found, err := loadGoal(ctx, d.goals, g.SessionID())
+	if err != nil || !found {
+		return err
+	}
+	g = fresh
 	exists, err := d.sessions.Exists(ctx, g.SessionID())
 	if err != nil {
 		return err
@@ -549,7 +564,10 @@ func (d *Driver) reconcileGoal(ctx context.Context, g goal.Goal) error {
 	if !exists || g.Status() == goal.StatusComplete {
 		applied, err = d.goals.ClearIf(ctx, g.SessionID(), g.Version())
 	} else if g.Status() == goal.StatusActive {
-		replacement, transitionErr := g.Pause(goal.ReasonRuntimeRestarted, d.now())
+		replacement, transitionErr := transition(ctx, d.workflow, g, goalworkflow.Request{Signal: goalworkflow.Pause, Reason: goalworkflow.GoalReasonRuntimeRestarted}, g.IncarnationID(), d.now())
+		if errors.Is(transitionErr, plugin.ErrUnavailable) {
+			return nil
+		}
 		if transitionErr != nil {
 			return transitionErr
 		}

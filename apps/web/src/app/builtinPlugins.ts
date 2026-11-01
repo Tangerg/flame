@@ -1,5 +1,4 @@
 import { type Goals } from "@/features/goal/application/goals";
-import { type MessageFeedbackOwner } from "@/features/chat/message-actions/application/feedback";
 import { type Theme } from "@/features/theme/adapters/theme";
 import { type NotificationOwner } from "@/features/notifications/adapters/notifications";
 import { type InstalledPluginsOwner } from "@/features/plugins/adapters/installedPlugins";
@@ -51,7 +50,6 @@ import mainRoute from "@/app/routes";
 import { createNavigationBootstrapPlugin } from "@/features/navigation/bootstrap";
 import { messageCopy } from "@/features/chat/message-actions/index";
 import { messageEdit } from "@/features/chat/message-actions/index";
-import { createMessageFeedbackPlugin } from "@/features/chat/message-actions/index";
 import { messageRegenerate } from "@/features/chat/message-actions/index";
 import { createGoalPlugin } from "@/features/goal/index";
 import narrativeRails from "@/features/chat/narrative-rails/index";
@@ -90,7 +88,6 @@ export function createBuiltinPlugins(
   installedPlugins: InstalledPluginsOwner,
   theme: Theme,
   goals: Goals,
-  feedback: MessageFeedbackOwner,
 ): AnyPlugin[] {
   const agentAccess = agent.access;
   const composerAccess = composerOwner.access;
@@ -118,13 +115,7 @@ export function createBuiltinPlugins(
     mainRoute,
   ];
 
-  const messageRendering: AnyPlugin[] = [
-    defaultRoles,
-    messageCopy,
-    messageEdit,
-    messageRegenerate,
-    createMessageFeedbackPlugin(runtimeClient, feedback),
-  ];
+  const messageRendering: AnyPlugin[] = [defaultRoles, messageCopy, messageEdit, messageRegenerate];
 
   const composer: AnyPlugin[] = [
     createComposerBootstrap(composerOwner),
@@ -175,7 +166,14 @@ export function createBuiltinPlugins(
     sessionSearch,
     commandMenu,
     narrativeRails,
-    createGoalPlugin(agentAccess, composerAccess, runtimeAccess, runtimeClient, goals),
+    createGoalPlugin(
+      agentAccess,
+      composerAccess,
+      runtimeAccess,
+      runtimeClient,
+      goals,
+      installedPlugins.access.workflows,
+    ),
     planProgress,
     providerSetup,
     contextUsage,

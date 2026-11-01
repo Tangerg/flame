@@ -3,6 +3,7 @@ package workspace
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -11,58 +12,40 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 )
 
-// SkillLibraries routes proposal operations to the user library or the current
-// project's library without exposing filesystem layout to Application.
+// SkillLibraries confines publication to the admitted user or project root.
 type SkillLibraries struct {
 	user     *skillauthoring.Store
 	projects sync.Map
+	journal  string
 }
 
-func NewSkillLibraries(user *skillauthoring.Store) (*SkillLibraries, error) {
-	if user == nil {
+func NewSkillLibraries(user *skillauthoring.Store, journal string) (*SkillLibraries, error) {
+	if user == nil || !filepath.IsAbs(journal) {
 		return nil, errors.New("workspace: user skill library is required")
 	}
-	return &SkillLibraries{user: user}, nil
+	return &SkillLibraries{user: user, journal: journal}, nil
 }
 
-func (l *SkillLibraries) SubmitProposal(ctx context.Context, projectRoot string, proposal skills.Proposal) (skills.ProposalRef, []string, error) {
-	store, err := l.store(proposal.Scope, projectRoot)
+func (l *SkillLibraries) Library(_ context.Context, root string, scope skills.Scope) (string, error) {
+	store, err := l.store(scope, root)
 	if err != nil {
-		return skills.ProposalRef{}, nil, err
+		return "", err
 	}
-	return store.SubmitProposal(ctx, proposal)
+	return store.Library(), nil
 }
-
-func (l *SkillLibraries) ListProposals(ctx context.Context, projectRoot string) ([]skills.ProposalReview, error) {
-	project, err := l.store(skills.ScopeProject, projectRoot)
+func (l *SkillLibraries) Preimage(ctx context.Context, root string, proposal skills.Proposal) (string, error) {
+	store, err := l.store(proposal.Scope, root)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	projectProposals, err := project.ListProposals(ctx)
-	if err != nil {
-		return nil, err
-	}
-	userProposals, err := l.user.ListProposals(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return append(projectProposals, userProposals...), nil
+	return store.Preimage(ctx, proposal)
 }
-
-func (l *SkillLibraries) ApproveProposal(ctx context.Context, projectRoot string, ref skills.ProposalRef) ([]string, error) {
-	store, err := l.store(ref.Scope, projectRoot)
+func (l *SkillLibraries) Publish(ctx context.Context, root string, proposal skills.Proposal, previous, permit string) ([]string, error) {
+	store, err := l.store(proposal.Scope, root)
 	if err != nil {
 		return nil, err
 	}
-	return store.ApproveProposal(ctx, ref)
-}
-
-func (l *SkillLibraries) RejectProposal(ctx context.Context, projectRoot string, ref skills.ProposalRef) ([]string, error) {
-	store, err := l.store(ref.Scope, projectRoot)
-	if err != nil {
-		return nil, err
-	}
-	return store.RejectProposal(ctx, ref)
+	return store.Publish(ctx, proposal, previous, permit, l.journal)
 }
 
 func (l *SkillLibraries) store(scope skills.Scope, projectRoot string) (*skillauthoring.Store, error) {
@@ -80,7 +63,7 @@ func (l *SkillLibraries) store(scope skills.Scope, projectRoot string) (*skillau
 			}
 			return store, nil
 		}
-		created, err := skillauthoring.NewStore(promptsource.ProjectSkillDir(projectRoot), skills.ScopeProject)
+		created, err := skillauthoring.NewProjectStore(projectRoot, promptsource.ProjectSkillDir(projectRoot))
 		if err != nil {
 			return nil, err
 		}

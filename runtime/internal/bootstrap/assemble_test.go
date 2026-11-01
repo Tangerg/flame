@@ -184,7 +184,7 @@ func TestAssemblyRejectsInvalidConstructionBeforeStartupReconciliation(t *testin
 		{name: "typed nil provider registry", edit: func(cfg *assemblyConfig) { cfg.providerRegistry = (*persistence.ProviderStore)(nil) }},
 		{name: "session-only approval mode", edit: func(cfg *assemblyConfig) { cfg.approvalMode = approval.ModePlan }},
 		{name: "invalid offload policy", edit: func(cfg *assemblyConfig) { cfg.toolResultOffloadEnabled = true }},
-		{name: "missing feedback store", edit: func(cfg *assemblyConfig) { cfg.stores.Feedback = nil }},
+		{name: "missing annotation ledger", edit: func(cfg *assemblyConfig) { cfg.stores.Annotations = nil }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			cfg := runtimeConfigWithRequiredDeps(t)
@@ -267,8 +267,8 @@ func TestAssemblyRetainsUnreferencedPluginReleaseUntilConstructionSucceeds(t *te
 	if err := errors.Join(pathErr, content.Close(t.Context())); err != nil {
 		t.Fatal(err)
 	}
-	feedback := cfg.stores.Feedback
-	cfg.stores.Feedback = nil
+	feedback := cfg.stores.Annotations
+	cfg.stores.Annotations = nil
 	if host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildToolEnvironment); host != nil || err == nil {
 		t.Fatalf("assembly = (%v, %v), want missing feedback rejected", host, err)
 	}
@@ -278,7 +278,7 @@ func TestAssemblyRetainsUnreferencedPluginReleaseUntilConstructionSucceeds(t *te
 	if _, err := os.Stat(root); err != nil {
 		t.Fatalf("failed construction reclaimed original content: %v", err)
 	}
-	cfg.stores.Feedback = feedback
+	cfg.stores.Annotations = feedback
 	reopenPluginStores(t, &cfg)
 	poMCPOpen(t, cfg)
 	if _, err := os.Stat(root); !errors.Is(err, os.ErrNotExist) {

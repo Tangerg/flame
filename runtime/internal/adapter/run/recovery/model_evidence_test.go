@@ -2,6 +2,7 @@ package recovery
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"path/filepath"
 	"testing"
 	"time"
@@ -67,7 +68,7 @@ func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testi
 				t.Fatal(err)
 			}
 			selection := testsupport.MustModelSelection("anthropic", "captured-model")
-			goalValue, err := goal.New("ses_source", "retain original consumption", selection, run.Capabilities{}, "goal_source", at)
+			goalValue, err := goaltest.New("ses_source", "retain original consumption", selection, run.Capabilities{}, "goal_source", at)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -238,7 +239,7 @@ func TestRecoveryAccruesIndependentKnownSourcesOnceWithoutChangingContext(t *tes
 	}
 	selection := testsupport.MustModelSelection("anthropic", "captured-model")
 
-	goalValue, err := goal.New("ses_independent", "recover original consumption", selection, run.Capabilities{}, "lease_independent", at)
+	goalValue, err := goaltest.New("ses_independent", "recover original consumption", selection, run.Capabilities{}, "lease_independent", at)
 	if err != nil {
 		t.Fatal(err)
 	}

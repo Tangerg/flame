@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -23,6 +24,9 @@ func (c *Coordinator) WithdrawInstallation(servers []mcpserver.ID) error {
 		return err
 	}
 	var result error
+	if c.external.Affected(servers) {
+		result = c.WithdrawExternal()
+	}
 	for _, id := range servers {
 		result = errors.Join(result, c.connections.Detach(id))
 	}
@@ -38,6 +42,49 @@ func (c *Coordinator) ReconcileInstallation(ctx context.Context, servers []mcpse
 	if err := validateInstallationSources(servers); err != nil {
 		return err
 	}
+	if c.external.Affected(servers) {
+		return errors.Join(c.reconcileSources(ctx, servers), c.ReconcileExternal(ctx))
+	}
+	return c.reconcileSources(ctx, servers)
+}
+
+// External directory I/O cannot block recovery of the Qimu instances required to read it.
+func (c *Coordinator) RestoreExternal(ctx context.Context, ready <-chan struct{}) {
+	c.tasks.StartLinked(ctx, func(ctx context.Context) {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ready:
+		}
+		if err := c.ReconcileExternal(ctx); err != nil && ctx.Err() == nil {
+			slog.WarnContext(ctx, "external MCP directory could not be restored", "error", err)
+		}
+	})
+}
+
+func (c *Coordinator) WithdrawExternal() error {
+	c.external.Invalidate()
+	var err error
+	for _, s := range c.connections.Statuses() {
+		if s.Server.Origin().Kind() == mcpserver.OriginUser {
+			err = errors.Join(err, c.connections.Detach(s.Server))
+		}
+	}
+	return err
+}
+
+func (c *Coordinator) ReconcileExternal(ctx context.Context) error {
+	definitions, err := c.external.List(ctx)
+	if err != nil {
+		return err
+	}
+	ids := make([]mcpserver.ID, 0, len(definitions))
+	for _, s := range definitions {
+		ids = append(ids, s.ID())
+	}
+	return c.reconcileSources(ctx, ids)
+}
+func (c *Coordinator) reconcileSources(ctx context.Context, servers []mcpserver.ID) error {
 	write, err := c.beginMutation(ctx)
 	if err != nil {
 		return errors.Join(err, c.refuseUnrealized(ctx, servers))

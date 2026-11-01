@@ -59,16 +59,16 @@ func TestRetainedSkillSourceIgnoresNewConflictingInstallations(t *testing.T) {
 	}
 	original := install("Original retained instructions.")
 	skills := mustPackageSkills(t, releases, store)
-	_, captured, err := promptsource.OverlaySkillSource(t.Context(), "", "", skills, nil, nil)
+	_, captured, err := promptsource.OverlaySkillSource(t.Context(), "", "", promptsource.SkillSources{Packages: skills, Discover: testsupport.FixtureSkillSelection[promptsource.SkillCapture]}, nil, nil)
 	if err != nil || !slices.Equal(captured, []plugin.Dependency{original}) {
 		t.Fatalf("capture = %+v, %v", captured, err)
 	}
 	install("Later conflicting instructions.")
-	fresh, err := promptsource.ListSkills(t.Context(), "", "", skills)
+	fresh, err := promptsource.ListSkills(t.Context(), "", "", promptsource.SkillSources{Packages: skills, Discover: testsupport.FixtureSkillSelection[promptsource.SkillCapture]})
 	if err != nil || len(fresh.Skills) != 0 || len(fresh.Diagnostics) != 1 {
 		t.Fatalf("fresh catalog did not preserve its own conflict: %+v, %v", fresh, err)
 	}
-	restored, dependencies, err := promptsource.OverlaySkillSource(t.Context(), "", "", skills, nil, captured)
+	restored, dependencies, err := promptsource.OverlaySkillSource(t.Context(), "", "", promptsource.SkillSources{Packages: skills, Discover: testsupport.FixtureSkillSelection[promptsource.SkillCapture]}, nil, captured)
 	if err != nil || !slices.Equal(dependencies, captured) {
 		t.Fatalf("restore changed its retained source: %+v, %v", dependencies, err)
 	}
@@ -76,7 +76,7 @@ func TestRetainedSkillSourceIgnoresNewConflictingInstallations(t *testing.T) {
 	if err != nil || content.Instructions != "Original retained instructions.\n" {
 		t.Fatalf("original content was replaced: %+v, %v", content, err)
 	}
-	empty, dependencies, err := promptsource.OverlaySkillSource(t.Context(), "", "", skills, nil, []plugin.Dependency{})
+	empty, dependencies, err := promptsource.OverlaySkillSource(t.Context(), "", "", promptsource.SkillSources{Packages: skills, Discover: testsupport.FixtureSkillSelection[promptsource.SkillCapture]}, nil, []plugin.Dependency{})
 	if err != nil || empty != nil || len(dependencies) != 0 {
 		t.Fatalf("empty retained selection admitted new content: %+v, %+v, %v", empty, dependencies, err)
 	}
@@ -146,13 +146,13 @@ func TestSkillAdmissionAndReadsShareDirectoryNameBinding(t *testing.T) {
 					}
 				}
 				skills := mustPackageSkills(t, releases, store)
-				catalog := promptsource.NewSkills("", skills)
+				catalog := promptsource.NewSkills("", promptsource.SkillSources{Packages: skills, Discover: testsupport.FixtureSkillSelection[promptsource.SkillCapture]})
 				discovery, err := catalog.List(t.Context(), cwd)
 				if !test.valid {
 					if err != nil || len(discovery.Skills) != 0 {
 						t.Fatalf("noncanonical Skill was discovered: %+v, %v", discovery, err)
 					}
-					model, _, err := promptsource.OverlaySkillSource(t.Context(), cwd, "", skills, nil, nil)
+					model, _, err := promptsource.OverlaySkillSource(t.Context(), cwd, "", promptsource.SkillSources{Packages: skills, Discover: testsupport.FixtureSkillSelection[promptsource.SkillCapture]}, nil, nil)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -175,7 +175,7 @@ func TestSkillAdmissionAndReadsShareDirectoryNameBinding(t *testing.T) {
 				if err != nil || detail.Instructions != "Inspect the results.\n" {
 					t.Fatalf("Skill detail contradicted admission: %+v, %v", detail, err)
 				}
-				model, _, err := promptsource.OverlaySkillSource(t.Context(), cwd, "", skills, nil, nil)
+				model, _, err := promptsource.OverlaySkillSource(t.Context(), cwd, "", promptsource.SkillSources{Packages: skills, Discover: testsupport.FixtureSkillSelection[promptsource.SkillCapture]}, nil, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -243,14 +243,14 @@ func TestSkillDiscoveryDistinguishesUnavailablePackagesFromNameConflicts(t *test
 					t.Fatal(err)
 				}
 			}
-			catalog, err := promptsource.ListSkills(t.Context(), "", "", mustPackageSkills(t, releases, store))
+			catalog, err := promptsource.ListSkills(t.Context(), "", "", promptsource.SkillSources{Packages: mustPackageSkills(t, releases, store), Discover: testsupport.FixtureSkillSelection[promptsource.SkillCapture]})
 			if err != nil || len(catalog.Skills) != 1 || catalog.Skills[0].Name != "working" || len(catalog.Diagnostics) != 1 || catalog.Diagnostics[0].Name != "broken" {
 				t.Fatalf("partial discovery = %+v, %v", catalog, err)
 			}
 			if !strings.Contains(catalog.Diagnostics[0].Detail, "unavailable") || strings.Contains(catalog.Diagnostics[0].Detail, "Multiple installations") {
 				t.Fatalf("unavailable package was misdiagnosed: %+v", catalog.Diagnostics[0])
 			}
-			model, dependencies, err := promptsource.OverlaySkillSource(t.Context(), "", "", mustPackageSkills(t, releases, store), nil, nil)
+			model, dependencies, err := promptsource.OverlaySkillSource(t.Context(), "", "", promptsource.SkillSources{Packages: mustPackageSkills(t, releases, store), Discover: testsupport.FixtureSkillSelection[promptsource.SkillCapture]}, nil, nil)
 			if err != nil || len(dependencies) != 2 || !slices.ContainsFunc(dependencies, func(d plugin.Dependency) bool { return d.Digest == broken.Digest() }) {
 				t.Fatalf("unavailable selected package lost its execution binding: %+v, %v", dependencies, err)
 			}
@@ -314,7 +314,7 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 			t.Fatalf("canceled resource read = %d bytes, %v; want cancellation class and cause", len(content), err)
 		}
 	})
-	model, _, err := promptsource.OverlaySkillSource(t.Context(), "", "", skills, nil, nil)
+	model, _, err := promptsource.OverlaySkillSource(t.Context(), "", "", promptsource.SkillSources{Packages: skills, Discover: testsupport.FixtureSkillSelection[promptsource.SkillCapture]}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

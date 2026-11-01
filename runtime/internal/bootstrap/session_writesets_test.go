@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"path/filepath"
 	"testing"
 	"time"
@@ -434,7 +435,7 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 		"run_goal",
 		incarnationID,
 	)
-	goalValue, err := goal.New(
+	goalValue, err := goaltest.New(
 		"ses_A",
 		"finish the parked run",
 		testsupport.DefaultModelSelection(),
@@ -952,7 +953,7 @@ func seedGoal(t *testing.T, ss sessionStores, sessionID string) {
 	} else if err != nil {
 		t.Fatalf("get goal session %q: %v", sessionID, err)
 	}
-	g, _ := goal.New(sessionID, "obj", testsupport.DefaultModelSelection(), run.Capabilities{}, "lease-"+sessionID, time.Unix(0, 0))
+	g, _ := goaltest.New(sessionID, "obj", testsupport.DefaultModelSelection(), run.Capabilities{}, "lease-"+sessionID, time.Unix(0, 0))
 	replacement, err := goal.NewReplacement(bootstrapUnwrittenGoalVersion(t, sessionID), g)
 	if err != nil {
 		t.Fatalf("prepare Goal replacement %q: %v", sessionID, err)
@@ -984,6 +985,9 @@ func TestApplyDeleteClearsSessionGoal(t *testing.T) {
 }
 
 func mustPlanCoordinator(deps sessions.PlanDependencies) *sessions.PlanCoordinator {
+	if deps.Author == nil {
+		deps.Author = testsupport.PlanAuthor{}
+	}
 	coordinator, err := sessions.NewPlanCoordinator(deps)
 	if err != nil {
 		panic(err)
@@ -991,7 +995,7 @@ func mustPlanCoordinator(deps sessions.PlanDependencies) *sessions.PlanCoordinat
 	return coordinator
 }
 
-func mustGoalRuns(tb testing.TB, store goals.Store) *goals.RunRecorder {
+func mustGoalRuns(tb testing.TB, store goals.RunEvidence) *goals.RunRecorder {
 	tb.Helper()
 	recorder, err := goals.NewRunRecorder(store)
 	if err != nil {

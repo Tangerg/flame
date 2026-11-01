@@ -2,6 +2,7 @@ package builtin
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"strings"
 	"testing"
 	"time"
@@ -61,7 +62,7 @@ func (m *memStore) List(context.Context) ([]goalstate.Goal, error) { return nil,
 
 // testSessionActiveGoal builds a stored active goal with an opaque current incarnation.
 func testSessionActiveGoal() goalstate.Goal {
-	g, _ := goalstate.New("s1", "obj", testSelection(), run.Capabilities{}, "lease-active", time.Unix(0, 0))
+	g, _ := goaltest.New("s1", "obj", testSelection(), run.Capabilities{}, "lease-active", time.Unix(0, 0))
 	return g
 }
 
@@ -98,7 +99,7 @@ func newGetter(t *testing.T, store goals.Store) *getter {
 
 func newReporter(t *testing.T, store goals.Store) *outcomeReporter {
 	t.Helper()
-	reporter, err := goals.NewOutcomeReporter(store)
+	reporter, err := goals.NewOutcomeReporter(store, goaltest.Workflow{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +179,7 @@ func TestReportGoalOutcomeNoActiveGoal(t *testing.T) {
 func TestReportGoalOutcomeDoesNotTouchPausedGoal(t *testing.T) {
 	store := newMemStore()
 	g := testSessionActiveGoal()
-	g, _ = g.Pause(goalstate.ReasonStoppedByUser, time.Unix(0, 0))
+	g, _ = goaltest.Paused(g, goalstate.ReasonStoppedByUser, time.Unix(0, 0))
 	store.put(g)
 
 	out, _ := newReporter(t, store).report(testGoalRunContext(), reportArgs{Outcome: "completed"})
@@ -288,7 +289,7 @@ func (f *fakeStarter) Start(_ context.Context, sessionID, objective string, sele
 	f.objective = objective
 	f.selection = selection
 	f.capabilities = capabilities.Clone()
-	return goalstate.New(sessionID, objective, testSelection(), capabilities, "lease", time.Unix(1, 0))
+	return goaltest.New(sessionID, objective, testSelection(), capabilities, "lease", time.Unix(1, 0))
 }
 
 func TestCreateGoalUsesCurrentSessionAndCapabilities(t *testing.T) {
@@ -319,7 +320,7 @@ func TestGoalToolContractsUseOnePreciseVocabulary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reporter, err := goals.NewOutcomeReporter(mem)
+	reporter, err := goals.NewOutcomeReporter(mem, goaltest.Workflow{})
 	if err != nil {
 		t.Fatal(err)
 	}

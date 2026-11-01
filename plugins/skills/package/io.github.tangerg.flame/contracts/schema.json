@@ -1,6 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
+    "ApproveV1Input": {
+      "$ref": "#/$defs/ReviewRef"
+    },
+    "ApproveV1Output": {
+      "$ref": "#/$defs/Permit"
+    },
     "ArchiveAdvice": {
       "additionalProperties": false,
       "properties": {
@@ -30,6 +36,148 @@
     "ArchiveV2Output": {
       "$ref": "#/$defs/ArchiveAdvice"
     },
+    "Candidate": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "source",
+        "scope"
+      ],
+      "type": "object"
+    },
+    "Candidates": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Candidate"
+          },
+          "type": "array"
+        },
+        "library": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "library",
+        "items"
+      ],
+      "type": "object"
+    },
+    "CaptureV1Input": {
+      "$ref": "#/$defs/Candidates"
+    },
+    "CaptureV1Output": {
+      "$ref": "#/$defs/Catalog"
+    },
+    "Catalog": {
+      "additionalProperties": false,
+      "properties": {
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/Choice"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "entries"
+      ],
+      "type": "object"
+    },
+    "Choice": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "source"
+      ],
+      "type": "object"
+    },
+    "ConfirmV1Input": {
+      "$ref": "#/$defs/Publication"
+    },
+    "ConfirmV1Output": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "DiscoverV1Input": {
+      "$ref": "#/$defs/Candidates"
+    },
+    "DiscoverV1Output": {
+      "$ref": "#/$defs/Catalog"
+    },
+    "Draft": {
+      "additionalProperties": false,
+      "properties": {
+        "library": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "previous": {
+          "type": "string"
+        },
+        "revises": {
+          "type": "boolean"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "skill": {
+          "$ref": "#/$defs/Skill"
+        },
+        "sourceSession": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "library",
+        "scope",
+        "skill",
+        "origin",
+        "sourceSession",
+        "revises",
+        "previous"
+      ],
+      "type": "object"
+    },
+    "Libraries": {
+      "additionalProperties": false,
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "project",
+        "user"
+      ],
+      "type": "object"
+    },
     "MineResult": {
       "additionalProperties": false,
       "properties": {
@@ -39,15 +187,30 @@
       },
       "type": "object"
     },
-    "MineV1Input": {
+    "MineV2Input": {
       "$ref": "#/$defs/Run"
     },
-    "MineV1Output": {
+    "MineV2Output": {
       "$ref": "#/$defs/MineResult"
+    },
+    "Permit": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision"
+      ],
+      "type": "object"
     },
     "Proposal": {
       "additionalProperties": false,
       "properties": {
+        "previous": {
+          "type": "string"
+        },
         "revises": {
           "type": "boolean"
         },
@@ -61,9 +224,79 @@
       ],
       "type": "object"
     },
+    "ProposeV1Input": {
+      "$ref": "#/$defs/Draft"
+    },
+    "ProposeV1Output": {
+      "$ref": "#/$defs/ReviewRef"
+    },
+    "Publication": {
+      "additionalProperties": false,
+      "properties": {
+        "permit": {
+          "$ref": "#/$defs/Permit"
+        },
+        "proposal": {
+          "$ref": "#/$defs/ReviewRef"
+        },
+        "published": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "proposal",
+        "permit",
+        "published"
+      ],
+      "type": "object"
+    },
+    "Queue": {
+      "additionalProperties": false,
+      "properties": {
+        "proposals": {
+          "items": {
+            "$ref": "#/$defs/ReviewRef"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "proposals"
+      ],
+      "type": "object"
+    },
+    "RejectV1Input": {
+      "$ref": "#/$defs/ReviewRef"
+    },
+    "RejectV1Output": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "ReviewRef": {
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "command"
+      ],
+      "type": "object"
+    },
+    "ReviewsV1Input": {
+      "$ref": "#/$defs/Libraries"
+    },
+    "ReviewsV1Output": {
+      "$ref": "#/$defs/Queue"
+    },
     "Run": {
       "additionalProperties": false,
       "properties": {
+        "library": {
+          "type": "string"
+        },
         "sessionId": {
           "type": "string"
         },
@@ -79,6 +312,7 @@
         }
       },
       "required": [
+        "library",
         "sessionId",
         "toolCalls"
       ],

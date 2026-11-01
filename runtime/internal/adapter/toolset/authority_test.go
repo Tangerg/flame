@@ -3,10 +3,8 @@ package toolset
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -73,19 +71,41 @@ func TestAuthorityFingerprintsTrackEndpointsAndExcludeCredentials(t *testing.T) 
 }
 
 func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
-	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "flame.db")))
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	registry := db.MCPServers
-	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: "https://one.example/mcp", Authorization: "Bearer first"}}
-	if err := registry.Save(t.Context(), server); err != nil {
+	vault := db.MCPServers
+	owner := testsupport.InstallationID(t)
+	source, err := mcpserver.ConnectorSource(owner)
+	if err != nil {
 		t.Fatal(err)
 	}
+	server := mcpserver.Server{Source: source, Name: testsupport.ServerName("files"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: "https://one.example/mcp", Authorization: "Bearer first"}}
+	var directoryGrant string
+	advertise := func(server mcpserver.Server) {
+		t.Helper()
+		grant, err := vault.Grant(t.Context(), owner, server)
+		if err != nil {
+			t.Fatal(err)
+		}
+		directoryGrant = grant
+		if err := vault.RetireGrants(t.Context(), owner, server.Name, grant); err != nil {
+			t.Fatal(err)
+		}
+	}
+	definition := func(ctx context.Context, id mcpserver.ID) (mcpserver.Server, bool, error) {
+		if id != server.ID() {
+			return mcpserver.Server{}, false, nil
+		}
+		connection, found, err := vault.OpenGrant(ctx, owner, id.Name(), directoryGrant)
+		return mcpserver.Server{Source: source, Name: id.Name(), Connection: connection, Enabled: found}, found, err
+	}
+	advertise(server)
 	ref := testMCPRef(server.Name, testsupport.RemoteToolName("read"))
 	store := db.ApprovalRules
-	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, db.ApprovalModes, db.Sessions, NewAuthorities(userDefinitions(registry)), nil)
+	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, db.ApprovalModes, db.Sessions, NewAuthorities(definition), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,16 +129,12 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 	rotated.Authorization = "Bearer rotated"
 	rotated.Headers = map[string]string{"X-API-Key": "rotated"}
 	server.Connection = rotated
-	if err := registry.Save(t.Context(), server); err != nil {
-		t.Fatal(err)
-	}
+	advertise(server)
 	check(server.AuthorityFingerprint(), true, false)
 	moved := rotated
 	moved.URL = "https://two.example/mcp"
 	server.Connection = moved
-	if err := registry.Save(t.Context(), server); err != nil {
-		t.Fatal(err)
-	}
+	advertise(server)
 	check(server.AuthorityFingerprint(), false, true)
 	check(original, false, true)
 	if _, err := policy.PrepareRule(t.Context(), approval.RememberRequest{Subject: approval.Subject{Type: approval.SubjectAll}, Tool: ref, SourceFingerprint: original, Scope: approval.ScopeGlobal, Decision: approval.Allow}); !errors.Is(err, approval.ErrSourceAuthorityChanged) {
@@ -128,25 +144,13 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 		t.Fatal(err)
 	}
 	check(server.AuthorityFingerprint(), true, false)
-	if err := registry.Remove(t.Context(), server.Name); err != nil {
+	directoryGrant = ""
+	if err := vault.RetireGrants(t.Context(), owner, server.Name, directoryGrant); err != nil {
 		t.Fatal(err)
 	}
-	if err := registry.Save(t.Context(), server); err != nil {
-		t.Fatal(err)
-	}
+	advertise(server)
 	rules, err := policy.ListRules(t.Context(), "")
 	if err != nil || len(rules) != 0 {
 		t.Fatalf("recreated source inherited rules: %v, %v", rules, err)
-	}
-}
-
-// userDefinitions reads only the user registry, which is every source these
-// tests create.
-func userDefinitions(registry *persistence.MCPServerStore) func(context.Context, mcpserver.ID) (mcpserver.Server, bool, error) {
-	return func(ctx context.Context, id mcpserver.ID) (mcpserver.Server, bool, error) {
-		if id.Origin().Kind() != mcpserver.OriginUser {
-			return mcpserver.Server{}, false, nil
-		}
-		return registry.Get(ctx, id.Name())
 	}
 }

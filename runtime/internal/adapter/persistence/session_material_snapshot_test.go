@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"path/filepath"
 	"testing"
 	"time"
@@ -79,7 +80,7 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	originalGoal, err := goal.New(
+	originalGoal, err := goaltest.New(
 		original.ID(), "before", selection, run.Capabilities{},
 		"goal_before", createdAt,
 	)
@@ -159,7 +160,7 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	if err != nil {
 		t.Fatalf("prepare Plan replacement: %v", err)
 	}
-	updatedGoal, err := originalGoal.Pause(goal.ReasonRuntimeRestarted, createdAt.Add(time.Second))
+	updatedGoal, err := goaltest.Paused(originalGoal, goal.ReasonRuntimeRestarted, createdAt.Add(time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +237,7 @@ func mustConversationStore(tb testing.TB, messages *MessageStore) *ConversationS
 	return store
 }
 
-func mustGoalRuns(tb testing.TB, store goals.Store) *goals.RunRecorder {
+func mustGoalRuns(tb testing.TB, store goals.RunEvidence) *goals.RunRecorder {
 	tb.Helper()
 	recorder, err := goals.NewRunRecorder(store)
 	if err != nil {

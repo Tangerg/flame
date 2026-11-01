@@ -2,9 +2,13 @@ package workspace
 
 import (
 	"context"
+	"crypto/sha256"
+	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/skill"
 	"slices"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 
@@ -19,13 +23,13 @@ type fakeSkillProposals struct {
 	rejectErr  error
 }
 
-func (f *fakeSkillProposals) SubmitProposal(_ context.Context, projectRoot string, proposal skills.Proposal) (skills.ProposalRef, []string, error) {
+func (f *fakeSkillProposals) SubmitProposal(_ context.Context, projectRoot string, proposal skills.Proposal) (skills.ProposalRef, error) {
 	f.root = projectRoot
 	f.proposal = proposal
 	if f.submitErr != nil {
-		return skills.ProposalRef{}, nil, f.submitErr
+		return skills.ProposalRef{}, f.submitErr
 	}
-	return skills.NewProposalRef(proposal.Scope, proposal.Name, []byte(proposal.Instructions)), []string{"/repo/.flame/skills/_proposals/skill-name/SKILL.md"}, nil
+	return skills.CommandRef(proposal.Scope, proposal.Name, fmt.Sprintf("%x", sha256.Sum256([]byte(proposal.Instructions)))), nil
 }
 
 func (f *fakeSkillProposals) ListProposals(_ context.Context, projectRoot string) ([]skills.ProposalReview, error) {
@@ -42,18 +46,18 @@ func (f *fakeSkillProposals) ApproveProposal(_ context.Context, projectRoot stri
 	return []string{"/repo/.flame/skills/run-tests/SKILL.md"}, nil
 }
 
-func (f *fakeSkillProposals) RejectProposal(_ context.Context, projectRoot string, ref skills.ProposalRef) ([]string, error) {
+func (f *fakeSkillProposals) RejectProposal(_ context.Context, projectRoot string, ref skills.ProposalRef) error {
 	f.root = projectRoot
 	if f.rejectErr != nil {
-		return nil, f.rejectErr
+		return f.rejectErr
 	}
 	f.rejected = append(f.rejected, ref)
-	return []string{"/repo/.flame/skills/_proposals/skill-name/SKILL.md"}, nil
+	return nil
 }
 
 func TestSkillProposalsResolveWorkspaceAndDelegate(t *testing.T) {
 	proposal := skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeProject, Name: "run-tests", Description: "Run the project tests when verification is requested.", Instructions: "Run the tests."}
-	ref := skills.NewProposalRef(proposal.Scope, proposal.Name, []byte(proposal.Instructions))
+	ref := skills.CommandRef(proposal.Scope, proposal.Name, fmt.Sprintf("%x", sha256.Sum256([]byte(proposal.Instructions))))
 	fake := &fakeSkillProposals{list: []skills.ProposalReview{{Origin: skills.ProposalOriginRequested, Ref: ref, Description: proposal.Description, Instructions: proposal.Instructions}}}
 	c := newSkills(t, newScope(t, "", "", testPaths{}), &fakeSkillCatalog{}, nil, fake, nil, nil)
 
@@ -83,9 +87,9 @@ func TestSkillProposalsResolveWorkspaceAndDelegate(t *testing.T) {
 }
 
 func TestSkillProposalsOwnCurrentSlotOrder(t *testing.T) {
-	projectAlpha := skills.NewProposalRef(skills.ScopeProject, "alpha", []byte("project alpha"))
-	projectZeta := skills.NewProposalRef(skills.ScopeProject, "zeta", []byte("project zeta"))
-	userAlpha := skills.NewProposalRef(skills.ScopeUser, "alpha", []byte("user alpha"))
+	projectAlpha := skills.CommandRef(skills.ScopeProject, "alpha", fmt.Sprintf("%x", sha256.Sum256([]byte("project alpha"))))
+	projectZeta := skills.CommandRef(skills.ScopeProject, "zeta", fmt.Sprintf("%x", sha256.Sum256([]byte("project zeta"))))
+	userAlpha := skills.CommandRef(skills.ScopeUser, "alpha", fmt.Sprintf("%x", sha256.Sum256([]byte("user alpha"))))
 	fake := &fakeSkillProposals{list: []skills.ProposalReview{
 		validProposalReview(userAlpha),
 		validProposalReview(projectZeta),
@@ -107,26 +111,26 @@ func TestSkillProposalsOwnCurrentSlotOrder(t *testing.T) {
 	}
 }
 
-func TestSkillProposalsRejectDuplicateCurrentSlot(t *testing.T) {
-	first := skills.NewProposalRef(skills.ScopeProject, "review", []byte("first"))
-	second := skills.NewProposalRef(skills.ScopeProject, "review", []byte("second"))
+func TestSkillProposalsRejectDuplicateOriginalCommand(t *testing.T) {
+	first := skills.CommandRef(skills.ScopeProject, "review", fmt.Sprintf("%x", sha256.Sum256([]byte("first"))))
+	second := first
 	fake := &fakeSkillProposals{list: []skills.ProposalReview{
 		validProposalReview(first), validProposalReview(second),
 	}}
 	c := newSkills(t, newScope(t, "", "", testPaths{}), &fakeSkillCatalog{}, nil, fake, nil, nil)
 
 	if _, err := c.Proposals(t.Context(), "/repo"); err == nil {
-		t.Fatal("Proposals accepted two current revisions for one scoped Skill name")
+		t.Fatal("Proposals accepted a duplicate original proposal command")
 	}
 }
 
 func TestSkillProposalsRejectInvalidOrUnboundedCatalog(t *testing.T) {
-	ref := skills.NewProposalRef(skills.ScopeProject, "review", []byte("proposal"))
+	ref := skills.CommandRef(skills.ScopeProject, "review", fmt.Sprintf("%x", sha256.Sum256([]byte("proposal"))))
 	invalid := validProposalReview(ref)
 	invalid.Instructions = ""
 	for name, list := range map[string][]skills.ProposalReview{
 		"invalid row": {invalid},
-		"capacity":    make([]skills.ProposalReview, 2*skills.MaxPendingProposalsPerScope+1),
+		"capacity":    make([]skills.ProposalReview, 2*plugin.MaxInstallations*skill.MaxPendingProposalsPerScope+1),
 	} {
 		t.Run(name, func(t *testing.T) {
 			fake := &fakeSkillProposals{list: list}

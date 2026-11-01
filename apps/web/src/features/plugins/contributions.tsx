@@ -1,3 +1,5 @@
+import { workflowAuthors } from "./adapters/workflowAuthors";
+import { InstalledMessageAction } from "@/features/plugins/ui/InstalledMessageAction";
 import { SHARED_CLIENT_EFFECT, SharedEffects } from "./ui/SharedEffects";
 import { tupleKey } from "@/lib/tupleKey";
 import { WorkspaceChangesAction } from "./ui/WorkspaceChangesAction";
@@ -75,6 +77,17 @@ function operationBinding(
         contract: contribution.contract,
       }
     : undefined;
+}
+
+function actionPlacement(placement: string) {
+  switch (placement) {
+    case "messageAction":
+      return { slot: "message.actions" as const, order: 15 };
+    case "workspaceChangesAction":
+      return { slot: "chat.header.meta" as const };
+    default:
+      return undefined;
+  }
 }
 
 function createPackageReconciler(
@@ -336,6 +349,8 @@ function createPackageReconciler(
             binding,
             lifetime,
           };
+          if (placement === "messageAction")
+            return { default: () => <InstalledMessageAction {...rendering} /> };
           if (placement === "workspaceChangesAction")
             return {
               default: () => (
@@ -356,6 +371,7 @@ function createPackageReconciler(
           };
         });
         const id = packageScopedId(installation.id, entry.id);
+        const action = actionPlacement(placement);
         const PlacedComponent = () => (
           <ComponentBoundary
             scope={componentFailureScope(component, generation)}
@@ -365,7 +381,7 @@ function createPackageReconciler(
               fallback={
                 placement === "clientEffect" ||
                 placement === "sharedClientEffect" ||
-                placement === "workspaceChangesAction" ? null : (
+                action ? null : (
                   <ComponentLoading />
                 )
               }
@@ -374,8 +390,12 @@ function createPackageReconciler(
             </Suspense>
           </ComponentBoundary>
         );
-        if (placement === "workspaceChangesAction") {
-          contributeLayout(lifetime, "chat.header.meta", { id, component: PlacedComponent });
+        if (action) {
+          contributeLayout(lifetime, action.slot, {
+            id,
+            order: action.order,
+            component: PlacedComponent,
+          });
           continue;
         }
         if (placement === "sharedClientEffect") {
@@ -487,17 +507,15 @@ export function registerPackageContributions(
       )
     ).data;
   scope.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher });
-  scope.contribute(DATA_PROVIDER, {
-    key: PROVIDERS_KEY,
-    fetcher: async (_params?: unknown, signal?: AbortSignal) =>
-      (
-        await trackContributionIO(scope, () =>
-          client.plugins.listProviders(
-            signal ? AbortSignal.any([scope.signal, signal]) : scope.signal,
-          ),
-        )
-      ).data,
-  });
+  const fetchProviders = async (_params?: unknown, signal?: AbortSignal) =>
+    (
+      await trackContributionIO(scope, () =>
+        client.plugins.listProviders(
+          signal ? AbortSignal.any([scope.signal, signal]) : scope.signal,
+        ),
+      )
+    ).data;
+  scope.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: fetchProviders });
 
   let failure: { reason: string; retry(): void } | null = null;
   const withdrawFailure = () => {
@@ -508,6 +526,7 @@ export function registerPackageContributions(
   const realize = () => {
     withdrawFailure();
     const contributions = scope.lifetime("package-realization");
+    contributions.cleanup(() => packages.workflows.publish([], []));
     const reconcile = createPackageReconciler(
       contributions,
       client,
@@ -528,7 +547,17 @@ export function registerPackageContributions(
         await reconcile(rows);
         if (!signal.aborted) {
           queryClient.setQueryData([PACKAGES_KEY], rows);
-          await queryClient.invalidateQueries({ queryKey: [PROVIDERS_KEY] });
+          try {
+            const choices = await fetchProviders(undefined, signal);
+            if (signal.aborted) return;
+            packages.workflows.publish(workflowAuthors(rows), choices);
+            queryClient.setQueryData([PROVIDERS_KEY], choices);
+          } catch {
+            if (!signal.aborted) {
+              packages.workflows.publish(workflowAuthors(rows), []);
+              await queryClient.invalidateQueries({ queryKey: [PROVIDERS_KEY] });
+            }
+          }
         }
       };
       try {

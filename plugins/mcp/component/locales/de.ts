@@ -24,6 +24,8 @@ export const de: Record<string, string> = {
   "mcp.transport.http": "Streamable HTTP",
   "mcp.signIn": "Anmelden",
   "mcp.signingIn": "Anmeldung läuft…",
+  "mcp.signIn.unconfirmed":
+    "Nach dem Neustart ließ sich das Ergebnis der letzten Anmeldung nicht bestätigen.",
   "mcp.signIn.aria": "Bei {{server}} anmelden",
   "mcp.signingIn.aria": "Anmeldung läuft… {{server}}",
   "mcp.reconnect": "Neu verbinden",

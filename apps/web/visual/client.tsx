@@ -1,8 +1,6 @@
 import { createImageExport } from "@/foundation/imageExport";
 import { createGoals } from "@/features/goal/application/goals";
 import { GoalProvider } from "@/features/goal/public/goals";
-import { MessageFeedbackOwner } from "@/features/chat/message-actions/application/feedback";
-import { MessageFeedbackProvider } from "@/features/chat/message-actions/public/feedback";
 import { ApplicationCalloutLabels } from "@/app/calloutLabels";
 import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { type ReactNode } from "react";
@@ -48,7 +46,6 @@ function useRecordedChatSession() {
 export function createVisualClient(runtimeClient: () => FlameClient) {
   const host = createBrowserHost();
   const theme = createTheme(document, window);
-  const feedback = new MessageFeedbackOwner(null);
   const navigation = createMemoryNavigator();
   const projection = createRuntimeConnectionProjection();
   projection.store.setState({ connectionGeneration: VISUAL_RUNTIME_GENERATION });
@@ -139,40 +136,37 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
   );
   function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <MessageFeedbackProvider value={feedback}>
-        <GoalProvider value={goals.access}>
-          <ApplicationCalloutLabels>
-            <ThemeProvider value={theme.access}>
-              <RuntimeProvider value={runtime}>
-                <agent.Provider>
-                  <ComposerProvider value={composer.access}>
-                    <WorkspaceProvider value={workspace.access}>
-                      <WorkingDirectoryProvider value={directory.access}>
-                        <ImageSaveProvider
-                          saveImage={createImageExport(IMAGE_FILENAME_STEM, host.saveFile)}
-                        >
-                          <NotificationProvider value={notifications.access}>
-                            <InstalledPluginsProvider value={installedPlugins.access}>
-                              {children}
-                            </InstalledPluginsProvider>
-                          </NotificationProvider>
-                        </ImageSaveProvider>
-                      </WorkingDirectoryProvider>
-                    </WorkspaceProvider>
-                  </ComposerProvider>
-                </agent.Provider>
-              </RuntimeProvider>
-            </ThemeProvider>
-          </ApplicationCalloutLabels>
-        </GoalProvider>
-      </MessageFeedbackProvider>
+      <GoalProvider value={goals.access}>
+        <ApplicationCalloutLabels>
+          <ThemeProvider value={theme.access}>
+            <RuntimeProvider value={runtime}>
+              <agent.Provider>
+                <ComposerProvider value={composer.access}>
+                  <WorkspaceProvider value={workspace.access}>
+                    <WorkingDirectoryProvider value={directory.access}>
+                      <ImageSaveProvider
+                        saveImage={createImageExport(IMAGE_FILENAME_STEM, host.saveFile)}
+                      >
+                        <NotificationProvider value={notifications.access}>
+                          <InstalledPluginsProvider value={installedPlugins.access}>
+                            {children}
+                          </InstalledPluginsProvider>
+                        </NotificationProvider>
+                      </ImageSaveProvider>
+                    </WorkingDirectoryProvider>
+                  </WorkspaceProvider>
+                </ComposerProvider>
+              </agent.Provider>
+            </RuntimeProvider>
+          </ThemeProvider>
+        </ApplicationCalloutLabels>
+      </GoalProvider>
     );
   }
   return {
     host,
     theme,
     goals,
-    feedback,
     navigation,
     projection,
     runtime,
@@ -190,7 +184,6 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
     },
     async dispose() {
       goals.dispose();
-      feedback.dispose();
       notifications.dispose();
       composer.dispose();
       directory.dispose();

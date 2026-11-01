@@ -4,6 +4,7 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -48,11 +49,19 @@ func artifactFromPortable(portable sessions.PortableSnapshot) (protocol.SessionA
 			Body: result.Blob.Body, CreatedAt: result.Blob.CreatedAt,
 		})
 	}
+	var source *extension.ContributionSource
+	if portable.PlanSource != (extension.ContributionSource{}) {
+		source = new(portable.PlanSource)
+	}
+	var archivedPlan []protocol.PlanStep
+	if portable.Plan != nil {
+		archivedPlan = presentPlanStepList(portable.Plan)
+	}
 	return protocol.SessionArtifact{
+		Plan: archivedPlan, PlanSource: source,
 		Version:  protocol.SessionArtifactVersion,
 		Session:  artifactSessionFromPortable(portable.Session),
 		Messages: messages, Runs: runs, Items: items, ToolResults: toolResults,
-		Plan: presentPlanStepList(portable.Plan),
 	}, nil
 }
 

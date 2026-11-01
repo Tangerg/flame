@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	"time"
 )
 
@@ -262,10 +263,11 @@ type MCPTestResult struct {
 type MCPAuthorizationAttemptStatusType string
 
 const (
-	MCPAuthorizationAttemptPending   MCPAuthorizationAttemptStatusType = "pending"
-	MCPAuthorizationAttemptSucceeded MCPAuthorizationAttemptStatusType = "succeeded"
-	MCPAuthorizationAttemptFailed    MCPAuthorizationAttemptStatusType = "failed"
-	MCPAuthorizationAttemptCanceled  MCPAuthorizationAttemptStatusType = "canceled"
+	MCPAuthorizationAttemptUnconfirmed MCPAuthorizationAttemptStatusType = MCPAuthorizationAttemptStatusType(mcpconnector.Unconfirmed)
+	MCPAuthorizationAttemptPending     MCPAuthorizationAttemptStatusType = MCPAuthorizationAttemptStatusType(mcpconnector.Pending)
+	MCPAuthorizationAttemptSucceeded   MCPAuthorizationAttemptStatusType = MCPAuthorizationAttemptStatusType(mcpconnector.Succeeded)
+	MCPAuthorizationAttemptFailed      MCPAuthorizationAttemptStatusType = MCPAuthorizationAttemptStatusType(mcpconnector.Failed)
+	MCPAuthorizationAttemptCanceled    MCPAuthorizationAttemptStatusType = MCPAuthorizationAttemptStatusType(mcpconnector.Canceled)
 )
 
 // MCPAuthorizationAttemptStatus is a closed union. Only failed carries an

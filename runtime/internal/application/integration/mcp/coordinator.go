@@ -50,17 +50,25 @@ type registry interface {
 	Definition(ctx context.Context, name mcpserver.ID) (mcpserver.Server, bool, error)
 }
 
-// store persists what this coordinator owns directly: user-origin descriptors
-// and the tool exposure relation over sources of every origin.
+// Directory edits go to the selected connector. Tool exposure is a host authorization over every origin.
 type store interface {
 	Save(ctx context.Context, server mcpserver.Server) error
-	Remove(ctx context.Context, name mcpserver.ServerName) error
+	Remove(ctx context.Context, current mcpserver.Server) error
 	ListExposure(ctx context.Context) ([]tool.Ref, error)
 	SetToolExposure(ctx context.Context, ref tool.Ref, disabled bool) error
 }
 
-// Coordinator owns user-server configuration and tool exposure, and coordinates
-// the connection owner. Installations own installed-server definitions. Commands
+// ExternalWorkflow owns user-server authorization records. Installed backends can authorize independently.
+type ExternalWorkflow interface {
+	Invalidate()
+	Affected([]mcpserver.ID) bool
+	List(context.Context) ([]mcpserver.Server, error)
+	AdmitProbe(context.Context) (func(), error)
+	StartAuthorization(context.Context, mcpserver.Server, AuthorizationAttemptID) (AuthorizationAttempt, func(context.Context, AuthorizationAttemptStatus) error, error)
+	ReadAuthorization(context.Context, AuthorizationAttemptID) (AuthorizationAttempt, error)
+}
+
+// Coordinator realizes committed directory or installation changes in host connections and exposure. Commands
 // borrow input until they return; constructing a server acquires data retained
 // by persistence or a live dial.
 type Coordinator struct {
@@ -68,15 +76,16 @@ type Coordinator struct {
 	// the short pre/post boundaries of asynchronous connection operations.
 	// Network and interactive OAuth waits never hold it; Connections owns
 	// per-server latest-operation-wins sequencing.
-	registry              registry
-	store                 store
-	toolCatalog           toolCatalog
-	connections           Connections
-	exposure              *ExposureState
-	mutationMu            sync.Mutex
-	statusQueue           *statusQueue
-	authorizationAttempts *authorizationAttemptStore
-	invalidations         invalidation.Publish
+	registry                registry
+	store                   store
+	toolCatalog             toolCatalog
+	connections             Connections
+	exposure                *ExposureState
+	mutationMu              sync.Mutex
+	statusQueue             *statusQueue
+	installedAuthorizations *authorizationAttemptStore
+	external                ExternalWorkflow
+	invalidations           invalidation.Publish
 
 	// tasks is this component's context for post-commit reconcile: MCP registry
 	// mutations outlive the request but are canceled and joined by the
@@ -86,6 +95,7 @@ type Coordinator struct {
 
 // Config bundles the Coordinator's dependencies.
 type Config struct {
+	External    ExternalWorkflow
 	Registry    registry
 	Store       store
 	ToolCatalog toolCatalog
@@ -101,7 +111,7 @@ func New(cfg Config) (*Coordinator, error) {
 		name  string
 		value any
 	}{
-		{"registry", cfg.Registry}, {"store", cfg.Store},
+		{"registry", cfg.Registry}, {"store", cfg.Store}, {"external workflow", cfg.External},
 		{"live connections", cfg.Connections}, {"tool catalog", cfg.ToolCatalog},
 	} {
 		if lo.IsNil(required.value) {
@@ -112,13 +122,14 @@ func New(cfg Config) (*Coordinator, error) {
 		return nil, errors.New("mcp: initialized exposure is required")
 	}
 	coordinator := &Coordinator{
-		registry:              cfg.Registry,
-		store:                 cfg.Store,
-		toolCatalog:           cfg.ToolCatalog,
-		connections:           cfg.Connections,
-		exposure:              cfg.Exposure,
-		authorizationAttempts: newAuthorizationAttemptStore(),
-		invalidations:         cfg.Invalidations,
+		external:                cfg.External,
+		registry:                cfg.Registry,
+		store:                   cfg.Store,
+		toolCatalog:             cfg.ToolCatalog,
+		connections:             cfg.Connections,
+		exposure:                cfg.Exposure,
+		installedAuthorizations: newAuthorizationAttemptStore(),
+		invalidations:           cfg.Invalidations,
 	}
 	coordinator.statusQueue = newStatusQueue(func(name mcpserver.ID) {
 		coordinator.invalidations.Notify(invalidation.ForMCP(name))

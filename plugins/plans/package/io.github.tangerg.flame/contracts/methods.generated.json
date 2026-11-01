@@ -1,0 +1,18 @@
+[
+  {
+    "name": "flame.plan-workflow/author.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Admit a complete checklist and issue its immutable version.",
+    "input": "schema.json#/$defs/AuthorV1Input",
+    "output": "schema.json#/$defs/AuthorV1Output"
+  },
+  {
+    "name": "flame.plan-workflow/review.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Prepare the human review of one exact immutable plan.",
+    "input": "schema.json#/$defs/ReviewV1Input",
+    "output": "schema.json#/$defs/ReviewV1Output"
+  }
+]

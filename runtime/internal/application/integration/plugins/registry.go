@@ -56,21 +56,24 @@ type Registry struct {
 	compositions  CompositionStore
 }
 
-func NewRegistry(host *qimu.Host, user userServers, installations Store, packages packageSources, selections SelectionStore, compositions CompositionStore) (*Registry, error) {
+func NewRegistry(host *qimu.Host, installations Store, packages packageSources, selections SelectionStore, compositions CompositionStore) (*Registry, error) {
 	for _, required := range []struct {
 		name  string
 		value any
 	}{
 		{"framework host", host},
-		{"user server store", user}, {"installation store", installations}, {"package sources", packages}, {"selection store", selections},
+		{"installation store", installations}, {"package sources", packages}, {"selection store", selections},
 		{"composition store", compositions},
 	} {
 		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("plugins: registry %s is required", required.name)
 		}
 	}
-	return &Registry{framework: host, user: user, installations: installations, packages: packages, selections: selections, compositions: compositions}, nil
+	return &Registry{framework: host, installations: installations, packages: packages, selections: selections, compositions: compositions}, nil
 }
+
+// WithExternalDirectory adds the optional external connector after the installed-only planner exists.
+func (r Registry) WithExternalDirectory(user userServers) *Registry { r.user = user; return &r }
 
 // ComponentPlan prepares one immutable component export in its target Realm.
 // The Host revalidates the plan before the browser receives execution authority.
@@ -101,11 +104,14 @@ func (r *Registry) ComponentPlan(ctx context.Context, realm qimu.RealmID, id ide
 // Definitions projects desired configuration without observing executable bytes
 // or backend availability. Connection admission and plugin inspection own those reads.
 func (r *Registry) Definitions(ctx context.Context) ([]mcpserver.Server, error) {
-	users, err := r.user.List(ctx)
-	if err != nil {
-		return nil, err
+	var result []mcpserver.Server
+	if r.user != nil {
+		users, err := r.user.List(ctx)
+		if err != nil {
+			return nil, err
+		}
+		result = users
 	}
-	result := users
 	installations, err := r.installations.List(ctx)
 	if err != nil {
 		return nil, err
@@ -127,6 +133,9 @@ func (r *Registry) Definitions(ctx context.Context) ([]mcpserver.Server, error) 
 func (r *Registry) resolve(ctx context.Context, id mcpserver.ID, reach Reach) (mcpserver.Server, bool, error) {
 	installationID, installed := id.Origin().Installation()
 	if !installed {
+		if r.user == nil {
+			return mcpserver.Server{}, false, nil
+		}
 		return r.user.Get(ctx, id.Name())
 	}
 	snapshot, found, err := r.installations.Get(ctx, installationID)

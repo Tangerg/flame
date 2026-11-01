@@ -5,28 +5,28 @@
 package skills
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/skill"
 	"github.com/Tangerg/flame/runtime/internal/domain/destructive"
 	skillspec "github.com/Tangerg/scope/skills"
 )
 
 var (
-	ErrUnsafeProposal    = errors.New("skills: dangerous instruction")
-	ErrInvalidName       = errors.New("skills: invalid name")
-	ErrConflict          = errors.New("skills: destination already exists")
-	ErrProposalChanged   = errors.New("skills: proposal content changed")
-	ErrProposalQueueFull = errors.New("skills: proposal review queue is full")
-	ErrDocumentTooLarge  = errors.New("skills: document is too large")
-	ErrLibraryCapacity   = errors.New("skills: library capacity exceeded")
-	ErrResourceTooLarge  = errors.New("skills: resource is too large")
-	ErrUsageTooLarge     = errors.New("skills: usage metadata is too large")
-	ErrNotFound          = errors.New("skills: entry not found")
+	ErrPublicationUnconfirmed = errors.New("skills: original file publication cannot be confirmed")
+	ErrUnsafeProposal         = errors.New("skills: dangerous instruction")
+	ErrInvalidName            = errors.New("skills: invalid name")
+	ErrConflict               = errors.New("skills: destination already exists")
+	ErrProposalChanged        = errors.New("skills: proposal content changed")
+	ErrProposalQueueFull      = errors.New("skills: proposal review queue is full")
+	ErrDocumentTooLarge       = errors.New("skills: document is too large")
+	ErrLibraryCapacity        = errors.New("skills: library capacity exceeded")
+	ErrResourceTooLarge       = errors.New("skills: resource is too large")
+	ErrUsageTooLarge          = errors.New("skills: usage metadata is too large")
+	ErrNotFound               = errors.New("skills: entry not found")
 )
 
 func ValidateName(name string) error {
@@ -41,10 +41,6 @@ const (
 	// accepted by the governed authoring lifecycle. Bundled resources remain
 	// separate and are disclosed on demand.
 	MaxAuthoredSkillDocumentBytes = 1 << 20
-
-	// MaxPendingProposalsPerScope bounds one complete, non-paginated review
-	// queue. Project and user libraries each own an independent queue.
-	MaxPendingProposalsPerScope = 128
 
 	// MaxSkillsPerSource bounds one complete, non-paginated Skill source. It is
 	// shared by project/user discovery and the active+archived managed library,
@@ -62,10 +58,7 @@ const (
 	// transport; larger assets must be consumed by a purpose-built tool.
 	MaxSkillResourceBytes = 1 << 20
 
-	// ProposalRevisionPattern is the one canonical text representation of a
-	// content-addressed proposal revision. NewProposalRef always produces this
-	// lowercase SHA-256 form; accepting another spelling would create two wire
-	// identities for the same digest.
+	// Review commands use the delivery owner’s opaque, canonical operation identity.
 	ProposalRevisionPattern = `^[0-9a-f]{64}$`
 )
 
@@ -75,8 +68,8 @@ var proposalRevisionPattern = regexp.MustCompile(ProposalRevisionPattern)
 type Scope string
 
 const (
-	ScopeProject Scope = "project"
-	ScopeUser    Scope = "user"
+	ScopeProject Scope = Scope(skill.Project)
+	ScopeUser    Scope = Scope(skill.User)
 )
 
 func (s Scope) Validate() error {
@@ -92,8 +85,8 @@ func (s Scope) Validate() error {
 type ProposalOrigin string
 
 const (
-	ProposalOriginRequested ProposalOrigin = "requested"
-	ProposalOriginMined     ProposalOrigin = "mined"
+	ProposalOriginRequested ProposalOrigin = ProposalOrigin(skill.Requested)
+	ProposalOriginMined     ProposalOrigin = ProposalOrigin(skill.Mined)
 )
 
 func (p ProposalOrigin) Validate() error {
@@ -150,24 +143,16 @@ type Proposal struct {
 	Revises       bool
 }
 
-// ProposalRef binds one review decision to the exact immutable proposal bytes
-// in one Skill scope.
+// A review names the original proposal command. Only its captured release can
+// authorize the immutable input already associated with that identity.
 type ProposalRef struct {
 	Scope    Scope
 	Name     string
 	Revision string
 }
 
-// NewProposalRef derives the stable reference for exact proposal content.
-func NewProposalRef(scope Scope, name string, content []byte) ProposalRef {
-	payload := make([]byte, 0, len(scope)+len(name)+len(content)+2)
-	payload = append(payload, scope...)
-	payload = append(payload, 0)
-	payload = append(payload, name...)
-	payload = append(payload, 0)
-	payload = append(payload, content...)
-	digest := sha256.Sum256(payload)
-	return ProposalRef{Scope: scope, Name: name, Revision: hex.EncodeToString(digest[:])}
+func CommandRef(scope Scope, name, command string) ProposalRef {
+	return ProposalRef{Scope: scope, Name: name, Revision: command}
 }
 
 // Validate checks whether the reference can identify a stored proposal.
@@ -184,11 +169,6 @@ func (p ProposalRef) Validate() error {
 	return nil
 }
 
-// Matches reports whether content produces this exact reference.
-func (p ProposalRef) Matches(content []byte) bool {
-	return p == NewProposalRef(p.Scope, p.Name, content)
-}
-
 // ProposalReview contains the complete immutable content and provenance a human
 // needs to review before approving or rejecting a proposal.
 type ProposalReview struct {
@@ -201,8 +181,7 @@ type ProposalReview struct {
 }
 
 // Validate checks the identity and complete reviewable content returned by a
-// proposal store. The revision remains bound to the original rendered bytes,
-// which are intentionally opaque outside persistence.
+// provider. Revision identifies the retained originating command.
 func (p ProposalReview) Validate() error {
 	if err := p.Ref.Validate(); err != nil {
 		return err

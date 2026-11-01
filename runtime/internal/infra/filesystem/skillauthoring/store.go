@@ -1,7 +1,3 @@
-// Package skillauthoring owns the governed write side of one Agent Skills
-// library. Each proposal name has one atomically replaced current document;
-// review references remain immutable content digests. Active lifecycle moves
-// never overwrite a destination except the explicit single archive slot.
 package skillauthoring
 
 import (
@@ -27,9 +23,10 @@ import (
 // linearizes capacity checks, replacement, lifecycle moves, and review
 // decisions across Runtime processes that share the library.
 type Store struct {
-	root  string
-	scope skills.Scope
-	mu    sync.RWMutex
+	root              string
+	project, relative string
+	scope             skills.Scope
+	mu                sync.RWMutex
 }
 
 // NewStore roots the authoring store at one project or user Skill library.
@@ -44,7 +41,34 @@ func NewStore(root string, scope skills.Scope) (*Store, error) {
 	return &Store{root: root, scope: scope}, nil
 }
 
+func NewProjectStore(project, library string) (*Store, error) {
+	relative, err := filepath.Rel(project, library)
+	if err != nil || !filepath.IsLocal(relative) {
+		return nil, errors.New("skillauthoring: library is outside project root")
+	}
+	store, err := NewStore(library, skills.ScopeProject)
+	if err != nil {
+		return nil, err
+	}
+	store.project = project
+	store.relative = relative
+	return store, nil
+}
+
+func (s *Store) Library() string { return s.root }
+
 func (s *Store) openRoot() (*os.Root, error) {
+	if s.project != "" {
+		parent, err := os.OpenRoot(s.project)
+		if err != nil {
+			return nil, err
+		}
+		defer parent.Close()
+		if err := parent.MkdirAll(s.relative, 0755); err != nil {
+			return nil, err
+		}
+		return parent.OpenRoot(s.relative)
+	}
 	if err := os.MkdirAll(s.root, 0o755); err != nil {
 		return nil, fmt.Errorf("skillauthoring: create skills root: %w", err)
 	}
@@ -64,6 +88,11 @@ func (s *Store) openLeasedRoot(ctx context.Context, operation string) (*os.Root,
 	if err != nil {
 		_ = root.Close()
 		return nil, nil, fmt.Errorf("skillauthoring: %s: acquire library lease: %w", operation, err)
+	}
+	actual, actualErr := root.Stat(".")
+	path, pathErr := os.Stat(s.root)
+	if err := errors.Join(actualErr, pathErr); err != nil || !os.SameFile(actual, path) {
+		return nil, nil, errors.Join(skills.ErrConflict, err, lease.Release(), root.Close())
 	}
 	// The operation's own outcome is already decided when cleanup runs, so a
 	// failure here cannot change it; but a lease that stays held stalls every

@@ -26,11 +26,7 @@ func (p SkillProposal) Validate() error {
 func (p SkillProposal) QualifiedName() string { return string(p.Scope) + "/" + p.Name }
 
 func (p SkillProposal) Key() string {
-	revision := p.Revision
-	if len(revision) > 12 {
-		revision = revision[:12]
-	}
-	return p.QualifiedName() + "@" + revision
+	return p.QualifiedName() + "@" + p.Revision
 }
 
 func (p SkillProposal) Reference(workspace string) (SkillProposalReference, error) {

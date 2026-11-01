@@ -3,7 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"time"
+	"path/filepath"
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -12,9 +12,7 @@ import (
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
-	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -37,8 +35,6 @@ type policyComposition struct {
 	approvals     *approvals.RuntimePolicy
 	goals         goals.Store
 	goalReader    *goals.Reader
-	goalReporter  *goals.OutcomeReporter
-	plans         *sessions.PlanCoordinator
 	mcp           mcpEnvironment
 }
 
@@ -56,7 +52,7 @@ func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *r
 	if err != nil {
 		return policyComposition{}, err
 	}
-	registry := framework.registry
+	registry := framework.registry.WithExternalDirectory(framework.external)
 	approvalPolicy, err := approvals.NewRuntimePolicy(
 		cfg.approvalMode,
 		cfg.stores.ApprovalRules,
@@ -68,7 +64,7 @@ func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *r
 	if err != nil {
 		return policyComposition{}, fmt.Errorf("runtime: approval policy: %w", err)
 	}
-	mcpSettings, err := buildMCPEnvironment(ctx, registry, cfg.stores.MCPServers)
+	mcpSettings, err := buildMCPEnvironment(ctx, framework.registry, cfg.stores.MCPServers)
 	if err != nil {
 		return policyComposition{}, err
 	}
@@ -77,24 +73,12 @@ func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *r
 	if err != nil {
 		return policyComposition{}, fmt.Errorf("runtime: build goal reader: %w", err)
 	}
-	goalReporter, err := goals.NewOutcomeReporter(goalStore)
-	if err != nil {
-		return policyComposition{}, fmt.Errorf("runtime: build goal outcome reporter: %w", err)
-	}
-	plans, err := sessions.NewPlanCoordinator(sessions.PlanDependencies{
-		Store: cfg.stores.Plan, Now: time.Now, Invalidations: invalidations.publish,
-	})
-	if err != nil {
-		return policyComposition{}, err
-	}
 	return policyComposition{
 		framework: framework, invalidations: invalidations, packages: packages, registry: registry,
 		packageSkills: packageSkills,
 		approvals:     approvalPolicy,
 		goals:         goalStore,
 		goalReader:    goalReader,
-		goalReporter:  goalReporter,
-		plans:         plans,
 		mcp:           mcpSettings,
 	}, nil
 }
@@ -104,7 +88,7 @@ func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *r
 type workspaceComposition struct {
 	scope            *workspace.Scope
 	authoredWatch    *workspace.AuthoredWatch
-	skills           *workspace.Skills
+	skillLibraries   *workspaceadapter.SkillLibraries
 	skillMaintenance *workspace.SkillMaintenance
 	skillStore       *skillauthoring.Store
 	checkpoints      *workspaceadapter.Checkpoints
@@ -113,7 +97,6 @@ type workspaceComposition struct {
 func buildWorkspaceComposition(
 	cfg assemblyConfig,
 	publish invalidation.Publish,
-	packageSkills promptsource.PackageSkills,
 ) (workspaceComposition, error) {
 	scope, err := workspace.NewScope(cfg.defaultWorkspacePath, cfg.userHome, workspaceadapter.Resolver{})
 	if err != nil {
@@ -135,25 +118,14 @@ func buildWorkspaceComposition(
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build skill maintenance: %w", err)
 	}
-	skillLibraries, err := workspaceadapter.NewSkillLibraries(skillStore)
+	skillLibraries, err := workspaceadapter.NewSkillLibraries(skillStore, filepath.Join(cfg.stores.DataDirectory, "skill-publications"))
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build skill libraries: %w", err)
-	}
-	workspaceSkills, err := workspace.NewSkills(
-		scope,
-		promptsource.NewSkills(cfg.skillsUserDir, packageSkills),
-		skillStore,
-		skillLibraries,
-		authoredWatch,
-		publish,
-	)
-	if err != nil {
-		return workspaceComposition{}, fmt.Errorf("runtime: build skills: %w", err)
 	}
 	return workspaceComposition{
 		scope:            scope,
 		authoredWatch:    authoredWatch,
-		skills:           workspaceSkills,
+		skillLibraries:   skillLibraries,
 		skillMaintenance: skillMaintenance,
 		skillStore:       skillStore,
 		checkpoints:      workspaceadapter.NewCheckpoints(cfg.checkpointDir),
@@ -233,10 +205,9 @@ func buildExecutionComposition(
 		conversation:     conversation.store,
 		publish:          policy.invalidations.publish,
 		goalReader:       policy.goalReader,
-		goalReporter:     policy.goalReporter,
-		plan:             policy.plans,
+		goalStore:        policy.goals,
 		skillStore:       workspaceServices.skillStore,
-		skillProposals:   workspaceServices.skills,
+		workspace:        workspaceServices,
 		skillArchives:    workspaceServices.skillMaintenance,
 	})
 	lifetime.toolResources = append(lifetime.toolResources, toolRuntime.closers...)
@@ -271,7 +242,7 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: build transient Session state: %w", err)
 	}
-	toolInterpreter := toolset.NewInterpreter(policy.plans)
+	toolInterpreter := toolset.NewInterpreter(toolRuntime.plans)
 	toolAuthorizer, err := executionadapter.NewToolAuthorizer(policy.approvals, toolInterpreter)
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: Tool authorizer: %w", err)

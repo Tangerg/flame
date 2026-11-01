@@ -3779,6 +3779,10 @@
           "message": "mcp_server_already_exists"
         },
         {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -4038,6 +4042,10 @@
         }
       },
       "errors": [
+        {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
         {
           "code": -32006,
           "message": "capability_not_negotiated"
@@ -7415,6 +7423,14 @@
       },
       "errors": [
         {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        },
+        {
           "code": -32002,
           "message": "session_not_found"
         },
@@ -7624,6 +7640,14 @@
       },
       "errors": [
         {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        },
+        {
           "code": -32002,
           "message": "session_not_found"
         },
@@ -7690,6 +7714,14 @@
         }
       },
       "errors": [
+        {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        },
         {
           "code": -32002,
           "message": "session_not_found"
@@ -8383,6 +8415,12 @@
       "paramStructure": "by-name",
       "params": [
         {
+          "name": "source",
+          "schema": {
+            "$ref": "#/components/schemas/ContributionSource"
+          }
+        },
+        {
           "name": "sessionId",
           "schema": {
             "type": "string",
@@ -8432,6 +8470,16 @@
           "type": "object"
         }
       },
+      "errors": [
+        {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        }
+      ],
       "x-flame-kind": "unary",
       "x-flame-operation": "command",
       "x-flame-idempotency": "replayResponse",
@@ -8446,6 +8494,9 @@
           "rating": {},
           "runId": {},
           "sessionId": {},
+          "source": {
+            "$ref": "#/components/schemas/ContributionSource"
+          },
           "text": {}
         },
         "unevaluatedProperties": false,
@@ -8678,6 +8729,19 @@
         "allOf": [
           {
             "$ref": "schema.json#/$defs/ContentBlock"
+          }
+        ]
+      },
+      "ContributionSource": {
+        "properties": {
+          "contribution": {},
+          "installationId": {},
+          "release": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/ContributionSource"
           }
         ]
       },
@@ -9121,6 +9185,9 @@
             "items": {
               "$ref": "#/components/schemas/PlanStep"
             }
+          },
+          "planSource": {
+            "$ref": "#/components/schemas/ContributionSource"
           },
           "runs": {
             "items": {

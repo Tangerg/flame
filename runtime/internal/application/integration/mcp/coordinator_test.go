@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -9,6 +10,7 @@ import (
 func testCoordinator(t testing.TB, cfg Config) *Coordinator {
 	t.Helper()
 	ports := &fakePorts{}
+	cfg.External = &testExternalWorkflow{attempts: newAuthorizationAttemptStore()}
 	if cfg.Registry == nil {
 		cfg.Registry = &testRegistry{servers: make(map[mcpserver.ID]mcpserver.Server)}
 	}
@@ -54,6 +56,7 @@ func TestNewRequiresCompleteDependencies(t *testing.T) {
 			t.Parallel()
 			cfg := configWithPorts(&fakePorts{})
 			cfg.Store = cfg.Registry.(store)
+			cfg.External = &testExternalWorkflow{attempts: newAuthorizationAttemptStore()}
 			cfg.Exposure = NewExposureState(nil, nil)
 			omit(&cfg)
 			if coordinator, err := New(cfg); err == nil || coordinator != nil {
@@ -62,3 +65,25 @@ func TestNewRequiresCompleteDependencies(t *testing.T) {
 		})
 	}
 }
+
+type testExternalWorkflow struct{ attempts *authorizationAttemptStore }
+
+func (*testExternalWorkflow) Affected([]mcpserver.ID) bool                     { return false }
+func (*testExternalWorkflow) List(context.Context) ([]mcpserver.Server, error) { return nil, nil }
+func (*testExternalWorkflow) AdmitProbe(context.Context) (func(), error)       { return func() {}, nil }
+func (w *testExternalWorkflow) StartAuthorization(_ context.Context, s mcpserver.Server, _ AuthorizationAttemptID) (AuthorizationAttempt, func(context.Context, AuthorizationAttemptStatus) error, error) {
+	a := w.attempts.create(s.ID())
+	return a, func(_ context.Context, status AuthorizationAttemptStatus) error {
+		w.attempts.settle(a.ID, status)
+		return nil
+	}, nil
+}
+func (w *testExternalWorkflow) ReadAuthorization(_ context.Context, id AuthorizationAttemptID) (AuthorizationAttempt, error) {
+	a, ok := w.attempts.get(id)
+	if !ok {
+		return a, ErrAuthorizationAttemptNotFound
+	}
+	return a, nil
+}
+
+func (*testExternalWorkflow) Invalidate() {}

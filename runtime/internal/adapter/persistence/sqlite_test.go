@@ -483,7 +483,10 @@ func TestSessionAndPlanRevisionsRequireExactPositiveIntegers(t *testing.T) {
 					if _, err := db.ExecContext(t.Context(), insertSession, sessionID, 1); err != nil {
 						t.Fatalf("seed owning Session: %v", err)
 					}
-					statement = `INSERT INTO session_plans(session_id, steps, revision, updated_at) VALUES (?, '[]', ?, 1)`
+					if _, err := db.ExecContext(t.Context(), `INSERT INTO plan_documents(digest, steps) VALUES ('fixture', '[]')`); err != nil {
+						t.Fatal(err)
+					}
+					statement = `INSERT INTO session_plans(session_id, document, revision, updated_at) VALUES (?, 'fixture', ?, 1)`
 				}
 				result, err := db.ExecContext(t.Context(), statement, sessionID, test.revision)
 				if test.rejected {

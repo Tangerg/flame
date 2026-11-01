@@ -10,7 +10,7 @@ import (
 // is always present and the variable-length Args come last behind their count,
 // so two different descriptors cannot frame to the same field sequence.
 func (s Server) AuthorityFingerprint() integrity.Digest {
-	var authority string
+	authority := s.Source.connector.String()
 	if _, release, found := s.Source.Release(); found {
 		authority = release.String()
 	}

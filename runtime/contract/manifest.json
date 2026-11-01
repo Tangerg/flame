@@ -740,6 +740,7 @@
       "pagination": "none",
       "errors": [
         "mcp_server_already_exists",
+        "plugin_unavailable",
         "capability_not_negotiated"
       ],
       "features": [
@@ -787,6 +788,7 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1481,6 +1483,8 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_stale",
         "session_not_found",
         "capability_not_negotiated"
       ],
@@ -1529,6 +1533,8 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_stale",
         "session_not_found",
         "capability_not_negotiated"
       ],
@@ -1545,6 +1551,8 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_stale",
         "session_not_found",
         "capability_not_negotiated"
       ],
@@ -1699,7 +1707,11 @@
       "operation": "command",
       "idempotency": "replayResponse",
       "replayCursor": "none",
-      "pagination": "none"
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_stale"
+      ]
     }
   ],
   "notifications": [
@@ -2146,7 +2158,11 @@
         "code": -32043,
         "recoveryAction": "promptUser",
         "methods": [
+          "feedback.create",
+          "goals.resume",
           "goals.start",
+          "goals.stop",
+          "goals.update",
           "hooks.list",
           "models.list",
           "models.setEmbeddingRole",
@@ -2190,8 +2206,14 @@
         "code": -32045,
         "recoveryAction": "promptUser",
         "methods": [
+          "feedback.create",
+          "goals.resume",
           "goals.start",
+          "goals.stop",
+          "goals.update",
           "hooks.list",
+          "mcp.servers.create",
+          "mcp.servers.test",
           "models.list",
           "models.setEmbeddingRole",
           "models.setUtilityRole",
@@ -4334,6 +4356,9 @@
         },
         {
           "tag": "canceled"
+        },
+        {
+          "tag": "unconfirmed"
         }
       ]
     },
@@ -5377,17 +5402,6 @@
     },
     {
       "type": "FeedbackRequest",
-      "rules": [
-        {
-          "requiredAny": [
-            "rating",
-            "text"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "FeedbackEntry",
       "rules": [
         {
           "requiredAny": [
@@ -6523,6 +6537,18 @@
             {
               "field": "status.type",
               "operator": "equals",
+              "value": "unconfirmed"
+            }
+          ],
+          "required": [
+            "finishedAt"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status.type",
+              "operator": "equals",
               "value": "canceled"
             }
           ],
@@ -7324,11 +7350,11 @@
       "rules": [
         {
           "field": "schemaVersion",
-          "constraint": "minimum(3)"
+          "constraint": "minimum(4)"
         },
         {
           "field": "schemaVersion",
-          "constraint": "maximum(3)"
+          "constraint": "maximum(4)"
         }
       ]
     },
@@ -8997,7 +9023,7 @@
       ]
     },
     {
-      "type": "FeedbackEntry",
+      "type": "SessionAnnotation",
       "rules": [
         {
           "field": "sessionId",
@@ -9481,6 +9507,10 @@
         },
         {
           "field": "material",
+          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        },
+        {
+          "field": "settingsIntent",
           "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
         }
       ]

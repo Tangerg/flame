@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	"slices"
 	"strings"
 	"time"
@@ -60,16 +61,17 @@ const (
 
 // OutcomeReporter owns terminal outcome validation and compare-and-swap.
 type OutcomeReporter struct {
-	goals Store
-	now   func() time.Time
+	workflow Workflow
+	goals    Store
+	now      func() time.Time
 }
 
 // NewOutcomeReporter constructs terminal outcome reporting over the required store.
-func NewOutcomeReporter(store Store) (*OutcomeReporter, error) {
-	if lo.IsNil(store) {
+func NewOutcomeReporter(store Store, workflow Workflow) (*OutcomeReporter, error) {
+	if lo.IsNil(store) || lo.IsNil(workflow) {
 		return nil, errors.New("goals: outcome store is required")
 	}
-	return &OutcomeReporter{goals: store, now: time.Now}, nil
+	return &OutcomeReporter{workflow: workflow, goals: store, now: time.Now}, nil
 }
 
 // Report applies one model-declared terminal outcome to the active Goal.
@@ -97,9 +99,9 @@ func (o *OutcomeReporter) Report(ctx context.Context, cmd ReportCommand) (Report
 	expected := g.Version()
 	var replacement goal.Goal
 	if cmd.Outcome == OutcomeCompleted {
-		replacement, err = g.Complete(o.now())
+		replacement, err = transition(ctx, o.workflow, g, goalworkflow.Request{Signal: goalworkflow.Complete}, g.IncarnationID(), o.now())
 	} else {
-		replacement, err = g.Block(reason, o.now())
+		replacement, err = transition(ctx, o.workflow, g, goalworkflow.Request{Signal: goalworkflow.Block, Explanation: reason}, g.IncarnationID(), o.now())
 		if errors.Is(err, goal.ErrBlockExplanationRequired) {
 			return ReportReasonRequired, nil
 		}

@@ -7,21 +7,22 @@ package plan
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
+	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
 )
 
 // Status is one Step's execution state.
 type Status string
 
 const (
-	StatusPending    Status = "pending"
-	StatusInProgress Status = "in_progress"
-	StatusCompleted  Status = "completed"
+	StatusPending    Status = Status(planworkflow.PlanStatusPending)
+	StatusInProgress Status = Status(planworkflow.PlanStatusInProgress)
+	StatusCompleted  Status = Status(planworkflow.PlanStatusCompleted)
 )
 
 var statuses = [...]Status{StatusPending, StatusInProgress, StatusCompleted}
@@ -52,24 +53,27 @@ var (
 	ErrRevisionConflict = errors.New("plan: revision conflict")
 )
 
-// ValidateSteps verifies an ordered Plan value. An empty value is valid and
-// means clear the current Plan. At most one Step may be in progress so the
-// execution focus remains unambiguous.
-func ValidateSteps(steps []Step) error {
-	inProgress := 0
+func ProposalOf(steps []Step) planworkflow.Proposal {
+	proposal := planworkflow.Proposal{Steps: make([]planworkflow.Step, len(steps))}
 	for index, step := range steps {
-		if strings.TrimSpace(step.Description) == "" {
-			return fmt.Errorf("%w: step %d description is required", ErrInvalid, index)
-		}
-		if !step.Status.Valid() {
-			return fmt.Errorf("%w: step %d has unknown status %q", ErrInvalid, index, step.Status)
-		}
-		if step.Status == StatusInProgress {
-			inProgress++
-		}
+		proposal.Steps[index] = planworkflow.Step{Description: step.Description, Status: planworkflow.PlanStatus(step.Status)}
 	}
-	if inProgress > 1 {
-		return fmt.Errorf("%w: at most one step may be in_progress", ErrInvalid)
+	return proposal
+}
+
+func StepsOf(proposal planworkflow.Proposal) []Step {
+	steps := make([]Step, len(proposal.Steps))
+	for i, step := range proposal.Steps {
+		steps[i] = Step{Description: step.Description, Status: Status(step.Status)}
+	}
+	return steps
+}
+
+func ValidateSteps(steps []Step) error {
+	for index, step := range ProposalOf(steps).Steps {
+		if err := step.Validate(); err != nil {
+			return fmt.Errorf("%w: step %d: %w", ErrInvalid, index, err)
+		}
 	}
 	return nil
 }
@@ -77,6 +81,7 @@ func ValidateSteps(steps []Step) error {
 // Snapshot is the persistence representation of a Plan aggregate. It is a
 // technical reconstruction boundary, not a mutation API.
 type Snapshot struct {
+	Source    extension.ContributionSource
 	Steps     []Step
 	Revision  uint64
 	UpdatedAt time.Time
@@ -86,6 +91,7 @@ type Snapshot struct {
 // may be shared by value; mutable step input and output are copied at the boundary.
 // Whether a Session has ever committed a Plan belongs to [Current].
 type State struct {
+	source    extension.ContributionSource
 	steps     []Step
 	revision  exactint.Counter
 	updatedAt time.Time
@@ -111,7 +117,7 @@ func Restore(snapshot Snapshot) (State, error) {
 	if err != nil {
 		return State{}, fmt.Errorf("%w: revision: %v", ErrInvalid, err)
 	}
-	state := State{
+	state := State{source: snapshot.Source,
 		steps:     cloneSteps(snapshot.Steps),
 		revision:  revision,
 		updatedAt: snapshot.UpdatedAt.UTC(),
@@ -120,6 +126,26 @@ func Restore(snapshot Snapshot) (State, error) {
 		return State{}, err
 	}
 	return state, nil
+}
+
+type Document struct {
+	Steps  []Step
+	Source extension.ContributionSource
+}
+
+func (s State) Document() Document { return Document{Source: s.source, Steps: s.Steps()} }
+func (c Current) Reference(doc Document, now time.Time) (State, error) {
+	if doc.Source != (extension.ContributionSource{}) {
+		if err := doc.Source.Validate(); err != nil {
+			return State{}, err
+		}
+	}
+	next, err := c.Replace(doc.Steps, now)
+	if err != nil {
+		return State{}, err
+	}
+	next.source = doc.Source
+	return next, nil
 }
 
 // CurrentOf wraps one validated committed State as the latest Session value.
@@ -207,6 +233,12 @@ func create(steps []Step, updatedAt time.Time) (State, error) {
 
 // Validate verifies the aggregate's reconstruction and lifecycle invariants.
 func (s State) Validate() error {
+	if s.source != (extension.ContributionSource{}) {
+		if err := s.source.Validate(); err != nil {
+			return fmt.Errorf("%w: author: %w", ErrInvalid, err)
+		}
+	}
+
 	if err := ValidateSteps(s.steps); err != nil {
 		return err
 	}
@@ -233,7 +265,7 @@ func (s State) UpdatedAt() time.Time { return s.updatedAt }
 
 // Snapshot returns a defensive persistence representation.
 func (s State) Snapshot() Snapshot {
-	return Snapshot{Steps: cloneSteps(s.steps), Revision: s.revision.Value(), UpdatedAt: s.updatedAt}
+	return Snapshot{Source: s.source, Steps: cloneSteps(s.steps), Revision: s.revision.Value(), UpdatedAt: s.updatedAt}
 }
 
 // IsUnwritten reports whether v identifies the absence of a committed Plan.
@@ -267,7 +299,7 @@ func (v Version) String() string {
 
 func cloneSteps(steps []Step) []Step {
 	if len(steps) == 0 {
-		return nil
+		return []Step{}
 	}
 	return append([]Step(nil), steps...)
 }

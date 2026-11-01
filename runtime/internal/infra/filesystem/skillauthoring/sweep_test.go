@@ -23,17 +23,14 @@ var sweepBase = time.Unix(1_700_000_000, 0)
 // provenance-gated curator will consider it.
 func installActiveAgentSkill(t *testing.T, store *skillauthoring.Store, name string) {
 	t.Helper()
-	ref, _, err := store.SubmitProposal(t.Context(), skills.Proposal{Scope: skills.ScopeUser,
+	_, err := publish(t, store, skills.Proposal{Scope: skills.ScopeUser,
 		Name:         name,
 		Description:  "An agent-authored skill with a long enough description.",
 		Instructions: "instructions",
 		Origin:       skills.ProposalOriginMined,
 	})
 	if err != nil {
-		t.Fatalf("SubmitProposal(%s): %v", name, err)
-	}
-	if _, err := store.ApproveProposal(t.Context(), ref); err != nil {
-		t.Fatalf("ApproveProposal(%s): %v", name, err)
+		t.Fatal(err)
 	}
 }
 

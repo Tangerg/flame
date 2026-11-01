@@ -6,7 +6,9 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -156,6 +158,12 @@ func validateInput(ctx context.Context, binding *qimumcp.Binding, input jsonvalu
 func admitCallRequest(request plugins.CallRequest, streaming bool) (*portable.Method, error) {
 	if request.Contract == nil {
 		return nil, plugin.ErrInvalid
+	}
+	if request.Contract.Descriptor().Reference == mcpconnector.Reference {
+		return nil, fmt.Errorf("%w: external MCP commands require a host-admitted launch grant", plugin.ErrInvalid)
+	}
+	if request.Contract.Descriptor().Reference == skilllearning.Reference {
+		return nil, fmt.Errorf("%w: Skill governance requires a host-admitted library and review authority", plugin.ErrInvalid)
 	}
 	if request.Contract.Descriptor().Reference == hookprovider.Reference {
 		return nil, fmt.Errorf("%w: lifecycle hook evaluation requires host-admitted project trust", plugin.ErrInvalid)

@@ -29,6 +29,8 @@ func TestModeStoreTracksPlanEntryExitAndSessionLifecycle(t *testing.T) {
 		}
 	}
 
+	plans := newPlanStore(db)
+	first := savePlan(t, t.Context(), plans, created.ID(), nil)
 	active(false)
 	if changed, err := modes.StartPlanMode(t.Context(), created.ID()); err != nil || !changed {
 		t.Fatalf("StartPlanMode = %v, %v", changed, err)
@@ -37,11 +39,16 @@ func TestModeStoreTracksPlanEntryExitAndSessionLifecycle(t *testing.T) {
 		t.Fatalf("repeated StartPlanMode = %v, %v; want unchanged", changed, err)
 	}
 	active(true)
-	if changed, err := modes.EndPlanMode(t.Context(), created.ID()); err != nil || !changed {
+	latest := savePlan(t, t.Context(), plans, created.ID(), nil)
+	if changed, err := modes.EndPlanMode(t.Context(), created.ID(), first.Revision()); err != nil || changed {
+		t.Fatalf("an answer to the old version unlocked the new plan: changed=%v err=%v", changed, err)
+	}
+	active(true)
+	if changed, err := modes.EndPlanMode(t.Context(), created.ID(), latest.Revision()); err != nil || !changed {
 		t.Fatalf("EndPlanMode = %v, %v", changed, err)
 	}
 	active(false)
-	if changed, err := modes.EndPlanMode(t.Context(), created.ID()); err != nil || changed {
+	if changed, err := modes.EndPlanMode(t.Context(), created.ID(), latest.Revision()); err != nil || changed {
 		t.Fatalf("repeated EndPlanMode = %v, %v; want unchanged", changed, err)
 	}
 

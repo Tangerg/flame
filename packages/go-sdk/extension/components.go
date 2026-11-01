@@ -28,13 +28,14 @@ const (
 	ComponentPlacementWorkspaceView          ComponentPlacement = "workspaceView"
 	ComponentPlacementSettingsPane           ComponentPlacement = "settingsPane"
 	ComponentPlacementClientEffect           ComponentPlacement = "clientEffect"
+	ComponentPlacementMessageAction          ComponentPlacement = "messageAction"
 	ComponentPlacementSessionAction          ComponentPlacement = "sessionAction"
 	ComponentPlacementFileRenderer           ComponentPlacement = "fileRenderer"
 	ComponentPlacementToolResultRenderer     ComponentPlacement = "toolResultRenderer"
 )
 
 func (ComponentPlacement) Values() []string {
-	return []string{string(ComponentPlacementWorkspaceChangesAction), string(ComponentPlacementSharedClientEffect), string(ComponentPlacementExport), string(ComponentPlacementWorkspaceView), string(ComponentPlacementSettingsPane), string(ComponentPlacementClientEffect), string(ComponentPlacementSessionAction), string(ComponentPlacementFileRenderer), string(ComponentPlacementToolResultRenderer)}
+	return []string{string(ComponentPlacementWorkspaceChangesAction), string(ComponentPlacementSharedClientEffect), string(ComponentPlacementExport), string(ComponentPlacementWorkspaceView), string(ComponentPlacementSettingsPane), string(ComponentPlacementClientEffect), string(ComponentPlacementMessageAction), string(ComponentPlacementSessionAction), string(ComponentPlacementFileRenderer), string(ComponentPlacementToolResultRenderer)}
 }
 
 type RendererSelectorKind string

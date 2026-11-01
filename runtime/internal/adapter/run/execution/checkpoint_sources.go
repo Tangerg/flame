@@ -1,8 +1,11 @@
 package execution
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"slices"
+	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -74,4 +77,35 @@ func pendingCheckpointSources(session *interactionSession, checkpoint interactio
 		}
 	}
 	return false
+}
+
+func (i *interactionSession) skillDiscoveryCommands() map[domaintool.Group]string {
+	i.state.mu.Lock()
+	defer i.state.mu.Unlock()
+	var commands map[domaintool.Group]string
+	if i.state.deployments != nil {
+		for group, manifest := range i.state.deployments.manifests {
+			if manifest.SkillDiscovery != "" {
+				if commands == nil {
+					commands = make(map[domaintool.Group]string)
+				}
+				commands[group] = manifest.SkillDiscovery
+			}
+		}
+	}
+	return commands
+}
+
+func decodeCapturedToolGroups(mcp map[domaintool.Group][]string, skills map[domaintool.Group]string) (map[domaintool.Group][]domaintool.Ref, error) {
+	for group, command := range skills {
+		if _, ok := mcp[group]; !ok || !validSkillCapture(command) {
+			return nil, errors.New("execution: invalid captured Skill discovery")
+		}
+	}
+	return decodeMCPManifests(mcp)
+}
+
+func validSkillCapture(command string) bool {
+	digest, err := hex.DecodeString(command)
+	return err == nil && len(digest) == sha256.Size && command == strings.ToLower(command)
 }

@@ -33,9 +33,9 @@ func (e *Endpoint) replayOperation(ctx context.Context, method *Method, paramete
 	var result Result
 	executed := false
 	var payload []byte
-	if handler, ok := e.target.(*Handler); ok && (method.Meta.Name == SessionsCreate || method.Meta.Name == sessionsFork) {
+	if handler, ok := e.target.(*Handler); ok && (method.Meta.Name == SessionsCreate || method.Meta.Name == sessionsFork || method.Meta.Name == feedbackCreate) {
 		payload, err = e.idempotency.InvokeAtomic(ctx, key, fingerprint, func() (operation.PreparedOutcome, error) {
-			return handler.prepareSessionOutcome(ctx, method, parameters)
+			return handler.prepareAtomicOutcome(ctx, method, parameters)
 		})
 	} else {
 		payload, err = e.idempotency.Invoke(ctx, key, fingerprint, func() ([]byte, error) {
@@ -66,14 +66,21 @@ func (e *Endpoint) replayOperation(ctx context.Context, method *Method, paramete
 	return replayOutcome(method, payload)
 }
 
-func (h *Handler) prepareSessionOutcome(ctx context.Context, method *Method, request any) (operation.PreparedOutcome, error) {
+func (s *Handler) prepareAtomicOutcome(ctx context.Context, method *Method, request any) (operation.PreparedOutcome, error) {
 	var creation sessions.Creation
 	var err error
 	switch in := request.(type) {
+	case protocol.FeedbackRequest:
+		write, err := s.feedback.Prepare(ctx, feedbackCommand(in))
+		if err != nil {
+			return operation.PreparedOutcome{}, err
+		}
+		payload, err := encodeStoredOutcome(Result{Value: struct{}{}})
+		return operation.PreparedOutcome{Payload: payload, Commit: write}, err
 	case protocol.CreateSessionRequest:
-		creation, err = h.prepareCreate(ctx, in)
+		creation, err = s.prepareCreate(ctx, in)
 	case protocol.ForkSessionRequest:
-		creation, err = h.prepareFork(ctx, in)
+		creation, err = s.prepareFork(ctx, in)
 
 	default:
 		return operation.PreparedOutcome{}, fmt.Errorf("idempotency: invalid Session creation request %T", request)

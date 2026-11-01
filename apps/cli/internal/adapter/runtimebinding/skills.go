@@ -91,16 +91,16 @@ func (r *Connection) Proposals(ctx context.Context, workspacePath string) ([]wor
 		return nil, err
 	}
 	projected := make([]workspace.SkillProposal, 0, len(values))
-	seen := make(map[[2]string]struct{}, len(values))
+	seen := make(map[string]struct{}, len(values))
 	for _, value := range values {
 		proposal := workspace.SkillProposal{
 			Name: value.Name, Revision: value.Revision, Scope: value.Scope,
 			Description: value.Description, Instructions: value.Instructions,
 			Origin: value.Origin, SourceSession: value.SourceSession, Revises: value.Revises,
 		}
-		identity := [2]string{string(proposal.Scope), proposal.Name}
+		identity := proposal.Key()
 		if _, duplicate := seen[identity]; duplicate {
-			return nil, runtimeContractViolation("list skill proposals repeats current slot %q", proposal.QualifiedName())
+			return nil, runtimeContractViolation("list skill proposals repeats the original proposal reference %q", identity)
 		}
 		seen[identity] = struct{}{}
 		projected = append(projected, proposal)

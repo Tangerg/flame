@@ -88,7 +88,7 @@ func BenchmarkInstalledSourceAdmission(b *testing.B) {
 	if err := releases.Prepare(b.Context(), installation, release); err != nil {
 		b.Fatal(err)
 	}
-	registry, err := plugins.NewRegistry(framework.Host, db.MCPServers, installations, releases, db.ProviderSelections, db.PluginCompositions)
+	registry, err := plugins.NewRegistry(framework.Host, installations, releases, db.ProviderSelections, db.PluginCompositions)
 	if err != nil {
 		b.Fatal(err)
 	}

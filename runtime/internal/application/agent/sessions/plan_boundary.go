@@ -20,7 +20,7 @@ type PlanServices struct {
 // unrecorded boundary must leave the live list untouched, while a recorded empty
 // one must clear it, and a single nil slice cannot say which is meant.
 type PlanBoundary struct {
-	Steps    []plan.Step
+	plan.Document
 	Recorded bool
 }
 
@@ -32,7 +32,7 @@ type PlanBoundary struct {
 // never captured; see [PlanBoundaries]).
 func (c *Coordinator) planBoundary(ctx context.Context, runID string) (PlanBoundary, error) {
 	if runID == "" {
-		return newPlanBoundary(nil, true)
+		return newPlanBoundary(plan.Document{}, true)
 	}
 	if err := identity.ValidateRun(runID); err != nil {
 		return PlanBoundary{}, fmt.Errorf("sessions: Plan boundary: %w", err)
@@ -44,17 +44,20 @@ func (c *Coordinator) planBoundary(ctx context.Context, runID string) (PlanBound
 	return newPlanBoundary(steps, recorded)
 }
 
-func newPlanBoundary(steps []plan.Step, recorded bool) (PlanBoundary, error) {
+func newPlanBoundary(doc plan.Document, recorded bool) (PlanBoundary, error) {
 	if !recorded {
-		if len(steps) != 0 {
+		if len(doc.Steps) != 0 {
 			return PlanBoundary{}, errors.New("sessions: unrecorded Plan boundary carries steps")
 		}
 		return PlanBoundary{}, nil
 	}
-	if err := plan.ValidateSteps(steps); err != nil {
+	if err := plan.ValidateSteps(doc.Steps); err != nil {
 		return PlanBoundary{}, fmt.Errorf("sessions: invalid Plan boundary: %w", err)
 	}
-	return PlanBoundary{Steps: steps, Recorded: true}, nil
+	if doc.Steps == nil {
+		doc.Steps = []plan.Step{}
+	}
+	return PlanBoundary{Document: doc, Recorded: true}, nil
 }
 
 func (c *Coordinator) prepareBoundaryPlanReplacement(
@@ -65,18 +68,22 @@ func (c *Coordinator) prepareBoundaryPlanReplacement(
 	if !boundary.Recorded {
 		return nil, nil
 	}
-	replacement, err := c.plan.Replacements.PrepareReplacement(ctx, sessionID, boundary.Steps)
+	current, err := c.plan.Replacements.State(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	replacement, err := c.plan.Replacements.reference(current, boundary.Document)
 	if err != nil {
 		return nil, err
 	}
 	return &replacement, nil
 }
 
-func (c *Coordinator) prepareInitialPlanReplacement(steps []plan.Step) (*plan.Replacement, error) {
-	if len(steps) == 0 {
+func (c *Coordinator) prepareInitialPlanReplacement(doc plan.Document) (*plan.Replacement, error) {
+	if doc.Steps == nil {
 		return nil, nil
 	}
-	replacement, err := c.plan.Replacements.PrepareInitial(steps)
+	replacement, err := c.plan.Replacements.reference(plan.Current{}, doc)
 	if err != nil {
 		return nil, err
 	}
@@ -86,9 +93,12 @@ func (c *Coordinator) prepareInitialPlanReplacement(steps []plan.Step) (*plan.Re
 func (c *Coordinator) prepareRestoredPlanReplacement(
 	ctx context.Context,
 	sessionID string,
-	steps []plan.Step,
+	doc plan.Document,
 ) (*plan.Replacement, error) {
-	replacement, err := c.plan.Replacements.PrepareReplacement(ctx, sessionID, steps)
+	if doc.Steps == nil {
+		return nil, nil
+	}
+	replacement, err := c.plan.Replacements.prepareAuthorDecision(ctx, sessionID, doc)
 	if err != nil {
 		return nil, err
 	}

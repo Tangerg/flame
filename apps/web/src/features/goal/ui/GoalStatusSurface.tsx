@@ -1,3 +1,4 @@
+import { useGoalAuthorAvailable } from "@/features/plugins/public/workflows";
 import { useRuntime } from "@/features/connection/public/runtime";
 import { tupleKey } from "@/lib/tupleKey";
 import { iconGlyph } from "@/ui/icons/index";
@@ -96,6 +97,7 @@ const gs = stylex.create({
 export function GoalStatusSurface() {
   const material = useGoalMaterial();
   const goal = material.value?.goal;
+  const writable = useGoalAuthorAvailable(goal?.author) && material.value?.available === true;
 
   if (!goal) return null;
   return (
@@ -103,12 +105,12 @@ export function GoalStatusSurface() {
       key={tupleKey(goal.sessionId, material.generation.toString(), goal.createdAt)}
       className={stylex.props(goalTray.material).className}
     >
-      <GoalRow goal={goal} />
+      <GoalRow key={writable ? "writable" : "read-only"} goal={goal} writable={writable} />
     </AgentComposerTopTraySurface>
   );
 }
 
-function GoalRow({ goal }: { goal: GoalReadModel }) {
+function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean }) {
   const runtimeAccess = useRuntime();
 
   const t = useT();
@@ -124,7 +126,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
   const runtimeAvailable = useRuntimeCommandsAvailable();
   const active = goalIsActive(goal);
   const canChangeStatus = goalCanChangeStatus(goal);
-  const canEdit = goalCanEdit(goal);
+  const canEdit = writable && goalCanEdit(goal);
   const nextObjective = draft.trim();
   const canSave = canEdit && nextObjective.length > 0 && nextObjective !== goal.objective;
   const clearAction = useCommandAction({
@@ -184,6 +186,16 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
     setEditorError(undefined);
   };
 
+  const summary = (
+    <>
+      <span {...stylex.props(vocab.hold, vocab.ink, vocab.strong, typeStep.uiSm)}>
+        {t(GOAL_STATUS_I18N[goal.status].label)}
+      </span>
+      <span {...stylex.props(vocab.fill, vocab.truncate, vocab.muted, typeStep.uiSm)}>
+        {goal.objective}
+      </span>
+    </>
+  );
   return (
     <>
       <div data-slot="goal-status-row" {...stylex.props(gs.bar)}>
@@ -193,82 +205,69 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             size="sm"
             className={stylex.props(vocab.hold, vocab.faint).className}
           />
-          <Button
-            type="button"
-            data-goal="summary"
-            variant="bare"
-            size="xs"
-            disabled={!canEdit}
-            pending={busy}
-            flex="fill"
-            title={goal.objective}
-            styles={gs.summary}
-            onClick={openEditor}
-          >
-            <span {...stylex.props(vocab.hold, vocab.ink, vocab.strong, typeStep.uiSm)}>
-              {t(GOAL_STATUS_I18N[goal.status].label)}
-            </span>
-            <span {...stylex.props(vocab.fill, vocab.truncate, vocab.muted, typeStep.uiSm)}>
-              {goal.objective}
-            </span>
-          </Button>
-        </div>
-        <div data-slot="goal-actions" {...stylex.props(gs.actions)}>
-          {createdAt !== null && <GoalElapsed createdAt={createdAt} />}
-          <IconButton
-            type="button"
-            size="xs"
-            icon={iconGlyph("trash")}
-            quiet
-            aria-label={t("goal.action.clear")}
-            disabled={controlsDisabled}
-            aria-busy={clearAction.busy}
-            onClick={clear}
-          />
-          {canChangeStatus && (
-            <IconButton
+          {writable ? (
+            <Button
               type="button"
+              data-goal="summary"
+              variant="bare"
               size="xs"
-              icon={iconGlyph(active ? "circle-pause" : "circle-play")}
-              quiet
-              aria-label={t(active ? "goal.action.pause" : "goal.action.resume")}
-              disabled={controlsDisabled}
-              aria-busy={statusAction.busy}
-              onClick={changeStatus}
-            />
-          )}
-          {canEdit && (
-            <IconButton
-              type="button"
-              size="xs"
-              icon={iconGlyph("maximize")}
-              quiet
-              aria-label={t("goal.action.edit")}
-              disabled={controlsDisabled}
+              disabled={!canEdit}
+              pending={busy}
+              flex="fill"
+              title={goal.objective}
+              styles={gs.summary}
               onClick={openEditor}
-            />
-          )}
-        </div>
-      </div>
-      {goal.reason && (
-        <div data-slot="goal-stop-reason" {...stylex.props(gs.reason, vocab.muted)}>
-          {goal.reason.explanation ? (
-            <Disclosure title={t(goalReasonLabel(goal.reason))} keepMounted>
-              <ScrollRegion
-                label={t(goalReasonLabel(goal.reason))}
-                styles={gs.reasonDetail}
-                data-focus-inset=""
-              >
-                {goal.reason.explanation}
-              </ScrollRegion>
-            </Disclosure>
+            >
+              {summary}
+            </Button>
           ) : (
-            <span>{t(goalReasonLabel(goal.reason))}</span>
+            <span data-goal="summary" title={goal.objective} {...stylex.props(gs.summary)}>
+              {summary}
+            </span>
           )}
         </div>
-      )}
+        {writable && (
+          <div data-slot="goal-actions" {...stylex.props(gs.actions)}>
+            {createdAt !== null && <GoalElapsed createdAt={createdAt} />}
+            <IconButton
+              type="button"
+              size="xs"
+              icon={iconGlyph("trash")}
+              quiet
+              aria-label={t("goal.action.clear")}
+              disabled={controlsDisabled}
+              aria-busy={clearAction.busy}
+              onClick={clear}
+            />
+            {canChangeStatus && (
+              <IconButton
+                type="button"
+                size="xs"
+                icon={iconGlyph(active ? "circle-pause" : "circle-play")}
+                quiet
+                aria-label={t(active ? "goal.action.pause" : "goal.action.resume")}
+                disabled={controlsDisabled}
+                aria-busy={statusAction.busy}
+                onClick={changeStatus}
+              />
+            )}
+            {canEdit && (
+              <IconButton
+                type="button"
+                size="xs"
+                icon={iconGlyph("maximize")}
+                quiet
+                aria-label={t("goal.action.edit")}
+                disabled={controlsDisabled}
+                onClick={openEditor}
+              />
+            )}
+          </div>
+        )}
+      </div>
+      <GoalStopReason goal={goal} />
       <TextEditorDialog
-        open={editing}
+        open={editing && canEdit}
         onOpenChange={setEditing}
         icon={<Icon name="target" size="lg" className={stylex.props(vocab.muted).className} />}
         title={t("goal.edit.title")}
@@ -285,6 +284,28 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
         onSave={save}
       />
     </>
+  );
+}
+
+function GoalStopReason({ goal }: { goal: GoalReadModel }) {
+  const t = useT();
+  if (!goal.reason) return null;
+  return (
+    <div data-slot="goal-stop-reason" {...stylex.props(gs.reason, vocab.muted)}>
+      {goal.reason.explanation ? (
+        <Disclosure title={t(goalReasonLabel(goal.reason))} keepMounted>
+          <ScrollRegion
+            label={t(goalReasonLabel(goal.reason))}
+            styles={gs.reasonDetail}
+            data-focus-inset=""
+          >
+            {goal.reason.explanation}
+          </ScrollRegion>
+        </Disclosure>
+      ) : (
+        <span>{t(goalReasonLabel(goal.reason))}</span>
+      )}
+    </div>
   );
 }
 

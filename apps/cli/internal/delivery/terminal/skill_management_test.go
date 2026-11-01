@@ -20,7 +20,7 @@ const terminalSkillRevision = "0123456789abcdef0123456789abcdef0123456789abcdef0
 
 func TestResolveSkillProposalRequiresRevisionWhenNamesAreNotUnique(t *testing.T) {
 	first := workspace.SkillProposal{Name: "shared", Scope: protocol.SkillProposalScopeUser, Revision: terminalSkillRevision}
-	second := workspace.SkillProposal{Name: "shared", Scope: protocol.SkillProposalScopeUser, Revision: "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"}
+	second := workspace.SkillProposal{Name: "shared", Scope: protocol.SkillProposalScopeUser, Revision: terminalSkillRevision[:12] + strings.Repeat("b", 52)}
 	proposals := []workspace.SkillProposal{first, second}
 	if _, err := resolveSkillProposal(proposals, "user/shared"); err == nil {
 		t.Fatal("ambiguous proposal name was accepted")

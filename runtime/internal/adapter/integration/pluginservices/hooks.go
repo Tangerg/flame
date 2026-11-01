@@ -3,6 +3,7 @@ package pluginservices
 import (
 	"context"
 	"errors"
+	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
@@ -18,7 +19,7 @@ import (
 )
 
 func (c *CommandCalls) AcquireHooks(ctx context.Context) (adapterhooks.Use, error) {
-	contract, err := hookprovider.Contract()
+	contract, err := hookmcp.Contract()
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +54,7 @@ type hookUse struct {
 }
 
 func (u *hookUse) Discover(ctx context.Context, input hookprovider.Discovery) ([]hook.Hook, error) {
-	method, err := hookprovider.DiscoverMethod()
+	method, err := hookmcp.DiscoverMethod()
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +65,7 @@ func (u *hookUse) Discover(ctx context.Context, input hookprovider.Discovery) ([
 }
 
 func (u *hookUse) Evaluate(ctx context.Context, request hookprovider.Evaluation) (hookprovider.Advice, error) {
-	method, err := hookprovider.EvaluateMethod()
+	method, err := hookmcp.EvaluateMethod()
 	if err != nil {
 		return hookprovider.Advice{}, err
 	}

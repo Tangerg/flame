@@ -3,6 +3,7 @@ package builtin
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
 	"strings"
 	"testing"
 	"time"
@@ -99,7 +100,7 @@ func TestSetPlanReplacesAndClearsTheSessionPlan(t *testing.T) {
 	if err != nil {
 		t.Fatalf("set Plan: %v", err)
 	}
-	if result != "Plan updated:\n[~] inspect\n" || len(store.steps) != 1 || store.steps[0].Description != "inspect" {
+	if result != "Plan revision 1:\n[~] inspect\n" || len(store.steps) != 1 || store.steps[0].Description != "inspect" {
 		t.Fatalf("result = %q, stored = %+v", result, store.steps)
 	}
 
@@ -107,7 +108,7 @@ func TestSetPlanReplacesAndClearsTheSessionPlan(t *testing.T) {
 	if err != nil {
 		t.Fatalf("clear Plan: %v", err)
 	}
-	if result != "Plan cleared." || len(store.steps) != 0 {
+	if result != "Plan cleared at revision 2." || len(store.steps) != 0 {
 		t.Fatalf("clear result = %q, stored = %+v", result, store.steps)
 	}
 }
@@ -120,18 +121,14 @@ func TestSetArgsMapsSteps(t *testing.T) {
 	}
 }
 
-func TestSetPlanRejectsInvalidStepsBeforeReplacement(t *testing.T) {
-	store := &stubStore{}
-	tool, err := newSet(store)
+func TestSetPlanReportsAnAuthorRefusalAsDefinite(t *testing.T) {
+	tool, err := newSet(failingPlanReplacer{err: planworkflow.ErrRefused})
 	if err != nil {
 		t.Fatal(err)
 	}
 	ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: "session-1"})
-	_, err = callTextTool(ctx, tool, `{"steps":[{"description":"first","status":"in_progress"},{"description":"second","status":"in_progress"}]}`)
-	requireDefiniteFailure(t, err, "multiple active steps")
-	if store.steps != nil {
-		t.Fatal("invalid input reached Plan replacement")
-	}
+	_, err = callTextTool(ctx, tool, `{"steps":[]}`)
+	requireDefiniteFailure(t, err, "author refusal")
 }
 
 type failingPlanReplacer struct{ err error }

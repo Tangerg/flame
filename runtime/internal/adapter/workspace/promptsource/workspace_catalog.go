@@ -14,11 +14,11 @@ import (
 // directory.
 type Skills struct {
 	userDir  string
-	packages PackageSkills
+	packages SkillSources
 }
 
 // NewSkills returns the workspace Skill-discovery adapter.
-func NewSkills(userDir string, packages PackageSkills) Skills {
+func NewSkills(userDir string, packages SkillSources) Skills {
 	return Skills{userDir: userDir, packages: packages}
 }
 

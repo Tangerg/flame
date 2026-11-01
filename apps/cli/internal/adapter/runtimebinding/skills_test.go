@@ -137,7 +137,7 @@ func TestSkillAdapterProjectsCatalogsAndExactMutationReferences(t *testing.T) {
 		t.Fatalf("Managed = (%+v, %v)", managed, err)
 	}
 	proposals, err := runtime.Proposals(t.Context(), "/workspace")
-	if err != nil || len(proposals) != 1 || proposals[0].Key() != "user/release-checks@0123456789ab" {
+	if err != nil || len(proposals) != 1 || proposals[0].Key() != "user/release-checks@"+skillRevision {
 		t.Fatalf("Proposals = (%+v, %v)", proposals, err)
 	}
 	if archiveErr := runtime.Archive(t.Context(), "review"); archiveErr != nil {
@@ -220,10 +220,10 @@ func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 				return err
 			},
 		}, {
-			name: "repeated proposal slot",
+			name: "repeated proposal command",
 			stub: &invalidSkillBindingStub{proposals: protocol.NewPage([]protocol.SkillProposal{
 				{Name: "review", Revision: skillRevision, Scope: protocol.SkillProposalScopeProject, Description: "Review code", Instructions: "Inspect code."},
-				{Name: "review", Revision: otherSkillRevision, Scope: protocol.SkillProposalScopeProject, Description: "Review again", Instructions: "Inspect code again."},
+				{Name: "review", Revision: skillRevision, Scope: protocol.SkillProposalScopeProject, Description: "Review again", Instructions: "Inspect code again."},
 			})},
 			read: func(runtime *Connection) error {
 				_, err := runtime.Proposals(t.Context(), "/workspace")
@@ -264,4 +264,15 @@ func TestProfileAnswersOptionalAdapterAvailability(t *testing.T) {
 func (s *skillBindingStub) GetDiscoveredSkill(_ context.Context, request protocol.SkillDetailRequest, options protocol.CallOptions) (*protocol.SkillDetail, error) {
 	s.assertCall(request.Workspace.Path, options.RequestMeta)
 	return &protocol.SkillDetail{Skill: protocol.Skill{Name: request.Name, Scope: protocol.SkillScopeProject}, Path: "/workspace/.flame/skills/" + request.Name + "/SKILL.md", Revision: skillRevision, Instructions: "Read the actual bundle."}, nil
+}
+
+func TestSkillAdapterKeepsIndependentSourceCommandsForTheSameName(t *testing.T) {
+	stub := &invalidSkillBindingStub{skillBindingStub: &skillBindingStub{t: t}, proposals: protocol.NewPage([]protocol.SkillProposal{
+		{Name: "review", Scope: protocol.SkillProposalScopeUser, Revision: skillRevision}, {Name: "review", Scope: protocol.SkillProposalScopeUser, Revision: otherSkillRevision},
+	})}
+	r := &Connection{skills: stub, meta: requestMeta("test")}
+	proposals, err := r.Proposals(t.Context(), "/workspace")
+	if err != nil || len(proposals) != 2 || proposals[0].Key() == proposals[1].Key() {
+		t.Fatalf("two original sources = %+v, %v", proposals, err)
+	}
 }

@@ -3,6 +3,8 @@ package goal
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/qimu/integrity"
 	"strings"
 	"testing"
 	"time"
@@ -24,30 +26,7 @@ func goalTestCost(t *testing.T, usd float64) accounting.Cost {
 	return cost
 }
 
-func TestNewBuildsCommittedActiveGoal(t *testing.T) {
-	now := time.Date(2026, 8, 29, 12, 0, 0, 0, time.FixedZone("offset", 8*60*60))
-	selection := testSelection(t)
-	value, err := New(
-		"ses_1", "finish the refactor", selection,
-		run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion, run.InterruptApproval}},
-		"inc_1", now,
-	)
-	if err != nil {
-		t.Fatalf("New: %v", err)
-	}
-	if value.Status() != StatusActive || value.Revision() != 1 {
-		t.Fatalf("new Goal = status %q revision %d", value.Status(), value.Revision())
-	}
-	if !value.CreatedAt().Equal(now) || value.CreatedAt().Location() != time.UTC {
-		t.Fatalf("created at = %v, want canonical UTC %v", value.CreatedAt(), now)
-	}
-	wantCapabilities := run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptApproval, run.InterruptQuestion}}
-	if !value.Capabilities().Equal(wantCapabilities) {
-		t.Fatalf("capabilities = %v, want %v", value.Capabilities(), wantCapabilities)
-	}
-}
-
-func TestNewRejectsIncompleteIdentityPolicyAndTime(t *testing.T) {
+func TestSnapshotRejectsIncompleteIdentityPolicyAndTime(t *testing.T) {
 	selection := testSelection(t)
 	now := time.Unix(1, 0).UTC()
 	tests := []struct {
@@ -74,32 +53,10 @@ func TestNewRejectsIncompleteIdentityPolicyAndTime(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if _, err := New(test.sessionID, test.objective, test.selection, run.Capabilities{}, test.incarnation, test.createdAt); err == nil {
+			if _, err := newFixture(test.sessionID, test.objective, test.selection, run.Capabilities{}, test.incarnation, test.createdAt); err == nil {
 				t.Fatal("New accepted invalid input")
 			}
 		})
-	}
-}
-
-func TestGoalCanonicalizesObjectiveCommands(t *testing.T) {
-	now := time.Unix(1, 0).UTC()
-	created, err := New(
-		"ses", " \n objective one \t", testSelection(t),
-		run.Capabilities{}, "inc_1", now,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if created.Objective() != "objective one" {
-		t.Fatalf("created objective = %q", created.Objective())
-	}
-
-	revised, err := created.ReviseObjective("  objective two\n", "inc_2", now.Add(time.Second))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if revised.Objective() != "objective two" {
-		t.Fatalf("revised objective = %q", revised.Objective())
 	}
 }
 
@@ -170,7 +127,7 @@ func TestCurrentAndVersionDistinguishAbsenceFromCommittedState(t *testing.T) {
 	if err := unwritten.Version().AdvancesTo(fresh); err != nil {
 		t.Fatalf("unwritten advance: %v", err)
 	}
-	paused, err := value.Pause(ReasonStoppedByUser, value.UpdatedAt())
+	paused, err := publishedFixture(value, value.UpdatedAt())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,114 +151,6 @@ func TestCurrentConstructionOwnsSessionIdentity(t *testing.T) {
 	stored, found := current.Goal()
 	if !found || stored.SessionID() != value.SessionID() || current.Version() != value.Version() {
 		t.Fatal("Current changed the committed Goal identity")
-	}
-}
-
-func TestLifecycleTransitionsAreImmutableAndMonotonic(t *testing.T) {
-	now := time.Unix(10, 0).UTC()
-	active := testGoalAt(t, run.Capabilities{}, now)
-	paused, err := active.Pause(ReasonStoppedByUser, now.Add(time.Second))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if active.Status() != StatusActive || active.Revision() != 1 {
-		t.Fatalf("Pause mutated source = %q@%d", active.Status(), active.Revision())
-	}
-	if paused.Status() != StatusPaused || paused.Reason().Code() != ReasonStoppedByUser || paused.Revision() != 2 {
-		t.Fatalf("paused = %q/%q@%d", paused.Status(), paused.Reason().Code(), paused.Revision())
-	}
-	resumed, err := paused.Resume(now.Add(2 * time.Second))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resumed.Status() != StatusActive || !resumed.Reason().IsNone() || resumed.Revision() != 3 {
-		t.Fatalf("resumed = %q/%q@%d", resumed.Status(), resumed.Reason().Code(), resumed.Revision())
-	}
-	complete, err := resumed.Complete(now.Add(3 * time.Second))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if complete.Status() != StatusComplete || complete.Revision() != 4 {
-		t.Fatalf("complete = %q@%d", complete.Status(), complete.Revision())
-	}
-	if _, err := complete.Resume(now.Add(4 * time.Second)); !errors.Is(err, ErrNotResumable) {
-		t.Fatalf("complete Resume error = %v", err)
-	}
-}
-
-func TestTransitionRejectsInvalidReasonTimeAndState(t *testing.T) {
-	now := time.Unix(10, 0).UTC()
-	active := testGoalAt(t, run.Capabilities{}, now)
-	if _, err := active.Pause(ReasonNone, now); !errors.Is(err, ErrInvalid) {
-		t.Fatalf("Pause no reason = %v", err)
-	}
-	if _, err := active.Pause(ReasonBlockedByModel, now); !errors.Is(err, ErrInvalid) {
-		t.Fatalf("Pause blocked reason = %v", err)
-	}
-	if _, err := active.Block("", now); !errors.Is(err, ErrInvalid) {
-		t.Fatalf("Block no detail = %v", err)
-	}
-	if _, err := active.Complete(now.Add(-time.Nanosecond)); !errors.Is(err, ErrInvalid) {
-		t.Fatalf("time travel = %v", err)
-	}
-	paused, err := active.Pause(ReasonStoppedByUser, now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := paused.Pause(ReasonStoppedByUser, now); !errors.Is(err, errInvalidTransition) {
-		t.Fatalf("double Pause = %v", err)
-	}
-}
-
-func TestRecordRunPausesAnActiveGoalAfterAnUnfinishedRun(t *testing.T) {
-	now := time.Unix(10, 0).UTC()
-	active := testGoalAt(t, run.Capabilities{}, now)
-	completed := goalTestRun(t, "run_1", "inc_1", run.OutcomeCompleted, new(0.25), 2, now.Add(time.Second))
-	unchanged, changed, err := active.RecordRun(completed)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if changed || unchanged.Revision() != active.Revision() || unchanged.Status() != StatusActive {
-		t.Fatalf("completed Run changed the Goal: changed=%t %+v", changed, unchanged.Snapshot())
-	}
-
-	failed := goalTestRun(t, "run_2", "inc_1", run.OutcomeCanceled, nil, 1, now.Add(time.Second))
-	paused, changed, err := active.RecordRun(failed)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !changed || paused.Status() != StatusPaused || paused.Reason().Code() != ReasonRunNotCompleted ||
-		!pausedByOutcome(paused.Reason(), run.OutcomeCanceled) || paused.Revision() != active.Revision()+1 {
-		t.Fatalf("failed Run state = %+v", paused.Snapshot())
-	}
-}
-
-func TestRecordRunPreservesPriorModelReport(t *testing.T) {
-	now := time.Unix(10, 0).UTC()
-	active := testGoalAt(t, run.Capabilities{}, now)
-	blocked, err := active.Block("need a credential", now.Add(time.Second))
-	if err != nil {
-		t.Fatal(err)
-	}
-	failed := goalTestRun(t, "run_1", "inc_1", run.OutcomeCanceled, nil, 2, now.Add(2*time.Second))
-	accounted, changed, err := blocked.RecordRun(failed)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if changed || accounted.Status() != StatusBlocked || accounted.Reason() != blocked.Reason() {
-		t.Fatalf("accounted = %+v", accounted.Snapshot())
-	}
-}
-
-func TestRecordRunRejectsAForeignOrUnfinishedRun(t *testing.T) {
-	now := time.Unix(10, 0).UTC()
-	active := testGoalAt(t, run.Capabilities{}, now)
-	foreign := goalTestRun(t, "run_1", "inc_other", run.OutcomeCompleted, nil, 0, now)
-	if _, _, err := active.RecordRun(foreign); !errors.Is(err, errRunIdentityConflict) {
-		t.Fatalf("foreign Run error = %v", err)
-	}
-	if _, _, err := active.RecordRun(goalTestRunningRun(t, "inc_1", now)); err == nil {
-		t.Fatal("a Run that has not finished was applied to its Goal")
 	}
 }
 
@@ -382,56 +231,6 @@ func TestUsageOfChargesDescendantsWithoutCountingAnotherGoalRun(t *testing.T) {
 	}
 }
 
-func TestReviseObjectiveStartsFreshVersionAndPreservesFacts(t *testing.T) {
-	now := time.Unix(10, 0).UTC()
-	active := testGoalAt(t, run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}}, now)
-	paused, err := active.Pause(ReasonStoppedByUser, now.Add(time.Second))
-	if err != nil {
-		t.Fatal(err)
-	}
-	revised, err := paused.ReviseObjective("second", "inc_2", now.Add(2*time.Second))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if revised.Objective() != "second" || revised.IncarnationID() != "inc_2" || revised.Revision() != 1 {
-		t.Fatalf("revised identity = %s/%s@%d", revised.Objective(), revised.IncarnationID(), revised.Revision())
-	}
-	if revised.Status() != StatusPaused || revised.Reason() != paused.Reason() ||
-		!revised.CreatedAt().Equal(active.CreatedAt()) {
-		t.Fatalf("revised facts = %+v", revised.Snapshot())
-	}
-	if err := paused.Version().AdvancesTo(revised); err != nil {
-		t.Fatalf("fresh incarnation advance: %v", err)
-	}
-
-	charged := paused.Snapshot()
-	charged.Used, err = UsageOf("ses_1", "inc_1", []run.Run{
-		goalTestRun(t, "run_1", "inc_1", run.OutcomeCompleted, new(0.25), 3, now),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	spent, err := Restore(charged)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fresh, err := spent.ReviseObjective("third", "inc_4", now.Add(2*time.Second))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if fresh.Used() != (Usage{}) {
-		t.Fatalf("revised incarnation used = %+v, want none of its predecessor's Runs", fresh.Used())
-	}
-
-	activeRevision, err := paused.ReviseObjectiveAndResume("second", "inc_3", now.Add(2*time.Second))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if activeRevision.Status() != StatusActive || activeRevision.Revision() != 1 {
-		t.Fatalf("revised+resumed = %+v", activeRevision.Snapshot())
-	}
-}
-
 func testSelection(t *testing.T) modelchoice.Selection {
 	t.Helper()
 	selection, err := modelchoice.New("provider", "model")
@@ -448,7 +247,7 @@ func testGoal(t *testing.T, capabilities run.Capabilities) Goal {
 
 func testGoalAt(t *testing.T, capabilities run.Capabilities, now time.Time) Goal {
 	t.Helper()
-	value, err := New("ses_1", "objective", testSelection(t), capabilities, "inc_1", now)
+	value, err := newFixture("ses_1", "objective", testSelection(t), capabilities, "inc_1", now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -457,7 +256,7 @@ func testGoalAt(t *testing.T, capabilities run.Capabilities, now time.Time) Goal
 
 func testGoalFor(t *testing.T, sessionID, incarnationID string) Goal {
 	t.Helper()
-	value, err := New(sessionID, "objective", testSelection(t), run.Capabilities{}, incarnationID, time.Unix(10, 0).UTC())
+	value, err := newFixture(sessionID, "objective", testSelection(t), run.Capabilities{}, incarnationID, time.Unix(10, 0).UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -507,4 +306,12 @@ func goalTestRunningRun(t *testing.T, incarnationID string, now time.Time) run.R
 func pausedByOutcome(reason Reason, want run.Outcome) bool {
 	outcome, ok := reason.RunOutcome()
 	return ok && outcome == want
+}
+
+func newFixture(sessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities, incarnation string, now time.Time) (Goal, error) {
+	return Restore(Snapshot{Author: extension.ContributionSource{InstallationID: "eeb329cd-c7ce-40c9-bd90-6821fef06d30", Release: integrity.Hash([]byte("unit")).String(), Contribution: "test"}, SessionID: sessionID, Objective: objective, Status: StatusActive, ModelSelection: selection, Capabilities: capabilities.Normalized(), IncarnationID: incarnation, Revision: 1, CreatedAt: now.UTC(), UpdatedAt: now.UTC()})
+}
+func publishedFixture(value Goal, now time.Time) (Goal, error) {
+	snapshot := value.Snapshot()
+	return snapshot.Publish(snapshot.WorkflowValue(), snapshot.Author, snapshot.IncarnationID, now)
 }

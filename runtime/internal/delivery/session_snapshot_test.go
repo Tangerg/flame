@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"strings"
 	"testing"
 	"time"
@@ -75,7 +76,7 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 	if saveErr := rt.plan.Save(t.Context(), "ses_1", replacement); saveErr != nil {
 		t.Fatalf("save Plan: %v", saveErr)
 	}
-	standingGoal, err := goal.New(
+	standingGoal, err := goaltest.New(
 		"ses_1", "Finish the recovery", testsupport.DefaultModelSelection(), capabilities,
 		"goal_snapshot", createdAt,
 	)

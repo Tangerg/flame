@@ -18,7 +18,7 @@ func ownWriteSnapshot(snapshot Snapshot) (Snapshot, error) {
 	owned := Snapshot{
 		Session: snapshot.Session, Messages: history.Messages(),
 		Runs: runsInParentFirstOrder(snapshot.Runs), Items: slices.Clone(snapshot.Items),
-		ToolResults: slices.Clone(snapshot.ToolResults), Plan: slices.Clone(snapshot.Plan),
+		ToolResults: slices.Clone(snapshot.ToolResults), Plan: slices.Clone(snapshot.Plan), PlanSource: snapshot.PlanSource,
 	}
 	if err := owned.Validate(); err != nil {
 		return Snapshot{}, err

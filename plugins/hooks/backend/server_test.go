@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
 	"os"
 	"path/filepath"
 	"strings"
@@ -67,7 +68,7 @@ func hookContext(t *testing.T) context.Context {
 
 func hookMethod[P, R any](t *testing.T, session *sdk.ClientSession, method *qimumcp.Method[P, R]) *qimumcp.BoundMethod[P, R] {
 	t.Helper()
-	contract, err := hookprovider.Contract()
+	contract, err := hookmcp.Contract()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +87,7 @@ func TestOriginalHookCommandReceiptSurvivesRestartWithoutRepeatingItsEffect(t *t
 	cwd := t.TempDir()
 	path := filepath.Join(t.TempDir(), "hooks.db")
 	db, session, close := connectHooks(t, path)
-	method, err := hookprovider.EvaluateMethod()
+	method, err := hookmcp.EvaluateMethod()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +120,7 @@ func TestOriginalHookCommandReceiptSurvivesRestartWithoutRepeatingItsEffect(t *t
 func TestPendingHookCommandCannotDispatchAndTimeoutKeepsItsKnownOutcome(t *testing.T) {
 	cwd := t.TempDir()
 	db, session, _ := connectHooks(t, filepath.Join(t.TempDir(), "hooks.db"))
-	method, err := hookprovider.EvaluateMethod()
+	method, err := hookmcp.EvaluateMethod()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +152,7 @@ func TestDiscoverySkipsUntrustedProjectConfigurationUnderItsCapturedRoot(t *test
 	writeHooks(t, home, `{"hooks":[{"event":"SessionStart","inject":"global"}]}`)
 	writeHooks(t, cwd, `{ broken project rules`)
 	_, session, _ := connectHooks(t, filepath.Join(t.TempDir(), "hooks.db"))
-	method, err := hookprovider.DiscoverMethod()
+	method, err := hookmcp.DiscoverMethod()
 	if err != nil {
 		t.Fatal(err)
 	}

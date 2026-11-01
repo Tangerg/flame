@@ -82,12 +82,12 @@ func presentTrajectoryExport(result sessions.TrajectoryExport) (protocol.Session
 		ModelInvocations: make([]protocol.ModelInvocation, 0, len(result.Evidence.ModelInvocations)),
 		ModelEndpoints:   make([]protocol.ModelEndpointInvocation, 0, len(result.Evidence.ModelEndpoints)),
 		ToolAttempts:     make([]protocol.ToolAttempt, 0, len(result.Evidence.ToolAttempts)),
-		Feedback:         make([]protocol.FeedbackEntry, 0, len(result.Evidence.Feedback)),
+		Annotations:      make([]protocol.SessionAnnotation, 0, len(result.Evidence.Annotations)),
 		Limitations: []string{
 			"This document contains all retained records from one idle Session snapshot, including child Runs; it is not a transition log or an execution checkpoint.",
 			"Model and Tool attempts deleted or never recorded by earlier versions cannot be reconstructed; missing records and usage do not mean zero calls or zero consumption.",
 			"Messages are the retained conversation after compaction. Model endpoints include recorded Session-associated Scope requests and known responses; raw provider HTTP bodies and calls without a Session association are not included.",
-			"Feedback contains user-supplied signals whose references match this Session or its retained Runs and Items; references are unverified and may outlive their targets.",
+			"Annotations retain the original provider, release and observation in this database snapshot. User-supplied references may outlive their targets.",
 			"Run completion and model-call completion describe execution outcomes, not answer quality or successful task evaluation.",
 			"Each Run records its own process's usage; tree totals include the root and every descendant. Logical calls and physical endpoints may project the same consumption. Combining their usage with Run totals double-counts consumption; absent usage is unrecorded.",
 			"Tool duration describes its final execution segment and excludes approval waits. Model timestamps measure Runtime observation boundaries; unknown settlements do not measure provider duration.",
@@ -144,10 +144,11 @@ func presentTrajectoryExport(result sessions.TrajectoryExport) (protocol.Session
 			State: protocol.ToolAttemptState(attempt.State), StartedAt: attempt.StartedAt, SettledAt: attempt.FinishedAt,
 		})
 	}
-	for _, entry := range result.Evidence.Feedback {
-		out.Feedback = append(out.Feedback, protocol.FeedbackEntry{
-			SessionID: entry.SessionID, RunID: entry.RunID, ItemID: entry.ItemID,
-			Rating: protocol.FeedbackRating(entry.Rating), Text: entry.Text, CreatedAt: entry.CreatedAt,
+	for _, entry := range result.Evidence.Annotations {
+		out.Annotations = append(out.Annotations, protocol.SessionAnnotation{
+			CommandID: entry.CommandID, Source: entry.Source,
+			SessionID: entry.Subject.SessionID, RunID: entry.Subject.RunID, ItemID: entry.Subject.ItemID,
+			Content: entry.Content.JSON(), CreatedAt: entry.CreatedAt,
 		})
 	}
 	return out, nil

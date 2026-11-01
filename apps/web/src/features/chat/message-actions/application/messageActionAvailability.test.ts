@@ -4,7 +4,6 @@ import {
   canCopyMessage,
   canEditMessage,
   canForkMessage,
-  canRateMessage,
   canRegenerateMessage,
   canRollbackMessage,
 } from "@/features/chat/message-actions/application/messageActionAvailability";
@@ -75,7 +74,5 @@ describe("message action availability", () => {
     expect(canRegenerateMessage({ ...assistant, runId: null }, conversation)).toBe(false);
     expect(canRegenerateMessage({ ...assistant, runId: "stale" }, conversation)).toBe(false);
     expect(canRegenerateMessage(message({ id: "child-answer" }), conversation)).toBe(false);
-    expect(canRateMessage(message({ role: "assistant" }))).toBe(true);
-    expect(canRateMessage(message({ role: "user" }))).toBe(false);
   });
 });

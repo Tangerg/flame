@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"encoding/json/jsontext"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"time"
 )
 
@@ -227,7 +228,8 @@ type SessionArtifact struct {
 	// imported value claim a position in the target's revision space that the
 	// target never issued — which is how a client comes to ignore a newer value as
 	// stale. The importing runtime assigns its own.
-	Plan []PlanStep `json:"plan,omitempty"`
+	Plan       []PlanStep                    `json:"plan,omitzero"`
+	PlanSource *extension.ContributionSource `json:"planSource,omitzero"`
 }
 
 // ArtifactSession is the durable session identity and user-owned metadata. It

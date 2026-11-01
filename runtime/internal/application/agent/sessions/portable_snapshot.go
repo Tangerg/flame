@@ -3,6 +3,7 @@ package sessions
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"slices"
 	"time"
 
@@ -29,7 +30,8 @@ type PortableSnapshot struct {
 	ToolResults []PortableToolResult
 	// Plan is the session's Plan, carried as a value so an archive restores
 	// the work plan attached to the conversation rather than just the conversation.
-	Plan []plan.Step
+	Plan       []plan.Step
+	PlanSource extension.ContributionSource
 }
 
 // PortableToolResult is an offloaded body as an archive carries it. Archived
@@ -128,7 +130,7 @@ func (p PortableSnapshot) CanonicalSnapshot() (Snapshot, error) {
 		Items:       append([]transcript.Item(nil), p.Items...),
 		ToolResults: make([]transcript.ToolResultBlob, 0, len(p.ToolResults)),
 		Runs:        make([]run.Run, 0, len(p.Runs)),
-		Plan:        append([]plan.Step(nil), p.Plan...),
+		Plan:        slices.Clone(p.Plan), PlanSource: p.PlanSource,
 	}
 	// A child reads its root's capabilities, so root values are collected before
 	// any Run is rebuilt. The archive states each value exactly once.
@@ -240,8 +242,8 @@ func (s Snapshot) PortableSnapshot() (PortableSnapshot, error) {
 		Messages:    cloneSnapshotMessages(s.Messages),
 		Items:       slices.Clone(s.Items),
 		ToolResults: make([]PortableToolResult, 0, len(s.ToolResults)),
-		Plan:        slices.Clone(s.Plan),
-		Runs:        make([]PortableRun, 0, len(s.Runs)),
+		Plan:        slices.Clone(s.Plan), PlanSource: s.PlanSource,
+		Runs: make([]PortableRun, 0, len(s.Runs)),
 	}
 	blobs := make(map[transcript.ToolResultID]transcript.ToolResultBlob, len(s.ToolResults))
 	for _, blob := range s.ToolResults {

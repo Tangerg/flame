@@ -55,7 +55,7 @@ func assemble(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime
 	if err != nil {
 		return nil, err
 	}
-	workspaceServices, err := buildWorkspaceComposition(cfg, policy.invalidations.publish, policy.packageSkills)
+	workspaceServices, err := buildWorkspaceComposition(cfg, policy.invalidations.publish)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func buildAssemblyCore(
 		NewItemID:             newItemID,
 	}
 	sessionDependencies.Plan = sessions.PlanServices{
-		Boundaries: cfg.stores.Plan, Replacements: policy.plans,
+		Boundaries: cfg.stores.Plan, Replacements: execution.tools.plans,
 	}
 	sessionDependencies.Mutations = cfg.stores.WorkspaceMutations
 	sessionDependencies.Retirer = retirer
@@ -295,7 +295,8 @@ func buildAssemblyCore(
 
 	mcpCoordinator, err := mcpapp.New(mcpapp.Config{
 		Registry:      policy.registry,
-		Store:         cfg.stores.MCPServers,
+		Store:         policy.framework.external,
+		External:      policy.framework.external,
 		Connections:   execution.tools.mcp,
 		ToolCatalog:   execution.tools.tools.Resolver,
 		Exposure:      policy.mcp.exposure,
@@ -309,7 +310,7 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, err
 	}
-	pluginSelections, err := plugins.NewSelections(cfg.stores.ProviderSelections, cfg.stores.Installations, execution.tools.admission, policy.invalidations.publish)
+	pluginSelections, err := plugins.NewSelections(cfg.stores.ProviderSelections, cfg.stores.Installations, execution.tools.admission, policy.invalidations.publish, mcpCoordinator)
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +326,9 @@ func buildAssemblyCore(
 		runUseCases.cancellations,
 		cfg.stores.Sessions,
 		goalMutations,
-		builtin.RunInstructions,
+		execution.tools.pluginCalls, func(ctx context.Context, sessionID string) error {
+			return goalRuns.Drain(ctx, policy.goals, execution.tools.pluginCalls, sessionID, policy.invalidations.publish)
+		},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct Goal driver: %w", err)
@@ -421,14 +424,14 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct usage reporter: %w", err)
 	}
-	feedback, err := feedback.NewRecorder(cfg.stores.Feedback, time.Now)
+	feedback, err := feedback.NewRecorder(execution.tools.pluginCalls, cfg.stores.Annotations, time.Now)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct feedback recorder: %w", err)
 	}
 	trajectoryReader, err := persistence.NewTrajectoryExportReader(persistence.TrajectoryExportConfig{
 		Snapshots: sessionStores, Sessions: cfg.stores.Sessions, ModelInvocations: modelInvocations,
 		ToolInvocations: cfg.stores.ToolInvocations,
-		Feedback:        cfg.stores.Feedback, ReadSnapshot: persistence.Transactor(cfg.stores.ReadSnapshot),
+		Annotations:     cfg.stores.Annotations, ReadSnapshot: persistence.Transactor(cfg.stores.ReadSnapshot),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct trajectory export reader: %w", err)
@@ -467,7 +470,7 @@ func buildAssemblyCore(
 				WorkspaceFiles:         workspaceFiles,
 				WorkspaceVCS:           workspaceVCS,
 				WorkspaceDiscovery:     workspaceDiscovery,
-				WorkspaceSkills:        workspaceServices.skills,
+				WorkspaceSkills:        execution.tools.skills,
 				Hooks:                  execution.hooks,
 				WorkspaceWatch:         workspaceWatch,
 				WorkspaceAuthoredWatch: workspaceServices.authoredWatch,
@@ -489,6 +492,7 @@ func buildAssemblyCore(
 		},
 		lifetime: lifetime,
 	}
+	mcpCoordinator.RestoreExternal(lifetime.context, policy.framework.ready)
 	return host, nil
 }
 

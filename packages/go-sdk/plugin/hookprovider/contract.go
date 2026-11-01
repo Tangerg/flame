@@ -8,10 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 const (
@@ -94,27 +91,7 @@ func (r Result) Validate() error {
 	return nil
 }
 
-func DiscoverMethod() (*qimumcp.Method[Discovery, []hook.Hook], error) {
-	return qimumcp.NewMethod[Discovery, []hook.Hook](qimumcp.MethodConfig{Name: "flame.hooks/discover.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read ordered lifecycle rules. Exclude all project configuration when the Runtime has not admitted its trust."})
-}
-
 const Reference = "flame.hooks.v1"
-
-func EvaluateMethod() (*qimumcp.Method[Evaluation, Advice], error) {
-	return qimumcp.NewMethod[Evaluation, Advice](qimumcp.MethodConfig{Name: "flame.hooks/evaluate.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Evaluate one captured lifecycle event and return advice. The Runtime retains trust, command material bounds and final authorization."})
-}
-
-func Contract() (*portable.Capability, error) {
-	discover, err := DiscoverMethod()
-	if err != nil {
-		return nil, err
-	}
-	execute, err := EvaluateMethod()
-	if err != nil {
-		return nil, err
-	}
-	return portable.NewCapability(portable.CapabilityConfig{Reference: Reference, Composition: portable.Selection, Scope: extension.ScopeInstallation}, discover.Descriptor(), execute.Descriptor())
-}
 
 type Evaluation struct {
 	Rules           []hook.Hook `json:"rules"`

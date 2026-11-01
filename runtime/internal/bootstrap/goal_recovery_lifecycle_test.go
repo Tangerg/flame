@@ -1,6 +1,10 @@
 package bootstrap
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -53,7 +57,14 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 		t.Fatalf("insert Session: %v", insertErr)
 	}
 
-	active, err := goal.New(sessionID, "drive until done", selection, run.Capabilities{}, incarnationID, createdAt)
+	producer := poMCPOpen(t, cfg)
+	poMCPActivate(producer, filepath.Join(firstPartyPackages, "goals"))
+	calls := producer.host.application.delivery.PluginCalls.(*pluginservices.CommandCalls)
+	decision, err := calls.DecideGoal(ctx, extension.ContributionSource{}, goalworkflow.Request{Signal: goalworkflow.Start, Objective: "drive until done"})
+	if err != nil || decision.Next == nil {
+		t.Fatalf("original author did not issue the objective: %v", err)
+	}
+	active, err := (goal.Snapshot{SessionID: sessionID, CreatedAt: createdAt, ModelSelection: selection}).Publish(*decision.Next, decision.Source, incarnationID, createdAt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,11 +88,7 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 		t.Fatalf("admit Goal-owned Run: %v", admitErr)
 	}
 
-	host, err := assemble(ctx, cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildToolEnvironment)
-	if err != nil {
-		t.Fatalf("assemble: %v", err)
-	}
-	t.Cleanup(func() { _ = host.Close() })
+	host := reopenPluginRuntime(t, producer, &cfg).host
 
 	// Revival is the post-callback-RPC recovery phase; production runs it after
 	// publishing delivery. This lost Run has no plugin-backed effect, so it revives
@@ -184,7 +191,14 @@ func TestActiveGoalWithNoRunInFlightPausesAsRestarted(t *testing.T) {
 	})); insertErr != nil {
 		t.Fatalf("insert Session: %v", insertErr)
 	}
-	active, err := goal.New(sessionID, "drive until done", selection, run.Capabilities{}, incarnationID, createdAt)
+	producer := poMCPOpen(t, cfg)
+	poMCPActivate(producer, filepath.Join(firstPartyPackages, "goals"))
+	calls := producer.host.application.delivery.PluginCalls.(*pluginservices.CommandCalls)
+	decision, err := calls.DecideGoal(ctx, extension.ContributionSource{}, goalworkflow.Request{Signal: goalworkflow.Start, Objective: "drive until done"})
+	if err != nil || decision.Next == nil {
+		t.Fatalf("original author did not issue the objective: %v", err)
+	}
+	active, err := (goal.Snapshot{SessionID: sessionID, CreatedAt: createdAt, ModelSelection: selection}).Publish(*decision.Next, decision.Source, incarnationID, createdAt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,11 +214,7 @@ func TestActiveGoalWithNoRunInFlightPausesAsRestarted(t *testing.T) {
 		t.Fatalf("save opening Goal = (%t, %v)", applied, saveErr)
 	}
 
-	host, err := assemble(ctx, cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildToolEnvironment)
-	if err != nil {
-		t.Fatalf("assemble: %v", err)
-	}
-	t.Cleanup(func() { _ = host.Close() })
+	host := reopenPluginRuntime(t, producer, &cfg).host
 
 	if err := host.application.recoverUncertainExecutions(ctx); err != nil {
 		t.Fatalf("recover uncertain executions: %v", err)

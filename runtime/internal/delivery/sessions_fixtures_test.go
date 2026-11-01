@@ -754,16 +754,19 @@ func (s stubLifecycleStores) ReadSnapshot(ctx context.Context, id string) (sessi
 			return sessions.Snapshot{}, err
 		}
 	}
-	var steps []plan.Step
+	var doc plan.Document
 	if s.rt.plan != nil {
-		steps, err = s.rt.plan.List(ctx, id)
+		head, err := s.rt.plan.State(ctx, id)
 		if err != nil {
 			return sessions.Snapshot{}, err
+		}
+		if p, ok := head.State(); ok {
+			doc = p.Document()
 		}
 	}
 	return sessions.Snapshot{
 		Session: ses, Messages: messages, Items: items, Runs: runs,
-		ToolResults: toolResults, Plan: steps,
+		ToolResults: toolResults, Plan: doc.Steps, PlanSource: doc.Source,
 	}, nil
 }
 
@@ -1529,6 +1532,9 @@ func newSessionHandler(t *testing.T) (*Handler, *persistence.SessionStore, *stub
 }
 
 func mustPlanCoordinator(deps sessions.PlanDependencies) *sessions.PlanCoordinator {
+	if deps.Author == nil {
+		deps.Author = testsupport.PlanAuthor{}
+	}
 	coordinator, err := sessions.NewPlanCoordinator(deps)
 	if err != nil {
 		panic(err)
@@ -1536,8 +1542,8 @@ func mustPlanCoordinator(deps sessions.PlanDependencies) *sessions.PlanCoordinat
 	return coordinator
 }
 
-func (inertQueryStores) Boundary(context.Context, string) ([]plan.Step, bool, error) {
-	return nil, false, nil
+func (inertQueryStores) Boundary(context.Context, string) (plan.Document, bool, error) {
+	return plan.Document{}, false, nil
 }
 func (inertQueryStores) Save(context.Context, string, plan.Replacement) error { return nil }
 

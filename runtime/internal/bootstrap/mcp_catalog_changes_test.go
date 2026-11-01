@@ -61,6 +61,7 @@ func TestMCPNotificationUpdatesManagementAndSubsequentRunDiscovery(t *testing.T)
 	cfg := poMCPConfig(t)
 	cfg.modelProviders = testChatResolver(client)
 	runtime := poMCPOpen(t, cfg)
+	installExternalConnector(runtime)
 	server := runtime.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
 		Name: "catalog", Enabled: true, HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
 		Connection: protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: transport.URL},

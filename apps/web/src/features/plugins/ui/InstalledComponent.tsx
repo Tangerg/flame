@@ -16,6 +16,7 @@ import {
   type CapturedFile,
   type CapturedSession,
   type CapturedToolResult,
+  type CapturedMessage,
   type ComponentContext,
   type WorkspaceContext,
   type ComponentComposition,
@@ -183,6 +184,7 @@ class ComponentInstance {
       sessionTarget: this.sources.sessionTarget
         ? Object.freeze({ ...this.sources.sessionTarget })
         : undefined,
+      message: this.sources.message,
       toolResult: this.sources.toolResult,
       interaction:
         this.sources.toolResult && this.sources.submitInput
@@ -328,6 +330,7 @@ export function RenderingComponent(
     workspace,
     sessionId,
     file,
+    message,
     toolResult,
     submitInput,
     sessionTarget,
@@ -346,6 +349,7 @@ export function RenderingComponent(
         workspace,
         sessionId,
         file,
+        message,
         toolResult,
         submitInput,
         sessionTarget,
@@ -366,6 +370,7 @@ export function RenderingComponent(
       workspace,
       sessionId,
       file,
+      message,
       toolResult,
       submitInput,
       sessionTarget,
@@ -425,6 +430,7 @@ type ComponentSources = Pick<
 > & {
   workspace?: WorkspaceContext;
   sessionId?: string;
+  message?: CapturedMessage;
   file?: CapturedFile;
   toolResult?: CapturedToolResult;
   submitInput?: SubmitCapturedAgentInput;

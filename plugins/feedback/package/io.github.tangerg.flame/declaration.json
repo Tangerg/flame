@@ -1,0 +1,22 @@
+{
+  "protocol": "io.github.tangerg.flame/plugin/1",
+  "contributions": [
+    {
+      "id": "feedback",
+      "server": "feedback",
+      "export": "feedback",
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+    }
+  ],
+  "components": [
+    {
+      "id": "rate-response",
+      "title": "Rate response",
+      "placement": "messageAction",
+      "scope": "session",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RateResponse",
+      "contribution": "feedback"
+    }
+  ]
+}

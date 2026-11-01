@@ -28,9 +28,9 @@ func (i *testInputs) Conversation(context.Context) (skilllearning.Conversation, 
 	i.historyReads++
 	return i.conversation, nil
 }
-func (i *testInputs) ReadSkill(context.Context, string) (*skilllearning.Skill, error) {
+func (i *testInputs) ReadSkill(context.Context, string) (skilllearning.ReadResult, error) {
 	i.skillReads++
-	return i.skill, i.sourceErr
+	return skilllearning.ReadResult{Skill: i.skill, Revision: "retained"}, i.sourceErr
 }
 func (i *testInputs) Complete(_ context.Context, _, input string) (string, error) {
 	i.prompts = append(i.prompts, input)

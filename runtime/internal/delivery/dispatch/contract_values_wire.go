@@ -566,7 +566,7 @@ func registerUsageValues(s *Shapes) {
 
 func registerFeedbackValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{
-		GoType:      typeOf[protocol.FeedbackEntry](),
+		GoType:      typeOf[protocol.SessionAnnotation](),
 		Constraints: append(append(resourceIdentity("sessionId"), resourceIdentity("runId")...), resourceIdentity("itemId")...),
 	})
 	s.valueConstraint(FieldConstraintSpec{
@@ -992,6 +992,7 @@ func registerPluginValues(s *Shapes) {
 		{Field: "id", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 		{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 		{Field: "material", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
+		{Field: "settingsIntent", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 	}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginTerminalView](), Constraints: []FieldConstraint{
 		{Field: "id", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},

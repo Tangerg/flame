@@ -154,7 +154,7 @@ func (s *Store) SweepIdle(ctx context.Context, now time.Time, inactiveSince time
 }
 
 // activeSkillNames lists the active skill directories directly under the store
-// root — every directory that isn't the reserved _proposals/_archive area or a
+// root — every directory that isn't the archive area or a
 // dotfile.
 func activeSkillNames(ctx context.Context, root *os.Root) ([]string, error) {
 	if err := contextError(ctx, "list active skills"); err != nil {

@@ -1,3 +1,4 @@
+import { GOAL_WORKFLOW } from "@/features/plugins/public/workflows";
 import { mutationResult } from "@/test/runtimeClient";
 import { type VisualClient } from "./client";
 import { type FlameClient } from "@flame/runtime-client";
@@ -26,7 +27,6 @@ import contextUsage from "@/features/chat/context-usage/index";
 import narrativeRails from "@/features/chat/narrative-rails/index";
 import { messageCopy } from "@/features/chat/message-actions/index";
 import { messageEdit } from "@/features/chat/message-actions/index";
-import { createMessageFeedbackPlugin } from "@/features/chat/message-actions/index";
 import { messageRegenerate } from "@/features/chat/message-actions/index";
 import { builtinVisualStyles } from "@/features/theme/visualStyles/index";
 import customTheme from "@/features/theme/themes/custom-theme";
@@ -217,6 +217,22 @@ export async function installVisualAgentFixture(
     );
   }
   const projectless = state === "empty" || state === "runtime-down";
+  const goalAuthor = {
+    installationId: "ed7c6993-768d-454d-adf8-34fbdb263c87",
+    release: "f".repeat(64),
+    contribution: "goal-workflow",
+  };
+  const goal = VISUAL_GOALS[state];
+  visual.installedPlugins.access.workflows.publish(
+    state === "runtime-down" ? [] : [{ source: goalAuthor, roles: [GOAL_WORKFLOW] }],
+    [
+      {
+        role: GOAL_WORKFLOW,
+        installationId: goalAuthor.installationId,
+        contribution: goalAuthor.contribution,
+      },
+    ],
+  );
   queryClient.clear();
   visual.projection.store.setState({ capabilities });
   installVisualRuntimeServiceStatusPort(visual, state === "runtime-down" ? "unavailable" : "ready");
@@ -273,13 +289,13 @@ export async function installVisualAgentFixture(
     messageCopy,
     messageEdit,
     messageRegenerate,
-    createMessageFeedbackPlugin(runtimeClient, visual.feedback),
     createGoalPlugin(
       visual.agent.access,
       visual.composer.access,
       visual.runtime,
       runtimeClient,
       visual.goals,
+      visual.installedPlugins.access.workflows,
     ),
     planProgress,
     subagentsView,
@@ -312,7 +328,7 @@ export async function installVisualAgentFixture(
       ...view.shared,
       goal: {
         available: true,
-        goal: VISUAL_GOALS[state] ?? null,
+        goal: goal ? { ...goal, author: goalAuthor } : null,
       } satisfies GoalState,
     },
   };

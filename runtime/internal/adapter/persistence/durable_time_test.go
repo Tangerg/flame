@@ -1,13 +1,13 @@
 package persistence
 
 import (
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"math"
 	"testing"
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
@@ -22,7 +22,7 @@ func TestDurableOwnerTimesRoundTripAtExactBounds(t *testing.T) {
 			t.Cleanup(func() { _ = db.Close() })
 			goals, plans := newGoalStore(db), newPlanStore(db)
 			seedSession(t, newSessionStore(db), "session")
-			value, err := goal.New("session", "objective", modelchoice.Selection{}, run.Capabilities{}, "incarnation", at)
+			value, err := goaltest.New("session", "objective", modelchoice.Selection{}, run.Capabilities{}, "incarnation", at)
 			if err != nil {
 				t.Fatal(err)
 			}

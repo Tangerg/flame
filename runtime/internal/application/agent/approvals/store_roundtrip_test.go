@@ -155,7 +155,7 @@ func (m *memoryRuleStore) StartPlanMode(_ context.Context, sessionID string) (bo
 	return changed, nil
 }
 
-func (m *memoryRuleStore) EndPlanMode(_ context.Context, sessionID string) (bool, error) {
+func (m *memoryRuleStore) EndPlanMode(_ context.Context, sessionID string, _ uint64) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	changed := m.planning[sessionID]

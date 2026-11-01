@@ -3,10 +3,11 @@ package protocol
 import (
 	"encoding/json/jsontext"
 	"errors"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"time"
 )
 
-const SessionTrajectoryVersion = 3
+const SessionTrajectoryVersion = 4
 
 var ErrExportTooLarge = errors.New("export_too_large")
 
@@ -32,7 +33,7 @@ type SessionTrajectory struct {
 	ModelInvocations []ModelInvocation         `json:"modelInvocations"`
 	ModelEndpoints   []ModelEndpointInvocation `json:"modelEndpoints"`
 	ToolAttempts     []ToolAttempt             `json:"toolAttempts"`
-	Feedback         []FeedbackEntry           `json:"feedback"`
+	Annotations      []SessionAnnotation       `json:"annotations"`
 	Limitations      []string                  `json:"limitations"`
 }
 
@@ -57,11 +58,12 @@ type ToolAttempt struct {
 	SettledAt time.Time        `json:"settledAt,omitzero"`
 }
 
-type FeedbackEntry struct {
-	SessionID string         `json:"sessionId,omitempty"`
-	RunID     string         `json:"runId,omitempty"`
-	ItemID    string         `json:"itemId,omitempty"`
-	Rating    FeedbackRating `json:"rating,omitempty"`
-	Text      string         `json:"text,omitempty"`
-	CreatedAt time.Time      `json:"createdAt"`
+type SessionAnnotation struct {
+	CommandID string                     `json:"commandId"`
+	Source    extension.AnnotationSource `json:"source"`
+	Content   jsontext.Value             `json:"content"`
+	SessionID string                     `json:"sessionId,omitempty"`
+	RunID     string                     `json:"runId,omitempty"`
+	ItemID    string                     `json:"itemId,omitempty"`
+	CreatedAt time.Time                  `json:"createdAt"`
 }

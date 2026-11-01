@@ -26,6 +26,7 @@ type catalog interface {
 // packages owns release bytes: it admits a package as a candidate, publishes
 // and reclaims releases, prepares backends and observes realization.
 type packages interface {
+	Project(plugin.Release) (FrameworkRelease, error)
 	Materialize(context.Context, string) (Candidate, error)
 	Reclaim(context.Context) error
 	Prepare(context.Context, plugin.Installation, plugin.Release) error
@@ -188,7 +189,7 @@ func (c *Coordinator) Install(ctx context.Context, source string) (_ Inspection,
 	if err != nil {
 		return Inspection{}, fmt.Errorf("plugins: publish release: %w", err)
 	}
-	projection, err := ProjectFrameworkRelease(published)
+	projection, err := c.packages.Project(published)
 	if err != nil {
 		return Inspection{}, err
 	}
@@ -316,7 +317,7 @@ func (c *Coordinator) change(ctx context.Context, id identity.InstallationID, tr
 			return Inspection{}, err
 		}
 	}
-	projection, err := ProjectFrameworkRelease(after)
+	projection, err := c.packages.Project(after)
 	if err != nil {
 		return Inspection{}, err
 	}

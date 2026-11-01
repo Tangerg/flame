@@ -53,7 +53,7 @@ func trajectoryExportFixture(t *testing.T) (*trajectoryExportReader, *sql.DB, *e
 	snapshots.value.Runs = append(snapshots.value.Runs, run)
 	reader, err := NewTrajectoryExportReader(TrajectoryExportConfig{
 		Snapshots: snapshots, Sessions: newSessionStore(db), ModelInvocations: modelReader,
-		ToolInvocations: newToolInvocationStore(db), Feedback: newFeedbackStore(db),
+		ToolInvocations: newToolInvocationStore(db), Annotations: &annotationStore{db: db},
 		ReadSnapshot: func(ctx context.Context, fn func(context.Context) error) error {
 			return sqlite.RunReadSnapshot(ctx, db, fn)
 		},
@@ -72,7 +72,7 @@ func TestTrajectoryExportRejectsResourceLimitsBeforeReadingBodies(t *testing.T) 
 	}{
 		{
 			name: "source bytes",
-			sql:  `INSERT INTO feedback_entries(session_id,text,created_at_ns) VALUES('ses_export',zeroblob(?),1)`,
+			sql:  `INSERT INTO session_annotations(command_id,installation,release,contribution,contract,session_id,run_id,item_id,content,created_at_ns) VALUES('large','source','digest','note','contract','ses_export','','','"'||hex(zeroblob(?))||'"',1)`,
 			args: []any{sessions.MaximumTrajectoryExportBytes + 1},
 		},
 		{
@@ -81,9 +81,9 @@ func TestTrajectoryExportRejectsResourceLimitsBeforeReadingBodies(t *testing.T) 
 			args: []any{sessions.MaximumTrajectoryExportBytes + 1},
 		},
 		{
-			name: "feedback records",
+			name: "annotation records",
 			sql: `WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x < ?)
-				INSERT INTO feedback_entries(session_id,text,created_at_ns) SELECT 'ses_export','evidence',1 FROM n`,
+				INSERT INTO session_annotations(command_id,installation,release,contribution,contract,session_id,run_id,item_id,content,created_at_ns) SELECT x,'source','digest','note','contract','ses_export','','','{}',1 FROM n`,
 			args: []any{sessions.MaximumTrajectoryExportRecords + 1},
 		},
 		{

@@ -3,7 +3,10 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
+	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
 	"iter"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -189,6 +192,9 @@ func newSessionStateE2ERuntime(
 	cfg.maintenance = noMaintenance{}
 	cfg.processRunner = testProcessRunner(t)
 	host, api := buildProtocolRuntime(t, cfg, home)
+	fixture := &poMCPRuntime{t: t, host: host, api: api, endpoint: host.Endpoint()}
+	activateWorkflow(fixture, filepath.Join(firstPartyPackages, "plans"), "compaction-plan", planworkflow.Reference, "plan-workflow")
+	activateWorkflow(fixture, filepath.Join(firstPartyPackages, "goals"), "compaction-goal", goalworkflow.Reference, "goal-workflow")
 	t.Cleanup(func() {
 		if closeErr := host.Close(); closeErr != nil {
 			t.Errorf("close runtime: %v", closeErr)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -86,7 +87,7 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 	if err != nil {
 		return View{}, err
 	}
-	planReplacement, err := c.prepareRestoredPlanReplacement(ctx, sessionID, snapshot.Plan)
+	planReplacement, err := c.prepareRestoredPlanReplacement(ctx, sessionID, plan.Document{Steps: snapshot.Plan, Source: snapshot.PlanSource})
 	if err != nil {
 		return View{}, err
 	}

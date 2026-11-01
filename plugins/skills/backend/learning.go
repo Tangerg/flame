@@ -30,7 +30,7 @@ type learner struct {
 }
 
 func openLearner(ctx context.Context, path string) (*learner, error) {
-	db, err := sqlite.OpenSchema(ctx, path, []string{pluginstorage.CommandsSchema})
+	db, err := sqlite.OpenSchema(ctx, path, []string{pluginstorage.CommandsSchema, reviewsSchema})
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func openLearner(ctx context.Context, path string) (*learner, error) {
 
 type learningInputs interface {
 	Conversation(context.Context) (skilllearning.Conversation, error)
-	ReadSkill(context.Context, string) (*skilllearning.Skill, error)
+	ReadSkill(context.Context, string) (skilllearning.ReadResult, error)
 	Complete(context.Context, string, string) (string, error)
 }
 
@@ -67,11 +67,14 @@ func (l *learner) mine(ctx context.Context, run skilllearning.Run, inputs learni
 	first, _, _ := strings.Cut(document, "\n")
 	name, revision := strings.CutPrefix(strings.TrimSpace(first), revisionMarker)
 	name = strings.TrimSpace(name)
+	var previous string
 	if revision {
 		if name == "" {
 			return skilllearning.MineResult{}, nil
 		}
-		current, err := inputs.ReadSkill(ctx, name)
+		read, err := inputs.ReadSkill(ctx, name)
+		current := read.Skill
+		previous = read.Revision
 		if err != nil {
 			return skilllearning.MineResult{}, err
 		}
@@ -98,7 +101,7 @@ func (l *learner) mine(ctx context.Context, run skilllearning.Run, inputs learni
 		skill.Name = name
 	}
 	return skilllearning.MineResult{Proposal: &skilllearning.Proposal{
-		Skill: skilllearning.Skill{Name: skill.Name, Description: skill.Description, Instructions: skill.Instructions}, Revises: revision,
+		Skill: skilllearning.Skill{Name: skill.Name, Description: skill.Description, Instructions: skill.Instructions}, Revises: revision, Previous: previous,
 	}}, nil
 }
 

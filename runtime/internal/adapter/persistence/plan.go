@@ -5,22 +5,18 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/qimu/sqlite"
 )
 
-// PlanStore persists one complete ordered Plan per session. Plans are replaced
-// wholesale, so one JSON value and one monotonic revision are the entire latest
-// projection; Run boundaries retain the historical values needed by fork and
-// rollback.
+// Session heads and terminal Run boundaries hold references so a fork can retain
+// precisely the reviewed content even after an unrelated Session advances.
 type PlanStore struct{ db *sql.DB }
-
-type planStepRow struct {
-	Description string      `json:"description"`
-	Status      plan.Status `json:"status"`
-}
 
 func newPlanStore(db *sql.DB) *PlanStore { return &PlanStore{db: db} }
 
@@ -38,24 +34,29 @@ func (p *PlanStore) State(ctx context.Context, sessionID string) (plan.Current, 
 		return plan.Current{}, err
 	}
 	var (
-		stepsJSON string
-		revision  uint64
-		updatedNs int64
+		stepsJSON, sourceJSON string
+		digest                integrity.Digest
+		revision              uint64
+		updatedNs             int64
 	)
 	err := sqlite.Connection(ctx, p.db).QueryRowContext(ctx,
-		`SELECT steps, revision, updated_at FROM session_plans WHERE session_id = ?`, sessionID,
-	).Scan(&stepsJSON, &revision, &updatedNs)
+		`SELECT doc.steps, doc.digest, source,revision, updated_at FROM session_plans JOIN plan_documents doc ON doc.digest = document WHERE session_id = ?`, sessionID,
+	).Scan(&stepsJSON, &digest, &sourceJSON, &revision, &updatedNs)
 	if errors.Is(err, sql.ErrNoRows) {
 		return plan.Current{}, nil
 	}
 	if err != nil {
 		return plan.Current{}, fmt.Errorf("sqlite: read Plan: %w", err)
 	}
-	steps, err := decodePlanSteps(stepsJSON)
+	steps, err := decodePlanSteps(stepsJSON, digest.String())
 	if err != nil {
 		return plan.Current{}, err
 	}
-	state, err := plan.Restore(plan.Snapshot{
+	var source extension.ContributionSource
+	if err := decodeStoredJSON([]byte(sourceJSON), &source); err != nil {
+		return plan.Current{}, err
+	}
+	state, err := plan.Restore(plan.Snapshot{Source: source,
 		Steps: steps, Revision: revision, UpdatedAt: time.Unix(0, updatedNs).UTC(),
 	})
 	if err != nil {
@@ -68,20 +69,20 @@ func (p *PlanStore) State(ctx context.Context, sessionID string) (plan.Current, 
 	return current, nil
 }
 
-func decodePlanSteps(stepsJSON string) ([]plan.Step, error) {
-	var rows []planStepRow
+func decodePlanSteps(stepsJSON, digest string) ([]plan.Step, error) {
+	var rows []planworkflow.Step
 	if err := decodeStoredJSON([]byte(stepsJSON), &rows); err != nil {
 		return nil, fmt.Errorf("sqlite: decode Plan: %w", err)
 	}
 	if rows == nil {
 		return nil, errors.New("sqlite: stored Plan steps must be an array")
 	}
-	steps := make([]plan.Step, len(rows))
-	for index, row := range rows {
-		steps[index] = plan.Step{Description: row.Description, Status: row.Status}
-	}
+	steps := plan.StepsOf(planworkflow.Proposal{Steps: rows})
 	if err := plan.ValidateSteps(steps); err != nil {
 		return nil, fmt.Errorf("sqlite: validate Plan: %w", err)
+	}
+	if integrity.Hash([]byte(stepsJSON)).String() != digest {
+		return nil, errors.New("sqlite: immutable Plan document digest mismatch")
 	}
 	return steps, nil
 }
@@ -92,23 +93,37 @@ func (p *PlanStore) Save(ctx context.Context, sessionID string, change plan.Repl
 	if err := validateSessionResource("save Session Plan", sessionID); err != nil {
 		return err
 	}
-	expected := change.ExpectedVersion()
 	replacement := change.State()
 	steps := replacement.Steps()
-	rows := make([]planStepRow, len(steps))
-	for index, step := range steps {
-		rows[index] = planStepRow{Description: step.Description, Status: step.Status}
-	}
-	data, err := encodeStoredJSON(rows)
+	data, err := encodeStoredJSON(plan.ProposalOf(steps).Steps)
 	if err != nil {
 		return fmt.Errorf("sqlite: encode Plan: %w", err)
 	}
+	digest := integrity.Hash(data)
+	return sqlite.RunInTx(ctx, p.db, func(ctx context.Context) error {
+		if _, err := sqlite.Connection(ctx, p.db).ExecContext(ctx,
+			`INSERT INTO plan_documents(digest, steps) VALUES (?, ?) ON CONFLICT(digest) DO NOTHING`,
+			digest.String(), string(data)); err != nil {
+			return fmt.Errorf("sqlite: store immutable Plan: %w", err)
+		}
+		return p.advance(ctx, sessionID, digest, change)
+	})
+}
+
+func (p *PlanStore) advance(ctx context.Context, sessionID string, digest integrity.Digest, change plan.Replacement) error {
+	expected := change.ExpectedVersion()
+	replacement := change.State()
+	source, encodeErr := encodeStoredJSON(replacement.Document().Source)
+	if encodeErr != nil {
+		return encodeErr
+	}
 	var result sql.Result
+	var err error
 	if expected.IsUnwritten() {
 		result, err = sqlite.Connection(ctx, p.db).ExecContext(ctx,
-			`INSERT INTO session_plans(session_id, steps, revision, updated_at)
-			 VALUES (?, ?, ?, ?) ON CONFLICT(session_id) DO NOTHING`,
-			sessionID, string(data), replacement.Revision(), replacement.UpdatedAt().UnixNano(),
+			`INSERT INTO session_plans(session_id, document, source,revision, updated_at)
+			 VALUES (?, ?, ?, ?,?) ON CONFLICT(session_id) DO NOTHING`,
+			sessionID, digest.String(), string(source), replacement.Revision(), replacement.UpdatedAt().UnixNano(),
 		)
 	} else {
 		expectedRevision, committed := expected.Revision()
@@ -116,9 +131,9 @@ func (p *PlanStore) Save(ctx context.Context, sessionID string, change plan.Repl
 			return fmt.Errorf("sqlite: Plan expected version lost committed revision: %w", plan.ErrInvalid)
 		}
 		result, err = sqlite.Connection(ctx, p.db).ExecContext(ctx,
-			`UPDATE session_plans SET steps = ?, revision = ?, updated_at = ?
+			`UPDATE session_plans SET document = ?,source=?, revision = ?, updated_at = ?
 			 WHERE session_id = ? AND revision = ?`,
-			string(data), replacement.Revision(), replacement.UpdatedAt().UnixNano(), sessionID, expectedRevision,
+			digest.String(), string(source), replacement.Revision(), replacement.UpdatedAt().UnixNano(), sessionID, expectedRevision,
 		)
 	}
 	if err != nil {
@@ -143,8 +158,8 @@ func (p *PlanStore) CaptureBoundary(ctx context.Context, sessionID, runID string
 		return err
 	}
 	if _, err := sqlite.Connection(ctx, p.db).ExecContext(ctx,
-		`INSERT INTO plan_boundaries(run_id, steps)
-		 VALUES (?, COALESCE((SELECT steps FROM session_plans WHERE session_id = ?), '[]'))`,
+		`INSERT INTO plan_boundaries(run_id,document,source)
+		 SELECT ?,p.document,COALESCE(p.source,'{}') FROM (SELECT ? AS session_id) s LEFT JOIN session_plans p ON p.session_id=s.session_id`,
 		runID, sessionID,
 	); err != nil {
 		return fmt.Errorf("sqlite: capture Plan boundary for Run %q: %w", runID, err)
@@ -154,25 +169,33 @@ func (p *PlanStore) CaptureBoundary(ctx context.Context, sessionID, runID string
 
 // Boundary returns the Plan captured by runID. recorded=false means the Run
 // never captured a boundary; it does not mean an empty Plan.
-func (p *PlanStore) Boundary(ctx context.Context, runID string) ([]plan.Step, bool, error) {
+func (p *PlanStore) Boundary(ctx context.Context, runID string) (plan.Document, bool, error) {
 	if err := validateRunResource("read Plan boundary", runID); err != nil {
-		return nil, false, err
+		return plan.Document{}, false, err
 	}
-	var stepsJSON string
+	var sourceJSON string
+	var stepsJSON, digest sql.NullString
 	err := sqlite.Connection(ctx, p.db).QueryRowContext(ctx,
-		`SELECT steps FROM plan_boundaries WHERE run_id = ?`, runID,
-	).Scan(&stepsJSON)
+		`SELECT doc.steps, doc.digest,b.source FROM plan_boundaries b LEFT JOIN plan_documents doc ON doc.digest = b.document WHERE run_id = ?`, runID,
+	).Scan(&stepsJSON, &digest, &sourceJSON)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, false, nil
+		return plan.Document{}, false, nil
 	}
 	if err != nil {
-		return nil, false, fmt.Errorf("sqlite: read Plan boundary for Run %q: %w", runID, err)
+		return plan.Document{}, false, fmt.Errorf("sqlite: read Plan boundary for Run %q: %w", runID, err)
 	}
-	steps, err := decodePlanSteps(stepsJSON)
+	if !digest.Valid {
+		return plan.Document{Steps: []plan.Step{}}, true, nil
+	}
+	steps, err := decodePlanSteps(stepsJSON.String, digest.String)
 	if err != nil {
-		return nil, false, err
+		return plan.Document{}, false, err
 	}
-	return steps, true, nil
+	var source extension.ContributionSource
+	if err := decodeStoredJSON([]byte(sourceJSON), &source); err != nil {
+		return plan.Document{}, false, err
+	}
+	return plan.Document{Steps: steps, Source: source}, true, nil
 }
 
 func (p *PlanStore) DeleteSession(ctx context.Context, sessionID string) error {

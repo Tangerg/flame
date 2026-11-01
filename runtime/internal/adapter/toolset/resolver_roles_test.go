@@ -19,6 +19,8 @@ type roleGoalStub struct{}
 
 type rolePlanStore struct{}
 
+func (rolePlanStore) Review(context.Context, plan.State) (string, error) { return "review", nil }
+
 func (rolePlanStore) Replace(_ context.Context, _ string, steps []plan.Step) (plan.State, error) {
 	return (plan.Current{}).Replace(steps, time.Now())
 }

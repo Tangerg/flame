@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"strings"
 	"testing"
 
@@ -140,7 +141,7 @@ func TestBrowserConfigurationIsThePublicProjectionOfTheApprovedUnit(t *testing.T
 			t.Errorf("host close = %+v, %v", outcome, err)
 		}
 	})
-	release, err := plugins.ProjectFrameworkRelease(store.snapshot.Selected)
+	release, err := plugins.ProjectFrameworkRelease(store.snapshot.Selected, qimumcp.ProcessProfile)
 	if err != nil {
 		t.Fatal(err)
 	}

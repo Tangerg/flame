@@ -771,8 +771,23 @@ func TestOpenAdmitsCrossServerPublicToolNameCollision(t *testing.T) {
 			t.Errorf("Shutdown: %v", err)
 		}
 	})
-	if names := toolNames(initial); !slices.Equal(names, []string{"a_b_read", "a_b_read"}) {
-		t.Fatalf("initial tools = %v, want both servers' tools", names)
+	if len(initial) != 2 {
+		t.Fatalf("initial tools = %v", toolNames(initial))
+	}
+	discovered := map[string]string{}
+	for _, candidate := range initial {
+		ref, found, err := IdentifyTool(candidate)
+		if err != nil || !found {
+			t.Fatal(ref, found, err)
+		}
+		id, remote, isMCP := ref.MCP()
+		if !isMCP || remote.String() != "read" {
+			t.Fatalf("unexpected source: %v", ref)
+		}
+		discovered[id.Name().String()] = candidate.Definition().Name
+	}
+	if discovered["a_b"] != "a_b_read" || discovered["a.b"] == "" || discovered["a.b"] == discovered["a_b"] {
+		t.Fatalf("distinct sources lost their addressable discovery names: %v", discovered)
 	}
 	statuses := c.statuses()
 	if len(statuses) != 2 || statuses[0].State != mcpserver.ConnectionConnected ||

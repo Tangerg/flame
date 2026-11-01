@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
@@ -10,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -35,7 +35,9 @@ type toolEnvironment struct {
 	tools           toolset.Built
 	mcp             *mcp.Pool
 	memory          *pluginservices.Memory
+	skills          *workspace.Skills
 	skillLearning   *pluginservices.SkillLearning
+	plans           *sessions.PlanCoordinator
 	toolResults     *pluginservices.ToolResults
 	pluginCalls     *pluginservices.CommandCalls
 	callComposition *pluginservices.CallComposition
@@ -64,10 +66,9 @@ type toolEnvironmentDependencies struct {
 	approvalPolicy *approvals.RuntimePolicy
 	mcp            mcpEnvironment
 	goalReader     *goals.Reader
-	goalReporter   *goals.OutcomeReporter
-	plan           *sessions.PlanCoordinator
+	goalStore      goals.Store
 	skillStore     *skillauthoring.Store
-	skillProposals builtin.SkillProposalSubmitter
+	workspace      workspaceComposition
 	skillArchives  *workspace.SkillMaintenance
 }
 
@@ -93,6 +94,12 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	}
 	environment.admission = admission
 	commandCalls, err := pluginservices.NewCommandCalls(deps.framework.host, cfg.stores.Installations, cfg.stores.ProviderSelections, cfg.stores.PluginCompositions, mcpPool, commands, deps.publish)
+	if err != nil {
+		return environment, err
+	}
+	environment.plans, err = sessions.NewPlanCoordinator(sessions.PlanDependencies{
+		Store: cfg.stores.Plan, Now: time.Now, Invalidations: deps.publish, Author: commandCalls,
+	})
 	if err != nil {
 		return environment, err
 	}
@@ -145,9 +152,18 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	if err != nil {
 		return environment, fmt.Errorf("runtime: user skill source: %w", err)
 	}
+	reviews, err := pluginservices.NewSkillGovernance(commandCalls, deps.workspace.skillLibraries)
+	if err != nil {
+		return environment, err
+	}
+	skillSources := promptsource.SkillSources{Packages: deps.packageSkills, Discover: reviews.Discover}
+	environment.skills, err = workspace.NewSkills(deps.workspace.scope, promptsource.NewSkills(cfg.skillsUserDir, skillSources), deps.skillStore, reviews, deps.workspace.authoredWatch, deps.publish)
+	if err != nil {
+		return environment, err
+	}
 	environment.skillLearning, err = pluginservices.NewSkillLearning(pluginservices.SkillLearningConfig{
 		Commands: commandCalls, Callbacks: deps.callbacks, Utility: environment.utilityModel,
-		Conversation: deps.conversation, Source: skillSource, Proposals: deps.skillProposals, Archives: deps.skillArchives,
+		Conversation: deps.conversation, Source: skillSource, Proposals: reviews, Archives: deps.skillArchives,
 	})
 	if err != nil {
 		return environment, err
@@ -159,15 +175,17 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	buildConfig := toolset.BuildConfig{
 		Lifetime:      deps.lifetime,
 		UserHome:      cfg.userHome,
-		SkillsUserDir: cfg.skillsUserDir, PackageSkills: deps.packageSkills,
+		SkillsUserDir: cfg.skillsUserDir, SkillSources: skillSources,
 		CodeIntelligence: commandCalls,
-		Plan:             deps.plan,
+		GoalAvailable:    commandCalls.GoalAvailable,
+		PlanAvailable:    commandCalls.PlanAvailable,
+		Plan:             environment.plans,
 		Interrupt:        runinput.Require,
 		MCPToolDisabled:  deps.mcp.exposure.ToolDisabled,
 		RestoreMCP: func(ctx context.Context, refs []tool.Ref, activations []plugin.Activation) ([]toolcontract.Tool, func() error, error) {
 			return mcpPool.RestoreTools(ctx, refs, activations, prepareTool)
 		},
-		SkillProposals: deps.skillProposals,
+		SkillProposals: environment.skills,
 		// Opt-in per-command OS isolation for the shell tools (off by default).
 		SandboxShell:         cfg.sandboxShell,
 		SandboxReadOnlyPaths: cfg.sandboxReadOnlyPaths,
@@ -177,7 +195,10 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	buildConfig.ToolResults = cfg.stores.ToolResults
 	// create_goal is injected after Runs and the Driver exist.
 	buildConfig.GoalReader = deps.goalReader
-	buildConfig.GoalReporter = deps.goalReporter
+	buildConfig.GoalReporter, err = goals.NewOutcomeReporter(deps.goalStore, commandCalls)
+	if err != nil {
+		return environment, err
+	}
 	builtToolset, err := toolset.Build(buildConfig)
 	if err != nil {
 		return environment, fmt.Errorf("runtime: build tools: %w", err)

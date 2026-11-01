@@ -26,17 +26,48 @@ const TONES: Record<MCPServerSettings["status"], Tone> = {
   failed: "negative",
   disconnected: "neutral",
 };
-export function ServerRow({
-  context,
-  settings,
-  server,
-  t,
-}: {
+interface ServerRowProps {
   context: ComponentContext;
   settings: MCPSettings;
   server: MCPServerSettings;
   t: Translate;
-}) {
+}
+
+function ServerConnectionButton({
+  context,
+  settings,
+  server,
+  t,
+  signingIn,
+  running,
+  busy,
+}: ServerRowProps & { signingIn: boolean; running: boolean; busy: boolean }) {
+  if (!server.enabled && !signingIn) return null;
+  const needsSignIn = server.status === "needsAuth";
+  const label = needsSignIn
+    ? signingIn
+      ? "mcp.signingIn"
+      : "mcp.signIn"
+    : "mcp.reconnect";
+  return (
+    <Button
+      variant={needsSignIn ? "primary" : "outline"}
+      size="sm"
+      disabled={busy || signingIn}
+      pending={running || server.status === "connecting" || signingIn}
+      aria-label={t(`${label}.aria`, { server: server.id.name })}
+      onClick={() =>
+        void (needsSignIn
+          ? settings.authorize(context, server.id)
+          : settings.reconnect(context, server.id))
+      }
+    >
+      {t(label)}
+    </Button>
+  );
+}
+
+export function ServerRow({ context, settings, server, t }: ServerRowProps) {
   const state = useSyncExternalStore(settings.subscribe, settings.getSnapshot);
   const key = serverKey(server.id);
   const command = state.commands.get(key);
@@ -45,9 +76,6 @@ export function ServerRow({
   const panelId = useId();
   const authorization = state.authorizations.get(key);
   const signingIn = authorization?.status.type === "pending";
-  const authorizing = server.status === "needsAuth";
-  const connectionPending =
-    command?.phase === "running" || server.status === "connecting" || signingIn;
   return (
     <ListRow>
       <RecordHeading
@@ -77,35 +105,15 @@ export function ServerRow({
         }
         actions={
           <>
-            {(server.enabled || signingIn) && (
-              <Button
-                variant={authorizing ? "primary" : "outline"}
-                size="sm"
-                disabled={busy || signingIn}
-                pending={connectionPending}
-                aria-label={t(
-                  authorizing
-                    ? signingIn
-                      ? "mcp.signingIn.aria"
-                      : "mcp.signIn.aria"
-                    : "mcp.reconnect.aria",
-                  { server: server.id.name },
-                )}
-                onClick={() =>
-                  void (authorizing
-                    ? settings.authorize(context, server.id)
-                    : settings.reconnect(context, server.id))
-                }
-              >
-                {t(
-                  authorizing
-                    ? signingIn
-                      ? "mcp.signingIn"
-                      : "mcp.signIn"
-                    : "mcp.reconnect",
-                )}
-              </Button>
-            )}
+            <ServerConnectionButton
+              context={context}
+              settings={settings}
+              server={server}
+              t={t}
+              signingIn={signingIn}
+              running={command?.phase === "running"}
+              busy={busy}
+            />
             {server.id.origin.type === "user" && (
               <>
                 <Switch
@@ -134,6 +142,11 @@ export function ServerRow({
       />
       {server.status === "failed" && server.errorDetail && (
         <RecordBody>{t(`mcpStatus.${server.errorDetail}`)}</RecordBody>
+      )}
+      {authorization?.status.type === "unconfirmed" && (
+        <div role="status">
+          <RecordBody>{t("mcp.signIn.unconfirmed")}</RecordBody>
+        </div>
       )}
       {authorization?.status.type === "failed" && (
         <div role="alert">

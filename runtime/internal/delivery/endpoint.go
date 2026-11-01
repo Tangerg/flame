@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"iter"
 	"reflect"
 
@@ -251,6 +252,9 @@ func allowsEvent(ctx context.Context, event any) bool {
 }
 
 func validateOptions(method MethodMeta, options Options) *protocol.Failure {
+	if runs.ReservedCommandKey(options.IdempotencyKey) {
+		return protocol.NewFailure(protocol.ErrInvalidParams, "idempotency key belongs to a Runtime workflow")
+	}
 	if err := protocol.ValidateWireTree(options.RequestMeta); err != nil {
 		return protocol.InvalidParameters(err)
 	}

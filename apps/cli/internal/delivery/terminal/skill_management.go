@@ -189,7 +189,7 @@ type skillProposalDecision struct {
 func (s *skillScreens) PrepareSkillProposalDecision(identity string, approve bool) error {
 	identity = strings.TrimSpace(identity)
 	if identity == "" {
-		return errors.New("a proposal name or scope/name is required")
+		return errors.New("a proposal name, scope/name or scope/name@revision is required")
 	}
 	workspace := s.session.current.Workspace.Path
 	s.status.note("loading skill proposal " + identity)
@@ -233,7 +233,7 @@ func resolveSkillProposal(proposals []workspace.SkillProposal, identity string) 
 	case 1:
 		return matches[0], nil
 	default:
-		return workspace.SkillProposal{}, errors.New("skill proposal name is ambiguous; use project/name or user/name")
+		return workspace.SkillProposal{}, errors.New("skill proposal name is ambiguous; use scope/name@revision from /skill-proposals")
 	}
 }
 

@@ -243,7 +243,7 @@ func TestMCPToolListIncludesNameConflictDiagnostics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Data) != 1 || result.Data[0].ModelName != "a_b_c" || len(result.Data[0].NameConflicts) != 1 || !reflect.DeepEqual(result.Data[0].NameConflicts[0], wire) {
+	if len(result.Data) != 1 || result.Data[0].ModelName != ref.PublishedName(true) || len(result.Data[0].NameConflicts) != 1 || !reflect.DeepEqual(result.Data[0].NameConflicts[0], wire) {
 		t.Fatalf("tool diagnostics = %+v", result.Data)
 	}
 }

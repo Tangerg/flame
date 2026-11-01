@@ -1,0 +1,172 @@
+{
+  "protocol": "io.github.tangerg.qimu/portable/1",
+  "reference": "flame.goal-workflow.v1",
+  "composition": "selection",
+  "scope": "installation",
+  "methods": [
+    {
+      "name": "flame.goal-workflow/decide.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Decide a lifecycle transition for the captured objective or retain its current state.",
+      "input": {
+        "$defs": {
+          "goalworkflow.Request": {
+            "additionalProperties": false,
+            "properties": {
+              "current": {
+                "$ref": "#/$defs/goalworkflow.Value"
+              },
+              "explanation": {
+                "type": "string"
+              },
+              "objective": {
+                "type": "string"
+              },
+              "ordinal": {
+                "allOf": [
+                  {
+                    "maximum": 18446744073709551615,
+                    "minimum": 0
+                  }
+                ],
+                "type": "integer"
+              },
+              "outcome": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "signal": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "signal"
+            ],
+            "type": "object"
+          },
+          "goalworkflow.Value": {
+            "additionalProperties": false,
+            "properties": {
+              "explanation": {
+                "type": "string"
+              },
+              "objective": {
+                "type": "string"
+              },
+              "outcome": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "objective",
+              "status"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "current": {
+            "$ref": "#/$defs/goalworkflow.Value"
+          },
+          "explanation": {
+            "type": "string"
+          },
+          "objective": {
+            "type": "string"
+          },
+          "ordinal": {
+            "allOf": [
+              {
+                "maximum": 18446744073709551615,
+                "minimum": 0
+              }
+            ],
+            "type": "integer"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "signal": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "signal"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "goalworkflow.Decision": {
+            "additionalProperties": false,
+            "properties": {
+              "instructions": {
+                "type": "string"
+              },
+              "next": {
+                "$ref": "#/$defs/goalworkflow.Value"
+              },
+              "refusal": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "goalworkflow.Value": {
+            "additionalProperties": false,
+            "properties": {
+              "explanation": {
+                "type": "string"
+              },
+              "objective": {
+                "type": "string"
+              },
+              "outcome": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "objective",
+              "status"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "instructions": {
+            "type": "string"
+          },
+          "next": {
+            "$ref": "#/$defs/goalworkflow.Value"
+          },
+          "refusal": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -233,6 +233,7 @@ func (i *interactionSession) interactionCheckpointPayload(
 		metadata,
 		executionOptions(i.start.ModelSelection, i.start.Options),
 		manifests,
+		i.skillDiscoveryCommands(),
 		handoff,
 		i.modelObservers,
 		i.modelContexts,

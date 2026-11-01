@@ -1,6 +1,6 @@
 {
   "protocol": "io.github.tangerg.qimu/portable/1",
-  "reference": "flame.skill-learning.v1",
+  "reference": "flame.skill-learning.v2",
   "composition": "selection",
   "scope": "installation",
   "methods": [
@@ -63,15 +63,18 @@
       }
     },
     {
-      "name": "flame.skill-learning/mine.v1",
+      "name": "flame.skill-learning/mine.v2",
       "kind": "command",
       "target": "installation",
-      "description": "Apply learning cadence to a completed Run and return optional proposal advice using call-scoped history, current skill and model callbacks. Never publish or store active skills.",
+      "description": "Mine a completed Run using bounded collaborators. Commit an admitted proposal and its original mining receipt in the same transaction.",
       "input": {
         "$defs": {
           "skilllearning.Run": {
             "additionalProperties": false,
             "properties": {
+              "library": {
+                "type": "string"
+              },
               "sessionId": {
                 "type": "string"
               },
@@ -87,6 +90,7 @@
               }
             },
             "required": [
+              "library",
               "sessionId",
               "toolCalls"
             ],
@@ -96,6 +100,9 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "library": {
+            "type": "string"
+          },
           "sessionId": {
             "type": "string"
           },
@@ -111,6 +118,7 @@
           }
         },
         "required": [
+          "library",
           "sessionId",
           "toolCalls"
         ],
@@ -130,6 +138,9 @@
           "skilllearning.Proposal": {
             "additionalProperties": false,
             "properties": {
+              "previous": {
+                "type": "string"
+              },
               "revises": {
                 "type": "boolean"
               },
@@ -171,6 +182,630 @@
             "$ref": "#/$defs/skilllearning.Proposal"
           }
         },
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.skills/approve.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Record a human decision for the current proposal and retain its original publication permit.",
+      "input": {
+        "$defs": {
+          "skilllearning.ReviewRef": {
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "command"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "skilllearning.Permit": {
+            "additionalProperties": false,
+            "properties": {
+              "decision": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "decision"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "decision": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.skills/capture.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Record an interaction's original Skill source choices for exact receipt recovery.",
+      "input": {
+        "$defs": {
+          "skilllearning.Candidate": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "scope": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "source",
+              "scope"
+            ],
+            "type": "object"
+          },
+          "skilllearning.Candidates": {
+            "additionalProperties": false,
+            "properties": {
+              "items": {
+                "items": {
+                  "$ref": "#/$defs/skilllearning.Candidate"
+                },
+                "type": "array"
+              },
+              "library": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "library",
+              "items"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/skilllearning.Candidate"
+            },
+            "type": "array"
+          },
+          "library": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "library",
+          "items"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "skilllearning.Catalog": {
+            "additionalProperties": false,
+            "properties": {
+              "entries": {
+                "items": {
+                  "$ref": "#/$defs/skilllearning.Choice"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "entries"
+            ],
+            "type": "object"
+          },
+          "skilllearning.Choice": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "source"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/$defs/skilllearning.Choice"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.skills/confirm.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Close the original publication after the authorized filesystem owner confirms publication or a definite precondition conflict.",
+      "input": {
+        "$defs": {
+          "skilllearning.Permit": {
+            "additionalProperties": false,
+            "properties": {
+              "decision": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "decision"
+            ],
+            "type": "object"
+          },
+          "skilllearning.Publication": {
+            "additionalProperties": false,
+            "properties": {
+              "permit": {
+                "$ref": "#/$defs/skilllearning.Permit"
+              },
+              "proposal": {
+                "$ref": "#/$defs/skilllearning.ReviewRef"
+              },
+              "published": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "proposal",
+              "permit",
+              "published"
+            ],
+            "type": "object"
+          },
+          "skilllearning.ReviewRef": {
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "permit": {
+            "$ref": "#/$defs/skilllearning.Permit"
+          },
+          "proposal": {
+            "$ref": "#/$defs/skilllearning.ReviewRef"
+          },
+          "published": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "proposal",
+          "permit",
+          "published"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.skills/discover.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Select among the host-admitted Skill readers for a human catalog.",
+      "input": {
+        "$defs": {
+          "skilllearning.Candidate": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "scope": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "source",
+              "scope"
+            ],
+            "type": "object"
+          },
+          "skilllearning.Candidates": {
+            "additionalProperties": false,
+            "properties": {
+              "items": {
+                "items": {
+                  "$ref": "#/$defs/skilllearning.Candidate"
+                },
+                "type": "array"
+              },
+              "library": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "library",
+              "items"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/skilllearning.Candidate"
+            },
+            "type": "array"
+          },
+          "library": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "library",
+          "items"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "skilllearning.Catalog": {
+            "additionalProperties": false,
+            "properties": {
+              "entries": {
+                "items": {
+                  "$ref": "#/$defs/skilllearning.Choice"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "entries"
+            ],
+            "type": "object"
+          },
+          "skilllearning.Choice": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "source"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/$defs/skilllearning.Choice"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.skills/propose.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Stage a reviewed library draft under its immutable originating command.",
+      "input": {
+        "$defs": {
+          "skilllearning.Draft": {
+            "additionalProperties": false,
+            "properties": {
+              "library": {
+                "type": "string"
+              },
+              "origin": {
+                "type": "string"
+              },
+              "previous": {
+                "type": "string"
+              },
+              "revises": {
+                "type": "boolean"
+              },
+              "scope": {
+                "type": "string"
+              },
+              "skill": {
+                "$ref": "#/$defs/skilllearning.Skill"
+              },
+              "sourceSession": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "library",
+              "scope",
+              "skill",
+              "origin",
+              "sourceSession",
+              "revises",
+              "previous"
+            ],
+            "type": "object"
+          },
+          "skilllearning.Skill": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "instructions": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "description",
+              "instructions"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "library": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "previous": {
+            "type": "string"
+          },
+          "revises": {
+            "type": "boolean"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "skill": {
+            "$ref": "#/$defs/skilllearning.Skill"
+          },
+          "sourceSession": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "library",
+          "scope",
+          "skill",
+          "origin",
+          "sourceSession",
+          "revises",
+          "previous"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "skilllearning.ReviewRef": {
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "command"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.skills/reject.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Withdraw an exact pending proposal before approval.",
+      "input": {
+        "$defs": {
+          "skilllearning.ReviewRef": {
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "command"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.skills/reviews.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "List outstanding proposal commands in the admitted libraries, including publications awaiting confirmation.",
+      "input": {
+        "$defs": {
+          "skilllearning.Libraries": {
+            "additionalProperties": false,
+            "properties": {
+              "project": {
+                "type": "string"
+              },
+              "user": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "project",
+              "user"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "user"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "skilllearning.Queue": {
+            "additionalProperties": false,
+            "properties": {
+              "proposals": {
+                "items": {
+                  "$ref": "#/$defs/skilllearning.ReviewRef"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "proposals"
+            ],
+            "type": "object"
+          },
+          "skilllearning.ReviewRef": {
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "proposals": {
+            "items": {
+              "$ref": "#/$defs/skilllearning.ReviewRef"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "proposals"
+        ],
         "type": "object"
       }
     }

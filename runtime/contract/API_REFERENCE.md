@@ -57,10 +57,10 @@ Protocol `2026-10-30.2` · 105 methods
 | `mcp.tools.exposure` | query | unary | none | none | none | — | `mcp` | `capability_not_negotiated` |
 | `mcp.tools.setExposure` | command | unary | replayResponse | none | none | — | `mcp` | `capability_not_negotiated` |
 | `mcp.servers.list` | query | unary | none | none | none | — | `mcp` | `capability_not_negotiated` |
-| `mcp.servers.create` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_already_exists`, `capability_not_negotiated` |
+| `mcp.servers.create` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_already_exists`, `plugin_unavailable`, `capability_not_negotiated` |
 | `mcp.servers.update` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `capability_not_negotiated` |
 | `mcp.servers.delete` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `capability_not_negotiated` |
-| `mcp.servers.test` | query | unary | none | none | none | — | `mcp` | `capability_not_negotiated` |
+| `mcp.servers.test` | query | unary | none | none | none | — | `mcp` | `plugin_unavailable`, `capability_not_negotiated` |
 | `mcp.tools.list` | query | unary | none | none | none | — | `mcp` | `capability_not_negotiated` |
 | `mcp.servers.reconnect` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
 | `mcp.authorizationAttempts.create` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
@@ -98,11 +98,11 @@ Protocol `2026-10-30.2` · 105 methods
 | `approval.listRules` | query | unary | none | none | none | — | — | `session_not_found` |
 | `approval.forgetRule` | command | unary | replayResponse | none | none | — | — | — |
 | `goals.start` | command | unary | replayResponse | none | none | — | `goals` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `capability_not_negotiated` |
-| `goals.update` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
+| `goals.update` | command | unary | replayResponse | none | none | — | `goals` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `capability_not_negotiated` |
 | `goals.clear` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
 | `goals.get` | query | unary | none | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
-| `goals.stop` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
-| `goals.resume` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
+| `goals.stop` | command | unary | replayResponse | none | none | — | `goals` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `capability_not_negotiated` |
+| `goals.resume` | command | unary | replayResponse | none | none | — | `goals` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `capability_not_negotiated` |
 | `providers.list` | query | unary | none | none | none | — | — | `plugin_unavailable`, `plugin_stale` |
 | `providers.update` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale` |
 | `providers.test` | query | unary | none | none | none | — | — | `plugin_unavailable`, `plugin_stale` |
@@ -115,7 +115,7 @@ Protocol `2026-10-30.2` · 105 methods
 | `tools.invoke` | command | unary | replayResponse | none | none | — | — | `workspace_unavailable`, `path_outside_root` |
 | `usage.session` | query | unary | none | none | none | — | — | `session_not_found` |
 | `usage.summary` | query | unary | none | none | none | — | — | — |
-| `feedback.create` | command | unary | replayResponse | none | none | — | — | — |
+| `feedback.create` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale` |
 
 ## HTTP endpoints
 
@@ -381,6 +381,7 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `succeeded` | — | — |
 | `failed` | `error` | — |
 | `canceled` | — | — |
+| `unconfirmed` | — | — |
 
 ### `PluginRendererSelector`
 
@@ -607,8 +608,8 @@ TypeScript validator from this single registry projection.
 | `UpdateSessionRequest` | `model` | `maxLength(256)` |
 | `UpdateSessionRequest` | `reasoningEffort` | `identity` |
 | `UpdateSessionRequest` | `reasoningEffort` | `maxLength(32)` |
-| `SessionTrajectory` | `schemaVersion` | `minimum(3)` |
-| `SessionTrajectory` | `schemaVersion` | `maximum(3)` |
+| `SessionTrajectory` | `schemaVersion` | `minimum(4)` |
+| `SessionTrajectory` | `schemaVersion` | `maximum(4)` |
 | `ArtifactSession` | `id` | `nonEmpty` |
 | `ArtifactSession` | `id` | `identity` |
 | `ArtifactSession` | `id` | `maxLength(256)` |
@@ -935,12 +936,12 @@ TypeScript validator from this single registry projection.
 | `SessionUsageRequest` | `sessionId` | `identity` |
 | `SessionUsageRequest` | `sessionId` | `maxLength(256)` |
 | `UsageSummaryRequest` | `sinceDays` | `positive` |
-| `FeedbackEntry` | `sessionId` | `identity` |
-| `FeedbackEntry` | `sessionId` | `maxLength(256)` |
-| `FeedbackEntry` | `runId` | `identity` |
-| `FeedbackEntry` | `runId` | `maxLength(256)` |
-| `FeedbackEntry` | `itemId` | `identity` |
-| `FeedbackEntry` | `itemId` | `maxLength(256)` |
+| `SessionAnnotation` | `sessionId` | `identity` |
+| `SessionAnnotation` | `sessionId` | `maxLength(256)` |
+| `SessionAnnotation` | `runId` | `identity` |
+| `SessionAnnotation` | `runId` | `maxLength(256)` |
+| `SessionAnnotation` | `itemId` | `identity` |
+| `SessionAnnotation` | `itemId` | `maxLength(256)` |
 | `FeedbackRequest` | `sessionId` | `identity` |
 | `FeedbackRequest` | `sessionId` | `maxLength(256)` |
 | `FeedbackRequest` | `runId` | `identity` |
@@ -1011,6 +1012,7 @@ TypeScript validator from this single registry projection.
 | `PluginClientComponent` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginClientComponent` | `contribution` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginClientComponent` | `material` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
+| `PluginClientComponent` | `settingsIntent` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginTerminalView` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginTerminalView` | `contribution` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginTerminalView` | `title` | `nonEmpty` |

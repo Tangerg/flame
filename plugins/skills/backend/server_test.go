@@ -119,8 +119,18 @@ func TestLearningReceiptsSurviveRestartWithoutRepeatingModelCalls(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
+			admitMethod, err := skilllearning.AdmitMethod()
+			if err != nil {
+				t.Fatal(err)
+			}
+			admit, err := qimumcp.NewCallback(admitMethod, nil, func(_ context.Context, cmd qimumcp.Command[skilllearning.Proposal]) (skilllearning.Admission, error) {
+				return skilllearning.Admission{Accepted: cmd.Input.Skill.Name == "run-tests"}, nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
 			ctx := learningInvocation(t, "maintenance")
-			grant, release, err := callbacks.Open(ctx, session, qimumcp.CallbackLimits{MaxRequestBytes: skilllearning.MaxCallbackBytes, MaxResponseBytes: skilllearning.MaxCallbackBytes}, model, history)
+			grant, release, err := callbacks.Open(ctx, session, qimumcp.CallbackLimits{MaxRequestBytes: skilllearning.MaxCallbackBytes, MaxResponseBytes: skilllearning.MaxCallbackBytes}, model, history, admit)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -129,7 +139,7 @@ func TestLearningReceiptsSurviveRestartWithoutRepeatingModelCalls(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			input, err := jsonvalue.Encode(skilllearning.Run{SessionID: "ses_receipt", ToolCalls: 8})
+			input, err := jsonvalue.Encode(skilllearning.Run{Library: "frozen-user-library", SessionID: "ses_receipt", ToolCalls: 8})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -167,7 +177,7 @@ func TestLearningReceiptsSurviveRestartWithoutRepeatingModelCalls(t *testing.T) 
 			if modelCalls.Load() != 1 {
 				t.Fatalf("replayed model calls = %d", modelCalls.Load())
 			}
-			changed, err := jsonvalue.Encode(skilllearning.Run{SessionID: "ses_other", ToolCalls: 8})
+			changed, err := jsonvalue.Encode(skilllearning.Run{Library: "frozen-user-library", SessionID: "ses_other", ToolCalls: 8})
 			if err != nil {
 				t.Fatal(err)
 			}

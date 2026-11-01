@@ -25,6 +25,8 @@ export const es: Record<string, string> = {
   "mcp.transport.http": "Streamable HTTP",
   "mcp.signIn": "Iniciar sesión",
   "mcp.signingIn": "Iniciando sesión…",
+  "mcp.signIn.unconfirmed":
+    "No se pudo confirmar el resultado del último inicio de sesión tras reiniciar.",
   "mcp.signIn.aria": "Iniciar sesión en {{server}}",
   "mcp.signingIn.aria": "Iniciando sesión en {{server}}…",
   "mcp.reconnect": "Reconectar",

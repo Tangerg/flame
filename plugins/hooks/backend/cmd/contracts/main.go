@@ -2,14 +2,13 @@ package main
 
 import (
 	json "encoding/json/v2"
+	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
 	"log"
 	"os"
-
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
 )
 
 func main() {
-	contract, err := hookprovider.Contract()
+	contract, err := hookmcp.Contract()
 	if err == nil {
 		err = json.MarshalWrite(os.Stdout, contract.Descriptor())
 	}

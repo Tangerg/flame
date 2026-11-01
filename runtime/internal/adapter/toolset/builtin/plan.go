@@ -14,6 +14,7 @@ import (
 // planStateReader supplies the canonical session Plan approved by exit_plan_mode.
 type planStateReader interface {
 	State(ctx context.Context, sessionID string) (plandomain.Current, error)
+	Review(context.Context, plandomain.State) (string, error)
 }
 
 // planReplacer executes the application use case behind set_plan.
@@ -36,7 +37,7 @@ type planEnterPolicy interface {
 // planExitPolicy reads one session's permission mode and ends its Plan mode.
 type planExitPolicy interface {
 	Mode(ctx context.Context, sessionID string) (approval.Mode, error)
-	ExitPlanMode(ctx context.Context, sessionID string) (restored approval.Mode, changed bool, err error)
+	ExitPlanMode(ctx context.Context, sessionID string, revision uint64) (restored approval.Mode, changed bool, err error)
 }
 
 // PlanModePolicy owns both transitions of the same session Plan-mode lifecycle.
@@ -55,8 +56,8 @@ type PlanTools struct {
 // BuildPlan constructs every available Plan tool while preserving the family
 // invariant that exit_plan_mode approves the same application state replaced by
 // set_plan.
-func BuildPlan(modes PlanModePolicy, plans PlanUseCases, interrupt runs.InterruptFunc) (PlanTools, error) {
-	enter, err := newEnter(modes)
+func BuildPlan(modes PlanModePolicy, plans PlanUseCases, available func(context.Context) (bool, error), interrupt runs.InterruptFunc) (PlanTools, error) {
+	enter, err := newEnter(modes, available)
 	if err != nil {
 		return PlanTools{}, fmt.Errorf("plan: build enter_plan_mode: %w", err)
 	}

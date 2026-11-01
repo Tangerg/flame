@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"reflect"
 	"slices"
 	"testing"
@@ -913,7 +914,7 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 		t.Fatalf("seed goal session: %v", insertErr)
 	}
 	selection := testsupport.MustModelSelection("provider", "model")
-	g, err := goal.New("ses_goal", "finish", selection, run.Capabilities{}, "lease_goal", created)
+	g, err := goaltest.New("ses_goal", "finish", selection, run.Capabilities{}, "lease_goal", created)
 	if err != nil {
 		t.Fatalf("new goal: %v", err)
 	}
@@ -2580,7 +2581,7 @@ func questionCapabilities() run.Capabilities {
 	return run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}}
 }
 
-func mustGoalRuns(tb testing.TB, store goals.Store) *goals.RunRecorder {
+func mustGoalRuns(tb testing.TB, store goals.RunEvidence) *goals.RunRecorder {
 	tb.Helper()
 	recorder, err := goals.NewRunRecorder(store)
 	if err != nil {

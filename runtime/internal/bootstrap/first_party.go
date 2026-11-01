@@ -4,12 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	"io"
 	"os"
 	"path/filepath"
 	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
+	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
+	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
@@ -24,13 +28,17 @@ func initializeFirstPartyPlugins(ctx context.Context, stores *persistence.Bundle
 	return plugins.Initialize(ctx, host, stores.Installations, packages, func() ([]string, error) {
 		return distributionSources(ctx, directory)
 	}, stores.ProviderSelections, []plugins.DefaultProvider{
+		{Role: goalworkflow.Reference, Package: "flame.goals", Contribution: "goal-workflow"},
+		{Role: planworkflow.Reference, Package: "flame.plans", Contribution: "plan-workflow"},
+		{Role: pluginsdk.FeedbackReference, Package: "flame.feedback", Contribution: "feedback"},
 		{Role: pluginsdk.SessionMarkdownReference, Package: "flame.trajectory", Contribution: "markdown-export"},
 		{Role: extension.ModelProviderContract, Package: "flame.providers", Contribution: "model-provider"},
+		{Role: mcpconnector.Reference, Package: "flame.mcp", Contribution: mcpconnector.Export},
 		{Role: hookprovider.Reference, Package: "flame.hooks", Contribution: "hook-provider"},
 		{Role: "memory", Package: "flame.memory", Contribution: "memory-provider"},
 		{Role: "schedules", Package: "flame.schedules", Contribution: "schedules-provider"},
 		{Role: "flame.code-intelligence.v1", Package: "flame.codeintel", Contribution: "code-intelligence"},
-		{Role: "flame.skill-learning.v1", Package: "flame.skills", Contribution: "skill-learning"},
+		{Role: skilllearning.Reference, Package: "flame.skills", Contribution: "skill-learning"},
 	})
 }
 

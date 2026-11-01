@@ -7,126 +7,58 @@ import (
 
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
-	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
+	"strings"
 )
 
-func TestProjectSkillsWithEmptyUserLibrary(t *testing.T) {
-	projectRoot := t.TempDir()
-	scope, err := workspaceapp.NewScope(projectRoot, "", workspaceadapter.Resolver{})
+func TestPublishUsesOnlyAdmittedScopedLibrary(t *testing.T) {
+	user := t.TempDir()
+	project := t.TempDir()
+	store, err := skillauthoring.NewStore(user, skills.ScopeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
-	userRoot := t.TempDir()
-	store, err := skillauthoring.NewStore(userRoot, skills.ScopeUser)
+	libraries, err := workspaceadapter.NewSkillLibraries(store, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	libraries, err := workspaceadapter.NewSkillLibraries(store)
+	for _, scope := range []skills.Scope{skills.ScopeProject, skills.ScopeUser} {
+		p := proposal(scope, "verified-name")
+		base, err := libraries.Preimage(t.Context(), project, p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := libraries.Publish(t.Context(), project, p, base, strings.Repeat("c", 64)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	assertFile(t, filepath.Join(user, "verified-name", "SKILL.md"))
+	assertFile(t, filepath.Join(promptsource.ProjectSkillDir(project), "verified-name", "SKILL.md"))
+}
+func TestPublishRejectsLibraryOutsideProject(t *testing.T) {
+	user := t.TempDir()
+	project := t.TempDir()
+	outside := t.TempDir()
+	store, err := skillauthoring.NewStore(user, skills.ScopeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
-	watcher, err := workspaceadapter.NewAuthoredWatcher(userRoot, filepath.Join(userRoot, "skills"))
+	libraries, err := workspaceadapter.NewSkillLibraries(store, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	observations, err := workspaceapp.NewAuthoredWatch(scope, workspaceadapter.Resolver{}, watcher)
-	if err != nil {
+	lib := promptsource.ProjectSkillDir(project)
+	if err := os.MkdirAll(filepath.Dir(lib), 0700); err != nil {
 		t.Fatal(err)
 	}
-	useCases, err := workspaceapp.NewSkills(scope, promptsource.NewSkills(userRoot, nil), store, libraries, observations, nil)
-	if err != nil {
-		t.Fatal(err)
+	if err := os.Symlink(outside, lib); err != nil {
+		t.Skip(err)
 	}
-	if managed, err := useCases.Managed(t.Context()); err != nil || len(managed) != 0 {
-		t.Fatalf("Managed = (%v, %v), want empty user library", managed, err)
-	}
-	ref, err := useCases.SubmitProposal(t.Context(), projectRoot, proposal(skills.ScopeProject, "project-check"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	pending, err := useCases.Proposals(t.Context(), projectRoot)
-	if err != nil || len(pending) != 1 || pending[0].Ref != ref {
-		t.Fatalf("Proposals = (%+v, %v), want submitted project proposal", pending, err)
-	}
-	if err := useCases.ApproveProposal(t.Context(), projectRoot, ref); err != nil {
-		t.Fatal(err)
-	}
-	visible, err := useCases.List(t.Context(), projectRoot)
-	if err != nil || len(visible.Skills) != 1 || visible.Skills[0].Name != ref.Name || visible.Skills[0].Source.Scope() != skills.ScopeProject {
-		t.Fatalf("List = (%+v, %v), want approved project skill", visible, err)
+	if _, err := libraries.Preimage(t.Context(), project, proposal(skills.ScopeProject, "escaped")); err == nil {
+		t.Fatal("project symlink escaped trusted root")
 	}
 }
-
-func TestSkillLibrariesRouteProposalsByScope(t *testing.T) {
-	userRoot := filepath.Join(t.TempDir(), "user-skills")
-	projectRoot := filepath.Join(t.TempDir(), "project")
-	store, err := skillauthoring.NewStore(userRoot, skills.ScopeUser)
-	if err != nil {
-		t.Fatal(err)
-	}
-	libraries, err := workspaceadapter.NewSkillLibraries(store)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	projectProposal := proposal(skills.ScopeProject, "project-check")
-	projectRef, _, err := libraries.SubmitProposal(t.Context(), projectRoot, projectProposal)
-	if err != nil {
-		t.Fatalf("SubmitProposal(project): %v", err)
-	}
-	userProposal := proposal(skills.ScopeUser, "personal-check")
-	userRef, _, err := libraries.SubmitProposal(t.Context(), projectRoot, userProposal)
-	if err != nil {
-		t.Fatalf("SubmitProposal(user): %v", err)
-	}
-
-	got, err := libraries.ListProposals(t.Context(), projectRoot)
-	if err != nil {
-		t.Fatalf("ListProposals: %v", err)
-	}
-	if len(got) != 2 || got[0].Ref != projectRef || got[1].Ref != userRef {
-		t.Fatalf("ListProposals = %+v; want project then user", got)
-	}
-
-	if _, err := libraries.ApproveProposal(t.Context(), projectRoot, projectRef); err != nil {
-		t.Fatalf("ApproveProposal(project): %v", err)
-	}
-	if _, err := libraries.ApproveProposal(t.Context(), projectRoot, userRef); err != nil {
-		t.Fatalf("ApproveProposal(user): %v", err)
-	}
-	assertFile(t, filepath.Join(promptsource.ProjectSkillDir(projectRoot), projectRef.Name, "SKILL.md"))
-	assertFile(t, filepath.Join(userRoot, userRef.Name, "SKILL.md"))
-}
-
-func TestSkillLibrariesRejectProposalFromItsScopedStore(t *testing.T) {
-	userRoot := filepath.Join(t.TempDir(), "user-skills")
-	projectRoot := filepath.Join(t.TempDir(), "project")
-	store, err := skillauthoring.NewStore(userRoot, skills.ScopeUser)
-	if err != nil {
-		t.Fatal(err)
-	}
-	libraries, err := workspaceadapter.NewSkillLibraries(store)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ref, _, err := libraries.SubmitProposal(t.Context(), projectRoot, proposal(skills.ScopeProject, "throwaway"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, rejectProposalErr := libraries.RejectProposal(t.Context(), projectRoot, ref); rejectProposalErr != nil {
-		t.Fatalf("RejectProposal: %v", rejectProposalErr)
-	}
-	got, err := libraries.ListProposals(t.Context(), projectRoot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(got) != 0 {
-		t.Fatalf("rejected proposal still listed: %+v", got)
-	}
-}
-
 func proposal(scope skills.Scope, name string) skills.Proposal {
 	return skills.Proposal{
 		Scope:        scope,
@@ -145,7 +77,7 @@ func assertFile(t *testing.T, path string) {
 }
 
 func TestSkillLibrariesRequireUserStore(t *testing.T) {
-	if libraries, err := workspaceadapter.NewSkillLibraries(nil); err == nil || libraries != nil {
+	if libraries, err := workspaceadapter.NewSkillLibraries(nil, t.TempDir()); err == nil || libraries != nil {
 		t.Fatalf("NewSkillLibraries = (%v, %v), want incomplete construction rejected", libraries, err)
 	}
 }

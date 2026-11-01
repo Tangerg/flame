@@ -62,3 +62,11 @@ func SessionMarkdownContract() (*portable.Capability, error) {
 	}
 	return portable.NewCapability(portable.CapabilityConfig{Reference: SessionMarkdownReference, Composition: portable.Selection, Scope: string(extension.ComponentScopeSession)}, method.Descriptor())
 }
+
+// Both ends reject empty frames; the aggregate bound also applies to an arbitrarily long stream of valid short frames.
+func ValidateRenderedChunk(previous, size int) error {
+	if previous < 0 || size <= 0 || size > SessionDocumentChunkBytes || size > protocol.MaximumSessionArtifactBytes-previous {
+		return errors.New("session export: invalid rendered chunk")
+	}
+	return nil
+}

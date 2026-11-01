@@ -620,6 +620,55 @@ func TestSessionImportRejectsAFailedRunWithoutItsFailure(t *testing.T) {
 // session's, because a restore is a new commit of that projection. Restoring it at
 // a lower number would leave a client that had already folded revision N ignoring
 // the imported value as stale.
+func TestSessionArchiveDistinguishesUnknownAndExplicitlyEmptyPlan(t *testing.T) {
+	api, rt := rollbackHarness(t)
+	ctx := t.Context()
+	ses, err := insertSessionFixture(ctx, rt.sess, "unwritten", t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	archive := func() protocol.SessionArtifact {
+		t.Helper()
+		response, err := api.ExportSession(ctx, protocol.ExportSessionRequest{SessionID: ses.ID()})
+		if err != nil {
+			t.Fatal(err)
+		}
+		encoded, err := json.Marshal(response.Artifact)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var restored protocol.SessionArtifact
+		if err := json.Unmarshal(encoded, &restored); err != nil {
+			t.Fatal(err)
+		}
+		return restored
+	}
+	restore := func(snapshot protocol.SessionArtifact) {
+		t.Helper()
+		if _, err := api.ImportSession(ctx, protocol.ImportSessionRequest{Artifact: snapshot}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	unknown := archive()
+	if unknown.Plan != nil {
+		t.Fatal("unwritten Plan was exported as an explicit clear")
+	}
+	if err := saveTestPlan(ctx, rt.plan, ses.ID(), []plan.Step{{Description: "retain me", Status: plan.StatusPending}}); err != nil {
+		t.Fatal(err)
+	}
+	restore(unknown)
+	current, err := rt.plan.State(ctx, ses.ID())
+	if err != nil || len(current.Steps()) != 1 {
+		t.Fatalf("unknown restore changed destination Plan: %+v %v", current, err)
+	}
+	empty := unknown
+	empty.Plan = []protocol.PlanStep{}
+	restore(empty)
+	if archived := archive(); archived.Plan == nil || len(archived.Plan) != 0 {
+		t.Fatalf("explicit clear lost on re-export: %#v", archived.Plan)
+	}
+}
+
 func TestSessionExportImportCarriesThePlanForward(t *testing.T) {
 	s, rt := rollbackHarness(t)
 	ctx := t.Context()

@@ -1,21 +1,19 @@
 package skillauthoring_test
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
-	skillspec "github.com/Tangerg/scope/skills"
 )
 
 const (
-	proposalSubdir = "_proposals"
-	archiveSubdir  = "_archive"
+	archiveSubdir = "_archive"
 )
 
 func newStore(t *testing.T, root string, scope skills.Scope) *skillauthoring.Store {
@@ -46,92 +44,24 @@ func TestStoreRequiresLibraryRootAndScope(t *testing.T) {
 	}
 	for _, scope := range []skills.Scope{skills.ScopeUser, skills.ScopeProject} {
 		store := newStore(t, filepath.Join(t.TempDir(), "skills"), scope)
-		proposals, err := store.ListProposals(t.Context())
+		proposals, err := store.List(t.Context())
 		if err != nil || len(proposals) != 0 {
 			t.Fatalf("empty %s library = (%+v, %v), want an empty proposal list", scope, proposals, err)
 		}
 	}
 }
 
-func TestSubmitProposalThenApproveProposal(t *testing.T) {
-	root := t.TempDir()
-	store := newStore(t, root, skills.ScopeUser)
-	proposal := skills.Proposal{
-		Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser,
-		Name:         "git-bisect-helper",
-		Description:  "Walk a git bisect to find a regression; use it when a test started failing.",
-		Instructions: "# Steps\n1. `git bisect start`\n2. mark good/bad\n",
-	}
-
-	ref, submitted, err := store.SubmitProposal(t.Context(), proposal)
+func publish(t *testing.T, store *skillauthoring.Store, p skills.Proposal) ([]string, error) {
+	t.Helper()
+	base, err := store.Preimage(t.Context(), p)
 	if err != nil {
-		t.Fatalf("SubmitProposal: %v", err)
+		return nil, err
 	}
-	if len(submitted) != 1 || submitted[0] != filepath.Join(root, "_proposals", ref.Name, skillspec.SkillFile) {
-		t.Fatalf("SubmitProposal identities = %v", submitted)
-	}
-	if duplicate, replayed, submitProposalErr := store.SubmitProposal(t.Context(), proposal); submitProposalErr != nil || duplicate != ref || len(replayed) != 0 {
-		t.Fatalf("replayed SubmitProposal = (%+v, %v, %v), want original ref and no mutation", duplicate, replayed, submitProposalErr)
-	}
-	// The proposal is under _proposals (invisible to the read-only source) — not active.
-	if _, statErr := os.Stat(filepath.Join(root, "_proposals", ref.Name, "SKILL.md")); statErr != nil {
-		t.Fatalf("proposal not written: %v", statErr)
-	}
-	if _, statErr := os.Stat(filepath.Join(root, proposal.Name, "SKILL.md")); !os.IsNotExist(statErr) {
-		t.Fatal("an unapproved proposal must not appear in the active set")
-	}
-
-	approved, err := store.ApproveProposal(t.Context(), ref)
-	if err != nil {
-		t.Fatalf("ApproveProposal: %v", err)
-	}
-	if len(approved) != 2 {
-		t.Fatalf("ApproveProposal identities = %v, want proposal and active files", approved)
-	}
-	// Now active, and the proposal is gone.
-	if _, statErr := os.Stat(filepath.Join(root, "_proposals", ref.Name)); !os.IsNotExist(statErr) {
-		t.Fatal("approval should remove the proposal")
-	}
-
-	library, err := os.OpenRoot(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := library.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-	source, err := skillspec.NewDirectoryRepository(library, skillspec.RepositoryConfig{})
-	if err != nil {
-		t.Fatalf("NewDirectoryRepository: %v", err)
-	}
-	summaries, err := source.List(t.Context())
-	if err != nil {
-		t.Fatalf("List: %v", err)
-	}
-	if len(summaries) != 1 || summaries[0].Name != proposal.Name {
-		t.Fatalf("approved skill not discoverable: %+v", summaries)
-	}
-	loaded, err := source.Load(t.Context(), proposal.Name)
-	if err != nil {
-		t.Fatalf("Load approved skill: %v", err)
-	}
-	if loaded.Description != proposal.Description {
-		t.Fatalf("loaded description = %q, want %q", loaded.Description, proposal.Description)
-	}
+	return store.Publish(t.Context(), p, base, fmt.Sprintf("%x", sha256.Sum256([]byte(p.Name+" "+p.Instructions))), t.TempDir())
 }
-
 func approve(t *testing.T, store *skillauthoring.Store, name string) {
 	t.Helper()
-	d := skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: name, Description: "A description that is long enough to validate.", Instructions: "do the thing"}
-	ref, _, err := store.SubmitProposal(t.Context(), d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := store.ApproveProposal(t.Context(), ref); err != nil {
-		t.Fatal(err)
-	}
+	installActive(t, store, name, "Follow the approved instructions.")
 }
 
 func lifecycleOf(entries []skills.Entry, name string) (skills.Lifecycle, bool) {
@@ -228,122 +158,6 @@ func TestArchiveMissingErrors(t *testing.T) {
 	}
 }
 
-func TestApproveProposalMissingProposalErrors(t *testing.T) {
-	store := newStore(t, t.TempDir(), skills.ScopeUser)
-	ref := skills.NewProposalRef(skills.ScopeUser, "never-proposed", []byte("missing"))
-	if _, err := store.ApproveProposal(t.Context(), ref); err == nil {
-		t.Fatal("promoting a nonexistent proposal must error")
-	}
-}
-
-func TestRejectProposal(t *testing.T) {
-	root := t.TempDir()
-	store := newStore(t, root, skills.ScopeUser)
-	proposal := skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: "throwaway", Description: "A description long enough to pass validation.", Instructions: "instructions"}
-	ref, _, err := store.SubmitProposal(t.Context(), proposal)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := store.RejectProposal(t.Context(), ref); err != nil {
-		t.Fatalf("RejectProposal: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(root, "_proposals", ref.Name)); !os.IsNotExist(err) {
-		t.Fatal("reject should remove the proposal dir")
-	}
-}
-
-func TestSubmitProposalRejectsInvalid(t *testing.T) {
-	store := newStore(t, t.TempDir(), skills.ScopeUser)
-	// Invalid name (uppercase / spaces) is refused before anything is written.
-	if _, _, err := store.SubmitProposal(t.Context(), skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: "Bad Name", Description: "desc that is long enough", Instructions: "b"}); err == nil {
-		t.Fatal("invalid skill name must be rejected")
-	}
-}
-
-func TestSameNameProposalSupersessionKeepsCurrentApprovedBytes(t *testing.T) {
-	root := t.TempDir()
-	store := newStore(t, root, skills.ScopeUser)
-	first := skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: "shared-name", Description: "The first independently approved skill version.", Instructions: "first instructions"}
-	second := skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: "shared-name", Description: "The second independently approved skill version.", Instructions: "second instructions"}
-
-	firstRef, _, err := store.SubmitProposal(t.Context(), first)
-	if err != nil {
-		t.Fatalf("save first proposal: %v", err)
-	}
-	secondRef, _, err := store.SubmitProposal(t.Context(), second)
-	if err != nil {
-		t.Fatalf("save second proposal: %v", err)
-	}
-	if firstRef == secondRef {
-		t.Fatal("different proposal bytes received the same ref")
-	}
-	if _, rejectProposalErr := store.RejectProposal(t.Context(), firstRef); !errors.Is(rejectProposalErr, skills.ErrProposalChanged) {
-		t.Fatalf("reject superseded proposal error = %v, want ErrProposalChanged", rejectProposalErr)
-	}
-	if _, statErr := os.Stat(filepath.Join(root, proposalSubdir, secondRef.Name, "SKILL.md")); statErr != nil {
-		t.Fatalf("stale decision removed the current proposal: %v", statErr)
-	}
-	if _, approveProposalErr := store.ApproveProposal(t.Context(), secondRef); approveProposalErr != nil {
-		t.Fatalf("approve second proposal: %v", approveProposalErr)
-	}
-	content, err := os.ReadFile(filepath.Join(root, second.Name, "SKILL.md"))
-	if err != nil {
-		t.Fatalf("read active skill: %v", err)
-	}
-	if !secondRef.Matches(content) {
-		t.Fatal("approved bytes do not match the approved ref")
-	}
-}
-
-func TestApproveProposalRejectsChangedProposalWithoutTouchingActiveSet(t *testing.T) {
-	root := t.TempDir()
-	store := newStore(t, root, skills.ScopeUser)
-	proposal := skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: "immutable-proposal", Description: "Verify immutable proposal publication semantics.", Instructions: "approved instructions"}
-	ref, _, err := store.SubmitProposal(t.Context(), proposal)
-	if err != nil {
-		t.Fatalf("SubmitProposal: %v", err)
-	}
-	path := filepath.Join(root, proposalSubdir, ref.Name, "SKILL.md")
-	if err := os.WriteFile(path, []byte("tampered"), 0o644); err != nil {
-		t.Fatalf("tamper proposal: %v", err)
-	}
-
-	if _, err := store.ApproveProposal(t.Context(), ref); !errors.Is(err, skills.ErrProposalChanged) {
-		t.Fatalf("ApproveProposal() error = %v, want ErrProposalChanged", err)
-	}
-	if _, err := os.Stat(filepath.Join(root, proposal.Name)); !os.IsNotExist(err) {
-		t.Fatal("a changed proposal reached the active set")
-	}
-	if _, err := store.RejectProposal(t.Context(), ref); !errors.Is(err, skills.ErrProposalChanged) {
-		t.Fatalf("RejectProposal() error = %v, want ErrProposalChanged", err)
-	}
-}
-
-func TestApproveProposalIsIdempotentForExactReplay(t *testing.T) {
-	store := newStore(t, t.TempDir(), skills.ScopeUser)
-	proposal := skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: "replay-safe", Description: "Make suspended proposal replay deterministic.", Instructions: "same instructions"}
-	first, _, err := store.SubmitProposal(t.Context(), proposal)
-	if err != nil {
-		t.Fatalf("first SubmitProposal: %v", err)
-	}
-	second, _, err := store.SubmitProposal(t.Context(), proposal)
-	if err != nil {
-		t.Fatalf("second SubmitProposal: %v", err)
-	}
-	if first != second {
-		t.Fatalf("replayed refs differ: %+v vs %+v", first, second)
-	}
-	if _, err := store.ApproveProposal(t.Context(), first); err != nil {
-		t.Fatalf("first ApproveProposal: %v", err)
-	}
-	if _, _, err := store.SubmitProposal(t.Context(), proposal); err != nil {
-		t.Fatalf("restage replay: %v", err)
-	}
-	if _, err := store.ApproveProposal(t.Context(), first); err != nil {
-		t.Fatalf("replayed ApproveProposal: %v", err)
-	}
-}
-
 func TestApproveProposalCannotExceedManagedLibraryCapacity(t *testing.T) {
 	root := t.TempDir()
 	store := newStore(t, root, skills.ScopeUser)
@@ -356,17 +170,10 @@ func TestApproveProposalCannotExceedManagedLibraryCapacity(t *testing.T) {
 		Description:  "A new Skill must not make the managed library unlistable.",
 		Instructions: "instructions",
 	}
-	ref, _, err := store.SubmitProposal(t.Context(), proposal)
-	if err != nil {
-		t.Fatalf("SubmitProposal: %v", err)
-	}
-	if _, err := store.ApproveProposal(t.Context(), ref); !errors.Is(err, skills.ErrLibraryCapacity) {
+	if _, err := publish(t, store, proposal); !errors.Is(err, skills.ErrLibraryCapacity) {
 		t.Fatalf("ApproveProposal error = %v, want ErrLibraryCapacity", err)
 	}
-	if _, err := os.Stat(filepath.Join(root, proposalSubdir, ref.Name, "SKILL.md")); err != nil {
-		t.Fatalf("capacity rejection removed the reviewable proposal: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(root, ref.Name, "SKILL.md")); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(root, proposal.Name, "SKILL.md")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("capacity rejection published an active Skill: %v", err)
 	}
 }
@@ -383,14 +190,10 @@ func TestApproveRevisionNeedsCapacityForFirstArchiveSlot(t *testing.T) {
 		Instructions: "revised instructions",
 		Origin:       skills.ProposalOriginMined, Revises: true,
 	}
-	ref, _, err := store.SubmitProposal(t.Context(), proposal)
-	if err != nil {
-		t.Fatalf("SubmitProposal: %v", err)
-	}
-	if _, err := store.ApproveProposal(t.Context(), ref); !errors.Is(err, skills.ErrLibraryCapacity) {
+	if _, err := publish(t, store, proposal); !errors.Is(err, skills.ErrLibraryCapacity) {
 		t.Fatalf("ApproveProposal(revision) error = %v, want ErrLibraryCapacity", err)
 	}
-	if _, err := os.Stat(filepath.Join(root, archiveSubdir, ref.Name)); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(root, archiveSubdir, proposal.Name)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("capacity rejection created an archive slot: %v", err)
 	}
 }
@@ -404,106 +207,10 @@ func TestLifecycleConflictsPreserveBothStates(t *testing.T) {
 	}
 
 	proposal := skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: "conflict-safe", Description: "A different version must not replace the archive.", Instructions: "replacement"}
-	ref, _, err := store.SubmitProposal(t.Context(), proposal)
-	if err != nil {
-		t.Fatalf("SubmitProposal: %v", err)
-	}
-	if _, err := store.ApproveProposal(t.Context(), ref); !errors.Is(err, skills.ErrConflict) {
+	if _, err := publish(t, store, proposal); !errors.Is(err, skills.ErrConflict) {
 		t.Fatalf("ApproveProposal() error = %v, want ErrConflict", err)
 	}
 	if _, err := os.Stat(filepath.Join(root, archiveSubdir, proposal.Name, "SKILL.md")); err != nil {
 		t.Fatalf("archived version was lost: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(root, proposalSubdir, ref.Name, "SKILL.md")); err != nil {
-		t.Fatalf("conflicting proposal was lost: %v", err)
-	}
-}
-
-func TestConcurrentSubmissionsLeaveOneCurrentRevision(t *testing.T) {
-	root := t.TempDir()
-	stores := []*skillauthoring.Store{newStore(t, root, skills.ScopeUser), newStore(t, root, skills.ScopeUser)}
-	proposals := []skills.Proposal{
-		{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: "ordered-publish", Description: "The first concurrently proposed skill revision.", Instructions: "first"},
-		{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: "ordered-publish", Description: "The second concurrently proposed skill revision.", Instructions: "second"},
-	}
-	refs := make([]skills.ProposalRef, len(proposals))
-	errs := make([]error, len(proposals))
-	var wait sync.WaitGroup
-	for i, proposal := range proposals {
-		wait.Go(func() { refs[i], _, errs[i] = stores[i].SubmitProposal(t.Context(), proposal) })
-	}
-	wait.Wait()
-	for _, err := range errs {
-		if err != nil {
-			t.Fatalf("unexpected approval error: %v", err)
-		}
-	}
-	pending, err := newStore(t, root, skills.ScopeUser).ListProposals(t.Context())
-	if err != nil {
-		t.Fatalf("ListProposals: %v", err)
-	}
-	if len(pending) != 1 {
-		t.Fatalf("pending proposals = %+v, want one current revision", pending)
-	}
-	winner := false
-	for i, ref := range refs {
-		if pending[0].Ref == ref {
-			winner = true
-			if _, err := stores[i].ApproveProposal(t.Context(), ref); err != nil {
-				t.Fatalf("ApproveProposal(current): %v", err)
-			}
-		}
-	}
-	if !winner {
-		t.Fatalf("current revision %+v matches neither submitted ref %+v", pending[0].Ref, refs)
-	}
-}
-
-func TestApprovalCannotDeleteConcurrentNewerProposal(t *testing.T) {
-	for range 20 {
-		root := t.TempDir()
-		reviewer := newStore(t, root, skills.ScopeUser)
-		writer := newStore(t, root, skills.ScopeUser)
-		old := skills.Proposal{
-			Origin: skills.ProposalOriginRequested,
-			Scope:  skills.ScopeUser, Name: "review-race",
-			Description:  "The proposal revision already visible to the reviewer.",
-			Instructions: "old instructions",
-		}
-		newer := old
-		newer.Description = "The newer proposal revision must remain pending."
-		newer.Instructions = "new instructions"
-		oldRef, _, err := reviewer.SubmitProposal(t.Context(), old)
-		if err != nil {
-			t.Fatalf("SubmitProposal(old): %v", err)
-		}
-
-		var approveErr, submitErr error
-		var newerRef skills.ProposalRef
-		start := make(chan struct{})
-		var wait sync.WaitGroup
-		wait.Go(func() {
-			<-start
-			_, approveErr = reviewer.ApproveProposal(t.Context(), oldRef)
-		})
-		wait.Go(func() {
-			<-start
-			newerRef, _, submitErr = writer.SubmitProposal(t.Context(), newer)
-		})
-		close(start)
-		wait.Wait()
-		if submitErr != nil {
-			t.Fatalf("SubmitProposal(newer): %v", submitErr)
-		}
-		if approveErr != nil && !errors.Is(approveErr, skills.ErrProposalChanged) {
-			t.Fatalf("ApproveProposal(old) error = %v, want nil or ErrProposalChanged", approveErr)
-		}
-		pending, err := writer.ListProposals(t.Context())
-		if err != nil {
-			t.Fatalf("ListProposals: %v", err)
-		}
-		if len(pending) != 1 || pending[0].Ref != newerRef {
-			t.Fatalf("pending proposals = %+v, want newer revision %+v", pending, newerRef)
-		}
 	}
 }

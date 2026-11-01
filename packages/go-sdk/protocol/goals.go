@@ -1,6 +1,8 @@
 package protocol
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	"time"
 )
 
@@ -9,10 +11,11 @@ import (
 // settlement window after the model has declared success and before the owning
 // drive has charged the final Run and cleared the objective.
 type Goal struct {
-	SessionID string      `json:"sessionId"`
-	Objective string      `json:"objective"`
-	Status    GoalStatus  `json:"status"`
-	Reason    *GoalReason `json:"reason,omitzero"`
+	Author    *extension.ContributionSource `json:"author,omitzero"`
+	SessionID string                        `json:"sessionId"`
+	Objective string                        `json:"objective"`
+	Status    GoalStatus                    `json:"status"`
+	Reason    *GoalReason                   `json:"reason,omitzero"`
 	// Provider and Model are the Goal's own model override. Absent, each Goal
 	// Run uses the Session's selection when it starts.
 	Provider        string    `json:"provider,omitempty"`
@@ -32,10 +35,10 @@ type Goal struct {
 type GoalStatus string
 
 const (
-	GoalActive     GoalStatus = "active"
-	GoalPaused     GoalStatus = "paused"
-	GoalBlocked    GoalStatus = "blocked"
-	GoalCompleting GoalStatus = "completing"
+	GoalActive     GoalStatus = GoalStatus(goalworkflow.GoalActive)
+	GoalPaused     GoalStatus = GoalStatus(goalworkflow.GoalPaused)
+	GoalBlocked    GoalStatus = GoalStatus(goalworkflow.GoalBlocked)
+	GoalCompleting GoalStatus = GoalStatus(goalworkflow.GoalCompleting)
 )
 
 // GoalReason is machine-readable stopping context. Code determines client
@@ -54,14 +57,14 @@ type GoalReason struct {
 type GoalReasonCode string
 
 const (
-	GoalReasonStoppedByUser          GoalReasonCode = "stoppedByUser"
-	GoalReasonRuntimeRestarted       GoalReasonCode = "runtimeRestarted"
-	GoalReasonRunStartFailed         GoalReasonCode = "runStartFailed"
-	GoalReasonAwaitingInput          GoalReasonCode = "awaitingInput"
-	GoalReasonTerminalOutcomeMissing GoalReasonCode = "terminalOutcomeMissing"
-	GoalReasonRunNotCompleted        GoalReasonCode = "runNotCompleted"
+	GoalReasonStoppedByUser          GoalReasonCode = GoalReasonCode(goalworkflow.GoalReasonStoppedByUser)
+	GoalReasonRuntimeRestarted       GoalReasonCode = GoalReasonCode(goalworkflow.GoalReasonRuntimeRestarted)
+	GoalReasonRunStartFailed         GoalReasonCode = GoalReasonCode(goalworkflow.GoalReasonRunStartFailed)
+	GoalReasonAwaitingInput          GoalReasonCode = GoalReasonCode(goalworkflow.GoalReasonAwaitingInput)
+	GoalReasonTerminalOutcomeMissing GoalReasonCode = GoalReasonCode(goalworkflow.GoalReasonTerminalOutcomeMissing)
+	GoalReasonRunNotCompleted        GoalReasonCode = GoalReasonCode(goalworkflow.GoalReasonRunNotCompleted)
 
-	GoalReasonBlockedByModel GoalReasonCode = "blockedByModel"
+	GoalReasonBlockedByModel GoalReasonCode = GoalReasonCode(goalworkflow.GoalReasonBlockedByModel)
 )
 
 // GoalUsage reports consumption across all Runs for an objective.

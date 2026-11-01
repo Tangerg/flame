@@ -22,7 +22,7 @@ func TestProposalReferencePreservesImmutableReviewIdentity(t *testing.T) {
 	if reference.Name != proposal.Name || reference.Revision != proposal.Revision || reference.Scope != proposal.Scope {
 		t.Fatalf("reference = %+v", reference)
 	}
-	if proposal.Key() != "user/release-checks@0123456789ab" {
+	if proposal.Key() != "user/release-checks@"+proposal.Revision {
 		t.Fatalf("proposal key = %q", proposal.Key())
 	}
 	proposal.Revision = "changed"
