@@ -45,6 +45,36 @@ func Pricing(providerID string, models []catalog.Model) accounting.Pricing {
 			if err != nil {
 				return accounting.Cost{}, fmt.Errorf("model: admit catalog cost: %w", err)
 			}
+			// A missing breakdown can cover any unallocated input tokens. The
+			// catalog owns rates and band selection, so compare the possible
+			// endpoints of its linear pricing formula instead of copying it.
+			remaining := usage.InputTokens - catalogUsage.CacheReadInputTokens - catalogUsage.CacheWriteInputTokens
+			if remaining > 0 {
+				for _, dimension := range []struct {
+					count    *int64
+					reported *int64
+				}{
+					{&catalogUsage.CacheReadInputTokens, usage.CacheReadInputTokens},
+					{&catalogUsage.CacheWriteInputTokens, usage.CacheWriteInputTokens},
+				} {
+					if dimension.reported != nil {
+						continue
+					}
+					*dimension.count = remaining
+					alternative, err := info.Pricing.Cost(catalogUsage)
+					*dimension.count = 0
+					if err != nil {
+						return accounting.Cost{}, err
+					}
+					alternativeCost, err := accounting.NewCost(alternative)
+					if err != nil {
+						return accounting.Cost{}, err
+					}
+					if !cost.Equal(alternativeCost) {
+						return accounting.Cost{}, nil
+					}
+				}
+			}
 			return cost, nil
 		}
 		return accounting.Cost{}, nil

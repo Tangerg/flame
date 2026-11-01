@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -23,7 +24,10 @@ func (c *Coordinator) copyForkSnapshot(
 	if len(boundary.RunIDs) == 0 {
 		return Snapshot{Session: child, Messages: boundary.Messages, Plan: steps}, nil
 	}
-	projection := newForkSnapshotProjection(c, source, child, boundary, steps)
+	projection, err := newForkSnapshotProjection(c, source, child, boundary, steps)
+	if err != nil {
+		return Snapshot{}, err
+	}
 	if err := projection.selectRuns(); err != nil {
 		return Snapshot{}, err
 	}
@@ -39,15 +43,14 @@ func (c *Coordinator) copyForkSnapshot(
 }
 
 type forkSnapshotProjection struct {
-	coordinator    *Coordinator
-	source         Snapshot
-	child          session.Session
-	boundary       ForkBoundary
-	runByID        map[string]run.Run
-	selectedRunIDs map[string]struct{}
-	runIDs         map[string]string
-	itemIDs        map[string]string
-	forked         Snapshot
+	coordinator *Coordinator
+	source      Snapshot
+	childID     identity.SessionID
+	boundary    ForkBoundary
+	runByID     map[string]run.Run
+	runIDs      map[string]identity.RunID
+	itemIDs     map[string]string
+	forked      Snapshot
 }
 
 func newForkSnapshotProjection(
@@ -56,26 +59,29 @@ func newForkSnapshotProjection(
 	child session.Session,
 	boundary ForkBoundary,
 	steps []plan.Step,
-) *forkSnapshotProjection {
+) (*forkSnapshotProjection, error) {
+	childID, err := identity.ParseSession(child.ID())
+	if err != nil {
+		return nil, err
+	}
 	runByID := make(map[string]run.Run, len(source.Runs))
 	for _, value := range source.Runs {
 		runByID[value.ID()] = value
 	}
 	return &forkSnapshotProjection{
-		coordinator:    coordinator,
-		source:         source,
-		child:          child,
-		boundary:       boundary,
-		runByID:        runByID,
-		selectedRunIDs: make(map[string]struct{}, len(boundary.RunIDs)),
-		runIDs:         make(map[string]string, len(boundary.RunIDs)),
-		itemIDs:        make(map[string]string),
+		coordinator: coordinator,
+		source:      source,
+		childID:     childID,
+		boundary:    boundary,
+		runByID:     runByID,
+		runIDs:      make(map[string]identity.RunID, len(boundary.RunIDs)),
+		itemIDs:     make(map[string]string),
 		forked: Snapshot{
 			Session:  child,
 			Messages: boundary.Messages,
 			Plan:     steps,
 		},
-	}
+	}, nil
 }
 
 func (projection *forkSnapshotProjection) selectRuns() error {
@@ -87,8 +93,11 @@ func (projection *forkSnapshotProjection) selectRuns() error {
 		if !value.State().IsTerminal() {
 			return fmt.Errorf("sessions: fork boundary run %q is not terminal", sourceID)
 		}
-		projection.selectedRunIDs[sourceID] = struct{}{}
-		projection.runIDs[sourceID] = projection.coordinator.newRunID()
+		id, err := identity.ParseRun(projection.coordinator.newRunID())
+		if err != nil {
+			return err
+		}
+		projection.runIDs[sourceID] = id
 	}
 	projection.forked.Runs = make([]run.Run, 0, len(projection.boundary.RunIDs))
 	return nil
@@ -96,7 +105,7 @@ func (projection *forkSnapshotProjection) selectRuns() error {
 
 func (projection *forkSnapshotProjection) selectItems() {
 	for _, item := range projection.source.Items {
-		if _, selected := projection.selectedRunIDs[item.RunID()]; selected {
+		if _, selected := projection.runIDs[item.RunID()]; selected {
 			projection.itemIDs[item.ID()] = projection.coordinator.newItemID()
 		}
 	}
@@ -110,7 +119,7 @@ func (projection *forkSnapshotProjection) copyRuns() error {
 		if err != nil {
 			return err
 		}
-		copied, err := value.Fork(projection.child.ID(), projection.runIDs[sourceID], lineage)
+		copied, err := value.Fork(projection.childID, projection.runIDs[sourceID], lineage)
 		if err != nil {
 			return fmt.Errorf("sessions: copy fork run %q: %w", sourceID, err)
 		}
@@ -132,7 +141,7 @@ func (projection *forkSnapshotProjection) remapLineage(
 	if !itemFound || !parentFound || !rootFound {
 		return run.Lineage{}, fmt.Errorf("sessions: fork run %q has lineage outside the selected boundary", sourceID)
 	}
-	return run.NewLineage(spawnedBy, parentID, rootID)
+	return run.NewLineage(spawnedBy, parentID.String(), rootID.String())
 }
 
 func (projection *forkSnapshotProjection) copyItems() error {
@@ -142,7 +151,7 @@ func (projection *forkSnapshotProjection) copyItems() error {
 			continue
 		}
 		copied, err := value.Fork(
-			projection.child.ID(),
+			projection.childID,
 			projection.runIDs[value.RunID()],
 			newID,
 		)
@@ -169,7 +178,7 @@ func (projection *forkSnapshotProjection) copyToolResults() {
 		if !found {
 			continue
 		}
-		blob.SessionID = projection.child.ID()
+		blob.SessionID = projection.childID.String()
 		projection.forked.ToolResults = append(projection.forked.ToolResults, blob)
 	}
 }

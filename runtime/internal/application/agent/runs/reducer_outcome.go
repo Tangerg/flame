@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -61,16 +61,11 @@ func (r *reducer) progressedRun(updatedAt time.Time) (run.Run, error) {
 // metrics projects consumption accrued from individual calls onto the opened Run.
 // Active duration joins it only at the segment boundary.
 func (r *reducer) metrics() (run.Metrics, error) {
-	usage, reported := r.accrued.Usage()
-	var usageRef *accounting.Usage
-	if reported {
-		usageRef = &usage
-	}
 	activeDuration := r.cfg.Opened.Metrics().ActiveDuration()
 	if r.segmentDuration < 0 || (r.segmentDuration > 0 && activeDuration > time.Duration(math.MaxInt64)-r.segmentDuration) {
 		return run.Metrics{}, errors.New("segment active duration is invalid or overflows")
 	}
-	return run.NewMetrics(usageRef, r.accrued.Steps(), activeDuration+r.segmentDuration)
+	return r.accrued.WithActiveDuration(activeDuration + r.segmentDuration)
 }
 
 // cancelDetail gives a Canceled ending the reason its cancel request stated.

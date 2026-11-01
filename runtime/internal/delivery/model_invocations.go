@@ -6,7 +6,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 )
 
 func (s *Handler) ListModelInvocations(ctx context.Context, in protocol.ListModelInvocationsRequest) (*protocol.Page[protocol.ModelInvocation], error) {
@@ -42,7 +41,7 @@ func presentModelInvocation(runID string, row runs.ModelInvocationCommit) (proto
 		out.KnownResponse = string(encoded)
 	}
 	if usage := row.Usage; usage != nil {
-		owned := accounting.CloneReportedUsage(*usage)
+		owned := usage.Clone()
 		out.Usage = &protocol.ModelInvocationUsage{
 			InputTokens: owned.InputTokens, OutputTokens: owned.OutputTokens,
 			CacheReadTokens: owned.CacheReadInputTokens, CacheWriteTokens: owned.CacheWriteInputTokens,

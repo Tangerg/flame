@@ -32,7 +32,7 @@ func TestReportedUsageKeepsAbsentDistinctFromReportedZero(t *testing.T) {
 	if reflect.DeepEqual(absent, zero) {
 		t.Fatal("an unsupported dimension compared equal to a reported zero")
 	}
-	if !reflect.DeepEqual(zero, CloneReportedUsage(zero)) {
+	if !reflect.DeepEqual(zero, zero.Clone()) {
 		t.Fatal("clone changed the reported fact")
 	}
 
@@ -54,7 +54,7 @@ func TestReportedUsageKeepsAbsentDistinctFromReportedZero(t *testing.T) {
 func TestCloneReportedUsageDetachesBreakdowns(t *testing.T) {
 	reasoning := int64(3)
 	source := chat.Usage{InputTokens: 9, OutputTokens: 4, ReasoningTokens: &reasoning}
-	cloned := CloneReportedUsage(source)
+	cloned := source.Clone()
 	reasoning = 99
 	if cloned.ReasoningTokens == nil || *cloned.ReasoningTokens != 3 {
 		t.Fatalf("clone aliased the caller's breakdown: %+v", cloned.ReasoningTokens)

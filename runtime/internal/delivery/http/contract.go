@@ -4,7 +4,9 @@ import (
 	"net/http"
 	"reflect"
 	"slices"
+	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/go-chi/chi/v5"
 )
@@ -133,7 +135,7 @@ var endpointRegistry = struct {
 			},
 		},
 		{
-			EndpointSpec: EndpointSpec{Name: endpointPluginResources, Projects: delivery.PluginsReadResource, Kind: endpointKindResource, Method: http.MethodGet, Path: pluginResourcePrefix + "{lease}/*", Authentication: EndpointAuthenticationResourceLease, ResponseStatuses: []int{http.StatusOK, http.StatusGone}},
+			EndpointSpec: EndpointSpec{Name: endpointPluginResources, Projects: delivery.PluginsReadResource, Kind: endpointKindResource, Method: http.MethodGet, Path: pluginResourcePrefix + "{lease}/*", Authentication: EndpointAuthenticationResourceLease, ResponseStatuses: []int{http.StatusOK, http.StatusGone, http.StatusInternalServerError}},
 			handler:      func(server *Server, w http.ResponseWriter, r *http.Request) { server.resources.ServeHTTP(w, r) },
 		},
 		{
@@ -143,7 +145,7 @@ var endpointRegistry = struct {
 				Method:           http.MethodPost,
 				Path:             endpointPrefix + "/rpc",
 				Authentication:   EndpointAuthenticationLocalToken,
-				ResponseStatuses: []int{http.StatusOK, http.StatusAccepted, http.StatusNoContent},
+				ResponseStatuses: []int{protocol.RPCCallStatus, http.StatusAccepted, http.StatusNoContent},
 			},
 			handler: func(server *Server, w http.ResponseWriter, r *http.Request) { server.rpc.ServeHTTP(w, r) },
 		},
@@ -229,20 +231,33 @@ func endpointPath(name string) string {
 	return endpointNamed(name).Path
 }
 
-func isPublicEndpointPath(path string) bool {
-	for _, registration := range endpointRegistry.Endpoints {
-		if registration.Path == path {
-			return registration.Authentication == EndpointAuthenticationNone
+// RegisterCallbackEndpoints binds only the Runtime operations Realm callbacks
+// are authorized to reach. The enclosing Realm transport authenticates actors.
+func RegisterCallbackEndpoints(mux *http.ServeMux, rpc, resources http.Handler) {
+	for _, route := range endpointRegistry.Endpoints {
+		switch route.Kind {
+		case EndpointKindRPC:
+			mux.Handle(route.Method+" "+route.Path, rpc)
+		case endpointKindResource:
+			mux.Handle(route.Method+" "+strings.Replace(route.Path, "/*", "/{resource...}", 1), resources)
 		}
 	}
-	return false
 }
 
 func registerEndpoints(router *chi.Mux, server *Server) {
 	for _, endpoint := range endpointRegistry.Endpoints {
 		handler := endpoint.handler
-		router.MethodFunc(endpoint.Method, endpoint.Path, func(w http.ResponseWriter, r *http.Request) {
+		var routed http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			handler(server, w, r)
 		})
+		switch endpoint.Authentication {
+		case EndpointAuthenticationLocalToken:
+			routed = server.protectRPC(routed)
+		case EndpointAuthenticationNone, EndpointAuthenticationResourceLease, EndpointAuthenticationRealm:
+			// Lease and Realm authentication belong to their endpoint handlers.
+		default:
+			panic("http: endpoint has invalid authentication policy")
+		}
+		router.Method(endpoint.Method, endpoint.Path, routed)
 	}
 }

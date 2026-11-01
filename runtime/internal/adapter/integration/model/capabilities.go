@@ -55,7 +55,7 @@ func (c *Capabilities) Profiles(ctx context.Context) ([]modelsapp.ProviderProfil
 			}
 			models = append(models, model)
 		}
-		result = append(result, modelsapp.ProviderProfile{Metadata: meta, Models: models})
+		result = append(result, modelsapp.ProviderProfile{Metadata: meta, Models: models, Endpoint: profile.Endpoint})
 	}
 	return result, nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/recovery"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
@@ -436,40 +437,7 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct trajectory exporter: %w", err)
 	}
-	// Startup effects run only after every constructor has succeeded, callback
-	// RPC is published and original execution protection has been reconciled.
-	var recoveryMu sync.Mutex
-	recovered := false
-	recoverUncertain := func(ctx context.Context) error {
-		recoveryMu.Lock()
-		defer recoveryMu.Unlock()
-		if recovered {
-			return nil
-		}
-		if err := cfg.stores.Admission.RecoveryError(); err != nil {
-			return err
-		}
-		if _, err := cfg.stores.ToolResults.PurgeUnbound(ctx); err != nil {
-			return fmt.Errorf("runtime: reconcile staged tool results: %w", err)
-		}
-		if err := pluginCoordinator.Reclaim(ctx); err != nil {
-			return fmt.Errorf("runtime: reclaim plugin content: %w", err)
-		}
-		if err := runCoordinator.ReviveAcceptedContinuations(ctx); err != nil {
-			return fmt.Errorf("runtime: revive accepted continuations: %w", err)
-		}
-		if err := cfg.stores.ModelInvocations.ReconcileEndpointInvocations(ctx, time.Now().UTC()); err != nil {
-			return err
-		}
-		if err := runCoordinator.ReviveUncertainExecutions(ctx, recoveryPersistence, cfg.stores.ExecutorCheckpoints, execution.executor); err != nil {
-			return fmt.Errorf("runtime: revive uncertain executions: %w", err)
-		}
-		if err := ownershipRecovery.ReconcileStartup(ctx); err != nil {
-			return fmt.Errorf("runtime: reconcile abandoned ownership: %w", err)
-		}
-		recovered = true
-		return nil
-	}
+	recoverUncertain := startupRunRecovery(cfg.stores, pluginCoordinator, runCoordinator, recoveryPersistence, execution.executor, ownershipRecovery)
 	host := &Instance{
 		application: &runtimeApplication{
 			pluginControl: policy.framework.control,
@@ -569,4 +537,50 @@ func composeRuns(
 		return composedRuns{}, fmt.Errorf("runtime: construct Run cancellations: %w", err)
 	}
 	return composedRuns{coordinator: coordinator, openings: openings, cancellations: cancellations, segments: segments}, nil
+}
+
+func startupRunRecovery(stores *persistence.Bundle, pluginCoordinator *plugins.Coordinator, runCoordinator *runs.Coordinator, recoveryPersistence *recovery.Persistence, executor *executionadapter.InteractionExecutor, ownershipRecovery *ownership.RecoveryCoordinator) func(context.Context) error {
+	// Startup effects run only after every constructor has succeeded, callback
+	// RPC is published and original execution protection has been reconciled.
+	var recoveryMu sync.Mutex
+	recovered := false
+	prepared := false
+	var uncertain runs.UncertainRevival
+	return func(ctx context.Context) error {
+		recoveryMu.Lock()
+		defer recoveryMu.Unlock()
+		if recovered {
+			return nil
+		}
+		if err := stores.Admission.RecoveryError(); err != nil {
+			return err
+		}
+		if !prepared {
+			if _, err := stores.ToolResults.PurgeUnbound(ctx); err != nil {
+				return fmt.Errorf("runtime: reconcile staged tool results: %w", err)
+			}
+			if err := pluginCoordinator.Reclaim(ctx); err != nil {
+				return fmt.Errorf("runtime: reclaim plugin content: %w", err)
+			}
+			if err := runCoordinator.ReviveAcceptedContinuations(ctx); err != nil {
+				return fmt.Errorf("runtime: revive accepted continuations: %w", err)
+			}
+			if err := stores.ModelInvocations.ReconcileEndpointInvocations(ctx, time.Now().UTC()); err != nil {
+				return err
+			}
+			prepared = true
+		}
+		err := uncertain.Reconcile(ctx, runCoordinator, recoveryPersistence, stores.ExecutorCheckpoints, executor)
+		if err != nil && !errors.Is(err, runs.ErrOriginalSourcePending) {
+			return fmt.Errorf("runtime: revive uncertain executions: %w", err)
+		}
+		if err := ownershipRecovery.ReconcileStartup(ctx); err != nil {
+			return fmt.Errorf("runtime: reconcile abandoned ownership: %w", err)
+		}
+		if err != nil {
+			return err
+		}
+		recovered = true
+		return nil
+	}
 }

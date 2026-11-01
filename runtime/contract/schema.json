@@ -1995,6 +1995,23 @@
         }
       }
     },
+    "EndpointPolicy": {
+      "type": "object",
+      "properties": {
+        "appendsPath": {
+          "type": "string"
+        },
+        "example": {
+          "type": "string"
+        },
+        "requiredSuffix": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "example"
+      ]
+    },
     "ExportFormat": {
       "type": "string",
       "enum": [
@@ -4197,6 +4214,9 @@
         "limit": {
           "type": "integer",
           "minimum": 1
+        },
+        "nameQuery": {
+          "type": "string"
         },
         "path": {
           "type": "string"
@@ -9144,6 +9164,9 @@
         },
         "embeddingCapable": {
           "type": "boolean"
+        },
+        "endpoint": {
+          "$ref": "#/$defs/EndpointPolicy"
         },
         "id": {
           "type": "string",

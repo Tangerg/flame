@@ -9,7 +9,7 @@ import (
 
 func TestPricingUsesProviderAndServedModel(t *testing.T) {
 	const model = "claude-opus-5"
-	usage := &chat.Usage{InputTokens: 1000, OutputTokens: 250}
+	usage := &chat.Usage{InputTokens: 1000, OutputTokens: 250, CacheReadInputTokens: new(int64), CacheWriteInputTokens: new(int64)}
 	info, ok := catalog.Default.Lookup("anthropic", model)
 	if !ok {
 		t.Fatal("test fixture model missing from catalog")
@@ -79,5 +79,18 @@ func TestPricingRejectsInvalidCachePartition(t *testing.T) {
 	cost, err := Pricing("anthropic", catalog.Default.Models("anthropic"))("anthropic", "claude-opus-5", &chat.Usage{InputTokens: 10, CacheReadInputTokens: new(int64(6)), CacheWriteInputTokens: new(int64(6))})
 	if _, known := cost.USD(); err == nil || known {
 		t.Fatalf("invalid cache partition became a price: %+v, %v", cost, err)
+	}
+}
+
+func TestPricingRequiresEvidenceForDifferentlyPricedCacheTokens(t *testing.T) {
+	info := catalog.Model{ID: "model", Pricing: catalog.PricingSchedule{{InputPer1M: 10, CacheReadPer1M: new(float64(1))}}}
+	price := Pricing("provider", []catalog.Model{info})
+	unknown, err := price("provider", "model", &chat.Usage{InputTokens: 100})
+	if _, known := unknown.USD(); err != nil || known {
+		t.Fatalf("unreported cache: %v, %v", unknown, err)
+	}
+	known, err := price("provider", "model", &chat.Usage{InputTokens: 100, CacheReadInputTokens: new(int64)})
+	if usd, available := known.USD(); err != nil || !available || usd != .001 {
+		t.Fatalf("reported zero: %v, %v", known, err)
 	}
 }

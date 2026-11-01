@@ -8,10 +8,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// ServerInfoOrDefault returns a ServerInfo populated from the
-// build-info recorded by the Go toolchain (module version, commit
-// hash via VCS info). Caller can override the result before passing
-// to NewServer if they want a custom identity.
 func ServerInfoOrDefault() protocol.ServerInfo {
 	loadOnce.Do(loadServerInfo)
 	return loaded

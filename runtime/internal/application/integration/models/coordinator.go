@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"sync"
 	"time"
 
@@ -27,6 +28,7 @@ type providerCatalog interface {
 
 type ProviderProfile struct {
 	Metadata ProviderMetadata
+	Endpoint flamemodel.EndpointPolicy
 	Models   []Model
 }
 

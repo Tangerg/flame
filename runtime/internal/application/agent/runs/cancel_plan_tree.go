@@ -13,7 +13,7 @@ func newCancellationPlan(
 	memberIDsByRunID map[string]string,
 	pending *Pending,
 ) (cancellationPlan, error) {
-	runTree, err := buildCancellationRunTree(targetRunID, runs, executor)
+	runTree, err := buildCancellationRunTree(targetRunID, runs)
 	if err != nil {
 		return cancellationPlan{}, err
 	}
@@ -69,7 +69,6 @@ func newCancellationPlan(
 // facts only; process-local executor bindings remain outside this value.
 type cancellationRunTree struct {
 	root     rundomain.Run
-	target   rundomain.Run
 	topology rundomain.Tree
 	byRunID  map[string]rundomain.Run
 }
@@ -77,7 +76,6 @@ type cancellationRunTree struct {
 func buildCancellationRunTree(
 	targetRunID string,
 	runs []rundomain.Run,
-	executor ExecutorRef,
 ) (cancellationRunTree, error) {
 	target, found := runByID(runs, targetRunID)
 	if !found {
@@ -123,44 +121,13 @@ func buildCancellationRunTree(
 	}
 	runTree := cancellationRunTree{
 		root:     root,
-		target:   target,
 		topology: tree,
 		byRunID:  byRunID,
 	}
-	if err := runTree.validateLifecycle(); err != nil {
-		return cancellationRunTree{}, err
+	if err := tree.CheckCancellation(targetRunID, byRunID); err != nil {
+		return cancellationRunTree{}, fmt.Errorf("runs: build cancellation plan: %w", err)
 	}
 	return runTree, nil
-}
-
-func (c cancellationRunTree) validateLifecycle() error {
-	root := c.root
-	if root.State() != rundomain.Running && root.State() != rundomain.Waiting {
-		return fmt.Errorf(
-			"runs: build cancellation plan: root Run %q is %s",
-			root.ID(),
-			root.State(),
-		)
-	}
-	if c.target.State().IsTerminal() {
-		return fmt.Errorf(
-			"runs: build cancellation plan: target Run %q is %s",
-			c.target.ID(),
-			c.target.State(),
-		)
-	}
-	for _, run := range c.byRunID {
-		if !run.State().IsTerminal() && run.State() != root.State() {
-			return fmt.Errorf(
-				"runs: build cancellation plan: non-terminal Run %q is %s while root %q is %s",
-				run.ID(),
-				run.State(),
-				root.ID(),
-				root.State(),
-			)
-		}
-	}
-	return nil
 }
 
 func (c cancellationRunTree) openRunIDs(

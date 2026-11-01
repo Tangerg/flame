@@ -18,7 +18,7 @@ func (s *Handler) ListWorkspaceFiles(ctx context.Context, in protocol.ListFilesR
 	page, err := s.workspaceFiles.List(ctx, workspaceapp.FileListInput{
 		CWD: in.Workspace.Path,
 		FileListOptions: workspaceapp.FileListOptions{
-			Path: in.Path, Glob: in.Glob, Recursive: in.Recursive, IncludeIgnored: in.IncludeIgnored,
+			Path: in.Path, Glob: in.Glob, NameQuery: in.NameQuery, Recursive: in.Recursive, IncludeIgnored: in.IncludeIgnored,
 		},
 		Cursor: in.Cursor,
 		Limit:  limit,

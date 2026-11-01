@@ -133,6 +133,14 @@ func (t *tsEmitter) httpHeaders() {
 // httpEndpoints publishes transport locations from the same Delivery registry
 // the HTTP router uses. A vendored client never has to restate /v2 paths.
 func (t *tsEmitter) httpEndpoints() {
+	t.line("export const RPC_HTTP = {")
+	t.line("  callStatus: %d,", protocol.RPCCallStatus)
+	t.line("  documentMediaType: %s,", contractgen.TypeScriptStringLiteral(protocol.RPCDocumentMediaType))
+	t.line("  streamMediaType: %s,", contractgen.TypeScriptStringLiteral(protocol.RPCStreamMediaType))
+	t.line("  problemMediaType: %s,", contractgen.TypeScriptStringLiteral(protocol.HTTPProblemMediaType))
+	t.line("} as const;")
+	t.line("")
+
 	t.line("// HTTP entrypoints implemented by this runtime build.")
 	t.line("export const HTTP_ENDPOINTS = {")
 	contract := runtimehttp.Contract()

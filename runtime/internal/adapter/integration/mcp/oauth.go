@@ -107,7 +107,7 @@ func (o *oauthFlow) handleCallback(w http.ResponseWriter, r *http.Request) {
 // authorization URL, then wait for the loopback redirect (or ctx timeout).
 func (o *oauthFlow) fetch(ctx context.Context, args *auth.AuthorizationArgs) (*auth.AuthorizationResult, error) {
 	if err := openBrowser(ctx, args.URL); err != nil {
-		return nil, fmt.Errorf("mcp oauth: open browser (visit %s manually): %w", args.URL, err)
+		return nil, fmt.Errorf("mcp oauth: enable a system browser launcher and restart sign-in: %w", err)
 	}
 	select {
 	case cb := <-o.result:
@@ -155,6 +155,7 @@ func newOAuthHandler(
 		return nil, errors.New("mcp oauth: lifetime is required")
 	}
 	config := &auth.AuthorizationCodeHandlerConfig{
+		Client: oauthHTTPClient(),
 		DynamicClientRegistrationConfig: &auth.DynamicClientRegistrationConfig{
 			Metadata: &oauthex.ClientRegistrationMetadata{
 				ClientName:              "Flame",
@@ -196,10 +197,14 @@ func newOAuthHandler(
 	return auth.NewAuthorizationCodeHandler(config)
 }
 
+// The issuer can differ from the MCP resource. Each OAuth request starts at
+// its own discovered endpoint, but its form credentials cannot follow a
+// redirect to another origin.
+func oauthHTTPClient() *http.Client { return &http.Client{CheckRedirect: checkRedirect} }
+
 // openBrowser opens url in the user's default browser, best-effort and
 // platform-specific. This service is local and binds loopback, so this
-// opens on the user's machine; an error is surfaced so the URL can be opened
-// manually.
+// opens on the user's machine; launch failure terminates this authorization attempt.
 func openBrowser(ctx context.Context, url string) error {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {

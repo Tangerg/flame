@@ -238,7 +238,15 @@ func TestItemForkReidentifiesTerminalHistoryAndKeepsOffload(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewToolCall: %v", err)
 	}
-	if _, forkErr := running.Fork("session-child", "run-child", "item-child"); forkErr == nil {
+	childSession, err := flameidentity.ParseSession("session-child")
+	if err != nil {
+		t.Fatal(err)
+	}
+	childRun, err := flameidentity.ParseRun("run-child")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, forkErr := running.Fork(childSession, childRun, "item-child"); forkErr == nil {
 		t.Fatal("Fork accepted a running Item")
 	}
 	preview, err := tool.NewResult("preview")
@@ -252,7 +260,7 @@ func TestItemForkReidentifiesTerminalHistoryAndKeepsOffload(t *testing.T) {
 		t.Fatalf("CompleteToolCall: %v", err)
 	}
 	completed := settlement.State()
-	forked, err := completed.Fork("session-child", "run-child", "item-child")
+	forked, err := completed.Fork(childSession, childRun, "item-child")
 	if err != nil {
 		t.Fatalf("Fork: %v", err)
 	}

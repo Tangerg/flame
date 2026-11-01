@@ -59,7 +59,8 @@ type Config struct {
 	Authentication Authentication
 
 	// CORSOrigins is the exact-match origin allowlist; "*" is honored
-	// (without credentials). Empty disables CORS — same-origin only.
+	// for credentialed cross-origin requests in token mode. An ungated server
+	// requires an explicit browser origin.
 	CORSOrigins []string
 
 	// WebApplication handles public browser assets outside the protocol namespace.
@@ -136,19 +137,32 @@ func NewServer(cfg Config) (*Server, error) {
 //
 // Middleware order (outer → inner):
 //
-//	server lifecycle → request instrumentation → cors → authGate → mux
+//	server lifecycle → request instrumentation → cors → routed endpoint gate
 //
 // The lifecycle wrapper owns transport cancellation. Request instrumentation remains
 // outside the protocol middleware so every request (including CORS preflight
 // and 401) is observed; cors precedes authGate so OPTIONS preflights resolve
-// without a token; authGate precedes the mux so unauthenticated requests never
+// without a token; the protected RPC route refuses unauthenticated requests before they
 // touch handlers.
 func (s *Server) Handler() http.Handler {
 	r := chi.NewRouter()
-	r.Use(s.instrumentRequests, corsMiddleware(s.corsOrigins), s.authGate)
+	r.Use(s.instrumentRequests, corsMiddleware(s.corsOrigins))
 
 	// The Delivery registry owns both metadata and handler binding. Sidecars stay
 	// flat JSON; the RPC entrypoint is the sole owner of envelope method identity.
+	// Preserve authenticated refusal for unknown protocol methods and paths
+	// without assigning the credentials of an unrelated registered endpoint.
+	r.NotFound(s.protectRPC(http.NotFoundHandler()).ServeHTTP)
+	r.MethodNotAllowed(s.protectRPC(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		methods := make(map[string]bool)
+		for _, route := range endpointRegistry.Endpoints {
+			if !methods[route.Method] && r.Match(chi.NewRouteContext(), route.Method, request.URL.Path) {
+				methods[route.Method] = true
+				w.Header().Add("Allow", route.Method)
+			}
+		}
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	})).ServeHTTP)
 	registerEndpoints(r, s)
 
 	if s.web == nil {

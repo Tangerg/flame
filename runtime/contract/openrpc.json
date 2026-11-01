@@ -2574,6 +2574,12 @@
           }
         },
         {
+          "name": "nameQuery",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
           "name": "recursive",
           "schema": {
             "type": "boolean"
@@ -2636,6 +2642,7 @@
           "glob": {},
           "includeIgnored": {},
           "limit": {},
+          "nameQuery": {},
           "path": {},
           "recursive": {},
           "workspace": {

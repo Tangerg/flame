@@ -122,11 +122,11 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, problemResponseEncodingFailed, "the transport could not encode the RPC response", false)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set(headerContentType, protocol.RPCDocumentMediaType+"; charset=utf-8")
 	if methodLabel != "" {
 		w.Header().Set(headerMethod, methodLabel)
 	}
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(protocol.RPCCallStatus)
 	if _, err := w.Write(responseBytes); err != nil {
 		recordError(r.Context(), "rpc.write-response", err,
 			attribute.String("rpc.method", methodLabel),
@@ -168,6 +168,7 @@ var (
 	problemUnsupportedMediaType   = problemKind{name: "unsupported_media_type", status: http.StatusUnsupportedMediaType, refusal: true}
 	problemRequestTooLarge        = problemKind{name: "request_too_large", status: http.StatusRequestEntityTooLarge, refusal: true}
 	problemInvalidRequest         = problemKind{name: protocol.ProblemInvalidRequest, status: http.StatusBadRequest, refusal: true}
+	problemForbiddenOrigin        = problemKind{name: "forbidden_origin", status: http.StatusForbidden, refusal: true}
 	problemUnauthorized           = problemKind{name: "unauthorized", status: http.StatusUnauthorized, refusal: true}
 	problemResponseEncodingFailed = problemKind{name: "response_encoding_failed", status: http.StatusInternalServerError}
 	problemInternalError          = problemKind{name: protocol.ProblemInternalError, status: http.StatusInternalServerError}
@@ -177,6 +178,7 @@ var (
 		problemRequestTooLarge,
 		problemInvalidRequest,
 		problemUnauthorized,
+		problemForbiddenOrigin,
 		problemResponseEncodingFailed,
 		problemInternalError,
 	}
@@ -185,7 +187,7 @@ var (
 func (k problemKind) problemType() string { return transportProblemNamespace + k.name }
 
 func writeProblem(w http.ResponseWriter, kind problemKind, detail string, noCache bool) {
-	w.Header().Set("Content-Type", "application/problem+json; charset=utf-8")
+	w.Header().Set(headerContentType, protocol.HTTPProblemMediaType+"; charset=utf-8")
 	if noCache {
 		w.Header().Set("Cache-Control", "no-store")
 	}
@@ -209,7 +211,7 @@ func isJSONMediaType(ct string) bool {
 	if err != nil {
 		return false
 	}
-	return mt == "application/json"
+	return mt == protocol.RPCDocumentMediaType
 }
 
 // RefusalProblems projects only the closed pre-dispatch refusal pairs for clients.

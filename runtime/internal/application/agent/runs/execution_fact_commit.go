@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/completion"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/samber/lo"
 )
@@ -82,7 +82,7 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 			value.FirstOutputLatencyMillis = new(*value.FirstOutputLatencyMillis)
 		}
 		if value.ReportedUsage != nil {
-			value.ReportedUsage = new(accounting.CloneReportedUsage(*value.ReportedUsage))
+			value.ReportedUsage = new(value.ReportedUsage.Clone())
 		}
 		if value.Message != nil {
 			value.Message = new(value.Message.Clone())

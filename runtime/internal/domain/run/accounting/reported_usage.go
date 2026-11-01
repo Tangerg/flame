@@ -29,21 +29,6 @@ func NewTokens(usage chat.Usage) (Tokens, error) {
 	return tokens, nil
 }
 
-// CloneReportedUsage detaches the breakdown pointers so a stored value cannot
-// be advanced through a caller's copy.
-func CloneReportedUsage(usage chat.Usage) chat.Usage {
-	if usage.ReasoningTokens != nil {
-		usage.ReasoningTokens = new(*usage.ReasoningTokens)
-	}
-	if usage.CacheReadInputTokens != nil {
-		usage.CacheReadInputTokens = new(*usage.CacheReadInputTokens)
-	}
-	if usage.CacheWriteInputTokens != nil {
-		usage.CacheWriteInputTokens = new(*usage.CacheWriteInputTokens)
-	}
-	return usage
-}
-
 func optionalInt64(value *int64) int64 {
 	if value == nil {
 		return 0

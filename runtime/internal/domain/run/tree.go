@@ -214,3 +214,29 @@ func (t Tree) SubtreePostorder(runID string) ([]string, bool) {
 	}
 	return slices.Clone(t.postorder[interval.start:interval.end]), true
 }
+
+// CheckCancellation admits a snapshot only while every open member belongs to
+// the same execution phase as its root. Executor bindings are acquired later.
+func (t Tree) CheckCancellation(targetID string, members map[string]Run) error {
+	if len(t.postorder) == 0 || len(t.postorder) != len(members) {
+		return fmt.Errorf("%w: incomplete cancellation tree", ErrInvalidTree)
+	}
+	root := members[t.postorder[len(t.postorder)-1]]
+	if !root.State().AdvanceProgress() {
+		return fmt.Errorf("%w: root Run %q is %s", ErrInvalidTree, root.ID(), root.State())
+	}
+	target, found := members[targetID]
+	if !found || target.State().IsTerminal() {
+		return fmt.Errorf("%w: target Run %q is missing or finished", ErrInvalidTree, targetID)
+	}
+	for _, id := range t.postorder {
+		member, found := members[id]
+		if !found || member.ID() != id {
+			return fmt.Errorf("%w: missing Run %q", ErrInvalidTree, id)
+		}
+		if !member.State().IsTerminal() && member.State() != root.State() {
+			return fmt.Errorf("%w: non-terminal Run %q is %s while root %q is %s", ErrInvalidTree, id, member.State(), root.ID(), root.State())
+		}
+	}
+	return nil
+}

@@ -1996,16 +1996,40 @@
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/httpresponse",
       "imports": [
+        "context",
         "net/http"
+      ],
+      "constants": [
+        {
+          "name": "Document",
+          "type": "BodyMode",
+          "value": "0"
+        },
+        {
+          "name": "DocumentOrEvents",
+          "type": "BodyMode",
+          "value": "1"
+        }
       ],
       "functions": [
         {
           "name": "LimitBody",
-          "signature": "func(response *http.Response, maxFrameBytes int64, tooLarge error)"
+          "signature": "func(response *http.Response, mode BodyMode, maxFrameBytes int64, tooLarge error)"
         },
         {
           "name": "NewClient",
           "signature": "func(maxFrameBytes int64, tooLarge error) *http.Client"
+        },
+        {
+          "name": "WithEventStream",
+          "signature": "func(ctx context.Context) context.Context"
+        }
+      ],
+      "types": [
+        {
+          "name": "BodyMode",
+          "kind": "defined",
+          "underlying": "uint8"
         }
       ]
     },
@@ -2090,6 +2114,14 @@
           "signature": "func(text string) (InstallationID, error)"
         },
         {
+          "name": "ParseRun",
+          "signature": "func(text string) (RunID, error)"
+        },
+        {
+          "name": "ParseSession",
+          "signature": "func(text string) (SessionID, error)"
+        },
+        {
           "name": "ValidDeclarationID",
           "signature": "func(value string) bool"
         },
@@ -2146,6 +2178,26 @@
             {
               "name": "Validate",
               "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "RunID",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
+            }
+          ]
+        },
+        {
+          "name": "SessionID",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
             }
           ]
         }
@@ -2211,6 +2263,10 @@
         }
       ],
       "variables": [
+        {
+          "name": "ErrEndpointOverride",
+          "type": "error"
+        },
         {
           "name": "ErrIncomplete",
           "type": "error"
@@ -2287,6 +2343,41 @@
         }
       ],
       "types": [
+        {
+          "name": "EndpointPolicy",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Example",
+              "type": "string",
+              "tag": "json:\"example\""
+            },
+            {
+              "name": "AppendsPath",
+              "type": "string",
+              "tag": "json:\"appendsPath,omitzero\""
+            },
+            {
+              "name": "RequiredSuffix",
+              "type": "string",
+              "tag": "json:\"requiredSuffix,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "EffectivePath",
+              "signature": "func(raw string) string"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            },
+            {
+              "name": "ValidateOverride",
+              "signature": "func(raw string) error"
+            }
+          ]
+        },
         {
           "name": "InputKind",
           "kind": "defined",
@@ -3958,6 +4049,7 @@
       "imports": [
         "encoding/json/jsontext",
         "fmt",
+        "github.com/Tangerg/flame/packages/go-sdk/model",
         "github.com/Tangerg/qimu/mcp",
         "github.com/Tangerg/qimu/portable",
         "github.com/Tangerg/scope/core/chat",
@@ -4421,6 +4513,11 @@
               "tag": "json:\"authentication\""
             },
             {
+              "name": "Endpoint",
+              "type": "model.EndpointPolicy",
+              "tag": "json:\"endpoint,omitzero\""
+            },
+            {
               "name": "EndpointRequired",
               "type": "bool",
               "tag": "json:\"endpointRequired\""
@@ -4808,6 +4905,7 @@
         "encoding/json/jsontext",
         "github.com/Tangerg/flame/packages/go-sdk/builtin",
         "github.com/Tangerg/flame/packages/go-sdk/extension",
+        "github.com/Tangerg/flame/packages/go-sdk/model",
         "github.com/Tangerg/go-sdk/jsonrpc",
         "github.com/Tangerg/qimu/portable",
         "time"
@@ -5307,6 +5405,11 @@
           "name": "GoalReasonTerminalOutcomeMissing",
           "type": "GoalReasonCode",
           "value": "\"terminalOutcomeMissing\""
+        },
+        {
+          "name": "HTTPProblemMediaType",
+          "type": "untyped string",
+          "value": "\"application/problem+json\""
         },
         {
           "name": "HookEventNotification",
@@ -6077,6 +6180,21 @@
           "name": "QuestionFieldText",
           "type": "QuestionFieldType",
           "value": "\"text\""
+        },
+        {
+          "name": "RPCCallStatus",
+          "type": "untyped int",
+          "value": "200"
+        },
+        {
+          "name": "RPCDocumentMediaType",
+          "type": "untyped string",
+          "value": "\"application/json\""
+        },
+        {
+          "name": "RPCStreamMediaType",
+          "type": "untyped string",
+          "value": "\"text/event-stream\""
         },
         {
           "name": "RecoveryColdRecover",
@@ -9039,6 +9157,11 @@
               "tag": "json:\"glob,omitempty\""
             },
             {
+              "name": "NameQuery",
+              "type": "*string",
+              "tag": "json:\"nameQuery,omitzero\""
+            },
+            {
               "name": "Recursive",
               "type": "bool",
               "tag": "json:\"recursive,omitzero\""
@@ -11701,6 +11824,11 @@
               "name": "CredentialRequirement",
               "type": "ProviderCredentialRequirement",
               "tag": "json:\"credentialRequirement\""
+            },
+            {
+              "name": "Endpoint",
+              "type": "model.EndpointPolicy",
+              "tag": "json:\"endpoint,omitzero\""
             },
             {
               "name": "RequiresBaseURL",

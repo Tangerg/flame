@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
 	"regexp"
 	"slices"
 	"strconv"
@@ -49,10 +50,14 @@ type FileEntry struct {
 	Kind       FileEntryKind
 	SizeBytes  int64
 	ModifiedAt time.Time
+	orderKey   string
 }
 
 // OrderKey is the stable ordering and pagination identity for a listing.
 func (f FileEntry) OrderKey() string {
+	if f.orderKey != "" {
+		return f.orderKey
+	}
 	class := "1"
 	if f.Kind == FileEntryDir {
 		class = "0"
@@ -64,6 +69,7 @@ func (f FileEntry) OrderKey() string {
 type FileListOptions struct {
 	Path           string
 	Glob           string
+	NameQuery      *string
 	Recursive      bool
 	IncludeIgnored bool
 }
@@ -193,8 +199,11 @@ func (f *Files) List(ctx context.Context, input FileListInput) (FilePage, error)
 			return FilePage{}, err
 		}
 	}
+	if input.NameQuery != nil && len(*input.NameQuery) > maxNameQueryBytes {
+		return FilePage{}, ErrInvalidFileNameQuery
+	}
 	entries, err := f.files.List(ctx, root, FileListOptions{
-		Path: path, Glob: input.Glob, Recursive: input.Recursive, IncludeIgnored: input.IncludeIgnored,
+		Path: path, Glob: input.Glob, Recursive: input.Recursive || input.NameQuery != nil, IncludeIgnored: input.IncludeIgnored,
 	})
 	if err != nil {
 		return FilePage{}, err
@@ -205,6 +214,13 @@ func (f *Files) List(ctx context.Context, input FileListInput) (FilePage, error)
 		input.Glob,
 		strconv.FormatBool(input.Recursive),
 		strconv.FormatBool(input.IncludeIgnored),
+	}
+	if input.NameQuery != nil {
+		filters = append(filters, *input.NameQuery)
+		entries, err = rankedFileNames(ctx, entries, *input.NameQuery)
+		if err != nil {
+			return FilePage{}, err
+		}
 	}
 	page, next, err := pageFileEntries(entries, filters, input.Cursor, input.Limit)
 	if err != nil {
@@ -302,4 +318,65 @@ func pageFileEntries(entries []FileEntry, filters []string, cursor string, limit
 		return nil, "", fmt.Errorf("%w: %w", ErrPageCursor, err)
 	}
 	return page, nextCursor, nil
+}
+
+// Suggestions rank filename matches before matches elsewhere in the path.
+// The cursor carries the same order key used to sort so it remains meaningful
+// if an earlier candidate disappears between pages.
+const maxNameQueryBytes = 4096
+
+func rankedFileNames(ctx context.Context, entries []FileEntry, raw string) ([]FileEntry, error) {
+	query := []rune(strings.ToLower(raw))
+	ranked := entries[:0]
+	for _, entry := range entries {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if entry.Kind != FileEntryFile {
+			continue
+		}
+		if len(query) > 0 {
+			name := strings.ToLower(entry.Path)
+			score := subsequenceScore(query, path.Base(name))
+			group := 1
+			if score == 0 {
+				group = 2
+				score = subsequenceScore(query, name)
+			}
+			if score == 0 {
+				continue
+			}
+			if entry.Path == raw {
+				group = 0
+			}
+			const maximumRuneScore = 6
+			entry.orderKey = fmt.Sprintf("%d:%08x:%08x:%s", group, maximumRuneScore*len(query)-score, utf8.RuneCountInString(entry.Path), entry.Path)
+		}
+		ranked = append(ranked, entry)
+	}
+	return ranked, nil
+}
+func subsequenceScore(query []rune, name string) int {
+	var matched, score int
+	boundary, adjacent := true, false
+	for _, ch := range name {
+		if ch == query[matched] {
+			score++
+			if adjacent {
+				score += 3
+			}
+			if boundary {
+				score += 2
+			}
+			matched++
+			if matched == len(query) {
+				return score
+			}
+			adjacent = true
+		} else {
+			adjacent = false
+		}
+		boundary = strings.ContainsRune("/._-", ch)
+	}
+	return 0
 }

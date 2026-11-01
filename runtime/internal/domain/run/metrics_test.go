@@ -86,9 +86,33 @@ func TestModelCallAccountingKeepsUnknownPriceAcrossCallOrder(t *testing.T) {
 			if unknown, present := usage.ByModel["unknown-model"]; present && unknown.Cost != (accounting.Cost{}) {
 				t.Fatalf("later known response erased original unknown price: %+v", unknown)
 			}
-			if known := usage.ByModel["known-model"]; known.InputTokens != 7 || known.OutputTokens != 2 {
+			if known := usage.ByModel["known-model"]; known.InputTokens != 7 || known.OutputTokens != 2 || !known.Cost.Equal(price) {
 				t.Fatalf("unreported calls erased a known model breakdown: %+v", usage.ByModel)
 			}
 		})
+	}
+}
+
+func TestAnotherModelsMissingPriceDoesNotChangeAKnownSubtotal(t *testing.T) {
+	price, err := accounting.NewCost(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, models := range [][]string{{"a", "b"}, {"b", "a"}} {
+		var metrics Metrics
+		for _, model := range models {
+			var cost accounting.Cost
+			if model == "b" {
+				cost = price
+			}
+			metrics, err = metrics.AccrueModelCall(model, &chat.Usage{InputTokens: 1}, cost)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		usage, _ := metrics.Usage()
+		if !usage.ByModel["b"].Cost.Equal(price) || usage.Total.Cost != (accounting.Cost{}) {
+			t.Fatalf("costs for %v: %+v", models, usage)
+		}
 	}
 }

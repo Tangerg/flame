@@ -259,7 +259,7 @@ func (h *headerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error
 	}
 	response, err := h.base.RoundTrip(r)
 	if response != nil {
-		httpresponse.LimitBody(response, h.maxResponseFrameBytes, errMCPResponseFrameTooLarge)
+		httpresponse.LimitBody(response, httpresponse.DocumentOrEvents, h.maxResponseFrameBytes, errMCPResponseFrameTooLarge)
 	}
 	return response, err
 }

@@ -177,6 +177,11 @@ type Shell struct {
 	cleanup  error         // terminal process-tree cleanup diagnostic
 }
 
+// NoExitStatus is the exit code of a command that never reported one: it failed
+// to start, or its wait failed. Its [Shell.Status] info is then the only account
+// of what happened.
+const NoExitStatus = -1
+
 // Launch starts command under cwd in the background and returns its shell id.
 // sessionID scopes the shell to its owning session so [Shells.RetainedForSession]
 // can report a session's retained jobs (e.g. for a post-compaction
@@ -189,11 +194,6 @@ type Shell struct {
 // rather than being severed by a bare context.Background(). An enabled timeout
 // hard-kills the command when it elapses; a disabled [Timeout] lets it run until
 // it exits or is killed.
-// NoExitStatus is the exit code of a command that never reported one: it failed
-// to start, or its wait failed. Its [Shell.Status] info is then the only account
-// of what happened.
-const NoExitStatus = -1
-
 func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, timeout Timeout, isolated bool) (string, error) {
 	if cause := context.Cause(ctx); cause != nil {
 		return "", cause

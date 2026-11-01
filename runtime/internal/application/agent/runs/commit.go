@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
@@ -241,7 +241,7 @@ func (e EventCommit) clone() EventCommit {
 			e.ModelInvocations[index].FirstOutputLatencyMillis = new(*latency)
 		}
 		if usage := e.ModelInvocations[index].Usage; usage != nil {
-			copy := accounting.CloneReportedUsage(*usage)
+			copy := usage.Clone()
 			e.ModelInvocations[index].Usage = &copy
 		}
 	}

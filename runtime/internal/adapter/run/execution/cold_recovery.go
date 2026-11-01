@@ -15,76 +15,42 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, active runs.ActiveExecution) (_ runs.UncertainExecutionPlan, _ bool, resultErr error) {
+func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, active runs.ActiveExecution) (_ runs.UncertainExecutionPlan, _ runs.RecoveryVerdict, resultErr error) {
 	var zero runs.UncertainExecutionPlan
 	if active.Run.State() != run.Running || !active.Run.Lineage().IsRoot() || active.Run.SessionID() != active.Session.ID() || !i.acceptsBuild(active.Context.BuildID) || len(active.Context.Dependencies()) == 0 {
-		return zero, false, nil
+		return zero, runs.RecoveryUnavailable, nil
 	}
 	if err := active.Context.ValidateOwnership(active.Context.RootMemberID, active.Run.SessionID()); err != nil {
-		return zero, false, err
+		return zero, runs.RecoveryUnavailable, err
 	}
 	checkpoint, err := decodeExecutorCheckpoint(active.Context)
 	if err != nil {
-		return zero, false, err
+		return zero, runs.RecoveryUnavailable, err
 	}
 	rootID, err := agent.ParseProcessID(active.Context.RootMemberID)
 	if err != nil {
-		return zero, false, err
+		return zero, runs.RecoveryUnavailable, err
 	}
 	if checkpoint.handoff.rootID != rootID {
-		return zero, false, errors.New("execution: context root differs from its owner")
+		return zero, runs.RecoveryUnavailable, errors.New("execution: context root differs from its owner")
 	}
 	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, active.Run.SessionID(), rootID.String())
 	if err != nil {
-		return zero, false, err
+		return zero, runs.RecoveryUnavailable, err
 	}
 	if !found {
-		return zero, false, errors.New("execution: retained context has no acknowledged tree")
+		return zero, runs.RecoveryUnavailable, errors.New("execution: retained context has no acknowledged tree")
 	}
 	checkpoint.tree, err = decodeExecutionTree(head, rootID)
 	if err != nil {
-		return zero, false, err
-	}
-	proofs := make(map[agent.EffectID]toolResultMetadata)
-	for _, metadata := range checkpoint.toolMetadata {
-		if metadata.Receipt == nil {
-			continue
-		}
-		if metadata.MemberID != rootID.String() {
-			return zero, false, nil
-		}
-		id, err := agent.ParseEffectID(metadata.Receipt.EffectID)
-		if err != nil {
-			return zero, false, fmt.Errorf("execution: retained tool receipt: %w", err)
-		}
-		proofs[id] = metadata
-	}
-	if len(proofs) == 0 {
-		return zero, false, nil
+		return zero, runs.RecoveryUnavailable, err
 	}
 	if i.config.OriginalToolResults == nil {
-		return zero, false, nil
+		return zero, runs.RecoveryUnavailable, nil
 	}
-	rootWaiting := false
-	for _, snapshot := range checkpoint.tree.ProcessSnapshots() {
-		if snapshot.Relation().ProcessID() == rootID {
-			rootWaiting = snapshot.Status() == agent.StatusWaiting || snapshot.Status().Terminal()
-		}
-		for _, id := range snapshot.UnknownEffectIDs() {
-			if _, supported := proofs[id]; !supported || snapshot.Status().Terminal() {
-				return zero, false, nil
-			}
-		}
-	}
-	if !rootWaiting {
-		return zero, false, nil
-	}
-	inputs, err := interaction.PendingToolInputs(checkpoint.tree)
-	if err != nil {
-		return zero, false, err
-	}
-	if len(inputs) > 0 {
-		return zero, false, nil
+	proofs, err := checkpoint.recoverableReceipts(rootID)
+	if err != nil || len(proofs) == 0 {
+		return zero, runs.RecoveryUnavailable, err
 	}
 	items := make(map[string]transcript.Item, len(active.Items))
 	for _, item := range active.Items {
@@ -99,134 +65,59 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 		}
 		metadata, found := checkpoint.toolMetadata[invocation.CallID]
 		if !found || metadata.Receipt == nil {
-			return zero, false, nil
+			return zero, runs.RecoveryUnavailable, nil
 		}
 		item, found := items[invocation.ItemID]
 		if !found || item.RunID() != active.Run.ID() || item.SessionID() != active.Run.SessionID() || item.Status() != transcript.ItemRunning {
-			return zero, false, errors.New("execution: captured Tool Item is unavailable")
+			return zero, runs.RecoveryUnavailable, errors.New("execution: captured Tool Item is unavailable")
 		}
 		original, found := item.ToolCall()
 		if !found || original.Invocation.Name != metadata.Start.ToolName {
-			return zero, false, errors.New("execution: captured Tool attribution differs from the original Item")
+			return zero, runs.RecoveryUnavailable, errors.New("execution: captured Tool attribution differs from the original Item")
 		}
 		drained = append(drained, runs.DrainedTool{ItemID: item.ID(), CallID: invocation.CallID, SourceCallID: metadata.Start.SourceCallID})
 		tools = append(tools, runs.RecoveredTool{Start: metadata.Start, Invocation: invocation})
 		pendingCalls[invocation.CallID] = true
 	}
-	var rounds []interaction.RoundResults
-	for _, metadata := range proofs {
-		if pendingCalls[metadata.Start.CallID] {
-			continue
-		}
-		if rounds == nil {
-			rounds, err = interaction.SettledResults(checkpoint.tree)
-			if err != nil {
-				return zero, false, err
-			}
-		}
-		committed := false
-		for _, round := range rounds {
-			for _, entry := range round.Entries() {
-				identity, err := logicalToolCallID(round.Relation().ProcessID(), round.ModelCallSequence(), entry.ToolCallIndex, entry.Call.ID, entry.Call.Name)
-				if err != nil {
-					return zero, false, err
-				}
-				if identity.String() != metadata.Start.CallID {
-					continue
-				}
-				publication, err := resultPublication(identity, entry)
-				if err != nil {
-					return zero, false, err
-				}
-				committed, err = i.config.ExecutionTrees.ExecutionResultCommitted(ctx, active.Run.SessionID(), publication)
-				if err != nil {
-					return zero, false, err
-				}
-			}
-		}
-		if !committed {
-			return zero, false, errors.New("execution: captured Tool has neither its original attempt nor a publication receipt")
-		}
+	if err := i.verifySettledTools(ctx, active.Run.SessionID(), checkpoint, proofs, pendingCalls); err != nil {
+		return zero, runs.RecoveryUnavailable, err
 	}
 	slices.SortFunc(drained, func(a, b runs.DrainedTool) int { return strings.Compare(a.CallID, b.CallID) })
 	continuation, err := runs.NewExecutionContinuation(runs.ExecutionContinuation{SessionID: active.Run.SessionID(), ExecutorID: "exec_recovery_" + active.Run.ID(), RootRunID: active.Run.ID(), Checkpoint: active.Context.Clone(), Capabilities: active.Run.Capabilities(), GoalIncarnationID: active.Run.GoalIncarnationID(), Workspace: active.Session.Workspace().Path(), Isolated: active.Session.Isolated(), Members: []runs.ExecutionMember{{RunID: active.Run.ID(), MemberID: rootID.String(), ModelSelection: active.Run.ModelSelection(), Metrics: active.Run.Metrics(), DrainedTools: drained}}})
 	if err != nil {
-		return zero, false, err
+		return zero, runs.RecoveryUnavailable, err
 	}
 	if err := validateRestoreWorkspace(continuation); err != nil {
 		if errors.Is(err, runs.ErrExecutorStateLost) {
-			return zero, false, nil
+			return zero, runs.RecoveryUnavailable, nil
 		}
-		return zero, false, err
+		return zero, runs.RecoveryUnavailable, err
 	}
-	for _, metadata := range proofs {
-		proof := metadata.Receipt
-		processID, err := agent.ParseProcessID(proof.ProcessID)
-		if err != nil {
-			return zero, false, fmt.Errorf("execution: retained tool receipt: %w", err)
-		}
-		effectID, err := agent.ParseEffectID(proof.EffectID)
-		if err != nil {
-			return zero, false, fmt.Errorf("execution: retained tool receipt: %w", err)
-		}
-		if request, found := checkpoint.tree.EffectRequest(processID, effectID); found {
-			invocation, err := interaction.ToolInvocationFromRequest(request)
-			if err != nil {
-				return zero, false, err
-			}
-			reference, found := invocation.Reference()
-			call := invocation.ToolCall()
-			if !found || reference.ProcessID() != rootID || reference.ModelCallSequence() != metadata.Start.ModelCallSequence || reference.ToolCallIndex() != metadata.Start.ToolCallIndex || call.ID != metadata.Start.SourceCallID || call.Name != metadata.Start.ToolName {
-				return zero, false, errors.New("execution: retained request differs from its captured attribution")
-			}
-		}
-		activation, err := originalToolActivation(*proof, checkpoint.bindings)
-		if err != nil {
-			return zero, false, err
-		}
-		available, err := i.config.OriginalToolResults.AwaitOriginalToolSource(ctx, proof.Tool, proof.Release, proof.Authority, activation)
-		if err != nil {
-			return zero, false, err
-		}
-		// The ownership sweep can close the lost Core Run without consuming or
-		// replaying the unavailable plugin's original private receipt.
-		if !available {
-			return zero, false, nil
-		}
+	available, err := i.originalSourcesAvailable(ctx, checkpoint, rootID, proofs)
+	if err != nil || !available {
+		return zero, runs.RecoveryUnavailable, err
 	}
 	session, err := i.assembleInteraction(ctx, runs.ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}, checkpoint.restoredStart(continuation), &checkpoint)
 	if err != nil {
-		return zero, false, err
+		return zero, runs.RecoveryUnavailable, err
 	}
 	defer func() { resultErr = errors.Join(resultErr, i.discardInteraction(session)) }()
 	if pendingCheckpointSources(session, checkpoint) {
-		return zero, false, errors.New("execution: captured MCP source is still connecting")
+		return zero, runs.RecoveryDeferred, nil
 	}
-	for _, metadata := range proofs {
-		var owner *observedInteractionTool
-		for _, tools := range session.state.deployments.observedTools {
-			if candidate := tools[metadata.Receipt.Tool]; candidate != nil {
-				owner = candidate
-				break
-			}
-		}
-		if owner == nil {
-			return zero, false, errors.New("execution: captured Tool owner is unavailable")
-		}
-		if _, err := owner.binding.Contract().Prepare(corechat.ToolCall{ID: metadata.Start.SourceCallID, Name: metadata.Start.ToolName, Arguments: metadata.Start.Arguments}, nil); err != nil {
-			return zero, false, fmt.Errorf("execution: validate captured effective arguments: %w", err)
-		}
+	if err := session.validateCapturedToolArguments(proofs); err != nil {
+		return zero, runs.RecoveryUnavailable, err
 	}
 	if err := session.engine.ValidateRestorableTree(ctx, session.deployment, checkpoint.tree); err != nil {
 		if errors.Is(err, agent.ErrInvalidTreeSnapshot) {
-			return zero, false, nil
+			return zero, runs.RecoveryUnavailable, nil
 		}
-		return zero, false, err
+		return zero, runs.RecoveryUnavailable, err
 	}
 	if _, err := restoreInteractionAccounting(checkpoint, map[agent.ProcessID]runs.ExecutionMember{rootID: continuation.Members[0]}); err != nil {
-		return zero, false, err
+		return zero, runs.RecoveryUnavailable, err
 	}
-	return runs.UncertainExecutionPlan{Continuation: continuation, Tools: tools}, true, nil
+	return runs.UncertainExecutionPlan{Continuation: continuation, Tools: tools}, runs.RecoveryReady, nil
 }
 
 func (i *InteractionExecutor) StageUncertainExecution(ctx context.Context, continuation runs.ExecutionContinuation) (_ runs.ExecutorRef, err error) {
@@ -306,5 +197,148 @@ func (i *InteractionExecutor) BeginUncertainExecution(ctx context.Context, ref r
 	session.state.continueExecution()
 	session.state.mu.Unlock()
 	session.startWorkers()
+	return nil
+}
+
+func (checkpoint interactionCheckpointState) recoverableReceipts(rootID agent.ProcessID) (map[agent.EffectID]toolResultMetadata, error) {
+	proofs := make(map[agent.EffectID]toolResultMetadata)
+	for _, metadata := range checkpoint.toolMetadata {
+		if metadata.Receipt == nil {
+			continue
+		}
+		if metadata.MemberID != rootID.String() {
+			return nil, nil
+		}
+		id, err := agent.ParseEffectID(metadata.Receipt.EffectID)
+		if err != nil {
+			return nil, fmt.Errorf("execution: retained tool receipt: %w", err)
+		}
+		if _, duplicate := proofs[id]; duplicate {
+			return nil, errors.New("execution: duplicate retained Tool effect identity")
+		}
+		proofs[id] = metadata
+	}
+	if len(proofs) == 0 {
+		return nil, nil
+	}
+	rootWaiting := false
+	for _, snapshot := range checkpoint.tree.ProcessSnapshots() {
+		if snapshot.Relation().ProcessID() == rootID {
+			rootWaiting = snapshot.Status() == agent.StatusWaiting || snapshot.Status().Terminal()
+		}
+		for _, id := range snapshot.UnknownEffectIDs() {
+			if _, supported := proofs[id]; !supported || snapshot.Status().Terminal() {
+				return nil, nil
+			}
+		}
+	}
+	if !rootWaiting {
+		return nil, nil
+	}
+	inputs, err := interaction.PendingToolInputs(checkpoint.tree)
+	if err != nil {
+		return nil, err
+	}
+	if len(inputs) > 0 {
+		return nil, nil
+	}
+	return proofs, nil
+}
+
+func (i *InteractionExecutor) verifySettledTools(ctx context.Context, sessionID string, checkpoint interactionCheckpointState, proofs map[agent.EffectID]toolResultMetadata, pendingCalls map[string]bool) error {
+	var rounds []interaction.RoundResults
+	for _, metadata := range proofs {
+		if pendingCalls[metadata.Start.CallID] {
+			continue
+		}
+		if rounds == nil {
+			var err error
+			rounds, err = interaction.SettledResults(checkpoint.tree)
+			if err != nil {
+				return err
+			}
+		}
+		committed := false
+		for _, round := range rounds {
+			for _, entry := range round.Entries() {
+				identity, err := logicalToolCallID(round.Relation().ProcessID(), round.ModelCallSequence(), entry.ToolCallIndex, entry.Call.ID, entry.Call.Name)
+				if err != nil {
+					return err
+				}
+				if identity.String() != metadata.Start.CallID {
+					continue
+				}
+				publication, err := resultPublication(identity, entry)
+				if err != nil {
+					return err
+				}
+				committed, err = i.config.ExecutionTrees.ExecutionResultCommitted(ctx, sessionID, publication)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		if !committed {
+			return errors.New("execution: captured Tool has neither its original attempt nor a publication receipt")
+		}
+	}
+	return nil
+}
+
+func (i *InteractionExecutor) originalSourcesAvailable(ctx context.Context, checkpoint interactionCheckpointState, rootID agent.ProcessID, proofs map[agent.EffectID]toolResultMetadata) (bool, error) {
+	for _, metadata := range proofs {
+		proof := metadata.Receipt
+		processID, err := agent.ParseProcessID(proof.ProcessID)
+		if err != nil {
+			return false, fmt.Errorf("execution: retained tool receipt: %w", err)
+		}
+		effectID, err := agent.ParseEffectID(proof.EffectID)
+		if err != nil {
+			return false, fmt.Errorf("execution: retained tool receipt: %w", err)
+		}
+		if request, found := checkpoint.tree.EffectRequest(processID, effectID); found {
+			invocation, err := interaction.ToolInvocationFromRequest(request)
+			if err != nil {
+				return false, err
+			}
+			reference, found := invocation.Reference()
+			call := invocation.ToolCall()
+			if !found || reference.ProcessID() != rootID || reference.ModelCallSequence() != metadata.Start.ModelCallSequence || reference.ToolCallIndex() != metadata.Start.ToolCallIndex || call.ID != metadata.Start.SourceCallID || call.Name != metadata.Start.ToolName {
+				return false, errors.New("execution: retained request differs from its captured attribution")
+			}
+		}
+		activation, err := originalToolActivation(*proof, checkpoint.bindings)
+		if err != nil {
+			return false, err
+		}
+		available, err := i.config.OriginalToolResults.AwaitOriginalToolSource(ctx, proof.Tool, proof.Release, proof.Authority, activation)
+		if err != nil {
+			return false, err
+		}
+		// The ownership sweep can close the lost Core Run without consuming or
+		// replaying the unavailable plugin's original private receipt.
+		if !available {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func (session *interactionSession) validateCapturedToolArguments(proofs map[agent.EffectID]toolResultMetadata) error {
+	for _, metadata := range proofs {
+		var owner *observedInteractionTool
+		for _, tools := range session.state.deployments.observedTools {
+			if candidate := tools[metadata.Receipt.Tool]; candidate != nil {
+				owner = candidate
+				break
+			}
+		}
+		if owner == nil {
+			return errors.New("execution: captured Tool owner is unavailable")
+		}
+		if _, err := owner.binding.Contract().Prepare(corechat.ToolCall{ID: metadata.Start.SourceCallID, Name: metadata.Start.ToolName, Arguments: metadata.Start.Arguments}, nil); err != nil {
+			return fmt.Errorf("execution: validate captured effective arguments: %w", err)
+		}
+	}
 	return nil
 }

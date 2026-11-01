@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"log/slog"
 	"slices"
 
@@ -22,6 +23,7 @@ type ProviderSummary struct {
 	Credential            *ProviderCredentialSummary
 	Configured            bool
 	RequiresAPIKey        bool
+	Endpoint              flamemodel.EndpointPolicy
 	RequiresBaseURL       bool
 	EmbeddingCapable      bool
 	DefaultEmbeddingModel *string
@@ -78,7 +80,7 @@ func (c *Coordinator) ListProviders(ctx context.Context) ([]ProviderSummary, err
 	slices.SortFunc(metadata, func(first, second ProviderProfile) int { return cmp.Compare(first.Metadata.ID(), second.Metadata.ID()) })
 	out := make([]ProviderSummary, 0, len(metadata))
 	for _, meta := range metadata {
-		out = append(out, providerSummary(meta.Metadata, byID[meta.Metadata.ID()]))
+		out = append(out, providerSummary(meta, byID[meta.Metadata.ID()]))
 	}
 	return out, nil
 }
@@ -86,7 +88,7 @@ func (c *Coordinator) ListProviders(ctx context.Context) ([]ProviderSummary, err
 // UpdateProvider validates and persists one supported provider, returning
 // its redacted stored result.
 func (c *Coordinator) UpdateProvider(ctx context.Context, cmd UpdateProviderCommand) (ProviderSummary, error) {
-	meta, err := c.supportedProvider(ctx, cmd.ID)
+	profile, err := c.supportedProfile(ctx, cmd.ID)
 	if err != nil {
 		return ProviderSummary{}, err
 	}
@@ -94,7 +96,7 @@ func (c *Coordinator) UpdateProvider(ctx context.Context, cmd UpdateProviderComm
 	if patch.Empty() {
 		return ProviderSummary{}, fmt.Errorf("%w: provider %q has no changes", ErrProviderUpdateRequired, cmd.ID)
 	}
-	if meta.RequiresConfiguredEndpoint() {
+	if profile.Metadata.RequiresConfiguredEndpoint() || !cmd.BaseURL.Empty() {
 		existing, found, getErr := c.providers.Get(ctx, cmd.ID)
 		if getErr != nil {
 			return ProviderSummary{}, getErr
@@ -107,7 +109,10 @@ func (c *Coordinator) UpdateProvider(ctx context.Context, cmd UpdateProviderComm
 		if resolveErr != nil {
 			return ProviderSummary{}, resolveErr
 		}
-		if !finalBaseURL.Present() {
+		if err := profile.Endpoint.ValidateOverride(finalBaseURL.String()); err != nil {
+			return ProviderSummary{}, err
+		}
+		if profile.Metadata.RequiresConfiguredEndpoint() && !finalBaseURL.Present() {
 			return ProviderSummary{}, fmt.Errorf("%w: provider %q", ErrProviderBaseURLRequired, cmd.ID)
 		}
 	}
@@ -116,7 +121,7 @@ func (c *Coordinator) UpdateProvider(ctx context.Context, cmd UpdateProviderComm
 		return ProviderSummary{}, err
 	}
 	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.Models})
-	return providerSummary(meta, entry), nil
+	return providerSummary(profile, entry), nil
 }
 
 // TestProvider checks that a supported, configured provider accepts a minimal
@@ -288,7 +293,8 @@ func orderedModels(providerID string, models []Model) ([]Model, error) {
 	return models, nil
 }
 
-func providerSummary(meta ProviderMetadata, entry provider.Provider) ProviderSummary {
+func providerSummary(profile ProviderProfile, entry provider.Provider) ProviderSummary {
+	meta := profile.Metadata
 	var baseURL *string
 	if configuredBaseURL, present := entry.BaseURL(); present {
 		value := configuredBaseURL.String()
@@ -313,6 +319,7 @@ func providerSummary(meta ProviderMetadata, entry provider.Provider) ProviderSum
 		Credential:            credentialSummary,
 		Configured:            meta.ConfigurationSatisfied(entry),
 		RequiresAPIKey:        meta.RequiresAPIKey(),
+		Endpoint:              profile.Endpoint,
 		RequiresBaseURL:       meta.RequiresConfiguredEndpoint(),
 		EmbeddingCapable:      meta.Embedding().Supported(),
 		DefaultEmbeddingModel: defaultEmbeddingModel,

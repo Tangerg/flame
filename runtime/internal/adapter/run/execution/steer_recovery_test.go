@@ -200,8 +200,8 @@ func TestUnadmittedSteerSurvivesUncertainExecutionRecovery(t *testing.T) {
 		}
 		restarted := newObservedTestInteractionExecutor(t, model, config)
 		plan, eligible, err := restarted.PrepareUncertainExecution(t.Context(), active)
-		if err != nil || !eligible {
-			t.Fatalf("original execution cannot recover: eligible=%t, %v", eligible, err)
+		if err != nil || eligible != runs.RecoveryReady {
+			t.Fatalf("original execution cannot recover: verdict=%v, %v", eligible, err)
 		}
 		restoredRef, err := restarted.StageUncertainExecution(t.Context(), plan.Continuation)
 		if err != nil {

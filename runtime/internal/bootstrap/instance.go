@@ -151,7 +151,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	host.lifetime.stopRuntime = stopRuntime
 	// The delivery endpoint published the callback RPC, so background plugins can
 	// now activate; only now may uncertain-execution revival query their sessions.
-	if err = host.application.recoverUncertainExecutions(ctx); err != nil && !errors.Is(err, qimu.ErrRecoveryRequired) {
+	if err = host.application.recoverUncertainExecutions(ctx); err != nil && !startupRecoveryDeferred(err) {
 		return nil, config.Settings{}, err
 	}
 	workerJoins := host.application.startWorkers(runtimeContext)
@@ -218,3 +218,7 @@ func (i *Instance) CheckStorage(ctx context.Context) error { return i.stores.Pin
 func (i *Instance) PluginControl() http.Handler { return i.application.pluginControl }
 
 func (i *Instance) CheckPlugins(context.Context) error { return i.stores.Admission.RecoveryError() }
+
+func startupRecoveryDeferred(err error) bool {
+	return errors.Is(err, qimu.ErrRecoveryRequired) || errors.Is(err, runs.ErrOriginalSourcePending)
+}

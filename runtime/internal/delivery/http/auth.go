@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
+	"slices"
 	"strings"
 )
 
@@ -50,43 +52,44 @@ func loopbackListener(addr string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
-// authGate enforces the local-token check on POST /v2/rpc. Two paths
-// bypass: the operational sidecars and CORS preflights. Under
-// streamable HTTP every stream is a POST, so the gate covers streaming
-// too — there is no header-less EventSource to special-case.
-//
-// On failure, the response is an RFC 9457 application/problem+json 401,
-// not a JSON-RPC envelope, because authentication runs below the protocol
-// layer.
-func (s *Server) authGate(next http.Handler) http.Handler {
+// A loopback listener establishes the socket peer, not the browser origin.
+// In particular a rebinding domain can be same-origin to the browser.
+func (s *Server) protectRPC(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !s.authentication.gated() {
-			next.ServeHTTP(w, r)
-			return
-		}
-		if r.Method == http.MethodOptions || isAuthBypassPath(r.URL.Path) || r.URL.Path == PluginControlPath {
-			next.ServeHTTP(w, r)
-			return
-		}
-		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, pluginResourcePrefix) {
-			next.ServeHTTP(w, r)
-			return
-		}
-		if !validBearer(r.Header.Get(headerAuthorization), s.authentication.token) {
-			// RFC 9110 §15.5.2 requires a 401 challenge. The gate uses Bearer.
-			w.Header().Set("WWW-Authenticate", "Bearer")
-			writeProblem(w, problemUnauthorized, "a valid local bearer token is required", true)
+		if s.authentication.gated() {
+			if !validBearer(r.Header.Get(headerAuthorization), s.authentication.token) {
+				w.Header().Set("WWW-Authenticate", "Bearer")
+				writeProblem(w, problemUnauthorized, "a valid local bearer token is required", true)
+				return
+			}
+		} else if !s.trustedLoopbackRequest(r) {
+			writeProblem(w, problemForbiddenOrigin, "request authority is not trusted by this local server", true)
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
 }
 
-// isAuthBypassPath flags requests that intentionally skip the gate: the
-// operational sidecars (no-auth ops endpoints). The RPC endpoint —
-// including streaming POSTs — is gated.
-func isAuthBypassPath(p string) bool {
-	return isPublicEndpointPath(p)
+func (s *Server) trustedLoopbackRequest(r *http.Request) bool {
+	if !localRequestAuthority(r) {
+		return false
+	}
+	origins := r.Header.Values("Origin")
+	if len(origins) == 0 {
+		return true
+	}
+	if len(origins) != 1 || origins[0] == "" || origins[0] == "*" || origins[0] == "null" {
+		return false
+	}
+	u, err := url.Parse(origins[0])
+	if err != nil || u.Host == "" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
+		return false
+	}
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	return (u.Scheme == scheme && strings.EqualFold(u.Host, r.Host)) || slices.Contains(s.corsOrigins, origins[0])
 }
 
 // The auth-scheme is case-insensitive (RFC 9110 §11.1); the token is compared
@@ -101,4 +104,30 @@ func validBearer(header, expected string) bool {
 		return false
 	}
 	return subtle.ConstantTimeCompare([]byte(got), []byte(expected)) == 1
+}
+
+func localRequestAuthority(r *http.Request) bool {
+	host, port, err := net.SplitHostPort(r.Host)
+	if err != nil {
+		// HTTP omits its default port in Host and Origin.
+		u := &url.URL{Host: r.Host}
+		host = u.Hostname()
+		if r.Host != host && r.Host != "["+host+"]" {
+			return false
+		}
+		port = "80"
+		if r.TLS != nil {
+			port = "443"
+		}
+	}
+	if !(strings.EqualFold(host, "localhost") || net.ParseIP(host).IsLoopback()) {
+		return false
+	}
+	if local, ok := r.Context().Value(http.LocalAddrContextKey).(net.Addr); ok {
+		_, actualPort, err := net.SplitHostPort(local.String())
+		if err != nil || port != actualPort {
+			return false
+		}
+	}
+	return true
 }

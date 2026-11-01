@@ -266,7 +266,15 @@ func TestForkReidentifiesTerminalHistoryAndClearsGoalAttribution(t *testing.T) {
 		t.Fatalf("Terminate: %v", err)
 	}
 
-	forked, err := source.Fork("session_child", "run_child_copy", Lineage{})
+	childSession, err := identity.ParseSession("session_child")
+	if err != nil {
+		t.Fatal(err)
+	}
+	childRun, err := identity.ParseRun("run_child_copy")
+	if err != nil {
+		t.Fatal(err)
+	}
+	forked, err := source.Fork(childSession, childRun, Lineage{})
 	if err != nil {
 		t.Fatalf("Fork: %v", err)
 	}
@@ -284,7 +292,7 @@ func TestForkReidentifiesTerminalHistoryAndClearsGoalAttribution(t *testing.T) {
 		ModelSelection: mustRunSelection(t), CreatedAt: createdAt,
 	}); err != nil {
 		t.Fatalf("Admit running: %v", err)
-	} else if _, err := running.Fork("session_child", "run_invalid", Lineage{}); err == nil {
+	} else if _, err := running.Fork(childSession, childRun, Lineage{}); err == nil {
 		t.Fatal("Fork accepted a non-terminal Run")
 	}
 }
@@ -310,7 +318,15 @@ func TestForkKeepsTheLineageKindItWasDerivedFrom(t *testing.T) {
 	if err := childLineage.Validate("run_child_copy"); err != nil {
 		t.Fatalf("child lineage is not well formed: %v", err)
 	}
-	if _, err := root.Fork("session_child", "run_child_copy", childLineage); err == nil {
+	childSession, err := identity.ParseSession("session_child")
+	if err != nil {
+		t.Fatal(err)
+	}
+	childRun, err := identity.ParseRun("run_child_copy")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := root.Fork(childSession, childRun, childLineage); err == nil {
 		t.Fatal("Fork turned a root Run into a child")
 	}
 }

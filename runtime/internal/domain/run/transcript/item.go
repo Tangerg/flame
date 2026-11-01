@@ -134,13 +134,13 @@ func (i Item) Snapshot() ItemSnapshot {
 // ownership identities. Semantic content and lifecycle times are preserved. An
 // offloaded Tool result keeps its id: ids are Session-scoped, and the preview
 // spells the id out, so the child Session holds the body under the same one.
-func (i Item) Fork(sessionID, runID, itemID string) (Item, error) {
+func (i Item) Fork(sessionID flameidentity.SessionID, runID flameidentity.RunID, itemID string) (Item, error) {
 	if i.status == ItemRunning {
 		return Item{}, errors.New("transcript: only a terminal Item can be forked")
 	}
 	snapshot := i.Snapshot()
-	snapshot.Identity.SessionID = sessionID
-	snapshot.Identity.RunID = runID
+	snapshot.Identity.SessionID = sessionID.String()
+	snapshot.Identity.RunID = runID.String()
 	snapshot.Identity.ItemID = itemID
 	return RestoreItem(snapshot)
 }

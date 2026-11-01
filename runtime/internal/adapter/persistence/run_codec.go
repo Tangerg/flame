@@ -16,6 +16,11 @@ import (
 // across, so they remain focused values instead of expanding into incidental
 // columns. Their explicit adapter rows keep Go field names from defining the
 // durable format.
+type runAccountingRow struct {
+	Reported         *runUsageRow `json:"reported,omitzero"`
+	UnreportedModels []string     `json:"unreportedModels,omitempty"`
+}
+
 type runUsageRow struct {
 	InputTokens      int64                     `json:"inputTokens,omitzero"`
 	OutputTokens     int64                     `json:"outputTokens,omitzero"`
@@ -108,7 +113,7 @@ func runMetricsRow(metrics rundomain.Metrics) (metricsValues, error) {
 	if ok {
 		usage = &reported
 	}
-	encoded, err := encodeRunUsage(usage)
+	encoded, err := encodeRunUsage(usage, metrics.UnreportedModels())
 	if err != nil {
 		return metricsValues{}, err
 	}
@@ -119,9 +124,9 @@ func runMetricsRow(metrics rundomain.Metrics) (metricsValues, error) {
 	}, nil
 }
 
-func encodeRunUsage(usage *accounting.Usage) (string, error) {
-	row := runUsageRowOf(usage)
-	if row == nil {
+func encodeRunUsage(usage *accounting.Usage, models []string) (string, error) {
+	row := runAccountingRow{Reported: runUsageRowOf(usage), UnreportedModels: models}
+	if row.Reported == nil && len(models) == 0 {
 		return "", nil
 	}
 	encoded, err := encodeStoredJSON(row)
@@ -330,11 +335,7 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 	if err != nil {
 		return rundomain.Run{}, fmt.Errorf("decode run %q model selection: %w", id, err)
 	}
-	decodedUsage, err := decodeRunUsage(usage)
-	if err != nil {
-		return rundomain.Run{}, fmt.Errorf("decode run %q usage: %w", id, err)
-	}
-	metrics, err := rundomain.NewMetrics(decodedUsage, steps, time.Duration(durationNs))
+	metrics, err := decodeRunMetrics(usage, steps, time.Duration(durationNs))
 	if err != nil {
 		return rundomain.Run{}, fmt.Errorf("decode run %q metrics: %w", id, err)
 	}
@@ -388,18 +389,25 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 	return value, nil
 }
 
-func decodeRunUsage(encoded string) (*accounting.Usage, error) {
+func decodeRunMetrics(encoded string, steps int, duration time.Duration) (rundomain.Metrics, error) {
 	if encoded == "" {
-		return nil, nil
+		return rundomain.NewMetrics(nil, steps, duration)
 	}
-	var row *runUsageRow
+	var row *runAccountingRow
 	if err := decodeStoredJSON([]byte(encoded), &row); err != nil {
-		return nil, err
+		return rundomain.Metrics{}, err
 	}
-	if row == nil {
-		return nil, errors.New("decode run usage: stored usage must be an object")
+	if row == nil || (row.Reported == nil) == (len(row.UnreportedModels) == 0) {
+		return rundomain.Metrics{}, errors.New("sqlite: expected one Run accounting variant")
 	}
-	return row.usage()
+	if row.Reported == nil {
+		return rundomain.RestoreUnreportedMetrics(row.UnreportedModels, steps, duration)
+	}
+	usage, err := row.Reported.usage()
+	if err != nil {
+		return rundomain.Metrics{}, err
+	}
+	return rundomain.NewMetrics(usage, steps, duration)
 }
 
 func (r runUsageRow) usage() (*accounting.Usage, error) {

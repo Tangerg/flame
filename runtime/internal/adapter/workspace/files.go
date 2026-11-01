@@ -92,11 +92,11 @@ func (scope fileSelection) list(ctx context.Context, opts workspaceapp.FileListO
 		err = errors.Join(err, rootHandle.Close())
 	}()
 	scope.handle = rootHandle
-	if opts.Glob != "" {
-		if _, err := matchGlob(opts.Glob, ""); err != nil {
-			return nil, fmt.Errorf("%w %q: %w", errInvalidGlob, opts.Glob, err)
-		}
+	glob, err := compileGlob(opts.Glob)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", errInvalidGlob, err)
 	}
+
 	for _, part := range strings.Split(scope.physical, "/") {
 		if part == ".git" {
 			return []workspaceapp.FileEntry{}, nil
@@ -156,7 +156,7 @@ func (scope fileSelection) list(ctx context.Context, opts workspaceapp.FileListO
 	}
 
 	if opts.Recursive || opts.Glob != "" {
-		return recursiveFiles(scope, files, opts.Glob)
+		return recursiveFiles(ctx, scope, files, glob)
 	}
 	return levelEntries(scope, files)
 }
@@ -367,19 +367,18 @@ func walkFiles(ctx context.Context, scope fileSelection, includeIgnored bool, ma
 }
 
 // recursiveFiles turns flat candidate paths into inspected file entries.
-func recursiveFiles(scope fileSelection, files []string, glob string) ([]workspaceapp.FileEntry, error) {
+func recursiveFiles(ctx context.Context, scope fileSelection, files []string, glob fileGlob) ([]workspaceapp.FileEntry, error) {
 	out := make([]workspaceapp.FileEntry, 0, len(files))
 	for _, f := range files {
-		if glob != "" {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if len(glob) > 0 {
 			candidate, ok := listingRelativePath(f, scope.logical)
 			if !ok {
 				continue
 			}
-			matched, err := matchGlob(glob, candidate)
-			if err != nil {
-				return nil, fmt.Errorf("%w %q: %w", errInvalidGlob, glob, err)
-			}
-			if !matched {
+			if !glob.matches(candidate) {
 				continue
 			}
 		}
@@ -491,67 +490,59 @@ func sortFileEntries(entries []workspaceapp.FileEntry) {
 	})
 }
 
-// matchGlob matches a slash-separated workspace path. A complete segment named
-// ** consumes zero or more path segments; every other segment follows
-// path.Match syntax. Keeping the matcher here gives every finite-catalog
-// consumer one glob dialect without adding a second filesystem walker.
-func matchGlob(pattern, relPath string) (bool, error) {
-	if pattern == "" || path.IsAbs(pattern) || strings.ContainsRune(pattern, 0) {
-		return false, path.ErrBadPattern
-	}
-	patternParts := strings.Split(pattern, "/")
-	for _, part := range patternParts {
-		if part == "" || part == "." || part == ".." {
-			return false, path.ErrBadPattern
-		}
-		if part != "**" {
-			if _, err := path.Match(part, ""); err != nil {
-				return false, err
-			}
-		}
-	}
-	pathParts := []string{}
-	if relPath != "" {
-		pathParts = strings.Split(relPath, "/")
-	}
+// Bound both pattern compilation and the per-path matching state. Adjacent
+// double-stars accept precisely the same paths as one.
+const (
+	maxGlobBytes    = 4096
+	maxGlobSegments = 128
+)
 
-	type state struct{ pattern, path int }
-	known := make(map[state]bool)
-	memo := make(map[state]bool)
-	var match func(int, int) (bool, error)
-	match = func(patternIndex, pathIndex int) (bool, error) {
-		key := state{pattern: patternIndex, path: pathIndex}
-		if known[key] {
-			return memo[key], nil
-		}
-		known[key] = true
-		if patternIndex == len(patternParts) {
-			memo[key] = pathIndex == len(pathParts)
-			return memo[key], nil
-		}
-		if patternParts[patternIndex] == "**" {
-			matched, err := match(patternIndex+1, pathIndex)
-			if err != nil || matched {
-				memo[key] = matched
-				return matched, err
-			}
-			if pathIndex < len(pathParts) {
-				matched, err = match(patternIndex, pathIndex+1)
-				memo[key] = matched
-				return matched, err
-			}
-			return false, nil
-		}
-		if pathIndex >= len(pathParts) {
-			return false, nil
-		}
-		matched, err := path.Match(patternParts[patternIndex], pathParts[pathIndex])
-		if err != nil || !matched {
-			return false, err
-		}
-		matched, err = match(patternIndex+1, pathIndex+1)
-		memo[key] = matched
-		return matched, err
+type fileGlob []string
+
+func compileGlob(pattern string) (fileGlob, error) {
+	if pattern == "" {
+		return nil, nil
 	}
-	return match(0, 0)
+	if len(pattern) > maxGlobBytes || path.IsAbs(pattern) || strings.ContainsRune(pattern, 0) || strings.Count(pattern, "/") >= maxGlobSegments {
+		return nil, path.ErrBadPattern
+	}
+	var glob fileGlob
+	for part := range strings.SplitSeq(pattern, "/") {
+		if part == "" || part == "." || part == ".." {
+			return nil, path.ErrBadPattern
+		}
+		if part == "**" && len(glob) > 0 && glob[len(glob)-1] == "**" {
+			continue
+		}
+		if _, err := path.Match(part, ""); err != nil {
+			return nil, err
+		}
+		glob = append(glob, part)
+	}
+	return glob, nil
+}
+
+// Each slot means the corresponding pattern prefix matches the path consumed
+// so far. A double-star can extend that match or consume no component at all.
+func (g fileGlob) matches(candidate string) bool {
+	states := make([]bool, len(g)+1)
+	states[0] = true
+	for i, part := range g {
+		states[i+1] = states[i] && part == "**"
+	}
+	for component := range strings.SplitSeq(candidate, "/") {
+		prev := states[0]
+		states[0] = false
+		for i, part := range g {
+			before := states[i+1]
+			if part == "**" {
+				states[i+1] = before || states[i]
+			} else {
+				match, _ := path.Match(part, component)
+				states[i+1] = prev && match
+			}
+			prev = before
+		}
+	}
+	return states[len(g)]
 }

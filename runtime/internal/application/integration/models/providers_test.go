@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"errors"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"slices"
 	"testing"
 	"time"
@@ -64,14 +65,15 @@ func (t *testProviderRegistry) Update(_ context.Context, id string, patch provid
 }
 
 type testCatalog struct {
-	metadata []ProviderMetadata
-	models   map[string][]Model
+	endpoints map[string]flamemodel.EndpointPolicy
+	metadata  []ProviderMetadata
+	models    map[string][]Model
 }
 
 func (t testCatalog) Profiles(context.Context) ([]ProviderProfile, error) {
 	values := make([]ProviderProfile, len(t.metadata))
 	for i, metadata := range t.metadata {
-		values[i] = ProviderProfile{Metadata: metadata, Models: slices.Clone(t.models[metadata.ID()])}
+		values[i] = ProviderProfile{Metadata: metadata, Endpoint: t.endpoints[metadata.ID()], Models: slices.Clone(t.models[metadata.ID()])}
 	}
 	return values, nil
 }
@@ -506,5 +508,26 @@ func TestFailedProviderUpdateDoesNotPublishInvalidation(t *testing.T) {
 	}
 	if len(notices) != 0 {
 		t.Fatalf("failed update published %+v", notices)
+	}
+}
+
+func TestUpdateValidatesInstalledEndpointPolicyBeforeWriting(t *testing.T) {
+	registry := &testProviderRegistry{entries: map[string]provider.Provider{}}
+	policy := flamemodel.EndpointPolicy{Example: "https://example.invalid/openai/v1", RequiredSuffix: "/openai/v1"}
+	catalog := testCatalog{metadata: []ProviderMetadata{providerMetadataFixture(t, "vendor", ProviderEndpointRequired, ProviderModelsEndpoint, NoEmbeddingCapability())}, endpoints: map[string]flamemodel.EndpointPolicy{"vendor": policy}}
+	c := newTestCoordinator(Config{Providers: registry, Catalog: catalog})
+	save := func(raw string) (ProviderSummary, error) {
+		endpoint, err := provider.NewBaseURL(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return c.UpdateProvider(t.Context(), UpdateProviderCommand{ID: "vendor", BaseURL: provider.Set(endpoint)})
+	}
+	if _, err := save("https://example.invalid/sub/v1"); !errors.Is(err, flamemodel.ErrEndpointOverride) || len(registry.updates) != 0 {
+		t.Fatal(err, registry.updates)
+	}
+	result, err := save("https://example.invalid/sub/openai/v1")
+	if err != nil || result.Endpoint != policy || len(registry.updates) != 1 {
+		t.Fatal(result, err, registry.updates)
 	}
 }

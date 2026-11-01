@@ -163,7 +163,7 @@ func currentSchema() []string {
 			ending             TEXT    NOT NULL DEFAULT '',
 			steps              INTEGER NOT NULL DEFAULT 0,
 			active_duration_ns INTEGER NOT NULL DEFAULT 0,
-			usage              TEXT    NOT NULL DEFAULT '' CHECK (usage = '' OR json_valid(usage)),
+			usage              TEXT    NOT NULL DEFAULT '' CHECK (usage = '' OR (json_valid(usage) AND (json_type(usage,'$.reported') IS 'object') <> (json_type(usage,'$.unreportedModels') IS 'array'))),
 			context_tokens     INTEGER NOT NULL DEFAULT 0 CHECK (context_tokens >= 0),
 			unresolved_effects TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(unresolved_effects) AND json_type(unresolved_effects) = 'array'),
 			capabilities       TEXT    NOT NULL DEFAULT '' CHECK (capabilities = '' OR json_valid(capabilities)),

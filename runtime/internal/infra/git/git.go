@@ -163,7 +163,7 @@ func ListChanges(ctx context.Context, dir string, maxChanges int) ([]FileChange,
 	// status --porcelain gives the status letter + path (+ rename source);
 	// -z NUL-delimits so paths with spaces/newlines stay intact. The explicit
 	// pathspec keeps a nested WorkspaceRef jailed to its own resource root.
-	statusOut, err := run(ctx, dir, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", ".")
+	statusOut, err := run(ctx, dir, "status", "--ignore-submodules=dirty", "--porcelain=v1", "-z", "--untracked-files=all", "--", ".")
 	if err != nil {
 		return nil, err
 	}

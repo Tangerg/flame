@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
 // Resume prepares one complete response set without acquiring an executor. Its
@@ -26,25 +28,11 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 			return accepted, err
 		}
 	}
-	addressed, found, err := c.runs.Run(ctx, cmd.RunID)
+	sess, runAdmission, err := c.claimResume(ctx, cmd.RunID)
 	if err != nil {
 		return StartResult{}, err
 	}
-	if !found {
-		return StartResult{}, ErrInterruptNotOpen
-	}
-	sessionID := addressed.SessionID()
-	sess, err := c.sessionReader.Get(ctx, sessionID)
-	if err != nil {
-		return StartResult{}, err
-	}
-	runAdmission, ok, leaseErr := c.admission.AcquireRun(ctx, sessionID, sess.Workspace().Path())
-	if leaseErr != nil {
-		return StartResult{}, leaseErr
-	}
-	if !ok {
-		return StartResult{}, fmt.Errorf("%w: session %q or working tree %q has a run or mutation in flight", run.ErrSessionBusy, sessionID, sess.Workspace().Path())
-	}
+	sessionID := sess.ID()
 	defer runAdmission.Release()
 	// Run identity locates admission; the answerable hand-off and its Items are
 	// read only while this command excludes competing resume and cancellation.
@@ -77,17 +65,8 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 		return StartResult{}, validatePendingRunTreeErr
 	}
 
-	root, ok := parkedRoot(pending.RootRunID, parkedRuns)
-	if !ok {
-		return StartResult{}, errors.New("runs: pending interrupt set has no parked root Run")
-	}
-	if gap := root.Capabilities().MissingFrom(cmd.CallerCapabilities); !gap.IsEmpty() {
-		return StartResult{}, fmt.Errorf("runs: run %q: %w", cmd.RunID, &run.InsufficientCapabilitiesError{Missing: gap})
-	}
-	if len(cmd.Input) > 0 {
-		if _, err := MaterializeUserMessage(cmd.Input); err != nil {
-			return StartResult{}, err
-		}
+	if err := validateResumeInput(pending, parkedRuns, cmd); err != nil {
+		return StartResult{}, err
 	}
 
 	acceptance, err := NewResumeAcceptance(sessionID, pending, itemsByID, answers)
@@ -134,18 +113,9 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 			Content: transcript.CloneContent(cmd.Input),
 		}
 	}
-	continuation, err := treeContinuationFromPending(pending, parkedRuns, itemsByID)
+	continuation, err := acceptance.treeContinuation(pending, parkedRuns, itemsByID)
 	if err != nil {
-		return StartResult{}, fmt.Errorf("runs: prepare tree continuation: %w", err)
-	}
-	continuation.approvalCalls = acceptance.approvalCalls()
-	replacements, err := acceptance.ItemReplacements()
-	if err != nil {
-		return StartResult{}, fmt.Errorf("runs: prepare tree continuation: %w", err)
-	}
-	for _, replacement := range replacements {
-		item := replacement.State()
-		continuation.items[item.ID()] = item
+		return StartResult{}, err
 	}
 	// One acceptance transaction consumes the open set, settles its answered Items,
 	// resumes the tree, and opens the continuation Segment. Executor activation is
@@ -259,4 +229,60 @@ func effectiveApprovalArguments(item transcript.Item, resolution approval.Resolu
 		return tool.ParseArguments(rejected)
 	}
 	return call.Invocation.Input.Arguments(), nil
+}
+
+func (c *Coordinator) claimResume(ctx context.Context, runID string) (session.Session, ownership.RunAdmission, error) {
+	addressed, found, err := c.runs.Run(ctx, runID)
+	if err != nil {
+		return session.Session{}, ownership.RunAdmission{}, err
+	}
+	if !found {
+		return session.Session{}, ownership.RunAdmission{}, ErrInterruptNotOpen
+	}
+	sessionID := addressed.SessionID()
+	sess, err := c.sessionReader.Get(ctx, sessionID)
+	if err != nil {
+		return session.Session{}, ownership.RunAdmission{}, err
+	}
+	runAdmission, ok, leaseErr := c.admission.AcquireRun(ctx, sessionID, sess.Workspace().Path())
+	if leaseErr != nil {
+		return session.Session{}, ownership.RunAdmission{}, leaseErr
+	}
+	if !ok {
+		return session.Session{}, ownership.RunAdmission{}, fmt.Errorf("%w: session %q or working tree %q has a run or mutation in flight", run.ErrSessionBusy, sessionID, sess.Workspace().Path())
+	}
+	return sess, runAdmission, nil
+}
+
+func validateResumeInput(pending Pending, parkedRuns []run.Run, cmd ResumeCommand) error {
+	root, ok := parkedRoot(pending.RootRunID, parkedRuns)
+	if !ok {
+		return errors.New("runs: pending interrupt set has no parked root Run")
+	}
+	if err := root.CheckResumeCapabilities(cmd.CallerCapabilities); err != nil {
+		return fmt.Errorf("runs: run %q: %w", cmd.RunID, err)
+	}
+	if len(cmd.Input) > 0 {
+		if _, err := MaterializeUserMessage(cmd.Input); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (acceptance ResumeAcceptance) treeContinuation(pending Pending, parkedRuns []run.Run, itemsByID map[string]transcript.Item) (*treeContinuation, error) {
+	continuation, err := treeContinuationFromPending(pending, parkedRuns, itemsByID)
+	if err != nil {
+		return nil, fmt.Errorf("runs: prepare tree continuation: %w", err)
+	}
+	continuation.approvalCalls = acceptance.approvalCalls()
+	replacements, err := acceptance.ItemReplacements()
+	if err != nil {
+		return nil, fmt.Errorf("runs: prepare tree continuation: %w", err)
+	}
+	for _, replacement := range replacements {
+		item := replacement.State()
+		continuation.items[item.ID()] = item
+	}
+	return continuation, nil
 }

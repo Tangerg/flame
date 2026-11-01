@@ -158,7 +158,7 @@ func TestScheduleManualCommandReplaysAcceptedRunAcrossDisableAndRestart(t *testi
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
 	ready := scheduleToolsReady
 	r.poMCPTools(server, ready)
-	saved := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesDraft{Enabled: true, Title: "captured title", Instructions: "captured instructions", Cron: "@hourly", TimeZone: "UTC", CWD: cfg.defaultWorkspacePath}), "create")
+	saved := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesDraft{Enabled: true, Title: "captured title", Instructions: "captured instructions", Cron: "0 * * * *", TimeZone: "UTC", CWD: cfg.defaultWorkspacePath}), "create")
 	request := scheduleRunRequest(r, saved.ID)
 	accepted := readScheduleRun(r, request, "manual")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-schedules")

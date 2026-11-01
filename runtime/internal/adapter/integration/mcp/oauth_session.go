@@ -325,7 +325,7 @@ func restoreOAuthHandler(
 		return nil, nil
 	}
 	source := newSavingTokenSource(
-		cfg.TokenSource(lifetime, token),
+		cfg.TokenSource(context.WithValue(lifetime, oauth2.HTTPClient, oauthHTTPClient()), token),
 		cfg,
 		token,
 		func(updatedConfig *oauth2.Config, updatedToken *oauth2.Token) error {

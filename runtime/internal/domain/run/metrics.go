@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -15,9 +16,10 @@ import (
 // Usage is absent until a provider reports it. ActiveDuration excludes time
 // spent waiting for a person.
 type Metrics struct {
-	usage          *accounting.Usage
-	steps          int
-	activeDuration time.Duration
+	usage            *accounting.Usage
+	unreportedModels []string
+	steps            int
+	activeDuration   time.Duration
 }
 
 // NewMetrics constructs a validated cumulative metrics value.
@@ -31,6 +33,30 @@ func NewMetrics(usage *accounting.Usage, steps int, activeDuration time.Duration
 		return Metrics{}, err
 	}
 	return metrics, nil
+}
+
+// Before the first usage report, keep the identities of dispatched calls
+// without manufacturing a reported zero. The first real report absorbs
+// those identities into its per-model cost breakdown.
+func RestoreUnreportedMetrics(models []string, steps int, duration time.Duration) (Metrics, error) {
+	m := Metrics{unreportedModels: slices.Clone(models), steps: steps, activeDuration: duration}
+	if len(models) == 0 || len(models) > steps || !slices.IsSorted(models) {
+		return Metrics{}, errors.New("run: invalid unreported model identities")
+	}
+	for i, model := range models {
+		if _, err := modelchoice.NewModelIdentity(model); err != nil {
+			return Metrics{}, err
+		}
+		if i > 0 && models[i-1] == model {
+			return Metrics{}, errors.New("run: duplicate unreported model")
+		}
+	}
+	return m, m.Validate()
+}
+func (m Metrics) UnreportedModels() []string { return slices.Clone(m.unreportedModels) }
+func (m Metrics) WithActiveDuration(duration time.Duration) (Metrics, error) {
+	m.activeDuration = duration
+	return m, m.Validate()
 }
 
 // Validate reports whether the cumulative values are internally consistent.
@@ -58,6 +84,20 @@ func (m Metrics) ValidateAdvanceFrom(previous Metrics) error {
 	if m.steps < previous.steps || m.activeDuration < previous.activeDuration {
 		return errors.New("run: cumulative metrics regressed")
 	}
+	if len(previous.unreportedModels) > 0 {
+		for _, model := range previous.unreportedModels {
+			if m.usage == nil {
+				if _, found := slices.BinarySearch(m.unreportedModels, model); !found {
+					return errors.New("run: unreported model attribution disappeared")
+				}
+			} else if m.usage.ByModel != nil {
+				part, found := m.usage.ByModel[model]
+				if !found || part.Cost != (accounting.Cost{}) {
+					return errors.New("run: unreported model became priced or disappeared")
+				}
+			}
+		}
+	}
 	switch {
 	case previous.usage != nil && m.usage == nil:
 		return errors.New("run: cumulative usage disappeared")
@@ -71,7 +111,7 @@ func (m Metrics) ValidateAdvanceFrom(previous Metrics) error {
 
 // Equal reports semantic equality.
 func (m Metrics) Equal(other Metrics) bool {
-	if m.steps != other.steps || m.activeDuration != other.activeDuration {
+	if m.steps != other.steps || m.activeDuration != other.activeDuration || !slices.Equal(m.unreportedModels, other.unreportedModels) {
 		return false
 	}
 	if m.usage == nil || other.usage == nil {
@@ -131,8 +171,11 @@ func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, cost accoun
 				usage.ByModel[model] = value
 			}
 			m.usage = &usage
+		} else if index, found := slices.BinarySearch(m.unreportedModels, model); !found {
+			m.unreportedModels = slices.Insert(slices.Clone(m.unreportedModels), index, model)
 		}
-		return NewMetrics(m.usage, m.steps+1, m.activeDuration)
+		m.steps++
+		return m, nil
 	}
 	tokens, err := accounting.NewTokens(*reported)
 	if err != nil {
@@ -142,10 +185,14 @@ func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, cost accoun
 	usage := accounting.Usage{Total: delta, ByModel: map[string]accounting.Totals{model: delta}}
 	if m.usage == nil && m.steps > 0 {
 		usage.Total.Cost = accounting.Cost{}
-		// Earlier unreported calls have no surviving model attribution here.
-		// Preserve this reported breakdown, but its aggregate price is unknown.
-		delta.Cost = accounting.Cost{}
-		usage.ByModel[model] = delta
+		for _, prior := range m.unreportedModels {
+			subtotal := usage.ByModel[prior]
+			subtotal.Cost = accounting.Cost{}
+			usage.ByModel[prior] = subtotal
+		}
+		if len(m.unreportedModels) == 0 {
+			usage.ByModel = nil
+		}
 	}
 	if m.usage != nil {
 		usage = m.usage.Clone()
@@ -159,10 +206,6 @@ func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, cost accoun
 				if err != nil {
 					return Metrics{}, err
 				}
-			} else if _, priced := m.usage.Total.Cost.USD(); !priced {
-				// An unattributed earlier call may belong to this model. A later
-				// known price cannot make that model's aggregate price exact.
-				delta.Cost = accounting.Cost{}
 			}
 			usage.ByModel[model] = delta
 		}

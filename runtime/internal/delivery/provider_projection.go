@@ -27,7 +27,7 @@ func presentProvider(info modelapp.ProviderSummary) (protocol.Provider, error) {
 	return protocol.Provider{
 		ID: info.ID, BaseURL: info.BaseURL, Credential: credential,
 		Configured: info.Configured, CredentialRequirement: credentialRequirement,
-		RequiresBaseURL: info.RequiresBaseURL, EmbeddingCapable: info.EmbeddingCapable,
+		Endpoint: info.Endpoint, RequiresBaseURL: info.RequiresBaseURL, EmbeddingCapable: info.EmbeddingCapable,
 		DefaultEmbeddingModel: info.DefaultEmbeddingModel,
 	}, nil
 }

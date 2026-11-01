@@ -142,7 +142,7 @@ func (r Run) Snapshot() Snapshot {
 // identities. It preserves the completed work facts, replaces root/child
 // lineage with the caller-resolved equivalent, and clears Goal attribution
 // because a Session branch does not inherit the parent's Goal incarnation.
-func (r Run) Fork(sessionID, id string, lineage Lineage) (Run, error) {
+func (r Run) Fork(sessionID identity.SessionID, id identity.RunID, lineage Lineage) (Run, error) {
 	if !r.state.IsTerminal() {
 		return Run{}, errors.New("run: only a terminal Run can be forked")
 	}
@@ -150,8 +150,8 @@ func (r Run) Fork(sessionID, id string, lineage Lineage) (Run, error) {
 		return Run{}, errors.New("run: fork changes root/child lineage kind")
 	}
 	snapshot := r.Snapshot()
-	snapshot.SessionID = sessionID
-	snapshot.ID = id
+	snapshot.SessionID = sessionID.String()
+	snapshot.ID = id.String()
 	snapshot.Lineage = lineage
 	snapshot.GoalIncarnationID = ""
 	return Restore(snapshot)
@@ -463,3 +463,12 @@ func (r Run) UpdatedAt() time.Time       { return r.updatedAt }
 func (r Run) MessageMark() MessageMark   { return r.messageMark }
 
 func (r Run) UnresolvedEffects() []UnresolvedEffect { return slices.Clone(r.unresolvedEffects) }
+
+// CheckResumeCapabilities requires the caller to handle every interruption the
+// already-opened tree can still emit.
+func (r Run) CheckResumeCapabilities(caller Capabilities) error {
+	if gap := r.capabilities.MissingFrom(caller); !gap.IsEmpty() {
+		return &InsufficientCapabilitiesError{Missing: gap}
+	}
+	return nil
+}

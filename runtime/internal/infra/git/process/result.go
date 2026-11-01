@@ -137,21 +137,17 @@ func readOutput(ctx context.Context, source io.Reader) ([]byte, error) {
 // caller reading them is reading the same text on every machine.
 var parsingLocale = []string{"LC_ALL=C", "LANG=C"}
 
-// At runs Git against the repository at dir with the flags that keep an
-// invocation's behavior and its output independent of everything outside the
-// request: no pager to block on, no optional lock taken for a read, and no
-// path escaping chosen by the user's configuration. Callers pass only what they
-// are asking Git to do.
-//
-// Assembling this prefix per call site is what let it drift: two sites read
-// paths Git had escaped because they omitted core.quotepath, and one compared
-// output across runs without pinning the locale that produced it.
+// At restricts commands that interpret worktree attributes to a disposable Git
+// directory. No repository, system or global configuration can name an external
+// clean filter in the process that reads user-controlled worktree bytes.
 func At(ctx context.Context, dir string, args ...string) (Result, error) {
-	prefix := []string{
-		"--no-pager",
-		"--no-optional-locks",
-		"-C", dir,
-		"-c", "core.quotepath=false",
+	prefix := []string{"--no-pager", "--no-optional-locks", "-C", dir, "-c", "core.quotepath=false", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + os.DevNull, "-c", "diff.ignoreSubmodules=dirty", "-c", "submodule.recurse=false"}
+	env := append([]string{"GIT_NO_LAZY_FETCH=1", "GIT_ALLOW_PROTOCOL=", "GIT_NO_REPLACE_OBJECTS=1"}, parsingLocale...)
+	if len(args) > 0 {
+		switch args[0] {
+		case "status", "diff", "ls-files":
+			return observeWorktree(ctx, env, prefix, args)
+		}
 	}
-	return Run(ctx, parsingLocale, append(prefix, args...)...)
+	return Run(ctx, env, append(prefix, args...)...)
 }
