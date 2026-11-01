@@ -7,7 +7,9 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -93,6 +95,7 @@ func mustNewRunCoordinator(t *testing.T, d runTestDeps) testRuns {
 	opening := runs.OpeningDependencies{
 		RootStarts: d.RootStarts, Releases: d.Releases, Conversation: d.Conversation,
 		WorkingContexts: passthroughRunWorkingContext{}, Models: acceptAllRunModelInputs{},
+		Isolation: workspace.NoIsolation{}, ModelSelector: proposedModel{},
 	}
 	if projection, ok := d.Projection.Openings.(*delegateProjection); ok {
 		deps.CommandAcceptances = projection.stores.CommandAcceptances
@@ -222,4 +225,11 @@ type noCommandAcceptances struct{}
 
 func (noCommandAcceptances) Lookup(context.Context, string) (runs.CommandAcceptanceRecord, error) {
 	return runs.CommandAcceptanceRecord{}, nil
+}
+
+// proposedModel keeps the model a request proposes.
+type proposedModel struct{}
+
+func (proposedModel) SelectModel(_ context.Context, input models.SelectionInput) (modelchoice.Selection, error) {
+	return input.Proposed, nil
 }

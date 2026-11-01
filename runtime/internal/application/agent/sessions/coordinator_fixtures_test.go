@@ -320,6 +320,12 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 	if deps.Now == nil {
 		deps.Now = time.Now
 	}
+	if deps.Checkpoints == nil {
+		deps.Checkpoints = unavailableCheckpoints{}
+	}
+	if deps.Sandbox == nil {
+		deps.Sandbox = noSandbox{}
+	}
 	if deps.NewID == nil {
 		deps.NewID = func() string { return "ses_test" }
 	}
@@ -468,3 +474,17 @@ func testResourceRetirer(retirements resourceRetirements, deps Dependencies) *Re
 	}
 	return retirer
 }
+
+// unavailableCheckpoints is a Runtime built without file checkpoints.
+type unavailableCheckpoints struct{}
+
+func (unavailableCheckpoints) Restore(context.Context, string, string, string) error {
+	return ErrCheckpointUnavailable
+}
+
+func (unavailableCheckpoints) DropSession(string) error { return nil }
+
+// noSandbox is a Runtime built without isolated working copies.
+type noSandbox struct{}
+
+func (noSandbox) Discard(string) error { return nil }

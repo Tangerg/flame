@@ -160,6 +160,13 @@ func buildWorkspaceComposition(
 	}, nil
 }
 
+// workspaceIsolation is either a sandbox Isolator or NoIsolation; both the
+// Session and Run use cases take whichever the configuration chose.
+type workspaceIsolation interface {
+	Workspace(ctx context.Context, sessionID, projectRoot string) (string, error)
+	Discard(sessionID string) error
+}
+
 // executionComposition owns the model/tool execution graph. Every acquired
 // closer is transferred to runtimeLifetime before an error can escape.
 type executionComposition struct {
@@ -167,7 +174,7 @@ type executionComposition struct {
 	conversation      conversationEnvironment
 	models            modelEnvironment
 	tools             toolEnvironment
-	isolation         *workspaceadapter.Isolator
+	isolation         workspaceIsolation
 	workingContexts   *executionadapter.WorkingContextComposer
 	transientSessions *executionadapter.TransientSessionState
 	executor          *executionadapter.InteractionExecutor
@@ -203,15 +210,16 @@ func buildExecutionComposition(
 	// Isolated working copies are acquired before the shell set that can run in
 	// them. The Instance's reverse teardown therefore stops every detached shell
 	// before it destroys the directories those processes use.
-	var isolator *workspaceadapter.Isolator
+	var isolation workspaceIsolation = workspaceadapter.NoIsolation{}
 	if cfg.sandboxDir != "" {
-		isolator, err = workspaceadapter.NewIsolator(cfg.userHome, cfg.sandboxDir, cfg.sandboxReadOnlyPaths)
+		isolator, err := workspaceadapter.NewIsolator(cfg.userHome, cfg.sandboxDir, cfg.sandboxReadOnlyPaths)
 		if err != nil {
 			return executionComposition{}, fmt.Errorf("runtime: build isolated workspace manager: %w", err)
 		}
 		lifetime.toolResources = append(lifetime.toolResources, terminalStep(func(context.Context) error {
 			return isolator.Close()
 		}))
+		isolation = isolator
 	}
 	toolRuntime, err := buildTools(ctx, toolEnvironmentDependencies{
 		framework: policy.framework, registry: policy.registry, packageSkills: policy.packageSkills,
@@ -328,7 +336,7 @@ func buildExecutionComposition(
 		conversation:      conversation,
 		models:            modelServices,
 		tools:             toolRuntime,
-		isolation:         isolator,
+		isolation:         isolation,
 		workingContexts:   workingContexts,
 		transientSessions: transientSessions,
 		executor:          interactionExecutor,

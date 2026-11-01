@@ -162,11 +162,7 @@ func buildAssemblyCore(
 	}
 	sessionDependencies.Mutations = cfg.stores.WorkspaceMutations
 	sessionDependencies.Retirer = retirer
-	// Set only when present so a nil *Isolator never reaches the coordinator as a
-	// non-nil interface (which would defeat its own nil check).
-	if execution.isolation != nil {
-		sessionDependencies.Sandbox = execution.isolation
-	}
+	sessionDependencies.Sandbox = execution.isolation
 	// The shared Goal/session mutation coordinator is created before either
 	// lifecycle owner. The Driver is constructed later because it consumes Runs;
 	// no Bootstrap proxy or post-construction mutation is needed.
@@ -216,7 +212,7 @@ func buildAssemblyCore(
 	}
 	runFinalizer, err := segment.NewFinalizer(segment.FinalizerConfig{
 		Checkpoints: workspaceServices.checkpoints,
-		Titles: &segment.TitleMaintenance{
+		Titles: segment.TitleMaintenance{
 			Sessions:  sessionCoordinator,
 			Generator: segment.NewTitleGenerator(execution.models.utilityModel),
 			Tasks:     runEffectTasks,
@@ -283,11 +279,7 @@ func buildAssemblyCore(
 		Items:                              cfg.stores.Transcript,
 		Admissions:                         admissionGate,
 	}
-	// Set only when present so a nil *Isolator never reaches the openings as a
-	// non-nil interface (which would defeat its own nil check).
-	if execution.isolation != nil {
-		openingDependencies.Isolation = execution.isolation
-	}
+	openingDependencies.Isolation = execution.isolation
 	runUseCases, err := composeRuns(runDependencies, openingDependencies, cancellationDependencies, runSegmentDependencies)
 	if err != nil {
 		return nil, err
@@ -532,17 +524,13 @@ func buildAssemblyCore(
 	return host, nil
 }
 
-// sessionResourceCleanups names the resource families an available store owns
-// for a retired Session generation; an unavailable store owns none.
-func sessionResourceCleanups(checkpoints *workspaceadapter.Checkpoints, isolation *workspaceadapter.Isolator) []sessions.Cleanup {
-	var cleanups []sessions.Cleanup
-	if checkpoints != nil {
-		cleanups = append(cleanups, sessions.Cleanup{Resource: "checkpoints", Retire: checkpoints.DropSession})
+// sessionResourceCleanups names the resource families a retired Session
+// generation owns; a disabled family has nothing to retire.
+func sessionResourceCleanups(checkpoints *workspaceadapter.Checkpoints, isolation workspaceIsolation) []sessions.Cleanup {
+	return []sessions.Cleanup{
+		{Resource: "checkpoints", Retire: checkpoints.DropSession},
+		{Resource: "sandbox", Retire: isolation.Discard},
 	}
-	if isolation != nil {
-		cleanups = append(cleanups, sessions.Cleanup{Resource: "sandbox", Retire: isolation.Discard})
-	}
-	return cleanups
 }
 
 // composeRuns builds the segment supervisor every Run segment opens on and the

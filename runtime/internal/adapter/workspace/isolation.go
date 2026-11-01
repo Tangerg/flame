@@ -180,3 +180,17 @@ func (i *Isolator) Close() error {
 	}
 	return errors.Join(errs...)
 }
+
+// ErrIsolationDisabled reports a Runtime configured without a sandbox
+// directory, so no Session can obtain an isolated working copy.
+var ErrIsolationDisabled = errors.New("isolation: no sandbox directory is configured")
+
+// NoIsolation is the isolation of a Runtime without a sandbox directory: an
+// isolated Session cannot run, and there is never a copy to discard.
+type NoIsolation struct{}
+
+func (NoIsolation) Workspace(context.Context, string, string) (string, error) {
+	return "", ErrIsolationDisabled
+}
+
+func (NoIsolation) Discard(string) error { return nil }

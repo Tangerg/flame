@@ -54,16 +54,10 @@ type OpeningDependencies struct {
 	ActiveRuns         activeRunReader
 	Segments           *Segments
 	Admissions         *ownership.Gate
-	Isolation          isolationProvider // nil disables isolated sessions (their start is refused)
+	Isolation          isolationProvider
 }
 
 func NewOpenings(deps OpeningDependencies) (*Openings, error) {
-	if deps.ModelSelector != nil && lo.IsNil(deps.ModelSelector) {
-		return nil, errors.New("runs: model selector is typed nil")
-	}
-	if deps.Isolation != nil && lo.IsNil(deps.Isolation) {
-		return nil, errors.New("runs: isolation provider must not be typed nil")
-	}
 	required := []struct {
 		name  string
 		value any
@@ -79,6 +73,8 @@ func NewOpenings(deps OpeningDependencies) (*Openings, error) {
 		{"active run reader", deps.ActiveRuns},
 		{"segment supervisor", deps.Segments},
 		{"admission gate", deps.Admissions},
+		{"isolation provider", deps.Isolation},
+		{"model selector", deps.ModelSelector},
 	}
 	for _, required := range required {
 		if lo.IsNil(required.value) {
@@ -231,23 +227,21 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: compose working context: %w", err)
 	}
-	if c.modelSelector != nil {
-		request := &corechat.Request{Messages: draft.WorkingContext}
-		if draft.Options != nil {
-			request.Options = draft.Options.Clone()
-		}
-		selected, selectErr := c.modelSelector.SelectModel(ctx, models.SelectionInput{Context: modelchoice.SelectionContext{Use: modelchoice.Interaction}, Proposed: draft.ModelSelection, Request: request.Clone()})
-		if selectErr != nil {
-			return StartResult{}, fmt.Errorf("runs: select opening model: %w", selectErr)
-		}
-		if err := selected.ValidateExact(); err != nil {
-			return StartResult{}, err
-		}
-		if err := c.AdmitSelection(ctx, selected); err != nil {
-			return StartResult{}, err
-		}
-		draft.ModelSelection = selected
+	request := &corechat.Request{Messages: draft.WorkingContext}
+	if draft.Options != nil {
+		request.Options = draft.Options.Clone()
 	}
+	selected, err := c.modelSelector.SelectModel(ctx, models.SelectionInput{Context: modelchoice.SelectionContext{Use: modelchoice.Interaction}, Proposed: draft.ModelSelection, Request: request.Clone()})
+	if err != nil {
+		return StartResult{}, fmt.Errorf("runs: select opening model: %w", err)
+	}
+	if err := selected.ValidateExact(); err != nil {
+		return StartResult{}, err
+	}
+	if err := c.AdmitSelection(ctx, selected); err != nil {
+		return StartResult{}, err
+	}
+	draft.ModelSelection = selected
 	if err := c.rootStarts.ValidateRootStart(draft); err != nil {
 		return StartResult{}, err
 	}
@@ -515,9 +509,6 @@ func (c *Openings) activeRunConflict(ctx context.Context, sessionID string) (err
 func (c *Openings) executionCWD(ctx context.Context, sess session.Session) (cwd string, isolated bool, err error) {
 	if !sess.Isolated() {
 		return sess.Workspace().Path(), false, nil
-	}
-	if c.isolation == nil {
-		return "", false, fmt.Errorf("%w: isolation is not configured", errIsolationUnavailable)
 	}
 	copyDir, err := c.isolation.Workspace(ctx, sess.ID(), sess.Workspace().Path())
 	if err != nil {

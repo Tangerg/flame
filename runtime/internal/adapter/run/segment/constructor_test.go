@@ -35,28 +35,31 @@ func TestNewRejectsMalformedDependencies(t *testing.T) {
 	}
 }
 
-// TestNewFinalizerRejectsPartialTitleMaintenance pins what Finish and title
-// then rely on: the three title ports arrive together or not at all, so neither
-// re-checks any of them.
-func TestNewFinalizerRejectsPartialTitleMaintenance(t *testing.T) {
+// TestNewFinalizerRequiresEveryMaintenancePort pins what Finish and title then
+// rely on: no port is optional, so neither re-checks any of them.
+func TestNewFinalizerRequiresEveryMaintenancePort(t *testing.T) {
 	stores := &fakeStores{session: &fakeSession{}}
-	complete := TitleMaintenance{Sessions: stores.session, Generator: stores, Tasks: inlineTaskLauncher{}}
-	if _, err := NewFinalizer(FinalizerConfig{Titles: &complete}); err != nil {
-		t.Fatalf("complete title maintenance: %v", err)
+	complete := FinalizerConfig{
+		Checkpoints: fakeCheckpoints{},
+		Titles:      TitleMaintenance{Sessions: stores.session, Generator: stores, Tasks: inlineTaskLauncher{}},
+	}
+	if _, err := NewFinalizer(complete); err != nil {
+		t.Fatalf("complete maintenance: %v", err)
 	}
 	for _, test := range []struct {
 		name string
 		want string
-		drop func(*TitleMaintenance)
+		drop func(*FinalizerConfig)
 	}{
-		{name: "sessions", want: "session titles", drop: func(m *TitleMaintenance) { m.Sessions = nil }},
-		{name: "generator", want: "title generator", drop: func(m *TitleMaintenance) { m.Generator = nil }},
-		{name: "tasks", want: "task launcher", drop: func(m *TitleMaintenance) { m.Tasks = nil }},
+		{name: "checkpoints", want: "checkpoints", drop: func(c *FinalizerConfig) { c.Checkpoints = nil }},
+		{name: "sessions", want: "session titles", drop: func(c *FinalizerConfig) { c.Titles.Sessions = nil }},
+		{name: "generator", want: "title generator", drop: func(c *FinalizerConfig) { c.Titles.Generator = nil }},
+		{name: "tasks", want: "task launcher", drop: func(c *FinalizerConfig) { c.Titles.Tasks = nil }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			partial := complete
 			test.drop(&partial)
-			_, err := NewFinalizer(FinalizerConfig{Titles: &partial})
+			_, err := NewFinalizer(partial)
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("NewFinalizer error = %v, want one naming %q", err, test.want)
 			}
@@ -162,7 +165,16 @@ func mustNewEffects(cfg Config) *Effects {
 	return effects
 }
 
+// mustNewFinalizer completes cfg with checkpoints that snapshot nothing and
+// titles nothing generates, so a test names only the feature it observes.
 func mustNewFinalizer(cfg FinalizerConfig) *Finalizer {
+	if cfg.Checkpoints == nil {
+		cfg.Checkpoints = fakeCheckpoints{}
+	}
+	if cfg.Titles == (TitleMaintenance{}) {
+		stores := &fakeStores{session: &fakeSession{}}
+		cfg.Titles = TitleMaintenance{Sessions: stores.session, Generator: stores, Tasks: inlineTaskLauncher{}}
+	}
 	finalizer, err := NewFinalizer(cfg)
 	if err != nil {
 		panic(err)

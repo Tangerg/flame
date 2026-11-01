@@ -249,12 +249,12 @@ type Coordinator struct {
 	paths                 workspaceResolver
 	models                modelAdmitter
 	defaultModelSelection modelchoice.Selection
-	// checkpoints restores the working tree to a run-boundary checkpoint for a file
-	// rollback and drops a deleted session's snapshots; nil disables both (file
-	// restore is rejected as [ErrCheckpointUnavailable], drop no-ops).
+	// checkpoints restores the working tree to a run-boundary checkpoint for a
+	// file rollback; a Runtime without checkpoints rejects the restore as
+	// [ErrCheckpointUnavailable].
 	checkpoints WorkspaceCheckpoints
 	// sandbox destroys a session's isolated working copy when its execution
-	// policy or durable history stops owning that scratch state; nil disables it.
+	// policy or durable history stops owning that scratch state.
 	sandbox sandboxDiscarder
 	// goals serializes a session write-set with Goal lifecycle commands and
 	// quiesces its loop after a successful commit.
@@ -337,6 +337,8 @@ func New(deps Dependencies) (*Coordinator, error) {
 		{"workspace resolver", deps.Paths},
 		{"model admitter", deps.Models},
 		{"admissions", deps.Admissions},
+		{"workspace checkpoints", deps.Checkpoints},
+		{"sandbox discarder", deps.Sandbox},
 		{"clock", deps.Now},
 		{"session id generator", deps.NewID},
 		{"run id generator", deps.NewRunID},
@@ -345,18 +347,6 @@ func New(deps Dependencies) (*Coordinator, error) {
 	for _, required := range required {
 		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("sessions: %s is required", required.name)
-		}
-	}
-	optional := []struct {
-		name  string
-		value any
-	}{
-		{"workspace checkpoints", deps.Checkpoints},
-		{"sandbox discarder", deps.Sandbox},
-	}
-	for _, required := range optional {
-		if required.value != nil && lo.IsNil(required.value) {
-			return nil, fmt.Errorf("sessions: optional %s must not be typed nil", required.name)
 		}
 	}
 	if err := deps.DefaultModelSelection.ValidateExact(); err != nil {

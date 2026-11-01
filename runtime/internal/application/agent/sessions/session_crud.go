@@ -193,10 +193,8 @@ func (c *Coordinator) Update(ctx context.Context, id string, patch Patch) (sessi
 		if err := c.transientState.QuiesceSession(id); err != nil {
 			return session.Session{}, fmt.Errorf("sessions: quiesce process-local Session state before execution policy change: %w", err)
 		}
-		if c.sandbox != nil {
-			if err := c.sandbox.Discard(id); err != nil {
-				return session.Session{}, fmt.Errorf("sessions: discard sandbox copy before execution policy change: %w", err)
-			}
+		if err := c.sandbox.Discard(id); err != nil {
+			return session.Session{}, fmt.Errorf("sessions: discard sandbox copy before execution policy change: %w", err)
 		}
 		// This cache is optional, derived state. Retiring it before the CAS is
 		// conservative: a conflicting durable edit can rebuild the old policy's

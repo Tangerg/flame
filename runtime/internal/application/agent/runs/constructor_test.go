@@ -2,6 +2,7 @@ package runs
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -177,6 +178,14 @@ func completeTestDependencies(deps runDeps, seg SegmentDependencies) runDeps {
 	effects := &fakeEffects{}
 	if deps.RootStarts == nil {
 		deps.RootStarts = control
+	}
+	if deps.ModelSelector == nil {
+		deps.ModelSelector = modelSelectorFunc(func(_ context.Context, input modelapp.SelectionInput) (modelchoice.Selection, error) {
+			return input.Proposed, nil
+		})
+	}
+	if deps.Isolation == nil {
+		deps.Isolation = &stubIsolation{err: errors.New("isolation is not configured")}
 	}
 	if deps.Releases == nil {
 		deps.Releases = control

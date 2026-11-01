@@ -265,10 +265,11 @@ func newDelegateProjection(t *testing.T, current session.Session, executor *Inte
 		DefaultModelSelection: testDefaultSelection(), Admissions: admissions,
 		Plan:      sessions.PlanServices{Boundaries: stores.Plan, Replacements: plans},
 		Mutations: stores.WorkspaceMutations, Retirer: retirer, Goals: goals.NewSessionMutations(), Sandbox: isolation,
-		Now:       time.Now,
-		NewID:     func() string { return "session_" + uuid.NewString() },
-		NewRunID:  func() string { return "run_" + uuid.NewString() },
-		NewItemID: func() string { return "item_" + uuid.NewString() },
+		Checkpoints: workspaceadapter.NewCheckpoints(""),
+		Now:         time.Now,
+		NewID:       func() string { return "session_" + uuid.NewString() },
+		NewRunID:    func() string { return "run_" + uuid.NewString() },
+		NewItemID:   func() string { return "item_" + uuid.NewString() },
 	})
 	if err != nil {
 		t.Fatal(err)

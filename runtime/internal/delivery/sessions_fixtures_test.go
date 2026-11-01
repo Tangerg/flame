@@ -366,7 +366,10 @@ func newTestHandler(rt testRuntime) *Handler {
 		conversation = p.conversationReader()
 	}
 	projectionWriter := rt.RunSegmentEffects()
-	finalizer, err := segment.NewFinalizer(segment.FinalizerConfig{})
+	finalizer, err := segment.NewFinalizer(segment.FinalizerConfig{
+		Checkpoints: workspaceadapter.NewCheckpoints(""),
+		Titles:      segment.TitleMaintenance{Sessions: titledSessions{}, Generator: titledSessions{}, Tasks: titledSessions{}},
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -444,6 +447,8 @@ func newTestHandler(rt testRuntime) *Handler {
 		ActiveRuns:         sessionCoordinator,
 		Segments:           runSegments,
 		Admissions:         admissions,
+		Isolation:          workspaceadapter.NoIsolation{},
+		ModelSelector:      proposedModel{},
 	})
 	if err != nil {
 		panic(err)
@@ -1034,7 +1039,7 @@ func (s *stubRuntime) sessionsCoordinator(admissions sessions.Admissions) *sessi
 		panic("test runtime requires ownership.Gate")
 	}
 	s.admissions = gate
-	return s.sessionsCoordinatorWithRestorer(nil, admissions)
+	return s.sessionsCoordinatorWithRestorer(workspaceadapter.NewCheckpoints(""), admissions)
 }
 
 func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.WorkspaceCheckpoints, shared ...sessions.Admissions) *sessions.Coordinator {
@@ -1707,4 +1712,22 @@ func (s stubLifecycleStores) Complete(_ context.Context, retirement sessions.Res
 		delete(s.rt.retirements.rows, retirement.SessionID())
 	}
 	return nil
+}
+
+// proposedModel keeps the model a request proposes.
+type proposedModel struct{}
+
+func (proposedModel) SelectModel(_ context.Context, input models.SelectionInput) (modelchoice.Selection, error) {
+	return input.Proposed, nil
+}
+
+// titledSessions never needs a generated title, so delivery tests run no title model.
+type titledSessions struct{}
+
+func (titledSessions) NeedsGeneratedTitle(context.Context, string) (bool, error) { return false, nil }
+func (titledSessions) ApplyGeneratedTitle(context.Context, string, string) error { return nil }
+func (titledSessions) Generate(context.Context, string) (string, error)          { return "", nil }
+func (titledSessions) Start(parent context.Context, task func(context.Context)) bool {
+	task(parent)
+	return true
 }

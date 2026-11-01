@@ -296,9 +296,6 @@ func (c *Coordinator) retireRestoredWorkspace(sessionID, cwd string) error {
 	// The restored tree invalidates every file-read stamp below this shared
 	// workspace and every isolated copy derived from its pre-rollback history.
 	c.transientState.ForgetWorkspace(cwd)
-	if c.sandbox == nil {
-		return nil
-	}
 	if err := c.sandbox.Discard(sessionID); err != nil {
 		return fmt.Errorf("sessions: discard sandbox copy after file rollback: %w", err)
 	}
@@ -407,12 +404,6 @@ func (c *Coordinator) completeMutationDetached(ctx context.Context, m WorkspaceM
 	return c.completeMutation(cleanupCtx, m)
 }
 
-// restore drives the checkpoint store, mapping a nil store (file checkpoints
-// disabled) onto [ErrCheckpointUnavailable] so a build without checkpoints
-// rejects file restore rather than nil-panicking.
 func (c *Coordinator) restore(ctx context.Context, sessionID, cwd, runID string) error {
-	if c.checkpoints == nil {
-		return ErrCheckpointUnavailable
-	}
 	return c.checkpoints.Restore(ctx, sessionID, cwd, runID)
 }

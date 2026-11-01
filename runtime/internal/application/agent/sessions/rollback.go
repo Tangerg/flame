@@ -62,10 +62,8 @@ func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, bound
 			// effects in place under a history that no longer records them. This way
 			// a failed commit costs the kept Runs' scratch files, which the next Run
 			// re-copies from the real workspace, and the rollback reports its error.
-			if c.sandbox != nil {
-				if err := c.sandbox.Discard(sessionID); err != nil {
-					return fmt.Errorf("sessions: discard sandbox copy before history rollback: %w", err)
-				}
+			if err := c.sandbox.Discard(sessionID); err != nil {
+				return fmt.Errorf("sessions: discard sandbox copy before history rollback: %w", err)
 			}
 			return c.writes.ApplyRollback(ctx, rollback)
 		},
