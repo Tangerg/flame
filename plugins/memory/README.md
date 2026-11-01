@@ -230,6 +230,14 @@ keys leave it untouched. Cancellation returns to the connected available opener 
 retained search; a later read cannot reclaim focus from another control.
 A failed read preserves the accepted page. No optimistic item or competing result
 owner is introduced. The former HTML/Memory-specific carrier/read API is removed.
+Manual and subscription refreshes reread that scope's accepted cursor chain;
+changing scope starts at its first page. Page identity and recorded counts sit
+with the catalog summary. Read waits keep Refresh and page controls focusable
+while blocking activation, and page boundaries remain reachable and inert.
+An accepted explicit page change focuses its summary only while the initiating
+control or unclaimed document body still owns focus. Refreshes, failures and a
+later search, form or conversation focus choice never move it. A successful
+original mutation still reads the newest page through its existing lifecycle.
 The shared client journal preserves the original binding across client generation
 changes. The generic management entry also exposes retained unary commands after
 the component/client is recreated or the producer is unavailable. Actual standalone

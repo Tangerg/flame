@@ -34,7 +34,8 @@ report paging and map navigation are qualified under **Report and map navigation
 Shared row-header alignment is qualified under **Shared table rows and multiline
 evidence (2026-11-02)**, published as `d40b86262`. External-source navigation
 and read-only map targets are qualified under **External sources and linked map
-targets (2026-11-02)**. The latest goal restores
+targets (2026-11-02)**, published as `3de198b27`. Memory reading is qualified under
+**Memory read and page continuity (2026-11-02)**. The latest goal restores
 preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
 describe their historical scope.
@@ -4761,6 +4762,140 @@ primary parallel checkout remain untouched. This documentation receipt changes
 no accepted product input; publication is followed by fresh remote, cleanliness
 and preservation checks. Continue from a fresh task observation, preserving this
 accepted hierarchy and the preceding color/focus work.
+
+### Memory read and page continuity (2026-11-02)
+
+Actual current Wails showed two related defects: Refresh and Next became native
+disabled controls and dropped focus to the HTML root, so subsequent Tab restarted
+at the fixture sidebar; refreshing an accepted second page returned the first
+page and its records. Existing filtered-result recovery and original-command
+reconciliation remain separate, already qualified contracts below.
+
+The accepted read remains the sole owner of page, cursor chain, scope and CWD.
+Manual refresh uses that scope's accepted chain. Effect-owned initial/context
+revalidation, subscription establishment, data changes and resync read the latest
+accepted chain through React's existing `useEffectEvent` convention. A different
+scope starts at its first page. No mirrored cursor ref, page cache, invalidation
+queue or new command path is introduced. The established successful-mutation
+read still defaults to the newest page.
+
+Refresh and pager reads now use shared `pending`; unavailable workspace, command
+wait and page bounds keep their distinct disabled preconditions. The pager's
+existing `focusableWhenDisabled` contract keeps boundaries reachable and inert.
+An explicit page read records its initiating control only when accepted. One
+layout effect consumes that focus intent and moves to the new summary only while
+the control or unclaimed document body still owns focus. Initial/background reads,
+refreshes, failures, retired requests and later focus choices do not move it.
+The existing localized page/count caption moves beside the catalog's pending and
+active counts, before the records; the footer contains only page actions. The
+existing summary span is the small programmatic focus destination. No new shared
+API, style, token, animation, locale copy or dependency is required.
+
+Implementation lives in `plugins/memory/component/useMemory.ts`, `component.tsx`
+and `MemoryReport.tsx`, with the module README and normally rebuilt Memory ESM.
+The bounded Claude Code CLI used only Read/Edit/Write/Grep/Glob and the four
+allowed implementation/test paths. It reached its 30-turn limit (31 reported
+turns), leaving an implementation and seven cases without a completion report or
+executed checks. Root reviewed the actual diff, completed the effect-owned
+refresh action and added four cases. A controlled delayed subscription exposed
+the remaining context-revalidation reset before that correction: the request
+cursor was empty instead of the accepted older-page cursor.
+
+Read-only references: HeroUI's actual `button/loading.tsx` and
+`button/loading-state.tsx` keep the pending control's identity and label;
+ZCode's actual `MemorySettingsViewer.tsx` and
+`SettingsResourceHeaderActions.tsx` group the catalog, query and refresh action.
+ZCode itself uses native disabled for refresh and supplies no evidence for
+Flame's focus repair. Flame's accepted Trajectory reading path and shared Button
+own the implementation precedent. React's official
+[Effect Event contract](https://react.dev/reference/react/useEffectEvent)
+supports reading latest committed presentation state from effect-owned callbacks
+without reconnecting on every accepted page. Scope/context/load dependencies
+remain reactive. Earlier ChatGPT, Radix, Arc, color and Ace studies retain their
+recorded scope; no static reference is treated as native interaction evidence.
+
+Verification:
+
+- The six related Web files pass **131 tests**, including all **40 Memory cases**:
+  accepted-page refresh, inert pending/bounds, failure/retry, page-arrival focus,
+  later search focus, observer refresh, context revalidation, changed-scope first
+  page, retired reads and disappearing pagers, plus existing draft/original-command
+  coverage. Related files cover Trajectory, InstalledComponent, Context Dock,
+  retained workspace state and Desktop host.
+- Replaying the three exact HEAD Memory sources against the new focused cases
+  fails on the empty refresh cursor and native disabled boundary. Candidate bytes
+  are restored in a `finally` block. The separate context-revalidation case also
+  failed before root's correction; the final related run passes.
+- Original and final `make check-native` pass. Web/plugin typechecks and lints,
+  plugin catalog parity/resources, owned-file formatting, and Web design-system,
+  token, chrome, locale, HMR, layer, production bundle and plugin-module checks
+  pass. Normal generation changes only the Memory component ESM. The native gate
+  retains its baseline macOS SDK/link-target warnings; the isolated actual app
+  uses the exact selected Wails v3.0.0 with production/minimum-macOS-13 flags.
+
+Actual native acceptance:
+
+- EN 14 px, light/Flame Orange: pending Refresh retains native focus; Tab reaches
+  Add and reverse Tab returns to Refresh. Next retains its button through the
+  wait and accepts page 2 at the visibly focused catalog summary. Tab/Return
+  continues into original record details, including ID and source Session.
+- Refreshing page 2 retains page identity, the captured `…0004` edit target, its
+  unsent draft and expanded details. A later search choice keeps focus through
+  settlement. Search Escape first clears its query; another Escape cancels the
+  form while retaining later search focus. Cancellation from inside the form
+  returns to the available original Edit control.
+- The disabled last-page button is reachable by pure keyboard and Return stays
+  inert. While Previous is waiting, editing the conversation retains its draft
+  and focus after page 1 arrives. Returning to accepted page 2, inspecting the
+  captured `DockResizer.tsx` full width, returning to the Dock and selecting
+  Memory retains page 2 and the conversation draft; typing continues normally.
+- ZH 18 px, dark/custom blue: actual macOS half-window placement and twenty native
+  five-percent zoom increments exercise 200% reflow, about 560 × 475 CSS px.
+  Narrow layout presents the existing full-width reader. A delayed refused read
+  retains page 1 and Refresh focus; Return retries, and Tab continues to Add.
+  Actual wheel reaches both records and paging. Next from the scrolled end
+  focuses the accepted page-2 summary below the sticky controls with a visible
+  blue outline. Record actions, the captured target, field label and pasted
+  Chinese draft stay reachable. Refresh retains page 2, draft and later search
+  focus; Escape cancels locally, and keyboard reaches the inert last boundary
+  with its outline fully visible.
+- From the Chinese full-width reader, Browse panels opens the captured file;
+  **Return to Agent memory** restores page 2 and its query. Closing the reader
+  returns to the conversation, where Chinese drafting continues. No write or
+  message is submitted. The private host adds no interaction-observer probes.
+
+| Domain        | Changed-flow evidence                                                                                 | Result                                                                 |
+| ------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Accessibility | Named existing controls, pending/boundary Tab/Return, conditional page arrival and local cancellation | Covered keyboard/focus paths pass; VoiceOver unverified                |
+| Layout        | Native side-by-side and full-width readers, half-window 200%, wheel and focus-driven scrolling        | Summary and current actions remain reachable below sticky controls     |
+| Writing       | Existing eight-locale page/count and status copy, unchanged search scope                              | Page identity appears before the records without duplicate footer copy |
+| Typography    | EN 14 px and ZH 18 px at 100%/200%, captured IDs and draft text                                       | Existing roles and wrapping retained; no fixed-size exception          |
+| Colors        | Light/Orange and dark/custom blue with state text and visible focus                                   | Semantic owners unchanged; no new pixel-ratio measurement              |
+| UI polish     | Shared pending button, inert bounds and one accepted-page focus handoff                               | Stable control identity; no new animation or decoration                |
+
+Scoped verdict: the changed reading/return flow passes these qualified scenes.
+Command-write and broader product qualifications remain separate.
+
+The native fixture serves current Web sources through the unchanged private
+Wails host, real InstalledComponent and public Runtime client. Only the isolated
+list provider supplies two pages, delayed reads and one refusal; no live Runtime,
+provider command or user data is touched. This batch does not qualify native
+Save/Approve/Pin or unknown-write reconciliation, VoiceOver, physical IME
+composition, production data/provider delivery, or an all-product visual verdict.
+Browser visual suites and performance benchmarks are intentionally not run.
+
+Cleanup/delivery: all three private native processes exit 0 and the review bundle
+is unregistered. Its app, Web assets and home are removed. All six native-profile
+absence baselines and nine checkout-output absence baselines are restored. Only
+active root dependencies and the retained private npm CLI toolchain are needed
+for ongoing work; batch task/result/overlay files, logs and other npm caches are
+retired with delivery. The publication fetch finds zero incoming main commits at
+`3de198b27`, and the primary main checkout is clean before integration. This
+batch follows the authorized fast-forward-to-main and push workflow. No protocol,
+stored-data or backend migration is required. Continue from actual native
+evidence for the next complete task; native command waits/unknown reconciliation
+remain unqualified by this read-only batch and should not be changed merely from
+their disabled props.
 
 ### Memory filtered-result recovery
 

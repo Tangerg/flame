@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   failureText,
   bindOperations,
@@ -50,6 +58,10 @@ export function useMemory(context: ComponentContext) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const cwd = scope === "project" ? context.workspace?.ref.path : "";
   const [read, setRead] = useState<Read>({ loading: false });
+  const current =
+    read.accepted?.scope === scope && read.accepted.cwd === cwd
+      ? read.accepted
+      : undefined;
   const [edit, setEdit] = useState<Edit>();
   const searchElement = useRef<HTMLElement>(null);
   const editOpener = edit?.opener;
@@ -69,9 +81,12 @@ export function useMemory(context: ComponentContext) {
   const lifetime = useRef<AbortController>(undefined);
   const command = useRef<Command>(undefined);
   const observing = useRef(false);
+  const arrival = useRef<HTMLElement>(undefined);
+  const summary = useRef<HTMLSpanElement>(null);
   const load = useCallback(
-    async (owner: AbortSignal, cursors = [""]) => {
+    async (owner: AbortSignal, cursors = [""], pageControl?: HTMLElement) => {
       reading.current?.abort();
+      arrival.current = undefined;
       if (cwd === undefined) {
         setRead((previous) => ({
           ...previous,
@@ -95,8 +110,10 @@ export function useMemory(context: ComponentContext) {
           },
           signal,
         );
-        if (!signal.aborted)
+        if (!signal.aborted) {
+          arrival.current = pageControl;
           setRead({ loading: false, accepted: { page, cursors, scope, cwd } });
+        }
       } catch (error) {
         if (!signal.aborted)
           setRead((previous) => ({
@@ -108,11 +125,14 @@ export function useMemory(context: ComponentContext) {
     },
     [context, operations, scope, cwd, t],
   );
+  const refreshAccepted = useEffectEvent((signal: AbortSignal) => {
+    void load(signal, current?.cursors);
+  });
   useEffect(() => {
     const owner = new AbortController();
     lifetime.current = owner;
     const signal = AbortSignal.any([context.signal, owner.signal]);
-    void load(signal);
+    refreshAccepted(signal);
     return () => owner.abort();
   }, [context.signal, load]);
   useEffect(() => {
@@ -125,11 +145,11 @@ export function useMemory(context: ComponentContext) {
           signal,
         );
         if (signal.aborted) return;
-        void load(signal);
+        refreshAccepted(signal);
         for await (const event of subscription.events) {
           if (signal.aborted) break;
           if (event.type === "plugins.dataChanged" || event.type === "resync")
-            void load(signal);
+            refreshAccepted(signal);
         }
       } catch (error) {
         if (!signal.aborted)
@@ -142,10 +162,16 @@ export function useMemory(context: ComponentContext) {
     void context.track(() => watch());
     return () => controller.abort();
   }, [context, load]);
-  const current =
-    read.accepted?.scope === scope && read.accepted.cwd === cwd
-      ? read.accepted
-      : undefined;
+  useLayoutEffect(() => {
+    const control = arrival.current;
+    arrival.current = undefined;
+    const active = control?.ownerDocument.activeElement;
+    if (
+      control &&
+      (active === control || active === control.ownerDocument.body)
+    )
+      summary.current?.focus();
+  }, [current]);
   const locked = pending || Boolean(unknown) || context.signal.aborted;
   const activeFilters =
     Number(status !== "all") + Number(origin !== "all") + Number(pinned);
@@ -281,6 +307,7 @@ export function useMemory(context: ComponentContext) {
     reconcile,
     change,
     current,
+    summary,
     recordFeedback,
   };
 }

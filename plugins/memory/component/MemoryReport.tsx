@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { type ReactNode, type Ref } from "react";
 import { type Translate } from "@flame/component-sdk";
 import { type MethodInputs } from "../package/io.github.tangerg.flame/contracts/methods.generated";
 import { Brain } from "@flame/icons/react";
@@ -19,6 +19,8 @@ import {
 import { type MemoryItem, type MemoryPage, type MutationName } from "./types";
 export function MemoryReport({
   page,
+  pageNumber,
+  summary,
   disabled,
   authoring,
   edit,
@@ -33,6 +35,8 @@ export function MemoryReport({
   t,
 }: {
   page?: MemoryPage;
+  pageNumber?: number;
+  summary: Ref<HTMLSpanElement>;
   disabled: boolean;
   authoring: boolean;
   edit(item: MemoryItem, opener: HTMLElement): void;
@@ -65,8 +69,11 @@ export function MemoryReport({
       <PanelSection
         title={t("catalog.title")}
         description={
-          page && (
-            <span id="summary">
+          page &&
+          pageNumber !== undefined && (
+            <span id="summary" ref={summary} tabIndex={-1}>
+              {t("footer.page", { page: pageNumber, count: rows.length })}
+              {" · "}
               {t("catalog.summary", {
                 pending: rows.filter((item) => item.Status === "pending")
                   .length,

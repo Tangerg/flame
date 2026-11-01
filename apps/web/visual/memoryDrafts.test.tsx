@@ -11,7 +11,7 @@ prepareTestClient(() => {
   finishTestClient(() => owned.dispose());
 });
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi, type Mock } from "vitest";
 import { createFlameClient, MutationLookupError } from "@flame/runtime-client";
 
 import { type CallPluginRequest, type CallPluginResponse } from "@flame/runtime-client/wire";
@@ -31,16 +31,14 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-async function openMemory() {
+async function openMemory(list?: (request: CallPluginRequest) => Promise<CallPluginResponse>) {
   const owner = new AbortController();
-  const runtime = createFlameClient(
-    createVisualRuntimeTransport(
-      structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
-      VISUAL_CAPABILITIES,
-      async () => REVIEW_DIFF,
-    ),
-    { capabilities: () => VISUAL_CAPABILITIES },
+  const transport = createVisualRuntimeTransport(
+    structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+    VISUAL_CAPABILITIES,
+    async () => REVIEW_DIFF,
   );
+  const runtime = createFlameClient(transport, { capabilities: () => VISUAL_CAPABILITIES });
   releases.push(async () => {
     owner.abort();
     await runtime.close();
@@ -66,7 +64,8 @@ async function openMemory() {
   const original = runtime.plugins.call;
   let count = 0;
   const call = vi.spyOn(runtime.plugins, "call").mockImplementation((request, options) => {
-    if (request.method === "flame.memory/list.v2") return original(request, options);
+    if (request.method === "flame.memory/list.v2")
+      return list ? (list(request) as never) : original(request, options);
     const key = `memory-command-${++count}`;
     return mutationResult((key) => settle(request, key), key);
   });
@@ -89,10 +88,60 @@ async function openMemory() {
     },
     compose: () => null,
   };
-  testClient.render(<Memory context={context} />);
+  const rendered = testClient.render(<Memory context={context} />);
   await screen.findByText(VISUAL_MEMORY_PAGE.Rows[1]!.Content, { exact: true });
   await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
-  return { settle, call };
+  return { settle, call, transport, context, rerender: rendered.rerender };
+}
+
+const secondPage: MemoryOutputs["flame.memory/list.v2"] = {
+  ...VISUAL_MEMORY_PAGE,
+  Rows: [
+    {
+      ...VISUAL_MEMORY_PAGE.Rows[1]!,
+      ID: "mem_00000000000000000000000000000004",
+      Content: "Older memory kept on the second page.",
+    },
+  ],
+  NextCursor: "",
+};
+
+function listed(request: CallPluginRequest): CallPluginResponse {
+  const { Cursor } = JSON.parse(request.input) as { Cursor: string };
+  return {
+    output: JSON.stringify(
+      Cursor === "memory-page-2"
+        ? secondPage
+        : { ...VISUAL_MEMORY_PAGE, NextCursor: "memory-page-2" },
+    ),
+  };
+}
+
+async function openPagedMemory() {
+  const list = vi.fn(async (request: CallPluginRequest) => listed(request));
+  const opened = await openMemory(list);
+  // The established subscription rereads once; navigation must not race that read.
+  await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
+  return { ...opened, list };
+}
+
+function listedInputs(list: Mock<(request: CallPluginRequest) => Promise<CallPluginResponse>>) {
+  return list.mock.calls.map(
+    ([request]) => JSON.parse(request.input) as { Scope: string; Cursor: string },
+  );
+}
+
+function pageSummary(page: number) {
+  return within(catalog()).getByText(new RegExp(`^Page ${page} · `));
+}
+
+async function turnTo(name: "Next page" | "Previous page", page: number) {
+  const button = screen.getByRole("button", { name });
+  button.focus();
+  fireEvent.click(button);
+  await waitFor(() => expect(document.activeElement).toBe(pageSummary(page)));
+  return button;
 }
 
 function startDraft() {
@@ -706,4 +755,211 @@ it("retains a deletion target until its original command is confirmed", async ()
     { ID: VISUAL_MEMORY_PAGE.Rows[1]!.ID, ExpectedRevision: VISUAL_MEMORY_PAGE.Rows[1]!.Revision },
     { ID: VISUAL_MEMORY_PAGE.Rows[1]!.ID, ExpectedRevision: VISUAL_MEMORY_PAGE.Rows[1]!.Revision },
   ]);
+});
+
+it("summarizes a one-page catalog without pager controls or a focus move", async () => {
+  await openMemory();
+  const summary = within(catalog()).getByText(
+    "Page 1 · 2 recorded items · 1 pending · 1 active on this page",
+  );
+  expect(document.activeElement).not.toBe(summary);
+  expect(screen.queryByRole("button", { name: "Next page" })).toBeNull();
+});
+
+it("refreshes the accepted page while pending controls keep focus and refuse repeats", async () => {
+  const { list } = await openPagedMemory();
+  fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+  await screen.findByText(secondPage.Rows[0]!.Content, { exact: true });
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this page" });
+  fireEvent.change(search, { target: { value: "Older" } });
+  const read = Promise.withResolvers<CallPluginResponse>();
+  list.mockImplementationOnce(() => read.promise);
+  const refresh = screen.getByRole("button", { name: "Refresh" });
+  refresh.focus();
+  fireEvent.click(refresh);
+  await screen.findByText("Reading recorded memory…");
+  expect(listedInputs(list).at(-1)).toMatchObject({ Scope: "project", Cursor: "memory-page-2" });
+  const issued = list.mock.calls.length;
+  for (const control of [
+    refresh,
+    screen.getByRole("button", { name: "Previous page" }),
+    screen.getByRole("button", { name: "Next page" }),
+  ]) {
+    expect(control.hasAttribute("disabled")).toBe(false);
+    expect(control.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(control);
+  }
+  expect(list).toHaveBeenCalledTimes(issued);
+  expect(document.activeElement).toBe(refresh);
+  await act(async () => read.resolve(listed(list.mock.calls.at(-1)![0])));
+  await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
+  expect(pageSummary(2)).toBeTruthy();
+  expect(document.activeElement).toBe(refresh);
+  expect(search.value).toBe("Older");
+  expect(screen.getByText(secondPage.Rows[0]!.Content, { exact: true })).toBeTruthy();
+});
+
+it("keeps the accepted page and its cursor chain after a failed refresh", async () => {
+  const { list } = await openPagedMemory();
+  await turnTo("Next page", 2);
+  list.mockRejectedValueOnce(new Error("Memory catalog is unavailable."));
+  const refresh = screen.getByRole("button", { name: "Refresh" });
+  fireEvent.click(refresh);
+  await screen.findByText("Memory catalog is unavailable.");
+  expect(pageSummary(2)).toBeTruthy();
+  expect(screen.getByText(secondPage.Rows[0]!.Content, { exact: true })).toBeTruthy();
+  fireEvent.click(refresh);
+  await waitFor(() => expect(screen.queryByText("Memory catalog is unavailable.")).toBeNull());
+  await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
+  expect(listedInputs(list).slice(-2)).toEqual([
+    expect.objectContaining({ Cursor: "memory-page-2" }),
+    expect.objectContaining({ Cursor: "memory-page-2" }),
+  ]);
+  expect(pageSummary(2)).toBeTruthy();
+  await turnTo("Previous page", 1);
+  expect(listedInputs(list).at(-1)).toMatchObject({ Cursor: "" });
+});
+
+it("leaves a later focus choice in place when an explicit page arrives", async () => {
+  const { list } = await openPagedMemory();
+  const read = Promise.withResolvers<CallPluginResponse>();
+  list.mockImplementationOnce(() => read.promise);
+  const next = screen.getByRole("button", { name: "Next page" });
+  next.focus();
+  fireEvent.click(next);
+  await screen.findByText("Reading recorded memory…");
+  const search = screen.getByRole("searchbox", { name: "Search this page" });
+  search.focus();
+  await act(async () => read.resolve(listed(list.mock.calls.at(-1)![0])));
+  await waitFor(() => expect(pageSummary(2)).toBeTruthy());
+  expect(document.activeElement).toBe(search);
+});
+
+it("keeps first and last page bounds focusable without reading", async () => {
+  const { list } = await openPagedMemory();
+  const previous = screen.getByRole("button", { name: "Previous page" });
+  expect(previous.hasAttribute("disabled")).toBe(false);
+  expect(previous.getAttribute("aria-disabled")).toBe("true");
+  previous.focus();
+  expect(document.activeElement).toBe(previous);
+  fireEvent.click(previous);
+  expect(list).toHaveBeenCalledTimes(2);
+  await turnTo("Next page", 2);
+  const next = screen.getByRole("button", { name: "Next page" });
+  expect(next.hasAttribute("disabled")).toBe(false);
+  expect(next.getAttribute("aria-disabled")).toBe("true");
+  next.focus();
+  expect(document.activeElement).toBe(next);
+  fireEvent.click(next);
+  expect(list).toHaveBeenCalledTimes(3);
+  expect(pageSummary(2)).toBeTruthy();
+});
+
+it("starts a newly selected scope at its first page", async () => {
+  const { list } = await openPagedMemory();
+  await turnTo("Next page", 2);
+  fireEvent.click(screen.getByRole("radio", { name: "User" }));
+  // Both the scope read and the re-established subscription read belong to the new scope.
+  await waitFor(() =>
+    expect(listedInputs(list).filter((input) => input.Scope === "user")).toHaveLength(2),
+  );
+  await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
+  expect(
+    listedInputs(list)
+      .filter((input) => input.Scope === "user")
+      .map((input) => input.Cursor),
+  ).toEqual(["", ""]);
+  expect(pageSummary(1)).toBeTruthy();
+});
+
+it("rereads the accepted page when the owner reports a data change", async () => {
+  const { list, transport } = await openPagedMemory();
+  await turnTo("Next page", 2);
+  const search = screen.getByRole("searchbox", { name: "Search this page" });
+  search.focus();
+  const issued = list.mock.calls.length;
+  // The visual Runtime publishes this generic plugins.dataChanged to every data observer.
+  transport.removeSchedule("sch_nightly");
+  await waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(issued));
+  await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
+  expect(listedInputs(list).slice(issued)).toEqual([
+    expect.objectContaining({ Cursor: "memory-page-2" }),
+  ]);
+  expect(pageSummary(2)).toBeTruthy();
+  expect(document.activeElement).toBe(search);
+});
+
+it("retains traversal while the same target's refreshed context reestablishes its observer", async () => {
+  const { list, context, rerender } = await openPagedMemory();
+  await turnTo("Next page", 2);
+  const release = Promise.withResolvers<void>();
+  const subscribe = context.runtime.runtimeEvents.subscribe.bind(context.runtime.runtimeEvents);
+  vi.spyOn(context.runtime.runtimeEvents, "subscribe").mockImplementationOnce(async (...args) => {
+    const subscription = await subscribe(...args);
+    await release.promise;
+    return subscription;
+  });
+  const search = screen.getByRole("searchbox", { name: "Search this page" });
+  search.focus();
+  const issued = list.mock.calls.length;
+  rerender(<Memory context={{ ...context }} />);
+  try {
+    await waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(issued));
+    await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
+    expect(listedInputs(list).at(-1)).toMatchObject({ Cursor: "memory-page-2" });
+    expect(pageSummary(2)).toBeTruthy();
+  } finally {
+    await act(async () => release.resolve());
+  }
+  await waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(issued + 1));
+  await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
+  expect(pageSummary(2)).toBeTruthy();
+  expect(document.activeElement).toBe(search);
+});
+
+it("retains the accepted page and navigation focus when a page read fails", async () => {
+  const { list } = await openPagedMemory();
+  const next = screen.getByRole("button", { name: "Next page" });
+  list.mockRejectedValueOnce(new Error("Older memory is unavailable."));
+  next.focus();
+  fireEvent.click(next);
+  await screen.findByText("Older memory is unavailable.");
+  expect(pageSummary(1)).toBeTruthy();
+  expect(screen.getByText(active.Content, { exact: true })).toBeTruthy();
+  expect(document.activeElement).toBe(next);
+  fireEvent.click(next);
+  await waitFor(() => expect(document.activeElement).toBe(pageSummary(2)));
+  expect(listedInputs(list).slice(-2)).toEqual([
+    expect.objectContaining({ Cursor: "memory-page-2" }),
+    expect.objectContaining({ Cursor: "memory-page-2" }),
+  ]);
+});
+
+it("does not accept or focus a retired page read after the scope changes", async () => {
+  const { list } = await openPagedMemory();
+  const read = Promise.withResolvers<CallPluginResponse>();
+  list.mockImplementationOnce(() => read.promise);
+  const next = screen.getByRole("button", { name: "Next page" });
+  next.focus();
+  fireEvent.click(next);
+  await screen.findByText("Reading recorded memory…");
+  const user = screen.getByRole("radio", { name: "User" });
+  user.focus();
+  fireEvent.click(user);
+  await waitFor(() => expect(listedInputs(list).at(-1)).toMatchObject({ Scope: "user" }));
+  await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
+  await act(async () => read.resolve({ output: JSON.stringify(secondPage) }));
+  expect(pageSummary(1)).toBeTruthy();
+  expect(screen.queryByText(secondPage.Rows[0]!.Content, { exact: true })).toBeNull();
+  expect(document.activeElement).toBe(user);
+});
+
+it("focuses accepted page scope when its initiating pager disappears", async () => {
+  const { list } = await openPagedMemory();
+  await turnTo("Next page", 2);
+  list.mockResolvedValueOnce({ output: JSON.stringify(VISUAL_MEMORY_PAGE) });
+  await turnTo("Previous page", 1);
+  expect(screen.queryByRole("button", { name: "Previous page" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Next page" })).toBeNull();
+  expect(screen.getByText(active.Content, { exact: true })).toBeTruthy();
 });

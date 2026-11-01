@@ -65,6 +65,7 @@ export function Memory({ context }: { context: ComponentContext }) {
     reconcile,
     change,
     current,
+    summary,
     recordFeedback,
   } = useMemory(context);
   function clearFiltersAndFocusSearch() {
@@ -112,10 +113,11 @@ export function Memory({ context }: { context: ComponentContext }) {
                   icon={Refresh}
                   aria-label={t("refresh")}
                   size="md"
-                  disabled={read.loading || cwd === undefined || pending}
+                  pending={read.loading}
+                  disabled={cwd === undefined || pending}
                   onClick={() => {
                     const owner = observerSignal();
-                    if (owner) void load(owner);
+                    if (owner) void load(owner, current?.cursors);
                   }}
                 />
                 <Button
@@ -354,6 +356,8 @@ export function Memory({ context }: { context: ComponentContext }) {
         <>
           <MemoryReport
             page={current?.page}
+            pageNumber={current?.cursors.length}
+            summary={summary}
             search={search}
             status={status}
             origin={origin}
@@ -395,40 +399,40 @@ export function Memory({ context }: { context: ComponentContext }) {
             (current.cursors.length > 1 ||
               Boolean(current.page.NextCursor)) && (
               <PanelFooter>
-                <Metadata>
-                  {t("footer.page", {
-                    page: current.cursors.length,
-                    count: current.page.Rows.length,
-                  })}
-                </Metadata>{" "}
                 <Toolbar label={t("pages.label")}>
                   <Button
-                    disabled={
-                      read.loading || pending || current.cursors.length === 1
-                    }
-                    onClick={() => {
+                    pending={read.loading}
+                    focusableWhenDisabled
+                    disabled={pending || current.cursors.length === 1}
+                    onClick={(event) => {
                       const owner = observerSignal();
-                      if (owner) void load(owner, current.cursors.slice(0, -1));
+                      if (owner)
+                        void load(
+                          owner,
+                          current.cursors.slice(0, -1),
+                          event.currentTarget,
+                        );
                     }}
                   >
                     {t("pages.previous")}
                   </Button>
                   <Button
-                    disabled={
-                      read.loading || pending || !current.page.NextCursor
-                    }
-                    onClick={() => {
+                    pending={read.loading}
+                    focusableWhenDisabled
+                    disabled={pending || !current.page.NextCursor}
+                    onClick={(event) => {
                       const owner = observerSignal();
                       if (owner)
-                        void load(owner, [
-                          ...current.cursors,
-                          current.page.NextCursor,
-                        ]);
+                        void load(
+                          owner,
+                          [...current.cursors, current.page.NextCursor],
+                          event.currentTarget,
+                        );
                     }}
                   >
                     {t("pages.next")}
                   </Button>
-                </Toolbar>{" "}
+                </Toolbar>
               </PanelFooter>
             )}
         </>
