@@ -14,13 +14,17 @@ export const zh: Record<string, string> = {
   "section.available": "可用技能",
   "section.review": "技能提议",
   "section.library": "个人技能库",
-  "section.library.description":
-    "用户管理的技能。安装提供的技能随其包一起管理。",
+  "section.library.description": "安装提供的技能随其包一起管理。",
   "section.workspace.path": "工作区：{{path}}",
   "section.selectWorkspace": "选择一个工作区以查看可用技能与提议。",
   "summary.available_other": "{{count}} 个可用技能",
   "summary.review_other": "{{count}} 项待处理提议",
   "summary.library_other": "{{count}} 个用户管理的技能",
+  "summary.matching.available_other":
+    "{{count}} 个可用技能中的 {{matching}} 个",
+  "summary.matching.review_other": "{{count}} 项待处理提议中的 {{matching}} 项",
+  "summary.matching.library_other":
+    "{{count}} 个用户管理的技能中的 {{matching}} 个",
   "summary.none": "没有已接受的读取。",
   "empty.filtered.title": "此目录中没有匹配的技能。",
   "empty.none.title": "此目录中没有技能。",

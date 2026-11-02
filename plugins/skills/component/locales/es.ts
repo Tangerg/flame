@@ -16,7 +16,7 @@ export const es: Record<string, string> = {
   "section.review": "Propuestas de Skills",
   "section.library": "Biblioteca personal de Skills",
   "section.library.description":
-    "Skills gestionados por el usuario. Los Skills provistos por la instalación se gestionan con su paquete.",
+    "Los Skills provistos por la instalación se gestionan con su paquete.",
   "section.workspace.path": "Espacio de trabajo: {{path}}",
   "section.selectWorkspace":
     "Selecciona un espacio de trabajo para inspeccionar los Skills disponibles y las propuestas.",
@@ -29,6 +29,24 @@ export const es: Record<string, string> = {
   "summary.library_one": "{{count}} Skill gestionado por el usuario",
   "summary.library_many": "{{count}} Skills gestionados por el usuario",
   "summary.library_other": "{{count}} Skills gestionados por el usuario",
+  "summary.matching.available_one":
+    "{{matching}} de {{count}} Skill disponible",
+  "summary.matching.available_many":
+    "{{matching}} de {{count}} Skills disponibles",
+  "summary.matching.available_other":
+    "{{matching}} de {{count}} Skills disponibles",
+  "summary.matching.review_one":
+    "{{matching}} de {{count}} propuesta pendiente",
+  "summary.matching.review_many":
+    "{{matching}} de {{count}} propuestas pendientes",
+  "summary.matching.review_other":
+    "{{matching}} de {{count}} propuestas pendientes",
+  "summary.matching.library_one":
+    "{{matching}} de {{count}} Skill gestionado por el usuario",
+  "summary.matching.library_many":
+    "{{matching}} de {{count}} Skills gestionados por el usuario",
+  "summary.matching.library_other":
+    "{{matching}} de {{count}} Skills gestionados por el usuario",
   "summary.none": "No hay ninguna lectura aceptada.",
   "empty.filtered.title": "No hay Skills coincidentes en este catálogo.",
   "empty.none.title": "No hay Skills en este catálogo.",

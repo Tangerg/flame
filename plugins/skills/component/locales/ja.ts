@@ -16,13 +16,19 @@ export const ja: Record<string, string> = {
   "section.review": "スキルの提案",
   "section.library": "個人スキルライブラリ",
   "section.library.description":
-    "ユーザー管理のスキル。インストールが提供するスキルはそのパッケージで管理されます。",
+    "インストールが提供するスキルはそのパッケージで管理されます。",
   "section.workspace.path": "ワークスペース：{{path}}",
   "section.selectWorkspace":
     "利用可能なスキルと提案を確認するワークスペースを選択してください。",
   "summary.available_other": "{{count}} 件の利用可能なスキル",
   "summary.review_other": "{{count}} 件の保留中の提案",
   "summary.library_other": "{{count}} 件のユーザー管理スキル",
+  "summary.matching.available_other":
+    "{{count}} 件の利用可能なスキル中 {{matching}} 件",
+  "summary.matching.review_other":
+    "{{count}} 件の保留中の提案中 {{matching}} 件",
+  "summary.matching.library_other":
+    "{{count}} 件のユーザー管理スキル中 {{matching}} 件",
   "summary.none": "受け入れた読み取りがありません。",
   "empty.filtered.title": "このカタログに一致するスキルはありません。",
   "empty.none.title": "このカタログにスキルはありません。",

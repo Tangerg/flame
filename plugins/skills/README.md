@@ -52,7 +52,11 @@ repeated facts. Proposal rows expand supporting facts and proposed instructions,
 and their commands stay beside the summary.
 
 Hosted catalogs begin with catalog navigation and search. The workspace path and
-personal-library ownership guidance provide their respective scope.
+personal-library ownership guidance provide their respective scope. Once a read is
+accepted, one summary derived from it names the catalog section and its live status:
+the accepted total when every row is shown, otherwise the matching rows of that
+total. Before any accepted read the section keeps its catalog title and the status
+claims no count.
 
 Reading a named document is a child of Available Skills, not another catalog. The
 catalog keeps its accepted snapshot, query and canonical reads while hidden. The

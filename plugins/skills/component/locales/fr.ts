@@ -16,7 +16,7 @@ export const fr: Record<string, string> = {
   "section.review": "Propositions de Skills",
   "section.library": "Bibliothèque de Skills personnelle",
   "section.library.description":
-    "Skills gérés par l’utilisateur. Les Skills fournis par l’installation sont gérés avec leur paquet.",
+    "Les Skills fournis par l’installation sont gérés avec leur paquet.",
   "section.workspace.path": "Espace de travail : {{path}}",
   "section.selectWorkspace":
     "Sélectionnez un espace de travail pour inspecter les Skills disponibles et les propositions.",
@@ -29,6 +29,24 @@ export const fr: Record<string, string> = {
   "summary.library_one": "{{count}} Skill géré par l’utilisateur",
   "summary.library_many": "{{count}} Skills gérés par l’utilisateur",
   "summary.library_other": "{{count}} Skills gérés par l’utilisateur",
+  "summary.matching.available_one":
+    "{{matching}} sur {{count}} Skill disponible",
+  "summary.matching.available_many":
+    "{{matching}} sur {{count}} Skills disponibles",
+  "summary.matching.available_other":
+    "{{matching}} sur {{count}} Skills disponibles",
+  "summary.matching.review_one":
+    "{{matching}} sur {{count}} proposition en attente",
+  "summary.matching.review_many":
+    "{{matching}} sur {{count}} propositions en attente",
+  "summary.matching.review_other":
+    "{{matching}} sur {{count}} propositions en attente",
+  "summary.matching.library_one":
+    "{{matching}} sur {{count}} Skill géré par l’utilisateur",
+  "summary.matching.library_many":
+    "{{matching}} sur {{count}} Skills gérés par l’utilisateur",
+  "summary.matching.library_other":
+    "{{matching}} sur {{count}} Skills gérés par l’utilisateur",
   "summary.none": "Aucune lecture acceptée.",
   "empty.filtered.title": "Aucun Skill correspondant dans ce catalogue.",
   "empty.none.title": "Aucun Skill dans ce catalogue.",

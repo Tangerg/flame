@@ -16,7 +16,7 @@ export const de: Record<string, string> = {
   "section.review": "Skill-Vorschläge",
   "section.library": "Persönliche Skill-Bibliothek",
   "section.library.description":
-    "Vom Benutzer verwaltete Skills. Von der Installation bereitgestellte Skills werden mit ihrem Paket verwaltet.",
+    "Von der Installation bereitgestellte Skills werden mit ihrem Paket verwaltet.",
   "section.workspace.path": "Arbeitsbereich: {{path}}",
   "section.selectWorkspace":
     "Wähle einen Arbeitsbereich, um verfügbare Skills und Vorschläge zu prüfen.",
@@ -26,6 +26,18 @@ export const de: Record<string, string> = {
   "summary.review_other": "{{count}} ausstehende Vorschläge",
   "summary.library_one": "{{count}} vom Benutzer verwalteter Skill",
   "summary.library_other": "{{count}} vom Benutzer verwaltete Skills",
+  "summary.matching.available_one":
+    "{{matching}} von {{count}} verfügbaren Skill",
+  "summary.matching.available_other":
+    "{{matching}} von {{count}} verfügbaren Skills",
+  "summary.matching.review_one":
+    "{{matching}} von {{count}} ausstehenden Vorschlag",
+  "summary.matching.review_other":
+    "{{matching}} von {{count}} ausstehenden Vorschlägen",
+  "summary.matching.library_one":
+    "{{matching}} von {{count}} vom Benutzer verwalteten Skill",
+  "summary.matching.library_other":
+    "{{matching}} von {{count}} vom Benutzer verwalteten Skills",
   "summary.none": "Keine akzeptierte Lesung.",
   "empty.filtered.title": "Keine passenden Skills in diesem Katalog.",
   "empty.none.title": "Keine Skills in diesem Katalog.",

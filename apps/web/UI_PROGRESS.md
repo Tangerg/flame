@@ -47,7 +47,10 @@ and content sizing (2026-11-02)**. Trajectory status and approval wording is qua
 under **Trajectory recorded state and approval wording (2026-11-02)**, published as
 `eb26f3bab`. The long-value Facts observation is verified as complete column-local
 wrapping. Finding records by visible state and approval text is qualified under
-**Trajectory readable-state page filters (2026-11-02)**. The latest goal restores
+**Trajectory readable-state page filters (2026-11-02)**, published as `8d9e4b575`.
+Skills catalog result scopes are qualified under **Skills catalog result summaries
+(2026-11-02)**, including three catalogs, retained reads and native reading/return.
+The latest goal restores
 preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
 describe their historical scope.
@@ -16903,6 +16906,157 @@ module artifacts and **4** native binaries); SHA-256 is
 The primary parallel checkout, user data, installed dependencies, compiler caches
 and unrelated processes remain untouched. Delivery stays local on
 `codex/ui-feedback-local-1026`.
+
+### Skills catalog result summaries (2026-11-02)
+
+This resumed batch starts from published main `8d9e4b575`. Fresh source, tests
+and the actual current Wails host reproduce a missing result-scope distinction:
+Available Skills has two accepted records; searching `risk` shows one row, while
+its section still says Available Skills with a bare `2` badge and its hidden live
+status still says `2 available Skills`. An unmatched query shows no rows with the
+same total-only summary. The accepted total is correct. The MEDIUM task/hierarchy
+finding is that the summary does not identify the displayed subset.
+
+One derived summary now supplies the section heading and its existing stable live
+status. When all accepted rows are shown it uses the existing localized catalog
+total; otherwise it gives matching rows against that total, including zero. For
+example, English reads `1 of 2 available Skills`, and Chinese reads
+`2 个可用技能中的 1 个`. The same rule covers proposals and the personal library.
+An unaccepted first read retains the catalog title and No accepted read status;
+it does not invent an empty count. Pending or failed refreshes continue to describe
+the last accepted snapshot and query. Canonical reads remain the source of totals.
+
+The change is local to `plugins/skills/component/component.tsx:64`, eight locale
+catalogs and the normal generated Skills ESM. The component diff is 18 lines;
+39 complete matching-summary entries follow existing locale plural categories,
+with the accepted total selecting the plural. The first candidate's real personal
+library view reveals that the new user-managed heading repeats the description's
+first clause. That clause is removed in all eight locales; unique guidance that
+installation-provided Skills are managed with their package remains. Workspace
+scope, stable catalog-region names, accepted data, document/source disclosure,
+commands and recovery are preserved. `useSkills.ts`, Runtime, the SDK, shared UI,
+styles, tokens and theme owners are unchanged. No second count state, effect,
+event handler, timer, dependency or migration is added. The Skills README records
+the summary contract. Existing installations need the rebuilt resource selected;
+this qualification does not upgrade a live installation.
+
+Fresh read-only ZCode `settings/PluginStoreListView.tsx:213` uses the selected
+source's search-result length in its real list heading. This supports keeping the
+summary consistent with displayed results, without copying its store UI or
+discarding Flame's accepted total. Earlier ChatGPT, HeroUI, Arc, Radix and Ace
+studies retain their recorded uses and limits; no new upstream browser or static
+image comparison is claimed. Better-writing, layout and accessibility guide the
+scope wording and one shared summary; typography, colors and UI polish cover the
+native task below. Root copy review also checks German singular declension against
+[Duden's numeral](https://www.duden.de/sprachwissen/fuer-lernende/wortarten-numerale)
+and [adjective guidance](https://www.duden.de/sprachwissen/fuer-lernende/wortarten-adjektive).
+This is a scoped copy review, not native certification of all eight languages.
+
+#### Implementation and verification
+
+The preferred bounded edit-only Claude Code CLI succeeds in **199.622 s**, reporting
+39 turns. Its tools are limited to reading and editing the component, eight locale
+files, Skills presentation test and README; it runs no checks, Git, browser or
+subagent. Root reviews the complete diff, corrects two German singular entries,
+removes a duplicated test setup assertion, trims the repeated library clause and
+strengthens the unread-library assertion to ignore case. Root also migrates two
+browser-spec consumers to the visible summary heading: workspace readiness avoids
+ambiguity with the live status, and proposal acceptance checks the actual remaining
+count with the existing English singular at one. Neither browser suite is run.
+
+- Baseline: **3 related files / 25 tests** pass after the repository's existing
+  `make stage-web` prerequisites.
+- Final: **6 related files / 146 tests** pass, covering Skills presentation,
+  installed workspace/subagent continuity, installed renderer ownership and
+  workspace/inspection integration. Skills presentation has **23 tests**. Six new
+  bilingual catalog cases cover all/one/zero/clear, heading/status agreement,
+  stable region names, search focus and no additional reads while filtering.
+  Refresh coverage includes retained pending/error results, canonical singular
+  and empty snapshots; first-read coverage distinguishes pending/failure from
+  accepted zero. Existing command, cancellation and return tests remain intact.
+- Negative control: restoring only the original component makes **8 tests fail
+  and 15 pass** in the complete 23-test Skills file, with no skips. The six new
+  catalog cases fail on the missing matching scope. Restoring the candidate
+  byte-for-byte gives **23/23 passing**.
+- Web typecheck and lint pass, including the two edited browser specs. Plugin
+  typecheck/lint/i18n, `make check-native` (**11.715 s**), exact plugin resources
+  and Web design-system/tokens/chrome/locales/HMR/layers/bundle/plugin-module
+  gates all pass: **15 checks**, plus normal plugin generation, run serially.
+  I18n checks **20 catalogs across 8 locales**. The production bundle budget passes;
+  the separate private fixture build retains its nonfatal large-chunk notice.
+  Native checks retain existing nonfatal SDK/link-target and duplicate-Objective-C
+  linker warnings.
+
+No full Web suite, unrelated Runtime/CLI/SDK suite, unchanged shared-UI package
+suite, browser visual suite or performance benchmark is started. No assertion,
+gate or lifecycle contract is disabled or weakened.
+
+#### Actual Wails acceptance
+
+The private current Wails v3.0.0 host uses production views, public SDK transport
+and deterministic ordinary fixtures. The original-source observation is fresh.
+Final assets load the normal generated Skills ESM through the existing installed
+component path; private configuration changes only hosting, application identity,
+entry URL and that static module selection. The private home and isolated local
+Runtime endpoint isolate user data. No passive observer, focus/scroll driver,
+production-handler replacement or data mutation is used. Before acceptance and
+again before cleanup, **14 source/resource hashes** and **341 native input hashes**
+match the final qualified inputs.
+
+- EN/light/14 px/Flame Orange/full motion: all three catalogs retain their total
+  and show matching scopes while filtering. Proposals and personal library show
+  one and zero of two, then clear back to two. Available `runtime` yields one of
+  two; ordinary Tab reaches its whole-row opener, Enter focuses the named document,
+  and expanded source retains its full path/revision. Wheel reading, Files and
+  Skills return preserve the document/disclosure. Back restores `runtime`, the
+  matching summary and original row focus. Final personal-library copy retains
+  only the unique package guidance. Cmd+L continues the original unsent text as
+  `Draft before final Skills qualification. Continued.`.
+- ZH/dark/18 px/custom blue/full motion: native Left placement and twenty Zoom In
+  actions establish **200%**. The existing explicit full-width material entry
+  exposes the same catalog. All three catalogs show total/two, one and zero,
+  with Escape clearing back to the accepted total while retaining search focus.
+  Available `runtime` opens by Tab/Enter with document-heading focus. Source
+  disclosure, wheel reading, the panel picker, Files and its explicit Skills
+  return retain the original document and expanded source. Local document Escape
+  restores `runtime`, the one-of-two summary and its opener focus. Closing full
+  width and Cmd+L continue the unsent draft exactly as
+  `技能筛选验收前的草稿。继续处理原任务。`. Zoom and window size are restored; reopening
+  the Dock retains the personal-library selection, clean query and total.
+
+All four original/candidate/final native launches exit with Cmd+Q and terminal
+exit zero. No Send, proposal decision, archive/restore, real filesystem discovery,
+provider change or durable command is invoked. Pending/failure and command
+boundaries above are mocked integration evidence, not a live backend claim.
+VoiceOver announcements, physical OS IME composition, other-platform GUI, RTL,
+320 px Dock, new quantitative contrast and motion timing are not freshly qualified.
+The native Left/200% observation is not an exact CSS-viewport measurement.
+
+| Goal CHECK        | Scoped result                                                                          |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| Typography        | Existing scale and complete summaries retained in EN 14 px and ZH 18 px/200%           |
+| Whitespace        | Repeated library clause removed; existing control, section and row spacing retained    |
+| Visual hierarchy  | One visible result-scope heading; category navigation and actual scope remain distinct |
+| Color             | Approved Orange/light and custom-blue/dark surfaces and observed focus remain          |
+| Motion            | Existing full-motion task retained; no new animation introduced                        |
+| Micro interaction | Search/clear, Tab/Enter, Back/Escape, file return and draft continuation pass          |
+| Responsive        | Native Left/200% full-width reading and restored Dock selection qualified              |
+| Originality       | Flame's installed Panel/section composition retained without a new visual system       |
+
+Verdict: **Approve for the inspected catalog-result, reading and return task**.
+Whole-product and award-level acceptance remain open. Continue from fresh task
+evidence; do not reopen completed query-arrival or command ownership without a
+new finding, or infer a shared Facts defect from a magnified screenshot alone.
+
+Cleanup is complete. The exact private app is unregistered, no native process
+remains, all nine freshly absent checkout output roots and six unique-identity
+Library paths are restored to absence. Private app/assets, fixture home, overlays,
+logs and acceptance receipts on disk are removed. Only the existing private
+toolchain `bin` and `npm-cache/_npx` remain for subsequent authorized batches;
+other private npm caches are removed. Root dependencies, user data, read-only
+references, shared compiler caches and unrelated processes are preserved.
+Publication uses the existing managed branch and guarded main fast-forward;
+fresh-fetch and final remote equality are checked before reporting delivery.
 
 ### Skills catalog introductions
 

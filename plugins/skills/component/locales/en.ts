@@ -16,7 +16,7 @@ export const en: Record<string, string> = {
   "section.review": "Skill proposals",
   "section.library": "Personal Skill library",
   "section.library.description":
-    "User-managed Skills. Installation-provided Skills are managed with their package.",
+    "Installation-provided Skills are managed with their package.",
   "section.workspace.path": "Workspace: {{path}}",
   "section.selectWorkspace":
     "Select a workspace to inspect available Skills and proposals.",
@@ -26,6 +26,16 @@ export const en: Record<string, string> = {
   "summary.review_other": "{{count}} pending proposals",
   "summary.library_one": "{{count}} user-managed Skill",
   "summary.library_other": "{{count}} user-managed Skills",
+  "summary.matching.available_one": "{{matching}} of {{count}} available Skill",
+  "summary.matching.available_other":
+    "{{matching}} of {{count}} available Skills",
+  "summary.matching.review_one": "{{matching}} of {{count}} pending proposal",
+  "summary.matching.review_other":
+    "{{matching}} of {{count}} pending proposals",
+  "summary.matching.library_one":
+    "{{matching}} of {{count}} user-managed Skill",
+  "summary.matching.library_other":
+    "{{matching}} of {{count}} user-managed Skills",
   "summary.none": "No accepted read.",
   "empty.filtered.title": "No matching Skills in this catalog.",
   "empty.none.title": "No Skills in this catalog.",

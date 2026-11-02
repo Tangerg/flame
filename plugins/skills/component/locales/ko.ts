@@ -16,13 +16,19 @@ export const ko: Record<string, string> = {
   "section.review": "스킬 제안",
   "section.library": "개인 스킬 라이브러리",
   "section.library.description":
-    "사용자가 관리하는 스킬입니다. 설치로 제공되는 스킬은 해당 패키지에서 관리됩니다.",
+    "설치로 제공되는 스킬은 해당 패키지에서 관리됩니다.",
   "section.workspace.path": "작업 공간: {{path}}",
   "section.selectWorkspace":
     "사용 가능한 스킬과 제안을 확인하려면 작업 공간을 선택하세요.",
   "summary.available_other": "사용 가능한 스킬 {{count}}개",
   "summary.review_other": "대기 중인 제안 {{count}}개",
   "summary.library_other": "사용자 관리 스킬 {{count}}개",
+  "summary.matching.available_other":
+    "사용 가능한 스킬 {{count}}개 중 {{matching}}개",
+  "summary.matching.review_other":
+    "대기 중인 제안 {{count}}개 중 {{matching}}개",
+  "summary.matching.library_other":
+    "사용자 관리 스킬 {{count}}개 중 {{matching}}개",
   "summary.none": "수락된 읽기가 없습니다.",
   "empty.filtered.title": "이 카탈로그에 일치하는 스킬이 없습니다.",
   "empty.none.title": "이 카탈로그에 스킬이 없습니다.",

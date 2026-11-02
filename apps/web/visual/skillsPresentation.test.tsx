@@ -37,7 +37,12 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-async function mountSkills() {
+const LABELS = {
+  en: { reading: "Reading Skills…", search: "Search this catalog", clear: "Clear search" },
+  zh: { reading: "正在读取技能…", search: "搜索此目录", clear: "清除搜索" },
+} as const;
+
+async function mountSkills(locale: keyof typeof LABELS = "en") {
   const owner = new AbortController();
   const transport = createVisualRuntimeTransport(
     structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
@@ -57,7 +62,7 @@ async function mountSkills() {
     runtime,
     workspace: { ref: { path: VISUAL_WORKSPACE_PATH } },
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
-    locale: "en",
+    locale,
     signal: owner.signal,
     track: (operation) => operation(owner.signal),
     saveFile: async () => "requested",
@@ -90,7 +95,7 @@ async function mountSkills() {
   );
   // The mount read and the read that closes the subscription gap both settle first.
   await waitFor(() => expect(listDiscovered).toHaveBeenCalledTimes(2));
-  await waitFor(() => expect(screen.queryByText("Reading Skills…")).toBeNull());
+  await waitFor(() => expect(screen.queryByText(LABELS[locale].reading)).toBeNull());
   return {
     listDiscovered,
     getDiscovered,
@@ -116,6 +121,123 @@ const internalError = (detail: string) =>
 
 const instructions = (name: string) =>
   screen.queryByRole("region", { name: `Instructions for ${name}` });
+
+const summaryStatus = (summary: string) =>
+  screen.findByText(summary, { selector: "[role=status]" });
+
+function expectSummary(summary: string) {
+  expect(screen.getByRole("heading", { name: summary }).textContent).toBe(summary);
+  expect(screen.getByText(summary, { selector: "[role=status]" })).toBeTruthy();
+}
+
+it.each([
+  {
+    locale: "en",
+    catalogName: "Available Skills",
+    query: "risk",
+    summaries: ["2 available Skills", "1 of 2 available Skills", "0 of 2 available Skills"],
+  },
+  {
+    locale: "en",
+    catalogName: "Skill proposals",
+    query: "release",
+    summaries: ["2 pending proposals", "1 of 2 pending proposals", "0 of 2 pending proposals"],
+  },
+  {
+    locale: "en",
+    catalogName: "Personal Skill library",
+    query: "risk",
+    summaries: [
+      "2 user-managed Skills",
+      "1 of 2 user-managed Skills",
+      "0 of 2 user-managed Skills",
+    ],
+  },
+  {
+    locale: "zh",
+    catalogName: "可用技能",
+    query: "risk",
+    summaries: ["2 个可用技能", "2 个可用技能中的 1 个", "2 个可用技能中的 0 个"],
+  },
+  {
+    locale: "zh",
+    catalogName: "技能提议",
+    query: "release",
+    summaries: ["2 项待处理提议", "2 项待处理提议中的 1 项", "2 项待处理提议中的 0 项"],
+  },
+  {
+    locale: "zh",
+    catalogName: "个人技能库",
+    query: "risk",
+    summaries: ["2 个用户管理的技能", "2 个用户管理的技能中的 1 个", "2 个用户管理的技能中的 0 个"],
+  },
+] as const)(
+  "summarizes the $locale $catalogName result set against its accepted catalog in heading and status",
+  async ({ locale, catalogName, query, summaries: [all, one, none] }) => {
+    const { runtime, workspace, listDiscovered } = await mountSkills(locale);
+    const listProposals = vi.spyOn(workspace.skills, "listProposals");
+    const listLibrary = vi.spyOn(runtime.skills, "listLibrary");
+    const radio = screen.getByRole("radio", { name: catalogName });
+    if (radio.getAttribute("aria-checked") !== "true") fireEvent.click(radio);
+    await summaryStatus(all);
+    expect(screen.getByRole("region", { name: catalogName })).toBeTruthy();
+    const reads = () =>
+      [listDiscovered, listProposals, listLibrary].map((read) => read.mock.calls.length);
+    const accepted = reads();
+    const search = screen.getByRole<HTMLInputElement>("searchbox", { name: LABELS[locale].search });
+    search.focus();
+
+    fireEvent.change(search, { target: { value: query } });
+    expectSummary(one);
+    expect(document.activeElement).toBe(search);
+
+    fireEvent.change(search, { target: { value: "not-a-skill" } });
+    expectSummary(none);
+    expect(document.activeElement).toBe(search);
+
+    fireEvent.click(screen.getByRole("button", { name: LABELS[locale].clear }));
+    expectSummary(all);
+    await waitFor(() => expect(document.activeElement).toBe(search));
+    expect(reads()).toEqual(accepted);
+  },
+);
+
+it("keeps the accepted summary through pending and failed refreshes and follows canonical counts", async () => {
+  const { listDiscovered } = await mountSkills();
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this catalog" });
+  const refresh = screen.getByRole<HTMLElement>("button", { name: "Refresh" });
+  fireEvent.change(search, { target: { value: "risk" } });
+  expectSummary("1 of 2 available Skills");
+
+  const pending = Promise.withResolvers<SkillDiscovery>();
+  listDiscovered.mockImplementationOnce(() => pending.promise);
+  fireEvent.click(refresh);
+  await screen.findByText("Reading Skills…");
+  expectSummary("1 of 2 available Skills");
+  await act(async () => pending.reject(new Error("catalog offline")));
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "Could not read available skills: catalog offline The last accepted read is retained.",
+  );
+  expectSummary("1 of 2 available Skills");
+
+  listDiscovered.mockResolvedValueOnce({
+    ...VISUAL_SKILL_DISCOVERY,
+    skills: VISUAL_SKILL_DISCOVERY.skills.slice(0, 1),
+  });
+  fireEvent.click(refresh);
+  await summaryStatus("1 available Skill");
+  expectSummary("1 available Skill");
+  expect(screen.queryByRole("alert")).toBeNull();
+  fireEvent.change(search, { target: { value: "runtime" } });
+  expectSummary("0 of 1 available Skill");
+  expect(screen.getByText("No matching Skills in this catalog.")).toBeTruthy();
+
+  listDiscovered.mockResolvedValueOnce({ ...VISUAL_SKILL_DISCOVERY, skills: [] });
+  fireEvent.click(refresh);
+  await summaryStatus("0 available Skills");
+  expectSummary("0 available Skills");
+  expect(screen.getByText("No Skills in this catalog.")).toBeTruthy();
+});
 
 it("starts a changed catalog query at its first result and keeps search focus", async () => {
   await mountSkills();
@@ -484,15 +606,26 @@ it("lets a canonical catalog read remove the opener while its document stays rea
 
 it("distinguishes an unreadable catalog from a successfully empty one", async () => {
   const { runtime } = await mountSkills();
-  vi.spyOn(runtime.skills, "listLibrary").mockRejectedValueOnce(new Error("library offline"));
+  const first = Promise.withResolvers<never>();
+  vi.spyOn(runtime.skills, "listLibrary").mockImplementationOnce(() => first.promise);
   fireEvent.click(screen.getByRole("radio", { name: "Personal Skill library" }));
+  await screen.findByText("Reading Skills…");
+  const unread = () => {
+    expect(screen.getByRole("heading", { name: "Personal Skill library" })).toBeTruthy();
+    expect(screen.getByText("No accepted read.", { selector: "[role=status]" })).toBeTruthy();
+    expect(screen.queryByText(/user-managed Skill/i)).toBeNull();
+  };
+  unread();
+  await act(async () => first.reject(new Error("library offline")));
   expect((await screen.findByRole("alert")).textContent).toBe(
     "Could not read personal skill library: library offline",
   );
   expect(screen.queryByText(/last accepted read/)).toBeNull();
   expect(screen.queryByText("No Skills in this catalog.")).toBeNull();
+  unread();
   fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
-  await screen.findByText("2 user-managed Skills");
+  await summaryStatus("2 user-managed Skills");
+  expectSummary("2 user-managed Skills");
   expect(screen.queryByRole("alert")).toBeNull();
   const library = screen.getByRole("region", { name: "Personal Skill library" });
   expect(within(library).getByRole("heading", { name: "old-format-notes" })).toBeTruthy();
@@ -522,7 +655,7 @@ it("returns focus to search when a canonical read removes the focused navigation
 it("cancels the inspected proposal before Escape reaches the surrounding page", async () => {
   const { outsideEscape } = await mountSkills();
   fireEvent.click(screen.getByRole("radio", { name: "Skill proposals" }));
-  await screen.findByText("2 pending proposals");
+  await summaryStatus("2 pending proposals");
   const approve = screen.getAllByRole<HTMLElement>("button", { name: "Approve" })[0]!;
   approve.focus();
   fireEvent.click(approve);
@@ -550,7 +683,7 @@ it("keeps an unconfirmed proposal command and its original identity across catal
   });
   const approve = vi.spyOn(workspace.skills, "approveProposal");
   fireEvent.click(screen.getByRole("radio", { name: "Skill proposals" }));
-  await screen.findByText("2 pending proposals");
+  await summaryStatus("2 pending proposals");
   fireEvent.click(screen.getAllByRole("button", { name: "Approve" })[0]!);
   fireEvent.click(screen.getByRole("button", { name: "Confirm approve" }));
   const proposal = VISUAL_SKILL_PROPOSALS.data[0]!;
@@ -589,7 +722,7 @@ it("keeps an unconfirmed proposal command and its original identity across catal
   expect(attempts[1]![2]?.idempotencyKey).toBe(original.idempotencyKey);
   expect(attempts[1]![2]?.idempotencyNamespace).toBe(attempts[0]![2]?.idempotencyNamespace);
   fireEvent.click(available);
-  await screen.findByText("2 available Skills");
+  await summaryStatus("2 available Skills");
 });
 
 it("keeps the selected original command when two providers submit the same scoped name", async () => {
@@ -602,7 +735,7 @@ it("keeps the selected original command when two providers submit the same scope
   });
   const approve = vi.spyOn(workspace.skills, "approveProposal");
   fireEvent.click(screen.getByRole("radio", { name: "Skill proposals" }));
-  await screen.findByText("2 pending proposals");
+  await summaryStatus("2 pending proposals");
   fireEvent.click(screen.getAllByRole("button", { name: "Approve" })[1]!);
   fireEvent.click(screen.getByRole("button", { name: "Confirm approve" }));
   expect(approve).toHaveBeenCalledWith({

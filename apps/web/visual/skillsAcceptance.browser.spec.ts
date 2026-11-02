@@ -40,7 +40,13 @@ for (const [decision, width, theme] of [
         }),
       ).toBeVisible();
       await expect(actions).toHaveCount(0);
-      await expect(panel).toContainText(`${1 - index} pending proposals`);
+      const remaining = VISUAL_SKILL_PROPOSALS.data.length - index - 1;
+      await expect(
+        panel.getByRole("heading", {
+          name: remaining === 1 ? "1 pending proposal" : `${remaining} pending proposals`,
+          exact: true,
+        }),
+      ).toBeVisible();
       await expect.soft(search).toBeFocused();
     }
     await expect(panel.getByText("No Skills in this catalog.", { exact: true })).toBeVisible();

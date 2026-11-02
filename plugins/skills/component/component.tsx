@@ -61,6 +61,14 @@ export function Skills({ context }: { context: ComponentContext }) {
     matching,
     openDocument,
   } = useSkills(context);
+  const summary = snapshot
+    ? matching.length < rows.length
+      ? t(`summary.matching.${snapshot.type}`, {
+          matching: matching.length,
+          count: rows.length,
+        })
+      : t(`summary.${snapshot.type}`, { count: rows.length })
+    : undefined;
   return (
     <Panel
       ref={panel}
@@ -299,11 +307,7 @@ export function Skills({ context }: { context: ComponentContext }) {
       )}
       <div hidden={Boolean(opened)}>
         <PanelSection
-          title={
-            <>
-              {title} {snapshot && <Badge>{rows.length}</Badge>}
-            </>
-          }
+          title={summary ?? title}
           description={
             <>
               {target === "library"
@@ -315,9 +319,7 @@ export function Skills({ context }: { context: ComponentContext }) {
           }
         >
           <Metadata role="status" className="sr-only">
-            {snapshot
-              ? t(`summary.${snapshot.type}`, { count: rows.length })
-              : t("summary.none")}
+            {summary ?? t("summary.none")}
           </Metadata>
 
           {snapshot?.type === "available" &&

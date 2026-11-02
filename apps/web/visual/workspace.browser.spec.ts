@@ -168,7 +168,9 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     return;
   }
   if (state === "dock-skills") {
-    await expect(pluginView(page, "skills").getByText("2 available Skills")).toBeVisible();
+    await expect(
+      pluginView(page, "skills").getByRole("heading", { name: "2 available Skills", exact: true }),
+    ).toBeVisible();
     await expect(pluginView(page, "skills").getByRole("alert")).toHaveCount(0);
     return;
   }
