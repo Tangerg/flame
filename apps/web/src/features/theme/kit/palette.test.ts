@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { rgbColor } from "@/lib/color";
+import { syntaxColors, syntaxColorToken } from "@/lib/highlight/shikiTheme";
 function channels(color: string) {
   const { r, g, b } = rgbColor(color)!;
   return { r: r * 255, g: g * 255, b: b * 255 };
@@ -100,6 +101,60 @@ const APPEARANCES: ReadonlyArray<[string, PaletteTheme]> = [
   ["custom dark", theme("dark", { background: "#0f1117", foreground: "#e6e8ee" })],
   ["custom light", theme("light", { background: "#fdf6e3", foreground: "#073642" })],
 ];
+
+describe("syntax reading contrast", () => {
+  const cases = [
+    ...APPEARANCES.map(([label, subject]) => ({ label, subject, paperTexture: "xuan" as const })),
+    {
+      label: "mid-tone dark",
+      subject: theme("dark", { background: "#505967", foreground: "#f0f4fb" }),
+      paperTexture: "off" as const,
+    },
+    {
+      label: "mid-tone light",
+      subject: theme("light", { background: "#afa996", foreground: "#111111" }),
+      paperTexture: "off" as const,
+    },
+  ];
+  it.each(cases)(
+    "qualifies syntax and preserves legible hues on $label planes",
+    ({ subject, paperTexture }) => {
+      const paper = { paperTexture, paperTextureStrength: 5 };
+      const preview = paletteThemePreview(subject, "#0485f7", 25, paper);
+      expect(preview.textContrast).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
+      const t = preview.contribution.tokens!;
+      const planes = [
+        ...["color-bg", "color-drawer", "color-surface", "color-elevated", "color-sunken"].map(
+          (name) => t[name]!,
+        ),
+        ...paperTextureBackgrounds(paperTexture, 5, subject.scheme, [
+          t["color-bg"]!,
+          t["color-drawer"]!,
+          t["color-surface"]!,
+        ]),
+      ];
+      for (const original of syntaxColors()) {
+        const ink = t[syntaxColorToken(original)]!;
+        for (const plane of planes) {
+          expect(
+            contrastRatio(ink, plane),
+            `${original} on ${String(plane)}`,
+          ).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
+          for (const state of ["wash-selected", "wash-selected-hover"])
+            expect(
+              contrastRatio(ink, paintedPlane(t, t[state], plane)),
+              `${original}, ${state}`,
+            ).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
+        }
+      }
+      const legible = syntaxColors().filter((original) =>
+        planes.every((plane) => contrastRatio(original, plane) >= WCAG_AA_TEXT),
+      );
+      expect(legible.length).toBeGreaterThan(0);
+      expect(legible.map((original) => t[syntaxColorToken(original)])).toEqual(legible);
+    },
+  );
+});
 
 describe.each(APPEARANCES)("paper reading contrast in %s", (_label, subject) => {
   it.each(["off", "xuan", "cotton", "grain"] as const)(

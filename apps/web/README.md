@@ -631,11 +631,21 @@ transcript content. Base UI owns positioning, nested dismissal and focus return;
 retained content uses the shared visibility boundary. Catalog pickers, anchored
 Composer suggestions and their existing content sizes retain the same contract.
 
+Ordinary Agent status pills use the palette-qualified sunken plane for their muted
+text; decorative depth planes do not define their reading contrast.
+
 Application task and activity progress use public `@flame/ui` ProgressBar alongside
 portable reports. Existing compact captions and seam dimensions stay with their
 consumers; the shared component owns the themed track and value geometry. Report
 captions can wrap above a visible localized percentage without moving the track
 into a text line. Runtime and task projections retain completion ownership.
+
+Code syntax foregrounds come from the installed Shiki theme definitions and paint
+through palette-owned CSS properties in both replies and file previews. Already
+legible colors retain their authored values; other colors mix toward the selected
+foreground until they meet 4.5:1 over the reading planes and paper bounds. Cached
+HTML retains these references when the palette changes within the same scheme.
+Explicit token background pairs retain their authored colors.
 
 File previews keep their filename to two visible lines beside persistent navigation,
 range and commands. Header groups share a row when their natural widths fit and

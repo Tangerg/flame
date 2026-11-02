@@ -2,13 +2,13 @@ import * as stylex from "@stylexjs/stylex";
 import { type HighlighterCore } from "shiki/core";
 import { useLayoutEffect, useMemo, useRef, type Ref } from "react";
 import { stripCodeWrapper, useCodeHighlighter } from "@/lib/highlight/useCodeHighlight";
-import { langFromPath, resolveLang } from "@/lib/highlight/shiki";
+import { highlightCode, langFromPath, resolveLang } from "@/lib/highlight/shiki";
 import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { codeStyles as cs } from "@/features/workspace/ui/viewStyles";
 import { vocab } from "@flame/ui";
 function highlightLines(h: HighlighterCore, code: string, theme: string, path: string): string[] {
   const lang = resolveLang(h, langFromPath(path));
-  return stripCodeWrapper(h.codeToHtml(code, { lang, theme }), "").split("\n");
+  return stripCodeWrapper(highlightCode(h, code, { lang, theme }), "").split("\n");
 }
 
 export function FileView({

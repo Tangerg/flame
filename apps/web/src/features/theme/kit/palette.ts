@@ -1,6 +1,7 @@
 import { type Scheme } from "@/lib/appearance";
 import { type ColorThemeSpec } from "@/features/theme/public/types";
 import { type AppearancePreference } from "@/features/theme/kit/appearance";
+import { syntaxColors, syntaxColorToken } from "@/lib/highlight/shikiTheme";
 import {
   WCAG_AA_TEXT,
   compositeColor,
@@ -160,6 +161,14 @@ export function paletteThemePreview(
     icon: theme.icon ?? SCHEME_ICON[scheme],
     order: theme.order,
     tokens: {
+      ...Object.fromEntries(
+        syntaxColors().map((ink) => [
+          syntaxColorToken(ink),
+          backgrounds.every((plane) => contrastRatio(ink, plane) >= WCAG_AA_TEXT)
+            ? ink
+            : mixOklab(text, ink, legibleMix(text, ink, backgrounds, 0, WCAG_AA_TEXT)),
+        ]),
+      ),
       "color-accent": solid,
       "color-text-on-accent": onSolid,
       "color-accent-line": step(accent, 7),

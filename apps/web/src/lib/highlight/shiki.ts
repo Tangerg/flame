@@ -1,5 +1,6 @@
-import { type HighlighterCore } from "shiki/core";
+import { type HighlighterCore, type ShikiTransformer } from "shiki/core";
 import { basename, fileExtension } from "@/lib/path";
+import { SHIKI_THEME } from "@/lib/highlight/shikiTheme";
 const LANGUAGES = new Map([
   ["typescript", () => import("shiki/langs/typescript.mjs")],
   ["javascript", () => import("shiki/langs/javascript.mjs")],
@@ -48,17 +49,13 @@ let promise: Promise<HighlighterCore> | null = null;
 
 export async function getHighlighter(lang = "text"): Promise<HighlighterCore> {
   if (promise === null) {
-    const pending = Promise.all([
-      import("shiki/core"),
-      import("shiki/engine/javascript"),
-      import("shiki/themes/github-dark.mjs"),
-      import("shiki/themes/github-light-high-contrast.mjs"),
-    ]).then(([{ createHighlighterCore }, { createJavaScriptRegexEngine }, dark, light]) =>
-      createHighlighterCore({
-        engine: createJavaScriptRegexEngine({ target: "ES2018" }),
-        themes: [dark.default, light.default],
-        langs: [],
-      }),
+    const pending = Promise.all([import("shiki/core"), import("shiki/engine/javascript")]).then(
+      ([{ createHighlighterCore }, { createJavaScriptRegexEngine }]) =>
+        createHighlighterCore({
+          engine: createJavaScriptRegexEngine({ target: "ES2018" }),
+          themes: [SHIKI_THEME.dark, SHIKI_THEME.light],
+          langs: [],
+        }),
     );
     const attempt = pending.catch((error: unknown) => {
       if (promise === attempt) promise = null;
@@ -71,6 +68,33 @@ export async function getHighlighter(lang = "text"): Promise<HighlighterCore> {
   const load = LANGUAGES.get(name);
   if (load) await highlighter.loadLanguage(load);
   return highlighter;
+}
+
+// Tokens paint through palette-owned properties, so a palette change repaints retained and cached
+// HTML without re-tokenizing; the authored color remains the fallback. A token carrying its own
+// background keeps the pairing its theme authored.
+const SYNTAX_COLOR: ShikiTransformer = {
+  name: "flame:syntax-color",
+  tokens: (lines) =>
+    lines.map((line) =>
+      line.map((token) =>
+        token.color?.startsWith("#") && !token.bgColor
+          ? {
+              ...token,
+              // The literal read prefix lets the token guard detect removal of this consumer.
+              color: `var(--color-code-${token.color.slice(1).toLowerCase()}, ${token.color})`,
+            }
+          : token,
+      ),
+    ),
+};
+
+export function highlightCode(
+  highlighter: HighlighterCore,
+  code: string,
+  options: { lang: string; theme: string },
+): string {
+  return highlighter.codeToHtml(code, { ...options, transformers: [SYNTAX_COLOR] });
 }
 
 export async function disposeHighlighter(): Promise<void> {

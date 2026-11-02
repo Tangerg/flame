@@ -58,6 +58,7 @@ describe("FileView syntax ownership", () => {
     expect(projection.highlighter.codeToHtml).toHaveBeenCalledWith(content, {
       lang: "go",
       theme: "test-theme",
+      transformers: [expect.objectContaining({ name: "flame:syntax-color" })],
     });
   });
 

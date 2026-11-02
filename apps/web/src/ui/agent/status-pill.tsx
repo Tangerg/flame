@@ -12,7 +12,7 @@ const styles = stylex.create({
     "corner-shape": "round",
     alignItems: "center",
     gap: space.s1_5,
-    backgroundColor: surface.surface2,
+    backgroundColor: surface.sunken,
     paddingInline: space.s2_5,
     paddingBlock: space.s1,
     fontFamily: "var(--font-sans)",

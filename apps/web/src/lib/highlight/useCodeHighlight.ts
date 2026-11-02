@@ -3,10 +3,16 @@ import { useEffect, useState } from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { measureShikiHighlight } from "@/lib/metrics";
 import { useScheme } from "@/lib/appearance";
-import { getHighlighter, reportHighlightFailure, resolveLang } from "@/lib/highlight/shiki";
+import {
+  getHighlighter,
+  highlightCode,
+  reportHighlightFailure,
+  resolveLang,
+} from "@/lib/highlight/shiki";
+import { shikiThemeName } from "@/lib/highlight/shikiTheme";
 import { getCachedHighlight, setCachedHighlight } from "@/lib/highlight/shikiCache";
 function useShikiTheme(): string {
-  return useScheme() === "light" ? "github-light-high-contrast" : "github-dark";
+  return shikiThemeName(useScheme());
 }
 
 export function useCodeHighlighter(lang: string): {
@@ -57,7 +63,7 @@ export function useHighlightedCode(code: string, lang: string): string | null {
         try {
           const resolvedLang = resolveLang(highlighter, lang);
           const start = performance.now();
-          const html = highlighter.codeToHtml(settledCode, {
+          const html = highlightCode(highlighter, settledCode, {
             lang: resolvedLang,
             theme,
           });

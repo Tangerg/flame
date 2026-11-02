@@ -17,6 +17,11 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+The latest reading follow-up qualifies palette-owned syntax foregrounds and the
+ordinary Agent status plane; see **Palette-owned code contrast and status reading
+(2026-11-03)**. The whole-product goal and the earlier native input limitations
+remain open.
+
 The 2026-11-02 resume uses the new managed worktree
 `/Users/tangerg/.codex/worktrees/flame-ui-polish/flame` on
 `codex/flame-ui-polish`, starting from main `8027bd713`. The current source and
@@ -27376,6 +27381,157 @@ toolchain/cache remain. The interrupted-draft backup retains 123 bytes and its
 original SHA-256. After guarded main fast-forward, push and direct remote
 equality, the owned private app/home/assets/baseline archive/overlays/CLI
 material/logs/npm-cache root is removed. Keep the worktree and goal active.
+
+### Palette-owned code contrast and status reading (2026-11-03)
+
+This batch starts from synchronized main `5f85b9a6a`. The final publication fetch
+is checked separately before the guarded main fast-forward and push. The task is
+reply reading, a selected subagent, its captured file, return to the source and
+continued drafting, with ordinary status text and syntax foregrounds measured
+against the planes that actually carry them.
+
+#### Evidence, references and responsibility
+
+The existing better-colors and better-accessibility guidance requires the actual
+painted pair, including ancestor backgrounds and opacity, rather than a page-token
+comparison. The inspected ChatGPT `shiki-highlight-provider` is a real webview
+provider that selects the code theme and shares its render options; ZCode's
+`packages/ui/src/lib/shikiHighlighter.ts` separates authored token colors from
+rendering. These read-only references inform ownership, not copied code or a new
+component system. The two installed official Shiki theme definitions remain the
+source of syntax identities and authored colors.
+
+The Wails baseline exposes a genuine custom-theme boundary. The pair
+`#505967` / `#f0f4fb` is admitted by the existing editor at **4.96:1** minimum
+reading-plane contrast, but fixed GitHub syntax colors bypass that palette.
+The ordinary Agent status pill also puts muted text on a decorative depth plane
+outside its palette-qualified reading plane.
+
+| Text in the native dark custom scene | Original foreground / background | Before  | Qualified foreground / background | After   |
+| ------------------------------------ | -------------------------------- | ------- | --------------------------------- | ------- |
+| Running status                       | `#e6eaf2` / `#67707d`            | 4.176:1 | `#e6eaf2` / `#616a77`             | 4.540:1 |
+| Keyword                              | `#f97583` / `#505967`            | 2.664:1 | `#f4e6ec` / `#505967`             | 5.859:1 |
+| Function                             | `#b392f0` / `#505967`            | 2.794:1 | `#e8e8fa` / `#505967`             | 5.851:1 |
+
+The original selected line reaches only 2.590:1 for the keyword. These are native
+WebKit computed paint colors, composed through the recorded ancestor layers at
+full precision, with rounding only for reporting. They are not sampled glyph
+antialiasing or a claim of whole-application WCAG conformance. All reported
+candidate observations resolve their backgrounds without image/filter ambiguity.
+
+#### Final implementation
+
+- `lib/highlight/shikiTheme.ts` shares the installed theme definitions, names and
+  distinct foregrounds. `features/theme/kit/palette.ts` publishes their color
+  properties against its existing canvas/drawer/surface/elevated/sunken and paper
+  bounds. An already legible hue keeps its authored value; a failing one mixes
+  toward the chosen foreground just far enough to meet 4.5:1. Existing selected
+  fills remain within the same qualified luminance interval.
+- `lib/highlight/shiki.ts` owns one transformer used by both `useHighlightedCode`
+  and file-source highlighting. Its CSS references repaint retained readers and
+  cached HTML when a palette changes within the same scheme. Source text,
+  escaping, token emphasis, cache identity and lifetime remain with their existing
+  owners. Explicit token background pairs retain their authored colors. Theme data
+  is shared eagerly; the highlighter core and grammars retain lazy loading, and
+  the normal bundle-size gate passes.
+- The actual renderer spells its named read prefix so the existing token guard
+  can distinguish that reader from a palette write. Removing the reader makes
+  all 25 syntax properties fail that guard; no guard exception is added.
+- `ui/agent/status-pill.tsx` uses the existing sunken plane with its existing muted
+  ink and geometry. This corrects the observed status role without changing
+  Composer or global decorative control-depth surfaces.
+- `styles/presentation.generated.css` is regenerated from the existing presentation
+  owner. Its 50 new declarations are the only changed generated projection. No
+  dependency, preference schema, Runtime, protocol, command or provider changes
+  are required. Orange, custom accent, reasoning dimness and existing reading
+  geometry/selection/wrapping owners remain intact.
+
+The restricted Claude Code CLI attempt times out at 240 s after two partial
+highlighting files. The parent reviews them, completes the integration and tests,
+and owns all verification and delivery; no CLI completion claim is accepted.
+
+#### Verification
+
+- Focused baseline: **6 files / 189 tests**. Candidate: **7 files / 199 tests**.
+  The final full frontend project passes **422 files / 4,391 tests** in 191.83 s
+  (192.656 s wrapper). Real Shiki HTML retains whitespace, escaping, syntax
+  identities and emphasis. Color cases cover admitted custom pairs, paper bounds,
+  selected/selected-hover planes and unchanged already-legible hues.
+- Both final negative controls fail as intended and restore candidate bytes
+  exactly: raw colors fail all six selected contrast cases; original literal
+  foreground output fails both rendered-reference cases. Removing that actual
+  read also fails the unchanged dead-token guard.
+- All **25 Web non-test gates** pass. The initial conditional-assertion lint
+  failure is repaired; the integration test moves into the theme owner instead
+  of adding a public boundary; the canonical generated stylesheet is updated.
+  Final lint/format and both presentation-owner tests pass. No checks are weakened.
+- `make check-native` passes in **22.655 s**, including production Web staging,
+  Desktop test/vet/build and Wails build. Existing macOS linker-target warnings
+  are non-fatal. Builds and consuming tests run in separate phases. No browser
+  visual suite, performance benchmark or full Runtime integration rerun is used.
+
+#### Native qualification
+
+The isolated host uses current production Wails v3.0.0 services, native zoom,
+closing hooks and Aqua chrome. Only private identity/home, unavailable Runtime
+endpoint, asset entry/root and initial/minimum 1120 x 720 geometry differ. The
+private visual entry consumes production components/projections and installed
+Tool-results ESM over canonical snapshots, not a live provider execution.
+
+Passive diagnosis is private to its own build and loopback observer. Candidate
+text observations all meet 4.5:1: dark custom overview **44**, file **92**; warm
+light custom overview **50**, file **93**, reply-code reading **60**. Changing
+the applied custom background from `#505967` to `#444444` through Settings keeps
+the same file reader, identical HTML and identical source, with **92** passing
+observations afterward. The native color chooser closes after selection; closing
+Settings before Apply correctly discards that local preview.
+
+The observer is retired before the final build, whose HTML has no diagnostic
+injection. Observer-free acceptance passes:
+
+- EN/light/14 px/Orange/full motion: conversation source to subagent to captured
+  file; separate Escape returns to the original file link and conversation opener;
+  reply-code Wrap on/off; Cmd+L and an editable unsent English draft.
+- ZH/dark/18 px/blue/reduced motion with the original custom pair: native 200%
+  reading reaches the source's final eighth line while keeping file identity and
+  return actions. Separate Escape returns preserve both source scopes, followed
+  by Cmd+L and an editable unsent Chinese draft.
+- EN/built-in dark/14 px/Orange/full motion: selected file and reply-code reading,
+  followed by layered Escape returns to the conversation source.
+
+The warm custom candidate also passes native window Zoom/restore and Dock
+direction-key resizing reached through normal keyboard navigation. All **nine**
+native launches exit normally. All **1,231 final frozen inputs** match after
+acceptance; all **22 installed JavaScript resources** retain their baseline hashes.
+No Send, Steer, Stop, cancellation, approval, Copy, regenerate or external-link
+action is activated.
+
+#### Limits, delivery and continuing handoff
+
+The unchanged macOS 26.5 / WebKit 21624.2.5.11.4 host gives no reason to repeat the
+earlier reverse-Tab preference experiments. The corresponding
+[WHATWG issue](https://github.com/whatwg/html/issues/12514) and
+[proposed correction](https://github.com/whatwg/html/pull/12843) are still open at
+this review. No Tab interceptor or global preference change is introduced.
+Preserve the previous Runtime recovery limits. Physical IME, VoiceOver audio,
+whole-document RTL, 320 CSS-pixel layout, other-platform native UI and whole-product
+award-tier acceptance remain unverified. Native Chinese value commitment is not
+physical IME coverage. There is no data migration.
+
+Continue with observed text on decorative control planes and other retained
+details in meaningful tasks. This batch does not qualify every consumer of
+`surface2`/`surface3`, focus perimeters or explicit syntax background pairs.
+An actual failing pair is the trigger for a further owner fix; do not flatten
+global control surfaces or reopen accepted reasoning/Composer geometry speculatively.
+
+Publication cleanup restores the nine baseline-absent checkout output roots,
+unregisters the exact private app and removes only its six baseline-absent UID
+Library paths. Both loopback ports are closed and the nine app receipts are
+terminal before delivery. The 123-byte interrupted-draft backup and its original
+SHA-256, root dependencies, shared caches/toolchain, reference repositories and
+user data are preserved. After guarded main fast-forward, push and direct remote
+equality, remove the owned private home/app/assets/overlays/CLI material, observer
+data, logs and npm-cache root. Keep this worktree and the goal active.
 
 ## Workspace file browser audit
 
