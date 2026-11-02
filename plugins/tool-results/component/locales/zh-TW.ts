@@ -44,4 +44,5 @@ export const zhTW: Record<string, string> = {
   "caption.matches": "符合項目",
   "caption.results": "結果",
   "caption.response": "回應",
+  "caption.output": "輸出",
 };

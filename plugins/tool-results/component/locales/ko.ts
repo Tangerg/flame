@@ -45,4 +45,5 @@ export const ko: Record<string, string> = {
   "caption.matches": "일치 항목",
   "caption.results": "결과",
   "caption.response": "응답",
+  "caption.output": "출력",
 };

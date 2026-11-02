@@ -35,6 +35,7 @@ function capturedContext(
   name: string,
   result: string,
   range?: CapturedToolResult["range"],
+  locale = "en",
 ): ComponentContext {
   return Object.freeze({
     component: Object.freeze({
@@ -48,7 +49,7 @@ function capturedContext(
         )?.id ??
         "unrecognized",
     }),
-    locale: "en",
+    locale,
     signal: new AbortController().signal,
     toolResult: Object.freeze({
       id: "item_recorded_result",
@@ -701,6 +702,68 @@ it("leads each recognised result with its caption actions and copies the recorde
     expect(find.compareDocumentPosition(result) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Copy result" }));
     await vi.waitFor(() => expect(writeText).toHaveBeenLastCalledWith(page));
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+it.each(
+  ["shell", "read_shell_output"].flatMap((name) => [
+    {
+      name,
+      locale: "en",
+      caption: "Output",
+      preview: "Tool output preview",
+      reader: "Tool output",
+      expand: "Show 3 earlier lines · 12 total",
+      collapse: "Collapse",
+      find: "Find",
+      field: "Find in output",
+      copy: "Copy output",
+    },
+    {
+      name,
+      locale: "zh",
+      caption: "输出",
+      preview: "工具输出预览",
+      reader: "工具输出",
+      expand: "显示前面 3 行 · 共 12 行",
+      collapse: "折叠",
+      find: "查找",
+      field: "在输出中查找",
+      copy: "复制输出",
+    },
+  ]),
+)("captions $name output in the $locale locale across its reading states", async (labels) => {
+  document.documentElement.style.setProperty("--leading-relaxed", "20px");
+  vi.spyOn(globalThis, "requestAnimationFrame").mockReturnValue(0);
+  const writeText = vi.fn(async () => {});
+  vi.stubGlobal("navigator", { clipboard: { writeText } });
+  try {
+    const lines = Array.from({ length: 11 }, (_, i) => `line ${i}`).join("\n");
+    const output = `\u001b[32mok\u001b[0m\n${lines}\n`;
+    testClient.render(
+      <RecordedResult context={capturedContext(labels.name, output, undefined, labels.locale)} />,
+    );
+    const captioned = (part: HTMLElement) => {
+      const frame = part.closest<HTMLElement>("[data-slot='code-frame']")!;
+      const caption = within(frame).getByText(labels.caption, { exact: true });
+      expect(caption.closest("[data-slot='code-caption']")?.parentElement).toBe(frame);
+      expect(within(frame).queryByText("output", { exact: true })).toBeNull();
+      return frame;
+    };
+
+    const frame = captioned(screen.getByRole("region", { name: labels.preview }));
+    fireEvent.click(within(frame).getByRole("button", { name: labels.expand }));
+    expect(captioned(screen.getByRole("region", { name: labels.reader }))).toBe(frame);
+    fireEvent.click(within(frame).getByRole("button", { name: labels.find }));
+    const field = within(frame).getByRole("searchbox", { name: labels.field });
+    fireEvent.change(field, { target: { value: "line 7" } });
+    expect(captioned(field)).toBe(frame);
+    fireEvent.click(within(frame).getByRole("button", { name: labels.collapse }));
+    expect(captioned(screen.getByRole("region", { name: labels.preview }))).toBe(frame);
+    fireEvent.click(within(frame).getByRole("button", { name: labels.copy }));
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(`ok\n${lines}\n`));
   } finally {
     vi.unstubAllGlobals();
   }

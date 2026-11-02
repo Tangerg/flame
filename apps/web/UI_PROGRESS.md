@@ -57,7 +57,9 @@ Shortcut capture now ends with its visible row under **Shortcut capture visibili
 and source lifetime (2026-11-02)**, published as `f726d0ea6`, preserving retained
 queries, saved bindings and ordinary command navigation. Usage classification
 reading and local lookup are qualified under **Usage calling origins and
-association reading (2026-11-02)**.
+association reading (2026-11-02)**, published as `14d280e7a`. Recorded command-output
+captions follow the active language under **Recorded output caption and task return
+(2026-11-02)**, with current native preview, Find, file return and draft qualification.
 The latest goal restores
 preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
@@ -17643,6 +17645,112 @@ files** and **six screenshot digests**, gzip SHA-256
 `7e78236de5d35df17cc662f668dfaae479ff48656df0ac2c4f13cfd2030d612c`.
 This documentation receipt changes no accepted product source. Primary user data
 and parallel work remain preserved; the continuous UI goal remains active.
+
+### Recorded output caption and task return (2026-11-02)
+
+Actual Wails on `14d280e7a` displays the literal `output` caption in both English
+and Chinese. The neighbouring preview/reader names, expansion, Find and Copy
+already follow the active language. This is a LOW writing inconsistency within
+the recorded-command reading task; it does not establish a failed command or
+unreadable captured output.
+
+`plugins/tool-results/component/recorded-output.tsx:259` now obtains the caption
+from its existing translator, using one `caption.output` entry in each of the
+eight catalogs. English shows **Output**, Chinese **输出**. Shared CodeCaption
+continues to display its caller's value; syntax/format identifiers such as JSON
+and markdown keep their existing meaning. Preview/full-output identity, ANSI
+presentation, complete source copying, trailing newlines, virtualization, Find,
+manual scrolling, focus, expansion and captured-result ownership are unchanged.
+The normal builder changes only the Tool-results ESM; the other **21 of 22**
+component resources retain their original bytes. No Runtime, wire, persistence,
+command, dependency or installation-lifetime migration is introduced.
+
+The read-only ZCode `ToolCallBlocks/renderers/ExecuteOutput.tsx` retains output as
+literal supporting evidence in its own bounded viewport. HeroUI's actual
+`accordion/controlled.tsx` demo separates its disclosure trigger and body. These
+support the existing progressive-reading composition, without supplying Flame's
+locale or focus policy. Prior ChatGPT, Arc, Radix and Ace research retains its
+documented scope; no exporter or static reference image establishes native input
+behaviour. Better-writing's current terminology and the six better-interface
+domains guide this small repair.
+
+Verification:
+
+- Original baseline: **3 files / 90 tests**, **2.80 s**. Bounded file-edit-only
+  Claude Code CLI supplies the eleven allowed files in **106.454 s**, with no
+  command tools, agents or permission denials. Primary reviews every source diff,
+  clarifies the README and owns all checks, generation and native acceptance.
+- Four new cases cover `shell` and `read_shell_output` in EN/ZH through preview,
+  expanded output, Find and returned preview, including full ANSI-stripped Copy
+  with the trailing newline. Frozen context getters still refuse live I/O.
+  Candidate focused checks pass **3 / 94**, **4.03 s**. Replacing only the reader
+  with its original bytes fails all **four** new cases while **72** pass; exact
+  candidate restoration passes **76 / 76**. Related checks pass **9 files / 149
+  tests** in **6.81 s**, plus the actual workspace inspection/body files,
+  **2 / 100** in **10.28 s**: **11 files / 249 tests** total.
+- All **15** serial gates pass: plugin typecheck/lint/i18n; supported
+  `make check-native` (**21.086 s**); exact plugin resources; Web typecheck/lint,
+  design-system, tokens, chrome, locales, HMR, layers, bundle and plugin-module
+  linking. Formatting and diff checks also pass. Plugin i18n checks **20 catalogs
+  across eight locales**. Native Go test linking emits nonfatal SDK/deployment
+  warnings; the production Wails build and private host target macOS **13.0**.
+  Duplicate `-lobjc` and the fixture chunk-size warning remain nonfatal.
+- Two setup-only commands used the wrong Vitest project and a nonexistent
+  private-host appearance type. They are corrected to the repository's
+  `frontend` project and pinned Wails `MacAppearanceType` before qualification.
+  CLI bare mode omits local authentication and makes no edits; the ordinary
+  authenticated invocation disables hooks/MCP and exposes only file tools.
+- Final private assets build in **3.52 s**, importing the normal generated ESM
+  through the existing installed-component composition. All **12** changed
+  source/resource inputs and **343** private harness/asset/bundle files retain their frozen hashes
+  after both final native tasks. No product handler, focus policy, observer or
+  fixture data is replaced for acceptance.
+
+Actual Wails **v3.0.0** acceptance:
+
+- EN/light/14 px/Flame Orange: retain a draft, use the keyboard resizer's Home
+  boundary to reach **320** Dock width, open the six-step summary, then use Tab
+  and Return to enter the recorded command. **Output** persists through preview,
+  expansion, local Cmd+F, `Rollback` with three matches, Enter/Shift+Enter and
+  return to preview. Native window Zoom changes the real window while keeping
+  the query and focus. Wheel reading, keyboard current-file entry, Escape to
+  that exact source action and restored window size pass. The final draft is
+  `Keep the final output draft. Continue after reading the output.`.
+- ZH/dark/18 px/custom blue: preserve `工具输出阅读前的草稿。`, use twenty native
+  zoom steps to **200%**, then keyboard-enter the summary, command and full
+  output. **输出**, the local query and **1 / 3 → 2 / 3 → 1 / 3** remain coherent.
+  A wheel reaches the warning and final FAIL without moving Find focus. Escape
+  and caption collapse return to preview; keyboard current-file opens the full
+  pane. The complete path and fixture lines **1–8** are visible. Escape restores
+  the original file opener, and Actual Size preserves
+  `工具输出阅读前的草稿。继续原任务。` with Composer focused.
+
+Better-accessibility covers the native keyboard/reader/source-return path;
+better-layout and typography cover 320 Dock, full-pane retreat, EN 14 px and ZH
+18 px/200%. Better-writing resolves the caption; better-colors and better-ui
+retain existing semantic surfaces, focus, selection, controls and motion. Across
+the eight Goal CHECK dimensions, typography, whitespace, hierarchy, color,
+micro-interaction and responsive reading retain the inspected composition;
+motion and Flame's original visual identity gain no new implementation. No fresh
+motion-timing, numerical contrast or award-level whole-product acceptance is
+claimed. VoiceOver, physical IME, RTL/forced colors, all eight native locales and
+other platforms are not qualified here.
+
+The standard inert `tool-shells` fixture supplies captured facts. Its file body
+is the existing eight-line placeholder, so file identity/navigation/return are
+qualified, not real filesystem contents. Live shell/provider execution, plugin
+installation/upgrade fetching, native clipboard writes and unchanged broad
+Runtime/CLI/backend suites are not run. No browser visual suite or benchmark runs.
+
+All **four** native launches quit normally with exit zero; the exact executable
+has no remaining process. The private app is unregistered. Cleanup removes all
+**nine** newly created checkout output roots and **two** exact bundle Library
+directories; all **six** Library baselines are absent. Private apps, home, assets,
+logs and scripts are retired after retaining the compact verification receipt;
+only the reusable private toolchain remains. User data, root dependencies,
+shared caches, reference sources and parallel work are preserved. Continue from
+fresh content/Dock task evidence; this caption and the earlier Find repair are
+complete within their stated scope, while the whole-product UI goal stays active.
 
 ### Recorded result filter position
 

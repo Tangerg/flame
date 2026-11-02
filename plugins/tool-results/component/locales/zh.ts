@@ -44,4 +44,5 @@ export const zh: Record<string, string> = {
   "caption.matches": "匹配项",
   "caption.results": "结果",
   "caption.response": "响应",
+  "caption.output": "输出",
 };

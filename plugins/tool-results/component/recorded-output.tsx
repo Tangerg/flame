@@ -256,7 +256,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
   return (
     <CodeFrame>
       <CodeCaption
-        language="output"
+        language={t("caption.output")}
         code={copied}
         labels={resultActions(t, t("output.copy"))}
         wrappable={false}

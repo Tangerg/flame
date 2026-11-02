@@ -45,4 +45,5 @@ export const en: Record<string, string> = {
   "caption.matches": "Matches",
   "caption.results": "Results",
   "caption.response": "Response",
+  "caption.output": "Output",
 };

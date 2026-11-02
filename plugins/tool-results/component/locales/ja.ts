@@ -45,4 +45,5 @@ export const ja: Record<string, string> = {
   "caption.matches": "一致",
   "caption.results": "結果",
   "caption.response": "レスポンス",
+  "caption.output": "出力",
 };

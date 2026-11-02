@@ -30,8 +30,9 @@ content and holds Find, expansion, Jump to latest, Collapse and Copy. Copy write
 recorded text, without ANSI styling for command output. Result filters open on
 demand beneath the caption, above one bounded scrolling body. Changing or clearing
 the row filter reveals the first matching row without moving input focus; unchanged
-queries and ordinary rerenders preserve manual reading position. A web fetch names its
-format in the caption. Paged results retain the shown and matching row counts in
+queries and ordinary rerenders preserve manual reading position. The command-output
+caption follows the current locale; a web fetch names its literal format in the
+caption. Paged results retain the shown and matching row counts in
 that caption. Continuing a page reveals its first new row and returns focus to the
 named result viewport, including the last page, instead of carrying keyboard focus
 past the new evidence or dropping it when the continuation button disappears.

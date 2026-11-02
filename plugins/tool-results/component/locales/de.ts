@@ -48,4 +48,5 @@ export const de: Record<string, string> = {
   "caption.matches": "Treffer",
   "caption.results": "Ergebnisse",
   "caption.response": "Antwort",
+  "caption.output": "Ausgabe",
 };
