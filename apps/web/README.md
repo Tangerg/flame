@@ -419,6 +419,13 @@ paper. Selection retains its accent tint and stronger highlighted fill; the
 contrast preference no longer increases their opacity. Visual styles consume
 these colors without overriding them.
 
+The palette bounds the shared one- and two-step neutral control fills against
+their ordinary text: primary, soft and muted ink on surface-2; primary and soft
+ink on surface-3. Both rungs share a depth strength, retaining the preferred
+depth when it qualifies. Qualification resolves the existing ink tracking at
+full precision; focus and control edges also account for these fills. An already
+unreadable saved pair receives no extra lift and keeps its existing recovery.
+
 The workspace host retains mounted view layout when switching Dock tabs. Inactive
 views are invisible, inert and excluded from the accessibility tree. The existing
 viewport keeps its native reading position without a second scroll-state cache;

@@ -37,6 +37,8 @@
   --color-surface: #f0f0f0;
   --color-elevated: #fdfdfd;
   --color-sunken: #eaeaea;
+  --color-surface-2: #e6e6e6;
+  --color-surface-3: #dddddd;
   --wash-hover: #eaeaea;
   --wash-selected: color-mix(in srgb, var(--color-accent) 6.7%, var(--color-bg));
   --wash-selected-hover: color-mix(in srgb, var(--color-accent) 10.05%, var(--color-bg));
@@ -57,8 +59,8 @@
     var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)),
     #696969
   );
-  --color-focus-ring: #d86231;
-  --color-control-edge: #868686;
+  --color-focus-ring: #c75d30;
+  --color-control-edge: #7d7d7d;
   --color-divider: #e5e5e5;
   --color-border: #dfdfdf;
   --color-border-strong: #cbcbcb;
@@ -266,6 +268,8 @@ html.theme-dark {
   --color-surface: #1e1e1e;
   --color-elevated: #1e1e1e;
   --color-sunken: #242424;
+  --color-surface-2: #2c2c2c;
+  --color-surface-3: #3a3a3a;
   --wash-hover: #242424;
   --wash-selected: color-mix(in srgb, var(--color-accent) 10%, var(--color-bg));
   --wash-selected-hover: color-mix(in srgb, var(--color-accent) 15%, var(--color-bg));
@@ -287,7 +291,7 @@ html.theme-dark {
     #8c8c8c
   );
   --color-focus-ring: #fb6e30;
-  --color-control-edge: #6d6d6d;
+  --color-control-edge: #848484;
   --color-divider: #242424;
   --color-border: #2b2b2b;
   --color-border-strong: #424242;

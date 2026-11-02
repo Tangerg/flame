@@ -103,16 +103,6 @@
 }
 
 :root {
-  --color-surface-2: color-mix(
-    in oklab,
-    var(--color-text) calc(var(--depth-step) * 1),
-    var(--color-surface)
-  );
-  --color-surface-3: color-mix(
-    in oklab,
-    var(--color-text) calc(var(--depth-step) * 2),
-    var(--color-surface)
-  );
   --wash-step: max(3%, var(--depth-step));
   --color-sunken-hover: color-mix(
     in oklab,

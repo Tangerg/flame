@@ -2,6 +2,7 @@ import { type Scheme } from "@/lib/appearance";
 import { type ColorThemeSpec } from "@/features/theme/public/types";
 import { type AppearancePreference } from "@/features/theme/kit/appearance";
 import { syntaxColors, syntaxColorToken } from "@/lib/highlight/shikiTheme";
+import { interpolate, rgbColor } from "@/lib/color";
 import {
   WCAG_AA_TEXT,
   compositeColor,
@@ -11,6 +12,7 @@ import {
   legibleMix,
   relativeLuminance,
   type ContrastColor,
+  type RgbColor,
 } from "@/features/theme/kit/legibility";
 import { mixOklab } from "@/features/theme/kit/oklab";
 import { paperTextureBackgrounds } from "@/features/theme/kit/paperTexture";
@@ -22,7 +24,12 @@ import {
   step,
   type Scale,
 } from "@/features/theme/kit/scale";
-import { SCHEME_ICON, inkTracksLadder } from "@/features/theme/kit/tokens";
+import {
+  SCHEME_ICON,
+  depthStep,
+  inkTrackingMix,
+  inkTracksLadder,
+} from "@/features/theme/kit/tokens";
 interface ThemePalette {
   background?: string;
   foreground?: string;
@@ -79,6 +86,35 @@ function selectionStrength(
       return strength;
   }
   return 0;
+}
+
+// Retained CSS ink stays fractional; rounding it here can falsely admit a control fill.
+function trackedInk(text: string, ink: string, tracking: number): RgbColor {
+  const color = rgbColor(interpolate([ink, text], "oklab")(tracking / 100))!;
+  return { r: color.r * 255, g: color.g * 255, b: color.b * 255 };
+}
+
+// Raised control fills lift the surface toward the text by one and two depth steps. A single
+// shared strength keeps the rungs ordered while every ink painted on each stays legible; when no
+// lift qualifies the fills stay on the surface without claiming the inks pass there.
+function controlPlanes(
+  surface: string,
+  text: string,
+  depth: number,
+  inks: { surface2: readonly ContrastColor[]; surface3: readonly ContrastColor[] },
+): [string, string] {
+  const lift = (strength: number): [string, string] => [
+    mixOklab(text, surface, (depth * strength) / 100),
+    mixOklab(text, surface, (2 * depth * strength) / 100),
+  ];
+  const legibleOn = (plane: string, against: readonly ContrastColor[]) =>
+    against.every((ink) => contrastRatio(ink, plane) >= WCAG_AA_TEXT);
+  for (let strength = 100; strength > 0; strength -= 1) {
+    const [surface2, surface3] = lift(strength);
+    if (legibleOn(surface2, inks.surface2) && legibleOn(surface3, inks.surface3))
+      return [surface2, surface3];
+  }
+  return lift(0);
 }
 
 const PLANE_STEP: Record<
@@ -147,12 +183,24 @@ export function paletteThemePreview(
   const onSolid = solidInk(solid);
   const text = step(neutral, 12);
   const restingInk = (declared: string) =>
-    inkTracksLadder(
-      scheme,
-      paperPlanes.length > 0
-        ? mixOklab(text, declared, legibleMix(text, declared, backgrounds, 0, WCAG_AA_TEXT))
-        : declared,
-    );
+    paperPlanes.length > 0
+      ? mixOklab(text, declared, legibleMix(text, declared, backgrounds, 0, WCAG_AA_TEXT))
+      : declared;
+  const soft = restingInk(mixOklab(text, step(neutral, 11), 55));
+  const muted = restingInk(palette.muted ?? step(neutral, 11));
+  const tracking = inkTrackingMix(scheme, contrast);
+  const trackedSoft = trackedInk(text, soft, tracking);
+  // Inline fields retain soft ink on surface-3; buttons use their primary hover ink.
+  const [surface2, surface3] = controlPlanes(
+    surface,
+    text,
+    Number.parseFloat(depthStep(scheme, contrast)),
+    {
+      surface2: [text, trackedSoft, trackedInk(text, muted, tracking)],
+      surface3: [text, trackedSoft],
+    },
+  );
+  const controlBackgrounds = [...backgrounds, surface2, surface3];
 
   const contribution: ColorThemeSpec = {
     id: theme.id,
@@ -182,18 +230,20 @@ export function paletteThemePreview(
       "color-surface": surface,
       "color-elevated": elevated,
       "color-sunken": sunken,
+      "color-surface-2": surface2,
+      "color-surface-3": surface3,
       "wash-hover": sunken,
       "wash-selected": selectionPaint((SELECTION_MIX.selected * selection) / 100),
       "wash-selected-hover": selectionPaint((SELECTION_MIX.selectedHover * selection) / 100),
 
       "color-text": text,
       "color-text-bright": mixOklab(text, scheme === "dark" ? "#ffffff" : "#000000", 80),
-      "color-text-soft": restingInk(mixOklab(text, step(neutral, 11), 55)),
-      "color-text-muted": restingInk(palette.muted ?? step(neutral, 11)),
-      "color-text-faint": restingInk(step(neutral, 10)),
+      "color-text-soft": inkTracksLadder(scheme, soft),
+      "color-text-muted": inkTracksLadder(scheme, muted),
+      "color-text-faint": inkTracksLadder(scheme, restingInk(step(neutral, 10))),
 
-      "color-focus-ring": focusRing(solid, text, backgrounds),
-      "color-control-edge": controlEdge(text, canvas, backgrounds),
+      "color-focus-ring": focusRing(solid, text, controlBackgrounds),
+      "color-control-edge": controlEdge(text, canvas, controlBackgrounds),
       "color-divider": step(neutral, planes.divider),
       "color-border": palette.border ?? step(neutral, planes.border),
       "color-border-strong": step(neutral, planes.borderStrong),

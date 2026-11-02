@@ -17,10 +17,11 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-The latest reading follow-up qualifies palette-owned syntax foregrounds and the
-ordinary Agent status plane; see **Palette-owned code contrast and status reading
-(2026-11-03)**. The whole-product goal and the earlier native input limitations
-remain open.
+The latest control follow-up bounds neutral Badge and soft Button depth against
+their existing inks; see **Palette-owned neutral control depth (2026-11-03)**.
+Preserve the preceding **Palette-owned code contrast and status reading
+(2026-11-03)** qualifications. The whole-product goal and the earlier native input
+limitations remain open.
 
 The 2026-11-02 resume uses the new managed worktree
 `/Users/tangerg/.codex/worktrees/flame-ui-polish/flame` on
@@ -27532,6 +27533,149 @@ SHA-256, root dependencies, shared caches/toolchain, reference repositories and
 user data are preserved. After guarded main fast-forward, push and direct remote
 equality, remove the owned private home/app/assets/overlays/CLI material, observer
 data, logs and npm-cache root. Keep this worktree and the goal active.
+
+### Palette-owned neutral control depth (2026-11-03)
+
+This batch starts from synchronized main `5ee5ad93f`. A fresh fetch after native
+qualification finds zero incoming commits; merging main reports already up to
+date. Publication checks the remote again before the guarded main fast-forward.
+The task keeps a reply alongside Available Skills, filters the catalog, reads a
+skill's instructions and provenance, returns to its opening row, inspects the
+personal library and continues an unsent draft.
+
+#### Evidence, references and responsibility
+
+The better-colors and better-accessibility guidance requires ordinary control
+text to reach 4.5:1 against its actual painted background. Neither 15px medium
+scope text nor an 18px medium button qualifies for the large-bold exception.
+The inspected HeroUI `packages/styles/components/chip.css` pairs textual chip
+foregrounds with their surfaces; its colored-dot Badge demo is not evidence for
+text contrast. Flame retains its own Badge, Button, Base UI and StyleX composition.
+
+The native custom pair `#505967` / `#f0f4fb` exposes the shared cause. The old global
+surface-2 and surface-3 definitions lift a surface toward the foreground by one
+and two depth steps without accounting for the ink painted on them. Neutral
+Badges use muted ink on surface-2; soft buttons use soft ink there and primary
+ink on their surface-3 hover. Both planes bypass the palette's reading budget.
+
+| Native Chinese dark scene | Original foreground / background | Before  | Qualified foreground / background | After   |
+| ------------------------- | -------------------------------- | ------- | --------------------------------- | ------- |
+| Project/scope Badge       | `#e6eaf2` / `#67707d`            | 4.176:1 | `#e6eaf2` / `#606977`             | 4.602:1 |
+| Archive at rest           | `#ebeff7` / `#67707d`            | 4.369:1 | `#ebeff7` / `#606977`             | 4.815:1 |
+| Archive on hover          | `#f0f4fb` / `#727a87`            | 3.913:1 | `#f0f4fb` / `#656d7b`             | 4.728:1 |
+
+Active and Archived library Badges use the same qualified pair as the scope
+Badge. Values come from full-precision native WebKit computed paint, composed
+through ancestor backgrounds and opacity; hexadecimal reporting is rounded.
+They are not sampled glyph antialiasing or whole-application WCAG certification.
+
+#### Final implementation
+
+- `features/theme/kit/palette.ts` owns the existing surface-2/surface-3 properties
+  alongside the rest of the applied palette. A shared strength retains their
+  one-/two-step relationship while qualifying primary, soft and muted ink on
+  surface-2 and primary/soft ink on surface-3. Inline fields are actual consumers
+  of the latter soft-ink pair. Preferred depth stays intact when it qualifies.
+- Qualification resolves the existing CSS ink tracking at full precision,
+  including paper correction. `tokens.ts` shares the unchanged depth calculation
+  with that numeric projection. The foreground CSS remains unchanged. Focus
+  and control-edge qualification includes the two actual control planes; the
+  existing reading-plane admission, syntax, status and selection budgets retain
+  their scopes.
+- The obsolete global definitions are removed and the canonical presentation
+  stylesheet is regenerated. Qualified default fills remain `#e6e6e6`/`#dddddd`
+  in light and `#2c2c2c`/`#3a3a3a` in dark at contrast 25. An already invalid saved
+  pair receives no extra lift, retains its existing recovery and is not reported
+  as passing. The shared components, foreground ladder, reasoning, Composer,
+  semantic colors, accent, selection and syntax colors retain their owners.
+
+Claude Code CLI performs the bounded three-file implementation in **112.569 s**
+over **26 turns**. Parent review owns the regression tests, generated projection,
+documentation, native qualification and publication. No Runtime, protocol,
+provider, lifecycle command, preference schema or dependency changes are made.
+
+#### Verification
+
+- Focused tests: **6 files / 267 tests** pass. The new control suite contributes
+  **33** tests, including 29 admitted built-in/custom/paper/contrast scenes,
+  default depth, rung order and explicit invalid-pair behavior. Eight additional
+  projection tests keep numeric ink tracking aligned with emitted CSS.
+- Bypassing the depth qualification makes **8 of 33** control tests fail with
+  actual contrast/invalid-pair assertions. The candidate is restored byte for
+  byte. An independent comparison against the previous factory finds **4,536**
+  unchanged token values across **72** scenes, excluding the two intentional
+  focus/edge changes and two newly owned control fills.
+- All **25** non-Runtime Web gates pass. The initial extra-message argument in
+  new test assertions is removed to satisfy the existing valid-expect lint rule;
+  numerical assertions remain intact. Full frontend regression passes **423
+  files / 4,432 tests** in **181.586 s**. Both presentation-owner tests pass.
+- `make check-native` passes in **22.966 s**, including production staging,
+  Desktop test/vet/build and Wails build. The existing macOS linker-target warnings
+  are non-fatal. Before the edit, the unchanged UI package also passes **13 files /
+  224 tests** and Skills passes **23** tests. Builds and consuming tests run in
+  separate phases. No browser visual suite, benchmark or full Runtime rerun is used.
+
+#### Native qualification
+
+The isolated app uses production Wails v3.0.0 services, native zoom, closing hooks
+and Aqua chrome. Private identity/home, unavailable Runtime endpoint, asset
+entry/root and initial/minimum 1120 x 720 geometry differ. Its private entry uses
+production views and installed Tool-results ESM over canonical snapshots, not a
+live Skills provider or lifecycle execution.
+
+Candidate observations resolve every sampled background and all ordinary text
+passes: custom dark catalog **22**, document **16**, library rest **24**, library
+hover **24**; built-in dark at contrast 100 catalog **22**, library rest **24**,
+library hover **24**. The latter Badge reaches **5.241:1** and hovered Archive
+**5.420:1**. Hover is reached from an inert gutter without activating the button;
+the snapshot confirms empty text selection and unchanged lifecycle labels.
+
+Forward Tab from the library search reaches Refresh and Archive. The sampled
+custom-theme inset focus outline is 1.5px solid at offset -2px, with **3.221:1**
+against its control fill and **3.420:1** against the adjacent card plane. This is
+bounded non-text contrast evidence, not an AAA focus-area claim. Native window
+Zoom/restore retains that focus and restores the Dock's prior width.
+
+The passive observer is retired before the final build; its expected cleanup
+exit is 143. Final HTML has no private injection and both loopback ports are
+closed. Three observer-free tasks pass:
+
+- EN/light/14px/Orange/full motion/contrast 25: filter, document, Escape to the
+  retained query and original row, library states, forward keyboard focus and
+  an editable unsent English draft.
+- ZH/custom dark/18px/blue/reduced motion/contrast 25 at native 200%: the existing
+  narrow-window action opens full-width material. The document reaches its final
+  verification text and provenance; Escape returns to the retained query/row.
+  Library Archive and Restore are separately reachable and visibly focused.
+  Another Escape returns to conversation, then Cmd+L and committed Chinese input
+  continue the unsent draft.
+- EN/built-in dark/14px/Orange/full motion/contrast 100: document identity, Escape
+  to its opening row, library states, keyboard focus and an editable unsent draft.
+
+All **six** native launches exit normally. All **1,231 final frozen inputs** and
+**22 installed JavaScript resources** retain their recorded hashes. No Archive,
+Restore, Send, Steer, Stop, approval, Copy, regenerate or external-link action is
+activated.
+
+#### Limits, delivery and continuing handoff
+
+The earlier native reverse-Tab and Runtime recovery limits remain open. No Tab
+interceptor, preference experiment or global setting change is introduced.
+Physical IME, VoiceOver audio, whole-document RTL, 320 CSS-pixel layout, other
+platform GUIs and whole-product award-tier acceptance remain unverified. Native
+Chinese value commitment is not physical IME coverage. This batch does not
+qualify every decorative graphic, faint placeholder, explicit syntax background
+pair or custom-gamut edge. There is no data migration.
+
+Continue with observed retained-detail tasks and actual failing paint pairs;
+preserve the accepted reasoning, Composer and reading geometry. The publication
+procedure verifies both clean checkout heads against the directly queried remote
+main. Cleanup is limited to the nine baseline-absent checkout output roots, the
+exact private app registration, its six baseline-absent UID Library paths and
+`flame-ui-badges-rxvu5w2n` home/assets/overlays/CLI material/observer/log/cache root.
+Ports 49861/49862 and all owned processes must be closed before removal. Preserve
+the 123-byte interrupted-draft backup and its original SHA-256, root dependencies,
+shared toolchain/cache, references and user data. Keep this worktree and goal active.
 
 ## Workspace file browser audit
 
