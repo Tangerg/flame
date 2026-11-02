@@ -353,6 +353,11 @@ belongs to that owner; neither command nor direct shortcut bindings dispatch it.
 Shortcut settings start with their filter and action rows; the catalog description
 remains searchable without repeating an introduction above the controls.
 
+Deterministic workspace fixtures install the production `workspaceKeymap` for
+view closure, so native Escape exercises the same navigation command as the
+product. Their fixed recorded Session keeps the separate New session entry
+non-executing.
+
 The installed Notifications package owns completion policy, sound and its two
 client preferences. The graphical Host keeps the root-run settlement projection,
 OS authorization and notification-click routing. Public component callbacks and

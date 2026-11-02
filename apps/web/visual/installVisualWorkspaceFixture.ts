@@ -20,6 +20,7 @@ import { createBrowserHost } from "@/platform/browserHost";
 import { WORKSPACE_DOCK_CATALOG } from "@/features/workspace/public/navigation";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import shortcutsSettings from "@/features/command/shortcuts/index";
+import { workspaceKeymap } from "@/features/workspace/keymap";
 import { workbenchSettings } from "@/features/shell/workbench/index";
 import appearanceSettings from "@/features/settings/appearance";
 import { createProviderCatalogPlugin } from "@/features/providers/index";
@@ -430,20 +431,11 @@ const visualNotifier = definePlugin({
 const visualShortcuts = definePlugin({
   name: "flame.visual.shortcuts",
   setup(ctx) {
-    for (const shortcut of [
-      {
-        key: "Mod+N",
-        description: "sidebar.action.newSession",
-        handler: () => undefined,
-      },
-      {
-        key: "Escape",
-        description: "shortcut.closeWorkspaceView",
-        handler: () => undefined,
-      },
-    ]) {
-      ctx.contribute(SHORTCUT, shortcut);
-    }
+    ctx.contribute(SHORTCUT, {
+      key: "Mod+N",
+      description: "sidebar.action.newSession",
+      handler: () => undefined,
+    });
   },
 });
 
@@ -600,6 +592,7 @@ export async function installVisualWorkspaceFixture(
     appearanceSettings,
     createProviderCatalogPlugin(runtimeClient),
     shortcutsSettings(visual.workspace.access),
+    workspaceKeymap(visual.workspace.access),
     approvalsSettings,
     connectionSettings,
     personalizationSettings,

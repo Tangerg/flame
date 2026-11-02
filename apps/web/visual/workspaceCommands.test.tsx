@@ -50,6 +50,60 @@ afterEach(async () => {
   queryClient.clear();
 });
 
+function pressEscape(target: Element) {
+  fireEvent(
+    target,
+    new KeyboardEvent("keydown", {
+      key: "Escape",
+      code: "Escape",
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
+}
+
+it.each(["material", "settings"])(
+  "returns from %s through the installed Escape binding",
+  async (source) => {
+    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
+    fireEvent.change(draft, { target: { value: "Keep this draft — 保留" } });
+    act(() => {
+      draft.focus();
+      draft.setSelectionRange(5, 5);
+    });
+    let target: HTMLElement;
+    if (source === "settings") {
+      await act(() => executeCommand("settings.open"));
+      target = screen.getByRole("tab", { name: "Appearance" });
+    } else {
+      fireEvent.click(screen.getByRole("button", { name: /^Open material full width/ }));
+      target = screen.getByRole("region", { name: "Files" });
+    }
+    expect(visual.navigation.get().view).toBe(source === "settings" ? "settings" : "file");
+    act(() => target.focus());
+
+    pressEscape(target);
+    expect(visual.navigation.get().view).toBeNull();
+
+    await act(() => executeCommand("composer.focus"));
+    expect(document.activeElement).toBe(draft);
+    expect(draft.value).toBe("Keep this draft — 保留");
+    expect(draft.selectionStart).toBe(5);
+    expect(draft.selectionEnd).toBe(5);
+  },
+);
+
+it("leaves Escape in the focused Settings search to that field", async () => {
+  await act(() => executeCommand("settings.open"));
+  const search = screen.getByRole("searchbox");
+  act(() => search.focus());
+
+  pressEscape(search);
+
+  expect(visual.navigation.get().view).toBe("settings");
+  expect(document.activeElement).toBe(search);
+});
+
 it.each(["sidebar", "settings"])(
   "returns from %s through the installed Composer command",
   async (source) => {

@@ -82,7 +82,7 @@ describe("createStorage", () => {
   it("distinguishes corrupt preferences from missing records", () => {
     const s = createStorage("alpha");
     localStorage.setItem('["flame.plugin","alpha"]:raw', "not-json");
-    expect(() => s.get("raw")).toThrow();
+    expect(() => s.get("raw")).toThrow("Plugin preferences are unavailable");
   });
 
   it("reports denied Storage operations to the consumer", () => {
@@ -110,10 +110,10 @@ describe("createStorage", () => {
     vi.spyOn(window, "localStorage", "get").mockReturnValue(deniedStorage);
 
     const storage = createStorage("alpha");
-    expect(() => storage.get("key")).toThrow();
-    expect(() => storage.keys()).toThrow();
-    expect(() => storage.set("key", "value")).toThrow();
-    expect(() => storage.remove("key")).toThrow();
-    expect(() => storage.clear()).toThrow();
+    expect(() => storage.get("key")).toThrow("Plugin preferences are unavailable");
+    expect(() => storage.keys()).toThrow("Plugin preferences are unavailable");
+    expect(() => storage.set("key", "value")).toThrow("Plugin preferences are unavailable");
+    expect(() => storage.remove("key")).toThrow("Plugin preferences are unavailable");
+    expect(() => storage.clear()).toThrow("Plugin preferences are unavailable");
   });
 });

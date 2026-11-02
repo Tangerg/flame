@@ -115,7 +115,7 @@ it("captures a namespaced notification and preserves a platform send failure", a
     id: JSON.stringify(["installed", "notifications", "run:captured"]),
     title: "Original",
     body: "Original body",
-    target: "captured",
+    target: JSON.stringify(["https://runtime.test", "captured"]),
   });
   expect(signal.aborted).toBe(false);
 });

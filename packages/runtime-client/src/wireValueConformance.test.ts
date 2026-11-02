@@ -13,7 +13,8 @@ it("enforces the same value boundaries as the Go protocol decoder", async () => 
     valid: boolean;
   }[];
   for (const vector of vectors)
-    expect(validateWire(vector.shape, vector.value).length === 0, JSON.stringify(vector)).toBe(
-      vector.valid,
-    );
+    expect({ vector, accepted: validateWire(vector.shape, vector.value).length === 0 }).toEqual({
+      vector,
+      accepted: vector.valid,
+    });
 });

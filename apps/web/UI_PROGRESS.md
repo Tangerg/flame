@@ -26518,14 +26518,16 @@ activated. Chinese draft entry uses native value-setting plus committed input,
 not a physical OS IME. All five owned native launches, including both original
 controls, exit normally with terminal exit zero.
 
-The full-width file's native Escape does not close it, both before this change
-and with the accepted dispatcher. The original control changes only the provider
-back to its HEAD bytes; it also confirms that Control+A wrongly leaves the file.
-Accepted source and assets are restored and verified before the final clean
-confirmation. A reverse-Tab probe in zoomed Tool output does not establish the
-previous-control transition and is not counted as passed. Investigate these
-native key-delivery/return paths next with focused baseline evidence; neither is
-claimed fixed here. The explicit Close and forward keyboard task pass.
+The full-width file's native Escape does not close it in this batch's fixture,
+both before this change and with the accepted dispatcher. The next review below
+traces this to the fixture's empty Escape callback, rather than a production
+navigation or native-delivery defect. The original control changes only the
+provider back to its HEAD bytes; it also confirms that Control+A wrongly leaves
+the file. Accepted source and assets are restored and verified before the final
+clean confirmation. A reverse-Tab probe in zoomed Tool output does not establish
+the previous-control transition and is not counted as passed. The explicit Close
+and forward keyboard task pass; the separate pointer-entry boundary is narrowed
+in the next review.
 
 | Domain        | Evidence inspected                                                        | Result                                                           |
 | ------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -26554,6 +26556,197 @@ The primary checkout is now on an independent audit branch and is preserved.
 Publication uses a temporary isolated main worktree, guarded fast-forward, push
 and direct remote equality verification; the temporary worktree is then removed.
 Continue from the native keyboard observations above.
+
+### Production Escape in native workspace qualification (2026-11-02)
+
+This batch begins at published `2e6eb95e6`. While qualification is in progress,
+main receives audit merge `2ff1b0fd3`, changing 319 paths without overlapping the
+three authored fixture, test and README paths. A guarded fast-forward preserves
+those edits byte-for-byte. The integrated main includes new navigation, Runtime
+address and Desktop-host behavior, so final verification uses that head. Its
+Memory and Skills generated ESM updates are retained; this batch authors no
+installed component or production navigation change.
+
+The previous full-width Escape observation comes from qualification composition.
+`visual/installVisualWorkspaceFixture.ts` contributes an empty Escape callback,
+whereas `src/app/builtinPlugins.ts` installs the production `workspaceKeymap`.
+The fixture now installs that same factory and removes its duplicate Escape
+entry. `src/features/workspace/keymap.ts` remains the single shortcut-policy
+owner, delegating closure to the existing Workspace navigation. The separate
+fixed-Session New session entry remains non-executing. The README records this
+fixture boundary; no global dispatcher, reader handler, state or timeout is added.
+
+Three disposable Wails diagnostic launches distinguish input delivery from
+composition. Passive window/document capture and bubble observations see trusted
+`key`/`code` Escape, keyCode 27, no modifier, repeat, composition or cancellation,
+a noneditable file reader, active view `file` and recording false. The empty
+fixture callback explains the unchanged view. The observers only read event,
+focus, public navigation and shortcut-registration facts; they do not inject
+events, focus, data, handlers or cancellation. Asynchronously delivered native
+logs and microtask snapshots are not treated as a post-dispatch ordering proof.
+All three diagnostic launches exit normally with terminal exit zero.
+
+Fresh read-only ZCode `packages/ui/src/settings/useShortcutRecording.ts:45`
+consumes Escape within recording. That local owner supports capture precedence,
+not a global product rule. [MDN's code contract](https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code)
+helps separate physical-key identification from the actual observed delivery.
+[HTML sequential focus navigation](https://html.spec.whatwg.org/multipage/interaction.html#sequential-focus-navigation)
+allows a pointer-related starting point; it is an investigation lead for the
+separate reverse-Tab observation below, not proof of its cause. Earlier ChatGPT,
+HeroUI, Arc, Radix and Ace research retains its documented scope. The better-*
+review preserves existing controls, theme tokens, layout and reading hierarchy.
+
+The edit-only Claude Code CLI completes in **108.638 s**, reporting **31 turns**
+and **four Edit permission denials**. It applies no files and runs no checks,
+builds, browser, Git or subagents. Root reviews and applies its proposed fixture
+wiring and workflow regressions, changes the initial wide-only action selector
+to the actual narrow-layout entry exposed by the test environment, and moves a
+precondition assertion outside a branch after lint reports conditional expect.
+No assertion or rule is disabled.
+
+`visual/workspaceCommands.test.tsx` uses the real fixture, provider and command
+installation. File and Settings Escape close the main view; Focus composer
+returns to the same draft node, text and selection offset five. Editable Settings
+search retains its view and focus. The candidate's **five cases** pass; restoring
+only the original fixture produces **two failures / three passes**, including
+the repeat after integration. Candidate bytes are restored exactly. An earlier
+related run passes **33 files / 723 tests** before integration and is not the
+final-head result.
+
+The first integrated full frontend run passes **420 files / 4,375 tests** and
+fails one of 421 files / 4,376 tests in **292.24 s**. The unchanged notification
+test expects a bare Session target even though the integrated host adapter now
+encodes `[Runtime endpoint, Session]`, independently covered by its routing test.
+The notification integration repair updates that exact expected target in
+`src/features/plugins/adapters/clientNotifications.test.ts`; original payload
+capture, mutation and platform-failure identity checks remain. All **three
+notification files / eight tests** pass in **4.96 s**. Production notification
+code is unchanged.
+
+The next full frontend run passes **421 files / 4,376 tests** in **192.63 s**.
+Lint then identifies six message-free `toThrow()` assertions added by the same
+upstream audit in `src/extensions/storage.test.ts`. They now require the existing
+`Plugin preferences are unavailable` failure message. These assertions become
+more specific; production storage, exception propagation and lint rules are
+unchanged. A focused rerun qualifies this test-only adjustment after the full run.
+
+The first normal commit attempt is rejected by the workspace lint hook at the
+upstream `packages/runtime-client/src/wireValueConformance.test.ts` two-argument
+`expect`. The assertion now compares `{ vector, accepted }` objects, retaining
+the sample identity and original validity requirement with one expect argument.
+No vector, validator, generated file or lint rule changes. The Runtime-client
+module's full typecheck, lint, format, test and knip check passes in **4.65 s**;
+its **34 files / 432 tests** pass in **1.87 s**. This additional test-only edit
+does not change the accepted native host or Web assets.
+
+#### Final verification and clean native task
+
+The stronger Storage assertions pass **one file / ten tests** in **463 ms**.
+All **19 serial Web gates** pass: typecheck, lint, knip, circular, contexts,
+published boundaries, layers, port surface, API consumers, HMR, style invalidation,
+design system, tokens, chrome, locales, bootstrap, plugin resources, plugin modules
+and production bundle checks. The final pass also covers styles, dead tokens,
+authored classes, shorthand, lookup tables and formatting before publication.
+`make check-native` passes in **50.342 s**, staging Web and running Desktop
+test/vet/build and its Wails macOS build. Existing SDK/link-target and library
+warnings remain nonfatal. No browser visual suite or performance benchmark runs;
+unrelated Go Runtime, CLI and other SDK suites are not rerun.
+
+The final private asset build passes in **3.409 s** and native build in **3.715 s**;
+ad-hoc signing and strict signature verification pass. Both clean native launches
+use Wails **v3.0.0**, normal generated Tool-results ESM and the shared React host.
+The private overlay changes only identity, isolated home/endpoint, asset hosting,
+entry, appearance and initial/minimum **1120 × 720** window configuration. Actual
+window screenshots and native Zoom/restore qualify the inspected frames; the
+configuration is not a measurement of the on-screen content height. All temporary
+observers are removed from source, configuration, assets and binary before these
+launches. No injected DOM event, substituted fixture data or handler replacement
+is present. All **345 frozen inputs**, including five authored files, six private
+host/config/bundle inputs and **334 assets**, match afterward. All **22 installed
+JavaScript resources** match the integrated main baseline, including the upstream
+Memory and Skills updates. No migration is required.
+
+- EN/light/14 px/Flame Orange/reduced motion: establish
+  `Keep the native Escape draft.`; use the real shortcut editor to restore Cmd+L.
+  Observe the recorder before pressing Escape; only capture closes, preserving
+  Settings and the original combo. In the filter, nonempty Escape clears
+  `composer`; empty-field Escape retains the field and Settings. From the
+  selected Keyboard shortcuts tab, Escape alone reveals the conversation before
+  any Composer command. Opening the retained Dock file full width and pressing
+  Escape in its named reader also reveals the conversation independently.
+- Read the captured Tool summary, keyboard-expand the command and all ten output
+  lines, then Shift+Tab to Copy output without activating it. Keyboard activation
+  of Open the current file reveals `runtime/internal/session/store.go`; Escape
+  ends the inspection and returns focus to its original tool entry. The selected
+  file remains `store.go`; this is not a claim that the earlier file path is
+  restored. Keyboard Home changes the Dock splitter from **500 to 320**. Native
+  window Zoom and restore preserve the task. Cmd+L continues the original draft
+  as `Keep the native Escape draft. Continue after Escape.`.
+- ZH/dark/18 px/custom blue/full motion: twenty native Zoom In actions establish
+  **200%**. Filter 聚焦, scroll the content and activate the visible Change entry.
+  The named recorder, Cmd+L and Cancel remain visible. Escape returns Change
+  while retaining query, Settings and combo; Escape in the query clears it and
+  retains input focus. Clicking the Settings title and pressing Escape alone
+  reveals the unchanged Chinese draft.
+- Use the narrow-layout full-width material entry, scroll the named file reader
+  through line eight and select its source with native Cmd+A; the path is outside
+  the selection and the main file stays open. Escape closes the nested panel
+  picker and returns its trigger. The next Escape removes the visible Browse
+  panels tooltip; the following Escape closes the main file. These are three
+  observed owners, not a two-key parent-close claim. Cmd+L continues
+  `原生 Escape 返回前的草稿。继续原任务。`. Twenty native Zoom Out actions restore
+  Actual Size with the draft and selected DockResizer.tsx intact.
+
+The file provider still serves canned eight-line content independently of the
+requested path. These tasks qualify identity, navigation, selection, local
+precedence and return, not live filesystem fidelity or Runtime/provider work.
+One AX current-file click does not establish activation; the observed keyboard
+path does. An initial combined ZH filter Tab/Tab/Return probe remains in the
+field and is excluded; actual content scrolling and visible Change establish
+recording entry. A native-surface interruption is followed by a fresh state and
+screenshot before continuing, with no unexpected text found. Chinese entry uses
+native value-setting plus committed input, not a physical OS IME. No Send, Copy
+or tool execution is activated. Both clean launches exit normally with terminal
+exit zero; the isolated Runtime port is free afterward.
+
+#### Milestone review and paused handoff
+
+| Domain        | Evidence inspected                                                       | Result                                                                |
+| ------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| Accessibility | Real keymap, local capture/search, file closure, nested owners and Cmd+L | Inspected Escape task passes; pointer-entry Tab boundary remains open |
+| Layout        | Minimum configured frame, Dock 320, native Zoom/restore, ZH 200% file    | Inspected reading, capture and return remain reachable                |
+| Writing       | Existing action/object labels and fixture-boundary README                | No extra product explanation or secondary label is added              |
+| Typography    | EN 14 px, ZH 18 px/200%, code through line eight and source path         | Existing scale, wrapping and complete reading path retained           |
+| Colors        | Light Orange and dark custom blue, selection and visible focus           | Semantic treatment retained; no new numeric contrast measurement      |
+| UI polish     | Record/cancel, layered Escape, retained result/file, resize and draft    | Scoped task continuity passes; no surface or animation change         |
+
+Goal CHECK review covers typography, whitespace, hierarchy, color, motion, micro
+interaction, responsive reading and Flame's existing identity in this task.
+There is no CSS, token, theme or animation change, and the accepted reasoning-text
+treatment is retained. Full-motion timing, VoiceOver speech, physical IME, RTL,
+all locales natively, other-platform GUI and whole-product/award-level acceptance
+remain unqualified. **Approve for the inspected fixture fidelity and Escape task.**
+
+The diagnostic ZH/200% task separately narrows the reverse-Tab boundary: pure
+keyboard entry into expanded output reaches Copy output on Shift+Tab, whereas a
+pointer click back into its text leaves focus in the reader across six trusted,
+uncancelled Shift+Tab events. Forward Tab leaves to Arguments; keyboard return
+then reaches Copy output. The pointer-related navigation-starting-point model is
+only a lead. No Tab handler, focus workaround or production repair is added.
+On explicit resumption, reproduce that entry boundary in a minimal native control
+before choosing an owner or changing shared reader behavior.
+
+The user requests a milestone pause after this batch. Cleanup restores all nine
+fresh checkout output roots and six unique-identity Library paths to their absence
+baselines: two created Library directories are removed and the other four remain
+absent. The exact private app is unregistered; owned native processes and the
+isolated Runtime listener are absent. The remaining private qualification root,
+including the app, home, assets, overlays, CLI material, logs and npm cache, is
+removed after guarded main fast-forward, push and direct remote equality
+verification. Root dependencies, shared caches, read-only references, user data,
+the reusable prior toolchain and its unchanged 123-byte interrupted-draft backup
+are preserved. The milestone handoff is paused after publication; the pointer-entry
+finding above remains an explicit follow-up for a user-requested resumption.
 
 ## Workspace file browser audit
 
