@@ -54,9 +54,9 @@ func TestWorkspaceSymbolToolMarksPartialSearches(t *testing.T) {
 func observationAnalyzer(t *testing.T, includeUnavailable bool) (*Analyzer, string) {
 	t.Helper()
 	root := t.TempDir()
-	specs := []lsp.ServerSpec{{Name: "go", Command: os.Args[0], Args: []string{"-test.run=^TestCodeIntelServerFixture$"}, LanguageID: "go", Extensions: []string{".go"}, RootMarkers: []string{"main.go"}}}
+	specs := []lsp.ServerSpec{{Name: "go", Command: os.Args[0], Args: []string{"-test.run=^TestCodeIntelServerFixture$"}, Languages: map[string]string{".go": "go"}, RootMarkers: []string{"main.go"}}}
 	if includeUnavailable {
-		specs = append(specs, lsp.ServerSpec{Name: "typescript", Command: filepath.Join(root, "absent-server"), LanguageID: "typescript", Extensions: []string{".ts"}, RootMarkers: []string{"main.go"}})
+		specs = append(specs, lsp.ServerSpec{Name: "typescript", Command: filepath.Join(root, "absent-server"), Languages: map[string]string{".ts": "typescript"}, RootMarkers: []string{"main.go"}})
 	}
 	if err := os.WriteFile(filepath.Join(root, "main.go"), []byte("package main\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -91,6 +91,9 @@ func (h fixtureHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, request
 		return
 	}
 	var result any
+	if request.Method == "initialize" {
+		result = map[string]any{"capabilities": map[string]int{"textDocumentSync": 1}}
+	}
 	if request.Method == "workspace/symbol" {
 		result = []fixtureSymbol{}
 		if h.symbols {

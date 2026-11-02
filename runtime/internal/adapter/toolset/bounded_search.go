@@ -15,7 +15,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/frame/cancellation"
 
 	"github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"

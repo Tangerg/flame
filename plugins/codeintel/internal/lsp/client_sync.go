@@ -7,10 +7,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
+	"os"
+	"path/filepath"
+	"strings"
+	"unicode/utf16"
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/frame/cancellation"
 )
 
 const maxDocumentBytes int64 = 8 << 20
@@ -37,9 +42,14 @@ var errUnsupportedDocument = errors.New("lsp: document is not a regular UTF-8 te
 // version now in effect, which a diagnostics wait uses to recognize fresh
 // pushes. A no-op (content unchanged) returns the existing version.
 func (c *client) ensureOpen(ctx context.Context, abs string) (int, error) {
-	text, err := readDocument(ctx, abs)
+	text, err := readDocument(ctx, c.workspace, abs)
 	if err != nil {
 		return 0, fmt.Errorf("lsp: read %s: %w", abs, err)
+	}
+	if !c.syncPolicy.OpenClose {
+		// File queries can use the server's on-disk view after root-confined admission.
+		// Captured diagnostics use ensureContent directly and require a proved version.
+		return 0, nil
 	}
 	return c.ensureContent(ctx, abs, text)
 }
@@ -58,39 +68,47 @@ func (c *client) ensureContent(ctx context.Context, abs string, text []byte) (in
 	uri := pathToURI(abs)
 	hash := sha256.Sum256(text)
 
-	// Hold c.mu across the Notify so the version bump and its didOpen/didChange
-	// are atomic PER DOCUMENT. Two concurrent ensureOpen on the same file — calls
-	// to the `lsp` operation tool share one parallel segment
-	// (concurrent scheduling policy) and hit this shared client — would otherwise compute
-	// v1 and v2 under the lock, release, then race the Notify: the server could
-	// see didChange(v2) before didOpen(v1), or versions out of order, and desync
-	// its in-memory document for the rest of the session. Notify is a buffered,
-	// non-blocking write whose completion doesn't depend on the inbound
-	// diagnostics handler (a separate goroutine), so holding the lock across it
-	// can't deadlock. The map is updated only AFTER a successful send, so a failed
-	// Notify doesn't record a version the server never saw.
+	// Serialize version allocation and delivery so the server cannot observe
+	// a newer notification before the one that authorizes it.
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	prev, isOpen := c.open[uri]
 	if isOpen && prev.hash == hash {
 		return prev.version, nil
 	}
-	version := prev.version + 1
+	if !c.syncPolicy.OpenClose {
+		return 0, errors.New("lsp: server cannot synchronize a document snapshot")
+	}
+	if c.version == math.MaxInt32 {
+		return 0, errors.New("lsp: document version space exhausted")
+	}
+	version := c.version + 1
 	if !isOpen {
 		err = c.conn.Notify(ctx, "textDocument/didOpen", didOpenParams{
-			TextDocument: textDocumentItem{URI: uri, LanguageID: c.spec.LanguageID, Version: version, Text: string(text)},
+			TextDocument: textDocumentItem{URI: uri, LanguageID: c.spec.Languages[strings.ToLower(filepath.Ext(abs))], Version: version, Text: string(text)},
 		})
 	} else {
+		change := contentChange{Text: string(text)}
+		switch c.syncPolicy.Change {
+		case changeNone:
+			return 0, errors.New("lsp: server did not negotiate document changes")
+		case changeIncremental:
+			change.Range = &Range{End: prev.end}
+		}
 		err = c.conn.Notify(ctx, "textDocument/didChange", didChangeParams{
 			TextDocument:   versionedTextDocumentIdentifier{URI: uri, Version: version},
-			ContentChanges: []contentChange{{Text: string(text)}},
+			ContentChanges: []contentChange{change},
 		})
 	}
 	if err != nil {
 		return 0, fmt.Errorf("lsp: sync %s: %w", abs, err)
 	}
-	c.synced++
-	c.open[uri] = openDoc{version: version, hash: hash, synced: c.synced}
+	c.version = version
+	doc := openDoc{version: version, hash: hash}
+	if c.syncPolicy.Change == changeIncremental {
+		doc.end = documentEnd(text)
+	}
+	c.open[uri] = doc
 	c.evictColdestDocumentLocked(ctx)
 	return version, nil
 }
@@ -104,10 +122,10 @@ func (c *client) evictColdestDocumentLocked(ctx context.Context) {
 	if len(c.open) <= maxOpenDocuments {
 		return
 	}
-	coldest, coldestSynced := "", uint64(0)
+	coldest, oldestVersion := "", 0
 	for uri, doc := range c.open {
-		if coldest == "" || doc.synced < coldestSynced {
-			coldest, coldestSynced = uri, doc.synced
+		if coldest == "" || doc.version < oldestVersion {
+			coldest, oldestVersion = uri, doc.version
 		}
 	}
 	if err := c.conn.Notify(ctx, "textDocument/didClose", didCloseParams{
@@ -119,11 +137,37 @@ func (c *client) evictColdestDocumentLocked(ctx context.Context) {
 	delete(c.diags, coldest)
 }
 
-func readDocument(ctx context.Context, path string) (_ []byte, err error) {
+func documentEnd(text []byte) Position {
+	var end Position
+	for len(text) > 0 {
+		r, size := utf8.DecodeRune(text)
+		text = text[size:]
+		switch r {
+		case '\r', '\n':
+			if r == '\r' && len(text) > 0 && text[0] == '\n' {
+				text = text[1:]
+			}
+			end.Line++
+			end.Character = 0
+		default:
+			end.Character += utf16.RuneLen(r)
+		}
+	}
+	return end
+}
+
+func readDocument(ctx context.Context, root *os.Root, path string) (_ []byte, err error) {
 	if cause := context.Cause(ctx); cause != nil {
 		return nil, cause
 	}
-	file, opened, err := filesystem.OpenFile(path, maxDocumentBytes)
+	if root == nil {
+		return nil, errors.New("lsp: workspace root is closed")
+	}
+	name, err := filepath.Rel(root.Name(), path)
+	if err != nil {
+		return nil, err
+	}
+	file, opened, err := filesystem.OpenFileAt(root, name, maxDocumentBytes)
 	if err != nil {
 		switch {
 		case errors.Is(err, filesystem.ErrNotRegular):
@@ -144,7 +188,7 @@ func readDocument(ctx context.Context, path string) (_ []byte, err error) {
 	if len(content) > int(maxDocumentBytes) {
 		return nil, fmt.Errorf("%w: file grew while reading", errDocumentTooLarge)
 	}
-	if err := filesystem.VerifyPathVersion(file, opened, path); err != nil {
+	if err := filesystem.VerifyAtVersion(file, opened, root, name); err != nil {
 		return nil, fmt.Errorf("lsp: verify document after reading: %w", err)
 	}
 	if !utf8.Valid(content) || bytes.IndexByte(content, 0) >= 0 {

@@ -15,6 +15,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	framesqlite "github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/qimu/sqlite"
 )
 
@@ -304,7 +305,7 @@ func TestSchemaRejectionRetainsRollbackFailure(t *testing.T) {
 	if _, err := db.ExecContext(t.Context(), `CREATE TABLE obsolete_schema (id INTEGER)`); err != nil {
 		t.Fatal(err)
 	}
-	err := sqlite.InstallSchema(t.Context(), db, currentSchema())
+	err := framesqlite.InstallSchema(t.Context(), db, currentSchema())
 	if !errors.Is(err, retirement) || !strings.Contains(err.Error(), "incompatible schema") {
 		t.Fatalf("schema rejection = %v, want admission and rollback failures", err)
 	}

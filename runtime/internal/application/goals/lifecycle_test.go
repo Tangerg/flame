@@ -3,12 +3,18 @@ package goals
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type alreadyTerminalRuns struct{}
@@ -203,5 +209,79 @@ func completedGoalDrive(err error) *goalDrive {
 		done:   done,
 		err:    err,
 		cancel: func() {},
+	}
+}
+
+func TestDriveFailureRequiresOnlyItsOwnCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	failure := errors.New("storage failed")
+	tests := []struct {
+		name     string
+		ctx      context.Context
+		err      error
+		canceled bool
+	}{
+		{name: "another_lifetime", ctx: t.Context(), err: context.Canceled},
+		{name: "wrapped_cancellation", ctx: ctx, err: fmt.Errorf("read: %w", context.Canceled), canceled: true},
+		{name: "joined_cancellations", ctx: ctx, err: errors.Join(context.Canceled, fmt.Errorf("read: %w", context.Canceled)), canceled: true},
+		{name: "joined_storage_failure", ctx: ctx, err: fmt.Errorf("read: %w", errors.Join(context.Canceled, failure))},
+		{name: "independent_deadline", ctx: ctx, err: errors.Join(context.Canceled, context.DeadlineExceeded)},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := driveFailure(test.ctx, test.err)
+			if test.canceled {
+				if got != nil {
+					t.Fatalf("quiescence error = %v", got)
+				}
+			} else if got != test.err {
+				t.Fatalf("failure = %v, want original %v", got, test.err)
+			}
+		})
+	}
+}
+
+func TestGoalDriveAwaitPreservesPendingCallerCancellationCause(t *testing.T) {
+	cause := errors.New("request abandoned")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
+	drive := &goalDrive{done: make(chan struct{})}
+	if err := drive.await(ctx); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+		t.Fatalf("await = %v, want caller cancellation and original cause", err)
+	}
+}
+
+type canceledPauseWorkflow struct {
+	goaltest.Workflow
+	cancel context.CancelFunc
+}
+
+func (w canceledPauseWorkflow) DecideGoal(ctx context.Context, _ extension.ContributionSource, _ goalworkflow.Request) (goalworkflow.AuthoredDecision, error) {
+	w.cancel()
+	return goalworkflow.AuthoredDecision{}, ctx.Err()
+}
+
+func TestTerminalFaultSurvivesCanceledPause(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		finished *run.Run
+	}{
+		{name: "missing_boundary"},
+		{name: "malformed_boundary", finished: &run.Run{}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			current, err := goaltest.New("s1", "continue", modelchoice.Selection{}, run.Capabilities{}, "incarnation", time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			driver := &Driver{workflow: canceledPauseWorkflow{cancel: cancel}, now: time.Now}
+			_, err = driver.resolveTerminalRun(ctx, &current, trace.SpanFromContext(ctx), test.finished)
+			if !errors.Is(err, errTerminalOutcomeMissing) || !errors.Is(err, context.Canceled) {
+				t.Fatalf("resolution = %v, want original terminal fault and canceled pause", err)
+			}
+		})
 	}
 }

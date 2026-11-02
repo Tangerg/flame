@@ -6,17 +6,18 @@ import (
 	"path/filepath"
 	"testing"
 
+	framesqlite "github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/qimu/sqlite"
 )
 
 func TestTransactionsKeepIndependentDatabaseOwners(t *testing.T) {
 	schema := []string{`CREATE TABLE IF NOT EXISTS facts (value TEXT NOT NULL)`}
-	first, err := sqlite.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "first.db"), schema)
+	first, err := framesqlite.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "first.db"), schema)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer first.Close()
-	second, err := sqlite.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "second.db"), schema)
+	second, err := framesqlite.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "second.db"), schema)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +51,7 @@ func TestTransactionsKeepIndependentDatabaseOwners(t *testing.T) {
 }
 
 func TestIndependentTransactionRefusesItsOwnActiveDatabase(t *testing.T) {
-	db, err := sqlite.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "private.db"), []string{`CREATE TABLE IF NOT EXISTS facts (value TEXT NOT NULL)`})
+	db, err := framesqlite.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "private.db"), []string{`CREATE TABLE IF NOT EXISTS facts (value TEXT NOT NULL)`})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +67,7 @@ func TestIndependentTransactionRefusesItsOwnActiveDatabase(t *testing.T) {
 }
 
 func TestReadSnapshotJoinsItsOwnerButCannotPromoteToAWriteSet(t *testing.T) {
-	db, err := sqlite.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "snapshot.db"), []string{`CREATE TABLE IF NOT EXISTS facts (value TEXT NOT NULL)`})
+	db, err := framesqlite.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "snapshot.db"), []string{`CREATE TABLE IF NOT EXISTS facts (value TEXT NOT NULL)`})
 	if err != nil {
 		t.Fatal(err)
 	}

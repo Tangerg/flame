@@ -1,6 +1,7 @@
 package workspace_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
-	"strings"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestPublishUsesOnlyAdmittedScopedLibrary(t *testing.T) {
@@ -29,13 +30,50 @@ func TestPublishUsesOnlyAdmittedScopedLibrary(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := libraries.Publish(t.Context(), project, p, base, strings.Repeat("c", 64)); err != nil {
+		permit := testsupport.Digest(string(scope)).String()
+		if _, err := libraries.Publish(t.Context(), project, p, base, permit); err != nil {
 			t.Fatal(err)
 		}
 	}
 	assertFile(t, filepath.Join(user, "verified-name", "SKILL.md"))
 	assertFile(t, filepath.Join(promptsource.ProjectSkillDir(project), "verified-name", "SKILL.md"))
 }
+
+func TestPublishRefusesPermitForAnotherLibrary(t *testing.T) {
+	user := t.TempDir()
+	project := t.TempDir()
+	store, err := skillauthoring.NewStore(user, skills.ScopeUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+	libraries, err := workspaceadapter.NewSkillLibraries(store, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	approved := proposal(skills.ScopeProject, "verified-name")
+	previous, err := libraries.Preimage(t.Context(), project, approved)
+	if err != nil {
+		t.Fatal(err)
+	}
+	permit := testsupport.Digest(t.Name()).String()
+	if _, err := libraries.Publish(t.Context(), project, approved, previous, permit); err != nil {
+		t.Fatal(err)
+	}
+	retargeted := proposal(skills.ScopeUser, approved.Name)
+	previous, err = libraries.Preimage(t.Context(), project, retargeted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed, err := libraries.Publish(t.Context(), project, retargeted, previous, permit)
+	if !errors.Is(err, skills.ErrProposalChanged) || len(changed) != 0 {
+		t.Fatalf("retargeted publication = %v, %v, want the original permit refused", changed, err)
+	}
+	if _, err := os.Stat(filepath.Join(user, approved.Name, "SKILL.md")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("unapproved library content = %v, want no published file", err)
+	}
+	assertFile(t, filepath.Join(promptsource.ProjectSkillDir(project), approved.Name, "SKILL.md"))
+}
+
 func TestPublishRejectsLibraryOutsideProject(t *testing.T) {
 	user := t.TempDir()
 	project := t.TempDir()

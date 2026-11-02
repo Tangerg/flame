@@ -9,10 +9,10 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	storage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/qimu/sqlite"
 )
 
 const reviewsSchema = `CREATE TABLE IF NOT EXISTS reviews (

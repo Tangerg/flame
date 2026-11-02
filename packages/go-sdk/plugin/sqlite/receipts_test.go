@@ -9,10 +9,10 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/qimu/sqlite"
 )
 
 func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {

@@ -109,7 +109,6 @@ func (m Metrics) ValidateAdvanceFrom(previous Metrics) error {
 	return nil
 }
 
-// Equal reports semantic equality.
 func (m Metrics) Equal(other Metrics) bool {
 	if m.steps != other.steps || m.activeDuration != other.activeDuration || !slices.Equal(m.unreportedModels, other.unreportedModels) {
 		return false
@@ -163,12 +162,9 @@ func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, cost accoun
 			return Metrics{}, errors.New("run: model price requires reported usage")
 		}
 		if m.usage != nil {
-			usage := m.usage.Clone()
-			usage.Total.Cost = accounting.Cost{}
-			if usage.ByModel != nil {
-				value := usage.ByModel[model]
-				value.Cost = accounting.Cost{}
-				usage.ByModel[model] = value
+			usage, err := m.usage.Accrue(model, accounting.Totals{})
+			if err != nil {
+				return Metrics{}, err
 			}
 			m.usage = &usage
 		} else if index, found := slices.BinarySearch(m.unreportedModels, model); !found {
@@ -182,33 +178,24 @@ func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, cost accoun
 		return Metrics{}, err
 	}
 	delta := accounting.Totals{Tokens: tokens, Cost: cost}
-	usage := accounting.Usage{Total: delta, ByModel: map[string]accounting.Totals{model: delta}}
-	if m.usage == nil && m.steps > 0 {
-		usage.Total.Cost = accounting.Cost{}
+	var usage accounting.Usage
+	switch {
+	case m.usage != nil:
+		usage, err = m.usage.Accrue(model, delta)
+	case m.steps > 0 && len(m.unreportedModels) == 0:
+		delta.Cost = accounting.Cost{}
+		usage = accounting.Usage{Total: delta}
+	default:
+		parts := map[string]accounting.Totals{model: delta}
 		for _, prior := range m.unreportedModels {
-			subtotal := usage.ByModel[prior]
-			subtotal.Cost = accounting.Cost{}
-			usage.ByModel[prior] = subtotal
+			part := parts[prior]
+			part.Cost = accounting.Cost{}
+			parts[prior] = part
 		}
-		if len(m.unreportedModels) == 0 {
-			usage.ByModel = nil
-		}
+		usage, err = accounting.AttributedUsage(parts)
 	}
-	if m.usage != nil {
-		usage = m.usage.Clone()
-		usage.Total, err = usage.Total.Add(delta)
-		if err != nil {
-			return Metrics{}, err
-		}
-		if usage.ByModel != nil {
-			if current, exists := usage.ByModel[model]; exists {
-				delta, err = current.Add(delta)
-				if err != nil {
-					return Metrics{}, err
-				}
-			}
-			usage.ByModel[model] = delta
-		}
+	if err != nil {
+		return Metrics{}, err
 	}
 	return NewMetrics(&usage, m.steps+1, m.activeDuration)
 }

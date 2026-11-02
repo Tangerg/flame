@@ -12,11 +12,11 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	private "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/qimu/sqlite"
 )
 
 func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *testing.T) {

@@ -415,7 +415,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
-	proposals, err := decodeContributionBindings(*wire.ToolProposals, proposalContract)
+	proposals, err := decodeContributionBindings(*wire.ToolProposals, proposalContract.Identity())
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
@@ -429,7 +429,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
-	observers, err := decodeContributionBindings(*wire.ModelObservers, observerContract)
+	observers, err := decodeContributionBindings(*wire.ModelObservers, observerContract.Identity())
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
@@ -450,7 +450,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
-	inputs, err := decodeContributionBindings(*wire.ModelInputs, inputContract)
+	inputs, err := decodeContributionBindings(*wire.ModelInputs, inputContract.Identity())
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
@@ -461,7 +461,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
-	contexts, err := decodeContributionBindings(*wire.ModelContexts, contextContract)
+	contexts, err := decodeContributionBindings(*wire.ModelContexts, contextContract.Identity())
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}

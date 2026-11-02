@@ -57,7 +57,7 @@ func (b *Bridge) Handler() http.Handler {
 			writeProblem(writer, status, code, publicMessage(code))
 			return
 		}
-		encoded, err := json.Marshal(result)
+		encoded, err := jsonv2.Marshal(result)
 		if err != nil {
 			writeProblem(writer, http.StatusInternalServerError, "outcome_unknown", "control response could not be encoded")
 			return
@@ -76,79 +76,79 @@ func decodeInput[T any](input json.RawMessage) (T, error) {
 }
 func (b *Bridge) dispatch(ctx context.Context, token string, request control.HTTPEnvelope) (any, error) {
 	switch request.Method {
-	case "validatePlan":
+	case control.OpValidatePlan:
 		value, err := decodeInput[control.LocalPlan](request.Input)
 		if err != nil {
 			return nil, err
 		}
 		return nil, b.ValidatePlan(ctx, token, value)
-	case "ready":
+	case control.OpReady:
 		value, err := decodeInput[control.ReadyReport](request.Input)
 		if err != nil {
 			return nil, err
 		}
 		return b.Ready(ctx, token, value)
-	case "acquire":
+	case control.OpAcquire:
 		value, err := decodeInput[control.AcquireRequest](request.Input)
 		if err != nil {
 			return nil, err
 		}
 		return b.Acquire(ctx, token, value)
-	case "validateUse":
+	case control.OpValidateUse:
 		value, err := decodeInput[control.UseGrant](request.Input)
 		if err != nil {
 			return nil, err
 		}
 		return nil, b.ValidateUse(ctx, token, value)
-	case "validateRoute":
+	case control.OpValidateRoute:
 		value, err := decodeInput[control.RouteGrant](request.Input)
 		if err != nil {
 			return nil, err
 		}
 		return nil, b.ValidateRoute(ctx, token, value)
-	case "snapshot":
+	case control.OpSnapshot:
 		value, err := decodeInput[[]string](request.Input)
 		if err != nil {
 			return nil, err
 		}
 		return b.Snapshot(ctx, token, value)
-	case "closeSnapshot":
+	case control.OpCloseSnapshot:
 		value, err := decodeInput[string](request.Input)
 		if err != nil {
 			return nil, err
 		}
 		return nil, b.CloseSnapshot(ctx, token, value)
-	case "publish":
+	case control.OpPublish:
 		value, err := decodeInput[control.PublicationRequest](request.Input)
 		if err != nil {
 			return nil, err
 		}
 		return b.Publish(ctx, token, value)
-	case "publication":
+	case control.OpPublication:
 		value, err := decodeInput[string](request.Input)
 		if err != nil {
 			return nil, err
 		}
 		return b.Publication(ctx, token, value)
-	case "withdraw":
+	case control.OpWithdraw:
 		value, err := decodeInput[control.Withdrawal](request.Input)
 		if err != nil {
 			return nil, err
 		}
 		return b.Withdraw(ctx, token, value)
-	case "prove":
+	case control.OpProve:
 		value, err := decodeInput[control.CloseProof](request.Input)
 		if err != nil {
 			return nil, err
 		}
 		return b.Prove(ctx, token, value)
-	case "reconnect":
+	case control.OpReconnect:
 		value, err := decodeInput[control.ReconnectRequest](request.Input)
 		if err != nil {
 			return nil, err
 		}
 		return b.Reconnect(ctx, token, value)
-	case "poll":
+	case control.OpPoll:
 		_, err := decodeInput[struct{}](request.Input)
 		if err != nil {
 			return nil, err

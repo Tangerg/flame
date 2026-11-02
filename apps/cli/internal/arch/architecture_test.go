@@ -97,7 +97,7 @@ func TestExternalFrameworksStopAtTheirAdapters(t *testing.T) {
 					t.Errorf("%s imports %s outside its allowed Runtime boundary", relative, imported)
 				}
 			case importsPath(imported, oolongPath):
-				if strings.HasPrefix(relative, "internal/delivery/terminal/") {
+				if strings.HasPrefix(relative, "internal/delivery/terminal/") || (packageWithin(relative, "internal/adapter/keybinding") && imported == oolongPath+"/core/input") {
 					continue
 				}
 				if _, algorithm := oolongAlgorithms[imported]; !algorithm {

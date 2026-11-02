@@ -13,6 +13,8 @@ import (
 	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
+const defaultMaximumMessageBytes = 128 << 20
+
 var ErrClosed = errors.New("runtime client: closed")
 
 // ErrAcknowledgementUnknown marks a dispatched command whose acknowledgement
@@ -29,8 +31,7 @@ var ErrDisconnected = errors.New("runtime: disconnected")
 type RemoteConfig struct {
 	Endpoint string
 	Token    string
-	// MaxMessageBytes optionally bounds one buffered reply or SSE frame. Zero
-	// adds no client limit; Runtime enforces the selected operation’s own bounds.
+	// Zero selects the client safety limit, including pre-discovery responses.
 	MaxMessageBytes int
 }
 
@@ -59,14 +60,18 @@ func Connect(ctx context.Context, cfg RemoteConfig) (*Client, error) {
 	if err != nil || endpoint.HasQuery() || endpoint.HasFragment() {
 		return nil, errors.New("runtime: endpoint must be an absolute http or https base url without credentials, query, or fragment")
 	}
-	base := endpoint.URL()
+	if cfg.Token != "" && !endpoint.Secure() && !endpoint.Loopback() {
+		return nil, errors.New("runtime: bearer credentials require HTTPS outside loopback")
+	}
 	if strings.ContainsAny(cfg.Token, "\r\n") {
 		return nil, errors.New("runtime: token must not contain line breaks")
 	}
 	if cfg.MaxMessageBytes < 0 {
 		return nil, errors.New("runtime: max message bytes must not be negative")
 	}
-	base = base.JoinPath(rpcPath)
+	if cfg.MaxMessageBytes == 0 {
+		cfg.MaxMessageBytes = defaultMaximumMessageBytes
+	}
 
 	transport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
@@ -80,7 +85,7 @@ func Connect(ctx context.Context, cfg RemoteConfig) (*Client, error) {
 		ExpectContinueTimeout: time.Second,
 	}
 	client := &Client{
-		endpoint: base.String(), token: cfg.Token, calls: make(map[*remoteCall]struct{}),
+		endpoint: endpoint.CanonicalBase() + rpcPath, token: cfg.Token, calls: make(map[*remoteCall]struct{}),
 		maxMessageBytes: cfg.MaxMessageBytes,
 		http: &http.Client{
 			Transport:     transport,

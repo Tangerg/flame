@@ -41,19 +41,31 @@ func SelectedContribution(ctx context.Context, host *qimu.Host, store Store, sel
 	if required == nil {
 		return ContributionBinding{}, false, plugin.ErrInvalid
 	}
-	return SelectedContributionForRole(ctx, host, store, selections, required, required.Descriptor().Reference)
+	binding, state, err := SelectedContributionForRole(ctx, host, store, selections, required, required.Descriptor().Reference)
+	return binding, state == SelectionActive, err
 }
 
-func SelectedContributionForRole(ctx context.Context, host *qimu.Host, store Store, selections SelectionStore, required *portable.Capability, role string) (ContributionBinding, bool, error) {
+type SelectionState uint8
+
+const (
+	SelectionAbsent SelectionState = iota
+	SelectionInactive
+	SelectionActive
+)
+
+func SelectedContributionForRole(ctx context.Context, host *qimu.Host, store Store, selections SelectionStore, required *portable.Capability, role string) (ContributionBinding, SelectionState, error) {
 	if host == nil || required == nil || required.Descriptor().Composition != portable.Selection {
-		return ContributionBinding{}, false, plugin.ErrInvalid
+		return ContributionBinding{}, SelectionAbsent, plugin.ErrInvalid
 	}
 	choice, found, err := selections.Get(ctx, role)
 	if err != nil || !found {
-		return ContributionBinding{}, false, err
+		return ContributionBinding{}, SelectionAbsent, err
 	}
-	record := choice.Snapshot()
-	return resolveContribution(ctx, host, store, required, record, integrity.Digest{})
+	binding, available, err := resolveContribution(ctx, host, store, required, choice.Snapshot(), integrity.Digest{})
+	if !available {
+		return binding, SelectionInactive, err
+	}
+	return binding, SelectionActive, err
 }
 
 func CapturedContribution(ctx context.Context, host *qimu.Host, store Store, required *portable.Capability, source extension.ContributionSource) (ContributionBinding, bool, error) {

@@ -33,10 +33,29 @@ describe("Flame Tool capabilities", () => {
     );
   });
 
+  it("uses the published receipt result shape before replying to the host", () => {
+    const method = new Method(parseJSON(wire.toolReceipt) as MethodDescriptor);
+    for (const response of [
+      {},
+      { result: { output: { content: [{ kind: "text", text: "done" }] } } },
+      { result: { output: {}, isError: true } },
+    ]) {
+      expect(() => method.validateOutput(response)).not.toThrow();
+    }
+    for (const response of [
+      { found: true },
+      { found: false, isError: true },
+      { result: {} },
+      { result: { output: "null" } },
+    ]) {
+      expect(() => method.validateOutput(response)).toThrow();
+    }
+  });
+
   it("registers the Flame receipt on the original generic Backend with the shared identity decoder", () => {
     const backend = new Backend({ name: "flame-tool-fixture", version: "1" });
     const registration = vi.spyOn(backend, "implement");
-    const handle = vi.fn(() => ({ found: false }));
+    const handle = vi.fn(() => ({}));
     toolReceipts(backend, handle);
     expect(registration).toHaveBeenCalledOnce();
     const [method, decode, implementation] = registration.mock.calls[0]!;

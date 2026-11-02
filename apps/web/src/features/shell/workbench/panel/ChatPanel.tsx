@@ -28,15 +28,10 @@ import { useActiveSession, useActiveSessionId } from "@/features/agent/public/se
 import { useAgentSessions } from "@/features/agent/public/session";
 import { registerComposerFocusPresentation } from "@/features/composer/public/focus";
 import {
-  closeAllWorkspaceDockViews,
-  closeOtherWorkspaceDockViews,
-  closeWorkspaceDockView,
   closeWorkspaceView,
   collapseWorkspaceDock,
   openWorkspaceView,
   openWorkspaceViewInDock,
-  reorderWorkspaceDockView,
-  selectWorkspaceDockView,
   showWorkspaceDock,
   useActiveWorkspaceViewId,
   useWorkspaceDock,
@@ -198,7 +193,7 @@ function DockHeader({
         tabs={tabs}
         ariaLabel={t("dock.tabs.label")}
         reorder={{
-          onMove: reorderWorkspaceDockView.bind(null, workspaceAccess),
+          onMove: workspaceAccess.navigation.reorderDockView.bind(workspaceAccess.navigation),
           moveLeftLabel: t("dock.tabs.moveLeft"),
           moveRightLabel: t("dock.tabs.moveRight"),
         }}
@@ -330,11 +325,11 @@ export function ChatPanel({ onSend, ref }: Props) {
       icon: knownIconName(view?.icon),
       badge: Badge ? <Badge /> : undefined,
       active: id === dock.activeViewId,
-      onClose: () => closeWorkspaceDockView(workspaceAccess, id),
+      onClose: () => workspaceAccess.navigation.closeDockView(id),
       closeLabel: `${t("common.close")} ${title}`,
-      onCloseOthers: () => closeOtherWorkspaceDockViews(workspaceAccess, id),
+      onCloseOthers: () => workspaceAccess.navigation.closeOtherDockViews(id),
       closeOthersLabel: t("dock.tabs.closeOthers"),
-      onCloseAll: closeAllWorkspaceDockViews.bind(null, workspaceAccess),
+      onCloseAll: workspaceAccess.navigation.closeAllDockViews.bind(workspaceAccess.navigation),
       closeAllLabel: t("dock.tabs.closeAll"),
     };
   });
@@ -432,7 +427,7 @@ export function ChatPanel({ onSend, ref }: Props) {
             <AgentContextDock
               value={presentedViewId === WORKSPACE_DOCK_CATALOG ? null : presentedViewId}
               onValueChange={(id) => {
-                if (id !== null) selectWorkspaceDockView(workspaceAccess, id);
+                if (id !== null) workspaceAccess.navigation.selectDockView(id);
               }}
               ref={dockRef}
               role={presentedMain ? "presentation" : undefined}

@@ -30,9 +30,6 @@ func contributionSession(ctx context.Context, host *qimu.Host, store plugins.Sto
 		return binding, nil, fmt.Errorf("%w: %w: %s", plugin.ErrUnavailable, errInactive, required.Descriptor().Reference)
 	}
 	session, err := borrowContribution(ctx, pool, binding)
-	if errors.Is(err, mcp.ErrUnavailable) {
-		err = fmt.Errorf("%w: %w", plugin.ErrUnavailable, err)
-	}
 	return binding, session, err
 }
 
@@ -56,7 +53,7 @@ func workflowSession(ctx context.Context, c *CommandCalls, contract *portable.Ca
 	}
 	activation, err := c.pool.AwaitInstallationActivation(ctx, binding.ServerID)
 	if err != nil {
-		return binding, nil, errors.Join(plugin.ErrUnavailable, err)
+		return binding, nil, err
 	}
 	original, err := plugins.OriginalActivation([]plugin.Activation{activation}, binding.InstallationID, binding.Digest, binding.ServerName)
 	if err != nil {
@@ -65,7 +62,7 @@ func workflowSession(ctx context.Context, c *CommandCalls, contract *portable.Ca
 	binding.Activation = &original
 	borrow, err := borrowContribution(ctx, c.pool, binding)
 	if err != nil {
-		return binding, nil, errors.Join(plugin.ErrUnavailable, err)
+		return binding, nil, err
 	}
 	return binding, borrow, nil
 }

@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/frame/cancellation"
 )
 
 // Wait joins done or retains the caller's cancellation category and cause.

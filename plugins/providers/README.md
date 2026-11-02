@@ -58,3 +58,5 @@ provider's process setting. Runtime process configuration names both its
 provider and model explicitly.
 
 The configuration screens render the base URL example and path policy published by the installed provider profile. Preserve the gateway mount path. Anthropic and Google append their API version to that mount. OpenAI-compatible gateways take a versioned API base, and Azure uses the resource-specific `/openai/v1` base with a deployment name.
+
+For Azure, set the optional installation input `azure-deployments` to an object such as `{"https://resource.openai.azure.com/openai/v1":["team-chat"]}`. Discovery lists the declared deployment names for the selected resource. The credential probe still checks the upstream API.

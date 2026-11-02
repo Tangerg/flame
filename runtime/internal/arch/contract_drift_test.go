@@ -13,7 +13,6 @@ import (
 	"reflect"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -76,10 +75,9 @@ func TestGeneratedContractHasNoDrift(t *testing.T) {
 // generation directive on the dispatch contract catalog. Client modules own how
 // they consume or vendor this output; the runtime never writes into their trees.
 const (
-	tsWireDir       = "contract/samples"
-	tsWireValidator = "wire.validate.generated.ts"
-	validatorDir    = "protocol"
-	validatorFile   = "wire_constraints.generated.go"
+	tsWireDir     = "contract/samples"
+	validatorDir  = "protocol"
+	validatorFile = "wire_constraints.generated.go"
 )
 
 func regenerateContract(t *testing.T, root string) (artifacts, typescript, validators string) {
@@ -190,14 +188,27 @@ func TestRegistryShapeRulesReachTheGoValidator(t *testing.T) {
 	for _, spec := range shapes.ValueConstraints() {
 		registered = append(registered, spec.GoType)
 	}
+	file, err := parser.ParseFile(token.NewFileSet(), validatorFile, source, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	owners := make(map[string]bool)
+	for _, declaration := range file.Decls {
+		method, ok := declaration.(*ast.FuncDecl)
+		if !ok || method.Recv == nil || method.Name.Name != "validateWire" {
+			continue
+		}
+		typ := method.Recv.List[0].Type
+		if pointer, ok := typ.(*ast.StarExpr); ok {
+			typ = pointer.X
+		}
+		if named, ok := typ.(*ast.Ident); ok {
+			owners[named.Name] = true
+		}
+	}
 	for _, shape := range registered {
-		// The generator names the receiver after its type, exactly as
-		// hand-written methods do, so the expected signature is derived the
-		// same way rather than assuming one shared name.
-		receiver := strings.ToLower(shape.Name()[:1])
-		signature := "func (" + receiver + " " + shape.Name() + ") validateWire() error"
-		if !strings.Contains(source, signature) {
-			t.Errorf("%s is registered as a wire-constrained shape but has no generated validateWire method", shape.Name())
+		if !owners[shape.Name()] {
+			t.Errorf("%s is registered as a wire-constrained shape without a validator", shape.Name())
 		}
 	}
 }
@@ -607,94 +618,105 @@ func exportedStructs(t *testing.T, dir string) []string {
 	return out
 }
 
-// TestValueConstraintsAgreeAcrossArtifacts checks that every declared value
-// constraint is stated by all three emitters.
-//
-// One declaration feeds three independent emitters — the Go validator writes a
-// matching helper call, the schema writes its value keyword, and the TypeScript
-// checks write the same keyword — while a nested path takes a fourth code path in two of them (an
-// allOf branch, because the rule belongs to the owner and not to every carrier of
-// the shared type). Construction does not make them agree; only reading the
-// artifacts back does.
-func TestValueConstraintsAgreeAcrossArtifacts(t *testing.T) {
-	root := moduleRoot(t)
-	dir := filepath.Join(root, "contract")
-
+// Flattened owners have no standalone schema. Their rules must survive in
+// every published carrier, including nested paths and conditional branches.
+func TestAllValueConstraintsReachTheirSchemaOwners(t *testing.T) {
 	var bundle struct {
 		Defs map[string]jsontext.Value `json:"$defs"`
 	}
-	if err := json.Unmarshal(readArtifact(t, dir, "schema.json"), &bundle); err != nil {
-		t.Fatalf("decode schema.json: %v", err)
+	if err := json.Unmarshal(readArtifact(t, filepath.Join(moduleRoot(t), "contract"), "schema.json"), &bundle); err != nil {
+		t.Fatal(err)
 	}
-	validator := string(readArtifact(t, filepath.Join(dependencyModuleRoot(t, sdkModulePath), validatorDir), validatorFile))
-	_, generatedTS, _ := regenerateContract(t, root)
-	checks := checkEntries(t, string(readArtifact(t, filepath.Join(generatedTS, "src", "generated"), tsWireValidator)))
-
-	shapes := dispatch.WireShapes()
-	unions := make(map[reflect.Type]dispatch.UnionSpec)
-	for _, union := range shapes.Unions() {
-		unions[union.GoType] = union
-	}
-	for _, spec := range shapes.ValueConstraints() {
+	for _, spec := range dispatch.WireShapes().ValueConstraints() {
 		shape := spec.GoType.Name()
-		definition, ok := bundle.Defs[shape]
-		if !ok {
-			assertFlattenedValueConstraints(t, shape, spec, bundle.Defs, validator, checks, unions[spec.GoType])
-			continue
-		}
-		for _, constraint := range spec.Constraints {
-			expected := expectedCompiledConstraint(t, shape, spec.GoType, constraint, unions[spec.GoType])
-			assertCompiledConstraint(t, shape, constraint, expected, definition, validator, checks)
+		for _, rule := range spec.Constraints {
+			keyword := constraintKeyword(t, spec.GoType, rule)
+			owners := 0
+			for name, definition := range bundle.Defs {
+				if _, present := bundle.Defs[shape]; present {
+					if name != shape {
+						continue
+					}
+				} else {
+					if _, ok := notOnTheWire[shape]; !ok {
+						t.Fatalf("schema missing for %s", shape)
+					}
+					if !schemaHasTopLevelProperty(t, definition, rule.Field) {
+						continue
+					}
+				}
+				owners++
+				if !constraintInSchema(t, definition, rule.Field, keyword, rule) {
+					t.Errorf("%s.%s missing %s", name, rule.Field, keyword)
+				}
+			}
+			if owners == 0 {
+				t.Errorf("%s.%s has no published carrier", shape, rule.Field)
+			}
 		}
 	}
 }
 
-// assertFlattenedValueConstraints handles a value owner that never appears as a
-// standalone frame. Its fields are still real wire fields: encoding/json flattens
-// the embedded owner into every carrier, so every published definition carrying
-// the field must state the constraint while Go keeps one validator on the owner.
-func assertFlattenedValueConstraints(
-	t *testing.T,
-	shape string,
-	spec dispatch.FieldConstraintSpec,
-	definitions map[string]jsontext.Value,
-	validator string,
-	checks map[string]string,
-	union dispatch.UnionSpec,
-) {
+func constraintKeyword(t *testing.T, typ reflect.Type, rule dispatch.FieldConstraint) string {
 	t.Helper()
-	if _, declared := notOnTheWire[shape]; !declared {
-		t.Errorf("%s carries value constraints and the bundle does not define it", shape)
-		return
+	switch rule.Kind {
+	case dispatch.ConstraintNonEmpty:
+		return "minLength"
+	case dispatch.ConstraintPositive:
+		_, field, ok := jsonvalue.GoPath(typ, rule.Field)
+		if !ok {
+			t.Fatalf("%s.%s is not a wire field", typ.Name(), rule.Field)
+		}
+		if jsonvalue.Deref(field.Type).Kind() == reflect.Float64 {
+			return "exclusiveMinimum"
+		}
+		return "minimum"
+	case dispatch.ConstraintNonNegative, dispatch.ConstraintMinimum:
+		return "minimum"
+	case dispatch.ConstraintMaximum:
+		return "maximum"
+	case dispatch.ConstraintNonEmptyItems, dispatch.ConstraintMinItems:
+		return "minItems"
+	case dispatch.ConstraintNonEmptyProperties:
+		return "minProperties"
+	case dispatch.ConstraintUniqueItems:
+		return "uniqueItems"
+	case dispatch.ConstraintMaxItems:
+		return "maxItems"
+	case dispatch.ConstraintMaxLength, dispatch.ConstraintMaxItemLength, dispatch.ConstraintMaxPropertyNameLength:
+		return "maxLength"
+	case dispatch.ConstraintIdentity, dispatch.ConstraintIdentityItems, dispatch.ConstraintIdentityPropertyNames, dispatch.ConstraintPrefix, dispatch.ConstraintPrefixItems, dispatch.ConstraintPatternItems, dispatch.ConstraintPattern:
+		return "pattern"
+	default:
+		t.Fatalf("unsupported wire constraint %v", rule)
+		return ""
 	}
-	for _, constraint := range spec.Constraints {
-		if strings.Contains(constraint.Field, ".") {
-			t.Errorf("%s.%s is a flattened nested constraint; the artifact gate needs an exact carrier-path model", shape, constraint.Field)
-			continue
+}
+
+func TestCompiledWireValueBoundaries(t *testing.T) {
+	var vectors []struct {
+		Shape string         `json:"shape"`
+		Value jsontext.Value `json:"value"`
+		Valid bool           `json:"valid"`
+	}
+	if err := json.Unmarshal(readArtifact(t, filepath.Join(moduleRoot(t), "internal", "arch", "testdata"), "wire-values.json"), &vectors); err != nil {
+		t.Fatal(err)
+	}
+	shapes := make(map[string]reflect.Type)
+	for _, spec := range dispatch.WireShapes().ValueConstraints() {
+		shapes[spec.GoType.Name()] = spec.GoType
+	}
+	for _, v := range vectors {
+		typ := shapes[v.Shape]
+		if typ == nil {
+			t.Fatalf("unknown constrained shape %s", v.Shape)
 		}
-		expected := expectedCompiledConstraint(t, shape, spec.GoType, constraint, union)
-		if !statesGoConstraint(validator, shape, expected.goHelper, constraint.Field, constraint) {
-			t.Errorf("%s.%s is declared %s and the generated owner validator has no %s call",
-				shape, constraint.Field, constraint, expected.goHelper)
+		value := reflect.New(typ).Interface()
+		if err := json.Unmarshal(v.Value, value); err != nil {
+			t.Fatal(err)
 		}
-		carriers := 0
-		for name, definition := range definitions {
-			if !schemaHasTopLevelProperty(t, definition, constraint.Field) {
-				continue
-			}
-			carriers++
-			if !constraintInSchema(t, definition, constraint.Field, expected.schemaKeyword, constraint) {
-				t.Errorf("flattened %s.%s carrier %s states no schema %s",
-					shape, constraint.Field, name, expected.schemaKeyword)
-			}
-			entry, found := checks[name]
-			if !found || !statesCheck(entry, constraint.Field, expected.schemaKeyword, constraint) {
-				t.Errorf("flattened %s.%s carrier %s states no TypeScript %s",
-					shape, constraint.Field, name, expected.schemaKeyword)
-			}
-		}
-		if carriers == 0 {
-			t.Errorf("%s.%s is declared on a flattened owner with no published carrier", shape, constraint.Field)
+		if err := protocol.ValidateWireTree(value); (err == nil) != v.Valid {
+			t.Errorf("%s %s: %v", v.Shape, v.Value, err)
 		}
 	}
 }
@@ -709,304 +731,6 @@ func schemaHasTopLevelProperty(t *testing.T, definition jsontext.Value, field st
 	}
 	_, exists := object.Properties[field]
 	return exists
-}
-
-type compiledConstraintExpectation struct {
-	schemaKeyword string
-	goHelper      string
-}
-
-func expectedCompiledConstraint(
-	t *testing.T,
-	shape string,
-	goType reflect.Type,
-	constraint dispatch.FieldConstraint,
-	union dispatch.UnionSpec,
-) compiledConstraintExpectation {
-	t.Helper()
-	leaf := func() jsonvalue.Field {
-		_, field, found := jsonvalue.GoPath(goType, constraint.Field)
-		if !found {
-			t.Fatalf("%s has no field %q", shape, constraint.Field)
-		}
-		return field
-	}
-	switch constraint.Kind {
-	case dispatch.ConstraintNonEmpty:
-		field := leaf()
-		if field.Optional && field.Type.Kind() == reflect.Pointer {
-			return compiledConstraintExpectation{"minLength", "optionalText"}
-		}
-		if field.Optional && unionRequiresField(union, constraint.Field) {
-			return compiledConstraintExpectation{"minLength", "requiredWhen"}
-		}
-		if field.Optional && field.Type.Kind() != reflect.Pointer {
-			for _, object := range dispatch.WireShapes().Constraints() {
-				if object.GoType != goType {
-					continue
-				}
-				for _, rule := range object.Rules {
-					if slices.Contains(rule.Required, constraint.Field) {
-						return compiledConstraintExpectation{"minLength", "requiredWhen"}
-					}
-					if slices.Contains(rule.RequiredAny, constraint.Field) {
-						return compiledConstraintExpectation{"minLength", "requiredAnyWhen"}
-					}
-				}
-			}
-		}
-		return compiledConstraintExpectation{"minLength", "requiredText"}
-	case dispatch.ConstraintPositive:
-		field := leaf()
-		keyword := "minimum"
-		fieldType := field.Type
-		if fieldType.Kind() == reflect.Pointer {
-			fieldType = fieldType.Elem()
-		}
-		if fieldType.Kind() == reflect.Float64 {
-			keyword = "exclusiveMinimum"
-		}
-		switch {
-		case field.Type.Kind() == reflect.Pointer:
-			return compiledConstraintExpectation{keyword, "optionalPositiveNumber"}
-		case field.Optional:
-			return compiledConstraintExpectation{keyword, "optionalPositiveScalarNumber"}
-		default:
-			return compiledConstraintExpectation{keyword, "positiveNumber"}
-		}
-	case dispatch.ConstraintNonNegative:
-		if leaf().Type.Kind() == reflect.Pointer {
-			return compiledConstraintExpectation{"minimum", "optionalNonNegativeNumber"}
-		}
-		return compiledConstraintExpectation{"minimum", "nonNegativeNumber"}
-	case dispatch.ConstraintNonEmptyItems:
-		if leaf().Optional {
-			return compiledConstraintExpectation{"minItems", "nonEmptyItems"}
-		}
-		return compiledConstraintExpectation{"minItems", "requiredItems"}
-	case dispatch.ConstraintNonEmptyProperties:
-		return compiledConstraintExpectation{"minProperties", "nonEmptyProperties"}
-	case dispatch.ConstraintUniqueItems:
-		return compiledConstraintExpectation{"uniqueItems", "uniqueItems"}
-	case dispatch.ConstraintMinItems:
-		if leaf().Optional {
-			return compiledConstraintExpectation{"minItems", "optionalMinItems"}
-		}
-		return compiledConstraintExpectation{"minItems", "requiredMinItems"}
-	case dispatch.ConstraintMaxItems:
-		return compiledConstraintExpectation{"maxItems", "maxItems"}
-	case dispatch.ConstraintMaxLength:
-		if leaf().Type.Kind() == reflect.Pointer {
-			return compiledConstraintExpectation{"maxLength", "optionalMaxLength"}
-		}
-		return compiledConstraintExpectation{"maxLength", "maxLength"}
-	case dispatch.ConstraintMaxItemLength:
-		if leaf().Type.Kind() == reflect.Pointer {
-			return compiledConstraintExpectation{"maxLength", "optionalMaxItemLength"}
-		}
-		return compiledConstraintExpectation{"maxLength", "maxItemLength"}
-	case dispatch.ConstraintIdentity:
-		if leaf().Type.Kind() == reflect.Pointer {
-			return compiledConstraintExpectation{"pattern", "optionalIdentity"}
-		}
-		return compiledConstraintExpectation{"pattern", "identity"}
-	case dispatch.ConstraintIdentityItems:
-		if leaf().Type.Kind() == reflect.Pointer {
-			return compiledConstraintExpectation{"pattern", "optionalIdentityItems"}
-		}
-		return compiledConstraintExpectation{"pattern", "identityItems"}
-	case dispatch.ConstraintMaxPropertyNameLength:
-		return compiledConstraintExpectation{"maxLength", "maxPropertyNameLength"}
-	case dispatch.ConstraintIdentityPropertyNames:
-		return compiledConstraintExpectation{"pattern", "identityPropertyNames"}
-	case dispatch.ConstraintPrefix:
-		field := leaf()
-		switch {
-		case field.Type.Kind() == reflect.Pointer && field.Optional:
-			return compiledConstraintExpectation{"pattern", "optionalTextPointerPrefix"}
-		case field.Type.Kind() == reflect.Pointer:
-			return compiledConstraintExpectation{"pattern", "requiredTextPointerPrefix"}
-		case field.Optional:
-			return compiledConstraintExpectation{"pattern", "optionalTextPrefix"}
-		default:
-			return compiledConstraintExpectation{"pattern", "requiredTextPrefix"}
-		}
-	case dispatch.ConstraintPrefixItems:
-		if leaf().Type.Kind() == reflect.Pointer {
-			return compiledConstraintExpectation{"pattern", "optionalTextPrefixItems"}
-		}
-		return compiledConstraintExpectation{"pattern", "textPrefixItems"}
-	case dispatch.ConstraintPatternItems:
-		return compiledConstraintExpectation{"pattern", "textPatternItems"}
-	case dispatch.ConstraintPattern:
-		field := leaf()
-		switch {
-		case field.Type.Kind() == reflect.Pointer && field.Optional:
-			return compiledConstraintExpectation{"pattern", "optionalTextPointerPattern"}
-		case field.Type.Kind() == reflect.Pointer:
-			return compiledConstraintExpectation{"pattern", "requiredTextPointerPattern"}
-		case field.Optional:
-			return compiledConstraintExpectation{"pattern", "optionalTextPattern"}
-		default:
-			return compiledConstraintExpectation{"pattern", "requiredTextPattern"}
-		}
-	case dispatch.ConstraintMinimum:
-		if leaf().Type.Kind() == reflect.Pointer {
-			return compiledConstraintExpectation{"minimum", "optionalMinimumNumber"}
-		}
-		return compiledConstraintExpectation{"minimum", "minimumNumber"}
-	case dispatch.ConstraintMaximum:
-		if leaf().Type.Kind() == reflect.Pointer {
-			return compiledConstraintExpectation{"maximum", "optionalMaximumNumber"}
-		}
-		return compiledConstraintExpectation{"maximum", "maximumNumber"}
-	default:
-		t.Fatalf("%s.%s has unsupported constraint kind %s", shape, constraint.Field, constraint.Kind)
-		return compiledConstraintExpectation{}
-	}
-}
-
-func unionRequiresField(union dispatch.UnionSpec, field string) bool {
-	for _, variant := range union.Variants {
-		if slices.Contains(variant.Required, field) {
-			return true
-		}
-	}
-	return union.PatternVariant != nil && slices.Contains(union.PatternVariant.Required, field)
-}
-
-func assertCompiledConstraint(
-	t *testing.T,
-	shape string,
-	constraint dispatch.FieldConstraint,
-	expected compiledConstraintExpectation,
-	definition jsontext.Value,
-	validator string,
-	checks map[string]string,
-) {
-	t.Helper()
-	// The schema states a direct field on its property and a nested field in the
-	// owning shape's allOf branch.
-	if !constraintInSchema(t, definition, constraint.Field, expected.schemaKeyword, constraint) {
-		t.Errorf("%s.%s is declared %s and schema.json states no %s for it",
-			shape, constraint.Field, constraint, expected.schemaKeyword)
-	}
-	if !statesGoConstraint(validator, shape, expected.goHelper, constraint.Field, constraint) {
-		t.Errorf("%s.%s is declared %s and the generated validator has no %s call",
-			shape, constraint.Field, constraint, expected.goHelper)
-	}
-	entry, found := checks[shape]
-	if !found {
-		t.Errorf("%s carries value constraints and %s has no check for it", shape, tsWireValidator)
-		return
-	}
-	if !statesCheck(entry, constraint.Field, expected.schemaKeyword, constraint) {
-		t.Errorf("%s.%s is declared %s and its %s check states no %s",
-			shape, constraint.Field, constraint, tsWireValidator, expected.schemaKeyword)
-	}
-}
-
-// statesCheck reports whether one shape's checks constrain the last segment of a
-// dotted path with the given keyword. A value constraint compiles to a single line
-// either way it is stated — `sessionId: allOf([text(), minLength(1)])` beside a type
-// keyword, `id: minLength(1)` alone in an allOf branch — so the line the field names
-// is the whole rule.
-func statesCheck(entry, path, keyword string, constraint dispatch.FieldConstraint) bool {
-	segments := strings.Split(path, ".")
-	field := segments[len(segments)-1] + ": "
-	call := keyword + "("
-	if constraint.Limit > 0 {
-		limit := strconv.FormatInt(constraint.Limit, 10)
-		if constraint.Kind == dispatch.ConstraintMinimum || constraint.Kind == dispatch.ConstraintMaximum {
-			limit = strconv.Quote(limit)
-		}
-		call += limit + ")"
-	} else if constraint.Kind == dispatch.ConstraintPattern ||
-		constraint.Kind == dispatch.ConstraintPatternItems {
-		call += strconv.Quote(constraint.Value) + ")"
-	} else if constraint.Value != "" {
-		call += strconv.Quote("^"+regexp.QuoteMeta(constraint.Value)) + ")"
-	} else if constraint.Kind == dispatch.ConstraintIdentity ||
-		constraint.Kind == dispatch.ConstraintIdentityItems ||
-		constraint.Kind == dispatch.ConstraintIdentityPropertyNames {
-		call += strconv.Quote(dispatch.IdentityPattern) + ")"
-	}
-	for line := range strings.SplitSeq(entry, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, field) && strings.Contains(trimmed, call) {
-			return true
-		}
-	}
-	return false
-}
-
-func statesGoConstraint(source, shape, helper, field string, constraint dispatch.FieldConstraint) bool {
-	// The generator names the receiver after its type, so both the method
-	// marker and the receiver argument are derived from the shape name.
-	receiver := strings.ToLower(shape[:1])
-	marker := "func (" + receiver + " " + shape + ") validateWire() error {"
-	start := strings.Index(source, marker)
-	if start < 0 {
-		return false
-	}
-	source = source[start:]
-	if end := strings.Index(source[len(marker):], "\nfunc "); end >= 0 {
-		source = source[:len(marker)+end]
-	}
-	if helper == "requiredWhen" {
-		fieldArgument := `, "` + field + `", ` + receiver + `)`
-		for line := range strings.SplitSeq(source, "\n") {
-			if strings.Contains(line, "requiredWhen(") && strings.Contains(line, fieldArgument) {
-				return true
-			}
-		}
-		return false
-	}
-	if helper == "requiredAnyWhen" {
-		for line := range strings.SplitSeq(source, "\n") {
-			if strings.Contains(line, "requiredAnyWhen(") && strings.Contains(line, strconv.Quote(field)) && strings.Contains(line, ", "+receiver+")") {
-				return true
-			}
-		}
-		return false
-	}
-	prefix := helper + `("` + field + `"`
-	for line := range strings.SplitSeq(source, "\n") {
-		if !strings.Contains(line, prefix) {
-			continue
-		}
-		switch {
-		case constraint.Limit > 0:
-			return strings.Contains(line, ", "+strconv.FormatInt(constraint.Limit, 10)+")")
-		case constraint.Value != "":
-			return strings.Contains(line, ", "+strconv.Quote(constraint.Value)+")")
-		default:
-			return true
-		}
-	}
-	return false
-}
-
-// checkEntries splits the generated TypeScript checks into one entry per published
-// shape. Every entry starts a line at the registry's own indentation, so the text
-// between two such lines is one shape's whole rule set.
-func checkEntries(t *testing.T, source string) map[string]string {
-	t.Helper()
-
-	entry := regexp.MustCompile(`(?m)^  ([A-Za-z0-9_]+): `)
-	matches := entry.FindAllStringSubmatchIndex(source, -1)
-	if len(matches) == 0 {
-		t.Fatalf("%s publishes no checks", tsWireValidator)
-	}
-	out := make(map[string]string, len(matches))
-	for index, match := range matches {
-		end := len(source)
-		if index+1 < len(matches) {
-			end = matches[index+1][0]
-		}
-		out[source[match[2]:match[3]]] = source[match[0]:end]
-	}
-	return out
 }
 
 // constraintInSchema reports whether the definition constrains the last segment of

@@ -63,8 +63,8 @@ func contributionBindingsWire(bindings []plugins.ContributionBinding) []contribu
 	return values
 }
 
-func decodeContributionBindings(values []contributionBindingWire, contract *portable.Capability) ([]plugins.ContributionBinding, error) {
-	if contract == nil {
+func decodeContributionBindings(values []contributionBindingWire, contract jsonvalue.Value) ([]plugins.ContributionBinding, error) {
+	if err := contract.Validate(); err != nil {
 		return nil, errors.New("execution: model composition contract is required")
 	}
 	bindings := make([]plugins.ContributionBinding, 0, len(values))
@@ -86,9 +86,11 @@ func decodeContributionBindings(values []contributionBindingWire, contract *port
 		if err != nil {
 			return nil, err
 		}
-		identity, err := jsonvalue.Parse([]byte(value.Contract))
-		if err != nil || identity != contract.Identity() {
-			return nil, errors.Join(err, errors.New("execution: model contribution contract changed"))
+		if value.Contract != contract.String() {
+			identity, err := jsonvalue.Parse([]byte(value.Contract))
+			if err != nil || identity != contract {
+				return nil, errors.Join(err, errors.New("execution: model contribution contract changed"))
+			}
 		}
 		member := plugin.CompositionMember{Installation: installation, Contribution: contribution}
 		if seen[member] || !portable.ValidExportName(value.Export) {
@@ -103,7 +105,7 @@ func decodeContributionBindings(values []contributionBindingWire, contract *port
 		if err != nil {
 			return nil, err
 		}
-		bindings = append(bindings, plugins.ContributionBinding{InstallationID: installation, Digest: digest, ContributionID: contribution, ServerName: server, ServerID: id, Export: value.Export, Contract: identity})
+		bindings = append(bindings, plugins.ContributionBinding{InstallationID: installation, Digest: digest, ContributionID: contribution, ServerName: server, ServerID: id, Export: value.Export, Contract: contract})
 	}
 	return bindings, nil
 }

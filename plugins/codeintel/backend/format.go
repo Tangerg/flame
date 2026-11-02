@@ -16,7 +16,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/codeintel"
 	"github.com/Tangerg/flame/packages/go-sdk/procgroup"
-	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/frame/cancellation"
 )
 
 var errFormattedTooLarge = errors.New("code intelligence: formatted output exceeds document capacity")
@@ -49,7 +49,7 @@ func formatDocument(ctx context.Context, source codeintel.Document) (codeintel.T
 		if lookupErr != nil {
 			return result, lookupErr
 		}
-		formatted, err = runFormatter(ctx, input, prettier, "--stdin-filepath", filepath.Join(source.Workspace, source.Path))
+		formatted, err = runFormatter(ctx, input, prettier, "--no-config", "--no-editorconfig", "--stdin-filepath", filepath.Base(source.Path))
 	default:
 		return result, nil
 	}

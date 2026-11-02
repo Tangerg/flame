@@ -24,12 +24,18 @@ type ProtocolConstants struct {
 	InvocationHeader       string `json:"InvocationHeader"`
 	InvocationMetadataKey  string `json:"InvocationMetadataKey"`
 	ReceiptMethod          string `json:"ReceiptMethod"`
+	PortableTimeFormat     string `json:"portableTimeFormat"`
+	PortableTimePattern    string `json:"portableTimePattern"`
+	PatternEscapes         string `json:"patternEscapes"`
+	ASCIIWhitespace        string `json:"asciiWhitespace"`
 	MaxCommandIDCharacters int    `json:"maxCommandIDCharacters"`
 }
 
 func ProtocolJSON() ([]byte, error) {
 	constants := ProtocolConstants{
-		Protocol:               portable.Protocol,
+		Protocol:           portable.Protocol,
+		PortableTimeFormat: portable.PortableTimeFormat, PortableTimePattern: portable.PortableTimePattern,
+		PatternEscapes: portable.PortablePatternEscapes, ASCIIWhitespace: portable.ASCIIWhitespace,
 		InvokeMethod:           InvokeMethod,
 		DescribeMethod:         DescribeMethod,
 		ValidateMethod:         ValidateMethod,

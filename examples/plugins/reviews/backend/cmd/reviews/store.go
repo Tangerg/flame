@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"unicode/utf8"
 
+	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/qimu/sqlite"
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 

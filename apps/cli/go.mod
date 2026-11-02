@@ -4,6 +4,7 @@ go 1.27.3
 
 require (
 	codeberg.org/go-latex/latex v0.3.0 // indirect
+	github.com/Tangerg/frame v0.0.1 // indirect
 	github.com/Tangerg/go-sdk v1.8.1-scope.3 // indirect
 	github.com/Tangerg/scope/agent v0.58.0 // indirect
 	github.com/Tangerg/scope/core v0.58.0 // indirect
@@ -11,7 +12,7 @@ require (
 	github.com/Tangerg/scope/models/catalog v0.58.0 // indirect
 	github.com/Tangerg/scope/otel v0.58.0 // indirect
 	github.com/Tangerg/scope/otel/agent v0.58.0 // indirect
-	github.com/Tangerg/scope/skills v0.58.1-0.20261029173355-e9f5d3bf7cfa // indirect
+	github.com/Tangerg/scope/skills v0.59.0 // indirect
 	github.com/Tangerg/scope/tools/skills v0.58.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
 	github.com/alecthomas/chroma/v2 v2.27.0 // indirect
@@ -59,7 +60,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	go.yaml.in/yaml/v4 v4.0.0-rc.6 // indirect
+	go.yaml.in/yaml/v4 v4.0.0-rc.7 // indirect
 	golang.org/x/image v0.47.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
@@ -74,9 +75,9 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.2-dev.20261101.t2d8806f39315
+	github.com/Tangerg/flame/packages/go-sdk v0.1.3-dev.20261102.tfbeddf4044bf
 	github.com/Tangerg/flame/packages/local-runtime v0.1.1-dev.20261101.t373cde3df814
-	github.com/Tangerg/flame/runtime v0.1.2-dev.20261101.t5776a6adec70
+	github.com/Tangerg/flame/runtime v0.1.3-dev.20261102.t9629aa3c0cb0
 	github.com/Tangerg/oolong/components v0.25.0
 	github.com/Tangerg/oolong/core v0.25.0
 	github.com/Tangerg/oolong/highlight v0.25.0
@@ -84,7 +85,7 @@ require (
 	github.com/Tangerg/oolong/markdown v0.25.0
 	github.com/Tangerg/oolong/mermaid v0.25.0
 	github.com/Tangerg/oolong/ui v0.26.0
-	github.com/Tangerg/qimu v0.1.1-dev.20261101.t4c4dcdb5ac85
+	github.com/Tangerg/qimu v0.1.2-dev.20261102.td29bdddba4f8
 	github.com/Tangerg/scope/tools v0.58.0
 	github.com/mattn/go-shellwords v1.0.16
 	github.com/muesli/cancelreader v0.2.2

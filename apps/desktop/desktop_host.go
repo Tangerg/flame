@@ -50,6 +50,7 @@ type nativeShell struct {
 // Every exported method becomes a Wails IPC entry point. Keep composition methods
 // unexported; bridgegen derives its contract from these actual declarations.
 type DesktopHost struct {
+	transfer             exportTransfer
 	localRuntimeEndpoint string
 	localTokenPath       string
 	shell                *nativeShell
@@ -251,3 +252,19 @@ func (d *DesktopHost) localToken() (string, error) {
 	}
 	return token.Value(), nil
 }
+
+func (d *DesktopHost) BeginFileSave(name string, size int) (string, error) {
+	if d.shell == nil {
+		return "", errShellUnbound
+	}
+	picker, ok := d.shell.files.(exportDestinationPicker)
+	if !ok {
+		return "", errors.New("streamed exports require a native destination picker")
+	}
+	return d.transfer.begin(name, size, picker)
+}
+func (d *DesktopHost) AppendFileSave(id string, offset int, encoded string) error {
+	return d.transfer.appendChunk(id, offset, encoded)
+}
+func (d *DesktopHost) FinishFileSave(id string) error { return d.transfer.finish(id) }
+func (d *DesktopHost) CancelFileSave(id string) error { return d.transfer.cancel(id) }

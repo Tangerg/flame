@@ -121,8 +121,11 @@ func (s *ProcessSource) Configure(ctx context.Context, setup *qimu.Setup, sessio
 		return nil, sdk.ParamsBase{}, err
 	}
 	server, found, err := s.packages.Server(ctx, snapshot.Installation, snapshot.Selected, serverName, plugins.Declared)
-	if err != nil || !found {
-		return nil, sdk.ParamsBase{}, errors.Join(plugin.ErrUnavailable, err)
+	if err != nil {
+		return nil, sdk.ParamsBase{}, err
+	}
+	if !found {
+		return nil, sdk.ParamsBase{}, plugin.ErrUnavailable
 	}
 	release, authority, managed := server.Source.Release()
 	if !managed {

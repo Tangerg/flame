@@ -2,9 +2,7 @@ package plugin
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"errors"
-	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -20,9 +18,12 @@ const ToolReceiptMethod = "io.github.tangerg.flame/tools.getResult"
 // ToolReceipt projects a private receipt through the original Tool's output
 // codec. The business owner retains its only durable result representation.
 type ToolReceipt struct {
-	Found   bool   `json:"found"`
-	Output  string `json:"output,omitzero"`
-	IsError bool   `json:"isError,omitzero"`
+	Result *ToolResult `json:"result,omitzero"`
+}
+
+type ToolResult struct {
+	Output  chat.ToolOutput `json:"output"`
+	IsError bool            `json:"isError,omitzero"`
 }
 
 func ToolReceiptQuery() (*qimumcp.Method[qimumcp.ReceiptRequest, ToolReceipt], error) {
@@ -30,11 +31,10 @@ func ToolReceiptQuery() (*qimumcp.Method[qimumcp.ReceiptRequest, ToolReceipt], e
 }
 
 func NewToolReceipt(output chat.ToolOutput, failed bool) (ToolReceipt, error) {
-	encoded, err := json.Marshal(output)
-	if err != nil {
+	if err := output.Validate(); err != nil {
 		return ToolReceipt{}, err
 	}
-	return ToolReceipt{Found: true, Output: string(encoded), IsError: failed}, nil
+	return ToolReceipt{Result: &ToolResult{Output: output.Clone(), IsError: failed}}, nil
 }
 
 // ReadToolReceipt binds the original remote Tool, logical call and admitted JSON.
@@ -62,20 +62,11 @@ func ReadToolReceipt(ctx context.Context, session *sdk.ClientSession, callID, re
 	if err != nil {
 		return nil, err
 	}
-	if !receipt.Found {
-		if receipt.Output != "" || receipt.IsError {
-			return nil, errors.New("plugin: absent Tool receipt carries outcome evidence")
-		}
+	if receipt.Result == nil {
 		return nil, nil
 	}
-	if strings.TrimSpace(receipt.Output) == "null" {
-		return nil, errors.New("plugin: Tool receipt requires an output object")
-	}
-	var output chat.ToolOutput
-	if err := json.Unmarshal([]byte(receipt.Output), &output, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
-		return nil, err
-	}
-	if receipt.IsError {
+	output := receipt.Result.Output
+	if receipt.Result.IsError {
 		failure, err := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindFailed, Cause: errors.New("plugin: original Tool failed"), Output: output})
 		if err != nil {
 			return nil, err

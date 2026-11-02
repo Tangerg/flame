@@ -6,6 +6,8 @@ import {
   type NotificationAuthorization,
 } from "@flame/component-sdk/notifications";
 
+export const MAXIMUM_EXPORT_CHUNK_BYTES = 1048576;
+
 interface DesktopBootstrap {
   localRuntime: LocalRuntimeConnection;
 }
@@ -61,8 +63,12 @@ const WindowChromeSchema: z.ZodType<WindowChrome> = z.object({
 export const NotificationOpenedEvent = "desktop:notification-opened";
 
 interface DesktopHostMethods {
+  AppendFileSave: { args: [id: string, offset: number, encoded: string]; result: void };
+  BeginFileSave: { args: [name: string, size: number]; result: string };
   Bootstrap: { args: []; result: DesktopBootstrap };
+  CancelFileSave: { args: [id: string]; result: void };
   ChooseWorkingDirectory: { args: []; result: string };
+  FinishFileSave: { args: [id: string]; result: void };
   NotificationAuthorization: { args: []; result: NotificationAuthorization };
   OpenPath: { args: [path: string]; result: void };
   RequestNotificationAuthorization: { args: []; result: NotificationAuthorization };
@@ -74,15 +80,35 @@ interface DesktopHostMethods {
 }
 
 export const DesktopMethods = {
+  AppendFileSave: {
+    name: "main.DesktopHost.AppendFileSave",
+    args: z.tuple([z.string(), z.int(), z.string()]),
+    result: z.void(),
+  },
+  BeginFileSave: {
+    name: "main.DesktopHost.BeginFileSave",
+    args: z.tuple([z.string(), z.int()]),
+    result: z.string(),
+  },
   Bootstrap: {
     name: "main.DesktopHost.Bootstrap",
     args: z.tuple([]),
     result: z.lazy(() => DesktopBootstrapSchema),
   },
+  CancelFileSave: {
+    name: "main.DesktopHost.CancelFileSave",
+    args: z.tuple([z.string()]),
+    result: z.void(),
+  },
   ChooseWorkingDirectory: {
     name: "main.DesktopHost.ChooseWorkingDirectory",
     args: z.tuple([]),
     result: z.string(),
+  },
+  FinishFileSave: {
+    name: "main.DesktopHost.FinishFileSave",
+    args: z.tuple([z.string()]),
+    result: z.void(),
   },
   NotificationAuthorization: {
     name: "main.DesktopHost.NotificationAuthorization",

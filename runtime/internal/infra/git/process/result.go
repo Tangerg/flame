@@ -11,7 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
 	"github.com/Tangerg/flame/packages/go-sdk/procgroup"
-	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/frame/cancellation"
 )
 
 const (

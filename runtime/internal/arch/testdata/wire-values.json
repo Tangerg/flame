@@ -1,0 +1,168 @@
+[
+  {
+    "shape": "RunMetrics",
+    "value": {
+      "steps": -1,
+      "activeDurationMillis": 0
+    },
+    "valid": false
+  },
+  {
+    "shape": "RunMetrics",
+    "value": {
+      "steps": 0,
+      "activeDurationMillis": 0
+    },
+    "valid": true
+  },
+  {
+    "shape": "RunMetrics",
+    "value": {
+      "steps": 1,
+      "activeDurationMillis": 0
+    },
+    "valid": true
+  },
+  {
+    "shape": "RunMetrics",
+    "value": {
+      "steps": 0,
+      "activeDurationMillis": -1
+    },
+    "valid": false
+  },
+  {
+    "shape": "RunMetrics",
+    "value": {
+      "steps": 0,
+      "activeDurationMillis": 0
+    },
+    "valid": true
+  },
+  {
+    "shape": "RunMetrics",
+    "value": {
+      "steps": 0,
+      "activeDurationMillis": 9223372036854
+    },
+    "valid": true
+  },
+  {
+    "shape": "RunMetrics",
+    "value": {
+      "steps": 0,
+      "activeDurationMillis": 9223372036855
+    },
+    "valid": false
+  },
+  {
+    "shape": "PluginValueChange",
+    "value": {
+      "type": "set",
+      "value": "abc"
+    },
+    "valid": true
+  },
+  {
+    "shape": "PluginValueChange",
+    "value": {
+      "type": "clear"
+    },
+    "valid": true
+  },
+  {
+    "shape": "PluginValueChange",
+    "value": {
+      "type": "clear",
+      "value": "abc"
+    },
+    "valid": false
+  },
+  {
+    "shape": "PluginValueChange",
+    "value": {
+      "type": "set"
+    },
+    "valid": false
+  },
+  {
+    "shape": "PluginValueChange",
+    "value": {
+      "type": "garbage"
+    },
+    "valid": false
+  },
+  {
+    "shape": "ModelUsage",
+    "value": {
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "cacheReadTokens": 0,
+      "cacheWriteTokens": 0,
+      "reasoningTokens": 0
+    },
+    "valid": true
+  },
+  {
+    "shape": "ModelUsage",
+    "value": {
+      "inputTokens": 1,
+      "outputTokens": 0,
+      "cacheReadTokens": 0,
+      "cacheWriteTokens": 0,
+      "reasoningTokens": 0
+    },
+    "valid": true
+  },
+  {
+    "shape": "ModelUsage",
+    "value": {
+      "inputTokens": -1,
+      "outputTokens": 0,
+      "cacheReadTokens": 0,
+      "cacheWriteTokens": 0,
+      "reasoningTokens": 0
+    },
+    "valid": false
+  },
+  {
+    "shape": "StartRunRequest",
+    "value": {
+      "sessionId": "ses_01",
+      "input": [
+        {
+          "type": "text",
+          "text": "List the files in this directory."
+        }
+      ],
+      "provider": "anthropic",
+      "model": "claude-opus-4-8"
+    },
+    "valid": true
+  },
+  {
+    "shape": "StartRunRequest",
+    "value": {
+      "sessionId": " ",
+      "input": [
+        {
+          "type": "text",
+          "text": "List the files in this directory."
+        }
+      ],
+      "provider": "anthropic",
+      "model": "claude-opus-4-8"
+    },
+    "valid": false
+  },
+  {
+    "shape": "StartRunRequest",
+    "value": {
+      "sessionId": "ses_01",
+      "input": [],
+      "provider": "anthropic",
+      "model": "claude-opus-4-8"
+    },
+    "valid": false
+  }
+]

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/wailsapp/wails/v3/pkg/events"
 	"log"
 
 	"github.com/wailsapp/wails/v3/pkg/services/notifications"
@@ -37,8 +38,12 @@ func main() {
 	if err := host.bind(shell); err != nil {
 		log.Fatal(err)
 	}
+	window.RegisterHook(events.Mac.WebViewDidCommitNavigation, func(*application.WindowEvent) { host.transfer.abort() })
+	window.RegisterHook(events.Common.WindowClosing, func(*application.WindowEvent) { host.transfer.abort() })
 	installNativeZoom(app)
-	if err := app.Run(); err != nil {
+	err = app.Run()
+	host.transfer.abort()
+	if err != nil {
 		log.Fatal(err)
 	}
 }

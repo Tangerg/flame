@@ -6,7 +6,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/frame/cancellation"
 )
 
 var ErrLockUnsupported = errors.New("advisory lock: unsupported platform")

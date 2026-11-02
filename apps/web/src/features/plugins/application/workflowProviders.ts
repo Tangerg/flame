@@ -17,7 +17,7 @@ interface ProviderSelection {
   readonly contribution: string;
 }
 
-export const GOAL_WORKFLOW = "flame.goal-workflow.v1";
+export { GOAL_WORKFLOW } from "@flame/runtime-client/wire";
 
 function sourceKey(source: WorkflowAuthor) {
   return tupleKey(source.installationId, source.release, source.contribution);

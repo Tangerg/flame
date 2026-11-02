@@ -281,7 +281,11 @@ func (r runtimeProvider) workbench() (*workbench.Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	authoring, err := r.openWorkbench(configured.Runtime.AuthoringPartition())
+	partition, err := configured.Runtime.AuthoringPartition()
+	if err != nil {
+		return nil, err
+	}
+	authoring, err := r.openWorkbench(partition)
 	if err != nil {
 		return nil, fmt.Errorf("open CLI workbench: %w", err)
 	}

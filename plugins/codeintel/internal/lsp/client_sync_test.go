@@ -26,8 +26,8 @@ func TestEnsureOpenRejectsOversizedDocumentBeforeNotification(t *testing.T) {
 		t.Fatal(err)
 	}
 	uri := pathToURI(path)
-	client := &client{
-		spec: ServerSpec{LanguageID: "go"},
+	client := &client{workspace: testWorkspace(t, filepath.Dir(path)),
+		spec: ServerSpec{Languages: map[string]string{".go": "go"}},
 		open: map[string]openDoc{
 			uri: {version: 1, hash: sha256.Sum256(content)},
 		},
@@ -48,7 +48,7 @@ func TestReadDocumentHonorsExactBoundaryAndCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	read, err := readDocument(t.Context(), path)
+	read, err := readDocument(t.Context(), testWorkspace(t, filepath.Dir(path)), path)
 	if err != nil {
 		t.Fatalf("read exact boundary: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestReadDocumentHonorsExactBoundaryAndCancellation(t *testing.T) {
 	canceled, cancel := context.WithCancelCause(t.Context())
 	cause := errors.New("stop document read")
 	cancel(cause)
-	if _, err := readDocument(canceled, path); !errors.Is(err, cause) {
+	if _, err := readDocument(canceled, nil, path); !errors.Is(err, cause) {
 		t.Fatalf("canceled read error = %v, want %v", err, cause)
 	}
 }
@@ -71,7 +71,7 @@ func TestReadDocumentRejectsUnsupportedSources(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{directory, invalid} {
-		if _, err := readDocument(t.Context(), path); !errors.Is(err, errUnsupportedDocument) {
+		if _, err := readDocument(t.Context(), testWorkspace(t, filepath.Dir(path)), path); !errors.Is(err, errUnsupportedDocument) {
 			t.Fatalf("readDocument(%q) error = %v, want ErrUnsupportedDocument", path, err)
 		}
 	}
@@ -108,7 +108,7 @@ func TestEnsureOpenBoundsTheSynchronizedDocumentSet(t *testing.T) {
 	}()
 
 	c := &client{
-		spec:    ServerSpec{LanguageID: "go"},
+		spec:    ServerSpec{Languages: map[string]string{".go": "go"}},
 		open:    map[string]openDoc{},
 		diags:   map[string]diagSet{},
 		updated: make(chan struct{}),
@@ -119,6 +119,8 @@ func TestEnsureOpenBoundsTheSynchronizedDocumentSet(t *testing.T) {
 	t.Cleanup(func() { _ = c.conn.Close() })
 
 	directory := t.TempDir()
+	c.workspace = testWorkspace(t, directory)
+	c.syncPolicy = documentSynchronization{OpenClose: true, Change: changeFull}
 	var first string
 	for index := range maxOpenDocuments + 1 {
 		path := filepath.Join(directory, fmt.Sprintf("file%03d.go", index))
@@ -156,5 +158,85 @@ func TestEnsureOpenBoundsTheSynchronizedDocumentSet(t *testing.T) {
 	c.mu.Unlock()
 	if kept {
 		t.Fatal("kept diagnostics for a document the client no longer synchronizes")
+	}
+	version, err := c.ensureContent(t.Context(), uriToPath(first), []byte("package different"))
+	if err != nil || version <= maxOpenDocuments+1 {
+		t.Fatalf("version after eviction %d, %v", version, err)
+	}
+	c.storeDiagnostics(publishDiagnosticsParams{URI: first, Version: 1, Diagnostics: []Diagnostic{}})
+	if _, err := c.diagnosticsVersion(t.Context(), uriToPath(first), version, 0); !errors.As(err, new(*DiagnosticsPendingError)) {
+		t.Fatalf("stale diagnostics served: %v", err)
+	}
+}
+
+func testWorkspace(t *testing.T, directory string) *os.Root {
+	t.Helper()
+	root, err := os.OpenRoot(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = root.Close() })
+	return root
+}
+
+func TestWorkspaceProhibitsExternalLSPDocuments(t *testing.T) {
+	workspace := testWorkspace(t, t.TempDir())
+	outside := filepath.Join(t.TempDir(), "external.go")
+	if err := os.WriteFile(outside, []byte("package private"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readDocument(t.Context(), workspace, outside); err == nil {
+		t.Fatal("read external file")
+	}
+	link := filepath.Join(workspace.Name(), "alias.go")
+	if err := os.Symlink(outside, link); err != nil {
+		t.Skip(err)
+	}
+	if _, err := readDocument(t.Context(), workspace, link); err == nil {
+		t.Fatal("opened external symlink")
+	}
+	parent := t.TempDir()
+	directory := filepath.Join(parent, "project")
+	if err := os.Mkdir(directory, 0700); err != nil {
+		t.Fatal(err)
+	}
+	pinned := testWorkspace(t, directory)
+	name := filepath.Join(directory, "external.go")
+	if err := os.WriteFile(name, []byte("package original"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(directory, filepath.Join(parent, "original")); err != nil {
+		t.Skip(err)
+	}
+	if err := os.Symlink(filepath.Dir(outside), directory); err != nil {
+		t.Skip(err)
+	}
+	got, err := readDocument(t.Context(), pinned, name)
+	if err != nil || string(got) != "package original" {
+		t.Fatalf("directory replacement changed authority: %q %v", got, err)
+	}
+}
+
+func TestNegotiatedDocumentPolicies(t *testing.T) {
+	for raw, want := range map[string]documentSynchronization{
+		"0": {}, "1": {OpenClose: true, Change: changeFull}, "2": {OpenClose: true, Change: changeIncremental},
+		`{"openClose":false,"change":0}`:                            {},
+		`{"openClose":true,"change":2,"save":{"includeText":true}}`: {OpenClose: true, Change: changeIncremental, Save: saveSynchronization{Enabled: true, IncludeText: true}},
+	} {
+		got, err := negotiateDocumentSync([]byte(raw))
+		if err != nil || got != want {
+			t.Fatalf("%s: %+v, %v", raw, got, err)
+		}
+	}
+	if got := documentEnd([]byte("a\r\nb\r😀!")); got != (Position{Line: 2, Character: 3}) {
+		t.Fatal(got)
+	}
+	table, err := newServerTable(DefaultServers())
+	if err != nil {
+		t.Fatal(err)
+	}
+	tsx, _ := table.forFile("view.tsx")
+	if tsx.Languages[".tsx"] != "typescriptreact" || tsx.Languages[".ts"] != "typescript" {
+		t.Fatal(tsx)
 	}
 }

@@ -109,8 +109,11 @@ func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*launch
 			return nil, err
 		}
 		server, found, err := p.registry.Dispatchable(ctx, name)
-		if err != nil || !found {
-			return nil, errors.Join(ErrUnavailable, err, value.close())
+		if err != nil {
+			return nil, errors.Join(err, value.close())
+		}
+		if !found {
+			return nil, errors.Join(ErrUnavailable, value.close())
 		}
 		return &launchPermit{claim: &launchClaim{pending: &launch{config: ServerConfig{Server: server}, managed: value, retire: value.close, admission: admission{Bindings: value.projection.bindings}}}}, nil
 	}
@@ -205,7 +208,7 @@ func (p *Pool) InstallationActivation(ctx context.Context, id mcpserver.ID) (_ p
 	defer func() { err = connectionError(id, err) }()
 	descriptor, found, err := p.registry.Definition(ctx, id)
 	if err != nil {
-		return plugin.Activation{}, errors.Join(plugin.ErrUnavailable, err)
+		return plugin.Activation{}, err
 	}
 	if !found || !descriptor.Enabled {
 		return plugin.Activation{}, ErrUnavailable
@@ -227,7 +230,7 @@ func (p *Pool) AwaitInstallationActivation(ctx context.Context, id mcpserver.ID)
 	defer func() { err = connectionError(id, err) }()
 	descriptor, found, err := p.registry.Definition(ctx, id)
 	if err != nil {
-		return plugin.Activation{}, errors.Join(plugin.ErrUnavailable, err)
+		return plugin.Activation{}, err
 	}
 	if !found || !descriptor.Enabled {
 		return plugin.Activation{}, ErrUnavailable

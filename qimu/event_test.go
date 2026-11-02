@@ -33,6 +33,13 @@ func TestNativeEventRouteIsOwnedByUsesAndCallbackCanReenter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	wrongType, err := qimu.NewEvent[string]("example.progress", "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := qimu.DeliverEvent(ctx, host, route, wrongType, "wrong type", func(context.Context, string) error { t.Fatal("mismatched receiver entered"); return nil }); !errors.Is(err, qimu.ErrContractMismatch) {
+		t.Fatalf("mismatched event delivery: %v", err)
+	}
 	value := 7
 	if err := qimu.DeliverEvent(ctx, host, route, event, &value, func(callbackCtx context.Context, payload *int) error {
 		if payload != &value {

@@ -1,3 +1,4 @@
+import wire from "./protocol.generated.json";
 import { Decimal } from "decimal.js";
 import { Validator, type CustomProperty, type Schema } from "jsonschema";
 import { fullFormats } from "ajv-formats/dist/formats";
@@ -12,7 +13,7 @@ import {
 } from "@qimu/sdk/json";
 import {
   checkDescriptor,
-  checkPattern,
+  compilePattern,
   checkValue,
   exceeded,
   PORTABLE_LIMITS,
@@ -237,8 +238,7 @@ function admitAnnotations(key: string, field: unknown): void {
   if (key === "$id")
     throw new Error("plugin: nested schema resources are unsupported");
   if (key === "pattern") {
-    checkPattern(field as string);
-    new RegExp(field as string, "u");
+    new RegExp(compilePattern(field as string), "u");
   }
 }
 
@@ -249,14 +249,25 @@ function admitSchema(value: unknown): void {
   for (const [key, field] of Object.entries(value)) {
     if (!supported.has(key))
       throw new Error(`plugin: unsupported schema keyword ${key}`);
-    if (key === "patternProperties") {
-      for (const name of Object.keys(field as RecordValue)) checkPattern(name);
+    if (key === "patternProperties" && schemaObject(field)) {
+      for (const name of Object.keys(field)) {
+        compilePattern(name);
+        if (name.includes(".") || name.includes("\\"))
+          throw new Error("portable: ambiguous pattern property name");
+        new RegExp(name, "u");
+      }
     }
+    if (key === "format" && field !== wire.constants.portableTimeFormat)
+      throw new Error("portable: unsupported string format");
+    if (key === "properties" && schemaObject(field))
+      Object.setPrototypeOf(field, null);
     for (const child of subschemas(key, field)) admitSchema(child.value);
     admitNumericConstraints(key, field);
     admitChoiceConstraints(key, field);
     admitAnnotations(key, field);
   }
+  if (typeof value.pattern === "string")
+    value.pattern = compilePattern(value.pattern);
   if (value.$ref !== undefined) {
     const ref = localReference(value.$ref);
     delete value.$ref;
@@ -283,35 +294,15 @@ export function compileSchema(source: unknown): (value: unknown) => void {
     typeof value === "object" &&
     !Array.isArray(value) &&
     !numeric(value);
-  for (const [name, format] of Object.entries(fullFormats)) {
-    if (
-      typeof format === "object" &&
-      "type" in format &&
-      format.type === "number"
-    )
-      continue;
-    const rule: unknown =
-      typeof format === "object" && "validate" in format
-        ? format.validate
-        : format;
-    validator.customFormats[name] = (value: unknown) => {
-      if (typeof value !== "string") return true;
-      if (rule instanceof RegExp) return rule.test(value);
-      if (typeof rule === "string") return new RegExp(rule, "u").test(value);
-      if (rule === true) return true;
-      if (typeof rule === "function") {
-        const verdict: unknown = rule(value);
-        if (typeof verdict === "boolean") return verdict;
-      }
-      throw new Error("plugin: format must produce a synchronous verdict");
-    };
-  }
-  validator.attributes.format = ((value: unknown, schema: Schema) => {
-    const check = validator.customFormats[schema.format!];
-    return typeof value !== "string" || !check || check(value)
+  const format = fullFormats["date-time"] as {
+    validate: (value: string) => boolean;
+  };
+  const timePattern = new RegExp(wire.constants.portableTimePattern, "u");
+  validator.attributes.format = ((value: unknown) =>
+    typeof value !== "string" ||
+    (timePattern.test(value) && format.validate(value))
       ? ""
-      : "format constraint failed";
-  }) as CustomProperty;
+      : "format constraint failed") as CustomProperty;
   for (const name of annotations) validator.attributes[name] = () => "";
   for (const [keyword, compare] of Object.entries({
     minimum: (left: JSONNumber, right: JSONNumber) =>

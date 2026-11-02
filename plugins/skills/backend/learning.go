@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/list"
 	"context"
 	"database/sql"
 	"errors"
@@ -17,6 +18,7 @@ import (
 const (
 	minimumToolCalls            = 8
 	runsPerMiningAttempt        = 3
+	maxTrackedSessions          = 4096
 	minimumConversationMessages = 4
 	archiveCheckInterval        = 6 * time.Hour
 	idleRetention               = 30 * 24 * time.Hour
@@ -25,7 +27,8 @@ const (
 type learner struct {
 	db          *sql.DB
 	mu          sync.Mutex
-	complexRuns map[string]int
+	complexRuns map[string]*list.Element
+	recent      list.List
 	lastArchive time.Time
 }
 
@@ -34,7 +37,7 @@ func openLearner(ctx context.Context, path string) (*learner, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &learner{db: db, complexRuns: make(map[string]int)}, nil
+	return &learner{db: db, complexRuns: make(map[string]*list.Element)}, nil
 }
 
 type learningInputs interface {
@@ -95,7 +98,7 @@ func (l *learner) mine(ctx context.Context, run skilllearning.Run, inputs learni
 	}
 	skill, err := skillspec.Parse([]byte(unfence(document)))
 	if err != nil {
-		return skilllearning.MineResult{}, nil
+		return skilllearning.MineResult{}, errInvalidSkillDraft
 	}
 	if revision {
 		skill.Name = name
@@ -105,15 +108,33 @@ func (l *learner) mine(ctx context.Context, run skilllearning.Run, inputs learni
 	}}, nil
 }
 
+var errInvalidSkillDraft = errors.New("skill learning: model returned an invalid skill document")
+
+type miningSession struct {
+	id   string
+	runs int
+}
+
 func (l *learner) miningDue(session string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.complexRuns[session]++
-	if l.complexRuns[session] < runsPerMiningAttempt {
+	entry := l.complexRuns[session]
+	if entry == nil {
+		if l.recent.Len() == maxTrackedSessions {
+			oldest := l.recent.Back()
+			delete(l.complexRuns, oldest.Value.(*miningSession).id)
+			l.recent.Remove(oldest)
+		}
+		entry = l.recent.PushFront(&miningSession{id: session})
+		l.complexRuns[session] = entry
+	}
+	l.recent.MoveToFront(entry)
+	count := entry.Value.(*miningSession)
+	count.runs++
+	if count.runs < runsPerMiningAttempt {
 		return false
 	}
-	// This counter bounds cost, not correctness. Attempts reset it even on
-	// failure, and restarting the backend starts a fresh cadence.
+	l.recent.Remove(entry)
 	delete(l.complexRuns, session)
 	return true
 }

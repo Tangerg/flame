@@ -518,6 +518,16 @@ github.com/Tangerg/flame/plugins v0.1.0-architecture.20261026.1/go.mod h1:IXMzma
 github.com/Tangerg/flame/plugins v0.1.0-consolidation.20261026.1/go.mod h1:0Rvkz5/ArFNzq1zTZyRQjbxm8C3T7LuRKKgxhtm6/n0=
 github.com/Tangerg/flame/qimu v0.1.0-qimu.20261027.1/go.mod h1:nkuXbJ+SaeW2kk6qJIDz3R87K0Cu/ObXmz4Gz7FRcTA=
 github.com/Tangerg/flame/runtime v0.1.0-architecture.20261026.1/go.mod h1:WF4syc1UK85VIyWoC0dEbvXv5DkaqOH/RFJQCvKUv1U=
+github.com/Tangerg/flame/runtime v0.1.3-dev.20261102.t8530a4b09839/go.mod h1:2bKwRpjQrkjpoyqk4eGtHdnWI+jFyw8QezcexZnulhI=
+github.com/Tangerg/flame/runtime v0.1.3-dev.20261102.t89bc6d20026e/go.mod h1:0eAiP2355ry/EYsfoU78ca/mbZzGaiWwDAEszxmU0ZU=
+github.com/Tangerg/oolong/extensions/highlight v0.26.0 h1:wrBYkF6utiDTNsTgnjzOXce9T8a1OJODv7EBZkX6/Nk=
+github.com/Tangerg/oolong/extensions/highlight v0.26.0/go.mod h1:SmgOt4IIaksEFWnDW1/2sByX1y7zqf3dwh09wvvsN9Q=
+github.com/Tangerg/oolong/extensions/latex v0.26.0 h1:cB2qzjSWyT1vl5zIRUUXhKposJjL2mbA+0ac63E1yGs=
+github.com/Tangerg/oolong/extensions/latex v0.26.0/go.mod h1:TJg+FbOmkpU+S9ncZSoCGFF2mDf/YG2eDOoydSnrXm4=
+github.com/Tangerg/oolong/extensions/markdown v0.26.0 h1:mmryay751joKy46nilVf0fRnhdb/Yynq3cqsJW3gXXo=
+github.com/Tangerg/oolong/extensions/markdown v0.26.0/go.mod h1:F20RuzIxNn9340BoIkhWwONvvSNVWDBPO40sIZRogjc=
+github.com/Tangerg/oolong/extensions/mermaid v0.26.0 h1:+YfSt7jXDni0UZWRAy2lvPqxM7D/F11ESueAAWZDI4w=
+github.com/Tangerg/oolong/extensions/mermaid v0.26.0/go.mod h1:r+dVsLYIjDbIEOUjwiE/GZT4x5QY5gqy5nuYDuIJvdQ=
 github.com/Tangerg/scope/a2a v0.47.0/go.mod h1:d1py4XE/5vEsukRJSAqVLxLpLdwSbqpw+SvJflnMQhc=
 github.com/Tangerg/scope/agent v0.47.0/go.mod h1:W44+R/XEdPiB+1I9yMz305DI/Olt5J4uFLqUN7A81xk=
 github.com/Tangerg/scope/core v0.23.0/go.mod h1:9hOHcD65yh5MRKI/8vXoozbq7PAIJa1L3TLkVkkPIsI=

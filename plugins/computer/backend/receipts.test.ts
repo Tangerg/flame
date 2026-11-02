@@ -128,26 +128,27 @@ describe("original computer receipts", () => {
     });
     const recovered = store.toolReceipt(request(command));
     expect(recovered).toEqual({
-      found: true,
-      output: canonicalJSON({
-        content: [
-          {
-            kind: "media",
-            media: {
-              mime: "image/png",
-              source: { kind: "bytes", bytes: "AQID" },
-            },
-            metadata: {
-              "mcp/content": {
-                type: "image",
-                _meta: { "codex/imageDetail": "original" },
+      result: {
+        output: {
+          content: [
+            {
+              kind: "media",
+              media: {
+                mime: "image/png",
+                source: { kind: "bytes", bytes: "AQID" },
+              },
+              metadata: {
+                "mcp/content": {
+                  type: "image",
+                  _meta: { "codex/imageDetail": "original" },
+                },
               },
             },
-          },
-          { kind: "text", text: "observed" },
-        ],
-        details: { count: 1 },
-      }),
+            { kind: "text", text: "observed" },
+          ],
+          details: { count: 1 },
+        },
+      },
     });
     store.close();
     expect(open().toolReceipt(request(command))).toEqual(recovered);
@@ -185,8 +186,7 @@ describe("original computer receipts", () => {
       structuredContent: { status: "declined" },
     });
     expect(store.toolReceipt(request(command))).toMatchObject({
-      found: true,
-      isError: true,
+      result: { isError: true },
     });
     expect(store.read(command.id)).toMatchObject({
       dispatched: false,

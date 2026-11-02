@@ -1,5 +1,5 @@
 import { ArrowLeft, BookOpen, Refresh } from "@flame/icons/react";
-import { type ComponentContext } from "@flame/component-sdk";
+import { type ComponentContext, type Translate } from "@flame/component-sdk";
 
 import {
   Button,
@@ -27,9 +27,21 @@ import {
   Segmented,
   Toolbar,
 } from "@flame/ui";
-import { type Target } from "./types";
+import { type SkillSnapshot, type Target } from "./types";
 import { SkillRow } from "./SkillRow";
 import { useSkills, SECTION_VALUES } from "./useSkills";
+function catalogSummary(
+  snapshot: SkillSnapshot | undefined,
+  matching: number,
+  count: number,
+  t: Translate,
+) {
+  if (!snapshot) return;
+  const target = snapshot.type;
+  return matching < count
+    ? t(`summary.matching.${target}`, { matching, count })
+    : t(`summary.${target}`, { count });
+}
 export function Skills({ context }: { context: ComponentContext }) {
   const {
     t,
@@ -61,14 +73,7 @@ export function Skills({ context }: { context: ComponentContext }) {
     matching,
     openDocument,
   } = useSkills(context);
-  const summary = snapshot
-    ? matching.length < rows.length
-      ? t(`summary.matching.${snapshot.type}`, {
-          matching: matching.length,
-          count: rows.length,
-        })
-      : t(`summary.${snapshot.type}`, { count: rows.length })
-    : undefined;
+  const summary = catalogSummary(snapshot, matching.length, rows.length, t);
   return (
     <Panel
       ref={panel}

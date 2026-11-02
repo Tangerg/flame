@@ -19,7 +19,7 @@ receipts. Receipts bind the validated canonical input by digest, so retired uplo
 chunks leave no payload in the ledger. Business payload bytes and pending-command
 admission are budgeted independently of retained outcomes. Completed identities
 remain readable and cannot recreate a discarded upload or removed document. Revision publication and command settlement share one transaction.
-An admitted command with no settlement remains unconfirmed after interruption;
+A cancellation observed before publication can be confirmed in its original receipt. An admitted command with no observed settlement remains unconfirmed after interruption;
 its identity cannot execute again. Runtime continues to own runs, model work,
 authorization and tool recovery. The plugin has no independent agent or job loop.
 

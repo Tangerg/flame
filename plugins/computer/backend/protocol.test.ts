@@ -1,3 +1,4 @@
+import type { ToolReceipt } from "@flame/backend-sdk";
 import { METHODS } from "../contracts/methods";
 import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
@@ -217,10 +218,11 @@ async function connect(data: string) {
     if (!record) throw new Error("fixture original tool receipt is missing");
     return {
       record,
-      receipt: await invoke<{ found: boolean; output?: string }>(
-        rpc.toolReceipt,
-        { id: record.id, method: name, inputDigest: digestJSON(input) },
-      ),
+      receipt: await invoke<ToolReceipt>(rpc.toolReceipt, {
+        id: record.id,
+        method: name,
+        inputDigest: digestJSON(input),
+      }),
     };
   }
   return {
@@ -326,8 +328,8 @@ it("human commands and model tools share the actual worker and retain their exac
   expect(media.structuredContent).toEqual({ original: true });
   const original = await first.originalTool(mediaId, "js", mediaInput);
   expect(JSON.parse(original.record.outcomeJSON!)).toEqual(media);
-  expect(original.receipt.found).toBe(true);
-  expect(original.receipt.output).toContain("aW1hZ2U=");
+  expect(original.receipt.result).toBeDefined();
+  expect(stringifyJSON(original.receipt.result!.output)).toContain("aW1hZ2U=");
   const receiptInput = {
     id: commandId,
     method: METHODS.execute,
@@ -427,8 +429,12 @@ it("retains exact upstream numeric evidence through typed replies, model tools a
   expect(model._meta).toEqual(command.result._meta);
   const original = await connection.originalTool(modelId, "js", modelInput);
   expect(parseJSON(original.record.outcomeJSON!)).toEqual(command.result);
-  expect(original.receipt.output).toContain("9007199254740993");
-  expect(original.receipt.output).toContain("1.0000000000000001");
+  expect(stringifyJSON(original.receipt.result!.output)).toContain(
+    "9007199254740993",
+  );
+  expect(stringifyJSON(original.receipt.result!.output)).toContain(
+    "1.0000000000000001",
+  );
   expect(stringifyJSON(command.result)).toContain('"negativeZero":-0');
 });
 
@@ -531,7 +537,7 @@ it("stop cancels the original invocation and pending permission, joins the proce
   );
   const original = await connection.originalTool(id, "js", args);
   expect(original.record).toMatchObject({ dispatched: true, settled: false });
-  expect(original.receipt).toEqual({ found: false });
+  expect(original.receipt).toEqual({});
   await expect(
     connection.invoke(METHODS.reply, {
       sessionId: surface.sessionId,

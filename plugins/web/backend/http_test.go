@@ -86,7 +86,7 @@ func TestHTTPOriginalResultSurvivesRestartWithoutAnotherRequest(t *testing.T) {
 		t.Fatalf("changed request reused identity: %v", err)
 	}
 	receipt, err := restarted.receipt(t.Context(), qimumcp.ReceiptRequest{ID: "original", Method: method, InputDigest: input.Digest()})
-	if err != nil || !receipt.Found || receipt.IsError {
+	if err != nil || receipt.Result == nil || receipt.Result.IsError {
 		t.Fatalf("original tool receipt: %+v %v", receipt, err)
 	}
 }
@@ -143,7 +143,7 @@ func TestHTTPUnconfirmedDispatchCannotReplayOrBecomeAReceipt(t *testing.T) {
 				t.Fatalf("unconfirmed replay: %v, calls=%d", err, calls)
 			}
 			receipt, err := requests.receipt(t.Context(), qimumcp.ReceiptRequest{ID: "unconfirmed", Method: method, InputDigest: input.Digest()})
-			if err != nil || receipt.Found {
+			if err != nil || receipt.Result != nil {
 				t.Fatalf("invented original outcome: %+v %v", receipt, err)
 			}
 		})

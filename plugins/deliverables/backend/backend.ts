@@ -137,18 +137,21 @@ export function createBackend(
   backend.receipts((_context, request) => archive.receipt(request, "command"));
   toolReceipts(backend, (_context, request) => {
     const receipt = archive.receipt(request, "tool");
-    if (!receipt.found) return { found: false };
+    if (!receipt.found) return {};
     const result = toolResult(receipt.reply!);
     return {
-      found: true,
-      output: canonicalJSON({
-        content: result.content.map((part) => ({
-          kind: "text",
-          text: part.text,
-        })),
-        details: result.structuredContent,
-      }),
-      ...(result.isError ? { isError: true } : {}),
+      result: {
+        output: {
+          content: result.content.map((part) => ({
+            kind: "text",
+            text: part.text,
+          })),
+          ...(result.structuredContent === undefined
+            ? {}
+            : { details: result.structuredContent }),
+        },
+        ...(result.isError ? { isError: true } : {}),
+      },
     };
   });
   backend.bindCapability("deliverables", contract);

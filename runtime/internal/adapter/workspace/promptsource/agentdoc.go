@@ -15,7 +15,7 @@ import (
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
-	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/frame/cancellation"
 )
 
 // DiscoverAgentDocs walks the project tree + user-level locations and returns

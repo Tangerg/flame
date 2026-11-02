@@ -27,15 +27,12 @@ func (c ProviderCapture) Validate() error {
 	if c.Profile.ID != c.Chat.Provider {
 		return errors.New("model: captured provider belongs to another selection")
 	}
-	contract, err := modelprovider.Contract()
+	identity, err := modelprovider.ContractIdentity()
 	if err != nil {
 		return err
 	}
-	if c.Binding.Contract != contract.Identity() || c.Binding.Activation == nil {
+	if c.Binding.Contract != identity || c.Binding.Activation == nil {
 		return errors.New("model: exact installed provider binding is required")
-	}
-	if _, err := plugins.ContributionSource(c.Binding); err != nil {
-		return err
 	}
 	_, err = plugins.OriginalActivation([]plugin.Activation{*c.Binding.Activation}, c.Binding.InstallationID, c.Binding.Digest, c.Binding.ServerName)
 	return err

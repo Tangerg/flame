@@ -41,11 +41,11 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.2-dev.20261101.t2d8806f39315
+	github.com/Tangerg/flame/packages/go-sdk v0.1.3-dev.20261102.tfbeddf4044bf
 	github.com/Tangerg/flame/packages/local-runtime v0.1.1-dev.20261101.t373cde3df814
 	github.com/Tangerg/frame v0.0.1
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
-	github.com/Tangerg/qimu v0.1.1-dev.20261101.t4c4dcdb5ac85
+	github.com/Tangerg/qimu v0.1.2-dev.20261102.td29bdddba4f8
 	github.com/Tangerg/scope/agent v0.58.0
 	github.com/Tangerg/scope/core v0.58.0
 	github.com/Tangerg/scope/mcp v0.58.0

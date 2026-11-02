@@ -14,6 +14,7 @@ export const PROTOCOL_VERSION = "2026-10-30.2";
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
 
+export const GOAL_WORKFLOW = "flame.goal-workflow.v1";
 // The maximum length of one opaque pagination cursor on the public wire.
 export const MAXIMUM_PAGINATION_CURSOR_CHARACTERS = 65536;
 

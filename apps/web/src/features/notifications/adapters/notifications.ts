@@ -1,3 +1,4 @@
+import { reportPluginError } from "@/extensions/errors";
 import { type ClientHost } from "@/platform/host";
 import { type AgentAccess } from "@/features/agent/public/agent";
 import { type WorkspaceAccess } from "@/features/workspace/public/workspace";
@@ -17,8 +18,13 @@ export function createNotifications(
   agent: AgentAccess,
   workspace: WorkspaceAccess,
   productName: string,
+  endpoint: () => string,
 ) {
-  const notifier = createSystemNotifier(createNotificationCentre(host));
+  const notifier = createSystemNotifier(
+    createNotificationCentre(host, endpoint, (error) =>
+      reportPluginError("flame.builtin.system-notifications", "events", error),
+    ),
+  );
   const access: NotificationAccess = {
     notifier,
     productName,

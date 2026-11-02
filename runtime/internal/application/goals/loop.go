@@ -150,10 +150,7 @@ func (d *Driver) drive(ctx context.Context, sessionID, incarnationID string) err
 		}
 		g, ok, err := loadGoal(ctx, d.goals, sessionID)
 		if err != nil {
-			if ctx.Err() != nil {
-				return nil
-			}
-			return err
+			return driveFailure(ctx, err)
 		}
 		// Stop when the goal is gone or no longer active. The incarnation check is a
 		// cheap backstop — a supersession (Stop/Start/Resume) is already caught above
@@ -217,7 +214,7 @@ func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (settlement runSett
 		}
 		current, refreshOwnedGoalErr := d.settleOwned(ctx, g)
 		if refreshOwnedGoalErr != nil {
-			return runSettlement{}, refreshOwnedGoalErr
+			return runSettlement{}, driveFailure(ctx, refreshOwnedGoalErr)
 		}
 		if !current.continues() {
 			// This drive did not launch a Run, so it settles none. The Run that
@@ -227,7 +224,7 @@ func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (settlement runSett
 
 		command, err := d.command(ctx, *g)
 		if err != nil {
-			return runSettlement{}, err
+			return runSettlement{}, driveFailure(ctx, err)
 		}
 		result, refreshOwnedGoalErr = d.runs.Start(ctx, command)
 		if !errors.Is(refreshOwnedGoalErr, runs.ErrRunAdmissionBusy) {
@@ -264,10 +261,7 @@ func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (settlement runSett
 	}
 	settlement, err = d.settleOwned(ctx, g)
 	if err != nil {
-		if ctx.Err() != nil {
-			return runSettlement{}, nil
-		}
-		return runSettlement{}, err
+		return runSettlement{}, driveFailure(ctx, err)
 	}
 	if !settlement.continues() {
 		return settlement, nil
@@ -282,7 +276,7 @@ func (d *Driver) resolveGoalRunStartError(
 	startErr error,
 ) (runSettlement, error) {
 	if ctx.Err() != nil {
-		return runSettlement{}, nil
+		return runSettlement{}, driveFailure(ctx, startErr)
 	}
 	span.RecordError(startErr)
 	span.SetStatus(codes.Error, "start run")
@@ -293,9 +287,38 @@ func (d *Driver) resolveGoalRunStartError(
 	// details that cannot be recovered consistently.
 	settlement, err := d.pauseOwned(ctx, g, goal.ReasonRunStartFailed)
 	if err != nil && ctx.Err() != nil {
-		return runSettlement{}, nil
+		return runSettlement{}, driveFailure(ctx, errors.Join(startErr, err))
 	}
 	return settlement, err
+}
+
+// Quiescence can race an independent failure. Only a complete cancellation
+// error tree establishes that the drive stopped without losing another cause.
+func driveFailure(ctx context.Context, err error) error {
+	if ctx.Err() == context.Canceled && onlyCancellation(err) {
+		return nil
+	}
+	return err
+}
+
+func onlyCancellation(err error) bool {
+	if err == context.Canceled {
+		return true
+	}
+	switch cause := err.(type) {
+	case interface{ Unwrap() error }:
+		return onlyCancellation(cause.Unwrap())
+	case interface{ Unwrap() []error }:
+		causes := cause.Unwrap()
+		for _, child := range causes {
+			if !onlyCancellation(child) {
+				return false
+			}
+		}
+		return len(causes) > 0
+	default:
+		return false
+	}
 }
 
 func recordTerminalRunAttributes(span trace.Span, finished *run.Run) {
@@ -318,14 +341,11 @@ func recordTerminalRunAttributes(span trace.Span, finished *run.Run) {
 
 func (d *Driver) refreshOwnedGoal(ctx context.Context, current *goal.Goal) (bool, error) {
 	if err := d.settle(ctx, current.SessionID()); err != nil {
-		return false, err
+		return false, driveFailure(ctx, err)
 	}
 	reread, found, err := loadGoal(ctx, d.goals, current.SessionID())
 	if err != nil {
-		if ctx.Err() != nil {
-			return false, nil
-		}
-		return false, err
+		return false, driveFailure(ctx, err)
 	}
 	if !found || reread.IncarnationID() != current.IncarnationID() {
 		return false, nil
@@ -347,10 +367,7 @@ func (d *Driver) resolveTerminalRun(
 		// failure instead of inventing a waiting Run.
 		settlement, err := d.pauseOwned(ctx, g, goal.ReasonTerminalOutcomeMissing)
 		if err != nil {
-			if ctx.Err() != nil {
-				return runSettlement{}, nil
-			}
-			return runSettlement{}, err
+			return runSettlement{}, driveFailure(ctx, errors.Join(errTerminalOutcomeMissing, err))
 		}
 		return settlement, nil
 	}
@@ -360,10 +377,7 @@ func (d *Driver) resolveTerminalRun(
 		// that drive behind the same parked Run until it terminalizes.
 		settlement, err := d.pauseOwned(ctx, g, goal.ReasonAwaitingInput)
 		if err != nil {
-			if ctx.Err() != nil {
-				return runSettlement{}, nil
-			}
-			return runSettlement{}, err
+			return runSettlement{}, driveFailure(ctx, err)
 		}
 		return settlement, nil
 	}
@@ -374,10 +388,7 @@ func (d *Driver) resolveTerminalRun(
 		span.SetStatus(codes.Error, "malformed terminal run")
 		settlement, pauseErr := d.pauseOwned(ctx, g, goal.ReasonTerminalOutcomeMissing)
 		if pauseErr != nil {
-			if ctx.Err() != nil {
-				return runSettlement{}, nil
-			}
-			return runSettlement{}, pauseErr
+			return runSettlement{}, driveFailure(ctx, errors.Join(err, pauseErr))
 		}
 		return settlement, nil
 	}

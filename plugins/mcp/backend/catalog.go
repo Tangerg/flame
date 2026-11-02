@@ -8,8 +8,8 @@ import (
 	"time"
 
 	wire "github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
+	"github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/sqlite"
 )
 
 const entriesSchema = `CREATE TABLE IF NOT EXISTS entries(name TEXT PRIMARY KEY, revision TEXT NOT NULL, grant TEXT NOT NULL, enabled INTEGER NOT NULL, description TEXT NOT NULL, handshake_seconds INTEGER NOT NULL CHECK(handshake_seconds>=0))`

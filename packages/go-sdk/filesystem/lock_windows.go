@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/frame/cancellation"
 	"golang.org/x/sys/windows"
 )
 

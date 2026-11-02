@@ -601,6 +601,14 @@ export function proxyEnvironment(proxy, { offline = false } = {}) {
       (offline ? ",off" : ",https://proxy.golang.org"),
   };
 }
+// All binaries in one product distribution resolve the same Runtime and plugin contracts.
+export function productBuildEnvironment() {
+  return {
+    ...proxyEnvironment(join(root, "out/module-proxy")),
+    GOWORK: join(root, "go.work"),
+  };
+}
+
 export async function linkDependencies(repository, packages) {
   packages ??= await workspaces(repository);
   const workspaceNames = new Set(packages.map((pkg) => pkg.name.split("/")[0]));
@@ -840,6 +848,7 @@ async function main(command) {
       const target = JSON.parse(
         run("go", ["env", "-json", "GOOS", "GOARCH"], root, process.env, true),
       );
+      const env = productBuildEnvironment();
       const kind = command === "build-runtime" ? "runtime" : "cli",
         directory = join(root, "out", kind, `${target.GOOS}-${target.GOARCH}`);
       await mkdir(directory, { recursive: true });
@@ -849,16 +858,21 @@ async function main(command) {
         output: directory,
         offline: true,
       });
-      run("node", [
-        "plugins/scripts/build-packages.mjs",
-        "--os",
-        target.GOOS,
-        "--arch",
-        target.GOARCH,
-        "--output",
-        join(directory, "plugins"),
-        "--replace",
-      ]);
+      run(
+        "node",
+        [
+          "plugins/scripts/build-packages.mjs",
+          "--os",
+          target.GOOS,
+          "--arch",
+          target.GOARCH,
+          "--output",
+          join(directory, "plugins"),
+          "--replace",
+        ],
+        root,
+        env,
+      );
       run(
         "go",
         [
@@ -869,7 +883,7 @@ async function main(command) {
           "./runner/cmd/qimu-runner",
         ],
         join(root, "qimu"),
-        { ...proxyEnvironment(join(root, "out/module-proxy")), GOWORK: "off" },
+        env,
       );
       return run(
         "go",
@@ -881,7 +895,7 @@ async function main(command) {
           kind === "runtime" ? "./cmd/flame-runtime" : ".",
         ],
         join(root, kind === "runtime" ? "runtime" : "apps/cli"),
-        { ...proxyEnvironment(join(root, "out/module-proxy")), GOWORK: "off" },
+        env,
       );
     }
     default:

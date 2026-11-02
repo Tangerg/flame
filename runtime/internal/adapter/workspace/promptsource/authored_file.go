@@ -9,7 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/frame/cancellation"
 )
 
 func readAuthoredPromptFile(ctx context.Context, root *os.Root, path string) ([]byte, error) {

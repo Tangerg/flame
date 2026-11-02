@@ -71,8 +71,16 @@ export function createConversationImport(agentAccess: AgentAccess, runtimeAccess
         }
 
         const session = await this.#cohort.run(() => this.#gateway.importConversation(artifact));
-        await this.#cohort.run(() => agentAccess.rehydrateSessionView(session.id));
-        await this.#repairSessionList();
+        try {
+          await this.#cohort.run(() => agentAccess.rehydrateSessionView(session.id));
+          await this.#cohort.run(() => invalidateAgentSessions());
+        } catch (error) {
+          if (this.#cohort.retired) return;
+          console.error("[import] imported Session view could not be refreshed:", error);
+          agentAccess.selectAgentSession(session.id);
+          notifyError(t("convExport.importRefreshFailed"), { source: "import" });
+          return;
+        }
         this.#cohort.assertCurrent();
         agentAccess.selectAgentSession(session.id);
         toast.success(
@@ -83,14 +91,6 @@ export function createConversationImport(agentAccess: AgentAccess, runtimeAccess
         console.error("[import] sessions.import failed:", error);
         this.#cohort.assertCurrent();
         notifyError(t("convExport.importFailed"), { source: "import" });
-      }
-    }
-
-    async #repairSessionList(): Promise<void> {
-      try {
-        await this.#cohort.run(() => invalidateAgentSessions());
-      } catch (error) {
-        if (this.#cohort.retired) throw error;
       }
     }
 

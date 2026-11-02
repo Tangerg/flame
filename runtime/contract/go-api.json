@@ -2294,6 +2294,10 @@
           "kind": "struct",
           "methods": [
             {
+              "name": "CanonicalBase",
+              "signature": "func() string"
+            },
+            {
               "name": "HasFragment",
               "signature": "func() bool"
             },
@@ -4014,14 +4018,20 @@
           "kind": "struct",
           "fields": [
             {
-              "name": "Found",
-              "type": "bool",
-              "tag": "json:\"found\""
-            },
+              "name": "Result",
+              "type": "*ToolResult",
+              "tag": "json:\"result,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "ToolResult",
+          "kind": "struct",
+          "fields": [
             {
               "name": "Output",
-              "type": "string",
-              "tag": "json:\"output,omitzero\""
+              "type": "chat.ToolOutput",
+              "tag": "json:\"output\""
             },
             {
               "name": "IsError",
@@ -5059,6 +5069,7 @@
         "encoding/json/jsontext",
         "fmt",
         "github.com/Tangerg/flame/packages/go-sdk/model",
+        "github.com/Tangerg/qimu/jsonvalue",
         "github.com/Tangerg/qimu/mcp",
         "github.com/Tangerg/qimu/portable",
         "github.com/Tangerg/scope/core/chat",
@@ -5139,6 +5150,10 @@
         {
           "name": "Contract",
           "signature": "func() (*portable.Capability, error)"
+        },
+        {
+          "name": "ContractIdentity",
+          "signature": "func() (jsonvalue.Value, error)"
         },
         {
           "name": "CountMethod",

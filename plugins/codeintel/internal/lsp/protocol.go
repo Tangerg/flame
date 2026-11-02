@@ -134,7 +134,8 @@ type didOpenParams struct {
 }
 
 type contentChange struct {
-	Text string `json:"text"` // full-document sync (the only sync kind we use)
+	Range *Range `json:"range,omitzero"`
+	Text  string `json:"text"`
 }
 
 type didCloseParams struct {
@@ -169,6 +170,40 @@ type didSaveParams struct {
 type saveSynchronization struct {
 	Enabled     bool
 	IncludeText bool
+}
+
+type syncKind int
+
+const (
+	changeNone syncKind = iota
+	changeFull
+	changeIncremental
+)
+
+type documentSynchronization struct {
+	OpenClose bool                `json:"openClose"`
+	Change    syncKind            `json:"change"`
+	Save      saveSynchronization `json:"-"`
+}
+
+func negotiateDocumentSync(raw jsontext.Value) (documentSynchronization, error) {
+	var policy documentSynchronization
+	var err error
+	switch {
+	case len(raw) == 0 || raw.Kind() == 'n':
+		return policy, nil
+	case raw.Kind() == '{':
+		if err = json.Unmarshal(raw, &policy); err == nil {
+			policy.Save, err = negotiatedSave(raw)
+		}
+	default:
+		err = json.Unmarshal(raw, &policy.Change)
+		policy.OpenClose = policy.Change != changeNone
+	}
+	if err != nil || policy.Change < changeNone || policy.Change > changeIncremental {
+		return documentSynchronization{}, errors.Join(errors.New("lsp: invalid document synchronization capability"), err)
+	}
+	return policy, nil
 }
 
 func negotiatedSave(sync jsontext.Value) (saveSynchronization, error) {
@@ -357,6 +392,10 @@ const (
 // whose optional subfeatures Flame does not advertise.
 type supportedCapability struct{}
 
+type diagnosticClientCapabilities struct {
+	VersionSupport bool `json:"versionSupport"`
+}
+
 type clientCapabilities struct {
 	TextDocument textDocumentClientCapabilities `json:"textDocument"`
 	Workspace    workspaceClientCapabilities    `json:"workspace"`
@@ -370,7 +409,7 @@ type textDocumentClientCapabilities struct {
 	Hover              hoverClientCapabilities           `json:"hover"`
 	DocumentSymbol     documentSymbolClientCapabilities  `json:"documentSymbol"`
 	CallHierarchy      supportedCapability               `json:"callHierarchy"`
-	PublishDiagnostics supportedCapability               `json:"publishDiagnostics"`
+	PublishDiagnostics diagnosticClientCapabilities      `json:"publishDiagnostics"`
 }
 
 type synchronizationClientCapabilities struct {
@@ -401,7 +440,8 @@ type workspaceClientCapabilities struct {
 func defaultCapabilities() clientCapabilities {
 	return clientCapabilities{
 		TextDocument: textDocumentClientCapabilities{
-			Synchronization: synchronizationClientCapabilities{DidSave: true},
+			Synchronization:    synchronizationClientCapabilities{DidSave: true},
+			PublishDiagnostics: diagnosticClientCapabilities{VersionSupport: true},
 			Hover: hoverClientCapabilities{
 				ContentFormat: []markupKind{markupMarkdown, markupPlaintext},
 			},

@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/completion"
-	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/frame/cancellation"
 )
 
 // shutdownSequence owns terminal resource steps in creation order. Shutdown starts one

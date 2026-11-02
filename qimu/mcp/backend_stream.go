@@ -7,12 +7,17 @@ import (
 	"errors"
 	"iter"
 	"sync"
+	"time"
 
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/qimu/portable"
 	scopemetadata "github.com/Tangerg/scope/core/metadata"
 )
+
+// A cooperative backend can settle its original outcome after a negative chunk
+// acknowledgement. A peer that ignores it cannot hold the consumer indefinitely.
+const streamStopGrace = 2 * time.Second
 
 const StreamMetadataKey = "io.github.tangerg.qimu/stream.v1"
 
@@ -85,9 +90,25 @@ func invokeBackendStream(ctx context.Context, session *sdk.ServerSession, method
 }
 
 type pendingChunk struct {
-	value    jsontext.Value
-	consumed chan struct{}
+	value        jsontext.Value
+	acknowledged chan bool
 }
+
+// A negative acknowledgement must reach the producer before cancellation so
+// that its iterator can finish cleanup and publish the original receipt.
+func (chunk pendingChunk) acknowledge(ctx context.Context, consumed bool, invocationDone <-chan struct{}) bool {
+	chunk.acknowledged <- consumed
+	if consumed {
+		return true
+	}
+	select {
+	case <-invocationDone:
+	case <-ctx.Done():
+	case <-time.After(streamStopGrace):
+	}
+	return false
+}
+
 type streamCompletion struct {
 	reply *methodResult[jsontext.Value]
 	err   error
@@ -139,7 +160,7 @@ func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, 
 			if int64(len(command.Input.Value)) > limits.MaxResponseBytes {
 				return false, errors.New("plugin: stream chunk exceeds response capacity")
 			}
-			chunk := pendingChunk{value: append(jsontext.Value(nil), command.Input.Value...), consumed: make(chan struct{})}
+			chunk := pendingChunk{value: append(jsontext.Value(nil), command.Input.Value...), acknowledged: make(chan bool, 1)}
 			select {
 			case chunks <- chunk:
 			case <-ctx.Done():
@@ -148,9 +169,9 @@ func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, 
 				return false, context.Cause(call)
 			}
 			select {
-			case <-chunk.consumed:
+			case accepted := <-chunk.acknowledged:
 				received++
-				return true, nil
+				return accepted, nil
 			case <-ctx.Done():
 				return false, context.Cause(ctx)
 			case <-call.Done():
@@ -178,14 +199,15 @@ func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, 
 			completion = streamCompletion{reply: reply, err: err}
 			close(done)
 		}()
+
 		defer func() { cancel(); <-done }()
 		for {
 			select {
 			case chunk := <-chunks:
-				if !yield(StreamValue[jsontext.Value, jsontext.Value]{Chunk: new(chunk.value)}, nil) {
+				consumed := yield(StreamValue[jsontext.Value, jsontext.Value]{Chunk: new(chunk.value)}, nil)
+				if !chunk.acknowledge(call, consumed, done) {
 					return
 				}
-				close(chunk.consumed)
 			case <-done:
 				if completion.err != nil {
 					if refusal, known := errors.AsType[*portable.Refusal](completion.err); known {

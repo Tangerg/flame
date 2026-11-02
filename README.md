@@ -2,7 +2,7 @@
 
 <p align="center"><img src="assets/brand/flame-mark.png" alt="Flame" width="144" /></p>
 
-Flame is an agent product with a Go Runtime, a terminal CLI, and one React application for Browser and Wails. Runtime owns durable Session, Run, Goal, Plan, execution, recovery and provider semantics. Clients own interaction and presentation. Scope supplies the agent framework and provider libraries.
+Flame is an agent product with a Go Runtime, a terminal CLI, and one React application for Browser and Wails. Workflow providers decide Goal transitions and author Plan versions. Runtime owns their version-checked commits, durable Session and Run history, execution, and recovery. Clients own interaction and presentation. Scope supplies the agent framework and provider libraries.
 
 ## Repository
 

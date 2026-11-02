@@ -99,7 +99,7 @@ export { createSidecarClient } from "./sidecar";
 export type { LivenessStatus, ReadinessStatus, RuntimeInfo, SidecarClient } from "./sidecar";
 export { createHttpTransport } from "./transports/http";
 export { JSONRPC_VERSION } from "./types";
-export { normalizeRuntimeEndpoint } from "./endpoint";
+export { endpointAcceptsBearer, normalizeRuntimeEndpoint } from "./endpoint";
 
 export { errorMessage } from "./errors";
 export { checkRequest, pluginContract, pluginMethod } from "./request";

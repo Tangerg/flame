@@ -89,7 +89,13 @@ const directory = createWorkingDirectoryPicker(
   connection.localWorkspaceAvailable,
   connection.access.endpoint.currentRuntimeEndpoint,
 );
-const notifications = createNotifications(host, agent.access, workspace.access, PRODUCT_NAME);
+const notifications = createNotifications(
+  host,
+  agent.access,
+  workspace.access,
+  PRODUCT_NAME,
+  connection.access.endpoint.currentRuntimeEndpoint,
+);
 const installedPlugins = createInstalledPlugins(
   connection.client,
   connection.endpoint,

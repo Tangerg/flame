@@ -251,6 +251,8 @@ func (g *schemaGraph) expression(expression ast.Expr, imports map[string]string)
 			return &contractgen.Schema{Type: contractgen.SchemaTypeString}, nil
 		case "bool":
 			return &contractgen.Schema{Type: contractgen.SchemaTypeBoolean}, nil
+		case "int":
+			return &contractgen.Schema{Type: contractgen.SchemaTypeInteger}, nil
 		case "float64":
 			return &contractgen.Schema{Type: contractgen.SchemaTypeNumber}, nil
 		}
@@ -295,6 +297,8 @@ func (g *schemaGraph) walk(value types.Type) (*contractgen.Schema, error) {
 			return &contractgen.Schema{Type: contractgen.SchemaTypeString}, nil
 		case types.Bool:
 			return &contractgen.Schema{Type: contractgen.SchemaTypeBoolean}, nil
+		case types.Int:
+			return &contractgen.Schema{Type: contractgen.SchemaTypeInteger}, nil
 		case types.Float64:
 			return &contractgen.Schema{Type: contractgen.SchemaTypeNumber}, nil
 		}

@@ -146,7 +146,7 @@ func (s *Store) InstallDirectoryHeld(ctx context.Context, directory string) (lea
 		if !info.Mode().IsRegular() {
 			return fmt.Errorf("%w: only regular files are accepted", ErrInvalid)
 		}
-		file, err := input.Open(name)
+		file, err := input.OpenFile(name, os.O_RDONLY|regularFileFlags, 0)
 		if err != nil {
 			return err
 		}
@@ -183,7 +183,20 @@ func (s *Store) InstallArchiveHeld(ctx context.Context, fileName string, expecte
 	if expected.Validate() != nil {
 		return nil, ErrInvalid
 	}
-	file, err := os.Open(fileName)
+	return s.installArchiveHeld(ctx, fileName, expected)
+}
+
+func (s *Store) InstallLocalArchiveHeld(ctx context.Context, fileName string) (*Lease, error) {
+	done, err := s.beginOperation(false)
+	if err != nil {
+		return nil, err
+	}
+	defer done()
+	return s.installArchiveHeld(ctx, fileName, integrity.Digest{})
+}
+
+func (s *Store) installArchiveHeld(ctx context.Context, fileName string, expected integrity.Digest) (lease *Lease, err error) {
+	file, err := os.OpenFile(fileName, os.O_RDONLY|regularFileFlags, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +218,8 @@ func (s *Store) InstallArchiveHeld(ctx context.Context, fileName string, expecte
 	if err != nil {
 		return nil, err
 	}
-	if integrity.Hash(data) != expected {
+	actual := integrity.Hash(data)
+	if !expected.IsZero() && actual != expected {
 		return nil, ErrIntegrity
 	}
 	archive, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
@@ -220,34 +234,41 @@ func (s *Store) InstallArchiveHeld(ctx context.Context, fileName string, expecte
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, staged.discard()) }()
+	if err := s.extractArchive(ctx, staged, archive); err != nil {
+		return nil, err
+	}
+	return s.publishHeld(ctx, staged, Source{Location: fileName, ArchiveDigest: actual})
+}
+
+func (s *Store) extractArchive(ctx context.Context, staged *staging, archive *zip.Reader) error {
 	entries := map[string]bool{}
 	for _, entry := range archive.File {
 		name := strings.TrimSuffix(entry.Name, "/")
 		if !validPath(name) || entries[strings.ToLower(name)] {
-			return nil, ErrInvalid
+			return ErrInvalid
 		}
 		entries[strings.ToLower(name)] = true
 		if entry.Mode().Type() != 0 && entry.Mode().Type() != fs.ModeDir {
-			return nil, ErrInvalid
+			return ErrInvalid
 		}
 		if entry.Mode().IsDir() {
 			continue
 		}
 		if entry.UncompressedSize64 > uint64(s.limits.ExpandedBytes) || entry.CompressedSize64 == 0 && entry.UncompressedSize64 > 0 {
-			return nil, ErrCapacity
+			return ErrCapacity
 		}
 		if entry.CompressedSize64 > 0 && entry.UncompressedSize64/entry.CompressedSize64 > s.limits.CompressionRatio {
-			return nil, ErrCapacity
+			return ErrCapacity
 		}
 		input, err := entry.Open()
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if err := errors.Join(staged.write(ctx, name, entry.Mode(), input), input.Close()); err != nil {
-			return nil, err
+			return err
 		}
 	}
-	return s.publishHeld(ctx, staged, Source{Location: fileName, ArchiveDigest: expected})
+	return nil
 }
 
 func (s *Store) Inspect(ctx context.Context, digest integrity.Digest) (Release, error) {
@@ -470,12 +491,17 @@ func (s *Store) readArtifact(ctx context.Context, release Release, name string) 
 	return data, nil
 }
 
+func (s *Store) approve(ctx context.Context, source Source, release Release) error {
+	projection := release.clone()
+	return s.trust(ctx, source, projection.Manifest, projection.Lock)
+}
+
 func (s *Store) publishHeld(ctx context.Context, staged *staging, source Source) (*Lease, error) {
 	release, err := s.validate(ctx, staged.root)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.trust(ctx, source, release.Manifest, release.Lock); err != nil {
+	if err := s.approve(ctx, source, release); err != nil {
 		return nil, errors.Join(ErrUntrusted, err)
 	}
 	if err := staged.sealContents(); err != nil {
@@ -521,7 +547,7 @@ func (s *Store) publishHeld(ctx context.Context, staged *staging, source Source)
 		if err != nil {
 			return nil, errors.Join(err, lease.Close())
 		}
-		if err := s.trust(ctx, source, cached.Manifest, cached.Lock); err != nil {
+		if err := s.approve(ctx, source, cached); err != nil {
 			return nil, errors.Join(ErrUntrusted, err, lease.Close())
 		}
 		lease.release = cached
@@ -707,7 +733,7 @@ func readRegular(ctx context.Context, root *os.Root, name string, limit int64) (
 	if !info.Mode().IsRegular() || info.Size() > limit {
 		return nil, ErrIntegrity
 	}
-	file, err := root.Open(name)
+	file, err := root.OpenFile(name, os.O_RDONLY|regularFileFlags, 0)
 	if err != nil {
 		return nil, err
 	}

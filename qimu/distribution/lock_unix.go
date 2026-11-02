@@ -10,6 +10,8 @@ import (
 	"github.com/Tangerg/qimu"
 )
 
+const regularFileFlags = syscall.O_NONBLOCK | syscall.O_NOFOLLOW
+
 // Lock the actual directory inode, not a replaceable child lock-file name.
 func lockStore(root *os.Root) (*os.File, error) {
 	file, err := root.Open(".")

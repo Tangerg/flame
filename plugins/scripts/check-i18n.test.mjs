@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,14 +9,12 @@ import { strict as assert } from "node:assert";
 test("localization checks production components while allowing test fixture prose", async () => {
   const root = await mkdtemp(join(tmpdir(), "flame-plugin-i18n-"));
   try {
-    const scripts = join(root, "scripts");
     const component = join(root, "sample/component");
-    await mkdir(scripts);
+
     await mkdir(join(component, "locales"), { recursive: true });
-    const script = join(scripts, "check-i18n.mjs");
-    await cp(
-      join(dirname(fileURLToPath(import.meta.url)), "check-i18n.mjs"),
-      script,
+    const script = join(
+      dirname(fileURLToPath(import.meta.url)),
+      "check-i18n.mjs",
     );
     for (const locale of ["en", "zh", "zh-TW", "ja", "ko", "es", "fr", "de"])
       await writeFile(
@@ -36,7 +34,7 @@ test("localization checks production components while allowing test fixture pros
       "<p>Fixture only</p>",
     );
     assert.match(
-      execFileSync(process.execPath, [script], { encoding: "utf8" }),
+      execFileSync(process.execPath, [script, root], { encoding: "utf8" }),
       /complete/,
     );
 
@@ -45,10 +43,21 @@ test("localization checks production components while allowing test fixture pros
       '<input aria-label="Product draft" />',
     );
     assert.throws(
-      () => execFileSync(process.execPath, [script], { stdio: "pipe" }),
+      () => execFileSync(process.execPath, [script, root], { stdio: "pipe" }),
       (error) =>
         error.status === 1 &&
         error.stderr.toString().includes('aria-label="Product draft"'),
+    );
+    await mkdir(join(component, "nested"));
+    await writeFile(
+      join(component, "nested", "action.tsx"),
+      'const url="https://example.test"; t("missing")',
+    );
+    await writeFile(join(component, "component.tsx"), 't("save")');
+    assert.throws(
+      () => execFileSync(process.execPath, [script, root], { stdio: "pipe" }),
+      (error) =>
+        error.status === 1 && error.stderr.toString().includes('t("missing")'),
     );
   } finally {
     await rm(root, { recursive: true, force: true });

@@ -148,3 +148,66 @@ func TestBackendStreamFailureKeepsPartialEvidenceWithoutRetry(t *testing.T) {
 		t.Fatalf("failed stream was replayed or completed: chunks=%d finals=%d errors=%d calls=%d", chunks, finals, failures, calls.Load())
 	}
 }
+
+func TestNoncooperativeProducerCannotHoldStoppedConsumer(t *testing.T) {
+	method, err := NewStreamingMethod[callbackInput, int64, bool](MethodConfig{Name: "records.stream", Kind: portable.Mutation, Target: "call", Description: "Bounded stop."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	release := make(chan struct{})
+	defer close(release)
+	binding, callbacks := backendStreamingSession(t, method, func(context.Context, *sdk.ServerSession, Command[callbackInput]) iter.Seq2[StreamValue[int64, bool], error] {
+		return func(yield func(StreamValue[int64, bool], error) bool) {
+			yield(StreamValue[int64, bool]{Chunk: new(int64(1))}, nil)
+			<-release
+		}
+	})
+	returned := make(chan struct{})
+	go func() {
+		defer close(returned)
+		for range method.StreamWithMetadata(t.Context(), binding, callbacks, callbackTestLimits, "unresponsive-stop", callbackInput{Value: 7}, sdk.ParamsBase{}) {
+			break
+		}
+	}()
+	select {
+	case <-returned:
+	case <-time.After(streamStopGrace + 5*time.Second):
+		t.Fatal("consumer waited indefinitely for an unresponsive producer")
+	}
+}
+
+func TestBackendStreamParentCancellationDoesNotBecomeConsumerStop(t *testing.T) {
+	method, err := NewStreamingMethod[callbackInput, int64, bool](MethodConfig{Name: "records.stream", Kind: portable.Mutation, Target: "call", Description: "Parent cancellation."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stopped := make(chan struct{})
+	binding, callbacks := backendStreamingSession(t, method, func(ctx context.Context, _ *sdk.ServerSession, _ Command[callbackInput]) iter.Seq2[StreamValue[int64, bool], error] {
+		return func(yield func(StreamValue[int64, bool], error) bool) {
+			defer close(stopped)
+			if yield(StreamValue[int64, bool]{Chunk: new(int64(1))}, nil) {
+				<-ctx.Done()
+			}
+		}
+	})
+	ctx, cancel := context.WithCancelCause(t.Context())
+	defer cancel(nil)
+	cause := errors.New("parent withdrew call")
+	var observed error
+	for value, err := range method.StreamWithMetadata(ctx, binding, callbacks, callbackTestLimits, "parent-cancel", callbackInput{Value: 7}, sdk.ParamsBase{}) {
+		if value.Chunk != nil {
+			cancel(cause)
+		}
+		if err != nil {
+			observed = err
+		}
+	}
+	if !errors.Is(observed, cause) {
+		t.Fatalf("stream lost parent cancellation: %v", observed)
+	}
+	select {
+	case <-stopped:
+	case <-time.After(5 * time.Second):
+		t.Fatal("cancelled producer still running")
+	}
+}

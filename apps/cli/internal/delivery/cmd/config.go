@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/apps/cli/internal/adapter/keybinding"
 	"io"
 	"maps"
 	"os"
@@ -212,6 +213,9 @@ func readSettings(v *viper.Viper) (settings.Config, error) {
 	}
 	if err := config.Validate(); err != nil {
 		return settings.Config{}, fmt.Errorf("validate configuration: %w", err)
+	}
+	if _, err := keybinding.Parse(config.Keys); err != nil {
+		return settings.Config{}, err
 	}
 	return config.Clone(), nil
 }

@@ -44,7 +44,7 @@ func TestSnapshotSynchronizationDoesNotReadThePath(t *testing.T) {
 			content <- frame.Params.TextDocument.Text
 		}
 	}()
-	c := &client{spec: ServerSpec{LanguageID: "go"}, open: map[string]openDoc{}, diags: map[string]diagSet{}, updated: make(chan struct{})}
+	c := &client{syncPolicy: documentSynchronization{OpenClose: true, Change: changeFull}, spec: ServerSpec{Languages: map[string]string{".go": "go"}}, open: map[string]openDoc{}, diags: map[string]diagSet{}, updated: make(chan struct{})}
 	c.conn = jsonrpc2.NewConn(t.Context(), jsonrpc2.NewBufferedStream(agent, lspObjectCodec{}), jsonrpc2.AsyncHandler(c))
 	t.Cleanup(func() { _ = c.conn.Close() })
 	if _, err := c.ensureContent(t.Context(), filepath.Join(t.TempDir(), "does-not-exist.go"), []byte("captured source")); err != nil {

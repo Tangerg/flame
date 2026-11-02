@@ -9,7 +9,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/frame/cancellation"
 )
 
 // Set owns one exclusion per key. The zero value is not usable; build one with

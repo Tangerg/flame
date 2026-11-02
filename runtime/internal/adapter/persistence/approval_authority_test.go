@@ -29,7 +29,7 @@ func TestRemovedMCPSourceCannotRetainApproval(t *testing.T) {
 	servers := newMCPServerStore(db)
 	rules := newApprovalRuleStore(db)
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("github"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: "https://old.example/mcp"}}
-	if _, err := servers.Grant(t.Context(), grantOwner, server); err != nil {
+	if _, err := servers.fixtureGrant(t.Context(), grantOwner, server); err != nil {
 		t.Fatal(err)
 	}
 	ref := testsupport.MCPTool(server.ID(), "create_issue")
@@ -46,7 +46,7 @@ func TestRemovedMCPSourceCannotRetainApproval(t *testing.T) {
 	moved := server.Connection.(mcpserver.HTTPConnection)
 	moved.URL = "https://new.example/mcp"
 	server.Connection = moved
-	if _, err := servers.Grant(t.Context(), grantOwner, server); err != nil {
+	if _, err := servers.fixtureGrant(t.Context(), grantOwner, server); err != nil {
 		t.Fatal(err)
 	}
 	visible, err := rules.Visible(t.Context(), "", "", approval.MaximumVisibleRules)
@@ -67,7 +67,7 @@ func TestUserServerRemovalCascadesEveryRelation(t *testing.T) {
 	grantOwner := testsupport.InstallationID(t)
 	authorization := newMCPAuthorizationStore(db)
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: "https://files.example/mcp"}}
-	if _, err := servers.Grant(t.Context(), grantOwner, server); err != nil {
+	if _, err := servers.fixtureGrant(t.Context(), grantOwner, server); err != nil {
 		t.Fatal(err)
 	}
 	ref := testsupport.MCPTool(server.ID(), "write")
@@ -127,7 +127,7 @@ func TestEqualNamesAcrossOriginsKeepSeparateRelations(t *testing.T) {
 		t.Fatal(err)
 	}
 	user := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Connection: mcpserver.StdioConnection{Command: "files"}}
-	if _, err := servers.Grant(t.Context(), grantOwner, user); err != nil {
+	if _, err := servers.fixtureGrant(t.Context(), grantOwner, user); err != nil {
 		t.Fatal(err)
 	}
 	userRef := testsupport.MCPTool(user.ID(), "read")

@@ -3,6 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs, promisify } from "node:util";
+import { productBuildEnvironment } from "./workspace.mjs";
 import { stageNode } from "./node-companion.mjs";
 
 const repository = fileURLToPath(new URL("../", import.meta.url));
@@ -18,8 +19,9 @@ export async function stageDesktopCompanions({ arch, output }) {
   if (!output) throw new Error("Desktop companion output is required");
   const destination = resolve(output);
   await mkdir(destination, { recursive: true });
+  const env = productBuildEnvironment();
   const target = {
-    ...process.env,
+    ...env,
     GOOS: "darwin",
     GOARCH: arch,
     CGO_ENABLED: "0",
@@ -70,7 +72,7 @@ export async function stageDesktopCompanions({ arch, output }) {
     ],
     {
       cwd: repository,
-      env: { ...process.env, GOOS: "", GOARCH: "" },
+      env: { ...env, GOOS: "", GOARCH: "" },
       maxBuffer: 32 * 1024 * 1024,
     },
   );

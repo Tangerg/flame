@@ -19,7 +19,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
-	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/frame/cancellation"
 	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/qimu/portable"

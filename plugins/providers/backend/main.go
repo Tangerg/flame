@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/backend"
@@ -15,7 +16,11 @@ func run(ctx context.Context, data string) (err error) {
 		return err
 	}
 	defer func() { err = errors.Join(err, store.Close()) }()
-	server, err := newServer(store)
+	deployments, err := parseAzureDeployments(os.Getenv(azureDeploymentsVariable))
+	if err != nil {
+		return err
+	}
+	server, err := newServer(store, deployments)
 	if err != nil {
 		return err
 	}

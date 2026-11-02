@@ -19,14 +19,11 @@ import {
   activateWorkspaceSessionScope,
   adoptWorkspaceSessionScope,
   closeActiveWorkspaceDockView,
-  closeAllWorkspaceDockViews,
-  closeWorkspaceDockView,
   closeActiveWorkspaceView,
   collapseWorkspaceDock,
   openWorkspaceView,
   openWorkspaceViewInDock,
   selectWorkspaceChat,
-  selectWorkspaceDockView,
   showWorkspaceDock,
   toggleWorkspaceDock,
   openWorkspaceViewAtPath,
@@ -63,7 +60,7 @@ describe("workspace navigation port", () => {
 
   it("only selects views that already belong to the dock", () => {
     openWorkspaceViewInDock(testClient.workspace.access, "skills");
-    selectWorkspaceDockView(testClient.workspace.access, "diff");
+    testClient.workspace.access.navigation.selectDockView("diff");
     expect(testClient.navigation.get().dock).toBe("skills");
   });
 
@@ -168,7 +165,7 @@ describe("workspace navigation port", () => {
   it("returns an emptied dock to its catalogue rather than closing it", () => {
     openWorkspaceViewInDock(testClient.workspace.access, "diff");
 
-    closeWorkspaceDockView(testClient.workspace.access, "diff");
+    testClient.workspace.access.navigation.closeDockView("diff");
 
     expect(testClient.navigation.get().dock).toBe(WORKSPACE_DOCK_CATALOG);
   });
@@ -177,7 +174,7 @@ describe("workspace navigation port", () => {
     openWorkspaceViewInDock(testClient.workspace.access, "diff");
     openWorkspaceViewInDock(testClient.workspace.access, "plan");
 
-    closeAllWorkspaceDockViews(testClient.workspace.access);
+    testClient.workspace.access.navigation.closeAllDockViews();
 
     expect(testClient.navigation.get().dock).toBe(WORKSPACE_DOCK_CATALOG);
   });
@@ -194,7 +191,7 @@ describe("workspace navigation port", () => {
   it("does not resurrect the last closed tab when returning to a session", () => {
     activateWorkspaceSessionScope(testClient.workspace.access, "s1");
     openWorkspaceViewInDock(testClient.workspace.access, "diff");
-    closeWorkspaceDockView(testClient.workspace.access, "diff");
+    testClient.workspace.access.navigation.closeDockView("diff");
 
     testClient.navigation.go({ session: "s2" });
     activateWorkspaceSessionScope(testClient.workspace.access, "s2");

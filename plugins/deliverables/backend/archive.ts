@@ -45,8 +45,14 @@ const tables = Object.freeze({
   assessments:
     "CREATE TABLE assessments (sequence INTEGER PRIMARY KEY, id TEXT UNIQUE NOT NULL, document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE, revision_id TEXT NOT NULL REFERENCES revisions(id) ON DELETE CASCADE, payload TEXT NOT NULL CHECK(json_valid(payload)))",
   uploads:
-    "CREATE TABLE uploads (id TEXT PRIMARY KEY, size INTEGER NOT NULL, digest TEXT NOT NULL, bytes BLOB NOT NULL)",
+    "CREATE TABLE uploads (id TEXT PRIMARY KEY, size INTEGER NOT NULL, digest TEXT NOT NULL)",
+  upload_chunks:
+    "CREATE TABLE upload_chunks (upload_id TEXT NOT NULL REFERENCES uploads(id) ON DELETE CASCADE, offset INTEGER NOT NULL, bytes BLOB NOT NULL, PRIMARY KEY(upload_id,offset)) WITHOUT ROWID",
 });
+
+// The last immutable chunk owns the received offset; reading a header never loads its payload.
+const uploadHeaders =
+  "SELECT u.id,u.size,u.digest,coalesce((SELECT offset+length(bytes) FROM upload_chunks WHERE upload_id=u.id ORDER BY offset DESC LIMIT 1),0) AS received FROM uploads u";
 
 function text(value: SQLOutputValue | undefined): string {
   if (typeof value !== "string")
@@ -278,10 +284,11 @@ export class Archive {
     if (!admission.fresh) return decodeReply(admission.reply);
     try {
       const publish = await prepare(original.id);
+      // Preparation returned without publishing a revision. Cancellation here
+      // has a definite, replayable outcome even for a renderer-backed command.
       signal.throwIfAborted();
       return decodeReply(
         this.#transaction(() => {
-          signal.throwIfAborted();
           const value = publish();
           const reply: Reply = { value };
           this.#settle(original.id, reply);
@@ -290,13 +297,20 @@ export class Archive {
         }),
       );
     } catch (cause) {
-      if (cause instanceof Refusal)
+      const outcome =
+        signal.aborted && cause === signal.reason
+          ? new Refusal(
+              "cancelled",
+              "deliverable command cancelled before publication",
+            )
+          : cause;
+      if (outcome instanceof Refusal)
         this.#transaction(() =>
           this.#settle(original.id, {
-            failure: { code: cause.code, message: cause.message },
+            failure: { code: outcome.code, message: outcome.message },
           }),
         );
-      throw cause;
+      throw outcome;
     }
   }
 
@@ -646,35 +660,53 @@ export class Archive {
     return { metadata, bytes: content };
   }
 
-  upload(id: string): {
-    metadata: { id: string; sha256: string; size: number; received: number };
-    bytes: Uint8Array;
-  } {
-    const row = this.#db.prepare("SELECT * FROM uploads WHERE id=?").get(id);
-    if (!row)
-      throw new Refusal(
-        "upload_not_found",
-        "staging upload is no longer retained",
-      );
-    const content = bytes(row.bytes);
+  #uploadMetadata(row: Row) {
     const metadata = schemas.uploaded.parse({
       id: text(row.id),
       sha256: text(row.digest),
       size: Number(row.size),
-      received: content.byteLength,
+      received: Number(row.received),
     });
     if (metadata.received > metadata.size)
       throw new Error(
         "deliverables: staging upload exceeds its declared capacity",
       );
+    return metadata;
+  }
+
+  #uploadHeader(id: string) {
+    const row = this.#db.prepare(uploadHeaders + " WHERE u.id=?").get(id);
+    if (!row)
+      throw new Refusal(
+        "upload_not_found",
+        "staging upload is no longer retained",
+      );
+    return this.#uploadMetadata(row);
+  }
+
+  upload(id: string) {
+    const metadata = this.#uploadHeader(id);
+    const content = new Uint8Array(metadata.received);
+    let received = 0;
+    for (const row of this.#db
+      .prepare(
+        "SELECT offset,bytes FROM upload_chunks WHERE upload_id=? ORDER BY offset",
+      )
+      .iterate(id)) {
+      if (Number(row.offset) !== received)
+        throw new Error("deliverables: staged chunks contain a gap");
+      const chunk = bytes(row.bytes);
+      content.set(chunk, received);
+      received += chunk.byteLength;
+    }
     return { metadata, bytes: content };
   }
 
   uploads() {
     return this.#db
-      .prepare("SELECT id FROM uploads ORDER BY rowid")
+      .prepare(uploadHeaders + " ORDER BY u.rowid")
       .all()
-      .map((row) => this.upload(text(row.id)).metadata);
+      .map((row) => this.#uploadMetadata(row));
   }
 
   beginUpload(id: string, size: number, hash: string) {
@@ -685,15 +717,15 @@ export class Archive {
         "discard a staging upload before starting another",
       );
     this.#db
-      .prepare("INSERT INTO uploads(id,size,digest,bytes) VALUES(?,?,?,?)")
-      .run(id, size, hash, new Uint8Array());
-    return this.upload(id).metadata;
+      .prepare("INSERT INTO uploads(id,size,digest) VALUES(?,?,?)")
+      .run(id, size, hash);
+    return this.#uploadHeader(id);
   }
 
   appendUpload(id: string, offset: number, content: Uint8Array) {
     this.#writing();
-    const current = this.upload(id);
-    if (current.metadata.received !== offset)
+    const current = this.#uploadHeader(id);
+    if (current.received !== offset)
       throw new Refusal(
         "upload_offset",
         "upload offset differs from its acknowledged bytes",
@@ -701,22 +733,29 @@ export class Archive {
     if (
       !content.byteLength ||
       content.byteLength > LIMITS.chunkBytes ||
-      offset + content.byteLength > current.metadata.size
+      offset + content.byteLength > current.size
     )
       throw new Refusal(
         "upload_capacity",
         "chunk exceeds its declared upload capacity",
       );
     this.#db
-      .prepare("UPDATE uploads SET bytes=? WHERE id=?")
-      .run(Buffer.concat([current.bytes, content]), id);
-    return this.upload(id).metadata;
+      .prepare(
+        "INSERT INTO upload_chunks(upload_id,offset,bytes) VALUES(?,?,?)",
+      )
+      .run(id, offset, content);
+    return this.#uploadHeader(id);
   }
 
   discardUpload(id: string): boolean {
     this.#writing();
-    this.upload(id);
-    this.#db.prepare("DELETE FROM uploads WHERE id=?").run(id);
+    if (
+      this.#db.prepare("DELETE FROM uploads WHERE id=?").run(id).changes !== 1n
+    )
+      throw new Refusal(
+        "upload_not_found",
+        "staging upload is no longer retained",
+      );
     return true;
   }
 

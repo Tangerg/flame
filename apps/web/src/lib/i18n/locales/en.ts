@@ -612,6 +612,9 @@ export const en: Record<string, string> = {
     "The selected file isn't valid JSON. Choose a conversation JSON file exported from Flame.",
   "convExport.importFailed":
     "Couldn't import the conversation. Try again with a conversation JSON file exported from Flame.",
+  "convExport.importRefreshFailed": "Conversation imported. Open it again to refresh its view.",
+  "connection.error.insecureBearer": "Use HTTPS to send a token to a remote Runtime.",
+  "connection.error.storage": "The Runtime address could not be saved.",
   "connection.error.token": "Enter a valid access token without spaces or control characters.",
   "connection.error.urlScheme": "Must start with http:// or https://",
   "command.chatSearch": "Find in chat",

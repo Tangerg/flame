@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func newServer(store *store) (*sdk.Server, error) {
+func newServer(store *store, deployments azureDeployments) (*sdk.Server, error) {
 	if store == nil || store.db == nil {
 		return nil, errors.New("model provider: private store is required")
 	}
@@ -80,7 +80,7 @@ func newServer(store *store) (*sdk.Server, error) {
 			if err != nil {
 				return nil, &portable.Refusal{Code: "invalid_connection", Message: "model provider: invalid connection"}
 			}
-			values, err := listModels(ctx, spec)
+			values, err := listModels(ctx, spec, deployments)
 			if err != nil {
 				return nil, &portable.Refusal{Code: string(failure(err).Kind), Message: "model provider: model discovery failed"}
 			}

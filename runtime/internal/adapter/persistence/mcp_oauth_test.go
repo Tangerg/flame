@@ -29,7 +29,7 @@ func TestMCPServerStoreFencesOAuthCallbacksByGrant(t *testing.T) {
 	if !ok {
 		t.Fatal("HTTP server has no OAuth target")
 	}
-	if _, err := store.Grant(t.Context(), owner, server); err != nil {
+	if _, err := store.fixtureGrant(t.Context(), owner, server); err != nil {
 		t.Fatal(err)
 	}
 	oldBinding, err := authorization.BeginOAuthSession(t.Context(), target)
@@ -63,7 +63,7 @@ func TestMCPServerStoreFencesOAuthCallbacksByGrant(t *testing.T) {
 		t.Fatalf("current credentials changed after stale callbacks: found=%v err=%v", found, err)
 	}
 	server.Description = "metadata update"
-	if _, err := store.Grant(t.Context(), owner, server); err != nil {
+	if _, err := store.fixtureGrant(t.Context(), owner, server); err != nil {
 		t.Fatal(err)
 	}
 	if _, binding, found, err := authorization.LoadOAuthSession(t.Context(), target); err != nil || !found || binding != newBinding {
@@ -127,7 +127,7 @@ func TestMCPCredentialsStopMatchingAChangedTarget(t *testing.T) {
 				Enabled:    true,
 				Connection: mcpserver.HTTPConnection{URL: "https://mcp.example.test/tools"},
 			}
-			if _, err := store.Grant(t.Context(), owner, initial); err != nil {
+			if _, err := store.fixtureGrant(t.Context(), owner, initial); err != nil {
 				t.Fatal(err)
 			}
 			binding, err := authorization.BeginOAuthSession(t.Context(), mustOAuthTarget(t, initial))
@@ -139,7 +139,7 @@ func TestMCPCredentialsStopMatchingAChangedTarget(t *testing.T) {
 			}
 			changed := initial.Clone()
 			change.apply(&changed)
-			if _, err := store.Grant(t.Context(), owner, changed); err != nil {
+			if _, err := store.fixtureGrant(t.Context(), owner, changed); err != nil {
 				t.Fatal(err)
 			}
 			if _, _, found, err := authorization.LoadOAuthSession(t.Context(), mustOAuthTarget(t, changed)); err != nil || found {

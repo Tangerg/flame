@@ -4,7 +4,6 @@ package pluginpackage
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -14,8 +13,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/frame/cancellation"
 	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/cancellation"
 	"github.com/Tangerg/qimu/distribution"
 	"github.com/Tangerg/qimu/integrity"
 	"github.com/samber/lo"
@@ -102,16 +101,7 @@ func (r *Releases) Materialize(ctx context.Context, source string) (_ plugins.Ca
 	if info.IsDir() {
 		lease, err = r.content.InstallDirectoryHeld(ctx, source)
 	} else if info.Mode().IsRegular() {
-		file, _, openErr := filesystem.OpenFile(source, distribution.DefaultLimits().ArchiveBytes)
-		if openErr != nil {
-			return nil, openErr
-		}
-		hash := sha256.New()
-		_, readErr := io.Copy(hash, cancellation.Reader(ctx, file))
-		if err = errors.Join(readErr, file.Close()); err != nil {
-			return nil, err
-		}
-		lease, err = r.content.InstallArchiveHeld(ctx, source, integrity.DigestOf([sha256.Size]byte(hash.Sum(nil))))
+		lease, err = r.content.InstallLocalArchiveHeld(ctx, source)
 	} else {
 		return nil, fmt.Errorf("%w: package source must be a directory or regular archive: %w", plugin.ErrInvalid, filesystem.ErrNotRegular)
 	}

@@ -43,11 +43,18 @@ const (
 )
 
 // AuthoringPartition preserves the local outbox identity across reconnects.
-func (r Runtime) AuthoringPartition() string {
-	if r.Mode == RuntimeEmbedded {
-		return ""
+func (r Runtime) AuthoringPartition() (string, error) {
+	if err := r.Validate(); err != nil {
+		return "", err
 	}
-	return r.Endpoint
+	if r.Mode == RuntimeEmbedded {
+		return "", nil
+	}
+	endpoint, err := httporigin.ParseEndpoint(r.Endpoint)
+	if err != nil {
+		return "", err
+	}
+	return endpoint.CanonicalBase(), nil
 }
 
 type Config struct {

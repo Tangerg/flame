@@ -318,3 +318,45 @@ func TestAuthorizationAttemptRejectsNonHTTPServerBeforeDispatch(t *testing.T) {
 		t.Fatalf("unsupported server dispatched authorization as %q", ports.authorizeName)
 	}
 }
+
+func TestFailedCompletionReconcilesAgainstOriginalAuthorization(t *testing.T) {
+	owner := &testExternalWorkflow{attempts: newAuthorizationAttemptStore()}
+	cfg := configWithPorts(&fakePorts{})
+	cfg.External = owner
+	c := testCoordinator(t, cfg)
+	server := testsupport.UserMCPServer("github")
+	for _, terminal := range []AuthorizationAttemptStatus{AuthorizationAttemptPending, AuthorizationAttemptCanceled, AuthorizationAttemptSucceeded} {
+		a := owner.attempts.create(server)
+		calls := 0
+		send := func(_ context.Context, status AuthorizationAttemptStatus) error {
+			calls++
+			if calls == 1 {
+				return errors.New("completion transport lost")
+			}
+			owner.attempts.settle(a.ID, status)
+			return nil
+		}
+		d := &authorizationDelivery{server: server, status: AuthorizationAttemptSucceeded, send: send}
+		c.authorizationDeliveries.Store(a.ID, d)
+		if err := c.deliverAuthorization(t.Context(), a.ID, d); err == nil {
+			t.Fatal("lost acknowledgement reported success")
+		}
+		if terminal != AuthorizationAttemptPending {
+			owner.attempts.settle(a.ID, terminal)
+		}
+		read, err := c.AuthorizationAttempt(t.Context(), a.ID.String())
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := terminal
+		if want == AuthorizationAttemptPending {
+			want = AuthorizationAttemptSucceeded
+		}
+		if read.Status != want || (terminal != AuthorizationAttemptPending && calls != 1) {
+			t.Fatalf("original %s became %s, writes=%d", terminal, read.Status, calls)
+		}
+		if _, held := c.authorizationDeliveries.Load(a.ID); held {
+			t.Fatal("acknowledged completion retained delivery")
+		}
+	}
+}

@@ -2,6 +2,7 @@ package lsp
 
 import (
 	"context"
+	"os"
 	"sync"
 
 	"github.com/sourcegraph/jsonrpc2"
@@ -13,9 +14,9 @@ import (
 // the server has pushed. It implements jsonrpc2.Handler to receive the
 // server→client traffic (diagnostics pushes, configuration requests).
 type client struct {
-	spec ServerSpec
-	root string
-	save saveSynchronization
+	spec       ServerSpec
+	workspace  *os.Root
+	syncPolicy documentSynchronization
 
 	conn        *jsonrpc2.Conn
 	cancel      context.CancelFunc
@@ -30,11 +31,10 @@ type client struct {
 	processErr error
 
 	mu sync.Mutex
-	// synced counts syncs rather than time so eviction order cannot depend on a
-	// clock the runtime does not own.
-	synced uint64
-	open   map[string]openDoc // uri → last synced version + content hash
-	diags  map[string]diagSet // uri → latest pushed diagnostics
+	// Connection-wide versions distinguish a reopened URI from its evicted incarnation.
+	version int
+	open    map[string]openDoc // uri → last synced version + content hash
+	diags   map[string]diagSet // uri → latest pushed diagnostics
 	// diagnosticsErr carries the latest malformed publishDiagnostics
 	// notification until a valid notification proves the stream healthy again.
 	// The JSON-RPC handler cannot return notification errors to the server, so
@@ -48,7 +48,7 @@ type client struct {
 type openDoc struct {
 	version int
 	hash    [32]byte
-	synced  uint64
+	end     Position
 }
 
 type diagSet struct {

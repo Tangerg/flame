@@ -8,7 +8,7 @@ import (
 	"time"
 
 	agentmemory "github.com/Tangerg/flame/plugins/memory/internal/domain"
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 )
 
 func (a *AgentMemoryStore) AppendLedger(ctx context.Context, batch agentmemory.FactBatch) ([]agentmemory.LedgerFact, error) {

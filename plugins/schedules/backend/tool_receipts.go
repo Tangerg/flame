@@ -13,8 +13,8 @@ import (
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
+	"github.com/Tangerg/frame/sqlite"
 	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )

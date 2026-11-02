@@ -117,7 +117,13 @@ export function createTestClient(
     () => false,
     runtime.endpoint.currentRuntimeEndpoint,
   );
-  const notifications = createNotifications(host, agent.access, workspace.access, "Flame");
+  const notifications = createNotifications(
+    host,
+    agent.access,
+    workspace.access,
+    "Flame",
+    runtime.endpoint.currentRuntimeEndpoint,
+  );
   const installedPlugins = createInstalledPlugins(
     client,
     runtime.endpoint.currentRuntimeEndpoint,

@@ -24,6 +24,10 @@ The coordinator freezes its own source and recursively reads dependencies from
 those pinned module commits, then writes standard Go module artifacts. It never
 uses a mutable checkout to replace a published candidate.
 
+A Flame distribution builds its CLI, standalone Runtime, Desktop companions and
+first-party plugins against the same go.work graph. Independent consumers and
+the independent-module checks use the immutable versions in their go.mod files.
+
 Runtime owns durable product behavior. `runtime/internal/delivery` registers each
 operation's name, Go name, shape, kind, capability and failure policy once.
 `runtime/cmd/contractgen` projects that registry into local/remote Go methods,

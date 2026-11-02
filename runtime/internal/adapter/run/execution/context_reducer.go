@@ -145,36 +145,21 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 			return nil, err
 		}
 	}
+	candidate, err := appendPendingContinuation(request.Messages[len(i.instructions):], pendingContinuation, hasPendingContinuation)
+	if err != nil {
+		return nil, err
+	}
+	contextView := modelRequestContext{request: request, instructions: i.instructions, fixed: append(cloneChatMessages(i.instructions), cloneChatMessages(material)...), tail: tail}
 	if i.compactor == nil {
-		effective, err := appendPendingContinuation(
-			request.Messages, pendingContinuation, hasPendingContinuation,
-		)
-		if err != nil {
-			return nil, err
-		}
-		validation := request.Clone()
-		validation.Messages = append(cloneChatMessages(i.instructions), cloneChatMessages(material)...)
-		validation.Messages = append(validation.Messages, cloneChatMessages(effective[len(i.instructions):])...)
-		validation.Messages = append(validation.Messages, cloneChatMessages(tail)...)
-		if err := validation.Validate(); err != nil {
-			return nil, fmt.Errorf("execution: reduced model context: %w", err)
-		}
-		validation, err = i.prepareInput(calling, invocation, validation)
+		validation, err := i.admitContext(calling, invocation, contextView, candidate)
 		if err != nil {
 			return nil, err
 		}
 		if err := i.session.material.prepare(invocation, validation); err != nil {
 			return nil, err
 		}
-		return effective, nil
+		return contextView.canonical(candidate), nil
 	}
-	candidate, err := appendPendingContinuation(
-		request.Messages[len(i.instructions):], pendingContinuation, hasPendingContinuation,
-	)
-	if err != nil {
-		return nil, err
-	}
-	fixedContext := append(cloneChatMessages(i.instructions), cloneChatMessages(material)...)
 	preCompact := func(ctx context.Context) (bool, error) {
 		if i.session.lifecycleHooks == nil {
 			return true, nil
@@ -192,7 +177,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		Selection:    i.start.ModelSelection,
 		Limits:       i.session.selectedChat.TokenLimits(),
 		RequestFits:  i.session.selectedChat.RequestFits,
-		Instructions: fixedContext,
+		Instructions: contextView.fixed,
 		Candidate:    candidate,
 		Trailer:      tail,
 		Tools:        request.Tools,
@@ -207,9 +192,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	if len(i.session.modelInputs) > 0 {
 		input.Counter = nil
 	} else {
-		countable := request.Clone()
-		countable.Messages = append(cloneChatMessages(fixedContext), cloneChatMessages(candidate)...)
-		countable.Messages = append(countable.Messages, cloneChatMessages(tail)...)
+		countable := contextView.compose(candidate)
 		if err := i.session.selectedChat.AdmitInput(countable); err != nil {
 			if !errors.Is(err, catalog.ErrUnsupportedInputModality) {
 				return nil, err
@@ -217,52 +200,16 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 			input.Counter = nil
 		}
 	}
-	var (
-		compaction ModelContextCompaction
-		buildErr   error
-	)
-	if invocation.Relation().IsRoot() {
-		protectedTail := 0
-		if invocation.ModelCallSequence() == 1 {
-			protectedTail = rootOpeningMessageCount
-		}
-		if hasPendingContinuation {
-			protectedTail = max(protectedTail, trailingUserMessageCount(candidate))
-		}
-		input.ProtectedTail = protectedTail
-		compaction, buildErr = NewDurableModelContextCompaction(input)
-	} else {
-		protectedTail := 0
-		if invocation.ModelCallSequence() == 1 {
-			protectedTail = len(candidate)
-		} else if signalCount := len(invocation.AppliedSteerSignalIDs()); signalCount > 0 {
-			protectedTail = trailingUserMessageCount(candidate)
-			if protectedTail < signalCount {
-				return nil, fmt.Errorf(
-					"execution: delegated model context attributes %d steer Signals but has only %d trailing User messages",
-					signalCount,
-					protectedTail,
-				)
-			}
-		}
-		input.ProtectedTail = protectedTail
-		compaction, buildErr = newTransientModelContextCompaction(input)
-	}
-	if buildErr != nil {
-		return nil, buildErr
+	compaction, err := invocationCompaction(invocation, input, hasPendingContinuation)
+	if err != nil {
+		return nil, err
 	}
 	result, err := i.compactor.CompactModelContext(calling, compaction)
 	if err != nil {
 		return nil, err
 	}
-	effective := append(cloneChatMessages(i.instructions), result.Messages()...)
-	validation := request.Clone()
-	validation.Messages = append(fixedContext, result.Messages()...)
-	validation.Messages = append(validation.Messages, cloneChatMessages(tail)...)
-	if err := validation.Validate(); err != nil {
-		return nil, fmt.Errorf("execution: compacted model context: %w", err)
-	}
-	validation, err = i.prepareInput(calling, invocation, validation)
+	effective := contextView.canonical(result.Messages())
+	validation, err := i.admitContext(calling, invocation, contextView, result.Messages())
 	if err != nil {
 		return nil, err
 	}
@@ -302,6 +249,51 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		}
 	}
 	return effective, nil
+}
+
+type modelRequestContext struct {
+	request                   *corechat.Request
+	instructions, fixed, tail []corechat.Message
+}
+
+func (c modelRequestContext) canonical(history []corechat.Message) []corechat.Message {
+	return append(cloneChatMessages(c.instructions), history...)
+}
+
+func (c modelRequestContext) compose(history []corechat.Message) *corechat.Request {
+	request := c.request.Clone()
+	request.Messages = append(cloneChatMessages(c.fixed), cloneChatMessages(history)...)
+	request.Messages = append(request.Messages, cloneChatMessages(c.tail)...)
+	return request
+}
+
+func (i *interactionModelContextReducer) admitContext(ctx context.Context, invocation interaction.ModelInvocation, view modelRequestContext, history []corechat.Message) (*corechat.Request, error) {
+	request := view.compose(history)
+	if err := request.Validate(); err != nil {
+		return nil, fmt.Errorf("execution: reduced model context: %w", err)
+	}
+	return i.prepareInput(ctx, invocation, request)
+}
+
+func invocationCompaction(invocation interaction.ModelInvocation, input ModelContextCompactionInput, pending bool) (ModelContextCompaction, error) {
+	if invocation.Relation().IsRoot() {
+		if invocation.ModelCallSequence() == 1 {
+			input.ProtectedTail = rootOpeningMessageCount
+		}
+		if pending {
+			input.ProtectedTail = max(input.ProtectedTail, trailingUserMessageCount(input.Candidate))
+		}
+		return NewDurableModelContextCompaction(input)
+	}
+	if invocation.ModelCallSequence() == 1 {
+		input.ProtectedTail = len(input.Candidate)
+	} else if signals := len(invocation.AppliedSteerSignalIDs()); signals > 0 {
+		input.ProtectedTail = trailingUserMessageCount(input.Candidate)
+		if input.ProtectedTail < signals {
+			return ModelContextCompaction{}, fmt.Errorf("execution: delegated model context attributes %d steer Signals but has only %d trailing User messages", signals, input.ProtectedTail)
+		}
+	}
+	return newTransientModelContextCompaction(input)
 }
 
 // tail composes this call's Runtime-authored tail: the current Session state,

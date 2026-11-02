@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
@@ -298,6 +299,7 @@ func (t *tsEmitter) protocolVersion() {
 	t.line("// The only Session Artifact version this runtime imports or exports.")
 	t.line("export const SESSION_ARTIFACT_VERSION = %d;", protocol.SessionArtifactVersion)
 	t.line("")
+	t.line("export const GOAL_WORKFLOW = %s;", contractgen.TypeScriptStringLiteral(goalworkflow.Reference))
 	t.line("// The maximum length of one opaque pagination cursor on the public wire.")
 	t.line("export const MAXIMUM_PAGINATION_CURSOR_CHARACTERS = %d;", protocol.MaximumPaginationCursorCharacters)
 	t.line("")

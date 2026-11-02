@@ -11,6 +11,15 @@ import (
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
+// Profile expressions bridge the two engines' different whitespace, wildcard
+// and timestamp lexicons without changing the published descriptor identity.
+const (
+	PortableTimeFormat     = "date-time"
+	PortableTimePattern    = `^[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt][0-9]{2}:[0-9]{2}:[0-5][0-9]([.][0-9]+)?([Zz]|[+-][0-9]{2}:[0-9]{2})$`
+	PortablePatternEscapes = `\.+*?()[]{}|^$dDwWbBfnrtsS`
+	ASCIIWhitespace        = `\t\n\f\r `
+)
+
 // Schema owns profile admission and bounded evaluation preflight. Scope remains
 // the compiler and the only owner of JSON Schema validation semantics.
 type Schema struct {
@@ -31,7 +40,13 @@ func AdmitSchema(raw []byte) (Schema, error) {
 	if err != nil {
 		return Schema{}, err
 	}
-	compiled, err := jsonschema.Parse(raw)
+	// The compile view may narrow engine-specific formats. The original raw
+	// bytes still own descriptor identity and schema admission budgets.
+	compiledJSON, err := json.Marshal(value)
+	if err != nil {
+		return Schema{}, err
+	}
+	compiled, err := jsonschema.Parse(compiledJSON)
 	if err != nil {
 		return Schema{}, err
 	}
@@ -121,6 +136,13 @@ func (g *schemaGraph) visit(value any, path string) (int, error) {
 		if err := g.visitKeyword(index, key, field, path+"/"+pointerToken(key)); err != nil {
 			return 0, err
 		}
+	}
+	if format, ok := object["format"]; ok {
+		if format != PortableTimeFormat {
+			return 0, errors.New("portable: unsupported string format")
+		}
+		conditions, _ := object["allOf"].([]any)
+		object["allOf"] = append(conditions, map[string]any{"pattern": PortableTimePattern})
 	}
 	return index, nil
 }
@@ -225,6 +247,9 @@ func (g *schemaGraph) visitMap(index int, key string, field any, path string) er
 	}
 	for name, child := range children {
 		if key == "patternProperties" {
+			if strings.ContainsAny(name, ".\\") {
+				return errors.New("portable: ambiguous pattern property name")
+			}
 			if err := checkPattern(name); err != nil {
 				return err
 			}
@@ -375,12 +400,15 @@ func checkPattern(pattern string) error {
 		char := pattern[index]
 		if char == '\\' {
 			index++
-			if index == len(pattern) || strings.ContainsRune("0123456789kKpP", rune(pattern[index])) {
+			if index == len(pattern) || !strings.ContainsRune(PortablePatternEscapes, rune(pattern[index])) || (inClass && strings.ContainsRune("sSbB", rune(pattern[index]))) {
 				return errors.New("portable: unsupported pattern escape")
 			}
 			continue
 		}
 		if char == '[' {
+			if inClass {
+				return errors.New("portable: nested character class")
+			}
 			inClass = true
 			continue
 		}

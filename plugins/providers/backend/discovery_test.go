@@ -26,7 +26,7 @@ type remoteModel struct {
 
 func probeModels(t *testing.T, baseURL, apiKey string, provider Provider) ([]string, error) {
 	t.Helper()
-	return listModels(t.Context(), mustClientSpec(t, provider, apiKey, baseURL))
+	return listModels(t.Context(), mustClientSpec(t, provider, apiKey, baseURL), nil)
 }
 
 func TestListRemoteModels(t *testing.T) {
@@ -251,5 +251,18 @@ func TestVerifyConnectionAuthenticatesWithoutGenerating(t *testing.T) {
 				t.Fatalf("verifyConnection = %v, want invalid credentials", err)
 			}
 		})
+	}
+}
+
+func TestAzureDiscoveryUsesOnlyDeploymentNamesAtTheSelectedEndpoint(t *testing.T) {
+	d, err := parseAzureDeployments(`{"https://example.test/openai/v1":["team-chat"]}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for endpoint, want := range map[string][]string{"https://example.test/openai/v1/": {"team-chat"}, "https://other.test/openai/v1": {}} {
+		got, err := listModels(t.Context(), mustClientSpec(t, providerAzureOpenAI, "fake", endpoint), d)
+		if err != nil || !slices.Equal(got, want) {
+			t.Fatalf("deployment names: %v %v", got, err)
+		}
 	}
 }

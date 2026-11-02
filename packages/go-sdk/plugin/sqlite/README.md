@@ -25,7 +25,7 @@ For operations with external work, `AdmitCommand` commits original admission fir
 Only `NewlyAdmitted` permits a first external attempt. `ResumeCommand` reads pending
 work without creating it; `PreparedCommand.Complete` joins the private owner's short
 publication transaction. Unknown outcomes remain pending, including after restart.
-Use [`qimu/sqlite`](../../../../qimu/sqlite/README.md) for schema admission and
+Use `github.com/Tangerg/frame/sqlite` for schema admission and
 transaction ownership. The plugin's private database remains separate from
 Runtime's framework and product database.
 

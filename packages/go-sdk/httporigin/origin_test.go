@@ -103,3 +103,13 @@ func TestRuntimeEndpointAdmission(t *testing.T) {
 		}
 	}
 }
+
+func TestCanonicalBasePreservesZoneAndEscapedPath(t *testing.T) {
+	endpoint, err := ParseEndpoint("https://[fe80::1%25en0]:443/a%2Fb/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := endpoint.CanonicalBase(), "https://[fe80::1%25en0]:443/a%2Fb"; got != want {
+		t.Fatalf("canonical base = %q, want %q", got, want)
+	}
+}

@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/frame/cancellation"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
 )

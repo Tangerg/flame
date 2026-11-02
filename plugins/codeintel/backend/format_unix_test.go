@@ -115,3 +115,21 @@ func TestRunFormatterRetiresDescendantsAfterSuccessfulRootExit(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 }
+
+func TestPrettierDoesNotLoadWorkspaceConfiguration(t *testing.T) {
+	directory := t.TempDir()
+	toolDirectory := t.TempDir()
+	probe := "#!/bin/sh\n[ \"$1\" = --no-config ] && [ \"$2\" = --no-editorconfig ] && [ \"$3\" = --stdin-filepath ] && [ \"$4\" = file.ts ] || exit 1\n/bin/cat\n"
+	if err := os.WriteFile(filepath.Join(toolDirectory, "prettier"), []byte(probe), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", toolDirectory)
+	document, err := codeintel.NewDocument(directory, "file.ts", "const value=1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	formatted, err := formatDocument(t.Context(), document)
+	if err != nil || formatted.Content == nil || *formatted.Content != document.Content {
+		t.Fatalf("format: %+v, %v", formatted, err)
+	}
+}

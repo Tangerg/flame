@@ -68,6 +68,15 @@ func (e Endpoint) URL() *url.URL {
 	return &clone
 }
 
+// CanonicalBase gives transport routing and per-target persistence the same identity.
+// Keep escaped path separators distinct because proxies may route them differently.
+func (e Endpoint) CanonicalBase() string {
+	origin := e.Origin()
+	path := e.url.JoinPath()
+	base := url.URL{Scheme: origin.scheme, Host: origin.host, Path: path.Path, RawPath: path.RawPath}
+	return strings.TrimRight(base.String(), "/")
+}
+
 func (e Endpoint) String() string { return e.url.String() }
 
 func (e Endpoint) Secure() bool { return e.url.Scheme == "https" }

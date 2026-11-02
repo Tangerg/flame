@@ -333,3 +333,15 @@ func TestExecutablePluginRootsRequireAnExplicitOrUserConfig(t *testing.T) {
 		t.Fatalf("explicit configuration refused: %v", err)
 	}
 }
+
+func TestConfigurationRejectsInvalidKeys(t *testing.T) {
+	for _, binding := range []string{"not-a-key", "ctrl+r"} {
+		path := filepath.Join(t.TempDir(), "config.yaml")
+		if err := os.WriteFile(path, []byte("keys:\n  quit: ["+binding+"]\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := executeCommand(t, instantRuntime(), "", "--config", path, "config", "show"); err == nil {
+			t.Fatalf("validated unusable key binding %q", binding)
+		}
+	}
+}

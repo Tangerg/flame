@@ -5,6 +5,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -301,5 +302,36 @@ func TestPortableEqualityWorkIncludesTextAndOnlyChargesRelevantSchemas(t *testin
 	}
 	if err := unique.Validate([]byte(`[1,1]`)); err == nil || errors.Is(err, portable.ErrLimit) {
 		t.Fatalf("duplicate verdict must remain the schema engine's: %v", err)
+	}
+}
+
+func TestPortableWireValidationVectors(t *testing.T) {
+	data, err := os.ReadFile("testdata/validation.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vectors []struct {
+		Schema            jsontext.Value `json:"schema"`
+		Value             jsontext.Value `json:"value"`
+		Accept            bool           `json:"accept"`
+		DescriptorRefused bool           `json:"descriptorRefused"`
+	}
+	if err := json.Unmarshal(data, &vectors); err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range vectors {
+		s, err := portable.AdmitSchema(v.Schema)
+		if v.DescriptorRefused {
+			if err == nil {
+				t.Errorf("admitted schema %s", v.Schema)
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := s.Validate(v.Value); (err == nil) != v.Accept {
+			t.Errorf("%s %s: %v", v.Schema, v.Value, err)
+		}
 	}
 }

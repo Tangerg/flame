@@ -33,8 +33,9 @@ resource owner.
 
 Use `toolCommandId(context)` to derive the Flame Tool's private command identity.
 `toolReceipts(backend, handler)` exposes the Flame Tool receipt contract through
-the original Qimu backend. Its output is the original ToolOutput JSON, which
-Flame validates. The helper does not cache results or repeat business execution.
+the original Qimu backend. Return `{}` for an absent receipt. A recorded receipt carries
+`{result: {output, isError?}}` with the original structured ToolOutput.
+The backend validates this result against the published schema before replying. The helper does not cache results or repeat business execution.
 
 Build with the compiler and budgets provided by the Flame authoring project:
 

@@ -6,7 +6,7 @@
 27 apps/cli/internal/domain/conversation/presentation.go:ToolCall.Validate
 23 apps/desktop/cmd/bridgegen/source.go:newGraph
 36 apps/desktop/cmd/bridgegen/source.go:readMethods
-37 apps/desktop/cmd/bridgegen/typescript.go:zod
+28 apps/desktop/cmd/bridgegen/typescript.go:zod
 37 examples/plugins/reviews/backend/cmd/reviews/server.go:newServer
 28 packages/go-sdk/client/plugin_streams.go:PluginStreamingMethod.Stream
 29 plugins/github/backend/issue_writes.go:connector.updateIssue
@@ -33,9 +33,7 @@
 25 qimu/control/host/publication.go:Bridge.Publish
 21 qimu/control/host/publication.go:Bridge.Withdraw
 30 qimu/control/host/selection.go:Bridge.Acquire
-37 qimu/control/typescript.go:writeTypeScript
 23 qimu/distribution/manifest.go:validPath
-27 qimu/distribution/store.go:Store.InstallArchiveHeld
 22 qimu/distribution/store.go:Store.InstallDirectoryHeld
 25 qimu/distribution/store.go:Store.validate
 22 qimu/event.go:Host.NewEventRoute
@@ -85,7 +83,7 @@
 27 runtime/internal/adapter/run/execution/checkpoint.go:decodeInteractionCheckpointPayload
 22 runtime/internal/adapter/run/execution/child_admission.go:interactionSession.admitProcess
 40 runtime/internal/adapter/run/execution/cold_recovery.go:InteractionExecutor.PrepareUncertainExecution
-48 runtime/internal/adapter/run/execution/context_reducer.go:interactionModelContextReducer.ReduceModelContext
+39 runtime/internal/adapter/run/execution/context_reducer.go:interactionModelContextReducer.ReduceModelContext
 26 runtime/internal/adapter/run/execution/continuation.go:continuationAnswerPlans
 32 runtime/internal/adapter/run/execution/control.go:interactionSession.submitSteer
 41 runtime/internal/adapter/run/execution/durability.go:interactionSession.commitTree

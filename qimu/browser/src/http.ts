@@ -1,5 +1,10 @@
 import { QimuError, type ErrorCode, type Lifetime } from "@qimu/sdk";
 import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import {
+  CONTROL_OPERATIONS,
+  CONTROL_SHAPES,
+  type ControlResults,
+} from "@qimu/sdk/protocol";
 import type {
   AcquireRequest,
   CloseProof,
@@ -75,11 +80,10 @@ export class HTTPControl implements HostControl {
     this.#fetch = (options.fetch ?? globalThis.fetch).bind(globalThis);
   }
 
-  async #request<T>(
-    method: string,
+  async #request<M extends keyof ControlResults>(
+    method: M,
     input: unknown,
-    mutating = false,
-  ): Promise<T> {
+  ): Promise<ControlResults[M]> {
     const body = stringifyJSON({ method, input });
     if (new TextEncoder().encode(body).byteLength > this.#maximumMessageBytes)
       return Promise.reject(
@@ -88,16 +92,15 @@ export class HTTPControl implements HostControl {
           "control request capacity exceeded before transmission",
         ),
       );
-    return this.#lifetime.run((signal) =>
-      this.#send<T>(body, signal, mutating),
-    );
+    return this.#lifetime.run((signal) => this.#send(method, body, signal));
   }
 
-  async #send<T>(
+  async #send<M extends keyof ControlResults>(
+    method: M,
     body: string,
     signal: AbortSignal,
-    mutating: boolean,
-  ): Promise<T> {
+  ): Promise<ControlResults[M]> {
+    const { mutating, output } = CONTROL_OPERATIONS[method];
     let response: Response;
     try {
       response = await this.#fetch(this.#endpoint, {
@@ -144,17 +147,22 @@ export class HTTPControl implements HostControl {
         "control operation was not confirmed",
       );
     }
-    return value as T;
+    if (!matchesShape(output, value))
+      throw new QimuError(
+        mutating ? "outcome_unknown" : "unavailable",
+        "control response does not match its contract",
+      );
+    return (output === "null" ? undefined : value) as ControlResults[M];
   }
 
   validatePlan(plan: LocalPlan): Promise<void> {
     return this.#request("validatePlan", plan);
   }
   ready(report: ReadyReport): Promise<PublicationResult> {
-    return this.#request("ready", report, true);
+    return this.#request("ready", report);
   }
   acquire(request: AcquireRequest): Promise<UseGrant> {
-    return this.#request("acquire", request, true);
+    return this.#request("acquire", request);
   }
   validateUse(grant: UseGrant): Promise<void> {
     return this.#request("validateUse", grant);
@@ -166,26 +174,59 @@ export class HTTPControl implements HostControl {
     return this.#request("snapshot", points);
   }
   closeSnapshot(snapshotId: string): Promise<void> {
-    return this.#request("closeSnapshot", snapshotId, true);
+    return this.#request("closeSnapshot", snapshotId);
   }
   publish(request: PublicationRequest): Promise<PublicationResult> {
-    return this.#request("publish", request, true);
+    return this.#request("publish", request);
   }
   publication(operationId: string): Promise<PublicationResult> {
     return this.#request("publication", operationId);
   }
   withdraw(request: Withdrawal): Promise<PublicationResult> {
-    return this.#request("withdraw", request, true);
+    return this.#request("withdraw", request);
   }
   prove(proof: CloseProof): Promise<ProofAcknowledgement> {
-    return this.#request("prove", proof, true);
+    return this.#request("prove", proof);
   }
   reconnect(request: ReconnectRequest): Promise<ReconnectResult> {
-    return this.#request("reconnect", request, true);
+    return this.#request("reconnect", request);
   }
   poll(): Promise<Poll> {
     return this.#request("poll", {});
   }
+}
+
+type WireShape = string | readonly string[] | Readonly<Record<string, string>>;
+
+function matchesShape(name: string, value: unknown): boolean {
+  if (name === "null") return value === null;
+  if (name === "string" || name === "bool")
+    return typeof value === (name === "bool" ? "boolean" : "string");
+  if (name.startsWith("[]"))
+    return (
+      Array.isArray(value) &&
+      value.every((item) => matchesShape(name.slice(2), item))
+    );
+  const shape: WireShape | undefined = Object.hasOwn(CONTROL_SHAPES, name)
+    ? CONTROL_SHAPES[name as keyof typeof CONTROL_SHAPES]
+    : undefined;
+  if (typeof shape === "string") return matchesShape(shape, value);
+  if (Array.isArray(shape)) return shape.includes(value);
+  if (
+    !shape ||
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  )
+    return false;
+  const record = value as Record<string, unknown>;
+  if (!Object.keys(record).every((key) => Object.hasOwn(shape, key)))
+    return false;
+  return Object.entries(shape).every(([key, type]) => {
+    const optional = type.endsWith("?");
+    if (!Object.hasOwn(record, key)) return optional;
+    return matchesShape(optional ? type.slice(0, -1) : type, record[key]);
+  });
 }
 
 async function readResponse(

@@ -411,7 +411,10 @@ func (b *boundedSkillResource) Read(buffer []byte) (int, error) {
 		read = int(remaining)
 		err = errors.Join(err, b.tooLarge())
 	}
-	return read, errors.Join(err, skillSourceContextError(b.ctx, "read resource"))
+	if cancelErr := skillSourceContextError(b.ctx, "read resource"); cancelErr != nil {
+		err = errors.Join(err, cancelErr)
+	}
+	return read, err
 }
 
 func (b *boundedSkillResource) tooLarge() error {

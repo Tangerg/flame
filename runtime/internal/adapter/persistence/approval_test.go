@@ -72,7 +72,7 @@ func TestApprovalRuleStoreReplacesDecisionAndAuthority(t *testing.T) {
 	ctx := t.Context()
 	store := newApprovalStore(t)
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("fixture"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: "https://remote.test/mcp"}}
-	if _, err := newMCPServerStore(store.db).Grant(ctx, testsupport.InstallationID(t), server); err != nil {
+	if _, err := newMCPServerStore(store.db).fixtureGrant(ctx, testsupport.InstallationID(t), server); err != nil {
 		t.Fatal(err)
 	}
 	rule, err := approval.NewRule(approval.GlobalScope(), testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "remote"), testsupport.Digest("first authority"), approval.Subject{Type: approval.SubjectAll}, approval.Deny)
