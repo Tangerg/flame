@@ -22,6 +22,11 @@ recorded body, including blank lines and stack indentation. Histogram sample cou
 are dimensionless; measured sums, percentiles and averages retain their unit, as do
 dimensional counter values. Raw evidence keeps every original field.
 
+Only the closed span status (`unset`, `ok`, `error`) and metric kind (`histogram`,
+`counter`) badges use localized display words. An OpenTelemetry `unset` status means
+that no status was set. Open span kinds, provider-defined log severities,
+identifiers, bodies and raw JSON keep their exact recorded values.
+
 Refresh rereads that owner. Clear delegates to its existing local clear operation
 and discards the displayed snapshot before reading again. The component does not
 clear Runtime accounting or remote telemetry. Retirement invalidates both operations

@@ -19,6 +19,9 @@ export const de: Record<string, string> = {
   "observations.empty.title":
     "Keine lokalen Beobachtungen in diesem Lesevorgang.",
   "span.meta": "{{ms}} ms · {{kind}}",
+  "span.status.unset": "Nicht gesetzt",
+  "span.status.ok": "OK",
+  "span.status.error": "Fehler",
   "fact.started": "Gestartet",
   "fact.duration": "Dauer",
   "fact.trace": "Trace",
@@ -31,6 +34,8 @@ export const de: Record<string, string> = {
   "metric.p50": "p50",
   "metric.p95": "p95",
   "metric.avg": "Durchschnitt",
+  "metric.kind.histogram": "Histogramm",
+  "metric.kind.counter": "Zähler",
   "attributes.title": "Attribute",
   "raw.title": "Rohbeobachtung",
   "raw.label": "Details der lokalen Beobachtung",

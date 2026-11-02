@@ -49,7 +49,10 @@ under **Trajectory recorded state and approval wording (2026-11-02)**, published
 wrapping. Finding records by visible state and approval text is qualified under
 **Trajectory readable-state page filters (2026-11-02)**, published as `8d9e4b575`.
 Skills catalog result scopes are qualified under **Skills catalog result summaries
-(2026-11-02)**, including three catalogs, retained reads and native reading/return.
+(2026-11-02)**, published as `f2cb06fd6`, including three catalogs, retained reads
+and native reading/return. Diagnostics classifications are qualified under
+**Diagnostics recorded classifications (2026-11-02)**, preserving original evidence
+through native narrow/200% reading and file return.
 The latest goal restores
 preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
@@ -12039,6 +12042,154 @@ This documentation receipt changes no accepted product source. Primary user data
 parallel work, dependencies, global compiler caches and reference resources remain
 preserved. Continue with a fresh observed reading/Dock task; no pause or overall
 goal completion is implied.
+
+### Diagnostics recorded classifications (2026-11-02)
+
+This resumed batch starts from published main `f2cb06fd6`. Fresh packaged-component
+Wails observations show `error`, `ok`, `unset`, `histogram` and `counter` in the
+otherwise Chinese diagnostic summaries. `packages/component-sdk/src/telemetry.ts`
+declares those span statuses and metric kinds as closed vocabularies. The display
+owner already receives the component locale; its two summary badges were rendering
+the recorded values directly. This is a MEDIUM writing/comprehension gap in the
+read → classify → expand original evidence → related file → return task.
+
+The existing badge expressions at
+`plugins/diagnostics/component/component.tsx:55` and `:83` now use localized
+display labels. Eight catalogs add five entries each. English reads Not set, OK,
+Error, Histogram and Counter; Chinese reads 未设置、正常、错误、直方图、计数器.
+OpenTelemetry's [Set Status specification](https://opentelemetry.io/docs/specs/otel/trace/api/#set-status)
+defines Unset as the default status and distinguishes it from an explicit Ok or
+Error. The label preserves that distinction; it does not infer another outcome.
+The original error tone remains keyed to the recorded status.
+
+Span kinds and log severities are open strings in the public contract and retain
+their exact values, including provider-defined text. Record names, bodies,
+attributes, times, values/units and complete raw JSON also retain their original
+values. Disclosure keys, signal selection, read/clear/lifetime ownership, shared
+UI, styles, theme tokens, SDK and Runtime are unchanged. No state, helper, handler,
+effect, timer, dependency or persisted-data migration is introduced. The README
+records this display boundary; normal generation updates only Diagnostics ESM.
+An existing installation still needs its rebuilt resource selected by its owner.
+
+Fresh read-only HeroUI `apps/docs/src/demos/{en,cn}/table/custom-cells.tsx:180`
+renders status words in its actual Chip cells, with separate language examples.
+This supports readable classifications without copying its fixtures, components
+or styles. The actual enum meanings come from Flame's SDK and the OpenTelemetry
+specification. Earlier ZCode, ChatGPT, Arc, Radix and Ace studies retain their
+recorded purpose and limits. Better-writing owns the vocabulary, while the other
+five better-interface domains cover the rendered task below; React guidance keeps
+the labels derived in the existing render path.
+
+| Severity | Domain  | Location                                                | Before                           | After                                | Why                                            |
+| -------- | ------- | ------------------------------------------------------- | -------------------------------- | ------------------------------------ | ---------------------------------------------- |
+| MEDIUM   | Writing | `plugins/diagnostics/component/component.tsx:55`, `:83` | Closed codes appear in summaries | Localized badges retain raw evidence | Read classifications in the component language |
+
+#### Verification
+
+The bounded edit-only Claude Code CLI succeeds in **129.021 s**, reporting 43
+turns, and changes only its eleven allowed handwritten files. It runs no commands,
+tests, builds, Git, browser or subagent. Root reviews every diff and all forty
+locale entries, removes test dependence on the Disclosure's internal section tag,
+and uses semantic regions with ordinary collapse between records. Production
+component changes remain exactly two expressions, with a four-line diff.
+
+- Baseline: **4 files / 20 tests** pass for Diagnostics, installed workspace and
+  subagent continuity, and the detached/lifetime-bound telemetry owner.
+- Related coverage: **7 files / 136 tests** pass, adding installed renderer,
+  inspection and workspace integration. The two new bilingual cases inspect all
+  three span statuses and both metric kinds, visible badges and accessible row
+  names, complete original JSON, an arbitrary span kind and provider log severity,
+  literal multiline body and an unchanged input snapshot. Existing nine
+  presentation tests retain counts, units and read/clear failure coverage.
+- The first Web typecheck rejects a root-added `getByRole` `exact` option. That
+  unsupported test option is removed; string-name matching already uses exact
+  semantics. Final focused **11/11** tests, typecheck and lint pass afterward.
+- Negative control: restoring only the original component makes **2 tests fail
+  and 9 pass** in the complete 11-test file, without skips. The candidate is
+  restored byte-for-byte and the complete file passes **11/11** again.
+- Plugin typecheck/lint/i18n, exact plugin resources, `make check-native`
+  (**28.389 s**) and Web typecheck/lint/design-system/tokens/chrome/locales/HMR/
+  layers/bundle/plugin-module checks all pass: **15 checks**, plus normal plugin
+  generation, run serially. I18n validates **20 catalogs across 8 locales**.
+  Production bundle budgets pass. Existing nonfatal native SDK/link-target and
+  duplicate Objective-C warnings, and the private fixture chunk warning, remain.
+
+The inspected browser consumers match record identities or raw evidence and need
+no migration. No browser suite or benchmark is started. Full Web, unrelated
+Runtime/CLI/SDK and unchanged shared-UI suites are not rerun. No assertion or gate
+is weakened.
+
+#### Actual native reading and return
+
+The current Wails v3.0.0 host loads the normal generated Diagnostics ESM in the
+existing installed-component path. A private entry wrapper supplies ordinary
+deterministic records through the public `ClientTelemetry` collaborator: three
+recorded statuses, two metric kinds and a provider-defined log severity. The
+component's production read/clear implementation is unchanged. This qualifies UI
+presentation and local return, while the real buffer owner is covered by its
+separate unit tests. The private host has its own home, identity and local endpoint;
+it opens at the existing **1120 px** minimum width. No diagnostic observer,
+focus/scroll driver or production-handler replacement is added. **12 source/resource hashes**
+and **345 host/config/fixture/bundle/asset hashes** match before and after final
+native acceptance.
+
+- EN/light/14 px/Flame Orange/full motion: all five display labels are present.
+  Ordinary Tab reaches the Dock resizer and Home establishes a real **320 px**
+  width; record identity, badge and category controls remain complete. The unset
+  record's raw JSON still contains `"status": "unset"`. Native window Zoom
+  visibly changes the frame while preserving the expanded record and raw reader.
+  Right selects Metrics; Tab/Enter opens the histogram and original JSON. Its
+  sample count remains 12, with sum 840 ms, p50 50 ms, p95 100 ms and average 70 ms.
+  Keyboard word-wrap, wheel reading, Files and Diagnostics return retain the
+  selected metric, expanded raw evidence and wrap choice. Refresh retains these
+  and focuses Refresh. Logs retains PROVIDER_NOTICE and its multiline body. Cmd+L
+  continues the unsent draft exactly as
+  `Review diagnostics without losing this draft. Continue after the observations.`.
+- ZH/dark/18 px/custom blue/full motion: twenty native Zoom In actions establish
+  **200%** at the initial minimum window. The existing full-width entry exposes
+  all three translated statuses; wheel and ordinary Tab/Enter reach the original
+  unset JSON. Right selects 指标; 直方图 and 计数器 are readable and histogram
+  numbers/units remain unchanged. Raw evidence retains `"kind": "histogram"`.
+  Word-wrap and scrolling retain a visible keyboard focus ring. Nested picker
+  Escape returns to its trigger; Files and the explicit Diagnostics return retain
+  the selected metric, expanded raw reader and wrap choice. Refresh keeps its
+  own focus. Logs retains PROVIDER_NOTICE and the complete multiline body.
+  Full-width Close and Cmd+L continue `诊断阅读前的草稿。继续原任务。` without Send.
+  Actual Size is restored and the Dock retains the selected, expanded log.
+
+A menu-tiling attempt did not establish a size change and is excluded from
+acceptance. An external-input interruption during the English window restore is
+handled by reading the latest AX state before continuing; no exact restored-frame
+or CSS-overflow measurement is claimed. Pointer AX activation of the resizer did
+not focus it; the successful 320 px task uses its ordinary keyboard path. These
+probe limits are not product defects. No Clear, actual buffer deletion, Runtime,
+provider request, Send, export or installed-package upgrade is invoked. All four
+probe/original/final launches exit via Cmd+Q with terminal exit zero.
+
+| Domain        | Evidence inspected                                                              | Scoped result                                                 |
+| ------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Accessibility | Named disclosure rows, Tab/Enter, radio arrows, picker Escape and visible focus | Reading and return pass; VoiceOver/physical OS IME unverified |
+| Layout        | Actual 320 px Dock, native window Zoom and ZH minimum-window/200% full width    | Labels and actions remain reachable                           |
+| Writing       | Five closed values, eight catalogs, open strings and complete original JSON     | Readable classifications preserve the recorded meanings       |
+| Typography    | EN 14 px, ZH 18 px/200%, wrapped rows and code                                  | Existing scale and complete identities retained               |
+| Colors        | Orange/light, custom-blue/dark and original error/neutral tones                 | Existing semantic treatment retained; contrast not remeasured |
+| UI polish     | Disclosure, refresh, wrapping, wheel, file return and continued drafting        | Existing interactions remain continuous                       |
+
+Goal CHECK review retains typography, whitespace, visual hierarchy, color, motion,
+micro interaction, responsive reading and Flame's original visual identity within
+this inspected task. No animation or new surface is added. Reduced-motion timing,
+all eight languages natively, RTL, other-platform GUI and fresh numeric contrast
+are not qualified. **Approve for the inspected diagnostic classifications and
+reading-return task**; whole-product and award-level acceptance remain open.
+
+Cleanup is complete: the exact app is unregistered, native process count is zero,
+and all nine checkout output roots and six unique-identity Library paths return
+to their fresh absence baselines. Private application, home, fixture, overlays,
+assets, logs and on-disk receipts are removed. Only the accepted private toolchain
+`bin` and `npm-cache/_npx` remain for continued batches. Root dependencies, user
+data, shared caches, read-only references and unrelated processes are preserved.
+Publication uses a fresh-fetch guard, main fast-forward and direct remote equality
+check. Continue from fresh complete-task evidence.
 
 ## Trajectory page scope and reading continuity
 

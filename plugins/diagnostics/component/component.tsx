@@ -52,7 +52,7 @@ function title(row: Observation, t: Translate, clock: Intl.DateTimeFormat) {
         description={t("span.meta", { ms: row.durationMillis, kind: row.kind })}
         status={
           <Badge tone={row.status === "error" ? "negative" : "neutral"}>
-            {row.status}
+            {t(`span.status.${row.status}`)}
           </Badge>
         }
       />
@@ -80,7 +80,7 @@ function title(row: Observation, t: Translate, clock: Intl.DateTimeFormat) {
       icon={Gauge}
       title={row.name}
       description={row.description || undefined}
-      status={<Badge>{row.kind}</Badge>}
+      status={<Badge>{t(`metric.kind.${row.kind}`)}</Badge>}
     />
   );
 }

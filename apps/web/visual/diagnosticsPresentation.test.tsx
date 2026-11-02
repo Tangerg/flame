@@ -9,7 +9,14 @@ prepareTestClient(() => {
 });
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import type { ComponentContext, TelemetrySnapshot, ClientTelemetry } from "@flame/component-sdk";
+import type {
+  ComponentContext,
+  TelemetrySnapshot,
+  ClientTelemetry,
+  SpanRow,
+  MetricRow,
+  LogRow,
+} from "@flame/component-sdk";
 import { Diagnostics } from "../../../plugins/diagnostics/component/component";
 
 afterEach(cleanup);
@@ -265,6 +272,94 @@ it("formats category counts for the active locale", () => {
   openDiagnostics({ read: () => snapshot, clear() {} }, "de");
   expect(screen.getByRole("radio", { name: /1\.000/ })).toBeTruthy();
 });
+
+const vocabulary: TelemetrySnapshot = {
+  spans: (["unset", "ok", "error"] as const).map((status, index) => ({
+    id: status,
+    traceId: "trace",
+    name: `workspace.step.${index}`,
+    kind: "provider.batch",
+    startMs: 1785484800000,
+    durationMillis: 3,
+    status,
+    attrs: {},
+  })),
+  metrics: recorded.metrics,
+  logs: [
+    {
+      id: "notice",
+      timeMs: 1785484802000,
+      severity: "PROVIDER_NOTICE",
+      body: "\n  Provider notice: cache warmed.\n\n    detail: 3 entries\n",
+      attrs: {},
+    },
+  ],
+};
+
+it.each([
+  {
+    locale: "en",
+    region: "Local observations",
+    raw: "Raw observation",
+    details: "Local observation details",
+    metrics: "Metrics",
+    logs: "Logs",
+    badges: {
+      unset: "Not set",
+      ok: "OK",
+      error: "Error",
+      histogram: "Histogram",
+      counter: "Counter",
+    },
+  },
+  {
+    locale: "zh",
+    region: "本地观测记录",
+    raw: "原始观测记录",
+    details: "本地观测记录详情",
+    metrics: "指标",
+    logs: "日志",
+    badges: { unset: "未设置", ok: "正常", error: "错误", histogram: "直方图", counter: "计数器" },
+  },
+])(
+  "names closed span status and metric kind in $locale while preserving original evidence",
+  ({ locale, region, raw, details, metrics, logs, badges }) => {
+    const snapshot = structuredClone(vocabulary);
+    openDiagnostics({ read: () => snapshot, clear() {} }, locale);
+    function expectRecord(row: SpanRow | MetricRow | LogRow, title: string, badge: string) {
+      const records = within(screen.getByRole("region", { name: region }));
+      const button = records.getByRole("button", {
+        name: (name) => name.includes(title) && name.includes(badge),
+      });
+      expect(within(button).getByText(badge, { exact: true })).toBeTruthy();
+      fireEvent.click(button);
+      fireEvent.click(records.getByRole("button", { name: raw }));
+      expect(records.getByRole("region", { name: details }).textContent).toContain(
+        JSON.stringify(row, null, 2),
+      );
+      return button;
+    }
+
+    for (const span of vocabulary.spans) {
+      const button = expectRecord(span, span.name, badges[span.status]);
+      expect(button.textContent).toContain("provider.batch");
+      fireEvent.click(button);
+    }
+    fireEvent.click(signal(metrics));
+    for (const metric of vocabulary.metrics) {
+      fireEvent.click(expectRecord(metric, metric.name, badges[metric.kind]));
+    }
+    fireEvent.click(signal(logs));
+    const log = vocabulary.logs[0]!;
+    expectRecord(log, "Provider notice: cache warmed.", "PROVIDER_NOTICE");
+    expect(
+      within(screen.getByRole("region", { name: region })).getByText(
+        (_, node) => node?.tagName === "P" && node.textContent === log.body,
+      ),
+    ).toBeTruthy();
+    expect(snapshot).toEqual(vocabulary);
+  },
+);
 
 it("preserves the complete multiline log and its original raw evidence", () => {
   openDiagnostics();
