@@ -215,6 +215,10 @@ changes; hiding or unmounting the transcript removes it. Shared code frames use
 that inherited budget while native source scrolling, selection and later focus
 keep their existing owners.
 
+Transcript turns render normally so history stays readable across native page
+zoom and material return. Message turns do not use off-screen paint skipping such
+as `content-visibility: auto`.
+
 The work index treats a first pending project read as loading even when its
 network request is paused. The sidebar and project menu use that one navigation
 projection. A known empty snapshot can show the empty state; accepted content

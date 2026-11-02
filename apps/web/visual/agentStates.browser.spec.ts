@@ -783,23 +783,6 @@ test("long content remains inside the reading column without horizontal overflow
   await expect(page.locator('[data-slot="composer-root"]')).toBeVisible();
 });
 
-test("historical turns skip off-screen rendering and the tail turn never does", async ({
-  page,
-}) => {
-  await page.goto("/visual/?fixture=agent&theme=light&state=narrative");
-  await page.locator("html[data-visual-ready]").waitFor();
-
-  const turns = page.locator("[data-turn-id]");
-  const count = await turns.count();
-  expect(count).toBeGreaterThan(1);
-
-  const visibility = await turns.evaluateAll((nodes) =>
-    nodes.map((node) => getComputedStyle(node).contentVisibility),
-  );
-  expect(visibility.slice(0, -1)).toEqual(Array(count - 1).fill("auto"));
-  expect(visibility.at(-1)).toBe("visible");
-});
-
 async function layOutTranscript(page: Page): Promise<void> {
   await page.evaluate(async () => {
     const scroller = document.querySelector(".msg-scroll-viewport");

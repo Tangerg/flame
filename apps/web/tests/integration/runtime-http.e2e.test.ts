@@ -3120,7 +3120,7 @@ for await (const line of lines) {
       tool: { name: "set_plan" },
       error: {
         type: "tool_failed",
-        detail: expect.stringContaining("at most one step may be in_progress"),
+        detail: expect.stringContaining("at most one step may be in progress"),
       },
     });
     expect(
@@ -4259,7 +4259,7 @@ for await (const line of lines) {
         origin: "requested",
         sourceSession: projectSession.id,
         description: "Preserve the project-side HTTP E2E workflow.",
-        instructions: "\nRun the project-side HTTP E2E workflow and report its result.\n",
+        instructions: "Run the project-side HTTP E2E workflow and report its result.",
         revision: expect.stringMatching(/^[a-f0-9]+$/),
       }),
     ]);

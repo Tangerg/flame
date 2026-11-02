@@ -26748,6 +26748,201 @@ the reusable prior toolchain and its unchanged 123-byte interrupted-draft backup
 are preserved. The milestone handoff is paused after publication; the pointer-entry
 finding above remains an explicit follow-up for a user-requested resumption.
 
+### Readable history after native zoom and material return (2026-11-03)
+
+The user resumes continuous work after the preceding milestone. A fresh fetch and
+`git merge --ff-only origin/main` report main already current at `cf5720630`.
+This batch continues the reading task: draft -> inspect captured tool source ->
+open its current file -> return -> resize and restore page zoom -> continue the
+same draft. AGENTS, PROJECT_RULES, DEVELOPMENT and the Web/Desktop and visual
+READMEs provide the local contracts. The stack remains shared React, Base UI,
+StyleX and semantic tokens in Wails v3.0.0; no second component system is added.
+
+A minimal native control first isolates the earlier pointer-entry reverse-Tab
+finding. Plain text, nested selectable text and a native textarea have native
+focus targets and ordinary before/after buttons. Four passive key/focus/pointer
+observers update only an event-log text node. They do not change focus,
+selection, navigation, defaults or propagation. From a pointer entry, repeated
+trusted, uncancelled Shift+Tab stays in nested text; forward Tab leaves it, and
+keyboard return then permits reverse departure. Plain text and the textarea can
+leave. The minimal launch exits normally with terminal exit zero.
+
+This occurs without Flame's React, shortcut or reading handlers. Read-only
+[WebKit Document source](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/dom/Document.cpp)
+and [FocusController source](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/page/FocusController.cpp)
+are consistent with a descendant navigation starting point resolving to the
+already-focused element. Current upstream source is not mapped to the exact
+installed revision, so this remains a qualified explanation. The actual host is
+macOS 26.5 (25F71), WebKit **21624.2.5.11.4**. No product Tab workaround or global
+keyboard setting change is introduced; this platform boundary remains open.
+
+The actual observer-free workspace then exposes a separate, reproducible
+readability failure. Once Read is expanded and its source actions are visible,
+one pointer activation of Open the current file opens `runtime/internal/session/store.go`.
+Escape alone restores the original opener. After twenty native Zoom In actions
+reach 200%, keyboard entry opens that file full width. Native window Zoom and
+restore, Escape, Cmd+L draft continuation and twenty Zoom Out actions leave the
+historical transcript blank across two settled AX/screenshot observations.
+Historical headings/actions remain but lose their text. The draft and selected
+file persist. One manual wheel over Conversation restores the history, without
+changing the draft or its focus. The original launch exits normally with
+terminal exit zero.
+
+| Severity       | Domain               | Location                                                | Before                                                                                                                                                    | After                                                                                              | Why                                                                                       |
+| -------------- | -------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| HIGH, repaired | Layout/accessibility | `src/features/chat/message/ui/MessageTranscript.tsx:63` | Every non-tail turn composes `content-visibility: auto` with an intrinsic-height placeholder; history can remain blank after native zoom/material return. | All turns use the existing gutter and normal rendering; the private skip-policy module is removed. | Returning to a conversation must retain readable results without a manual repaint action. |
+
+A private single-style intervention removes only that composition. The same
+native sequence preserves historical tool text, captured source, the retained
+current file and the complete unsent draft in two settled observations before
+any wheel or Jump to bottom. All **340 private input hashes** match afterward.
+Its PID is absent after native Cmd+Q; the launch session result was lost during
+context compaction, so no terminal exit code is claimed for this diagnostic.
+This is causal diagnostic evidence, not final-source acceptance.
+
+The bounded edit-only Claude Code CLI changes MessageTranscript, the visual spec
+and the Web README in **37.557 s**, reporting **16 turns** and **zero permission
+denials**. Root inspects the complete diff and removes the superseded helper and
+its two implementation-policy tests. The browser case requiring historical CSS
+`auto` is also retired; observable reading, layout and command cases remain.
+The actual native negative/control sequence provides regression evidence;
+HappyDOM is not used to claim WebKit painting coverage. The normal fixture
+config is restored before final-source builds, removing the diagnostic policy
+transform. Its sole qualification import substitution selects the normal
+generated Tool-results ESM.
+
+MessageTurn data, tail semantics, keys, day separators, error boundaries,
+animation, reading focus, scroll, Composer and command ownership are unchanged.
+No observer, event handler, engine detection, feature flag, extra state or
+scroll-to-repaint workaround is added. The README records normal historical
+rendering. There is no data migration. Removing paint skipping lets history
+participate in ordinary rendering; no current latency or memory comparison is
+claimed. The old Chromium file-body benchmark in `visual/README.md` does not
+establish a native historical-turn benefit. No new performance benchmark or
+browser visual suite is authorized or run.
+
+The initial full Web command passes typecheck, lint, format and **420 frontend
+files / 4,374 tests**, then fails before **52 Runtime HTTP cases** can run because
+the offline managed Node 24.22.1 archive is absent. The repository's
+`tooling/node-companion.mjs` downloads and verifies that exact official artifact
+in **8.914 s**, using owned output/cache paths. Root dependencies are retained.
+The first Runtime-only rerun passes **50 / 52** in **155.25 s**, exposing two stale
+expectations from the integrated main: `plugins/plans/backend/main.go` authors
+`in progress`, while the test requires `in_progress`; the requested Skill fixture
+supplies an unpadded instruction string and `builtin/skill_proposal.go` trims its
+input, while the test adds surrounding line breaks. Two exact expected strings
+are repaired in `tests/integration/runtime-http.e2e.test.ts`. Failure category,
+Plan state, provenance, revision, real approval/publication and rejection checks
+remain. Scope's Markdown parser preserves body bytes; it is not the trimming
+owner. No production provider, Runtime or SDK behavior is changed.
+
+The next complete Runtime rerun passes those two cases but has **50 passes /
+two failures** in **137.53 s**. The compaction and HITL/Plan/Goal/Run/Tool SIGKILL
+recovery cases return `plugin_unavailable`; both passed in the preceding run.
+This is a separate process-recovery qualification limit. Their independent
+fixture run is recorded below; it cannot erase this complete-run failure.
+
+#### Final verification and native reading task
+
+The independent recovery run passes **two cases** in **52.47 s**, with the other
+50 outside its name filter. This does not qualify the complete Runtime suite as
+green, establish a recovery root cause or justify a production retry. The
+complete-run `plugin_unavailable` failures remain open. Investigate provider
+readiness and ordering if that suite fails again; retain the original failure
+and recovery assertions.
+
+All **25 Web non-test gates** pass against the final source: typecheck, lint,
+format, knip, circular, contexts, published boundaries, layers, port surface,
+API consumers, style invalidation, HMR, design system, tokens, styles, dead
+tokens, authored classes, shorthand, chrome, locales, lookup tables, bootstrap,
+plugin resources, production bundle and plugin modules. `make check-native`
+passes in **50.047 s**, including Web staging and Desktop test/vet/build plus
+its Wails macOS build. Existing macOS link-target warnings remain nonfatal.
+`git diff --check` passes. Browser visual suites and performance benchmarks are
+not run. Unrelated Go member and SDK suites are not broadened.
+
+The final private Web asset build passes in **2.844 s**. Its native host is the
+already-built, signed and strictly verified Wails v3.0.0 / Go 1.27.3 binary from
+this batch (**19.219 s** compile), with actual production navigation/closing
+hooks. The private overlay changes identity, isolated home/Runtime endpoint,
+asset hosting, entry and initial/minimum **1120 x 720** configuration. Native
+window Zoom/restore and screenshots qualify the inspected frames; configuration
+is not a measured on-screen content height. Both final launches use actual
+MessageTranscript source and the normal generated Tool-results ESM, with no
+observer, diagnostic policy transform, substituted data or handler replacement.
+All **344 frozen inputs** (four authored files, six private host/config/bundle
+inputs and **334 assets**) match afterward; the retired policy files remain
+absent. All **22 installed JavaScript resources** match the fresh main baseline.
+
+- EN/light/14 px/Flame Orange/reduced motion repeats the exact original blank
+  sequence. After Read is expanded, one pointer activation opens current
+  `store.go`; Escape restores its original tool opener. The Result pointer/Tab
+  path retains the known platform boundary. At 200%, keyboard current-file
+  entry reveals the full-width file and all eight canned lines. Native window
+  Zoom/restore and Escape alone return to the opener. Cmd+L continues
+  `Keep the pointer review draft. Continue after source review.`. Restoring
+  Actual Size leaves historical tools and the six-line captured source visible
+  in two settled AX/screenshot observations **before any wheel or Jump to
+  bottom**. Composer focus, the draft and selected current file persist.
+- ZH/dark/18 px/custom blue/full motion reads the historical first answer in
+  `reference-notes`, including long paragraphs, lists and Chinese text. At
+  200%, the narrow-layout material entry opens the retained DockResizer.tsx.
+  Native Cmd+A selects the source body, excluding its path; one reader wheel
+  reaches line eight. Window Zoom/restore preserves that selection. Escape
+  alone returns to Conversation at the historical list. Cmd+L returns the
+  original input, and committed native value entry continues
+  `缩放返回前的阅读草稿。继续原来的阅读。`. Actual Size restores the Dock while
+  historical list, CJK paragraph, link and notes stay readable in two settled
+  observations, without transcript-wheel or Jump recovery.
+
+Both final launches exit normally with terminal exit zero, and their exact
+processes and isolated Runtime listener are absent. The deterministic fixture
+qualifies shared UI identity, reading, selection, navigation, focus and draft
+continuity. Its file provider serves canned eight-line content independently of
+path; it does not prove live filesystem or production Runtime/provider behavior.
+Chinese value-setting plus native committed input is not physical IME coverage.
+No Send, Copy, Run or external-link action is activated.
+
+#### Cross-discipline review and continuing handoff
+
+| Domain        | Evidence inspected                                                                                    | Result                                                                                 |
+| ------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Accessibility | MessageTranscript, native AX text, real file entry, Escape, reader selection and Composer return      | Blank-history finding repaired; independent pointer-entry reverse-Tab boundary remains |
+| Layout        | Source/captured results, long historical answer, 200%, native window Zoom/restore and material return | Inspected content stays readable without a repaint action                              |
+| Writing       | Existing action/object names, EN/ZH chrome and the normal-rendering README contract                   | No extra product label or explanation is added                                         |
+| Typography    | EN 14 px, ZH 18 px, paragraphs/list/CJK, full path and source through line eight                      | Existing scale, wrapping and reading hierarchy retained                                |
+| Colors        | Light Orange and dark custom blue, selected source and visible focus                                  | Semantic treatment retained; no new numeric contrast measurement                       |
+| UI polish     | Settled material transitions, selection, native resize and continued drafts                           | Scoped reading continuity passes; animation policy is unchanged                        |
+
+Goal CHECK review covers typography, whitespace, hierarchy, color, motion, micro
+interaction, responsive reading and the existing Flame identity within this
+flow. Full-motion timing, VoiceOver speech, physical IME, RTL, all locales,
+other-platform native UI, current performance cost and whole-product/award-level
+acceptance remain unqualified. **Approve for the inspected history-rendering and
+material-return task.** This is not a green complete Runtime integration verdict.
+
+The resumed goal remains active. Keep the native pointer-entry boundary and
+complete-suite recovery failure visible in the handoff. Continue from observed
+product tasks and the existing reference research; accepted reasoning text,
+Composer, tables, code, selection, radii and theme/custom-accent work stay retained.
+Next, qualify a real non-tail wide-content reading path through Dock reflow.
+The current `long-content` fixture has its long answer at the tail and cannot
+prove that historical-content path. Preserve accepted table/code behavior and
+choose a repair only after an actual failure is observed.
+
+Cleanup restores all **nine** fresh checkout output roots and **six** unique-UID
+Library paths to their recorded absence baselines. Two created Library
+directories are removed; four paths stay absent. The exact private bundle is
+unregistered; its processes and isolated Runtime listener are absent. The failed
+preparation's temporary Runtime directory and the recorded complete-rerun
+fixture directory are also absent. All 22 installed resources, root dependencies,
+shared caches, read-only references and the reusable prior toolchain/cache remain
+intact. The prior interrupted-draft backup retains its **123 bytes** and original
+SHA-256. The remaining private qualification root contains only owned app/home,
+assets, overlays, references, CLI material, logs, prepared Node and npm cache.
+It is removed after guarded main fast-forward, push and direct remote equality
+verification. Keep this worktree for the active, continuing goal.
+
 ## Workspace file browser audit
 
 The earlier file-browser audit established path-based tree/list keys, read

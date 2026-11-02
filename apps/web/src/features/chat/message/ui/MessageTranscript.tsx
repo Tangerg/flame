@@ -10,7 +10,6 @@ import { space } from "@flame/ui/tokens.stylex";
 import { type BlockCtx } from "@/features/chat/message/ui/blockContext";
 import { MessageTurn } from "@/features/chat/message/ui/MessageTurn";
 import { readingColumn as rc } from "@/features/chat/message/ui/readingColumn";
-import { transcriptTurnContentVisibility } from "@/features/chat/message/ui/transcriptTurnContentVisibility";
 import { TurnErrorBoundary } from "@/features/chat/message/ui/TurnErrorBoundary";
 
 const styles = stylex.create({ dayPad: { paddingBlock: space.s1 } });
@@ -61,10 +60,7 @@ const TranscriptTurn = memo(function TranscriptTurn({
   return (
     <>
       {opensDay && <DaySeparator createdAt={props.row.message.createdAt} />}
-      <MessageTurn
-        {...props}
-        className={stylex.props(rc.gutter, transcriptTurnContentVisibility(props.isLast)).className}
-      />
+      <MessageTurn {...props} className={stylex.props(rc.gutter).className} />
     </>
   );
 });
