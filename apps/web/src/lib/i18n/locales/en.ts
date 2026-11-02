@@ -553,7 +553,7 @@ export const en: Record<string, string> = {
   "agent.steps_one": "{{count}} step",
   "agent.steps_other": "{{count}} steps",
   "agent.runTree.action.cancel": "Cancel this run",
-  "agent.runTree.material.empty": "No narrative material yet",
+  "agent.runTree.material.empty": "No messages",
   "notifications.title": "Notifications",
   "notifications.clearAll": "Clear all",
   "notifications.dismiss": "Dismiss",

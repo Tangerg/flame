@@ -453,7 +453,7 @@ describe("delegated Run rendering", () => {
 
     renderRootTool(parentTool.id, facts);
     expect(screen.getAllByRole("button", { name: /Sub-agent.*Finished/ })).toHaveLength(1);
-    expect(screen.queryByText("No narrative material yet")).toBeNull();
+    expect(screen.queryByText("No messages")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: /Sub-agent.*Finished/ }));
     expect(testClient.navigation.get()).toMatchObject({ dock: "subagents", subagent: "child-run" });

@@ -27242,6 +27242,141 @@ After guarded main fast-forward, push and direct remote equality verification,
 the owned app/home/assets/diagnostic archives/overlays/CLI material/logs/npm-cache
 root is removed. Keep the worktree and goal active for continued polish.
 
+### Selected subagent results and empty readers (2026-11-03)
+
+A fresh fetch and `git merge --ff-only origin/main` find main current at
+`b830f7a27`. This batch follows the existing `delegated` snapshot through
+root reply -> selected child -> source file -> child -> nested child -> parent
+-> original conversation -> continued draft. The canonical fixture data stays
+unchanged. Native inspection first confirms that the existing file and nested
+return paths work; those owners do not need another repair.
+
+The actual failure is in the selected reader's state expression. A failed child
+shows its captured error and then `No narrative material yet`; Chinese shows
+`暂无叙事内容`. This adds an internal term and a future-facing empty hint beneath
+a terminal result. Canceled reasons and unconfirmed effects have the same
+independent placeholder branch. Source tracing also finds that an empty effects
+array can send numeric zero through the existing JSX short circuit.
+
+`SubagentsPanel.tsx:391` now derives one Boolean from the run details it already
+renders: current activity, captured error/cancellation/loss explanation or
+unconfirmed effects. That same value controls the evidence branch and the
+otherwise-empty reader. Captured messages still render normally. A reader with
+neither messages nor run details says `No messages`; the existing catalog key
+is retained in English and all seven optional locale packages. Each authored
+JSON catalog changes only that one value. Package metadata, generated ESM,
+Runtime outcomes and message projection are unchanged.
+
+| Severity         | Domain       | Location                                                                                                       | Before                                                                           | After                                                                        | Why                                                                                                  |
+| ---------------- | ------------ | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| MEDIUM, repaired | Writing / UI | `SubagentsPanel.tsx:391`, `en.ts:556`, seven `locale-*/package/io.github.tangerg.flame/messages.json` catalogs | A known result is followed by an empty/future hint; empty effects can print `0`. | One Boolean renders available run details or the plain no-messages fallback. | Let the result explain the task state, without an unrelated waiting implication or renderer residue. |
+
+The change adds no state, effect, observer, wrapper, style, focus transfer,
+retry or new business branch. Existing errors and reasons remain literal.
+Unconfirmed operation identities, disclosures and output remain with
+`UnresolvedRunEffects`. Selection, cancellation admission, captured navigation,
+reading geometry, installed-component lifetimes and Composer keep their owners.
+
+Read-only ZCode `v4/ConversationAgentToolCallRow.tsx` carries root/parent/child
+identity and the visible task title into its side-pane action. The actual ChatGPT
+`open-local-conversation-subagents-panel-142bf1886339.js` opener carries selected
+conversation identity into a durable UI route and checks it after hydration.
+These are UI navigation references, not exporters or evidence of installed
+WebKit behavior. Flame's existing navigation passes the native task walk.
+The empty-state correction comes from Flame's observed result and
+better-writing/interface guidance to use the user's vocabulary and remove
+unnecessary support text. Earlier HeroUI, Arc, Radix and Ace research retains
+its recorded scope; reference repositories stay read-only.
+
+One bounded edit-only Claude Code CLI run takes **93.717 s / 40 turns** with
+zero permission denials. Root reviews all twelve allowed-file diffs and verifies
+that every optional dictionary preserves its keys and all other values.
+The sole progress record is updated here by root after actual validation.
+
+#### Verification and native acceptance
+
+- The four-file baseline passes **141 tests**. The candidate passes the same
+  files with **143 tests**, including installed-result continuity and Workspace
+  inspection. New cases retain a failed child's exact error and identity, and
+  retain the genuine empty fallback without a stray zero. Existing cancellation
+  and unconfirmed-effect assertions are preserved and extended.
+- Restoring only the original SubagentsPanel against the candidate catalogs
+  makes all four selected regressions fail as expected. The completed empty
+  reader exposes `0No messages`. Candidate bytes are restored exactly before
+  the final asset build; no assertion or check is weakened.
+- The full frontend project passes **421 files / 4,381 tests** in **144.12 s**
+  (144.961 s wrapper). All **25 Web non-test gates** pass, including locale
+  completeness, boundaries, types, styles, installed resources and the production
+  bundle. Plugin `check:i18n` also passes. `make check-native` passes in
+  **22.822 s**, including Web staging and Desktop test/vet/build/Wails compilation.
+  Existing macOS linker-target warnings remain nonfatal.
+- Builds and consuming tests run in separate phases. `git diff --check` passes.
+  No browser visual suite or performance benchmark runs. The unrelated Runtime
+  integration preparation/recovery limits remain with their preceding evidence;
+  that suite is not rerun or claimed green here.
+
+The private host compiles actual Wails v3.0.0 / Go 1.27.3 with production native
+navigation, closing and zoom hooks. Its unique identity, isolated home/unavailable
+loopback Runtime endpoint, asset root, entry and 1120 x 720 initial/minimum
+configuration are the host differences. Staging passes in 8.070 s; the private
+compile/sign/strict verification pass (3.641 s compile), and final assets build
+in 2.739 s. Fixture hosting selects normal generated Tool-results ESM. There is
+no observer, data override, policy transform or handler substitution.
+
+- EN/light/14 px/Flame Orange/full motion preserves the exact failed/canceled
+  result and removes the empty hint. Opening another task preserves its own
+  title and status. Normal Tab enters the source link; Enter opens the captured
+  file and Escape restores that link. Entering the nested child and two separate
+  Escape returns restore the parent trigger and original conversation opener.
+  Cmd+L continues the same two-line draft with committed native input.
+- ZH/dark/18 px/custom blue/reduced motion repeats failure/cancellation reading
+  at native 200%, including a long wrapped task identity. All subagents returns
+  focus to the selected list entry; returning to the conversation restores its
+  captured source. Keyboard re-entry reaches the parent, its file link and the
+  nested task. Native window Zoom/restore in the nested task, then parent and
+  conversation Escape returns, preserve the captured focus boundaries.
+  Actual Size and Cmd+L continue the original two-line Chinese draft.
+
+Both final launches and both original baselines exit normally; all four owned
+native processes are absent. All **355 frozen inputs** match after acceptance,
+and all **22 installed JavaScript resources** retain their baseline hashes.
+Authored locale JSON changes are intentional and separately reviewed. The file
+body is canned eight-line fixture content independent of path; the task qualifies
+UI identity/reading/navigation, not live filesystem, provider or Runtime execution.
+No Send, Steer, Stop, cancellation, approval, Copy, regenerate or external-link
+action is activated.
+
+#### Scoped review and continuing handoff
+
+| Domain        | Evidence inspected                                                                              | Result                                                        |
+| ------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Accessibility | Native AX names, Tab/Enter, layered Escape, selected entry/source return and draft continuation | Clear within inspected tasks; VoiceOver audio is not verified |
+| Layout        | Dock and narrow full-width reading, long task identities, native 200% and window Zoom/restore   | Clear within supported native configurations inspected        |
+| Writing       | Actual failed/canceled result, no-messages rule, all eight catalog values                       | One medium finding repaired                                   |
+| Typography    | EN 14 px, ZH 18 px, wrapped identities and retained reading text                                | Existing type system retained                                 |
+| Colors        | Existing semantic tokens and light/Orange, dark/custom-blue states                              | Rendered contrast not newly reviewed                          |
+| UI            | Existing controls, result hierarchy, full/reduced-motion functional paths                       | No new surface or motion; animation timing not verified       |
+
+Approve for the inspected result/return paths; rendered-contrast measurement is
+not reviewed. The true no-messages/empty-effects case and unconfirmed-effect
+expansion are covered by component contracts, without new native paint
+qualification for those particular states. Physical IME, VoiceOver, RTL,
+320 CSS-pixel layout, other-platform native UI and whole-product/award-tier
+acceptance remain unverified. Chinese value setting plus native commitment is
+not physical IME coverage. Preserve the earlier native pointer-entry reverse-Tab
+and Runtime recovery limits. No data migration is required.
+
+Continue from observed tasks in other retained details and material readers,
+without reopening accepted reasoning, Composer, code/table, selection, radii or
+theme work. Publication cleanup restores the nine baseline-absent checkout
+outputs and six unique-UID Library paths, unregisters this exact private app,
+and verifies the owned processes and isolated listener are absent. Root
+dependencies, shared caches, references, user data and the reusable earlier
+toolchain/cache remain. The interrupted-draft backup retains 123 bytes and its
+original SHA-256. After guarded main fast-forward, push and direct remote
+equality, the owned private app/home/assets/baseline archive/overlays/CLI
+material/logs/npm-cache root is removed. Keep the worktree and goal active.
+
 ## Workspace file browser audit
 
 The earlier file-browser audit established path-based tree/list keys, read

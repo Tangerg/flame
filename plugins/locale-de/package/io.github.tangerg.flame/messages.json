@@ -499,7 +499,7 @@
   "agent.steps_one": "{{count}} Schritt",
   "agent.steps_other": "{{count}} Schritte",
   "agent.runTree.action.cancel": "Diesen Lauf abbrechen",
-  "agent.runTree.material.empty": "Noch kein Erzählmaterial",
+  "agent.runTree.material.empty": "Keine Nachrichten",
   "notifications.title": "Benachrichtigungen",
   "notifications.clearAll": "Alle löschen",
   "notifications.dismiss": "Ausblenden",

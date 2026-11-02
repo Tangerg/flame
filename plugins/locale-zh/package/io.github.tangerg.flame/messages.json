@@ -522,7 +522,7 @@
   "agent.runOutcome.canceled": "已取消",
   "agent.steps_other": "{{count}} 步",
   "agent.runTree.action.cancel": "取消此次运行",
-  "agent.runTree.material.empty": "暂无叙事内容",
+  "agent.runTree.material.empty": "没有消息",
   "notifications.title": "通知",
   "notifications.clearAll": "全部清除",
   "notifications.dismiss": "忽略",

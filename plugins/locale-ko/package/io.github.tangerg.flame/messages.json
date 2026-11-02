@@ -488,7 +488,7 @@
   "agent.runOutcome.canceled": "취소됨",
   "agent.steps_other": "{{count}}단계",
   "agent.runTree.action.cancel": "이 실행 취소",
-  "agent.runTree.material.empty": "아직 내러티브 내용이 없습니다",
+  "agent.runTree.material.empty": "메시지가 없습니다",
   "notifications.title": "알림",
   "notifications.clearAll": "모두 지우기",
   "notifications.dismiss": "닫기",

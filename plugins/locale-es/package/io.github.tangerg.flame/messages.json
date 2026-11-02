@@ -510,7 +510,7 @@
   "agent.steps_many": "{{count}} pasos",
   "agent.steps_other": "{{count}} pasos",
   "agent.runTree.action.cancel": "Cancelar esta ejecución",
-  "agent.runTree.material.empty": "Aún no hay contenido narrativo",
+  "agent.runTree.material.empty": "Sin mensajes",
   "notifications.title": "Notificaciones",
   "notifications.clearAll": "Borrar todo",
   "notifications.dismiss": "Descartar",

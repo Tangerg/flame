@@ -536,6 +536,11 @@ Later outside focus, hidden views and Session or selection changes remain with
 their existing owners. Unavailable cancellation actions stay focusable and refuse
 activation through the shared disabled-control contract.
 
+A selected subagent reader shows its run details first: current activity, the
+captured error or cancellation reason, and unconfirmed effects. The "No messages"
+placeholder appears only when the reader would otherwise be empty, with neither
+captured messages nor such run details.
+
 Conversation Find follows rendered message changes while its query is open.
 Refreshes retain the selected occurrence in its message, rebuild current highlight
 ranges and preserve focus and reading position. Only query changes and explicit

@@ -388,6 +388,7 @@ function SubagentTranscript({
   useReadingFocusVisibility({ scrollRef, contentRef, state, stopScroll }, measured);
   const { narrative, facts } = entry;
   const rows = useMemo(() => delegatedTranscriptRows(narrative, facts), [narrative, facts]);
+  const hasRunDetails = Boolean(summary.detail || narrative.run.outcome?.unresolvedEffects?.length);
   return (
     <div data-slot="subagent-transcript" hidden={hidden} {...stylex.props(styles.reader)}>
       <ScrollArea
@@ -407,7 +408,7 @@ function SubagentTranscript({
           onClick={(event) => prepareDisclosureReading(event, { scrollRef, state, stopScroll })}
           {...stylex.props(rc.box, styles.transcript)}
         >
-          {(summary.detail || narrative.run.outcome?.unresolvedEffects?.length) && (
+          {hasRunDetails && (
             <div {...stylex.props(rc.gutter, styles.evidence)}>
               {summary.detail && (
                 <div {...stylex.props(typeStep.uiSm, toneInk[summary.ink])}>
@@ -417,7 +418,7 @@ function SubagentTranscript({
               <UnresolvedRunEffects effects={narrative.run.outcome?.unresolvedEffects} />
             </div>
           )}
-          {rows.length === 0 && (
+          {rows.length === 0 && !hasRunDetails && (
             <p {...stylex.props(rc.gutter, vocab.muted, typeStep.uiSm)}>
               {t("agent.runTree.material.empty")}
             </p>

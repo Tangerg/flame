@@ -173,7 +173,7 @@ it("projects live child material, returns to the list, and never carries it into
   const list = screen.getByRole("region", { name: "Subagents" });
   fireEvent.click(within(list).getAllByRole("button", { name: /Sub-agent/ })[1]!);
   expect(testClient.navigation.get().subagent).toBe("nested");
-  expect(screen.getByText("No narrative material yet")).toBeTruthy();
+  expect(screen.getByText("No messages")).toBeTruthy();
 
   material.rows = [];
   act(() => testClient.navigation.go({ session: "other" }));
@@ -483,6 +483,45 @@ it("keeps the selected run cancellation visible when no narrative was produced",
     ),
   ).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Cancel this run" })).toBeNull();
+  expect(screen.queryByText("No messages")).toBeNull();
+});
+
+it("shows a failed child's captured error without an empty-reader placeholder", () => {
+  material.rows = rows({
+    ...child,
+    status: "finished",
+    activeSegmentId: null,
+    finishedAt: "2026-01-01T00:00:01Z",
+    outcome: {
+      type: "failed",
+      error: { code: "tool_failed", message: "The fixture generator exited 1." },
+    },
+  });
+  material.rows[0]!.facts.delegatedRuns.delegate![0]!.messages = [];
+  testClient.navigation.go({ session: "session" });
+  openWorkspaceSubagentRun(testClient.workspace.access, "child");
+  const { container } = testClient.render(<SubagentsPanel />);
+  const reader = screen.getByRole("region", { name: "Sub-agent" });
+  expect(within(reader).getByText("The fixture generator exited 1.")).toBeTruthy();
+  expect(within(reader).queryByText("No messages")).toBeNull();
+  expect(within(container.querySelector("header")!).getByText("Error")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "All subagents" })).toBeTruthy();
+  expect(testClient.navigation.get().subagent).toBe("child");
+});
+
+it("labels a completed child without messages or run details as empty", () => {
+  material.rows = rows({
+    ...child,
+    status: "finished",
+    activeSegmentId: null,
+    finishedAt: "2026-01-01T00:00:01Z",
+    outcome: { type: "completed", unresolvedEffects: [] },
+  });
+  material.rows[0]!.facts.delegatedRuns.delegate![0]!.messages = [];
+  testClient.navigation.go({ session: "session" });
+  openWorkspaceSubagentRun(testClient.workspace.access, "child");
+  testClient.render(<SubagentsPanel />);
+  expect(screen.getByRole("region", { name: "Sub-agent" }).textContent).toBe("No messages");
 });
 
 it("explains unconfirmed effects for the selected terminal child without replacing its outcome", () => {
@@ -505,6 +544,7 @@ it("explains unconfirmed effects for the selected terminal child without replaci
   expect(screen.getByText(/This run has ended/)).toBeTruthy();
   expect(within(container.querySelector("header")!).getByText("Canceled")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Cancel this run" })).toBeNull();
+  expect(screen.queryByText("No messages")).toBeNull();
   const operation = screen.getByRole("button", {
     name: /^Unconfirmed operation 1\s*child-effect$/,
   });

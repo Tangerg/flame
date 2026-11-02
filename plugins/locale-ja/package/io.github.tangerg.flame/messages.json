@@ -488,7 +488,7 @@
   "agent.runOutcome.canceled": "キャンセル済み",
   "agent.steps_other": "{{count}} ステップ",
   "agent.runTree.action.cancel": "この実行をキャンセル",
-  "agent.runTree.material.empty": "ナラティブはまだありません",
+  "agent.runTree.material.empty": "メッセージはありません",
   "notifications.title": "通知",
   "notifications.clearAll": "すべてクリア",
   "notifications.dismiss": "閉じる",
