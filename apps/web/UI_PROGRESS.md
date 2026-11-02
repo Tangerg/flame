@@ -51,8 +51,11 @@ wrapping. Finding records by visible state and approval text is qualified under
 Skills catalog result scopes are qualified under **Skills catalog result summaries
 (2026-11-02)**, published as `f2cb06fd6`, including three catalogs, retained reads
 and native reading/return. Diagnostics classifications are qualified under
-**Diagnostics recorded classifications (2026-11-02)**, preserving original evidence
-through native narrow/200% reading and file return.
+**Diagnostics recorded classifications (2026-11-02)**, published as `8bf185f01`,
+preserving original evidence through native narrow/200% reading and file return.
+Shortcut capture now ends with its visible row under **Shortcut capture visibility
+and source lifetime (2026-11-02)**, preserving retained queries, saved bindings and
+ordinary command navigation.
 The latest goal restores
 preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
@@ -25836,6 +25839,152 @@ and test-pinned. Three defects were fixed:
 Left as correct, not a defect: the palette input does not take Home/End for
 first/last option — for an editable combobox the ARIA APG assigns Home/End to the
 text cursor, which is the current behavior; list navigation stays on the arrows.
+
+### Shortcut capture visibility and source lifetime (2026-11-02)
+
+This resumed batch starts from published main `8bf185f01`. Current native Wails
+reproduction confirms a HIGH keyboard-continuity defect: filter Focus composer,
+start recording, then select Appearance. Cmd+L stops dispatching; returning to
+Keyboard shortcuts still shows the recorder and disabled filter. Explicit Cancel
+restores the same command and original conversation draft. The retained panel's
+local capture outlives its visible interaction while `ShortcutsProvider` correctly
+honors the global recording projection. A withdrawn command can similarly leave
+no displayed recorder or Cancel while locking the other rows and global commands.
+
+`ShortcutsPane.tsx` now derives availability from the existing inherited
+`useContentVisible` boundary and the current `shown` row identities. A conditional
+local state adjustment ends an unapplied recording/conflict before committing a
+hidden or absent recorder. The existing effect releases the global projection;
+there is no new listener, dispatcher, global owner, state flag, timer or focus
+request. Harmless updates to surviving rows retain an active capture. Queries and
+saved overrides remain with their existing owners, and a retained pane does not
+resurrect recording on return. Explicit save, Cancel, reset, Tab, fixed-key
+conflicts, replacement and unmount cleanup retain their existing behavior.
+
+Fresh read-only ZCode `packages/ui/src/settings/useShortcutRecording.ts` ties its
+actual capture listener cleanup to active recording. This supports bounded
+interaction lifetime, without proving that ZCode handles retained hidden panes.
+Flame uses its existing row-local capture and shared visibility contract instead
+of adopting that window listener. The actual installed `clientEffect` registration
+and withdrawal contract supplies the command-retirement case. The README records
+the local capture boundary.
+
+Both Ace caches are absent. A private read-only reference-browser session revisits
+[Alpaca](https://acedesign.io/work/alpaca) and
+[Marketer](https://acedesign.io/work/marketer), opens their observed `02.webp`
+images at **2048 × 1191**, and inspects the original compositions: bounded choice
+cards and a framed workspace with a stable primary reading/action area. These
+static images inform grouping and spacing only; they do not prove keyboard or
+focus behavior. The reference session is closed. Earlier ChatGPT, HeroUI, Arc and
+Radix studies retain their documented scope; no second component system is added.
+
+| Severity | Domain                      | Location                | Before                                       | After                                      | Why                                                        |
+| -------- | --------------------------- | ----------------------- | -------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------- |
+| HIGH     | Accessibility / interaction | `ShortcutsPane.tsx:249` | Hidden or absent capture suppresses commands | Capture ends with its visible, shown owner | Navigation remains available without an unreachable Cancel |
+
+#### Verification
+
+The bounded edit-only Claude Code CLI completes in **154.818 s**, reporting **33**
+turns and zero subagents. It changes only its three allowed files and runs no
+commands, checks, builds, Git or browser. Root reviews the complete diff, moves the
+outside-focus assertion before hiding, adds a same-ID label update leaving its
+retained query, and clarifies that automatic retirement requests no focus.
+
+- Baseline: **4 files / 24 tests** pass for the editor, global provider, keymap and
+  Settings page. Focused candidate: **4 files / 27 tests** pass.
+- Related: **9 files / 162 tests** pass, including command-menu behavior,
+  installed client-effect command withdrawal, installed components, inspection
+  and workspace integration. Three new cases cover inherited hiding of a
+  conflict, a label update excluding a still-registered command from the retained
+  query, and actual source-lifetime disposal. They check global command dispatch,
+  unchanged overrides/query, later outside focus, no resumed capture, and
+  surviving recording through harmless contribution updates.
+- Negative control: restoring only the original owner makes **3 tests fail and
+  10 pass** in the complete editor file, without skips. Restoring the candidate
+  byte-for-byte passes **13/13** again.
+- `make check-native` (**40.863 s**), exact plugin resources and Web typecheck,
+  lint, design-system, tokens, chrome, locales, HMR, layers, bundle and
+  plugin-module checks all pass: **12 serial checks**. The initial test formatting
+  check fails; normal Prettier fixes it and the final scoped check passes.
+  Production bundle budgets pass. Existing native SDK/link-target warnings and
+  the private fixture chunk warning remain nonfatal.
+
+No shared UI, command registration/dispatch, persistent schema, locale, SDK,
+Runtime or generated component resource changes. No migration is required.
+Full Web, unrelated Runtime/CLI/SDK and unchanged shared-UI suites are not rerun.
+No browser visual suite or performance benchmark is started; no assertion or gate
+is weakened.
+
+#### Actual native editing and return
+
+The signed current Wails v3.0.0 host uses the normal Settings/editor and real global
+shortcuts in the existing deterministic workspace fixture. Its private overlay
+changes only asset hosting, identity, entry, appearance and initial window size;
+there is no data replacement, observer, focus driver or handler substitution.
+The app has its own home, identity and inactive local endpoint. **3 source inputs**
+and **343 host/config/bundle/asset inputs** match before and after final acceptance.
+
+- EN/light/14 px/Flame Orange/full motion, initial **1120 px** minimum window:
+  establish a draft, filter `composer`, start recording and Tab to Cancel. Select
+  Appearance; Cmd+L now immediately focuses the unchanged draft. A separate
+  Cmd+comma conflict against Settings is left unapplied by switching to Appearance.
+  Returning within Settings retains `composer`, the original Cmd+L binding and an
+  enabled Change action, with no recorder or conflict. Starting another recording
+  and closing the whole Settings view releases commands too. Native window Zoom
+  visibly enlarges and restores the frame. Files and keyboard Right return to the
+  same DockResizer.tsx Diff; Cmd+L continues the draft as
+  `Keep the shortcut workflow draft. Continue after settings and file review.`.
+- ZH/dark/18 px/custom blue/full motion: twenty native Zoom In actions establish
+  **200%** at the minimum window. Real content scrolling reaches the filtered
+  聚焦输入框 row; Tab from its recorder reaches the visible Cancel focus ring.
+  Shift+Tab returns to the recorder and Cmd+comma shows the Settings conflict.
+  Scrolling the navigation itself reaches Appearance, and Down navigation returns
+  to Keyboard shortcuts. The query 聚焦 and original Cmd+L survive; recording,
+  conflict and Replace do not return. Cmd+L focuses the original Chinese draft.
+  The existing full-width entry, panel picker Down/Enter, complete eight-line file
+  reader, explicit return to Workspace diff and full-width Close retain the task.
+  Cmd+L continues `快捷键设置前的草稿。继续原任务。`. Twenty Zoom Out actions restore
+  Actual Size with the draft and selected Diff intact. Neither task sends a message.
+
+Closing the standalone Settings main view removes it from ChatPanel's mounted-view
+set, so a later fresh Settings invocation resets its local query. This batch
+preserves that existing lifecycle; retained pane switching is the qualified query
+retention path. Source withdrawal and label-filter retirement use the real unit
+contracts, not a fabricated native extension. Live Runtime/provider work,
+installation removal, physical OS IME and VoiceOver speech are not qualified.
+Native Chinese text uses committed paste; the initial non-ASCII typing and a
+combined focus-navigation probe are excluded from acceptance. A wheel over the
+fixed navigation search header does not scroll its list; the successful task
+scrolls the navigation row. An initial app-path selection timeout creates one
+extra owned app process, which is retired after exact identity verification while
+preserving the original. Final acceptance attaches to the explicitly launched app
+by bundle ID. Both final launches exit normally with terminal exit zero.
+
+| Domain        | Scoped evidence                                                              | Result                                                             |
+| ------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Accessibility | Recorder Tab/Shift+Tab, named conflict, navigation arrows and Cmd+L return   | Visible capture stays operable; hidden capture releases navigation |
+| Layout        | Native window Zoom/restore and ZH minimum-window/200% stacked navigation     | Target row, Cancel, navigation and return remain reachable         |
+| Writing       | Existing target labels, conflict identity, saved combos and source return    | No additional instruction or surface is needed                     |
+| Typography    | EN 14 px and ZH 18 px/200%, complete file path and wrapped code              | Existing scale and reading identity retained                       |
+| Colors        | Light Orange, dark custom blue, visible focus and warning conflict           | Existing semantic treatment retained; contrast not remeasured      |
+| UI polish     | Capture, conflict departure, retained query, file return and continued draft | Task continuity passes within the stated lifecycle                 |
+
+Goal CHECK review covers typography, whitespace, visual hierarchy, color, motion,
+micro interaction, responsive reading and Flame's existing visual identity in this
+inspected task. No surface, theme, animation or visual token is changed. Motion
+timing, RTL, all eight locales natively, other-platform GUI and fresh numeric
+contrast are not qualified. **Approve for the inspected shortcut capture and
+navigation task**; whole-product and award-level acceptance remain open.
+
+Cleanup restores all **nine** checkout output roots and **six** unique-identity
+Library paths to their fresh absence baselines. The exact app is unregistered and
+owned native/reference processes are absent. Private app, home, assets, overlays,
+reference profile/screenshots, logs, CLI files and on-disk qualification receipts
+are removed; only the accepted private `bin` and `npm-cache/_npx` toolchain remain
+for continued batches. Root dependencies, user data, shared caches, read-only
+references and unrelated processes are preserved. Publication uses fresh-fetch
+main guards, fast-forward and direct remote equality verification. Continue from
+fresh complete-task evidence.
 
 ## Workspace file browser audit
 

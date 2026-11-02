@@ -4,7 +4,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "re
 import { type KeyboardEvent } from "react";
 import { Kbd } from "@/ui/index";
 import { TextButton } from "@/ui/index";
-import { Button, EmptyState, SearchField, TextField } from "@flame/ui";
+import { Button, EmptyState, SearchField, TextField, useContentVisible } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { comboFromEvent, comboGlyph, normalizeCombo, splitCombo } from "@/lib/combo";
 import { SHORTCUT } from "@/features/command/public/extensionPoints";
@@ -199,10 +199,10 @@ export function ShortcutsPane() {
   const fixed = useExtensionPoint(SHORTCUT);
   const overrides = useShortcutOverrides((state) => state.overrides);
   const { resetAll, setRecording } = useShortcutOverrides.getState();
+  const visible = useContentVisible();
   const filter = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [recording, setRecordingFor] = useState<Recording | null>(null);
-  const recordingActive = recording !== null;
   const focusReturn = useRef<{ trigger: HTMLButtonElement | null } | undefined>(undefined);
 
   useLayoutEffect(() => {
@@ -244,6 +244,13 @@ export function ShortcutsPane() {
       (row) => row.label.toLowerCase().includes(q) || (row.combo ?? "").toLowerCase().includes(q),
     );
   }, [rows, query]);
+
+  // An unapplied capture lives only while its recorder is visible and shown; otherwise
+  // it would keep suppressing every global shortcut with no Cancel to reach.
+  if (recording && !(visible && shown.some((row) => row.id === recording.commandId))) {
+    setRecordingFor(null);
+  }
+  const recordingActive = recording !== null;
 
   useEffect(() => {
     setRecording(recordingActive);

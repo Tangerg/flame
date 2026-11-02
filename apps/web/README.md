@@ -339,6 +339,13 @@ registrations before accepting further work. The Trajectory package owns the
 optional export commands and file presentation; the Host retains the canonical
 import flow, Runtime generation retirement and native file transfer.
 
+A shortcut-editor capture is an unapplied interaction owned by its visible, shown
+command row. Hiding the pane or an ancestor, or withdrawing or filtering out that
+command, retires the capture and its conflict without binding anything and
+without requesting focus. The query and saved overrides remain, the global recording
+guard is released so ordinary commands dispatch again, and reopening the pane
+does not resume the capture.
+
 The installed Notifications package owns completion policy, sound and its two
 client preferences. The graphical Host keeps the root-run settlement projection,
 OS authorization and notification-click routing. Public component callbacks and

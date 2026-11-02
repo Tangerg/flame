@@ -7,11 +7,13 @@ prepareTestClient(() => {
   finishTestClient(() => owned.dispose());
 });
 import { act, fireEvent, screen } from "@testing-library/react";
+import { ContentVisibility } from "@flame/ui";
+import { asyncDisposeSymbol } from "dougong";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { COMMAND, SHORTCUT } from "@/features/command/public/extensionPoints";
 import { definePlugin } from "@/extensions/definePlugin";
 import { useShortcutOverrides } from "@/features/command/public/shortcutOverrides";
-import { loadPluginsForTest } from "@/test/kernel";
+import { contributeForTest, loadPluginsForTest } from "@/test/kernel";
 import { ShortcutsPane } from "@/features/command/shortcuts/ShortcutsPane";
 import { ShortcutsProvider } from "@/features/command/ShortcutsProvider";
 const runs = { open: vi.fn(), search: vi.fn() };
@@ -52,6 +54,26 @@ function press(init: KeyboardEventInit) {
       .getByRole("textbox", { name: /change the shortcut for/i })
       .dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, ...init }));
   });
+}
+
+function pressGlobally(init: KeyboardEventInit) {
+  act(() => {
+    window.dispatchEvent(new KeyboardEvent("keydown", init));
+  });
+}
+
+function RetainedPane({ visible }: { visible: boolean }) {
+  return (
+    <>
+      <ShortcutsProvider />
+      <button type="button">Outside</button>
+      <ContentVisibility visible={visible}>
+        <ContentVisibility visible>
+          <ShortcutsPane />
+        </ContentVisibility>
+      </ContentVisibility>
+    </>
+  );
 }
 
 describe("ShortcutsPane", () => {
@@ -199,5 +221,111 @@ describe("ShortcutsPane", () => {
     press({ key: "Enter", code: "Enter" });
     expect(useShortcutOverrides.getState().overrides.open).toBe("enter");
     expect(useShortcutOverrides.getState().recording).toBe(false);
+  });
+
+  it("retires a recording hidden by an inherited scope without applying it", () => {
+    useShortcutOverrides.setState({ overrides: { search: "mod+j" } });
+    const view = testClient.render(<RetainedPane visible />);
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "thing" } });
+    fireEvent.click(screen.getByRole("button", { name: /change the shortcut for open thing/i }));
+    press({ key: "n", code: "KeyN", ctrlKey: true, metaKey: true });
+    expect(screen.getByRole("alert").textContent).toContain("New session");
+
+    const outside = screen.getByRole("button", { name: "Outside" });
+    act(() => outside.focus());
+    view.rerender(<RetainedPane visible={false} />);
+    expect(document.activeElement).toBe(outside);
+    expect(useShortcutOverrides.getState().recording).toBe(false);
+    expect(useShortcutOverrides.getState().overrides).toEqual({ search: "mod+j" });
+    expect(screen.queryByRole("alert")).toBeNull();
+    pressGlobally({ key: "o", code: "KeyO", ctrlKey: true });
+    expect(runs.open).toHaveBeenCalledOnce();
+
+    view.rerender(<RetainedPane visible />);
+    expect(screen.queryByRole("textbox", { name: /change the shortcut for/i })).toBeNull();
+    expect(useShortcutOverrides.getState().recording).toBe(false);
+    expect(screen.getByRole<HTMLInputElement>("searchbox").value).toBe("thing");
+    expect(screen.getByRole<HTMLInputElement>("searchbox").disabled).toBe(false);
+    expect(document.activeElement).toBe(outside);
+    view.unmount();
+  });
+
+  it("retires a capture when an updated label leaves its retained query", async () => {
+    let rename!: (label: string) => void;
+    const run = vi.fn();
+    await contributeForTest((ctx) => {
+      const command = ctx.contribute(COMMAND, { id: "effect", label: "Effect thing", run });
+      rename = (label) => command.update({ id: "effect", label, run });
+    });
+    const view = testClient.render(<RetainedPane visible />);
+    const filter = screen.getByRole<HTMLInputElement>("searchbox");
+    fireEvent.change(filter, { target: { value: "Effect" } });
+    fireEvent.click(screen.getByRole("button", { name: /change the shortcut for effect thing/i }));
+    const outside = screen.getByRole("button", { name: "Outside" });
+    act(() => outside.focus());
+
+    act(() => rename("Different label"));
+    expect(useShortcutOverrides.getState().recording).toBe(false);
+    expect(useShortcutOverrides.getState().overrides).toEqual({});
+    expect(filter.value).toBe("Effect");
+    expect(filter.disabled).toBe(false);
+    expect(document.activeElement).toBe(outside);
+    pressGlobally({ key: "o", code: "KeyO", ctrlKey: true });
+    expect(runs.open).toHaveBeenCalledOnce();
+
+    act(() => rename("Effect thing"));
+    expect(screen.queryByRole("textbox", { name: /change the shortcut for/i })).toBeNull();
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", {
+        name: /change the shortcut for effect thing/i,
+      }).disabled,
+    ).toBe(false);
+    expect(document.activeElement).toBe(outside);
+    view.unmount();
+  });
+
+  it("keeps a capture through row updates and retires it with its command source", async () => {
+    let renameOther!: () => void;
+    let renameEffect!: () => void;
+    let withdraw!: () => Promise<void>;
+    await contributeForTest((ctx) => {
+      const source = ctx.lifetime("source");
+      const effect = source.contribute(COMMAND, {
+        id: "effect",
+        label: "Effect thing",
+        run: vi.fn(),
+      });
+      const other = ctx.contribute(COMMAND, { id: "other", label: "Other thing", run: vi.fn() });
+      renameEffect = () => effect.update({ id: "effect", label: "Effect renamed", run: vi.fn() });
+      renameOther = () => other.update({ id: "other", label: "Other renamed", run: vi.fn() });
+      withdraw = () => source[asyncDisposeSymbol]();
+    });
+    const view = testClient.render(<RetainedPane visible />);
+    fireEvent.click(screen.getByRole("button", { name: /change the shortcut for effect thing/i }));
+    press({ key: "k", code: "KeyK", ctrlKey: true, metaKey: true });
+    expect(screen.getByRole("alert").textContent).toContain("Search thing");
+
+    act(() => {
+      renameOther();
+      renameEffect();
+    });
+    expect(screen.getByRole("alert").textContent).toContain("Search thing");
+    expect(
+      screen.getByRole("textbox", { name: /change the shortcut for effect renamed/i }),
+    ).toBeTruthy();
+    expect(useShortcutOverrides.getState().recording).toBe(true);
+
+    await act(withdraw);
+    expect(useShortcutOverrides.getState().recording).toBe(false);
+    expect(useShortcutOverrides.getState().overrides).toEqual({});
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", { name: /change the shortcut for open thing/i })
+        .disabled,
+    ).toBe(false);
+    pressGlobally({ key: "o", code: "KeyO", ctrlKey: true });
+    expect(runs.open).toHaveBeenCalledOnce();
+    view.unmount();
   });
 });
