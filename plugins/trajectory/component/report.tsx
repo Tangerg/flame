@@ -124,6 +124,39 @@ function searchable(row: TrajectoryEntry): string {
   });
   return stringifyJSON({ ...recorded, item: { ...item, content } });
 }
+function readable(
+  row: TrajectoryEntry,
+  t: Translate,
+): { state: string; approval?: string; approvalInline?: string } {
+  const state = t(
+    `state.${
+      row.type === "run"
+        ? (row.run.outcome?.type ?? row.run.status)
+        : row.type === "model"
+          ? row.model.state
+          : row.type === "endpoint"
+            ? row.endpoint.state
+            : row.item.status
+    }`,
+  );
+  const decision =
+    row.type === "item" && row.item.type === "toolCall"
+      ? row.item.approvalDecision
+      : undefined;
+  if (!decision) return { state };
+  const approval = t(`approval.${decision}`);
+  return {
+    state,
+    approval,
+    approvalInline: t("approval.inline", { decision: approval }),
+  };
+}
+function matches(row: TrajectoryEntry, query: string, t: Translate): boolean {
+  const { state, approval, approvalInline } = readable(row, t);
+  return [searchable(row), state, approval, approvalInline].some((text) =>
+    text?.toLocaleLowerCase().includes(query),
+  );
+}
 function identity(row: TrajectoryEntry): string {
   return row.type === "run"
     ? row.run.id
@@ -134,32 +167,21 @@ function identity(row: TrajectoryEntry): string {
         : row.item.id;
 }
 function title(row: TrajectoryEntry, t: Translate, clock: Intl.DateTimeFormat) {
-  let title: string;
-  let state: string;
-  let decision: string | undefined;
-  if (row.type === "run") {
-    title = t("title.run", {
-      provider: row.run.provider,
-      model: row.run.model,
-    });
-    state = row.run.outcome?.type ?? row.run.status;
-  } else if (row.type === "model") {
-    title = t("title.model");
-    state = row.model.state;
-  } else if (row.type === "endpoint") {
-    title = t("title.endpoint", {
-      provider: row.endpoint.provider,
-      model: row.endpoint.model,
-    });
-    state = row.endpoint.state;
-  } else {
-    const item = row.item;
-    title = item.type === "toolCall" ? item.tool.name : t(`item.${item.type}`);
-    state = item.status;
-    if (item.type === "toolCall") decision = item.approvalDecision;
-  }
+  const title =
+    row.type === "run"
+      ? t("title.run", { provider: row.run.provider, model: row.run.model })
+      : row.type === "model"
+        ? t("title.model")
+        : row.type === "endpoint"
+          ? t("title.endpoint", {
+              provider: row.endpoint.provider,
+              model: row.endpoint.model,
+            })
+          : row.item.type === "toolCall"
+            ? row.item.tool.name
+            : t(`item.${row.item.type}`);
   const tone = statusTone(row);
-  const label = t(`state.${state}`);
+  const { state: label, approvalInline } = readable(row, t);
   return (
     <RecordSummary
       icon={
@@ -181,11 +203,7 @@ function title(row: TrajectoryEntry, t: Translate, clock: Intl.DateTimeFormat) {
           <time dateTime={row.occurredAt}>
             {clock.format(new Date(row.occurredAt))}
           </time>
-          {decision && (
-            <span>
-              {t("approval.inline", { decision: t(`approval.${decision}`) })}
-            </span>
-          )}
+          {approvalInline && <span>{approvalInline}</span>}
         </RecordMeta>
       }
       status={tone !== "neutral" && <Badge tone={tone}>{label}</Badge>}
@@ -331,11 +349,8 @@ function Observation({
       t("fact.executionDurationMs"),
       row.item.durationMillis ?? t("value.unrecorded"),
     ]);
-    if (row.item.approvalDecision)
-      facts.push([
-        t("fact.approval"),
-        t(`approval.${row.item.approvalDecision}`),
-      ]);
+    const { approval } = readable(row, t);
+    if (approval) facts.push([t("fact.approval"), approval]);
   }
   if (row.type === "item" && row.item.type === "reasoning" && row.item.redacted)
     notes.push(t("note.reasoningRedacted"));
@@ -392,6 +407,7 @@ export function TrajectoryReport({
   locale: string;
 }) {
   const rows = page.data;
+  const query = search.toLocaleLowerCase();
   const matching = rows.filter((row) => {
     const category = row.type === "item" ? row.item.type : row.type;
     const matchesKind =
@@ -403,7 +419,7 @@ export function TrajectoryReport({
     return (
       matchesKind &&
       (run === "all" || runId(row) === run) &&
-      searchable(row).toLocaleLowerCase().includes(search.toLocaleLowerCase())
+      matches(row, query, t)
     );
   });
   const toolCalls = rows.filter(

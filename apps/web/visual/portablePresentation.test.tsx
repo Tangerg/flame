@@ -668,7 +668,7 @@ it.each([
   },
 );
 
-it("keeps attention and page search on recorded wire states rather than translated labels", () => {
+it("keeps attention on recorded wire states and searches both raw values and readable labels", () => {
   const entries = stateRecords();
   const report = (kind: string, search: string) => (
     <TrajectoryReport
@@ -703,9 +703,117 @@ it("keeps attention and page search on recorded wire states rather than translat
   expect(shown("all", "timedOut")).toEqual(["run:run_timed_out"]);
   expect(shown("all", '"state":"unknown"')).toEqual(["model:call_unknown"]);
   expect(shown("all", '"approvalDecision":"deny"')).toEqual(["item:item_refused"]);
-  expect(shown("all", "Timed out")).toEqual([]);
-  expect(shown("all", "Outcome unknown")).toEqual([]);
-  expect(shown("all", "Denied")).toEqual([]);
+  expect(shown("all", "Timed out")).toEqual(["run:run_timed_out"]);
+  expect(shown("all", "Outcome unknown")).toEqual(["model:call_unknown"]);
+  expect(shown("all", "Denied")).toEqual(["item:item_refused"]);
+  expect(shown("attention", "Outcome unknown")).toEqual(["model:call_unknown"]);
+});
+
+it.each([
+  {
+    locale: "en",
+    lost: "Lost",
+    unknown: "OUTCOME UNKNOWN",
+    denied: "Denied",
+    inline: "Approval: Denied",
+    approved: "approval: approved",
+    otherLocale: "Approval: 已拒绝",
+    pageCounts: ["Page 1 · 1 of 14 records", "7 need attention"],
+  },
+  {
+    locale: "zh",
+    lost: "无法恢复",
+    unknown: "结果未知",
+    denied: "已拒绝",
+    inline: "审批：已拒绝",
+    approved: "审批：已批准",
+    otherLocale: "Approval: Denied",
+    pageCounts: ["第 1 页 · 1 / 14 条记录", "7 条需要关注"],
+  },
+])(
+  "finds the readable $locale state and approval labels beside recorded evidence",
+  ({ locale, lost, unknown, denied, inline, approved, otherLocale, pageCounts }) => {
+    const entries = stateRecords();
+    const recorded = structuredClone(entries);
+    const t = createTranslator({ en: trajectoryEn, zh: trajectoryZh }, locale);
+    const report = (search: string, kind = "all", run = "all") => (
+      <TrajectoryReport
+        pageNumber={1}
+        onClearFilters={vi.fn()}
+        t={t}
+        locale={locale}
+        page={{ data: entries }}
+        kind={kind}
+        run={run}
+        search={search}
+      />
+    );
+    const { container, rerender } = testClient.render(report(""));
+    const shown = (search: string, kind?: string, run?: string) => {
+      rerender(report(search, kind, run));
+      return Array.from(container.querySelectorAll("[data-trajectory-record]"), (record) =>
+        record.getAttribute("data-trajectory-record"),
+      );
+    };
+    const call = entries.find((entry) => entry.type === "model" && entry.model.state === "unknown");
+    if (call?.type !== "model") throw new Error("state records must contain an unknown call");
+
+    expect(shown(lost)).toEqual(["run:run_lost"]);
+    expect(shown(denied)).toEqual(["item:item_refused"]);
+    expect(shown(inline)).toEqual(["item:item_refused"]);
+    expect(shown(approved)).toEqual(["item:item_permitted"]);
+    expect(shown(otherLocale)).toEqual([]);
+    expect(shown(`${denied} `)).toEqual([]);
+    expect(shown("lost")).toEqual(["run:run_lost"]);
+    expect(shown('"approvalDecision":"deny"')).toEqual(["item:item_refused"]);
+    expect(shown("item_refused")).toEqual(["item:item_refused"]);
+    expect(shown(unknown, "model")).toEqual(["model:call_unknown"]);
+    expect(shown(unknown, "run")).toEqual([]);
+    expect(shown(denied, "toolCall")).toEqual(["item:item_refused"]);
+    expect(shown(unknown, "all", "run_lost")).toEqual([]);
+    expect(shown(unknown, "attention", call.model.runId)).toEqual(["model:call_unknown"]);
+    const status = container.querySelector<HTMLElement>('[role="status"]')!;
+    for (const text of pageCounts) expect(status.textContent).toContain(text);
+    expect(entries).toEqual(recorded);
+  },
+);
+
+it("derives readable search labels from the current locale without rewriting the query", () => {
+  const entries = stateRecords();
+  const recorded = structuredClone(entries);
+  const catalog = { en: trajectoryEn, zh: trajectoryZh };
+  const report = (locale: string, search: string) => (
+    <TrajectoryReport
+      pageNumber={1}
+      onClearFilters={vi.fn()}
+      t={createTranslator(catalog, locale)}
+      locale={locale}
+      page={{ data: entries }}
+      kind="all"
+      run="all"
+      search={search}
+    />
+  );
+  const { container, rerender } = testClient.render(report("en", "Lost"));
+  const shown = () =>
+    Array.from(container.querySelectorAll("[data-trajectory-record]"), (record) =>
+      record.getAttribute("data-trajectory-record"),
+    );
+
+  expect(shown()).toEqual(["run:run_lost"]);
+  rerender(report("zh", "Lost"));
+  expect(shown()).toEqual(["run:run_lost"]);
+  rerender(report("zh", "无法恢复"));
+  expect(shown()).toEqual(["run:run_lost"]);
+  rerender(report("en", "无法恢复"));
+  expect(shown()).toEqual([]);
+  rerender(report("zh", "审批：已拒绝"));
+  expect(shown()).toEqual(["item:item_refused"]);
+  rerender(report("en", "审批：已拒绝"));
+  expect(shown()).toEqual([]);
+  rerender(report("en", "Approval: Denied"));
+  expect(shown()).toEqual(["item:item_refused"]);
+  expect(entries).toEqual(recorded);
 });
 
 it("distinguishes same-time Runs before expansion and keeps one Run identity fact", () => {

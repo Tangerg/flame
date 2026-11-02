@@ -535,6 +535,40 @@ it("searches accepted tool data in place without another read", async () => {
   expect(discover).toHaveBeenCalledOnce();
 });
 
+it("finds a readable recorded state in place without another read", async () => {
+  const { discover, trajectory } = await mountTrajectory();
+  fireEvent.click(screen.getByRole("combobox", { name: "Observation type" }));
+  const models = await screen.findByRole("option", { name: "Logical model calls" });
+  fireEvent.pointerDown(models, { pointerType: "mouse" });
+  fireEvent.click(models);
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  await chooseRun(RUN_ID);
+  expect(records()).toEqual(["model:call_visual_recovered", "model:call_visual_inspect"]);
+  const record = within(
+    document.querySelector<HTMLElement>('[data-trajectory-record="model:call_visual_recovered"]')!,
+  );
+  const opened = record.getByRole("button", { expanded: false });
+  fireEvent.click(opened);
+  expect(opened.getAttribute("aria-expanded")).toBe("true");
+
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter this page" });
+  search.focus();
+  for (const value of ["Outcome unknown", "call_visual_recovered"]) {
+    fireEvent.change(search, { target: { value } });
+    expect(search.value).toBe(value);
+    expect(records()).toEqual(["model:call_visual_recovered"]);
+    expect(pageScope().textContent).toBe("Page 1 · 1 of 2 records");
+    expect(record.getByRole("button", { expanded: true })).toBe(opened);
+    expect(screen.getByRole("combobox", { name: "Observation type" }).textContent).toBe(
+      "Logical model calls",
+    );
+    expect(runFilter().textContent).toBe(RUN_ID);
+    expect(document.activeElement).toBe(search);
+  }
+  expect(trajectory).toHaveBeenCalledOnce();
+  expect(discover).toHaveBeenCalledOnce();
+});
+
 it("keeps the Session only selection while its records are absent", async () => {
   const { trajectory, hold } = await mountTrajectory();
   const withSession = { data: [SESSION_ENDPOINT, ...FIRST.data] };

@@ -44,8 +44,10 @@ wording (2026-11-02)**. Captured scope identity is published as `95b57b7e2` unde
 **Memory captured scope identity (2026-11-02)**. Form grouping, bounded content
 editing and nested reading are published as `d824e895a` under **Memory form reading
 and content sizing (2026-11-02)**. Trajectory status and approval wording is qualified
-under **Trajectory recorded state and approval wording (2026-11-02)**. Its long-value
-facts observation remains a separate, unclassified follow-up. The latest goal restores
+under **Trajectory recorded state and approval wording (2026-11-02)**, published as
+`eb26f3bab`. The long-value Facts observation is verified as complete column-local
+wrapping. Finding records by visible state and approval text is qualified under
+**Trajectory readable-state page filters (2026-11-02)**. The latest goal restores
 preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
 describe their historical scope.
@@ -12128,13 +12130,13 @@ better-accessibility preserves named controls and textual severity; typography
 and layout review checks translated summaries at the existing font and zoom
 settings. Shared theme, contrast and motion ownership is unchanged.
 
-| Severity / status           | Domain              | Location                                                            | Evidence and result                                                                                                                                                                                                                        |
-| --------------------------- | ------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| MEDIUM · resolved           | Writing             | Trajectory `report.tsx` and eight locale catalogs                   | Closed wire values appeared in localized summary/approval text. Both projections now use their catalog labels while evidence stays exact.                                                                                                  |
-| Verified in this flow       | Accessibility / UI  | Existing disclosure, SearchField, Select and workspace presentation | Native Tab/Enter, visible focus, scoped Escape, wheel, full-width entry and explicit return retain the task and unsent draft. No new interaction mechanism is introduced.                                                                  |
-| Verified for changed labels | Typography / layout | Existing RecordSummary and RecordMeta                               | EN/14px/light and ZH/18px/dark/200% keep state, approval and full wrapping summary identities readable.                                                                                                                                    |
-| Unclassified follow-up      | Layout              | Shared `Facts` in `packages/ui/src/records.tsx`                     | The ZH/200% long Run ID appears to meet the adjacent Root Run value in the expanded facts. The summary and complete raw evidence remain available. Confirm geometry and ownership against the original before changing this separate path. |
-| Not newly measured          | Color / motion      | Existing semantic severity, theme and motion tokens                 | No token, timing or tone policy changes. This batch does not certify fresh pixel contrast or reduced motion.                                                                                                                               |
+| Severity / status           | Domain              | Location                                                            | Evidence and result                                                                                                                                                                                                                 |
+| --------------------------- | ------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MEDIUM · resolved           | Writing             | Trajectory `report.tsx` and eight locale catalogs                   | Closed wire values appeared in localized summary/approval text. Both projections now use their catalog labels while evidence stays exact.                                                                                           |
+| Verified in this flow       | Accessibility / UI  | Existing disclosure, SearchField, Select and workspace presentation | Native Tab/Enter, visible focus, scoped Escape, wheel, full-width entry and explicit return retain the task and unsent draft. No new interaction mechanism is introduced.                                                           |
+| Verified for changed labels | Typography / layout | Existing RecordSummary and RecordMeta                               | EN/14px/light and ZH/18px/dark/200% keep state, approval and full wrapping summary identities readable.                                                                                                                             |
+| Verified contract           | Layout              | Shared `Facts` in `packages/ui/src/records.tsx`                     | Fresh original native geometry at ZH/18px/200% shows two 225.5px columns with a 16px gap. All three ID line boxes remain inside their value; the complete ID and bidi isolation are retained. No shared layout change is warranted. |
+| Not newly measured          | Color / motion      | Existing semantic severity, theme and motion tokens                 | No token, timing or tone policy changes. This batch does not certify fresh pixel contrast or reduced motion.                                                                                                                        |
 
 Verification:
 
@@ -12183,8 +12185,13 @@ Verification:
   clears search while retaining its focus. Close, twenty Zoom Out commands and
   Cmd+L continue `轨迹阅读草稿保留。继续对话。` without Send.
 
-The changed wording is accepted within these tasks. The separate long-value
-facts observation is not classified as introduced or resolved. Not verified:
+The changed wording is accepted within these tasks. Fresh original native
+qualification resolves the long-value Facts observation as existing complete
+column-local wrapping, not an overlap. At a measured **561 × 475 CSS px**,
+its three line widths are **224.221 / 218.228 / 8.649px**, all within the
+**225.5px** value. Adjacent pairs have a **16px** gap. Source and computed styles
+retain `overflow-wrap: anywhere`, zero margin and `<bdi>` isolation. No shared
+component change is warranted. Not verified:
 VoiceOver, physical IME, other-language/platform native GUIs, 320px/RTL, new
 contrast/reduced-motion measurements, real provider execution, export file writes
 or installed-package upgrade. No browser visual suite, benchmark, complete Web,
@@ -12201,8 +12208,133 @@ six unique Library paths return to their captured absent baselines. Only the
 already-needed private npm 11 executable/cache remains for continued work;
 root dependencies, global caches, user data and reference projects are preserved.
 Fresh origin/main and the clean primary checkout both remain at `d824e895a`
-before publishing this batch. Continue by reproducing the long-value Facts
-observation against the unchanged shared owner; the overall UI goal stays active.
+before publishing this batch. The next original native task reveals a separate
+search mismatch: raw `lost` finds the displayed Run, while its visible Chinese
+state `无法恢复` finds none. Its repair is qualified under **Trajectory readable-state
+page filters (2026-11-02)**; the shared Facts owner is preserved.
+
+### Trajectory readable-state page filters (2026-11-02)
+
+Original actual ZH/dark/18px Wails shows a lost Run as `无法恢复`, but that exact
+query yields **0 / 6** while `lost` finds the same record. The report filters
+only serialized evidence, so the newly readable state is absent from the search
+projection. This is a page-filter task failure; the separate long-ID Facts
+observation is already verified above and requires no shared layout change.
+
+`plugins/trajectory/component/report.tsx` gives state, approval and complete
+approval-phrase labels one pure `readable` projection. Summary metadata, badges,
+expanded Approval facts and matching consume those same current catalog values.
+`matches` checks the existing evidence string and each label independently.
+The only intentional contract change is admitting these readable labels, such
+as `Timed out`, `Outcome unknown` and `审批：已拒绝`. The previous assertion
+excluding them is updated to assert this intended behavior; raw wire queries
+still match. Other interface text is not added to the search scope.
+
+The original `searchable` projection is unchanged: exact SDK JSON, reasoning
+redaction and omission only of canonical message-image bytes keep their owners.
+No locale alias, trimming, whitespace folding, DOM scan, cache, effect, mutable
+state or extra read is introduced. Type and Run remain intersected with search;
+accepted pages, page-local counts, disclosure identity, focus, cursor scope and
+commands retain their owners. Current props derive current labels on each render.
+Opaque names, origins, IDs, errors, exact numbers, evidence and export bytes are
+not translated or rewritten. The README records this search boundary, and the
+normal plugin build regenerates the declared ESM.
+
+Read-only ZCode `ModelTrajectorySearch.ts` builds explicit targets from source
+text and Tool inputs/outputs/identity; its SearchBar keeps a controlled query and
+separate match count. Flame retains its own page/filter model and adds only its
+owned state/approval labels, without importing the reference's normalization,
+highlight index, match navigation or focus policy. Earlier ChatGPT, HeroUI/Arc,
+Radix, semantic-color and Ace research remains context, not newly claimed
+platform or pixel evidence. Better-writing aligns a readable fact with how it is
+found; accessibility, layout and typography review preserve the complete reading
+and return path in the existing controls.
+
+| Severity / status     | Domain                     | Location                                                    | Before / after and evidence                                                                                                                             |
+| --------------------- | -------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MEDIUM · resolved     | Writing / task consistency | `report.tsx` readable labels and page matching              | A visible localized state gives a false empty result. Current state/approval labels now find the original record alongside raw-value queries.           |
+| Verified contract     | Layout / typography        | Shared Facts and existing report surfaces                   | Original/final native geometry is identical at 561 × 475 CSS px / 200%; all complete ID line boxes stay within their columns. No shared component edit. |
+| Verified in this flow | Accessibility / UI         | Existing SearchField, Select, disclosure and workspace host | Native Tab/Enter, visible focus, scoped Escape, empty recovery, wheel, resize/zoom and Files return keep their existing task boundaries.                |
+| Not newly measured    | Color / motion             | Existing semantic state and focus tokens                    | Light Orange and dark custom blue are read natively; no token, state-tone or animation change. No fresh contrast-ratio or reduced-motion certification. |
+
+Verification:
+
+- Baselines pass **83 shared UI component tests** and **3 trajectory files /
+  62 tests**. The original six-record private page and final ten-record page each
+  pass the public `sessions.trajectory` result validator; both temporary tests
+  are removed. An initial private Vite invocation from the Desktop directory
+  fails before launch; setting the private configuration's explicit Web root
+  corrects only that harness. No passing product evidence is attributed to it.
+- Bounded edit-only Claude Code CLI supplies the four authored implementation,
+  test and README paths in **178.273 s / 34 reported turns**. Primary reviews the
+  complete diff and formats those paths. Final related regression passes
+  **9 files / 241 tests**. An additional exact-evidence file passes **4 tests**
+  through the actual public client and memory transport: wide integers, exact
+  decimal/exponent literals, negative zero, Chinese consecutive spaces, search
+  and expanded evidence. This is **10 distinct Web files / 245 tests**, run in
+  those two commands, without exclusions.
+- Coverage includes EN/ZH labels and complete approval phrases, raw enum/ID
+  search, case/whitespace behavior, type/Run/attention intersection, page counts,
+  input immutability and locale recomputation without query rewriting. The
+  actual Trajectory case retains its open unknown call, focused search, type and
+  Run selection and accepted page; discovery and trajectory read counts remain
+  one. Replacing only the report with the frozen original yields **5 failures /
+  37 passes** in the full two-file control. Restoring candidate bytes passes all
+  **42**, with no skipped cases and no production interface distortion.
+- Web typecheck/lint and the other thirteen serial gates pass: plugin
+  typecheck/lint/i18n and exact resource reproduction; Web design-system, token,
+  chrome, locale, HMR, layer, bundle and plugin-module checks; and
+  `make check-native` (**16.440 s**, Desktop test/vet/build and supported Wails
+  build). Normal plugin generation also passes. Existing SDK/link-target and
+  duplicate-library warnings remain nonfatal; the private aggregate fixture's
+  chunk warning is separate from the passing production bundle budget. The
+  signed arm64 qualification host targets macOS 13.0 / SDK 26.5.
+- Actual EN/light/14px/Orange: `Timed out` finds **1 / 10**, opens by Tab/Enter
+  and keeps raw `timedOut` in evidence. Switching to the raw query and Files →
+  Trajectory retains expansion. `Approval: Denied` with Tool calls finds the
+  denied incomplete Tool and original `deny`. Incompatible Runs yields **0 / 10**;
+  Clear filters returns all ten records and SearchField focus. Cmd+L continues
+  `Draft before readable state search. Continued.` without Send.
+- Actual ZH/dark/18px/custom blue: `无法恢复` now finds **1 / 10**. Native Left
+  resize and twenty Zoom In commands reach **200%**; the existing narrow action
+  retains the query and open Run in full-width reading. Switching between `lost`
+  and the Chinese label retains expansion. Original/final Facts keep identical
+  complete values, three line widths, 225.5px columns, 16px gap and bidi behavior.
+  `审批：已拒绝` intersects Tool calls and `run_root`; Files and explicit Back
+  retain all three controls and the open record. Escape clears only the text
+  query, leaving **2 / 10**, both selections and SearchField focus. Close, twenty
+  Zoom Out commands and Cmd+L continue `可读状态查找草稿。继续对话。`.
+- The final production-fixture build removes the private observation import and
+  loopback endpoint from all assets. Actual ZH/dark/18px searches `结果未知`,
+  expands the unknown call by Tab/Enter, and switches to raw `"state":"unknown"`.
+  Files return keeps that query and disclosure. Native Left/200% full-width entry
+  retains them; the readable query still gives **1 / 10**. Eight ordinary Tabs
+  reach Recorded evidence and End remains available. Close/Actual Size and
+  Cmd+L continue `无观测状态查找草稿。继续对话。`. The observation capture's hash
+  and modification time remain unchanged throughout; no observer-derived geometry
+  or new read-count measurement is claimed for this launch.
+
+Verdict: **Approve for readable-state page filtering in the recorded tasks**.
+Not verified: VoiceOver, physical IME, other-language/platform native GUIs,
+320px/RTL, fresh contrast/reduced-motion measurements, live provider execution,
+export writes or installed-package upgrade. No browser visual suite, benchmark,
+complete Web suite or unrelated Runtime/CLI/SDK suite runs. Shared UI source is
+unchanged, so its full package/consumer suite is not repeated. No protocol or
+persisted-data migration is required; existing installations must rebuild/select
+the updated package digest. No live installation is changed.
+
+Cleanup is complete. All four qualified native launches exit normally; the
+private observation receiver is stopped and the exact app is unregistered.
+The five qualified source/resource inputs keep their reviewed SHA-256 bytes.
+All **342** observed native inputs match before that build is replaced, and all
+**341** final observer-free inputs match before removal. The app, homes,
+captures, observer/overlays, prompts, scripts, private assets and logs are removed.
+Nine checkout outputs and six unique Library paths return to their captured
+absent baselines. Only the already-required private npm 11 executable/cache
+remains for continued work. Root dependencies, shared caches, user data and
+read-only references are preserved. Fresh origin/main and the clean primary
+checkout remain at `eb26f3bab` before this batch's publication. Continue from fresh
+workspace task evidence; the continuous overall UI goal stays active.
 
 ### Trajectory summary, filter recovery and retained reading
 
@@ -12330,15 +12462,16 @@ recursive JSON replacer drops every property named `data`, even though Runtime's
 `ToolInvocation.arguments` and `result` admit arbitrary JSON. That field name
 does not identify image bytes outside the canonical message-content boundary.
 
-`plugins/trajectory/component/component.tsx` now owns one pure search string
-projection after the existing reasoning-redaction projection. Only image blocks
-in a user/agent message's `item.content` omit their own data bytes. Their type,
+`plugins/trajectory/component/report.tsx` owns the pure evidence search string
+after the existing reasoning-redaction projection. Current readable-state matching
+is qualified above; this evidence portion retains its original boundary. Only
+image blocks in a user/agent message's `item.content` omit their own data bytes. Their type,
 MIME and unknown metadata remain. All other recorded `data` fields participate,
 including direct/nested/array values, extensions and image-shaped Tool business
 objects. Reading and complete raw evidence keep their original records and image
-bytes. No state, cache, dependency, style, label, locale or semantic owner is added.
-Case/substring matching, accepted pages, selected Run/type, disclosure identity,
-focus, commands and Runtime generation retain their contracts. The former global
+bytes. That evidence-boundary repair adds no state, cache, dependency, style,
+label, locale or semantic owner. Case/substring matching, accepted pages,
+selected Run/type, disclosure identity, focus, commands and Runtime generation retain their contracts. The former global
 key-based replacer is removed; only Trajectory's normal ESM resource changes.
 No persisted-data or protocol migration is needed.
 
@@ -12350,9 +12483,9 @@ Runtime's published ToolInvocation schema and client wire-check vocabulary confi
 that opaque/maps stay open and result extensions are retained. The existing
 better-* layout, type, focus, semantic-color and motion research is reused.
 
-| Severity | Location                                                            | Before                                                 | After                                       | Why                                                                       |
-| -------- | ------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------- | ------------------------------------------------------------------------- |
-| MEDIUM   | `plugins/trajectory/component/component.tsx:156` and page filtering | Visible recorded Tool data yields a false empty result | Search omits only known message-image bytes | Keep the search boundary aligned with the evidence the reader can inspect |
+| Severity | Location                                                         | Before                                                 | After                                       | Why                                                                       |
+| -------- | ---------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------- | ------------------------------------------------------------------------- |
+| MEDIUM   | `plugins/trajectory/component/report.tsx:109` and page filtering | Visible recorded Tool data yields a false empty result | Search omits only known message-image bytes | Keep the search boundary aligned with the evidence the reader can inspect |
 
 The scoped review is **Approve** for the qualified task. Writing now matches the
 existing recorded-text label in these cases; layout/type/color/shape and motion

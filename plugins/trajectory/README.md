@@ -66,7 +66,7 @@ warning and failure states keep a toned badge beside the title. The recorded sta
 has a localized label in both neutral metadata and toned badges. Closed approval
 decisions use the same localized label in the summary and expanded facts,
 independently of execution status. Raw state/decision values remain unchanged in
-Recorded evidence, search and exports. Opaque caller origins, provider/model/Tool
+Recorded evidence and exports. Opaque caller origins, provider/model/Tool
 names, IDs and original errors remain literal captured values.
 
 The accepted page number, matching/page record count, tool
@@ -115,8 +115,11 @@ notice. The original bytes remain under Recorded evidence, the recorded status
 does not change, and adjacent images stay independent. A replacement source
 gets its own decode result; reading does not retry a completed operation.
 
-Page search uses the same redacted evidence as reading. It excludes only the data
-bytes of canonical user/agent message image blocks, retaining their metadata.
+Page search matches recorded evidence plus the current locale's readable state
+label, Tool approval label and complete approval phrase, such as `Approval: Denied`.
+Raw wire values, IDs and other evidence remain searchable; other interface text is
+not. The evidence side uses the same redacted evidence as reading. It excludes only
+the data bytes of canonical user/agent message image blocks, retaining their metadata.
 Ordinary `data` properties in Tool arguments, results and extensions remain
 searchable, including nested arrays and image-shaped business values. This local
 search projection never changes accepted records or their complete raw evidence;
