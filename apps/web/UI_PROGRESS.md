@@ -17,8 +17,10 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-The latest follow-up keeps scrolling text out of the reserved keyboard-focus
-perimeter; see **Workspace reading and painted focus boundary (2026-11-03)**.
+The latest follow-up keeps target file-line numbers legible using the existing
+bounded selection plane; see **File target-line contrast and continued reading
+(2026-11-03)**. The reserved reading focus perimeter remains qualified under
+**Workspace reading and painted focus boundary (2026-11-03)**.
 The validated full-motion fixture modes, neutral control depth and code/status
 contrast repairs remain qualified. The whole-product goal and the earlier native
 input limitations remain open.
@@ -27892,6 +27894,114 @@ observer is retired by exact identity before final runs. Preserve the 123-byte
 interrupted-draft backup and original SHA-256, root dependencies, shared toolchain
 and cache, read-only references and user data. Continue with retained Files/Diff
 reading boundaries and source return; keep this worktree and goal active.
+
+### File target-line contrast and continued reading (2026-11-03)
+
+This batch starts from synchronized main `472096041`. Native light-theme file
+reading with a black custom accent and contrast 0 exposes a **3.993166:1** target
+line number at **12px**. The ordinary gutter remains **4.888146:1**, and the target
+syntax already exceeds **6.038611:1**. This is a local target-background defect;
+the observed failing pair is the number, not the code text.
+
+`FileView` applies `codeStyles.targetLine` to the requested source row. That style
+used `surface.accentWash`, a 10% tone overlay without the reading-plane bounds.
+It now uses existing `surface.selected`. The palette owns that opaque fill's
+strength and keeps its luminance within the qualified reading planes. The change
+is one style declaration in `features/workspace/ui/viewStyles.ts`; target intent,
+accepted content, line placement, selection, syntax and navigation retain their
+existing owners. Foreground values remain identical in the measured before/after
+pair. No new token, dependency, state or handler is introduced.
+
+The better-colors review maps the row to the existing bounded semantic role.
+Existing palette tests qualify faint and syntax ink on selection planes. Read-only
+ZCode `code-viewer.tsx` informs explicit target-range identity and retained reading;
+its placement retry implementation is not adopted. The
+[WCAG contrast minimum guidance](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)
+supplies the **4.5:1** normal-text threshold. Measurements use full-precision
+computed foregrounds and composited ancestor backgrounds, without threshold
+rounding or antialias-pixel sampling.
+
+| Native case                                                                                              | Original target number                         | Repaired target number | Repaired target syntax minimum           |
+| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ---------------------- | ---------------------------------------- |
+| EN/light, 14px UI / 12px code, black accent, contrast 0, lines 6 and 7                                   | 3.993166:1                                     | 4.690874:1             | 7.093711:1                               |
+| EN/light, 14px UI / 12px code, Flame Orange, contrast 25, line 6                                         | Not measured with the final precision observer | 4.719391:1             | 6.928058:1                               |
+| ZH/custom dark `#505967` / `#f0f4fb`, 18px UI / 15px code, blue, contrast 25, native 200%, lines 6 and 1 | Not measured with the final precision observer | 5.747501:1             | 5.664711:1 across both inspected targets |
+
+Approve this inspected color scope. Claude Code CLI completes the bounded
+one-file change in **20.687 s / 9 turns**, with no permission denials. Parent
+review owns reference research, measurement, native acceptance, documentation,
+checks and publication.
+
+#### Verification and native reading
+
+The baseline palette/FileView/FileWorkspace/Diff-presentation group passes
+**4 files / 316 tests**. All **25** non-Runtime Web gates pass. Final frontend
+regression passes **424 files / 4,442 tests** in **206.599 s**. `make check-native`
+passes in **26.585 s**, and the private production-tag Wails host builds/signs in
+**4.115 s**. Builds run serially before the consuming frontend phase. Existing
+palette contracts and the native before/after counterexample cover this role
+repair; no test merely repeats the style declaration. No browser visual suite,
+benchmark or full Runtime rerun is used.
+
+The isolated Wails v3 host retains production services, native zoom/closing and
+Aqua chrome. Its identity/home, unavailable Runtime endpoint, assets/entry and
+initial/minimum geometry are private. Canonical snapshots drive production views
+and installed Tool-results ESM; live filesystem/provider execution is outside
+this qualification. All native inputs use CUA.
+
+- **Black/light:** read the complete path and source, jump to line 7, return to
+  Files, switch to Diff, filter the file list and return from its reader to the
+  same filter/row, then continue an editable **42-character** draft. Native window
+  Zoom/restore retains the draft/focus and settles at **1120 x 755**, DPR **2**.
+- **Flame Orange/light:** jump to line 1, close the popup to its trigger, return
+  to the retained selected file and continue an editable **35-character** draft.
+- **Chinese/custom gray/18px/200%:** measured viewport **560 x 377**, DPR **4**;
+  use full-width material, scroll to line 8, jump to line 1, read the full path,
+  return to the selected file tree, close material and continue an editable
+  **17-character** Chinese draft.
+
+The direct file fixture has no originating tree-row focus lease: Back focuses
+the `apps` root while retaining the selected path. Its row label is `resizer.ts`
+for the explicit `DockResizer.tsx` path. These observations do not qualify a live
+filesystem label or original-row return. Diff's list-owned reader does retain
+its original filtered row. Observed candidate scenes report full motion, scale
+**1**, no motion-off attribute and reduced-motion media **false**, with bounded
+transition-end buffers of **40 / 23 / 40** events respectively.
+
+The initial private observer quantized color/alpha through a canvas; its provisional
+ratios are excluded. A module-conversion attempt left an unbundled import and
+produced no fresh observations. The stale-result assertion caught it; the healthy
+native process was closed normally and the private Vite pre-HTML transform was
+corrected. Accepted measurements use bundled existing Culori parsing/conversion
+and full-precision native computed colors. The single observer process is never
+restarted on a timeout and is retired by exact identity before final builds.
+
+Observer-free final assets contain none of the private probe markers or endpoint;
+ports **60001/60002** are closed. Black/light and Chinese/custom-gray/18px/200%
+controls repeat line jumps, source reading, selected-file return and continued
+editable drafting. All **nine** native launches exit normally: four baseline/setup,
+three observed candidates and two observer-free controls. All **1,232** final
+frozen inputs and **22** installed JavaScript resources retain their hashes.
+
+Submitting a line jump followed immediately by two Tab keys reaches the fixture
+sidebar in both observed and observer-free native runs. With an observation
+between steps, focus follows trigger → Copy path → source. There is no equivalent
+pre-change rapid-input comparator yet, so its cause remains unassigned. The next
+batch should trace the popup close and focus ownership; this batch does not
+certify that rapid keyboard path or add a timing workaround. Preserve the earlier
+pointer-text reverse-Tab, Runtime recovery and placeholder-paint limits. Physical
+IME, VoiceOver audio, whole-document RTL, 320 CSS-pixel layout, other-platform GUI
+and whole-product award-tier acceptance remain unverified. There is no data
+migration or business command submission.
+
+Publication uses normal hooks, guarded main fast-forward, push and direct remote
+head equality; the publication fetch finds zero incoming main commits. Cleanup is
+restricted to the nine baseline-absent checkout output roots, exact private app
+registration, six baseline-absent UID Library paths and `flame-ui-source-_5uw88l2`
+assets/home/overlays/CLI/observer/log/cache root. Preserve the 123-byte interrupted
+draft backup and original SHA-256, root dependencies, shared toolchain/cache,
+read-only references and user data. Continue with the observed line-jump focus
+timing, keeping this worktree and goal active.
 
 ## Workspace file browser audit
 

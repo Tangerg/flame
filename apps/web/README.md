@@ -666,6 +666,9 @@ scroller as source, rendered content and read/unsupported states. File requests,
 line placement, renderer mode and source-return history retain their existing
 owners.
 
+The target source line uses the palette's bounded selection fill so its line
+number and syntax retain their reading contrast after a line jump.
+
 The focused file-source reader scopes Ctrl/Cmd+A to its presented source and
 copies that complete range from the current accepted content. Source cells carry
 literal line separators so native partial selection retains blank lines and

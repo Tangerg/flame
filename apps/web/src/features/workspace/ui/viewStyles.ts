@@ -57,5 +57,5 @@ export const codeStyles = stylex.create({
     gap: space.s2,
     paddingInline: space.s3,
   },
-  targetLine: { backgroundColor: surface.accentWash },
+  targetLine: { backgroundColor: surface.selected },
 });
