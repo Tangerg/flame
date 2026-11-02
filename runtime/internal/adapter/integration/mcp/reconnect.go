@@ -7,9 +7,9 @@ import (
 	"runtime/debug"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/frame/cancellation"
 	"github.com/Tangerg/go-sdk/auth"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/cancellation"
 )
 
 func (c *connections) configure(attempt *attempt, prepared *launch) error {

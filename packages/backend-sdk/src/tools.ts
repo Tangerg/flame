@@ -11,9 +11,10 @@ import { validCommand } from "@qimu/node/contract";
 import wire from "./protocol.generated.json";
 
 export interface ToolReceipt {
-  found: boolean;
-  output?: string;
-  isError?: boolean;
+  result?: {
+    output: { content?: readonly unknown[]; details?: unknown };
+    isError?: boolean;
+  };
 }
 
 export function toolCommandId(context: CallContext): string {

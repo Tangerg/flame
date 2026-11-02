@@ -12,11 +12,13 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"unicode"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
@@ -354,49 +356,76 @@ func (r TokenCount) Validate() error {
 	return nil
 }
 
-func ProfilesMethod() (*qimumcp.Method[struct{}, []Profile], error) {
-	return qimumcp.NewMethod[struct{}, []Profile](qimumcp.MethodConfig{Name: "flame.model-provider/profiles.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read this installed adapter's provider policies and published model facts."})
+// The typed handle contains only a private pointer to the admitted schema.
+// Copying the handle preserves client ownership without compiling the schema again.
+func declaredMethod[T any](compile func(qimumcp.MethodConfig) (*T, error), config qimumcp.MethodConfig) func() (*T, error) {
+	admitted := sync.OnceValues(func() (*T, error) { return compile(config) })
+	return func() (*T, error) {
+		method, err := admitted()
+		if err != nil {
+			return nil, err
+		}
+		return new(*method), nil
+	}
 }
 
-func RemoteModelsMethod() (*qimumcp.Method[Connection, []string], error) {
-	return qimumcp.NewMethod[Connection, []string](qimumcp.MethodConfig{Name: "flame.model-provider/remote-models.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read model identities from the exact configured provider endpoint."})
-}
+var profilesMethod = declaredMethod(qimumcp.NewMethod[struct{}, []Profile], qimumcp.MethodConfig{Name: "flame.model-provider/profiles.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read this installed adapter's provider policies and published model facts."})
 
-func VerifyMethod() (*qimumcp.Method[Connection, struct{}], error) {
-	return qimumcp.NewMethod[Connection, struct{}](qimumcp.MethodConfig{Name: "flame.model-provider/verify.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Prove the exact configured connection authenticates with its provider."})
-}
+func ProfilesMethod() (*qimumcp.Method[struct{}, []Profile], error) { return profilesMethod() }
 
-func OpenChatMethod() (*qimumcp.Method[Open, Chat], error) {
-	return qimumcp.NewMethod[Open, Chat](qimumcp.MethodConfig{Name: "flame.model-provider/open-chat.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Capture one immutable provider client shared by chat, streaming and optional token counting."})
-}
+var remoteModelsMethod = declaredMethod(qimumcp.NewMethod[Connection, []string], qimumcp.MethodConfig{Name: "flame.model-provider/remote-models.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read model identities from the exact configured provider endpoint."})
 
-func OpenEmbeddingMethod() (*qimumcp.Method[Open, Embedder], error) {
-	return qimumcp.NewMethod[Open, Embedder](qimumcp.MethodConfig{Name: "flame.model-provider/open-embedding.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Capture an immutable embedding client and its vector-space identity."})
-}
+func RemoteModelsMethod() (*qimumcp.Method[Connection, []string], error) { return remoteModelsMethod() }
 
-func ReopenChatMethod() (*qimumcp.Method[Reopen, Chat], error) {
-	return qimumcp.NewMethod[Reopen, Chat](qimumcp.MethodConfig{Name: "flame.model-provider/reopen-chat.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Reconstruct a fresh client from the original confirmed open receipt, without reading current credentials or authorizing generation."})
-}
+var verifyMethod = declaredMethod(qimumcp.NewMethod[Connection, struct{}], qimumcp.MethodConfig{Name: "flame.model-provider/verify.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Prove the exact configured connection authenticates with its provider."})
 
-func CloseMethod() (*qimumcp.Method[Handle, struct{}], error) {
-	return qimumcp.NewMethod[Handle, struct{}](qimumcp.MethodConfig{Name: "flame.model-provider/close.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Retire the captured client after its accepted calls have joined."})
-}
+func VerifyMethod() (*qimumcp.Method[Connection, struct{}], error) { return verifyMethod() }
 
-func CallMethod() (*qimumcp.Method[ChatRequest, ChatResult], error) {
-	return qimumcp.NewMethod[ChatRequest, ChatResult](qimumcp.MethodConfig{Name: "flame.model-provider/call.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Execute one original provider exchange using the captured client and preserve its complete outcome."})
-}
+var openChatMethod = declaredMethod(qimumcp.NewMethod[Open, Chat], qimumcp.MethodConfig{Name: "flame.model-provider/open-chat.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Capture one immutable provider client shared by chat, streaming and optional token counting."})
+
+func OpenChatMethod() (*qimumcp.Method[Open, Chat], error) { return openChatMethod() }
+
+var openEmbeddingMethod = declaredMethod(qimumcp.NewMethod[Open, Embedder], qimumcp.MethodConfig{Name: "flame.model-provider/open-embedding.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Capture an immutable embedding client and its vector-space identity."})
+
+func OpenEmbeddingMethod() (*qimumcp.Method[Open, Embedder], error) { return openEmbeddingMethod() }
+
+var reopenChatMethod = declaredMethod(qimumcp.NewMethod[Reopen, Chat], qimumcp.MethodConfig{Name: "flame.model-provider/reopen-chat.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Reconstruct a fresh client from the original confirmed open receipt, without reading current credentials or authorizing generation."})
+
+func ReopenChatMethod() (*qimumcp.Method[Reopen, Chat], error) { return reopenChatMethod() }
+
+var closeMethod = declaredMethod(qimumcp.NewMethod[Handle, struct{}], qimumcp.MethodConfig{Name: "flame.model-provider/close.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Retire the captured client after its accepted calls have joined."})
+
+func CloseMethod() (*qimumcp.Method[Handle, struct{}], error) { return closeMethod() }
+
+var callMethod = declaredMethod(qimumcp.NewMethod[ChatRequest, ChatResult], qimumcp.MethodConfig{Name: "flame.model-provider/call.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Execute one original provider exchange using the captured client and preserve its complete outcome."})
+
+func CallMethod() (*qimumcp.Method[ChatRequest, ChatResult], error) { return callMethod() }
+
+var streamMethod = declaredMethod(qimumcp.NewStreamingMethod[ChatRequest, chat.ResponseDelta, ChatResult], qimumcp.MethodConfig{Name: "flame.model-provider/stream.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Stream the original provider deltas and retain the final outcome without replaying an unconfirmed exchange."})
 
 func StreamMethod() (*qimumcp.StreamingMethod[ChatRequest, chat.ResponseDelta, ChatResult], error) {
-	return qimumcp.NewStreamingMethod[ChatRequest, chat.ResponseDelta, ChatResult](qimumcp.MethodConfig{Name: "flame.model-provider/stream.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Stream the original provider deltas and retain the final outcome without replaying an unconfirmed exchange."})
+	return streamMethod()
 }
 
-func CountMethod() (*qimumcp.Method[ChatRequest, TokenCount], error) {
-	return qimumcp.NewMethod[ChatRequest, TokenCount](qimumcp.MethodConfig{Name: "flame.model-provider/count.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Count the complete request using the same captured provider instance, only when that capability was advertised."})
-}
+var countMethod = declaredMethod(qimumcp.NewMethod[ChatRequest, TokenCount], qimumcp.MethodConfig{Name: "flame.model-provider/count.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Count the complete request using the same captured provider instance, only when that capability was advertised."})
 
-func EmbedMethod() (*qimumcp.Method[EmbeddingRequest, EmbeddingResult], error) {
-	return qimumcp.NewMethod[EmbeddingRequest, EmbeddingResult](qimumcp.MethodConfig{Name: "flame.model-provider/embed.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Execute one original embedding exchange and preserve the complete provider response."})
-}
+func CountMethod() (*qimumcp.Method[ChatRequest, TokenCount], error) { return countMethod() }
+
+var embedMethod = declaredMethod(qimumcp.NewMethod[EmbeddingRequest, EmbeddingResult], qimumcp.MethodConfig{Name: "flame.model-provider/embed.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Execute one original embedding exchange and preserve the complete provider response."})
+
+func EmbedMethod() (*qimumcp.Method[EmbeddingRequest, EmbeddingResult], error) { return embedMethod() }
+
+// Checkpoints need the exact contract identity on every commit. Caching only
+// immutable JSON leaves each executable contract and its method handles private.
+func ContractIdentity() (jsonvalue.Value, error) { return contractIdentity() }
+
+var contractIdentity = sync.OnceValues(func() (jsonvalue.Value, error) {
+	c, err := Contract()
+	if err != nil {
+		return jsonvalue.Value{}, err
+	}
+	return c.Identity(), nil
+})
 
 func Contract() (*portable.Capability, error) {
 	profiles, err := ProfilesMethod()

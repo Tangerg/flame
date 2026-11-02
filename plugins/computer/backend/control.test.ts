@@ -652,8 +652,10 @@ describe("computer control ownership", () => {
       method: "js",
       inputDigest: call.inputDigest,
     });
-    expect(receipt.found).toBe(true);
-    expect(JSON.parse(receipt.output!).content[1].kind).toBe("media");
+    expect(receipt.result).toBeDefined();
+    expect(receipt.result!.output.content?.[1]).toMatchObject({
+      kind: "media",
+    });
     expect(engine.call).toHaveBeenCalledTimes(1);
   });
 

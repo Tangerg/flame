@@ -1630,7 +1630,7 @@ Provider and MCP probes return a closed `outcome` without server-authored prose.
 
 ## SQLite transaction lifetime
 
-`qimu/sqlite` is the public schema/transaction owner used by Runtime
+`frame/sqlite` owns generic schema admission and transactions used by Runtime
 and plugin authors. `packages/go-sdk/plugin/sqlite` owns Flame private command admission
 and atomic receipts. Their former private implementations and entrances are
 removed; Core stores and both bundled backends use the same public mechanisms.

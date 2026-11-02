@@ -3,6 +3,13 @@ import { Lifetime } from "@qimu/sdk";
 import { type ReadyReport } from "@qimu/sdk/protocol";
 import { HTTPControl } from "./http";
 
+const poll = JSON.stringify({
+  authority: { id: "host", epoch: "1" },
+  realm: { id: "realm", epoch: "1" },
+  revision: "1",
+  plans: [],
+  fences: [],
+});
 const ready: ReadyReport = {
   operationId: "ready",
   authority: { id: "host", epoch: "1" },
@@ -30,7 +37,7 @@ describe("authenticated control transport", () => {
     const lifetime = new Lifetime("native browser transport");
     const fetch = vi.fn(function (this: typeof globalThis) {
       if (this !== globalThis) throw new TypeError("Illegal invocation");
-      return Promise.resolve(new Response("null"));
+      return Promise.resolve(new Response(poll));
     });
     vi.stubGlobal("fetch", fetch);
     try {
@@ -50,7 +57,7 @@ describe("authenticated control transport", () => {
 
   it("sends the explicit realm credential and envelope without cookies or redirects", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>(
-      async () => new Response("null"),
+      async () => new Response(poll),
     );
     const f = control(fetch);
     await f.control.poll();
@@ -106,6 +113,26 @@ describe("authenticated control transport", () => {
     });
     await f.lifetime.close();
     await changed.lifetime.close();
+  });
+
+  it("rejects valid JSON with an invalid control response shape", async () => {
+    for (const body of [
+      "42",
+      "null",
+      '{"decision":"alien"}',
+      '{"decision":"accepted","surprise":true}',
+    ]) {
+      const f = control(vi.fn(async () => new Response(body)));
+      await expect(f.control.ready(ready)).rejects.toMatchObject({
+        code: "outcome_unknown",
+      });
+      await f.lifetime.close();
+    }
+    const f = control(vi.fn(async () => new Response('{"ok":true}')));
+    await expect(f.control.closeSnapshot("unchanged")).rejects.toMatchObject({
+      code: "outcome_unknown",
+    });
+    await f.lifetime.close();
   });
 
   it("joins in-flight fetches when the bootstrap transport owner closes", async () => {

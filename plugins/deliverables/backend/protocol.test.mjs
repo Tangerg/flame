@@ -354,8 +354,8 @@ it("model tools create editable workbook and chart slides through the same owner
       method: "create",
       inputDigest: digestJSON(input),
     });
-    expect(receipt.found).toBe(true);
-    expect(JSON.parse(receipt.output)).toEqual({
+    expect(receipt.result).toBeDefined();
+    expect(receipt.result.output).toEqual({
       content: output.content.map((part) => ({
         kind: "text",
         text: part.text,

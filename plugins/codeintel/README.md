@@ -16,13 +16,13 @@ the acknowledged mutation result when optional analysis fails.
 
 Documents and formatted output are limited to 2 MiB so their worst-case JSON
 encoding fits the MCP transport. Go and JSON formatting run in process. Other
-supported text formats use `prettier` when available. External formatters and
+supported text formats use `prettier` when available. Prettier runs without project configuration or EditorConfig, using the basename for parser selection. External formatters and
 language servers own process groups and retire descendants on cancellation or
 shutdown. Missing optional formatters are unsupported operations; other failures
 remain visible alongside a successful edit.
 
 The optional installation input `lsp-servers` is a JSON array of server
-specifications (`name`, `command`, `args`, `languageId`, `extensions`, `rootMarkers`). Omit it to use the built-in
+specifications (`name`, `command`, `args`, `languages` (extension-to-language-ID object), `rootMarkers`). Omit it to use the built-in
 language-server table; an empty array disables language servers. Executables must
 already be available to the installed backend. Diagnostic results must identify
 the requested open-document version; missing, stale or unversioned results are

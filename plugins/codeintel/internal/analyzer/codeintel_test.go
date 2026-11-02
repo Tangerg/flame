@@ -8,7 +8,7 @@ import (
 )
 
 func TestUnavailableLanguageServerDoesNotProduceACleanReport(t *testing.T) {
-	analysis, err := New(t.Context(), []lsp.ServerSpec{{Name: "missing", Command: filepath.Join(t.TempDir(), "missing-server"), LanguageID: "go", Extensions: []string{".go"}}})
+	analysis, err := New(t.Context(), []lsp.ServerSpec{{Name: "missing", Command: filepath.Join(t.TempDir(), "missing-server"), Languages: map[string]string{".go": "go"}}})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -6,11 +6,9 @@ require (
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.24.1 // indirect
 	cloud.google.com/go/compute/metadata v0.10.0 // indirect
-	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/Tangerg/scope/models/protocol/anthropic v0.58.0 // indirect
 	github.com/Tangerg/scope/models/protocol/openai v0.58.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
-	github.com/adrg/frontmatter v0.2.0 // indirect
 	github.com/anthropics/anthropic-sdk-go v1.81.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.6.1 // indirect
@@ -27,7 +25,6 @@ require (
 	github.com/googleapis/enterprise-certificate-proxy v0.3.23 // indirect
 	github.com/googleapis/gax-go/v2 v2.26.2 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
 	github.com/openai/openai-go/v3 v3.78.0 // indirect
@@ -61,17 +58,16 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261012220534-4341edf3f941 // indirect
 	google.golang.org/grpc v1.84.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	modernc.org/libc v1.79.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.2-dev.20261101.t2d8806f39315
+	github.com/Tangerg/flame/packages/go-sdk v0.1.3-dev.20261102.tfbeddf4044bf
 	github.com/Tangerg/frame v0.0.1
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
-	github.com/Tangerg/qimu v0.1.1-dev.20261101.t4c4dcdb5ac85
+	github.com/Tangerg/qimu v0.1.2-dev.20261102.td29bdddba4f8
 	github.com/Tangerg/scope/core v0.58.0
 	github.com/Tangerg/scope/mcp v0.58.0
 	github.com/Tangerg/scope/models/alibaba v0.58.0

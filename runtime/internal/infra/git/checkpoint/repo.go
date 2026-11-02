@@ -11,7 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspacegit "github.com/Tangerg/flame/runtime/internal/infra/git"
-	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/frame/cancellation"
 )
 
 // commonExcludes keep a checkpoint from ballooning into dependency / build

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 )
 
 // RuntimeTargetSchema binds a managed plugin's private database to exactly one

@@ -3,25 +3,64 @@
 // locale, with matching interpolation placeholders, and references only keys it
 // declares. Mirrors apps/web/scripts/check-locales.mjs for the plugin tree,
 // which that script never walks.
+import { parseSync } from "rolldown/utils";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = dirname(dirname(fileURLToPath(import.meta.url)));
+const root =
+  process.argv[2] ?? dirname(dirname(fileURLToPath(import.meta.url)));
 const LOCALES = ["en", "zh", "zh-TW", "ja", "ko", "es", "fr", "de"];
-const PAIR_PATTERN =
-  /(?:"([^"]+)"|([A-Za-z_$][\w$]*))\s*:\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')/g;
 const PLACEHOLDER_PATTERN = /\{\{(\w+)\}\}/g;
-const LITERAL_KEY_PATTERN = /\bt\(\s*"([^"]+)"/g;
 const PLURAL_SUFFIX = /_(zero|one|two|few|many|other)$/;
-// Anti-regression (mirrors apps/web check-locales Rules 11/14): once a plugin
-// is localized, a hardcoded multi-word UI string bypasses every catalog.
-const JSX_PROSE = />[A-Z][a-z]+(?: [A-Za-z]+)+[.!?]?</g;
-const PROSE_PROP =
-  /\b(?:title|label|placeholder|sub|description|aria-label|ariaLabel|clearLabel|closeLabel)="[A-Z][a-z]+ [A-Za-z ]+"/g;
+const prose = /^[A-Z][a-z]+(?: [A-Za-z]+)+[.!?]?$/u;
+const translatedAttributes = new Set([
+  "title",
+  "label",
+  "placeholder",
+  "sub",
+  "description",
+  "aria-label",
+  "ariaLabel",
+  "clearLabel",
+  "closeLabel",
+]);
 
-const withoutComments = (s) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+function syntax(file) {
+  const result = parseSync(file, readFileSync(file, "utf8"), {
+    lang: file.endsWith(".tsx") ? "tsx" : "ts",
+  });
+  if (result.errors.length)
+    throw new Error(`invalid component syntax: ${file}`, {
+      cause: result.errors,
+    });
+  return result.program;
+}
+
+function walk(node, visit) {
+  if (node === null || typeof node !== "object") return;
+  if (node.type) visit(node);
+  for (const child of Object.values(node))
+    if (child !== null && typeof child === "object") walk(child, visit);
+}
+
+function* componentSources(directory) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      if (
+        !["locales", "node_modules", "dist", "__tests__", "fixtures"].includes(
+          entry.name,
+        )
+      )
+        yield* componentSources(path);
+    } else if (
+      /\.tsx?$/u.test(entry.name) &&
+      !/\.(?:test|spec|generated|d)\./u.test(entry.name)
+    )
+      yield path;
+  }
+}
 const pluralBase = (key) => {
   const m = PLURAL_SUFFIX.exec(key);
   return m ? key.slice(0, -m[0].length) : null;
@@ -38,11 +77,17 @@ const failures = [];
 
 function entries(file, label) {
   const map = new Map();
-  for (const m of readFileSync(file, "utf8").matchAll(PAIR_PATTERN)) {
-    const key = m[1] ?? m[2];
+  walk(syntax(file), (node) => {
+    if (
+      node.type !== "Property" ||
+      node.value.type !== "Literal" ||
+      typeof node.value.value !== "string"
+    )
+      return;
+    const key = node.key.name ?? node.key.value;
     if (map.has(key)) failures.push(`${label}: "${key}" declared twice`);
-    map.set(key, m[3] ?? m[4] ?? "");
-  }
+    map.set(key, node.value.value);
+  });
   return map;
 }
 
@@ -107,22 +152,33 @@ for (const plugin of plugins) {
   }
 
   const compDir = join(root, plugin, "component");
-  for (const f of readdirSync(compDir).filter(
-    (n) => /\.(ts|tsx)$/.test(n) && !/\.(test|spec|generated|d)\./.test(n),
-  )) {
-    const code = withoutComments(readFileSync(join(compDir, f), "utf8"));
-    for (const m of code.matchAll(LITERAL_KEY_PATTERN)) {
-      if (enKeys.has(m[1]) || enFamilies.has(m[1])) continue;
-      failures.push(`${plugin}/${f}: t("${m[1]}") has no key in en`);
-    }
-    for (const m of code.matchAll(JSX_PROSE))
-      failures.push(
-        `${plugin}/${f}: hardcoded UI text "${m[0].slice(1, -1)}" — route through t()`,
-      );
-    for (const m of code.matchAll(PROSE_PROP))
-      failures.push(
-        `${plugin}/${f}: hardcoded UI prop ${m[0]} — route through t()`,
-      );
+  for (const file of componentSources(compDir)) {
+    walk(syntax(file), (node) => {
+      if (
+        node.type === "CallExpression" &&
+        ((node.callee.type === "Identifier" && node.callee.name === "t") ||
+          (node.callee.type === "MemberExpression" &&
+            !node.callee.computed &&
+            node.callee.property.name === "t"))
+      ) {
+        const key = node.arguments[0]?.value;
+        if (typeof key === "string" && !enKeys.has(key) && !enFamilies.has(key))
+          failures.push(`${file}: t("${key}") has no key in en`);
+      }
+      if (node.type === "JSXText" && prose.test(node.value.trim()))
+        failures.push(
+          `${file}: hardcoded UI text "${node.value.trim()}" — route through t()`,
+        );
+      if (
+        node.type === "JSXAttribute" &&
+        translatedAttributes.has(node.name.name) &&
+        node.value?.type === "Literal" &&
+        prose.test(node.value.value)
+      )
+        failures.push(
+          `${file}: hardcoded UI prop ${node.name.name}="${node.value.value}" — route through t()`,
+        );
+    });
   }
 }
 

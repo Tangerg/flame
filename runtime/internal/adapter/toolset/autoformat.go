@@ -8,7 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/codeintel"
-	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/frame/cancellation"
 	"github.com/Tangerg/scope/tools/fs"
 )
 

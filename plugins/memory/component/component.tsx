@@ -16,7 +16,6 @@ import {
   TextArea,
   Checkbox,
   Metadata,
-  RecordBody,
   RecordGroup,
   RecordMeta,
   SearchField,
@@ -26,6 +25,7 @@ import {
   isImeKey,
 } from "@flame/ui";
 import { type Scope } from "./types";
+import { MemoryDeleteConfirmation } from "./MemoryDeleteConfirmation";
 import { MemoryReport } from "./MemoryReport";
 import { MemoryFeedback } from "./MemoryFeedback";
 import { useMemory } from "./useMemory";
@@ -73,7 +73,17 @@ export function Memory({ context }: { context: ComponentContext }) {
     recordResult,
     initiator,
   } = useMemory(context);
+  const recordCommand = unknown?.source === "record" ? unknown : undefined;
   const recovering = unknown?.source === "editor";
+  const editFeedback = (editorFeedback || recovering) && (
+    <MemoryFeedback
+      feedback={editorFeedback}
+      original={recovering ? unknown : undefined}
+      pending={pending}
+      reconcile={reconcile}
+      t={t}
+    />
+  );
   function clearFiltersAndFocusSearch() {
     clearFilters();
     searchElement.current?.focus();
@@ -231,69 +241,28 @@ export function Memory({ context }: { context: ComponentContext }) {
       {read.loading && <p role="status">{t("reading")}</p>}
       {read.error && <p role="alert">{read.error}</p>}
       {edit?.type === "delete" ? (
-        <RecordForm
-          aria-label={t("delete.confirm.label")}
+        <MemoryDeleteConfirmation
+          item={edit.item}
           opener={resolveOpener}
-          data-focus-unit=""
-        >
-          <RecordGroup>
-            <RecordTitle>{t("delete.title")}</RecordTitle>
-            <RecordMeta>
-              <span>{t(`scope.${edit.item.Scope}`)}</span>
-              <span>{edit.item.ID}</span>
-            </RecordMeta>
-            <RecordBody>{edit.item.Content}</RecordBody>
-            <Metadata>{t("delete.notice")}</Metadata>
-          </RecordGroup>
-          <FormActions
-            label={t("delete.actions.label")}
-            feedback={
-              (editorFeedback || recovering) && (
-                <MemoryFeedback
-                  feedback={editorFeedback}
-                  original={recovering ? unknown : undefined}
-                  pending={pending}
-                  reconcile={reconcile}
-                  t={t}
-                />
-              )
-            }
-          >
-            <Button
-              variant="ghost"
-              disabled={locked}
-              focusableWhenDisabled
-              // oxlint-disable-next-line jsx-a11y/no-autofocus
-              autoFocus
-              onClick={() => setEdit(undefined)}
-            >
-              {t("cancel")}
-            </Button>
-            <Button
-              variant={recovering ? "primary" : "tonal"}
-              tone={recovering ? undefined : "negative"}
-              pending={pending}
-              disabled={recovering ? context.signal.aborted : locked}
-              focusableWhenDisabled={locked}
-              onClick={
-                recovering
-                  ? reconcile
-                  : () =>
-                      change(
-                        "flame.memory/delete.v2",
-                        {
-                          ID: edit.item.ID,
-                          ExpectedRevision: edit.item.Revision,
-                        },
-                        t("command.delete", { id: edit.item.ID }),
-                        "editor",
-                      )
-              }
-            >
-              {recovering ? t("feedback.check") : t("delete.confirm")}
-            </Button>
-          </FormActions>
-        </RecordForm>
+          feedback={editFeedback}
+          pending={pending}
+          locked={locked}
+          recovering={recovering}
+          aborted={context.signal.aborted}
+          cancel={() => setEdit(undefined)}
+          confirm={
+            recovering
+              ? reconcile
+              : () =>
+                  change(
+                    "flame.memory/delete.v2",
+                    { ID: edit.item.ID, ExpectedRevision: edit.item.Revision },
+                    t("command.delete", { id: edit.item.ID }),
+                    "editor",
+                  )
+          }
+          t={t}
+        />
       ) : edit ? (
         <RecordForm
           aria-label={edit.type === "add" ? t("add") : t("edit")}
@@ -326,20 +295,7 @@ export function Memory({ context }: { context: ComponentContext }) {
               />
             </FormField>
           </RecordGroup>
-          <FormActions
-            label={t("save.actions.label")}
-            feedback={
-              (editorFeedback || recovering) && (
-                <MemoryFeedback
-                  feedback={editorFeedback}
-                  original={recovering ? unknown : undefined}
-                  pending={pending}
-                  reconcile={reconcile}
-                  t={t}
-                />
-              )
-            }
-          >
+          <FormActions label={t("save.actions.label")} feedback={editFeedback}>
             <Button
               disabled={locked}
               focusableWhenDisabled
@@ -392,7 +348,7 @@ export function Memory({ context }: { context: ComponentContext }) {
           </FormActions>
         </RecordForm>
       ) : null}
-      {(current || recordFeedback || unknown?.source === "record") && (
+      {(current || recordFeedback || recordCommand) && (
         <>
           <MemoryReport
             page={current?.page}
@@ -409,7 +365,7 @@ export function Memory({ context }: { context: ComponentContext }) {
             feedback={
               <MemoryFeedback
                 feedback={recordFeedback}
-                original={unknown?.source === "record" ? unknown : undefined}
+                original={recordCommand}
                 pending={pending}
                 reconcile={reconcile}
                 result={recordResult}

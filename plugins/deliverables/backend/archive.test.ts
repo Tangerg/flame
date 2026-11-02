@@ -217,7 +217,12 @@ it("upload offsets and identity are authoritative across original-command replay
   const result = await archive.command(
     append,
     signal(),
-    () => () => archive.appendUpload(id, 0, content),
+    () => () => archive.appendUpload(id, 0, content.subarray(0, 2)),
+  );
+  await archive.command(
+    original("tail"),
+    signal(),
+    () => () => archive.appendUpload(id, 2, content.subarray(2)),
   );
   expect(
     await archive.command(append, signal(), () => {
@@ -237,7 +242,7 @@ it("upload offsets and identity are authoritative across original-command replay
   expect(archive.upload(id).bytes).toEqual(new Uint8Array(content));
 });
 
-it("cancelled preparation cannot publish or manufacture a settled result", async () => {
+it("cancelled preparation settles the refusal before publication", async () => {
   const { archive } = await fixture();
   const command = original("cancelled");
   const file = initial(command.id);
@@ -258,7 +263,7 @@ it("cancelled preparation cannot publish or manufacture a settled result", async
       },
       "command",
     ),
-  ).toEqual({ found: false });
+  ).toMatchObject({ found: true, reply: { failure: { code: "cancelled" } } });
 });
 
 it("settled history leaves admission open and discarded upload bytes leave no copy in receipts", async () => {

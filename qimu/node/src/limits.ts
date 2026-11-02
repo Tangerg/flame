@@ -136,19 +136,20 @@ export function checkValue(value: unknown): JSONSize {
 
 // Fixed-width atoms/repetitions exclude author-controlled regex backtracking.
 // Syntax and the actual match remain owned by the schema engine.
-export function checkPattern(pattern: string): void {
+export function compilePattern(pattern: string): string {
+  const atoms: string[] = [];
   if (Buffer.byteLength(pattern) > PORTABLE_LIMITS.maxPatternBytes)
     exceeded("pattern bytes", PORTABLE_LIMITS.maxPatternBytes);
   let inClass = false;
   for (let index = 0; index < pattern.length; index++) {
     const char = pattern[index]!;
     if (char === "\\") {
-      index++;
-      if (index === pattern.length || /[0-9kKpP]/.test(pattern[index]!))
-        throw new Error("portable: unsupported pattern escape");
+      atoms.push(compilePatternEscape(pattern[++index], inClass));
       continue;
     }
+    atoms.push(char === "." && !inClass ? "[^\\n]" : char);
     if (char === "[") {
+      if (inClass) throw new Error("portable: nested character class");
       inClass = true;
       continue;
     }
@@ -172,7 +173,26 @@ export function checkPattern(pattern: string): void {
         throw new Error(
           "portable: pattern requires a bounded fixed repetition",
         );
+      atoms.push(pattern.slice(index + 1, end + 1));
       index = end;
     }
   }
+  return atoms.join("");
+}
+
+function compilePatternEscape(
+  escaped: string | undefined,
+  inClass: boolean,
+): string {
+  if (
+    !escaped ||
+    !wire.constants.patternEscapes.includes(escaped) ||
+    (inClass && "sSbB".includes(escaped))
+  )
+    throw new Error("portable: unsupported pattern escape");
+  if (escaped === "s" || escaped === "S")
+    return (
+      "[" + (escaped === "S" ? "^" : "") + wire.constants.asciiWhitespace + "]"
+    );
+  return "\\" + escaped;
 }

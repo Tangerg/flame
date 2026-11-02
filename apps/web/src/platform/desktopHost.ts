@@ -5,6 +5,7 @@ import { type ClientBootstrap, type ClientHost } from "@/platform/host";
 import {
   callDesktop,
   DesktopMethods,
+  MAXIMUM_EXPORT_CHUNK_BYTES,
   NotificationOpenedEvent,
   NotificationTargetSchema,
 } from "@/platform/desktop.generated";
@@ -33,6 +34,46 @@ async function readAuthorization(
   return parsed.data;
 }
 
+function exportChunk(bytes: Uint8Array): string {
+  let binary = "";
+  const batchSize = 0x8000;
+  for (let offset = 0; offset < bytes.byteLength; offset += batchSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + batchSize));
+  }
+  return btoa(binary);
+}
+
+async function saveExport(
+  binding: DesktopHostBinding,
+  filename: string,
+  bytes: Uint8Array,
+): Promise<"saved" | "cancelled"> {
+  if (bytes.byteLength <= MAXIMUM_EXPORT_CHUNK_BYTES) {
+    const result = await callDesktop(binding, "SaveFile", filename, exportChunk(bytes));
+    return DesktopMethods.SaveFile.result.parse(result) ? "saved" : "cancelled";
+  }
+  // The picker yields. A plugin may reuse its buffer as soon as saveFile returns the promise.
+  const snapshot = new Uint8Array(bytes);
+  const transfer = DesktopMethods.BeginFileSave.result.parse(
+    await callDesktop(binding, "BeginFileSave", filename, snapshot.byteLength),
+  );
+  if (!transfer) return "cancelled";
+  try {
+    for (let offset = 0; offset < snapshot.byteLength; offset += MAXIMUM_EXPORT_CHUNK_BYTES) {
+      const encoded = exportChunk(snapshot.subarray(offset, offset + MAXIMUM_EXPORT_CHUNK_BYTES));
+      await callDesktop(binding, "AppendFileSave", transfer, offset, encoded);
+    }
+    await callDesktop(binding, "FinishFileSave", transfer);
+    return "saved";
+  } catch (error) {
+    try {
+      await callDesktop(binding, "CancelFileSave", transfer);
+    } catch (cleanup) {
+      throw new AggregateError([error, cleanup], "file export failed during transfer and cleanup");
+    }
+    throw error;
+  }
+}
 export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost {
   let pending: Promise<ClientBootstrap> | undefined;
   return {
@@ -88,26 +129,11 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
     // Encoding captures the selected byte range before yielding. The native panel
     // owns the destination; neither the plugin nor IPC supplies a path.
     async saveFile({ filename, bytes }) {
-      const captured = new Uint8Array(bytes);
-      let binary = "";
-      for (let offset = 0; offset < captured.byteLength; offset += 0x8000) {
-        binary += String.fromCharCode(...captured.subarray(offset, offset + 0x8000));
-      }
-      const contentBase64 = btoa(binary);
-      const host = binding;
-      let value: unknown;
       try {
-        value = await callDesktop(host, "SaveFile", filename, contentBase64);
+        return await saveExport(binding, filename, bytes);
       } catch (error) {
         throw new RpcTransportError(`desktop host file save failed: ${errorMessage(error)}`);
       }
-      const parsed = DesktopMethods.SaveFile.result.safeParse(value);
-      if (!parsed.success) {
-        throw new RpcTransportError(
-          `desktop host file save returned an invalid shape: ${parsed.error.message}`,
-        );
-      }
-      return parsed.data ? "saved" : "cancelled";
     },
     async revealPath(path) {
       const host = binding;

@@ -51,6 +51,13 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
+	resolver := library.resolve
+	unavailable := errors.New("callback unavailable")
+	library.resolve = func(context.Context) (embed, error) { return nil, unavailable }
+	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "original", admitted); !errors.Is(err, unavailable) || calls.Load() != 0 {
+		t.Fatalf("unavailable callback: %v", err)
+	}
+	library.resolve = resolver
 	first, err := library.importDocument(t.Context(), contracts.Import.Name(), "original", admitted)
 	if err != nil || first.Revision != 1 {
 		t.Fatalf("import = %+v, %v", first, err)

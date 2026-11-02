@@ -8,36 +8,62 @@ import (
 	"path/filepath"
 )
 
-// A failed export must leave the user's previous file intact. Rename is the
-// commit point, so every fallible preparation happens in its directory first.
-func publishExport(destination string, content io.Reader) error {
+type exportFile struct {
+	file        *os.File
+	destination string
+	mode        os.FileMode
+}
+
+func prepareExport(destination string) (*exportFile, error) {
 	mode := os.FileMode(0600)
 	previous, err := os.Lstat(destination)
 	switch {
 	case err == nil:
 		if !previous.Mode().IsRegular() {
-			return errors.New("export destination is not a regular file")
+			return nil, errors.New("export destination is not a regular file")
 		}
 		mode = previous.Mode().Perm()
 	case !errors.Is(err, os.ErrNotExist):
+		return nil, err
+	}
+	file, err := os.CreateTemp(filepath.Dir(destination), ".flame-export-*")
+	if err != nil {
+		return nil, err
+	}
+	return &exportFile{file: file, destination: destination, mode: mode}, nil
+}
+
+func (f *exportFile) discard() {
+	if f.file == nil {
+		return
+	}
+	_ = f.file.Close()
+	_ = os.Remove(f.file.Name())
+	f.file = nil
+}
+
+// Rename is the only publication point, including for exports delivered in chunks.
+func (f *exportFile) publish() error {
+	if err := f.file.Chmod(f.mode); err != nil {
 		return err
 	}
-	temporary, err := os.CreateTemp(filepath.Dir(destination), ".flame-export-*")
+	if err := errors.Join(f.file.Sync(), f.file.Close()); err != nil {
+		return err
+	}
+	if err := os.Rename(f.file.Name(), f.destination); err != nil {
+		return fmt.Errorf("publish export: %w", err)
+	}
+	f.file = nil
+	return nil
+}
+func publishExport(destination string, content io.Reader) error {
+	f, err := prepareExport(destination)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = os.Remove(temporary.Name()) }()
-	if _, err := io.Copy(temporary, content); err != nil {
-		return errors.Join(err, temporary.Close())
-	}
-	if err := temporary.Chmod(mode); err != nil {
-		return errors.Join(err, temporary.Close())
-	}
-	if err := errors.Join(temporary.Sync(), temporary.Close()); err != nil {
+	defer f.discard()
+	if _, err := io.Copy(f.file, content); err != nil {
 		return err
 	}
-	if err := os.Rename(temporary.Name(), destination); err != nil {
-		return fmt.Errorf("publish export: %w", err)
-	}
-	return nil
+	return f.publish()
 }

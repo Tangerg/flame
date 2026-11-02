@@ -85,6 +85,7 @@ type Coordinator struct {
 	statusQueue             *statusQueue
 	installedAuthorizations *authorizationAttemptStore
 	external                ExternalWorkflow
+	authorizationDeliveries sync.Map // AuthorizationAttemptID → *authorizationDelivery, indexed only until its owner confirms settlement.
 	invalidations           invalidation.Publish
 
 	// tasks is this component's context for post-commit reconcile: MCP registry

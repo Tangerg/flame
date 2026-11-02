@@ -80,15 +80,11 @@ Vite owns frontend HMR at the one `VITE_PORT` selected by the Taskfile. Wails
 watches native Go sources and ignores generated Web staging. Teardown closes the
 window generation and its client resources; the native host attaches to its configured local Runtime and reads its credential through local-runtime.
 
-`SaveFile` accepts a suggested basename and canonical base64 bytes. The native
-save panel owns the actual destination and reports completion only after the write
-finishes; cancellation remains distinct from an error. This is the single file
-save owner for image exports, text exports and binary plugin deliverables. It does
-not own a plugin's document revisions, validation or delivery decisions. Shared
-Web image export supplies rasterized PNG bytes; native code does not decode data
-URLs or select image formats. The former `SaveImage` IPC method is removed.
-Rebuild the native host and shared Web together; external image callers must
-produce PNG material and use `SaveFile`.
+The native save panel owns each export destination. The Web client sends one bounded
+base64 frame for a small file. Larger files use a single transfer issued by the
+native picker. Each append must match the current file offset. Finish publishes only
+after the declared bytes are present, using the same atomic rename as a small export.
+Cancellation, a main-frame navigation, shutdown, and failed transfers discard staged bytes.
 
 `make check-native` stages the same Web product, runs native Go test/vet/build
 and the supported Wails build. A browser bundle alone is not native verification.

@@ -2,6 +2,7 @@ package lsp
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -21,11 +22,9 @@ type ServerSpec struct {
 	// Command and Args launch the server, which must speak LSP over stdio.
 	Command string   `json:"command"`
 	Args    []string `json:"args"`
-	// LanguageID is the LSP languageId reported in didOpen (go, typescript).
-	LanguageID string `json:"languageId"`
-	// Extensions are the file suffixes this server handles (".go"). They route
-	// file-anchored operations (definition, hover) to the right server.
-	Extensions []string `json:"extensions"`
+	// Language identity belongs to the document route: one server may handle
+	// several syntax variants in the same workspace process.
+	Languages map[string]string `json:"languages"`
 	// RootMarkers are filenames whose presence at a workspace root signals this
 	// language applies there (go.mod, package.json). They route workspace-wide
 	// operations (workspace symbol) that aren't anchored to a single file.
@@ -39,13 +38,18 @@ func (s ServerSpec) validate() error {
 	}{
 		{name: "name", value: s.Name},
 		{name: "command", value: s.Command},
-		{name: "language id", value: s.LanguageID},
 	} {
 		if !validServerField(required.value) {
 			return fmt.Errorf("%s %q is invalid", required.name, required.value)
 		}
 	}
-	for _, extension := range s.Extensions {
+	if len(s.Languages) == 0 {
+		return fmt.Errorf("server requires document languages")
+	}
+	for extension, language := range s.Languages {
+		if !validServerField(language) || extension != strings.ToLower(extension) {
+			return fmt.Errorf("invalid document language route %q", extension)
+		}
 		if len(extension) < 2 || extension[0] != '.' || !validServerField(extension) || strings.ContainsAny(extension, `/\\`) {
 			return fmt.Errorf("file extension %q is invalid", extension)
 		}
@@ -72,16 +76,14 @@ func DefaultServers() []ServerSpec {
 		{
 			Name:        "gopls",
 			Command:     "gopls",
-			LanguageID:  "go",
-			Extensions:  []string{".go"},
+			Languages:   map[string]string{".go": "go"},
 			RootMarkers: []string{"go.mod", "go.work"},
 		},
 		{
 			Name:        "typescript",
 			Command:     "typescript-language-server",
 			Args:        []string{"--stdio"},
-			LanguageID:  "typescript",
-			Extensions:  []string{".ts", ".tsx", ".mts", ".cts"},
+			Languages:   map[string]string{".ts": "typescript", ".mts": "typescript", ".cts": "typescript", ".tsx": "typescriptreact"},
 			RootMarkers: []string{"tsconfig.json", "jsconfig.json", "package.json"},
 		},
 	}
@@ -107,17 +109,13 @@ func newServerTable(specs []ServerSpec) (*serverTable, error) {
 		}
 		byName[name] = struct{}{}
 		specs[i].Args = slices.Clone(specs[i].Args)
-		specs[i].Extensions = slices.Clone(specs[i].Extensions)
+		specs[i].Languages = maps.Clone(specs[i].Languages)
 		specs[i].RootMarkers = slices.Clone(specs[i].RootMarkers)
 	}
 	byExt := make(map[string]ServerSpec, len(specs))
 	for _, spec := range specs {
-		for _, ext := range spec.Extensions {
-			canonical := strings.ToLower(ext)
-			if canonical == "" {
-				return nil, fmt.Errorf("lsp: server %q has an empty file extension", spec.Name)
-			}
-			if owner, duplicate := byExt[canonical]; duplicate {
+		for ext := range spec.Languages {
+			if owner, duplicate := byExt[ext]; duplicate {
 				return nil, fmt.Errorf(
 					"lsp: file extension %q is assigned to both %q and %q",
 					ext,
@@ -125,7 +123,7 @@ func newServerTable(specs []ServerSpec) (*serverTable, error) {
 					spec.Name,
 				)
 			}
-			byExt[canonical] = spec
+			byExt[ext] = spec
 		}
 	}
 	return &serverTable{specs: specs, byExt: byExt}, nil

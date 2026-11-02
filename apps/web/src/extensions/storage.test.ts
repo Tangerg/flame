@@ -79,13 +79,13 @@ describe("createStorage", () => {
     expect(a.keys().sort()).toEqual(["config", "history"]);
   });
 
-  it("gracefully returns non-JSON strings as-is", () => {
+  it("distinguishes corrupt preferences from missing records", () => {
     const s = createStorage("alpha");
     localStorage.setItem('["flame.plugin","alpha"]:raw', "not-json");
-    expect(s.get("raw")).toBe("not-json");
+    expect(() => s.get("raw")).toThrow();
   });
 
-  it("contains failures from every Storage operation", () => {
+  it("reports denied Storage operations to the consumer", () => {
     const denied = new DOMException("denied", "SecurityError");
     const deniedStorage = {
       get length(): number {
@@ -107,15 +107,13 @@ describe("createStorage", () => {
         throw denied;
       },
     } satisfies Storage;
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(window, "localStorage", "get").mockReturnValue(deniedStorage);
 
     const storage = createStorage("alpha");
-    expect(storage.get("key")).toBeUndefined();
-    expect(storage.keys()).toEqual([]);
-    expect(() => storage.set("key", "value")).not.toThrow();
-    expect(() => storage.remove("key")).not.toThrow();
-    expect(() => storage.clear()).not.toThrow();
-    expect(warn).toHaveBeenCalledTimes(3);
+    expect(() => storage.get("key")).toThrow();
+    expect(() => storage.keys()).toThrow();
+    expect(() => storage.set("key", "value")).toThrow();
+    expect(() => storage.remove("key")).toThrow();
+    expect(() => storage.clear()).toThrow();
   });
 });

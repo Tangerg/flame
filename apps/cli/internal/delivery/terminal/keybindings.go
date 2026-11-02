@@ -1,8 +1,7 @@
 package terminal
 
 import (
-	"fmt"
-	"maps"
+	"github.com/Tangerg/flame/apps/cli/internal/adapter/keybinding"
 	"slices"
 	"strings"
 
@@ -25,25 +24,16 @@ func configuredKeyBindings(configured settings.Config) (keyBindings, error) {
 		application: &keymap.Map{},
 		global:      &keymap.Map{},
 	}
-	actions := slices.Sorted(maps.Keys(configured.Keys))
-	seen := make(map[string]settings.Action)
-	for _, name := range actions {
-		action := keymap.Action(name)
-		for _, encoded := range configured.Keys[name] {
-			sequence, ok := input.ParseKeys(encoded)
-			if !ok {
-				return keyBindings{}, fmt.Errorf("session settings: keys.%s contains invalid binding %q", name, encoded)
-			}
-			identity := sequence.String()
-			if owner, duplicate := seen[identity]; duplicate && owner != name {
-				return keyBindings{}, fmt.Errorf("session settings: key %q is bound to both %s and %s", identity, owner, name)
-			}
-			seen[identity] = name
-			bindings.editor.Bind(action, sequence...)
-			bindings.application.Bind(action, sequence...)
-			if action == cancelRun || action == quitApp {
-				bindings.global.Bind(action, sequence...)
-			}
+	parsed, err := keybinding.Parse(configured.Keys)
+	if err != nil {
+		return keyBindings{}, err
+	}
+	for _, binding := range parsed {
+		action := keymap.Action(binding.Action)
+		bindings.editor.Bind(action, binding.Keys...)
+		bindings.application.Bind(action, binding.Keys...)
+		if action == cancelRun || action == quitApp {
+			bindings.global.Bind(action, binding.Keys...)
 		}
 	}
 	return bindings, nil

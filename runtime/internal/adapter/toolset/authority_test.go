@@ -3,6 +3,11 @@ package toolset
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	wire "github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/qimu/portable"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
@@ -86,7 +91,11 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 	var directoryGrant string
 	advertise := func(server mcpserver.Server) {
 		t.Helper()
-		grant, err := vault.Grant(t.Context(), owner, server)
+		grant, err := vault.PrepareGrant(t.Context(), owner, server, mcpapp.GrantProposal{
+			Source:     extension.ContributionSource{InstallationID: owner.String(), Release: integrity.Hash([]byte("release")).String(), Contribution: "directory"},
+			Invocation: portable.Invocation{ID: identity.DigestStrings(server.AuthorityFingerprint().String(), server.Connection.(mcpserver.HTTPConnection).Authorization).String(), Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: owner.String()}},
+			Change:     wire.Change{Name: server.Name.String(), Replacement: &wire.Entry{Name: server.Name.String()}},
+		})
 		if err != nil {
 			t.Fatal(err)
 		}

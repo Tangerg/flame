@@ -39,11 +39,6 @@ func TestToolReceiptReadsOnlyTheOriginalOwnerOutput(t *testing.T) {
 		{name: "absent"},
 		{name: "original unrelated Tool", receipt: known, found: true},
 		{name: "original refusal", receipt: failed, found: true, failed: true},
-		{name: "missing output", receipt: ToolReceipt{Found: true}, invalid: true},
-		{name: "null output", receipt: ToolReceipt{Found: true, Output: "null"}, invalid: true},
-		{name: "corrupt output", receipt: ToolReceipt{Found: true, Output: `{"content":[{"kind":"invalid"}]}`}, invalid: true},
-		{name: "undeclared output", receipt: ToolReceipt{Output: known.Output}, invalid: true},
-		{name: "undeclared failure", receipt: ToolReceipt{IsError: true}, invalid: true},
 		{name: "lookup conflict", queryErr: &portable.Refusal{Code: "command_conflict", Message: "changed input"}, invalid: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -87,5 +82,21 @@ func TestToolReceiptReadsOnlyTheOriginalOwnerOutput(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestToolReceiptSchemaRequiresOneStructuredResult(t *testing.T) {
+	typed, err := ToolReceiptQuery()
+	if err != nil {
+		t.Fatal(err)
+	}
+	method, err := portable.AdmitMethod(typed.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range []string{`{"found":true}`, `{"found":false,"isError":true}`, `{"result":{}}`, `{"result":{"output":null}}`, `{"result":{"output":"null"}}`, `{"isError":true}`} {
+		if method.ValidateOutput([]byte(raw)) == nil {
+			t.Fatalf("accepted inconsistent receipt %s", raw)
+		}
 	}
 }

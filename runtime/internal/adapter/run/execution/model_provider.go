@@ -44,7 +44,7 @@ func decodeModelProvider(value jsontext.Value) (*modeladapter.ProviderCapture, e
 	if wire.Profile.ID != wire.Chat.Provider {
 		return nil, errors.New("execution: provider construction identity differs")
 	}
-	contract, err := modelprovider.Contract()
+	contract, err := modelprovider.ContractIdentity()
 	if err != nil {
 		return nil, err
 	}

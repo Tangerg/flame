@@ -31,7 +31,6 @@
 21 examples/plugins/reviews/component/board.tsx:ReviewsBoard
 34 packages/runtime-client/src/client.ts:dispatchMessage
 24 packages/runtime-client/src/client.ts:request
-31 packages/runtime-client/src/durableMutationJournal.ts:validEntry
 24 packages/runtime-client/src/transports/http.ts:drainStream
 29 packages/runtime-client/src/transports/http.ts:sendRequest
 30 packages/ui/src/button.tsx:dress

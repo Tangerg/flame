@@ -80,23 +80,27 @@ func (p *ModelProviders) Held(_ context.Context, installation qimu.InstallationI
 	return result, nil
 }
 
-func (p *ModelProviders) selectedBinding(ctx context.Context, role string) (plugins.ContributionBinding, bool, error) {
+func (p *ModelProviders) selectedBinding(ctx context.Context, role string) (plugins.ContributionBinding, plugins.SelectionState, error) {
 	return plugins.SelectedContributionForRole(ctx, p.config.Framework, p.config.Installations, p.config.Selections, p.contract, role)
 }
 
 func (p *ModelProviders) acquireSelected(ctx context.Context, provider string) (*providerUse, error) {
 	var binding plugins.ContributionBinding
 	err := p.config.Admission.Admit(ctx, func(ctx context.Context) error {
-		var found bool
+		var state plugins.SelectionState
 		var err error
-		binding, found, err = p.selectedBinding(ctx, extension.ModelProviderRole(provider))
+		binding, state, err = p.selectedBinding(ctx, extension.ModelProviderRole(provider))
 		if err != nil {
 			return err
 		}
-		if !found {
+		switch state {
+		case plugins.SelectionAbsent:
+			return modelapp.ErrProviderUnsupported
+		case plugins.SelectionActive:
+			return nil
+		default:
 			return plugin.ErrUnavailable
 		}
-		return nil
 	})
 	if err != nil {
 		return nil, err
@@ -159,14 +163,14 @@ func (p *ModelProviders) Profiles(ctx context.Context) ([]modelprovider.Profile,
 			if !ok {
 				continue
 			}
-			binding, found, err := p.selectedBinding(ctx, role)
+			binding, state, err := p.selectedBinding(ctx, role)
 			if errors.Is(err, plugin.ErrUnavailable) {
 				continue
 			}
 			if err != nil {
 				return err
 			}
-			if found {
+			if state == plugins.SelectionActive {
 				bySource[binding] = append(bySource[binding], id)
 			}
 		}

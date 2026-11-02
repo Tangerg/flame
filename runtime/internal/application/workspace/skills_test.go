@@ -194,56 +194,66 @@ func TestSkillMutationsPublishOnlyCommittedFilesystemFacts(t *testing.T) {
 	c := newSkills(t, newScope(t, "", "", testPaths{}), &fakeSkillCatalog{}, curator, proposals, observations, func(notice invalidation.Notice) {
 		notices = append(notices, notice)
 	})
+	assertPublished := func(identities ...string) {
+		t.Helper()
+		if len(notices) != len(identities) || len(watcher.accepted) != len(identities) {
+			t.Fatalf("published facts = notices %d, changes %+v, want identities %v", len(notices), watcher.accepted, identities)
+		}
+		for index, identity := range identities {
+			if notices[index].Resource != invalidation.Skills {
+				t.Fatalf("notice = %+v, want Skills", notices[index])
+			}
+			change := watcher.accepted[index]
+			if change.Resource != AuthoredSkills || !slices.Equal(change.Identities, []string{identity}) {
+				t.Fatalf("authored change = %+v, want Skills identity %q", change, identity)
+			}
+		}
+	}
 
 	if archiveErr2 := c.Archive(context.Background(), "lint"); archiveErr2 != nil {
 		t.Fatal(archiveErr2)
 	}
+	committed := []string{"/skills/lint/SKILL.md"}
+	assertPublished(committed...)
 	if restoreErr := c.Restore(context.Background(), "lint"); restoreErr != nil {
 		t.Fatal(restoreErr)
 	}
+	committed = append(committed, "/skills/lint/SKILL.md")
+	assertPublished(committed...)
 	proposal := skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeProject, Name: "lint", Description: "Lint the current project before final verification.", Instructions: "Run the linter."}
 	ref, err := c.SubmitProposal(context.Background(), "/repo", proposal)
 	if err != nil {
 		t.Fatal(err)
 	}
+	assertPublished(committed...)
 	if err := c.ApproveProposal(context.Background(), "/repo", ref); err != nil {
 		t.Fatal(err)
 	}
+	committed = append(committed, "/repo/.flame/skills/run-tests/SKILL.md")
+	assertPublished(committed...)
 	if err := c.RejectProposal(context.Background(), "/repo", ref); err != nil {
 		t.Fatal(err)
 	}
-	if len(notices) != 5 {
-		t.Fatalf("notifications = %d, want 5", len(notices))
-	}
-	for _, notice := range notices {
-		if notice.Resource != invalidation.Skills {
-			t.Fatalf("notice = %+v, want Skills", notice)
-		}
-	}
-	if len(watcher.accepted) != 5 {
-		t.Fatalf("accepted authored changes = %+v, want 5", watcher.accepted)
-	}
+	assertPublished(committed...)
 
 	curator.archiveErr = errors.New("disk unavailable")
 	curator.archiveIdentities = []string{"/skills/partially-moved/SKILL.md"}
-	if err := c.Archive(context.Background(), "lint"); err == nil {
-		t.Fatal("Archive error = nil, want failure")
+	if err := c.Archive(context.Background(), "lint"); !errors.Is(err, curator.archiveErr) {
+		t.Fatalf("Archive error = %v, want %v", err, curator.archiveErr)
 	}
-	if len(notices) != 6 || len(watcher.accepted) != 6 {
-		t.Fatalf("partially committed mutation = notices %d, accepted %d; want 6, 6", len(notices), len(watcher.accepted))
-	}
+	committed = append(committed, "/skills/partially-moved/SKILL.md")
+	assertPublished(committed...)
 	curator.archiveIdentities = nil
 	proposals.approveErr = errors.New("disk unavailable")
-	if err := c.ApproveProposal(context.Background(), "/repo", ref); err == nil {
-		t.Fatal("ApproveProposal error = nil, want failure")
+	if err := c.ApproveProposal(context.Background(), "/repo", ref); !errors.Is(err, proposals.approveErr) {
+		t.Fatalf("ApproveProposal error = %v, want %v", err, proposals.approveErr)
 	}
+	assertPublished(committed...)
 	proposals.rejectErr = errors.New("disk unavailable")
-	if err := c.RejectProposal(context.Background(), "/repo", ref); err == nil {
-		t.Fatal("RejectProposal error = nil, want failure")
+	if err := c.RejectProposal(context.Background(), "/repo", ref); !errors.Is(err, proposals.rejectErr) {
+		t.Fatalf("RejectProposal error = %v, want %v", err, proposals.rejectErr)
 	}
-	if len(notices) != 6 {
-		t.Fatalf("uncommitted failure notifications = %d, want 6", len(notices))
-	}
+	assertPublished(committed...)
 }
 
 type fakeSkillCatalog struct {

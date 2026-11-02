@@ -1,4 +1,3 @@
-import { type ConfigService } from "@/extensions/config";
 import { type KeyValueStore } from "@/extensions/storage";
 import { type LifetimeOperations } from "dougong";
 import {
@@ -6,12 +5,10 @@ import {
   type RuntimeEndpointTarget,
 } from "@/features/connection/application/runtimeEndpoint";
 import { normalizeRuntimeEndpoint } from "@flame/runtime-client";
-const CONFIG_KEY = "runtime.endpoint";
 
 const STORAGE_KEY = "endpoint";
 
 interface EndpointBindings extends Pick<LifetimeOperations, "cleanup"> {
-  config: ConfigService;
   storage: KeyValueStore;
 }
 
@@ -28,63 +25,46 @@ export function bindRuntimeEndpointConfiguration(
     if (!endpoint) throw new Error("invalid bootstrap Runtime endpoint");
     return { ...target, endpoint };
   };
-  let credential:
-    { kind: "host" } | { kind: "configured"; target: RuntimeEndpointTarget } | { kind: "retired" } =
-    { kind: "host" };
-  ctx.cleanup(() => {
-    credential = { kind: "retired" };
-  });
   const stored = ctx.storage.get(STORAGE_KEY);
   const restored = typeof stored === "string" ? normalizeRuntimeEndpoint(stored) : null;
-  ctx.config.set(CONFIG_KEY, restored ?? defaultTarget().endpoint);
+  type Target =
+    | { kind: "host" | "retired"; endpoint: string }
+    | ({ kind: "configured" } & RuntimeEndpointTarget);
+  let target: Target = { kind: "host", endpoint: restored ?? defaultTarget().endpoint };
+  ctx.cleanup(() => {
+    target = { kind: "retired", endpoint: target.endpoint };
+  });
 
+  function select(next: Target) {
+    if (target.kind === "retired") throw new Error("Runtime endpoint owner is retired");
+    ctx.storage.set(STORAGE_KEY, next.endpoint);
+    replaceConnection(() => {
+      target = next;
+    });
+  }
   const configuration: RuntimeEndpointConfiguration & { usesHostCredential(): boolean } = {
     usesHostCredential: () =>
-      credential.kind === "host" && configuration.read().endpoint === defaultTarget().endpoint,
-    read: () => {
-      const value = ctx.config.get(CONFIG_KEY);
-      const endpoint = typeof value === "string" ? normalizeRuntimeEndpoint(value) : null;
-      if (!endpoint) throw new Error("invalid configured Runtime endpoint");
-      const source =
-        credential.kind === "host"
-          ? defaultTarget()
-          : credential.kind === "configured"
-            ? credential.target
-            : null;
-      return {
-        endpoint,
-        localToken: source?.endpoint === endpoint ? source.localToken : undefined,
-      };
+      target.kind === "host" && target.endpoint === defaultTarget().endpoint,
+    read() {
+      const { endpoint } = target;
+      if (target.kind === "configured") return { endpoint, localToken: target.localToken };
+      const host = target.kind === "host" ? defaultTarget() : undefined;
+      return { endpoint, localToken: host?.endpoint === endpoint ? host.localToken : undefined };
     },
     defaultTarget,
-    replace(target) {
+    replace(next) {
       const current = configuration.read();
-      if (current.endpoint === target.endpoint && current.localToken === target.localToken) {
+      if (current.endpoint === next.endpoint && current.localToken === next.localToken)
         return false;
-      }
-      replaceConnection(() => {
-        credential = { kind: "configured", target: { ...target } };
-        ctx.config.set(CONFIG_KEY, target.endpoint);
-      });
+      select({ kind: "configured", ...next });
       return true;
     },
     reset() {
-      const target = defaultTarget();
-      if (credential.kind === "host" && configuration.read().endpoint === target.endpoint) {
-        return false;
-      }
-      replaceConnection(() => {
-        credential = { kind: "host" };
-        ctx.config.set(CONFIG_KEY, target.endpoint);
-      });
+      const { endpoint } = defaultTarget();
+      if (target.kind === "host" && target.endpoint === endpoint) return false;
+      select({ kind: "host", endpoint });
       return true;
     },
   };
-
-  const disposeStorageMirror = ctx.config.onChange(CONFIG_KEY, (value) => {
-    if (typeof value === "string") ctx.storage.set(STORAGE_KEY, value);
-  });
-
-  ctx.cleanup(() => disposeStorageMirror.dispose());
   return configuration;
 }

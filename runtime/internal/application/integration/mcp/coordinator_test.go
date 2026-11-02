@@ -10,7 +10,9 @@ import (
 func testCoordinator(t testing.TB, cfg Config) *Coordinator {
 	t.Helper()
 	ports := &fakePorts{}
-	cfg.External = &testExternalWorkflow{attempts: newAuthorizationAttemptStore()}
+	if cfg.External == nil {
+		cfg.External = &testExternalWorkflow{attempts: newAuthorizationAttemptStore()}
+	}
 	if cfg.Registry == nil {
 		cfg.Registry = &testRegistry{servers: make(map[mcpserver.ID]mcpserver.Server)}
 	}

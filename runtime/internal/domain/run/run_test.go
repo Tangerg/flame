@@ -442,8 +442,8 @@ func TestRunAndMetricsCopyOwnership(t *testing.T) {
 		t.Fatal(err)
 	}
 	usage := accounting.Usage{
-		Total:   accounting.Totals{Cost: cost},
-		ByModel: map[string]accounting.Totals{"model": {InputTokens: 1}},
+		Total:   accounting.Totals{InputTokens: 1, Cost: cost},
+		ByModel: map[string]accounting.Totals{"model": {InputTokens: 1, Cost: cost}},
 	}
 	metrics, err := NewMetrics(&usage, 1, 0)
 	if err != nil {

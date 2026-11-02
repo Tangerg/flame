@@ -72,6 +72,9 @@ through its HTTP/SSE binding. The value is the base URL, such as
 preferences. Endpoint failure or protocol incompatibility remains an error; it
 never starts a replacement Runtime or falls back to local storage.
 
+A configured bearer requires HTTPS outside loopback. A remote Runtime listening on
+HTTP can sit behind a TLS reverse proxy; configure its HTTPS base URL in CLI.
+
 An automatically discovered project `.flame.yaml` cannot declare `runtime.endpoint`.
 Such a file is rejected before Runtime discovery, including dynamic completion;
 it cannot select the destination of a process-owned bearer. Remove that setting
@@ -110,8 +113,7 @@ and history are stored separately for each configured endpoint beneath
 `$FLAME_HOME/cli/targets/`; embedded state retains `$FLAME_HOME/cli`. One writable Workbench owns each physical
 partition from loading through Close; a second terminal targeting it is refused.
 Runtime's durable idempotency namespace still guards command replay independently
-of that local endpoint partition. Changing an endpoint's spelling selects a new
-local partition; it does not migrate pending commands automatically.
+of that local endpoint partition. Equivalent endpoint spellings share their authoring partition. Distinct reverse-proxy prefixes have separate partitions.
 
 `flame plugins get-command --request '<JSON>'` inspects the Core-owned original
 request using its retained `namespace` and `key`. It returns the exact installation,

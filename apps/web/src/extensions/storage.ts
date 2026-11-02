@@ -10,21 +10,13 @@ export interface KeyValueStore {
   keys: () => string[];
 }
 
-function readStorage<T>(fallback: T, read: (storage: Storage) => T): T {
-  try {
-    if (typeof window === "undefined") return fallback;
-    return read(window.localStorage);
-  } catch {
-    return fallback;
-  }
-}
+export class PluginStorageError extends Error {}
 
-function writeStorage(operation: string, write: (storage: Storage) => void): void {
+function accessStorage<T>(operation: (storage: Storage) => T): T {
   try {
-    if (typeof window === "undefined") return;
-    write(window.localStorage);
-  } catch (error) {
-    console.warn(`[plugin] storage.${operation} failed:`, error);
+    return operation(window.localStorage);
+  } catch (cause) {
+    throw new PluginStorageError("Plugin preferences are unavailable", { cause });
   }
 }
 
@@ -37,32 +29,27 @@ export function createStorage(pluginName: string): KeyValueStore {
 
   return {
     get(key: string): unknown {
-      return readStorage<unknown>(undefined, (storage) => {
+      return accessStorage<unknown>((storage) => {
         const raw = storage.getItem(prefix + key);
         if (raw == null) return undefined;
-        try {
-          const parsed = parseJSON(raw);
-          return parsed;
-        } catch {
-          return raw;
-        }
+        return parseJSON(raw);
       });
     },
 
     set(key: string, value: unknown): void {
-      writeStorage(`set("${key}")`, (storage) => {
+      accessStorage((storage) => {
         storage.setItem(prefix + key, stringifyJSON(value));
       });
     },
 
     remove(key: string): void {
-      writeStorage(`remove("${key}")`, (storage) => {
+      accessStorage((storage) => {
         storage.removeItem(prefix + key);
       });
     },
 
     clear(): void {
-      writeStorage("clear()", (storage) => {
+      accessStorage((storage) => {
         const doomed: string[] = [];
         for (let i = 0; i < storage.length; i++) {
           const key = storage.key(i);
@@ -73,7 +60,7 @@ export function createStorage(pluginName: string): KeyValueStore {
     },
 
     keys(): string[] {
-      return readStorage<string[]>([], (storage) => {
+      return accessStorage<string[]>((storage) => {
         const keys: string[] = [];
         for (let i = 0; i < storage.length; i++) {
           const key = storage.key(i);

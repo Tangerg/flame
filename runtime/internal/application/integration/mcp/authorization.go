@@ -2,7 +2,9 @@ package mcp
 
 import (
 	"context"
+	"errors"
 	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -27,7 +29,6 @@ const (
 	AuthorizationAttemptCanceled    AuthorizationAttemptStatus = AuthorizationAttemptStatus(mcpconnector.Canceled)
 )
 
-// Valid reports whether a belongs to the authorization-attempt lifecycle.
 func (a AuthorizationAttemptStatus) Valid() bool {
 	return a == AuthorizationAttemptPending || a == AuthorizationAttemptSucceeded ||
 		a == AuthorizationAttemptFailed || a == AuthorizationAttemptCanceled || a == AuthorizationAttemptUnconfirmed
@@ -80,15 +81,32 @@ func (c *Coordinator) CreateAuthorizationAttempt(ctx context.Context, server mcp
 			return nil
 		}
 	}
+	if server.Origin().Kind() == mcpserver.OriginUser {
+		// Starting a new attempt supersedes this server's former pending work in
+		// the connector. The new operation never inherits its completion.
+		c.authorizationDeliveries.Range(func(key, value any) bool {
+			if value.(*authorizationDelivery).server == server {
+				c.authorizationDeliveries.CompareAndDelete(key, value)
+			}
+			return true
+		})
+		original := settle
+		settle = func(ctx context.Context, status AuthorizationAttemptStatus) error {
+			delivery := &authorizationDelivery{server: server, status: status, send: original}
+			c.authorizationDeliveries.Store(attempt.ID, delivery)
+			return c.deliverAuthorization(ctx, attempt.ID, delivery)
+		}
+	}
 	start := make(chan struct{})
 	defer close(start)
 	var event *statusEvent
 	err = c.dispatchConnection(write.ownerCtx, server, c.connections.BeginAuthorize, start, func() { c.statusQueue.publish(event) }, func(outcome connectionOutcome) {
-		_ = settle(context.WithoutCancel(write.ownerCtx), authorizationAttemptStatus(outcome))
+		if err := settle(context.WithoutCancel(write.ownerCtx), authorizationAttemptStatus(outcome)); err != nil {
+			slog.WarnContext(write.ownerCtx, "mcp: authorization completion awaits confirmation", "attempt", attempt.ID.String(), "error", err)
+		}
 	})
 	if err != nil {
-		_ = settle(context.WithoutCancel(write.ownerCtx), AuthorizationAttemptFailed)
-		return AuthorizationAttempt{}, err
+		return AuthorizationAttempt{}, errors.Join(err, settle(context.WithoutCancel(write.ownerCtx), AuthorizationAttemptFailed))
 	}
 	event = c.statusQueue.prepare(server)
 	write.unlock()
@@ -103,9 +121,38 @@ func (c *Coordinator) AuthorizationAttempt(ctx context.Context, id string) (Auth
 	}
 	attempt, ok := c.installedAuthorizations.get(parsed)
 	if !ok {
+		observed, err := c.external.ReadAuthorization(ctx, parsed)
+		if err != nil {
+			return AuthorizationAttempt{}, err
+		}
+		value, failed := c.authorizationDeliveries.Load(parsed)
+		if !failed {
+			return observed, nil
+		}
+		if observed.Status != AuthorizationAttemptPending {
+			c.authorizationDeliveries.CompareAndDelete(parsed, value)
+			return observed, nil
+		}
+		if err := c.deliverAuthorization(ctx, parsed, value.(*authorizationDelivery)); err != nil {
+			return AuthorizationAttempt{}, err
+		}
 		return c.external.ReadAuthorization(ctx, parsed)
 	}
 	return attempt, nil
+}
+
+type authorizationDelivery struct {
+	server mcpserver.ID
+	status AuthorizationAttemptStatus
+	send   func(context.Context, AuthorizationAttemptStatus) error
+}
+
+func (c *Coordinator) deliverAuthorization(ctx context.Context, id AuthorizationAttemptID, d *authorizationDelivery) error {
+	if err := d.send(ctx, d.status); err != nil {
+		return err
+	}
+	c.authorizationDeliveries.CompareAndDelete(id, d)
+	return nil
 }
 
 func authorizationAttemptStatus(outcome connectionOutcome) AuthorizationAttemptStatus {

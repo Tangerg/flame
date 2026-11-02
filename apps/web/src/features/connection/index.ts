@@ -1,4 +1,3 @@
-import { CONFIG } from "@/extensions/config";
 import { definePlugin } from "@/extensions/definePlugin";
 import { type createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
 import {
@@ -10,7 +9,6 @@ export function createRuntimePlugin(connection: ReturnType<typeof createRuntimeC
   return definePlugin({
     name: "flame.builtin.runtime",
     provides: { serverScope: RUNTIME_SERVER_SCOPE, stream: RUNTIME_STREAM },
-    requires: { config: CONFIG },
     setup(ctx) {
       const binding = connection.bind(ctx);
       ctx.cleanup(binding.dispose);

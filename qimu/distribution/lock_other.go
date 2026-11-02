@@ -7,6 +7,8 @@ import (
 	"os"
 )
 
+const regularFileFlags = 0
+
 func lockStore(*os.Root) (*os.File, error) {
 	return nil, errors.New("distribution: this platform has no supported directory authority lock")
 }

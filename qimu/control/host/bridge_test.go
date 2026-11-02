@@ -157,6 +157,12 @@ func (e *bridgeEnvironment) start(id string) control.LocalPlan {
 		contributions = append(contributions, control.PreparedContribution{Object: object, MetadataJSON: `{"label":"` + id + `"}`})
 	}
 	report := control.ReadyReport{OperationID: "ready:" + id, Authority: plan.Authority, Realm: plan.Realm, Execution: plan.Execution, Objects: objects, Contributions: contributions}
+	wrong := report
+	wrong.Contributions = slices.Clone(wrong.Contributions)
+	wrong.Contributions[0].Object.Export.InstanceID = "another-instance"
+	if result, err := e.bridge.Ready(e.ctx, e.credentials.Token, wrong); err != nil || result.Decision != control.Rejected {
+		e.t.Fatalf("metadata with competing identity: %+v, %v", result, err)
+	}
 	result, err := e.bridge.Ready(e.ctx, e.credentials.Token, report)
 	if err != nil || result.Decision != control.Accepted {
 		e.t.Fatalf("ready: %+v %v", result, err)

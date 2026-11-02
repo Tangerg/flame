@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/frame/cancellation"
 	"github.com/Tangerg/qimu/jsonvalue"
 )
 

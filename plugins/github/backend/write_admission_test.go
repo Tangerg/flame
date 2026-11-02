@@ -11,9 +11,9 @@ import (
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
+	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/qimu/jsonvalue"
 	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/qimu/sqlite"
 )
 
 func TestGitHubWriteLocalRefusalsSettleBeforeAnyHTTP(t *testing.T) {

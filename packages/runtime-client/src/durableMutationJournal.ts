@@ -1,18 +1,14 @@
+import { z } from "zod";
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
 import { checkRequest, requestRequiresIdempotency, pluginDeliveryMethod } from "./request";
-import type {
-  StartRunRequest,
-  ResumeRunRequest,
-  SteerRunRequest,
-  RequestMeta,
-} from "./generated/wire.generated";
+import type { RequestMeta } from "./generated/wire.generated";
 import { validateWire } from "./generated/wire.validate.generated";
 import { cloneJSON, parseJSON, stringifyJSON } from "@qimu/sdk/json";
 
 const MAX_ENTRIES = 256;
 const ENTRY_PREFIX = "entry:";
 const FINGERPRINT_FIELD_SEPARATOR = "\u0000";
-const JOURNAL_ENTRY_FIELD_COUNT = 11;
+
 const MAX_IDENTITY_LENGTH = 255;
 const FINGERPRINT_HEX_LENGTH = 32;
 const MILLISECONDS_PER_SECOND = 1_000;
@@ -51,28 +47,50 @@ export class MutationJournalCapacityError extends MutationJournalError {
   override readonly name = "MutationJournalCapacityError";
 }
 
-export type RunCommand =
-  | { operation: "start"; params: StartRunRequest }
-  | { operation: "resume"; params: ResumeRunRequest }
-  | { operation: "steer"; params: SteerRunRequest };
+type InstalledRoute = Omit<CallPluginRequest, "input">;
 
-interface JournalEntry {
-  delivery: "reserved" | "dispatched";
-  method: string;
-  steerItemId: string | null;
-  salt: string;
-  namespace: string;
-  fingerprint: string;
-  idempotencyKey: string;
-  createdAt: number;
-  expiresAt: number;
-  installed?: {
-    intentFingerprint: string | null;
-    route: Omit<CallPluginRequest, "input">;
-  };
-  command: RunCommand | null;
-  requestMeta: RequestMeta | null;
+function commandParams<M extends "runs.start" | "runs.resume" | "runs.steer">(method: M) {
+  return z.custom<ReturnType<typeof checkRequest<M>>>((value) => {
+    try {
+      checkRequest(method, value);
+      return true;
+    } catch {
+      return false;
+    }
+  });
 }
+const runCommand = z.discriminatedUnion("operation", [
+  z.strictObject({ operation: z.literal("start"), params: commandParams("runs.start") }),
+  z.strictObject({ operation: z.literal("resume"), params: commandParams("runs.resume") }),
+  z.strictObject({ operation: z.literal("steer"), params: commandParams("runs.steer") }),
+]);
+export type RunCommand = z.infer<typeof runCommand>;
+const boundedText = z.string().min(1).max(MAX_IDENTITY_LENGTH);
+const digest = z.string().regex(FINGERPRINT_PATTERN);
+const entrySchema = z.strictObject({
+  delivery: z.enum(["reserved", "dispatched"]),
+  method: boundedText,
+  steerItemId: z.custom<string>(validSteerItem).nullable(),
+  salt: boundedText,
+  namespace: boundedText,
+  fingerprint: digest,
+  idempotencyKey: boundedText,
+  createdAt: z.number(),
+  expiresAt: z.number(),
+  installed: z
+    .strictObject({
+      intentFingerprint: digest.nullable(),
+      route: z.custom<InstalledRoute>(validInstalledRoute),
+    })
+    .optional(),
+  command: runCommand.nullable(),
+  requestMeta: z
+    .custom<RequestMeta>(
+      (value) => value !== undefined && validateWire("RequestMeta", value, "request").length === 0,
+    )
+    .nullable(),
+});
+type JournalEntry = z.infer<typeof entrySchema>;
 
 export type PluginCommandInput = Pick<CallPluginRequest, "contract" | "method" | "input">;
 export type PluginCommandBinding = Omit<CallPluginRequest, keyof PluginCommandInput>;
@@ -141,89 +159,39 @@ function validSteerItem(value: unknown): value is string {
   );
 }
 
+function validInstalledRoute(value: unknown): value is InstalledRoute {
+  if (!value || typeof value !== "object" || Array.isArray(value) || "input" in value) return false;
+  try {
+    const route = checkRequest("plugins.call", { ...value, input: "null" });
+    return requestRequiresIdempotency(pluginDeliveryMethod(route), route);
+  } catch {
+    return false;
+  }
+}
+
 function validEntry(value: unknown): value is JournalEntry {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const entry = value as Partial<JournalEntry>;
-  return (
-    Object.keys(value).length ===
-      JOURNAL_ENTRY_FIELD_COUNT + (entry.installed === undefined ? 0 : 1) &&
-    (entry.delivery === "reserved" || entry.delivery === "dispatched") &&
-    (entry.steerItemId === null ||
-      (validSteerItem(entry.steerItemId) && entry.command?.operation === "steer")) &&
-    validText(entry.salt, MAX_IDENTITY_LENGTH) &&
-    validText(entry.method, MAX_IDENTITY_LENGTH) &&
-    validText(entry.namespace, MAX_IDENTITY_LENGTH) &&
-    typeof entry.fingerprint === "string" &&
-    FINGERPRINT_PATTERN.test(entry.fingerprint) &&
-    validText(entry.idempotencyKey, MAX_IDENTITY_LENGTH) &&
-    typeof entry.createdAt === "number" &&
-    Number.isFinite(entry.createdAt) &&
-    typeof entry.expiresAt === "number" &&
-    Number.isFinite(entry.expiresAt) &&
-    entry.expiresAt > entry.createdAt &&
-    (entry.installed === undefined ||
-      (validInstalled(entry.installed) &&
-        entry.method === pluginDeliveryMethod(entry.installed.route))) &&
-    (entry.requestMeta === null ||
-      (entry.requestMeta !== undefined &&
-        validateWire("RequestMeta", entry.requestMeta, "request").length === 0)) &&
-    validCommand(entry.command, entry as JournalEntry) &&
-    (entry.command === null || entry.installed === undefined)
-  );
-}
-
-function validInstalled(value: JournalEntry["installed"]): boolean {
+  const admission = entrySchema.safeParse(value);
+  if (!admission.success) return false;
+  const entry = admission.data;
   if (
-    !value ||
-    typeof value !== "object" ||
-    Array.isArray(value) ||
-    Object.keys(value).length !== 2 ||
-    (value.intentFingerprint !== null &&
-      (typeof value.intentFingerprint !== "string" ||
-        !FINGERPRINT_PATTERN.test(value.intentFingerprint)))
+    entry.expiresAt <= entry.createdAt ||
+    (entry.steerItemId !== null && entry.command?.operation !== "steer")
   )
     return false;
-  if (
-    !value.route ||
-    typeof value.route !== "object" ||
-    Array.isArray(value.route) ||
-    Object.keys(value.route).length !== 6 ||
-    "input" in value.route
-  )
-    return false;
+  if (entry.installed)
+    return entry.command === null && entry.method === pluginDeliveryMethod(entry.installed.route);
+  if (entry.command === null) return true;
   try {
-    const method = pluginDeliveryMethod(value.route);
-    const request = checkRequest(method, { ...value.route, input: "null" });
-    return requestRequiresIdempotency(method, request);
+    return matchesCommand(
+      entry,
+      `runs.${entry.command.operation}`,
+      entry.command.params,
+      entry.requestMeta,
+    );
   } catch {
     return false;
   }
 }
-
-function validCommand(value: unknown, entry: JournalEntry): boolean {
-  if (value === null) return true;
-  if (
-    !value ||
-    typeof value !== "object" ||
-    Array.isArray(value) ||
-    Object.keys(value).length !== 2
-  )
-    return false;
-  const command = value as Partial<RunCommand>;
-  if (
-    command.operation !== "start" &&
-    command.operation !== "resume" &&
-    command.operation !== "steer"
-  )
-    return false;
-  try {
-    const method = `runs.${command.operation}` as const;
-    return matchesCommand(entry, method, command.params, entry.requestMeta);
-  } catch {
-    return false;
-  }
-}
-
 function prepareCommand(
   method: string,
   params: unknown,

@@ -1,5 +1,6 @@
+import { PluginStorageError } from "@/extensions/storage";
 import { z } from "zod";
-import { normalizeRuntimeEndpoint } from "@flame/runtime-client";
+import { endpointAcceptsBearer, normalizeRuntimeEndpoint } from "@flame/runtime-client";
 export interface RuntimeEndpointTarget {
   endpoint: string;
   localToken?: string;
@@ -14,7 +15,8 @@ const UrlSchema = z.url();
 
 const TokenSchema = z.string().regex(/^[\x21-\x7e]*$/);
 
-export type RuntimeEndpointRejection = "invalid_url" | "unsupported_scheme" | "invalid_token";
+export type RuntimeEndpointRejection =
+  "invalid_url" | "unsupported_scheme" | "invalid_token" | "insecure_bearer" | "storage_failed";
 
 export type RuntimeEndpointChange =
   | { kind: "applied"; endpoint: string; changed: boolean }
@@ -53,12 +55,30 @@ export function createRuntimeEndpoint(configuration: RuntimeEndpointConfiguratio
           ? current.localToken
           : undefined
         : localToken.trim() || undefined;
-    const changed = configuration.replace({ endpoint, localToken: token });
+    if (token && !endpointAcceptsBearer(endpoint))
+      return { kind: "rejected", input, reason: "insecure_bearer" };
+    let changed: boolean;
+    try {
+      changed = configuration.replace({ endpoint, localToken: token });
+    } catch (error) {
+      if (!(error instanceof PluginStorageError)) throw error;
+      return { kind: "rejected", input, reason: "storage_failed" };
+    }
     return { kind: "applied", endpoint, changed };
   }
 
   function resetRuntimeEndpoint(): RuntimeEndpointChange {
-    const changed = configuration.reset();
+    let changed: boolean;
+    try {
+      changed = configuration.reset();
+    } catch (error) {
+      if (!(error instanceof PluginStorageError)) throw error;
+      return {
+        kind: "rejected",
+        input: configuration.defaultTarget().endpoint,
+        reason: "storage_failed",
+      };
+    }
     return { kind: "applied", endpoint: configuration.read().endpoint, changed };
   }
 

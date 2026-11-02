@@ -19,13 +19,26 @@ import (
 
 const maxControlFrameBytes = 4 << 20
 
+type controlOperation string
+
+const (
+	opIdentity        controlOperation = "identity"
+	opFence           controlOperation = "fence"
+	opProveAbsent     controlOperation = "prove_absent"
+	opAcknowledgeExit controlOperation = "acknowledge_exit"
+	opLaunch          controlOperation = "launch"
+	opInspect         controlOperation = "inspect"
+	opClose           controlOperation = "close"
+	opAttach          controlOperation = "attach"
+)
+
 type controlRequest struct {
-	Operation string          `json:"operation"`
-	Epoch     uint64          `json:"epoch,omitempty"`
-	AttemptID string          `json:"attemptId,omitempty"`
-	Launch    *LaunchRequest  `json:"launch,omitempty"`
-	Receipt   *ExitReceipt    `json:"receipt,omitempty"`
-	Absence   *AbsenceRequest `json:"absence,omitempty"`
+	Operation controlOperation `json:"operation"`
+	Epoch     uint64           `json:"epoch,omitempty"`
+	AttemptID string           `json:"attemptId,omitempty"`
+	Launch    *LaunchRequest   `json:"launch,omitempty"`
+	Receipt   *ExitReceipt     `json:"receipt,omitempty"`
+	Absence   *AbsenceRequest  `json:"absence,omitempty"`
 }
 
 type controlResponse struct {
@@ -100,7 +113,7 @@ func (s *Server) handle(ctx context.Context, connection net.Conn) {
 	}
 	var observation Observation
 	switch request.Operation {
-	case "identity":
+	case opIdentity:
 		identity, identityErr := s.Identity(ctx)
 		if identityErr != nil {
 			_ = writeResponse(connection, nil, identityErr)
@@ -108,9 +121,9 @@ func (s *Server) handle(ctx context.Context, connection net.Conn) {
 		}
 		_ = writeFrame(connection, controlResponse{Identity: &identity})
 		return
-	case "fence":
+	case opFence:
 		err = s.Fence(ctx, request.Epoch)
-	case "prove_absent":
+	case opProveAbsent:
 		if request.Absence == nil {
 			_ = writeResponse(connection, nil, qimu.ErrInvalid)
 			return
@@ -122,23 +135,23 @@ func (s *Server) handle(ctx context.Context, connection net.Conn) {
 		}
 		_ = writeFrame(connection, controlResponse{Absence: &proof})
 		return
-	case "acknowledge_exit":
+	case opAcknowledgeExit:
 		if request.Receipt == nil {
 			err = qimu.ErrInvalid
 		} else {
 			err = s.AcknowledgeExit(ctx, *request.Receipt)
 		}
-	case "launch":
+	case opLaunch:
 		if request.Launch == nil {
 			err = qimu.ErrInvalid
 		} else {
 			observation, err = s.Launch(ctx, *request.Launch)
 		}
-	case "inspect":
+	case opInspect:
 		observation, err = s.Inspect(ctx, request.AttemptID)
-	case "close":
+	case opClose:
 		observation, err = s.CloseAttempt(ctx, request.AttemptID)
-	case "attach":
+	case opAttach:
 		live, attachErr := s.attach(request.AttemptID, connection)
 		if attachErr != nil {
 			_ = writeResponse(connection, nil, attachErr)
@@ -245,7 +258,7 @@ func (c *Client) dial(ctx context.Context) (net.Conn, error) {
 }
 
 func (c *Client) Identity(ctx context.Context) (Identity, error) {
-	response, err := c.request(ctx, controlRequest{Operation: "identity"})
+	response, err := c.request(ctx, controlRequest{Operation: opIdentity})
 	if err != nil {
 		return Identity{}, err
 	}
@@ -256,26 +269,26 @@ func (c *Client) Identity(ctx context.Context) (Identity, error) {
 }
 
 func (c *Client) Fence(ctx context.Context, epoch uint64) error {
-	_, err := c.control(ctx, controlRequest{Operation: "fence", Epoch: epoch})
+	_, err := c.control(ctx, controlRequest{Operation: opFence, Epoch: epoch})
 	return err
 }
 func (c *Client) Launch(ctx context.Context, request LaunchRequest) (Observation, error) {
-	return c.control(ctx, controlRequest{Operation: "launch", Launch: &request})
+	return c.control(ctx, controlRequest{Operation: opLaunch, Launch: &request})
 }
 func (c *Client) Inspect(ctx context.Context, id string) (Observation, error) {
-	return c.control(ctx, controlRequest{Operation: "inspect", AttemptID: id})
+	return c.control(ctx, controlRequest{Operation: opInspect, AttemptID: id})
 }
 func (c *Client) CloseAttempt(ctx context.Context, id string) (Observation, error) {
-	return c.control(ctx, controlRequest{Operation: "close", AttemptID: id})
+	return c.control(ctx, controlRequest{Operation: opClose, AttemptID: id})
 }
 
 func (c *Client) AcknowledgeExit(ctx context.Context, receipt ExitReceipt) error {
-	_, err := c.control(ctx, controlRequest{Operation: "acknowledge_exit", Receipt: &receipt})
+	_, err := c.control(ctx, controlRequest{Operation: opAcknowledgeExit, Receipt: &receipt})
 	return err
 }
 
 func (c *Client) ProveAbsent(ctx context.Context, request AbsenceRequest) (AbsenceProof, error) {
-	response, err := c.request(ctx, controlRequest{Operation: "prove_absent", Absence: &request})
+	response, err := c.request(ctx, controlRequest{Operation: opProveAbsent, Absence: &request})
 	if err != nil {
 		return AbsenceProof{}, err
 	}
@@ -325,7 +338,7 @@ func (c *Client) Attach(ctx context.Context, id string) (io.ReadWriteCloser, err
 		return nil, err
 	}
 	stop := context.AfterFunc(ctx, func() { _ = connection.Close() })
-	if err := writeFrame(connection, controlRequest{Operation: "attach", AttemptID: id}); err != nil {
+	if err := writeFrame(connection, controlRequest{Operation: opAttach, AttemptID: id}); err != nil {
 		stop()
 		_ = connection.Close()
 		return nil, err

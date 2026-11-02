@@ -143,30 +143,6 @@ export function openWorkspaceViewInDock(
   workspaceAccess.navigation.openViewInDock(id, origin);
 }
 
-export function selectWorkspaceDockView(workspaceAccess: WorkspaceAccess, id: string): void {
-  workspaceAccess.navigation.selectDockView(id);
-}
-
-export function closeWorkspaceDockView(workspaceAccess: WorkspaceAccess, id: string): void {
-  workspaceAccess.navigation.closeDockView(id);
-}
-
-export function closeOtherWorkspaceDockViews(workspaceAccess: WorkspaceAccess, id: string): void {
-  workspaceAccess.navigation.closeOtherDockViews(id);
-}
-
-export function closeAllWorkspaceDockViews(workspaceAccess: WorkspaceAccess): void {
-  workspaceAccess.navigation.closeAllDockViews();
-}
-
-export function reorderWorkspaceDockView(
-  workspaceAccess: WorkspaceAccess,
-  id: string,
-  toIndex: number,
-): void {
-  workspaceAccess.navigation.reorderDockView(id, toIndex);
-}
-
 export function closeActiveWorkspaceDockView(workspaceAccess: WorkspaceAccess): boolean {
   const activeViewId = workspaceAccess.navigation.dock().activeViewId;
   if (!activeViewId) return false;

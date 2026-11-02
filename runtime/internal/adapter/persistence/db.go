@@ -19,7 +19,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 )
 
 // Logical calls and physical endpoint attempts share one state vocabulary but
@@ -68,7 +68,7 @@ const resultPublicationSourceColumn = "source_message_seq INTEGER REFERENCES mes
 const resultPublicationResultsColumn = "model_results TEXT CHECK (model_results IS NULL OR json_valid(model_results))"
 
 // openDatabase creates the current schema in an empty database or admits an exact
-// current schema. Other schemas are refused. Connection tuning is qimu/sqlite's;
+// current schema. Other schemas are refused. Frame owns connection tuning;
 // the returned *sql.DB is shared by every store.
 func openDatabase(ctx context.Context, path string) (*sql.DB, error) {
 	return sqlite.OpenSchema(ctx, path, currentSchema())
@@ -474,11 +474,13 @@ func currentSchema() []string {
 		// nanoseconds (NULL means unbounded). transport is "stdio" |
 		// "streamableHttp".
 		`CREATE TABLE IF NOT EXISTS mcp_launch_grants (
-			grant_id TEXT PRIMARY KEY,
+			sequence INTEGER PRIMARY KEY,
+			grant_id TEXT NOT NULL UNIQUE,
 			connector TEXT NOT NULL,
 			source_id INTEGER NOT NULL REFERENCES mcp_sources(id) ON DELETE CASCADE,
 			material BLOB NOT NULL,
-			UNIQUE(connector,source_id,material)
+			proposal BLOB,
+			UNIQUE(connector,source_id,proposal)
 		)`,
 		`CREATE TRIGGER IF NOT EXISTS revoke_uninstalled_mcp_connector
 			AFTER DELETE ON plugin_installations

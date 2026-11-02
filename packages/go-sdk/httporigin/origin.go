@@ -14,10 +14,8 @@ type Origin struct {
 	host   string // host:port, host lowercased, default port materialized
 }
 
-// String renders the origin as "scheme://host:port".
 func (o Origin) String() string { return o.scheme + "://" + o.host }
 
-// Parse admits raw as an [Endpoint] and returns its origin.
 func Parse(raw string) (Origin, error) {
 	endpoint, err := ParseEndpoint(raw)
 	if err != nil {

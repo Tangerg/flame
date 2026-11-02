@@ -20,8 +20,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/frame/cancellation"
 	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/cancellation"
 )
 
 func initializeFirstPartyPlugins(ctx context.Context, stores *persistence.Bundle, host *qimu.Host, packages *pluginpackage.Releases, directory string) error {

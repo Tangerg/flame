@@ -7,7 +7,7 @@ import (
 	"time"
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 )
 
 const maxCacheBytes = 64 << 20

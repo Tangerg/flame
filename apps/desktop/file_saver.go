@@ -13,6 +13,16 @@ type wailsFileSaver struct {
 }
 
 func (w wailsFileSaver) SaveFile(suggestedFilename string, contents []byte) (bool, error) {
+	destination, err := w.ChooseFileDestination(suggestedFilename)
+	if err != nil || destination == "" {
+		return false, err
+	}
+	if err := publishExport(destination, bytes.NewReader(contents)); err != nil {
+		return false, fmt.Errorf("write selected file: %w", err)
+	}
+	return true, nil
+}
+func (w wailsFileSaver) ChooseFileDestination(suggestedFilename string) (string, error) {
 	destination, err := w.dialogs.SaveFile().
 		CanCreateDirectories(true).
 		AllowsOtherFileTypes(true).
@@ -20,13 +30,7 @@ func (w wailsFileSaver) SaveFile(suggestedFilename string, contents []byte) (boo
 		AttachToWindow(w.window).
 		PromptForSingleSelection()
 	if err != nil {
-		return false, fmt.Errorf("open save dialog: %w", err)
+		return "", fmt.Errorf("open save dialog: %w", err)
 	}
-	if destination == "" {
-		return false, nil
-	}
-	if err := publishExport(destination, bytes.NewReader(contents)); err != nil {
-		return false, fmt.Errorf("write selected file: %w", err)
-	}
-	return true, nil
+	return destination, nil
 }

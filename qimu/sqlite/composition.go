@@ -20,8 +20,8 @@ func (s *Store) WithTransaction(ctx context.Context, executor Executor, apply fu
 	if s == nil || s.db == nil || executor == nil || apply == nil {
 		return errors.New("sqlite: store, executor and transaction body are required")
 	}
-	if _, active := ctx.Value(txKey{database: s.db}).(transaction); active {
+	if Connection(ctx, s.db) != s.db {
 		return errors.New("sqlite: an executor is already bound to this database")
 	}
-	return apply(context.WithValue(ctx, txKey{database: s.db}, transaction{tx: executor}))
+	return apply(context.WithValue(ctx, borrowedTransaction{database: s.db}, executor))
 }

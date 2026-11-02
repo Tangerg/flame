@@ -68,6 +68,10 @@ function rejectionMessage(reason: RuntimeEndpointRejection, translate: Translate
       return translate("connection.error.invalidUrl");
     case "unsupported_scheme":
       return translate("connection.error.urlScheme");
+    case "insecure_bearer":
+      return translate("connection.error.insecureBearer");
+    case "storage_failed":
+      return translate("connection.error.storage");
     case "invalid_token":
       return translate("connection.error.token");
   }

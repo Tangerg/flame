@@ -125,7 +125,13 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
     () => true,
     runtime.endpoint.currentRuntimeEndpoint,
   );
-  const notifications = createNotifications(host, agent.access, workspace.access, "Flame");
+  const notifications = createNotifications(
+    host,
+    agent.access,
+    workspace.access,
+    "Flame",
+    runtime.endpoint.currentRuntimeEndpoint,
+  );
   const installedPlugins = createInstalledPlugins(
     runtimeClient,
     runtime.endpoint.currentRuntimeEndpoint,

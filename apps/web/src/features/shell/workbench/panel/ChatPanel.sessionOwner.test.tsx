@@ -39,15 +39,12 @@ vi.mock("@/features/agent/public/run", () => ({
 
 vi.mock("@/features/workspace/public/navigation", () => ({
   WORKSPACE_DOCK_CATALOG: "catalog",
-  closeAllWorkspaceDockViews: vi.fn(),
-  closeOtherWorkspaceDockViews: vi.fn(),
-  closeWorkspaceDockView: vi.fn(),
+
   closeWorkspaceView: vi.fn(),
   collapseWorkspaceDock: vi.fn(),
   openWorkspaceView: vi.fn(),
   openWorkspaceViewInDock: vi.fn(),
-  reorderWorkspaceDockView: vi.fn(),
-  selectWorkspaceDockView: vi.fn(),
+
   showWorkspaceDock: vi.fn(),
   useActiveWorkspaceViewId: () => model.activeMainView,
   useWorkspaceDock: () => model.dock,

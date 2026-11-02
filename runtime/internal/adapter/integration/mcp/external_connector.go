@@ -24,8 +24,11 @@ import (
 )
 
 type grantVault interface {
-	Grant(context.Context, identity.InstallationID, mcpserver.Server) (string, error)
+	PrepareGrant(context.Context, identity.InstallationID, mcpserver.Server, app.GrantProposal) (string, error)
+	PendingGrant(context.Context, identity.InstallationID, mcpserver.ServerName, string) (app.GrantProposal, bool, error)
+	RejectGrant(context.Context, identity.InstallationID, mcpserver.ServerName, string) error
 	OpenGrant(context.Context, identity.InstallationID, mcpserver.ServerName, string) (mcpserver.Connection, bool, error)
+	ConfirmPendingGrant(context.Context, identity.InstallationID, mcpserver.ServerName, string) error
 	RetireGrants(context.Context, identity.InstallationID, mcpserver.ServerName, string) error
 	ListExposure(context.Context) ([]tool.Ref, error)
 	SetToolExposure(context.Context, tool.Ref, bool) error
@@ -134,7 +137,16 @@ func (c *ExternalConnector) materialize(ctx context.Context, u *connectorUse, e 
 		return mcpserver.Server{}, err
 	}
 	if !found {
-		return mcpserver.Server{}, fmt.Errorf("%w: external transport grant is unavailable", app.ErrInvalidServerConfiguration)
+		if err := c.reconcileGrant(ctx, u, name, e.LaunchGrant); err != nil {
+			return mcpserver.Server{}, err
+		}
+		connection, found, err = c.vault.OpenGrant(ctx, u.source.InstallationID, name, e.LaunchGrant)
+		if err != nil {
+			return mcpserver.Server{}, err
+		}
+		if !found {
+			return mcpserver.Server{}, fmt.Errorf("%w: external transport grant is unavailable", app.ErrInvalidServerConfiguration)
+		}
 	}
 	source, err := mcpserver.ConnectorSource(u.source.InstallationID)
 	if err != nil {
@@ -220,25 +232,78 @@ func (c *ExternalConnector) change(ctx context.Context, current mcpserver.Server
 	change := wire.Change{Name: name.String(), Expected: current.DirectoryRevision}
 	var grant string
 	if s != nil {
-		grant, err = c.vault.Grant(ctx, u.source.InstallationID, *s)
+		if operation.Identity(ctx) == "" {
+			ctx = operation.Start(ctx, extension.Automatic, c.methods.Change.Name(), "")
+		}
+		invocation, err := operation.Capture(ctx, portable.Target{Scope: extension.ScopeInstallation, Reference: u.source.InstallationID.String()})
 		if err != nil {
 			return err
 		}
 		timeout, _ := s.HandshakeTimeout.Duration()
-		change.Replacement = &wire.Entry{Name: name.String(), LaunchGrant: grant, Description: s.Description, Enabled: s.Enabled, HandshakeSeconds: int64(timeout / time.Second)}
+		change.Replacement = &wire.Entry{Name: name.String(), Description: s.Description, Enabled: s.Enabled, HandshakeSeconds: int64(timeout / time.Second)}
+		proposal := app.GrantProposal{Source: u.source.ContributionSource(), Invocation: invocation, Change: change}
+		grant, err = c.vault.PrepareGrant(ctx, u.source.InstallationID, *s, proposal)
+		if err != nil {
+			return err
+		}
+		change.Replacement.LaunchGrant = grant
 	}
 	decision, err := connectorCall(ctx, u, c.methods.Change, change)
 	if err != nil {
 		return err
 	}
 	if decision != wire.Applied {
+		refusal := plugin.ErrStale
 		if current.DirectoryRevision == "" {
-			return app.ErrServerAlreadyExists
+			refusal = app.ErrServerAlreadyExists
 		}
-		return plugin.ErrStale
+		if grant != "" && decision == wire.Conflict {
+			return errors.Join(refusal, c.vault.RejectGrant(context.WithoutCancel(ctx), u.source.InstallationID, name, grant))
+		}
+		return refusal
 	}
 	return c.vault.RetireGrants(context.WithoutCancel(ctx), u.source.InstallationID, name, grant)
 }
+
+// A directory listing can nominate a token but cannot activate a prepared
+// grant. Only the original connector's receipt permits the host to open it.
+func (c *ExternalConnector) reconcileGrant(ctx context.Context, u *connectorUse, name mcpserver.ServerName, token string) error {
+	proposal, pending, err := c.vault.PendingGrant(ctx, u.source.InstallationID, name, token)
+	if err != nil {
+		return err
+	}
+	if !pending {
+		return nil
+	}
+	if proposal.Source != u.source.ContributionSource() || proposal.Change.Replacement == nil {
+		return plugin.ErrStale
+	}
+	proposal.Change.Replacement.LaunchGrant = token
+	method, err := c.methods.Change.Bind(u.capability)
+	if err != nil {
+		return err
+	}
+	ctx, err = qimumcp.WithInvocation(ctx, proposal.Invocation)
+	if err != nil {
+		return err
+	}
+	d, found, err := method.ReadReceipt(ctx, qimumcp.CommandID(proposal.Invocation.ID), proposal.Change)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return plugin.ErrUnavailable
+	}
+	switch d {
+	case wire.Applied:
+		return c.vault.ConfirmPendingGrant(ctx, u.source.InstallationID, name, token)
+	case wire.Conflict:
+		return errors.Join(plugin.ErrStale, c.vault.RejectGrant(ctx, u.source.InstallationID, name, token))
+	default:
+		return app.ErrInvalidServerConfiguration
+	}
+}
+
 func (c *ExternalConnector) ListExposure(ctx context.Context) ([]tool.Ref, error) {
 	return c.vault.ListExposure(ctx)
 }

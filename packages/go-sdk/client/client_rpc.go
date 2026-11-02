@@ -144,11 +144,8 @@ func (r *Client) readStreamAcknowledgement(call *remoteCall, body io.Reader, id 
 	// SSE's web-standard decoder repairs malformed UTF-8. Runtime JSON is exact,
 	// so reject those bytes before the SSE reader can replace their meaning.
 	reader := sse.NewReader(transform.NewReader(body, encoding.UTF8Validator))
-	reader.MaxLineBytes = math.MaxInt - 2
-	if r.maxMessageBytes > 0 {
-		reader.MaxLineBytes = r.maxMessageBytes
-		reader.MaxEventBytes = r.maxMessageBytes
-	}
+	reader.MaxLineBytes = r.maxMessageBytes
+	reader.MaxEventBytes = r.maxMessageBytes
 	for frame, err := range reader.Messages() {
 		if err != nil {
 			return callResult{}, call.readError(err)

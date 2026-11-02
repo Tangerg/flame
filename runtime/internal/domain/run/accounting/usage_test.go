@@ -222,3 +222,10 @@ func TestCostSumsExactlyWithoutDrift(t *testing.T) {
 		t.Fatalf("sub-micro-dollar call = %d nano-dollars, want 250", nano)
 	}
 }
+
+func TestAttributedUsageRejectsCompetingTotal(t *testing.T) {
+	u := Usage{Total: Totals{Tokens: Tokens{InputTokens: 1}}, ByModel: map[string]Totals{"model": {Tokens: Tokens{InputTokens: 2}}}}
+	if err := u.Validate(); err == nil {
+		t.Fatal("accepted contradictory total")
+	}
+}

@@ -464,3 +464,20 @@ func TestPublicationSealsTheTreeAndRefusesAnIncompleteRoot(t *testing.T) {
 		t.Fatalf("incomplete publication was not removed: %v", err)
 	}
 }
+
+func TestTrustReceivesDetachedDeclaration(t *testing.T) {
+	_, _, archive, _ := packageFixture(t)
+	store := storeFixture(t, nil)
+	store.trust = func(_ context.Context, _ Source, manifest Manifest, _ Lock) error {
+		manifest.Artifacts[0].Executable = true
+		return nil
+	}
+	got := installArchive(t, store, archive)
+	canonical, err := store.Inspect(t.Context(), got.Digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Manifest.Artifacts[0].Executable != canonical.Manifest.Artifacts[0].Executable {
+		t.Fatalf("one digest, different executable flags: returned=%v, fresh=%v", got.Manifest.Artifacts[0].Executable, canonical.Manifest.Artifacts[0].Executable)
+	}
+}

@@ -27,7 +27,7 @@ func connectedTestClient(t *testing.T, handler rpcHandler) (*client, *jsonrpc2.C
 	wait := make(chan processEnd)
 	close(wait)
 	c := &client{
-		save: saveSynchronization{Enabled: true}, spec: ServerSpec{Name: "test", LanguageID: "go"}, shutdownBase: context.WithoutCancel(t.Context()),
+		workspace: testWorkspace(t, t.TempDir()), syncPolicy: documentSynchronization{OpenClose: true, Change: changeFull, Save: saveSynchronization{Enabled: true}}, spec: ServerSpec{Name: "test", Languages: map[string]string{".go": "go"}}, shutdownBase: context.WithoutCancel(t.Context()),
 		cancel: func() {}, wait: wait, stopProcess: func() error { return nil },
 		open: make(map[string]openDoc), diags: make(map[string]diagSet), updated: make(chan struct{}),
 	}
@@ -47,7 +47,7 @@ func TestDiagnosticsRequiresTheSyncedDocumentVersion(t *testing.T) {
 	for _, prior := range []bool{false, true} {
 		t.Run(map[bool]string{false: "no observation", true: "stale observation"}[prior], func(t *testing.T) {
 			c, _ := connectedTestClient(t, replyEmpty)
-			path := filepath.Join(t.TempDir(), "main.go")
+			path := filepath.Join(c.workspace.Name(), "main.go")
 			if err := os.WriteFile(path, []byte("package main\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -80,7 +80,7 @@ func TestDiagnosticsWaitPreservesCancellationAndDisconnect(t *testing.T) {
 				}
 				replyEmpty(ctx, conn, request)
 			})
-			path := filepath.Join(t.TempDir(), "main.go")
+			path := filepath.Join(c.workspace.Name(), "main.go")
 			if err := os.WriteFile(path, []byte("package main\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -112,7 +112,7 @@ func TestDiagnosticsAcceptsDelayedExplicitEmptyAndRejectsVersionRegression(t *te
 		}
 		replyEmpty(ctx, conn, request)
 	})
-	path := filepath.Join(t.TempDir(), "main.go")
+	path := filepath.Join(c.workspace.Name(), "main.go")
 	if err := os.WriteFile(path, []byte("package main\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -146,8 +146,8 @@ func TestWorkspaceSymbolsPreservesPartialFailure(t *testing.T) {
 				t.Fatal(err)
 			}
 			servers := mustNewServers(t, []ServerSpec{
-				{Name: "go", Command: "unused", Extensions: []string{".go"}, LanguageID: "go", RootMarkers: []string{"marker"}},
-				{Name: "typescript", Command: "unused", Extensions: []string{".ts"}, LanguageID: "typescript", RootMarkers: []string{"marker"}},
+				{Name: "go", Command: "unused", Languages: map[string]string{".go": "go"}, RootMarkers: []string{"marker"}},
+				{Name: "typescript", Command: "unused", Languages: map[string]string{".ts": "typescript"}, RootMarkers: []string{"marker"}},
 			})
 			c, _ := connectedTestClient(t, func(ctx context.Context, conn *jsonrpc2.Conn, request *jsonrpc2.Request) {
 				if request.Method == "workspace/symbol" {
@@ -202,7 +202,7 @@ func TestSaveIncludesExactCapturedEmptyTextWhenServerRequestsIt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c.save = options
+	c.syncPolicy.Save = options
 	path := filepath.Join(t.TempDir(), "unwritten.go")
 	_, err = c.diagnosticsContent(t.Context(), path, []byte{}, 0)
 	if _, ok := errors.AsType[*DiagnosticsPendingError](err); !ok {
@@ -237,12 +237,56 @@ func TestCallHierarchyIncludesEveryPreparedRootAndPreservesServerData(t *testing
 			replyEmpty(ctx, conn, req)
 		}
 	})
-	path := filepath.Join(t.TempDir(), "source.go")
+	path := filepath.Join(c.workspace.Name(), "source.go")
 	if err := os.WriteFile(path, []byte("package main"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	result, err := c.callHierarchy(t.Context(), path, Position{}, true)
 	if err != nil || len(result) != 2 || result[0].Name != "one" || result[1].Name != "two" {
 		t.Fatalf("roots = %+v, %v", result, err)
+	}
+}
+
+func TestWorkspaceFolderReplyAndUnsupportedServerMethod(t *testing.T) {
+	client, remote := connectedTestClient(t, replyEmpty)
+	var folders []workspaceFolder
+	if err := remote.Call(t.Context(), "workspace/workspaceFolders", nil, &folders); err != nil || len(folders) != 1 || folders[0].URI != pathToURI(client.workspace.Name()) {
+		t.Fatalf("folders = %+v, %v", folders, err)
+	}
+	err := remote.Call(t.Context(), "workspace/notSupported", nil, nil)
+	var problem *jsonrpc2.Error
+	if !errors.As(err, &problem) || problem.Code != jsonrpc2.CodeMethodNotFound {
+		t.Fatalf("unknown method: %v", err)
+	}
+}
+
+func TestIncrementalChangeReplacesPreviousUTF16Range(t *testing.T) {
+	changes := make(chan didChangeParams, 1)
+	client, _ := connectedTestClient(t, func(ctx context.Context, conn *jsonrpc2.Conn, request *jsonrpc2.Request) {
+		if request.Method == "textDocument/didChange" {
+			var params didChangeParams
+			if err := json.Unmarshal(*request.Params, &params); err != nil {
+				t.Error(err)
+			}
+			changes <- params
+		}
+		replyEmpty(ctx, conn, request)
+	})
+	client.syncPolicy.Change = changeIncremental
+	path := filepath.Join(client.workspace.Name(), "view.go")
+	if _, err := client.ensureContent(t.Context(), path, []byte("a\r\n😀!")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.ensureContent(t.Context(), path, []byte("new")); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case params := <-changes:
+		change := params.ContentChanges[0]
+		if change.Range == nil || *change.Range != (Range{End: Position{Line: 1, Character: 3}}) || change.Text != "new" {
+			t.Fatalf("wrong replacement: %+v", change)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("missing document change")
 	}
 }

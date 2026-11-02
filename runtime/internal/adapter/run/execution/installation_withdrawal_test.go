@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/pluginhost"
 	"github.com/Tangerg/qimu"
+	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -96,6 +97,10 @@ func withdrawalStore(t *testing.T, release plugin.Release, installation plugin.I
 }
 
 type preparedPackages struct{}
+
+func (preparedPackages) Project(release plugin.Release) (plugins.FrameworkRelease, error) {
+	return plugins.ProjectFrameworkRelease(release, qimumcp.ProcessProfile)
+}
 
 func (preparedPackages) ReadLocale(context.Context, plugin.Installation, plugin.Locale) (map[string]string, error) {
 	return nil, errors.New("unexpected locale resource read")

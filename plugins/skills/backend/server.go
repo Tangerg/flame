@@ -99,6 +99,17 @@ func learningCommand[P, R any](ctx context.Context, l *learner, method string, c
 		return zero, pluginstorage.ErrCommandUnconfirmed
 	}
 	value, err := execute(ctx, request)
+	if errors.Is(err, errInvalidSkillDraft) {
+		refusal := &portable.Refusal{Code: "invalid_skill_draft", Message: errInvalidSkillDraft.Error()}
+		reply, encodeErr := qimumcp.EncodeReply(zero, refusal, nil)
+		if encodeErr != nil {
+			return zero, encodeErr
+		}
+		if settleErr := prepared.SettleExternal(ctx, reply.JSON(), nil); settleErr != nil {
+			return zero, settleErr
+		}
+		return zero, refusal
+	}
 	if err != nil {
 		return zero, err
 	}

@@ -29,3 +29,13 @@ export function requireRuntimeEndpoint(input: string): string {
     throw new TypeError("Runtime address must be HTTP(S) without credentials, query, or fragment");
   return endpoint;
 }
+
+export function endpointAcceptsBearer(endpoint: string): boolean {
+  const url = new URL(endpoint);
+  return (
+    url.protocol === "https:" ||
+    url.hostname === "localhost" ||
+    url.hostname === "[::1]" ||
+    /^127(?:\.\d+){3}$/.test(url.hostname)
+  );
+}

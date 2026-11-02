@@ -463,12 +463,13 @@ export class Receipts {
 
   toolReceipt(request: ReceiptRequest): ToolReceipt {
     const original = this.#original(request, "tool");
-    if (original?.state !== "settled") return { found: false };
+    if (original?.state !== "settled") return {};
     const result = original.outcome as CallToolResult;
     return {
-      found: true,
-      output: canonicalJSON(projectToolOutput(original.method, result)),
-      ...(result.isError ? { isError: true } : {}),
+      result: {
+        output: projectToolOutput(original.method, result),
+        ...(result.isError ? { isError: true } : {}),
+      },
     };
   }
 

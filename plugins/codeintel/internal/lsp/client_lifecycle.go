@@ -31,7 +31,17 @@ const clientShutdownTimeout = 2 * time.Second
 // must call close. ctx is component-owned rather than request-owned. The
 // connection's read loop is detached from the launch attempt because it stays
 // warm until Servers closes it, while retaining the component trace values.
-func startClient(ctx context.Context, spec ServerSpec, root string) (*client, error) {
+func startClient(ctx context.Context, spec ServerSpec, root string) (_ *client, err error) {
+	workspace, err := os.OpenRoot(root)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if workspace != nil {
+			err = errors.Join(err, workspace.Close())
+		}
+	}()
+
 	// The process belongs to the cached client, not this initialization call;
 	// CommandContext would kill a healthy server when the handshake ctx ends.
 	cmd := exec.Command(spec.Command, spec.Args...) //nolint:noctx
@@ -78,8 +88,8 @@ func startClient(ctx context.Context, spec ServerSpec, root string) (*client, er
 	shutdownBase := context.WithoutCancel(ctx)
 	connCtx, cancel := context.WithCancel(shutdownBase)
 	c := &client{
+		workspace:    workspace,
 		spec:         spec,
-		root:         root,
 		stopProcess:  stopProcess,
 		cancel:       cancel,
 		wait:         wait,
@@ -88,6 +98,7 @@ func startClient(ctx context.Context, spec ServerSpec, root string) (*client, er
 		diags:        map[string]diagSet{},
 		updated:      make(chan struct{}),
 	}
+	workspace = nil // ownership transfers to the client before initialization
 	stream := jsonrpc2.NewBufferedStream(pipes, lspObjectCodec{})
 	c.conn = jsonrpc2.NewConn(connCtx, stream, jsonrpc2.AsyncHandler(c))
 
@@ -113,18 +124,18 @@ func (c *client) initialize(ctx context.Context) error {
 	}
 	params := initializeParams{
 		ProcessID:        os.Getpid(),
-		RootURI:          pathToURI(c.root),
+		RootURI:          pathToURI(c.workspace.Name()),
 		Capabilities:     defaultCapabilities(),
-		WorkspaceFolders: []workspaceFolder{{URI: pathToURI(c.root), Name: filepath.Base(c.root)}},
+		WorkspaceFolders: c.workspaceFolders(),
 	}
 	if err := c.conn.Call(ctx, "initialize", params, &res); err != nil {
 		return fmt.Errorf("lsp: initialize %s: %w", c.spec.Name, err)
 	}
-	save, err := negotiatedSave(res.Capabilities.TextDocumentSync)
+	policy, err := negotiateDocumentSync(res.Capabilities.TextDocumentSync)
 	if err != nil {
 		return fmt.Errorf("lsp: server document synchronization: %w", err)
 	}
-	c.save = save
+	c.syncPolicy = policy
 	if err := c.conn.Notify(ctx, "initialized", struct{}{}); err != nil {
 		return fmt.Errorf("lsp: initialized %s: %w", c.spec.Name, err)
 	}
@@ -168,6 +179,9 @@ func (c *client) close() error {
 			if err := killAndJoinProcess(c.spec.Name, c.stopProcess, c.wait); err != nil {
 				errs = append(errs, err)
 			}
+		}
+		if c.workspace != nil {
+			errs = append(errs, c.workspace.Close())
 		}
 		c.cleanupErr = errors.Join(errs...)
 	})
@@ -229,4 +243,8 @@ func closeUnstartedPipes(command string, pipes *pipeRWC, cause error) error {
 		return errors.Join(cause, fmt.Errorf("lsp: close %s pipes after launch failure: %w", command, err))
 	}
 	return cause
+}
+
+func (c *client) workspaceFolders() []workspaceFolder {
+	return []workspaceFolder{{URI: pathToURI(c.workspace.Name()), Name: filepath.Base(c.workspace.Name())}}
 }

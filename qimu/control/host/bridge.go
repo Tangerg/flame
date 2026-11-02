@@ -484,15 +484,12 @@ func (b *Bridge) Ready(ctx context.Context, token string, report control.ReadyRe
 	}
 	unit := entry.plan.Units[0]
 	objects := map[string]control.ObjectRef{}
-	metadata := map[string]string{}
-	for _, contribution := range report.Contributions {
-		if _, exists := metadata[contribution.Object.ObjectID]; exists {
-			return control.PublicationResult{Decision: control.Rejected, Problem: "duplicate prepared object"}, nil
-		}
-		metadata[contribution.Object.ObjectID] = contribution.MetadataJSON
+	metadata, err := preparedMetadata(report)
+	if err != nil {
+		return control.PublicationResult{Decision: control.Rejected, Problem: err.Error()}, nil
 	}
 	for _, reference := range report.Objects {
-		if reference.ObjectID == "" || reference.Export.InstanceID != unit.Instance.ID {
+		if reference.ObjectID == "" || reference.Export.InstanceID != unit.Instance.ID || reference.Export.Name == "" {
 			return control.PublicationResult{Decision: control.Rejected, Problem: "invalid object source"}, nil
 		}
 		if _, exists := objects[reference.Export.Name]; exists {
@@ -510,7 +507,7 @@ func (b *Bridge) Ready(ctx context.Context, token string, report control.ReadyRe
 		if declaration.Contract.Kind == qimu.PointKind {
 			encoded, exists := metadata[reference.ObjectID]
 			if !exists {
-				encoded = "null"
+				return control.PublicationResult{Decision: control.Rejected, Problem: "missing prepared metadata"}, nil
 			}
 			value, err = b.config.Host.DecodeMetadata(declaration.Contract, []byte(encoded))
 			if err != nil {
@@ -555,6 +552,28 @@ func (b *Bridge) Ready(ctx context.Context, token string, report control.ReadyRe
 	session.revision++
 	entry.ready <- preparedResult{exports: exports}
 	return control.PublicationResult{Decision: control.Accepted}, nil
+}
+
+func preparedMetadata(report control.ReadyReport) (map[string]string, error) {
+	objects := make(map[string]control.ObjectRef, len(report.Objects))
+	for _, ref := range report.Objects {
+		if _, duplicate := objects[ref.ObjectID]; duplicate {
+			return nil, errors.New("duplicate prepared object identity")
+		}
+		objects[ref.ObjectID] = ref
+	}
+	metadata := make(map[string]string, len(report.Contributions))
+	for _, c := range report.Contributions {
+		ref, exists := objects[c.Object.ObjectID]
+		if !exists || ref != c.Object || ref.Export.Contract.Kind != qimu.PointKind {
+			return nil, errors.New("metadata must identify its exact point export")
+		}
+		if _, duplicate := metadata[ref.ObjectID]; duplicate {
+			return nil, errors.New("duplicate point metadata")
+		}
+		metadata[ref.ObjectID] = c.MetadataJSON
+	}
+	return metadata, nil
 }
 
 func newToken() string {

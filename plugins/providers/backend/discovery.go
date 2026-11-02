@@ -26,7 +26,10 @@ type modelLister interface {
 // listModels uses the registered Scope binding for authentication, endpoint
 // selection, pagination and bounded response admission. Flame owns the probe
 // budget and the identities its product accepts.
-func listModels(ctx context.Context, spec clientSpec) ([]string, error) {
+func listModels(ctx context.Context, spec clientSpec, deployments azureDeployments) ([]string, error) {
+	if Provider(spec.connection.Provider) == providerAzureOpenAI {
+		return deployments.forEndpoint(spec.connection.BaseURL), nil
+	}
 	profile, _ := providers.lookup(Provider(spec.connection.Provider))
 	if profile.profile.ModelSource != modelprovider.EndpointModels {
 		return nil, errors.New("model: provider uses the published model catalog")
@@ -67,7 +70,7 @@ func verifyConnection(ctx context.Context, spec clientSpec) error {
 	if err != nil {
 		return err
 	}
-	if profile.profile.ModelSource == modelprovider.EndpointModels && len(ids) == 0 {
+	if profile.profile.ModelSource == modelprovider.EndpointModels && Provider(profile.profile.ID) != providerAzureOpenAI && len(ids) == 0 {
 		return errors.New("model: provider advertised no models")
 	}
 	return nil

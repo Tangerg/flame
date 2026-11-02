@@ -174,22 +174,21 @@ describe("conversation import generation", () => {
     expect(mocks.success).not.toHaveBeenCalled();
   });
 
-  it("publishes an accepted import even when Session collection repair fails", async () => {
-    mocks.invalidateAgentSessions.mockRejectedValueOnce(new Error("query unavailable"));
-    installFiles({
-      pickText: () => Promise.resolve(validArtifact("imported")),
-    });
-    installGateway({
-      importConversation: vi.fn().mockResolvedValue({ id: "imported", title: "Imported" }),
-    });
-
-    await testClient.workspace.access.conversationImport.importConversationJson();
-
-    expect(mocks.rehydrateSessionView).toHaveBeenCalledWith("imported");
-    expect(mocks.selectAgentSession).toHaveBeenCalledWith("imported");
-    expect(mocks.success).toHaveBeenCalledOnce();
-    expect(mocks.notifyError).not.toHaveBeenCalled();
-  });
+  it.each(["rehydration", "list"] as const)(
+    "preserves the import acknowledgement when %s refresh fails",
+    async (phase) => {
+      const refresh = phase === "list" ? mocks.invalidateAgentSessions : mocks.rehydrateSessionView;
+      refresh.mockRejectedValueOnce(new Error("query unavailable"));
+      installFiles({ pickText: () => Promise.resolve(validArtifact("imported")) });
+      const importConversation = vi.fn().mockResolvedValue({ id: "imported", title: "Imported" });
+      installGateway({ importConversation });
+      await testClient.workspace.access.conversationImport.importConversationJson();
+      expect(importConversation).toHaveBeenCalledOnce();
+      expect(mocks.selectAgentSession).toHaveBeenCalledWith("imported");
+      expect(mocks.success).not.toHaveBeenCalled();
+      expect(mocks.notifyError).toHaveBeenCalledOnce();
+    },
+  );
 
   it("reports an unreadable selection and admits the next explicit import", async () => {
     const click = vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(() => {});

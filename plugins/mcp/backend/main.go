@@ -11,9 +11,9 @@ import (
 	wire "github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/backend"
 	receipts "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/sqlite"
 )
 
 func run(ctx context.Context, data string) (returned error) {

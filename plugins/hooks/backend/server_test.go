@@ -15,11 +15,11 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/qimu/sqlite"
 )
 
 func connectHooks(t *testing.T, path string) (*sql.DB, *sdk.ClientSession, func()) {

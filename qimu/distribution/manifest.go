@@ -122,6 +122,44 @@ type Lock struct {
 	Dependencies  []LockedRelease    `json:"dependencies,omitempty"`
 }
 
+func (r Release) clone() Release {
+	m := &r.Manifest
+	m.Artifacts = slices.Clone(m.Artifacts)
+	m.Contracts = slices.Clone(m.Contracts)
+	m.Dependencies = slices.Clone(m.Dependencies)
+	m.Contributions = slices.Clone(m.Contributions)
+	for i := range m.Contributions {
+		m.Contributions[i].Metadata = bytes.Clone(m.Contributions[i].Metadata)
+	}
+	m.Units = slices.Clone(m.Units)
+	for i := range m.Units {
+		u := &m.Units[i]
+		u.Imports = slices.Clone(u.Imports)
+		u.Exports = slices.Clone(u.Exports)
+		u.Variants = slices.Clone(u.Variants)
+		for j := range u.Variants {
+			if runtime := u.Variants[j].Runtime; runtime != nil {
+				u.Variants[j].Runtime = new(*runtime)
+			}
+		}
+		if module := u.Module; module != nil {
+			u.Module = new(*module)
+			u.Module.Imports = slices.Clone(module.Imports)
+			for j, v := range module.Imports {
+				if v.Shared != nil {
+					u.Module.Imports[j].Shared = new(*v.Shared)
+				}
+			}
+		}
+		u.Resources = slices.Clone(u.Resources)
+		u.RequestedCapabilities = slices.Clone(u.RequestedCapabilities)
+	}
+	r.Lock.Artifacts = slices.Clone(r.Lock.Artifacts)
+	r.Lock.Contracts = slices.Clone(r.Lock.Contracts)
+	r.Lock.Dependencies = slices.Clone(r.Lock.Dependencies)
+	return r
+}
+
 func ParseManifest(data []byte) (Manifest, error) {
 	var manifest Manifest
 	if err := jsonv2.Unmarshal(data, &manifest, jsonv2.RejectUnknownMembers(true)); err != nil {

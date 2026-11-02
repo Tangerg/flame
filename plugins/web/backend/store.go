@@ -8,7 +8,7 @@ import (
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 )
 
 type store struct{ db *sql.DB }

@@ -32,7 +32,7 @@ func TestCapturedModelObserversRetainIdentityOrderAndInstallationDependencies(t 
 	}
 	frozen := contributionBindingsWire(bindings)
 	slices.Reverse(bindings)
-	restored, err := decodeContributionBindings(frozen, contract)
+	restored, err := decodeContributionBindings(frozen, contract.Identity())
 	if err != nil || restored[0].ContributionID != "outer" || restored[1].ContributionID != "inner" || restored[0].ServerID != id {
 		t.Fatalf("restore changed captured chain: %+v, %v", restored, err)
 	}
@@ -41,7 +41,7 @@ func TestCapturedModelObserversRetainIdentityOrderAndInstallationDependencies(t 
 		t.Fatalf("observer release is not held: %+v", actual)
 	}
 	frozen[1] = frozen[0]
-	if _, err := decodeContributionBindings(frozen, contract); err == nil {
+	if _, err := decodeContributionBindings(frozen, contract.Identity()); err == nil {
 		t.Fatal("duplicate retained observer was accepted")
 	}
 }
@@ -66,11 +66,11 @@ func TestCapturedModelContextRetainsExactContractOrderAndRelease(t *testing.T) {
 	}
 	bindings := []plugins.ContributionBinding{{InstallationID: dependedInstallation, Digest: testsupport.Digest("context release"), ContributionID: "first", ServerID: id, ServerName: server, Export: "first", Contract: contextContract.Identity()}, {InstallationID: dependedInstallation, Digest: testsupport.Digest("context release"), ContributionID: "second", ServerID: id, ServerName: server, Export: "second", Contract: contextContract.Identity()}}
 	wire := contributionBindingsWire(bindings)
-	restored, err := decodeContributionBindings(wire, contextContract)
+	restored, err := decodeContributionBindings(wire, contextContract.Identity())
 	if err != nil || !reflect.DeepEqual(restored, bindings) {
 		t.Fatalf("captured context binding changed: %+v %v", restored, err)
 	}
-	if _, err := decodeContributionBindings(wire, observerContract); err == nil {
+	if _, err := decodeContributionBindings(wire, observerContract.Identity()); err == nil {
 		t.Fatal("context was reinterpreted as observer")
 	}
 	session := &interactionSession{modelContexts: restored, modelObservers: restored[:1], compositionActivations: []plugin.Activation{{Identity: testsupport.Digest("activation"), Dependencies: []plugin.Dependency{{InstallationID: dependedInstallation, Digest: testsupport.Digest("context release")}}}}}
@@ -79,7 +79,7 @@ func TestCapturedModelContextRetainsExactContractOrderAndRelease(t *testing.T) {
 		t.Fatalf("context release not held once: %+v", actual)
 	}
 	wire[1] = wire[0]
-	if _, err := decodeContributionBindings(wire, contextContract); err == nil {
+	if _, err := decodeContributionBindings(wire, contextContract.Identity()); err == nil {
 		t.Fatal("duplicate context binding accepted")
 	}
 }

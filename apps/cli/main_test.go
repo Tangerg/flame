@@ -846,7 +846,13 @@ func TestFlameProcess(t *testing.T) {
 			return terminal.Run(ctx, terminal.Config{
 				Runtime: runtime, RuntimeProfile: profile, SessionID: request.SessionID, Workspace: request.Workspace,
 				InitialPrompt: request.InitialPrompt, Settings: &configured,
-				OpenWorkbench: func() (*workbench.Store, error) { return openWorkbench(request.Settings.Runtime.AuthoringPartition()) },
+				OpenWorkbench: func() (*workbench.Store, error) {
+					partition, err := request.Settings.Runtime.AuthoringPartition()
+					if err != nil {
+						return nil, err
+					}
+					return openWorkbench(partition)
+				},
 			})
 		},
 		OpenWorkbench: openWorkbench,

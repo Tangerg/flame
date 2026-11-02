@@ -1,3 +1,4 @@
+import { PluginStorageError } from "@/extensions/storage";
 import { runtimeRequestMeta } from "@/app/runtimeProtocol";
 import { createBrowserHost } from "@/platform/browserHost";
 import { createDesktopHostClient } from "@/platform/desktopHost";
@@ -364,44 +365,29 @@ describe("runtime endpoint", () => {
     expect(connection.stored.get("endpoint")).toBe("http://127.0.0.1:27171");
   });
 
-  it("cannot return an endpoint owner when installing its configuration subscription fails", async () => {
-    const connection = connectionHost();
-    connection.host.config.onChange = () => {
-      throw new Error("configuration subscription failed");
-    };
-    let configured: RuntimeEndpointConfiguration | undefined;
-    expect(() => {
-      configured = bindRuntimeEndpointConfiguration(
-        connection.host,
-        (commit) => commit(),
-        () => ({
-          endpoint: DEFAULT_RUNTIME_ENDPOINT,
-        }),
-      );
-    }).toThrow("configuration subscription failed");
-    await connection.dispose();
-    expect(configured).toBeUndefined();
+  it("keeps the original target if the selection cannot be persisted", () => {
+    const binding = installConnection();
+    const original = endpoint.currentRuntimeEndpoint();
+    vi.spyOn(binding.host.storage, "set").mockImplementation(() => {
+      throw new PluginStorageError("quota");
+    });
+    expect(endpoint.applyRuntimeEndpoint("https://other.example")).toMatchObject({
+      kind: "rejected",
+      reason: "storage_failed",
+    });
+    expect(endpoint.currentRuntimeEndpoint()).toBe(original);
   });
 
-  it("clears credentials even when its configuration subscription cleanup fails", async () => {
-    const connection = connectionHost();
-    connection.host.config.onChange = () => ({
-      dispose() {
-        throw new Error("configuration unsubscribe failed");
-      },
-    });
-    configuration = bindRuntimeEndpointConfiguration(
-      connection.host,
-      (commit) => commit(),
-      () => ({
-        endpoint: DEFAULT_RUNTIME_ENDPOINT,
-      }),
-    );
-    endpoint = createRuntimeEndpoint(configuration);
+  it("does not let the shared configuration change the Runtime target", () => {
+    installConnection();
+    config.set("runtime.endpoint", "https://other.example");
+    expect(configuration.read().endpoint).toBe(DEFAULT_RUNTIME_ENDPOINT);
+  });
 
+  it("retires the credential with the endpoint owner", async () => {
+    const connection = installConnection();
     endpoint.applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT, "retired-secret");
-    expect(configuration.read().localToken).toBe("retired-secret");
-    await expect(connection.dispose()).rejects.toThrow("configuration unsubscribe failed");
+    await connection.dispose();
     expect(configuration.read().localToken).toBeUndefined();
   });
 
@@ -442,7 +428,7 @@ describe("Runtime target credentials", () => {
     expect(replacements).toHaveBeenCalledOnce();
     expect(runtimeConnection.client()).not.toBe(first);
     expect([...stored.values()]).toEqual([DEFAULT_RUNTIME_ENDPOINT]);
-    expect(publication.mock.calls.map(([, value]) => value)).toEqual([DEFAULT_RUNTIME_ENDPOINT]);
+    expect(publication).not.toHaveBeenCalled();
     expect(endpoint.applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT, "window-secret")).toMatchObject({
       kind: "applied",
       changed: false,

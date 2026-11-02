@@ -14,9 +14,9 @@ import (
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
+	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/sqlite"
 )
 
 func runNow(ctx context.Context, db *sql.DB, store store, connect runConnector, command qimumcp.Command[wire.ItemInput]) (app.RunReference, error) {

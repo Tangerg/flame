@@ -94,8 +94,8 @@ The workspace VCS adapter translates Git results and failures directly from
 eligibility, unavailable/conflict outcomes, and Session-scoped restore policy.
 `adapter/persistence` owns Runtime product schema, SQL, strict storage codecs and
 Application port translation in one database lifecycle. Public
-`qimu/sqlite` owns shared schema admission, connection and transaction mechanisms,
-stable framework settlement and execution protection. Runtime supplies its own
+`frame/sqlite` owns generic schema admission and ordinary transactions. Qimu
+owns framework settlement, borrowed executors and execution protection. Runtime supplies its own
 business schemas; Qimu records and Runtime business references commit in one
 `flame-qimu.db` database under the Host's original Admission. Plugin backends keep
 their private business databases and receipts.

@@ -44,7 +44,11 @@ func runtimeDependencies(owner *runtimebinding.Owner, stateDirectory string) cmd
 				return err
 			}
 			return startTerminal(ctx, connection, request, func() (*workbench.Store, error) {
-				return openWorkbench(request.Settings.Runtime.AuthoringPartition())
+				partition, err := request.Settings.Runtime.AuthoringPartition()
+				if err != nil {
+					return nil, err
+				}
+				return openWorkbench(partition)
 			})
 		},
 		OpenWorkbench: openWorkbench,

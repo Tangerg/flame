@@ -9,9 +9,9 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/frame/cancellation"
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/cancellation"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
@@ -239,9 +239,13 @@ func (c *connections) serviceSession(ctx context.Context, current mcpserver.Serv
 func (c *connections) waitSession(ctx context.Context, current mcpserver.Server) (*sdkmcp.ClientSession, error) {
 	for {
 		c.mu.Lock()
-		if err := c.cancellationErr(ctx); c.closed || err != nil {
+		if err := c.cancellationErr(ctx); err != nil {
 			c.mu.Unlock()
-			return nil, errors.Join(ErrUnavailable, err)
+			return nil, err
+		}
+		if c.closed {
+			c.mu.Unlock()
+			return nil, ErrUnavailable
 		}
 		configured := c.find(current.ID())
 		if configured == nil {

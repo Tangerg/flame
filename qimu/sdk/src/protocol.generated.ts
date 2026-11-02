@@ -273,3 +273,84 @@ export interface Withdrawal {
   readonly authority: Authority;
   readonly publicationId: string;
 }
+
+export const CONTROL_SHAPES = {
+  AcquireRequest: {operationId: "string",snapshotId: "string",execution: "Execution",selections: "[]Selection",parentUseId: "string?",},
+  Artifact: {path: "string",digest: "Digest",},
+  Authority: {id: "string",epoch: "string",},
+  Candidate: {publicationId: "string",source: "ExportRef",metadataJson: "string",token: "string",},
+  CloseProof: {closeId: "string",proofId: "string",authority: "Authority",realm: "Realm",execution: "Execution",scopeId: "string",scopeGeneration: "string",scopeKind: "CloseScopeKind",useId: "string?",publicationId: "string?",instances: "[]string",status: "ReleaseStatus",failures: "[]string",},
+  CloseScopeKind: ["execution", "use", "publication"],
+  ContractKind: ["service", "point", "event"],
+  ContractMode: ["native", "portable"],
+  ContractRef: {name: "string",version: "string",digest: "Digest",kind: "ContractKind",mode: "ContractMode",},
+  Decision: ["accepted", "rejected", "unknown"],
+  Digest: "string",
+  Execution: {id: "string",generation: "string",},
+  ExportDeclaration: {name: "string",contract: "ContractRef",},
+  ExportRef: {installationId: "InstallationID",release: "Digest",unitId: "UnitID",export: "string",contract: "ContractRef",},
+  Fence: {scopeId: "string",scopeGeneration: "string",},
+  Import: {slot: "string",contract: "ContractRef",kind: "ImportKind",local: "LocalExport?",remote: "RemoteImport?",},
+  ImportKind: ["local", "remote", "absent"],
+  InstallationID: "string",
+  Instance: {id: "string",generation: "string",source: "UnitRef",configuration: "Digest",},
+  LocalExport: {instanceId: "string",name: "string",contract: "ContractRef",},
+  LocalPlan: {protocol: "string",approvalToken: "string",authority: "Authority",realm: "Realm",execution: "Execution",scopeId: "string",scopeGeneration: "string",units: "[]PlannedUnit",},
+  ObjectRef: {export: "LocalExport",objectId: "string",},
+  PlannedUnit: {instance: "Instance",configurationJson: "string",profile: "Profile",module: "Artifact",imports: "[]Import",exports: "[]ExportDeclaration",},
+  PointSnapshot: {point: "ContractRef",revision: "string",candidates: "[]Candidate",},
+  Poll: {authority: "Authority",realm: "Realm",revision: "string",plans: "[]LocalPlan",fences: "[]Fence",},
+  PreparedContribution: {object: "ObjectRef",metadataJson: "string",},
+  Profile: "string",
+  ProofAcknowledgement: {closeId: "string",proofId: "string",recorded: "bool",authority: "Authority",},
+  Publication: {id: "string",operationId: "string",revision: "string",object: "ObjectRef",},
+  PublicationRequest: {operationId: "string",authority: "Authority",realm: "Realm",execution: "Execution",object: "ObjectRef",metadataJson: "string",},
+  PublicationResult: {decision: "Decision",publication: "Publication?",problem: "string?",},
+  ReadyReport: {operationId: "string",authority: "Authority",realm: "Realm",execution: "Execution",objects: "[]ObjectRef",contributions: "[]PreparedContribution",},
+  Realm: {id: "string",epoch: "string",},
+  ReconnectMode: ["revalidated", "cleanupOnly"],
+  ReconnectRequest: {authority: "Authority",realm: "Realm",executions: "[]Execution",pendingProofs: "[]CloseProof",},
+  ReconnectResult: {authority: "Authority",realm: "Realm",mode: "ReconnectMode",acceptedProofs: "[]string",executions: "[]RevalidatedExecution",},
+  ReleaseStatus: ["released", "unconfirmed"],
+  RemoteImport: {source: "ExportRef",token: "string",},
+  RevalidatedExecution: {execution: "Execution",scopeId: "string",scopeGeneration: "string",},
+  RouteGrant: {id: "string",use: "UseGrant",source: "LocalExport",receiver: "LocalExport",},
+  Selection: {point: "ContractRef",candidates: "[]string",rule: "string",},
+  Snapshot: {id: "string",authority: "Authority",points: "[]PointSnapshot",},
+  UnitID: "string",
+  UnitRef: {installationId: "InstallationID",release: "Digest",unitId: "UnitID",},
+  UseGrant: {id: "string",approvalToken: "string",authority: "Authority",realm: "Realm",execution: "Execution",scopeId: "string",scopeGeneration: "string",objects: "[]ObjectRef",},
+  Withdrawal: {operationId: "string",authority: "Authority",publicationId: "string",},
+} as const;
+
+export const CONTROL_OPERATIONS = {
+  validatePlan: { mutating: false, output: "null" },
+  ready: { mutating: true, output: "PublicationResult" },
+  acquire: { mutating: true, output: "UseGrant" },
+  validateUse: { mutating: false, output: "null" },
+  validateRoute: { mutating: false, output: "null" },
+  snapshot: { mutating: true, output: "Snapshot" },
+  closeSnapshot: { mutating: true, output: "null" },
+  publish: { mutating: true, output: "PublicationResult" },
+  publication: { mutating: false, output: "PublicationResult" },
+  withdraw: { mutating: true, output: "PublicationResult" },
+  prove: { mutating: true, output: "ProofAcknowledgement" },
+  reconnect: { mutating: true, output: "ReconnectResult" },
+  poll: { mutating: false, output: "Poll" },
+} as const;
+
+export interface ControlResults {
+  validatePlan: void;
+  ready: PublicationResult;
+  acquire: UseGrant;
+  validateUse: void;
+  validateRoute: void;
+  snapshot: Snapshot;
+  closeSnapshot: void;
+  publish: PublicationResult;
+  publication: PublicationResult;
+  withdraw: PublicationResult;
+  prove: ProofAcknowledgement;
+  reconnect: ReconnectResult;
+  poll: Poll;
+}

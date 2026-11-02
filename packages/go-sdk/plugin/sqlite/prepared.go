@@ -7,10 +7,10 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/qimu/sqlite"
 )
 
 // PreparedCommand is a projection of a durable private command admission.

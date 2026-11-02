@@ -67,7 +67,12 @@ func (l *library) reindexDocument(ctx context.Context, method, id string, admitt
 }
 
 func (l *library) indexDocument(ctx context.Context, method, id string, admitted jsonvalue.Value, prepare func(context.Context) (knowledge.Draft, int64, error)) (knowledge.Header, error) {
-	prepared, original, err := pluginstorage.AdmitCommand(ctx, l.store.db, method, id, admitted, nil)
+	var embedDocument embed
+	prepared, original, err := pluginstorage.AdmitCommand(ctx, l.store.db, method, id, admitted, func(ctx context.Context) error {
+		var err error
+		embedDocument, err = l.resolve(ctx)
+		return err
+	})
 	if err != nil {
 		return knowledge.Header{}, err
 	}
@@ -84,11 +89,7 @@ func (l *library) indexDocument(ctx context.Context, method, id string, admitted
 	if _, err := l.store.indexTarget(ctx, draft.Content().ID, expectedRevision); err != nil {
 		return l.store.completeIndex(ctx, prepared, func(context.Context) (knowledge.Header, error) { return knowledge.Header{}, err })
 	}
-	embed, err := l.resolve(ctx)
-	if err != nil {
-		return knowledge.Header{}, err
-	}
-	result, err := embed(ctx, draft.Texts())
+	result, err := embedDocument(ctx, draft.Texts())
 	if err != nil {
 		return l.store.completeIndex(ctx, prepared, func(context.Context) (knowledge.Header, error) { return knowledge.Header{}, err })
 	}

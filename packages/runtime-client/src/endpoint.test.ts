@@ -32,3 +32,15 @@ describe("Runtime address ownership", () => {
     expect(() => createSidecarClient({ baseUrl: input })).toThrow("without credentials");
   });
 });
+
+it("refuses to attach a bearer to a non-loopback cleartext endpoint", () => {
+  expect(() =>
+    createHttpTransport({ baseUrl: "http://example.test", localToken: "example" }),
+  ).toThrow("HTTPS");
+  expect(() =>
+    createHttpTransport({ baseUrl: "https://example.test", localToken: "example" }),
+  ).not.toThrow();
+  expect(() =>
+    createHttpTransport({ baseUrl: "http://127.0.0.1:8080", localToken: "example" }),
+  ).not.toThrow();
+});

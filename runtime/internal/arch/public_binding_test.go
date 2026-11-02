@@ -43,7 +43,7 @@ modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 qimumcp "github.com/Tangerg/qimu/mcp"
 pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-sqlitebase "github.com/Tangerg/qimu/sqlite"
+sqlitebase "github.com/Tangerg/frame/sqlite"
 "github.com/Tangerg/flame/packages/go-sdk/protocol"
 "github.com/Tangerg/scope/core/chat"
 )
@@ -147,7 +147,7 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
  value, err := qimumcp.DecodeReply[bool](receipt.Reply)
  if err != nil || !value { t.Fatalf("original owner value = %v, %v", value, err) }
  projected, err := pluginsdk.NewToolReceipt(chat.NewTextToolOutput("owned"), false)
- if err != nil || !projected.Found || projected.IsError { t.Fatalf("public Tool projection = %+v, %v", projected, err) }
+ if err != nil || projected.Result == nil || projected.Result.IsError { t.Fatalf("public Tool projection = %+v, %v", projected, err) }
  changed, err := jsonvalue.Encode(map[string]bool{"changed": true})
  if err != nil { t.Fatal(err) }
  _, err = pluginstorage.Command(t.Context(), db, "records.update", "original", changed, nil, func(context.Context, map[string]bool) (bool, error) {

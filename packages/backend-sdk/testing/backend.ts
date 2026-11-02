@@ -9,7 +9,6 @@ import {
   invocationConflictCode,
   callHost,
   parseJSON,
-  stringifyJSON,
   type CapabilityDescriptor,
   type MethodDescriptor,
   type CallContext,
@@ -124,10 +123,14 @@ backend.receipts((_context, input) => {
 });
 toolReceipts(backend, (_context, input) => {
   const receipt = receipts.get(input.id);
-  if (!receipt) return { found: false };
+  if (!receipt) return {};
   if (receipt.method !== input.method || receipt.digest !== input.inputDigest)
     throw new Refusal(invocationConflictCode, "Tool receipt identity differs");
-  return { found: true, output: (receipt.reply as { value: string }).value };
+  return {
+    result: {
+      output: (receipt.reply as { value: Record<string, unknown> }).value,
+    },
+  };
 });
 backend.bindCapability("fixture", contract);
 backend.onSetup(() => {});
@@ -151,9 +154,9 @@ backend.tool(
       method: "host_echo",
       digest: context.inputDigest,
       reply: {
-        value: stringifyJSON({
+        value: {
           content: [{ kind: "text", text: output.source }],
-        }),
+        },
       },
     });
     return { content: [{ type: "text", text: output.source }] };

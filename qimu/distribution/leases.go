@@ -2,7 +2,6 @@ package distribution
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"path/filepath"
@@ -33,10 +32,7 @@ func (s *Store) InstallArchive(ctx context.Context, fileName string, expected in
 func (l *Lease) Release() Release {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	encoded, _ := json.Marshal(l.release)
-	var result Release
-	_ = json.Unmarshal(encoded, &result)
-	return result
+	return l.release.clone()
 }
 
 // Directory permits a trusted profile adapter to open the exact admitted tree.

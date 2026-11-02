@@ -1,5 +1,15 @@
 {
   "protocol": "io.github.tangerg.flame/plugin/1",
+  "inputs": [
+    {
+      "id": "azure-deployments",
+      "server": "providers",
+      "target": "env",
+      "key": "AZURE_DEPLOYMENTS",
+      "required": false,
+      "secret": false
+    }
+  ],
   "components": [
     {
       "id": "settings",

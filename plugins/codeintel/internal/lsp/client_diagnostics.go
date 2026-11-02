@@ -7,7 +7,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/qimu/cancellation"
+	"github.com/Tangerg/frame/cancellation"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
@@ -27,7 +27,7 @@ func (e *DiagnosticsPendingError) Error() string {
 
 // diagnostics returns only a completed analysis of the version it synchronized.
 func (c *client) diagnostics(ctx context.Context, abs string, settle time.Duration) ([]Diagnostic, error) {
-	content, err := readDocument(ctx, abs)
+	content, err := readDocument(ctx, c.workspace, abs)
 	if err != nil {
 		return nil, errors.Join(err, cancellation.Err(ctx))
 	}
@@ -39,7 +39,7 @@ func (c *client) diagnosticsContent(ctx context.Context, abs string, content []b
 	if err != nil {
 		return nil, err
 	}
-	if c.save.Enabled {
+	if c.syncPolicy.Save.Enabled {
 		if err := c.notifySave(ctx, pathToURI(abs), version, content); err != nil {
 			return nil, err
 		}
@@ -54,7 +54,7 @@ func (c *client) notifySave(ctx context.Context, uri string, version int, conten
 		return errors.New("lsp: document changed before save notification")
 	}
 	params := didSaveParams{TextDocument: textDocumentIdentifier{URI: uri}}
-	if c.save.IncludeText {
+	if c.syncPolicy.Save.IncludeText {
 		params.Text = new(string(content))
 	}
 	return c.conn.Notify(ctx, "textDocument/didSave", params)

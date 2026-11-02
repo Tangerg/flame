@@ -1,8 +1,10 @@
 package main
 
 import (
+	"container/list"
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -40,7 +42,7 @@ func (i *testInputs) Complete(_ context.Context, _, input string) (string, error
 	return i.replies[len(i.prompts)-1], nil
 }
 
-func freshLearner() *learner { return &learner{complexRuns: make(map[string]int)} }
+func freshLearner() *learner { return &learner{complexRuns: make(map[string]*list.Element)} }
 
 func dueMine(t *testing.T, l *learner, inputs learningInputs) (skilllearning.MineResult, error) {
 	t.Helper()
@@ -90,7 +92,7 @@ func TestLearningReturnsOnlyUsableDrafts(t *testing.T) {
 		{"new", testSkill, 4, true},
 		{"fenced", "```markdown\n" + testSkill + "\n```", 4, true},
 		{"sentinel", " no_skill\n", 4, false},
-		{"invalid", "not a skill document", 4, false},
+
 		{"short conversation", testSkill, 3, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -165,5 +167,19 @@ func TestArchiveAdviceHasOneDecisionPerInterval(t *testing.T) {
 	advice := l.archive(now.Add(6 * time.Hour))
 	if advice.InactiveSince == nil || !advice.InactiveSince.Equal(now.Add(6*time.Hour-30*24*time.Hour)) {
 		t.Fatalf("next archive advice = %+v", advice)
+	}
+}
+
+func TestInvalidSkillDraftAndBoundedCadence(t *testing.T) {
+	l := freshLearner()
+	i := &testInputs{conversation: skilllearning.Conversation{MessageCount: 4, Transcript: "conversation"}, replies: []string{"not a skill document"}}
+	if _, err := dueMine(t, l, i); !errors.Is(err, errInvalidSkillDraft) {
+		t.Fatalf("invalid draft: %v", err)
+	}
+	for n := range maxTrackedSessions + 2 {
+		l.miningDue(strconv.Itoa(n))
+	}
+	if len(l.complexRuns) != maxTrackedSessions || l.complexRuns["0"] != nil {
+		t.Fatal("inactive cadence retained")
 	}
 }

@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { ExactNumber, parseJSON } from "@qimu/sdk/json";
 import {
@@ -149,4 +150,27 @@ describe("published Go contract conformance", () => {
     ])
       expect(() => compileSchema(schema)).toThrow();
   });
+});
+
+it("agrees with the Go host on exact object keys, patterns and formats", async () => {
+  const vectors = JSON.parse(
+    await readFile(
+      new URL("../../portable/testdata/validation.json", import.meta.url),
+      "utf8",
+    ),
+  ) as {
+    schema: unknown;
+    value: unknown;
+    accept?: boolean;
+    descriptorRefused?: boolean;
+  }[];
+  for (const vector of vectors) {
+    if (vector.descriptorRefused) {
+      expect(() => compileSchema(vector.schema)).toThrow();
+      continue;
+    }
+    const validate = compileSchema(vector.schema);
+    if (vector.accept) expect(() => validate(vector.value)).not.toThrow();
+    else expect(() => validate(vector.value)).toThrow();
+  }
 });

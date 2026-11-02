@@ -70,10 +70,8 @@ func (t Totals) Add(other Totals) (Totals, error) {
 	return Totals{Tokens: tokens, Cost: cost}, nil
 }
 
-// Usage is cumulative accounting for a Run. Total remains authoritative;
-// ByModel is the per-model breakdown, nil when usage cannot be attributed to
-// models and otherwise naming every reported model. An empty breakdown is not a
-// state: persisted and wire forms cannot tell it from an unattributed one.
+// An unattributed report owns only its total. For attributed usage the total
+// is a checked projection of all model subtotals, including unknown costs.
 type Usage struct {
 	Total   Totals
 	ByModel map[string]Totals
@@ -90,23 +88,62 @@ func (u Usage) Validate() error {
 	if err := u.Total.Validate(); err != nil {
 		return fmt.Errorf("accounting: total usage: %w", err)
 	}
-	if u.ByModel != nil && len(u.ByModel) == 0 {
-		return errors.New("accounting: an attributed usage names no model")
+	if u.ByModel == nil {
+		return nil
 	}
-	models := make([]string, 0, len(u.ByModel))
-	for model := range u.ByModel {
-		models = append(models, model)
+	total, err := modelTotal(u.ByModel)
+	if err != nil {
+		return err
 	}
-	slices.Sort(models)
-	for _, model := range models {
-		if _, err := modelchoice.NewModelIdentity(model); err != nil {
-			return fmt.Errorf("accounting: model identity: %w", err)
-		}
-		if err := u.ByModel[model].Validate(); err != nil {
-			return fmt.Errorf("accounting: model %q: %w", model, err)
-		}
+	if total != u.Total {
+		return errors.New("accounting: attributed usage differs from model subtotals")
 	}
 	return nil
+}
+
+func modelTotal(parts map[string]Totals) (Totals, error) {
+	if len(parts) == 0 {
+		return Totals{}, errors.New("accounting: an attributed usage names no model")
+	}
+	total := Totals{Cost: Cost{available: true}}
+	for _, model := range slices.Sorted(maps.Keys(parts)) {
+		if _, err := modelchoice.NewModelIdentity(model); err != nil {
+			return Totals{}, fmt.Errorf("accounting: model identity: %w", err)
+		}
+		next, err := total.Add(parts[model])
+		if err != nil {
+			return Totals{}, fmt.Errorf("accounting: model %q: %w", model, err)
+		}
+		total = next
+	}
+	return total, nil
+}
+
+func AttributedUsage(parts map[string]Totals) (Usage, error) {
+	owned := maps.Clone(parts)
+	total, err := modelTotal(owned)
+	if err != nil {
+		return Usage{}, err
+	}
+	return Usage{Total: total, ByModel: owned}, nil
+}
+
+func (u Usage) Accrue(model string, delta Totals) (Usage, error) {
+	if u.ByModel == nil {
+		total, err := u.Total.Add(delta)
+		return Usage{Total: total}, err
+	}
+	parts := maps.Clone(u.ByModel)
+	if previous, ok := parts[model]; ok {
+		var err error
+		delta, err = previous.Add(delta)
+		if err != nil {
+			return Usage{}, err
+		}
+	}
+	parts[model] = delta
+	total, err := modelTotal(parts)
+	return Usage{Total: total, ByModel: parts}, err
 }
 
 // ValidateAdvanceFrom proves that u is a cumulative continuation of

@@ -170,17 +170,18 @@ func TestServers_UnsupportedFile(t *testing.T) {
 
 func TestNewServersSnapshotsSpecs(t *testing.T) {
 	specs := []ServerSpec{{
-		Name:        "test",
-		Command:     "test-lsp",
-		LanguageID:  "test",
+		Name:    "test",
+		Command: "test-lsp",
+
 		Args:        []string{"before"},
-		Extensions:  []string{".before"},
+		Languages:   map[string]string{".before": "test"},
 		RootMarkers: []string{"before.mod"},
 	}}
 	servers := mustNewServers(t, specs)
 	t.Cleanup(func() { _ = servers.Close() })
 	specs[0].Args[0] = "after"
-	specs[0].Extensions[0] = ".after"
+	delete(specs[0].Languages, ".before")
+	specs[0].Languages[".after"] = "test"
 	specs[0].RootMarkers[0] = "after.mod"
 
 	if !servers.Supported("file.before") || servers.Supported("file.after") {
@@ -202,45 +203,45 @@ func TestNewServersRejectsAmbiguousServerRouting(t *testing.T) {
 	}{
 		{
 			name:  "missing server identity",
-			specs: []ServerSpec{{Command: "gopls", LanguageID: "go", Extensions: []string{".go"}}},
+			specs: []ServerSpec{{Command: "gopls", Languages: map[string]string{".go": "go"}}},
 		},
 		{
 			name:  "missing command",
-			specs: []ServerSpec{{Name: "go", LanguageID: "go", Extensions: []string{".go"}}},
+			specs: []ServerSpec{{Name: "go", Languages: map[string]string{".go": "go"}}},
 		},
 		{
 			name:  "missing language identity",
-			specs: []ServerSpec{{Name: "go", Command: "gopls", Extensions: []string{".go"}}},
+			specs: []ServerSpec{{Name: "go", Command: "gopls", Languages: map[string]string{".go": ""}}},
 		},
 		{
 			name: "duplicate server identity",
 			specs: []ServerSpec{
-				{Name: "shared", Command: "first", LanguageID: "go", Extensions: []string{".go"}},
-				{Name: "shared", Command: "second", LanguageID: "typescript", Extensions: []string{".ts"}},
+				{Name: "shared", Command: "first", Languages: map[string]string{".go": "go"}},
+				{Name: "shared", Command: "second", Languages: map[string]string{".ts": "typescript"}},
 			},
 		},
 		{
 			name: "case-insensitive extension collision",
 			specs: []ServerSpec{
-				{Name: "first", Command: "first-lsp", LanguageID: "go", Extensions: []string{".go"}},
-				{Name: "second", Command: "second-lsp", LanguageID: "other", Extensions: []string{".GO"}},
+				{Name: "first", Command: "first-lsp", Languages: map[string]string{".go": "go"}},
+				{Name: "second", Command: "second-lsp", Languages: map[string]string{".GO": "other"}},
 			},
 		},
 		{
 			name:  "empty extension",
-			specs: []ServerSpec{{Name: "extensionless", Command: "server", LanguageID: "plain", Extensions: []string{""}}},
+			specs: []ServerSpec{{Name: "extensionless", Command: "server", Languages: map[string]string{"": "plain"}}},
 		},
 		{
 			name:  "extension without dot",
-			specs: []ServerSpec{{Name: "go", Command: "gopls", LanguageID: "go", Extensions: []string{"go"}}},
+			specs: []ServerSpec{{Name: "go", Command: "gopls", Languages: map[string]string{"go": "go"}}},
 		},
 		{
 			name:  "empty root marker",
-			specs: []ServerSpec{{Name: "go", Command: "gopls", LanguageID: "go", RootMarkers: []string{""}}},
+			specs: []ServerSpec{{Name: "go", Command: "gopls", Languages: map[string]string{".go": "go"}, RootMarkers: []string{""}}},
 		},
 		{
 			name:  "escaping root marker",
-			specs: []ServerSpec{{Name: "go", Command: "gopls", LanguageID: "go", RootMarkers: []string{"../go.mod"}}},
+			specs: []ServerSpec{{Name: "go", Command: "gopls", Languages: map[string]string{".go": "go"}, RootMarkers: []string{"../go.mod"}}},
 		},
 	}
 
@@ -444,8 +445,8 @@ func TestWorkspaceSymbolsReportsEveryStartupFailure(t *testing.T) {
 		}
 	}
 	servers := mustNewServers(t, []ServerSpec{
-		{Name: "go", Command: "gopls", LanguageID: "go", Extensions: []string{".go"}, RootMarkers: []string{"go.mod"}},
-		{Name: "typescript", Command: "typescript-language-server", LanguageID: "typescript", Extensions: []string{".ts"}, RootMarkers: []string{"package.json"}},
+		{Name: "go", Command: "gopls", Languages: map[string]string{".go": "go"}, RootMarkers: []string{"go.mod"}},
+		{Name: "typescript", Command: "typescript-language-server", Languages: map[string]string{".ts": "typescript"}, RootMarkers: []string{"package.json"}},
 	})
 	t.Cleanup(func() { _ = servers.Close() })
 	goErr := errors.New("gopls unavailable")

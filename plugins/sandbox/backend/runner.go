@@ -10,8 +10,8 @@ import (
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/sqlite"
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	processsandbox "github.com/Tangerg/flame/packages/go-sdk/sandbox"

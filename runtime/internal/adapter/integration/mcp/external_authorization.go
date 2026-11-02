@@ -54,6 +54,8 @@ func (c *ExternalConnector) StartAuthorization(ctx context.Context, server mcpse
 		return app.AuthorizationAttempt{}, nil, err
 	}
 	source, epoch := u.source, u.epoch
+	completionID := operation.Identity(operation.Start(ctx, extension.Automatic, c.methods.Finish.Name(), id.String()))
+	parentID := operation.Identity(ctx)
 	if err := u.session.release(context.Background()); err != nil {
 		return app.AuthorizationAttempt{}, nil, err
 	}
@@ -70,9 +72,23 @@ func (c *ExternalConnector) StartAuthorization(ctx context.Context, server mcpse
 		if !current.source.SameContribution(source) || current.epoch != epoch {
 			return plugin.ErrStale
 		}
-		ctx = operation.Start(ctx, extension.Automatic, c.methods.Finish.Name(), id.String())
-		_, err = connectorCall(ctx, current, c.methods.Finish, wire.Completion{ID: id.String(), Epoch: epoch, Status: wire.Outcome(status)})
-		return err
+		ctx = operation.Adopt(ctx, completionID, extension.Automatic, parentID)
+		input := wire.Completion{ID: id.String(), Epoch: epoch, Status: wire.Outcome(status)}
+		decision, err := connectorCall(ctx, current, c.methods.Finish, input)
+		if err == nil && decision == wire.Applied {
+			return nil
+		}
+		// A lost acknowledgement or superseding sign-in may already have settled
+		// this exact attempt. Only its owner can confirm a terminal status.
+		result, readErr := connectorCall(operation.Start(ctx, extension.Automatic, c.methods.Get.Name(), id.String()), current, c.methods.Get, wire.Request{ID: id.String(), Epoch: epoch})
+		if readErr == nil {
+			observed, decodeErr := readExternalAttempt(result, id)
+			if decodeErr == nil && observed.Status != app.AuthorizationAttemptPending {
+				return nil
+			}
+			readErr = decodeErr
+		}
+		return errors.Join(plugin.ErrUnavailable, err, readErr)
 	}
 	return attempt, finish, nil
 }

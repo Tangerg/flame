@@ -3,10 +3,12 @@ package modelprovider
 import (
 	"encoding/json/jsontext"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/qimu/jsonvalue"
+	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/models/catalog"
 )
@@ -110,5 +112,71 @@ func TestConstructionDeclaresItsExactIdentityWhenCatalogFactsAreUnknown(t *testi
 	client.Provider = ""
 	if err := client.Validate(); err == nil {
 		t.Fatal("unknown catalog facts hid a missing provider identity")
+	}
+}
+
+func TestCheckpointIdentityIsIndependentOfExecutableHandles(t *testing.T) {
+	id, err := ContractIdentity()
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := Contract()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Identity() != id {
+		t.Fatal("checkpoint identity differs from executable contract")
+	}
+	method, ok := c.Method(c.Descriptor().Methods[0].Name)
+	if !ok {
+		t.Fatal("missing declared method")
+	}
+	*method = portable.Method{}
+	*c = portable.Capability{}
+	id.JSON()[0] = 0
+	after, err := ContractIdentity()
+	if err != nil || after != id || after.JSON()[0] == 0 {
+		t.Fatal("caller changed published contract identity", err)
+	}
+}
+
+func TestProviderMethodsKeepHandlesAndSchemasIsolated(t *testing.T) {
+	verifyMethodHandle(t, ProfilesMethod)
+	verifyMethodHandle(t, RemoteModelsMethod)
+	verifyMethodHandle(t, VerifyMethod)
+	verifyMethodHandle(t, OpenChatMethod)
+	verifyMethodHandle(t, OpenEmbeddingMethod)
+	verifyMethodHandle(t, ReopenChatMethod)
+	verifyMethodHandle(t, CloseMethod)
+	verifyMethodHandle(t, CallMethod)
+	verifyMethodHandle(t, StreamMethod)
+	verifyMethodHandle(t, CountMethod)
+	verifyMethodHandle(t, EmbedMethod)
+}
+
+func verifyMethodHandle[T any, P interface {
+	*T
+	Descriptor() portable.MethodDescriptor
+}](t *testing.T, load func() (P, error)) {
+	t.Helper()
+	method, err := load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := method.Descriptor()
+	exposed := method.Descriptor()
+	exposed.Input[0] = 0
+	exposed.Output[0] = 0
+	if len(exposed.Stream) > 0 {
+		exposed.Stream[0] = 0
+	}
+	var zero T
+	*method = zero
+	next, err := load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if method == next || !reflect.DeepEqual(next.Descriptor(), before) {
+		t.Fatalf("%s re-exposed mutated method state", before.Name)
 	}
 }

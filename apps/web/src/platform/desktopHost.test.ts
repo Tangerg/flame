@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { RpcTransportError } from "@flame/runtime-client";
 import { createClientHost } from "@/platform/clientHost";
 import { createDesktopHostClient, type DesktopHostBinding } from "@/platform/desktopHost";
-import { DesktopMethods, NotificationOpenedEvent } from "@/platform/desktop.generated";
+import {
+  MAXIMUM_EXPORT_CHUNK_BYTES,
+  DesktopMethods,
+  NotificationOpenedEvent,
+} from "@/platform/desktop.generated";
 const wailsCall = vi.hoisted(() => vi.fn());
 
 vi.mock("@wailsio/runtime", () => ({
@@ -198,7 +202,43 @@ describe("DesktopHostClient", () => {
       bytes,
     });
     const encoded = binding.call.mock.calls[0]![2] as string;
-    expect(Uint8Array.from(atob(encoded), (character) => character.charCodeAt(0))).toEqual(bytes);
+    expect(Buffer.from(encoded, "base64").equals(Buffer.from(bytes))).toBe(true);
+  });
+
+  it("streams the captured bytes in bounded chunks and cancels a failed transfer", async () => {
+    const input = new Uint8Array(MAXIMUM_EXPORT_CHUNK_BYTES + 1);
+    input[input.length - 1] = 7;
+    const chunks: number[] = [];
+    let cancelled = false;
+    const binding: DesktopHostBinding = {
+      ...hostBinding(),
+      async call(method, ...args) {
+        if (method === DesktopMethods.BeginFileSave.name) return "transfer";
+        if (method === DesktopMethods.AppendFileSave.name) {
+          const bytes = Buffer.from(args[2] as string, "base64");
+          chunks.push(bytes.length);
+          if (chunks.length === 2) {
+            expect(bytes[0]).toBe(7);
+            throw new Error("disk full");
+          }
+          return;
+        }
+        if (method === DesktopMethods.CancelFileSave.name) {
+          cancelled = true;
+          return;
+        }
+        throw new Error("unexpected method");
+      },
+    };
+    const saving = createDesktopHostClient(binding).saveFile({
+      filename: "large",
+      mime: "application/octet-stream",
+      bytes: input,
+    });
+    input.fill(0);
+    await expect(saving).rejects.toThrow("disk full");
+    expect(chunks).toEqual([MAXIMUM_EXPORT_CHUNK_BYTES, 1]);
+    expect(cancelled).toBe(true);
   });
 
   it("rejects malformed file-save responses and native failures", async () => {

@@ -32,7 +32,7 @@ func connectProvider(t *testing.T, path string) (*store, *sdk.ClientSession, fun
 	if err != nil {
 		t.Fatal(err)
 	}
-	server, err := newServer(store)
+	server, err := newServer(store, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

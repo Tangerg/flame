@@ -1,5 +1,5 @@
 import { readResponseDocument, responseDocumentLimit } from "./document";
-import { requireRuntimeEndpoint } from "../endpoint";
+import { endpointAcceptsBearer, requireRuntimeEndpoint } from "../endpoint";
 import {
   context,
   propagation,
@@ -116,6 +116,8 @@ async function feedEventStreamText(
 export function createHttpTransport(config: HttpTransportConfig): Transport {
   const documentLimit = responseDocumentLimit(config.maximumResponseBytes);
   const baseUrl = requireRuntimeEndpoint(config.baseUrl);
+  if (config.localToken && !endpointAcceptsBearer(baseUrl))
+    throw new TypeError("Bearer credentials require HTTPS outside loopback");
   const fetchImpl = config.fetch ?? globalThis.fetch.bind(globalThis);
   const maximumEventStreamFrameCharacters =
     config.maximumEventStreamFrameCharacters ?? MAXIMUM_EVENT_STREAM_FRAME_CHARACTERS;
