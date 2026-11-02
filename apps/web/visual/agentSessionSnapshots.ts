@@ -36,6 +36,7 @@ export const VISUAL_AGENT_STATES = [
   "long-content",
   "prose-blocks",
   "code-reading",
+  "code-history",
   "table-reading",
   "reference-notes",
   "math-content",
@@ -1828,6 +1829,29 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
     items: [PROMPT, message("agentMessage", "item_code_reading", CODE_READING_MARKDOWN)],
     pendingInterruptSets: [],
   },
+  "code-history": {
+    runs: [
+      run("finished", {
+        finishedAt: "2026-07-31T08:00:12.000Z",
+        outcome: { type: "completed" },
+      }),
+    ],
+    items: [
+      PROMPT,
+      message("agentMessage", "item_code_history_answer", CODE_READING_MARKDOWN),
+      message(
+        "userMessage",
+        "item_code_history_follow_up",
+        "Inspect the source behind those observations before changing anything.",
+      ),
+      message(
+        "agentMessage",
+        "item_code_history_reply",
+        "I inspected the source; every observation is still owned by the Runtime.",
+      ),
+    ],
+    pendingInterruptSets: [],
+  },
   "table-reading": {
     runs: [
       run("finished", {
@@ -2229,6 +2253,7 @@ export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState
   "long-content": [],
   "prose-blocks": [],
   "code-reading": [],
+  "code-history": [],
   "table-reading": [],
   "reference-notes": [],
   "math-content": [],

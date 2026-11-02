@@ -27101,6 +27101,147 @@ After guarded main fast-forward, push and direct remote equality verification,
 the owned private app/home/assets/archives/overlays/CLI material/logs/npm cache
 root is removed. Keep this worktree and the goal active for continued polish.
 
+### Historical code reading through retained materials (2026-11-03)
+
+At batch start, a fresh fetch and `git merge --ff-only origin/main` find main
+current at `ef43ea828`. The pre-publication fetch confirms the same base.
+The task is retain a draft -> read earlier code -> inspect the retained
+Workspace material -> return -> resize -> continue the draft. Existing long-code
+snapshots end at the code answer, so they cannot establish historical reading.
+The new `code-history` snapshot reuses the existing 48-line source verbatim,
+then adds a completed user and assistant continuation through the normal Runtime
+projection/fold. Its typed fixture consumers and validity test are updated;
+no product wire or Runtime behavior changes.
+
+The original, observer-free Wails host reproduces a return-continuity defect in
+ZH/dark/18 px/custom blue/reduced motion at native 200%. After keyboard End
+and horizontal reading reach observations 46–48, opening the narrow full-width
+material and pressing Escape leaves the code around observations 40–43.
+The two-line draft survives. Repeating without a window resize still loses
+the source position, so resizing is not necessary to reproduce it.
+
+A private passive geometry trace establishes the cause: the PRE identity stays
+the same. With wrapping enabled, it starts at scrollTop 2275, height 91 px and
+reading budget 133.5 px. Reveal temporarily measures a 259.5 px budget and
+217 px source height, clamping scrollTop to 2140; the source then shrinks back
+to 91 px without recovering its position. The child reading effect runs before
+ChatStream republishes Composer clearance. Both owners had cleared their
+measurements when the retained conversation became hidden.
+
+Retaining only the reading budget is a failed causal control and is not adopted
+alone. Retaining both existing measurements prevents the transient expansion:
+the same PRE returns at scrollTop 2275 and height 91 px. These diagnostic runs
+observe geometry and use explicit private source transforms; they are not final
+acceptance. All diagnostics are removed before the final asset build.
+
+The repaired owners are `readingFollow.ts` and `ChatStream.tsx`. Their last
+valid reading height and Composer footprint remain inline projections on their
+retained DOM nodes while hidden. Observers/listeners disconnect, focus witnesses
+retire, and reveal measures current geometry normally. Visible empty
+conversations still remove Composer clearance. Notification insets belong to
+the shared shell and still clear on hide/unmount. Detached DOM naturally
+discards its own projections; no second cleanup owner, state/cache, timer,
+manual scroll restoration or keyboard/focus handler is added.
+
+Read-only ZCode `packages/ui/src/components/ai-elements/code-block.tsx` and the
+actual ChatGPT `deob/webview/assets/chatgpt-code-block-4e29dd64664a.js` conversation
+renderer inform the distinction between caption, wrap/copy controls and source
+reading. Their composition is a reference, not installed-WebKit behavior.
+No offscreen paint policy is copied. Continued better-interface/accessibility/layout
+review applies retained context, keyboard access and reflow; earlier HeroUI,
+Arc, Radix and Ace research keeps its recorded scope. Reference repositories
+and accepted theme, Composer, table/code, selection, radius and reasoning work
+remain unchanged.
+
+Two bounded edit-only Claude Code CLI runs handle the fixture and lifecycle
+details: 81.276 s and 160.092 s, each 25 turns with zero permission denials.
+Root reviews the actual diff, updates the typed browser-test consumer without
+running that suite, and owns the causal controls, native acceptance and delivery.
+Regressions cover retained geometry, observer retirement, remeasurement, same
+reader/input identity, later focus/draft/selection and started-to-empty transitions.
+Restoring both original product modules makes the two lifecycle cases fail on
+their missing projections; candidate bytes are restored exactly before acceptance.
+
+#### Verification and native boundaries
+
+The related six files pass **139 tests**. The final serial frontend project
+passes **421 files / 4,379 tests** in **97.46 s** (98.084 s wrapper).
+All **25 Web non-test gates** pass, including types, lint/format, dependency/layer
+boundaries, design-system ownership, styles/tokens, locales, installed resources,
+production bundle and module linkage. `make check-native` passes in **80.622 s**,
+including Web staging and Desktop test/vet/build and production Wails compilation.
+Existing macOS linker-target warnings remain nonfatal. `git diff --check` passes.
+No browser visual suite or performance benchmark runs.
+
+Two failed verification attempts remain explicit. The default test entry passes
+all frontend cases but also starts Runtime preparation, which fails because the
+offline prepared `node-v24.22.1-darwin-arm64.tar.gz` is absent; its 52 Runtime
+cases do not run. The next frontend-only run overlaps native rebuilding of shared
+UI/icon output and has 22 import failures. Root corrects that scheduling error:
+after all builds finish, the complete frontend project passes serially without
+source or assertion changes. The failed Runtime preparation's temporary root
+is already absent. The earlier complete Runtime recovery-suite failure keeps
+its separate qualification; this is not a green complete repository check.
+
+The private host uses actual Wails v3.0.0 / Go 1.27.3 on macOS 26.5 and WebKit
+21624.2.5.11.4, with production navigation, closing and native zoom hooks.
+Its identity, isolated home/unavailable loopback Runtime endpoint, asset root,
+entry and 1120 x 720 initial/minimum window are the host differences. The normal
+generated Tool-results ESM is selected for fixture hosting. The final private
+asset build passes in 2.548 s and contains no probe, geometry transform, data
+override or handler substitution. All **348 frozen inputs** match after final
+acceptance; all **22 installed JavaScript resources** keep their baseline hashes.
+
+- ZH/dark/18 px/custom blue/reduced motion repeats the original 200% path.
+  Wrapped observation 48 and its closing source remain visible after material
+  Escape return. Unwrapped End and horizontal arrows reach observations 46–48
+  and their complete endings; both axes remain at that reading position after
+  another material return. Native window Zoom/restore while reading the material,
+  then Escape alone, also preserves the original source position.
+- At Actual Size, native Cmd+A inside Code content selects all 48 literal
+  observations, excluding the caption/actions. Cmd+L returns to the retained
+  two-line draft and committed native input continues it. Chinese value setting
+  plus native commitment is not physical IME coverage.
+- EN/light/14 px/Flame Orange/full motion qualifies the earlier source, its caption,
+  material full-width reading and Escape return to the retained Dock. Pointer
+  resize changes Dock width from 500 to 394; normal Tab entry reaches the splitter,
+  and Home/End report 320/680. Cmd+L continues the original two-line English draft.
+  This is functional full-motion coverage, not animation-timing certification.
+- The existing historical `narrative` table separately repeats preview/Escape,
+  keyboard End, material/Escape and continued draft input at 200%.
+  The closing wrapped `replay queue` remains readable after material return.
+  Its earlier intrinsic-minimum/complete-inline-row limitation is unchanged;
+  this check does not extend that qualification. Shared subagent reader consumers
+  are covered by frontend tests, without new native subgroup-path qualification.
+
+All three final launches exit normally; all eight owned native launches in the
+batch are terminal zero and absent. These fixtures establish UI reading,
+navigation, focus and draft continuity. The retained DockResizer file is canned
+eight-line content independent of path, so live filesystem, provider and Runtime
+business behavior are not qualified. No Send, Copy, approval, Run, regenerate
+or external-link action is activated.
+
+#### Review and continuing handoff
+
+The scoped CHECK review covers typography, whitespace, hierarchy, color, motion,
+micro interaction, responsive reading and retained Flame identity. The repair
+keeps the established visual system while making return preserve the actual
+reading task. VoiceOver, physical IME, RTL, other-platform native UI, every wide
+content shape and whole-product/award-tier acceptance are not newly qualified.
+The earlier minimal-native pointer-entry reverse-Tab boundary and complete
+Runtime recovery failure remain open with their preceding evidence. No migration
+is needed. Continue from observed tasks, including other retained wide-content
+and nested detail-return paths; preserve the accepted reasoning treatment.
+
+Publication cleanup restores the nine baseline-absent checkout outputs and six
+unique-UID Library paths, unregisters the exact private bundle, and verifies the
+owned processes and isolated listener are absent. It preserves root dependencies,
+shared caches, references, user data and the reusable prior toolchain/cache.
+The interrupted-draft backup retains 123 bytes and its original SHA-256.
+After guarded main fast-forward, push and direct remote equality verification,
+the owned app/home/assets/diagnostic archives/overlays/CLI material/logs/npm-cache
+root is removed. Keep the worktree and goal active for continued polish.
+
 ## Workspace file browser audit
 
 The earlier file-browser audit established path-based tree/list keys, read

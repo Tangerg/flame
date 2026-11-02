@@ -200,7 +200,7 @@ function measuredRect(node: Element, top: number, bottom: number) {
 }
 
 describe("ChatStream notification space", () => {
-  it("publishes space outside the composer and jump control, then retires hidden measurements", () => {
+  it("publishes space outside the composer and jump control, then retires hidden notification space", () => {
     const measured = measureStream();
     const view = mount();
     const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
@@ -231,14 +231,16 @@ describe("ChatStream notification space", () => {
     expect([draft.selectionStart, draft.selectionEnd]).toEqual([5, 10]);
 
     view.showRows([userRow()], false);
+    expect(observer.active).toBe(false);
     expect(shell.style.getPropertyValue("--notification-top")).toBe("");
     expect(shell.style.getPropertyValue("--notification-bottom")).toBe("");
-    expect(pane.style.getPropertyValue(COMPOSER_OVERLAY_PROPERTY)).toBe("");
+    expect(pane.style.getPropertyValue(COMPOSER_OVERLAY_PROPERTY)).toBe("300px");
 
     view.showRows([userRow()]);
     expect(screen.getByRole("textbox", { name: "Message composer" })).toBe(draft);
     expect(draft.value).toBe("Keep this authored draft");
     expect(shell.style.getPropertyValue("--notification-bottom")).toBe("340px");
+    expect(pane.style.getPropertyValue(COMPOSER_OVERLAY_PROPERTY)).toBe("300px");
     view.unmount();
     expect(shell.style.getPropertyValue("--notification-top")).toBe("");
     expect(shell.style.getPropertyValue("--notification-bottom")).toBe("");
@@ -269,6 +271,67 @@ describe("ChatStream notification space", () => {
     observer.notify([{ target: heading } as ResizeObserverEntry]);
     expect(shell.style.getPropertyValue("--notification-top")).toBe("260px");
     expect(shell.style.getPropertyValue("--notification-bottom")).toBe("0px");
+    expect(screen.getByRole("textbox", { name: "Message composer" })).toBe(draft);
+    expect(draft.value).toBe("Keep this authored draft");
+  });
+
+  it("keeps retained transcript geometry while hidden and remeasures it on reveal", () => {
+    const measured = measureStream();
+    const view = mount();
+    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
+    const outside = screen.getByRole("button", { name: "Later control" });
+    const reader = view.container.querySelector<HTMLElement>(".msg-scroll-viewport")!;
+    const { observer, overlay, observers } = measured(draft);
+    const readerObserver = observers.find((entry) => entry.active && entry.nodes.has(reader))!;
+    const readerRect = measuredRect(reader, 46, 600);
+    const overlayRect = measuredRect(overlay, 460, 600);
+    observer.notify();
+    readerObserver.notify();
+    const pane = view.container.querySelector<HTMLElement>('[style*="--composer-overlay:"]')!;
+    expect(reader.style.getPropertyValue("--reading-frame-height")).toBe("554px");
+    reader.scrollTop = 2275;
+    act(() => {
+      draft.setSelectionRange(5, 10);
+      outside.focus();
+    });
+
+    view.showRows([userRow()], false);
+    readerRect.mockReturnValue(new DOMRect(0, 46, 600, 500));
+    overlayRect.mockReturnValue(new DOMRect(0, 480, 600, 120));
+    expect([observer.active, readerObserver.active]).toEqual([false, false]);
+    expect(pane.style.getPropertyValue(COMPOSER_OVERLAY_PROPERTY)).toBe("140px");
+    expect(reader.style.getPropertyValue("--reading-frame-height")).toBe("554px");
+
+    view.showRows([userRow()]);
+
+    expect(view.container.querySelector(".msg-scroll-viewport")).toBe(reader);
+    expect(reader.scrollTop).toBe(2275);
+    expect(pane.style.getPropertyValue(COMPOSER_OVERLAY_PROPERTY)).toBe("120px");
+    expect(reader.style.getPropertyValue("--reading-frame-height")).toBe("500px");
+    expect(document.activeElement).toBe(outside);
+    expect(screen.getByRole("textbox", { name: "Message composer" })).toBe(draft);
+    expect(draft.value).toBe("Keep this authored draft");
+    expect([draft.selectionStart, draft.selectionEnd]).toEqual([5, 10]);
+  });
+
+  it("drops the transcript's Composer clearance when the conversation becomes empty", () => {
+    const measured = measureStream();
+    const view = mount();
+    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
+    const { observer, overlay } = measured(draft);
+    measuredRect(overlay, 460, 600);
+    observer.notify();
+    const pane = view.container.querySelector<HTMLElement>('[style*="--composer-overlay:"]')!;
+
+    view.showRows([]);
+    expect(pane.style.getPropertyValue(COMPOSER_OVERLAY_PROPERTY)).toBe("");
+
+    view.showRows([userRow()]);
+    expect(pane.style.getPropertyValue(COMPOSER_OVERLAY_PROPERTY)).toBe("140px");
+    view.showRows([userRow()], false);
+    view.showRows([], false);
+    view.showRows([]);
+    expect(pane.style.getPropertyValue(COMPOSER_OVERLAY_PROPERTY)).toBe("");
     expect(screen.getByRole("textbox", { name: "Message composer" })).toBe(draft);
     expect(draft.value).toBe("Keep this authored draft");
   });

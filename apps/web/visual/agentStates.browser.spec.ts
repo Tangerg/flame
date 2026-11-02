@@ -22,6 +22,7 @@ const EXPECTED_ATTENTION: Record<VisualAgentState, string> = {
   "long-content": "finished",
   "prose-blocks": "finished",
   "code-reading": "finished",
+  "code-history": "finished",
   "table-reading": "finished",
   "reference-notes": "finished",
   "math-content": "finished",

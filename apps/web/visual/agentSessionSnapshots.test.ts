@@ -4,6 +4,7 @@ import { projectAgentSessionSnapshot } from "@/features/agent/application/sessio
 import { reduceAgentEvent } from "@/features/agent/application/fold/reducer";
 import {
   AGENT_SESSION_TAIL_EVENTS,
+  CODE_READING_SOURCE,
   RUNTIME_AGENT_SESSION_SNAPSHOTS,
   RUNTIME_AGENT_SESSION_TAIL_EVENTS,
   VISUAL_AGENT_STATES,
@@ -184,6 +185,31 @@ describe("the visual agent fixtures", () => {
     ).toEqual(["waiting", "waiting"]);
     expect(snapshot.runs.flatMap((run) => validateWire("RunRef", run))).toEqual([]);
     expect(snapshot.items.flatMap((item) => validateWire("Item", item))).toEqual([]);
+  });
+
+  it("retains the captured code in an earlier answer once the conversation continues", () => {
+    let view = projectAgentSessionSnapshot(
+      projectRuntimeAgentSnapshot(RUNTIME_AGENT_SESSION_SNAPSHOTS["code-history"]),
+    );
+    for (const event of AGENT_SESSION_TAIL_EVENTS["code-history"]) {
+      view = reduceAgentEvent(view, event);
+    }
+    const answer = view.messages.findIndex(
+      (message) =>
+        message.role === "assistant" &&
+        message.blocks.some(
+          (block) =>
+            block.kind === "text" &&
+            block.status === "complete" &&
+            block.text.includes(CODE_READING_SOURCE),
+        ),
+    );
+
+    expect(answer).toBeGreaterThan(-1);
+    expect(view.messages.slice(answer + 1).map((message) => message.role)).toEqual([
+      "user",
+      "assistant",
+    ]);
   });
 
   it("keeps the narrative's final approval behind a waiting Runtime root", () => {

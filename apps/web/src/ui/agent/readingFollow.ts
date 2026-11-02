@@ -200,9 +200,10 @@ export function useReadingFocusVisibility(
     content.ownerDocument.addEventListener("pointercancel", clearPress, true);
     viewport.addEventListener("scroll", onScroll, { passive: true, capture: true });
     viewport.addEventListener("wheel", retire, { passive: true, capture: true });
+    // The retained DOM keeps its last measured height; clearing it would let a revealed reader
+    // expand and clamp native scroll positions before this effect remeasures.
     return () => {
       resize.disconnect();
-      viewport.style.removeProperty("--reading-frame-height");
       content.ownerDocument.removeEventListener("focusin", onFocus);
       content.removeEventListener("pointerdown", onPointerDown, true);
       content.ownerDocument.removeEventListener("pointerup", clearPress, true);

@@ -57,17 +57,38 @@ describe("reading focus geometry", () => {
     expect(s.viewport.scrollTop).toBe(0);
   });
 
-  it("retires the height projection while hidden and measures again on reattachment", () => {
+  it("retains the measured height while hidden and measures again on reattachment", () => {
     const s = scenario();
+    const draft = screen.getByRole<HTMLInputElement>("textbox", { name: "Later draft" });
+    s.viewport.scrollTop = 120;
+    fireEvent.scroll(s.viewport);
+    act(() => {
+      draft.focus();
+      draft.setSelectionRange(5, 9);
+    });
     s.rerender(<s.Harness attached={false} />);
-    expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("");
     s.shape.height = 260;
+    s.resize();
+    s.resize(s.content);
+    expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("300px");
 
     s.rerender(<s.Harness />);
 
+    expect(s.follow.scrollRef.current).toBe(s.viewport);
     expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("160px");
+    expect(s.viewport.scrollTop).toBe(120);
+    expect(s.order).toEqual([]);
+    expect(document.activeElement).toBe(draft);
+    expect(draft.value).toBe("Keep this draft");
+    expect([draft.selectionStart, draft.selectionEnd]).toEqual([5, 9]);
+
     s.unmount();
-    expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("");
+    s.shape.height = 220;
+    s.resize();
+    s.resize(s.content);
+    expect(s.viewport.isConnected).toBe(false);
+    expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("160px");
+    expect(s.order).toEqual([]);
   });
 
   it("reveals a fitting group heading before the focused option's own label", () => {

@@ -188,6 +188,7 @@ export function ChatStream({ onSend }: Props) {
     const publish = () => {
       const overlayRect = overlay.getBoundingClientRect();
       if (started) pane.style.setProperty(COMPOSER_OVERLAY_PROPERTY, `${overlayRect.height}px`);
+      else pane.style.removeProperty(COMPOSER_OVERLAY_PROPERTY);
       if (!shell) return;
       const jumpRect = jump?.getBoundingClientRect();
       const footprint = jumpRect
@@ -215,7 +216,6 @@ export function ChatStream({ onSend }: Props) {
     return () => {
       observer.disconnect();
       layout.removeEventListener("scroll", publish, true);
-      pane.style.removeProperty(COMPOSER_OVERLAY_PROPERTY);
       shell?.style.removeProperty(NOTIFICATION_TOP_PROPERTY);
       shell?.style.removeProperty(NOTIFICATION_BOTTOM_PROPERTY);
     };

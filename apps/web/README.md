@@ -211,9 +211,17 @@ separate owners.
 The transcript's reading-focus owner projects its measured safe height as
 `--reading-frame-height` on the attached scroll viewport. The same existing
 resize observation updates this budget when the window or Composer clearance
-changes; hiding or unmounting the transcript removes it. Shared code frames use
-that inherited budget while native source scrolling, selection and later focus
-keep their existing owners.
+changes. Shared code frames use that inherited budget while native source
+scrolling, selection and later focus keep their existing owners.
+
+The reading height and the started conversation's `--composer-overlay` are
+projections of the retained DOM, not of active observation. When a Workspace
+material hides the conversation, observers, listeners and focus witnesses
+retire, but both values stay on their existing nodes. Clearing them would let
+the revealed reader expand before remeasurement and clamp native scroll
+positions such as a code source's. Reveal measures current geometry normally.
+An empty conversation removes the Composer overlay, and the shared shell's
+notification insets still clear while hidden.
 
 Inline Markdown tables consume the same safe height, with their actions and
 reader forming one fitting reading unit. Each table measures only its intrinsic
