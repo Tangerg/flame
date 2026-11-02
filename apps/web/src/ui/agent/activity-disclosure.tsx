@@ -11,6 +11,9 @@ import { ProgressBar } from "@flame/ui";
 import { Icon, type IconName } from "@/ui/icons/index";
 import { toneInk } from "@flame/ui/tone-ink";
 import { chevron } from "@/ui/atoms/chevron";
+
+const SCROLL_OVERFLOW = ["auto", "scroll", "hidden"];
+
 type ActivityTone = "neutral" | "warning" | "negative";
 
 type ActivityShell = "line" | "card";
@@ -28,9 +31,13 @@ const styles = stylex.create({
     borderColor: surface.field,
   },
   header: { display: "flex", minWidth: 0, alignItems: "center" },
-  stuck: { position: "sticky", top: 0, zIndex: 1 },
-  stuckLine: { backgroundColor: surface.canvas },
-  stuckCard: { backgroundColor: surface.card },
+  stuck: {
+    position: { default: null, ":is([data-sticky])": "sticky" },
+    top: { default: null, ":is([data-sticky])": 0 },
+    zIndex: { default: null, ":is([data-sticky])": 1 },
+  },
+  stuckLine: { backgroundColor: { default: null, ":is([data-sticky])": surface.canvas } },
+  stuckCard: { backgroundColor: { default: null, ":is([data-sticky])": surface.card } },
   trigger: {
     display: "flex",
     minWidth: 0,
@@ -186,17 +193,44 @@ export function AgentActivityDisclosure({
     const header = headerRef.current;
     const body = bodyRef.current;
     if (!stickyHeader || !header || !body) return;
+    let viewport = header.parentElement?.parentElement ?? null;
+    while (viewport && !SCROLL_OVERFLOW.includes(getComputedStyle(viewport).overflowY)) {
+      viewport = viewport.parentElement;
+    }
+    if (!viewport) return;
+    const scrollViewport = viewport;
+    // Composer clearance resizes the scrolled content even when the viewport keeps its size.
+    let content: Element = header;
+    while (content.parentElement && content.parentElement !== scrollViewport) {
+      content = content.parentElement;
+    }
     const measure = () => {
-      body.style.setProperty(
-        "--disclosure-header-height",
-        `${header.getBoundingClientRect().height}px`,
-      );
+      const height = header.getBoundingClientRect().height;
+      const style = getComputedStyle(scrollViewport);
+      const safeHeight =
+        scrollViewport.getBoundingClientRect().height -
+        (parseFloat(style.scrollPaddingTop) || 0) -
+        (parseFloat(style.scrollPaddingBottom) || 0);
+      const contentStyle = getComputedStyle(body.firstElementChild ?? body);
+      const lineHeight = parseFloat(contentStyle.lineHeight);
+      const inset =
+        (parseFloat(contentStyle.marginTop) || 0) + (parseFloat(contentStyle.paddingTop) || 0);
+      // Keep two body lines and their inset before reserving a summary above them.
+      const fits = height > 0 && lineHeight > 0 && height + inset + 2 * lineHeight <= safeHeight;
+      header.toggleAttribute("data-sticky", fits);
+      body.toggleAttribute("data-activity-clearance", fits);
+      if (fits) body.style.setProperty("--disclosure-header-height", `${height}px`);
+      else body.style.removeProperty("--disclosure-header-height");
     };
     const observer = new ResizeObserver(measure);
     observer.observe(header, { box: "border-box" });
+    observer.observe(scrollViewport, { box: "border-box" });
+    observer.observe(content, { box: "border-box" });
     measure();
     return () => {
       observer.disconnect();
+      header.removeAttribute("data-sticky");
+      body.removeAttribute("data-activity-clearance");
       body.style.removeProperty("--disclosure-header-height");
     };
   }, [stickyHeader, disclosable]);
@@ -215,7 +249,6 @@ export function AgentActivityDisclosure({
       <div
         ref={headerRef}
         data-slot="agent-activity-header"
-        data-sticky={stickyHeader ? "" : undefined}
         className={cn(
           stylex.props(
             reveal.host,
@@ -287,11 +320,7 @@ export function AgentActivityDisclosure({
       {feedback}
       {disclosable && (
         <Collapsible open={open}>
-          <div
-            ref={bodyRef}
-            data-activity-clearance={stickyHeader ? "" : undefined}
-            {...stylex.props(line ? styles.bodyLine : styles.bodyCard)}
-          >
+          <div ref={bodyRef} {...stylex.props(line ? styles.bodyLine : styles.bodyCard)}>
             <div
               id={panelId}
               role="region"

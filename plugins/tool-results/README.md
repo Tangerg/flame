@@ -50,7 +50,9 @@ newlines. Ordinary partial selections retain native copy behavior. Search fields
 and caption controls remain outside each reading range.
 Find is a bounded task: Escape from its query or clear control closes it even over
 a query, ahead of the field's own clear-on-Escape. IME composition keys neither
-close Find nor cycle matches.
+close Find nor cycle matches. Every explicit Find entry, including Ctrl/Cmd+F
+repeated in an already focused query, focuses the field and asks the containing
+scroller to reveal it nearest; manual scrolling and rerenders do not.
 Applied-change receipts stay an unframed table whose verbs
 and code-role paths rank below the Tool row. Source lines share a continuous numbered
 layout; located source results keep their context above each snippet. Web results

@@ -22899,6 +22899,160 @@ SHA-256 `b40b62c63eca874d91f456837e6924b2b089fd9debee7bda9948b7f9a259cfab`.
 unverified domains and scenarios above retained. The batch stays local under the
 user's current policy; the broader UI goal remains active.
 
+#### Long drafts, activity summaries and repeated Find (2026-11-02)
+
+Local base: `b0ce674dd`. The resumed batch follows draft → activity summary →
+recorded command/source → local Find → current file → source return → continued
+authoring. The ordinary `tool-shells` and `waves` snapshots remain inert; their
+recorded failures are presentation data, not failures of this batch's checks.
+
+Actual Wails **v3.0.0**, Chinese/dark/18 px/custom blue at **200%**, with a six-line
+**65-character** draft, exposes two independent layout owners. The transcript is
+**331.5 px** high with scroll padding **24 / 282 px**, leaving a **25.5 px** safe
+frame, while the activity summary stays sticky at **59 px**. A focused command
+row is mostly behind Composer. Opening Find can also advance the document by
+**46 px**, scrolling the application title out of view.
+
+`src/ui/agent/activity-disclosure.tsx:193` now derives effective stickiness in its
+existing measurement effect. It reserves the header only when the actual
+containing viewport's safe frame also keeps two body lines and their inset,
+following the shared Disclosure's existing reading policy. Otherwise the same
+summary stays in ordinary flow and releases clearance. Header, viewport and
+scrolled-content observations cover Composer changes and recovered space. The
+effect alone owns the measured attributes; React rerenders cannot reset them.
+Cleanup releases the observers and attributes. ToolGroup and NarrativeWave retain
+their existing disclosure state, identities and content.
+
+`src/styles/globals.css:327` makes the application root fixed to its viewport and
+clipped. Feature readers keep their own scrolling; native focus cannot scroll
+the application frame away. The header-only repair, clipping-only candidates and
+focus-only `preventScroll` candidate did not repair document movement and were
+rejected. No scroll-reset listener, focus retry, extra viewport state or Composer
+height/content change is retained. A passive diagnostic scene records **301**
+samples through 560–1513 CSS-pixel window widths: both document scroll and root
+vertical position stay **0**, with static and sticky activity headers observed
+as available space changes.
+
+Clean native acceptance then exposes a further explicit-navigation gap: after
+deliberate wheel reading, Find remains focused but partly outside the transcript.
+Repeating Cmd+F previously did nothing. The Find bar is a sibling of the result
+viewport, so the viewport's key handler never received that request. Repeating
+`focus()` alone also supplies no new focus-in witness.
+
+`plugins/tool-results/component/recorded-output.tsx:62` owns one shared explicit
+Find entry: focus without implicit ancestor scrolling, then request native
+nearest/instant visibility using the host's existing CSS clearance. Both recorded
+readers use it for initial entry and their existing viewport shortcut. The shared
+FindField also handles repeated Ctrl/Cmd+F within the Find task. Handled shortcuts
+stay inside that result; already-cancelled and IME/229 events are left alone.
+Manual scrolling, ordinary keys, unchanged rerenders and later outside focus
+issue no reveal. Queries, filtered rows, match navigation, source copying,
+pagination and Escape keep their owners. The normal builder changes only the
+Tool-results ESM; **21 of 22** component resources retain their baseline bytes.
+No Runtime, protocol, persistence, dependency or command-lifecycle migration is
+introduced.
+
+Recon includes repository/module instructions, the existing reading/return
+records, and all six better-* owners. Read-only ZCode ToolLayout and ExecuteOutput
+support a clear summary and bounded literal evidence; HeroUI's actual controlled
+Accordion separates disclosure control from body. Neither supplies Flame's
+native scroll policy. Earlier ChatGPT, Arc, Radix and Ace research retains its
+documented scope. The implementation keeps React 19, shared Base UI controls,
+CodeFrame, StyleX and existing semantic tokens.
+
+| Domain        | Evidence inspected                                                                                                           | Scoped result                                                                               |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Accessibility | Native command/reasoning focus, local Find, Clear/Escape, current-file return and outside draft; regression event boundaries | Focused controls remain visible in exercised paths; VoiceOver and physical IME not verified |
+| Layout        | Six-line draft at Chinese 18 px/200%, native window Zoom/recovery, English 14 px and 320 px Dock                             | Effective summary clearance and fixed application frame repair observed obstruction         |
+| Writing       | Existing summary/result/source identities, localized search and return actions                                               | No new interface copy or helper labels                                                      |
+| Typography    | Existing body/mono scales and measured two-line reading allowance                                                            | Existing type roles retained; body room governs stickiness                                  |
+| Colors        | Light/Orange and dark/custom-blue native surfaces, focused query and selected source                                         | Tokens retained; numerical contrast not remeasured                                          |
+| UI polish     | Full/reduced-motion scenes, keyboard/pointer entry, deliberate wheel reading and explicit Find return                        | No added animation; original local state and task return retained                           |
+
+| Severity       | Domain                 | Location                                                | Before                                                                           | After                                                                    | Why                                                        |
+| -------------- | ---------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| HIGH, repaired | Layout                 | `src/styles/globals.css:327`                            | Native Find focus scrolls the application title away                             | Fixed, clipped root keeps the frame anchored                             | Navigation and task identity must remain visible           |
+| HIGH, repaired | Accessibility / layout | `src/ui/agent/activity-disclosure.tsx:193`              | A 59 px sticky summary consumes a 25.5 px safe reading frame                     | Effective stickiness leaves two body lines or returns to flow            | Focused task controls must remain reachable above Composer |
+| HIGH, repaired | Accessibility          | `plugins/tool-results/component/recorded-output.tsx:62` | Repeated Find misses the focused sibling query and cannot restore its visibility | Shared explicit entry and local Find-task shortcut reveal the same field | A renewed navigation request needs a visible destination   |
+
+Verification:
+
+- Two file-tool-only Claude Code CLI passes supply the bounded candidates in
+  **211.230 / 178.626 s**, with **zero agents and permission denials**. Primary
+  corrects an arbitrary header-ratio rule to the existing two-body-line policy,
+  strengthens actual rerender/IME/outer-key regressions and owns all execution,
+  review, generation, native qualification and publication.
+- Original Activity source fails **4 new cases**, with **7 existing cases passing**,
+  in **4.53 s**. Exact candidate restoration retains its hash. The full frontend
+  then passes **420 files / 4,364 tests**, **161.82 s**. This full run precedes the
+  Find follow-up; it is not relabeled as a final full-suite run.
+- The original portable reader pair fails **2 new Find cases**, with **76 passing**,
+  in **3.51 s**. Exact restoration passes the final related **8 files / 293 tests**,
+  **14.14 s**, including both new cases, activity/read geometry, Tool rows and
+  workspace inspection. Happy DOM verifies platform requests and event/focus
+  contracts; native scenes establish rendered geometry.
+- Initial **26 serial gates pass**, including Web types/lint/format, structural,
+  bootstrap, style/token/chrome/locale/HMR, resource/bundle/linking checks and
+  `make check-native` (**24.153 s**). Post-Find verification passes **18 of 19**
+  checks, including plugin types/lint/i18n, the affected Web gates and native
+  coordinator (**12.967 s**). The remaining plugin-wide **format:check fails** on
+  Feedback's `component.tsx` and `component.test.tsx`; both are byte-identical to
+  HEAD. All authored batch files pass scoped Prettier. These unrelated baseline
+  files and the failed check are preserved, not weakened or silently relabeled.
+  Native SDK/deployment and duplicate `-lobjc` linker warnings remain nonfatal;
+  production/private hosts target macOS **13.0**.
+- Final private assets build in **2.82 s**, importing the normally generated ESM
+  through the installed-component fixture composition. No product handler, store,
+  fixture data or focus policy is replaced. Diagnostic scripts are removed before
+  clean acceptance. All **9** accepted source/resource inputs and **335** final
+  assets retain their frozen hashes through the final three native tasks.
+
+Final actual Wails tasks:
+
+- ZH/dark/18 px/blue/full motion: six-line draft at 200%; keyboard summary,
+  command, full output and Find. Wheel reading followed by repeated Cmd+F restores
+  the complete `Rollback` query while keeping **1 / 3**, the application title and
+  draft. Enter/Shift+Enter give **2 / 3 → 1 / 3**. Native window Zoom and recovery,
+  Escape to output, caption collapse, keyboard current-file full-pane entry and
+  Escape to its original source pass. Native editing retains all six draft lines
+  and adds `继续阅读。`, **65 → 70 characters**, before Actual Size and normal exit.
+- EN/light/14 px/Orange/reduced motion: keyboard Home reaches **320** Dock width.
+  Recorded Read → Find `session` retains original source lines **1 and 3** through
+  wheel reading and repeated Cmd+F/Ctrl+F. Clear restores all **six** recorded
+  lines and input focus; Escape returns to the reader. Current-file Dock entry and
+  source return pass, and the original draft continues as
+  `Keep the row-filter draft. Continue reading.`. Earlier clean EN acceptance
+  additionally qualifies the model popup's display/Escape return and the command
+  Find/window/file flow against the unchanged root/activity implementation.
+- NarrativeWave ZH/dark/18 px/blue/full motion: a six-line draft, pointer summary
+  expansion, native 200% and keyboard entry keep the first reasoning control fully
+  visible. Enter exposes its original reasoning. Actual Size and native window
+  Zoom retain reasoning focus, body and draft. Collapse returns through the same
+  reasoning control and wave summary; Composer focus returns with the draft intact.
+  Neither Stop nor Steer is invoked.
+
+All three final launches quit with exit zero. The private application is
+unregistered; no owned native/observer process remains. Cleanup removes all
+**nine** new checkout output roots and **two** bundle-specific Library directories;
+all **six** Library baselines are absent. Private app/home/assets/logs/scripts and
+temporary caches are retired. The reusable private npm toolchain and the existing
+123-byte interrupted-input backup remain preserved. Root dependencies, shared
+caches, user data and read-only references are retained. Interrupted input samples
+are excluded from acceptance.
+
+The captured fixture's current-file body is the existing eight-line placeholder:
+file identity/navigation/return are qualified, not live filesystem contents.
+Live Runtime/Tool/provider execution, native clipboard writes, VoiceOver, physical
+IME, other platforms, broad unchanged backend suites, browser visual suites and
+performance benchmarks are not run. Across the eight Goal CHECK dimensions this
+repairs responsive reading, hierarchy and interaction; existing typography,
+whitespace, color, motion and identity are retained in inspected states. It makes
+no award-tier whole-product acceptance claim.
+
+**Approve** for the inspected flow and six domains, with the explicit baseline
+format failure and coverage limits above. Continue from fresh task evidence after
+publication; this reading-space/Find batch does not complete the continuous goal.
+
 ## Connection token draft intent
 
 Connection settings now distinguishes a token already set for the current

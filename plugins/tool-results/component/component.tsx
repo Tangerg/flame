@@ -1,5 +1,6 @@
 import { ansiText, renderAnsi } from "./ansi";
 import {
+  enterFind,
   findBar,
   FindField,
   frameInset,
@@ -482,7 +483,7 @@ function RecordedRows({
     node.focus();
   }, [visible]);
   useLayoutEffect(() => {
-    if (finding) search.current?.focus();
+    if (finding) enterFind(search.current);
   }, [finding]);
   useLayoutEffect(() => {
     if (viewport.current) viewport.current.scrollTop = 0;
@@ -591,8 +592,9 @@ function RecordedRows({
           onKeyDown={(event) => {
             if (isFindShortcut(event)) {
               event.preventDefault();
+              event.stopPropagation();
               setFinding(true);
-              search.current?.focus();
+              enterFind(search.current);
             }
             selectAllInReader(event);
           }}

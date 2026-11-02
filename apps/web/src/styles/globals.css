@@ -325,7 +325,10 @@ body,
 }
 
 #root {
+  position: fixed;
+  inset: 0;
   height: 100dvh;
+  overflow: clip;
 }
 
 html {

@@ -946,6 +946,145 @@ it("preserves manual result reading across rerenders and an unchanged Find task"
   expect(document.activeElement).toBe(reader);
 });
 
+// Happy DOM has no layout; this observes only the platform reveal request.
+function spyFindReveals() {
+  const requests: { target: Element; options: unknown }[] = [];
+  vi.spyOn(Element.prototype, "scrollIntoView").mockImplementation(function (
+    this: Element,
+    options,
+  ) {
+    requests.push({ target: this, options });
+  });
+  return (field: Element) => {
+    const revealed = requests.filter(({ target }) => target === field);
+    for (const { options } of revealed)
+      expect(options).toEqual({ block: "nearest", inline: "nearest", behavior: "instant" });
+    return revealed.length;
+  };
+}
+
+it("reveals the focused output Find field on every explicit Find entry only", () => {
+  const reveals = spyFindReveals();
+  const outerKey = vi.fn();
+  window.addEventListener("keydown", outerKey);
+  finishTestClient(() => window.removeEventListener("keydown", outerKey));
+  document.documentElement.style.setProperty("--leading-relaxed", "20px");
+  vi.spyOn(globalThis, "requestAnimationFrame").mockReturnValue(0);
+  const output = Array.from({ length: 40 }, (_, index) =>
+    index % 15 === 5 ? `Rollback ${index}` : `line ${index}`,
+  ).join("\n");
+  const context = capturedContext("shell", output);
+  const tree = () => (
+    <>
+      <textarea aria-label="Draft" />
+      <RecordedResult context={context} />
+    </>
+  );
+  const rendered = testClient.render(tree());
+  fireEvent.click(screen.getByRole("button", { name: /earlier lines/ }));
+  const reader = screen.getByRole("region", { name: "Tool output" });
+  reader.focus();
+  expect(fireEvent.keyDown(reader, { key: "f", metaKey: true })).toBe(false);
+  const field = screen.getByRole<HTMLInputElement>("searchbox", { name: "Find in output" });
+  expect(document.activeElement).toBe(field);
+  expect(reveals(field)).toBe(1);
+  expect(outerKey).not.toHaveBeenCalled();
+
+  fireEvent.change(field, { target: { value: "Rollback" } });
+  const status = () =>
+    within(screen.getByRole("search", { name: "Output search" })).getByRole("status").textContent;
+  expect(status()).toBe("1 of 3");
+  reader.scrollTop = 0;
+  fireEvent.scroll(reader);
+  rendered.rerender(tree());
+  fireEvent.keyDown(field, { key: "a" });
+  for (const ime of [{ isComposing: true }, { keyCode: 229 }])
+    expect(fireEvent.keyDown(field, { key: "f", metaKey: true, ...ime })).toBe(true);
+  expect(reveals(field)).toBe(1);
+  outerKey.mockClear();
+
+  for (const modifier of ["metaKey", "ctrlKey"] as const) {
+    expect(fireEvent.keyDown(field, { key: "f", [modifier]: true })).toBe(false);
+    expect(document.activeElement).toBe(field);
+  }
+  expect(reveals(field)).toBe(3);
+  reader.focus();
+  fireEvent.keyDown(reader, { key: "F", ctrlKey: true });
+  expect(document.activeElement).toBe(field);
+  expect(reveals(field)).toBe(4);
+  expect(outerKey).not.toHaveBeenCalled();
+  expect(field.value).toBe("Rollback");
+  expect(status()).toBe("1 of 3");
+
+  const draft = screen.getByRole("textbox", { name: "Draft" });
+  draft.focus();
+  reader.scrollTop = 0;
+  fireEvent.scroll(reader);
+  rendered.rerender(tree());
+  expect(document.activeElement).toBe(draft);
+  expect(reveals(field)).toBe(4);
+});
+
+it("reveals the focused result filter on every explicit Find entry only", () => {
+  const reveals = spyFindReveals();
+  const outerKey = vi.fn();
+  window.addEventListener("keydown", outerKey);
+  finishTestClient(() => window.removeEventListener("keydown", outerKey));
+  const context = capturedContext(
+    "read",
+    Array.from(
+      { length: 82 },
+      (_, index) => `${index % 2 === 0 ? "keep" : "other"}/candidate-${index}`,
+    ).join("\n"),
+  );
+  const tree = () => (
+    <>
+      <textarea aria-label="Draft" />
+      <RecordedResult context={context} />
+    </>
+  );
+  const rendered = testClient.render(tree());
+  const reader = screen.getByRole("region", { name: "Result" });
+  fireEvent.click(screen.getByRole("button", { name: "Find" }));
+  const field = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter result" });
+  expect(document.activeElement).toBe(field);
+  expect(reveals(field)).toBe(1);
+
+  fireEvent.change(field, { target: { value: "keep" } });
+  reader.scrollTop = 300;
+  fireEvent.scroll(reader);
+  rendered.rerender(tree());
+  fireEvent.keyDown(field, { key: "a" });
+  for (const ime of [{ isComposing: true }, { keyCode: 229 }])
+    expect(fireEvent.keyDown(field, { key: "f", ctrlKey: true, ...ime })).toBe(true);
+  expect(reveals(field)).toBe(1);
+  outerKey.mockClear();
+
+  for (const modifier of ["metaKey", "ctrlKey"] as const) {
+    expect(fireEvent.keyDown(field, { key: "f", [modifier]: true })).toBe(false);
+    expect(document.activeElement).toBe(field);
+  }
+  expect(reveals(field)).toBe(3);
+  reader.focus();
+  fireEvent.keyDown(reader, { key: "f", metaKey: true });
+  expect(document.activeElement).toBe(field);
+  expect(reveals(field)).toBe(4);
+  expect(outerKey).not.toHaveBeenCalled();
+  expect(field.value).toBe("keep");
+  expect(reader.scrollTop).toBe(300);
+  expect(screen.getByText("40 of 41 matches")).toBeTruthy();
+
+  const draft = screen.getByRole("textbox", { name: "Draft" });
+  draft.focus();
+  rendered.rerender(tree());
+  expect(document.activeElement).toBe(draft);
+  expect(reveals(field)).toBe(4);
+
+  fireEvent.keyDown(field, { key: "Escape" });
+  expect(document.activeElement).toBe(reader);
+  expect(reveals(field)).toBe(4);
+});
+
 it.each(["clear", "close"])("%s starts the restored result list at its first row", (action) => {
   const source = Array.from(
     { length: 82 },

@@ -49,7 +49,24 @@ export function resultActions(t: Translate, copy: string): CodeActionLabels {
 }
 
 export function isFindShortcut(event: KeyboardEvent) {
-  return (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f";
+  return (
+    !event.defaultPrevented &&
+    !isImeKey(event.nativeEvent) &&
+    (event.metaKey || event.ctrlKey) &&
+    event.key.toLowerCase() === "f"
+  );
+}
+
+// Repeating Find on the already-focused field fires no focus-in, so every
+// explicit entry also asks the containing scroller to reveal the field.
+export function enterFind(field: HTMLElement | null) {
+  if (!field) return;
+  field.focus({ preventScroll: true });
+  field.scrollIntoView({
+    block: "nearest",
+    inline: "nearest",
+    behavior: "instant",
+  });
 }
 
 export function FindField({
@@ -88,6 +105,12 @@ export function FindField({
           return;
         event.preventDefault();
         onClose();
+      }}
+      onKeyDown={(event) => {
+        if (!isFindShortcut(event)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        enterFind(fieldRef.current);
       }}
       style={{
         display: "flex",
@@ -206,7 +229,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
   }, [expanded, lines, jumpToLatest]);
 
   useLayoutEffect(() => {
-    if (finding) search.current?.focus();
+    if (finding) enterFind(search.current);
   }, [finding]);
 
   useLayoutEffect(() => {
@@ -392,8 +415,9 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
             onKeyDown={(event) => {
               if (isFindShortcut(event)) {
                 event.preventDefault();
+                event.stopPropagation();
                 setFinding(true);
-                search.current?.focus();
+                enterFind(search.current);
               }
               selectAllInReader(event);
             }}
