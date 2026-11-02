@@ -63,7 +63,13 @@ counts, not additive billing totals.
 Status tones project recorded severity independently of the attention filter and
 counts. Settled neutral states read as quiet summary metadata; running, waiting,
 warning and failure states keep a toned badge beside the title. The recorded state
-text is always shown. The accepted page number, matching/page record count, tool
+has a localized label in both neutral metadata and toned badges. Closed approval
+decisions use the same localized label in the summary and expanded facts,
+independently of execution status. Raw state/decision values remain unchanged in
+Recorded evidence, search and exports. Opaque caller origins, provider/model/Tool
+names, IDs and original errors remain literal captured values.
+
+The accepted page number, matching/page record count, tool
 call and attention counts share one wrapping status line above the records.
 There is no separate loaded-count introduction or duplicate activity heading.
 Failed, timed-out and lost Runs are failures; canceled Runs and refused or

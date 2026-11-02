@@ -13,6 +13,7 @@ import { TrajectoryReport } from "../../../plugins/trajectory/component/report";
 import { Markdown } from "../../../plugins/file-renderers/component/component";
 import { createTranslator, type ComponentContext } from "@flame/component-sdk";
 import { type ContentBlock, type TrajectoryEntry } from "@flame/runtime-client/wire";
+import { validateMethodResult } from "@flame/runtime-client/validation";
 import { RUNTIME_AGENT_SESSION_SNAPSHOTS } from "./agentSessionSnapshots";
 import { visualTrajectory } from "./trajectorySnapshot";
 import { en as trajectoryEn } from "../../../plugins/trajectory/component/locales/en";
@@ -298,8 +299,8 @@ it("shows tool execution status independently of its approval decision", () => {
   );
   expect(screen.getByText("Page 1 · 1 record")).toBeTruthy();
   expect(screen.getByText("1 tool call")).toBeTruthy();
-  const summary = screen.getByRole("button", { name: /incomplete/ });
-  expect(summary.textContent).toContain("Approval: approve");
+  const summary = screen.getByRole("button", { name: /Incomplete/ });
+  expect(summary.textContent).toContain("Approval: Approved");
   expect(screen.queryByText(row.item.id, { exact: true })).toBeNull();
   fireEvent.click(summary);
   expect(summary.getAttribute("aria-expanded")).toBe("true");
@@ -380,18 +381,18 @@ it("keeps timed-out Runs and refused or canceled tools in attention without rewr
   ).toEqual(["run:run_timeout", "item:item_refused", "item:item_canceled"]);
   expect(screen.getByText("3 need attention")).toBeTruthy();
   const timeoutSummary = screen.getByRole("button", { name: /run_timeout/ });
-  expect(timeoutSummary.textContent).toContain("timedOut");
+  expect(timeoutSummary.textContent).toContain("Timed out");
   const refusedRecord = within(
     container.querySelector<HTMLElement>('[data-trajectory-record="item:item_refused"]')!,
   );
   const refusedSummary = refusedRecord.getByRole("button", { expanded: false });
-  expect(refusedSummary.textContent).toContain("incomplete");
-  expect(refusedSummary.textContent).toContain("Approval: deny");
+  expect(refusedSummary.textContent).toContain("Incomplete");
+  expect(refusedSummary.textContent).toContain("Approval: Denied");
   expect(
     within(
       container.querySelector<HTMLElement>('[data-trajectory-record="item:item_canceled"]')!,
     ).getByRole("button", { expanded: false }).textContent,
-  ).toContain("incomplete");
+  ).toContain("Incomplete");
   fireEvent.click(timeoutSummary);
   expect(
     within(timeoutSummary.closest("section")!).getByRole("region", { name: "Recorded evidence" })
@@ -431,13 +432,280 @@ it("reads settled neutral states as quiet metadata and keeps attention states be
   const meta = (id: string) =>
     screen.getByRole("button", { name: new RegExp(id) }).querySelector("time")!.parentElement!
       .textContent;
-  expect(meta("run_settled")).toContain("completed");
+  expect(meta("run_settled")).toContain("Completed");
   expect(meta("run_settled")).toContain("run_settled");
-  expect(meta("run_broken")).not.toContain("failed");
-  expect(screen.getByRole("button", { name: /run_broken/ }).textContent).toContain("failed");
+  expect(meta("run_broken")).not.toContain("Failed");
+  expect(screen.getByRole("button", { name: /run_broken/ }).textContent).toContain("Failed");
   expect(screen.getByText("Page 1 · 2 records")).toBeTruthy();
   expect(screen.getByText("1 needs attention")).toBeTruthy();
   expect(screen.getByText("0 tool calls")).toBeTruthy();
+});
+
+type RecordedRun = Extract<TrajectoryEntry, { type: "run" }>["run"];
+type RecordedModel = Extract<TrajectoryEntry, { type: "model" }>["model"];
+
+function stateRecords(): TrajectoryEntry[] {
+  const original = visualTrajectory(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle).find(
+    (entry) => entry.type === "run",
+  );
+  if (!original || original.type !== "run") throw new Error("idle snapshot must contain a Run");
+  const { outcome: _outcome, finishedAt: _finishedAt, ...open } = original.run;
+  const occurredAt = original.occurredAt;
+  const run = (
+    id: string,
+    status: RecordedRun["status"],
+    outcome?: RecordedRun["outcome"],
+  ): TrajectoryEntry => ({
+    type: "run",
+    occurredAt,
+    run: outcome
+      ? { ...open, id, status, finishedAt: occurredAt, outcome }
+      : {
+          ...open,
+          id,
+          status,
+          ...(status === "running" ? { activeSegmentId: "segment_states" } : {}),
+        },
+  });
+  const model = (callId: string, state: RecordedModel["state"]): TrajectoryEntry => ({
+    type: "model",
+    occurredAt,
+    model: {
+      callId,
+      runId: open.id,
+      segmentId: "segment_states",
+      state,
+      startedAt: occurredAt,
+      ...(state === "unknown" ? { settledAt: occurredAt } : {}),
+    },
+  });
+  const endpoint = (id: string, state: "completed" | "failed"): TrajectoryEntry => ({
+    type: "endpoint",
+    occurredAt,
+    endpoint: {
+      id,
+      runId: open.id,
+      sessionId: open.sessionId,
+      caller: {
+        id: `invocation_${id}`,
+        origin: "automatic",
+        target: { scope: "session", reference: open.sessionId },
+      },
+      kind: "chat",
+      provider: open.provider,
+      model: open.model,
+      request: "{}",
+      response: "{}",
+      state,
+      startedAt: occurredAt,
+      settledAt: occurredAt,
+      ...(state === "failed" ? { failure: "provider returned 503" } : {}),
+    },
+  });
+  const tool = {
+    type: "toolCall" as const,
+    runId: open.id,
+    startedAt: occurredAt,
+    tool: { name: "shell", arguments: { command: "go test ./..." } },
+  };
+  return [
+    run("run_running", "running"),
+    run("run_waiting", "waiting"),
+    run("run_completed", "finished", { type: "completed" }),
+    run("run_failed", "finished", { type: "failed", error: { type: "agent_stuck" } }),
+    run("run_timed_out", "finished", { type: "timedOut", error: { type: "timeout" } }),
+    run("run_canceled", "finished", { type: "canceled" }),
+    run("run_lost", "finished", { type: "lost", loss: { reason: "restart" } }),
+    model("call_started", "started"),
+    model("call_unknown", "unknown"),
+    endpoint("endpoint_completed", "completed"),
+    endpoint("endpoint_failed", "failed"),
+    {
+      type: "item",
+      occurredAt,
+      item: { ...tool, id: "item_permitted", status: "running", approvalDecision: "approve" },
+    },
+    {
+      type: "item",
+      occurredAt,
+      item: {
+        ...tool,
+        id: "item_refused",
+        status: "incomplete",
+        approvalDecision: "deny",
+        finishedAt: occurredAt,
+      },
+    },
+    {
+      type: "item",
+      occurredAt,
+      item: {
+        type: "userMessage",
+        id: "item_message",
+        runId: open.id,
+        status: "completed",
+        createdAt: occurredAt,
+        content: [{ type: "text", text: "Keep this recorded message unchanged." }],
+      },
+    },
+  ];
+}
+
+const recordKey = (entry: TrajectoryEntry) =>
+  entry.type === "run"
+    ? `run:${entry.run.id}`
+    : entry.type === "model"
+      ? `model:${entry.model.callId}`
+      : entry.type === "endpoint"
+        ? `endpoint:${entry.endpoint.id}`
+        : `item:${entry.item.id}`;
+
+it.each([
+  {
+    locale: "en",
+    evidence: "Recorded evidence",
+    approvalFact: "Approval",
+    approved: "Approved",
+    denied: "Denied",
+    inline: (decision: string) => `Approval: ${decision}`,
+    labels: {
+      "run:run_running": "Running",
+      "run:run_waiting": "Waiting",
+      "run:run_completed": "Completed",
+      "run:run_failed": "Failed",
+      "run:run_timed_out": "Timed out",
+      "run:run_canceled": "Canceled",
+      "run:run_lost": "Lost",
+      "model:call_started": "Started",
+      "model:call_unknown": "Outcome unknown",
+      "endpoint:endpoint_completed": "Completed",
+      "endpoint:endpoint_failed": "Failed",
+      "item:item_permitted": "Running",
+      "item:item_refused": "Incomplete",
+      "item:item_message": "Completed",
+    } as Record<string, string>,
+  },
+  {
+    locale: "zh",
+    evidence: "已记录的证据",
+    approvalFact: "审批",
+    approved: "已批准",
+    denied: "已拒绝",
+    inline: (decision: string) => `审批：${decision}`,
+    labels: {
+      "run:run_running": "运行中",
+      "run:run_waiting": "等待中",
+      "run:run_completed": "已完成",
+      "run:run_failed": "失败",
+      "run:run_timed_out": "超时",
+      "run:run_canceled": "已取消",
+      "run:run_lost": "无法恢复",
+      "model:call_started": "已开始",
+      "model:call_unknown": "结果未知",
+      "endpoint:endpoint_completed": "已完成",
+      "endpoint:endpoint_failed": "失败",
+      "item:item_permitted": "运行中",
+      "item:item_refused": "未完成",
+      "item:item_message": "已完成",
+    } as Record<string, string>,
+  },
+])(
+  "localizes recorded states and approval decisions in $locale without rewriting evidence",
+  ({ locale, evidence, approvalFact, approved, denied, inline, labels }) => {
+    const entries = stateRecords();
+    expect(validateMethodResult("sessions.trajectory", { data: entries })).toEqual([]);
+    const recorded = structuredClone(entries);
+    const { container } = testClient.render(
+      <TrajectoryReport
+        pageNumber={1}
+        onClearFilters={vi.fn()}
+        t={createTranslator({ en: trajectoryEn, zh: trajectoryZh }, locale)}
+        locale={locale}
+        page={{ data: entries }}
+        kind="all"
+        run="all"
+        search=""
+      />,
+    );
+    const wireValue =
+      locale === "zh"
+        ? /\b(running|waiting|finished|started|completed|failed|timedOut|canceled|lost|unknown|incomplete|approve|deny)\b/
+        : /\b(timedOut|approve|deny)\b/;
+
+    for (const entry of entries) {
+      const key = recordKey(entry);
+      const record = within(
+        container.querySelector<HTMLElement>(`[data-trajectory-record="${key}"]`)!,
+      );
+      const summary = record.getByRole("button", { expanded: false });
+      expect(summary.textContent).toContain(labels[key]);
+      expect(summary.textContent).not.toMatch(wireValue);
+      fireEvent.click(summary);
+      const raw = record.queryByRole("button", { name: evidence, expanded: false });
+      if (raw) fireEvent.click(raw);
+      expect(record.getByRole("region", { name: evidence }).textContent).toBe(
+        JSON.stringify(entry, null, 2),
+      );
+    }
+    const summaryOf = (key: string) =>
+      within(container.querySelector<HTMLElement>(`[data-trajectory-record="${key}"]`)!).getByRole(
+        "button",
+        { expanded: true },
+      ).textContent;
+
+    for (const [key, decision, status] of [
+      ["item:item_permitted", approved, labels["item:item_permitted"]],
+      ["item:item_refused", denied, labels["item:item_refused"]],
+    ] as const) {
+      const record = container.querySelector<HTMLElement>(`[data-trajectory-record="${key}"]`)!;
+      expect(summaryOf(key)).toContain(inline(decision));
+      expect(summaryOf(key)).toContain(status);
+      expect(
+        within(record.querySelector("dl")!).getByText(approvalFact).nextElementSibling?.textContent,
+      ).toBe(decision);
+    }
+    expect(entries).toEqual(recorded);
+  },
+);
+
+it("keeps attention and page search on recorded wire states rather than translated labels", () => {
+  const entries = stateRecords();
+  const report = (kind: string, search: string) => (
+    <TrajectoryReport
+      pageNumber={1}
+      onClearFilters={vi.fn()}
+      t={reportT}
+      locale="en"
+      page={{ data: entries }}
+      kind={kind}
+      run="all"
+      search={search}
+    />
+  );
+  const { container, rerender } = testClient.render(report("all", ""));
+  const shown = (kind: string, search: string) => {
+    rerender(report(kind, search));
+    return Array.from(container.querySelectorAll("[data-trajectory-record]"), (record) =>
+      record.getAttribute("data-trajectory-record"),
+    );
+  };
+
+  expect(screen.getByText("7 need attention")).toBeTruthy();
+  expect(shown("attention", "")).toEqual([
+    "run:run_waiting",
+    "run:run_failed",
+    "run:run_timed_out",
+    "run:run_lost",
+    "model:call_unknown",
+    "endpoint:endpoint_failed",
+    "item:item_refused",
+  ]);
+  expect(shown("all", "timedOut")).toEqual(["run:run_timed_out"]);
+  expect(shown("all", '"state":"unknown"')).toEqual(["model:call_unknown"]);
+  expect(shown("all", '"approvalDecision":"deny"')).toEqual(["item:item_refused"]);
+  expect(shown("all", "Timed out")).toEqual([]);
+  expect(shown("all", "Outcome unknown")).toEqual([]);
+  expect(shown("all", "Denied")).toEqual([]);
 });
 
 it("distinguishes same-time Runs before expansion and keeps one Run identity fact", () => {
@@ -471,7 +739,7 @@ it("distinguishes same-time Runs before expansion and keeps one Run identity fac
   for (const entry of [root, child]) {
     const trigger = screen.getByRole("button", { name: new RegExp(entry.run.id), expanded: false });
     expect(trigger.textContent).toContain(`${entry.run.provider}/${entry.run.model}`);
-    expect(trigger.textContent).toContain(entry.run.outcome?.type ?? entry.run.status);
+    expect(trigger.textContent).toContain("Completed");
     expect(trigger.querySelector("code")?.textContent).toBe(entry.run.id);
     expect(trigger.querySelector("time")?.getAttribute("datetime")).toBe(entry.occurredAt);
     fireEvent.click(trigger);
@@ -767,7 +1035,7 @@ it.each(["userMessage", "agentMessage"] as const)(
     ).toHaveLength(1);
     expect(scope.getAllByRole("img", { name: "Recorded image/png image" })).toContain(neighbor);
     expect(neighbor).toHaveProperty("src", "data:image/png;base64," + validRecordedImage);
-    expect(summary.textContent).toContain("completed");
+    expect(summary.textContent).toContain("Completed");
     expect(scope.getByText("Before the recorded image.")).toBeTruthy();
     expect(scope.getByText("The next image remains readable.")).toBeTruthy();
     fireEvent.click(scope.getByRole("button", { name: "Recorded evidence", expanded: false }));

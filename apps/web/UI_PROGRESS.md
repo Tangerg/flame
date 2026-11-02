@@ -42,8 +42,10 @@ original-result actions (2026-11-02)**. Record-command continuity is published a
 Command result wording is published as `3970aaf55` under **Memory command outcome
 wording (2026-11-02)**. Captured scope identity is published as `95b57b7e2` under
 **Memory captured scope identity (2026-11-02)**. Form grouping, bounded content
-editing and nested reading are qualified under **Memory form reading and content
-sizing (2026-11-02)**. The latest goal restores
+editing and nested reading are published as `d824e895a` under **Memory form reading
+and content sizing (2026-11-02)**. Trajectory status and approval wording is qualified
+under **Trajectory recorded state and approval wording (2026-11-02)**. Its long-value
+facts observation remains a separate, unclassified follow-up. The latest goal restores
 preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
 describe their historical scope.
@@ -4898,14 +4900,19 @@ Native acceptance passes:
 | Color         | Light Orange and dark blue; focus, refusal and destructive action states        | Existing semantic tokens retained; fresh pixel contrast ratios are not verified.                     |
 | UI            | Native grow/shrink, cancellation, pending, recovery, material and draft return  | Existing transitions retain their owners; normal motion runs without new animation.                  |
 
-| Severity                 | Domain          | Location                                                   | Before                                                                                                                          | After                                                                                                                      | Why                                                                                                                             |
-| ------------------------ | --------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| MEDIUM · resolved        | Layout          | Memory `component.tsx`; UI `reading-unit.ts`               | Short content reserves six rows and separate section gaps; closest inner actions prevent complete fitting context.              | Existing record grouping, bounded autosizing and outermost fitting context keep short tasks readable together.             | The user needs to identify the object while editing or confirming it.                                                           |
-| Follow-up · unclassified | Keyboard/return | Retained Memory task and full-width workspace presentation | After automatic narrow-mode hiding, reopening the retained task focuses the view root; Escape there leaves the local form open. | Next: qualify this return contract against the presentation and task owners before deciding whether a change is warranted. | Local Escape works inside the editor/actions; explicit full-width views and inspected material have different return contracts. |
+| Severity          | Domain          | Location                                                   | Before                                                                                                             | After                                                                                                          | Why                                                                                                                             |
+| ----------------- | --------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| MEDIUM · resolved | Layout          | Memory `component.tsx`; UI `reading-unit.ts`               | Short content reserves six rows and separate section gaps; closest inner actions prevent complete fitting context. | Existing record grouping, bounded autosizing and outermost fitting context keep short tasks readable together. | The user needs to identify the object while editing or confirming it.                                                           |
+| Verified contract | Keyboard/return | Retained Memory task and full-width workspace presentation | Reopening the retained task focuses the new view root; Escape there leaves the local form open.                    | Source and fresh native checks confirm view entry, followed by normal Tab access and local cancellation.       | Explicit full-width views and inspected material have separate return contracts; global cancellation would cross that boundary. |
 
 Verdict: **Approve for Memory form reading and content sizing in the recorded
-tasks**. The retained-view return observation is separate and is not yet attributed
-as a regression or a confirmed defect. Not verified: other-language/platform native
+tasks**. The retained-view return observation is now qualified as the existing
+presentation contract. `useInspectionFocus.ts:162` anchors a newly presented view,
+and its material Escape handler requires an actual inspection. Fresh English native
+entry retains the unfinished Memory draft at that root; four ordinary Tabs reach
+the editor, where Escape cancels and returns Edit. The three existing navigation
+files pass **119 tests**, including full-width entry, source return and later focus.
+No focus policy change is warranted. Not verified: other-language/platform native
 GUIs, VoiceOver, physical IME, fresh pixel contrast, 320px/RTL, reduced-motion rerun,
 real backend durability or committed deletion. No browser visual suite,
 performance benchmark, complete Web suite or unrelated Go suite runs.
@@ -12088,6 +12095,114 @@ Flame Orange/custom blue and persistent controls. Earlier Radix focus principles
 and Ace composition references remain applicable; static artwork supplies no
 keyboard evidence. Runtime trajectory generation, evidence, status, Session
 renaming and all command lifecycles retain their existing owners.
+
+### Trajectory recorded state and approval wording (2026-11-02)
+
+Fresh original Wails EN/light and ZH/dark/18px reads expose raw `unknown` and
+`completed` in otherwise localized summaries. Source inspection traces the same
+raw presentation for `timedOut`, `approve` and `deny` in summaries and approval
+facts. These closed values belong to Runtime; the Trajectory
+presenter owns their readable names. `report.tsx` now looks up one state label
+for both quiet metadata and toned badges, and the same approval key in summary
+and expanded facts. The eight existing catalogs each add thirteen keys covering
+the eleven declared states and two decisions. The existing `finished` fallback
+is translated without creating an admissible finished-without-outcome record:
+public wire validation requires both outcome and finish time for a finished Run.
+
+Approval remains independent of execution: an approved Tool may be Incomplete.
+Unknown remains Outcome unknown; `lost` is an unrecoverable Run, rendered
+`无法恢复` in Chinese, rather than evidence of deleted data. Severity, attention,
+counts, accepted pages, exact JSON, raw-value search and export bytes keep their
+existing owners. IDs, provider/model/Tool names, open caller origins and original
+error content remain literal. There are no new controls, tokens, focus rules,
+Runtime/SDK changes or migration adapters. The declared ESM is regenerated by
+the normal plugin build; the README records this presentation boundary.
+
+Read-only ZCode `ModelTrajectoryPaneParts.tsx` uses localized source/finish labels
+while retaining captured source identity and unknown provider reasons. Flame
+uses its existing catalog for validated closed values; it does not copy that
+reference's aliases or fallback policy. The earlier ChatGPT, HeroUI/Arc, Radix,
+color and Ace research remains applicable, without claiming another complete
+reference review. Better-writing supplies plain, consistent state names;
+better-accessibility preserves named controls and textual severity; typography
+and layout review checks translated summaries at the existing font and zoom
+settings. Shared theme, contrast and motion ownership is unchanged.
+
+| Severity / status           | Domain              | Location                                                            | Evidence and result                                                                                                                                                                                                                        |
+| --------------------------- | ------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| MEDIUM · resolved           | Writing             | Trajectory `report.tsx` and eight locale catalogs                   | Closed wire values appeared in localized summary/approval text. Both projections now use their catalog labels while evidence stays exact.                                                                                                  |
+| Verified in this flow       | Accessibility / UI  | Existing disclosure, SearchField, Select and workspace presentation | Native Tab/Enter, visible focus, scoped Escape, wheel, full-width entry and explicit return retain the task and unsent draft. No new interaction mechanism is introduced.                                                                  |
+| Verified for changed labels | Typography / layout | Existing RecordSummary and RecordMeta                               | EN/14px/light and ZH/18px/dark/200% keep state, approval and full wrapping summary identities readable.                                                                                                                                    |
+| Unclassified follow-up      | Layout              | Shared `Facts` in `packages/ui/src/records.tsx`                     | The ZH/200% long Run ID appears to meet the adjacent Root Run value in the expanded facts. The summary and complete raw evidence remain available. Confirm geometry and ownership against the original before changing this separate path. |
+| Not newly measured          | Color / motion      | Existing semantic severity, theme and motion tokens                 | No token, timing or tone policy changes. This batch does not certify fresh pixel contrast or reduced motion.                                                                                                                               |
+
+Verification:
+
+- Baselines pass **3 trajectory files / 59 tests** and **3 navigation files /
+  119 tests**. Bounded edit-only Claude Code CLI supplies the presentation,
+  catalogs and regression draft in **218.182 s / 38 reported turns**. Primary
+  reviews the actual diff, repairs a missing test message body, and replaces
+  under-specified test records with public-validator-admitted data. A finished
+  Run without outcome is removed from the corpus; active Runs, unknown calls,
+  settled endpoints and incomplete Tools retain their required facts.
+- Final related regression passes **9 files / 237 tests**, with no exclusions.
+  The two new bilingual cases validate all fourteen captured entries before
+  checking labels, independent approval/execution, exact evidence and no input
+  mutation. The third keeps seven attention records and raw-value search.
+  Restoring only the original report makes both bilingual cases fail;
+  byte-for-byte restoration passes both. The twenty other cases are excluded
+  only from that selected negative control, not the full 237-test run.
+- Web typecheck/lint and the other thirteen serial gates pass: plugin
+  typecheck/lint, locale parity (**20 catalogs × 8 locales**), exact ESM
+  reproduction, Web design-system/tokens/chrome/locales/HMR/layers/bundle/plugin
+  modules, and `make check-native` (**16.547 s**, Desktop test/vet/build and Wails).
+  Existing SDK/link-target and duplicate-library warnings remain nonfatal.
+  The private fixture build's aggregate chunk warning is separate from the
+  passing production bundle budget.
+- Two early native launches correctly refuse invalid private capture data:
+  lineage/capability combinations and incomplete Tool finish times were not
+  canonical. These windows are excluded from passing acceptance. Data-only
+  corrections preserve the original root Run type; a temporary test of the
+  exact ten-record private page passes the public validator, then is removed.
+  Production validation is never weakened. The final private build loads the
+  regenerated declared ESM through InstalledComponent in the real Wails host.
+- EN/light/14px/Orange: ten records, two Tools and five attention records;
+  localized states and both approval facts; literal origin
+  `captured-provider-origin`; raw `approve`/`deny`/`timedOut` in evidence.
+  Needs attention yields **5 / 10**, wire query `timedOut` yields **1 / 10**,
+  and incompatible Tool selection yields a direct Clear filters recovery.
+  Files → Trajectory retains query and expansion. Cmd+L continues the original
+  unsent draft as `Draft before trajectory review. Continued.`.
+- ZH/dark/18px/custom blue: native Left resize and twenty Zoom In commands reach
+  **200%**. The existing narrow action opens full-width reading with the unknown
+  call still expanded. Ordinary Tab reaches search, `lost` search yields
+  **1 / 10**, and Tab/Enter reaches the long identified Run and its code actions.
+  Evidence retains `lost` and `unknown`; the reader is keyboard-focusable and
+  End/wheel remain available. Files and explicit Back retain query/expansion.
+  Both Chinese approval summaries/facts remain distinct from 未完成. Escape
+  clears search while retaining its focus. Close, twenty Zoom Out commands and
+  Cmd+L continue `轨迹阅读草稿保留。继续对话。` without Send.
+
+The changed wording is accepted within these tasks. The separate long-value
+facts observation is not classified as introduced or resolved. Not verified:
+VoiceOver, physical IME, other-language/platform native GUIs, 320px/RTL, new
+contrast/reduced-motion measurements, real provider execution, export file writes
+or installed-package upgrade. No browser visual suite, benchmark, complete Web,
+unchanged shared UI or unrelated Runtime/CLI suite is run. No protocol or
+persisted-data migration is required; an existing installation must rebuild/select
+the updated package digest to use these bytes. No live installation is changed.
+
+Cleanup is complete: both final native launches exit normally, the private app
+is unregistered and no exact app process remains. All twelve qualified
+source/resource inputs and 340 private native inputs retain their accepted
+SHA-256 bytes before retirement. The app, captured data, overlays, test/control
+scripts, private home, assets and logs are removed. Nine checkout outputs and
+six unique Library paths return to their captured absent baselines. Only the
+already-needed private npm 11 executable/cache remains for continued work;
+root dependencies, global caches, user data and reference projects are preserved.
+Fresh origin/main and the clean primary checkout both remain at `d824e895a`
+before publishing this batch. Continue by reproducing the long-value Facts
+observation against the unchanged shared owner; the overall UI goal stays active.
 
 ### Trajectory summary, filter recovery and retained reading
 

@@ -159,6 +159,7 @@ function title(row: TrajectoryEntry, t: Translate, clock: Intl.DateTimeFormat) {
     if (item.type === "toolCall") decision = item.approvalDecision;
   }
   const tone = statusTone(row);
+  const label = t(`state.${state}`);
   return (
     <RecordSummary
       icon={
@@ -175,15 +176,19 @@ function title(row: TrajectoryEntry, t: Translate, clock: Intl.DateTimeFormat) {
       title={title}
       description={
         <RecordMeta>
-          {tone === "neutral" && <span>{state}</span>}
+          {tone === "neutral" && <span>{label}</span>}
           {row.type === "run" && <code>{row.run.id}</code>}
           <time dateTime={row.occurredAt}>
             {clock.format(new Date(row.occurredAt))}
           </time>
-          {decision && <span>{t("approval.inline", { decision })}</span>}
+          {decision && (
+            <span>
+              {t("approval.inline", { decision: t(`approval.${decision}`) })}
+            </span>
+          )}
         </RecordMeta>
       }
-      status={tone !== "neutral" && <Badge tone={tone}>{state}</Badge>}
+      status={tone !== "neutral" && <Badge tone={tone}>{label}</Badge>}
     />
   );
 }
@@ -327,7 +332,10 @@ function Observation({
       row.item.durationMillis ?? t("value.unrecorded"),
     ]);
     if (row.item.approvalDecision)
-      facts.push([t("fact.approval"), row.item.approvalDecision]);
+      facts.push([
+        t("fact.approval"),
+        t(`approval.${row.item.approvalDecision}`),
+      ]);
   }
   if (row.type === "item" && row.item.type === "reasoning" && row.item.redacted)
     notes.push(t("note.reasoningRedacted"));
