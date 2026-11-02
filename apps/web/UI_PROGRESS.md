@@ -17,10 +17,11 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-The latest follow-up keeps target file-line numbers legible using the existing
-bounded selection plane; see **File target-line contrast and continued reading
-(2026-11-03)**. The reserved reading focus perimeter remains qualified under
-**Workspace reading and painted focus boundary (2026-11-03)**.
+The latest follow-up gives focus-managed floating panels the established immediate
+closed state; see **Shared popup closing and rapid keyboard reading (2026-11-03)**.
+Target file-line contrast and the reserved workspace focus perimeter remain
+qualified under **File target-line contrast and continued reading (2026-11-03)**
+and **Workspace reading and painted focus boundary (2026-11-03)**.
 The validated full-motion fixture modes, neutral control depth and code/status
 contrast repairs remain qualified. The whole-product goal and the earlier native
 input limitations remain open.
@@ -27985,10 +27986,10 @@ frozen inputs and **22** installed JavaScript resources retain their hashes.
 
 Submitting a line jump followed immediately by two Tab keys reaches the fixture
 sidebar in both observed and observer-free native runs. With an observation
-between steps, focus follows trigger → Copy path → source. There is no equivalent
-pre-change rapid-input comparator yet, so its cause remains unassigned. The next
-batch should trace the popup close and focus ownership; this batch does not
-certify that rapid keyboard path or add a timing workaround. Preserve the earlier
+between steps, focus follows trigger → Copy path → source. There was no equivalent
+pre-change rapid-input comparator in that batch, so its cause was left unassigned.
+The subsequent **Shared popup closing and rapid keyboard reading (2026-11-03)**
+review now qualifies that path and its shared surface repair. Preserve the earlier
 pointer-text reverse-Tab, Runtime recovery and placeholder-paint limits. Physical
 IME, VoiceOver audio, whole-document RTL, 320 CSS-pixel layout, other-platform GUI
 and whole-product award-tier acceptance remain unverified. There is no data
@@ -28002,6 +28003,138 @@ assets/home/overlays/CLI/observer/log/cache root. Preserve the 123-byte interrup
 draft backup and original SHA-256, root dependencies, shared toolchain/cache,
 read-only references and user data. Continue with the observed line-jump focus
 timing, keeping this worktree and goal active.
+
+### Shared popup closing and rapid keyboard reading (2026-11-03)
+
+This batch starts from synchronized main `49649e6a3`. It follows the preceding
+native rapid-Tab observation through the actual close, focus and reading path.
+The FileWorkspace baseline and related popup/lightbox cases pass **4 files /
+124 tests** in **6.739 s**, although their ordinary assertions await popup removal
+before checking focus and do not expose the retained-exit interval.
+
+#### Ownership, evidence and repair
+
+With original full-motion styles, successful line-7 submission blurs the input
+to the document at **6 ms**. The first Tab at **17 ms** reaches fixture-sidebar
+chrome; the second reaches its Files workspace button while the popup is still
+closing. No Back-button focus occurs in this recorded transition. Escape and the
+same submission sequence with motion off return through the trigger, Copy path
+and source. These are diagnostic event timestamps, not a latency guarantee or
+performance benchmark.
+
+Installed Base UI **1.9.0** keeps its focus manager until the popup unmounts.
+`PopoverPositioner` passes `inert: !open` to `usePositioner`, where that flag sets
+`pointer-events: none` while the focus manager remains mounted.
+The original shared floating surface retains an **80ms** closing transition.
+Consequently, input focus can be lost while final focus is still waiting for
+unmount; an intervening Tab starts from the document. Menu and Select use the
+same mounted-focus-manager and inactive-positioner boundary.
+
+`packages/ui/src/floating-surface.tsx` now applies its existing modal closed-state
+rule to `FLOATING_PANEL` as well, naming that private rule `focusManagedMotion`.
+Once Base UI marks a panel `data-closed`, transition property is `none`. Entry
+still animates opacity, scale and translate. `Select` consumes that shared rule,
+so its duplicate `styles.closed` and state-only class callback are removed.
+Tooltip, backdrop, appearance, geometry, navigation, validation and Base UI focus
+policies retain their existing owners. No focus call, timer, listener, state,
+token, dependency or public API is added. The source comment records the
+unmount/focus ordering.
+
+The better-accessibility review applies meaningful sequential navigation and
+trigger return. [WCAG 2.4.3 Focus Order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html)
+describes continuation beside a non-modal trigger after closing.
+[Radix Popover](https://www.radix-ui.com/primitives/docs/components/popover)
+provides the reference trigger/content and Escape-return contract; the installed
+Base UI source determines this implementation's lifecycle.
+
+| Severity         | Location                                  | Before                                                                                                  | After                                                            | Why                                                                               |
+| ---------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| MEDIUM, repaired | `packages/ui/src/floating-surface.tsx:70` | A retained exit leaves rapid sequential input starting at page chrome after successful line submission. | Focus-managed floating and modal panels share immediate closing. | Preserve the trigger → adjacent action → reader relation under Focus Order 2.4.3. |
+
+Approve the inspected popup-closing scope. Two bounded Claude Code CLI calls
+complete the detail change and removal of the duplicate Select rule in
+**24.464 s / 6 turns** and **14.734 s / 6 turns**, with no permission denials.
+Only the two allowed source files change; root owns evidence, review, native
+qualification, documentation and delivery.
+
+#### Verification and complete native tasks
+
+Final `npm run check --workspace @flame/ui` passes in **9.983 s**, including
+**13 files / 224 tests** and the independent packed UI/icons consumer. The first
+invocation and follow-up offline consumer attempts encounter `ENOTCACHED` for
+locked tarballs. After a bounded missing-artifact pass, root prewarms the complete
+**31-tarball** consuming closure in the existing private shared cache. The final
+consumer still installs offline and checks the locked integrity; manifests,
+assertions and production dependencies are unchanged.
+
+All **25** non-Runtime Web gates pass. Full frontend regression passes **424
+files / 4,442 tests** in **151.447 s**. `make check-native` passes in **23.230 s**;
+the private production-tag Wails host builds/signs in **3.913 s**. Builds run
+serially, before the consuming frontend phase. Existing contract suites and the
+native full-motion before/after path cover this style-boundary repair; no test
+merely repeats a style declaration. No browser visual suite, full Runtime rerun
+or benchmark is used.
+
+The isolated host retains pinned Wails v3, production services, native zoom and
+closing, and Aqua chrome. Identity/home, unavailable Runtime, assets/entry and
+initial/minimum geometry are private. Canonical fixture snapshots drive real
+views and installed Tool-results ESM. All native input uses CUA; live filesystem
+and provider execution remain outside this qualification.
+
+- **EN/light/14px, black custom accent, full motion:** three consecutive line
+  jumps to **7 / 1 / 6**, each followed immediately by two Tab keys, end in the
+  named source reader. Panel-picker Escape/Tab reaches Open full width; session
+  menu Escape/Tab reaches Copy message. In formal Settings, confirming the
+  existing interface size **14** then Tab reaches Code size; cancelling Code
+  size then Tab reaches Font smoothing. Settings returns to Files, Back retains
+  its selected path, and continued drafting remains editable. Native window
+  Zoom/restore retains the **46-character** draft/focus and settles at
+  **1120 x 755**, DPR **2**.
+- **ZH/custom `#505967` / `#f0f4fb`, blue, 18px, full motion, native 200%:**
+  measured viewport **560 x 377**, DPR **4**. Full-width material retains its
+  identity and actions. Invalid `1.5` stays editable with visible associated
+  feedback. Correcting to **8**, submitting and immediately tabbing twice reaches
+  source. Home/End read locally; reverse Tab reaches Back, Enter returns to the
+  selected file tree, and reverse Tab/Enter closes material before a continued
+  editable **16-character** Chinese draft.
+
+Observed candidates retain rendered motion scale **1**, no motion-off attribute
+and reduced-motion media **false**. Opening popup paint reports the original
+**150ms** three-property transition; closed popup paint reports transition
+property **none**. Positive transition-end events confirm active motion without
+a frame-rate claim.
+
+After retiring the one observer by exact identity, final HTML and assets contain
+no private probe markers or endpoint, and ports **52522/52523** are closed.
+Observer-free **Flame Orange/light/14px** and **ZH/custom-gray/18px/200%** controls
+repeat rapid submission, source reading, keyboard return and continued drafting.
+The English control covers both input Enter and keyboard Go-button submission;
+the Chinese control repeats invalid feedback and correction. All **six managed
+native launches exit 0**. One post-Quit AX query reopens the registered private
+bundle at its default fixture; native Close ends that incidental process and
+its absence is verified, with exit code unavailable. Subsequent Quit actions
+are verified through their process receipts. All **1,232** final frozen inputs
+and **22** installed JavaScript resources retain their hashes.
+
+The newly reached source reader exposes a separate paint issue at 200%: its inset
+focus sides have visible gaps beside target row **8**. Home moves that row out
+of view and restores a complete perimeter; the observer-free final scene also
+reproduces the gaps. Focus and local Home/End still work. Inspect the source
+`ScrollArea` in `WorkspaceViewLayout` next, preserving the target-line contrast
+and the separate outer workspace clipping repair. The popup-closing qualification
+is complete for these cases; the source-focus perimeter remains a follow-up.
+Preserve the attributed pointer-text reverse-Tab, Runtime recovery
+and placeholder-paint limits. Physical IME, VoiceOver audio, whole-document RTL,
+320 CSS-pixel layout, other-platform GUI and award-tier product acceptance remain
+unverified. There is no migration or business command submission.
+
+Publication uses normal hooks, guarded main fast-forward, push and direct remote
+equality. Cleanup is restricted to nine baseline-absent checkout output roots,
+the exact private app registration, six baseline-absent UID Library paths and
+`flame-ui-focus-c65k1pna` assets/home/overlays/CLI/observer/log/cache root. Preserve
+the 123-byte interrupted-draft backup and original SHA-256, root dependencies,
+shared toolchain/cache, read-only references and user data. Continue with the
+observed source-focus paint boundary; keep this worktree and goal active.
 
 ## Workspace file browser audit
 

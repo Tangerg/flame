@@ -58,7 +58,10 @@ and disable its tooltip when the complete text fits. Plain `Tooltip` labels wrap
 unbroken paths and identifiers within their existing bounded width.
 
 `Popover` owns the same portal, floating surface, Base UI nesting and focus
-contract for application controls and portable views. A consumer that retains
+contract for application controls and portable views. Focus-managed floating
+panels share the modal panel's closed-state motion rule: entry stays animated,
+while closing has no exit transition that would defer Base UI's focus return
+until unmount. A consumer that retains
 content declares its active subtree with `ContentVisibility`;
 hidden roots retire through their existing change callback, and hidden portals
 do not restore focus to an unavailable trigger. Positioning, initial/final focus
@@ -229,10 +232,9 @@ update this local presentation without tracking the current file or scroll posit
 `Select` keeps its popup anchored beside the trigger rather than overlapping the
 selected item with it. Base UI tracks ancestor scrolling and resizing, handles
 viewport collisions and retains selection and focus ownership. Desktop appearance
-sizes and portable filters use this same positioning contract. The popup keeps
-the shared entry motion but closes without an exit transition: Base UI holds
-its focus manager until the popup unmounts, so an animated exit delays focus
-return and a quick Tab after Escape would leave focus on the document.
+sizes and portable filters use this same positioning contract. The popup consumes
+the shared focus-managed panel closing rule; selection, focus restoration and
+active-anchor policies remain with the control.
 `Select.invalid` exposes the same semantic invalid state and field boundary as
 text input. Its `aria-describedby` links the trigger to field-specific feedback;
 `FormGroup` accepts that description and invalid state for composite choices.

@@ -65,8 +65,9 @@ const styles = stylex.create({
       ":is([data-ending-style])": 0,
     },
   },
-  // Base UI keeps a closing dialog's focus guards until its exit transition ends.
-  modalMotion: {
+  // Base UI defers focus return until the closing popup unmounts.
+  // An exit transition can let the next Tab restart at the document.
+  focusManagedMotion: {
     transitionProperty: {
       default: MOTION_PROPERTIES,
       ":is([data-closed])": "none",
@@ -97,7 +98,12 @@ const styles = stylex.create({
 
 export const FLOATING_LAYER = [styles.layer];
 
-export const FLOATING_PANEL = [styles.face, styles.motion, styles.panel];
+export const FLOATING_PANEL = [
+  styles.face,
+  styles.motion,
+  styles.focusManagedMotion,
+  styles.panel,
+];
 export const FLOATING_TIP = [styles.face, styles.motion, styles.tip];
 
 export const MODAL_SCRIM = [styles.scrim];
@@ -106,5 +112,5 @@ export const modalPanel = (place: "centred" | "top" = "centred") => [
   styles.modal,
   place === "top" ? styles.modalTop : styles.modalCentred,
   styles.motion,
-  styles.modalMotion,
+  styles.focusManagedMotion,
 ];

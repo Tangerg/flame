@@ -25,8 +25,6 @@ const styles = stylex.create({
     maxWidth: "min(var(--available-width), calc(100dvw - var(--spacing) * 8))",
     overscrollBehavior: "contain",
   },
-  // An exit transition delays Base UI's final focus until unmount.
-  closed: { transitionProperty: "none" },
   item: {
     display: "flex",
     alignItems: "center",
@@ -159,13 +157,12 @@ export function Select({
               }
               return false;
             }}
-            className={(state) =>
+            className={
               stylex.props(
                 FLOATING_PANEL,
                 MENU_SURFACE.content,
                 styles.popup,
                 type.uiMd,
-                !state.open && styles.closed,
               ).className
             }
           >
