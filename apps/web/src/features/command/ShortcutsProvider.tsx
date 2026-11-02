@@ -37,7 +37,8 @@ export function ShortcutsProvider() {
     }
 
     return tinykeys(window, bindings, {
-      ignore: (event) => event.repeat || event.isComposing,
+      // A local owner that cancelled the key (a reader's Select All) has consumed it.
+      ignore: (event) => event.repeat || event.isComposing || event.defaultPrevented,
     });
   }, [shortcuts]);
 

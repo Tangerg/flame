@@ -21,7 +21,7 @@ export default function createShortcutsPlugin(workspaceAccess: WorkspaceAccess) 
       ctx.contribute(SETTINGS_PANE, {
         id: SHORTCUTS_PANE,
         label: "settings.pane.shortcuts",
-        description: "shortcuts.sub",
+        keywords: ["shortcuts.sub"],
         group: "general",
         icon: "keyboard",
         order: 10,

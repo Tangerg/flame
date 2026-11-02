@@ -26401,6 +26401,160 @@ references and unrelated processes are preserved. Publication uses fresh-fetch
 main guards, fast-forward and direct remote equality verification. Continue from
 fresh complete-task evidence.
 
+### Local keyboard claims before global shortcuts (2026-11-02)
+
+This batch starts from published main `2aab7dcbd`. Scope: configure a shortcut,
+read recorded output, inspect a file, return and continue the same draft. The
+current Wails host reproduces a shared keyboard-ownership defect through the real
+shortcut editor: bind Focus composer to Control+A, focus Tool output and select
+all. The global command moves focus to the composer after the reader has already
+selected its content. A separate original-dispatcher native control also leaves
+a full-width file for the conversation on the same local Select All.
+
+The existing `selectAllInReader` helper cancels the event without stopping its
+propagation. `ShortcutsProvider.tsx:41` now includes `event.defaultPrevented` in
+the existing tinykeys ignore predicate, alongside repeat and composition. This
+single boundary covers both command-derived and direct shortcut registrations.
+Unclaimed events retain the existing input, capture, rebinding and command
+lifetime rules. No reader propagation workaround, listener, state, timing,
+schema, Runtime or generated component change is added.
+
+The shortcut Settings introduction is owned by `SETTINGS_PANE.description`, not
+by `ShortcutsPane`. `shortcuts/index.tsx:24` moves its existing locale key into
+the existing `keywords` field. The visible pane starts with its filter and action
+rows; Settings search still translates and searches the catalog description.
+Native search for `registration` finds Keyboard shortcuts without showing the
+implementation-oriented introduction or its overbroad anywhere-in-the-app claim.
+
+Fresh read-only ZCode
+`packages/ui/src/v4/composer/toolbarShortcuts.ts:101` rejects already-cancelled,
+repeated and composing events in its actual toolbar resolver. That local resolver
+supports the ownership principle, without proving a global ZCode dispatcher
+contract. [MDN's defaultPrevented contract](https://developer.mozilla.org/en-US/docs/Web/API/Event/defaultPrevented)
+explains how the existing cancellation remains observable by an outer listener.
+Earlier ChatGPT, HeroUI, Arc, Radix and Ace studies retain their documented scope;
+this batch reuses Flame's existing shared controls, layout and semantic tokens.
+The previously accepted reasoning-text treatment is explicitly retained.
+
+| Severity | Domain        | Location                   | Before                                               | After                                      | Why                                          |
+| -------- | ------------- | -------------------------- | ---------------------------------------------------- | ------------------------------------------ | -------------------------------------------- |
+| HIGH     | Accessibility | `ShortcutsProvider.tsx:41` | Local Select All also fires a rebound global command | Cancelled keys stay with their local owner | Reading focus and full-width context survive |
+| LOW      | Writing       | `shortcuts/index.tsx:24`   | Repeated implementation-oriented introduction        | Filter and action rows lead the pane       | Task controls explain the available actions  |
+
+#### Verification
+
+The edit-only Claude Code CLI completes in **100.228 s**, reporting **33 turns**
+and zero subagents or permission denials. It changes only the allowed provider,
+test and README paths and runs no commands, checks, builds, browser or Git. It
+correctly reports that the introduction owner is outside its allowed paths. Root
+traces that owner, changes the Settings contribution, reviews the complete diff
+and replaces the initial raw test region with the existing `ScrollArea` reader
+after lint reports two accessibility warnings. No rule or assertion is weakened.
+
+- Baseline: **3 files / 19 tests** pass for the provider, editor and keymap.
+  Candidate and final related checks include Settings: **4 files / 29 tests**
+  pass, with the final run taking **2.42 s**.
+- Full frontend: **420 files / 4,368 tests** pass in **124.96 s** before the
+  test-only `ScrollArea` adjustment; the final related run covers that adjustment.
+  Both new cases use the real shared Select All helper and cover command and
+  direct-shortcut contributions. They assert cancellation, selection of the
+  source without its frame, retained reader focus and no global dispatch, then
+  verify that the same unclaimed combo runs once outside the reader.
+- Negative controls restore only the original dispatcher. Both runs fail the two
+  new ownership cases and pass the other four cases. The final control uses the
+  accepted `ScrollArea` test; the candidate is restored byte-for-byte afterward.
+- **25 serial Web gates** pass: typecheck; lint; format; knip; circular, contexts,
+  published-boundaries, layers, port-surface and API-consumer checks; style
+  invalidation, HMR, design-system, tokens, styles, dead-tokens, authored classes,
+  shorthand, chrome, locales, lookup tables, bootstrap, plugin resources, plugin
+  modules and the production bundle check. The final scoped document format and
+  `git diff --check` are checked before publication.
+- `make check-native` passes in **27.674 s**, staging the production Web product
+  and running Desktop test/vet/build and its Wails macOS build. Existing SDK/link
+  target and duplicate-library warnings remain nonfatal. The private fixture
+  asset build passes in **2.935 s**, with its existing chunk warning nonfatal.
+
+All **22 installed JavaScript resources** remain byte-identical to the baseline.
+The three final clean native launches use the exact Wails **v3.0.0** host, normal
+generated Tool-results ESM and shared React host. The private overlay changes
+only identity, asset hosting, isolated home/endpoint, entry, appearance and initial
+window size. There is no observer, substituted data, injected DOM event or handler
+replacement. **345 inputs**, including four authored files, host/config/bundle
+inputs and **335 assets**, match after acceptance. No migration is required.
+
+#### Actual native task and review
+
+- EN/light/14 px/Flame Orange/reduced motion, configured **1120 px** minimum
+  window: enter a draft; search Settings by the retained description term; reset
+  Focus composer to Cmd+L, then record Control+A through the real editor. Close
+  Settings and expand the captured command and all ten output lines. Native
+  Control+A selects only those lines and retains Tool output focus. Moving
+  outside the reader lets the same combo focus the unchanged draft.
+- Use keyboard activation of Open the current file to reach
+  `runtime/internal/session/store.go`. File Select All retains its reader and
+  excludes the path label. Tab reaches the Dock splitter; Home changes its AX
+  value from **500 to 320**. Native window Zoom enlarges and restores the frame.
+  Keyboard Back to conversation and Control+A return to the draft, continued as
+  `Keep the shortcut reading draft. Continue after reading.`.
+- ZH/dark/18 px/custom blue/full motion: twenty native Zoom In actions establish
+  **200%**. Filter 聚焦, reach Change by Tab and start recording. The recorder,
+  action identity and Cancel remain visible; Escape cancels only the capture,
+  retaining Settings, query and Control+A. Return to the same draft and recorded
+  tool result. Local output Select All retains all ten lines and its focus;
+  an unclaimed combo still focuses the composer.
+- Forward Tab reaches the narrow-window full-width material entry. Read the
+  file through line eight, select its source locally and use the visible Close
+  action to return. Continue `快捷键阅读前的草稿。继续原任务。`; twenty native Zoom Out
+  actions restore Actual Size with the draft, selected file and tool expansion
+  intact. A final clean launch reconfirms that full-width file Select All stays
+  in the file and its explicit Close returns to the conversation.
+
+The canonical current-file provider serves canned eight-line content independently
+of the requested path. These native tasks qualify identity, navigation, selection
+and return, not live filesystem source fidelity. Initial AX clicks on the
+current-file action and splitter do not establish activation; the subsequent
+native keyboard paths supply that evidence. No Send, Copy or tool execution is
+activated. Chinese draft entry uses native value-setting plus committed input,
+not a physical OS IME. All five owned native launches, including both original
+controls, exit normally with terminal exit zero.
+
+The full-width file's native Escape does not close it, both before this change
+and with the accepted dispatcher. The original control changes only the provider
+back to its HEAD bytes; it also confirms that Control+A wrongly leaves the file.
+Accepted source and assets are restored and verified before the final clean
+confirmation. A reverse-Tab probe in zoomed Tool output does not establish the
+previous-control transition and is not counted as passed. Investigate these
+native key-delivery/return paths next with focused baseline evidence; neither is
+claimed fixed here. The explicit Close and forward keyboard task pass.
+
+| Domain        | Evidence inspected                                                        | Result                                                           |
+| ------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Accessibility | Real rebinding, output/file Select All, outside dispatch, recorder Cancel | Local keyboard ownership repaired; native Escape follow-up above |
+| Layout        | Minimum window, 320 px Dock, native Zoom/restore, 200% full-width file    | Inspected controls, reading and explicit return remain reachable |
+| Writing       | Settings contribution, native description-term search and action rows     | Repeated introduction removed; discovery retained                |
+| Typography    | EN 14 px, ZH 18 px/200%, captured output, file path and final line        | Existing scale and complete reading paths retained               |
+| Colors        | Light Orange/dark blue selection, reader, recorder and composer focus     | Existing semantic treatment retained; no fresh contrast measure  |
+| UI polish     | Recording/cancel, selection, window changes, explicit return and draft    | Scoped task continuity passes; no motion or surface changes      |
+
+Goal CHECK review covers typography, whitespace, hierarchy, color, motion,
+micro interaction, responsive reading and Flame's visual identity in this task.
+Full-motion timing, physical IME, VoiceOver speech, RTL, all locales natively,
+other-platform GUI and live Runtime/provider/file operations remain unqualified.
+**Approve for the inspected local keyboard-ownership repair and explicit-return
+task**; the native follow-ups and whole-product/award-level acceptance remain open.
+No browser visual suite or performance benchmark is started, and unrelated
+Runtime/CLI/SDK suites are not rerun.
+
+Cleanup restores the nine fresh checkout output roots and six unique-identity
+Library paths to their absence baselines, unregisters the exact private app and
+removes its app, home, assets, controls, overlays, logs, CLI material and owned
+npm cache. Root dependencies, shared caches, read-only references, user data and
+the prior reusable toolchain and interrupted-draft backup are preserved.
+The primary checkout is now on an independent audit branch and is preserved.
+Publication uses a temporary isolated main worktree, guarded fast-forward, push
+and direct remote equality verification; the temporary worktree is then removed.
+Continue from the native keyboard observations above.
+
 ## Workspace file browser audit
 
 The earlier file-browser audit established path-based tree/list keys, read

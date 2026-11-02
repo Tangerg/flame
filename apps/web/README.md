@@ -348,6 +348,10 @@ command, retires the capture and its conflict without binding anything and
 without requesting focus. The query and saved overrides remain, the global recording
 guard is released so ordinary commands dispatch again, and reopening the pane
 does not resume the capture.
+A key a local owner has already cancelled, such as a focused reader's Select All,
+belongs to that owner; neither command nor direct shortcut bindings dispatch it.
+Shortcut settings start with their filter and action rows; the catalog description
+remains searchable without repeating an introduction above the controls.
 
 The installed Notifications package owns completion policy, sound and its two
 client preferences. The graphical Host keeps the root-run settlement projection,
