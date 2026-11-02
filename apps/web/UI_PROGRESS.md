@@ -17,11 +17,11 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-The latest follow-up validates actual full-motion reading and rejects misspelled
-fixture modes; see **Validated motion and field-reading evidence (2026-11-03)**.
-It corrects two earlier English motion labels while preserving the neutral control
-depth and code/status contrast repairs. The whole-product goal and the earlier
-native input limitations remain open.
+The latest follow-up keeps scrolling text out of the reserved keyboard-focus
+perimeter; see **Workspace reading and painted focus boundary (2026-11-03)**.
+The validated full-motion fixture modes, neutral control depth and code/status
+contrast repairs remain qualified. The whole-product goal and the earlier native
+input limitations remain open.
 
 The 2026-11-02 resume uses the new managed worktree
 `/Users/tangerg/.codex/worktrees/flame-ui-polish/flame` on
@@ -27791,6 +27791,107 @@ observer/log/cache root. Both observers are retired by exact identity; ports
 original SHA-256, root dependencies, shared toolchain/cache, references and user
 data. Continue with observed retained-detail tasks; keep this worktree and goal
 active.
+
+### Workspace reading and painted focus boundary (2026-11-03)
+
+This batch starts from synchronized main `7078a19cf`. Native Chinese/18px/200%
+reading exposes a narrow fragment of the document's `Verification:` line above
+its sticky identity/actions. The shared heading is correctly hidden; this is
+scrolling body paint, not a duplicate title or fixture-only heading.
+
+#### Ownership and repair
+
+`WorkspaceViewBody` owns the reading viewport and its 2px clearance for the shared
+inset focus perimeter. Padding leaves that clearance inside the scrollport:
+scrolled text can paint there above the sticky controls and across the top focus
+edge. The retained page's outer top is **46 CSS px**, while the sticky controls
+start at **48 px**. The existing focus clearance is necessary; removing it would
+reopen the earlier opaque-Settings focus defect.
+
+The viewport now reserves the same space with a **2px transparent solid border**,
+using StyleX longhands. Its inner border edge is the clipping boundary. Native
+measurement retains the same outer rectangle, document position, controls
+rectangle and **664px** end scroll offset. The inner top is now **48px**, matching
+the controls, with `clientTop: 2`, zero padding and a transparent border. The
+fragment disappears and all four sides of the existing inset focus perimeter
+paint completely. The change adds no wrapper, measurement, custom property,
+scroll state or input handler. `apps/web/README.md` records the viewport contract.
+Runtime facts, command lifetimes and shared appearance owners retain their roles.
+
+The better-layout review uses its sticky-chrome and clipping principles;
+better-typography checks actual text visibility rather than changing the type
+scale. The [CSS Overflow scrollport definition](https://drafts.csswg.org/css-overflow-3/#scrollport)
+explains the padding-box boundary. Read-only ZCode workflow-detail header and
+Plan-detail pane implementations provide reference evidence for separate identity,
+actions and scrolling content; they do not qualify Flame's native behavior.
+
+| Severity         | Location                                                               | Before                                                                       | After                                              | Why                                                                    |
+| ---------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------- |
+| MEDIUM, repaired | `apps/web/src/features/shell/workbench/panel/WorkspaceViewBody.tsx:24` | Scrolling text leaks through the reserved focus strip above sticky controls. | The same clearance clips at its inner border edge. | Keep sticky identity distinct and the focused reading surface visible. |
+
+Approve the inspected layout scope. No additional actionable typography finding
+is established in these header/body tasks; broader product coverage stays open.
+Claude Code CLI completes the one-file detail change in **25.345 s / 9 turns**,
+with no permission denials. Parent review shortens its why comment and owns
+reference research, native acceptance, documentation, checks and publication.
+
+#### Verification and native task coverage
+
+All **25** non-Runtime Web gates pass. Full frontend regression passes **424
+files / 4,442 tests** in **118.242 s**. `make check-native` passes in **30.243 s**;
+the private production-tag Wails host builds/signs in **3.956 s**. Builds run
+serially and the frontend suite consumes completed outputs in a separate phase.
+No browser visual suite, benchmark or full Runtime rerun is used.
+
+The isolated host retains production Wails v3 services, native zoom/closing and
+Aqua chrome. Its identity/home, unavailable Runtime endpoint, asset root/entry and
+initial/minimum geometry are private. The production views and installed
+Tool-results ESM consume canonical fixture snapshots; live provider execution is
+outside this qualification. All native inputs use CUA.
+
+- **ZH/custom dark `#505967` / `#f0f4fb`, 18px, blue, contrast 25, native 200%:**
+  the measured viewport is **560 x 377**, DPR **4**. The original source reproduces
+  the fragment and interrupted top focus edge. The candidate retains geometry
+  while repairing both. Full-width material, document end, complete wrapped
+  source/revision, retained query and original-row focus, library Archive/Restore
+  keyboard reach, material Escape and continued editable Chinese drafting pass.
+- **EN/light, 14px, Flame Orange, contrast 25:** the narrow Dock keeps complete
+  identity/actions and a full focus perimeter after scrolling. Source return
+  retains the query and row. Document Escape followed immediately by Tab reaches
+  the next workspace control. Native window Zoom/restore retains the complete
+  editable **36-character** draft and settles back to **1120 x 755**.
+- **EN/built-in dark, 14px, Flame Orange, contrast 100:** the formal Settings
+  shortcut focuses its original region with all four perimeter sides visible,
+  including while Appearance scrolls. Search Escape clears locally; the next
+  Escape returns to the workspace and continued editable drafting.
+
+All three observed positive scenes use `motion=full`, rendered scale **1**, no
+motion-off attribute and system reduced-motion media **false**. Saved task
+observations include **28**, **29** and **11** transition-end events respectively;
+the bounded buffer proves active motion without a frame-rate claim.
+
+After the observer is retired, the final HTML has no private injection and ports
+**55073/55074** are closed. Observer-free EN/light and ZH/custom-dark/18px/200%
+runs repeat document/provenance reading, complete pane focus, retained query/row
+return and continued drafting. The Chinese final return also uses the visible
+Back action. All **six** native launches exit normally. All **1,232** final frozen
+inputs and **22** installed JavaScript resources retain their hashes.
+
+The already-attributed pointer-text reverse-Tab trap recurs after clicking the
+source disclosure. Escape and pure-keyboard pane entry still work; no focus loop
+or platform preference is added. Preserve the earlier Runtime recovery and
+placeholder-paint limits. Physical IME, VoiceOver audio, whole-document RTL,
+320 CSS-pixel layout, other-platform GUI and whole-product award-tier acceptance
+remain unverified. There is no data migration or business command submission.
+
+Publication uses normal hooks, guarded main fast-forward, push and direct remote
+head equality. Cleanup is restricted to the nine baseline-absent checkout output
+roots, exact private app registration, six baseline-absent UID Library paths and
+`flame-ui-reading-yepubf07` assets/home/overlays/CLI/observer/log/cache root. The
+observer is retired by exact identity before final runs. Preserve the 123-byte
+interrupted-draft backup and original SHA-256, root dependencies, shared toolchain
+and cache, read-only references and user data. Continue with retained Files/Diff
+reading boundaries and source return; keep this worktree and goal active.
 
 ## Workspace file browser audit
 

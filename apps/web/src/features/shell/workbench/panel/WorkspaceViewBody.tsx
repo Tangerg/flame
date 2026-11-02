@@ -21,8 +21,10 @@ const styles = stylex.create({
     flexDirection: "column",
     minWidth: 0,
     minHeight: 0,
-    // Keep opaque view content clear of the shared inset focus perimeter.
-    padding: 2,
+    // Clip scrolling content before the reserved inset focus perimeter.
+    borderWidth: "2px",
+    borderStyle: "solid",
+    borderColor: "transparent",
     overflowY: "auto",
     overscrollBehavior: "contain",
     userSelect: "text",
