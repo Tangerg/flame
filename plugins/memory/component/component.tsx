@@ -17,6 +17,7 @@ import {
   Checkbox,
   Metadata,
   RecordBody,
+  RecordGroup,
   RecordMeta,
   SearchField,
   FilterBar,
@@ -28,6 +29,8 @@ import { type Scope } from "./types";
 import { MemoryReport } from "./MemoryReport";
 import { MemoryFeedback } from "./MemoryFeedback";
 import { useMemory } from "./useMemory";
+// Installed component bundles use host UI styles without StyleX compilation.
+const EDITOR_STYLE = { maxHeight: "40dvh" };
 export function Memory({ context }: { context: ComponentContext }) {
   const {
     t,
@@ -231,14 +234,17 @@ export function Memory({ context }: { context: ComponentContext }) {
         <RecordForm
           aria-label={t("delete.confirm.label")}
           opener={resolveOpener}
+          data-focus-unit=""
         >
-          <RecordTitle>{t("delete.title")}</RecordTitle>
-          <RecordMeta>
-            <span>{t(`scope.${edit.item.Scope}`)}</span>
-            <span>{edit.item.ID}</span>
-          </RecordMeta>
-          <RecordBody>{edit.item.Content}</RecordBody>
-          <Metadata>{t("delete.notice")}</Metadata>
+          <RecordGroup>
+            <RecordTitle>{t("delete.title")}</RecordTitle>
+            <RecordMeta>
+              <span>{t(`scope.${edit.item.Scope}`)}</span>
+              <span>{edit.item.ID}</span>
+            </RecordMeta>
+            <RecordBody>{edit.item.Content}</RecordBody>
+            <Metadata>{t("delete.notice")}</Metadata>
+          </RecordGroup>
           <FormActions
             label={t("delete.actions.label")}
             feedback={
@@ -292,29 +298,34 @@ export function Memory({ context }: { context: ComponentContext }) {
         <RecordForm
           aria-label={edit.type === "add" ? t("add") : t("edit")}
           opener={resolveOpener}
+          data-focus-unit=""
         >
-          <RecordTitle>
-            {edit.type === "add" ? t("add") : t("edit")}
-          </RecordTitle>
-          {edit.type === "update" && (
-            <RecordMeta>
-              <span>{t(`scope.${edit.item.Scope}`)}</span>
-              <span>{edit.item.ID}</span>
-            </RecordMeta>
-          )}
-          <FormField label={t("content.label")}>
-            <TextArea
-              aria-label={t("content.label")}
-              // oxlint-disable-next-line jsx-a11y/no-autofocus
-              autoFocus
-              rows={6}
-              value={edit.content}
-              pending={locked}
-              onChange={(event) =>
-                setEdit({ ...edit, content: event.target.value })
-              }
-            />
-          </FormField>
+          <RecordGroup>
+            <RecordTitle>
+              {edit.type === "add" ? t("add") : t("edit")}
+            </RecordTitle>
+            {edit.type === "update" && (
+              <RecordMeta>
+                <span>{t(`scope.${edit.item.Scope}`)}</span>
+                <span>{edit.item.ID}</span>
+              </RecordMeta>
+            )}
+            <FormField label={t("content.label")}>
+              <TextArea
+                aria-label={t("content.label")}
+                // oxlint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
+                rows={2}
+                autosize
+                style={EDITOR_STYLE}
+                value={edit.content}
+                pending={locked}
+                onChange={(event) =>
+                  setEdit({ ...edit, content: event.target.value })
+                }
+              />
+            </FormField>
+          </RecordGroup>
           <FormActions
             label={t("save.actions.label")}
             feedback={

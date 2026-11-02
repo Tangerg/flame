@@ -13,6 +13,7 @@ import {
   FormActions,
   FormGroup,
   Panel,
+  RecordForm,
 } from "../dist/index.js";
 
 let rectangles: Map<Element, DOMRect>;
@@ -727,4 +728,103 @@ it("keeps the focused action visible when feedback exceeds the viewport", () => 
   update();
   expect(revealed).toEqual([save]);
   expect(document.activeElement).toBe(save);
+});
+
+function formScene(enclosed = false) {
+  const content = (feedback: string | null) => {
+    const panel = (
+      <Panel label="Memory" controls={<button>Add</button>}>
+        <RecordForm aria-label="Delete memory" data-focus-unit="">
+          <h3>Delete memory</h3>
+          <p>Prefer concise answers.</p>
+          <FormActions
+            label="Delete actions"
+            feedback={feedback && <p role="alert">{feedback}</p>}
+          >
+            <button>Cancel</button>
+            <button>Delete</button>
+          </FormActions>
+        </RecordForm>
+      </Panel>
+    );
+    return (
+      <div data-testid="viewport" style={{ overflowY: "auto", height: 300 }}>
+        {enclosed ? (
+          <div
+            data-focus-unit=""
+            data-testid="enclosing"
+            style={{ overflowY: "visible" }}
+          >
+            {panel}
+          </div>
+        ) : (
+          panel
+        )}
+      </div>
+    );
+  };
+  const view = render(content(null));
+  const form = screen.getByRole("region", { name: "Delete memory" });
+  const actions = screen.getByRole("group", { name: "Delete actions" });
+  const cancel = screen.getByRole("button", { name: "Cancel" });
+  rectangles.set(screen.getByTestId("viewport"), new DOMRect(0, 200, 800, 300));
+  rectangles.set(
+    view.container.querySelector('[data-slot="panel-controls"]')!,
+    new DOMRect(0, 200, 800, 50),
+  );
+  return {
+    form,
+    actions,
+    cancel,
+    update: () => view.rerender(content("The memory changed elsewhere.")),
+  };
+}
+
+it("reveals the complete fitting form even when its focused actions already fit", () => {
+  const { form, actions, cancel } = formScene();
+  rectangles.set(form, new DOMRect(0, 180, 300, 200));
+  rectangles.set(actions, new DOMRect(0, 300, 300, 80));
+  rectangles.set(cancel, new DOMRect(0, 310, 100, 32));
+  act(() => cancel.focus());
+  expect(revealed).toEqual([form]);
+  expect(document.activeElement).toBe(cancel);
+});
+
+it("falls back to the fitting actions when the complete form is too tall", () => {
+  const { form, actions, cancel } = formScene();
+  rectangles.set(form, new DOMRect(0, 100, 300, 400));
+  rectangles.set(actions, new DOMRect(0, 440, 300, 80));
+  rectangles.set(cancel, new DOMRect(0, 450, 100, 32));
+  act(() => cancel.focus());
+  expect(revealed).toEqual([actions]);
+  expect(document.activeElement).toBe(cancel);
+});
+
+it("narrows the reading context when feedback outgrows the form without moving focus", () => {
+  const { form, actions, cancel, update } = formScene();
+  rectangles.set(form, new DOMRect(0, 260, 300, 200));
+  rectangles.set(actions, new DOMRect(0, 380, 300, 80));
+  rectangles.set(cancel, new DOMRect(0, 390, 100, 32));
+  act(() => cancel.focus());
+  expect(revealed).toEqual([]);
+  rectangles.set(form, new DOMRect(0, 260, 300, 300));
+  rectangles.set(actions, new DOMRect(0, 440, 300, 110));
+  rectangles.set(cancel, new DOMRect(0, 450, 100, 32));
+  update();
+  expect(revealed).toEqual([actions]);
+  expect(document.activeElement).toBe(cancel);
+  expect(actions.contains(screen.getByRole("alert"))).toBe(true);
+});
+
+it("does not choose a fitting declared unit outside the panel body", () => {
+  const { form, actions, cancel } = formScene(true);
+  rectangles.set(
+    screen.getByTestId("enclosing"),
+    new DOMRect(0, 180, 300, 100),
+  );
+  rectangles.set(form, new DOMRect(0, 180, 300, 200));
+  rectangles.set(actions, new DOMRect(0, 300, 300, 80));
+  rectangles.set(cancel, new DOMRect(0, 310, 100, 32));
+  act(() => cancel.focus());
+  expect(revealed).toEqual([form]);
 });

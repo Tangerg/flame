@@ -533,6 +533,11 @@ cancellation precedes the primary action. Both groups wrap within the available
 width, using the shared control gap internally and content gap between groups.
 The parent form or record composition owns spacing before the actions;
 `FormActions` adds no outer inset or separator.
+Reading owners use the outermost declared `data-focus-unit` that fits their
+available frame, without crossing the current body boundary. Nested actions or
+fields remain the fallback when the complete task is too tall, followed by the
+native label or focused control. A cohesive inline task can mark its `RecordForm`
+to keep its heading, identity, content and actions together when they fit.
 `modalPanel()` owns the elevated modal face, corners, shadow and motion. Modal
 panels and `MODAL_SCRIM` keep the shared entry motion but have no transition once
 Base UI marks them `data-closed`: a dialog holds its focus isolation until the

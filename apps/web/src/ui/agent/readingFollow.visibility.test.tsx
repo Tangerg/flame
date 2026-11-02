@@ -240,6 +240,30 @@ describe("reading focus geometry", () => {
     expect(document.activeElement).toBe(s.target);
   });
 
+  it.each([
+    { height: 200, scroll: 70 },
+    { height: 400, scroll: 100 },
+  ])(
+    "reveals the complete fitting context around nested actions ($height px context)",
+    ({ height, scroll }) => {
+      const s = scenario();
+      s.content.dataset.focusUnit = "";
+      s.nested.dataset.focusUnit = "";
+      vi.spyOn(s.content, "getBoundingClientRect").mockImplementation(
+        () => new DOMRect(0, 90 - s.viewport.scrollTop, 600, height),
+      );
+      act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
+      s.viewport.scrollTop = 100;
+
+      act(() => s.target.focus({ preventScroll: true }));
+
+      expect(s.viewport.scrollTop).toBe(scroll);
+      expect(s.nested.getBoundingClientRect().top).toBeGreaterThanOrEqual(20);
+      expect(s.nested.getBoundingClientRect().bottom).toBeLessThanOrEqual(320);
+      expect(document.activeElement).toBe(s.target);
+    },
+  );
+
   it("preserves the focused control's CSS clearance when revealing its fitting context", () => {
     const s = scenario();
     s.nested.dataset.focusUnit = "";

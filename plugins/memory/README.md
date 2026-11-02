@@ -247,7 +247,13 @@ feedback stays with the catalog. An acknowledged form closes before the subseque
 catalog read, whose loading or failure cannot revoke the known result. Changing
 scope retires the old scope's notices. New forms clear earlier form feedback.
 Record details and update/delete forms use the captured item's localized scope
-and ID. Local Escape cancels only the
+and ID. Forms group their heading, captured identity and main content with the
+existing RecordGroup, keeping section spacing before actions. The shared reader
+keeps the complete task together when it fits and falls back to its current
+field or action group when it is taller than the available frame. Memory content
+uses the shared autosizing textarea, starting at two rows and bounded to 40dvh;
+long drafts scroll inside that field without losing their full value.
+Local Escape cancels only the
 current form, after search and nested choices have handled their own key. Pending
 and unknown commands consume that Escape without discarding their task. Composition
 keys leave it untouched. Cancellation returns to the connected available opener or

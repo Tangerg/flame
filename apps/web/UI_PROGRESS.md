@@ -40,8 +40,10 @@ form-command follow-up is published as `c7b97cfc5` under **Memory submission and
 original-result actions (2026-11-02)**. Record-command continuity is published as
 `45274f08a` under **Memory record actions and result continuity (2026-11-02)**.
 Command result wording is published as `3970aaf55` under **Memory command outcome
-wording (2026-11-02)**. Captured scope identity is qualified under **Memory captured
-scope identity (2026-11-02)**. The latest goal restores
+wording (2026-11-02)**. Captured scope identity is published as `95b57b7e2` under
+**Memory captured scope identity (2026-11-02)**. Form grouping, bounded content
+editing and nested reading are qualified under **Memory form reading and content
+sizing (2026-11-02)**. The latest goal restores
 preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
 describe their historical scope.
@@ -4769,6 +4771,157 @@ no accepted product input; publication is followed by fresh remote, cleanliness
 and preservation checks. Continue from a fresh task observation, preserving this
 accepted hierarchy and the preceding color/focus work.
 
+### Memory form reading and content sizing (2026-11-02)
+
+Scope is Project/User memory → short edit or deletion confirmation → cancellation
+and return → long draft → submission/refusal → original-result recovery → accepted
+read → Files and conversation return. The preceding scope batch records a
+high-zoom form-framing issue. A fresh old-source Wails baseline reproduces the
+short editor's six-row height and off-screen heading/identity at Chinese 18px,
+left-half/200%. Its deletion confirmation happens to fit on this entry; earlier
+scroll-dependent framing is not presented as a universal deletion failure.
+
+Memory now places each task's title, captured identity and main content in the
+existing RecordGroup. RecordForm retains section spacing before FormActions.
+The existing `data-focus-unit` marker opts the complete form into shared reading. The shared
+`readingUnitFor` chooses the outermost declared context that fits, then an inner
+fitting group, native label or control. It never crosses the caller's boundary.
+Panel and conversation reading retain geometry, clearances, clipping, pointer
+guards and later-focus ownership; no new listener, observer, focus state or marker
+variant is added. A long task therefore keeps its current field or action/feedback
+group readable instead of forcing the entire oversized form into one frame.
+
+Memory uses the public TextArea's existing autosizing owner with two initial rows
+and a 40dvh maximum, matching the established text-editor dialog limit. Shared
+TextArea owns input/value, width, font and height measurement, including internal
+scrolling. The plugin supplies one stable native style object: installed component
+ESM uses the SDK's Rolldown pipeline without a StyleX compilation pass. The host's
+shared UI still supplies all surfaces, spacing, type, color and focus treatment.
+RecordTitle, IDs/scopes/revisions, payloads, original keys/bindings, command and
+read lifecycles, drafts, IME/Escape and opener retirement are unchanged. Normal
+generation changes only Memory's installed component ESM. No API or data migration.
+
+Read-only Better-layout's grouping/alignment reference supports content spacing
+inside a task and section spacing before actions. HeroUI's actual textarea rows
+demo distinguishes short feedback from detailed notes. Flame reuses its own
+RecordGroup, FormActions and TextArea rather than importing another control system.
+Earlier ZCode, actual ChatGPT UI, Radix, Arc, semantic-color and Ace research keeps
+its recorded scope; static references do not establish focus or scroll behavior.
+
+Verification:
+
+- Baseline **70 Memory cases pass**. Final related Web run passes **8 files / 227
+  tests**, including those 70 and both conversation reading-follow files. The six
+  previous related files remain `visual/memoryDrafts.test.tsx`,
+  `visual/trajectoryNavigation.test.tsx`,
+  `src/features/plugins/ui/InstalledComponent.test.tsx`,
+  `src/ui/agent/context-dock.test.tsx`,
+  `src/features/workspace/adapters/contextDockStore.test.ts` and
+  `src/platform/desktopHost.test.ts`; this batch adds
+  `src/ui/agent/readingFollow.test.tsx` and
+  `src/ui/agent/readingFollow.visibility.test.tsx`. The frontend project and
+  `--no-file-parallelism` are explicit. No final test is skipped.
+- Complete `npm run check --workspace @flame/ui` passes build, both typechecks,
+  lint, formatting, **13 files / 224 tests**, and the independent packed UI/icons
+  consumer without host dependencies or a StyleX compiler. Four new real Panel /
+  RecordForm / FormActions geometry cases cover complete fitting context,
+  oversized-form fallback, feedback growth and the Panel body boundary. Two new
+  conversation cases distinguish fitting outer context from an oversized one.
+- Exact old-helper replay fails **2 Panel cases** and **1 conversation case**;
+  the oversized conversation case still passes. Each replay uses the normal UI
+  build, and `finally` restores and byte-checks the candidate before rebuilding.
+  Restored runs pass all **49 Panel** and **43 reading-visibility cases**. Tests
+  selected out of the negative controls are not excluded from final coverage.
+- Initial verification finds an introduced fixture error: its enclosing marker
+  becomes a 100px clip under Happy DOM's default computed style. The fixture now
+  explicitly declares visible overflow, preserving its boundary assertion and
+  matching the intended non-clipping ancestor. The independent package check
+  initially stops at ENOTCACHED. Caching **31 exact locked artifacts** only in
+  the private npm cache allows the unchanged offline check and final complete UI
+  command to pass. No check or assertion is weakened.
+- All **19 recorded gates** pass: complete UI check; Web/plugin types and lints;
+  plugin i18n and exact resource reproduction; supported `make check-native`; Web
+  design-system, tokens, chrome, locales, HMR, layers, styles, classes, shorthand,
+  bundle and installed-module guards. Native qualification takes **22.399 s**,
+  including Desktop Go test/vet/build and Wails staging/build. I18n covers 20
+  catalogs across eight locales. Known SDK-26/link-target-11 and duplicate-objc
+  warnings remain nonfatal; the private arm64 app targets macOS 13.0, SDK 26.5,
+  exact Wails v3.0.0 and Go 1.27.3. All builds run serially.
+- Bounded Claude Code CLI edits only the component, helper and Panel test. It
+  reaches its 24-turn limit (reported 25 turns, 149.037 s) without a final report.
+  Root reviews its actual diff, corrects the fixture/comment, adds the conversation
+  regression and documentation, then owns every check and native decision.
+
+The isolated native provider enters the actual public client and installed UI.
+It enforces exact read Scope/CWD/Cursor, captured ID/revision and immutable command
+binding/input. One original request is refused; the next updates its captured
+page once before an eight-second missing acknowledgement. A subsequent original
+lookup remains unknown, then a further same-key lookup returns the stored reply.
+This exercises presentation and consumer recovery without a real Runtime/backend,
+installation, user data, message submission or durability claim.
+
+Native acceptance passes:
+
+- English/light/Flame Orange, 14px, wide split: short Project editing shows title,
+  scope, full ID, field and actions together. Keyboard cancellation returns Edit;
+  deletion enters on Cancel and returns More on Escape. A User Add draft grows
+  to the cap, scrolls from its ending marker to line 1, shrinks after replacement
+  with short content, then cancels without a write. A 40-line User edit survives
+  refusal and both recovery queries. Save focus remains through its pending and
+  refused states; later Search focus survives unknown and successful recovery.
+  Accepted long deletion falls back to its action group; wheel scrolling still
+  reaches title, identity and line 1, and Escape restores More. Files → Memory
+  retains `shared`, expanded facts and the accepted record; the original
+  conversation draft remains editable without sending.
+- Chinese/dark/custom blue, 18px, native left-half/200%: fresh short Project edit
+  entry now shows its complete title, scope/ID, two-line content and Cancel/Save
+  together where the old six-row baseline hides identity. Short deletion shows
+  title, identity, body, consequence and actions together, entering Cancel.
+  A 40-line Chinese User draft has a bounded inner reader; real wheel reaches
+  line 1 and the ending marker remains present. At this size the whole form is
+  too tall, so pending/refused/unknown feedback stays with the active buttons.
+  Both same-key lookups finish while later Search retains focus and `shared`.
+  Files and explicit return preserve the User record and expanded facts.
+  Reopening the accepted edit exposes all 40 lines and the ending marker in AX;
+  continuous native 100%→200%→100% zoom preserves that field's focus/content and
+  the cap, then Escape returns Edit. The verified Chinese conversation draft
+  survives another Files/Memory return and remains editable. Unicode paste is
+  not physical IME qualification; an initial automation paste mismatch is replaced
+  and verified before the final Chinese draft-return check.
+
+| Domain        | Evidence inspected                                                              | Result                                                                                               |
+| ------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Accessibility | Shared geometry regressions, native Tab/Return/Escape and focus retirement      | Named tasks and exercised keyboard paths pass; later Search is preserved. VoiceOver is not verified. |
+| Layout        | Old/new native short entry, content grouping, long inner scrolling, resize/zoom | Complete fitting tasks stay together; oversized tasks retain usable inner groups.                    |
+| Writing       | Existing scope/command copy and canonical provider detail                       | Current vocabulary and exact identities remain intact; no new helper copy.                           |
+| Typography    | English 14px, Chinese 18px/200%, long IDs and 40-line content                   | Existing display title, wrapping and reading hierarchy remain intact.                                |
+| Color         | Light Orange and dark blue; focus, refusal and destructive action states        | Existing semantic tokens retained; fresh pixel contrast ratios are not verified.                     |
+| UI            | Native grow/shrink, cancellation, pending, recovery, material and draft return  | Existing transitions retain their owners; normal motion runs without new animation.                  |
+
+| Severity                 | Domain          | Location                                                   | Before                                                                                                                          | After                                                                                                                      | Why                                                                                                                             |
+| ------------------------ | --------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| MEDIUM · resolved        | Layout          | Memory `component.tsx`; UI `reading-unit.ts`               | Short content reserves six rows and separate section gaps; closest inner actions prevent complete fitting context.              | Existing record grouping, bounded autosizing and outermost fitting context keep short tasks readable together.             | The user needs to identify the object while editing or confirming it.                                                           |
+| Follow-up · unclassified | Keyboard/return | Retained Memory task and full-width workspace presentation | After automatic narrow-mode hiding, reopening the retained task focuses the view root; Escape there leaves the local form open. | Next: qualify this return contract against the presentation and task owners before deciding whether a change is warranted. | Local Escape works inside the editor/actions; explicit full-width views and inspected material have different return contracts. |
+
+Verdict: **Approve for Memory form reading and content sizing in the recorded
+tasks**. The retained-view return observation is separate and is not yet attributed
+as a regression or a confirmed defect. Not verified: other-language/platform native
+GUIs, VoiceOver, physical IME, fresh pixel contrast, 320px/RTL, reduced-motion rerun,
+real backend durability or committed deletion. No browser visual suite,
+performance benchmark, complete Web suite or unrelated Go suite runs.
+
+All three terminal-owned native launches exit 0; the exact executable audit is
+empty. Seven qualified source/resource inputs and **342 private native/fixture/
+asset inputs** stay unchanged through final acceptance. LaunchServices is
+unregistered. The private app, Web/home, CLI files, replay sources, configs,
+reviewed logs and disposable cache are removed. Nine checkout outputs and six
+private Library paths return to absent baselines. Only continuing CLI `bin` and
+npm `_npx` prerequisites remain; root dependencies, references, user data and
+unrelated processes are preserved. Fresh publication fetch finds no incoming main
+commits at `95b57b7e2`, with the primary checkout clean. This section travels with
+the qualified commit; delivery fast-forwards main, pushes, then rechecks remote,
+cleanliness and owned resources.
+
 ### Memory captured scope identity (2026-11-02)
 
 Scope is Project/User memory → record details → edit/cancel → deletion/cancel →
@@ -4877,13 +5030,13 @@ Native acceptance passes:
 | Color         | Existing muted metadata, light Orange and dark blue, focused Search and destructive confirmation     | Semantic tokens retained; fresh rendered contrast ratios are not verified.                                  |
 | UI            | Actual edit/cancel/delete/cancel/save/read/return with normal motion                                 | Existing task and command transitions remain intact; no new animation or decorative control.                |
 
-| Severity              | Domain  | Location                                                                                                | Before                                                                                                                                                                    | After                                                                                                                                     | Why                                                                                                                                                                                                       |
-| --------------------- | ------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| MEDIUM · resolved     | Writing | `plugins/memory/component/MemoryReport.tsx:221`, `component.tsx:301`                                    | Details expose the raw enum; update metadata omits its captured scope.                                                                                                    | Reuse localized scope names from the record alongside its full ID.                                                                        | Target navigation, record reading and editing need consistent object identity.                                                                                                                            |
-| MEDIUM · pre-existing | Layout  | `plugins/memory/component/component.tsx:235`, `component.tsx:296`, shared `packages/ui/src/form.tsx:33` | At 18px/200%, title, identity and content are independent form children with section gaps; entry focus on the textarea or Cancel places identity above the reading frame. | Next: inspect cohesive heading/identity/body grouping using existing record composition, then qualify full form entry and command states. | All content is reachable with visible scrolling, but reading the object and acting on it require separate frames. Delete's rendered identity/control structure is equivalent before and after this batch. |
+| Severity                | Domain  | Location                                                                                                | Before                                                                                                                                                                       | After                                                                    | Why                                                                                                                                   |
+| ----------------------- | ------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| MEDIUM · resolved       | Writing | `plugins/memory/component/MemoryReport.tsx:221`, `component.tsx:301`                                    | Details expose the raw enum; update metadata omits its captured scope.                                                                                                       | Reuse localized scope names from the record alongside its full ID.       | Target navigation, record reading and editing need consistent object identity.                                                        |
+| MEDIUM · resolved below | Layout  | `plugins/memory/component/component.tsx:235`, `component.tsx:296`, shared `packages/ui/src/form.tsx:33` | At 18px/200%, title, identity and content are independent form children with section gaps; entry focus on the textarea or Cancel can place identity above the reading frame. | Qualified under **Memory form reading and content sizing (2026-11-02)**. | All content was reachable with visible scrolling; the follow-up repairs grouping and fitting context without changing command owners. |
 
 Verdict: **Approve for captured scope identity in the recorded tasks**. The form
-framing finding remains next. This does not claim an award-level ceiling or
+framing follow-up is qualified above. This does not claim an award-level ceiling or
 all-language/platform coverage. Not verified: other-language/platform native GUIs,
 VoiceOver, physical IME, fresh pixel contrast, 320px/RTL, a reduced-motion rerun
 and live backend durability. No browser visual suite, performance benchmark,
