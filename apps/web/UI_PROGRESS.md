@@ -54,8 +54,10 @@ and native reading/return. Diagnostics classifications are qualified under
 **Diagnostics recorded classifications (2026-11-02)**, published as `8bf185f01`,
 preserving original evidence through native narrow/200% reading and file return.
 Shortcut capture now ends with its visible row under **Shortcut capture visibility
-and source lifetime (2026-11-02)**, preserving retained queries, saved bindings and
-ordinary command navigation.
+and source lifetime (2026-11-02)**, published as `f726d0ea6`, preserving retained
+queries, saved bindings and ordinary command navigation. Usage classification
+reading and local lookup are qualified under **Usage calling origins and
+association reading (2026-11-02)**.
 The latest goal restores
 preferred bounded Claude Code CLI implementation and verified batch publication to main. The desktop UI
 goal remains active. Earlier checkout names and publication/pause receipts below
@@ -5980,6 +5982,157 @@ below remain a historical record, not the current export-format contract.
   The private archive retains 67 UTF-8 evidence files and 21 capture hashes outside
   the repository. No migration is needed. That earlier checkpoint ended at the user's
   requested pause; the current explicit resume governs subsequent work.
+
+### Usage calling origins and association reading (2026-11-02)
+
+This resumed batch starts from published main `f726d0ea6`. Fresh actual Wails
+observations show `automatic`, `human`, `model`, `run`, `session` and `unattached`
+as headings inside otherwise Chinese Usage breakdowns. The current report-scope
+and local-control hierarchy above is already correct and remains. The MEDIUM
+reading gap is the meaning of a selected accounting classification, particularly
+`session`, which excludes attempts associated with a Run.
+
+The authoritative `packages/go-sdk/extension/invocation.go` validates Flame's
+three calling origins. Runtime's
+`internal/application/agent/sessions/usage_reporter.go` derives association from
+captured Session/Run identities, with Run taking precedence over Session. These
+sources are inspected read-only. `UsageBucket.key` remains an open string in the
+public wire contract; a provider/model identity or unfamiliar key is not a
+classification merely because its text resembles one.
+
+`plugins/usage/component/component.tsx` owns one small group-specific display
+vocabulary. The six known classifications now have labels in all eight catalogs:
+English Human, Model, Automatic, Run, Session only and Unattached; Chinese 用户、
+模型、自动、运行、仅关联会话、未关联. Local filtering matches the current display
+label or original key under its existing case-insensitive substring semantics.
+Provider/model identities, UTC day keys and unfamiliar values retain their raw
+text. Array membership keeps prototype-like keys ordinary values. Row identity,
+Runtime ordering, exact totals, known subtotals, recorded zeros, absent prices,
+coverage, details and the complete read/cancellation owner are unchanged. No
+state, effect, cache, listener, timer, new surface or shared API is added.
+
+Fresh read-only ZCode `settings/usage-stats/AppUsagePanel.tsx` and
+`usageStatsUiParts.tsx` demonstrate separate report scope and presentation
+formatting without replacing source identity. Its chart topology, compact-number
+precision, truncation and parallel queries are not adopted. Runtime supplies the
+actual classification meanings. Earlier ChatGPT, HeroUI/Radix, Arc and Ace studies
+retain their recorded roles; the preceding fresh Ace original-image comparison
+supports composition only, not classification or focus behavior. Better-writing
+keeps short meaningful names, while the six-domain review below covers the
+complete rendered task in Flame's existing UI and tokens.
+
+| Severity | Domain                   | Location                                                   | Before                                                         | After                                          | Why                                                                       |
+| -------- | ------------------------ | ---------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------- |
+| MEDIUM   | Writing / interpretation | `plugins/usage/component/component.tsx:83`, `:108`, `:195` | Classification codes require knowledge of accounting internals | Group-specific labels and label/raw-key lookup | Session-only association must remain distinguishable from Run association |
+
+#### Verification
+
+The bounded edit-only Claude Code CLI completes in **183.036 s**, reporting **45**
+turns and zero subagents. It changes exactly its eleven allowed handwritten files,
+with no commands, checks, builds, Git or browser. Root reviews the complete diff,
+all **48** added locale values, the ordinary six-attempt fixture and unchanged
+accounting/read expressions, then applies normal Prettier formatting. Only the
+normal Usage ESM changes on generation; the other **21 of 22** generated component
+resources remain byte-identical.
+
+- Baseline: **3 files / 13 tests** pass. Candidate focused coverage passes
+  **3 files / 15 tests**. Final related coverage passes **6 files / 129 tests**,
+  including installed components, workspace/subagent continuity and inspection.
+- Two new bilingual cases cover all six names, display-label and raw-code lookup,
+  case folding, empty recovery/Escape, a provider named `human`, unchanged model
+  identity, `constructor`/`__proto__` values, unchanged complete totals and row
+  quantities, no extra summary query for local choices, and immutable input.
+  The four existing range/refresh/zero-report/later-focus tests remain intact.
+- Negative control restores only the complete original component: **2 fail and
+  4 pass** in the full six-test file, without skips. Restoring the candidate
+  byte-for-byte passes **6/6** again.
+- Plugin typecheck/lint/i18n, exact resources, `make check-native` (**16.855 s**)
+  and Web typecheck/lint/design-system/tokens/chrome/locales/HMR/layers/bundle/
+  plugin-module checks all pass: **15 serial checks**, plus normal generation and
+  formatting. I18n checks **20 catalogs across 8 locales**. Production bundle
+  budgets pass. Existing macOS target/`-lobjc` linker warnings and the private
+  fixture chunk warning remain nonfatal.
+
+No contract, Runtime, SDK, persisted data, dependency, command, host source or
+shared UI changes. No persisted-data migration is required. Existing installations
+still need normal explicit selection of the rebuilt release. Full Web, unrelated
+Runtime/CLI/SDK and unchanged shared-UI suites are not repeated. No browser visual
+suite or performance benchmark runs; no valid assertion or gate is weakened.
+
+#### Actual native classification and return
+
+The signed current Wails v3.0.0 host uses the existing workspace and
+InstalledComponent. Final native assets import the normally generated Usage ESM;
+the original contrast imports its matching handwritten owner. A private data-only
+fixture supplies an ordinary public UsageSummary with **6** completed, reported,
+priced attempts: **USD 1.50**, **1,500** input and **600** output tokens. All five
+breakdowns reconcile; each origin/association bucket has two attempts, USD 0.50,
+500 input and 200 output tokens. No product handler, observer or focus driver is
+replaced. The private host changes only hosting, identity, entry, appearance and
+initial size, with its own home and inactive local endpoint. **12 source/resource
+inputs** and **344 host/config/fixture/bundle/asset inputs** match before and after
+both final native tasks.
+
+- EN/light/14 px/Flame Orange/full motion, initial **1120 px** minimum window:
+  establish a draft, then ordinary Tab reaches the Dock resizer and Home sets a
+  real **320 px** width. Provider `openai`, total 1.50, 1,500 input and 600 output
+  remain complete. Keyboard End/Return selects Association and exposes Run,
+  Session only and Unattached. `ONLY` filters Session only; ordinary Tab/Return
+  expands its complete **8/8** facts: 0.50, 2/2, 2/2, 500, 200, 0, 0, 0. Wheel
+  reading and raw query `SESSION` retain that expansion. Native window Zoom
+  visibly changes the frame while retaining query/focus/details. Files and Left
+  return to the same Usage query, group and expanded record; Refresh retains them
+  and its own focus. Escape clears only the local query. Keyboard Home/Down
+  chooses Calling origin, exposing Automatic, Human and Model. Picker Escape,
+  actual window restore and Cmd+L continue
+  `Keep the usage review draft. Continue after the source breakdown.` without Send.
+- ZH/dark/18 px/custom blue/full motion: twenty native Zoom In actions establish
+  **200%** at the minimum window. The existing full-width entry retains the
+  complete totals. Ordinary Tab reaches grouping with a visible focus indicator.
+  Calling origin shows 自动、用户、模型; queries `用户` and `HUMAN` find the same
+  用户 record. Escape clears the query; keyboard End selects Association with
+  运行、仅关联会话、未关联. Query `仅关联` finds the intended bucket. Tab/Return
+  and actual wheel scrolling reveal all **8/8** original facts and the complete
+  classification heading. Refresh keeps query, association, expansion and its own
+  focus. Panel-picker Down/Enter opens the eight-line file reader with its full
+  path; the explicit Usage return retains the same filtered expanded record.
+  Full-width Close and Cmd+L continue `用量阅读前的草稿。继续原任务。`. Twenty Zoom
+  Out actions restore Actual Size with the selected, filtered, expanded Usage
+  reader and original draft intact. No message or accounting mutation is sent.
+
+An external-input interruption during the original sidebar probe is excluded;
+fresh AX identifies the changed Dock state and the actual open control before
+continuing. No product workaround or acceptance claim is based on that probe.
+All three original/final launches quit normally with terminal exit zero. This
+qualifies current ESM presentation and local navigation over public contract data,
+not live accounting aggregation, installation/upgrade loading or provider usage.
+VoiceOver speech, physical OS IME, all locales natively, RTL/forced colors,
+other-platform GUI, fresh numeric contrast and reduced-motion timing are not
+newly qualified.
+
+| Domain        | Evidence inspected                                                                      | Scoped result                                                         |
+| ------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Accessibility | Named groups, ordinary Tab, Home/End/arrows, Return, Escape, visible focus and Cmd+L    | Reading, filtering and return pass; VoiceOver/physical IME unverified |
+| Layout        | Real 320 px Dock, native window Zoom/restore and Chinese minimum-window/200% full width | Classification, price, facts and recovery controls remain reachable   |
+| Writing       | Six authoritative classifications, eight catalogs and raw identities                    | Names preserve calling origin and Session-only meaning                |
+| Typography    | EN 14 px, ZH 18 px/200%, full heading/path and wrapped source                           | Existing type and complete identities retained                        |
+| Colors        | Orange/light and custom-blue/dark with existing focus/share treatment                   | Semantic tokens retained; contrast not remeasured                     |
+| UI polish     | Local lookup, disclosure, refresh, file/source return and continued draft               | Reading stays continuous without new motion or surface                |
+
+Goal CHECK review covers typography, whitespace, visual hierarchy, color, motion,
+micro interaction, responsive reading and Flame's existing visual identity within
+this inspected accounting task. No layout token, theme or animation is changed.
+**Approve for the inspected Usage classification and reading-return task**;
+whole-product and award-level acceptance remain open.
+
+Cleanup restores all **nine** fresh checkout output roots and **six** unique app
+Library paths to absence. The exact bundle is unregistered and owned native
+processes are zero. Private app, home, data fixture, overlays, assets, logs, CLI
+files and on-disk receipts are removed. Only the accepted private `bin` and
+`npm-cache/_npx` toolchain remain for continued work. Root dependencies, user data,
+shared caches, read-only references and unrelated processes are preserved.
+Publication uses fresh-fetch main guards, fast-forward and direct remote equality
+verification. Continue from fresh complete-task evidence.
 
 ### Generated SVG reading and source return
 

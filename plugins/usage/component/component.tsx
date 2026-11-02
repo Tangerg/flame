@@ -80,6 +80,14 @@ const GROUPS = [
   "byScope",
 ] as const;
 
+// Bucket keys are open strings; only these Runtime classifications are relabeled.
+const CLASSIFICATIONS: Partial<
+  Record<(typeof GROUPS)[number], readonly string[]>
+> = {
+  byOrigin: ["human", "model", "automatic"],
+  byScope: ["run", "session", "unattached"],
+};
+
 function UsageReport({
   report,
   group,
@@ -95,9 +103,16 @@ function UsageReport({
   t: Translate;
   fmt: Formatters;
 }) {
-  const buckets = report[group as (typeof GROUPS)[number]] ?? [];
+  const grouping = group as (typeof GROUPS)[number];
+  const buckets = report[grouping] ?? [];
+  const classifications = CLASSIFICATIONS[grouping] ?? [];
+  const label = (key: string) =>
+    classifications.includes(key) ? t(`bucket.${grouping}.${key}`) : key;
+  const query = filter.toLocaleLowerCase();
   const matching = buckets.filter((bucket) =>
-    bucket.key.toLocaleLowerCase().includes(filter.toLocaleLowerCase()),
+    [bucket.key, label(bucket.key)].some((text) =>
+      text.toLocaleLowerCase().includes(query),
+    ),
   );
   return (
     <>
@@ -177,7 +192,7 @@ function UsageReport({
             {matching.map((bucket) => (
               <ListRow key={bucket.key}>
                 <RecordHeading
-                  title={bucket.key}
+                  title={label(bucket.key)}
                   actions={
                     <MetricValue>
                       {t("bucket.costUsd", {

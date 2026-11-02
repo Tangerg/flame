@@ -27,7 +27,11 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-async function openUsage() {
+async function openUsage({
+  locale = "en",
+  report,
+  loaded = "Recorded usage loaded. All time.",
+}: { locale?: string; report?: typeof VISUAL_USAGE; loaded?: string } = {}) {
   const owner = new AbortController();
   const runtime = createFlameClient(
     createVisualRuntimeTransport(
@@ -38,11 +42,12 @@ async function openUsage() {
     { capabilities: () => VISUAL_CAPABILITIES },
   );
   const summary = vi.spyOn(runtime.usage, "summary");
+  if (report) summary.mockResolvedValueOnce(report);
   const context: ComponentContext = {
     component: { installationId: "usage-review", digest: "a".repeat(64), componentId: "usage" },
     runtime,
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
-    locale: "en",
+    locale,
     signal: owner.signal,
     track: (operation) => operation(owner.signal),
     saveFile: async () => "requested",
@@ -60,7 +65,7 @@ async function openUsage() {
     await runtime.close();
   });
   testClient.render(<Usage context={context} />);
-  await screen.findByText("Recorded usage loaded. All time.");
+  await screen.findByText(loaded);
   return summary;
 }
 
@@ -70,6 +75,139 @@ async function choose(name: string, label: string) {
   fireEvent.pointerDown(option, { pointerType: "mouse" });
   fireEvent.click(option);
 }
+
+function attempts(key: string, calls: number) {
+  return {
+    key,
+    total: { inputTokens: 250 * calls, outputTokens: 100 * calls, costUsd: calls / 4 },
+    recordedCostUsd: calls / 4,
+    coverage: {
+      calls,
+      reportedCalls: calls,
+      pricedCalls: calls,
+      startedCalls: 0,
+      completedCalls: calls,
+      failedCalls: 0,
+      unknownCalls: 0,
+    },
+  };
+}
+
+const CLASSIFIED: typeof VISUAL_USAGE = {
+  observedAt: "2026-10-20T00:00:00Z",
+  total: { inputTokens: 1500, outputTokens: 600, costUsd: 1.5 },
+  recordedCostUsd: 1.5,
+  coverage: {
+    calls: 6,
+    reportedCalls: 6,
+    pricedCalls: 6,
+    startedCalls: 0,
+    completedCalls: 6,
+    failedCalls: 0,
+    unknownCalls: 0,
+  },
+  byProvider: [attempts("human", 2), attempts("openai", 4)],
+  byModel: [attempts("human/echo-1", 2), attempts("openai/gpt-5.6-sol", 4)],
+  byDay: [attempts("2026-10-19", 6)],
+  byOrigin: [
+    attempts("human", 1),
+    attempts("model", 3),
+    attempts("automatic", 1),
+    attempts("constructor", 1),
+  ],
+  byScope: [
+    attempts("run", 2),
+    attempts("session", 2),
+    attempts("unattached", 1),
+    attempts("__proto__", 1),
+  ],
+  sessions: 3,
+  runs: 2,
+};
+
+function headings(name: string) {
+  return within(screen.getByRole("region", { name }))
+    .queryAllByRole("heading")
+    .map((heading) => heading.textContent);
+}
+
+it("names known calling origins and associations without changing accounting or reading again", async () => {
+  const accepted = structuredClone(CLASSIFIED);
+  const summary = await openUsage({ report: CLASSIFIED });
+  const rows = () => headings("Recorded usage by source");
+  const totals = screen.getByLabelText("Recorded usage totals");
+  const before = totals.textContent;
+  expect(before).toContain("1.50");
+  expect(before).toContain("1,500");
+  expect(before).toContain("600");
+  expect(rows()).toEqual(["human", "openai"]);
+
+  await choose("Group by", "Calling origin");
+  expect(rows()).toEqual(["Human", "Model", "Automatic", "constructor"]);
+  expect(screen.getByText("0.75 USD")).toBeTruthy();
+  expect(screen.getByText("3 attempts")).toBeTruthy();
+  expect(screen.getByText("750 known input")).toBeTruthy();
+  expect(screen.getByText("300 known output tokens")).toBeTruthy();
+  const filter = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter sources" });
+  fireEvent.change(filter, { target: { value: "AUTO" } });
+  expect(rows()).toEqual(["Automatic"]);
+
+  await choose("Group by", "Association");
+  expect(screen.getByText("No matching rows.")).toBeTruthy();
+  fireEvent.change(filter, { target: { value: "ONLY" } });
+  expect(rows()).toEqual(["Session only"]);
+  fireEvent.change(filter, { target: { value: "unattached" } });
+  expect(rows()).toEqual(["Unattached"]);
+  fireEvent.keyDown(filter, { key: "Escape" });
+  expect(filter.value).toBe("");
+  expect(rows()).toEqual(["Run", "Session only", "Unattached", "__proto__"]);
+
+  expect(totals.textContent).toBe(before);
+  expect(summary).toHaveBeenCalledOnce();
+  expect(CLASSIFIED).toEqual(accepted);
+});
+
+it("finds Chinese classification labels and original keys while other identities stay raw", async () => {
+  const accepted = structuredClone(CLASSIFIED);
+  const summary = await openUsage({
+    locale: "zh",
+    report: CLASSIFIED,
+    loaded: "已加载记录的用量。全部时间。",
+  });
+  const rows = () => headings("按来源记录的用量");
+  const totals = screen.getByLabelText("已记录用量合计");
+  const before = totals.textContent;
+  const filter = screen.getByRole<HTMLInputElement>("searchbox", { name: "筛选来源" });
+  fireEvent.change(filter, { target: { value: "用户" } });
+  expect(screen.getByText("没有匹配的行。")).toBeTruthy();
+  fireEvent.keyDown(filter, { key: "Escape" });
+  expect(rows()).toEqual(["human", "openai"]);
+
+  await choose("分组方式", "调用来源");
+  expect(rows()).toEqual(["用户", "模型", "自动", "constructor"]);
+  fireEvent.change(filter, { target: { value: "用户" } });
+  expect(rows()).toEqual(["用户"]);
+  fireEvent.change(filter, { target: { value: "Human" } });
+  expect(rows()).toEqual(["用户"]);
+  fireEvent.change(filter, { target: { value: "constructor" } });
+  expect(rows()).toEqual(["constructor"]);
+
+  await choose("分组方式", "关联");
+  fireEvent.change(filter, { target: { value: "仅关联" } });
+  expect(rows()).toEqual(["仅关联会话"]);
+  fireEvent.change(filter, { target: { value: "SESSION" } });
+  expect(rows()).toEqual(["仅关联会话"]);
+  fireEvent.change(filter, { target: { value: "__PROTO__" } });
+  expect(rows()).toEqual(["__proto__"]);
+  fireEvent.keyDown(filter, { key: "Escape" });
+  expect(rows()).toEqual(["运行", "仅关联会话", "未关联", "__proto__"]);
+
+  await choose("分组方式", "模型");
+  expect(rows()).toEqual(["human/echo-1", "openai/gpt-5.6-sol"]);
+  expect(totals.textContent).toBe(before);
+  expect(summary).toHaveBeenCalledOnce();
+  expect(CLASSIFIED).toEqual(accepted);
+});
 
 it("establishes the report range before local filters and preserves total meaning while filtering", async () => {
   const summary = await openUsage();
