@@ -17,11 +17,11 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-The latest control follow-up bounds neutral Badge and soft Button depth against
-their existing inks; see **Palette-owned neutral control depth (2026-11-03)**.
-Preserve the preceding **Palette-owned code contrast and status reading
-(2026-11-03)** qualifications. The whole-product goal and the earlier native input
-limitations remain open.
+The latest follow-up validates actual full-motion reading and rejects misspelled
+fixture modes; see **Validated motion and field-reading evidence (2026-11-03)**.
+It corrects two earlier English motion labels while preserving the neutral control
+depth and code/status contrast repairs. The whole-product goal and the earlier
+native input limitations remain open.
 
 The 2026-11-02 resume uses the new managed worktree
 `/Users/tangerg/.codex/worktrees/flame-ui-polish/flame` on
@@ -27640,7 +27640,12 @@ The passive observer is retired before the final build; its expected cleanup
 exit is 143. Final HTML has no private injection and both loopback ports are
 closed. Three observer-free tasks pass:
 
-- EN/light/14px/Orange/full motion/contrast 25: filter, document, Escape to the
+Motion-label correction (2026-11-03): both English URLs used `motion=on`, which
+this entry mapped to zero. Their content, color and interaction evidence stands
+with motion disabled. Actual full-motion acceptance is supplied by **Validated
+motion and field-reading evidence (2026-11-03)** below.
+
+- EN/light/14px/Orange/motion disabled/contrast 25: filter, document, Escape to the
   retained query and original row, library states, forward keyboard focus and
   an editable unsent English draft.
 - ZH/custom dark/18px/blue/reduced motion/contrast 25 at native 200%: the existing
@@ -27649,7 +27654,7 @@ closed. Three observer-free tasks pass:
   Library Archive and Restore are separately reachable and visibly focused.
   Another Escape returns to conversation, then Cmd+L and committed Chinese input
   continue the unsent draft.
-- EN/built-in dark/14px/Orange/full motion/contrast 100: document identity, Escape
+- EN/built-in dark/14px/Orange/motion disabled/contrast 100: document identity, Escape
   to its opening row, library states, keyboard focus and an editable unsent draft.
 
 All **six** native launches exit normally. All **1,231 final frozen inputs** and
@@ -27676,6 +27681,116 @@ exact private app registration, its six baseline-absent UID Library paths and
 Ports 49861/49862 and all owned processes must be closed before removal. Preserve
 the 123-byte interrupted-draft backup and its original SHA-256, root dependencies,
 shared toolchain/cache, references and user data. Keep this worktree and goal active.
+
+### Validated motion and field-reading evidence (2026-11-03)
+
+This batch starts from synchronized main `ee3740159`. It follows the existing
+Skills reading task through search, document/provenance, source return, library
+actions, model-picker cancellation and continued drafting. The production UI,
+palette, Composer, reasoning, Runtime and command behavior remain unchanged.
+
+#### Corrected evidence and input ownership
+
+The previous batch's two English URLs used `motion=on`. The visual entry only
+recognized `full` and silently mapped everything else to zero. A native control
+on the unchanged source confirms query `on`, scale **0**, `data-motion="off"`,
+system reduced-motion media **false**, and zero recorded motion events. Those
+earlier English motion labels are corrected above; their other evidence remains
+bounded to what actually ran.
+
+`visual/motion.ts` now owns the validated `0 | 1` projection: omitted and `off`
+retain zero, `full` returns one, and every other provided string throws a fixed
+English diagnostic without echoing URL contents. `visual/main.tsx` consumes this
+owner instead of its permissive expression. The fixture README documents the
+contract and corrects its unsupported claim that current benchmark URLs enable
+motion. Historical timing values are unchanged; no benchmark is run.
+
+Claude Code CLI completes the four-path detail change in **46.706 s / 17 turns**.
+Parent review removes an unnecessary exported type alias and owns verification,
+the handoff correction, native acceptance and publication. No new motion style,
+preference, component API, dependency or production debug route is introduced.
+
+#### Verification
+
+- The **10** focused query tests pass. Restoring the original permissive mapping
+  makes all **7** invalid-value cases fail, including `on`, empty, casing,
+  whitespace and non-echo behavior. Candidate bytes are restored afterward.
+- All **25** non-Runtime Web gates pass. Full frontend regression passes **424
+  files / 4,442 tests** in **196.071 s**. Builds and consuming tests run in separate
+  phases. No browser visual suite, benchmark or full Runtime rerun is used.
+- The corrected private production-tag Wails host builds and signs in **3.406 s**.
+  Its first setup build rejects an unsupported option field; the actual `Name`
+  field carries the private identity afterward. A private observer response-method
+  collision is also repaired before accepted observations. These are harness
+  setup failures, not product-check failures. The full `make check-native` is not
+  rerun because production Go and UI sources are unchanged from the preceding
+  qualified commit.
+
+#### Actual native motion and complete tasks
+
+The isolated host retains production Wails v3 services, zoom, closing hooks and
+Aqua chrome. Only identity/home, unavailable Runtime endpoint, private asset
+entry/root and initial/minimum geometry differ. Production views and installed
+Tool-results ESM consume canonical fixture snapshots rather than live provider
+execution. All native inputs use CUA.
+
+Each observed positive scene records `motion=full`, rendered scale **1**, no
+`data-motion="off"` attribute and system reduced-motion media **false**. Saved
+task observations include **28**, **31** and **32** nonzero transition-end events
+respectively, including real button color/fill and Composer focus transitions.
+The bounded event buffer establishes active motion, not performance or frame-rate
+quality.
+
+- EN/light/14px/Orange/contrast 25: Escape clears search without leaving Skills;
+  document/provenance returns preserve query and original row. Escape followed
+  immediately by Tab reaches the next workspace control. Model-picker Escape
+  followed by immediate Tab reaches reasoning effort. Native window Zoom/restore
+  returns to the original 1120 x 755 viewport, preserving focus and the complete,
+  editable 34-character draft after the geometry settles.
+- EN/built-in dark/14px/Orange/contrast 100: filtered document, quick return/Tab,
+  library hover and keyboard focus, then a complete editable 35-character draft.
+- ZH/custom dark `#505967` / `#f0f4fb`/18px/blue/contrast 25 at native 200%:
+  the measured viewport is **560 x 377**, DPR **4**. The existing narrow-window
+  action opens full-width material. Document end and provenance, retained query
+  and row return, Archive/Restore keyboard focus, material Escape and continued
+  Chinese drafting all pass with actual motion enabled.
+
+After retiring the observer, final HTML contains no private injection and both
+loopback ports are closed. Observer-free EN/light/14px and ZH/custom-dark/18px/200%
+tasks repeat the complete reading/return path. Both also pass model-picker
+cancellation followed by immediate Tab; the 200% popup keeps its search, current
+model and refresh action visible. No passive measurements are claimed for these
+final controls. All **six** native launches exit normally. All **1,232 final
+frozen inputs**, including the new runtime helper, and **22 installed JavaScript
+resources** retain their hashes. No lifecycle action, model selection, Send,
+approval, Copy, regenerate or external-link action is activated.
+
+#### Field-paint limit and continuing handoff
+
+Declared faint-ink/sunken calculations pass for the inspected admitted built-in
+and custom palettes. Native placeholder paint remains **unverified**: this host
+returns the input's own color for `::placeholder`, its prefixed alias and the
+legacy query spelling. The private analysis rejects those unresolved pseudo
+readings rather than certifying them as actual glyph foregrounds. This does not
+invalidate the preceding ordinary text-node paint measurements. No failing
+product placeholder pair is established, and no global faint-ink or accepted
+Composer/reasoning appearance change is made. A trustworthy placeholder-renderer
+measurement is the trigger for further color work.
+
+Preserve the earlier native reverse-Tab and Runtime recovery limits. Physical
+IME, VoiceOver audio, whole-document RTL, 320 CSS-pixel layout, other-platform GUI
+and whole-product award-tier acceptance remain unverified. Native Chinese value
+commitment does not qualify physical IME. There is no data migration.
+
+Publication verifies normal hooks, clean checkout heads, guarded main fast-forward,
+push and direct remote equality. Cleanup is limited to the nine baseline-absent
+checkout output roots, exact private app registration, six baseline-absent UID
+Library paths and the `flame-ui-fields-yuepixj5` app/home/assets/overlays/CLI/
+observer/log/cache root. Both observers are retired by exact identity; ports
+62301/62302 must stay closed. Preserve the 123-byte interrupted-draft backup and
+original SHA-256, root dependencies, shared toolchain/cache, references and user
+data. Continue with observed retained-detail tasks; keep this worktree and goal
+active.
 
 ## Workspace file browser audit
 

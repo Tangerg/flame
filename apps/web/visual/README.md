@@ -100,10 +100,17 @@ Useful routes:
 - `/visual/?fixture=agent&theme=light&state=long-content&font-size=18`
 - `/visual/?fixture=shell&theme=light&state=populated&motion=full`
 
+Motion is off unless the query sets `motion=full`; `motion=off` is the explicit
+default. Any other value, including `on` or an empty value, stops the fixture
+with an error instead of silently running without motion.
+For motion qualification, also inspect the rendered scale and platform
+reduced-motion preference.
+
 ## Interaction baseline
 
 `npm run perf:baseline` builds this entry for production, serves it with
-`vite preview`, and runs `*.perf.spec.ts` in one Chromium worker with motion on.
+`vite preview`, and runs `*.perf.spec.ts` in one Chromium worker with each
+scenario's URL parameters.
 Each scenario is repeated `FLAME_PERF_SAMPLES` times (default 5) on a fresh
 navigation and reported as p50/p90/max, both on the console and as JSON under
 `out/web/perf/`. Compare runs only from the same machine and build.

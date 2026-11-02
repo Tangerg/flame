@@ -47,6 +47,7 @@ import "@/styles/overlays.css";
 import "@/styles/globals.css";
 import { loadPluginsForTest } from "@/test/kernel";
 import { VISUAL_NOW } from "./agentFixtureFacts";
+import { fixtureMotionScale } from "./motion";
 type FixtureTheme = "light" | "dark";
 
 const VISUAL_CLOCK_STARTED_AT = performance.now();
@@ -110,7 +111,7 @@ const workspaceState: VisualWorkspaceState = isVisualWorkspaceState(requestedSta
 
 const rootElement = document.documentElement;
 
-const motionScale = query.get("motion") === "full" ? 1 : 0;
+const motionScale = fixtureMotionScale(query.get("motion"));
 
 function extendRecordedSource(snapshot: RuntimeAgentSessionSnapshot) {
   if (!query.has("long-result")) return;
