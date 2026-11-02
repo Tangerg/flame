@@ -1,9 +1,9 @@
 import { iconGlyph } from "@/ui/icons/index";
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { FileReferencePresentationContext } from "@/features/workspace/public/FileRefLink";
 import { copyRichText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n/index";
-import { useCopyFeedback } from "@flame/ui";
+import { useContentVisible, useCopyFeedback } from "@flame/ui";
 import { LightboxDialog } from "@flame/ui";
 import { IconButton } from "@flame/ui";
 import { useScrollReach } from "@/ui/atoms/use-scroll-reach";
@@ -20,6 +20,41 @@ export function MarkdownTable({ markdownSource, children }: Props) {
   const previewOpen = preview === "open";
   const expandRef = useRef<HTMLButtonElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const visible = useContentVisible();
+  useLayoutEffect(() => {
+    const root = frameRef.current;
+    const actions = actionsRef.current;
+    const table = tableRef.current;
+    if (!visible || !root || !actions || !table) return;
+    const head = table.querySelector(":scope > thead");
+    const cell = table.querySelector(":scope > tbody > tr > :is(td, th)");
+    // A small reading budget must not let the sticky header cover every body line.
+    const measure = () => {
+      let height =
+        actions.getBoundingClientRect().height +
+        parseFloat(getComputedStyle(root).rowGap) +
+        (head?.getBoundingClientRect().height ?? 0);
+      if (cell) {
+        const line = getComputedStyle(cell);
+        height +=
+          parseFloat(line.lineHeight) +
+          parseFloat(line.paddingBlockStart) +
+          parseFloat(line.paddingBlockEnd);
+      }
+      root.style.setProperty("--table-min-height", `${height}px`);
+    };
+    measure();
+    const resize = new ResizeObserver(measure);
+    resize.observe(actions);
+    if (head) resize.observe(head);
+    if (cell) resize.observe(cell);
+    return () => {
+      resize.disconnect();
+      root.style.removeProperty("--table-min-height");
+    };
+  }, [children, visible]);
   const writeTable = useCallback(
     (plainText: string) =>
       copyRichText({
@@ -31,8 +66,19 @@ export function MarkdownTable({ markdownSource, children }: Props) {
   const { copied, copy } = useCopyFeedback(markdownSource, 1500, writeTable);
 
   return (
-    <div className="md-table-container" data-markdown-table tabIndex={-1}>
-      <div className="md-table-actions" data-reveal="hover" data-markdown-copy="exclude">
+    <div
+      ref={frameRef}
+      className="md-table-container"
+      data-markdown-table
+      data-focus-unit=""
+      tabIndex={-1}
+    >
+      <div
+        ref={actionsRef}
+        className="md-table-actions"
+        data-reveal="hover"
+        data-markdown-copy="exclude"
+      >
         <LightboxDialog
           open={previewOpen}
           onOpenChange={(open) => setPreview(open ? "open" : "closed")}

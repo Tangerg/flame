@@ -215,6 +215,13 @@ changes; hiding or unmounting the transcript removes it. Shared code frames use
 that inherited budget while native source scrolling, selection and later focus
 keep their existing owners.
 
+Inline Markdown tables consume the same safe height, with their actions and
+reader forming one fitting reading unit. Each table measures only its intrinsic
+minimum: actions, header and one padded body line. When that minimum exceeds the
+available height, focused controls remain reachable and the existing preview
+provides a separate reading space. The normal table reader, preview, selection
+and scroll owners remain separate from the budget projection.
+
 Transcript turns render normally so history stays readable across native page
 zoom and material return. Message turns do not use off-screen paint skipping such
 as `content-visibility: auto`.

@@ -26943,6 +26943,164 @@ assets, overlays, references, CLI material, logs, prepared Node and npm cache.
 It is removed after guarded main fast-forward, push and direct remote equality
 verification. Keep this worktree for the active, continuing goal.
 
+### Historical table reading within the available space (2026-11-03)
+
+A fresh fetch and `git merge --ff-only origin/main` find main current at
+`13eaf5437`. This batch follows an actual historical reading task: retain a
+draft -> compare the earlier Strategy comparison -> expand the table -> return
+-> open the retained material -> resize -> continue the same draft.
+The existing `narrative` snapshot contains the four-column comparison before
+later user and assistant turns. The long table/code snapshots are tail answers;
+they are useful regressions, but do not establish this historical path.
+No fixture data is changed.
+
+The original Wails host, without diagnostic observers, reproduces the defect in Chinese, dark
+theme, 18 px type, custom blue and reduced motion. At native 200%, keyboard End
+in Table content leaves the final wrapped `replay queue` line under Composer.
+One further Down moves the outer transcript and reveals it, while the header
+and actions leave the reading area. This is an oversized reading context,
+rather than a keyboard trap.
+
+| Severity       | Domain             | Owner                                          | Repair                                                                                                                                                                                                              |
+| -------------- | ------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HIGH, repaired | Responsive reading | `src/styles/markdown.css`, `MarkdownTable.tsx` | Bound the complete table frame by the existing safe reading height and declare its actions/reader as one fitting focus unit. Retain an intrinsic minimum so a wrapped sticky header cannot consume every body line. |
+
+The transcript's existing `useReadingFocusVisibility` remains the sole owner
+of available reading height. Tables consume its inherited budget, with the
+existing panel/disclosure/control clearance. Their normal reader still has its
+`min(28rem, 60vh)` cap, native scrolling and sticky header. A local
+ResizeObserver measures only the table's own minimum: actual actions and gap,
+actual header, and one padded body line. It reattaches to replaced children and
+disconnects/removes its projection when hidden or unmounted. It does not
+calculate another viewport budget or originate focus/scroll transitions.
+
+The first Grid candidate is rejected in actual Wails: the frame shrinks but
+the start-aligned reader overflows it and overlaps the following Sampled
+paragraph. Stretching the reader fixes that overlap, but a wrapped header then
+leaves no body line. The final explicit minimum addresses that second native
+failure. Both rejected launches and the original exit normally. No key
+handler, manual scroll, engine branch, timer, new React state, dependency or policy
+fallback is introduced. Existing copy, preview, navigation, selection,
+Composer, table styling and Runtime command owners remain unchanged.
+
+Read-only ZCode `packages/ui/src/components/ai-elements/markdown-table.tsx`
+supports keeping table actions, scrolling and preview distinct; its shadow
+and virtual-scrollbar machinery is not copied. Flame's existing CodeFrame
+minimum and shared reading-unit contract provide the local ownership model.
+The continued better-interface/layout review applies grouping, reflow and
+reachable controls. Earlier ChatGPT, HeroUI, Arc, Radix and Ace research retains
+its recorded scope; source filenames or static images are not new keyboard
+evidence. No reference repository is edited.
+
+Three bounded edit-only Claude Code CLI runs take 29.934, 50.869 and 64.161 s
+(13, 16 and 12 turns; zero permission denials). Root reviews the real diff and
+owns the native rejections, final query-selector correction, tests and delivery.
+The initial minimum used DOM table collections unsupported by HappyDOM;
+the existing query-selector idiom repairs that test-environment access without
+a polyfill or a production fallback.
+
+The first 420-file / 4,376-test frontend run passes, then the layer gate rejects
+the new consumer tests importing private Chat code from shared UI. The tests
+move into `MarkdownTable.reading.test.tsx`. The existing geometry scenario is
+reused from `src/test/readingFocusScenario.tsx`, with an explicit TestClient;
+all original shared reading assertions remain byte-identical. The design-system
+gate then requires the extracted scene to compose the existing TextField and
+ButtonPrimitive rather than authoring native controls outside their owner.
+Those two substitutions preserve the geometry scenario and its assertions;
+no gate or production control is changed. Locale checks also keep the test labels
+and draft value in their actual case files, passed explicitly into that scene;
+no user-facing catalog entry is added for fixture data. The cases check
+that fitting table rows remain visible beside a focused action after reflow
+and that later draft focus/value/position survive. Restoring the original
+component makes the real consumer context test fail as expected (bottom 300
+instead of 220); the candidate bytes are restored before final checks.
+This is focus/geometry regression evidence, not HappyDOM paint qualification.
+
+#### Final verification and native boundaries
+
+The complete frontend run passes **421 files / 4,376 tests** in **98.73 s**.
+After the final test-data placement, all affected shared/consumer/Markdown cases
+pass again: **four files / 112 tests**. All **25 Web non-test gates** pass,
+including dependency/layer boundaries, design-system ownership, styles/tokens,
+locales, plugin resources, production bundle and module linkage.
+`make check-native` passes in **23.123 s**, including Web staging, Desktop
+test/vet/build and the production Wails macOS build. Existing macOS linker
+target warnings remain nonfatal. `git diff --check` passes. No browser visual
+suite or performance benchmark runs. The earlier Runtime complete-suite
+qualification limit is retained; unrelated backend/SDK suites are not broadened.
+
+The staged private host uses actual Wails v3.0.0 / Go 1.27.3, production
+navigation and closing hooks, and the real MarkdownTable/CSS. The private
+identity, isolated home/loopback endpoint, assets, entry and initial/minimum
+1120 x 720 configuration are the host differences. The normal generated
+Tool-results ESM is selected for fixture hosting; there is no data override,
+diagnostic observer or handler substitution. Staging passes in 7.912 s;
+the native compile/sign/strict verification pass (3.848 s compile), and the
+final private asset build passes in 3.050 s. All 342 runtime input hashes
+(two product files, six private host/config/bundle inputs and 334 assets)
+match after acceptance. Later changes affect only documentation and test
+placement. All 22 installed JavaScript resources retain their baseline hashes.
+
+- ZH/dark/18 px/custom blue/reduced motion repeats the original historical
+  comparison at 200%. The corrected reader exposes the closing wrapped line;
+  Home reveals the complete first row. Keyboard return reaches Expand table,
+  Enter opens the independent preview, and End plus native horizontal arrows
+  reach the final strategy and Cost column. Escape alone restores the original
+  Expand action. The retained DockResizer.tsx opens full width and Escape
+  returns to the table. Native window Zoom/restore preserves readable history.
+- With a four-line Chinese draft at 200%, the available inline space is smaller
+  than the table's intrinsic header/body minimum. A complete wrapped row and
+  its values are not certified together inline. Shift+Tab returns to the visible
+  Expand action; its preview supplies independent reading space and reaches the
+  final values. Escape restores the action. Actual Size restores the Dock and
+  nonblank history; Cmd+L continues the retained draft with committed native
+  input. Value-setting plus native commitment is not physical IME coverage.
+- EN/light/14 px/Flame Orange/full motion qualifies all four comparison rows,
+  the independent preview and Escape return, pointer Dock resize (500 -> 394),
+  keyboard Home/End (320/680), retained file full-width reading and Escape
+  return, then continuation of the original two-line draft. The first pointer
+  attempt to focus the splitter leaves focus on Expand; only the later Tab
+  entry and observed value changes qualify keyboard resize.
+- The existing 80-row tail snapshot separately qualifies the normal long-table
+  cap, inner native wheel, sticky header, keyboard End to Observation 80,
+  preview End and ordinary Escape return. Following prose remains separate;
+  this tail regression is not presented as historical-turn evidence.
+
+All three final launches exit normally with terminal exit zero; the six owned
+native launches in the batch are dead. The fixture proves UI identity, reading,
+navigation, focus and draft continuity. Its retained file is canned eight-line
+content, independent of path; live filesystem/Runtime/provider behavior is not
+qualified. No Send, Copy, approval, Run or external-link action is activated.
+
+#### Review and continuing handoff
+
+The scoped CHECK review covers typography, whitespace, hierarchy, color,
+motion, micro interaction, responsive reading and the retained Flame identity.
+Normal and large type retain the existing tokens and numeric/table treatment;
+no new product labels or palette are needed. Preview and material return retain
+their existing focus boundaries. Full-motion timing, rendered contrast,
+VoiceOver, physical IME, RTL, other-platform native UI, all table shapes and
+whole-product/award-tier acceptance are not newly qualified. The inspected
+historical-table reading flow is accepted within the inline-space limit above.
+
+The earlier minimal-native pointer-entry reverse-Tab boundary and complete
+Runtime recovery-suite failure remain open with their preceding qualifications.
+This batch does not change those owners or rerun the unrelated Runtime suite;
+it does not claim a green complete repository check. No data migration is
+required. Continue from observed tasks, next checking historical code or other
+wide material through the same read -> detail -> reflow -> draft path. Preserve
+the accepted reasoning, Composer, table/code boundaries, selection, radii and
+theme/custom-accent work.
+
+Cleanup restores the nine baseline-absent checkout outputs and six unique-UID
+Library paths, unregisters the exact private bundle, and verifies the owned
+processes and isolated listener are absent. Root dependencies, shared caches,
+references, user data and the reusable prior toolchain/cache remain intact;
+the earlier interrupted-draft backup retains 123 bytes and its original SHA-256.
+After guarded main fast-forward, push and direct remote equality verification,
+the owned private app/home/assets/archives/overlays/CLI material/logs/npm cache
+root is removed. Keep this worktree and the goal active for continued polish.
+
 ## Workspace file browser audit
 
 The earlier file-browser audit established path-based tree/list keys, read
