@@ -17,6 +17,13 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Shared form control tops remain aligned beneath wrapped labels (`d6e6dab34`),
+resized Settings navigation reveals its selected category (`d5b10e146`), and MCP
+read recovery retains its initiating focus (`264e82fd4`). Their actual native
+tasks, checks and boundaries are recorded in their Settings chapters. The native
+no-result search follow-up below reproduces successful keyboard/pointer recovery,
+so its existing implementation is retained. The whole-product goal remains active.
+
 Diff filenames and same-row reader actions now share their first text baseline;
 see **Diff filename and reader-action alignment (2026-11-03)**. Actual Wails
 qualifies normal and long headers, 320 px wrapping, Chinese 18 px/200%, filtered
@@ -9213,6 +9220,77 @@ hook passes without changing the qualified production, test or resource bytes.
 The observed Deliverables catalog-to-inspector discontinuity is subsequently
 qualified under **Catalog opening and the revision reading entry (2026-11-03)**.
 The shared alignment repair remains with the four owners above.
+
+### Native Settings no-result recovery inspection (2026-11-04)
+
+Read-only follow-up on synchronized main `264e82fd4`. The prior native tree
+folded the unfocused inline Clear search into the Settings tab-group value.
+Actual task verification does not reproduce a keyboard or pointer recovery
+failure, so no product code, shared API, ARIA, layout or test is changed.
+
+The real call path is SettingsPage's query and existing Clear callback through
+VerticalTabs, TextButton and shared ButtonPrimitive. The inline callback clears
+the existing query and focuses its SearchField. Base UI's actual TabsList is
+read as a composite-semantics reference, not a substitute for native evidence.
+The active Settings pane, retained content and draft stay with their existing
+owners when filtering hides every category.
+
+Actual Wails inspection uses current production Settings and installed MCP ESM:
+
+- **English/light/14px/Orange/full motion:** retain an unsent Composer and open
+  an MCP Description draft. Search `no-settings-match-qa`. Option+Tab reaches
+  the header clear button, then the visible inline Clear search; its focused
+  native object is a named button. Return at 100% clears and returns focus to
+  Search. Repeat at native 200% and a 2244 × 1798 window: the inline control is
+  visible, named and focused; Space clears and restores Search. MCP remains
+  selected and the Description remains exact. Continued input yields
+  `Retain this settings search draft checked.` Keyboard Cancel returns to Edit;
+  Close/Cmd+0 retain the original Composer for
+  `Continue after clearing the settings search. Search verified.`
+- **Chinese/dark/18px/Blue/motion off, native 200%, 2244 × 1798:** retain
+  Appearance while searching `没有匹配的设置核对`. Two Option+Tabs reach the
+  visible, named 清除搜索 button. Return clears and focuses Search. A repeated
+  query followed by pointer activation of the header clear also restores Search.
+  Appearance stays selected; Close/Cmd+0 retain the original Composer for
+  `清除搜索后继续。 已核对。`
+- **German/light/18px/Purple/motion off, native 200%, 2244 × 1798:** retain
+  Darstellung while searching `Keine-passende-Einstellung-qa`. The localized
+  notice and inline Suche löschen remain visible. Native Option+Tab reaches its
+  named button; Space clears and restores Search. Pointer activation of the
+  focused inline button also clears and restores Search. Close/Cmd+0 retain the
+  original Composer for `Nach dem Leeren weiterschreiben. Suche geprüft.`
+
+All three processes exit normally with code 0 in **120.088 / 50.745 / 76.841 s**.
+The off-focus AX flattening remains an observation; focused semantics and real
+Return/Space/pointer recovery succeed. VoiceOver speech and rotor discovery
+remain unverified. No accessible-name or screen-reader defect is inferred from
+the tree alone. A target lookup initially could not parse the appended focused
+AX line; it issued no click, and using that current focus index completes the
+pointer check. No product failure is hidden by that harness correction.
+
+The current Settings baseline passes **1 file / 13 tests**, command 1.944 s;
+stage-web passes in 7.176 s, private Web assets in 1.955 s and the private native
+host in 1.026 s. Product bytes match the published MCP batch's **6,804 inputs**
+and all **22 installed resources**, so its full **424-file / 4,543-test** frontend,
+MCP **5-file / 104-test** result and all **27 serial gates** are reused, not rerun.
+No implementation CLI is needed for this read-only inspection. Documentation
+formatting, diff checks and normal staged lint hooks still apply to publication.
+No browser visual suite, performance benchmark, live Runtime/producer, policy or
+configuration write, Send or injected DOM is used. Motion timing, contrast,
+physical IME, other platforms and all product states remain unverified.
+
+**No actionable keyboard recovery findings in the inspected task. Approve for
+the observed native keyboard/pointer paths only.** The whole-product award-tier
+goal remains active. Continue inspecting Appearance control opening, reading and
+return at large text; literal contributed theme names are not translation keys.
+
+Final guards verify the same **333 Web / 4 app / 21 private host files**, the
+read-only reference, zero remaining native processes and the inactive endpoint.
+Cleanup unregisters the owned app, restores all ten initially absent checkout
+roots and six UID-specific Library roots, removes the exact qualification root,
+and preserves both existing UI caches and the protected 123-byte draft exactly.
+Preserved in-thread evidence: **69 text records / 35 capture hashes**; gzip SHA-256
+`717fc3a503bdf75863ceee47d6c4de14a026a61f61549ac4442efdb21ada5a6f`.
 
 ### MCP read recovery action continuity (2026-11-04)
 
