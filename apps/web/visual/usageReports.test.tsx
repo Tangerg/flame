@@ -12,7 +12,7 @@ prepareTestClient(() => {
 });
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { stringifyJSON } from "@qimu/sdk/json";
+import { ExactNumber, stringifyJSON, type JSONNumber } from "@qimu/sdk/json";
 import {
   createFlameClient,
   MutationLookupError,
@@ -103,6 +103,7 @@ const original = (method: string, recover: PluginCommandRecovery["recover"]) => 
 function mount(
   handle: (request: Call) => Promise<CallPluginResponse>,
   pending: () => PluginCommandRecovery[] = () => [],
+  locale = "en",
 ) {
   const owner = new AbortController();
   const runtime = createFlameClient(
@@ -126,7 +127,7 @@ function mount(
     binding,
     runtime,
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
-    locale: "en",
+    locale,
     signal: owner.signal,
     track: (operation) => operation(owner.signal),
     saveFile: async () => "requested",
@@ -458,6 +459,123 @@ it("retires a pending report refresh on Back and returns to the same archive row
     daily.id,
   ]);
 });
+
+const usageDay = (key: string, cost?: JSONNumber) => ({
+  key,
+  total: { inputTokens: 1, outputTokens: 1, ...(cost === undefined ? {} : { costUsd: cost }) },
+  ...(cost === undefined ? {} : { recordedCostUsd: cost }),
+  coverage: {
+    calls: 1,
+    reportedCalls: 1,
+    pricedCalls: cost === undefined ? 0 : 1,
+    startedCalls: 0,
+    completedCalls: 1,
+    failedCalls: 0,
+    unknownCalls: 0,
+  },
+});
+
+const withSummary = (header: Header, summary: Partial<Report["summary"]>): Report => {
+  const report = saved(header);
+  return { ...report, summary: { ...report.summary, ...summary } };
+};
+
+const facts = (term: string) =>
+  screen
+    .getAllByText(term, { selector: "dt" })
+    .map((label) => label.nextElementSibling!.textContent);
+
+it.each([
+  {
+    locale: "en",
+    weeklyView: /^View report: Weekly report · /,
+    dailyView: /^View report: Daily report · /,
+    back: "Back to archive",
+    breakdown: "Daily core breakdown",
+    input: "Known input tokens",
+    subtotal: "Known price subtotal (USD)",
+    totalCost: "Total cost (USD)",
+    notReported: "Not reported",
+    tiny: "0.0000004",
+    wide: "9,007,199,254,740,993",
+    rows: [
+      "1 attempts · 0.0000004 known USD",
+      "1 attempts · 0 known USD",
+      "1 attempts · 1.5 known USD",
+      "1 attempts · 0.10000000000000000001 known USD",
+    ],
+  },
+  {
+    locale: "de",
+    weeklyView: /^Bericht anzeigen: Bericht \(Wöchentlich\) · /,
+    dailyView: /^Bericht anzeigen: Bericht \(Täglich\) · /,
+    back: "Zurück zum Archiv",
+    breakdown: "Tägliche Kernaufschlüsselung",
+    input: "Bekannte Eingabe-Tokens",
+    subtotal: "Zwischensumme bekannter Preise (USD)",
+    totalCost: "Gesamtkosten (USD)",
+    notReported: "Nicht gemeldet",
+    tiny: "0,0000004",
+    wide: "9.007.199.254.740.993",
+    rows: [
+      "1 Versuche · 0,0000004 USD bekannt",
+      "1 Versuche · 0 USD bekannt",
+      "1 Versuche · 1,5 USD bekannt",
+      "1 Versuche · 0.10000000000000000001 USD bekannt",
+    ],
+  },
+])(
+  "shows a saved sub-micro charge beside zero, missing and exact values in $locale",
+  async ({ locale, rows, ...label }) => {
+    const reports: Record<string, Report> = {
+      [weekly.id]: withSummary(weekly, {
+        total: { inputTokens: 1200, outputTokens: 300, costUsd: 0.0000004 },
+        recordedCostUsd: 0.0000004,
+        byDay: [usageDay("2026-10-19", 0.0000004), usageDay("2026-10-20", 0)],
+      }),
+      [daily.id]: withSummary(daily, {
+        total: { inputTokens: 9007199254740993n, outputTokens: 0 },
+        recordedCostUsd: new ExactNumber("1.60000000000000000001"),
+        byDay: [
+          usageDay("2026-10-19", 1.5),
+          usageDay("2026-10-20", new ExactNumber("0.10000000000000000001")),
+        ],
+      }),
+    };
+    const sent = stringifyJSON(reports);
+    const { calls } = mount(
+      (request) =>
+        request.method === "flame.usage-reports/list.v2"
+          ? reply({ reports: [daily, weekly] })
+          : reply(reports[reportId(request)]),
+      undefined,
+      locale,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: label.weeklyView }));
+    await screen.findByText(label.totalCost);
+    expect(facts(label.subtotal)).toEqual([label.tiny]);
+    expect(facts(label.totalCost)).toEqual([label.tiny]);
+    fireEvent.click(screen.getByRole("button", { name: label.breakdown }));
+    expect(await screen.findByText(rows[0]!)).toBeTruthy();
+    expect(screen.getByText(rows[1]!)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: label.back }));
+    fireEvent.click(screen.getByRole("button", { name: label.dailyView }));
+    await screen.findByText(label.wide);
+    expect(facts(label.input)).toEqual([label.wide]);
+    expect(facts(label.subtotal)).toEqual(["1.60000000000000000001"]);
+    expect(facts(label.totalCost)).toEqual([label.notReported]);
+    fireEvent.click(screen.getByRole("button", { name: label.breakdown }));
+    expect(await screen.findByText(rows[2]!)).toBeTruthy();
+    expect(screen.getByText(rows[3]!)).toBeTruthy();
+
+    expect(stringifyJSON(reports)).toBe(sent);
+    expect(calls("get").map(([request]) => reportId(request))).toEqual([weekly.id, daily.id]);
+    expect(calls("capture")).toHaveLength(0);
+    expect(calls("delete")).toHaveLength(0);
+  },
+);
 
 it("keeps a failed archive read distinct from an empty archive and retains accepted rows", async () => {
   const outcomes: Array<() => Promise<CallPluginResponse>> = [

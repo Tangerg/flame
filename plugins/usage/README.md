@@ -4,6 +4,8 @@ The optional workspace component reads `usage.summary` through the public compon
 SDK's explicit Runtime client. Runtime remains the sole accounting owner. All-time,
 seven-day and thirty-day ranges are query inputs; grouping/filtering are local React
 state. Recorded zeros, absent prices and empty reports retain distinct meanings.
+Costs keep two to six decimal places; a nonzero cost below 0.000001 instead shows
+up to six significant digits so it never reads as zero.
 The persistent report scope holds Period, Refresh and read feedback. Overview and
 totals precede the breakdown, where local source filtering and grouping apply to
 its rows. Those controls remain available for an accepted empty report and retain

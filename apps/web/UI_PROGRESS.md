@@ -6416,6 +6416,133 @@ shared caches, read-only references and unrelated processes are preserved.
 Publication uses fresh-fetch main guards, fast-forward and direct remote equality
 verification. Continue from fresh complete-task evidence.
 
+### Usage cost precision and recorded zero (2026-11-03)
+
+This batch starts from published `3feaf16b7`. Actual Wails Usage shows a
+`0.0000004 USD` charge and a recorded zero as the same `0.00 USD`, although the
+charged source has the full share bar. Saved Usage Reports also shows the
+nonzero subtotal, total and daily amount as `0`. Both views cap fraction digits
+at six. Runtime values and the saved JSON remain correct.
+
+The two existing private `makeFormatters` owners now use platform
+`Intl.NumberFormat` with at most six significant digits only for nonzero numeric
+magnitudes below `0.000001`. Ordinary Live Usage amounts retain two to six
+fraction digits; saved numeric amounts retain their unpadded convention. Missing
+prices, true zeros, counts, coverage and complete-total semantics remain intact.
+Saved `ExactNumber` literals still use their original text and wide integers
+still avoid conversion through JavaScript `number`. No accounting rule, state,
+effect, shared API, locale, style, dependency or command lifecycle changes.
+
+Read-only ZCode `settings/usage-stats/usageStatsUiParts.tsx` informs the
+value/label hierarchy; its compact rounding and truncation are not adopted.
+[ECMA-402 digit options](https://402.ecma-international.org/13.0/#sec-setnumberformatdigitoptions)
+separate fraction and significant precision. Actual Node and Wails observations
+verify the selected behavior. The preceding reference studies retain their
+recorded scope. Existing Facts and MetricValue retain tabular figures and
+wrapping in Flame's shared UI, Base UI, StyleX and semantic tokens.
+
+| Domain        | Evidence inspected                                                                                                                  | Scoped result                                                                         |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Accessibility | Native Tab/Return, named disclosures, visible focus, exact archive opener and Composer return; existing read/error regression tests | Reading and return pass; VoiceOver and physical IME not verified                      |
+| Layout        | Actual 320 px Dock; native window-edge drag to 2244 × 1798 captured pixels; Chinese 18 px/200% and wheel reading                    | Full amounts, source identities, facts and return controls remain reachable           |
+| Writing       | Paid/zero/missing meanings, USD units, source metadata and saved-report identity                                                    | Numeric meaning repaired; the existing singular-count issue below remains             |
+| Typography    | Both formatter owners, EN/DE rendered tests, EN/ZH native totals and breakdowns, shared numeric/wrapping styles                     | Tiny charges stay nonzero; ordinary padding and exact literals retain their contracts |
+| Colors        | Light/Orange and dark/custom pale accent at contrast 100; existing focus, share and destructive roles                               | Semantic roles retained; rendered contrast ratios not newly measured                  |
+| UI polish     | Pointer controls, native keyboard expansion, wheel scrolling, file/report return and continued drafts; full/off motion scenes       | Existing surfaces and interaction owners remain; motion timing not measured           |
+
+| Severity       | Domain     | Location                                                                                      | Before                                                            | After                                                                                       | Why                                                                     |
+| -------------- | ---------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| HIGH, fixed    | Typography | `plugins/usage/component/component.tsx:54`; `plugins/usagereports/component/component.tsx:80` | Six fraction digits make a charged amount read as a recorded zero | At most six significant digits below one millionth, retaining the ordinary format elsewhere | A numeric projection must distinguish an actual charge from zero        |
+| LOW, remaining | Writing    | `plugins/usage/component/locales/en.ts:55`, `bucket.attempts`; rendered source metadata       | One attempt reads `1 attempts`                                    | Continue with the count-aware copy owner after this published batch                         | A fresh native single-attempt source exposes incorrect singular grammar |
+
+#### Verification
+
+The bounded Read/Edit-only Claude CLI completes its six allowed handwritten
+paths in **270.688 s**, reporting 30 turns, no subagents and no permission
+denials. Root reviews the actual diff and callers, corrects the README wording
+to **up to** six significant digits, formats the owned files and performs all
+generation, counterexamples, checks and native acceptance.
+
+- Original baseline: **2 files / 15 tests** pass. The five new cases cover
+  Live totals, accounting and source details, saved totals and daily rows,
+  decimal-comma localization, ordinary padding, missing prices, exact decimal
+  text, wide integers, unchanged input and no additional read/accounting writes.
+  Restoring both complete original formatter owners fails **5** and passes
+  **15**. Restoring the candidate exactly passes **20/20**.
+- Final Web frontend: **424 files / 4,481 tests** pass in **116.797 s**.
+  The first full run passes 4,480 and times out in the unchanged exhaustive icon
+  test at its existing 5 s deadline. That source and test match the baseline;
+  isolated follow-up passes **5/5**, then the identical full command passes
+  without changing timeouts, assertions, configuration or product input.
+- Normal component generation changes only Usage and Usage Reports; the other
+  **20 of 22** ESM resources match. Plugin typecheck/lint/i18n, the **25** Web
+  gates and `make check-native` (**16.538 s**) pass serially. I18n verifies
+  **20 catalogs across 8 locales**; bundle budgets pass. Existing macOS linker
+  warnings remain nonfatal. Full plugin formatting reports only the two
+  unchanged Feedback component/test files already recorded above; owned
+  formatting and Web formatting pass. No check or valid assertion is weakened.
+
+#### Actual Wails reading and return
+
+The private signed current Wails v3.0.0 host retains the production window,
+zoom, services and chrome. It uses a private home, inactive local endpoint,
+and data-only public SDK fixtures. Both final components import their normally
+generated ESM. Saved Reports uses its declared binding and ordinary list/get
+queries; capture, deletion and message sending are not invoked. These are
+presentation and navigation qualifications, not live accounting, installation,
+provider billing or archive-write acceptance.
+
+- EN/light/14 px/Orange/full motion: actual Tab and Home set a **320 px** Dock.
+  `0.0000004 USD` differs from `0.00 USD`. Filtering `priced`, keyboard expansion
+  and accounting details retain the same charge, 1/1 source coverage and 2/2
+  complete coverage. Files and Usage return retain the filter and both expanded
+  sections. Pointer collapse and Cmd+L continue the original draft.
+- ZH/dark/18 px/custom `#BDD1DE`/contrast 100/motion off: twenty native Zoom In
+  steps establish **200%**. Actual window-edge drag narrows the captured frame
+  from 2878 to **2244 px**; the reading width is approximately **561 CSS px**.
+  Full-width totals, `0.000000123457 USD`, true zero, native filtering,
+  Tab/Return and wheel reading expose all **8/8** source facts. Pointer Close
+  preserves and continues the draft; Actual Size is restored before Quit.
+- EN saved report, same light settings and **320 px** Dock: opening the exact
+  daily row focuses its heading; saved subtotal, total and keyboard-expanded
+  daily amount show `0.0000004`. Wheel reading reaches the complete detail.
+  Back restores the exact View report opener; closing continues the draft.
+- ZH saved report, same dark settings, **18 px/200%** and native narrow frame:
+  subtotal and total show `0.000000123457`. The two daily rows visibly distinguish
+  that charge from `0 USD`. Keyboard disclosure, wheel reading, Back/opener
+  restoration, pointer Close and continued draft pass. Actual Size is restored.
+
+A lock interruption and native change guards stop unaccepted actions. After the
+user unlocks, fresh AX precedes accepted operations in the same live app. No
+product workaround or acceptance claim uses those interrupted probes. All
+**six** original/final launches quit normally with exit zero. All **6,803**
+source/test/config inputs, **22** ESM resources, **333** final Web assets,
+**4** bundle files, **21** private host inputs and **5** fixture inputs match
+their accepted maps through retirement. Only six non-Markdown product inputs
+change: the two components, two regression files and two generated resources.
+
+**Approve for the inspected numeric-reading and return task.** The LOW count-copy
+issue is the next observed candidate. All eight goal CHECK dimensions are
+considered within this flow; whole-product award-level acceptance remains open.
+Empty/loading/error states retain regression coverage but are not all repeated
+natively here. VoiceOver, physical IME, RTL/forced colors, all locales natively,
+fresh contrast ratios, motion timing and other-platform GUIs remain unverified.
+Unchanged Runtime/CLI/backend and shared-UI suites are not repeated. No browser
+visual suite, benchmark, contract or persisted-data migration is added.
+
+Cleanup removes **nine** new checkout outputs and **two** unique app Library
+directories, restoring all nine output and six Library baselines to absence.
+The exact bundle is unregistered and no owned native process remains. The
+private app, home, assets, fixtures, CLI files, logs, caches and receipt directory
+are removed. A round-trip-verified in-memory gzip retains **199** UTF-8 records
+and **53** capture hashes, SHA-256
+`e841d2aab332bf1d04ad310a397e8a222fa38724dc672566116af7ced35227c8`.
+Both pre-existing shared-UI cache files and the protected 123-byte draft retain
+their exact hashes. Installed dependencies, common toolchains/caches, read-only
+references, user data and unrelated processes are preserved. The publication-time
+fetch finds main still at the accepted base. Publication uses normal hooks, a main fast-forward,
+ordinary push and independent remote/cleanliness checks.
+
 ### Generated SVG reading and source return
 
 Generated SVG fences open the existing image reader. `SvgArtifact.tsx` retains

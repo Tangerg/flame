@@ -209,6 +209,158 @@ it("finds Chinese classification labels and original keys while other identities
   expect(CLASSIFIED).toEqual(accepted);
 });
 
+function priced(key: string, costUsd?: number) {
+  return {
+    key,
+    total: { inputTokens: 600, outputTokens: 150, ...(costUsd === undefined ? {} : { costUsd }) },
+    ...(costUsd === undefined ? {} : { recordedCostUsd: costUsd }),
+    coverage: {
+      calls: 1,
+      reportedCalls: 1,
+      pricedCalls: costUsd === undefined ? 0 : 1,
+      startedCalls: 0,
+      completedCalls: 1,
+      failedCalls: 0,
+      unknownCalls: 0,
+    },
+  };
+}
+
+const SUB_MICRO: typeof VISUAL_USAGE = {
+  observedAt: "2026-10-20T00:00:00Z",
+  total: { inputTokens: 1200, outputTokens: 300, costUsd: 0.0000004 },
+  recordedCostUsd: 0.0000004,
+  coverage: {
+    calls: 2,
+    reportedCalls: 2,
+    pricedCalls: 2,
+    startedCalls: 0,
+    completedCalls: 2,
+    failedCalls: 0,
+    unknownCalls: 0,
+  },
+  byProvider: [priced("priced-provider", 0.0000004), priced("zero-cost-provider", 0)],
+  byModel: [],
+  byDay: [],
+  byOrigin: [],
+  byScope: [],
+  sessions: 1,
+  runs: 1,
+};
+
+const facts = (scope: HTMLElement, term: string) =>
+  within(scope)
+    .getAllByText(term, { selector: "dt" })
+    .map((label) => label.nextElementSibling!.textContent);
+
+async function expand(scope: HTMLElement, name: string, revealed: string) {
+  for (const trigger of within(scope).getAllByRole("button", { name })) fireEvent.click(trigger);
+  await within(scope).findAllByText(revealed, { selector: "dt" });
+}
+
+it.each([
+  {
+    locale: "en",
+    loaded: "Recorded usage loaded. All time.",
+    totals: "Recorded usage totals",
+    totalCost: "Total cost (USD)",
+    subtotal: "Known price subtotal (USD)",
+    accounting: "Accounting details",
+    sources: "Recorded usage by source",
+    details: "Token and coverage details",
+    knownCost: "Known cost (USD)",
+    tiny: "0.0000004",
+    zero: "0.00",
+  },
+  {
+    locale: "de",
+    loaded: "Erfasste Nutzung geladen. Gesamter Zeitraum.",
+    totals: "Summen der erfassten Nutzung",
+    totalCost: "Gesamtkosten (USD)",
+    subtotal: "Zwischensumme bekannter Preise (USD)",
+    accounting: "Abrechnungsdetails",
+    sources: "Erfasste Nutzung nach Quelle",
+    details: "Token- und Abdeckungsdetails",
+    knownCost: "Bekannte Kosten (USD)",
+    tiny: "0,0000004",
+    zero: "0,00",
+  },
+])(
+  "keeps a sub-micro charge distinct from a recorded zero in $locale",
+  async ({ locale, loaded, tiny, zero, ...label }) => {
+    const accepted = structuredClone(SUB_MICRO);
+    const summary = await openUsage({ locale, report: SUB_MICRO, loaded });
+    expect(facts(screen.getByLabelText(label.totals), label.totalCost)).toEqual([tiny]);
+
+    const accounting = screen.getByRole("button", { name: label.accounting }).closest("section")!;
+    await expand(accounting, label.accounting, label.subtotal);
+    expect(facts(accounting, label.subtotal)).toEqual([tiny]);
+    expect(facts(accounting, label.totalCost)).toEqual([tiny]);
+
+    const sources = screen.getByRole("region", { name: label.sources });
+    expect(
+      within(sources)
+        .getAllByText(/ USD$/)
+        .map((cost) => cost.textContent),
+    ).toEqual([`${tiny} USD`, `${zero} USD`]);
+    await expand(sources, label.details, label.knownCost);
+    expect(facts(sources, label.knownCost)).toEqual([tiny, zero]);
+
+    expect(summary).toHaveBeenCalledOnce();
+    expect(SUB_MICRO).toEqual(accepted);
+  },
+);
+
+it("keeps ordinary charges, missing prices and six significant sub-micro digits", async () => {
+  const report: typeof VISUAL_USAGE = {
+    ...SUB_MICRO,
+    total: { inputTokens: 3000, outputTokens: 750 },
+    recordedCostUsd: 3.600000123456789,
+    coverage: {
+      ...SUB_MICRO.coverage,
+      calls: 5,
+      reportedCalls: 5,
+      pricedCalls: 4,
+      completedCalls: 5,
+    },
+    byProvider: [
+      priced("ordinary", 0.1),
+      priced("whole", 2),
+      priced("fractional", 1.5),
+      priced("sub-micro", 0.000000123456789),
+      priced("unpriced"),
+    ],
+  };
+  const accepted = structuredClone(report);
+  const summary = await openUsage({ report });
+  expect(
+    facts(screen.getByLabelText("Recorded usage totals"), "Known price subtotal (USD)"),
+  ).toEqual(["3.60"]);
+
+  const accounting = screen.getByRole("button", { name: "Accounting details" }).closest("section")!;
+  await expand(accounting, "Accounting details", "Total cost (USD)");
+  expect(facts(accounting, "Known price subtotal (USD)")).toEqual(["3.60"]);
+  expect(facts(accounting, "Total cost (USD)")).toEqual(["Not reported"]);
+
+  const sources = screen.getByRole("region", { name: "Recorded usage by source" });
+  expect(
+    within(sources)
+      .getAllByText(/ USD$/)
+      .map((cost) => cost.textContent),
+  ).toEqual(["0.10 USD", "2.00 USD", "1.50 USD", "0.000000123457 USD", "Not reported USD"]);
+  await expand(sources, "Token and coverage details", "Known cost (USD)");
+  expect(facts(sources, "Known cost (USD)")).toEqual([
+    "0.10",
+    "2.00",
+    "1.50",
+    "0.000000123457",
+    "Not reported",
+  ]);
+
+  expect(summary).toHaveBeenCalledOnce();
+  expect(report).toEqual(accepted);
+});
+
 it("establishes the report range before local filters and preserves total meaning while filtering", async () => {
   const summary = await openUsage();
   const scope = screen.getByRole("group", { name: "Report scope" });

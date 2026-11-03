@@ -80,6 +80,8 @@ type Formatters = {
 function makeFormatters(locale: string, t: Translate): Formatters {
   const number = new Intl.NumberFormat(locale);
   const dollars = new Intl.NumberFormat(locale, { maximumFractionDigits: 6 });
+  // Six places would round a nonzero sub-micro charge into a recorded zero.
+  const tiny = new Intl.NumberFormat(locale, { maximumSignificantDigits: 6 });
   const format = (
     value: JSONNumber | undefined,
     formatter: Intl.NumberFormat,
@@ -91,7 +93,10 @@ function makeFormatters(locale: string, t: Translate): Formatters {
         : formatter.format(value);
   return {
     count: (value) => format(value, number),
-    amount: (value) => format(value, dollars),
+    amount: (value) =>
+      typeof value === "number" && value !== 0 && Math.abs(value) < 0.000001
+        ? tiny.format(value)
+        : format(value, dollars),
   };
 }
 const failure = (error: unknown) => failureText(error, String(error));

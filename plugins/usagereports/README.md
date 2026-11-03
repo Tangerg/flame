@@ -31,7 +31,9 @@ archive or a newly calculated replacement.
 The component uses public SDK queries and original-command recovery. It cancels
 retired reads, retains the last accepted report after a read failure, and displays
 wide integers and exact JSON numbers without rounding them through JavaScript
-`number`. Missing values remain missing; recorded zero remains zero.
+`number`. Missing values remain missing; recorded zero remains zero. Numeric
+amounts keep up to six unpadded decimal places, except that a nonzero amount
+below 0.000001 shows up to six significant digits; exact literals keep their text.
 
 The installed terminal view lists saved report headers, opens an exact report, captures a daily or weekly report and confirms deletion before changing the archive. The GUI and terminal consume the same list method and report identity.
 

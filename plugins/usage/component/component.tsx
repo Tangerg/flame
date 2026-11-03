@@ -57,10 +57,16 @@ function makeFormatters(locale: string, t: Translate): Formatters {
     minimumFractionDigits: 2,
     maximumFractionDigits: 6,
   });
+  // Six places would round a nonzero sub-micro charge into a recorded zero.
+  const tiny = new Intl.NumberFormat(locale, { maximumSignificantDigits: 6 });
   return {
     number: (value) => number.format(value),
     cost: (amount) =>
-      amount === undefined ? t("cost.notReported") : dollars.format(amount),
+      amount === undefined
+        ? t("cost.notReported")
+        : amount !== 0 && Math.abs(amount) < 0.000001
+          ? tiny.format(amount)
+          : dollars.format(amount),
   };
 }
 
