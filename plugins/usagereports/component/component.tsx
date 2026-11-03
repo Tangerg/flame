@@ -747,23 +747,25 @@ function SavedReport({
               ],
             ]}
           />
-          <Disclosure title={t("report.breakdown.title")}>
-            <RecordGroup variant="list" hidden={!summary.byDay.length}>
-              {summary.byDay.map((day) => (
-                <ListRow key={day.key}>
-                  <RecordHeading
-                    title={day.key}
-                    description={t("report.breakdown.row", {
-                      // Selects the plural form only; the exact JSONNumber is displayed.
-                      count: Number(day.coverage.calls.toString()),
-                      attempts: fmt.count(day.coverage.calls),
-                      cost: fmt.amount(day.recordedCostUsd),
-                    })}
-                  />
-                </ListRow>
-              ))}
-            </RecordGroup>
-          </Disclosure>
+          {summary.byDay.length > 0 && (
+            <Disclosure title={t("report.breakdown.title")}>
+              <RecordGroup variant="list">
+                {summary.byDay.map((day) => (
+                  <ListRow key={day.key}>
+                    <RecordHeading
+                      title={day.key}
+                      description={t("report.breakdown.row", {
+                        // Selects the plural form only; the exact JSONNumber is displayed.
+                        count: Number(day.coverage.calls.toString()),
+                        attempts: fmt.count(day.coverage.calls),
+                        cost: fmt.amount(day.recordedCostUsd),
+                      })}
+                    />
+                  </ListRow>
+                ))}
+              </RecordGroup>
+            </Disclosure>
+          )}
         </PanelSection>
       )}
       <Disclosure title={t("report.identity.title")}>

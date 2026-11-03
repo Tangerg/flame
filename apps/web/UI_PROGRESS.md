@@ -7150,11 +7150,130 @@ unverified. No live billing, real archive removal, durable command recovery or
 Send is exercised; unchanged Runtime/backend/shared-UI suites are not repeated
 beyond the required Desktop gate. No migration is required.
 
-Next, trace the real capture owner before deciding whether an empty daily
-breakdown should be offered. The supplied summary has `byDay: []` and its native
-disclosure can expand without rows; that synthetic input alone does not prove
-the current producer emits this shape. Keep this investigation separate from
-the accepted waiting fix and continue the broader complete-page review.
+The following empty-daily-details batch traces and resolves the supported
+zero-attempt case independently of this waiting fix. Continue the broader
+complete-page review; neither qualification establishes whole-product approval.
+
+### Saved archive details without empty expansion (2026-11-04)
+
+Qualified from published `04d1987c0`. The preceding synthetic observation is
+checked against the real producer: `sessions/usage_reporter.go` collects no day
+buckets when no retained physical invocation exists; delivery
+`handler_usage.go` projects an empty array. With no priced calls, both price
+values remain absent. The archive's `start.ts` queries this public core summary,
+and `Archive.capture` validates and stores it without manufacturing rows or
+prices. This establishes a supported empty saved report through source tracing,
+not a newly executed live accounting or persistence test.
+
+Actual original Wails opens the zero-attempt report, then exposes a keyboard
+`Daily core breakdown` that expands without content. `SavedReport` hides only
+its RecordGroup while always rendering the enclosing disclosure. The corrected
+component renders that whole disclosure only when accepted `summary.byDay` has
+rows; its now-redundant inner `hidden` condition is removed. The explicit boolean
+condition introduces no stray rendered zero. Totals, absent prices, exact report
+identity, read/error behavior, existing action waiting, immutable command/read
+owners, Back focus and retained workspace reading state are unchanged.
+
+Read-only ZCode `settings/usage-stats/CodingPlanUsagePanel.tsx:417` supplies a
+bounded example of omitting a detail surface when its accepted entries are
+absent. Quota calculations, chart styling and synthetic zero-filling are not
+copied. AGENTS, PROJECT_RULES, DEVELOPMENT and the affected READMEs govern the
+existing React/StyleX/shared-component implementation. The better-interface
+review uses the same six domain owners as the preceding batch.
+
+| Severity   | Domain | Location                                           | Before                                                                 | After                                                    | Why                                                     |
+| ---------- | ------ | -------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------- |
+| LOW, fixed | Layout | `plugins/usagereports/component/component.tsx:750` | An empty saved daily grouping offers an expansion that reveals nothing | Offer the disclosure only when accepted daily rows exist | An optional detail entry must lead to available content |
+
+| Domain        | Evidence inspected                                                                                  | Scoped result                                                                                   |
+| ------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Accessibility | Native report heading, next available disclosure, exact identity, original row return and Composer  | Existing named controls and keyboard reading pass; VoiceOver unverified                         |
+| Layout        | EN 320 px Dock and related full-width source; ZH 18 px/200% narrowed to 2244 × 1798 capture         | Empty affordance removed; available figures, identity and daily row remain aligned and readable |
+| Writing       | Existing empty summary, zero coverage, absent prices and available-detail labels                    | No unsupported promise of hidden rows and no additional explanatory copy                        |
+| Typography    | Zero tokens, Not reported, complete ID and UTC values, seven-attempt row with 1.2345 USD            | Exact existing formatting and readable wrapping retained                                        |
+| Colors        | Native light/Orange and dark/blue, focused identity and populated disclosure                        | Existing focus and semantic roles retained; no new ratio measurements                           |
+| UI polish     | Empty/read/Back, populated details, related file/full-width return, empty reentry and unsent drafts | Complete inspected tasks pass; full/off motion endpoints inspected without timing measurements  |
+
+The three-file Read/Edit-only Claude CLI finishes in **62.530 s**, reporting 14
+turns and no permission denials. Root independently reviews the actual diff,
+corrects its test's assumed zero price from the real owner, verifies and ships
+the change. The CLI does not run or claim checks. Only the component, one
+existing test file, README, normally generated Usage Reports ESM and this
+maintained progress chapter enter the final five-path change.
+
+- `make stage-web` passes in **7.324 s**; focused original baseline is **19/19**
+  tests in **2.535 s**. The added reading regression uses a complete empty core
+  summary, retains numeric zeros and absent prices, opens exact identity,
+  returns to its original archive opener, preserves received bytes and issues
+  only the expected exact report read, with no capture/removal. Existing
+  populated, wide-number, sub-micro-price, plural and recovery tests remain.
+- The first full frontend passes **4,536** tests, but Web typecheck catches a
+  required `summary.observedAt` omitted when root replaces the inherited fixture
+  with a complete empty literal. Root restores that report's observation and
+  lower bound, then repeats the focused test, negative control and final chain.
+  Final focused result: **20/20**, **2.389 s**. Restoring only the whole original
+  component fails **1** new reading regression and passes **19**, **2.357 s**;
+  the exact accepted component is restored in `finally`.
+- Final frontend: **424 files / 4,536 tests**, **80.160 s**. All **25** Web gates
+  and `make check-native` (**16.018 s**) pass serially: all **27** final gates
+  exit zero. Plugin typecheck/lint/i18n and owned formatting pass. Normal
+  generation changes only Usage Reports; the other **21 of 22** installed
+  resources match the base. The previously recorded unchanged Feedback format
+  pair remains outside scope; full plugin formatting is not repeated.
+- Frozen empty and recorded summaries pass the current generated
+  `validateWire("UsageSummary", ...)` contract. Two standalone validator setup
+  attempts fail on extensionless TypeScript resolution and bundled CommonJS
+  relative imports; the existing Rolldown tool with the parser as an ordinary
+  external dependency resolves those setup issues. Their logs are retained.
+  No product dependency, validator, assertion or protocol rule changes.
+- The signed actual Wails **v3.0.0** host retains its 21 production inputs,
+  services, window limits and native zoom, with private asset/initial-URL paths,
+  bundle ID, home and inactive endpoint. Its data-only SDK collaborator supplies
+  two frozen immutable report reads and refuses every write. The empty shape
+  follows the traced producer; the populated shape uses the canonical core
+  sample. Original assets build in **2.483 s**, host in **1.205 s**, final assets
+  in **2.121 s**. Four bundle files and all host inputs retain their exact hashes
+  across candidate asset refresh.
+- EN/light/14 px/Orange/full motion: actual keyboard Home sets **320 px** Dock.
+  Empty report focuses its heading, skips the absent daily disclosure and opens
+  its complete exact identity. Back restores the original daily row. The weekly
+  report still expands `2026-10-14` with `7 attempts · 1.2345 known USD`.
+  Reading DockResizer source full width and returning preserves that expanded
+  row. Back restores the weekly opener; reopening empty data shows no previous
+  row. The original unsent draft continues intact.
+- ZH/dark/18 px/blue `#4E80FF`/motion off: twenty native Zoom In steps establish
+  **200%**; actual edge drag narrows the capture to **2244 × 1798 px**, about
+  561 CSS px. The workspace retreats to full-width material reading. Empty
+  totals show zeros, `未报告` and `0/0` without a daily affordance. Exact identity
+  remains complete and readable. The populated report retains
+  `7 次尝试 · 已知 1.2345 USD`, original row return and continued Chinese draft.
+  One stale-action refusal after a window change is resolved by re-reading the
+  current native state before any further action. Actual Size precedes Quit.
+
+All **three** original/final native launches quit with exit zero. Before
+retirement, **6,804** source/test/config inputs, **22** installed resources,
+**333** final Web assets, **4** bundle files, **21** private host inputs and
+**four** fixture files match their accepted maps. Exactly **three** non-Markdown
+inputs change; the single read-only reference remains exact. Cleanup removes
+nine new checkout outputs and two app Library directories, unregisters the
+bundle and verifies zero owned native processes and an inactive endpoint.
+All **16** checkout/Library/private-root absence checks pass. A round-trip-verified
+in-memory gzip retains **178** UTF-8 records and **24** capture hashes, SHA-256
+`e53573e85653b3ee6aa629dc87a9d7555127b567015dace9f186343270a703b4`.
+The two pre-existing shared-UI cache files and protected 123-byte draft retain
+their exact hashes. User data, references, root dependencies, shared toolchains
+and unrelated processes remain. Ordinary hooks, fresh-main reconciliation,
+fast-forward, push and independent remote/cleanliness checks govern publication.
+
+**Approve for the inspected empty/nonempty archive reading task.** All eight
+goal CHECK dimensions are considered within this flow; whole-product award-level
+acceptance remains open. Other native locales, VoiceOver, physical IME,
+RTL/forced colors, new contrast measurements, motion timing and other-platform
+GUIs are unverified. This batch runs no live archive write, command recovery,
+Send, browser visual suite or performance benchmark. Unchanged backend/shared-UI
+suites are not repeated beyond the required Desktop gate; no migration is needed.
+Continue from the complete-page inventory with fresh evidence for the next
+affected task rather than reopening the now-qualified empty archive detail.
 
 ### Generated SVG reading and source return
 

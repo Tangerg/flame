@@ -35,7 +35,8 @@ wide integers and exact JSON numbers without rounding them through JavaScript
 amounts keep up to six unpadded decimal places, except that a nonzero amount
 below 0.000001 shows up to six significant digits; exact literals keep their text.
 Daily attempt copy selects its locale plural form from the saved count, which is
-still displayed exactly.
+still displayed exactly. The daily breakdown is offered only when the saved
+report has daily rows.
 
 One archive action waits at a time. Only its initiating control names the
 waiting action and is busy; it keeps keyboard focus and refuses repeated

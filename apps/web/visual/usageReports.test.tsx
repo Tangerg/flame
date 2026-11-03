@@ -661,6 +661,73 @@ it.each([
   },
 );
 
+it("reads a saved zero-attempt report without an empty daily breakdown", async () => {
+  const report: Report = {
+    ...weekly,
+    summary: {
+      observedAt: weekly.observedAt,
+      since: weekly.since,
+      total: {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        reasoningTokens: 0,
+      },
+      coverage: {
+        calls: 0,
+        reportedCalls: 0,
+        pricedCalls: 0,
+        startedCalls: 0,
+        completedCalls: 0,
+        failedCalls: 0,
+        unknownCalls: 0,
+      },
+      byProvider: [],
+      byModel: [],
+      byDay: [],
+      byOrigin: [],
+      byScope: [],
+      sessions: 0,
+      runs: 0,
+    },
+  };
+  const sent = stringifyJSON(report);
+  const { calls } = mount((request) =>
+    request.method === "flame.usage-reports/list.v2"
+      ? reply({ reports: [daily, weekly] })
+      : reply(report),
+  );
+
+  const opener = await screen.findByRole("button", { name: /^View report: Weekly report · / });
+  opener.focus();
+  fireEvent.click(opener);
+  await screen.findByText("Total cost (USD)");
+  expect(facts("Model attempts")).toEqual(["0"]);
+  expect(facts("Known input tokens")).toEqual(["0"]);
+  expect(facts("Known output tokens")).toEqual(["0"]);
+  expect(facts("Known price subtotal (USD)")).toEqual(["Not reported"]);
+  expect(facts("Total cost (USD)")).toEqual(["Not reported"]);
+  expect(facts("Usage recorded")).toEqual(["0/0"]);
+  expect(facts("Priced attempts")).toEqual(["0/0"]);
+  expect(facts("Outcome unknown")).toEqual(["0"]);
+  expect(screen.queryByText("Daily core breakdown")).toBeNull();
+  expect(screen.queryByRole("alert")).toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: "Exact report identity" }));
+  expect(await screen.findByText(weekly.id)).toBeTruthy();
+  expect(facts("Observed at (UTC)")).toEqual([weekly.observedAt]);
+  expect(facts("Lower bound (UTC)")).toEqual([weekly.since]);
+  expect(screen.getByRole("button", { name: "Remove saved report" })).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("button", { name: "Back to archive" }));
+  expect(document.activeElement).toBe(opener);
+  expect(stringifyJSON(report)).toBe(sent);
+  expect(calls("get").map(([request]) => reportId(request))).toEqual([weekly.id]);
+  expect(calls("capture")).toHaveLength(0);
+  expect(calls("delete")).toHaveLength(0);
+});
+
 it("keeps a failed archive read distinct from an empty archive and retains accepted rows", async () => {
   const outcomes: Array<() => Promise<CallPluginResponse>> = [
     () => Promise.reject(new Error("archive offline")),
