@@ -16,6 +16,7 @@ export const ja: Record<string, string> = {
   "archive.actions.label": "アーカイブ操作",
   "capture.period.label": "キャプチャ期間",
   "capture.save": "レポートを保存",
+  "capture.saving": "レポートを保存中…",
   "archive.refresh": "アーカイブを更新",
   "evidence.beginning": "保持された証跡の開始",
   "cost.notReported": "未報告",
@@ -23,6 +24,8 @@ export const ja: Record<string, string> = {
   "pending.note": "元のコマンドの確認待ちです。",
   "pending.check": "元の結果を確認",
   "pending.retire": "元のコマンドを取り下げる",
+  "pending.checking": "元のコマンドを確認中…",
+  "pending.retiring": "元のコマンドを取り下げ中…",
   "archive.title": "アーカイブ",
   "archive.count_other":
     "保存済みレポート {{count}} 件。容量は {{capacity}} 件です。",

@@ -238,9 +238,9 @@ it("recovers the original capture and preserves exact numbers, zero prices and m
   await screen.findByText("No saved reports");
   fireEvent.click(screen.getByRole("button", { name: "Save report" }));
   await screen.findByText(/Confirmation is unknown/);
-  expect(screen.getByRole<HTMLButtonElement>("button", { name: "Save report" }).disabled).toBe(
-    true,
-  );
+  const save = screen.getByRole("button", { name: "Save report" });
+  expect(save.getAttribute("aria-disabled")).toBe("true");
+  activateRepeatedly(save);
   fireEvent.click(screen.getByRole("button", { name: "Check original outcome" }));
   // The reading view names its report by period and core observation.
   const detail = (await screen.findByRole("heading", { name: /^Daily report · / })).closest(
@@ -837,3 +837,212 @@ it.each([
     expect(screen.getByRole("button", { name: /^View report: Weekly report · / })).toBeTruthy();
   },
 );
+
+it("keeps a held save focused and single, restores it after refusal and opens an accepted save", async () => {
+  let members: Header[] = [];
+  const captures: Array<ReturnType<typeof deferred<CallPluginResponse>>> = [];
+  const { calls } = mount((request) => {
+    switch (request.method) {
+      case "flame.usage-reports/list.v2":
+        return reply({ reports: members });
+      case "flame.usage-reports/get.v1":
+        return reply(exact(daily));
+      default: {
+        const capture = deferred<CallPluginResponse>();
+        captures.push(capture);
+        return mutationResult<CallPluginResponse>(
+          () => capture.promise,
+          `capture-${captures.length}`,
+        );
+      }
+    }
+  });
+  await screen.findByText("No saved reports");
+  const save = screen.getByRole("button", { name: "Save report" });
+  const refresh = screen.getByRole("button", { name: "Refresh archive" });
+  save.focus();
+  fireEvent.click(save);
+  expect(document.activeElement).toBe(save);
+  expect(save.textContent).toBe("Saving report…");
+  expect(save.getAttribute("aria-busy")).toBe("true");
+  expect(save.getAttribute("aria-disabled")).toBe("true");
+  expect(refresh.getAttribute("aria-disabled")).toBeNull();
+  activateRepeatedly(save);
+  expect(calls("capture")).toHaveLength(1);
+  expect(document.activeElement).toBe(save);
+
+  captures[0]!.reject(new Error("archive full"));
+  await screen.findByText(/^The archive change failed: /);
+  expect(document.activeElement).toBe(save);
+  expect(save.textContent).toBe("Save report");
+  expect(save.getAttribute("aria-busy")).toBe("false");
+  expect(save.getAttribute("aria-disabled")).toBe("false");
+
+  members = [daily];
+  fireEvent.click(save);
+  captures[1]!.resolve({ output: stringifyJSON(daily) });
+  const heading = await screen.findByRole("heading", { name: /^Daily report · / });
+  expect(document.activeElement).toBe(heading);
+  await screen.findByText("9,007,199,254,740,993");
+  expect(calls("capture")).toHaveLength(2);
+  expect(calls("get").map(([request]) => reportId(request))).toEqual([daily.id]);
+
+  fireEvent.click(screen.getByRole("button", { name: "Back to archive" }));
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "Refresh archive" }));
+  expect(screen.getByRole("button", { name: /^View report: Daily report · / })).toBeTruthy();
+});
+
+function unsettledCapture() {
+  let pending: PluginCommandRecovery[] = [];
+  let members: Header[] = [];
+  const recoveries: Array<ReturnType<typeof deferred<void>>> = [];
+  const retirements: Array<ReturnType<typeof deferred<void>>> = [];
+  const command = {
+    ...original("flame.usage-reports/capture.v1", async (decode) => {
+      const recovery = deferred<void>();
+      recoveries.push(recovery);
+      await recovery.promise;
+      pending = [];
+      members = [daily];
+      return decode(daily);
+    }),
+    retire: vi.fn(async () => {
+      const retirement = deferred<void>();
+      retirements.push(retirement);
+      await retirement.promise;
+      pending = [];
+    }),
+  };
+  const { calls } = mount(
+    (request) => {
+      switch (request.method) {
+        case "flame.usage-reports/list.v2":
+          return reply({ reports: members });
+        case "flame.usage-reports/get.v1":
+          return reply(exact(daily));
+        default:
+          return mutationResult<CallPluginResponse>(async () => {
+            pending = [command];
+            throw new MutationLookupError(new Error("receipt unavailable"));
+          }, "original-capture");
+      }
+    },
+    () => pending,
+  );
+  return { calls, command, recoveries, retirements };
+}
+
+async function saveUnknown() {
+  fireEvent.click(await screen.findByRole("button", { name: "Save report" }));
+  await screen.findByText(/Confirmation is unknown/);
+}
+
+it("keeps one focused original check busy and opens its accepted report", async () => {
+  const { calls, command, recoveries } = unsettledCapture();
+  await screen.findByText("No saved reports");
+  await saveUnknown();
+  const save = screen.getByRole("button", { name: "Save report" });
+  const check = screen.getByRole("button", { name: "Check original outcome" });
+  const retire = screen.getByRole<HTMLButtonElement>("button", {
+    name: "Retire original command",
+  });
+  check.focus();
+  fireEvent.click(check);
+  expect(document.activeElement).toBe(check);
+  expect(check.textContent).toBe("Checking original command…");
+  expect(check.getAttribute("aria-busy")).toBe("true");
+  expect(check.getAttribute("aria-disabled")).toBe("true");
+  expect(retire.textContent).toBe("Retire original command");
+  expect(retire.getAttribute("aria-busy")).toBe("false");
+  expect(retire.disabled).toBe(true);
+  expect(save.textContent).toBe("Save report");
+  expect(save.getAttribute("aria-busy")).toBe("false");
+  expect(save.getAttribute("aria-disabled")).toBe("true");
+  activateRepeatedly(check);
+  activateRepeatedly(save);
+  fireEvent.click(retire);
+  expect(recoveries).toHaveLength(1);
+  expect(command.retire).not.toHaveBeenCalled();
+  expect(calls("capture")).toHaveLength(1);
+
+  recoveries[0]!.resolve();
+  const heading = await screen.findByRole("heading", { name: /^Daily report · / });
+  await waitFor(() => expect(document.activeElement).toBe(heading));
+  await screen.findByText("9,007,199,254,740,993");
+  expect(screen.queryByRole("button", { name: "Check original outcome" })).toBeNull();
+  expect(calls("capture")).toHaveLength(1);
+  expect(calls("get").map(([request]) => reportId(request))).toEqual([daily.id]);
+});
+
+it("lists an accepted original check without opening it after focus moves", async () => {
+  const { recoveries } = unsettledCapture();
+  await screen.findByText("No saved reports");
+  await saveUnknown();
+  const check = screen.getByRole("button", { name: "Check original outcome" });
+  check.focus();
+  fireEvent.click(check);
+  const refresh = screen.getByRole("button", { name: "Refresh archive" });
+  refresh.focus();
+  recoveries[0]!.resolve();
+  await screen.findByText(/^Core report saved: Daily report · .+\. It is listed in the archive\.$/);
+  await screen.findByRole("button", { name: /^View report: Daily report · / });
+  expect(screen.queryByRole("heading", { name: /^Daily report · / })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Check original outcome" })).toBeNull();
+  expect(document.activeElement).toBe(refresh);
+});
+
+it("keeps a failed retirement focused and returns a confirmed one only while it owns focus", async () => {
+  const { calls, command, retirements } = unsettledCapture();
+  await screen.findByText("No saved reports");
+  await saveUnknown();
+  const check = screen.getByRole<HTMLButtonElement>("button", {
+    name: "Check original outcome",
+  });
+  const retire = screen.getByRole("button", { name: "Retire original command" });
+  retire.focus();
+  fireEvent.click(retire);
+  expect(document.activeElement).toBe(retire);
+  expect(retire.textContent).toBe("Retiring original command…");
+  expect(retire.getAttribute("aria-busy")).toBe("true");
+  expect(retire.getAttribute("aria-disabled")).toBe("true");
+  expect(check.textContent).toBe("Check original outcome");
+  expect(check.getAttribute("aria-busy")).toBe("false");
+  expect(check.disabled).toBe(true);
+  activateRepeatedly(retire);
+  fireEvent.click(check);
+  expect(command.retire).toHaveBeenCalledOnce();
+
+  retirements[0]!.reject(new Error("journal offline"));
+  await screen.findByText(/^The original command could not be retired: /);
+  expect(document.activeElement).toBe(retire);
+  expect(retire.textContent).toBe("Retire original command");
+  expect(retire.getAttribute("aria-disabled")).toBeNull();
+  const save = screen.getByRole("button", { name: "Save report" });
+  expect(save.getAttribute("aria-disabled")).toBe("true");
+
+  fireEvent.click(retire);
+  retirements[1]!.resolve();
+  await screen.findByText(
+    "Original command retired. Any report already saved remains in the archive.",
+  );
+  await waitFor(() => expect(document.activeElement).toBe(save));
+  expect(save.getAttribute("aria-disabled")).toBe("false");
+  expect(screen.queryByRole("button", { name: "Retire original command" })).toBeNull();
+
+  await saveUnknown();
+  const again = screen.getByRole("button", { name: "Retire original command" });
+  again.focus();
+  fireEvent.click(again);
+  const refresh = screen.getByRole("button", { name: "Refresh archive" });
+  refresh.focus();
+  retirements[2]!.resolve();
+  await screen.findByText(
+    "Original command retired. Any report already saved remains in the archive.",
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "Retire original command" })).toBeNull(),
+  );
+  expect(document.activeElement).toBe(refresh);
+  expect(command.retire).toHaveBeenCalledTimes(3);
+  expect(calls("capture")).toHaveLength(2);
+});

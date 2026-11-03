@@ -15,6 +15,7 @@ export const zh: Record<string, string> = {
   "archive.actions.label": "归档操作",
   "capture.period.label": "捕获周期",
   "capture.save": "保存报告",
+  "capture.saving": "正在保存报告…",
   "archive.refresh": "刷新归档",
   "evidence.beginning": "保留证据的起点",
   "cost.notReported": "未报告",
@@ -22,6 +23,8 @@ export const zh: Record<string, string> = {
   "pending.note": "原始命令的确认待定。",
   "pending.check": "检查原始结果",
   "pending.retire": "撤销原始命令",
+  "pending.checking": "正在检查原始命令…",
+  "pending.retiring": "正在撤销原始命令…",
   "archive.title": "归档",
   "archive.count_other": "已保存 {{count}} 份报告。容量为 {{capacity}}。",
   "archive.capture.note":

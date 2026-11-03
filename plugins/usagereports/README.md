@@ -37,6 +37,14 @@ below 0.000001 shows up to six significant digits; exact literals keep their tex
 Daily attempt copy selects its locale plural form from the saved count, which is
 still displayed exactly.
 
+One archive action waits at a time. Only its initiating control names the
+waiting action and is busy; it keeps keyboard focus and refuses repeated
+activation. Save stays unavailable while any original command outcome is
+unresolved; a known refusal restores it. An accepted capture or original check
+opens the saved report; otherwise a confirmed check or retirement that removes
+its recovery control returns focus to Save or the open report's actions. Both
+happen only while the initiating control still owns focus.
+
 The installed terminal view lists saved report headers, opens an exact report, captures a daily or weekly report and confirms deletion before changing the archive. The GUI and terminal consume the same list method and report identity.
 
 Regenerate the typed contribution after changing its methods:

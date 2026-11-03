@@ -16,6 +16,7 @@ export const es: Record<string, string> = {
   "archive.actions.label": "Acciones del archivo",
   "capture.period.label": "Periodo de captura",
   "capture.save": "Guardar informe",
+  "capture.saving": "Guardando informe…",
   "archive.refresh": "Actualizar archivo",
   "evidence.beginning": "Inicio de la evidencia retenida",
   "cost.notReported": "No informado",
@@ -23,6 +24,8 @@ export const es: Record<string, string> = {
   "pending.note": "Confirmación pendiente del comando original.",
   "pending.check": "Comprobar el resultado original",
   "pending.retire": "Retirar el comando original",
+  "pending.checking": "Comprobando el comando original…",
+  "pending.retiring": "Retirando el comando original…",
   "archive.title": "Archivo",
   "archive.count_one":
     "{{count}} informe guardado. La capacidad es {{capacity}}.",

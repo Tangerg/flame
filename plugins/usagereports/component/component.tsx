@@ -72,6 +72,9 @@ type OpenedReport = {
   error?: string;
 };
 type ArchiveReturn = { opener?: HTMLElement; scroll: ScrollPosition[] };
+// The one waiting archive action; recovery actions name their original command.
+type Action =
+  { kind: "capture" | "removal" } | { kind: "check" | "retire"; key: string };
 const PERIODS = ["daily", "weekly"] as const satisfies readonly Period[];
 type Formatters = {
   count: (value?: JSONNumber) => string;
@@ -138,7 +141,8 @@ function Archive({ context }: { context: BoundContext }) {
   const [opened, setOpened] = useState<OpenedReport>();
   const [removing, setRemoving] = useState<Header>();
   const [period, setPeriod] = useState<Period>("daily");
-  const [pending, setPending] = useState(false);
+  const [action, setAction] = useState<Action>();
+  const busy = action !== undefined;
   const [message, setMessage] = useState<string>();
   const lifetime = useRef<AbortController>(undefined);
   const inspecting = useRef<AbortController>(undefined);
@@ -146,6 +150,7 @@ function Archive({ context }: { context: BoundContext }) {
   const panel = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const refreshButton = useRef<HTMLButtonElement>(null);
+  const saveButton = useRef<HTMLButtonElement>(null);
   const backButton = useRef<HTMLButtonElement>(null);
   const removeButton = useRef<HTMLButtonElement>(null);
   const cancelRemoval = useRef<HTMLButtonElement>(null);
@@ -157,6 +162,8 @@ function Archive({ context }: { context: BoundContext }) {
     target: "report" | "archive";
     active: Element | null;
   }>(null);
+  // A confirmed recovery unmounts its initiating control after the commit.
+  const recoveryReturn = useRef<Element | null>(null);
   const unknown = [
     ...operations.pendingCommands(captureMethod),
     ...operations.pendingCommands(deleteMethod),
@@ -291,14 +298,19 @@ function Archive({ context }: { context: BoundContext }) {
     setOpened(undefined);
   }
 
-  async function observe(command: Promise<Header | boolean>, removed?: Header) {
+  async function observe(
+    started: Action,
+    command: Promise<Header | boolean>,
+    removed?: Header,
+  ) {
     const signal = ownerSignal();
     const active = activeElement();
-    setPending(true);
+    setAction(started);
     setMessage(undefined);
     try {
       const result = await command;
       if (signal.aborted) return;
+      if (started.kind === "check") recoveryReturn.current = active;
       if (typeof result !== "boolean") {
         const current = activeElement();
         // A later completion opens the saved report only while the user
@@ -337,31 +349,35 @@ function Archive({ context }: { context: BoundContext }) {
         );
     } finally {
       if (!signal.aborted) {
-        setPending(false);
+        setAction(undefined);
         setRemoving(undefined);
       }
     }
   }
 
   function save() {
-    if (pending || unknown.length) return;
+    if (busy || unknown.length) return;
     try {
-      void observe(operations.command(captureMethod, { period }));
+      void observe(
+        { kind: "capture" },
+        operations.command(captureMethod, { period }),
+      );
     } catch (error) {
       setMessage(t("message.captureRejected", { error: failure(error) }));
     }
   }
 
   function requestRemoval() {
-    if (!opened || pending || unknown.length) return;
+    if (!opened || busy || unknown.length) return;
     setMessage(undefined);
     setRemoving(structuredClone(opened.header));
   }
 
   function confirmRemoval() {
-    if (!removing || pending || unknown.length) return;
+    if (!removing || busy || unknown.length) return;
     try {
       void observe(
+        { kind: "removal" },
         operations.command(deleteMethod, { id: removing.id }),
         removing,
       );
@@ -372,7 +388,7 @@ function Archive({ context }: { context: BoundContext }) {
   }
 
   function dismissRemoval() {
-    if (!pending) setRemoving(undefined);
+    if (!busy) setRemoving(undefined);
   }
 
   const removalReturn = useCallback(() => {
@@ -381,17 +397,41 @@ function Archive({ context }: { context: BoundContext }) {
     return refreshButton.current;
   }, []);
 
+  useLayoutEffect(() => {
+    const initiator = recoveryReturn.current;
+    if (action || !initiator) return;
+    recoveryReturn.current = null;
+    const active = panel.current?.ownerDocument.activeElement;
+    if (
+      !initiator.isConnected &&
+      (active === initiator || active === active?.ownerDocument.body)
+    )
+      (shown.current ? removalReturn() : saveButton.current)?.focus();
+  }, [action, removalReturn]);
+
+  function check(command: (typeof unknown)[number]) {
+    if (busy) return;
+    void observe(
+      { kind: "check", key: command.idempotencyKey },
+      command.recover(ownerSignal()),
+    );
+  }
+
   async function retire(command: (typeof unknown)[number]) {
+    if (busy) return;
     const signal = ownerSignal();
-    setPending(true);
+    const active = activeElement();
+    setAction({ kind: "retire", key: command.idempotencyKey });
     try {
       await command.retire(signal);
-      if (!signal.aborted) setMessage(t("message.retired"));
+      if (signal.aborted) return;
+      recoveryReturn.current = active;
+      setMessage(t("message.retired"));
     } catch (error) {
       if (!signal.aborted)
         setMessage(t("message.retireFailed", { error: failure(error) }));
     } finally {
-      if (!signal.aborted) setPending(false);
+      if (!signal.aborted) setAction(undefined);
     }
   }
 
@@ -449,8 +489,17 @@ function Archive({ context }: { context: BoundContext }) {
                 }),
               }))}
             />
-            <Button disabled={pending || unknown.length > 0} onClick={save}>
-              {t("capture.save")}
+            <Button
+              ref={saveButton}
+              disabled={busy || unknown.length > 0}
+              focusableWhenDisabled
+              pending={action?.kind === "capture"}
+              aria-busy={action?.kind === "capture"}
+              onClick={save}
+            >
+              {action?.kind === "capture"
+                ? t("capture.saving")
+                : t("capture.save")}
             </Button>
             <IconButton
               ref={refreshButton}
@@ -465,25 +514,37 @@ function Archive({ context }: { context: BoundContext }) {
       }
     >
       {message && <Metadata role="status">{message}</Metadata>}
-      {unknown.map((command) => (
-        <Toolbar key={command.idempotencyKey} label={t("pending.label")}>
-          <Metadata>{t("pending.note")}</Metadata>
-          <Button
-            disabled={pending}
-            onClick={() => void observe(command.recover(ownerSignal()))}
-          >
-            {t("pending.check")}
-          </Button>
-          <Button disabled={pending} onClick={() => void retire(command)}>
-            {t("pending.retire")}
-          </Button>
-        </Toolbar>
-      ))}
+      {unknown.map((command) => {
+        const key = command.idempotencyKey;
+        const checking = action?.kind === "check" && action.key === key;
+        const retiring = action?.kind === "retire" && action.key === key;
+        return (
+          <Toolbar key={key} label={t("pending.label")}>
+            <Metadata>{t("pending.note")}</Metadata>
+            <Button
+              disabled={busy}
+              pending={checking}
+              aria-busy={checking}
+              onClick={() => check(command)}
+            >
+              {checking ? t("pending.checking") : t("pending.check")}
+            </Button>
+            <Button
+              disabled={busy}
+              pending={retiring}
+              aria-busy={retiring}
+              onClick={() => void retire(command)}
+            >
+              {retiring ? t("pending.retiring") : t("pending.retire")}
+            </Button>
+          </Toolbar>
+        );
+      })}
       {opened && (
         <SavedReport
           opened={opened}
           removeButton={removeButton}
-          pending={pending || unknown.length > 0}
+          pending={busy || unknown.length > 0}
           remove={requestRemoval}
           t={t}
           locale={locale}
@@ -568,7 +629,7 @@ function Archive({ context }: { context: BoundContext }) {
           size="sm"
           initialFocus={cancelRemoval}
           finalFocus={removalReturn}
-          dismissible={!pending}
+          dismissible={!busy}
           onOpenChange={(open) => {
             if (!open) dismissRemoval();
           }}
@@ -577,7 +638,7 @@ function Archive({ context }: { context: BoundContext }) {
               <Button
                 ref={cancelRemoval}
                 variant="ghost"
-                disabled={pending}
+                disabled={busy}
                 onClick={dismissRemoval}
               >
                 {t("removal.cancel")}
@@ -585,11 +646,13 @@ function Archive({ context }: { context: BoundContext }) {
               <Button
                 variant="tonal"
                 tone="negative"
-                pending={pending}
-                aria-busy={pending}
+                pending={action?.kind === "removal"}
+                aria-busy={action?.kind === "removal"}
                 onClick={confirmRemoval}
               >
-                {pending ? t("removal.removing") : t("report.remove")}
+                {action?.kind === "removal"
+                  ? t("removal.removing")
+                  : t("report.remove")}
               </Button>
             </>
           }

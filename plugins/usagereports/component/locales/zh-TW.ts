@@ -15,6 +15,7 @@ export const zhTW: Record<string, string> = {
   "archive.actions.label": "封存操作",
   "capture.period.label": "擷取週期",
   "capture.save": "儲存報告",
+  "capture.saving": "正在儲存報告…",
   "archive.refresh": "重新整理封存",
   "evidence.beginning": "保留證據的起點",
   "cost.notReported": "未回報",
@@ -22,6 +23,8 @@ export const zhTW: Record<string, string> = {
   "pending.note": "原始命令的確認待定。",
   "pending.check": "檢查原始結果",
   "pending.retire": "撤銷原始命令",
+  "pending.checking": "正在檢查原始命令…",
+  "pending.retiring": "正在撤銷原始命令…",
   "archive.title": "封存",
   "archive.count_other": "已儲存 {{count}} 份報告。容量為 {{capacity}}。",
   "archive.capture.note":

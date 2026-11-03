@@ -16,6 +16,7 @@ export const ko: Record<string, string> = {
   "archive.actions.label": "아카이브 작업",
   "capture.period.label": "캡처 기간",
   "capture.save": "보고서 저장",
+  "capture.saving": "보고서를 저장하는 중…",
   "archive.refresh": "아카이브 새로 고침",
   "evidence.beginning": "보존된 증거의 시작",
   "cost.notReported": "보고되지 않음",
@@ -23,6 +24,8 @@ export const ko: Record<string, string> = {
   "pending.note": "원래 명령의 확인이 보류 중입니다.",
   "pending.check": "원래 결과 확인",
   "pending.retire": "원래 명령 취소",
+  "pending.checking": "원래 명령을 확인하는 중…",
+  "pending.retiring": "원래 명령을 취소하는 중…",
   "archive.title": "아카이브",
   "archive.count_other":
     "저장된 보고서 {{count}}개. 용량은 {{capacity}}개입니다.",

@@ -7008,6 +7008,154 @@ independent remote/cleanliness checks govern delivery. Continue by revalidating
 complete-task layout evidence against the page inventory above; do not infer
 fresh whole-product acceptance from this copy-only batch.
 
+### Saved archive action waiting and native continuity (2026-11-04)
+
+This batch starts from published `8e0991b0b`. Actual Wails keyboard admission of
+Save and Check original outcome removes focus from the initiating button and
+leaves its ordinary label unchanged throughout a delayed response. A known
+capture refusal restores availability but leaves focus on the HTML document.
+Original-check success already opens the correct report heading; its existing
+Back route correctly returns to Refresh and must remain intact.
+
+The installed Usage Reports component now owns one tagged waiting action in
+place of the shared boolean. Capture, check, retirement and removal retain
+their existing command and recovery owners. Only the exact initiating action
+has a waiting label and `aria-busy`; check/retirement also match the original
+idempotency key. The shared Button's existing pending/focusable-disabled
+behavior preserves native keyboard focus and refuses repeated activation.
+Save remains unavailable while any original outcome is unknown. Period and
+Refresh retain their independent read/selection behavior.
+
+A confirmed recovery can unmount its initiating button. A post-commit focus
+return selects Save or the open report's existing actions only if that captured
+initiator disconnected and focus still rests on it or the document body. A
+surviving later focus is preserved. Existing accepted-capture/check heading
+focus, immutable report identity, precise figures, captured period, list/get,
+failure mapping, original recover/retire handles, removal confirmation and
+reading/scroll return remain authoritative. Eight catalogs each add exactly
+three waiting labels. No Runtime, SDK, native host, theme, shared UI, style,
+data schema or dependency changes enter this batch.
+
+Read-only ZCode `packages/ui/src/DeleteAllArchivedTasksButton.tsx` supplies an
+operation-specific waiting/result example. Its deletion policy and disabled
+implementation are not copied. The installed Base UI
+`utils/useFocusableWhenDisabled.mjs` confirms its existing enabled
+`aria-disabled="false"` contract. Prior reference studies retain their recorded
+purposes. AGENTS, PROJECT_RULES, DEVELOPMENT and the target READMEs govern this
+React/StyleX/semantic-token change; the six better-interface domain owners guide
+the review below.
+
+| Severity      | Domain                | Location                                                      | Before                                                                | After                                                                                           | Why                                                                                 |
+| ------------- | --------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| MEDIUM, fixed | Accessibility/Writing | `plugins/usagereports/component/component.tsx:489` and `:514` | A waiting action loses keyboard focus and keeps its ready-state label | Only the admitted action names its work, remains focused and busy, and blocks repeat activation | Waiting feedback must identify the action and preserve the user's keyboard position |
+| MEDIUM, fixed | Accessibility         | `plugins/usagereports/component/component.tsx:400`            | Confirmed retirement removes the focused recovery control             | A bounded post-commit return targets current archive/report actions                             | Removing an initiating control needs a useful return without stealing later focus   |
+
+| Domain        | Evidence inspected                                                                                                  | Scoped result                                                                                           |
+| ------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Accessibility | Native Save/check/retire, repeated Return, known refusal, report heading/Back, removed initiator and later Composer | Waiting and return findings fixed; VoiceOver and physical IME unverified                                |
+| Layout        | EN and DE 320 px Dock, DE 18 px long waiting labels, ZH 18 px/200% at an actual narrower window                     | Controls align and wrap within their existing toolbar; workspace retreats to full-width reading         |
+| Writing       | Three action labels in all eight catalogs, unknown/refused/accepted/retired feedback                                | Waiting labels identify the action; unchanged original-outcome guidance retains its meaning             |
+| Typography    | German two-line retirement label, Chinese report heading and exact identity, unchanged report numbers               | Text remains readable in the inspected native sizes; exact-value owner retained                         |
+| Colors        | EN/light/Orange, ZH/dark/blue, DE/light/purple; actual focused waiting and returned controls                        | Existing semantic states and visible focus retained; no new contrast measurements                       |
+| UI polish     | Save/read/related file/return, original check, retirement, later writing and continued unsent drafts                | Complete inspected task paths pass; full/off motion endpoints inspected without animation timing claims |
+
+#### Verification and actual Wails
+
+The bounded Read/Edit-only Claude CLI completes its eleven allowed handwritten
+paths in **419.569 s**, with 58 reported turns and no permission denials. Root
+reviews the actual diff, original command semantics and installed primitive,
+corrects two new test assertions, generates the installed ESM, runs checks and
+performs native acceptance. The CLI does not claim to have run checks.
+
+- `make stage-web` passes in **7.604 s**. Original focused baseline: **15/15**
+  tests, **2.500 s**. The first candidate run passes 17 and fails two new
+  enabled-Save assertions that expected an absent ARIA attribute. Inspection of
+  the installed Base UI owner establishes its explicit `false` value; only those
+  two assertions change. Final focused run: **19/19**, **2.863 s**. The four new
+  deferred-flow regressions cover capture refusal/acceptance, single original
+  check, later-focus acceptance and failed/confirmed retirement with return.
+- The negative control restores the whole original component and all eight
+  original catalogs while keeping final tests: **4 expected failures / 15
+  passes**, **3.093 s**. The guard restores all nine accepted files byte for byte.
+  Original identity/precision/membership assertions remain intact; no valid
+  disabled or duplicate-command assertion is weakened.
+- Final frontend passes **424 files / 4,535 tests** in **88.770 s**. All **25**
+  Web gates and `make check-native` (**16.319 s**) pass serially, making all
+  **27** final acceptance gates exit zero. Plugin types/lint/i18n and owned
+  formatting pass. Normal component generation changes only Usage Reports;
+  the other **21 of 22** installed resources match the base. Full plugin
+  formatting is not repeated: its previously recorded unchanged Feedback pair
+  remains outside this batch. No browser visual suite or benchmark runs.
+- The signed Wails **v3.0.0** host uses 21 current production Desktop inputs,
+  normal window limits, zoom, chrome and services. Private home, bundle ID and
+  inactive endpoint isolate the installed production ESM. A data-only SDK
+  collaborator supplies list/get and one permitted capture plus original
+  recover/retire with 12-second waits. Duplicate capture and unsupported writes,
+  including removal, throw. Native Save/check/retire therefore qualify UI
+  feedback and continuity, not live accounting, durable receipts or persistence.
+  Correct original assets build in **2.542 s**, host in **1.542 s**, final assets
+  in **2.444 s**; all four signed bundle files and 21 host inputs remain exact
+  across candidate refresh.
+- EN/light/14 px/Orange/full motion: native Home sets a **320 px** Dock.
+  Immediate repeated Return leaves one focused `Saving report…`; known refusal
+  restores the same Save. At 660 px, accepted capture focuses its report heading.
+  Expanded exact identity, full-width README reading, return to the retained
+  report and Back to Refresh preserve the draft and reading state. A separate
+  capture moves to Composer and continues writing while Save is visibly pending;
+  completion lists the report without stealing focus. Explicit report entry then
+  focuses its heading and Back restores that exact row opener.
+- ZH/dark/18 px/blue `#4E80FF`/motion off: twenty native Zoom In steps establish
+  **200%**. Actual window edge drag narrows the capture to **2244 × 1798 px**,
+  approximately 561 CSS px of reading width. The workspace offers full-width
+  material reading. Repeated Return preserves focused `正在保存报告…`, then
+  unknown Save remains unavailable. The original check shows only
+  `正在检查原始命令…` as busy and preserves its blue focus ring. Its accepted
+  report focuses the Chinese heading, exposes the exact wrapped identity and
+  UTC observation, then Back/Close preserve and continue the unsent draft.
+- DE/light/18 px/purple `#8B5CF6`/motion off: native Home sets **320 px** Dock.
+  Save and the original retirement each retain focus through immediate repeated
+  Return. The two-line `Ursprünglicher Befehl wird zurückgezogen…` fits inside
+  its toolbar; the sibling check remains ordinarily disabled. Confirmed
+  retirement removes its toolbar, returns focus to enabled Save and preserves
+  the continued German draft. Actual Size is restored before normal Quit.
+
+All **seven** accepted original/final launches exit zero. Two excluded native
+launches also quit normally: an initially unlisted private view never mounts
+the archive, and a mistimed repeat after refusal invokes a legitimate newly
+enabled Save against the one-capture fixture. The latter is not a pending-repeat
+failure; its corrected rerun sends repeats immediately and passes. An earlier
+private host-path setup failure occurs before compilation and is corrected.
+Exclusions and the initial failed assertions remain in the retained evidence.
+
+Before retirement, all **6,804** source/test/config inputs, **22** installed
+resources, **333** final Web assets, **4** bundle files, **21** host inputs and
+two private fixture files match accepted maps. Exactly **eleven** non-Markdown
+inputs change. Both read-only references retain their hashes. Cleanup removes
+nine new checkout outputs and two app Library directories, unregisters the
+bundle and verifies zero owned native processes and an inactive endpoint. All
+**16** output/Library/private-root absence checks pass. A round-trip-verified
+in-memory gzip retains **192** UTF-8 records and **42** capture hashes, SHA-256
+`a15d48478612d73a8366db45c77af3de50ad2c7cfe50538c3d6d7afac6dc6a7d`.
+The two pre-existing shared-UI cache files and protected 123-byte draft retain
+their exact hashes. User data, references, root dependencies, shared toolchains
+and unrelated processes remain. Publication-time fetch finds main at the
+accepted base; ordinary hooks, fast-forward, push and independent remote and
+cleanliness checks govern delivery.
+
+**Approve for the inspected archive waiting and continuation task.** All eight
+goal CHECK dimensions are considered within this flow; whole-product award-level
+acceptance remains open. Other native locales, VoiceOver, physical IME,
+RTL/forced colors, contrast ratios, animation timing and other-platform GUIs are
+unverified. No live billing, real archive removal, durable command recovery or
+Send is exercised; unchanged Runtime/backend/shared-UI suites are not repeated
+beyond the required Desktop gate. No migration is required.
+
+Next, trace the real capture owner before deciding whether an empty daily
+breakdown should be offered. The supplied summary has `byDay: []` and its native
+disclosure can expand without rows; that synthetic input alone does not prove
+the current producer emits this shape. Keep this investigation separate from
+the accepted waiting fix and continue the broader complete-page review.
+
 ### Generated SVG reading and source return
 
 Generated SVG fences open the existing image reader. `SvgArtifact.tsx` retains

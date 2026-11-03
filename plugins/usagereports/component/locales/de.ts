@@ -16,6 +16,7 @@ export const de: Record<string, string> = {
   "archive.actions.label": "Archivaktionen",
   "capture.period.label": "Erfassungszeitraum",
   "capture.save": "Bericht speichern",
+  "capture.saving": "Bericht wird gespeichert…",
   "archive.refresh": "Archiv aktualisieren",
   "evidence.beginning": "Beginn der aufbewahrten Nachweise",
   "cost.notReported": "Nicht gemeldet",
@@ -23,6 +24,8 @@ export const de: Record<string, string> = {
   "pending.note": "Bestätigung für den ursprünglichen Befehl ausstehend.",
   "pending.check": "Ursprüngliches Ergebnis prüfen",
   "pending.retire": "Ursprünglichen Befehl zurückziehen",
+  "pending.checking": "Ursprünglicher Befehl wird geprüft…",
+  "pending.retiring": "Ursprünglicher Befehl wird zurückgezogen…",
   "archive.title": "Archiv",
   "archive.count_one":
     "{{count}} gespeicherter Bericht. Die Kapazität beträgt {{capacity}}.",
