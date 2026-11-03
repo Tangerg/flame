@@ -29,6 +29,9 @@ sweep opens all 11 Settings categories, 13 workspace page families and the main
 conversation/navigation surfaces; its 224 shared UI checks cover unchanged
 shared source. Plugin formatting still reports only the two unchanged
 pre-existing Feedback files. Owned qualification resources are cleaned up.
+The populated follow-up now qualifies Hooks rules and Diagnostics records in
+their corresponding chapters below. It extends the initial empty-state sweep
+without adding a product change or claiming every state permutation.
 
 Skills Select All remains scoped to the accepted instructions from
 the existing document heading and controls, preserving native copy, catalog return
@@ -12512,6 +12515,61 @@ data, shared caches, read-only references and unrelated processes are preserved.
 Publication uses a fresh-fetch guard, main fast-forward and direct remote equality
 check. Continue from fresh complete-task evidence.
 
+### Populated Diagnostics native reading (2026-11-03)
+
+The all-page alignment sweep's empty Diagnostics surface is extended on main
+`411551db5` with three spans, two metrics and two logs. Ordinary private fixture
+data enters the actual telemetry store through its existing ingest methods;
+the installed Diagnostics ESM receives the normal lifetime-bound telemetry
+collaborator. The fixture changes composition/data only. No product source,
+selection owner, read/clear behavior, token or installed resource changes.
+
+English light/14 px/Orange actual Wails reading covers the 320 px Dock, long
+record names, status and duration, complete paths/attributes, nested original
+JSON and native keyboard wrapping. Counter values retain `24 {preview}`;
+histogram count remains `12`, with `840 ms`, `50 ms`, `100 ms` and `70 ms` beside
+their respective labels. Multiline errors retain the blank line and stack
+indentation. Full-width/Dock and Files source return preserve the selected Logs
+signal and its expanded record. Refresh keeps its own focus and the disclosure;
+the action menu is inspected and dismissed without clearing the buffer. The
+visible original draft continues after reading.
+
+Chinese dark/18 px/custom `#70839A` and reduced motion repeat populated Traces,
+Metrics and Logs at actual native 200%, including raw-record wrapping, exact
+classifications and measured values. Native window Zoom and Actual Size are
+restored before returning to the visible ASCII draft and continuing it. The
+actual screenshots are inspected; saved captures alone are not qualification.
+No additional alignment defect is demonstrated, so this follow-up adds evidence
+without a style override. Better-layout, better-ui and better-accessibility and
+the existing reference research guide that bounded judgment.
+
+The same private host/assets also supply the populated Hooks qualification below:
+
+| Serial qualification             | Result                                                                      |
+| -------------------------------- | --------------------------------------------------------------------------- |
+| Normal `make stage-web`          | Exit 0; 7.159 s; all 22 installed JavaScript resources unchanged            |
+| Private fixture assets           | Exit 0; 2.281 s                                                             |
+| Production Wails v3 host copy    | Exit 0; 3.567 s; normal native services/chrome/zoom retained                |
+| Diagnostics EN / ZH normal exits | 0 / 0; 268.293 / 128.204 s                                                  |
+| Hooks EN / ZH normal exits       | 0 / 0; 129.517 / 174.154 s                                                  |
+| Frozen inputs                    | 1,460 production and 1,822 total source/private-host/asset inputs unchanged |
+
+All 267 served HTML/JS/CSS files are free of the checked retired endpoint and
+observer markers; no qualification observer or HTTP provider runs. One user
+window-state change requires a fresh native query before further actions. Invalid
+native key-name attempts are tooling setup and are excluded from acceptance.
+No additional automated tests or Claude implementation invocation runs for
+unchanged product bytes; the preceding 4,465-test and native-gate receipts retain
+their stated scope. Browser visual suites, performance benchmarks, live Runtime
+telemetry delivery, VoiceOver and OS IME composition are not run.
+
+Cleanup unregisters the exact app, removes its six initially absent Library paths
+and nine initially absent output roots, and deletes the private app, data, fixture,
+captures, logs and cache. No owned process remains; the unused Runtime port 50352
+is closed. All 1,460 frozen production inputs remain unchanged after cleanup.
+The separate toolchain/cache, read-only references and exact 123-byte interrupted
+draft backup remain preserved. Only this maintained progress file changes.
+
 ## Trajectory page scope and reading continuity
 
 `plugins/trajectory/component/component.tsx` keeps the accepted cursor chain and
@@ -13641,9 +13699,9 @@ ports 50341/50342 are closed. The exact app is unregistered and removed, its six
 initially absent Library paths and nine initially absent output roots are
 restored, and private fixtures, screenshots, logs and cache are removed. The
 separate toolchain/cache, read-only references and 123-byte interrupted draft
-backup are preserved. Populated Hooks and Diagnostics remain candidates for
-fresh task inspection; the preceding all-page sweep qualified their empty
-surfaces, and no speculative follow-up change is included here.
+backup are preserved. The subsequent populated Hooks and Diagnostics native
+follow-up is recorded in their corresponding chapters. No speculative follow-up
+product change is included here.
 
 The normal staged-formatting and workspace-lint commit hook passes in 4.577 s.
 All 1,441 production inputs and 26 explicitly protected source/test/README/resource
@@ -23676,6 +23734,31 @@ Verification for this surface (2026-10-21):
 - Complete `npm run check --workspace @flame/web` passed **386 files / 3,042 tests** and every subsequent owner check in 158.17 seconds under CI Node 22.22.1. `make check-native` passed in 38.05 seconds. Latest main updates `d2d8110ca`, `bcf43bb21` and `cefd9b98c` were incorporated without file overlap; they change Go package/public-constant names and a generator target, retaining the same wire-version literal. Native checks passed again in 20.83 and 28.99 seconds. All 13 reviewed source hashes remained stable. The full Web suite and independent shared UI/portable suites were not repeated after these Go-only updates; Web's plugin-resource and module checks passed within its complete check. The final integration also retains the two directory-map documentation additions from `fcc70f424`; no behavior changed and the same 13 reviewed hashes remain stable.
 - Cleanup completed: all three owned native processes and the CLI exited, the exact app bundle was unregistered, and its bundle, disposable data, captures, overlays, prompts/reports, logs and pointer were removed. Ten newly created worktree output/cache paths and the unique bundle's Caches/WebKit paths passed preexistence, UID and birth-time guards before removal. Pre-existing shared UI Vite caches, installed dependencies, shared compiler/package caches, read-only references, user data and unrelated main work remain.
 - This uses production components and the Wails host with private data-only `hooks.list` capture. No live hooks, shell command, trust change, provider execution or Run was invoked. VoiceOver, measured pixel contrast, other-platform GUIs, browser/visual suites, performance benchmarks and unrelated root/CLI/SDK suites are not newly qualified. No protocol, persisted data, dependency or installed-resource migration is required.
+
+### Populated Hooks native reading (2026-11-03)
+
+The initial empty-state all-page sweep is extended on main `411551db5` through
+the current installed Hooks ESM and public workspace read. The actual owner is
+now `plugins/hooks/component/component.tsx`; older implementation paths above
+describe their historical qualification. Three read-only fixture rules exercise
+a global command, inactive project injection and inactive multiline project
+command, with long project/configuration paths and exact scope/source identity.
+
+English light/14 px/Orange shows the complete trust group and all three records
+together. Refresh then Tab focuses the existing trust switch while its value
+stays off. Closing Settings returns to the workspace. Chinese dark/18 px/custom
+`#70839A` and reduced motion inspect the same populated page at actual native
+200% and a maximized window, including wrapped commands, CJK injection, literal
+paths, the off switch's focus perimeter and the bottom source. Actual Size and
+window geometry are restored before normal exit. Both ordinary launches exit 0.
+The inspected reading axes and control alignment need no additional product edit.
+
+The shared source/host freeze, build and four native-exit receipts, preservation
+checks and completed cleanup are recorded under **Populated Diagnostics native
+reading (2026-11-03)**. No trust toggle, hook shell execution, configuration save,
+provider mutation or live lifecycle event is invoked. This supplements visual
+and keyboard reading coverage; it does not certify project trust execution or
+every Hook command/failure state.
 
 ## Anchored controls and native floating-surface composition
 
