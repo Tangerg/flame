@@ -28,6 +28,7 @@ type ArchiveProps = {
 };
 type Revision = DocumentRead["revision"];
 type Selection = NonNullable<DeliverablesState["selection"]>;
+export type OpenForReading = (value: Selection, origin: HTMLElement) => void;
 
 export function formatTimestamp(
   value: string,
@@ -97,7 +98,12 @@ function ArchivePaging({
   );
 }
 
-export function ArchiveList({ state, dateTime, t }: ArchiveProps) {
+export function ArchiveList({
+  state,
+  dateTime,
+  onOpen,
+  t,
+}: ArchiveProps & { onOpen: OpenForReading }) {
   const [search, setSearch] = useState("");
   const [format, setFormat] = useState("all");
   const entries =
@@ -135,7 +141,12 @@ export function ArchiveList({ state, dateTime, t }: ArchiveProps) {
           <RecordButton
             key={entry.id}
             aria-current={state.selection?.id === entry.id ? "true" : undefined}
-            onClick={() => state.open({ id: entry.id, revision: entry.head })}
+            onClick={(event) =>
+              onOpen(
+                { id: entry.id, revision: entry.head },
+                event.currentTarget,
+              )
+            }
           >
             <RecordSummary
               title={entry.title}

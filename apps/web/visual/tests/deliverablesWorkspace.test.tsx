@@ -1152,6 +1152,154 @@ it.each([
   },
 );
 
+it.each([
+  { fail: false, later: false },
+  { fail: false, later: true },
+  { fail: false, later: "origin" },
+  { fail: true, later: false },
+  { fail: true, later: true },
+  { fail: true, later: "origin" },
+] as const)(
+  "moves a focused first document opening to its revision history before reading settles (failure=$fail, later focus=$later)",
+  async ({ fail, later }) => {
+    const fixture = await rig();
+    fixture.ui.render(<Deliverables context={fixture.context()} />);
+    const row = await screen.findByRole<HTMLButtonElement>("button", {
+      name: /Quarterly report/,
+    });
+    expect(screen.queryByRole("region", { name: "Revision history" })).toBeNull();
+    fixture.failReads(fail);
+    const held = fixture.hold(doc1);
+    act(() => row.focus());
+    fireEvent.click(row);
+    await held.arrived;
+    const entry = screen.getByRole("region", { name: "Revision history" });
+    expect(document.activeElement).toBe(entry);
+    expect(entry.tabIndex).toBe(-1);
+    expect(screen.queryByText("Current native revision")).toBeNull();
+    const search = screen.getByRole("searchbox", { name: "Search this page of titles" });
+    const destination = later === "origin" ? row : later ? search : entry;
+    if (later) act(() => destination.focus());
+    await act(async () => held.release());
+    await waitFor(() => expect(screen.queryByText("Reading…")).toBeNull());
+    expect(screen.getByRole("region", { name: "Revision history" })).toBe(entry);
+    expect(document.activeElement).toBe(destination);
+    expect(Boolean(screen.queryByText("Current native revision"))).toBe(!fail);
+    expect(Boolean(screen.queryByText(/fixture acknowledgement unavailable/))).toBe(fail);
+    expect(
+      fixture.calls.filter((call) => call.method === METHODS.read).map((call) => call.input),
+    ).toEqual([{ id: doc1, revision: rev1 }]);
+    expect(fixture.calls.filter((call) => call.key !== null)).toHaveLength(0);
+  },
+);
+
+it("moves focused document changes and exact reopening to the same revision history without rereading", async () => {
+  const fixture = await rig();
+  fixture.ui.render(<Deliverables context={fixture.context()} />);
+  const first = await screen.findByRole<HTMLButtonElement>("button", {
+    name: /Quarterly report/,
+  });
+  act(() => first.focus());
+  fireEvent.click(first);
+  await screen.findByRole("heading", { name: "Quarterly report" });
+  const entry = screen.getByRole("region", { name: "Revision history" });
+  expect(document.activeElement).toBe(entry);
+  const other = screen.getByRole<HTMLButtonElement>("button", { name: /Meeting notes/ });
+  const held = fixture.hold(doc2);
+  act(() => other.focus());
+  fireEvent.click(other);
+  await held.arrived;
+  expect(document.activeElement).toBe(entry);
+  await act(async () => held.release());
+  await screen.findByRole("heading", { name: "Meeting notes" });
+  expect(screen.getByRole("region", { name: "Revision history" })).toBe(entry);
+  expect(document.activeElement).toBe(entry);
+  const reads = () =>
+    fixture.calls.filter((call) => call.method === METHODS.read).map((call) => call.input);
+  expect(reads()).toEqual([
+    { id: doc1, revision: rev1 },
+    { id: doc2, revision: rev2 },
+  ]);
+  act(() => other.focus());
+  fireEvent.click(other);
+  expect(document.activeElement).toBe(entry);
+  await act(async () => {});
+  expect(screen.getByRole("heading", { name: "Meeting notes" })).toBeTruthy();
+  expect(reads()).toHaveLength(2);
+  expect(fixture.calls.filter((call) => call.key !== null)).toHaveLength(0);
+});
+
+it("keeps another control's focus when a document opens from an unfocused control", async () => {
+  const fixture = await rig();
+  fixture.ui.render(<Deliverables context={fixture.context()} />);
+  const row = await screen.findByRole("button", { name: /Quarterly report/ });
+  const search = screen.getByRole("searchbox", { name: "Search this page of titles" });
+  act(() => search.focus());
+  fireEvent.click(row);
+  await screen.findByRole("heading", { name: "Quarterly report" });
+  expect(screen.getByRole("region", { name: "Revision history" })).toBeTruthy();
+  expect(document.activeElement).toBe(search);
+  fireEvent.click(screen.getByRole("button", { name: /Meeting notes/ }));
+  await screen.findByRole("heading", { name: "Meeting notes" });
+  expect(document.activeElement).toBe(search);
+});
+
+it("neither selects nor moves focus after its context retires", async () => {
+  const fixture = await rig();
+  const retirement = new AbortController();
+  const context = { ...fixture.context(), signal: retirement.signal };
+  fixture.ui.render(<Deliverables context={context} />);
+  const row = await screen.findByRole<HTMLButtonElement>("button", {
+    name: /Quarterly report/,
+  });
+  retirement.abort();
+  act(() => row.focus());
+  fireEvent.click(row);
+  await act(async () => {});
+  expect(document.activeElement).toBe(row);
+  expect(screen.queryByRole("region", { name: "Revision history" })).toBeNull();
+  expect(fixture.calls.filter((call) => call.method === METHODS.read)).toHaveLength(0);
+});
+
+it("moves a focused completed-command revision opening to the same revision history", async () => {
+  const fixture = await rig();
+  fixture.ui.render(<Deliverables context={fixture.context()} />);
+  await screen.findByRole("button", { name: /Quarterly report/ });
+  const search = screen.getByRole("searchbox", { name: "Search this page of titles" });
+  fireEvent.click(screen.getByRole("button", { name: "Create a deliverable", expanded: false }));
+  const body = await screen.findByRole("textbox", { name: "Document text" });
+  const form = body.closest("form")!;
+  fireEvent.change(within(form).getByRole("textbox", { name: "Title" }), {
+    target: { value: "Board summary" },
+  });
+  fireEvent.change(body, { target: { value: "Retained board decisions." } });
+  act(() => search.focus());
+  fireEvent.submit(form);
+  const open = await screen.findByRole<HTMLButtonElement>("button", {
+    name: "Open resulting revision",
+  });
+  await screen.findByRole("heading", { name: "Board summary" });
+  const entry = screen.getByRole("region", { name: "Revision history" });
+  expect(document.activeElement).toBe(search);
+  fireEvent.click(screen.getByRole("button", { name: /Meeting notes/ }));
+  await screen.findByRole("heading", { name: "Meeting notes" });
+  expect(document.activeElement).toBe(search);
+  const held = fixture.hold(newDocument);
+  act(() => open.focus());
+  fireEvent.click(open);
+  await held.arrived;
+  expect(document.activeElement).toBe(entry);
+  await act(async () => held.release());
+  await screen.findByRole("heading", { name: "Board summary" });
+  expect(screen.getByRole("region", { name: "Revision history" })).toBe(entry);
+  expect(document.activeElement).toBe(entry);
+  expect(fixture.calls.filter((call) => call.method === METHODS.read).at(-1)?.input).toEqual({
+    id: newDocument,
+    revision: newRevision,
+  });
+  expect(fixture.creations()).toBe(1);
+});
+
 it.each([false, true])(
   "keeps an unread revision compact with its full identity available through settlement (failure=%s)",
   async (fail) => {

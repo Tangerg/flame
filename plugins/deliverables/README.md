@@ -85,8 +85,16 @@ settlement preserves the user's current focus, including a later move to another
 control. Read failures retain the accepted page and its available navigation.
 The exact revision being read remains a selectable option alongside each history
 page, so paging does not replace its label with a raw identity or change selection.
-Opening the current revision from its focused Inspector action moves focus to the
-stable revision-history region. Read settlement preserves any later focus move.
+Opening a retained document, a completed command's revision or the Inspector's
+current revision from its focused control moves focus to the stable
+revision-history region before the read settles. This includes the region's
+first appearance and an exact revision that is already selected, which is not
+read again. Activation without that focus, or from a retired context, leaves
+focus unchanged. If the pending page lacks room to reveal the reader, settlement
+reveals that same region beneath the shared Panel controls only while it still
+owns focus. Another control's focus cancels the opening intent, including a
+return to the original catalog row. Settlement retires the intent; Refresh and
+background reads do not originate it.
 Refresh uses the same focusable pending boundary while the list or catalog rereads.
 An unread selected revision uses its short identity until metadata is available.
 The history region's existing identity disclosure keeps the full document and

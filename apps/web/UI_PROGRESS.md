@@ -17,13 +17,17 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-Schedules page reading and four shared alignment repairs complete source,
-regression and actual native qualification under **Schedules page reading and
-shared alignment (2026-11-03)**. The native sweep opens all 11 Settings categories,
-13 workspace page families and the main conversation/navigation surfaces. All
-4,455 frontend and 224 shared UI tests pass; plugin formatting still reports only
-the two unchanged pre-existing Feedback files. The locked-Mac interruption is
-resolved, and the owned native qualification resources are cleaned up.
+Deliverables catalog opening now enters the existing revision-history reading
+region and reveals it after settlement while preserving later focus choices;
+see **Catalog opening and the revision reading entry (2026-11-03)**. All 4,465
+frontend tests and 25 non-Runtime Web gates pass, and actual native narrow,
+full-width, failed-read/retry and Chinese large-text/200% tasks are qualified.
+The preceding Schedules and shared alignment batch is published as `bdc532579`
+under **Schedules page reading and shared alignment (2026-11-03)**. Its native
+sweep opens all 11 Settings categories, 13 workspace page families and the main
+conversation/navigation surfaces; its 224 shared UI checks cover unchanged
+shared source. Plugin formatting still reports only the two unchanged
+pre-existing Feedback files. Owned qualification resources are cleaned up.
 
 Skills Select All remains scoped to the accepted instructions from
 the existing document heading and controls, preserving native copy, catalog return
@@ -8096,10 +8100,9 @@ The separate toolchain/cache, read-only references and 123-byte interrupted draf
 backup remain unchanged. The normal staged-formatting and workspace-lint commit
 hook passes without changing the qualified production, test or resource bytes.
 
-Next observed reading task: selecting a retained Deliverable leaves focus on its
-catalog row while the revision inspector begins below the fold. Evaluate that
-selection-to-inspector path as a separate complete task after publishing this
-batch; no speculative navigation rewrite is included here.
+The observed Deliverables catalog-to-inspector discontinuity is subsequently
+qualified under **Catalog opening and the revision reading entry (2026-11-03)**.
+The shared alignment repair remains with the four owners above.
 
 ### Schedules filter arrival and retained reading
 
@@ -13553,6 +13556,93 @@ e6cdcd77c6689537eb95ed2072a429cc0e72e72889d8b91afd70ff66ef57146f. This final han
 continue from fresh content/Dock task evidence with the continuous goal active.
 
 ### Deliverables pagination and reading continuity
+
+#### Catalog opening and the revision reading entry (2026-11-03)
+
+Qualified from synchronized main `bdc532579`. The actual 320 px native Dock
+baseline leaves catalog-row focus and the visible list in place when a retained
+document opens; the revision reader begins below twelve records. An initial
+focus-only candidate also leaves the accepted reader near the viewport bottom
+because the short pending page has insufficient scroll range. That candidate is
+rejected through actual native inspection.
+
+`Workspace` now owns one temporary opening-focus reference. A focused catalog
+row, completed-command revision action or Inspector current-revision action
+calls the existing canonical `state.open`, then enters the existing history
+region before I/O settles. First mount uses the same layout effect; an already
+settled exact selection enters and reveals the region without rereading. When
+the pending read settles, the region scrolls beneath the shared Panel's existing
+measured controls only if it still owns focus. A later search, Composer or
+original-row focus cancels that arrival. Settlement retires the reference;
+Refresh, background reads and history selection do not originate an opening
+intent. Retired contexts cannot select or request focus. No new selection owner,
+scroll cache, timer, listener, DOM query, offset, shared API or dependency is added.
+
+The private `OpenForReading` callback joins those three explicit callers in
+`archive.tsx` and `component.tsx`; `useDeliverables`, read lifetimes, command
+results and persisted data remain unchanged. The README follows this contract.
+Normal generation changes only Deliverables ESM among 22 installed JavaScript
+resources. Better-layout, better-ui and better-accessibility guide the reading
+axis and semantic keyboard entry. Existing local revision-entry behavior and the
+documented ZCode/HeroUI/Radix return research remain the references; no additional
+upstream comparison or component system is introduced.
+
+One bounded Read/Edit-only Claude CLI implements the scoped initial details in
+224.714 s, reporting 34 turns and no permission denials. Root reviews the actual
+diff, rejects the incomplete native reveal, completes settlement ownership,
+adds original-row focus regressions and owns verification and publication.
+
+| Verification on final production bytes | Result                                                                                                                 |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Deliverables workspace and transfer    | 2 files / 58 tests pass; 8.798 s                                                                                       |
+| Complete frontend project              | 424 files / 4,465 tests pass; command 118.047 s                                                                        |
+| Original-source counter                | Restoring only the two original production TSX files gives 8 failed / 43 passed in 7.186 s; candidate restored exactly |
+| Non-Runtime Web gates                  | All 25 pass, including bundle and exact installed resources                                                            |
+| Plugin checks                          | Typecheck, lint, 20 catalogs across 8 locales and exact resources pass                                                 |
+| Serial native gate                     | `make check-native` passes in 13.230 s; known nonfatal SDK/link-target warnings remain                                 |
+| Shared UI                              | Unchanged source retains the preceding batch's complete 224-test qualification                                         |
+| Plugin formatting                      | Only the two pre-existing Feedback component/test files fail; both remain byte-identical to base main                  |
+
+The user-requested pause interrupts an earlier frontend run with exit 143 after
+three reported palette/notification failures, before a final failure report.
+No cause is inferred from that partial log. On resume, those unchanged two files
+pass all 177 tests in 8.388 s, followed by the complete passing frontend run
+above. No assertion, timeout or test configuration is weakened.
+
+Final native tasks run without an observer in the actual pinned Wails v3 host,
+using the installed Deliverables ESM, component lifecycle and public client.
+English light/14 px/Orange covers a 320 px Dock, keyboard first opening, held
+read, later Composer editing during another document read, full-width/exact
+reopening, complete structural content, Files source return, retained disclosures
+and continued original drafting. Closing full-width returns focus to the
+Deliverables container; the task explicitly refocuses Composer before continuing.
+Chinese dark/18 px/custom `#70839A`, reduced motion and actual native 200% covers
+first-read failure, visible warning/identity, Refresh recovery with button focus,
+exact reopening, keyboard historical selection and Open current revision. Actual
+size is restored; the Chinese interface retains and extends a visible ASCII
+draft through full-width return. Direct Chinese text injections produced no
+visible text and are excluded from draft/IME evidence. Both final apps quit
+normally with exit 0 in 460.558 / 795.235 s.
+
+Private provider replies supply retained document metadata and structural reads;
+mutation methods reject execution. This is not Office creation, binary rendering,
+export, upload or live Runtime certification. An earlier HTTP fixture failed
+because its `headers` method collided with `BaseHTTPRequestHandler.headers`;
+that setup attempt is excluded and no production security policy is relaxed.
+VoiceOver, OS IME composition, full Runtime/CLI and plugin backend suites are not
+run. Browser visual suites and performance benchmarks remain excluded.
+
+All 1,801 frozen source/private-host/asset inputs remain unchanged through final
+native qualification; 267 served HTML/JS/CSS files contain no observer or retired
+endpoint marker. The 1,441 production-input freeze and all installed-resource
+hashes are preserved for post-cleanup verification. Owned processes are gone and
+ports 50341/50342 are closed. The exact app is unregistered and removed, its six
+initially absent Library paths and nine initially absent output roots are
+restored, and private fixtures, screenshots, logs and cache are removed. The
+separate toolchain/cache, read-only references and 123-byte interrupted draft
+backup are preserved. Populated Hooks and Diagnostics remain candidates for
+fresh task inspection; the preceding all-page sweep qualified their empty
+surfaces, and no speculative follow-up change is included here.
 
 The retained-document list and revision-history page controls now use shared
 Button pending behavior and focusable disabled boundaries. Native HTML disabled

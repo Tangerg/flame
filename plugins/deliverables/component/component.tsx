@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   failureText,
   type ComponentContext,
@@ -36,6 +36,7 @@ import {
   RevisionHistory,
   ArchiveReadStatus,
   formatTimestamp,
+  type OpenForReading,
 } from "./archive";
 import { ImportForm } from "./importing";
 import { EvidencePanel, Findings } from "./evidence";
@@ -125,7 +126,15 @@ function PendingCommands({
   );
 }
 
-function Notices({ state, t }: { state: DeliverablesState; t: Translate }) {
+function Notices({
+  state,
+  onOpen,
+  t,
+}: {
+  state: DeliverablesState;
+  onOpen: OpenForReading;
+  t: Translate;
+}) {
   const notice = state.notice;
   return (
     <RecordGroup aria-live="polite">
@@ -154,12 +163,15 @@ function Notices({ state, t }: { state: DeliverablesState; t: Translate }) {
           )}
           {notice.revision && (
             <Button
-              onClick={() => {
+              onClick={(event) => {
                 if (notice.revision)
-                  state.open({
-                    id: notice.revision.documentId,
-                    revision: notice.revision.id,
-                  });
+                  onOpen(
+                    {
+                      id: notice.revision.documentId,
+                      revision: notice.revision.id,
+                    },
+                    event.currentTarget,
+                  );
               }}
             >
               {t("command.openRevision")}
@@ -301,7 +313,7 @@ function Inspector({
   inspection,
   catalog,
   dateTime,
-  onOpenCurrent,
+  onOpen,
   t,
 }: {
   state: DeliverablesState;
@@ -309,7 +321,7 @@ function Inspector({
   inspection: { value?: Inspection; error?: string };
   catalog?: FormatCatalog;
   dateTime: Intl.DateTimeFormat;
-  onOpenCurrent: (origin: HTMLButtonElement) => void;
+  onOpen: OpenForReading;
   t: Translate;
 }) {
   const [removal, setRemoval] = useState<{ id: string; revision: string }>();
@@ -392,7 +404,14 @@ function Inspector({
           </>
         )}
         {!current && (
-          <Button onClick={(event) => onOpenCurrent(event.currentTarget)}>
+          <Button
+            onClick={(event) =>
+              onOpen(
+                { id: document.document.id, revision: document.document.head },
+                event.currentTarget,
+              )
+            }
+          >
             {t("revision.openHead")}
           </Button>
         )}
@@ -588,6 +607,42 @@ function Workspace({ context }: { context: ComponentContext }) {
   );
   const state = useDeliverables(context);
   const historyEntry = useRef<HTMLElement>(null);
+  // The pending page may lack enough scroll range to reveal the reader fully.
+  const openingFocus = useRef<HTMLElement | null>(null);
+  const openForReading: OpenForReading = (value, origin) => {
+    openingFocus.current = null;
+    if (state.signal.aborted) return;
+    const ownedFocus = origin.ownerDocument.activeElement === origin;
+    const settled =
+      state.selection?.id === value.id &&
+      state.selection.revision === value.revision &&
+      state.read &&
+      !state.read.loading;
+    state.open(value);
+    if (!ownedFocus) return;
+    const entry = historyEntry.current;
+    openingFocus.current = settled ? null : (entry ?? origin);
+    entry?.focus({ preventScroll: true });
+    if (settled) entry?.scrollIntoView({ block: "start", inline: "nearest" });
+  };
+  useLayoutEffect(() => {
+    const owner = openingFocus.current;
+    if (!owner) return;
+    if (state.signal.aborted || owner.ownerDocument.activeElement !== owner) {
+      openingFocus.current = null;
+      return;
+    }
+    const entry = historyEntry.current;
+    if (!entry) return;
+    if (owner !== entry) {
+      entry.focus({ preventScroll: true });
+      openingFocus.current = entry;
+    }
+    if (state.read && !state.read.loading) {
+      openingFocus.current = null;
+      entry.scrollIntoView({ block: "start", inline: "nearest" });
+    }
+  }, [state.selection, state.read, state.signal]);
   const catalog = useMemo(
     () => readCatalog(state.catalog?.value),
     [state.catalog?.value],
@@ -617,7 +672,7 @@ function Workspace({ context }: { context: ComponentContext }) {
         </Toolbar>
       }
     >
-      <Notices state={state} t={t} />
+      <Notices state={state} onOpen={openForReading} t={t} />
       <PendingCommands state={state} t={t} />
       {catalogError && <Callout kind="warning">{catalogError}</Callout>}
       <Disclosure title={t("author.new")} keepMounted>
@@ -626,7 +681,12 @@ function Workspace({ context }: { context: ComponentContext }) {
       <Disclosure title={t("import.open")} keepMounted>
         <ImportForm state={state} t={t} />
       </Disclosure>
-      <ArchiveList state={state} dateTime={dateTime} t={t} />
+      <ArchiveList
+        state={state}
+        dateTime={dateTime}
+        onOpen={openForReading}
+        t={t}
+      />
       <RevisionHistory
         state={state}
         dateTime={dateTime}
@@ -643,15 +703,7 @@ function Workspace({ context }: { context: ComponentContext }) {
           inspection={inspection}
           catalog={catalog?.formats}
           dateTime={dateTime}
-          onOpenCurrent={(origin) => {
-            if (context.signal.aborted) return;
-            const ownedFocus = origin.ownerDocument.activeElement === origin;
-            state.open({
-              id: document.document.id,
-              revision: document.document.head,
-            });
-            if (ownedFocus) historyEntry.current?.focus();
-          }}
+          onOpen={openForReading}
           t={t}
         />
       )}
