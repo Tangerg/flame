@@ -15,16 +15,19 @@ const column = {
 } as const;
 export function ReadStatus<T>({
   read,
+  title,
   t,
   retry,
 }: {
   read: Read<T> | undefined;
+  title?: string;
   t: Translate;
   retry(): void;
 }) {
   if (read?.phase === "failed")
     return (
-      <div role="alert" style={column}>
+      <div role="alert" data-focus-unit style={column}>
+        {title && <strong>{title}</strong>}
         <RecordBody>{failureText(read.error)}</RecordBody>
         {read.data !== undefined && <Metadata>{t("read.retained")}</Metadata>}
         <Button onClick={retry}>{t("retry")}</Button>

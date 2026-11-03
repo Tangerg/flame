@@ -22333,6 +22333,125 @@ global caches, user data, the primary parallel checkout and reference repositori
 remain intact. This Markdown receipt changes no qualified product source; fresh
 remote, cleanliness and preservation checks follow its publication.
 
+### Installed MCP read identity and recovery groups (2026-11-04)
+
+Qualified from synchronized main `1ea6fe4f2`. The current installed MCP component
+shows two identical literal publisher failures above an accepted tool record,
+without naming whether visibility or auto-approve rules failed. This reproduces
+in actual Wails. The older MCP identity work below does not establish the
+current installed component's behavior after the later ownership migrations.
+
+`plugins/mcp/component/toolControls.tsx` now forwards the three existing catalog
+messages to `ReadStatus` in `feedback.tsx`. Only a failed read renders the optional
+object title above its unchanged publisher explanation. The existing
+`data-focus-unit` makes that title, explanation, retained-data notice and Retry
+one reading unit. All eight locale catalogs already own the required messages;
+no locale source changes. Tools and visibility Retry still reread that pair
+through `settings.readTools`; rules Retry rereads only rules. Accepted tools,
+independent policy guards, draft ownership, source matching and command lifetimes
+remain unchanged. No new component, state, effect, listener, observer, timer,
+style override, protocol, persistence or Runtime owner is introduced.
+
+A bounded Read/Edit-only Claude Code CLI takes **176.045 s / 31 turns** with no
+permission denials. Root reviews the actual diff, clarifies the README's paired
+read semantics and corrects one new test assumption: the installed Base UI
+Switch's semantic root is a span with `aria-disabled`, rather than a native
+disabled button. Both unavailable policy switches are explicitly activated in
+the regression and perform zero writes; no production guard is weakened. The
+initial **1 failure / 97 passes** is retained as preliminary evidence.
+
+Three added cases exercise identical literal multiline failures, distinct named
+alerts, accepted tool descriptions, read-only policy, paired tools/exposure and
+separate rule recovery, later field/Cancel focus, retained values, no writes and
+Cancel returning to the exact Edit opener. English and German tool-catalog
+failures remain distinct from an accepted empty catalog. The baseline is
+**5 files / 95 tests**. Final verification is:
+
+| Check                     | Actual result                                                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Focused MCP               | **5 files / 98 tests pass**, 2.442 s                                                                                      |
+| Original-source counter   | Restoring only the two original production files gives **3 failures / 95 passes**, 5.667 s; candidate restored byte-exact |
+| Complete frontend project | **424 files / 4,538 tests pass**, command 87.281 s                                                                        |
+| Web gates                 | All **25** non-Runtime gates pass                                                                                         |
+| Plugin checks             | ESM generation, typecheck, lint, locale closure and owned formatting pass                                                 |
+| Native gate               | `make check-native` passes, including supported Desktop Go checks and Wails build, 16.418 s                               |
+
+All **27 final serial gates** pass. `git diff --check` passes. Shared UI production
+bytes are unchanged; its **13 files / 229 tests** and packed offline consumer
+result from the immediately preceding `1ea6fe4f2` batch are reused, not rerun.
+Plugin-wide formatting, full Runtime/CLI and plugin backend suites, browser
+visual suites and performance benchmarks are not run. The previously recorded
+unrelated Feedback formatting failure is outside this diff.
+
+Actual final Wails tasks enter Settings with Cmd+, from an existing conversation,
+open MCP servers and the exact workspace-tools disclosure, edit Arguments, read
+and retry, Cancel back to the captured Edit opener, close Settings and continue
+the original unsent Composer draft:
+
+- **English/light/14px/Orange/full motion:** the original shows two unlabelled
+  failures. The candidate names visibility and auto-approve rules separately.
+  Retrying visibility accepts the tools/exposure pair while rules stays failed;
+  its own Retry then accepts rules. Literal `保留` in Arguments and the user's
+  later Description/Cancel focus survive both reads and the complete return.
+- **Chinese/dark/18px/#4E80FF/motion off:** actual native **200%** and a native
+  edge resize produce a **2244 × 1798** capture, about **561 CSS px** wide.
+  Keyboard traversal reveals each complete named failure, literal explanation
+  and focused Retry together. Both recoveries, the Chinese Arguments draft,
+  later Cancel focus, exact Edit return and original conversation continuation
+  pass.
+- **German/light/18px/#8B5CF6/motion off:** the same zoom and resized window show
+  the entire named tool-catalog failure, literal reason and focused Retry.
+  Recovery exposes the real accepted tool name and description while retaining
+  the Arguments draft and later Cancel focus. Edit return and continued original
+  Composer input pass.
+
+The original and final English/Chinese/German processes quit normally with
+**0 / 0 / 0 / 0**, in **289.937 / 192.569 / 419.839 / 276.276 s**. Native interaction
+uses screenshots and AX through Sky without DOM access or an injected observer.
+The private fixture wraps only three read methods on the public runtime client;
+accepted reads use the ordinary immutable memory responses. Held reads wait
+12 seconds; the prescribed first reads fail with the same literal multiline
+publisher reason. Production installed MCP ESM and the ordinary Settings entry
+render every scene. MCP/approval writes are refused. No live Runtime, provider,
+MCP process, OAuth, configuration Save/Delete/Test/Reconnect, policy write,
+installation, database or Send is exercised.
+
+The six better-interface owners guide the scoped review. Writing names the
+failed object and recovery; layout/accessibility keep that explanation with its
+focused action; typography, color and UI retain the shared tokens and verify
+translated wrapping, 14/18px, light/dark, custom accents and 200% paths. Read-only
+ZCode `StatusCards.tsx` supplies actual object identity before status text;
+HeroUI's actual alert story supplies a named failure, description and Retry.
+Neither is proof of Flame behavior. The eight award CHECK dimensions are
+reviewed within this task; existing motion and visual vocabulary remain intact.
+VoiceOver, physical IME, RTL, other platforms, new contrast/timing measurements
+and whole-product award-level acceptance remain unverified.
+
+This batch accepts the named failure reading groups, retained drafts, later
+focus and returns. It does **not** repair initiating Retry focus: the original
+Retry unmounts while loading and focus falls to HTML. More urgently, the final
+German editor exposes another shared layout defect: the two-line Timeout label
+puts its input below the adjacent one-line Description input. The next batch
+must trace `FormRow`/`FormField` and fix that shared cause without breaking the
+previously accepted Model/Reasoning control-top alignment. Narrow Settings
+navigation also leaves the selected category out of view after zoom; its cause
+requires further scoped reproduction. These observations are not passed checks.
+
+The final freeze verifies **6,804 source/test/config inputs**, **22 installed
+resources**, two read-only references and compiled maps of **333 served files,
+4 app files and 21 private host-source files**. Exactly four non-Markdown inputs
+change; only MCP changes among the 22 generated ESM resources. The app is
+unregistered, all four owned processes have exited and the private endpoint is
+inactive. Ten initially absent checkout output roots, six Library roots and the
+exact private qualification root are absent after ownership-guarded cleanup:
+**17 verified absences**. Two pre-existing UI cache files and the protected
+**123-byte** interrupted draft remain byte-exact. The in-memory evidence archive
+retains **169 text records / 35 capture digests**, gzip SHA-256
+`8afd67bdcade9abb13dd79a3de23888081120b5cbe7207090ddfff263602b31e`.
+Normal hooks, main integration and remote verification are required publication
+steps. No data migration is needed; an admitted installation receives the new
+component digest only through its normal explicit package update.
+
 ### MCP tool read identity and scoped recovery
 
 Actual Wails on `eae9c91ad` showed two identical "Couldn't load" explanations

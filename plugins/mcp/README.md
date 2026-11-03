@@ -13,6 +13,11 @@ the accepted prefix and original in-flight command; they never restart that
 prefix after an unknown result. Accepted writes refresh read projections without
 making a failed read appear to undo a successful command.
 
+Failed reads of tools, tool visibility and auto-approve rules name their object
+above the publisher's literal explanation. Each failure and its Retry form one
+reading unit. Tools and visibility retries reread that pair together; the rules
+retry rereads only the rules.
+
 The `mcp-servers` settings intent routes the graphical client's tools shortcut to
 the unique installed entry. Missing or ambiguous entries lead to plugin management.
 No backend, private server registry or independent authorization store is added.

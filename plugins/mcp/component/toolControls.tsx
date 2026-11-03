@@ -63,16 +63,19 @@ export function ToolControls({
       <RecordBody>{t("mcp.tools.policyHint")}</RecordBody>
       <ReadStatus
         read={exposure}
+        title={t("mcp.error.loadToolVisibility")}
         t={t}
         retry={() => settings.readTools(context, server)}
       />
       <ReadStatus
         read={rules}
+        title={t("mcp.error.loadAutoApproveRules")}
         t={t}
         retry={() => settings.readRules(context)}
       />
       <ReadStatus
         read={tools}
+        title={t("mcp.error.loadTools")}
         t={t}
         retry={() => settings.readTools(context, server)}
       />

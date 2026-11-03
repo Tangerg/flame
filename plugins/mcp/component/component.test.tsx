@@ -13,6 +13,7 @@ import { RpcTransportError } from "@flame/runtime-client";
 import { MCPServers } from "./component";
 import { fixture, mutation, server } from "./testing";
 import { de } from "./locales/de";
+import { en } from "./locales/en";
 beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
     () => new DOMRect(100, 100, 200, 32),
@@ -53,6 +54,25 @@ async function add() {
     target: { value: "npx" },
   });
   return field;
+}
+const reason =
+  "workspace-tools refused the read\n  publisher: policy store unavailable";
+const literal = { normalizer: (text: string) => text };
+function readFailure(title: string) {
+  return screen
+    .queryAllByRole("alert")
+    .find((alert) => within(alert).queryByText(title) !== null);
+}
+function expectNoWrites(f: ReturnType<typeof create>) {
+  for (const write of [
+    f.create,
+    f.update,
+    f.remove,
+    f.setExposure,
+    f.setRule,
+    f.forgetRule,
+  ])
+    expect(write).not.toHaveBeenCalled();
 }
 it("reads the canonical server and exposes tools without opening its configuration editor", async () => {
   const { f } = await mount();
@@ -254,3 +274,129 @@ it("keeps a partially failed import's progress and valid JSON without marking it
     "second",
   ]);
 });
+it("names identical tool policy read failures and recovers each through its own Retry without disturbing the editor", async () => {
+  const f = create();
+  f.exposure.mockRejectedValue(new Error(reason));
+  f.listRules.mockRejectedValue(new Error(reason));
+  await mount(f);
+  const visibilityTitle = en["mcp.error.loadToolVisibility"]!;
+  const rulesTitle = en["mcp.error.loadAutoApproveRules"]!;
+  fireEvent.click(screen.getByRole("button", { name: "Tools for docs" }));
+  expect(await screen.findByText("Read documentation")).toBeTruthy();
+  await screen.findByText(visibilityTitle);
+  const visibility = readFailure(visibilityTitle)!;
+  const rules = readFailure(rulesTitle)!;
+  expect(visibility).not.toBe(rules);
+  expect(within(visibility).queryByText(rulesTitle)).toBeNull();
+  for (const alert of [visibility, rules])
+    expect(within(alert).getByText(reason, literal)).toBeTruthy();
+  expect(readFailure(en["mcp.error.loadTools"]!)).toBeUndefined();
+  expect(
+    screen
+      .getByRole("switch", { name: "Enable read" })
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
+  expect(
+    screen
+      .getByRole("switch", { name: "Auto-approve read" })
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
+  fireEvent.click(screen.getByRole("switch", { name: "Enable read" }));
+  fireEvent.click(screen.getByRole("switch", { name: "Auto-approve read" }));
+  expectNoWrites(f);
+
+  const opener = screen.getByRole("button", { name: "Edit docs" });
+  fireEvent.click(opener);
+  const description = screen.getByLabelText<HTMLInputElement>("Description");
+  fireEvent.change(description, { target: { value: "Team documentation" } });
+
+  const toolReads = f.tools.mock.calls.length;
+  const exposureReads = f.exposure.mock.calls.length;
+  const ruleReads = f.listRules.mock.calls.length;
+  const exposure =
+    Promise.withResolvers<Awaited<ReturnType<typeof f.exposure>>>();
+  f.exposure.mockReturnValueOnce(exposure.promise);
+  fireEvent.click(within(visibility).getByRole("button", { name: "Retry" }));
+  expect(f.tools).toHaveBeenCalledTimes(toolReads + 1);
+  expect(f.exposure).toHaveBeenCalledTimes(exposureReads + 1);
+  expect(readFailure(visibilityTitle)).toBeUndefined();
+  description.focus();
+  await act(async () =>
+    exposure.resolve({ server: server.id, disabledTools: ["read"] }),
+  );
+  const enable = screen.getByRole("switch", { name: "Enable read" });
+  expect(enable.getAttribute("aria-disabled")).not.toBe("true");
+  expect(enable.getAttribute("aria-checked")).toBe("false");
+  expect(
+    screen
+      .getByRole("switch", { name: "Auto-approve read" })
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
+  expect(
+    within(readFailure(rulesTitle)!).getByText(reason, literal),
+  ).toBeTruthy();
+  expect(f.listRules).toHaveBeenCalledTimes(ruleReads);
+  expect(document.activeElement).toBe(description);
+  expect(description.value).toBe("Team documentation");
+
+  const accepted =
+    Promise.withResolvers<Awaited<ReturnType<typeof f.listRules>>>();
+  f.listRules.mockReturnValueOnce(accepted.promise);
+  fireEvent.click(
+    within(readFailure(rulesTitle)!).getByRole("button", { name: "Retry" }),
+  );
+  expect(f.listRules).toHaveBeenCalledTimes(ruleReads + 1);
+  expect(f.tools).toHaveBeenCalledTimes(toolReads + 1);
+  expect(f.exposure).toHaveBeenCalledTimes(exposureReads + 1);
+  const cancel = screen.getByRole("button", { name: "Cancel" });
+  cancel.focus();
+  await act(async () => accepted.resolve({ rules: [] }));
+  expect(readFailure(rulesTitle)).toBeUndefined();
+  expect(readFailure(visibilityTitle)).toBeUndefined();
+  const approve = screen.getByRole("switch", { name: "Auto-approve read" });
+  expect(approve.getAttribute("aria-disabled")).not.toBe("true");
+  expect(approve.getAttribute("aria-checked")).toBe("false");
+  expect(
+    screen
+      .getByRole("switch", { name: "Enable read" })
+      .getAttribute("aria-checked"),
+  ).toBe("false");
+  expect(screen.getByText("Read documentation")).toBeTruthy();
+  expect(document.activeElement).toBe(cancel);
+  expect(description.value).toBe("Team documentation");
+  expectNoWrites(f);
+  fireEvent.click(cancel);
+  expect(document.activeElement).toBe(opener);
+});
+it.each([
+  ["en", en],
+  ["de", de],
+] as const)(
+  "names a failed %s tool catalog apart from an accepted empty catalog and recovers its descriptions",
+  async (locale, catalog) => {
+    const f = create();
+    f.tools.mockRejectedValueOnce(new Error(reason));
+    render(<f.Component context={{ ...f.context, locale }} />);
+    await screen.findByText("docs");
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: catalog["mcp.tools.title"]!.replace("{{server}}", "docs"),
+      }),
+    );
+    const title = catalog["mcp.error.loadTools"]!;
+    await screen.findByText(title);
+    const failure = readFailure(title)!;
+    expect(within(failure).getByText(reason, literal)).toBeTruthy();
+    expect(screen.getAllByRole("alert")).toEqual([failure]);
+    expect(screen.queryByText(catalog["mcp.tools.empty"]!)).toBeNull();
+    expect(screen.queryByText("Read documentation")).toBeNull();
+    fireEvent.click(
+      within(failure).getByRole("button", { name: catalog["retry"]! }),
+    );
+    expect(await screen.findByText("Read documentation")).toBeTruthy();
+    expect(readFailure(title)).toBeUndefined();
+    expect(screen.queryByText(catalog["mcp.tools.empty"]!)).toBeNull();
+    expect(f.tools).toHaveBeenCalledTimes(2);
+    expectNoWrites(f);
+  },
+);
