@@ -22,7 +22,9 @@ resized Settings navigation reveals its selected category (`d5b10e146`), and MCP
 read recovery retains its initiating focus (`264e82fd4`). Their actual native
 tasks, checks and boundaries are recorded in their Settings chapters. The native
 no-result search follow-up below reproduces successful keyboard/pointer recovery,
-so its existing implementation is retained. The whole-product goal remains active.
+so its existing implementation is retained. Actual interface/code-font selection
+also preserves reflow, retained MCP editing and continued conversation input in
+the English and Chinese native tasks below. The whole-product goal remains active.
 
 Diff filenames and same-row reader actions now share their first text baseline;
 see **Diff filename and reader-action alignment (2026-11-03)**. Actual Wails
@@ -4441,6 +4443,81 @@ newly verified. Production views use canonical deterministic read fixtures;
 no Runtime mutation or saved business data is exercised. Font-menu scroll-following
 and synthetic slider dragging are not newly qualified by that earlier batch.
 Do not reopen the delivered paper material or preferences.
+
+### Actual font selection and continued editing (2026-11-04)
+
+The earlier Appearance reviews already qualify opening all four font/size menus
+and returning with Escape, including German large-text scenes. This follow-up
+checks actual family selection and subsequent work. No font-selection alignment,
+focus or editing defect is reproduced, so product source remains unchanged.
+
+`FontSection.tsx` uses the real installed-font choices and the existing appearance
+preference owner; `documentAppearance.ts` projects those values into the shared
+sans/mono tokens. The native menus offer Helvetica Neue for interface text and
+Menlo, JetBrains Mono, Fira Code and Monaco for code on this machine. No unavailable
+family is installed or inferred. Literal contributed theme/font names retain their
+identity; they are not treated as missing translated labels. Existing better-layout,
+better-typography, better-ui and accessibility guidance informs the review; prior
+reference research remains applicable without importing another component system.
+
+Two actual Wails tasks use the published `d8d510dac` source:
+
+- **English, light, 14px, Flame Orange, full motion, Actual Size:** End/Return
+  selects Helvetica Neue, pointer activation selects Menlo, and reopening both
+  menus confirms the accepted values. Each selection and Escape returns to its
+  named trigger. Returning to MCP keeps Arguments and Description intact. Native
+  Cmd+A and caret insertion produce `["--font-choice","保留已核对"]` and
+  `Keep this font selection draft checked.`. Option+Tab reaches Cancel; Return
+  closes the editor and restores its Edit opener. Closing Settings preserves the
+  original Composer, continued as `Keep the draft while changing fonts. Font choices
+verified.` without sending. Reopening Settings retains the chosen families;
+  both are then restored to their actual default choices.
+- **Chinese, dark, 18px, custom blue `#4E80FF`, motion Off:** twenty native 0.05
+  page-zoom increments reach 200%; resizing produces a **2244 × 1798** capture.
+  The real interface-font keyboard choice selects Helvetica Neue and the code-font
+  pointer choice selects Fira Code. Reopened menus confirm both values and restore
+  their exact triggers. MCP's Arguments/Environment and Timeout/Description control
+  tops remain aligned. Native selection and continued input produce
+  `["--font-zh","中文保留已核对"]` and `切换字体后保留这个草稿【已核对】。`.
+  Keyboard Cancel returns to Edit. The original Composer continues as
+  `更换字体后继续这段对话。 字体已核对。`; no message is sent. Settings reopen retains
+  both choices. Defaults and Actual Size are restored before normal Quit.
+
+The English text-selection helper initially refuses an unfocused substring;
+native click/Cmd+A and subsequent editing succeed. A Chinese fixture startup
+mistakenly requests unregistered `zh-CN`; its blank scene is excluded and replaced
+with registered `zh`. Native View-menu inspection supplies no zoom-value or menu
+focus claim: Escape reaches web Settings while menu AX remains, and its exposed
+Cancel dismisses the menu. Existing drafts are checked and explicitly restored
+before the accepted font-selection task. These harness corrections remain in the
+evidence and do not justify a product workaround.
+
+Review finds no actionable difference in the exercised typography, spacing,
+hierarchy, color, motion, selection feedback, responsive layout or Flame identity.
+This is scoped acceptance for the two complete tasks, not whole-product award
+qualification. Physical IME, VoiceOver speech/rotor, unavailable fonts, font-menu
+wheel-following and other-platform behavior remain unverified. Production views
+and installed MCP ESM use the canonical in-memory transport; only private local
+appearance preferences change. No live Runtime, producer, configuration/policy
+save, Test, Reconnect, Send, injected DOM or browser visual/performance suite runs.
+
+New checks pass **3 files / 41 tests** for installed-font filtering, appearance
+storage and document projection; staging, private assets and the current private
+native host also pass. The source-identical `264e82fd4` full frontend **424 files /
+4,543 tests**, MCP **5 files / 104 tests**, all **27** serial gates, and the earlier
+shared UI **229 tests / packed consumer** remain reused evidence, not new runs.
+No implementation is needed, so no Claude implementation task is dispatched.
+
+Both accepted native processes exit normally, as does the excluded startup.
+Integrity verifies **6,804** source inputs, **22** installed resources and
+**333 Web / 4 app / 21 host** construction files. Cleanup unregisters the bundle,
+removes **8** owned output/Library paths and the exact private root, and restores
+all **17** absence baselines while preserving two original UI cache files and the
+protected 123-byte draft. The compressed in-memory record retains **115** UTF-8
+files and **79** capture identities, SHA-256
+`fe6a90d843f85917c960e0da3c1d7c07a04f80ac77ce70d37cd28895f1f69b04`.
+The next review follows an observed task gap; completed menu-opening checks are
+not repeated as unfinished work.
 
 ### Accent preset identity and native settings review
 
