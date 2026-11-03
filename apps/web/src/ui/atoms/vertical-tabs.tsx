@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import {
   color,
@@ -162,6 +162,37 @@ export function VerticalTabs({
         .map((group) => ({ ...group, items: group.items.filter(railFilter) }))
         .filter((group) => group.items.length > 0)
     : groups;
+  const listRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    let live = true;
+    const revealSelected = () => {
+      if (!live || !list.isConnected || list.clientHeight === 0) return;
+      const tab = list.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+      if (!tab?.isConnected) return;
+      const target = tab.getBoundingClientRect();
+      if (target.height === 0) return;
+      const top = list.getBoundingClientRect().top + list.clientTop;
+      const bottom = top + list.clientHeight;
+      if (target.top < top) {
+        list.scrollTop -= top - target.top;
+      } else if (target.bottom > bottom) {
+        list.scrollTop += Math.min(target.bottom - bottom, target.top - top);
+      }
+    };
+    revealSelected();
+    const observer = new ResizeObserver(revealSelected);
+    observer.observe(list);
+    // Groups sit inside HoverTrack's boxless wrapper, so find them through their tabs.
+    for (const tab of list.querySelectorAll('[role="tab"]')) {
+      if (tab.parentElement) observer.observe(tab.parentElement);
+    }
+    return () => {
+      live = false;
+      observer.disconnect();
+    };
+  }, [value, railGroups]);
   const rail = stylex.props(styles.rail);
   return (
     <div {...stylex.props(styles.container)}>
@@ -173,7 +204,12 @@ export function VerticalTabs({
       >
         <div data-split-side="end" {...rail} className={cn(rail.className, "pane-split")}>
           {railHeader}
-          <TabsPrimitive.List {...stylex.props(styles.list)} aria-label={ariaLabel} activateOnFocus>
+          <TabsPrimitive.List
+            ref={listRef}
+            {...stylex.props(styles.list)}
+            aria-label={ariaLabel}
+            activateOnFocus
+          >
             <HoverTrack>
               {railGroups.length === 0 && railEmpty}
               {railGroups.map((group) => (

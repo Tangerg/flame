@@ -9214,6 +9214,132 @@ The observed Deliverables catalog-to-inspector discontinuity is subsequently
 qualified under **Catalog opening and the revision reading entry (2026-11-03)**.
 The shared alignment repair remains with the four owners above.
 
+### Selected Settings category visibility through resize (2026-11-04)
+
+Qualified from synchronized main `d6e6dab34`. The original actual Wails task is
+conversation → Cmd+, → MCP servers → Edit workspace-tools → Description draft →
+native 200% and a 2244 × 1798 window. At English/18px/Orange/motion off, the edit
+keeps its draft and focus, but the selected MCP category leaves the navigation
+scrollport: General/Appearance occupy its visible band. Cancel/Edit return and
+continued original Composer input already survive. Navigation visibility is the
+defect; the existing 40rem retreat and 40% narrow rail budget are preserved.
+
+`apps/web/src/ui/atoms/vertical-tabs.tsx` now attaches one DOM ref to its existing
+Base UI List and owns one selected-visibility layout effect. It reads the
+current public selected-tab semantics from that list. Its inner vertical frame
+uses bounding top, client border and client height. A clipped selected tab moves
+only the list's scrollTop by the minimum required amount. Already visible,
+absent/filtered, disconnected and zero-height targets do not move. One
+ResizeObserver watches the list and real group boxes; HoverTrack's boxless
+wrapper makes the tab parents the actual group boxes. Rendered groups and the
+controlled value refresh that lifetime, and cleanup retires queued callbacks.
+
+Selection remains owned by workspace navigation and Base UI. No focus call,
+scrollIntoView, ancestor/page scroll, MutationObserver, window listener, timer,
+position cache, selected-value mirror, new hook or public API is introduced.
+RetainedPanel's visited/visibility/native scroll lifetime, search matching,
+no-result behavior, arrows/Home/End, styling, geometry and locale messages remain
+with their existing owners. SettingsPage is the sole VerticalTabs caller.
+
+A bounded Read/Edit-only Claude Code CLI changes three allowed files in
+**191.271 s / 18 turns**, without permission denials. Root reviews the actual
+diff and removes a bespoke delimiter-encoded rail identity, depending directly
+on the rendered groups. Five regressions use the public SettingsPage/navigation,
+real roles and bounded geometry/resize inputs. They cover minimum movement in
+both directions, value changes without resize, visible selections, manual
+scrolling, search-hidden selection, later input identity/value/selection,
+pane/window/document position, and queued delivery after unmount. They do not
+assert private observer counts or act as proof of native geometry.
+
+The baseline Settings file passes **8 tests**, 1.765 s. Final checks pass:
+
+| Check                     | Actual result                                                                                                                                                   |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Focused Settings          | **1 file / 13 tests**, 2.547 s                                                                                                                                  |
+| Original-source counter   | Restoring only original VerticalTabs gives **3 failures / 10 passes**, 2.205 s, for below/above clipping and value-change reveal; candidate restored byte-exact |
+| Complete frontend project | **424 files / 4,543 tests**, command 88.136 s                                                                                                                   |
+| Web gates                 | All **25** non-Runtime gates, including exact resources and portable module/lifecycle checks                                                                    |
+| Native gate               | `make check-native`, supported Desktop Go checks and Wails build; 21.831 s                                                                                      |
+| Owned checks              | Formatting and `git diff --check` pass; private final assets build in 2.303 s                                                                                   |
+
+All **27 final serial gates** pass. Shared UI sources are unchanged; the
+immediately preceding `d6e6dab34` complete UI result (**13 files / 229 tests**,
+packed offline consumer, 8.659 s) is reused, not rerun. Full Runtime/CLI, plugin
+backend and plugin-wide formatting suites are not run; the existing unrelated
+Feedback formatting issue remains outside this diff. Browser visual suites and
+performance benchmarks remain excluded.
+
+Actual final Wails tasks use the ordinary workspace entry, production installed
+MCP component, shared controls and public immutable memory transport:
+
+- **English/light/18px/Orange/motion off:** repeat the original path and exact
+  window/zoom conditions. MCP remains visible while Description keeps focus and
+  its caret. Native insertions produce `car|et`, then `car|+et`. Manual navigation
+  wheel reading and later field input leave the user's browsing position alone;
+  another edge resize reveals the selected category and inserts `!` at that same
+  caret. The `appearance` filter and a zero-result query keep the current MCP
+  body and exact draft. Search clear restores the current selection; Up selects
+  Providers and Down returns to MCP with the draft intact.
+- **Chinese/dark/18px/#4E80FF/motion off:** native 200% and 2244 × 1798 show the
+  current category and retained field focus. `【已核对】` inserts before the
+  original final punctuation. Searching `外观` keeps the current MCP page;
+  clearing the query, Home to Appearance, End to Hooks and Up to MCP retain the
+  exact draft and ordinary keyboard selection/focus.
+- **German/light/18px/#8B5CF6/motion off:** selecting `Behalten` before native
+  200% and the same resize retains that selection beside the visible MCP
+  category. Pasting replaces only that word with `Geprüft`. Reselecting it,
+  restoring Actual Size and widening the window retains the selection; replacing
+  it returns the exact original `Entwurf Behalten Ende`.
+- **English/light/14px/Orange/full motion:** native 200% and the resized window
+  also retain the current category and caret, producing
+  `Default draft retained checked.`. Three native Option+Tabs reach Cancel; Return
+  restores the captured Edit opener.
+
+Every final scene completes Cancel → captured Edit → Close Settings → original
+Composer continuation, then normal Quit. The original and four final processes
+exit **0 / 0 / 0 / 0 / 0**, in **52.622 / 150.415 / 90.594 / 106.160 / 57.723 s**.
+Screenshots/AX through Sky establish native reading context; exact scrollTop and
+selection boundaries are additionally covered by the focused tests. No DOM
+access or injected observer is used for acceptance. No live Runtime, provider,
+MCP process, OAuth, configuration Save/Delete/Test/Reconnect, policy update,
+installation, database or Send is exercised.
+
+The six better-interface owners guide this scope. Layout/accessibility keep
+current location visible without moving editing focus; typography checks the
+translated labels and 14/18px; color/UI retain Orange, custom light/dark accents,
+existing geometry and full/off motion. Writing retains the existing labels.
+The actual installed Base UI TabsList source shows its resize notifications own
+indicator updates, without selected reveal. Read-only ZCode
+`SourceServerManagementPanel.tsx` supplies a concrete target-reveal example;
+its subsequent focus transfer is deliberately not copied into this editing path.
+Both read-only files retain their captured hashes.
+
+| Severity | Location                               | Before                                                                                | After                                                                                        | Why                                                          |
+| -------- | -------------------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| HIGH     | VerticalTabs / Settings at native 200% | The selected category is outside the navigation frame while its editor remains active | The category is revealed inside that frame; later edit focus and page position remain intact | Keep current scope visible through supported zoom and resize |
+
+Approve for qualified selected-category visibility. The eight award CHECK
+roles are reviewed within this task; existing motion and originality remain
+unchanged, with no timing/contrast measurements. The navigation budget itself
+is not redesigned. VoiceOver, physical IME, RTL, other platforms, native 320 CSS
+px and every Settings/state permutation remain unverified. No whole-product
+award-level or renewed all-page verdict is claimed. The next concrete issue is
+the previously observed MCP ReadStatus Retry unmounting during loading and
+losing initiating keyboard focus.
+
+The final freeze verifies **6,804 source/test/config inputs**, with exactly two
+non-Markdown changes. All **22 installed ESM resources** stay byte-exact.
+Compiled maps verify **333 served files, 4 app files and 21 private host-source
+files**. The private app is unregistered, all five processes are absent and its
+inactive endpoint has no listener. Ten initially absent checkout output roots,
+six Library roots and the exact private root are absent after ownership guards:
+**17 verified absences**. Two pre-existing UI cache files and the protected
+**123-byte** interrupted draft remain byte-exact. The in-memory evidence archive
+retains **152 text records / 33 capture digests**, gzip SHA-256
+`f4d043b62b69c8f6fd330559cf0c97692f9146afb27fb911375b0659f3cc9785`.
+Normal hooks, main integration and independent remote verification remain
+required publication steps. There is no protocol, resource or data migration.
+
 ### Shared form label tracks and control-top alignment (2026-11-04)
 
 Qualified from synchronized main `3735e2a5d`. Actual German Wails at 18px,

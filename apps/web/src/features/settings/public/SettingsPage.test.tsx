@@ -6,7 +6,7 @@ prepareTestClient(() => {
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { definePlugin } from "@/extensions/definePlugin";
 import { usePluginErrorStore } from "@/extensions/errors";
@@ -39,9 +39,96 @@ async function loadPanes() {
   );
 }
 
+async function loadRailPanes() {
+  await loadPluginsForTest(
+    definePlugin({
+      name: "test.settings.rail",
+      setup: (ctx) => {
+        const panes: { id: string; label: string; group: string; keywords?: string[] }[] = [
+          { id: "general", label: "General", group: "general" },
+          { id: "appearance", label: "Appearance", group: "general" },
+          { id: "providers", label: "Providers", group: "models" },
+          { id: "approvals", label: "Approvals", group: "agent" },
+          { id: "mcp", label: "MCP servers", group: "integrations" },
+          { id: "plugins", label: "Plugins", group: "extensions", keywords: ["Hot reload"] },
+        ];
+        panes.forEach((pane, order) =>
+          ctx.contribute(SETTINGS_PANE, {
+            ...pane,
+            order,
+            component: () =>
+              pane.id === "mcp" ? (
+                <input aria-label="Description" defaultValue="workspace tools draft" />
+              ) : (
+                <div>{pane.label} body</div>
+              ),
+          }),
+        );
+      },
+    }),
+  );
+}
+
+interface Observed {
+  callback: ResizeObserverCallback;
+  observer: ResizeObserver;
+  targets: Set<Element>;
+}
+
+function stubResizeObservers() {
+  const observed: Observed[] = [];
+  class FakeResizeObserver {
+    private entry: Observed;
+    constructor(callback: ResizeObserverCallback) {
+      this.entry = { callback, observer: this as unknown as ResizeObserver, targets: new Set() };
+      observed.push(this.entry);
+    }
+    observe(target: Element) {
+      this.entry.targets.add(target);
+    }
+    unobserve(target: Element) {
+      this.entry.targets.delete(target);
+    }
+    disconnect() {
+      this.entry.targets.clear();
+    }
+  }
+  vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+  const queuedFor = (target: Element) =>
+    observed
+      .filter((entry) => entry.targets.has(target))
+      .map((entry) => () => entry.callback([{ target } as ResizeObserverEntry], entry.observer));
+  return {
+    queuedFor,
+    resize: (target: Element) => act(() => queuedFor(target).forEach((deliver) => deliver())),
+  };
+}
+
+// Rail frame starts at 100 with a 4px border; each tab is 32px tall on a 40px pitch.
+function mockRailGeometry(list: HTMLElement, frame: { height: number }) {
+  let scrollTop = 0;
+  Object.defineProperty(list, "clientTop", { configurable: true, get: () => 4 });
+  Object.defineProperty(list, "clientHeight", { configurable: true, get: () => frame.height });
+  Object.defineProperty(list, "scrollTop", {
+    configurable: true,
+    get: () => scrollTop,
+    set: (next: number) => {
+      scrollTop = next;
+    },
+  });
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+    if (this === list) return new DOMRect(0, 100, 200, frame.height + 8);
+    const index = Array.from(list.querySelectorAll('[role="tab"]')).indexOf(this);
+    if (index < 0) return new DOMRect();
+    return new DOMRect(0, 104 + 40 * index - scrollTop, 200, 32);
+  });
+}
+
 describe("settingsPage", () => {
   afterEach(async () => {
     cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     await drainBrowserTasks();
   });
 
@@ -159,5 +246,109 @@ describe("settingsPage", () => {
     } finally {
       consoleError.mockRestore();
     }
+  });
+
+  it("reveals the selected category below the rail after a resize without disturbing the edit", async () => {
+    await loadRailPanes();
+    const observers = stubResizeObservers();
+    testClient.navigation.go({ settings: "mcp" });
+    testClient.render(<SettingsPage />);
+    const list = screen.getByRole("tablist");
+    const frame = { height: 400 };
+    mockRailGeometry(list, frame);
+    const input = screen.getByRole<HTMLInputElement>("textbox", { name: "Description" });
+    input.focus();
+    input.setSelectionRange(3, 9);
+    const panel = screen.getByRole("tabpanel", { name: "MCP servers" });
+    panel.scrollTop = 40;
+
+    observers.resize(list);
+    expect(list.scrollTop).toBe(0);
+
+    frame.height = 120;
+    observers.resize(list);
+    expect(list.scrollTop).toBe(72);
+    observers.resize(list);
+    expect(list.scrollTop).toBe(72);
+
+    expect(screen.getByRole("tab", { name: "MCP servers" }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
+    expect(document.activeElement).toBe(input);
+    expect(input.value).toBe("workspace tools draft");
+    expect([input.selectionStart, input.selectionEnd]).toEqual([3, 9]);
+    expect(panel.scrollTop).toBe(40);
+    expect(window.scrollY).toBe(0);
+    expect(document.documentElement.scrollTop).toBe(0);
+  });
+
+  it("reveals a category clipped above when its group resizes, leaving manual scrolling alone", async () => {
+    await loadRailPanes();
+    const observers = stubResizeObservers();
+    testClient.navigation.go({ settings: "appearance" });
+    testClient.render(<SettingsPage />);
+    const list = screen.getByRole("tablist");
+    mockRailGeometry(list, { height: 120 });
+
+    list.scrollTop = 300;
+    fireEvent.scroll(list);
+    expect(list.scrollTop).toBe(300);
+
+    const group = screen.getByRole("tab", { name: "Appearance" }).parentElement as HTMLElement;
+    observers.resize(group);
+    expect(list.scrollTop).toBe(40);
+    expect(screen.getByRole("tabpanel", { name: "Appearance" }).textContent).toContain(
+      "Appearance body",
+    );
+  });
+
+  it("reveals the selected category when navigation changes without a resize", async () => {
+    await loadRailPanes();
+    stubResizeObservers();
+    testClient.render(<SettingsPage />);
+    const list = screen.getByRole("tablist");
+    mockRailGeometry(list, { height: 120 });
+
+    act(() => testClient.navigation.go({ settings: "plugins" }));
+    expect(list.scrollTop).toBe(112);
+    act(() => testClient.navigation.go({ settings: "providers" }));
+    expect(list.scrollTop).toBe(80);
+    act(() => testClient.navigation.go({ settings: "approvals" }));
+    expect(list.scrollTop).toBe(80);
+    expect(screen.getByRole("tab", { name: "Approvals" }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
+  });
+
+  it("keeps the rail position when search hides the active category", async () => {
+    await loadRailPanes();
+    const observers = stubResizeObservers();
+    testClient.navigation.go({ settings: "mcp" });
+    testClient.render(<SettingsPage />);
+    const list = screen.getByRole("tablist");
+    mockRailGeometry(list, { height: 120 });
+    list.scrollTop = 50;
+
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "hot reload" } });
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Plugins"]);
+    observers.resize(list);
+    expect(list.scrollTop).toBe(50);
+    expect(screen.getByRole("tabpanel", { name: "MCP servers" })).toBeTruthy();
+    expect(testClient.navigation.get().settings).toBe("mcp");
+  });
+
+  it("retires queued rail resize callbacks after Settings closes", async () => {
+    await loadRailPanes();
+    const observers = stubResizeObservers();
+    testClient.navigation.go({ settings: "mcp" });
+    testClient.render(<SettingsPage />);
+    const list = screen.getByRole("tablist");
+    mockRailGeometry(list, { height: 120 });
+    const queued = observers.queuedFor(list);
+    expect(queued.length).toBeGreaterThan(0);
+
+    cleanup();
+    act(() => queued.forEach((deliver) => deliver()));
+    expect(list.scrollTop).toBe(0);
   });
 });

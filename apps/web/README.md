@@ -57,6 +57,11 @@ inside that frame. File-action visibility uses its inner clipping edges and the
 fractional viewport bounds, so feedback reveals only a previously visible action
 that the new layout actually clips.
 
+Settings navigation reveals its currently selected category inside its own
+scrollport after a resize or selection change, moving only as far as needed.
+A visible or search-hidden selection leaves the rail where the user scrolled it.
+Editing focus and the retained page position remain owned by that page.
+
 `src/app` composes product policy. `src/features` contains actual feature owners
 and their formal public capabilities. `src/extensions` contains generic host,
 registration and lifetime mechanisms; it never owns business extension points.
