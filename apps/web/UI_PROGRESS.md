@@ -17,6 +17,13 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Diff filenames and same-row reader actions now share their first text baseline;
+see **Diff filename and reader-action alignment (2026-11-03)**. Actual Wails
+qualifies normal and long headers, 320 px wrapping, Chinese 18 px/200%, filtered
+file return, related-file navigation, raw patch reading and continued drafts.
+All 4,476 frontend tests, 224 shared UI tests, the independent packed consumer,
+25 non-Runtime Web gates and the native gate pass at their recorded scope.
+
 File paths now offer directory-boundary line breaks while preserving their exact
 displayed, selected and copied text; see **File-path directory breaks and continued
 reading (2026-11-03)**. Native English/light at a 320 px Dock and Chinese/dark/
@@ -17283,6 +17290,113 @@ This repair stays on the owned local branch, with no remote push or primary
 checkout modification.
 
 ## Diff reading identity and native list sizing
+
+### Diff filename and reader-action alignment (2026-11-03)
+
+The task remains comparison → find a file → read/layout → current file list →
+conversation → continued draft. On main `d92a58903`, the actual 466 px native
+Dock shows the filename above the text baseline of its adjacent Unified control.
+The shared `DiffFileHeader` aligns their boxes at the top even though the control
+has its own padding and the identity also contains status/count metadata.
+
+| Severity      | Location                                              | Before                                                                     | After                                                                                              | Why                                                                                      |
+| ------------- | ----------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| LOW, repaired | `packages/ui/src/diff-files.tsx:50`, `DiffFileHeader` | Same-row filename and reader action have visibly different text baselines. | The existing flex row uses baseline alignment; controls still wrap naturally when they do not fit. | Align shared reading edges without moving metadata, changing controls or adding offsets. |
+
+Only that StyleX alignment value changes product source. The filename remains a
+full, focusable heading capped at two visible lines, with complete path in the
+scrolling content. Intrinsic sizing, wrapping, metadata, source/tab order,
+selection, comparison reads and list/source-return ownership remain intact.
+No wrapper, spacing adjustment, measurement, state, event handler, API or dependency
+is added. The shared UI README records the composition. `WorkspaceDiff` continues
+to use the same header for its layout Select and path-only patch action.
+
+Better-layout's shared-edge guidance informs the finding. Read-only ZCode's
+actual `GitPaneChangeCard.tsx` supplies bounded identity beside related actions;
+its fixed height, center alignment and expansion model are not copied. The current
+work-in-progress [CSS Flexbox](https://www.w3.org/TR/css-flexbox-1/#align-items-property)
+and [Box Alignment](https://www.w3.org/TR/css-align-3/#baseline-values) specifications
+describe baseline participation; actual WebKit acceptance below checks the
+clamped heading's first-line behavior. Retained HeroUI, Radix, Arc, ChatGPT and
+Ace research keeps its existing scope. Typography, whitespace, hierarchy,
+responsive composition and keyboard interaction are inspected in the full task;
+colors, approved Orange/custom accent, control surfaces and motion owners remain
+unchanged. This is scoped polish, not whole-product or award certification.
+
+The bounded Read/Edit-only Claude CLI completes in **17.893 s / 5 turns**, without
+permission denials, editing only the shared implementation and its README.
+Primary reviews the exact one-value source diff. No CSS-property or class-shape
+test is introduced; native before/after views establish the alignment repair.
+The existing focused Diff suite passes **42 tests** on the original baseline.
+
+- **English / light / 14 px / Orange / full motion:** the candidate's actual
+  **466 px** Dock aligns the filename with Unified. Keyboard Home reports
+  **320 px**, where the control wraps beneath the identity without clipping.
+  Filtering to `session`, opening through Tab/Return, choosing Side by side,
+  entering the named source reader and End reading all work. Escape restores
+  the exact filtered current row. Local filter clear, opening the first file
+  and Next select the second with truthful `2 / 2`. Coordinate Dock collapse,
+  Command-L, explicit QA caret placement and continued typing retain
+  `Keep this Diff reading draft. Continue after comparison.`
+- **Chinese / dark / 18 px / #70839A / reduced motion:** a supported fixture input
+  supplies Chinese directories and a **196-character** filename. It stays at
+  two heading lines beside the layout control, aligned at the first line.
+  Native Left, Actual Size, twenty Zoom In actions, sidebar collapse and full-width
+  entry reach **2242 × 1898**, **560.5 × 474.5 CSS px / 200%**. Tab reaches the
+  layout popup; Escape dismisses it before file return. Tab reveals the named
+  source beneath the controls; End reveals the final source rows. Escape restores
+  the long file's row. Coordinate Close and explicit Composer focus preserve
+  and continue
+  `Keep this narrow Diff draft. Continue after review.`
+- **Path-only raw patch, same Chinese large-text geometry:** the ordinary heading
+  with no status/count line aligns its Show structured diff button at 466 px
+  and 200%. Native keyboard activation returns the bounded structured read;
+  its explicit Read patch action reopens the original target. Word wrap, named
+  patch focus and End reveal the final source. Files requests the workspace
+  overview and focuses the current long file. Coordinate Close and continued
+  input retain `Keep this patch reading draft. Continue after patch.`
+
+The first two scenes use the unmodified fixture implementation and its supported
+long-path query. That query does not replace the fixture's initial file-focus
+constant; the explicit Files command opens the workspace list before selecting
+the long file. A separate private input transform makes that canonical focus
+coherent for the raw scene and supplies a truncated, path-scoped row response.
+The existing raw response, public SDK and production installed component render
+the patch. No competing UI state, DOM observer, injected interaction or product
+debug branch is added. These tasks qualify presentation and command routing,
+not live Git/Runtime/filesystem writes or provider execution. No Send runs.
+VoiceOver, OS IME, RTL, the other six native locales and fresh contrast/motion
+measurements are not verified. A first incremental AX read catches unfinished
+typing; the later settled read verifies the complete retained draft.
+
+Final serial checks pass **424 files / 4,476 frontend tests** (**247.111 s**),
+all **25 non-Runtime Web gates** and **make check-native** (**22.476 s**).
+The shared UI check passes build, types, lint, formatting and **13 files / 224
+tests**. Its initial independent-consumer step fails because the new private npm
+cache lacks a locked tarball. Hydrating the exact consumer lock in a private
+directory resolves that prerequisite; the unchanged offline package test then
+passes (**3.374 s**). No check, offline rule or assertion is weakened. No browser
+visual suite, performance benchmark or full Runtime suite runs. The historical
+two Feedback formatting findings retain their unchanged scope.
+
+All **6,803** accepted non-Markdown inputs remain frozen through checks and native
+acceptance, with only the shared alignment source changed. The final Select
+asset rebuild reproduces all **333** accepted files exactly; the raw scene has
+its separate **333-file** map. **Four** signed app files, **21** copied host
+inputs, **22** installed JS resources and the read-only ZCode reference agree.
+All **four** native launches quit normally. The exact app is unregistered;
+**nine** initially absent checkout outputs, **six** UID-specific Library paths
+and the private app, fixtures, captures, logs, consumer/cache and asset root are
+removed. No owned process or isolated Runtime listener remains. The protected
+draft backup is byte-identical. The pre-existing shared UI test cache remains
+in place with this successful run's result; cleanup does not delete that root.
+An in-memory gzip retains **139** UTF-8 records and **34** capture digests,
+SHA-256 `ef88edbbe611b8c7b9d8f3c79306f7a266ea27f9879665c17064a6b7e4396086`.
+**Approve** for the inspected alignment and complete reading/return tasks; no
+migration is needed. Continue from another current, observed task. The continuous
+desktop goal remains active.
+
+### Retained file identity and list sizing
 
 The task remains reply → changed-file overview/filter → one file → source reading
 → retained list/source return → continued draft. A native 1440 × 900 baseline

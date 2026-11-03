@@ -183,7 +183,9 @@ Navigation history, origin focus and the destination belong to the consumer.
 `DiffFileList` renders its files as `RecordButton` rows with a primary filename, complete
 directory and compact state/count metadata. `DiffFileHeader` keeps the filename
 to two visible lines beside state and reader actions, preserving its full heading
-text and ref. The consumer supplies the complete path in scrolling reader content;
+text and ref. Its row aligns the filename and same-row reader actions on their
+first text baseline; an action that does not fit wraps beneath at its intrinsic
+width. The consumer supplies the complete path in scrolling reader content;
 path-only patch results may omit state/count evidence rather than invent it.
 `DiffFilePath` allows complete directory segments to wrap. Selection and source-return history belong to the consumer;
 these components do not query files or own a second navigation model.

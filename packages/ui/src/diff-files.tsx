@@ -49,7 +49,7 @@ const styles = stylex.create({
   glyph: { color: color.fgMuted, marginBlockStart: space.s0_5 },
   headingLine: {
     display: "flex",
-    alignItems: "start",
+    alignItems: "baseline",
     flexWrap: "wrap",
     gap: layout.controlGap,
     minWidth: 0,
