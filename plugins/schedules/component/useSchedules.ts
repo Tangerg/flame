@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   bindOperations,
   mutationSettlementIsUnknown,
@@ -89,9 +96,15 @@ export function useSchedules(context: ComponentContext) {
   const [notice, setNotice] = useState<Notice>();
   const feedbackElement = useRef<HTMLElement>(null);
   const [liveError, setLiveError] = useState<string>();
+  const arrival = useRef<HTMLElement>(undefined);
+  const summary = useRef<HTMLSpanElement>(null);
   const refresh = useCallback(
-    async (history = accepted.current?.history ?? []) => {
+    async (
+      history = accepted.current?.history ?? [],
+      pageControl?: HTMLElement,
+    ) => {
       reading.current?.abort();
+      arrival.current = undefined;
       const controller = new AbortController();
       reading.current = controller;
       const signal = AbortSignal.any([context.signal, controller.signal]);
@@ -104,6 +117,7 @@ export function useSchedules(context: ComponentContext) {
         );
         if (!signal.aborted) {
           accepted.current = { page, history };
+          arrival.current = pageControl;
           setRead({ loading: false, accepted: accepted.current });
         }
       } catch (error) {
@@ -121,6 +135,16 @@ export function useSchedules(context: ComponentContext) {
     void refresh();
     return () => reading.current?.abort();
   }, [refresh]);
+  useLayoutEffect(() => {
+    const control = arrival.current;
+    arrival.current = undefined;
+    const active = control?.ownerDocument.activeElement;
+    if (
+      control &&
+      (active === control || active === control.ownerDocument.body)
+    )
+      summary.current?.focus();
+  }, [read.accepted]);
   useEffect(() => {
     const controller = new AbortController();
     const signal = AbortSignal.any([context.signal, controller.signal]);
@@ -411,6 +435,7 @@ export function useSchedules(context: ComponentContext) {
     read,
     busy,
     refresh,
+    summary,
     liveError,
     edit,
     titleElement,

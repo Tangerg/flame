@@ -67,6 +67,7 @@ export const ko: Record<string, string> = {
   "empty.filtered.title": "이 페이지에 일치하는 스케줄이 없습니다.",
   "empty.filtered.action": "필터 지우기",
   "empty.none.title": "저장된 스케줄이 없습니다.",
+  "empty.page.title": "이 페이지에 스케줄이 없습니다.",
   "empty.none.sub": "스케줄 추가를 사용하여 반복 작업을 저장하세요.",
   untitled: "제목 없는 스케줄",
   "actions.more": "{{name}}에 대한 추가 작업",
@@ -90,6 +91,7 @@ export const ko: Record<string, string> = {
   "pages.label": "스케줄 페이지",
   "pages.previous": "이전",
   "pages.next": "다음",
+  "pages.current": "{{page}}페이지",
   "notice.accepted":
     "Runtime이 Session {{session}}에서 Run {{run}}을(를) 수락했습니다.",
   "notice.openSession": "대화 열기",

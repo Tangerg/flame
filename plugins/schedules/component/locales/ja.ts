@@ -66,6 +66,7 @@ export const ja: Record<string, string> = {
   "empty.filtered.title": "このページに一致するスケジュールはありません。",
   "empty.filtered.action": "絞り込みをクリア",
   "empty.none.title": "スケジュールは保存されていません。",
+  "empty.page.title": "このページにスケジュールはありません。",
   "empty.none.sub": "「スケジュールを追加」で定期的な作業を保存します。",
   untitled: "無題のスケジュール",
   "actions.more": "{{name}} のその他の操作",
@@ -89,6 +90,7 @@ export const ja: Record<string, string> = {
   "pages.label": "スケジュールのページ",
   "pages.previous": "前へ",
   "pages.next": "次へ",
+  "pages.current": "{{page}} ページ",
   "notice.accepted":
     "Runtime は Session {{session}} の Run {{run}} を受け入れました。",
   "notice.openSession": "会話を開く",

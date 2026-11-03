@@ -201,17 +201,22 @@ provider and keep their display title. The former `hosted` boolean is removed;
 the host selects the density without changing the content instance.
 Portable components do not inspect viewport width or create another placement state.
 `FilterBar` owns the control zone in three meanings, in reading order: the
-growing search column, the page `actions` beside it at the inline end, and the
-refining filters as `children`. Search and actions share a row while they fit and
-the filters follow, joining that row when the width allows; each group wraps as a
-unit, so actions never strand between filters. Multiple actions use one named
+growing search column, the page `actions` after it, and the refining filters as
+`children`. Search and actions share a row while they fit, where the growing
+search carries the actions to the inline end; the filters follow, joining that
+row when the width allows. Each group wraps as a unit, so actions never strand
+between filters. Wrapped actions and filters start at the search's inline-start
+edge rather than jumping to the opposite edge. Multiple actions use one named
 `Toolbar` in the `actions` slot. When a page's actions are creation commands, as in
 Schedules, refresh stays with the filters it re-reads so the creation pair keeps
 one row. Scope and catalog navigation keep a separate
 preceding `Toolbar`.
-`Toolbar.actions` aligns a related trailing action group and lets it wrap with
-the available width. The group shares a row when it fits and preserves each
-control's size role.
+`Toolbar.actions` follows the toolbar's content as one related action group.
+With actions, the content forms a leading group that wraps within the available
+width and grows to carry the actions to the trailing edge while both fit on one
+row. Once the actions wrap as a unit, they start at the leading edge beneath
+the content; DOM and keyboard order and each control's size role are unchanged.
+A toolbar without actions keeps its controls directly in its own wrapping row.
 Controls wrap naturally rather than shrinking their labels to fit one row.
 Section headings and form legends use the smaller, semibold supporting role;
 record identities retain the main text role within each group.
@@ -221,8 +226,15 @@ workbench controls keep their own smaller roles.
 `keepMounted` to preserve its local reading state; the primitive still hides
 the closed content from keyboard and accessibility navigation.
 
-`RecordHeading` groups identity, state and the main action. `Disclosure` owns a
-full-width expanding panel with an optional adjacent action slot. Its optional
+`RecordHeading` groups identity, state and the main action. The title and status
+form one wrapping group beside the actions on a center-aligned row, so they share
+the action control's center line; the actions wrap beneath once that group falls
+below its `12rem` basis. The description follows the row at full width and never
+moves the actions. `Disclosure` owns a
+full-width expanding panel with an optional adjacent action slot. The growing
+trigger carries the actions to the trailing edge while both fit on one row; once
+the actions wrap as a unit, they start at the leading edge beneath the trigger.
+DOM and keyboard order are unchanged. Its optional
 `stickyHeader` keeps that same complete summary beneath the enclosing Panel's
 controls in a bounded scroll viewport. It returns to normal flow when fewer than
 two body lines and their leading inset would remain below the header.

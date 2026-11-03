@@ -243,9 +243,21 @@ settles acceptance and refreshes the catalog.
 Templates live in src/templates.ts as authoring content copied into a new draft.
 The generic Domain/loader/Protocol owns no Schedule template or closed view kind.
 The component consumes existing schedule notices and cancels/joins its I/O on
-retirement. Failed pagination keeps the accepted page/cursor. Shared-client recovery
+retirement. Failed pagination keeps the accepted page/cursor. Previous and Next
+retain their keyboard position through reads using the shared pending control;
+page bounds stay focusable and inert, while commands keep their native disablement.
+An accepted explicit page transition focuses the existing catalog summary only
+while its originating control or the unclaimed document body still owns focus.
+Initial and background reads, Refresh, failures and retired reads do not move focus;
+later focus choices are preserved. A paginated accepted summary names its current
+page from the accepted cursor history, followed by that page's enabled/disabled
+counts. Single-page summaries keep their existing wording. Shared-client recovery
 and backend background activation are covered separately from excluded graphical
 window-reload interaction.
+
+An empty later page describes only that page and retains Previous. It does not
+claim the catalog has no saved schedules or offer first-use creation guidance:
+the live keyset cursor can outlast older records while earlier pages still exist.
 
 Changing the page's search or status filter reveals the beginning of its results;
 clearing either or both uses that same local action. An unchanged filter,

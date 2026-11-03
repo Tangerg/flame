@@ -53,18 +53,18 @@ const styles = stylex.create({
     gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,20rem),1fr))",
   },
   heading: {
+    display: "grid",
+    gap: space.s2,
+    minWidth: 0,
+  },
+  headingRow: {
     display: "flex",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: layout.contentGap,
     flexWrap: "wrap",
     minWidth: 0,
   },
-  headingCopy: {
-    display: "grid",
-    gap: space.s2,
-    flex: "1 1 12rem",
-    minWidth: 0,
-  },
+  headingIdentity: { flex: "1 1 12rem", minWidth: 0 },
   headingLine: {
     display: "flex",
     alignItems: "center",
@@ -264,18 +264,18 @@ export function RecordHeading({
   const Tag = useHeadingTag();
   return (
     <div {...stylex.props(styles.heading)}>
-      <div {...stylex.props(styles.headingCopy)}>
-        <div {...stylex.props(styles.headingLine)}>
+      <div {...stylex.props(styles.headingRow)}>
+        <div {...stylex.props(styles.headingLine, styles.headingIdentity)}>
           <Tag {...stylex.props(styles.title, type.uiMd)}>{title}</Tag>
           {status}
         </div>
-        {description && (
-          <p {...stylex.props(styles.summaryDescription, type.uiSm)}>
-            {description}
-          </p>
-        )}
+        {actions && <div {...stylex.props(styles.actions)}>{actions}</div>}
       </div>
-      {actions && <div {...stylex.props(styles.actions)}>{actions}</div>}
+      {description && (
+        <p {...stylex.props(styles.summaryDescription, type.uiSm)}>
+          {description}
+        </p>
+      )}
     </div>
   );
 }

@@ -53,6 +53,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
     read,
     busy,
     refresh,
+    summary,
     liveError,
     edit,
     titleElement,
@@ -78,6 +79,8 @@ export function Schedules({ context }: { context: ComponentContext }) {
     setEdit,
     setDeleting,
   } = useSchedules(context);
+  const history = read.accepted?.history ?? [];
+  const paginated = Boolean(history.length) || Boolean(page?.NextCursor);
   const feedback = (notice || command) && (
     <section
       ref={feedbackElement}
@@ -455,12 +458,20 @@ export function Schedules({ context }: { context: ComponentContext }) {
       <PanelSection
         title={t("catalog.title")}
         description={
-          page
-            ? t("catalog.summary", {
+          page ? (
+            <span ref={summary} tabIndex={-1}>
+              {paginated && (
+                <>
+                  {t("pages.current", { page: history.length + 1 })}
+                  {" · "}
+                </>
+              )}
+              {t("catalog.summary", {
                 enabled: rows.filter(enabled).length,
                 disabled: rows.filter((item) => !enabled(item)).length,
-              })
-            : undefined
+              })}
+            </span>
+          ) : undefined
         }
       >
         <RecordGroup
@@ -474,9 +485,13 @@ export function Schedules({ context }: { context: ComponentContext }) {
               icon={CalendarClock}
               size="compact"
               title={
-                rows.length ? t("empty.filtered.title") : t("empty.none.title")
+                rows.length
+                  ? t("empty.filtered.title")
+                  : paginated
+                    ? t("empty.page.title")
+                    : t("empty.none.title")
               }
-              sub={rows.length ? undefined : t("empty.none.sub")}
+              sub={rows.length || paginated ? undefined : t("empty.none.sub")}
               action={
                 rows.length ? (
                   <Button
@@ -621,27 +636,28 @@ export function Schedules({ context }: { context: ComponentContext }) {
             </ListRow>
           ))}
         </RecordGroup>
-        {(Boolean(read.accepted?.history.length) ||
-          Boolean(page?.NextCursor)) && (
+        {paginated && (
           <PanelFooter>
             <Toolbar label={t("pages.label")}>
               <Button
-                disabled={
-                  read.loading || busy || !read.accepted?.history.length
-                }
-                onClick={() =>
-                  void refresh(read.accepted!.history.slice(0, -1))
+                pending={read.loading && !busy}
+                focusableWhenDisabled={!busy}
+                disabled={busy || !history.length}
+                onClick={(event) =>
+                  void refresh(history.slice(0, -1), event.currentTarget)
                 }
               >
                 {t("pages.previous")}
               </Button>
               <Button
-                disabled={read.loading || busy || !page?.NextCursor}
-                onClick={() =>
-                  void refresh([
-                    ...(read.accepted?.history ?? []),
-                    page!.NextCursor,
-                  ])
+                pending={read.loading && !busy}
+                focusableWhenDisabled={!busy}
+                disabled={busy || !page?.NextCursor}
+                onClick={(event) =>
+                  void refresh(
+                    [...history, page!.NextCursor],
+                    event.currentTarget,
+                  )
                 }
               >
                 {t("pages.next")}

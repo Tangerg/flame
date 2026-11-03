@@ -17,7 +17,15 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-The latest follow-up scopes Skills Select All to the accepted instructions from
+Schedules page reading and four shared alignment repairs complete source,
+regression and actual native qualification under **Schedules page reading and
+shared alignment (2026-11-03)**. The native sweep opens all 11 Settings categories,
+13 workspace page families and the main conversation/navigation surfaces. All
+4,455 frontend and 224 shared UI tests pass; plugin formatting still reports only
+the two unchanged pre-existing Feedback files. The locked-Mac interruption is
+resolved, and the owned native qualification resources are cleaned up.
+
+Skills Select All remains scoped to the accepted instructions from
 the existing document heading and controls, preserving native copy, catalog return
 and conversation drafts; see **Skills instruction selection and material return
 (2026-11-03)**. File-preview Select All remains scoped to the displayed file while
@@ -7958,6 +7966,140 @@ report when its initiating focus remains unclaimed; otherwise it names the saved
 copy in archive feedback. The published ESM was rebuilt. Existing Runtime
 installations require explicit reinstallation and selection of the new package
 digest; a source/resource rebuild does not update an admitted installation.
+
+### Schedules page reading and shared alignment (2026-11-03)
+
+Qualified from synchronized main `e41f63c00`. The user's Schedules crop and
+subsequent request to inspect every page extend this batch to four demonstrated
+shared alignment causes. Default Flame Orange, configurable accents, typography,
+selection, Composer, code and table behavior remain intact. No Runtime, protocol,
+command lifecycle, persisted-data, dependency or token changes are introduced.
+
+`useSchedules` retains one accepted page/cursor owner. Previous/Next use the
+existing shared pending guard: page bounds remain focusable and inert, reads
+reject repeated activation, and commands retain native disablement. Only an
+accepted explicit page transition can focus the existing catalog summary, while
+its originating control or the unclaimed document body still owns focus. A later
+focus choice wins; initial/background reads, Refresh, failures and retired reads
+do not request arrival. The accepted cursor history supplies the page ordinal in
+eight locales, followed by counts for every accepted row. Single-page wording is
+unchanged. A valid later keyset page can be empty while earlier records survive;
+it now says No schedules on this page, retains Previous, and omits first-use
+creation guidance. The new cases cover those contracts through the public client
+and the fixture transport's real schedule-removal notice.
+
+The alignment repair stays with the shared layout owners:
+
+- `FilterBar` lets its growing search own free space. Wrapped creation actions
+  and refining filters begin at the search's leading edge, preserving DOM order.
+- `Toolbar` groups its leading content only when actions exist. That group grows
+  to carry fitting actions to the trailing edge; a wrapped action group begins
+  at the leading edge. Toolbars without actions retain their direct children.
+- `RecordHeading` centers title/status and actions on one wrapping row, then
+  places description below that row. A paragraph no longer shifts the action's
+  alignment. The independent `RecordSummary` contract is unchanged.
+- `Disclosure` already has a growing trigger. Removing its competing automatic
+  action margin and end justification preserves wide trailing placement while
+  fixing wrapped Memory review/edit and Skill proposal operations. Sticky
+  measurement, plain/row variants, trigger and keyboard order are unchanged.
+
+Four bounded Read/Edit-only Claude CLI invocations implement the scoped details
+in **212.402 / 58.712 / 59.228 / 30.678 s**, reporting **44 / 11 / 13 / 9 turns**
+and no permission denials. Root reviews the actual diff, repairs two premature
+async assertions, strengthens the retired-read and original-source counters,
+traces the live keyset contract, and owns verification and publication. Only
+Schedules ESM changes through the normal component builder; the other **21
+installed JavaScript resources** remain byte-identical to base main.
+
+Better-layout, better-ui and better-accessibility guide consistent reading axes,
+wrapped grouping and stable keyboard position. Flame's qualified Memory pager is
+the local behavior precedent. Read-only HeroUI loading controls support retaining
+the pending control. ZCode's resource-header native disablement does not establish
+Flame's page-arrival contract and is not copied. Existing reference research
+remains applicable; no additional component system is introduced.
+
+| Verification on final production bytes | Result                                                                                                                      |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Focused Schedules integration coverage | 5 files / 47 tests pass                                                                                                     |
+| Complete frontend project              | 424 files / 4,455 tests pass; command 157.580 s                                                                             |
+| Shared UI full check                   | Build, typecheck, lint, formatting, 13 files / 224 tests and packed offline consumer pass; 8.716 s                          |
+| Non-Runtime Web gates                  | All 25 pass, including bundle and exact installed resources                                                                 |
+| Plugin checks                          | Typecheck, lint, 20 catalogs across 8 locales, exact resources pass                                                         |
+| Serial native gate                     | `make check-native` passes in 23.018 s; known nonfatal SDK/link-target warnings remain                                      |
+| Original-source counter                | Restoring only the two original Schedules production files gives 4 failed / 8 passed in 4.714 s; candidate restored exactly |
+| Plugin formatting                      | Fails only on the two pre-existing Feedback component/test files, byte-identical to base main                               |
+
+The first offline packed-consumer attempt lacks exact cached tarballs. Seeding
+31 packages from the root lock into the private cache restores the unchanged
+offline check; no lock, network restriction or assertion is weakened. Private
+fixture transform failures are setup failures. One later failed rebuild retains
+older assets; root rejects those Memory captures, fixes the private transform
+order, verifies the successful build receipt and repeats native qualification.
+Those stale captures and earlier interrupted/locked launches are not acceptance.
+
+After manual unlock, the actual original Wails baseline reproduces focus falling
+to BODY during Next and no explicit ordinal/arrival. It exits normally with code
+0 in 116.294 s. The candidate's English light/14 px/Orange flow exercises the
+320 px Dock, double activation while pending, accepted page 2 arrival, failed
+Refresh/retry with query and page retained, later search focus during Previous,
+details, full-width/Dock transitions, Files return and canceling the named editor.
+Composer continues the exact unsent draft. The Chinese dark/18 px/custom
+`#70839A` flow uses actual native 200% zoom and a maximized window, including a
+later empty page, keyboard Previous, six surviving earlier records and exact
+Chinese draft retention. These complete tasks repeat without the observer.
+The observer-free English and Chinese processes exit **0 / 0** in
+**82.432 / 99.618 s**. A native window-state change interrupts one closing action;
+root re-queries the actual instance before restoring and quitting it normally.
+
+The page inventory is checked against installed declarations, including the
+previously unregistered private-fixture Notifications and Deliverables entries.
+Every listed surface is actually opened in Wails and visually inspected; source
+review, DOM tests and browser screenshots do not substitute for these checks.
+
+| Native surface coverage             | Actually inspected                                                                                                                                                     |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| All 11 Settings categories          | Appearance, Personalization, Connection, Shortcuts, Approvals, Plugins, Brand, Providers, MCP, Hooks, Notifications; normal and native 200% layouts                    |
+| Settings editors                    | Appearance lower controls, inline MCP editor and Cancel, MCP JSON modal, plugin input configuration, shortcut editor; no saves/installations/permission requests       |
+| Files and Diff                      | Directory and source reader; changed-file list and single-file reader in 320 px Dock and full width                                                                    |
+| Trajectory and Subagents            | Populated records, expanded Run facts/evidence, six delegated tasks and empty Subagents; narrow and full layouts                                                       |
+| Diagnostics                         | Empty Traces/Metrics/Logs and controls in narrow and full layouts; populated telemetry is not qualified                                                                |
+| Memory                              | Project/User scope, search/filter region, pending/active record operations, inline new-memory form and Cancel; original/final wide/narrow comparisons                  |
+| Skills                              | Catalog, complete instruction document, proposals and expanded proposal, personal library; narrow/full return and final wrapped actions                                |
+| Schedules                           | Complete retained reading and pagination tasks above, empty-page recovery and editor cancellation                                                                      |
+| Usage and Saved usage reports       | Accounting/coverage disclosures, daily/weekly archive, selected report and Back; narrow/full scope and action grouping                                                 |
+| Computer use                        | Control-host/lease fields and retained operation details/resource links; full and native 200%; no lease authorization or computer command                              |
+| Icon gallery                        | Actual installed catalog, filters and drawing grid; normal and native 200% layouts                                                                                     |
+| Professional deliverables           | Catalog, inline creation/import, retained revision/history, inspector, local edit footer and structured content; narrow/full; no creation/upload/render/export/removal |
+| Session navigation and conversation | Work Index, session menu/title editor, Finder, command menu, expanded tool results, approvals/options, long multi-choice question and both generated-report tabs       |
+
+The table covers **13 workspace page families**, all Settings categories and the
+main conversation/navigation surfaces. It is a visual/layout sweep with ordinary
+isolated provider data through production components and the public client, not
+a live Runtime/OS/Office business-chain certification. Deliverables uses metadata
+and structural inspection data, not fabricated PDF/page images. Hooks is empty;
+VoiceOver, IME composition, every error/state permutation, the full Runtime/CLI
+and plugin backend suites are not run. Browser visual suites and performance
+benchmarks remain excluded by agreement. No whole-product award-level verdict is
+claimed.
+
+The final private host, assets and source freeze has **1,501 unchanged inputs**.
+All **265 served HTML/JS/CSS files** are scanned for the observer marker, virtual
+module and endpoint with no matches. After the last Disclosure change, Memory,
+Skill proposals and Computer history repeat native qualification; Notifications
+and Deliverables are inspected on those same final assets. Qualified resumed
+candidate apps quit normally. The exact observer exits 143 after deliberate
+SIGTERM; ports **50331/50332** are closed. The unique QA app is unregistered and
+removed, its six initially absent Library paths and nine initially absent output
+roots are restored, and private fixtures, screenshots, logs and cache are removed.
+Production inputs and all 22 installed resources retain their verified hashes.
+The separate toolchain/cache, read-only references and 123-byte interrupted draft
+backup remain unchanged. The normal staged-formatting and workspace-lint commit
+hook passes without changing the qualified production, test or resource bytes.
+
+Next observed reading task: selecting a retained Deliverable leaves focus on its
+catalog row while the revision inspector begins below the fold. Evaluate that
+selection-to-inspector path as a separate complete task after publishing this
+batch; no speculative navigation rewrite is included here.
 
 ### Schedules filter arrival and retained reading
 

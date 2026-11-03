@@ -67,6 +67,7 @@ export const fr: Record<string, string> = {
   "empty.filtered.title": "Aucune planification correspondante sur cette page.",
   "empty.filtered.action": "Effacer les filtres",
   "empty.none.title": "Aucune planification enregistrée.",
+  "empty.page.title": "Aucune planification sur cette page.",
   "empty.none.sub":
     "Utilisez Ajouter une planification pour enregistrer un travail récurrent.",
   untitled: "Planification sans titre",
@@ -91,6 +92,7 @@ export const fr: Record<string, string> = {
   "pages.label": "Pages de planification",
   "pages.previous": "Précédent",
   "pages.next": "Suivant",
+  "pages.current": "Page {{page}}",
   "notice.accepted":
     "Le Runtime a accepté la Run {{run}} dans la Session {{session}}.",
   "notice.openSession": "Ouvrir la conversation",

@@ -9,6 +9,7 @@ prepareTestClient(() => {
   finishTestClient(() => owned.dispose());
 });
 import {
+  act,
   cleanup,
   fireEvent,
   getDefaultNormalizer,
@@ -51,14 +52,12 @@ function heldCall(signal?: AbortSignal) {
 
 function mountSchedules(subscribeError?: Error) {
   const owner = new AbortController();
-  const runtime = createFlameClient(
-    createVisualRuntimeTransport(
-      structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
-      VISUAL_CAPABILITIES,
-      async () => REVIEW_DIFF,
-    ),
-    { capabilities: () => VISUAL_CAPABILITIES },
+  const transport = createVisualRuntimeTransport(
+    structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+    VISUAL_CAPABILITIES,
+    async () => REVIEW_DIFF,
   );
+  const runtime = createFlameClient(transport, { capabilities: () => VISUAL_CAPABILITIES });
   releases.push(async () => {
     owner.abort();
     await runtime.close();
@@ -118,10 +117,19 @@ function mountSchedules(subscribeError?: Error) {
     taken = reads.length;
     return reads.at(-1)!;
   }
-  const listCalls = () =>
-    call.mock.calls.filter(([request]) => request.method === "flame.schedules/list.v1").length;
+  const listRequests = () =>
+    call.mock.calls.filter(([request]) => request.method === "flame.schedules/list.v1");
+  const listCalls = () => listRequests().length;
+  const listCursors = () =>
+    listRequests().map(([request]) => (JSON.parse(request.input) as { Cursor: string }).Cursor);
   const pluginCalls = () => call.mock.calls.length;
-  return { nextRead, listCalls, pluginCalls };
+  return {
+    nextRead,
+    listCalls,
+    listCursors,
+    pluginCalls,
+    removeSchedule: transport.removeSchedule,
+  };
 }
 
 const clearFiltersButton = () => screen.queryByRole("button", { name: "Clear filters" });
@@ -157,6 +165,25 @@ function activateRepeatedly(button: HTMLElement) {
     fireEvent.keyUp(button, { key });
     fireEvent.click(button);
   }
+}
+
+const firstPage = { Rows: [VISUAL_SCHEDULES_PAGE.Rows[0]!], NextCursor: "cursor-2" };
+
+const lastPage = { Rows: [VISUAL_SCHEDULES_PAGE.Rows[1]!], NextCursor: "" };
+
+const firstSummary = "Page 1 · 1 enabled · 0 disabled on this page";
+
+const lastSummary = "Page 2 · 0 enabled · 1 disabled on this page";
+
+const pageButton = (name: "Previous" | "Next") =>
+  screen.getByRole<HTMLButtonElement>("button", { name });
+
+async function openPagedSchedules() {
+  const schedules = mountSchedules();
+  (await schedules.nextRead()).resolve(reply(firstPage));
+  await screen.findByRole("heading", { name: nightly });
+  await waitFor(() => expect(screen.queryByText("Reading schedules…")).toBeNull());
+  return schedules;
 }
 
 it("names a failed initial read without claiming saved or retained schedules, then recovers", async () => {
@@ -353,4 +380,157 @@ it("opens and cancels a new schedule from an unavailable catalog with the search
   expect(query.value).toBe("nightly");
   expect(screen.queryByText("No matching schedules on this page.")).toBeNull();
   expect(clearFiltersButton()).toBeNull();
+});
+
+it("keeps held Next and Previous focused and single, then moves each accepted page to its summary", async () => {
+  const { nextRead, listCalls, listCursors } = await openPagedSchedules();
+  expect(document.activeElement).toBe(document.body);
+  const previous = pageButton("Previous");
+  const next = pageButton("Next");
+  previous.focus();
+  let issued = listCalls();
+  activateRepeatedly(previous);
+  expect(listCalls()).toBe(issued);
+  expect(document.activeElement).toBe(previous);
+  expect(previous.disabled).toBe(false);
+  expect(previous.getAttribute("aria-disabled")).toBe("true");
+
+  next.focus();
+  fireEvent.click(next);
+  const forward = await nextRead();
+  expect(listCursors().at(-1)).toBe("cursor-2");
+  issued = listCalls();
+  activateRepeatedly(next);
+  expect(listCalls()).toBe(issued);
+  expect(document.activeElement).toBe(next);
+  expect(next.disabled).toBe(false);
+  expect(next.getAttribute("aria-disabled")).toBe("true");
+  expect(screen.getByText(firstSummary)).toBeTruthy();
+  expect(screen.queryByText(/^Page 2/)).toBeNull();
+  forward.resolve(reply(lastPage));
+  const arrived = await screen.findByText(lastSummary);
+  expect(document.activeElement).toBe(arrived);
+  expect(screen.getByRole("heading", { name: weekly })).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: nightly })).toBeNull();
+  expect(next.disabled).toBe(false);
+  expect(next.getAttribute("aria-disabled")).toBe("true");
+
+  previous.focus();
+  fireEvent.click(previous);
+  const back = await nextRead();
+  expect(listCursors().at(-1)).toBe("");
+  issued = listCalls();
+  activateRepeatedly(previous);
+  expect(listCalls()).toBe(issued);
+  expect(document.activeElement).toBe(previous);
+  back.resolve(reply(firstPage));
+  const returned = await screen.findByText(firstSummary);
+  expect(document.activeElement).toBe(returned);
+  expect(screen.getByRole("heading", { name: nightly })).toBeTruthy();
+});
+
+it("retains the page, cursor and focused Next through a failed page read, yields its retry to search and settles a vanished pager on the summary", async () => {
+  const { nextRead, listCursors } = await openPagedSchedules();
+  const next = pageButton("Next");
+  next.focus();
+  fireEvent.click(next);
+  expect(next.disabled).toBe(false);
+  (await nextRead()).reject(backendOffline());
+  await expectFailureAlert(
+    "Schedules could not be read. The last accepted page is retained. Use Refresh to try again.",
+    "schedules backend offline",
+  );
+  expect(screen.getByText(firstSummary)).toBeTruthy();
+  expect(screen.getByRole("heading", { name: nightly })).toBeTruthy();
+  expect(document.activeElement).toBe(next);
+  expect(next.getAttribute("aria-disabled")).not.toBe("true");
+
+  fireEvent.click(next);
+  const retry = await nextRead();
+  expect(listCursors().slice(-2)).toEqual(["cursor-2", "cursor-2"]);
+  const query = screen.getByRole("searchbox", { name: "Search this page" });
+  query.focus();
+  retry.resolve(reply(lastPage));
+  await screen.findByText(lastSummary);
+  expect(document.activeElement).toBe(query);
+
+  const previous = pageButton("Previous");
+  previous.focus();
+  fireEvent.click(previous);
+  (await nextRead()).resolve(reply(VISUAL_SCHEDULES_PAGE));
+  const single = await screen.findByText("1 enabled · 1 disabled on this page");
+  expect(document.activeElement).toBe(single);
+  expect(screen.queryByRole("button", { name: "Previous" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+});
+
+it("keeps a manual Refresh on an accepted later page on its query, page and focus, and disables pages for commands", async () => {
+  const { nextRead, listCursors } = await openPagedSchedules();
+  fireEvent.click(pageButton("Next"));
+  (await nextRead()).resolve(reply(lastPage));
+  const arrived = await screen.findByText(lastSummary);
+  expect(document.activeElement).toBe(arrived);
+  const query = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this page" });
+  fireEvent.change(query, { target: { value: "weekly" } });
+
+  const refresh = refreshButton();
+  refresh.focus();
+  fireEvent.click(refresh);
+  const held = await nextRead();
+  expect(listCursors().at(-1)).toBe("cursor-2");
+  held.resolve(reply(lastPage));
+  await waitFor(() => expect(screen.queryByText("Reading schedules…")).toBeNull());
+  expect(document.activeElement).toBe(refresh);
+  expect(screen.getByText(lastSummary)).toBeTruthy();
+  expect(query.value).toBe("weekly");
+  expect(screen.getByRole("heading", { name: weekly })).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("button", { name: `More actions for ${weekly}` }));
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Run now" }));
+  await screen.findByText("Run schedule now…");
+  expect(pageButton("Previous").disabled).toBe(true);
+  expect(pageButton("Next").disabled).toBe(true);
+});
+
+it("retires a page request after a live notice without transferring its reading focus to the background result", async () => {
+  const { nextRead, listCursors, removeSchedule } = await openPagedSchedules();
+  const next = pageButton("Next");
+  next.focus();
+  fireEvent.click(next);
+  const retired = await nextRead();
+
+  removeSchedule(firstPage.Rows[0]!.ID);
+  const background = await nextRead();
+  expect(listCursors().slice(-2)).toEqual(["cursor-2", ""]);
+  background.resolve(reply(lastPage));
+  await screen.findByRole("heading", { name: weekly });
+  expect(screen.getByText("0 enabled · 1 disabled on this page")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+  expect(document.activeElement).toBe(document.body);
+
+  await act(async () => retired.resolve(reply(lastPage)));
+  expect(screen.queryByText(/^Page 2/)).toBeNull();
+  expect(document.activeElement).toBe(document.body);
+});
+
+it("keeps a later empty page scoped to that page and returns to the surviving schedules", async () => {
+  const { nextRead, listCursors } = await openPagedSchedules();
+  const next = pageButton("Next");
+  next.focus();
+  fireEvent.click(next);
+  (await nextRead()).resolve(reply({ Rows: [], NextCursor: "" }));
+
+  await screen.findByText("No schedules on this page.");
+  const summary = screen.getByText("Page 2 · 0 enabled · 0 disabled on this page");
+  expect(document.activeElement).toBe(summary);
+  expect(screen.queryByText("No schedules saved.")).toBeNull();
+  expect(screen.queryByText("Use Add schedule to save recurring work.")).toBeNull();
+
+  const previous = pageButton("Previous");
+  previous.focus();
+  fireEvent.click(previous);
+  expect(listCursors().at(-1)).toBe("");
+  (await nextRead()).resolve(reply({ ...firstPage, NextCursor: "" }));
+  await screen.findByRole("heading", { name: nightly });
+  expect(screen.queryByText("No schedules on this page.")).toBeNull();
 });

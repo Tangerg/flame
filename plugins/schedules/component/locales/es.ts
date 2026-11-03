@@ -68,6 +68,7 @@ export const es: Record<string, string> = {
   "empty.filtered.title": "No hay programaciones coincidentes en esta página.",
   "empty.filtered.action": "Borrar filtros",
   "empty.none.title": "No hay programaciones guardadas.",
+  "empty.page.title": "No hay programaciones en esta página.",
   "empty.none.sub": "Usa Agregar programación para guardar trabajo recurrente.",
   untitled: "Programación sin título",
   "actions.more": "Más acciones para {{name}}",
@@ -91,6 +92,7 @@ export const es: Record<string, string> = {
   "pages.label": "Páginas de programación",
   "pages.previous": "Anterior",
   "pages.next": "Siguiente",
+  "pages.current": "Página {{page}}",
   "notice.accepted":
     "El Runtime aceptó la Run {{run}} en la Session {{session}}.",
   "notice.openSession": "Abrir conversación",

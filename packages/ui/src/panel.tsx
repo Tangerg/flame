@@ -107,7 +107,14 @@ const styles = stylex.create({
     gap: layout.controlGap,
     minWidth: 0,
   },
-  toolbarActions: { marginInlineStart: "auto" },
+  toolbarLead: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: layout.controlGap,
+    flexGrow: 1,
+    minWidth: 0,
+  },
   title: {
     margin: 0,
     fontWeight: weight.semibold,
@@ -149,7 +156,6 @@ const styles = stylex.create({
     gap: layout.controlGap,
     flexShrink: 0,
     maxWidth: "100%",
-    marginInlineStart: "auto",
   },
   filterOptions: {
     display: "flex",
@@ -577,11 +583,15 @@ export function Toolbar({
 }) {
   return (
     <div role="group" aria-label={label} {...stylex.props(styles.toolbar)}>
-      {children}
-      {actions && (
-        <div {...stylex.props(styles.actions, styles.toolbarActions)}>
-          {actions}
-        </div>
+      {actions ? (
+        <>
+          {/* Growing content, not an auto margin, carries actions to the
+              trailing edge, so a wrapped action row keeps the leading edge. */}
+          <div {...stylex.props(styles.toolbarLead)}>{children}</div>
+          <div {...stylex.props(styles.actions)}>{actions}</div>
+        </>
+      ) : (
+        children
       )}
     </div>
   );

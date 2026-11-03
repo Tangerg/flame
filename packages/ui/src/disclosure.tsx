@@ -101,11 +101,9 @@ const styles = stylex.create({
     flex: "0 1 auto",
     minWidth: 0,
     maxWidth: "100%",
-    marginInlineStart: "auto",
     alignItems: "center",
     flexWrap: "wrap",
     gap: layout.controlGap,
-    justifyContent: "flex-end",
   },
 });
 export function Disclosure({

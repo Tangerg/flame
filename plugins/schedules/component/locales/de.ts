@@ -67,6 +67,7 @@ export const de: Record<string, string> = {
   "empty.filtered.title": "Keine passenden Zeitpläne auf dieser Seite.",
   "empty.filtered.action": "Filter zurücksetzen",
   "empty.none.title": "Keine Zeitpläne gespeichert.",
+  "empty.page.title": "Keine Zeitpläne auf dieser Seite.",
   "empty.none.sub":
     "Verwende Zeitplan hinzufügen, um wiederkehrende Arbeit zu speichern.",
   untitled: "Unbenannter Zeitplan",
@@ -91,6 +92,7 @@ export const de: Record<string, string> = {
   "pages.label": "Zeitplanseiten",
   "pages.previous": "Zurück",
   "pages.next": "Weiter",
+  "pages.current": "Seite {{page}}",
   "notice.accepted":
     "Runtime hat Run {{run}} in Session {{session}} akzeptiert.",
   "notice.openSession": "Unterhaltung öffnen",
