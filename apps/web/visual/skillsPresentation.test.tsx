@@ -32,6 +32,7 @@ const [RISK_FIRST, RUNTIME_BOUNDARIES] = VISUAL_SKILL_DOCUMENTS as [SkillDetail,
 const releases: Array<() => Promise<void>> = [];
 
 afterEach(async () => {
+  document.getSelection()?.removeAllRanges();
   cleanup();
   await Promise.all(releases.splice(0).map((release) => release()));
   vi.restoreAllMocks();
@@ -356,6 +357,120 @@ it("consumes Escape to leave a document and leaves catalog Escape to the host", 
   fireEvent.keyDown(opener!, { key: "Escape" });
   expect(outsideEscape).toHaveBeenCalledOnce();
   expect(readButtons()).toHaveLength(2);
+});
+
+function expectInstructionsSelected(name: string, text: string, outside: Element[]) {
+  const selection = document.getSelection()!;
+  expect(selection.rangeCount).toBe(1);
+  const range = selection.getRangeAt(0);
+  expect(range.toString()).toBe(text);
+  expect(range.startContainer).toBe(instructions(name));
+  expect(range.endContainer).toBe(instructions(name));
+  for (const element of outside) expect(range.intersectsNode(element)).toBe(false);
+}
+
+const documentFraming = () => [
+  screen.getByRole("button", { name: "Outside action" }),
+  screen.getByRole("heading", { name: "runtime-boundaries" }),
+  screen.getByRole("button", { name: "Back to available Skills" }),
+  screen.getByRole("button", { name: "Refresh document" }),
+  screen.getByRole("button", { name: "Source and revision" }),
+  screen.getByRole("region", { name: "Available Skills", hidden: true }),
+];
+
+it.each(["metaKey", "ctrlKey"] as const)(
+  "selects only the accepted instructions with %s+A from the document heading and leaves search native",
+  async (modifier) => {
+    document.getSelection()?.removeAllRanges();
+    const { listDiscovered, getDiscovered } = await mountSkills();
+    const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this catalog" });
+    fireEvent.change(search, { target: { value: "runtime" } });
+    const viewport = screen.getByTestId("viewport");
+    viewport.scrollTop = 125;
+    const [opener] = readButtons();
+    opener!.focus();
+    fireEvent.click(opener!);
+    const heading = screen.getByRole<HTMLElement>("heading", { name: "runtime-boundaries" });
+    expect(document.activeElement).toBe(heading);
+    await waitFor(() =>
+      expect(instructions("runtime-boundaries")?.textContent).toBe(RUNTIME_BOUNDARIES.instructions),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Source and revision" }));
+    const path = await screen.findByText(RUNTIME_BOUNDARIES.path);
+    heading.focus();
+    const reads = getDiscovered.mock.calls.length;
+
+    expect(fireEvent.keyDown(heading, { key: "a", [modifier]: true })).toBe(false);
+    expectInstructionsSelected("runtime-boundaries", RUNTIME_BOUNDARIES.instructions, [
+      ...documentFraming(),
+      path,
+    ]);
+    expect(document.activeElement).toBe(heading);
+    expect(getDiscovered).toHaveBeenCalledTimes(reads);
+    expect(fireEvent.copy(heading)).toBe(true);
+    expect(document.getSelection()!.toString()).toBe(RUNTIME_BOUNDARIES.instructions);
+
+    fireEvent.keyDown(heading, { key: "Escape" });
+    const returned = screen.getByRole<HTMLInputElement>("searchbox", {
+      name: "Search this catalog",
+    });
+    expect(returned.value).toBe("runtime");
+    expect(viewport.scrollTop).toBe(125);
+    expect(document.activeElement).toBe(opener);
+    document.getSelection()!.removeAllRanges();
+    returned.focus();
+    expect(fireEvent.keyDown(returned, { key: "a", [modifier]: true })).toBe(true);
+    expect(document.getSelection()!.rangeCount).toBe(0);
+    expect(document.activeElement).toBe(returned);
+    expect(getDiscovered).toHaveBeenCalledTimes(reads);
+    expect(listDiscovered).toHaveBeenCalledTimes(2);
+  },
+);
+
+it("keeps a document Select All on the accepted instructions through a pending refresh", async () => {
+  document.getSelection()?.removeAllRanges();
+  const { getDiscovered } = await mountSkills();
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search this catalog" }), {
+    target: { value: "runtime" },
+  });
+  const [opener] = readButtons();
+  opener!.focus();
+  fireEvent.click(opener!);
+  const heading = screen.getByRole<HTMLElement>("heading", { name: "runtime-boundaries" });
+  await waitFor(() =>
+    expect(instructions("runtime-boundaries")?.textContent).toBe(RUNTIME_BOUNDARIES.instructions),
+  );
+  const pending = Promise.withResolvers<SkillDetail>();
+  getDiscovered.mockImplementationOnce(() => pending.promise);
+  fireEvent.click(screen.getByRole("button", { name: "Refresh document" }));
+  await screen.findByText("Reading runtime-boundaries…");
+  heading.focus();
+
+  expect(fireEvent.keyDown(heading, { key: "a", metaKey: true })).toBe(false);
+  expectInstructionsSelected(
+    "runtime-boundaries",
+    RUNTIME_BOUNDARIES.instructions,
+    documentFraming(),
+  );
+  expect(document.activeElement).toBe(heading);
+
+  const outside = screen.getByRole<HTMLElement>("button", { name: "Outside action" });
+  outside.focus();
+  const updated = {
+    ...RUNTIME_BOUNDARIES,
+    instructions: "Record every durable decision beside its Runtime owner.",
+  };
+  await act(async () => pending.resolve(updated));
+  await waitFor(() => expect(screen.queryByText("Reading runtime-boundaries…")).toBeNull());
+  expect(instructions("runtime-boundaries")?.textContent).toBe(updated.instructions);
+  expectInstructionsSelected("runtime-boundaries", updated.instructions, documentFraming());
+  expect(document.activeElement).toBe(outside);
+
+  heading.focus();
+  expect(fireEvent.keyDown(heading, { key: "a", ctrlKey: true })).toBe(false);
+  expectInstructionsSelected("runtime-boundaries", updated.instructions, documentFraming());
+  expect(document.activeElement).toBe(heading);
+  expect(getDiscovered).toHaveBeenCalledTimes(2);
 });
 
 it("names a first document failure without a retained claim, retries it and labels a retained refresh", async () => {

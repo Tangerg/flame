@@ -17,7 +17,10 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-The latest follow-up scopes file-preview Select All to the displayed file while
+The latest follow-up scopes Skills Select All to the accepted instructions from
+the existing document heading and controls, preserving native copy, catalog return
+and conversation drafts; see **Skills instruction selection and material return
+(2026-11-03)**. File-preview Select All remains scoped to the displayed file while
 preserving native formatted copy, source copying and nested-reader behavior; see
 **File preview selection and reading scope (2026-11-03)**. The source reader's
 inset perimeter remains qualified under **Source reading and inner focus
@@ -17384,6 +17387,150 @@ other private npm caches are removed. Root dependencies, user data, read-only
 references, shared compiler caches and unrelated processes are preserved.
 Publication uses the existing managed branch and guarded main fast-forward;
 fresh-fetch and final remote equality are checked before reporting delivery.
+
+### Skills instruction selection and material return (2026-11-03)
+
+This batch starts from synchronized main `a1796b644`. The existing catalog result
+summaries, retained query, document/source disclosure and Back/Escape return are
+already qualified above. A fresh native task exposes a separate selection defect:
+opening `runtime-boundaries` correctly focuses its document heading, but Cmd+A
+selects **1,303 DOM characters**, including the conversation and workspace chrome.
+The accepted instructions contain **784 characters / 10 lines**. The named
+instruction section exists; the Skills panel handles Escape without containing
+Select All from that heading.
+
+#### Owner and repaired contract
+
+`plugins/skills/component/component.tsx` keeps a ref to its existing named
+instruction section and passes it to the existing shared `selectAllInReader`
+inside its panel key handler. This is the Skills reader's local selection scope:
+the heading, description, Back/Refresh controls, expanded source metadata, hidden
+catalog and host content are outside the range. Entry still focuses the heading;
+no extra Tab stop or focus redirection is added. Native copy and the helper's
+handled-event, editable-field, composition and modifier guards retain their owners.
+Returning removes the section ref, leaving catalog search selection native.
+
+The source change adds seven lines and no wrapper, state, effect, listener,
+focus/scroll call, public API, dependency or token. `useSkills.ts`, canonical read
+and command lifetimes, query/scroll restoration, layout, color and motion remain
+unchanged. The normal builder regenerates only the Skills installed ESM; the other
+**21 installed JavaScript resources** match their original hashes. The README
+records the reader contract. No protocol or persisted-data migration is needed;
+existing installations must select/reload the normally rebuilt component resource.
+This task does not update a live installation.
+
+The better-accessibility review applies predictable keyboard scope;
+better-layout follows reading, provenance, return and continued conversation.
+Flame's already qualified file-preview boundary and shared helper supply the
+implementation precedent. Read-only ZCode `SkillsSection.tsx:875–955` places
+metadata in an actual Dialog, which is a different task container and supplies no
+evidence of Select All containment. Its modal/truncation behavior is not copied.
+Earlier ChatGPT, HeroUI, Arc, Radix and Ace studies retain their recorded uses and
+limits; no new upstream browser or static-image comparison is claimed.
+
+One bounded Read/Edit-only Claude Code CLI invocation completes the two-file
+detail work in **83.240 s / 13 turns**, with no permission denials. Root reviews
+the actual diff, shortens the ownership comment, regenerates installed resources
+and performs all checks, native acceptance, publication and cleanup.
+
+#### Verification
+
+- Focused baseline passes **4 files / 46 tests** in **7.023 s**. The candidate
+  passes **4 files / 49 tests** in **4.171 s**. New Cmd/Ctrl cases enter from the
+  heading, compare the exact accepted range, exclude real framing/path/catalog
+  nodes, retain native copy dispatch and verify return/query/scroll/focus. A
+  pending-refresh case selects the retained read, accepts updated instructions
+  and preserves focus moved outside the reader. Existing installed-component,
+  workspace and subagent continuity cases remain passing.
+- Restoring only the original Skills source fails exactly the **three new cases**,
+  with **23 other Skills cases passing**, in **3.062 s**. Candidate bytes are
+  restored exactly. No assertion or gate is weakened.
+- Full frontend regression passes **424 files / 4,450 tests** in **192.392 s**.
+  All **25 non-Runtime Web gates** pass. Plugin typecheck, lint, i18n and exact
+  resources pass; i18n covers **20 catalogs / 8 locales**. Scoped source formatting
+  passes. Serial `make check-native` passes in **38.763 s**; the private production
+  Wails host builds/signs in **4.145 s**. Existing SDK/deployment/linker warnings
+  and the private fixture's large-chunk notice remain nonfatal.
+- The plugin-wide format check **fails on two pre-existing Feedback files**:
+  `plugins/feedback/component/component.test.tsx` and `component.tsx`. Both are
+  byte-identical to base main. Restoring the original Skills source reproduces
+  the same two warnings and exit one (**2.676 s**), then the candidate is restored
+  exactly. Feedback source is not edited and the failed aggregate is not reported
+  as passing.
+
+No full Runtime, unrelated CLI/SDK/backend or unchanged shared-UI suite,
+browser visual suite or performance benchmark is started. Earlier Runtime recovery/offline-toolchain
+limitations remain attributed to their own checks.
+
+#### Actual Wails acceptance
+
+The isolated current Wails v3.0.0 host uses real production views, public SDK
+transport and ordinary deterministic fixtures. Skills loads its normal regenerated
+installed ESM. The private app identity, home, hosting, entry URL and unavailable
+loopback Runtime isolate the user's application/data. Input uses native CUA only.
+A passive observer records selection, geometry and focus; it neither drives input
+nor replaces production handlers. It is retired before the final build and task.
+
+- EN/light/14 px/Orange/full motion: query `runtime`, Tab to its result and Enter
+  focus the existing document heading. Cmd+A selects only the **784-character**
+  accepted instructions; WebKit's DOM string includes one native trailing LF
+  (**785**). Selection remains in the named instruction section and focus remains
+  on the heading. Keyboard resizing reaches the **320 px** Dock, then Back/reopen
+  retains query and row focus. Native window zoom changes **1120×755 → 1513×950 →
+  1120×755**, DPR 2, without changing the selection. Refresh and expanded full
+  source/revision keep the same scoped selection from their controls. Escape
+  restores the filtered opener; search keeps native Cmd+A. Cmd+L continues the
+  original draft as `Skill instructions draft 保留 continued`.
+- ZH/dark/18 px/custom gray-blue/full motion: native zoom reaches **560×377 CSS
+  pixels / DPR 4**, the actual **200%** view. Existing full-width material entry
+  keeps identity, Back and Refresh reachable. The heading and expanded Source
+  control select the same instructions, excluding the complete path/revision.
+  PageDown reads the expanded provenance. Escape retains `runtime`, the
+  one-of-two summary and opener focus; closing material returns to the original
+  draft, continued as `技能阅读草稿 保留 继续`. Observer samples report no errors.
+- Final observer-free EN/320 px and ZH/18 px/200% repeat heading entry, refresh,
+  source disclosure, exact instruction selection, Escape/opener return, native
+  search selection and original-draft continuation. AX-selected text equals all
+  **784 original characters** in both tasks. Final drafts are
+  `Final Skills draft 保留 continued` and `最终技能草稿 保留 继续`.
+
+All **five** baseline/candidate/final native launches terminate normally with
+Cmd+Q and exit zero. Before cleanup, **1,265 frozen native/source/resource inputs**
+match the qualified final build, including **926 repository source/resource
+files** and all 22 installed JavaScript resources. All **266 built HTML/JS/CSS
+files** exclude the observer marker and loopback endpoint, whose port is closed.
+No Send, proposal decision, archive/restore, provider command, real filesystem
+discovery or live component upgrade is invoked. Mocked asynchronous boundaries
+are integration evidence, not live backend qualification. VoiceOver audio,
+physical OS IME, RTL and other-platform GUI are not newly verified. The existing
+pointer-origin reverse-Tab and placeholder-paint observations remain separate.
+
+| Goal CHECK        | Scoped result                                                                    |
+| ----------------- | -------------------------------------------------------------------------------- |
+| Typography        | Literal lines and complete EN/CJK instructions survive 14 px and 18 px/200%      |
+| Whitespace        | Existing document rhythm and compact header retained without another wrapper     |
+| Visual hierarchy  | Instructions own selection; identity, provenance and host scope remain distinct  |
+| Color             | Approved Orange/light and custom gray-blue/dark surfaces and focus retained      |
+| Motion            | Existing full-motion entry and return preserved; no animation added              |
+| Micro interaction | Heading/control Select All, refresh, native search, Escape and draft return pass |
+| Responsive        | 320 px Dock, native window zoom and measured 200% full-width tasks pass          |
+| Originality       | Existing Flame Panel, document section and selection helper retained             |
+
+Verdict: **Approve for Skills instruction selection and material return**.
+Whole-product and award-level acceptance remain open. Continue from fresh task
+evidence without reopening qualified catalog summaries, query arrival or command
+ownership in the absence of a new finding.
+
+Cleanup is complete: the exact private app is unregistered, no native/observer
+process remains, both loopback ports are closed, and all nine initially absent
+checkout output roots and six unique-identity Library paths are absent again.
+The private app/assets/home/overlays/CLI/observer/log/cache root is removed.
+Post-cleanup verification preserves all 926 qualified repository source/resource
+hashes, the two original Feedback files and the 123-byte interrupted-draft backup
+with its original SHA-256. Root dependencies, shared toolchain/cache, read-only
+references and user data are preserved. Fresh fetch finds no incoming main commit;
+publication uses guarded main fast-forward, push and direct remote equality.
+This worktree and the continuous goal remain active.
 
 ### Skills catalog introductions
 

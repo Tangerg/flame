@@ -64,6 +64,10 @@ catalog begins at its first result when the user changes or clears the query;
 refreshing an unchanged query preserves the current reading position. The
 document header holds Back, the document name and its compact scope; the
 instructions use `DocumentBody` around `RecordBody`, preserving recorded line breaks.
+Within the open reader, Cmd/Ctrl+A selects only the accepted instructions, including
+when focus remains on the document heading or its controls. Document identity,
+description, source metadata and host content stay outside that range. Copy keeps
+the browser's native behavior; editable fields keep their native selection.
 The document has its own read lifetime: returning or choosing another document
 cancels it, a late result is ignored, and a failed refresh keeps only that
 document's accepted read with an explicit label. A first failure names the document

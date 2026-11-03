@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { ArrowLeft, BookOpen, Refresh } from "@flame/icons/react";
 import { type ComponentContext, type Translate } from "@flame/component-sdk";
 
@@ -25,6 +26,7 @@ import {
   SearchField,
   FilterBar,
   Segmented,
+  selectAllInReader,
   Toolbar,
 } from "@flame/ui";
 import { type SkillSnapshot, type Target } from "./types";
@@ -74,11 +76,15 @@ export function Skills({ context }: { context: ComponentContext }) {
     openDocument,
   } = useSkills(context);
   const summary = catalogSummary(snapshot, matching.length, rows.length, t);
+  const instructions = useRef<HTMLElement>(null);
   return (
     <Panel
       ref={panel}
       label={t("panel.title")}
       onKeyDown={(event) => {
+        // Document entry keeps focus on the heading outside the instruction body.
+        if (instructions.current)
+          selectAllInReader(event, instructions.current);
         if (
           event.key !== "Escape" ||
           event.defaultPrevented ||
@@ -289,6 +295,7 @@ export function Skills({ context }: { context: ComponentContext }) {
             <RecordBody>{skillDocument.description}</RecordBody>
           )}
           <section
+            ref={instructions}
             aria-label={t("instructions.for", { name: skillDocument.name })}
           >
             <DocumentBody>
