@@ -415,7 +415,6 @@ export const en: Record<string, string> = {
   "settings.paperTexture.grain": "Fine grain",
   "settings.paperTexture.strength": "Texture strength",
   "settings.streamReveal": "Streaming style",
-  "settings.streamReveal.sub": "How the assistant's replies appear as they stream in.",
   "settings.streamReveal.smooth": "Smooth",
   "settings.streamReveal.typewriter": "Typewriter",
   "settings.language.label": "Language",

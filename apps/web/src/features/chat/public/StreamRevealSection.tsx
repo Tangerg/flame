@@ -8,7 +8,7 @@ export function StreamRevealSection() {
   const setStreamReveal = useStreamRevealStore((state) => state.setStreamReveal);
 
   return (
-    <SettingRow label={t("settings.streamReveal")} sub={t("settings.streamReveal.sub")}>
+    <SettingRow label={t("settings.streamReveal")}>
       <Segmented
         value={streamReveal}
         options={[

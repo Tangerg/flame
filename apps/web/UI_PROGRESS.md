@@ -4466,15 +4466,15 @@ matching presentation identity without changing the preference owner's text.
 | ------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | Accessibility | AccentSection, native pressed states, named font controls, Option+Tab/Space and Escape return                  | Selection mismatch resolved; VoiceOver speech not newly verified    |
 | Layout        | SettingRow, AppearancePane, PersonalizationPane; native EN, ZH and DE at normal size and 18 px/200%            | Existing responsive rows retained; no new layout defect established |
-| Writing       | Direct Appearance labels and native Personalization helper line in all three languages                         | One low-priority follow-up below                                    |
+| Writing       | Direct Appearance labels and native Personalization helper line in all three languages                         | Follow-up resolved in the Personalization section below             |
 | Typography    | FontSection, four real font/size menus, German full-value menu and Chinese labels                              | Clear for inspected paths; no new font-metric or OS IME claim       |
 | Colors        | Hex schema/store, built-in and contributed presets, solidInk regression cases, native matched and custom state | Selection mismatch resolved; no arbitrary-palette contrast claim    |
 | UI            | Shared swatch perimeter/check, pointer and keyboard selection, light/dark and motion Off scenes                | Clear for inspected states; animation timing not newly measured     |
 
-| Severity | Domain  | Location                                                    | Before                                                                                | After                                                                                      | Why                                                                   |
-| -------- | ------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
-| MEDIUM   | Colors  | src/features/theme/public/preferences/AccentSection.tsx:104 | Raw equality misclassifies an equivalent preset color as custom                       | One case-insensitive comparison drives membership, pressed state, border and mark          | Visible and accessible selection must identify the current color      |
-| LOW      | Writing | src/features/chat/public/StreamRevealSection.tsx:11         | A helper sentence repeats the Streaming style label and separates it from its control | Pending next batch: remove redundant helper copy while preserving both choices and storage | The user requested direct decisions with less secondary settings copy |
+| Severity | Domain  | Location                                                    | Before                                                                                | After                                                                                  | Why                                                                   |
+| -------- | ------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| MEDIUM   | Colors  | src/features/theme/public/preferences/AccentSection.tsx:104 | Raw equality misclassifies an equivalent preset color as custom                       | One case-insensitive comparison drives membership, pressed state, border and mark      | Visible and accessible selection must identify the current color      |
+| LOW      | Writing | src/features/chat/public/StreamRevealSection.tsx:11         | A helper sentence repeats the Streaming style label and separates it from its control | Resolved below: remove redundant helper copy while preserving both choices and storage | The user requested direct decisions with less secondary settings copy |
 
 Baseline settings coverage passes **3 files / 13 tests**; the original accent and
 storage scope passes **2 / 16**. The candidate scope passes **2 / 24**. New cases
@@ -4552,9 +4552,98 @@ hashes, SHA-256 `2e0968a032e99f51caec5395fbf46c556a855f888c5be7b0ef5e46a3fcac547
 Scoped verdict: **Approve** for accent identity and the inspected settings task.
 VoiceOver speech, full OS IME, OS color-picker activation, RTL, forced colors,
 other-platform GUIs, live Runtime/provider data and award-level completion of
-all eight visual dimensions remain unverified. The observed redundant
-Personalization sentence is the next bounded batch; preserve the accepted
-Appearance geometry, theme system and shared focus owner while addressing it.
+all eight visual dimensions remain unverified. The following Personalization
+section resolves the remaining redundant sentence while preserving the accepted
+Appearance geometry, theme system and shared focus owner.
+
+### Personalization direct label and streaming choice continuity
+
+Personalization now presents Streaming style and its existing Smooth/Typewriter
+choices in the same direct label/control row as Appearance. Removing only
+`StreamRevealSection`'s redundant `sub` prop lets the existing centered SettingRow
+align the label and control; its existing container query still stacks them at
+narrow widths. No wrapper, style, event handler, state or shared component changes.
+The existing Zustand preference, both exact mode values, accessible group name,
+option labels, settings keyword and streaming renderer keep their owners.
+
+All **8** catalogs remove only the obsolete helper key. Independent comparison
+against the frozen originals proves every other catalog byte unchanged and the
+component change limited to that one prop. This follows the user's explicit
+instruction to remove helper text, better-writing's minimal settings language and
+better-layout's shared alignment edges. Recon uses the preceding chapter, the
+Web and locale-package READMEs, SettingRow, PersonalizationPane, Segmented and the
+streaming preference/consumer. Existing read-only reference research stays scoped
+to its earlier evidence; no new reference-app behavior is claimed.
+
+Scope: Composer → Settings → Personalization → adjacent Appearance → return to
+Composer, using existing React, StyleX, Base UI and shared semantic tokens.
+
+| Domain        | Evidence inspected                                                               | Result                                                           |
+| ------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Accessibility | Named radio group, pointer/arrow selection, search and native focus after return | Clear for inspected paths; VoiceOver speech not newly verified   |
+| Layout        | SettingRow/Segmented; EN normal size, ZH/DE 18 px at normal size and native 200% | Direct row aligns; narrow label and both choices remain visible  |
+| Writing       | StreamRevealSection and all eight catalogs; exact deletion audit                 | Redundant helper resolved; labels and choices retained           |
+| Typography    | Native Chinese labels and complete German Schreibmaschine option                 | Clear for inspected paths; font metrics unchanged                |
+| Colors        | Existing selected radio treatment in light/dark/custom-accent native scenes      | Clear for inspected states; no new arbitrary-palette measurement |
+| UI            | Existing radio focus/selection, motion Full/Off scenes, settings close/reopen    | Clear for inspected states; no new animation-timing measurement  |
+
+| Severity | Domain  | Location                                            | Before                                                                           | After                                                       | Why                                                                  |
+| -------- | ------- | --------------------------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------- |
+| LOW      | Writing | src/features/chat/public/StreamRevealSection.tsx:11 | Helper text repeats the label and adds distance between the decision and choices | Direct label/control row; its eight unused messages removed | Expose the decision with less scanning and existing shared alignment |
+
+Before evidence reuses the preceding accepted EN/ZH/DE native captures. All
+**6,803** current non-Markdown inputs match that accepted source before editing;
+the three capture hashes, AX records and source association are retained. No new
+original GUI launch is claimed. Candidate signed Wails **v3.0.0** retains production
+native services/chrome/zoom and uses the ordinary deterministic workspace fixture
+with a private inactive Runtime endpoint:
+
+- **EN/light/14 px/Orange**, nominal **1440 × 900**: label and choices share one
+  centered row. Pointer selection chooses Typewriter; Left chooses Smooth and
+  Right restores Typewriter with matching checked states and focus. Category
+  return, search `Streaming style` + Return/Escape and Settings close/reopen retain
+  the choice. The confirmed draft returns and becomes
+  `Keep the personalization draft. Continue after personalization.`
+- **ZH/dark/18 px/Purple/motion Off**: a fresh process restores the previous
+  Typewriter choice. Native edge resize to nominal **1122 px**, Actual Size and
+  twenty Zoom In increments reach **200%**. The direct label and both options
+  remain readable; Left/Right switch and restore the choice. Search `流式样式`
+  finds Personalization, adjacent Interface font closes with Escape to its exact
+  trigger, and category return retains the mode. Actual Size and close return to
+  the confirmed, continued Chinese draft through native paste.
+- **DE/light/18 px/custom accent/motion Off**: another fresh process again
+  restores Typewriter. At the same 200% scene, Schreibmaschine remains complete;
+  pointer and Left/Right selection work. Search `Streaming-Stil`, adjacent Code
+  font Escape return, category return and Settings close/reopen retain the final
+  Smooth choice. Actual Size and close return to the complete continued draft.
+
+All **3** native processes quit normally with **0**. No message is sent and no
+Runtime mutation occurs. Existing baseline coverage passes **5 files / 39 tests**;
+full frontend passes **424 / 4,497** (**88.137 s** wrapper). All **25** Web gates,
+supported `make check-native` (**21.348 s**), plugin generation/types/lint/i18n,
+owned formatting and `git diff --check` pass serially. All **22** installed ESM
+hashes stay unchanged. The same pre-existing two Feedback formatting failures
+remain untouched. No new test mirrors this reversible copy deletion; no browser
+visual suite, performance benchmark or separate unchanged shared-UI suite runs.
+The bounded Read/Edit-only Claude CLI exits **0**, **53.927 s**, **25** reported
+turns and no permission denials; primary independently reviews and qualifies it.
+
+Final integrity freezes **6,803** inputs with exactly **9** changed source/catalog
+files, **22** unchanged resources, **333** private Web artifacts, **4** bundle
+files, **21** host inputs and one fixture config. Exact cleanup unregisters the
+unique bundle, removes **9** new checkout outputs and **2** UID-specific Library
+directories, restores all **6** Library absence baselines and deletes private
+root `flame-personalization-dXxw5l` under ownership guards. All **16** absence
+baselines, two original UI cache hashes and the protected **123-byte** draft
+survive independent checks. No owned process or private endpoint listener remains.
+The verified in-memory archive retains **144** UTF-8 records and **26** capture
+hashes, SHA-256 `88fce602adf5d57311bde7fa161c9b307c64684af21f7d00d4cf46ceea225877`.
+
+Scoped verdict: **Approve** for this settings read/change/return flow. VoiceOver
+speech, full OS IME, additional 320 px/RTL/forced-colors GUI scenes, other platforms,
+live provider streaming and the eight award-level dimensions remain unverified.
+Next: resume native main-content/Context Dock detail-and-return review from the
+existing all-pages inventory, choosing further changes only from actual evidence.
 
 ### Language loading and complete reading updates
 

@@ -397,7 +397,6 @@
   "settings.paperTexture.grain": "细颗粒",
   "settings.paperTexture.strength": "纹理强度",
   "settings.streamReveal": "流式样式",
-  "settings.streamReveal.sub": "助手回复在流式输出时的呈现方式。",
   "settings.streamReveal.smooth": "平滑",
   "settings.streamReveal.typewriter": "打字机",
   "settings.language.label": "语言",

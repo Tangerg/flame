@@ -364,7 +364,6 @@
   "settings.paperTexture.grain": "細かい粒子",
   "settings.paperTexture.strength": "質感の強さ",
   "settings.streamReveal": "ストリーミング表示",
-  "settings.streamReveal.sub": "応答がストリーミングされる際の表示のされ方。",
   "settings.streamReveal.smooth": "スムーズ",
   "settings.streamReveal.typewriter": "タイプライター",
   "settings.language.label": "言語",

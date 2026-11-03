@@ -371,7 +371,6 @@
   "settings.paperTexture.grain": "Feine Körnung",
   "settings.paperTexture.strength": "Strukturstärke",
   "settings.streamReveal": "Streaming-Stil",
-  "settings.streamReveal.sub": "Wie Antworten beim Streamen erscheinen.",
   "settings.streamReveal.smooth": "Weich",
   "settings.streamReveal.typewriter": "Schreibmaschine",
   "settings.language.label": "Sprache",

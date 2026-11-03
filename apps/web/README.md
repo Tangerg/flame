@@ -287,6 +287,8 @@ Appearance settings use section headings and direct label/control rows. Existing
 control labels, selected values and error feedback carry the task; the page does
 not repeat explanatory introductions or one-line descriptions. Section headings
 remain settings search terms through their existing catalog keys.
+Personalization uses the same direct label/control row for Streaming style and
+retains both its smooth and typewriter choices.
 Each active settings tab panel owns its scroll viewport and keyboard focus.
 Shared Select closes when Base UI reports its trigger fully clipped; dismissal
 keeps the current value and viewport position, then returns focus to that panel.

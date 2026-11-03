@@ -378,7 +378,6 @@
   "settings.paperTexture.grain": "Grano fino",
   "settings.paperTexture.strength": "Intensidad de la textura",
   "settings.streamReveal": "Estilo de streaming",
-  "settings.streamReveal.sub": "Cómo aparecen las respuestas a medida que se transmiten.",
   "settings.streamReveal.smooth": "Suave",
   "settings.streamReveal.typewriter": "Máquina de escribir",
   "settings.language.label": "Idioma",

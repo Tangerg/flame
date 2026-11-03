@@ -364,7 +364,6 @@
   "settings.paperTexture.grain": "고운 입자",
   "settings.paperTexture.strength": "질감 강도",
   "settings.streamReveal": "스트리밍 스타일",
-  "settings.streamReveal.sub": "응답이 스트리밍될 때 나타나는 방식.",
   "settings.streamReveal.smooth": "부드럽게",
   "settings.streamReveal.typewriter": "타자기",
   "settings.language.label": "언어",
