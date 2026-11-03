@@ -23593,6 +23593,92 @@ round-trips **169** UTF-8 records and **32** screenshot digests; gzip SHA-256 is
 Post-retirement verification checks accepted source/resource/reference hashes,
 all **16** absences, preserved caches and the protected draft.
 
+#### Current-main remote-evidence native qualification (2026-11-04)
+
+Current main `303ea4007cd277f379203d7b27bac7604ed992ea` is inspected through
+reply → remote Tool summary → captured HTTP/search result → complete Arguments
+and local Find → related file or panel → return → continued draft. **No
+actionable layout or writing findings** are established for the inspected tasks.
+This batch changes only this progress file; product, fixture, locale, renderer
+and native-host sources remain unchanged.
+
+The owning better-layout and better-writing guidance informs shared edges,
+within/between-record spacing, full identity and explicit reading scope. Fresh
+read-only ZCode `ToolSummaryRow.tsx` and the actual `web-fetch.tsx` renderer
+separate operation, literal URL and supporting content. Its title-only truncation
+and nondisclosing container are not copied. Flame retains React, Base UI, StyleX,
+shared controls, tokens and its existing disclosure/material owners. Repository
+and Web/native/visual/tool-results guidance remains applicable.
+
+The actual `httpResponse` projection retains status **200**, duration **12ms**,
+both recorded headers and the JSON body, separately from captured GET/URL
+arguments. Find matches a recorded row, so a matching HTTP row retains its whole
+header/body rather than becoming a line-level filter. Search results separately
+retain titles, literal URLs and excerpts. The two-field `web_web_fetch` fixture
+is a legacy/unknown page capture: its complete JSON source remains readable.
+It does not qualify the current Web provider's Unicode-range/snapshot paging.
+No URL is activated and no request or Tool is replayed.
+
+One signed private Wails **v3.0.0** bundle runs production chrome, services and
+native zoom with current Web source and canonical fixture providers. Only its
+asset directory, identity and initial URL differ. There is no injected DOM
+observer, browser driver or live Runtime; its private endpoint has no listener.
+All three native processes run serially and finish through Cmd+Q, terminal
+**exit 0**:
+
+| Native task                         | Observed result                                                                                                                                                                                                                                                                                                           |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| EN14/light/Orange/full motion       | Five native Tabs reach HTTP Arguments; Enter and wrap expose GET and the complete URL. `database` Find and open Arguments survive README Preview → full width → Close. Search Find `long reader` isolates the second hit; Escape restores both titles/URLs/excerpts. Legacy fetch JSON remains complete.                  |
+| ZH18/dark/custom blue/motion off    | Physically narrowed **1122 px** window at native **200%** retains HTTP body and a readable complete wrapped input after keyboard reentry. With `database` Find active, full-width README Preview → Source is read; three native Tabs enter its named reader and End reaches line **24**. Close preserves query/Arguments. |
+| DE18/light/custom purple/motion off | Six native Tabs from nonempty Composer reach the splitter; Home selects **320 px**. Search-result grouping and HTTP parameters remain readable. `cache-control` Find and open wrapped Arguments survive native Files → Diff → Trajectory → Files arrows; scoped Escape closes Find.                                       |
+
+Exact continued drafts are observed as
+`Continue after checking the recorded HTTP response. Ready.`,
+`核对 HTTP 响应和网页记录后继续。 已核对。`, and
+`Nach der aufgezeichneten HTTP-Antwort weiterarbeiten. Geprüft.`.
+No Send, Save, file write or picker is invoked. Manual Files presentation owns
+its return; this does not requalify Tool-origin focus restoration.
+
+The short, fitting Chinese Arguments reader's End scrolls the outer conversation
+instead of demonstrating inner-tail reading. That frame is excluded from complete
+input evidence. Native reverse/forward Tab reentry reveals the full method,
+URL and braces with a visible focus ring; no speculative scrolling workaround is
+introduced. An initial unobserved English wrap-label lookup finds no target and
+invokes no action; the actual `Enable word wrap` control supplies the accepted check.
+
+`make stage-web` passes in **8.386 s**; the private current-source asset build in
+**1.980 s** and production native host build in **3.860 s**. Focused command
+`npm run test --workspace @flame/web -- --project frontend visual/recordedResultPresentation.test.tsx src/features/chat/tools/ui/ToolPreview.shape.test.tsx src/features/chat/tools/ui/ToolPreview.focus.test.tsx src/features/agent/presentation/toolPresentation.test.ts`
+passes **4 files / 143 tests**, wrapper **2.651 s**. It covers renderer identity,
+HTTP source fidelity, unknown-format fallback, argument persistence and focus
+contracts. No new test is added for a documentation-only result. Full unchanged
+product suites, `make check-native`, browser visual suites and performance
+benchmarks are not rerun; previous results retain their original scope.
+
+Typography, whitespace, hierarchy, theme colors and responsive layout are
+inspected in the native scenes above; no contrast ratios are newly sampled.
+Interaction evidence covers the stated controls and returns; full/off motion
+evidence covers end states. Existing Flame identity is retained. Empty/error
+formats have automated coverage, not a full native state matrix. VoiceOver,
+OS IME, RTL, native clipboard bytes, other-platform GUI, live producer execution
+and a 320 px whole-window viewport remain unverified. Verdict: **Approve for the
+inspected settled-evidence reading tasks**, not whole-product or award-level
+acceptance. Continue with other recorded-material and management paths where
+fresh source or native observation establishes a task gap.
+
+Final verification preserves all **6,803** original non-Markdown inputs,
+**22** installed resources, **333** Web assets, **four** bundle files and **21**
+private host inputs. Cleanup unregisters the bundle, removes **eight** newly
+created checkout/Library targets and restores **nine** checkout plus **six** UID
+Library absence baselines. Both pre-existing cache files, both read-only
+references and the protected **123-byte** draft retain their exact hashes.
+The exact root `/private/tmp/flame-remote-reading-eZ5JDF` is absent after
+device/inode/birth/UID and no-symlink checks. The in-memory archive round-trips
+**63** UTF-8 records and **28** screenshot digests; gzip SHA-256 is
+`877841da694cbc09ce64c51ab915bce880528a9da19cbb8e5183a218dac90b8b`.
+Post-retirement checks again validate source/resource/reference hashes, all
+**16** absences, preserved caches and the protected draft.
+
 ### Denied Tool argument reading
 
 A recorded denial still contains the request parameters. At frozen base
@@ -23856,10 +23942,10 @@ validation loop or primary-checkout edit is introduced.
 | Originality       | Flame workbench and approved brand retained; no decorative rail, illustration or competing component system added |
 
 Verdict: **Approve for recorded Skill-page presentation and the inspected tasks**.
-This is not whole-product award-level acceptance. Next, trace the scope of
-incoming cursors on continued Skill calls: name-specific argument summaries can
-suppress those arguments. Reproduce first/middle/final captured pages before
-changing that separate projection boundary; this batch does not qualify it.
+This is not whole-product award-level acceptance. The incoming-cursor follow-up
+is subsequently resolved in **Recorded Tool arguments** and **Skill continuation
+scope in Tool summaries** above. This historical result retains its original
+page-rendering scope and does not itself qualify that later boundary.
 
 Owned resources are retired. All **17** recorded process IDs are dead and the
 four unique app bundles are unregistered. Cleanup removes seven newly created
