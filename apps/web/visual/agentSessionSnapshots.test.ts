@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { validateWire } from "@flame/runtime-client/validation";
 import { projectAgentSessionSnapshot } from "@/features/agent/application/session/sessionSnapshot";
@@ -11,6 +12,7 @@ import {
   delegatedApprovalSnapshot,
   projectRuntimeAgentSnapshot,
 } from "./agentSessionSnapshots";
+import WEB_PAGES from "./web-pages.json";
 describe("the visual agent fixtures", () => {
   it.each(["running", "tool-shells"] as const)(
     "presents the captured file body in %s instead of its transport envelope",
@@ -79,6 +81,69 @@ describe("the visual agent fixtures", () => {
     expect(JSON.parse(view.toolCalls[resource.id]!.result!)).toEqual({
       content: "\n- Confirm the captured output before proceeding.\n",
     });
+  });
+
+  it("retains each captured Web page's scope and its Unicode source through the real fold", () => {
+    const snapshot = RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-remote"];
+    const view = projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot));
+    const ids = [
+      "item_remote_web_fetch",
+      "item_remote_web_browse_middle",
+      "item_remote_web_browse_final",
+    ];
+    const start = snapshot.items.findIndex((item) => item.id === ids[0]);
+    expect(snapshot.items.slice(start, start + 3).map((item) => item.id)).toEqual(ids);
+
+    const pages = WEB_PAGES;
+    expect(ids.map((id) => JSON.parse(view.toolCalls[id]!.result!))).toEqual(pages);
+    const first = pages[0]!;
+    expect(first.snapshotId).toMatch(/^[0-9a-f]{64}$/);
+    for (const page of pages) {
+      expect([page.snapshotId, page.url, page.format, page.totalRunes]).toEqual([
+        first.snapshotId,
+        first.url,
+        "markdown",
+        11548,
+      ]);
+    }
+
+    const runes = pages.map((page) => Array.from(page.content).length);
+    expect(runes).toEqual([8192, 128, 3228]);
+    expect(pages.map((page) => page.offset)).toEqual([0, 8192, 8320]);
+    expect(pages.map((page) => page.nextOffset)).toEqual([8192, 8320, undefined]);
+    pages.forEach((page, index) => {
+      expect(page.offset + runes[index]!).toBe(page.nextOffset ?? page.totalRunes);
+    });
+
+    const text = pages.map((page) => page.content).join("");
+    expect(Array.from(text)).toHaveLength(11548);
+    expect(text.length).not.toBe(11548);
+    expect(Buffer.byteLength(text, "utf8")).not.toBe(11548);
+    const identity = JSON.stringify({ url: first.url, format: first.format, text });
+    expect(createHash("sha256").update(identity).digest("hex")).toBe(first.snapshotId);
+
+    expect(ids.map((id) => JSON.parse(view.toolCalls[id]!.args))).toEqual([
+      { url: first.url, format: "markdown" },
+      { snapshotId: first.snapshotId, offset: 8192, limit: 128 },
+      { snapshotId: first.snapshotId, offset: 8320, limit: 8192 },
+    ]);
+  });
+
+  it("records the Runtime's fail-closed exec class for each remote capture", () => {
+    const snapshot = RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-remote"];
+    const calls = projectRuntimeAgentSnapshot(snapshot).items.filter(
+      (item) => item.type === "toolCall",
+    );
+
+    expect(calls.map((call) => [call.tool.name, call.safetyClass])).toEqual([
+      ["web_web_search", "exec"],
+      ["web_web_fetch", "exec"],
+      ["web_web_browse", "exec"],
+      ["web_web_browse", "exec"],
+      ["web_http_request", "exec"],
+      ["list_schedules", "exec"],
+    ]);
+    expect(snapshot.runs[0]?.metrics?.steps).toBe(calls.length);
   });
 
   it("retains the current Skill list and instruction pages through the real fold", () => {

@@ -23679,6 +23679,132 @@ device/inode/birth/UID and no-symlink checks. The in-memory archive round-trips
 Post-retirement checks again validate source/resource/reference hashes, all
 **16** absences, preserved caches and the protected draft.
 
+#### Captured Web-page scope and literal request summaries (2026-11-04)
+
+At base `d5cc6bf7abf6b41746a6e6ed6d5c0fd05fbc6e37`, two recorded
+`web_web_browse` calls have identical collapsed summaries even though they read
+different positions in one snapshot. Original native inspection reproduces this
+with complete Arguments available. The pure `toolDetail` projection stops after
+path/query/pattern/URL and loses the remaining request identity. This is a
+**MEDIUM Writing / scope finding**, resolved at `toolPresentation.ts:167`.
+
+The shared projection now uses a captured top-level nonempty string `snapshotId`
+and safe-integer `offset` as the final literal detail
+`{"offset":8192,"snapshotId":"…"}`. Position precedes the long identifier so it
+survives existing truncation. Complete Arguments and accessible names preserve
+the full pair. Existing command, description, explicit target and known-object
+priorities remain authoritative. No Tool-name classification, units, page number,
+sign policy, result cursor or omitted offset is invented. The lossless SDK parser
+continues to reject unsafe/noncanonical numbers from this projection; explicit
+zero and negative safe integers remain literal. Typed Skill byte metadata keeps
+its separate owner. Grouped and standalone calls consume the same projection;
+only the grouped presentation receives fresh native qualification here.
+
+The previous qualification's legacy Web-page gap is now covered with current
+producer data. An offline probe calls the actual Web plugin document owner,
+`NewDocument` / `Page`, over synthetic inert text; no provider, database or Runtime
+is opened. The resulting `visual/web-pages.json` retains three separate captured
+pages with one full SHA-256 snapshot identity and one full Unicode source URL.
+Their positions are **0 / 8192 / 8320**, requested limits **8192 / 128 / 8192**,
+content lengths **8192 / 128 / 3228** and total **11,548 Unicode codepoints**.
+The final page has no `nextOffset`. Rejoining only in verification reproduces
+the original text and its owner-produced hash; UTF-16 and UTF-8 lengths differ.
+The disposable Go probe is removed immediately after its **exit 0 / 1.170 s** run.
+
+The existing `tool-remote` snapshot retains its fetch identity and records two
+additional settled browse Items. The production fold preserves each complete
+input/result separately; no joined UI, paging driver or production route is
+added. Recorded Web/search and `list_schedules` safety facts now match Runtime's
+actual fail-closed `exec` interpreter. The shared schedules capture also corrects
+`tool-agentic`; unrelated fixture metadata is unchanged. Six recorded calls now
+agree with `metrics.steps`; the original duration and finish time are retained.
+
+The better-interface domain guidance informs this task, with better-layout and
+better-writing owning the finding. Existing read-only ZCode summary/renderer
+evidence supports literal object identity and progressive reading; Flame keeps
+its own disclosure, material navigation, Base UI, StyleX and semantic tokens.
+Accessibility is checked through distinct full button names, native Tab/Enter,
+scoped Escape and existing focus tests. Layout and typography are inspected for
+shared edges, readable wrapped identifiers, caption controls and outer/inner
+scrolling. Colors retain existing Orange/custom-accent roles in both themes;
+no new contrast ratio is measured. UI polish and motion checks cover actual
+control/end states, not transition timing. No second style or component system
+is introduced.
+
+One signed private Wails **v3.0.0** bundle uses production chrome/services/native
+zoom and current Web source over canonical fixture providers. Its private Runtime
+endpoint remains inactive. Original EN and candidate EN/ZH/DE hosts run serially,
+all finishing with Cmd+Q and terminal **exit 0**:
+
+| Native task                                   | Observed result                                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Original EN14/light/Orange/full motion        | Two collapsed browse rows are indistinguishable. Actual Arguments retain incoming **8192 / 128**, distinct from returned `nextOffset: 8320`. Complete snapshot metadata remains readable.                                                                                                                                                                       |
+| Candidate EN14/light/Orange/full motion       | Distinct literal positions remain visible and accessible. First-page metadata retains offset **0**, total **11548** and next **8192**. Five native Tabs reach middle-page Arguments; wrap exposes its full identifier and input. `snapshotId` Find and open Arguments survive README Preview → full width → Close.                                              |
+| Candidate ZH18/dark/custom blue/motion off    | A physically narrowed **1122 px** window at native **200%** shows both collapsed positions. Final-page wrapped Arguments retain **8320 / 8192** and the complete identifier. `最终段落` Find plus keyboard reader End exposes the original final paragraph with no More pages. Full-width README Preview → Close retains query, open Arguments and reader tail. |
+| Candidate DE18/light/custom purple/motion off | Six native Tabs from nonempty Composer reach the splitter; Home selects **320 px**. First-page no-match Find keeps More pages visible. Replacing the query with `snapshotId`, then Files → Diff → Trajectory → Files, retains query, Arguments and width. Scoped Escape closes Find.                                                                            |
+
+Candidate drafts continue exactly as
+`Continue after checking the captured Web pages. Ready.`,
+`检查完整网页快照后继续，保留当前草稿。 已核对。`, and
+`Nach dem Lesen der vollständigen Web-Aufzeichnung weitermachen. Geprüft.`.
+No Send, Save, picker, external URL activation or Tool replay is invoked.
+Manual related-material returns do not requalify Tool-origin focus restoration.
+One unsupported `zh-CN` fixture-query setup attempt is closed normally and
+retained separately, excluded from the four accepted native runs. An initial EN
+Command-End insertion is undone; actual Command-Down/Right yields the exact
+accepted continuation.
+
+Both bounded Claude Code CLI tasks finish successfully, **132.882 s** and
+**75.748 s**, without permission denials; actual diffs are independently reviewed.
+The first task skips requested instruction reads, so the supervisor reads the
+applicable repository instructions before acceptance. Review restores unrelated
+fixture timing, narrows the README's safety claim and corrects test typing
+without casts, weakened assertions or changed production contracts.
+
+Verification preserves the original failures and successful reruns:
+
+- Initial focused baseline: **4 files / 115 tests**, **2.561 s**. Fixture coverage
+  passes **117 tests**, **3.463 s**; restoring only the old snapshot produces
+  **2 expected failures / 115 passes** and restores candidate bytes afterward.
+- Before the summary change, the completed frontend suite passes **424 files /
+  4516 tests** and all **26 Web gates**. An earlier full-suite/typecheck attempt
+  exposes test-only unknown JSON parsing; typed frozen-page comparisons repair
+  it. A focused run overlapping CLI edits is excluded as an independent baseline.
+- Accepted summary coverage passes **3 files / 73 tests**, **2.603 s**. Restoring
+  only the old projection produces **4 expected failures / 69 passes**, then
+  restores the candidate. Cases cover input/result separation, zero, negative,
+  omitted/unsafe/noncanonical inputs, existing priority and distinct button names.
+- Final accepted source passes **424 frontend files / 4531 tests**, **87.342 s**,
+  all **25 Web owner guards**, and `make check-native`, **22.411 s**: **27 serial
+  gates, all exit 0**. No browser visual suite or performance benchmark runs.
+  Plugin formatting is not rerun; the prior unrelated Feedback formatting failure
+  retains its original scope and those files are untouched.
+
+`make stage-web` passes in **7.425 s**. Original private Web assets build in
+**2.250 s**, and the private production host in **1.320 s**. After the pure Web
+summary change, assets refresh in **2.497 s** while the signed app and all **21**
+host inputs retain their hashes. Final audit verifies **6804** accepted non-Markdown
+inputs, **22** installed resources, **333** Web assets, **four** bundle files,
+both read-only references and the exact owner-produced sample.
+
+Cleanup unregisters the bundle and removes **11** created checkout/Library
+targets, restoring **ten** checkout and **six** UID Library absence baselines
+(including the already retired Go probe). The exact root
+`/private/tmp/flame-web-pages-eldHz0` is absent after device/inode/birth/UID and
+no-symlink checks. Both original cache files and the protected **123-byte** draft
+retain their hashes. The in-memory archive round-trips **237** UTF-8 records
+and **33** screenshot digests, including excluded setup evidence; gzip SHA-256 is
+`f860f87c5c680157ca208be50fdee1bcfb4e0414dbe7fe1ba7c0edc96a386c47`.
+Post-retirement verification checks source/resource/reference hashes, all **17**
+absences, preserved caches and the draft.
+
+Verdict: **Approve for the inspected captured-page reading task**. Live provider
+and Runtime lifecycles, standalone native presentation, VoiceOver, OS IME, RTL,
+clipboard bytes, other-platform GUI and a 320 px whole window remain unverified.
+Whole-product/award-level acceptance remains open. Continue with a fresh
+recorded-material or management task where current source/native observation
+establishes a gap; do not reopen these resolved summary positions as pending work.
+
 ### Denied Tool argument reading
 
 A recorded denial still contains the request parameters. At frozen base

@@ -121,6 +121,61 @@ describe("toolPresentation", () => {
     });
   });
 
+  describe("captured snapshot offset", () => {
+    const browse = (args: string, overrides: Partial<ToolCall> = {}) =>
+      toolIntent(t, tool({ name: "web_web_browse", fn: "web_web_browse", args, ...overrides }));
+    const label = { kind: "machine", value: "web_web_browse" };
+
+    it("names the requested pair, never the result's offsets", () => {
+      expect(
+        browse(`{"snapshotId":"snap-7f3a","offset":8192,"limit":128}`, {
+          result: JSON.stringify({ offset: 8320, nextOffset: 8448, content: "…" }),
+        }),
+      ).toEqual({
+        label,
+        detail: { kind: "machine", value: `{"offset":8192,"snapshotId":"snap-7f3a"}` },
+      });
+    });
+
+    it.each([0, -128])("keeps an explicit %d offset literal", (offset) => {
+      expect(browse(`{"snapshotId":"snap-7f3a","offset":${offset}}`).detail).toEqual({
+        kind: "machine",
+        value: `{"offset":${offset},"snapshotId":"snap-7f3a"}`,
+      });
+    });
+
+    it.each([
+      ["an omitted offset", `{"snapshotId":"snap-7f3a","limit":128}`],
+      ["an omitted snapshot", `{"offset":8192}`],
+      ["an empty snapshot", `{"snapshotId":"","offset":8192}`],
+      ["a numeric snapshot", `{"snapshotId":7,"offset":8192}`],
+      ["a null offset", `{"snapshotId":"snap-7f3a","offset":null}`],
+      ["a string offset", `{"snapshotId":"snap-7f3a","offset":"8192"}`],
+      ["a fractional offset", `{"snapshotId":"snap-7f3a","offset":81.92}`],
+      ["a non-canonical offset", `{"snapshotId":"snap-7f3a","offset":8192.0}`],
+      ["a negative-zero offset", `{"snapshotId":"snap-7f3a","offset":-0}`],
+      ["an unsafe offset", `{"snapshotId":"snap-7f3a","offset":9007199254740993}`],
+    ])("adds no detail for %s", (_, args) => {
+      expect(browse(args)).toEqual({ label });
+    });
+
+    it("leaves an existing object or explicit target primary", () => {
+      const pair = `"snapshotId":"snap-7f3a","offset":8192`;
+      expect(browse(`{${pair},"url":"https://example.com/a"}`).detail).toEqual({
+        kind: "machine",
+        value: "https://example.com/a",
+      });
+      expect(browse(`{${pair},"path":"docs/a.md"}`).detail).toEqual({
+        kind: "path",
+        value: "docs/a.md",
+      });
+      expect(browse(`{${pair}}`, { fn: "https://example.com/b" }).detail).toEqual({
+        kind: "machine",
+        value: "https://example.com/b",
+      });
+    });
+  });
+
   it("derives ordered meta badges", () => {
     expect(
       toolMetaItems(t, tool({ added: 3, removed: 2, hits: 7, exitCode: 1, status: "running" })),

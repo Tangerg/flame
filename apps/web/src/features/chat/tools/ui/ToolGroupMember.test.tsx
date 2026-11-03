@@ -162,6 +162,34 @@ describe("ToolGroupMember", () => {
     for (const offset of [undefined, 81]) row("Read Skill file", offset);
   });
 
+  it("tells same-name calls apart by their requested snapshot offset", () => {
+    const snapshotId = "snap-7f3a";
+    const browse = (id: string, offset: number, limit: number) =>
+      call({
+        id,
+        name: "web_web_browse",
+        fn: "web_web_browse",
+        args: JSON.stringify({ snapshotId, offset, limit }),
+      });
+    testClient.render(
+      <>
+        {[browse("browse 1", 8192, 128), browse("browse 2", 8320, 8192)].map((tool) => (
+          <ToolGroupMember key={tool.id} tool={tool} expanded={false} onToggleExpand={() => {}} />
+        ))}
+      </>,
+    );
+
+    expect(screen.getAllByRole("button", { name: /^web_web_browse/ })).toHaveLength(2);
+    for (const offset of [8192, 8320]) {
+      const row = screen.getByRole("button", {
+        name: (name) =>
+          name.startsWith("web_web_browse") &&
+          name.includes(`{"offset":${offset},"snapshotId":"${snapshotId}"}`),
+      });
+      expect(row.querySelector("button, a[href], input, [tabindex]")).toBeNull();
+    }
+  });
+
   it("shows a non-zero exit as a failure rather than as one more grey figure", () => {
     const { container } = member({ name: "shell", fn: "go test ./...", exitCode: 1 });
 

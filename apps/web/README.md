@@ -549,6 +549,11 @@ Skill text-page summaries show a valid explicit incoming byte offset through the
 existing Tool metadata. The cue comes only from captured built-in load/resource
 arguments; it never substitutes a returned cursor, infers a page number or adds
 an initial offset on omission. Skill listings keep their separate entry units.
+When no command, explicit target, path, query, pattern or URL names the call, a
+captured top-level nonempty string `snapshotId` with a safe-integer `offset`
+becomes the literal summary `{"offset":…,"snapshotId":…}`. Those fields belong
+to the called Tool: the summary adds no units, page or sign policy, never reads
+the result and shows no offset the request omitted.
 Tool and contribution updates keep one named, programmatically focusable result
 context. When the same visible Tool replaces its focused reader or
 control, that surviving context receives focus only if the old target was removed

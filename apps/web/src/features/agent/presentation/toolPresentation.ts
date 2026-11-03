@@ -164,5 +164,9 @@ function toolDetail(args: Record<string, unknown>): ToolDetail | undefined {
     const value = args[key];
     if (value != null) return { kind, value: String(value) };
   }
-  return undefined;
+  // Keep the requested position first without interpreting another owner's units.
+  const { offset, snapshotId } = args;
+  if (typeof snapshotId !== "string" || snapshotId === "") return undefined;
+  if (typeof offset !== "number" || !Number.isSafeInteger(offset)) return undefined;
+  return { kind: "machine", value: JSON.stringify({ offset, snapshotId }) };
 }

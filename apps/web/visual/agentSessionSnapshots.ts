@@ -17,6 +17,7 @@ import { toolCategoryForName } from "@/test/toolCategory.generated";
 import { type GoalReadModel } from "@/features/goal/application/goalReadModel";
 import { VISUAL_CONTEXT_TOKENS } from "./agentFixtureFacts";
 import { GENUI_REPORT } from "./genuiReport";
+import WEB_PAGES from "./web-pages.json";
 export const VISUAL_AGENT_STATES = [
   "empty",
   "runtime-down",
@@ -92,7 +93,7 @@ const SAFETY_CLASS: Record<string, "safe" | "write" | "exec" | "network"> = {
   codeintel_lsp: "exec",
   inspect_workspace: "safe",
   read_shell_output: "safe",
-  list_schedules: "safe",
+  list_schedules: "exec",
   list_skills: "safe",
   load_skill: "safe",
   read_skill_resource: "safe",
@@ -109,8 +110,9 @@ const SAFETY_CLASS: Record<string, "safe" | "write" | "exec" | "network"> = {
   apply_patch: "write",
   shell: "exec",
   stop_shell: "exec",
-  web_web_search: "network",
-  web_web_fetch: "network",
+  web_web_search: "exec",
+  web_web_fetch: "exec",
+  web_web_browse: "exec",
   web_http_request: "exec",
 };
 
@@ -372,15 +374,35 @@ const WEB_SEARCH_CALL = settledTool(
   }),
 );
 
+function capturedWebPage(index: number) {
+  const page = WEB_PAGES[index];
+  if (page === undefined) throw new Error(`no captured Web page recorded at index ${index}`);
+  return page;
+}
+
+const WEB_PAGE_FIRST = capturedWebPage(0);
+const WEB_PAGE_MIDDLE = capturedWebPage(1);
+const WEB_PAGE_FINAL = capturedWebPage(2);
+
 const WEB_FETCH_CALL = settledTool(
   "item_remote_web_fetch",
   "web_web_fetch",
-  { url: "https://www.sqlite.org/wal.html" },
-  JSON.stringify({
-    format: "markdown",
-    content:
-      "# Write-Ahead Logging\n\nA checkpoint moves frames from the WAL back into the database.",
-  }),
+  { url: WEB_PAGE_FIRST.url, format: "markdown" },
+  JSON.stringify(WEB_PAGE_FIRST),
+);
+
+const WEB_BROWSE_MIDDLE_CALL = settledTool(
+  "item_remote_web_browse_middle",
+  "web_web_browse",
+  { snapshotId: WEB_PAGE_FIRST.snapshotId, offset: 8192, limit: 128 },
+  JSON.stringify(WEB_PAGE_MIDDLE),
+);
+
+const WEB_BROWSE_FINAL_CALL = settledTool(
+  "item_remote_web_browse_final",
+  "web_web_browse",
+  { snapshotId: WEB_PAGE_FIRST.snapshotId, offset: 8320, limit: 8192 },
+  JSON.stringify(WEB_PAGE_FINAL),
 );
 
 const HTTP_CALL = settledTool(
@@ -2075,10 +2097,19 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
       run("finished", {
         finishedAt: "2026-07-31T08:00:05.000Z",
         outcome: { type: "completed" },
-        metrics: { steps: 3, activeDurationMillis: 5_000 },
+        metrics: { steps: 6, activeDurationMillis: 5_000 },
       }),
     ],
-    items: [PROMPT, WEB_SEARCH_CALL, WEB_FETCH_CALL, HTTP_CALL, SCHEDULES_CALL, RESPONSE],
+    items: [
+      PROMPT,
+      WEB_SEARCH_CALL,
+      WEB_FETCH_CALL,
+      WEB_BROWSE_MIDDLE_CALL,
+      WEB_BROWSE_FINAL_CALL,
+      HTTP_CALL,
+      SCHEDULES_CALL,
+      RESPONSE,
+    ],
     pendingInterruptSets: [],
   },
 

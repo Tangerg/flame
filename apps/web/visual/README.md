@@ -20,6 +20,13 @@ that presenter; it does not register or classify production Tools. Check resulti
 file bodies, command output and change receipts through the actual Agent fold so
 missing metadata cannot silently turn a specialized reading scene into generic JSON.
 
+The `tool-remote` Agent state records one captured Web snapshot as separate
+first `web_fetch` and middle/final `web_browse` pages. `web-pages.json` holds
+the pages the Web plugin's document owner produced offline; offsets, limits and
+counts are Unicode codepoints, not UTF-16 or UTF-8 units. The fixture never
+runs that producer or fetches. These recorded remote Tools carry Runtime's
+fail-closed `exec` class.
+
 The `foundation` fixture freezes geometry and primitive roles. The `shell`
 fixture installs test-only data providers, then renders the production sidebar
 plugins, application projections, workspace navigation port, and shell
