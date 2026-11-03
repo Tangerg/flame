@@ -9214,6 +9214,123 @@ The observed Deliverables catalog-to-inspector discontinuity is subsequently
 qualified under **Catalog opening and the revision reading entry (2026-11-03)**.
 The shared alignment repair remains with the four owners above.
 
+### MCP read recovery action continuity (2026-11-04)
+
+Qualified from synchronized main `d5b10e146`. In the original actual Wails app,
+conversation → Cmd+, → MCP servers → expanded Tools and Edit → keyboard Retry
+replaces the initiating button with a loading status. The auto-approve Retry's
+Return drops native focus to HTML. The draft and later explicitly selected
+Description remain usable; the initiating read action's lifetime is the defect.
+
+`plugins/mcp/component/feedback.tsx` now projects its recovery button's DOM focus
+through onFocus/onBlur. One stable group and Button stay mounted while the read
+has failed or the action holds focus. Canonical Read controls pending, the
+existing Loading label and, after acceptance, Refresh. Shared Button owns the
+focusable disabled state and activation guard. A rejected read restores the
+same Retry, object title, literal reason and retained-data notice. Alert and
+failure reading-unit semantics apply only to actual failures.
+
+Leaving a pending or accepted action resumes the ordinary read presentation:
+loading without accepted data has its existing status; retained data remains
+readable; ready reads have no extra recovery action. A later completion does
+not reclaim focus. No focus call, focus-return effect, timer, query-phase mirror,
+new API, CSS rule, locale message or dependency is added. MCPSettings remains
+the read owner. Visibility/tools recovery still rereads that pair, and rules
+recovery still reads only rules. Command, source, draft and retirement owners
+are unchanged. The conditionally mounted observation-failure caller is unchanged.
+
+A bounded Read/Edit-only Claude Code CLI edits three allowed files in
+**269.321 s / 24 turns**, with no permission denials. Root reviews the actual
+diff and clarifies README wording about leaving pending/accepted actions.
+Six new public-component regressions cover initial ready presentation, stable
+pending/accepted/rejected button identity, repeated pointer/key activation,
+paired versus rules-only reads, explicit Refresh, later field value/selection,
+retained tool data, focus leaving, and late delivery after view/source retirement.
+Happy-dom keyboard events do not prove native default activation; the actual
+Wails checks below exercise Return, Space and Option+Tab.
+
+| Check                      | Actual result                                                                                                                                                |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| MCP baseline               | **5 files / 98 tests**, command 2.078 s                                                                                                                      |
+| Final MCP component checks | **5 files / 104 tests**, command 2.596 s                                                                                                                     |
+| Original-source counter    | Restoring only original ReadStatus gives **5 failures / 99 passes**, 2.567 s; candidate restored byte-exact                                                  |
+| Complete frontend project  | **424 files / 4,543 tests**, command 92.266 s; plugin component tests are checked separately                                                                 |
+| Plugin gates               | Typecheck, lint, i18n and exact installed component generation pass; only MCP changes among 22 installed resources                                           |
+| Web and Native gates       | All **27 final serial gates** pass: frontend, 25 non-Runtime Web gates, and `make check-native` including Desktop Go checks and Wails build; Native 16.418 s |
+| Owned checks               | Formatting and `git diff --check` pass; final private assets build in 2.420 s                                                                                |
+
+Shared UI sources are unchanged. The qualified `d6e6dab34` UI result (**13 files /
+229 tests**, packed offline consumer, 8.659 s) is reused, not rerun. Full Runtime,
+CLI, plugin backend and plugin-wide formatting suites are not run. The unrelated
+existing Feedback formatting issue remains outside this diff. Browser visual
+suites and performance benchmarks remain excluded.
+
+Actual final Wails tasks use the production workspace entry, InstalledComponent,
+final generated MCP ESM, shared controls and canonical in-memory public reads:
+
+- **English/light/14px/Orange/full motion:** keyboard visibility Retry remains
+  focused as disabled Loading and accepted Refresh. Repeated Return/Space leave
+  the pending control focused. Space on accepted Refresh explicitly rereads;
+  Option+Tab during that read reaches the independent rules Retry. Its Return
+  retains pending focus. Moving later to Description and selecting `selection`
+  survives both accepted reads: subsequent insertion yields exactly
+  `Keep the recovery draft and verified selection.` Three Option+Tabs reach
+  Cancel, Return restores the Edit opener, and Close preserves the original
+  Composer for `Continue after native read focus verification. English verified.`
+- **Chinese/dark/18px/Blue/motion off, native 200%, 2244 × 1798:** keyboard
+  visibility Retry remains focused as 正在读取… and 刷新. Option+Tab from the
+  accepted action removes it and focuses the rules Retry. Space starts that
+  read without losing focus. A later Description caret survives completion;
+  insertion before the final period gives
+  `读取完成后保留这个草稿【已核对】。` Cancel returns to 编辑, and Close/Cmd+0
+  preserve the original Composer for `读取完成后继续这段对话。 中文已核对。`
+- **German/light/18px/Purple/motion off, native 200%, 2244 × 1798:** catalog
+  Retry remains focused as Wird geladen… through repeated Return/Space and
+  becomes focused Aktualisieren beside accepted tools. Option+Tab removes the
+  ready action and focuses the tool's Enable switch without changing it.
+  Continued Description input gives `Entwurf zum Weiterarbeiten geprüft.`
+  The two-line Timeout label and one-line Beschreibung still share aligned
+  control tops. Keyboard Abbrechen restores the Edit opener; Close/Cmd+0 retain
+  the original Composer for `Nach dem Lesen hier weiterarbeiten. Deutsch geprüft.`
+
+The original and three final native processes all exit normally with code 0:
+**83.076 / 143.465 / 144.612 / 120.548 s**. Native observations use only Sky
+accessibility, screenshots and real input; no injected DOM or geometry evidence.
+The private read-only adapter wraps only toolExposure/listTools/listRules with
+scripted failures and abort-aware 12-second recovery to canonical accepted
+responses. No live Runtime, producer, provider, OAuth, configuration/policy write,
+Save, Delete, Test, Reconnect or Send is used.
+
+Read-only Base UI useButton supplies direct evidence for disabled activation
+guards and focusable-disabled semantics. HeroUI's actual Button implementation
+is a control-composition reference; it does not establish this async focus
+behavior. Both source hashes remain exact. Typography, grouping, long labels,
+feedback hierarchy, visual focus rings, three accents, both themes, motion modes
+and native reflow are inspected in the stated scenes. Motion timing, contrast
+measurements, VoiceOver announcements, window switching, physical IME, RTL,
+other platforms, native 320-CSS-pixel reflow and all product states remain
+unverified. The established product identity is retained; this is not a new
+visual direction or an award-tier acceptance for the whole product.
+
+| Severity | Location                                         | Before                                                 | After                                                                                     | Why                                                           |
+| -------- | ------------------------------------------------ | ------------------------------------------------------ | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| MEDIUM   | `plugins/mcp/component/feedback.tsx`, ReadStatus | Keyboard Retry unmounts and native focus falls to HTML | Pending and accepted recovery retain the initiating control; leaving respects later focus | Read/recovery keyboard continuity and focus order, WCAG 2.4.3 |
+
+**Approve for the qualified read-recovery task only.** The cumulative product
+goal remains active. Next inspect Settings no-result keyboard recovery, whose
+inline Clear search appeared flattened in the prior native accessibility tree;
+reproduce an actual task failure before deciding whether to change it.
+
+The final source freeze covers **6,804 inputs**, all **22 installed resources**,
+**333 Web / 4 app / 21 private host files**, both read-only references, zero
+remaining native processes and the inactive private endpoint. Cleanup unregisters
+the owned app and restores all ten initially absent checkout roots and six
+UID-specific Library roots, preserving both existing UI cache files and the
+protected 123-byte draft exactly. The exact owned qualification root is removed.
+Preserved in-thread evidence contains **197 text records / 68 capture hashes**;
+gzip SHA-256:
+`ff5fb129c22394dd4ea64ae9b0b9f362265972f810cfb37f96c2578b17f8c88b`.
+
 ### Selected Settings category visibility through resize (2026-11-04)
 
 Qualified from synchronized main `d6e6dab34`. The original actual Wails task is

@@ -16,7 +16,10 @@ making a failed read appear to undo a successful command.
 Failed reads of tools, tool visibility and auto-approve rules name their object
 above the publisher's literal explanation. Each failure and its Retry form one
 reading unit. Tools and visibility retries reread that pair together; the rules
-retry rereads only the rules.
+retry rereads only the rules. While it holds focus, the same recovery button stays
+mounted through Loading and becomes Refresh after an accepted read. Leaving a
+pending or accepted action resumes the normal read presentation; a later completion
+never reclaims focus. A read that is ready on arrival shows no recovery action.
 
 The `mcp-servers` settings intent routes the graphical client's tools shortcut to
 the unique installed entry. Missing or ambiguous entries lead to plugin management.

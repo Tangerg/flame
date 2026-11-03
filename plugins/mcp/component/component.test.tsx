@@ -63,6 +63,36 @@ function readFailure(title: string) {
     .queryAllByRole("alert")
     .find((alert) => within(alert).queryByText(title) !== null);
 }
+const visibilityTitle = en["mcp.error.loadToolVisibility"]!;
+const rulesTitle = en["mcp.error.loadAutoApproveRules"]!;
+const catalog = {
+  data: [
+    {
+      server: server.id,
+      name: "read",
+      description: "Read documentation",
+      modelName: "read",
+      nameConflicts: [],
+    },
+  ],
+};
+function readCalls(f: ReturnType<typeof create>) {
+  return [f.tools, f.exposure, f.listRules].map(
+    (read) => read.mock.calls.length,
+  );
+}
+function expectFocusedPending(action: HTMLElement) {
+  expect(screen.getByRole("button", { name: "Loading…" })).toBe(action);
+  expect(action.getAttribute("aria-disabled")).toBe("true");
+  expect(document.activeElement).toBe(action);
+}
+function activateAgain(action: HTMLElement) {
+  fireEvent.pointerDown(action);
+  fireEvent.click(action);
+  fireEvent.keyDown(action, { key: "Enter" });
+  fireEvent.keyDown(action, { key: " " });
+  fireEvent.keyUp(action, { key: " " });
+}
 function expectNoWrites(f: ReturnType<typeof create>) {
   for (const write of [
     f.create,
@@ -279,8 +309,6 @@ it("names identical tool policy read failures and recovers each through its own 
   f.exposure.mockRejectedValue(new Error(reason));
   f.listRules.mockRejectedValue(new Error(reason));
   await mount(f);
-  const visibilityTitle = en["mcp.error.loadToolVisibility"]!;
-  const rulesTitle = en["mcp.error.loadAutoApproveRules"]!;
   fireEvent.click(screen.getByRole("button", { name: "Tools for docs" }));
   expect(await screen.findByText("Read documentation")).toBeTruthy();
   await screen.findByText(visibilityTitle);
@@ -397,6 +425,239 @@ it.each([
     expect(readFailure(title)).toBeUndefined();
     expect(screen.queryByText(catalog["mcp.tools.empty"]!)).toBeNull();
     expect(f.tools).toHaveBeenCalledTimes(2);
+    expectNoWrites(f);
+  },
+);
+it("adds no recovery actions to reads that are ready on arrival", async () => {
+  const { f } = await mount();
+  const toolbarRefresh = screen.getByRole("button", { name: "Refresh" });
+  fireEvent.click(screen.getByRole("button", { name: "Tools for docs" }));
+  expect(await screen.findByText("Read documentation")).toBeTruthy();
+  await waitFor(() => expect(screen.queryByText("Loading…")).toBeNull());
+  expect(screen.getAllByRole("button", { name: "Refresh" })).toEqual([
+    toolbarRefresh,
+  ]);
+  expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+  expect(screen.queryByRole("alert")).toBeNull();
+  expectNoWrites(f);
+});
+it("keeps a focused visibility Retry as one pending action through its paired rereads until focus leaves", async () => {
+  const f = create();
+  f.exposure.mockRejectedValue(new Error(reason));
+  await mount(f);
+  const toolbarRefresh = screen.getByRole("button", { name: "Refresh" });
+  fireEvent.click(screen.getByRole("button", { name: "Tools for docs" }));
+  await screen.findByText(visibilityTitle);
+  const retry = within(readFailure(visibilityTitle)!).getByRole("button", {
+    name: "Retry",
+  });
+  act(() => retry.focus());
+  const [tools, exposure, rules] = readCalls(f);
+
+  const rejected =
+    Promise.withResolvers<Awaited<ReturnType<typeof f.exposure>>>();
+  f.exposure.mockReturnValueOnce(rejected.promise);
+  fireEvent.click(retry);
+  expect(readCalls(f)).toEqual([tools! + 1, exposure! + 1, rules]);
+  expectFocusedPending(retry);
+  expect(readFailure(visibilityTitle)).toBeUndefined();
+  expect(screen.queryByText(reason, literal)).toBeNull();
+  activateAgain(retry);
+  expect(readCalls(f)).toEqual([tools! + 1, exposure! + 1, rules]);
+  await act(async () => rejected.reject(new Error(reason)));
+  const failure = readFailure(visibilityTitle)!;
+  expect(within(failure).getByRole("button", { name: "Retry" })).toBe(retry);
+  expect(within(failure).getByText(reason, literal)).toBeTruthy();
+  expect(retry.getAttribute("aria-disabled")).not.toBe("true");
+  expect(document.activeElement).toBe(retry);
+
+  const accepted =
+    Promise.withResolvers<Awaited<ReturnType<typeof f.exposure>>>();
+  f.exposure.mockReturnValueOnce(accepted.promise);
+  fireEvent.click(retry);
+  expect(readCalls(f)).toEqual([tools! + 2, exposure! + 2, rules]);
+  expectFocusedPending(retry);
+  await act(async () =>
+    accepted.resolve({ server: server.id, disabledTools: [] }),
+  );
+  expect(screen.getAllByRole("button", { name: "Refresh" })).toEqual([
+    toolbarRefresh,
+    retry,
+  ]);
+  expect(retry.getAttribute("aria-disabled")).not.toBe("true");
+  expect(document.activeElement).toBe(retry);
+  expect(readFailure(visibilityTitle)).toBeUndefined();
+  expect(screen.queryByText(reason, literal)).toBeNull();
+
+  const reread =
+    Promise.withResolvers<Awaited<ReturnType<typeof f.exposure>>>();
+  f.exposure.mockReturnValueOnce(reread.promise);
+  fireEvent.click(retry);
+  expect(readCalls(f)).toEqual([tools! + 3, exposure! + 3, rules]);
+  expectFocusedPending(retry);
+  activateAgain(retry);
+  expect(readCalls(f)).toEqual([tools! + 3, exposure! + 3, rules]);
+  await act(async () =>
+    reread.resolve({ server: server.id, disabledTools: ["read"] }),
+  );
+  expect(screen.getAllByRole("button", { name: "Refresh" })).toEqual([
+    toolbarRefresh,
+    retry,
+  ]);
+  expect(document.activeElement).toBe(retry);
+  expect(
+    screen
+      .getByRole("switch", { name: "Enable read" })
+      .getAttribute("aria-checked"),
+  ).toBe("false");
+
+  const opener = screen.getByRole("button", { name: "Edit docs" });
+  fireEvent.click(opener);
+  const description = screen.getByLabelText<HTMLInputElement>("Description");
+  act(() => description.focus());
+  expect(retry.isConnected).toBe(false);
+  expect(screen.getAllByRole("button", { name: "Refresh" })).toEqual([
+    toolbarRefresh,
+  ]);
+  expect(document.activeElement).toBe(description);
+  const cancel = screen.getByRole("button", { name: "Cancel" });
+  act(() => cancel.focus());
+  expect(document.activeElement).toBe(cancel);
+  expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+  expect(readCalls(f)).toEqual([tools! + 3, exposure! + 3, rules]);
+  expectNoWrites(f);
+});
+it("rereads only rules from a focused rules Retry and leaves a later editor selection in place", async () => {
+  const f = create();
+  f.listRules.mockRejectedValue(new Error(reason));
+  await mount(f);
+  fireEvent.click(screen.getByRole("button", { name: "Tools for docs" }));
+  expect(await screen.findByText("Read documentation")).toBeTruthy();
+  await screen.findByText(rulesTitle);
+  await waitFor(() => expect(screen.queryByText("Loading…")).toBeNull());
+  const retry = within(readFailure(rulesTitle)!).getByRole("button", {
+    name: "Retry",
+  });
+  act(() => retry.focus());
+  const [tools, exposure, rules] = readCalls(f);
+  const accepted =
+    Promise.withResolvers<Awaited<ReturnType<typeof f.listRules>>>();
+  f.listRules.mockReturnValueOnce(accepted.promise);
+  fireEvent.click(retry);
+  expect(readCalls(f)).toEqual([tools, exposure, rules! + 1]);
+  expectFocusedPending(retry);
+  expect(readFailure(rulesTitle)).toBeUndefined();
+  activateAgain(retry);
+  expect(readCalls(f)).toEqual([tools, exposure, rules! + 1]);
+
+  fireEvent.click(screen.getByRole("button", { name: "Edit docs" }));
+  const description = screen.getByLabelText<HTMLInputElement>("Description");
+  fireEvent.change(description, { target: { value: "Team documentation" } });
+  act(() => {
+    description.focus();
+    description.setSelectionRange(5, 18);
+  });
+  expect(retry.isConnected).toBe(false);
+  expect(screen.getByText("Loading…").getAttribute("role")).toBe("status");
+
+  await act(async () => accepted.resolve({ rules: [] }));
+  expect(document.activeElement).toBe(description);
+  expect(description.value).toBe("Team documentation");
+  expect([description.selectionStart, description.selectionEnd]).toEqual([
+    5, 18,
+  ]);
+  expect(readFailure(rulesTitle)).toBeUndefined();
+  expect(screen.queryByText("Loading…")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+  expect(
+    screen
+      .getByRole("switch", { name: "Auto-approve read" })
+      .getAttribute("aria-disabled"),
+  ).not.toBe("true");
+  expect(readCalls(f)).toEqual([tools, exposure, rules! + 1]);
+  expectNoWrites(f);
+});
+it("keeps a focused tool catalog Retry through acceptance as Refresh and retains the catalog when focus leaves a reread", async () => {
+  const f = create();
+  f.tools.mockRejectedValueOnce(new Error(reason));
+  await mount(f);
+  const toolbarRefresh = screen.getByRole("button", { name: "Refresh" });
+  const toggle = screen.getByRole("button", { name: "Tools for docs" });
+  fireEvent.click(toggle);
+  const title = en["mcp.error.loadTools"]!;
+  await screen.findByText(title);
+  const retry = within(readFailure(title)!).getByRole("button", {
+    name: "Retry",
+  });
+  act(() => retry.focus());
+  const [tools, exposure, rules] = readCalls(f);
+
+  const accepted = Promise.withResolvers<Awaited<ReturnType<typeof f.tools>>>();
+  f.tools.mockReturnValueOnce(accepted.promise);
+  fireEvent.click(retry);
+  expect(readCalls(f)).toEqual([tools! + 1, exposure! + 1, rules]);
+  expectFocusedPending(retry);
+  expect(screen.queryByText("Read documentation")).toBeNull();
+  activateAgain(retry);
+  expect(readCalls(f)).toEqual([tools! + 1, exposure! + 1, rules]);
+  await act(async () => accepted.resolve(catalog));
+  expect(screen.getByText("Read documentation")).toBeTruthy();
+  expect(screen.getAllByRole("button", { name: "Refresh" })).toEqual([
+    toolbarRefresh,
+    retry,
+  ]);
+  expect(retry.getAttribute("aria-disabled")).not.toBe("true");
+  expect(document.activeElement).toBe(retry);
+  expect(readFailure(title)).toBeUndefined();
+
+  const reread = Promise.withResolvers<Awaited<ReturnType<typeof f.tools>>>();
+  f.tools.mockReturnValueOnce(reread.promise);
+  fireEvent.click(retry);
+  expect(readCalls(f)).toEqual([tools! + 2, exposure! + 2, rules]);
+  expectFocusedPending(retry);
+  act(() => toggle.focus());
+  expect(retry.isConnected).toBe(false);
+  expect(screen.queryByText("Loading…")).toBeNull();
+  expect(screen.getByText("Read documentation")).toBeTruthy();
+  await act(async () => reread.resolve(catalog));
+  expect(document.activeElement).toBe(toggle);
+  expect(screen.getAllByRole("button", { name: "Refresh" })).toEqual([
+    toolbarRefresh,
+  ]);
+  expect(readCalls(f)).toEqual([tools! + 2, exposure! + 2, rules]);
+  expectNoWrites(f);
+});
+it.each(["view", "source"] as const)(
+  "ignores a focused visibility reread completing after %s retirement",
+  async (retired) => {
+    const f = create();
+    f.exposure.mockRejectedValue(new Error(reason));
+    const { view } = await mount(f);
+    fireEvent.click(screen.getByRole("button", { name: "Tools for docs" }));
+    await screen.findByText(visibilityTitle);
+    const retry = within(readFailure(visibilityTitle)!).getByRole("button", {
+      name: "Retry",
+    });
+    act(() => retry.focus());
+    const late =
+      Promise.withResolvers<Awaited<ReturnType<typeof f.exposure>>>();
+    f.exposure.mockReturnValueOnce(late.promise);
+    fireEvent.click(retry);
+    expectFocusedPending(retry);
+    if (retired === "view") {
+      view.unmount();
+      f.view.abort();
+    } else act(() => f.source.abort());
+    expect(retry.isConnected).toBe(false);
+    const settled = document.activeElement;
+    await act(async () =>
+      late.resolve({ server: server.id, disabledTools: [] }),
+    );
+    expect(document.activeElement).toBe(settled);
+    expect(retry.isConnected).toBe(false);
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Loading…" })).toBeNull();
+    expect(screen.queryByText(visibilityTitle)).toBeNull();
     expectNoWrites(f);
   },
 );

@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import {
   failureText,
   type ComponentContext,
@@ -24,18 +24,33 @@ export function ReadStatus<T>({
   t: Translate;
   retry(): void;
 }) {
-  if (read?.phase === "failed")
-    return (
-      <div role="alert" data-focus-unit style={column}>
-        {title && <strong>{title}</strong>}
-        <RecordBody>{failureText(read.error)}</RecordBody>
-        {read.data !== undefined && <Metadata>{t("read.retained")}</Metadata>}
-        <Button onClick={retry}>{t("retry")}</Button>
-      </div>
-    );
-  if (!read || (read.phase === "loading" && read.data === undefined))
-    return <p role="status">{t("reading")}</p>;
-  return null;
+  // Projects DOM focus so a focused action keeps its identity across read phases.
+  const [focused, setFocused] = useState(false);
+  const failure = read?.phase === "failed" ? read : undefined;
+  const pending = !read || read.phase === "loading";
+  if (!failure && !focused)
+    return pending && read?.data === undefined ? (
+      <p role="status">{t("reading")}</p>
+    ) : null;
+  return (
+    <div
+      role={failure ? "alert" : undefined}
+      data-focus-unit={failure ? true : undefined}
+      style={column}
+    >
+      {failure && title && <strong>{title}</strong>}
+      {failure && <RecordBody>{failureText(failure.error)}</RecordBody>}
+      {failure?.data !== undefined && <Metadata>{t("read.retained")}</Metadata>}
+      <Button
+        pending={pending}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onClick={retry}
+      >
+        {t(failure ? "retry" : pending ? "reading" : "refresh")}
+      </Button>
+    </div>
+  );
 }
 export function CommandFeedback({
   context,
