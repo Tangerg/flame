@@ -4435,6 +4435,127 @@ no Runtime mutation or saved business data is exercised. Font-menu scroll-follow
 and synthetic slider dragging are not newly qualified by that earlier batch.
 Do not reopen the delivered paper material or preferences.
 
+### Accent preset identity and native settings review
+
+Native inspection of the current direct-label Appearance page exposed a color
+identity defect. With the accepted accent `#FB6E30`, Flame Orange paints normally,
+but all four preset buttons report off and the custom swatch receives the check.
+The preference schema accepts uppercase and lowercase hex digits and preserves
+their spelling; `AccentSection` compared the raw strings. The same mismatch
+affects contributed presets whose hex spelling differs from the current value.
+
+`theme/public/preferences/AccentSection.tsx` now derives one case-insensitive
+comparison for preset membership, `aria-pressed`, the selected border and the
+check mark. The preference store remains the sole owner of accepted color text.
+Rendering does not rewrite stored or contributed values, and explicit preset
+selection still stores the preset's exact color. The palette, Orange default,
+custom picker, contrast computation, settings styles and shared UI are unchanged.
+No persisted-data migration, new state, dependency or compatibility path is added.
+
+The review covers Composer → Settings → Appearance and Personalization → return
+to Composer, using React, StyleX, existing Base UI controls and `@flame/ui`.
+Recon follows AGENTS.md, PROJECT_RULES.md, DEVELOPMENT.md, the Web README and the
+existing Appearance and shared focus/pointer chapters. The six better-* domain
+skills supply review criteria. Existing read-only reference research retains its
+stated purpose; no new reference-app appearance behavior is inferred here.
+[CSS Color 4 hex notation](https://www.w3.org/TR/css-color-4/#hex-notation)
+explicitly defines letter case as immaterial to a hex color. This supports
+matching presentation identity without changing the preference owner's text.
+
+| Domain        | Evidence inspected                                                                                             | Result                                                              |
+| ------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Accessibility | AccentSection, native pressed states, named font controls, Option+Tab/Space and Escape return                  | Selection mismatch resolved; VoiceOver speech not newly verified    |
+| Layout        | SettingRow, AppearancePane, PersonalizationPane; native EN, ZH and DE at normal size and 18 px/200%            | Existing responsive rows retained; no new layout defect established |
+| Writing       | Direct Appearance labels and native Personalization helper line in all three languages                         | One low-priority follow-up below                                    |
+| Typography    | FontSection, four real font/size menus, German full-value menu and Chinese labels                              | Clear for inspected paths; no new font-metric or OS IME claim       |
+| Colors        | Hex schema/store, built-in and contributed presets, solidInk regression cases, native matched and custom state | Selection mismatch resolved; no arbitrary-palette contrast claim    |
+| UI            | Shared swatch perimeter/check, pointer and keyboard selection, light/dark and motion Off scenes                | Clear for inspected states; animation timing not newly measured     |
+
+| Severity | Domain  | Location                                                    | Before                                                                                | After                                                                                      | Why                                                                   |
+| -------- | ------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| MEDIUM   | Colors  | src/features/theme/public/preferences/AccentSection.tsx:104 | Raw equality misclassifies an equivalent preset color as custom                       | One case-insensitive comparison drives membership, pressed state, border and mark          | Visible and accessible selection must identify the current color      |
+| LOW      | Writing | src/features/chat/public/StreamRevealSection.tsx:11         | A helper sentence repeats the Streaming style label and separates it from its control | Pending next batch: remove redundant helper copy while preserving both choices and storage | The user requested direct decisions with less secondary settings copy |
+
+Baseline settings coverage passes **3 files / 13 tests**; the original accent and
+storage scope passes **2 / 16**. The candidate scope passes **2 / 24**. New cases
+cover four differently cased built-ins, two contributed preset spellings,
+explicit choices after a differently cased value, an unmatched custom color and
+an uppercase storage round trip. Replacing the entire candidate AccentSection
+with its frozen original makes **6 fail / 18 pass**; restoring candidate bytes
+returns the expected passing implementation. Existing five mark-contrast cases
+and the **4.5** threshold remain intact.
+
+Serial verification passes the full frontend **424 files / 4,497 tests**
+(**83.443 s** wrapper), all **25** Web gates and supported `make check-native`
+(**21.192 s**). Plugin generation, types, lint and i18n pass; all **22** installed
+resource hashes remain identical. The pre-existing plugin format check still
+fails only for `feedback/component/component.tsx` and its test; neither file is
+edited. Owned formatting and `git diff --check` pass. No browser visual suite,
+performance benchmark, new backend test or separate unchanged shared-UI suite is
+run. The bounded Read/Edit-only Claude CLI exits **0**, **92.769 s**, **25**
+reported turns and no permission denials; primary reviews the actual diff and
+owns all acceptance and delivery.
+
+Actual signed Wails **v3.0.0** uses production native services, chrome and zoom
+with the ordinary deterministic workspace fixture and a private inactive Runtime
+endpoint. Native `Cmd+,` opens Settings. The original EN/light/14 px/uppercase
+Orange run records the incorrect selection and reviews direct-row alignment,
+font popup return and 18 px/200% reading. Candidate acceptance records:
+
+- **EN/light/14 px**, nominal **1440 × 900**: uppercase Orange initially selects
+  Flame. Pointer activation selects Blue; native Option+Tab then Space selects
+  Purple; pointer activation restores Flame. All four font/size menus and the
+  language menu open and Escape returns to their exact triggers. Smoothing
+  changes off/on with pointer/Space, body wheel reveals the lower rows, and
+  Personalization/Appearance return retains Flame. The complete draft becomes
+  `Keep the accent settings draft. Continue after accent settings.`
+- **ZH/dark/18 px/mixed-case Purple/motion Off**, native edge resize to nominal
+  **1122 px** and twenty Zoom In increments after Actual Size reach **200%**.
+  Purple is selected before activation. The accent row, four font controls,
+  smoothing, density, corners, motion and language are reached and inspected;
+  Escape returns from each font/size menu. Label and control remain readable
+  together when focused. A fresh confirmed-draft replay repeats the accent and
+  Personalization/Appearance path at 200%, restores Actual Size, and returns to
+  `保留中文设置草稿。继续检查后编辑。` through verified native paste.
+- **DE/light/18 px/unmatched `#123aBc`/motion Off**: every preset remains off and
+  the custom swatch carries the check. At the same 200% scene, Option+Tab reaches
+  the custom entry without opening the OS picker. Long paper choices wrap with
+  complete labels; the code-font menu exposes its complete default value. All
+  four font/size menus restore focus, lower interaction rows remain readable,
+  and the language menu closes to its trigger. Personalization/Appearance keeps
+  the custom color; Actual Size and close return to the continued complete draft.
+
+Evidence also preserves unsuccessful automation attempts. One launch used
+unregistered `zh-CN` and unsupported motion `none` and never reached content.
+Direct Unicode typing inserted no Chinese draft, so that partial run supplies
+visual observations, not a draft-return pass. A dependent shell tool started
+German before that failed assertion's window quit; the overlapping launch
+supplies no acceptance. Both windows quit normally, fresh launches thereafter
+refuse an existing owned process, and the final Chinese and German complete
+return checks run in separate fresh processes. Initial reverse-Tab attempts did
+not move focus; the passing keyboard color choice uses observed forward
+Option+Tab and Space. These attempts are not application defects or passing
+results. All **7** recorded native processes ultimately exit normally with **0**.
+
+Integrity verifies **6,803** non-Markdown inputs, exactly **3** changed source/test
+files, **22** unchanged resources, **333** private Web artifacts, **4** bundle
+files, **21** private host inputs and the sole fixture config. Exact cleanup
+unregisters the unique bundle, removes **9** new checkout outputs and **2**
+UID-specific Library directories, restores all **6** Library absence baselines,
+and deletes private root `flame-settings-layout-12NRve` after ownership checks.
+All **16** output/Library/root absence baselines, two original UI cache hashes
+and the protected **123-byte** draft survive independent before/after checks;
+no owned native process or private endpoint listener remains. The verified
+compressed in-memory archive retains **191** UTF-8 records and **58** capture
+hashes, SHA-256 `2e0968a032e99f51caec5395fbf46c556a855f888c5be7b0ef5e46a3fcac5475`.
+
+Scoped verdict: **Approve** for accent identity and the inspected settings task.
+VoiceOver speech, full OS IME, OS color-picker activation, RTL, forced colors,
+other-platform GUIs, live Runtime/provider data and award-level completion of
+all eight visual dimensions remain unverified. The observed redundant
+Personalization sentence is the next bounded batch; preserve the accepted
+Appearance geometry, theme system and shared focus owner while addressing it.
+
 ### Language loading and complete reading updates
 
 Current source inspection rejected the context-gauge readiness hypothesis: missing

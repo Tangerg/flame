@@ -51,7 +51,7 @@ describe("appearance preference persistence", () => {
 
   it("restores complete current preferences from the actual storage adapter", async () => {
     store.getState().setTheme("custom");
-    store.getState().setAccent("#7f52ff");
+    store.getState().setAccent("#7F52FF");
     store.getState().setCodeFontSize(16);
     store.getState().setPaperTexture("cotton");
     store.getState().setPaperTextureStrength(5);
@@ -61,6 +61,7 @@ describe("appearance preference persistence", () => {
     localStorage.setItem("flame.appearance", saved);
     await store.persist.rehydrate();
     expect(store.getState()).toEqual(retained);
+    expect(store.getState().accent).toBe("#7F52FF");
   });
 
   it.each([

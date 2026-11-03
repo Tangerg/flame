@@ -313,6 +313,8 @@ selected hexadecimal value. Activation opens the actual browser-native color
 picker through `showPicker()` within that user gesture. The native carrier is not
 a second keyboard or accessibility target; the visible swatch or row owns the
 focus perimeter. Both custom theme colors and custom accent use this boundary.
+Accent presets match the current hexadecimal value regardless of letter case,
+while the accepted, stored and contributed color text stays exactly as written.
 
 Settings categories mount on first visit and retain their inline inputs and pending
 feedback for the lifetime of the open Settings view. Inactive categories retain

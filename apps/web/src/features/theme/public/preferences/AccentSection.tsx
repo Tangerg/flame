@@ -104,13 +104,17 @@ export function AccentSection() {
   const accents = useExtensionPoint(ACCENT);
   const accent = useAppearance((s) => s.accent);
   const { setAccent } = useAppearanceEdit();
-  const isCustom = !accents.some((a) => a.color === accent);
+  // Stored hex keeps its accepted spelling; presets match it case-insensitively.
+  const selectedColor = accent.toLowerCase();
+  const isSelected = (color: string) => color.toLowerCase() === selectedColor;
+  const isCustom = !accents.some((a) => isSelected(a.color));
 
   return (
     <SettingRow label={t("settings.accent")}>
       <div {...stylex.props(a.swatchRow)}>
         {accents.map((swatch) => {
           const fill = solidFill(swatch.color);
+          const selected = isSelected(swatch.color);
           return (
             <Pressable
               key={swatch.id}
@@ -118,18 +122,15 @@ export function AccentSection() {
               onClick={() => setAccent(swatch.color)}
               title={`${t("settings.accent")}: ${swatch.label}`}
               aria-label={`${t("settings.accent")}: ${swatch.label}`}
-              aria-pressed={accent === swatch.color}
+              aria-pressed={selected}
               className={stylex.props(a.target, a.noPad, corner.pill).className}
             >
               <span
                 aria-hidden
-                className={
-                  stylex.props(a.chrome, corner.pill, accent === swatch.color && a.chromeOn)
-                    .className
-                }
+                className={stylex.props(a.chrome, corner.pill, selected && a.chromeOn).className}
                 style={{ background: fill }}
               />
-              <SelectionMark selected={accent === swatch.color} fill={fill} />
+              <SelectionMark selected={selected} fill={fill} />
             </Pressable>
           );
         })}
