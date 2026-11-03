@@ -23,7 +23,8 @@ summary and complete reading (2026-11-03)**. Native English/light and Chinese
 dark/18 px/200% tasks cover opening, reading, closing, file-context return and
 continued drafting. The full frontend passes 4,468 tests; the final reading
 clearance passes 31 focused tests, all 25 non-Runtime Web gates and the native
-gate. The whole-product goal remains active.
+gate. The implementation is published on main as `1cae82982`; the whole-product
+goal remains active.
 
 Deliverables catalog opening now enters the existing revision-history reading
 region and reveals it after settlement while preserving later focus choices;
@@ -1165,7 +1166,14 @@ initially absent checkout output roots and six UID-specific Library paths are
 restored to absence. Post-cleanup checks preserve every frozen source input,
 the local references, installed resources and the separate 123-byte interrupted
 draft backup. The shared toolchain/cache and user profiles are preserved.
-Normal main publication is verified below before this batch is handed off.
+The normal staged-formatting and full-workspace lint commit hook passes in
+6.091 s. All 6,803 qualified inputs, four explicitly protected maintained files,
+output/profile absences and the protected draft remain unchanged afterward.
+The fresh fetch finds no incoming main commits; the clean primary checkout
+fast-forwards to `1cae829823d0323e7ae23e11ca4f2ffd645582c7`. An ordinary push is
+independently verified against remote main, and both checkouts are clean at that
+implementation SHA before this publication receipt. This receipt updates only
+the maintained handoff document.
 Continue with another observed conversation/material/return task on current
 main; the continuous UI objective remains active.
 
