@@ -19,7 +19,11 @@ import { IconButton } from "@flame/ui";
 import { Icon } from "@/ui/icons/index";
 import { fileIconName } from "@/ui/icons/index";
 import { useT } from "@/lib/i18n/index";
-import { draftMentions, removeMention } from "@/features/composer/application/draftContext";
+import {
+  type DraftMention,
+  draftMentions,
+  removeMention,
+} from "@/features/composer/application/draftContext";
 import { composerStyles } from "@/features/composer/ui/composerStyles";
 interface Props {
   images: readonly ComposerImageAttachment[];
@@ -50,6 +54,14 @@ export function ComposerAttachments({
   const mentions = draftMentions(value, knownPaths);
   const removeImage = (id: string) => {
     onRemoveImage(id);
+    composerInput.current?.focus();
+  };
+  const removeReference = (mention: DraftMention) => {
+    onChange(removeMention(value, mention));
+    composerInput.current?.focus();
+  };
+  const removePaste = (id: string) => {
+    onRemovePaste(id);
     composerInput.current?.focus();
   };
   const imageStatus = (image: ComposerImageAttachment) =>
@@ -91,7 +103,7 @@ export function ComposerAttachments({
                 <Chip
                   icon={fileIconName(mention.path)}
                   title={mention.path}
-                  onClose={() => onChange(removeMention(value, mention))}
+                  onClose={() => removeReference(mention)}
                 >
                   {basename(mention.path)}
                 </Chip>
@@ -102,7 +114,7 @@ export function ComposerAttachments({
                 <PasteChip
                   paste={paste}
                   composerInput={composerInput}
-                  onRemove={() => onRemovePaste(paste.id)}
+                  onRemove={() => removePaste(paste.id)}
                   onEdit={(text) => onEditPaste(paste.id, text)}
                   onRestore={(text) => onRestorePaste(paste.id, text)}
                 />

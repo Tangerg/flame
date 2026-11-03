@@ -150,6 +150,10 @@ even while another Session is active. Clearing, replacing or discarding that dra
 retires its pending selections. Endpoint storage replacement also retires pending
 reads; replacement at the same endpoint preserves them. Image bytes and read
 intents remain in memory; only draft text and pasted text are persisted.
+Explicitly removing an image, referenced file or pasted text returns focus to the
+current Composer input with the remaining draft and attachments; the removal
+itself does not place the caret or select text.
+Automatic draft refreshes and paste review dialogs keep their own focus owners.
 
 Root Run notifications consume settlements published after an atomic live-event
 commit, including Runs that start and finish in the same frame. Each settlement

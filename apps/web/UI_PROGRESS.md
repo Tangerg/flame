@@ -17,6 +17,14 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Removing a referenced file or pasted-text attachment now returns to the current
+Composer input, preserving the remaining draft and attachments; see **Attachment
+removal and continued authoring (2026-11-03)**. The accepted native English/light
+and Chinese/dark/18 px/200% tasks cover keyboard removal, visible close-button
+activation, review cancellation, file reading and continued drafting. All 4,472
+frontend tests, 25 non-Runtime Web gates and the native gate pass. The isolated
+qualification resources are removed; the whole-product goal remains active.
+
 Retained Goals now keep an aligned keyboard summary and a complete read-only
 reader when their original author release is unavailable; see **Retained Goal
 summary and complete reading (2026-11-03)**. Native English/light and Chinese
@@ -10361,6 +10369,99 @@ Delivery: qualification record `6530cdd8ea413b36b85a55bbb5022e8935ab83b4`
 is pushed to remote `main`. Fresh `ls-remote` matched that commit, all **30**
 accepted product/resource inputs matched, and the owned checkout was clean with
 zero unpushed commits. This in-place receipt adds no product change.
+
+### Attachment removal and continued authoring (2026-11-03)
+
+Actual Wails on the original source reproduces a task-continuity defect:
+keyboard removal of a recognized file reference, one of two pastes and the final
+paste leaves focus on HTML content. The remaining draft is correct, but the
+author must find the input again. Images already return through the current
+Composer input ref; file references and pasted text only invoke their existing
+draft callbacks. The callbacks own the edit, not the interaction destination.
+
+`ComposerAttachments.tsx` now completes those two explicit removal actions with
+the same input-ref focus used by images. The existing draft owner still removes
+the requested material. No selection assignment, new state, effect, timer,
+listener, query, shared API, style or Runtime behavior is added. Paste review,
+restore and later outside-focus decisions keep their existing owners. The Web
+README records the explicit-removal contract.
+
+Better-accessibility's keyboard/focus guidance informs return to the ongoing
+authoring task; better-layout informs the retained input and attachment grouping.
+Read-only ZCode `packages/ui/src/components/ai-elements/attachments.tsx` supplies
+actual attachment/remove composition, while HeroUI's
+`apps/docs/src/demos/en/tag-group/with-remove-button.tsx` supplies tag removal
+composition. Neither establishes Flame's focus destination; a composite tag
+group's navigation is not copied into Composer. Prior ChatGPT, Radix, Arc and Ace
+research retains its recorded scope. This focus-only repair adds no award-tier
+visual claim.
+
+Bounded Claude Code CLI edits only the component, its two test files and the
+module README: **104.596 s / 26 turns**, no permission denials. Primary reviews
+the actual diff and corrects one new assertion to await the unique surviving
+reference after existing exit animation; immediate focus, input identity and
+exact draft assertions remain. The initial candidate has **43 passes / one
+ambiguous text-query failure**. The final focused suites pass **3 files / 44
+tests** (**4.964 s**) against a **40-test** baseline. Restoring only the original
+production component with those final tests yields **3 failures / 41 passes**
+(**2.540 s**); the exact candidate is restored afterward. Coverage includes the
+same input and retained selection, remaining paste/image data, final-tray
+retirement, reference text removal and a missing input ref.
+
+The final frontend passes **424 files / 4,472 tests** (**88.452 s**), all **25
+non-Runtime Web gates** pass, and `make check-native` passes (**21.280 s**).
+Private candidate assets build in **2.491 s**. All **6,803** frozen non-Markdown
+inputs, **22** installed resources and **two** read-only reference hashes agree
+after native acceptance. The private build also matches **333** web assets,
+**four** signed app files and **23** copied host inputs. Unchanged shared UI
+retains the preceding **224-test** proof. No Runtime/backend suite, browser
+visual suite or performance benchmark is added. The two unchanged Feedback
+format findings retain their earlier classification; plugin formatting is not
+rerun for this batch.
+
+Two controlled native tasks qualify the final bytes:
+
+- **English / light / 14 px / Orange / full motion:** keyboard removal returns
+  immediately to the same input; typing continues without refocusing. Both paste
+  readers preserve their exact contents and cancellation returns to the opener.
+  The remaining long-reference and final paste close buttons are revealed by
+  keyboard, visibly activated with the pointer, and return to authoring. Files
+  opens full width and Close preserves the draft. The final exact draft is
+  `Keep this draft. Continue here. After reference removal. After paste removal. After last attachment. Continue after source review.`
+- **Chinese / dark / 18 px / #70839A / reduced motion / 200%:** native half-screen
+  sizing gives **560.5 × 474.5 CSS px**. The recognized long Chinese file path,
+  attachments, review controls and return entry remain available. Keyboard
+  reference/paste removals and visible pointer activation of the final paste
+  close return to the input. Original blank lines and Chinese paste content
+  survive review. Files → source → Close retains the draft, followed by continued
+  typing. The final exact draft is
+  `Keep this draft. Continue here. Continue after reference. Continue after attachments. Continue after source.`
+
+A separate initial layout run reaches a **1121-point** native window with a
+**682-point** Dock and approximately **439 CSS px** for Conversation; it does not
+establish the 320 px boundary. That run's pointer-caret/Tab sequence accepts an
+ordinary file completion before removal and is excluded from draft qualification.
+An earlier baseline attempt misses its focus assertion and sends only the
+isolated fixture draft; the controlled baseline replaces that attempt. AX-visible
+but unrevealed close-button clicks do not activate removal and are excluded;
+the accepted pointer steps use visibly revealed targets. Every activation in
+the controlled tasks verifies the current focus/target first. No live Runtime,
+provider command, native file picker, OS IME, VoiceOver or pointer-hover-only
+activation is qualified.
+
+All **five** native launches exit normally; only the two controlled final tasks
+qualify the complete candidate workflow. The exact private app is unregistered;
+the **nine** initially absent checkout outputs, **six** unique Library profile
+paths and private fixture/assets/screenshots/logs/cache root are removed. Source,
+resource, reference and protected draft-backup hashes still agree, no owned
+process remains and the isolated Runtime port is closed. Shared dependencies,
+toolchain caches, user data, references and unrelated processes are preserved.
+
+Publish this accepted batch through normal hooks and a fresh fast-forward main
+publication before another change. Continue with actual task evidence, including
+a separate trace of pointer-origin reader return from a focused Composer; the
+observed navigation attempt does not establish a new reader defect. The overall
+desktop/visual goal remains active.
 
 ## Search selection and task handoff
 

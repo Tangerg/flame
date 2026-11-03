@@ -13,7 +13,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
 import { COMPOSER_KEY_BINDING, SLASH_COMMAND } from "@/features/composer/public/extensionPoints";
-import { mountLocaleBundle, setLocale } from "@/lib/i18n/index";
+import { mountLocaleBundle, setLocale, t } from "@/lib/i18n/index";
 import { WORKSPACE_LIST_FILES_KEY } from "@/features/workspace/public/queries";
 import { Composer } from "@/features/composer/ui/Composer";
 import * as imageInput from "@/features/composer/public/input";
@@ -500,6 +500,44 @@ describe("reviewing a pasted text", () => {
     expect(draft().value).toBe("Typed prefix");
     expect(draft().pastes).toEqual([kept]);
     await waitFor(() => expect(document.activeElement).toBe(input));
+  });
+
+  it("returns to the same input with its selection when one of several pastes is removed", () => {
+    const input = stage(PASTE, "second paste\nkept");
+    const kept = draft().pastes[1]!;
+    const images = draft().images;
+    input.setSelectionRange(2, 7);
+    const remove = screen.getAllByRole("button", { name: t("composer.paste.remove") })[0]!;
+    remove.focus();
+    fireEvent.click(remove);
+
+    expect(document.activeElement).toBe(input);
+    expect(screen.getByRole("textbox")).toBe(input);
+    expect(draft().value).toBe("Typed prefix");
+    expect(draft().pastes).toEqual([kept]);
+    expect(draft().images).toEqual(images);
+    expect(input.value).toBe("Typed prefix");
+    expect(input.selectionStart).toBe(2);
+    expect(input.selectionEnd).toBe(7);
+  });
+
+  it("returns to the same input when removing the last paste retires the tray", () => {
+    const store = testClient.composer.store.getState();
+    store.clear();
+    store.setValue("Typed prefix");
+    store.addPaste(PASTE);
+    const { container } = wrap(<DraftComposer />);
+    const input = screen.getByRole<HTMLTextAreaElement>("textbox");
+    const remove = screen.getByRole("button", { name: t("composer.paste.remove") });
+    remove.focus();
+    fireEvent.click(remove);
+
+    expect(container.querySelector('[data-slot="composer-attachments"]')).toBeNull();
+    expect(document.activeElement).toBe(input);
+    expect(screen.getByRole("textbox")).toBe(input);
+    expect(draft().value).toBe("Typed prefix");
+    expect(draft().pastes).toEqual([]);
+    expect(draft().images).toEqual([]);
   });
 
   it.each(["Cancel", "Save", "Put back in message"])(
