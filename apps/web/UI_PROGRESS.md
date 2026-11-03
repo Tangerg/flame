@@ -17,6 +17,12 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+The native Goal follow-up qualifies opening from a focused Composer, returning to
+the actual summary or edit icon, and continuing the retained draft; see **Native
+Goal opening and authoring return (2026-11-03)**. No focus defect is reproduced
+in these paths, so the existing default return policy is retained. The focused
+33-test check passes; product source is unchanged. The desktop goal remains active.
+
 Removing a referenced file or pasted-text attachment now returns to the current
 Composer input, preserving the remaining draft and attachments; see **Attachment
 removal and continued authoring (2026-11-03)**. The accepted native English/light
@@ -1185,6 +1191,103 @@ implementation SHA before this publication receipt. This receipt updates only
 the maintained handoff document.
 Continue with another observed conversation/material/return task on current
 main; the continuous UI objective remains active.
+
+### Native Goal opening and authoring return (2026-11-03)
+
+No actionable focus defect in the inspected native opening/closing paths on
+main `d80dc86e9`. The preceding attachment qualification left an uncertain
+pointer-origin navigation observation; it did not establish a reader defect.
+This follow-up starts from a focused input with an observed draft and verifies
+both the actual opener and the destination after closing. Product source,
+tests, preferences and Runtime contracts are unchanged.
+
+`GoalStatusSurface` opens the reader or existing editor through the shared
+Button. The actual `Button` wraps `ButtonPrimitive`, which delegates activation
+to Base UI. The visible `ModalDialog` passes its unspecified `finalFocus` through
+to the installed `DialogPopup` and `FloatingFocusManager`. Their default boolean
+return policy uses the available trigger/previous focus and preserves a later
+outside-focus choice. A new explicit ref or function would change that guard.
+The native results below establish the observed destinations; the source alone
+does not establish every platform's pointer-to-focus behavior. No extra ref,
+focus handler, caret assignment or delayed callback is justified by this trace.
+
+Better-accessibility's opener/return guidance and better-layout's retained task
+context inform the review. Read-only HeroUI's actual Modal implementation and
+default/controlled examples show trigger/dialog composition through React Aria;
+ZCode's actual `ConversationGoalBanner.tsx` is a passive compact projection and
+supplies no return-focus evidence. The current official
+[Radix Dialog](https://www.radix-ui.com/primitives/docs/components/dialog) and
+[Base UI Dialog](https://base-ui.com/react/components/dialog) references inform
+composition; Flame keeps its existing shared controls and installed primitive.
+Prior Ace, Arc and ChatGPT research retains its recorded scope, with no new
+award-tier or broad accessibility certification.
+
+The first minimal-context Claude CLI launch reports **Not logged in** before
+auditing. A separate bounded launch with the existing user authentication
+settings, hooks disabled, empty MCP configuration and **Read only** succeeds in
+**60.248 s / 8 turns**, with no permission denials. Primary reads the real source
+and closes the audit's assumption about the Button wrapper. Its report is not
+used as native acceptance evidence.
+
+- **English / light / 14 px / Orange / full motion, workspace reader:** from
+  the focused Composer, native screenshot-coordinate clicks open the retained
+  Goal. Escape and the visible close-button coordinate each return to its
+  summary. Tab enters the input and explicit Command-Down places the QA caret
+  before appending. Files opens full width, reads `DockResizer.tsx` and closes
+  with the draft intact:
+  `Keep this draft before reading. Continue after Goal.` Earlier AX-index
+  activations also pass, but are not the sole pointer evidence.
+- **English editable Goal, separate Agent fixture:** a coordinate click on the
+  summary opens the original objective field. A local objective change enables
+  Save; pointer Cancel discards it and returns to that summary. Opening through
+  the edit icon restores the canonical objective with unchanged Save disabled.
+  Escape and the visible close-button coordinate return to that edit icon.
+  Tab and continued typing retain
+  `Keep the editor return draft. Continue after cancel.` No Save, clear, resume,
+  pause or Send action is invoked. The Agent fixture's inert sidebar is not
+  navigation evidence.
+- **Chinese / dark / 18 px / #70839A / reduced motion:** native Left arrangement,
+  Actual Size and twenty production Zoom In actions produce **200%**, with a
+  **2242 × 1898** capture, **560.5 × 474.5 CSS px**. The summary, complete current
+  objective, reader and close control fit. Coordinate opening from the focused
+  input, Escape, coordinate Close and Tab-to-input retain the draft. The existing
+  narrow material entry opens Files full width; its Close preserves the value,
+  followed by explicit input focus, Command-Down and continuation:
+  `Keep this narrow draft. Continue after reader. Continue after Close. Continue after source.`
+  Actual Size is restored before normal Quit.
+
+The accepted draft qualification uses ASCII text. An automated Unicode typing
+attempt produces no edit, and a separate paste call is rejected for invalid
+parameters; neither qualifies Chinese input or establishes its cause. No input
+workaround is added. A generic AX textarea value is not mistaken for its actual
+contents; observed child text and the current screenshot establish the draft.
+OS IME/CJK typing, VoiceOver activation/speech, asynchronous accepted Goal save
+and live Runtime/provider execution remain not verified by this follow-up.
+
+`make stage-web` passes (**8.384 s**); Goal and text-editor suites pass **2 files /
+33 tests** (**2.387 s**). The unmodified private fixture assets build in
+**1.812 s**, and the production-tagged native host copy builds in **1.180 s**.
+All **6,803** non-Markdown inputs exactly match the preceding **4,472-test**,
+**25-Web-gate** and native-gate qualification; those unchanged broad checks and
+the **224-test** shared UI suite are not rerun. No browser visual suite or
+performance benchmark is started. Installed JS remains **22** byte-identical
+resources; the two earlier Feedback formatter findings keep their existing scope.
+
+All **three** native launches exit normally. Frozen maps of **333** private web
+assets, **four** signed app files and **21** copied host inputs agree after native
+acceptance. The exact app is unregistered; **nine** initially absent checkout
+outputs, **six** UID-specific Library paths and its private fixtures, screenshots,
+logs, assets and cache root are removed. Source/resource hashes, all **four**
+local reference hashes and the protected draft backup still agree. No owned
+process or listener remains on the isolated Runtime port. User profiles,
+dependencies, shared toolchain caches and unrelated processes remain preserved.
+
+This in-place qualification is documentation-only. Keep the completed Goal
+opening/return behavior. The narrow source capture supplies a separate visual
+reading candidate: the complete path's final `x` in `DockResizer.tsx` wraps onto
+its own line. Inspect `FileWorkspace`'s path break opportunities while preserving
+selectable text, exact copying and source navigation; no content loss is claimed.
+The overall desktop/visual goal remains active.
 
 ### Plan state and keyboard reading
 
@@ -10464,10 +10567,10 @@ hashes and cleanup checks agree. A fresh fetch has no incoming main changes;
 the primary checkout fast-forwards and ordinary push succeeds. Independent
 `ls-remote` matches the implementation, and both checkouts are clean. Its temporary
 commit cache is removed. This in-place publication receipt changes only this
-maintained document. Continue with actual task evidence, including a separate
-trace of pointer-origin reader return from a focused Composer; the observed
-navigation attempt does not establish a new reader defect. The overall
-desktop/visual goal remains active.
+maintained document. The subsequent native pointer-origin return trace is
+qualified under **Native Goal opening and authoring return (2026-11-03)**; it
+does not require a reader focus change. Continue with another observed task.
+The overall desktop/visual goal remains active.
 
 ## Search selection and task handoff
 
