@@ -23,7 +23,8 @@ removal and continued authoring (2026-11-03)**. The accepted native English/ligh
 and Chinese/dark/18 px/200% tasks cover keyboard removal, visible close-button
 activation, review cancellation, file reading and continued drafting. All 4,472
 frontend tests, 25 non-Runtime Web gates and the native gate pass. The isolated
-qualification resources are removed; the whole-product goal remains active.
+qualification resources are removed. The implementation is published on main as
+`ac13b39aa`; the whole-product goal remains active.
 
 Retained Goals now keep an aligned keyboard summary and a complete read-only
 reader when their original author release is unavailable; see **Retained Goal
@@ -10457,10 +10458,15 @@ resource, reference and protected draft-backup hashes still agree, no owned
 process remains and the isolated Runtime port is closed. Shared dependencies,
 toolchain caches, user data, references and unrelated processes are preserved.
 
-Publish this accepted batch through normal hooks and a fresh fast-forward main
-publication before another change. Continue with actual task evidence, including
-a separate trace of pointer-origin reader return from a focused Composer; the
-observed navigation attempt does not establish a new reader defect. The overall
+Delivery: implementation `ac13b39aa796ef8ae737eb978d4e62f7159823db` passes normal
+Prettier and workspace-lint hooks (**5.914 s**). Post-hook input/resource/reference
+hashes and cleanup checks agree. A fresh fetch has no incoming main changes;
+the primary checkout fast-forwards and ordinary push succeeds. Independent
+`ls-remote` matches the implementation, and both checkouts are clean. Its temporary
+commit cache is removed. This in-place publication receipt changes only this
+maintained document. Continue with actual task evidence, including a separate
+trace of pointer-origin reader return from a focused Composer; the observed
+navigation attempt does not establish a new reader defect. The overall
 desktop/visual goal remains active.
 
 ## Search selection and task handoff
