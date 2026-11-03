@@ -22,7 +22,7 @@ export const zhTW: Record<string, string> = {
   "group.byOrigin": "呼叫來源",
   "group.byScope": "關聯",
   "overview.title": "概覽",
-  "overview.summary":
+  "overview.summary_other":
     "{{calls}} 次模型嘗試 · {{reported}} 次有用量 · {{priced}} 次已計價",
   "totals.label": "已記錄用量合計",
   "fact.knownSubtotal": "已知價格小計 (USD)",
@@ -52,9 +52,9 @@ export const zhTW: Record<string, string> = {
   "bucket.byScope.session": "僅關聯工作階段",
   "bucket.byScope.unattached": "未關聯",
   "bucket.costUsd": "{{cost}} USD",
-  "bucket.attempts": "{{calls}} 次嘗試",
-  "bucket.knownInput": "{{tokens}} 已知輸入",
-  "bucket.knownOutput": "{{tokens}} 已知輸出權杖",
+  "bucket.attempts_other": "{{calls}} 次嘗試",
+  "bucket.knownInput_other": "{{tokens}} 已知輸入",
+  "bucket.knownOutput_other": "{{tokens}} 已知輸出權杖",
   "bucket.details": "權杖與涵蓋明細",
   "fact.knownCost": "已知費用 (USD)",
   "fact.usagePerAttempts": "用量 / 嘗試",

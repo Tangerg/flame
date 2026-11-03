@@ -63,7 +63,7 @@ export const zh: Record<string, string> = {
   "fact.pricedAttempts": "已计价尝试",
   "fact.outcomeUnknown": "结果未知",
   "report.breakdown.title": "每日核心明细",
-  "report.breakdown.row": "{{attempts}} 次尝试 · 已知 {{cost}} USD",
+  "report.breakdown.row_other": "{{attempts}} 次尝试 · 已知 {{cost}} USD",
   "report.identity.title": "精确的报告标识",
   "fact.reportId": "报告 ID",
   "fact.observedAt": "观测时间 (UTC)",

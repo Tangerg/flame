@@ -65,7 +65,7 @@ export const ja: Record<string, string> = {
   "fact.pricedAttempts": "価格確定の試行",
   "fact.outcomeUnknown": "結果不明",
   "report.breakdown.title": "日次コア内訳",
-  "report.breakdown.row": "{{attempts}} 件の試行 · 既知 {{cost}} USD",
+  "report.breakdown.row_other": "{{attempts}} 件の試行 · 既知 {{cost}} USD",
   "report.identity.title": "レポートの正確な識別情報",
   "fact.reportId": "レポート ID",
   "fact.observedAt": "観測時刻 (UTC)",

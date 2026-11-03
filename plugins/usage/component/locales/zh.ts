@@ -22,7 +22,7 @@ export const zh: Record<string, string> = {
   "group.byOrigin": "调用来源",
   "group.byScope": "关联",
   "overview.title": "概览",
-  "overview.summary":
+  "overview.summary_other":
     "{{calls}} 次模型尝试 · {{reported}} 次有用量 · {{priced}} 次已计价",
   "totals.label": "已记录用量合计",
   "fact.knownSubtotal": "已知价格小计 (USD)",
@@ -52,9 +52,9 @@ export const zh: Record<string, string> = {
   "bucket.byScope.session": "仅关联会话",
   "bucket.byScope.unattached": "未关联",
   "bucket.costUsd": "{{cost}} USD",
-  "bucket.attempts": "{{calls}} 次尝试",
-  "bucket.knownInput": "{{tokens}} 已知输入",
-  "bucket.knownOutput": "{{tokens}} 已知输出标记",
+  "bucket.attempts_other": "{{calls}} 次尝试",
+  "bucket.knownInput_other": "{{tokens}} 已知输入",
+  "bucket.knownOutput_other": "{{tokens}} 已知输出标记",
   "bucket.details": "标记与覆盖明细",
   "fact.knownCost": "已知费用 (USD)",
   "fact.usagePerAttempts": "用量 / 尝试",

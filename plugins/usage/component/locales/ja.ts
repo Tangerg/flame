@@ -22,7 +22,7 @@ export const ja: Record<string, string> = {
   "group.byOrigin": "呼び出し元",
   "group.byScope": "関連付け",
   "overview.title": "概要",
-  "overview.summary":
+  "overview.summary_other":
     "{{calls}} 件のモデル試行 · {{reported}} 件に使用量 · {{priced}} 件が価格確定",
   "totals.label": "記録された使用量の合計",
   "fact.knownSubtotal": "既知価格の小計 (USD)",
@@ -52,9 +52,9 @@ export const ja: Record<string, string> = {
   "bucket.byScope.session": "セッションのみ",
   "bucket.byScope.unattached": "関連付けなし",
   "bucket.costUsd": "{{cost}} USD",
-  "bucket.attempts": "{{calls}} 件の試行",
-  "bucket.knownInput": "{{tokens}} 既知の入力",
-  "bucket.knownOutput": "{{tokens}} 既知の出力トークン",
+  "bucket.attempts_other": "{{calls}} 件の試行",
+  "bucket.knownInput_other": "{{tokens}} 既知の入力",
+  "bucket.knownOutput_other": "{{tokens}} 既知の出力トークン",
   "bucket.details": "トークンとカバレッジの詳細",
   "fact.knownCost": "既知コスト (USD)",
   "fact.usagePerAttempts": "使用量 / 試行",

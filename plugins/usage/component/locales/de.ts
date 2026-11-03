@@ -22,7 +22,9 @@ export const de: Record<string, string> = {
   "group.byOrigin": "Aufrufquelle",
   "group.byScope": "Zuordnung",
   "overview.title": "Übersicht",
-  "overview.summary":
+  "overview.summary_one":
+    "{{calls}} Modellversuch · {{reported}} mit Nutzung · {{priced}} mit Preis",
+  "overview.summary_other":
     "{{calls}} Modellversuche · {{reported}} mit Nutzung · {{priced}} mit Preis",
   "totals.label": "Summen der erfassten Nutzung",
   "fact.knownSubtotal": "Zwischensumme bekannter Preise (USD)",
@@ -52,9 +54,12 @@ export const de: Record<string, string> = {
   "bucket.byScope.session": "Nur Sitzung",
   "bucket.byScope.unattached": "Nicht zugeordnet",
   "bucket.costUsd": "{{cost}} USD",
-  "bucket.attempts": "{{calls}} Versuche",
-  "bucket.knownInput": "{{tokens}} bekannte Eingabe",
-  "bucket.knownOutput": "{{tokens}} bekannte Ausgabe-Tokens",
+  "bucket.attempts_one": "{{calls}} Versuch",
+  "bucket.attempts_other": "{{calls}} Versuche",
+  "bucket.knownInput_one": "{{tokens}} bekanntes Eingabe-Token",
+  "bucket.knownInput_other": "{{tokens}} bekannte Eingabe-Tokens",
+  "bucket.knownOutput_one": "{{tokens}} bekanntes Ausgabe-Token",
+  "bucket.knownOutput_other": "{{tokens}} bekannte Ausgabe-Tokens",
   "bucket.details": "Token- und Abdeckungsdetails",
   "fact.knownCost": "Bekannte Kosten (USD)",
   "fact.usagePerAttempts": "Nutzung / Versuche",

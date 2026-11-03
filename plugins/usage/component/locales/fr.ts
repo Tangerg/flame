@@ -22,8 +22,12 @@ export const fr: Record<string, string> = {
   "group.byOrigin": "Origine de l’appel",
   "group.byScope": "Association",
   "overview.title": "Vue d’ensemble",
-  "overview.summary":
-    "{{calls}} tentatives de modèle · {{reported}} avec utilisation · {{priced}} tarifées",
+  "overview.summary_one":
+    "{{calls}} tentative de modèle · {{reported}} avec utilisation · {{priced}} avec un prix",
+  "overview.summary_many":
+    "{{calls}} tentatives de modèle · {{reported}} avec utilisation · {{priced}} avec un prix",
+  "overview.summary_other":
+    "{{calls}} tentatives de modèle · {{reported}} avec utilisation · {{priced}} avec un prix",
   "totals.label": "Totaux d’utilisation enregistrée",
   "fact.knownSubtotal": "Sous-total du prix connu (USD)",
   "fact.totalCost": "Coût total (USD)",
@@ -52,9 +56,15 @@ export const fr: Record<string, string> = {
   "bucket.byScope.session": "Session uniquement",
   "bucket.byScope.unattached": "Non associé",
   "bucket.costUsd": "{{cost}} USD",
-  "bucket.attempts": "{{calls}} tentatives",
-  "bucket.knownInput": "{{tokens}} d’entrée connue",
-  "bucket.knownOutput": "{{tokens}} tokens de sortie connus",
+  "bucket.attempts_one": "{{calls}} tentative",
+  "bucket.attempts_many": "{{calls}} tentatives",
+  "bucket.attempts_other": "{{calls}} tentatives",
+  "bucket.knownInput_one": "{{tokens}} d’entrée connue",
+  "bucket.knownInput_many": "{{tokens}} d’entrée connue",
+  "bucket.knownInput_other": "{{tokens}} d’entrée connue",
+  "bucket.knownOutput_one": "{{tokens}} token de sortie connu",
+  "bucket.knownOutput_many": "{{tokens}} tokens de sortie connus",
+  "bucket.knownOutput_other": "{{tokens}} tokens de sortie connus",
   "bucket.details": "Détails des tokens et de la couverture",
   "fact.knownCost": "Coût connu (USD)",
   "fact.usagePerAttempts": "Utilisation / tentatives",

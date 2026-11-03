@@ -22,7 +22,9 @@ export const en: Record<string, string> = {
   "group.byOrigin": "Calling origin",
   "group.byScope": "Association",
   "overview.title": "Overview",
-  "overview.summary":
+  "overview.summary_one":
+    "{{calls}} model attempt · {{reported}} with usage · {{priced}} priced",
+  "overview.summary_other":
     "{{calls}} model attempts · {{reported}} with usage · {{priced}} priced",
   "totals.label": "Recorded usage totals",
   "fact.knownSubtotal": "Known price subtotal (USD)",
@@ -52,9 +54,12 @@ export const en: Record<string, string> = {
   "bucket.byScope.session": "Session only",
   "bucket.byScope.unattached": "Unattached",
   "bucket.costUsd": "{{cost}} USD",
-  "bucket.attempts": "{{calls}} attempts",
-  "bucket.knownInput": "{{tokens}} known input",
-  "bucket.knownOutput": "{{tokens}} known output tokens",
+  "bucket.attempts_one": "{{calls}} attempt",
+  "bucket.attempts_other": "{{calls}} attempts",
+  "bucket.knownInput_one": "{{tokens}} known input",
+  "bucket.knownInput_other": "{{tokens}} known input",
+  "bucket.knownOutput_one": "{{tokens}} known output token",
+  "bucket.knownOutput_other": "{{tokens}} known output tokens",
   "bucket.details": "Token and coverage details",
   "fact.knownCost": "Known cost (USD)",
   "fact.usagePerAttempts": "Usage / attempts",

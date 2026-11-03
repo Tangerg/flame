@@ -125,6 +125,7 @@ function UsageReport({
       <PanelSection
         title={t("overview.title")}
         description={t("overview.summary", {
+          count: report.coverage.calls,
           calls: fmt.number(report.coverage.calls),
           reported: fmt.number(report.coverage.reportedCalls),
           priced: fmt.number(report.coverage.pricedCalls),
@@ -210,16 +211,19 @@ function UsageReport({
                     <RecordMeta>
                       <span>
                         {t("bucket.attempts", {
+                          count: bucket.coverage.calls,
                           calls: fmt.number(bucket.coverage.calls),
                         })}
                       </span>
                       <span>
                         {t("bucket.knownInput", {
+                          count: bucket.total.inputTokens ?? 0,
                           tokens: fmt.number(bucket.total.inputTokens ?? 0),
                         })}
                       </span>
                       <span>
                         {t("bucket.knownOutput", {
+                          count: bucket.total.outputTokens ?? 0,
                           tokens: fmt.number(bucket.total.outputTokens ?? 0),
                         })}
                       </span>

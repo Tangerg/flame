@@ -69,7 +69,12 @@ export const es: Record<string, string> = {
   "fact.pricedAttempts": "Intentos con precio",
   "fact.outcomeUnknown": "Resultado desconocido",
   "report.breakdown.title": "Desglose base diario",
-  "report.breakdown.row": "{{attempts}} intentos · {{cost}} USD conocidos",
+  "report.breakdown.row_one":
+    "{{attempts}} intento · coste conocido {{cost}} USD",
+  "report.breakdown.row_many":
+    "{{attempts}} intentos · coste conocido {{cost}} USD",
+  "report.breakdown.row_other":
+    "{{attempts}} intentos · coste conocido {{cost}} USD",
   "report.identity.title": "Identidad exacta del informe",
   "fact.reportId": "ID del informe",
   "fact.observedAt": "Observado a las (UTC)",

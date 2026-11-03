@@ -361,6 +361,150 @@ it("keeps ordinary charges, missing prices and six significant sub-micro digits"
   expect(report).toEqual(accepted);
 });
 
+function counted(
+  key: string,
+  calls: number,
+  inputTokens: number,
+  outputTokens: number,
+  pricedCalls = 0,
+) {
+  return {
+    key,
+    total: { inputTokens, outputTokens },
+    ...(pricedCalls ? { recordedCostUsd: pricedCalls / 4 } : {}),
+    coverage: {
+      calls,
+      reportedCalls: calls,
+      pricedCalls,
+      startedCalls: 0,
+      completedCalls: calls,
+      failedCalls: 0,
+      unknownCalls: 0,
+    },
+  };
+}
+
+function countedReport(byProvider: ReturnType<typeof counted>[]): typeof VISUAL_USAGE {
+  const sum = (pick: (bucket: ReturnType<typeof counted>) => number) =>
+    byProvider.reduce((total, bucket) => total + pick(bucket), 0);
+  const pricedCalls = sum((bucket) => bucket.coverage.pricedCalls);
+  return {
+    observedAt: "2026-10-20T00:00:00Z",
+    total: {
+      inputTokens: sum((bucket) => bucket.total.inputTokens),
+      outputTokens: sum((bucket) => bucket.total.outputTokens),
+    },
+    ...(pricedCalls ? { recordedCostUsd: pricedCalls / 4 } : {}),
+    coverage: {
+      calls: sum((bucket) => bucket.coverage.calls),
+      reportedCalls: sum((bucket) => bucket.coverage.reportedCalls),
+      pricedCalls,
+      startedCalls: 0,
+      completedCalls: sum((bucket) => bucket.coverage.calls),
+      failedCalls: 0,
+      unknownCalls: 0,
+    },
+    byProvider,
+    byModel: [],
+    byDay: [],
+    byOrigin: [],
+    byScope: [],
+    sessions: byProvider.length ? 1 : 0,
+    runs: byProvider.length ? 1 : 0,
+  };
+}
+
+const COUNTED_MANY = countedReport([
+  counted("grouped", 997, 1, 1000),
+  counted("single", 1, 1000, 0),
+  counted("pair", 2, 0, 1, 1),
+]);
+const COUNTED_ONE = countedReport([counted("single", 1, 2, 1)]);
+const COUNTED_NONE = countedReport([]);
+
+it.each([
+  {
+    locale: "en",
+    loaded: "Recorded usage loaded. All time.",
+    refresh: "Refresh",
+    many: "1,000 model attempts · 1,000 with usage · 1 priced",
+    one: "1 model attempt · 1 with usage · 0 priced",
+    none: "0 model attempts · 0 with usage · 0 priced",
+    rows: [
+      ["997 attempts", "1 known input", "1,000 known output tokens"],
+      ["1 attempt", "1,000 known input", "0 known output tokens"],
+      ["2 attempts", "0 known input", "1 known output token"],
+    ],
+    single: ["1 attempt", "2 known input", "1 known output token"],
+  },
+  {
+    locale: "de",
+    loaded: "Erfasste Nutzung geladen. Gesamter Zeitraum.",
+    refresh: "Aktualisieren",
+    many: "1.000 Modellversuche · 1.000 mit Nutzung · 1 mit Preis",
+    one: "1 Modellversuch · 1 mit Nutzung · 0 mit Preis",
+    none: "0 Modellversuche · 0 mit Nutzung · 0 mit Preis",
+    rows: [
+      ["997 Versuche", "1 bekanntes Eingabe-Token", "1.000 bekannte Ausgabe-Tokens"],
+      ["1 Versuch", "1.000 bekannte Eingabe-Tokens", "0 bekannte Ausgabe-Tokens"],
+      ["2 Versuche", "0 bekannte Eingabe-Tokens", "1 bekanntes Ausgabe-Token"],
+    ],
+    single: ["1 Versuch", "2 bekannte Eingabe-Tokens", "1 bekanntes Ausgabe-Token"],
+  },
+  {
+    locale: "fr",
+    loaded: "Utilisation enregistrée chargée. Toute la période.",
+    refresh: "Actualiser",
+    many: "1 000 tentatives de modèle · 1 000 avec utilisation · 1 avec un prix",
+    one: "1 tentative de modèle · 1 avec utilisation · 0 avec un prix",
+    none: "0 tentative de modèle · 0 avec utilisation · 0 avec un prix",
+    rows: [
+      ["997 tentatives", "1 d’entrée connue", "1 000 tokens de sortie connus"],
+      ["1 tentative", "1 000 d’entrée connue", "0 token de sortie connu"],
+      ["2 tentatives", "0 d’entrée connue", "1 token de sortie connu"],
+    ],
+    single: ["1 tentative", "2 d’entrée connue", "1 token de sortie connu"],
+  },
+  {
+    locale: "es",
+    loaded: "Uso registrado cargado. Todo el tiempo.",
+    refresh: "Actualizar",
+    many: "1000 intentos de modelo · 1000 con uso · 1 con precio",
+    one: "1 intento de modelo · 1 con uso · 0 con precio",
+    none: "0 intentos de modelo · 0 con uso · 0 con precio",
+    rows: [
+      ["997 intentos", "1 de entrada conocida", "1000 tokens de salida conocidos"],
+      ["1 intento", "1000 de entrada conocida", "0 tokens de salida conocidos"],
+      ["2 intentos", "0 de entrada conocida", "1 token de salida conocido"],
+    ],
+    single: ["1 intento", "2 de entrada conocida", "1 token de salida conocido"],
+  },
+])(
+  "selects $locale count copy from each original count while keeping formatted values",
+  async ({ locale, loaded, refresh, many, one, none, rows, single }) => {
+    const literalText = { normalizer: (value: string) => value };
+    const accepted = [COUNTED_MANY, COUNTED_ONE, COUNTED_NONE].map((report) =>
+      structuredClone(report),
+    );
+    const summary = await openUsage({ locale, report: COUNTED_MANY, loaded });
+    expect(screen.getByText(many, literalText)).toBeTruthy();
+    for (const row of rows)
+      for (const text of row) expect(screen.getByText(text, literalText)).toBeTruthy();
+
+    summary.mockResolvedValueOnce(COUNTED_ONE);
+    fireEvent.click(screen.getByRole("button", { name: refresh }));
+    await screen.findByText(one, literalText);
+    for (const text of single) expect(screen.getByText(text, literalText)).toBeTruthy();
+
+    summary.mockResolvedValueOnce(COUNTED_NONE);
+    fireEvent.click(screen.getByRole("button", { name: refresh }));
+    await screen.findByText(none, literalText);
+
+    expect(summary).toHaveBeenCalledTimes(3);
+    expect([COUNTED_MANY, COUNTED_ONE, COUNTED_NONE]).toEqual(accepted);
+  },
+);
+
 it("establishes the report range before local filters and preserves total meaning while filtering", async () => {
   const summary = await openUsage();
   const scope = screen.getByRole("group", { name: "Report scope" });

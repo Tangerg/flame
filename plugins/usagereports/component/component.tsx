@@ -691,6 +691,8 @@ function SavedReport({
                   <RecordHeading
                     title={day.key}
                     description={t("report.breakdown.row", {
+                      // Selects the plural form only; the exact JSONNumber is displayed.
+                      count: Number(day.coverage.calls.toString()),
                       attempts: fmt.count(day.coverage.calls),
                       cost: fmt.amount(day.recordedCostUsd),
                     })}

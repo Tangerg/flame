@@ -460,16 +460,16 @@ it("retires a pending report refresh on Back and returns to the same archive row
   ]);
 });
 
-const usageDay = (key: string, cost?: JSONNumber) => ({
+const usageDay = (key: string, cost?: JSONNumber, calls: JSONNumber = 1) => ({
   key,
   total: { inputTokens: 1, outputTokens: 1, ...(cost === undefined ? {} : { costUsd: cost }) },
   ...(cost === undefined ? {} : { recordedCostUsd: cost }),
   coverage: {
-    calls: 1,
-    reportedCalls: 1,
-    pricedCalls: cost === undefined ? 0 : 1,
+    calls,
+    reportedCalls: calls,
+    pricedCalls: cost === undefined ? 0 : calls,
     startedCalls: 0,
-    completedCalls: 1,
+    completedCalls: calls,
     failedCalls: 0,
     unknownCalls: 0,
   },
@@ -499,10 +499,10 @@ it.each([
     tiny: "0.0000004",
     wide: "9,007,199,254,740,993",
     rows: [
-      "1 attempts · 0.0000004 known USD",
-      "1 attempts · 0 known USD",
-      "1 attempts · 1.5 known USD",
-      "1 attempts · 0.10000000000000000001 known USD",
+      "1 attempt · 0.0000004 known USD",
+      "1 attempt · 0 known USD",
+      "1 attempt · 1.5 known USD",
+      "1 attempt · 0.10000000000000000001 known USD",
     ],
   },
   {
@@ -518,10 +518,10 @@ it.each([
     tiny: "0,0000004",
     wide: "9.007.199.254.740.993",
     rows: [
-      "1 Versuche · 0,0000004 USD bekannt",
-      "1 Versuche · 0 USD bekannt",
-      "1 Versuche · 1,5 USD bekannt",
-      "1 Versuche · 0.10000000000000000001 USD bekannt",
+      "1 Versuch · 0,0000004 USD bekannt",
+      "1 Versuch · 0 USD bekannt",
+      "1 Versuch · 1,5 USD bekannt",
+      "1 Versuch · 0.10000000000000000001 USD bekannt",
     ],
   },
 ])(
@@ -572,6 +572,94 @@ it.each([
 
     expect(stringifyJSON(reports)).toBe(sent);
     expect(calls("get").map(([request]) => reportId(request))).toEqual([weekly.id, daily.id]);
+    expect(calls("capture")).toHaveLength(0);
+    expect(calls("delete")).toHaveLength(0);
+  },
+);
+
+it.each([
+  {
+    locale: "en",
+    view: /^View report: Weekly report · /,
+    breakdown: "Daily core breakdown",
+    rows: [
+      "0 attempts · 0 known USD",
+      "1 attempt · 1.5 known USD",
+      "2 attempts · 0.25 known USD",
+      "1,000 attempts · 3 known USD",
+      "1,000,000 attempts · 4 known USD",
+      "9,007,199,254,740,993 attempts · 0.10000000000000000001 known USD",
+    ],
+  },
+  {
+    locale: "de",
+    view: /^Bericht anzeigen: Bericht \(Wöchentlich\) · /,
+    breakdown: "Tägliche Kernaufschlüsselung",
+    rows: [
+      "0 Versuche · 0 USD bekannt",
+      "1 Versuch · 1,5 USD bekannt",
+      "2 Versuche · 0,25 USD bekannt",
+      "1.000 Versuche · 3 USD bekannt",
+      "1.000.000 Versuche · 4 USD bekannt",
+      "9.007.199.254.740.993 Versuche · 0.10000000000000000001 USD bekannt",
+    ],
+  },
+  {
+    locale: "fr",
+    view: /^Voir le rapport\s:\sRapport Hebdomadaire · /,
+    breakdown: "Détail principal quotidien",
+    rows: [
+      "0 tentative · coût connu 0 USD",
+      "1 tentative · coût connu 1,5 USD",
+      "2 tentatives · coût connu 0,25 USD",
+      "1 000 tentatives · coût connu 3 USD",
+      "1 000 000 tentatives · coût connu 4 USD",
+      "9 007 199 254 740 993 tentatives · coût connu 0.10000000000000000001 USD",
+    ],
+  },
+  {
+    locale: "es",
+    view: /^Ver informe: Informe Semanal · /,
+    breakdown: "Desglose base diario",
+    rows: [
+      "0 intentos · coste conocido 0 USD",
+      "1 intento · coste conocido 1,5 USD",
+      "2 intentos · coste conocido 0,25 USD",
+      "1000 intentos · coste conocido 3 USD",
+      "1.000.000 intentos · coste conocido 4 USD",
+      "9.007.199.254.740.993 intentos · coste conocido 0.10000000000000000001 USD",
+    ],
+  },
+])(
+  "selects $locale daily attempt copy while showing each saved count exactly",
+  async ({ locale, view, breakdown, rows }) => {
+    const report = withSummary(weekly, {
+      byDay: [
+        usageDay("2026-10-13", 0, 0),
+        usageDay("2026-10-14", 1.5, 1),
+        usageDay("2026-10-15", 0.25, 2),
+        usageDay("2026-10-16", 3, 1000),
+        usageDay("2026-10-17", 4, 1000000),
+        usageDay("2026-10-18", new ExactNumber("0.10000000000000000001"), 9007199254740993n),
+      ],
+    });
+    const sent = stringifyJSON(report);
+    const { calls } = mount(
+      (request) =>
+        request.method === "flame.usage-reports/list.v2"
+          ? reply({ reports: [weekly] })
+          : reply(report),
+      undefined,
+      locale,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: view }));
+    fireEvent.click(await screen.findByRole("button", { name: breakdown }));
+    expect(await screen.findByText(rows[0]!)).toBeTruthy();
+    for (const row of rows) expect(screen.getByText(row)).toBeTruthy();
+
+    expect(stringifyJSON(report)).toBe(sent);
+    expect(calls("get").map(([request]) => reportId(request))).toEqual([weekly.id]);
     expect(calls("capture")).toHaveLength(0);
     expect(calls("delete")).toHaveLength(0);
   },

@@ -6445,15 +6445,15 @@ wrapping in Flame's shared UI, Base UI, StyleX and semantic tokens.
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | Accessibility | Native Tab/Return, named disclosures, visible focus, exact archive opener and Composer return; existing read/error regression tests | Reading and return pass; VoiceOver and physical IME not verified                      |
 | Layout        | Actual 320 px Dock; native window-edge drag to 2244 × 1798 captured pixels; Chinese 18 px/200% and wheel reading                    | Full amounts, source identities, facts and return controls remain reachable           |
-| Writing       | Paid/zero/missing meanings, USD units, source metadata and saved-report identity                                                    | Numeric meaning repaired; the existing singular-count issue below remains             |
+| Writing       | Paid/zero/missing meanings, USD units, source metadata and saved-report identity                                                    | Numeric meaning repaired; the subsequent count-copy repair is recorded below          |
 | Typography    | Both formatter owners, EN/DE rendered tests, EN/ZH native totals and breakdowns, shared numeric/wrapping styles                     | Tiny charges stay nonzero; ordinary padding and exact literals retain their contracts |
 | Colors        | Light/Orange and dark/custom pale accent at contrast 100; existing focus, share and destructive roles                               | Semantic roles retained; rendered contrast ratios not newly measured                  |
 | UI polish     | Pointer controls, native keyboard expansion, wheel scrolling, file/report return and continued drafts; full/off motion scenes       | Existing surfaces and interaction owners remain; motion timing not measured           |
 
-| Severity       | Domain     | Location                                                                                      | Before                                                            | After                                                                                       | Why                                                                     |
-| -------------- | ---------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| HIGH, fixed    | Typography | `plugins/usage/component/component.tsx:54`; `plugins/usagereports/component/component.tsx:80` | Six fraction digits make a charged amount read as a recorded zero | At most six significant digits below one millionth, retaining the ordinary format elsewhere | A numeric projection must distinguish an actual charge from zero        |
-| LOW, remaining | Writing    | `plugins/usage/component/locales/en.ts:55`, `bucket.attempts`; rendered source metadata       | One attempt reads `1 attempts`                                    | Continue with the count-aware copy owner after this published batch                         | A fresh native single-attempt source exposes incorrect singular grammar |
+| Severity         | Domain     | Location                                                                                      | Before                                                            | After                                                                                       | Why                                                                     |
+| ---------------- | ---------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| HIGH, fixed      | Typography | `plugins/usage/component/component.tsx:54`; `plugins/usagereports/component/component.tsx:80` | Six fraction digits make a charged amount read as a recorded zero | At most six significant digits below one millionth, retaining the ordinary format elsewhere | A numeric projection must distinguish an actual charge from zero        |
+| LOW, fixed below | Writing    | `plugins/usage/component/locales/en.ts:55`, `bucket.attempts`; rendered source metadata       | One attempt reads `1 attempts`                                    | The following published count-copy batch repairs the caller and locale families             | A fresh native single-attempt source exposes incorrect singular grammar |
 
 #### Verification
 
@@ -6521,8 +6521,8 @@ source/test/config inputs, **22** ESM resources, **333** final Web assets,
 their accepted maps through retirement. Only six non-Markdown product inputs
 change: the two components, two regression files and two generated resources.
 
-**Approve for the inspected numeric-reading and return task.** The LOW count-copy
-issue is the next observed candidate. All eight goal CHECK dimensions are
+**Approve for the inspected numeric-reading and return task.** The observed LOW
+count-copy follow-up is resolved in the following section. All eight goal CHECK dimensions are
 considered within this flow; whole-product award-level acceptance remains open.
 Empty/loading/error states retain regression coverage but are not all repeated
 natively here. VoiceOver, physical IME, RTL/forced colors, all locales natively,
@@ -6541,6 +6541,153 @@ Both pre-existing shared-UI cache files and the protected 123-byte draft retain
 their exact hashes. Installed dependencies, common toolchains/caches, read-only
 references, user data and unrelated processes are preserved. The publication-time
 fetch finds main still at the accepted base. Publication uses normal hooks, a main fast-forward,
+ordinary push and independent remote/cleanliness checks.
+
+### Usage count grammar and exact saved values (2026-11-03)
+
+This batch starts from published `b79fbbf97`. Actual Wails shows `1 model
+attempts`, `1 attempts` and `1 known output tokens`; the saved daily row also
+shows `1 attempts`. The SDK already owns locale plural selection, but these
+callers supply only formatted interpolation strings. They omit its numeric
+`count` selector. Accounting values and prior cost precision remain correct.
+
+The four existing Live Usage translations now receive their own count: overview
+attempts, source attempts, known input and known output. The saved daily row
+supplies a numeric projection only for grammar selection; its existing
+`fmt.count` still receives the original `JSONNumber`. Both complete private
+`makeFormatters` blocks match the accepted base byte for byte. Wide integer
+digits, exact decimal literals, locale grouping, zero, tiny nonzero costs and
+unknown values retain their display paths. No SDK, Runtime, protocol, command,
+read lifecycle, state, style, dependency or persisted-data contract changes.
+
+All sixteen catalogs migrate the five affected key families to locale plural
+forms, with **70** values: EN/DE use one/other, FR/ES use one/many/other, and
+ZH/ZH-TW/JA/KO retain their existing text under other. Superseded unsuffixed keys
+are removed. Unrelated catalog values and placeholder names match the base.
+German token copy agrees with its own input/output count. French priced coverage
+uses `avec un prix`, independent of the overview attempt count; French and
+Spanish saved rows name the known cost without deriving its grammar from the
+attempt count. Counts stay subordinate metadata in the existing Facts,
+RecordMeta and RecordHeading hierarchy.
+
+The installed SDK translator and plugin i18n checker establish the real contract.
+[ECMA-402 plural selection](https://402.ecma-international.org/13.0/#sec-intl.pluralrules.prototype.select)
+and [Unicode CLDR plural categories](https://www.unicode.org/cldr/charts/49/supplemental/language_plural_rules.html)
+inform the locale-family review; current Node and Wails observations establish
+the actual selected forms, including French zero. Read-only ZCode
+`settings/usage-stats/usageStatsUiParts.tsx` informs value/label hierarchy, while
+its compact rounding and truncation remain inapplicable to these exact facts.
+Earlier ChatGPT, HeroUI, Radix, ArcUI and Ace studies retain their recorded scope.
+The better-interface review continues across its six domains, using Flame's
+existing components, Base UI, StyleX and semantic tokens.
+
+| Severity   | Domain  | Location                                                                                                        | Before                                     | After                                                           | Why                                                                  |
+| ---------- | ------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | --------------------------------------------------------------- | -------------------------------------------------------------------- |
+| LOW, fixed | Writing | `plugins/usage/component/component.tsx:128`; `plugins/usagereports/component/component.tsx:694`; their catalogs | One attempt/output token uses plural nouns | Each noun selects its existing locale family from its own count | Formatted number strings must not determine grammar or numeric truth |
+
+| Domain        | Evidence inspected                                                                                                        | Scoped result                                                                  |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Accessibility | Native Tab/Return, period selection, named disclosures, Back/opener focus and Composer return; unchanged read/error tests | Keyboard and return pass; VoiceOver and physical IME not verified              |
+| Layout        | Actual 320 px Dock; native edge resize to 2244 × 1798 captured pixels; FR/ZH 18 px and 200% with wheel reading            | Complete rows, wide counts, details and return controls remain readable        |
+| Writing       | Five count families, all eight catalog languages, independent attempt/token/price counts and immutable saved rows         | Singular/plural copy repaired without changing accounting meaning              |
+| Typography    | Literal French narrow-space assertions; DE grouping; native EN/DE/FR/ZH; both unchanged formatter owners                  | Existing figures, wrapping, exact digits and prior tiny-cost behavior retained |
+| Colors        | Orange/light and pale custom accent/dark at contrast 100, visible focus and existing share/destructive roles              | Existing semantic roles retained; contrast ratios not newly measured           |
+| UI polish     | Pointer controls, native keyboard expansion, local filter, Files/Usage return, archive Back and continued drafts          | Existing interaction owners remain; no motion or surface changes               |
+
+#### Verification
+
+The bounded Read/Edit-only Claude CLI changes its **22** allowed handwritten
+paths in **265.329 s**, reporting 67 turns, no subagents and no permission denials.
+Root reviews the actual diff, fixes the new French test's literal narrow-space
+matching, and owns formatting, generation, counterexamples, checks and native
+acceptance. The initial focused candidate passes 27/28; the final candidate
+passes **2 files / 28 tests** without changing production number formatting.
+
+- The original baseline passes **20/20**. Restoring both complete original
+  components and all sixteen original catalogs while retaining the new tests
+  fails **10** and passes **18**. The guard restores all eighteen candidate
+  owners with exact hashes. Regression cases cover zero, one, two, grouped
+  thousands, French/Spanish million forms, independent output counts and priced
+  coverage, refresh transitions, wide integers, exact decimals, unchanged input,
+  exactly the expected reads and no additional archive writes.
+- The full frontend passes **424 files / 4,489 tests** in **104.408 s** on its
+  first full run. Normal component generation changes only Usage and Usage
+  Reports; the other **20 of 22** installed ESM resources match. Plugin types,
+  lint and i18n, all **25** Web gates and `make check-native` (**15.081 s**) pass
+  serially. I18n verifies **20 catalogs across 8 locales** and bundle budgets
+  pass. Existing macOS linker warnings remain nonfatal.
+- Full plugin formatting reports only the two unchanged Feedback component/test
+  paths recorded above. Owned formatting, Web formatting and diff whitespace
+  checks pass. No valid assertion or check is weakened. Unchanged Runtime,
+  CLI/backend and shared-UI suites are not repeated; no browser visual suite or
+  performance benchmark is started.
+
+#### Actual Wails reading and return
+
+The private signed Wails **v3.0.0** host retains production window limits,
+native zoom, services and chrome. It uses a private home, inactive local endpoint
+and data-only public SDK responses. Both views import their normally generated
+ESM. Archive list/get retain the declared binding and the saved response crosses
+as opaque JSON text, preserving integers beyond JavaScript's safe range. These
+are presentation and navigation qualifications, not live accounting, provider
+billing, installation or archive-write acceptance. Save, Remove and Send are
+not invoked.
+
+- The two original EN launches expose the singular grammar defect in Live Usage
+  and the weekly archive. Final EN/light/14 px/Orange/full motion and DE under
+  the same settings use actual Tab/Home to set **320 px** Dock width. Period
+  selection reads one, three and zero attempts. A one-attempt source has zero
+  output, while the two-attempt source has one output token and 2,000 inputs;
+  each noun follows its own count. German keeps `2.000` and plural input tokens.
+  Tiny paid cost and recorded zero remain distinct.
+- EN filtering, range changes and Files/Usage return retain the local query and
+  expanded source. Native Tab/Return opens the disclosure. German pointer
+  expansion also exposes the eight existing source facts. Both return paths
+  preserve and continue the original Composer draft.
+- FR and ZH/dark/18 px/custom `#BDD1DE`/contrast 100/motion off use twenty native
+  Zoom In steps for **200%**. Actual edge drag narrows the captured frame from
+  2878 to **2244 px**, approximately **561 CSS px** of reading width. Period
+  changes cover zero/one/three; wheel reading reaches both sources and their
+  details. French uses its zero/one category and literal narrow-space grouping;
+  Chinese count text remains Chinese. Close and return preserve each draft,
+  and Actual Size is restored before Quit.
+- EN archive/light/14 px/Orange in **320 px** Dock uses heading focus,
+  Tab/Return and wheel reading to expose `1 attempt`, `2 attempts` and the
+  complete `9,007,199,254,740,993 attempts`. FR and ZH archive under the dark
+  **18 px/200%** settings also retain the exact wide digits and their own
+  grouping. The saved tiny literal remains `4e-07`, its original exact JSON
+  spelling; the true-zero row remains zero. Back focuses the exact report
+  opener in each locale, and each draft continues after leaving the panel.
+
+All **nine** original/final launches quit normally with exit zero. Fresh native
+state precedes accepted actions; an invalid lowercase key name is corrected to
+the supported native key without changing product code. All **6,803** accepted
+source/test/config inputs, **22** installed ESM resources, **333** final Web
+assets, **4** bundle files, **21** private host inputs and **5** fixture files
+match their accepted maps before retirement. Exactly **22** non-Markdown product
+inputs change: two components, sixteen catalogs, two tests and two generated
+resources.
+
+**Approve for the inspected count-reading and return task.** All eight goal
+CHECK dimensions are considered within this flow; whole-product award-level
+acceptance remains open. Native coverage does not certify every locale or empty,
+loading and error scene. VoiceOver, physical IME, RTL/forced colors, fresh
+contrast measurements, motion timing and other-platform GUIs remain unverified.
+The native archive also shows a remove-to-make-room instruction with only one
+of 64 reports saved; inspect its existing capacity/state owner before selecting
+the next batch.
+
+Cleanup removes **nine** new checkout outputs and **two** unique app Library
+directories, restoring all nine output and six Library baselines to absence.
+The exact bundle is unregistered; owned native processes are zero. The private
+app, home, fixture, assets, CLI files, logs, caches and receipt directory are
+removed. A round-trip-verified in-memory gzip retains **196** UTF-8 records and
+**54** capture hashes, SHA-256
+`090bd8a7ab7ccbad8a401a614dbc68ef031f8c7d93d2d5a3caaedd18ef21d231`.
+Both pre-existing shared-UI cache files and the protected 123-byte draft retain
+their exact hashes. Root dependencies, accepted shared toolchains, read-only
+references, user data and unrelated processes remain. Fresh fetch finds main
+still at the accepted base; publication uses normal hooks, fast-forward, an
 ordinary push and independent remote/cleanliness checks.
 
 ### Generated SVG reading and source return

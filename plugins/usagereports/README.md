@@ -34,6 +34,8 @@ wide integers and exact JSON numbers without rounding them through JavaScript
 `number`. Missing values remain missing; recorded zero remains zero. Numeric
 amounts keep up to six unpadded decimal places, except that a nonzero amount
 below 0.000001 shows up to six significant digits; exact literals keep their text.
+Daily attempt copy selects its locale plural form from the saved count, which is
+still displayed exactly.
 
 The installed terminal view lists saved report headers, opens an exact report, captures a daily or weekly report and confirms deletion before changing the archive. The GUI and terminal consume the same list method and report identity.
 

@@ -65,7 +65,7 @@ export const ko: Record<string, string> = {
   "fact.pricedAttempts": "가격 책정된 시도",
   "fact.outcomeUnknown": "결과 알 수 없음",
   "report.breakdown.title": "일간 핵심 내역",
-  "report.breakdown.row": "{{attempts}}건 시도 · 알려진 {{cost}} USD",
+  "report.breakdown.row_other": "{{attempts}}건 시도 · 알려진 {{cost}} USD",
   "report.identity.title": "정확한 보고서 식별 정보",
   "fact.reportId": "보고서 ID",
   "fact.observedAt": "관측 시각 (UTC)",
