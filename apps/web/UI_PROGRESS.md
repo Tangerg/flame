@@ -17,6 +17,14 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Retained Goals now keep an aligned keyboard summary and a complete read-only
+reader when their original author release is unavailable; see **Retained Goal
+summary and complete reading (2026-11-03)**. Native English/light and Chinese
+dark/18 px/200% tasks cover opening, reading, closing, file-context return and
+continued drafting. The full frontend passes 4,468 tests; the final reading
+clearance passes 31 focused tests, all 25 non-Runtime Web gates and the native
+gate. The whole-product goal remains active.
+
 Deliverables catalog opening now enters the existing revision-history reading
 region and reveals it after settlement while preserving later focus choices;
 published as `c43bb63ea` under **Catalog opening and the revision reading entry
@@ -1015,8 +1023,9 @@ The user's supplied Codex screenshot supersedes the earlier Goal rail hierarchy.
 foreground role and the objective a secondary, single-line truncated role. The
 rail is inset by `space.s3` on both sides and overlaps behind the Composer by the
 same amount. It retains the shared Composer corner, glass and edge roles. The
-trailing group contains creation age, Clear, circular Pause/Resume and the
-existing objective editor with an expand glyph. Both the summary and that last
+trailing group, when the captured author is available, contains creation age,
+Clear, circular Pause/Resume and the existing objective editor with an expand
+glyph. Both the summary and that last
 action open the same editor; cancellation returns to the actual opener. Narrow
 space permits a separate action row instead of clipping or shrinking controls.
 
@@ -1053,6 +1062,112 @@ evidence. The actual Wails observations below establish that behavior.
 
 Continue with another observed conversation → material → return path on current
 main; do not turn this completed rail/read task into an unrelated redesign.
+
+### Retained Goal summary and complete reading (2026-11-03)
+
+On base main `d7a5e1823`, an unavailable original author replaces the summary's
+shared Button with a plain inline span. That span loses the Button's flex layout:
+the actual Wails rail splits the status across lines and crops the objective.
+Native Tab navigation skips the retained Goal, leaving its complete text
+available only as a pointer title. The original paused Goal and absent author
+are reproduced before implementation; no author permission is broadened.
+
+`GoalStatusSurface.tsx` now uses the existing bare Button in both cases. Its
+approved target icon, status emphasis, single-line objective and Composer tray
+remain. A writable summary keeps the original editor and completing/pending
+boundaries. An unavailable author opens a plain shared ModalDialog containing a
+named ScrollRegion, initially focused, capped at 40dvh and rendering the current
+canonical objective directly. Original whitespace and long paths wrap without
+an editable field, save action or lifecycle command. The existing inset focus
+policy and `space.s1` inline clearance keep all four focus edges visible without
+painting across the first glyph. Escape and the close button return to the
+actual summary. One local open fact serves the editor or reader; existing
+author-availability and Goal identity keys retire obsolete dialogs. No copied
+reading value, effect, timer, listener or shared API is added.
+
+The scoped reference review follows better-layout, better-ui and
+better-accessibility, plus React's derived-state guidance. ZCode's actual
+`ConversationGoalBanner.tsx` supports a compact status/ellipsis projection;
+HeroUI's read-only example distinguishes reading from editing. Neither supplies
+the native reader's focus behavior. The old Ace contact-sheet caches are absent,
+so the official [Alpaca](https://acedesign.io/work/alpaca) and
+[Marketer](https://acedesign.io/work/marketer) images are reopened and inspected.
+Alpaca's artifact grid and Marketer's Composer grouping inform alignment,
+content axes and restrained hierarchy. Their static images do not certify
+keyboard behavior, motion, responsiveness or award-level acceptance for Flame.
+
+Bounded Claude CLI completes its three permitted files in 108.219 s / 23 turns
+with no permission denials. Root reviews the diff, adds replacement-Goal
+coverage and fixes the native-observed clipped focus perimeter and tight text
+clearance. The original 28 tests remain unchanged. All three new observable
+reader tests fail against the original production source while those 28 pass;
+the candidate is restored exactly. They cover canonical updates without focus
+loss, absent/replaced author permissions, command-free modifier Enter, return
+focus and retirement when the original author or a different Goal takes over.
+
+| Verification                  | Actual result                                                                             |
+| ----------------------------- | ----------------------------------------------------------------------------------------- |
+| Focused Goal baseline         | 28 tests pass before implementation                                                       |
+| Original-source counter       | 3 new cases fail / 28 original cases pass; 2.804 s                                        |
+| Complete frontend             | 424 files / 4,468 tests pass after the inset-focus repair; 191.683 s                      |
+| Final inline-clearance change | 31 focused tests pass; 3.342 s                                                            |
+| Final non-Runtime Web gates   | All 25 pass, including types, lint/format, tokens, boundaries, bundle and exact resources |
+| Final serial native gate      | `make check-native` passes; 32.319 s                                                      |
+| Private final assets          | Pass in 4.354 s; installed resources remain byte-identical                                |
+
+Actual observer-free Wails v3 English/light/14 px/Orange/full-motion qualification
+covers reverse-Tab/Enter opening, exact multiline/CJK/path reading, a clear focus
+perimeter, Escape and pointer-close return, a 320 px Dock and 1,000 px Dock with
+the narrower conversation. The source reader opens full width and returns to
+the same visible Goal and draft. Explicit Composer focus and Command-Down append
+the continuation exactly. A combined modifier/Home/Escape sequence initially
+leaves the reader open; no cause is inferred. Independent ordinary Escape,
+including after narrow-reader reopening, restores the actual opener. Native
+modifier actions leave the reader and objective intact; command exclusion is
+established by the component regressions.
+
+Chinese/dark/18 px/custom `#70839A`/motion-off qualification uses Actual Size
+followed by twenty production Zoom In actions for actual native 200%. Home/End
+reach both ends of the bounded objective, including its final requirement. Tab
+cycles between Close and the named reader; Escape returns to the Chinese
+summary. Native Window → Move & Resize → Left reduces the window to a
+560.5 × 474.5 CSS px scene at 200%, with the entire closing control and focused
+reader visible. The source is opened through the existing full-width material
+entry, then closed; the retained ASCII draft is extended exactly before Actual
+Size and normal Quit. These are CJK reading and draft-continuity checks, not OS
+IME certification. A native changed-app guard cancels one action after resizing;
+the latest state is read before any further action.
+
+The workspace fixture does not retain an available Goal author merely because
+its URL requests writable mode; that attempt still opens the reader and is
+excluded from editor qualification. The separate Agent fixture does publish the
+captured author and verifies the unchanged objective editor, textarea focus,
+disabled unchanged Save, lifecycle controls and Cancel-to-summary return. Its
+documented inert sidebar is not used as navigation evidence. The accepted
+English/Chinese workspace apps and Agent editor app quit with exit 0 in
+195.391 / 316.187 / 52.761 s respectively. All seven baseline, preliminary and
+accepted app launches quit normally.
+
+Live Runtime/Goal-provider execution, live author withdrawal/reinstallation,
+VoiceOver speech and OS IME remain outside this isolated qualification. The
+existing component tests cover accepted projection and author-lifetime changes.
+No browser visual suite, performance benchmark or full backend suite is run.
+The earlier Feedback formatter failures remain in two byte-identical, unrelated
+files; plugin formatting is not rerun for this Web-only change. Shared UI source
+retains its preceding 224-test qualification.
+
+The final 6,803 production/test/config inputs, 333 private assets, three app files
+and 23 copied host files match their native-qualified hashes. The two local
+reference sources and all 22 installed JS resources are unchanged. All owned
+processes are gone and port 50362 is closed. The exact app is unregistered;
+its private root, fixtures, copied captures, logs and cache are removed. All nine
+initially absent checkout output roots and six UID-specific Library paths are
+restored to absence. Post-cleanup checks preserve every frozen source input,
+the local references, installed resources and the separate 123-byte interrupted
+draft backup. The shared toolchain/cache and user profiles are preserved.
+Normal main publication is verified below before this batch is handed off.
+Continue with another observed conversation/material/return task on current
+main; the continuous UI objective remains active.
 
 ### Plan state and keyboard reading
 

@@ -116,6 +116,106 @@ describe("Goal status surface", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(model.updateGoal).not.toHaveBeenCalled();
   });
+
+  function expectNoGoalMutation() {
+    expect(screen.queryByRole("textbox")).toBeNull();
+    for (const name of ["Save", "Clear goal", "Pause goal", "Resume goal", "Edit goal"]) {
+      expect(screen.queryByRole("button", { name })).toBeNull();
+    }
+    expect(model.updateGoal).not.toHaveBeenCalled();
+    expect(model.clearGoal).not.toHaveBeenCalled();
+    expect(model.stopGoal).not.toHaveBeenCalled();
+    expect(model.resumeGoal).not.toHaveBeenCalled();
+  }
+
+  it("reads the complete current objective when its original release is replaced", async () => {
+    const original = model.goal.author!;
+    const successor = { ...original, release: "successor" };
+    const objective = "Ship alpha\n\n  保留原始缩进 and https://example.test/" + "a".repeat(240);
+    model.goal = { ...model.goal, status: "paused", objective };
+    const { rerender } = testClient.render(<GoalStatusSurface />);
+    act(() =>
+      testClient.installedPlugins.access.workflows.publish(
+        [{ source: successor, roles: [GOAL_WORKFLOW] }],
+        [
+          {
+            role: GOAL_WORKFLOW,
+            installationId: successor.installationId,
+            contribution: successor.contribution,
+          },
+        ],
+      ),
+    );
+    const opener = screen.getByRole("button", { name: /^Paused goal/ });
+    act(() => opener.focus());
+    fireEvent.click(opener);
+
+    expect(screen.getByRole("dialog", { name: "Goal" })).toBeTruthy();
+    const reader = screen.getByRole<HTMLElement>("region", { name: "Goal" });
+    expect(reader.textContent).toBe(objective);
+    await vi.waitFor(() => expect(document.activeElement).toBe(reader));
+    fireEvent.keyDown(reader, { key: "Enter", code: "Enter", ctrlKey: true });
+    fireEvent.keyDown(reader, { key: "Enter", code: "Enter", metaKey: true });
+    expectNoGoalMutation();
+
+    model.goal = { ...model.goal, objective: "Accepted\n  canonical 目标" };
+    rerender(<GoalStatusSurface />);
+    const current = screen.getByRole("region", { name: "Goal" });
+    expect(current).toBe(reader);
+    expect(current.textContent).toBe("Accepted\n  canonical 目标");
+    expect(document.activeElement).toBe(reader);
+
+    fireEvent.keyDown(reader, { key: "Escape" });
+    await vi.waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Goal" })).toBeNull();
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: /^Paused goal/ }));
+    });
+    expectNoGoalMutation();
+  });
+
+  it("retires an absent author's reader when the original release returns or withdraws", async () => {
+    const workflows = testClient.installedPlugins.access.workflows;
+    const original = model.goal.author!;
+    testClient.render(<GoalStatusSurface />);
+    act(() => workflows.publish([], []));
+    fireEvent.click(screen.getByRole("button", { name: "Pursuing goal Ship alpha" }));
+    expect(screen.getByRole("dialog", { name: "Goal" })).toBeTruthy();
+    expectNoGoalMutation();
+
+    act(() => workflows.publish([{ source: original, roles: [GOAL_WORKFLOW] }], []));
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByRole("button", { name: "Pause goal" })).toBeTruthy();
+
+    act(() => workflows.publish([], []));
+    expect(screen.queryByRole("button", { name: "Pause goal" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Pursuing goal Ship alpha" })).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(model.updateGoal).not.toHaveBeenCalled();
+  });
+
+  it("retires the reader when another Goal replaces it in the same Session", () => {
+    const { rerender } = testClient.render(<GoalStatusSurface />);
+    act(() => testClient.installedPlugins.access.workflows.publish([], []));
+    fireEvent.click(screen.getByRole("button", { name: "Pursuing goal Ship alpha" }));
+    expect(screen.getByRole("region", { name: "Goal" }).textContent).toBe("Ship alpha");
+
+    model.goal = {
+      ...model.goal,
+      objective: "Read the replacement goal",
+      createdAt: "2026-08-12T08:05:00Z",
+    };
+    rerender(<GoalStatusSurface />);
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Pursuing goal Read the replacement goal" }),
+    );
+    expect(screen.getByRole("region", { name: "Goal" }).textContent).toBe(
+      "Read the replacement goal",
+    );
+    expectNoGoalMutation();
+  });
+
   it("pauses an active goal from the standing surface", async () => {
     testClient.render(<GoalStatusSurface />);
     fireEvent.click(screen.getByRole("button", { name: "Pause goal" }));

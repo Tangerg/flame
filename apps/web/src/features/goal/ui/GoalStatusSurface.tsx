@@ -4,12 +4,12 @@ import { tupleKey } from "@/lib/tupleKey";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Icon } from "@/ui/index";
 import { TextEditorDialog } from "@/ui/index";
-import { Button, Disclosure, IconButton, ScrollRegion, vocab } from "@flame/ui";
+import { Button, Disclosure, IconButton, ModalDialog, ScrollRegion, vocab } from "@flame/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent/index";
-import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { color, leading, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { useT } from "@/lib/i18n/index";
 import { durationText } from "@/lib/format";
 import { useElapsedMillis } from "@/lib/useElapsedMillis";
@@ -92,6 +92,13 @@ const gs = stylex.create({
     whiteSpace: "pre-wrap",
     overflowWrap: "anywhere",
   },
+  objectiveReader: {
+    maxHeight: "40dvh",
+    paddingInline: space.s1,
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
+    lineHeight: leading.body,
+  },
 });
 
 export function GoalStatusSurface() {
@@ -120,7 +127,8 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
     stop: stopGoal,
     update: updateGoal,
   } = useGoalCommands();
-  const [editing, setEditing] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const readerRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState(goal.objective);
   const [editorError, setEditorError] = useState<string>();
   const runtimeAvailable = useRuntimeCommandsAvailable();
@@ -171,7 +179,7 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
     setEditorError(undefined);
     editAction.run(async () => {
       await updateGoal({ sessionId: goal.sessionId, objective: nextObjective });
-      setEditing(false);
+      setDialogOpen(false);
     });
   };
 
@@ -179,7 +187,7 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
   const openEditor = () => {
     setDraft(goal.objective);
     setEditorError(undefined);
-    setEditing(true);
+    setDialogOpen(true);
   };
   const editDraft = (value: string) => {
     setDraft(value);
@@ -205,26 +213,20 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
             size="sm"
             className={stylex.props(vocab.hold, vocab.faint).className}
           />
-          {writable ? (
-            <Button
-              type="button"
-              data-goal="summary"
-              variant="bare"
-              size="xs"
-              disabled={!canEdit}
-              pending={busy}
-              flex="fill"
-              title={goal.objective}
-              styles={gs.summary}
-              onClick={openEditor}
-            >
-              {summary}
-            </Button>
-          ) : (
-            <span data-goal="summary" title={goal.objective} {...stylex.props(gs.summary)}>
-              {summary}
-            </span>
-          )}
+          <Button
+            type="button"
+            data-goal="summary"
+            variant="bare"
+            size="xs"
+            disabled={writable && !canEdit}
+            pending={busy}
+            flex="fill"
+            title={goal.objective}
+            styles={gs.summary}
+            onClick={writable ? openEditor : () => setDialogOpen(true)}
+          >
+            {summary}
+          </Button>
         </div>
         {writable && (
           <div data-slot="goal-actions" {...stylex.props(gs.actions)}>
@@ -266,9 +268,26 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
         )}
       </div>
       <GoalStopReason goal={goal} />
+      <ModalDialog
+        open={dialogOpen && !writable}
+        onOpenChange={setDialogOpen}
+        icon={<Icon name="target" size="lg" className={stylex.props(vocab.muted).className} />}
+        title={t("goal.edit.label")}
+        closeLabel={t("common.close")}
+        initialFocus={readerRef}
+      >
+        <ScrollRegion
+          ref={readerRef}
+          label={t("goal.edit.label")}
+          styles={gs.objectiveReader}
+          data-focus-inset=""
+        >
+          {goal.objective}
+        </ScrollRegion>
+      </ModalDialog>
       <TextEditorDialog
-        open={editing && canEdit}
-        onOpenChange={setEditing}
+        open={dialogOpen && canEdit}
+        onOpenChange={setDialogOpen}
         icon={<Icon name="target" size="lg" className={stylex.props(vocab.muted).className} />}
         title={t("goal.edit.title")}
         closeLabel={t("common.close")}

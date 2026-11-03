@@ -476,6 +476,11 @@ disclosure. Original line breaks and the viewport cap remain; Tab enters the
 explanation, and keyboard scrolling can reach every recorded requirement.
 The retained disclosure body preserves native reading position through close and
 reopen; the primitive excludes it from the closed keyboard and accessible scope.
+When the Goal's original author release is unavailable, its truncated summary
+remains a keyboard button that opens a view-only Goal dialog. The focused named
+reader shows the current objective with its line breaks and long tokens, offers
+no edit, lifecycle or clear command, and returns focus to the summary on close.
+Author availability changes or a replacement Goal retire an open editor or reader.
 
 Plan checklists name each captured step state in the current locale beside its
 task text. Accepted revisions update these marks in the retained reader; the
