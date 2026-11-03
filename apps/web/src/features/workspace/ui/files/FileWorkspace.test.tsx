@@ -2431,21 +2431,59 @@ describe("local file action feedback", () => {
   });
 
   it.each([
-    { label: "current visible action", laterFocus: false, wasVisible: true, reveals: 1 },
-    { label: "later outside focus", laterFocus: true, wasVisible: true, reveals: 0 },
-    { label: "deliberately out-of-view action", laterFocus: false, wasVisible: false, reveals: 0 },
+    {
+      label: "current visible action",
+      laterFocus: false,
+      top: 300,
+      before: 400,
+      after: 100,
+      reveals: 1,
+    },
+    {
+      label: "later outside focus",
+      laterFocus: true,
+      top: 300,
+      before: 400,
+      after: 100,
+      reveals: 0,
+    },
+    {
+      label: "deliberately out-of-view action",
+      laterFocus: false,
+      top: 300,
+      before: 100,
+      after: 100,
+      reveals: 0,
+    },
+    {
+      label: "action already clipped by the inner top edge",
+      laterFocus: false,
+      top: 1.5,
+      before: 400,
+      after: 20,
+      reveals: 0,
+    },
+    {
+      label: "action newly clipped by the inner bottom edge",
+      laterFocus: false,
+      top: 300,
+      before: 400,
+      after: 331.5,
+      reveals: 1,
+    },
   ])(
     "preserves layout intent for $label when action feedback appears",
-    async ({ laterFocus, wasVisible, reveals }) => {
+    async ({ laterFocus, top, before, after, reveals }) => {
       prepareLocalActions();
       const pending = Promise.withResolvers<boolean>();
       vi.mocked(testClient.workspace.access.local.open).mockReturnValue(pending.promise);
       const { open, reader } = await unsupportedFile();
+      Object.defineProperty(reader, "clientTop", { configurable: true, value: 2 });
       vi.spyOn(reader, "getBoundingClientRect").mockImplementation(
-        () => new DOMRect(0, 0, 200, screen.queryByRole("alert") || !wasVisible ? 100 : 400),
+        () => new DOMRect(0, 0, 200, screen.queryByRole("alert") ? after : before),
       );
       vi.spyOn(open, "getBoundingClientRect").mockImplementation(
-        () => new DOMRect(20, 300, 50, 30),
+        () => new DOMRect(20, top, 50, 30),
       );
       const reveal = vi.spyOn(open, "scrollIntoView").mockImplementation(() => {});
       act(() => open.focus());

@@ -8,6 +8,8 @@ import {
 import { cn } from "@/lib/classNames";
 const styles = stylex.create({
   port: { minHeight: 0, flex: 1, overflowY: "auto", overscrollBehavior: "contain" },
+  // Content clips at the padding edge, before the inset focus perimeter.
+  focusable: { borderWidth: "2px", borderStyle: "solid", borderColor: "transparent" },
 });
 
 interface Props {
@@ -24,7 +26,7 @@ interface Props {
 }
 
 export function ScrollArea({ className, children, ref, ...attributes }: Props) {
-  const styled = stylex.props(styles.port);
+  const styled = stylex.props(styles.port, attributes.tabIndex !== undefined && styles.focusable);
   return (
     <div ref={ref} {...attributes} {...styled} className={cn(styled.className, className)}>
       {children}

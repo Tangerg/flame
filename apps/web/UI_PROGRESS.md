@@ -17,8 +17,11 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-The latest follow-up gives focus-managed floating panels the established immediate
-closed state; see **Shared popup closing and rapid keyboard reading (2026-11-03)**.
+The latest follow-up keeps the source reader's inset focus perimeter clear of
+painted target rows and uses the inner viewport for action visibility; see
+**Source reading and inner focus clearance (2026-11-03)**. Focus-managed floating
+panels retain the established immediate closed state under **Shared popup closing
+and rapid keyboard reading (2026-11-03)**.
 Target file-line contrast and the reserved workspace focus perimeter remain
 qualified under **File target-line contrast and continued reading (2026-11-03)**
 and **Workspace reading and painted focus boundary (2026-11-03)**.
@@ -28122,7 +28125,8 @@ of view and restores a complete perimeter; the observer-free final scene also
 reproduces the gaps. Focus and local Home/End still work. Inspect the source
 `ScrollArea` in `WorkspaceViewLayout` next, preserving the target-line contrast
 and the separate outer workspace clipping repair. The popup-closing qualification
-is complete for these cases; the source-focus perimeter remains a follow-up.
+is complete for these cases; the subsequent **Source reading and inner focus
+clearance (2026-11-03)** section records the source-perimeter repair and qualification.
 Preserve the attributed pointer-text reverse-Tab, Runtime recovery
 and placeholder-paint limits. Physical IME, VoiceOver audio, whole-document RTL,
 320 CSS-pixel layout, other-platform GUI and award-tier product acceptance remain
@@ -28134,7 +28138,137 @@ the exact private app registration, six baseline-absent UID Library paths and
 `flame-ui-focus-c65k1pna` assets/home/overlays/CLI/observer/log/cache root. Preserve
 the 123-byte interrupted-draft backup and original SHA-256, root dependencies,
 shared toolchain/cache, read-only references and user data. Continue with the
-observed source-focus paint boundary; keep this worktree and goal active.
+observed source-focus paint boundary, qualified in the following section; keep
+this worktree and goal active.
+
+### Source reading and inner focus clearance (2026-11-03)
+
+Starting from synchronized main `b16031989`, this batch follows the preceding
+observer-free source-focus observation through line navigation, reading,
+selection, file return and continued drafting. The original focused baseline
+passes **3 files / 115 tests** in **6.427 s**; native paint still exposes the gap.
+
+#### Ownership and behavior
+
+At Chinese 18px/native 200%, target row **8** paints over both side segments of
+the source reader's inset outline. Moving that row out of view restores those
+segments. The outer workspace frame already clips correctly and remains intact.
+The inner `ScrollArea`, which owns source/preview scrolling, has no border and
+allows its opaque selected-row background to reach the outline.
+
+`src/ui/atoms/scroll-area.tsx` now reserves a constant **2px transparent solid
+border** when the caller explicitly supplies `tabIndex`. This follows the
+existing outer reading-frame convention. Content clips inside that border;
+focus appearance cannot change the reader's size. Current unnamed work-index
+and subagent scroll areas do not opt in and retain their layout. The named
+source/preview reader in `WorkspaceViewLayout` owns the affected opt-in.
+
+`FileWorkspace` reads the viewport's actual `clientTop` inset when deciding
+whether an action was visible before feedback and becomes clipped afterward.
+The calculation retains fractional `getBoundingClientRect()` edges: the observed
+**256.5px** outer height has a rounded **253px** `clientHeight`, so substituting
+that integer would admit clipped content. The symmetric border remains owned by
+`ScrollArea`; FileWorkspace adds no competing border constant. Existing later
+focus and deliberately scrolled-away guards remain unchanged.
+
+| Severity                                    | Owner                             | Before                                                                 | After                                                                       |
+| ------------------------------------------- | --------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| MEDIUM, repaired                            | Explicitly focusable `ScrollArea` | The opaque line target obscures the inset focus sides.                 | A fixed transparent border keeps all four sides visible beside the target.  |
+| MEDIUM, repaired with the new clip boundary | `FileWorkspace.visibleInViewport` | Outer-box visibility would misclassify controls within the new border. | Inner-edge visibility preserves intent when action feedback changes layout. |
+
+The better-ui/accessibility review applies an unobstructed focus indicator and
+stable reading geometry. Read-only ZCode
+`packages/ui/src/components/ui/scroll-area.tsx` supplies the reference separation
+of scroll root and reading viewport; no Radix wrapper or implementation is copied.
+The [CSS Overflow 3 draft's scrollport definition](https://drafts.csswg.org/css-overflow-3/#scrollport)
+places the clipping viewport at the padding box. Flame retains StyleX, Base UI,
+existing tokens and its current inset outline. No new public API, component,
+state, focus call, listener, timer, token or dependency is added.
+
+One bounded Claude Code CLI detail call completes in **74.397 s / 16 turns**
+without permission denials. Only the three allowed source/test paths change;
+root reviews the actual diff, removes a redundant test-table comment and owns
+verification, documentation and publication.
+
+#### Verification and complete native tasks
+
+- Focused candidate coverage passes **3 files / 117 tests** in **6.409 s**.
+  Two added action-feedback cases cover a control already clipped at the inner
+  top edge and one newly clipped at the fractional bottom edge. Restoring only
+  the old visibility helper produces exactly **2 failed / 98 passed** in
+  **6.424 s**; restoring the candidate makes the focused suite pass. An earlier
+  filtered countercheck skipped all 100 tests and is discarded as evidence.
+- All **25 non-Runtime Web gates** pass. Full frontend regression passes
+  **424 files / 4,444 tests** in **165.876 s**. `make check-native` passes in
+  **36.400 s**, including normal Web staging and Desktop test/vet/build. The
+  private production-tag Wails host builds/signs in **3.994 s**. Builds are
+  serial and finish before the consuming full frontend phase. Existing linker
+  SDK/deployment warnings remain non-failing. No browser visual suite, full
+  Runtime rerun or benchmark is used.
+- **ZH/custom gray `#505967` / `#f0f4fb`, blue, 18px, full motion, native 200%:**
+  the measured viewport remains **560 x 377**, DPR **4**. The source outer rect
+  remains **x2 / y119 / 556 x 256.5**. `clientTop`/`clientLeft` become **2**,
+  inner width **552**; target row 8 now spans **x4..556** inside the outline.
+  Outline **1.5px solid rgb(166, 200, 244)** at offset **-2px**, target fill,
+  gutter ink and **24.5px** line height remain unchanged. All four focus sides
+  are visibly continuous beside the target. Full-width material, rapid line-8
+  submission/two Tabs, local Home/End, selected-file return and closing material
+  lead back to an editable **14-character** Chinese draft.
+- **EN/light/14px, inherited blue accent, full motion:** source focus, line-8
+  return and selection pass at a **500px** Dock. Native window Zoom changes the
+  viewport from **1120 x 755** to **1513 x 950**, DPR **2**, retaining source
+  focus and selection. Restore returns to **1120 x 755**; file return and the
+  **27-character** continued draft pass. This launch omitted an accent override
+  and retained the preceding private profile's blue; Orange is verified
+  explicitly in the final control below.
+
+In both observed candidate scenes, DOM selection is exactly the canonical
+**422-character, eight-line** fixture plus one native trailing newline:
+**423 characters**. It excludes path, controls and gutter numbers. Native AX
+selected-text output also projects gutter numbers; that projection does not
+describe the DOM selection or copied bytes. The unchanged whole-reader Copy
+owner writes canonical source. No fresh clipboard-byte qualification is claimed.
+Rendered motion remains scale **1**, with no motion-off attribute and reduced
+motion **false**.
+
+After the observer exits by exact PID/script identity, a fresh final build omits
+the probe. All **267 HTML/JS/CSS** resources are scanned for its markers/endpoint;
+ports **63853/63854** are closed. Observer-free controls repeat the complete task:
+
+- **Explicit Flame Orange `#FB6E30`, light/EN/14px:** pure keyboard navigation
+  reaches the native Dock separator; Home selects **320px**, End selects
+  **680px**, and Home restores **320px**. Line-8 submission followed immediately
+  by two Tabs reaches source with four continuous focus sides. Source selection,
+  local Home/End, selected-file return and the editable **27-character**
+  `Final source read continued` draft pass.
+- **ZH/custom gray/blue/18px/native 200%:** full-width material repeats the
+  continuous perimeter at target row 8, source selection, local Home/End,
+  selected-file return, material closing and the editable **11-character**
+  `最终源码阅读 继续草稿` draft.
+
+All **five managed native launches exit 0** through normal Quit, verified by
+their original process receipts. All **1,232 final frozen inputs** and **22
+installed JavaScript resources** retain their hashes. The host preserves pinned
+Wails v3, production services, Aqua chrome and native zoom/closing; private
+identity, home, assets and an unavailable Runtime isolate qualification. Input
+uses CUA only; fixture snapshots drive real views and installed Tool-results ESM.
+Live filesystem/provider execution remains outside these scenes. There is no
+data migration or business-command submission.
+
+The source focus repair is qualified for these tasks. Preserve the attributed
+pointer-text reverse-Tab, Runtime recovery and placeholder-paint limits. Physical
+IME, VoiceOver audio, whole-document RTL, 320px whole-application layout,
+other-platform GUI and whole-product award-tier acceptance remain unverified.
+Continue by inspecting source-to-preview and long-document reading against the
+current implementation; require an actual observation before another change.
+
+Publication uses normal hooks, a fresh latest-main fetch, guarded main
+fast-forward, push and direct remote equality. Cleanup is restricted to the nine
+baseline-absent checkout output roots, exact private app registration, six
+baseline-absent UID Library paths and `flame-ui-source-frame-cv9ebcor`
+assets/home/overlays/CLI/observer/log/cache root. Preserve the 123-byte interrupted
+draft backup and its original SHA-256, root dependencies, shared toolchain/cache,
+read-only references and user data. Keep this worktree and goal active.
 
 ## Workspace file browser audit
 

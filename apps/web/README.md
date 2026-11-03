@@ -52,6 +52,10 @@ their scrolling, so native input focus cannot scroll the application chrome away
 Workspace reading viewports reserve the shared inset focus perimeter with a
 transparent border. Scrolled content clips at its inner edge, keeping both the
 perimeter and the area above sticky controls clear of document fragments.
+The explicitly focusable source/preview `ScrollArea` reserves the same border
+inside that frame. File-action visibility uses its inner clipping edges and the
+fractional viewport bounds, so feedback reveals only a previously visible action
+that the new layout actually clips.
 
 `src/app` composes product policy. `src/features` contains actual feature owners
 and their formal public capabilities. `src/extensions` contains generic host,

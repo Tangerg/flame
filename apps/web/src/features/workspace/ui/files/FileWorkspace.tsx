@@ -205,8 +205,11 @@ interface FileContentLayoutProps extends ViewHeaderProps {
 
 function visibleInViewport(viewport: HTMLElement, row: HTMLElement): boolean {
   const bounds = viewport.getBoundingClientRect();
+  const inset = viewport.clientTop;
   const rect = row.getBoundingClientRect();
-  return bounds.height > 0 && rect.top >= bounds.top && rect.bottom <= bounds.bottom;
+  return (
+    bounds.height > 0 && rect.top >= bounds.top + inset && rect.bottom <= bounds.bottom - inset
+  );
 }
 
 // A pre-mutation snapshot distinguishes layout displacement from a user who scrolled away.
