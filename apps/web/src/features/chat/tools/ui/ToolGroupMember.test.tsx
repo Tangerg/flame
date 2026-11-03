@@ -115,6 +115,53 @@ describe("ToolGroupMember", () => {
     expect(screen.getByTitle("src/App.tsx")).toBeTruthy();
   });
 
+  it("tells continued Skill pages apart by the byte each one starts from", () => {
+    const snapshot = "0f".repeat(32);
+    const skill = (id: string, name: string, offset?: number) => {
+      const resource = name === "read_skill_resource";
+      return call({
+        id,
+        name,
+        category: resource ? "read" : "task",
+        fn: resource ? "review-diff/checklist.md" : "review-diff",
+        ...(resource ? { fnKind: "path" as const } : {}),
+        args: JSON.stringify({
+          name: "review-diff",
+          ...(resource ? { path: "checklist.md" } : {}),
+          ...(offset !== undefined ? { cursor: { offset, snapshot } } : {}),
+        }),
+      });
+    };
+    testClient.render(
+      <>
+        {[
+          skill("load 1", "load_skill"),
+          skill("load 2", "load_skill", 134),
+          skill("load 3", "load_skill", 266),
+          skill("resource 1", "read_skill_resource"),
+          skill("resource 2", "read_skill_resource", 81),
+        ].map((tool) => (
+          <ToolGroupMember key={tool.id} tool={tool} expanded={false} onToggleExpand={() => {}} />
+        ))}
+      </>,
+    );
+
+    // getByRole fails unless exactly one collapsed row carries each name.
+    const row = (verb: string, offset?: number) =>
+      screen.getByRole("button", {
+        name: (name) =>
+          name.startsWith(verb) &&
+          name.includes("review-diff") &&
+          (offset === undefined
+            ? !name.includes("from byte")
+            : name.includes(`from byte ${offset}`)),
+      });
+    expect(screen.getAllByRole("button", { name: /^Loaded Skill/ })).toHaveLength(3);
+    for (const offset of [undefined, 134, 266]) row("Loaded Skill", offset);
+    expect(screen.getAllByRole("button", { name: /^Read Skill file/ })).toHaveLength(2);
+    for (const offset of [undefined, 81]) row("Read Skill file", offset);
+  });
+
   it("shows a non-zero exit as a failure rather than as one more grey figure", () => {
     const { container } = member({ name: "shell", fn: "go test ./...", exitCode: 1 });
 

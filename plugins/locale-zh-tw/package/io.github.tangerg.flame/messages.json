@@ -758,6 +758,7 @@
   "tool.meta.lines_other": "{{count}} 行",
   "tool.meta.files_other": "{{count}} 個檔案",
   "tool.meta.exit": "結束碼 {{code}}",
+  "tool.meta.fromByte": "從位元組 {{offset}} 起",
   "tool.state.denied": "已拒絕",
   "tool.state.failed": "失敗",
   "tool.group.read": "讀取 {{count}}",

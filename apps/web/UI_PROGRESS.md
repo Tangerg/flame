@@ -23345,10 +23345,9 @@ input and clicked-reader traversal limits retain their recorded scope.
 | Originality       | Flame workbench, brand and existing controls retained; no decorative rail, slogan or new component system |
 
 Verdict: **Approve for captured argument inspection and the inspected tasks**.
-This is not whole-product award-level acceptance. On an explicit future resume,
-study the compact scope of repeated same-name calls: their full inputs are now available, but their
-collapsed labels remain alike. Use recorded provenance and actual reading tasks;
-do not infer page numbers or create a second cursor/state owner.
+This is not whole-product award-level acceptance. The repeated same-name summary
+follow-up is resolved in **Skill continuation scope in Tool summaries** below;
+its input provenance remains separate from outgoing continuation and page numbers.
 
 The explicit main-sync request is completed before this batch: fetch, independent
 ls-remote and merge agree on
@@ -23469,9 +23468,9 @@ Final source verification preserves all **6,803** original non-Markdown inputs,
 responsive structure remain readable in the inspected native scenes; motion
 verification covers full/off end states, and interaction verification covers the
 actual return tasks above. Flame's existing identity is retained. This is scoped
-approval, not whole-product or award-level acceptance. Next inspect repeated
-same-name Tool summaries and their full input scope using actual provenance;
-do not invent page numbers or a competing state owner.
+approval, not whole-product or award-level acceptance. The next-batch same-name
+summary follow-up is resolved in **Skill continuation scope in Tool summaries**
+below, using the recorded input without inventing page numbers or another owner.
 
 Cleanup unregisters the private bundle, removes **eight** newly created checkout
 and Library targets, and restores all **nine** checkout plus **six** UID Library
@@ -23483,6 +23482,116 @@ and no-symlink checks. The in-memory archive round-trips **86** UTF-8 records an
 `b9df0559df451807e5aa6226818914579fbdf8a304dbc12893efec5a0420d7ab`.
 Post-retirement verification again checks all original source/resource hashes,
 **16** restored absences, preserved cache files and the protected draft.
+
+#### Skill continuation scope in Tool summaries (2026-11-04)
+
+At base `189562ba3c43c9b5e7c32d95a3e461be90997c0f`, native EN renders three
+collapsed `Loaded Skill review-diff` rows and two collapsed
+`Read Skill file review-diff/checklist.md` rows with identical names. Opening the
+middle call exposes incoming byte **134**, while its result advertises outgoing
+**266**. Complete Arguments already works; the missing summary scope makes users
+open same-name calls to locate their captured input.
+
+The reviewed task is reply → distinguish a recorded Skill call → read its result
+and complete Arguments → Find → related file or panel → return → continue the
+unsent draft. This is one complete task, not an all-page acceptance claim. Recon
+uses AGENTS, PROJECT_RULES, DEVELOPMENT, Web/desktop and plugin documentation;
+React 19, Base UI, StyleX, shared controls and semantic tokens remain the stack.
+All six owning better-* skills and the better-interface coverage format guide
+the review. No extra component system, local alignment override or UI state is added.
+
+Read-only ZCode `ToolSummaryRow.tsx` and its actual `ToolLayout.tsx` caller inform
+the separation of compact object identity and supporting details. The selected
+released `tools/skills@v0.58.0/page.go` and `tool.go` establish the actual units:
+load/resource cursors count UTF-8 bytes; listing cursors index entries. Earlier
+reference research retains its stated limits; no reference app is newly operated.
+
+`toolPresentation.ts:74` projects a valid, explicit incoming cursor through the
+existing muted Tool metadata. Only Runtime-classified built-in `load_skill` and
+`read_skill_resource` calls qualify. Lossless argument parsing, a positive safe
+integer and the producer's complete hexadecimal snapshot are required. Missing,
+malformed, incomplete, noncanonical or unsafe input contributes no cue. Initial
+calls remain unchanged; no returned cursor, page ordinal, listing entry offset
+or generic Tool is relabeled as a byte position. Existing metadata order and
+failure priority survive. The existing grouped and standalone consumers share
+this projection. All eight locale catalogs gain only this message; every prior
+catalog byte is preserved. Runtime, SDK, fixtures, native host and lifecycle are unchanged.
+
+| Domain        | Evidence inspected                                                                                                                            | Result                                      |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Accessibility | `ToolGroupMember` unique button-name regression; actual native Tab/Enter, wrapped reader, Find Escape and Dock arrows in EN/ZH/DE             | Clear for inspected controls                |
+| Layout        | Existing summary edges and metadata; native EN14, ZH18/1122 px/200%, DE18/320 px Dock; Arguments and return to Composer                       | Clear for inspected tasks                   |
+| Writing       | `toolPresentation.ts:74`, captured input versus next cursor, selected producer contract and eight locale catalogs                             | One MEDIUM finding resolved below           |
+| Typography    | Existing object monospace, muted metadata, readable wrapped JSON and full snapshot tail in the inspected native scenes                        | Clear within inspected font/zoom conditions |
+| Colors        | Existing metadata tokens, light Orange, dark custom blue and light custom purple; visible native focus; no new quantitative contrast sampling | No color change; inspected states clear     |
+| UI            | Existing disclosures, wrap, Find, file presentation, tab navigation and draft continuation under full/off motion end states                   | Clear for inspected interactions            |
+
+| Severity | Domain  | Location                                                                      | Before                                                        | After                                                                       | Why                                                                                               |
+| -------- | ------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| MEDIUM   | Writing | `toolPresentation.ts:74`; existing `ToolGroupMember` and `ToolCard` consumers | Repeated load/resource summaries have indistinguishable names | Existing metadata identifies recorded input, e.g. `from byte 134`; resolved | Scope becomes understandable before expansion, including its accessible name, without a new owner |
+
+Two bounded Read/Edit-only Claude Code CLI tasks implement the projection/tests
+and seven packaged locales; both exit successfully without permission denials.
+Their actual diff is reviewed independently. The first task's nonexistent locale
+`.ts` paths are corrected to the real plugin catalogs in the second task. A
+temporary `locale.py` runner shadows Python's standard module before CLI startup;
+it is renamed and contributes no implementation or verification evidence. A
+manual French apostrophe correction is the only subsequent message edit.
+
+Verification passes the focused baseline **3 files / 41 tests**. Restoring only
+the original presentation owner makes the regression suite fail **3 tests**
+while **55** pass; the candidate is restored byte-for-byte. The accepted focused
+command covers `toolPresentation.test.ts`, `toolCardModel.test.ts` and
+`ToolGroupMember.test.tsx`: **3 files / 58 tests**, **2.657 s**. Full
+`npm run test --workspace @flame/web -- --project frontend` passes
+**424 files / 4,514 tests** in **87.065 s**. The serial acceptance matrix runs
+**34** gates: generation, plugin type/lint/i18n, all Web checks and
+`make check-native` pass; native test/vet/build takes **21.708 s**. The sole
+failed gate is the known plugin format check on unchanged
+`plugins/feedback/component/component.tsx` and `component.test.tsx`.
+Those files are neither changed nor formatted. Generated installed ESM stays
+identical across all **22** resources. The current candidate asset build passes
+in **2.419 s**. No browser visual suite or performance benchmark is run.
+
+One signed private Wails **v3.0.0** bundle uses production chrome, services and
+native zoom with current components and canonical fixture providers. Only the
+private assets, identity and initial URL differ. No DOM observer, browser driver
+or live Runtime is introduced; its private endpoint has no listener. Native
+tasks run serially, each reaching normal Cmd+Q and terminal **exit 0**:
+
+| Task                                    | Observed result                                                                                                                                                                                                                                                                              |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Original EN14/light/Orange/full motion  | Identical collapsed names reproduce; middle Arguments identifies incoming **134** separately from result **266**; the original unsent draft continues.                                                                                                                                       |
+| Candidate EN14/light/Orange/full motion | Distinct **134/266/81** cues align with the existing right metadata edge. Five actual native Tabs reach middle Arguments; Enter/wrap and `snapshot` Find expose complete input. Manual README Preview/full-width/Close preserves query, disclosure and cue; the exact draft gains ` Ready.`. |
+| Candidate ZH18/dark/blue/motion off     | Physically narrowed **1122 px** window at native **200%** shows resource **81** and its complete path. Keyboard entry/End reveals full snapshot and both braces. With `captured` Find, full-width README reading/Close preserves the input and cue. The Chinese draft gains ` 已核对。`.     |
+| Candidate DE18/light/purple/motion off  | Keyboard splitter Home selects **320 px**. Final Skill **266** opens complete wrapped input, with no outgoing next cursor in the result. `evidence` Find survives native Files → Trajectory → Files arrows. Scoped Escape closes Find; the exact draft gains ` Geprüft.`.                    |
+
+Manual Files presentation owns its return; it is not evidence of Tool-origin
+focus restoration. No Send, replay, file write, Save or picker is invoked.
+Malformed/empty input has automated coverage, not a native state matrix.
+VoiceOver, OS IME, RTL, native clipboard bytes, other-platform GUI, live producer
+paging and a 320 px whole-window viewport remain unverified. Motion evidence is
+full/off end states, not timing validation. Existing Flame identity and all eight
+Goal CHECK dimensions retain these scoped observations; whole-product and
+award-level acceptance remain unproven.
+
+Verdict: **Approve for recorded Skill summary scope and the inspected tasks**.
+Both earlier repeated-name follow-ups are resolved. Next inspect other recorded
+Tool summaries only where an actual reading task establishes missing scope or
+misleading units; preserve input/result provenance and the producer's ownership.
+
+Final verification freezes all **6,803** non-Markdown inputs, with exactly
+**11** owned changes, **22** installed resources, **333** Web assets, **four**
+bundle files and **21** private host inputs. Cleanup unregisters the bundle,
+removes **11** newly created checkout/Library targets and restores **nine**
+checkout plus **six** UID Library absence baselines. Both pre-existing cache
+files, all four read-only references and the protected **123-byte** draft retain
+their exact hashes. After device/inode/birth/UID and no-symlink checks, the exact
+private root `/private/tmp/flame-tool-scope-LOjyfR` is absent. The in-memory archive
+round-trips **169** UTF-8 records and **32** screenshot digests; gzip SHA-256 is
+`65fb62ca63066e08b5351ead9c6e5b8cf2f2637ad13564782f8bacb1a31875d8`.
+Post-retirement verification checks accepted source/resource/reference hashes,
+all **16** absences, preserved caches and the protected draft.
 
 ### Denied Tool argument reading
 

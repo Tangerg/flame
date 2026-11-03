@@ -794,6 +794,7 @@
   "tool.meta.files_many": "{{count}} archivos",
   "tool.meta.files_other": "{{count}} archivos",
   "tool.meta.exit": "salida {{code}}",
+  "tool.meta.fromByte": "desde el byte {{offset}}",
   "tool.state.denied": "denegado",
   "tool.state.failed": "error",
   "tool.group.read": "{{count}} lectura",

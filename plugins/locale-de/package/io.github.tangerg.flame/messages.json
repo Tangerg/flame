@@ -776,6 +776,7 @@
   "tool.meta.files_one": "{{count}} Datei",
   "tool.meta.files_other": "{{count}} Dateien",
   "tool.meta.exit": "Exit {{code}}",
+  "tool.meta.fromByte": "ab Byte {{offset}}",
   "tool.state.denied": "abgelehnt",
   "tool.state.failed": "fehlgeschlagen",
   "tool.group.read": "{{count}} gelesen",

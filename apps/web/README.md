@@ -545,6 +545,10 @@ Result extensions replace only the result body,
 so the host's secondary Arguments disclosure survives enhanced presentation,
 failure and withdrawal without losing its open state. Copy arguments uses the
 same complete capture; no Tool is replayed to inspect it.
+Skill text-page summaries show a valid explicit incoming byte offset through the
+existing Tool metadata. The cue comes only from captured built-in load/resource
+arguments; it never substitutes a returned cursor, infers a page number or adds
+an initial offset on omission. Skill listings keep their separate entry units.
 Tool and contribution updates keep one named, programmatically focusable result
 context. When the same visible Tool replaces its focused reader or
 control, that surviving context receives focus only if the old target was removed

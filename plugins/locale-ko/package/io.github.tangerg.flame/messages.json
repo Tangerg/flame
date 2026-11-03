@@ -758,6 +758,7 @@
   "tool.meta.lines_other": "{{count}}줄",
   "tool.meta.files_other": "파일 {{count}}개",
   "tool.meta.exit": "종료 코드 {{code}}",
+  "tool.meta.fromByte": "바이트 {{offset}}부터",
   "tool.state.denied": "거부됨",
   "tool.state.failed": "실패",
   "tool.group.read": "읽기 {{count}}",

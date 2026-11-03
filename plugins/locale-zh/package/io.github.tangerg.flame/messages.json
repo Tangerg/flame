@@ -758,6 +758,7 @@
   "tool.meta.lines_other": "{{count}} 行",
   "tool.meta.files_other": "{{count}} 个文件",
   "tool.meta.exit": "退出码 {{code}}",
+  "tool.meta.fromByte": "从字节 {{offset}} 起",
   "tool.state.denied": "已拒绝",
   "tool.state.failed": "失败",
   "tool.group.read": "读取 {{count}}",

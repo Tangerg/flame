@@ -70,7 +70,24 @@ export function toolMetaItems(t: Translate, tool: ToolCall): ToolMetaItem[] {
   if (tool.durationMillis != null && tool.durationMillis >= 1000) {
     items.push({ id: "duration", label: fmtDuration(tool.durationMillis), tone: "muted" });
   }
+  const offset = skillTextOffset(tool);
+  if (offset !== undefined) {
+    items.push({ id: "offset", label: t("tool.meta.fromByte", { offset }), tone: "muted" });
+  }
   return items;
+}
+
+const SKILL_SNAPSHOT = /^[0-9a-f]{64}$/i;
+
+// Only Skill text pages count bytes; list_skills' cursor offset indexes entries.
+function skillTextOffset(tool: ToolCall): number | undefined {
+  const name = builtinToolName(tool);
+  if (name !== "load_skill" && name !== "read_skill_resource") return undefined;
+  const cursor = parseToolArgs(tool.args)?.cursor;
+  if (cursor === null || typeof cursor !== "object" || Array.isArray(cursor)) return undefined;
+  const { offset, snapshot } = cursor as Record<string, unknown>;
+  if (typeof offset !== "number" || !Number.isSafeInteger(offset) || offset <= 0) return undefined;
+  return typeof snapshot === "string" && SKILL_SNAPSHOT.test(snapshot) ? offset : undefined;
 }
 
 export function toolDiffStat(tool: ToolCall): Pick<ToolCall, "added" | "removed"> | undefined {

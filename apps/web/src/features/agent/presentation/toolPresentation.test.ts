@@ -174,6 +174,81 @@ describe("toolPresentation", () => {
     expect(toolMetaItems(t, tool({}))).toEqual([]);
   });
 
+  describe("Skill page offset", () => {
+    const snapshot = "0f".repeat(32);
+    const skillArgs = (cursor?: string) =>
+      cursor === undefined ? `{"name":"review-diff"}` : `{"name":"review-diff","cursor":${cursor}}`;
+    const page = (offset: number) =>
+      JSON.stringify({ content: "…", next_cursor: { offset, snapshot } });
+
+    it("names the incoming byte offset after duration, never the result's next cursor", () => {
+      const continued = tool({
+        name: "load_skill",
+        fn: "review-diff",
+        args: skillArgs(`{"offset":134,"snapshot":"${snapshot}"}`),
+        result: page(266),
+        durationMillis: 1200,
+      });
+      expect(toolMetaItems(t, continued)).toEqual([
+        { id: "duration", label: "1.2s", tone: "muted" },
+        { id: "offset", label: "from byte 134", tone: "muted" },
+      ]);
+    });
+
+    it("leaves a call that starts a page sequence as it was", () => {
+      const initial = tool({
+        name: "load_skill",
+        fn: "review-diff",
+        args: skillArgs(),
+        result: page(134),
+      });
+      expect(toolMetaItems(t, initial)).toEqual([]);
+    });
+
+    it("names a continued Skill resource read", () => {
+      const resource = tool({
+        name: "read_skill_resource",
+        fn: "review-diff/checklist.md",
+        args: JSON.stringify({
+          name: "review-diff",
+          path: "checklist.md",
+          cursor: { offset: 81, snapshot },
+        }),
+      });
+      expect(toolMetaItems(t, resource)).toEqual([
+        { id: "offset", label: "from byte 81", tone: "muted" },
+      ]);
+    });
+
+    it.each([
+      ["malformed arguments", `{"name":"review-diff","cursor":{"offset":134`],
+      ["a null cursor", skillArgs("null")],
+      ["an array cursor", skillArgs(`[134,"${snapshot}"]`)],
+      ["a missing snapshot", skillArgs(`{"offset":134}`)],
+      ["a short snapshot", skillArgs(`{"offset":134,"snapshot":"${snapshot.slice(1)}"}`)],
+      ["a non-hex snapshot", skillArgs(`{"offset":134,"snapshot":"${"zz".repeat(32)}"}`)],
+      ["a zero offset", skillArgs(`{"offset":0,"snapshot":"${snapshot}"}`)],
+      ["a negative offset", skillArgs(`{"offset":-134,"snapshot":"${snapshot}"}`)],
+      ["a fractional offset", skillArgs(`{"offset":13.4,"snapshot":"${snapshot}"}`)],
+      ["a non-canonical offset", skillArgs(`{"offset":134.0,"snapshot":"${snapshot}"}`)],
+      ["an unsafe offset", skillArgs(`{"offset":9007199254740993,"snapshot":"${snapshot}"}`)],
+      ["a string offset", skillArgs(`{"offset":"134","snapshot":"${snapshot}"}`)],
+    ])("adds no offset for %s", (_, args) => {
+      expect(toolMetaItems(t, tool({ name: "load_skill", fn: "review-diff", args }))).toEqual([]);
+    });
+
+    it("keeps byte wording to the Runtime's Skill text pages", () => {
+      const args = JSON.stringify({ name: "review-diff", cursor: { offset: 134, snapshot } });
+      expect(toolMetaItems(t, tool({ name: "list_skills", fn: "list_skills", args }))).toEqual([]);
+      expect(
+        toolMetaItems(t, tool({ name: "load_skill", fn: "load_skill", category: undefined, args })),
+      ).toEqual([]);
+      expect(
+        toolMetaItems(t, tool({ name: "acme_load_skill", fn: "acme_load_skill", args })),
+      ).toEqual([]);
+    });
+  });
+
   it("takes read-only from the runtime's safety class", () => {
     expect(isReadOnlyTool(tool({ name: "read", safetyClass: "safe" }))).toBe(true);
     expect(isReadOnlyTool(tool({ name: "apply_patch", safetyClass: "write" }))).toBe(false);
