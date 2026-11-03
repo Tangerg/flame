@@ -14,6 +14,7 @@ import {
   PanelHeader,
   PanelSection,
   PanelFooter,
+  FormActions,
   FormRow,
   FormSection,
   ActionMenu,
@@ -396,17 +397,27 @@ export function Schedules({ context }: { context: ComponentContext }) {
                 />
               </FormField>
             </FormRow>
-            {currentModels?.error && (
-              <p role="alert">
-                {t("models.error", { error: currentModels.error })}
-              </p>
-            )}
-            <Button
-              disabled={busy || currentModels?.loading}
-              onClick={() => setModelRefresh((value) => value + 1)}
+            <FormActions
+              label={t("models.refresh")}
+              feedback={
+                currentModels?.error && (
+                  <p role="alert">
+                    {t("models.error", { error: currentModels.error })}
+                  </p>
+                )
+              }
             >
-              {t("models.refresh")}
-            </Button>
+              <Button
+                pending={currentModels?.loading && !busy}
+                aria-busy={currentModels?.loading}
+                disabled={busy || currentModels?.loading}
+                onClick={() => setModelRefresh((value) => value + 1)}
+              >
+                {currentModels?.loading
+                  ? t("models.refreshing")
+                  : t("models.refresh")}
+              </Button>
+            </FormActions>
           </FormSection>
         </ModalDialog>
       )}

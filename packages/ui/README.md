@@ -524,8 +524,13 @@ visible; consumers select its tone from the product owner's state. Neutral label
 retain muted ink, while icons, links and actions retain the ordinary semantic ink.
 
 `ModalDialog` owns bounded modal geometry, accessible titles and descriptions,
-header and footer alignment, and internal body scrolling. Its portal establishes
-the modal stacking context; nested shared menus and selects sit above its local
+header and footer alignment, and internal body scrolling. Its body supplies the
+reading frame for its children: a changed
+`FormActions.feedback` whose group still owns focus reveals its fitting unit, or
+the focused control when the unit is taller, with the nearest native scroll and
+without moving focus or editing state. Header and footer stay outside that frame.
+Its portal establishes the modal stacking context; nested shared menus and
+selects sit above its local
 panel and scrim without raising unrelated page popups. Its optional submit
 handler makes the popup itself a native form; installed component content keeps
 its own form when no handler is supplied. Desktop dialogs supply their existing

@@ -52,6 +52,7 @@ export const zhTW: Record<string, string> = {
   "reasoning.unavailable": "{{effort}}（無法使用）",
   "models.error": "無法讀取模型選項：{{error}}",
   "models.refresh": "重新整理模型選項",
+  "models.refreshing": "正在重新整理模型選項…",
   cancel: "取消",
   "delete.title": "刪除 {{name}}？",
   "delete.description": "後續觸發將停止。已擷取的工作和已接受的 Run 將保留。",

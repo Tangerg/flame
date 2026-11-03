@@ -4,6 +4,7 @@ import { X } from "@flame/icons/react";
 import {
   use,
   useMemo,
+  useRef,
   type ComponentProps,
   type FormEventHandler,
   type ReactNode,
@@ -14,6 +15,8 @@ import { IconButton } from "./icon-button";
 import { IconMark } from "./icon-mark";
 import { isImeKey } from "./keyboard";
 import { MODAL_SCRIM, modalPanel } from "./floating-surface";
+import { PanelLayoutContext } from "./panel-layout";
+import { readingUnitFor } from "./reading-unit";
 import { color, layout, surface, type, weight } from "./tokens.stylex";
 
 const styles = stylex.create({
@@ -122,6 +125,44 @@ export function ModalDialog({
     () => ({ visible: open, fallbackFocus: owner.fallbackFocus }),
     [open, owner.fallbackFocus],
   );
+  const bodyRef = useRef<HTMLDivElement>(null);
+  // The portal's React parent may be a page Panel whose viewport does not
+  // contain this body, so the dialog answers for its own scroll frame.
+  const bodyLayout = useMemo(
+    () => ({
+      controlsRef: null,
+      keepBodyFocusVisible(target: Element | null) {
+        const body = bodyRef.current;
+        if (!body?.isConnected || !target || !body.contains(target)) return;
+        const bounds = body.getBoundingClientRect();
+        const style = getComputedStyle(body);
+        const top = Math.max(
+          bounds.top + (Number.parseFloat(style.scrollPaddingBlockStart) || 0),
+          0,
+        );
+        const bottom = Math.min(
+          bounds.bottom - (Number.parseFloat(style.scrollPaddingBlockEnd) || 0),
+          body.ownerDocument.documentElement.clientHeight,
+        );
+        const height = bottom - top;
+        if (!(height > 0)) return;
+        const unit = readingUnitFor(target, body, (candidate) => {
+          const size = candidate.getBoundingClientRect().height;
+          return size > 0 && size <= height + 0.5;
+        });
+        const shown = unit.getBoundingClientRect();
+        // Native page zoom reports fractional CSS pixels at a rounded scroll offset.
+        const visible =
+          shown.top >= top - 0.5 &&
+          (shown.height > height
+            ? shown.top < bottom
+            : shown.bottom <= bottom + 0.5);
+        if (!visible)
+          unit.scrollIntoView({ block: "nearest", inline: "nearest" });
+      },
+    }),
+    [],
+  );
   return (
     <Dialog.Root
       open={open}
@@ -190,7 +231,11 @@ export function ModalDialog({
               )}
             </header>
             {(description || children) && (
-              <div data-slot="dialog-body" {...stylex.props(styles.body)}>
+              <div
+                ref={bodyRef}
+                data-slot="dialog-body"
+                {...stylex.props(styles.body)}
+              >
                 {description && (
                   <Dialog.Description
                     {...stylex.props(styles.description, type.uiMd)}
@@ -198,7 +243,9 @@ export function ModalDialog({
                     {description}
                   </Dialog.Description>
                 )}
-                {children}
+                <PanelLayoutContext value={bodyLayout}>
+                  {children}
+                </PanelLayoutContext>
               </div>
             )}
             {(footer || auxiliaryAction) && (

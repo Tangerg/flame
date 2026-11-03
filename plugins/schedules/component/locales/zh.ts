@@ -52,6 +52,7 @@ export const zh: Record<string, string> = {
   "reasoning.unavailable": "{{effort}}（不可用）",
   "models.error": "无法读取模型选项：{{error}}",
   "models.refresh": "刷新模型选项",
+  "models.refreshing": "正在刷新模型选项…",
   cancel: "取消",
   "delete.title": "删除 {{name}}？",
   "delete.description": "后续触发将停止。已捕获的工作和已接受的 Run 将保留。",

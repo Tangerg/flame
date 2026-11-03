@@ -7,14 +7,25 @@ import {
 } from "@testing-library/react";
 import { useRef, useState, type ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ContentVisibility, ModalDialog, Select } from "../dist/index.js";
+import {
+  ContentVisibility,
+  FormActions,
+  ModalDialog,
+  Panel,
+  Select,
+} from "../dist/index.js";
 
 type FinalFocus = ComponentProps<typeof ModalDialog>["finalFocus"];
 
+let rectangles: Map<Element, DOMRect>;
+
 beforeEach(() => {
+  rectangles = new Map();
   // Base UI's clipping signal needs visible anchor geometry in layout-free Happy DOM.
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
     function (this: HTMLElement) {
+      const known = rectangles.get(this);
+      if (known) return known;
       if (this.closest("[hidden]")) return new DOMRect();
       return this === document.documentElement || this === document.body
         ? new DOMRect(0, 0, 1024, 768)
@@ -276,5 +287,161 @@ describe("ModalDialog over a hidden owner", () => {
     pressEscape();
 
     expect(screen.getByRole("dialog")).toBe(scene.dialog);
+  });
+});
+
+function ModelEditor({ result }: { result: string | null }) {
+  const [title, setTitle] = useState("");
+  return (
+    <Panel label="Schedules">
+      <p>Saved schedules</p>
+      <ModalDialog
+        open
+        onOpenChange={() => {}}
+        title="Edit schedule"
+        footer={<button>Save</button>}
+      >
+        <input
+          aria-label="Title"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+        />
+        <FormActions
+          label="Refresh model choices"
+          feedback={result && <p role="alert">{result}</p>}
+        >
+          <button type="button">Refresh</button>
+        </FormActions>
+      </ModalDialog>
+    </Panel>
+  );
+}
+
+describe("ModalDialog body results", () => {
+  const nativeScroll = Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    "scrollIntoView",
+  );
+  let revealed: Element[];
+
+  beforeEach(() => {
+    revealed = [];
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value(this: HTMLElement) {
+        revealed.push(this);
+      },
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (nativeScroll)
+      Object.defineProperty(
+        HTMLElement.prototype,
+        "scrollIntoView",
+        nativeScroll,
+      );
+    else Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
+  });
+
+  async function openEditor() {
+    const view = render(<ModelEditor result={null} />);
+    const dialog = await screen.findByRole("dialog");
+    await vi.waitFor(() =>
+      expect(dialog.contains(document.activeElement)).toBe(true),
+    );
+    const title = screen.getByRole<HTMLInputElement>("textbox", {
+      name: "Title",
+    });
+    fireEvent.change(title, { target: { value: "Nightly review" } });
+    const group = screen.getByRole("group", { name: "Refresh model choices" });
+    const refresh = screen.getByRole("button", { name: "Refresh" });
+    const body = dialog.querySelector<HTMLElement>(
+      '[data-slot="dialog-body"]',
+    )!;
+    rectangles.set(body, new DOMRect(0, 100, 600, 300));
+    rectangles.set(group, new DOMRect(0, 300, 600, 40));
+    rectangles.set(refresh, new DOMRect(480, 300, 100, 32));
+    act(() => refresh.focus());
+    revealed.length = 0;
+    return {
+      body,
+      title,
+      group,
+      refresh,
+      settle: (result: string) =>
+        view.rerender(<ModelEditor result={result} />),
+    };
+  }
+
+  it("reveals a delayed and a replaced result with the still-focused action", async () => {
+    const { title, group, refresh, settle } = await openEditor();
+    rectangles.set(group, new DOMRect(0, 300, 600, 160));
+    settle("The model catalog is unavailable.");
+    expect(revealed).toEqual([group]);
+    expect(group.contains(screen.getByRole("alert"))).toBe(true);
+    expect(document.activeElement).toBe(refresh);
+
+    revealed.length = 0;
+    rectangles.set(group, new DOMRect(0, 200, 600, 240));
+    rectangles.set(refresh, new DOMRect(480, 200, 100, 32));
+    settle("The provider refused the catalog read. Check its credentials.");
+    expect(revealed).toEqual([group]);
+    expect(document.activeElement).toBe(refresh);
+    expect(title.value).toBe("Nightly review");
+  });
+
+  it("keeps the focused action visible when its result exceeds the body", async () => {
+    const { group, refresh, settle } = await openEditor();
+    rectangles.set(group, new DOMRect(0, 390, 600, 420));
+    rectangles.set(refresh, new DOMRect(480, 390, 100, 32));
+    settle("The model catalog is unavailable.");
+    expect(revealed).toEqual([refresh]);
+    expect(document.activeElement).toBe(refresh);
+  });
+
+  it("leaves an already visible result still", async () => {
+    const { group, refresh, settle } = await openEditor();
+    rectangles.set(group, new DOMRect(0, 300.25, 600, 100.2));
+    settle("The model catalog is unavailable.");
+    expect(group.contains(screen.getByRole("alert"))).toBe(true);
+    expect(revealed).toEqual([]);
+    expect(document.activeElement).toBe(refresh);
+  });
+
+  it("reserves the dialog body scroll padding when choosing a fitting result", async () => {
+    const { body, group, refresh, settle } = await openEditor();
+    body.style.scrollPaddingBlockStart = "12px";
+    body.style.scrollPaddingBlockEnd = "12px";
+    rectangles.set(group, new DOMRect(0, 370, 600, 280));
+    rectangles.set(refresh, new DOMRect(480, 370, 100, 32));
+    settle("The model catalog is unavailable.");
+    expect(revealed).toEqual([refresh]);
+    expect(document.activeElement).toBe(refresh);
+  });
+
+  it("leaves a later field focus, draft and selection alone when the result arrives", async () => {
+    const { title, group, settle } = await openEditor();
+    act(() => title.focus());
+    title.setSelectionRange(2, 7, "backward");
+    rectangles.set(group, new DOMRect(0, 300, 600, 160));
+    settle("The model catalog is unavailable.");
+    expect(revealed).toEqual([]);
+    expect(document.activeElement).toBe(title);
+    expect(title.value).toBe("Nightly review");
+    expect([
+      title.selectionStart,
+      title.selectionEnd,
+      title.selectionDirection,
+    ]).toEqual([2, 7, "backward"]);
   });
 });

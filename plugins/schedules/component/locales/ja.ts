@@ -55,6 +55,7 @@ export const ja: Record<string, string> = {
   "reasoning.unavailable": "{{effort}}（利用不可）",
   "models.error": "モデルの選択肢を読み込めませんでした：{{error}}",
   "models.refresh": "モデルの選択肢を更新",
+  "models.refreshing": "モデルの選択肢を更新中…",
   cancel: "キャンセル",
   "delete.title": "{{name}} を削除しますか？",
   "delete.description":

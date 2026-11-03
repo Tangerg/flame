@@ -217,6 +217,11 @@ remain visible while successful catalogs stay selectable; a failed refresh retai
 that Provider's last accepted catalog within the captured component context. A
 refresh never replaces a saved selection. Missing and deprecated selections retain
 their exact Provider/Model as labeled items until the user chooses another model.
+Refresh model choices names its wait and keeps keyboard focus through a read using
+the shared pending control; settlement retains the draft, selection and later focus.
+Its read failure follows that same control in one named action group, so the
+dialog body reveals the result beside a still-focused Refresh above the
+persistent footer; focus that moved elsewhere is left alone.
 
 Add/edit is a bounded dialog with scrolling field groups and persistent task
 identity, Cancel and Save. Title and instructions lead directly into timing and

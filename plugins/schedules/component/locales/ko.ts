@@ -55,6 +55,7 @@ export const ko: Record<string, string> = {
   "reasoning.unavailable": "{{effort}} (사용할 수 없음)",
   "models.error": "모델 선택 항목을 읽을 수 없습니다: {{error}}",
   "models.refresh": "모델 선택 항목 새로 고침",
+  "models.refreshing": "모델 선택 항목을 새로 고치는 중…",
   cancel: "취소",
   "delete.title": "{{name}}을(를) 삭제할까요?",
   "delete.description":

@@ -56,6 +56,7 @@ export const es: Record<string, string> = {
   "reasoning.unavailable": "{{effort}} (no disponible)",
   "models.error": "No se pudieron leer las opciones de modelo: {{error}}",
   "models.refresh": "Actualizar opciones de modelo",
+  "models.refreshing": "Actualizando las opciones de modelo…",
   cancel: "Cancelar",
   "delete.title": "¿Eliminar {{name}}?",
   "delete.description":

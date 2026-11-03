@@ -9214,6 +9214,138 @@ The observed Deliverables catalog-to-inspector discontinuity is subsequently
 qualified under **Catalog opening and the revision reading entry (2026-11-03)**.
 The shared alignment repair remains with the four owners above.
 
+### Schedules model-choice reading and dialog feedback (2026-11-04)
+
+Qualified from synchronized main `0ef9af9a5`. The original native path is
+conversation → Schedules → Templates → Hourly progress check → model choices →
+Refresh → known read refusal → Cancel → continue the original unsent message.
+The original Refresh keeps its ready label while becoming natively disabled;
+keyboard focus falls to the HTML document. The draft and captured Templates
+return already survive and are preserved.
+
+The first candidate repairs that pending control, then its German 200% native
+inspection exposes a second defect: inserting the long refusal before the
+retained Refresh pushes the focused button completely behind the persistent
+footer. A second stable capture confirms the clipping. The preliminary English,
+Chinese and German runs are excluded from final acceptance; all three repeat on
+the corrected shared-body implementation.
+
+`plugins/schedules/component/component.tsx` renders the existing model-read
+owner's waiting name in eight locales and uses the shared pending Button.
+`pending={currentModels?.loading && !busy}` preserves the independent command
+disablement. The existing refresh counter and read lifetime remain unchanged.
+The same Button and its unchanged failure text now belong to one named
+`FormActions.feedback` group, with the result following the action.
+
+`packages/ui/src/modal-dialog.tsx` supplies its existing body div as the reading
+owner for children through `PanelLayoutContext`. The body's own bounds, window
+intersection and scroll padding select the fitting `readingUnitFor` context or
+focused-control fallback. A clipped unit uses the nearest native scroll. The
+existing FormActions feedback effect requests this only while its group retains
+focus. The page Panel behind the portal remains responsible for its own content.
+Header/footer geometry and Base UI entry, dismissal, nesting and focus return
+retain their existing owners. No observer, listener, refocus effect, additional
+query, asynchronous state, public API, Runtime or persistence change is added.
+
+Two bounded Read/Edit-only Claude CLI invocations take **205.372 / 184.712 s**,
+report **44 / 27 turns** and no permission denials. Root reviews the actual diff,
+adds the body's scroll-padding budget and its boundary regression, and owns all
+checks and native qualification. Five shared regressions cover delayed/replaced
+feedback under an outer Panel, oversized feedback, already visible fractional
+geometry, scroll padding and later field focus/value/selection. Two Schedules
+flows cover retained template fields/model, refused reads/retry, repeated
+activation, later editing, pending Cancel and retired completion.
+
+The six better-interface owner skills guide the review. Better-layout and
+better-accessibility address cohesive result visibility and WCAG 2.4.11; writing
+names the waiting read; typography checks 14/18px and translated wrapping; color
+and UI review retain the established tokens, control shapes and motion policy.
+Read-only ZCode `DeleteAllArchivedTasksButton.tsx` supplies waiting-name and busy
+semantics evidence. Its destructive operation policy is outside this task.
+Existing HeroUI, Radix and Ace composition research remains applicable; no new
+reference-library implementation or global visual-award claim is introduced.
+
+| Severity | Location                                          | Before                                                                                | After                                                                                   | Why                                                                   |
+| -------- | ------------------------------------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| HIGH     | Schedules model feedback; shared ModalDialog body | German 200% refusal fully hides the still-focused Refresh behind the footer           | One action/result unit uses the dialog's own bounded reading frame                      | Keep keyboard focus and its recovery action visible at supported zoom |
+| MEDIUM   | Schedules model refresh                           | Ready label and native disablement discard the user's keyboard position during a read | Localized waiting name and the existing focusable pending guard retain the same control | Preserve read/retry continuity and block repeated activation          |
+
+| Final verification            | Actual result                                                                                                                            |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Focused Schedules regressions | **2 files / 26 tests pass**, 3.095 s                                                                                                     |
+| Complete frontend project     | **424 files / 4,538 tests pass**, command 88.452 s                                                                                       |
+| Complete shared UI check      | Build, typecheck, lint, formatting, **13 files / 229 tests**, and packed offline consumer pass, 8.739 s                                  |
+| Web gates                     | All **25** non-Runtime gates pass, including exact installed resources and portable bundle/module checks                                 |
+| Plugin checks                 | ESM generation, typecheck, lint and eight-locale catalog validation pass                                                                 |
+| Native gate                   | `make check-native` passes, including supported Desktop Go checks and Wails build, 21.268 s                                              |
+| Original Schedules counter    | Restoring only the original component gives **2 failures / 24 passes**, 2.624 s; candidate restored exactly                              |
+| Original dialog counter       | Restoring and rebuilding only the original ModalDialog gives **3 failures / 11 passes**, 2.021 s; candidate restored and rebuilt exactly |
+
+All **28 final serial gates** pass after the clipping correction. The earlier
+passing gate set is retained as preliminary evidence. The focused original modal
+baseline passes **9 tests**; the corrected modal file passes **14 tests**.
+Owned formatting and `git diff --check` pass. Plugin-wide formatting, Runtime/CLI
+and plugin backend suites, browser visual suites and performance benchmarks are
+not repeated; the previously recorded unrelated Feedback formatting issue is
+outside this diff.
+
+Actual final Wails tasks use production installed Schedules ESM and shared UI:
+
+- **English, light, 14px, Flame Orange, full motion:** keyboard Home sets the Dock
+  divider to **320px**. Query `nightly` remains. A template chooses
+  `openai / GPT-5.6 Sol`; repeated Return during the held read retains one focused
+  waiting action. Refusal keeps all fields and the actual rendered accepted-model
+  popup. Retry succeeds. A later read preserves continued Title editing and
+  focus; another pending read is canceled back to Templates. After a further
+  **15 seconds**, late settlement leaves that return and query intact. Fresh Add
+  is ready and Cancel returns to Add. The original Composer message continues.
+- **Chinese, dark, 18px, custom `#4E80FF`, motion off:** actual native **200%**
+  and an edge-resized **2244 × 1798** capture exercise about **561 CSS px** of
+  window reading width. The template, waiting action, full refused result,
+  successful retry, captured template return and continued Chinese draft pass.
+- **German, light, 18px, custom `#8B5CF6`, motion off:** the same native zoom and
+  resized window repeat the previously clipped path. Both the full refusal and
+  focused Refresh are visible above Cancel/Save. The two-line default Model and
+  one-line Reasoning control retain their top alignment. Retry, template return
+  and continued German draft pass.
+
+The final English/Chinese/German processes quit normally with **0 / 0 / 0** in
+**267.454 / 189.549 / 138.174 s**. The original English baseline also exits 0.
+Three earlier candidates are excluded. Native interaction uses screenshots and
+AX through Sky, without DOM access or an injected observer. Isolated model reads
+delay 12 seconds, refuse the first refresh in the failed case and accept later
+reads. The exact captured Schedules binding accepts only its canonical list read;
+business writes and manual Runs are refused. No provider account, live Runtime,
+Schedule save/delete/run, installation, database or Send is exercised.
+
+The eight award CHECK dimensions are reviewed within this task: typography,
+whitespace and hierarchy remain readable through translated feedback; color
+retains Orange and custom light/dark accents; micro-interaction and responsive
+behavior improve through the qualified reads and 200% paths. Motion retains its
+existing policy without timing measurements; originality retains Flame's shared
+visual vocabulary. VoiceOver, physical IME, RTL, other platforms, new contrast
+measurements, every other ModalDialog's asynchronous states and whole-product
+award-level acceptance remain unverified. This batch does not replace the prior
+all-page inventory or claim every state of every page was inspected anew.
+
+Final guards freeze **6,804 source/test/config inputs**, **22 installed resources**
+and one read-only reference. Exactly **13 non-Markdown inputs** change; only the
+Schedules resource changes among the 22 ESM resources. Native compiled maps
+contain **333 served files, 4 app files and 21 private host-source files**. The
+private app is unregistered, all seven owned native processes are absent and the
+private inactive endpoint has no listener. Nine initially absent checkout output
+roots and six Library roots are restored. The exact private qualification root is
+removed after ownership guards, giving **16 verified absences**; two pre-existing
+UI cache files and the protected **123-byte** interrupted draft remain exact.
+The in-memory evidence archive retains **308 text records / 65 capture digests**,
+with gzip round-trip SHA-256
+`a16e56a7bd1a50b60a5a6b5d1cd19cf51831572b8f01908b4902d7c68551afea`.
+
+No data migration is required. Existing admitted installations still use their
+captured package digest until the normal explicit package update. Next continue
+the maintained page inventory with an independently observed complete task;
+require a reproduced gap before choosing another implementation batch.
+
 ### Schedules filter arrival and retained reading
 
 This feedback G02/G04 task uses frozen base

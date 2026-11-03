@@ -9,10 +9,10 @@ prepareTestClient(() => {
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { type ComponentContext } from "@flame/component-sdk";
-import { createFlameClient } from "@flame/runtime-client";
+import { createFlameClient, type FlameClient } from "@flame/runtime-client";
 import { Schedules } from "../../../plugins/schedules/component/component";
 import { RUNTIME_AGENT_SESSION_SNAPSHOTS } from "./agentSessionSnapshots";
 import { VISUAL_CAPABILITIES, VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
@@ -70,6 +70,32 @@ async function mountSchedules() {
   await screen.findByRole("heading", { name: VISUAL_SCHEDULES_PAGE.Rows[0]!.Title });
   await waitFor(() => expect(screen.queryByText("Reading schedules…")).toBeNull());
   return { call, runtime };
+}
+
+function holdModelReads(runtime: FlameClient) {
+  const original = runtime.providers.list.bind(runtime.providers);
+  const catalogue = vi.spyOn(runtime.providers, "list");
+  function hold() {
+    let release!: (refusal?: Error) => void;
+    const gate = new Promise<Error | undefined>((resolve) => (release = resolve));
+    catalogue.mockImplementationOnce(async (...args) => {
+      const refusal = await gate;
+      if (refusal) throw refusal;
+      return original(...args);
+    });
+    return release;
+  }
+  return { catalogue, hold };
+}
+
+async function chooseModel(editor: HTMLElement, name: string) {
+  const model = within(editor).getByRole("combobox", { name: "Model" });
+  fireEvent.click(model);
+  const option = await screen.findByRole("option", { name });
+  fireEvent.pointerDown(option, { pointerType: "mouse" });
+  fireEvent.click(option);
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  return model;
 }
 
 it("starts a changed page query at its first result without moving search focus or reading again", async () => {
@@ -249,6 +275,109 @@ it("closes model choices before allowing Escape to cancel the editor", async () 
   fireEvent.keyDown(model, { key: "Escape" });
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   await waitFor(() => expect(document.activeElement).toBe(add));
+});
+
+it("keeps a template draft and its focused model refresh through held catalogue reads", async () => {
+  const { call, runtime } = await mountSchedules();
+  const { catalogue, hold } = holdModelReads(runtime);
+  const templates = screen.getByRole("button", { name: "Schedule templates" });
+  templates.focus();
+  fireEvent.click(templates);
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Hourly progress check" }));
+  const editor = await screen.findByRole("dialog", { name: "New schedule" });
+  const fields = ["Title", "Instructions", "Cron expression", "Time zone", "Workspace path"].map(
+    (name) => within(editor).getByRole<HTMLInputElement>("textbox", { name }),
+  );
+  const refresh = await within(editor).findByRole("button", { name: "Refresh model choices" });
+  const model = await chooseModel(editor, "openai / GPT-5.6 Sol");
+  const draft = fields.map((field) => field.value);
+  expect(draft.slice(0, 3)).toEqual([
+    "Hourly progress check",
+    "Inspect the current workspace and summarize recent progress, outstanding work and any blockers.",
+    "0 * * * *",
+  ]);
+  const expectRetained = () => {
+    expect(fields.map((field) => field.value)).toEqual(draft);
+    expect(model.textContent).toContain("openai / GPT-5.6 Sol");
+  };
+
+  const refuse = hold();
+  refresh.focus();
+  fireEvent.click(refresh);
+  expect(within(editor).getByRole("button", { name: "Refreshing model choices…" })).toBe(refresh);
+  expect(refresh.getAttribute("aria-busy")).toBe("true");
+  expect(refresh.getAttribute("aria-disabled")).toBe("true");
+  expect(refresh.hasAttribute("disabled")).toBe(false);
+  expect(document.activeElement).toBe(refresh);
+  fireEvent.click(refresh);
+  expect(catalogue).toHaveBeenCalledTimes(1);
+
+  refuse(new Error("catalogue unavailable"));
+  expect(await within(editor).findByText(/Model choices could not be read/)).toBeTruthy();
+  expect(within(editor).getByRole("button", { name: "Refresh model choices" })).toBe(refresh);
+  expect(document.activeElement).toBe(refresh);
+  expectRetained();
+
+  const accept = hold();
+  fireEvent.click(refresh);
+  expect(refresh.getAttribute("aria-busy")).toBe("true");
+  accept();
+  await waitFor(() =>
+    expect(within(editor).getByRole("button", { name: "Refresh model choices" })).toBe(refresh),
+  );
+  expect(within(editor).queryByText(/Model choices could not be read/)).toBeNull();
+  expect(document.activeElement).toBe(refresh);
+  expect(catalogue).toHaveBeenCalledTimes(2);
+  expectRetained();
+
+  fireEvent.click(within(editor).getByRole("button", { name: "Cancel" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(templates));
+  expect(call.mock.calls.every(([request]) => request.method === "flame.schedules/list.v1")).toBe(
+    true,
+  );
+});
+
+it("preserves later draft focus through a model read and ignores a read settling after Cancel", async () => {
+  const { runtime } = await mountSchedules();
+  const { hold } = holdModelReads(runtime);
+  const modelCatalogue = vi.spyOn(runtime.models, "list");
+  const add = screen.getByRole("button", { name: "Add schedule" });
+  add.focus();
+  fireEvent.click(add);
+  const editor = await screen.findByRole("dialog", { name: "New schedule" });
+  const refresh = await within(editor).findByRole("button", { name: "Refresh model choices" });
+  const model = await chooseModel(editor, "openai / GPT-5.6 Sol");
+  const instructions = within(editor).getByRole<HTMLTextAreaElement>("textbox", {
+    name: "Instructions",
+  });
+
+  const release = hold();
+  refresh.focus();
+  fireEvent.click(refresh);
+  instructions.focus();
+  fireEvent.change(instructions, { target: { value: "Summarize the release checklist." } });
+  release();
+  await waitFor(() =>
+    expect(within(editor).getByRole("button", { name: "Refresh model choices" })).toBe(refresh),
+  );
+  expect(document.activeElement).toBe(instructions);
+  expect(instructions.value).toBe("Summarize the release checklist.");
+  expect(model.textContent).toContain("openai / GPT-5.6 Sol");
+
+  const late = hold();
+  fireEvent.click(refresh);
+  expect(refresh.getAttribute("aria-busy")).toBe("true");
+  fireEvent.click(within(editor).getByRole("button", { name: "Cancel" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(add));
+  late();
+  await waitFor(() => expect(modelCatalogue).toHaveBeenCalledTimes(2));
+  await act(async () => {
+    await modelCatalogue.mock.results[1]!.value;
+  });
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(document.activeElement).toBe(add);
 });
 
 it("returns an idle edit to its available record opener", async () => {
