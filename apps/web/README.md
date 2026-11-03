@@ -679,7 +679,10 @@ range and commands. Header groups share a row when their natural widths fit and
 wrap together when space is limited. Navigation and actions align with the primary
 identity, leaving more room for reading without changing control order or size.
 The complete path remains selectable in the same named
-scroller as source, rendered content and read/unsupported states. File requests,
+scroller as source, rendered content and read/unsupported states. It offers an
+optional line break after each slash, with the existing wrapping fallback for
+long components. Displayed, selected and copied path text stays the exact canonical
+path. File requests,
 line placement, renderer mode and source-return history retain their existing
 owners.
 

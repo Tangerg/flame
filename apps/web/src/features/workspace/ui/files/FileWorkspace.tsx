@@ -4,6 +4,7 @@ import * as stylex from "@stylexjs/stylex";
 import {
   Activity,
   Component,
+  Fragment,
   useCallback,
   useId,
   useLayoutEffect,
@@ -547,7 +548,17 @@ function FilePreview({
         dir="ltr"
         {...stylex.props(fp.path, face.mono, typeStep.uiXs, vocab.muted)}
       >
-        {viewer.path}
+        {/* Prefer directory boundaries before emergency wrapping without changing the path text. */}
+        {viewer.path.split("/").map((component, index) => (
+          <Fragment key={index}>
+            {index > 0 && (
+              <>
+                /<wbr />
+              </>
+            )}
+            {component}
+          </Fragment>
+        ))}
       </p>
       {unsupported ? (
         <EmptyState

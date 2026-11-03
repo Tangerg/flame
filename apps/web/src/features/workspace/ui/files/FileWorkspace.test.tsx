@@ -1055,6 +1055,31 @@ describe("file preview path identity", () => {
     expect(within(header()).getByText(longName)).toBeTruthy();
   });
 
+  it.each([
+    "apps/web/src/features/shell/workbench/panel/DockResizer.tsx",
+    "docs/设计稿/第二版界面/阅读器路径说明.md",
+    "README.md",
+    "notes/drafts\\2026/a\\b.txt",
+  ])("shows, selects and copies the exact path %j", async (path) => {
+    const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
+    openWorkspaceFile(testClient.workspace.access, path);
+    mount(<FileWorkspace />);
+    await screen.findByText("package main");
+
+    const { shown } = shownPath(path);
+    expect(shown.textContent).toBe(path);
+    const range = document.createRange();
+    range.selectNodeContents(shown);
+    const selection = document.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+    expect(selection.toString()).toBe(path);
+    selection.removeAllRanges();
+
+    fireEvent.click(within(header()).getByRole("button", { name: "Copy path" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledExactlyOnceWith(path));
+  });
+
   it("shows the complete path beside an unsupported file", async () => {
     const path = "assets/brand/marketing/launch/logo.png";
     readFile.mockRejectedValue(

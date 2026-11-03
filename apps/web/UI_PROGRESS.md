@@ -17,6 +17,13 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+File paths now offer directory-boundary line breaks while preserving their exact
+displayed, selected and copied text; see **File-path directory breaks and continued
+reading (2026-11-03)**. Native English/light at a 320 px Dock and Chinese/dark/
+18 px/200% qualify normal and long-path reading, copying, return and continued
+drafting. All 4,476 frontend tests, 25 non-Runtime Web gates and the native gate
+pass. The whole-product goal remains active.
+
 The native Goal follow-up qualifies opening from a focused Composer, returning to
 the actual summary or edit icon, and continuing the retained draft; see **Native
 Goal opening and authoring return (2026-11-03)**. No focus defect is reproduced
@@ -1283,11 +1290,9 @@ process or listener remains on the isolated Runtime port. User profiles,
 dependencies, shared toolchain caches and unrelated processes remain preserved.
 
 This in-place qualification is documentation-only. Keep the completed Goal
-opening/return behavior. The narrow source capture supplies a separate visual
-reading candidate: the complete path's final `x` in `DockResizer.tsx` wraps onto
-its own line. Inspect `FileWorkspace`'s path break opportunities while preserving
-selectable text, exact copying and source navigation; no content loss is claimed.
-The overall desktop/visual goal remains active.
+opening/return behavior. The separate narrow-path reading finding is now repaired
+and qualified under **File-path directory breaks and continued reading
+(2026-11-03)**. The overall desktop/visual goal remains active.
 
 ### Plan state and keyboard reading
 
@@ -15109,6 +15114,103 @@ comparison, Composer and Runtime owners for the next batch. The continuous goal
 remains active.
 
 ### File-header width and reading room
+
+#### File-path directory breaks and continued reading (2026-11-03)
+
+The complete task is read a file → distinguish its location → copy its canonical
+path → return to the conversation → continue drafting. On main `0a1c23e17`, the
+actual Chinese/dark/18 px/200% reader leaves the final `x` of `DockResizer.tsx`
+alone on its second path line. The path is complete and selectable; this is a
+LOW typography/readability finding, with no lost content or new HIGH finding.
+
+`FileWorkspace` now projects the same `viewer.path` with an optional `wbr` after
+each slash. The existing emergency wrapping handles long components; ordinary
+language and punctuation breaks remain available. Slash is the existing path
+namespace's separator; a backslash stays literal. No spaces, invisible Unicode,
+hard breaks or normalized path copy are introduced. The existing Copy path owner,
+LTR reading direction, named scroller, two-line filename cap, line navigation,
+selection boundary and request/source-return owners remain intact. There is no
+new state, handler, dependency, measurement or stylesheet override. The Web README
+records the contract.
+
+Better-typography's wrapping guidance and better-layout's retained reading context
+guide this batch. Read-only ZCode's actual `fileDisplay.tsx` informs file identity
+versus location; HeroUI's breadcrumb separator example informs segmented text,
+without importing its links, truncation or navigation. The current
+[HTML Standard](https://html.spec.whatwg.org/multipage/text-level-semantics.html#the-wbr-element)
+defines the optional break, and
+[CSS Text](https://drafts.csswg.org/css-text-3/#overflow-wrap-property) explains the
+existing emergency-wrap fallback. Prior ChatGPT, Arc, Radix and Ace research keeps
+its recorded scope. Existing typography, semantic colors, spacing, focus and
+motion are preserved; this is scoped acceptance, not whole-product or award-tier
+certification.
+
+The bounded Claude CLI edits only the implementation, its tests and the Web README
+in **73.506 s / 14 turns**, with no permission denials. Primary reviews the actual
+diff and narrows the comment/documentation to optional breaks rather than claiming
+every component is unbreakable. The original three-suite baseline passes
+**121 tests**; the candidate passes **125**. Four added cases protect literal
+display, DOM Range selection and Copy path for ordinary, Chinese, single-component
+and literal-backslash paths. They test preserved text contracts; native before/
+after captures establish the visual defect and repair, not JSDOM geometry.
+
+Native acceptance uses the final static assets in the actual production-tagged
+Wails host, without a DOM observer or injected interaction:
+
+- **Chinese / dark / 18 px / #70839A / reduced motion / 200%:** native Left,
+  Actual Size, twenty Zoom In actions and sidebar collapse retain the same
+  **2242 × 1898** capture, **560.5 × 474.5 CSS px**. The original lone `x` is
+  replaced by a break after `shell/`, followed by
+  `workbench/panel/DockResizer.tsx`; the filename and extension stay together.
+  All eight source rows remain readable. Fresh Copy path → Close → Command-L →
+  native Paste restores the exact canonical path, followed by continued typing.
+- **English / light / 14 px / Orange / full motion:** Tab reaches the actual
+  splitter and Home reports **320 px**. The path uses the same directory break,
+  with the filename, commands and all eight wrapped source rows readable. Tab
+  reaches the named file reader; Home/End remain available. Screenshot-coordinate
+  Copy path and Dock collapse, Command-L and Paste restore the exact path.
+  Continued typing retains it with ` - continue reading` appended.
+- **Chinese long path at the same narrow 200% geometry:** the private canonical
+  input has two Chinese directory names and a **160-character** filename. The
+  complete path wraps in the scroller while the existing header remains capped
+  at two lines. Observed Tab enters the named reader, End reveals line 8 and Home
+  restores the complete path. Coordinate Copy and Close, Command-L and native
+  Paste retain the exact Unicode path; ` - continue reading` appends correctly.
+  This qualifies Unicode paste, not OS IME composition. The provider's pre-existing
+  `resizer.ts` tree alias is not file-tree identity evidence.
+
+An early delayed paste contains an unexpected 23-line attachment and is excluded;
+the attachment is removed in the private app. Immediate fresh Copy/Paste proves
+the intended values without inferring the earlier clipboard cause. A native
+change guard and one out-of-window coordinate rejection are also excluded;
+fresh state and the supported Composer shortcut complete the task. AX's spaces
+between path text nodes are serialization, not the path bytes verified through
+the input and literal-text tests. Native partial-path drag selection, VoiceOver,
+live filesystem/Runtime/provider execution and other-platform GUIs are not newly
+qualified. No Send or business-state command runs.
+
+Final serial verification passes **424 files / 4,476 frontend tests**
+(**167.048 s**), all **25 non-Runtime Web gates**, owned-file formatting and
+**make check-native** (**85.395 s**). Production staging and the final private
+asset build pass; the latter takes **2.385 s**. All **6,803** accepted non-Markdown
+inputs remain frozen after checks and native use. The unchanged shared UI source
+retains its preceding **224-test** qualification; its separate suite is not rerun.
+No browser visual suite, performance benchmark or full Runtime suite runs. The
+two unchanged historical Feedback formatting findings retain their prior scope.
+
+All **four** native launches quit normally. Accepted maps of **333** web assets,
+**four** signed app files and **21** copied host inputs agree before cleanup.
+The exact app is unregistered; **nine** initially absent checkout outputs,
+**six** UID-specific Library paths and the private app/fixture/log/capture/cache
+root are removed. No owned process or isolated Runtime listener remains. All
+**22** installed JS resources, **two** read-only references and the protected
+draft backup remain byte-identical. An in-memory gzip preserves **126** UTF-8
+records and **30** capture digests, SHA-256
+`a77f119f82b40f5f13a73720a68e77ca71679b61b06febee7b2227a6521bd632`.
+No migration is needed. Preserve this reading/copy contract and continue from
+another observed task on current main; the continuous desktop goal remains active.
+
+#### Retained header composition
 
 The task remains reply reference → file reading/line navigation → related
 Markdown or file list → source return → continued draft. The accepted two-line
