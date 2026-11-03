@@ -6673,9 +6673,8 @@ CHECK dimensions are considered within this flow; whole-product award-level
 acceptance remains open. Native coverage does not certify every locale or empty,
 loading and error scene. VoiceOver, physical IME, RTL/forced colors, fresh
 contrast measurements, motion timing and other-platform GUIs remain unverified.
-The native archive also shows a remove-to-make-room instruction with only one
-of 64 reports saved; inspect its existing capacity/state owner before selecting
-the next batch.
+The observed remove-to-make-room instruction with only one of 64 reports saved
+is resolved in the following capacity-copy batch.
 
 Cleanup removes **nine** new checkout outputs and **two** unique app Library
 directories, restoring all nine output and six Library baselines to absence.
@@ -6689,6 +6688,115 @@ their exact hashes. Root dependencies, accepted shared toolchains, read-only
 references, user data and unrelated processes remain. Fresh fetch finds main
 still at the accepted base; publication uses normal hooks, fast-forward, an
 ordinary push and independent remote/cleanliness checks.
+
+### Saved archive capacity copy (2026-11-03)
+
+This batch starts from published `8b1880e28`. Fresh actual Wails again shows
+`1 saved report. Capacity is 64; remove a report to make room.` The archive count
+catalogs append that instruction unconditionally, including when no reports
+exist. The component already projects the accepted header count and shared
+`LIMITS.maxReports`; the backend transaction alone admits a capture. On an actual
+full-archive refusal it returns `archive_capacity` with the instruction to remove
+a saved report before capturing another.
+
+The eight catalogs now keep only their factual saved-count and capacity
+sentences. All **14** existing plural values retain both placeholders, their
+keys and grammar. Independent AST comparison with the repository's existing
+Rolldown parser verifies that every unrelated catalog value is unchanged. No
+fullness state, local admission rule, Save disablement, component code, backend,
+error mapping, pending-command/recovery path, data contract, style or dependency
+is added or changed. The existing report-return test asserts the shorter factual
+description after restoring its original row, focus and scroll position.
+
+Read-only ZCode `settings/usage-stats/UsageStatsErrorNotice.tsx` supplies an
+example of recovery guidance tied to a real reported condition. Its error
+classification, credential action, warning styling and truncation are not
+copied. The prior reference studies retain their recorded purpose. The
+better-writing review keeps ordinary archive metadata neutral and preserves
+the existing backend refusal's specific recovery path.
+
+| Severity    | Domain  | Location                                                                                             | Before                                             | After                                                                                                  | Why                                                                 |
+| ----------- | ------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| HIGH, fixed | Writing | `plugins/usagereports/component/locales/en.ts:27` and the seven parallel catalogs, `archive.count_*` | An empty or nearly empty archive instructs removal | Count metadata states accepted count and capacity; actual refusal retains its own recovery instruction | Ordinary metadata must not encourage unnecessary destructive action |
+
+| Domain        | Evidence inspected                                                                                                       | Scoped result                                                                  |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| Accessibility | Native period keyboard selection, named Refresh, report heading/Back focus, last-row restoration and Composer return     | Existing focus and read owners retained; VoiceOver and physical IME unverified |
+| Layout        | EN 320 px Dock; ZH 18 px/200%, actual edge resize to 2244 × 1798 captured pixels; empty/one/full and long-list scrolling | Count, capacity, report entry and return controls remain readable              |
+| Writing       | All eight catalogs, accepted count/limit caller, backend refusal and its existing recovery path                          | Unsupported standing removal instruction eliminated                            |
+| Typography    | Shorter metadata sentences at both font/zoom settings; unchanged count grammar and report figures                        | Existing hierarchy, wrapping and exact numeric owners retained                 |
+| Colors        | Light/Orange and dark/pale custom accent at contrast 100, native focus and existing action roles                         | No color role changes; contrast ratios not newly measured                      |
+| UI polish     | Period/Refresh in the empty archive; one-report and 64th-report reading, Back, retained scroll and continued drafts      | Existing task continuity passes; animation timing not measured                 |
+
+#### Verification and actual Wails
+
+The bounded Read/Edit-only Claude CLI completes its **nine** allowed handwritten
+paths in **34.261 s**, reporting 20 turns and no permission denials. Root reviews
+the actual diff, catalogs, consumer and backend owner, then performs normal
+formatting, generation, checks, native acceptance and delivery.
+
+- The original baseline and focused candidate each pass **1 file / 15 tests**.
+  Restoring all eight complete original catalogs with the revised observable
+  return/count assertion intact fails **1** and passes **14**. The guard restores
+  every candidate catalog with its exact hash. No test is removed or weakened;
+  no copy-mirroring test family is added.
+- Final frontend: **424 files / 4,489 tests**, first full run, **96.268 s**.
+  Normal component generation changes only Usage Reports; the other **21 of 22**
+  ESM resources match the base. Plugin types/lint/i18n, owned formatting,
+  all **25** Web gates and `make check-native` (**15.707 s**) pass serially.
+  I18n verifies **20 catalogs across 8 locales**. Existing macOS linker warnings
+  remain nonfatal. Full plugin formatting still reports only the unchanged
+  Feedback component/test pair; Web formatting and diff whitespace checks pass.
+- The signed current Wails **v3.0.0** host retains production window limits,
+  zoom, services and chrome. A private home and inactive endpoint isolate normal
+  production components over data-only SDK list/get responses. The fixture has
+  zero, one or 64 exact report headers and rejects archive writes. Save, Remove
+  and Send are not invoked. Fullness here is a retained-list presentation check,
+  not a new native backend-admission, live accounting or archive-write claim.
+- EN/light/14 px/Orange/full motion: actual Tab/Home sets **320 px** Dock width.
+  Empty, single-report and full-archive descriptions show counts **0 / 1 / 64**
+  with capacity **64** and no standing removal instruction. Empty-state period
+  selection and Refresh retain the accepted empty archive. One-report entry
+  focuses its heading and Back returns to its opener. The full list scrolls to
+  report 64; its identity ends in `0040`, and Back restores the exact last-row
+  opener and scroll position. Every scene preserves and continues its draft.
+- ZH/dark/18 px/custom `#BDD1DE`/contrast 100/motion off: twenty native Zoom In
+  steps establish **200%**, with actual edge drag from 2878 to **2244 px**,
+  approximately **561 CSS px** of reading width. The same **0 / 1 / 64** scenes
+  show the Chinese count/capacity sentences. Empty period/Refresh, one-report
+  heading/Back, full-list wheel reading, exact report-64 identity and last-row
+  focus/scroll return pass. Close preserves and continues all three drafts;
+  Actual Size is restored before each Quit.
+
+All **seven** original/final launches quit normally with exit zero. Initial
+window startup is re-read in the same live app before accepting controls. All
+**6,803** source/test/config inputs, **22** installed ESM resources, **333** final
+Web assets, **4** bundle files, **21** private host inputs and **3** fixture files
+match their accepted maps before retirement. Exactly **ten** non-Markdown inputs
+change: eight catalogs, one existing test and one generated resource.
+
+**Approve for the inspected archive-count and reading-return task.** All eight
+goal CHECK dimensions are considered within this flow; whole-product award-level
+acceptance remains open. Other native locales, VoiceOver, physical IME,
+RTL/forced colors, fresh contrast measurements, motion timing, every read/error
+permutation and other-platform GUIs remain unverified here. Unchanged Runtime,
+CLI/backend and shared-UI suites are not repeated. No browser visual suite,
+performance benchmark, migration or additional product state is introduced.
+
+Cleanup removes **nine** new checkout outputs and **two** unique app Library
+directories, restoring all nine output and six Library baselines to absence.
+The exact bundle is unregistered and owned native processes are zero. Private
+app, home, fixtures, assets, CLI files, logs, caches and receipt directory are
+removed. A round-trip-verified in-memory gzip retains **158** UTF-8 records and
+**26** capture hashes, SHA-256
+`17ac92aa7f1a0e218725359f07cbdebb65ffc1aa310d487f7c8b8ce17f58b5af`.
+Both pre-existing shared-UI cache files and the protected 123-byte draft retain
+their exact hashes. Root dependencies, accepted shared toolchains, read-only
+references, user data and unrelated processes remain. Publication-time fetch
+finds main at the accepted base; normal hooks, fast-forward, ordinary push and
+independent remote/cleanliness checks govern delivery. Continue by revalidating
+complete-task layout evidence against the page inventory above; do not infer
+fresh whole-product acceptance from this copy-only batch.
 
 ### Generated SVG reading and source return
 

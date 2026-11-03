@@ -292,11 +292,7 @@ it("reads a named report at the pane top and returns to the same archive row", a
   expect(document.activeElement).toBe(opener);
   expect(pane.scrollTop).toBe(480);
   expect(screen.getAllByRole("button", { name: /^View report/ })).toHaveLength(2);
-  expect(
-    screen.getByText(
-      `2 saved reports. Capacity is ${LIMITS.maxReports}; remove a report to make room.`,
-    ),
-  ).toBeTruthy();
+  expect(screen.getByText(`2 saved reports. Capacity is ${LIMITS.maxReports}.`)).toBeTruthy();
 });
 
 function heldReads() {
