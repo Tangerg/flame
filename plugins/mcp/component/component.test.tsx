@@ -114,19 +114,19 @@ it("keeps a failed list load visible alongside an add draft and offers Retry", a
 it("retains an unsubmitted draft when the view closes, then clears it on source retirement", async () => {
   const { f, view } = await mount();
   await add();
-  fireEvent.change(screen.getByLabelText("Environment (JSON object)"), {
-    target: { value: '{"TOKEN":"synthetic-secret"}' },
-  });
+  fireEvent.change(
+    screen.getByRole("textbox", { name: "Environment (JSON object)" }),
+    { target: { value: '{"TOKEN":"synthetic-secret"}' } },
+  );
   view.unmount();
   f.view.abort();
   const next = f.openView();
   render(<f.Component context={next.context} />);
   await screen.findByText("docs");
   fireEvent.click(screen.getAllByRole("button", { name: "Add server" })[0]!);
-  expect(screen.getByLabelText("Environment (JSON object)")).toHaveProperty(
-    "value",
-    '{"TOKEN":"synthetic-secret"}',
-  );
+  expect(
+    screen.getByRole("textbox", { name: "Environment (JSON object)" }),
+  ).toHaveProperty("value", '{"TOKEN":"synthetic-secret"}');
   expect(f.create).not.toHaveBeenCalled();
   f.source.abort();
 });

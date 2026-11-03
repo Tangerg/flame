@@ -692,3 +692,9 @@ html:not([data-input-modality]) [data-focus-proxy]:focus-within {
   block-size: 0;
   border-block-start: var(--hairline-width) solid var(--color-divider);
 }
+
+[data-slot="form-row"] > [data-slot="form-field"] {
+  grid-row: span 2;
+  grid-template-rows: subgrid;
+  align-self: stretch;
+}

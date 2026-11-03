@@ -9214,6 +9214,156 @@ The observed Deliverables catalog-to-inspector discontinuity is subsequently
 qualified under **Catalog opening and the revision reading entry (2026-11-03)**.
 The shared alignment repair remains with the four owners above.
 
+### Shared form label tracks and control-top alignment (2026-11-04)
+
+Qualified from synchronized main `3735e2a5d`. Actual German Wails at 18px,
+native 200% and a 2244 × 1798 capture reproduces the user's alignment concern:
+Timeout wraps to two label lines beside one-line Description, placing the two
+input tops one text line apart. The original process exits 0 after Cancel,
+Settings return and continued original Composer input. This is a real layout
+counterexample; passing layout-free tests does not establish alignment.
+
+`packages/ui/src/form.tsx` now gives each `FormField`/`FormGroup` two intrinsic
+parts: its existing label and one body containing its controls and feedback.
+The native label remains around the FormField control. FormGroup retains its
+label ID, group name, ARIA props and focus unit. The body uses existing StyleX
+layout tokens, zero minimum width and start-aligned natural content.
+`globals.css` applies one direct-child rule from `form-row` to `form-field`:
+span two parent rows, share their row tracks through subgrid, and stretch the
+field wrapper. The existing auto-fit columns, field gap and inner label gap
+remain authoritative. No fixed label height, locale special case, bottom
+alignment, reordered content, additional context/state, measurement, listener
+or effect is introduced. Standalone fields keep intrinsic layout.
+
+MCP's Arguments/Environment row was the only FormRow caller with an intermediate
+wrapper. `serverForm.tsx` replaces that wrapper and nested FormField with one
+direct FormGroup. Its TextArea retains the exact explicit name and validation
+IDs; stored-environment removal keeps its independent Switch name and state.
+The unused local column style is removed. All draft, secret disposition,
+validation, command and recovery callbacks retain their existing owners.
+Other callers already render direct fields/groups, including Provider's
+EndpointField. The shared README records this layout contract.
+
+A Read/Edit-only Claude Code CLI implements four allowed files in **57.967 s /
+14 turns**, without permission denials. Root reviews every actual diff and
+migrates the two existing Environment draft-test queries to the same named
+textbox role already used by the browser contract. The new composite group and
+its TextArea are both correctly named; the former getByLabelText query matches
+both. The initial **1 failure / 97 passes**, 2.618 s, is retained. Exact draft
+value and zero-write assertions remain unchanged. No CSS inventory or simulated
+geometry test is added to stand in for native layout.
+
+Better-layout grounds shared edges, intrinsic translated growth and source-order
+reflow. Accessibility checks retain native field/group names, keyboard paths and
+visible focus; typography checks 14/18px and long labels/values. Color and UI
+retain Flame Orange, custom accents, existing skins and motion policy; writing
+retains existing whole messages. Read-only HeroUI `fieldset.css` supplies actual
+fieldset grouping and spacing evidence, not a shared-track implementation.
+Technical support and track/gap behavior are checked against the primary
+[WebKit Safari 16.0 article](https://webkit.org/blog/13152/webkit-features-in-safari-16-0/)
+and [CSS Grid Level 2 subgrids specification](https://www.w3.org/TR/css-grid-2/#subgrids).
+The implementation remains Flame's existing StyleX/shared stylesheet system.
+
+| Severity | Location                                                                                                          | Before                                                                                  | After                                                                                                   | Why                                                                       |
+| -------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| MEDIUM   | Shared FormRow/FormField/FormGroup; MCP, Schedules, Providers, Deliverables, PointInspection and Computer callers | Independently sized labels move adjacent controls to different top edges when one wraps | Intrinsic shared label tracks align the control tops while keeping natural control and feedback heights | Preserve shared edges and field grouping through translation and resizing |
+
+Final verification passes:
+
+| Check                     | Actual result                                                                                         |
+| ------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Shared UI baseline        | **13 files / 229 tests**, 2.932 s                                                                     |
+| Complete shared UI check  | Build, typecheck, lint, formatting, **13 files / 229 tests**, packed offline consumer; 8.659 s        |
+| Focused MCP               | **5 files / 98 tests**, 2.847 s                                                                       |
+| Complete frontend project | **424 files / 4,538 tests**, command 89.954 s                                                         |
+| Web gates                 | All **25** non-Runtime gates pass, including portable resources and component-module lifecycle checks |
+| Plugin checks             | ESM generation, typecheck, lint, eight-locale closure and owned formatting pass                       |
+| Native gate               | `make check-native` passes, including supported Desktop Go checks and Wails build, 21.338 s           |
+
+All **28 final serial gates** pass. `git diff --check` passes. The first private
+supplement build cannot resolve `@flame/ui` from its temporary directory; root
+points it to the existing built UI artifact, and the final build passes in
+2.497 s. That failed harness build is excluded from product acceptance. There
+are no excluded candidate native runs. Plugin-wide formatting, full Runtime/CLI
+and plugin backend suites, browser visual suites and benchmarks are not run;
+the previously recorded unrelated Feedback formatting issue remains outside
+this diff.
+
+Actual final native checks cover every current FormRow caller and representative
+standalone fields, using the same production shared UI and final assets:
+
+- **MCP, English/light/14px/Orange/full motion:** whole form, Name/Transport,
+  Arguments/Environment and Timeout/Description align. Named Environment editing,
+  local Description draft, keyboard Cancel and exact Edit return pass.
+- **MCP, German/light/18px/#8B5CF6/motion off/200%:** the exact original two-line
+  Timeout versus one-line Description case now has common input tops. Timeout
+  zero and malformed Arguments render the real validation while preserving
+  alignment. Corrected values, German drafts, Cancel/Edit return and continued
+  original conversation pass.
+- **Chinese/dark/18px/#4E80FF/motion off/200%:** native edge resizing checks the
+  two-column Timing row and next-row Workspace field, Model/Reasoning, then MCP's
+  single-column layout in the narrower content area of the wide Settings shell.
+  Stdio and local HTTP branches keep natural spacing, named fields and Chinese
+  drafts; keyboard Cancel, Edit return and original conversation continuation pass.
+- **Schedules, English and separate German 200%:** template → editor → actual
+  model popup → Cancel restores Templates. English `nightly` query remains.
+  German's two-line default Model value and one-line Reasoning retain common
+  tops and different natural heights. Original Composer drafts continue.
+- **Providers, English/light/14px:** both API key/Base URL pairs align. A local
+  Base URL edit and later keyboard action retain the field; no credential or
+  model-role operation is submitted.
+- **Deliverables, English/light/18px and 200%:** actual installed ESM renders
+  Create Title/Format, source Title/Address and Import Title/Format through
+  InstalledComponent. Local title/source/address drafts remain after collapsing
+  Create, reading Import and reopening Create. No file is chosen or uploaded.
+- **PointInspection, English/dark/18px/200%:** actual one-line Context attributes
+  and two-line Explicit contribution order labels have common TextArea tops.
+  Native JSON input with `保留` and Tab to the second field pass; Inspect is not
+  activated.
+- **Computer, English/dark/18px/200%:** the existing real fixture's lone lease
+  field accepts 300 and Tab reaches the visible next action. No lease is opened.
+
+The eight original/final processes exit **0**. In order original German, final
+English, Chinese, German MCP, German Schedules, Documents, Points and Computer,
+their durations are **63.092 / 109.711 / 129.656 / 141.106 / 59.960 / 100.881 /
+40.474 / 41.932 s**. Screenshots and AX use Sky, with no DOM access or injected
+observer. Core tasks use the ordinary public immutable memory transport. A
+private query-only supplement exposes the actual Deliverables and PointInspection
+consumers otherwise absent from that fixture's initial view set. Deliverables
+accepts only catalog/list/uploads through the real SDK and captured binding;
+all other operations fail closed. PointInspection uses the actual recorded
+analyzer contract and performs no resolution. Supplementary full-view checks
+return to Workspace; preservation of a prior Composer draft is not claimed for
+those two processes. Inert fixture sidebar buttons and its large responsive
+navigation band are fixture chrome, not product defects.
+
+Approve for the qualified field-alignment scope. The eight award CHECK dimensions
+are reviewed at this scope: typography, whitespace, hierarchy, color,
+micro-interaction and responsive behavior receive the checks above; existing
+motion and originality remain unchanged. VoiceOver, physical IME, RTL, native
+320 CSS px, other platforms, new contrast/timing measurements, every standalone
+form state and whole-product award-level acceptance remain unverified. The
+previous all-page inventory is not replaced by a claim that every page/state was
+inspected anew. Narrow **product Settings navigation** still consumes reading
+space and needs its own root-cause reproduction next. Initiating MCP ReadStatus
+Retry focus loss remains a separate previously observed recovery issue.
+
+The final freeze contains **6,804 source/test/config inputs**, **22 installed
+resources** and one unchanged local reference. Exactly five non-Markdown inputs
+change; only MCP changes among generated ESM resources. Compiled maps verify
+**334 served files, 4 app files and 21 private host-source files**. All eight
+owned native processes have exited and the private endpoint is inactive. The
+bundle is unregistered; ten initially absent checkout output roots, six Library
+roots and the exact qualification root are absent after ownership-guarded
+cleanup: **17 verified absences**. The two pre-existing UI cache files are saved
+before checks and restored byte-exact afterward; the protected **123-byte**
+interrupted draft remains exact. The in-memory evidence archive retains
+**187 text records / 45 capture digests**, gzip SHA-256
+`215c0c19187ac8ccae219362d694e72b8db79cb18d5d65a7dfc8838f26051703`.
+Normal hooks, main integration and remote verification remain required
+publication steps. No protocol or data migration is needed; the rebuilt installed
+MCP digest is adopted only through its normal explicit package update.
+
 ### Schedules model-choice reading and dialog feedback (2026-11-04)
 
 Qualified from synchronized main `0ef9af9a5`. The original native path is

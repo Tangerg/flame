@@ -29,6 +29,12 @@ const styles = stylex.create({
     gap: layout.labelGap,
     minWidth: 0,
   },
+  fieldBody: {
+    display: "grid",
+    alignContent: "start",
+    gap: layout.labelGap,
+    minWidth: 0,
+  },
   fieldLabel: { color: color.fgSoft, fontWeight: weight.medium },
   form: {
     display: "grid",
@@ -78,7 +84,11 @@ const styles = stylex.create({
 });
 
 export function FormRow({ children }: { children: ReactNode }) {
-  return <div {...stylex.props(styles.formRow)}>{children}</div>;
+  return (
+    <div data-slot="form-row" {...stylex.props(styles.formRow)}>
+      {children}
+    </div>
+  );
 }
 
 export function FormSection({
@@ -227,9 +237,9 @@ export function FormField({
   children: ReactNode;
 }) {
   return (
-    <label {...stylex.props(styles.field)}>
+    <label data-slot="form-field" {...stylex.props(styles.field)}>
       <span {...stylex.props(styles.fieldLabel, type.uiSm)}>{label}</span>
-      {children}
+      <span {...stylex.props(styles.fieldBody)}>{children}</span>
     </label>
   );
 }
@@ -249,12 +259,13 @@ export function FormGroup({
       role="group"
       aria-labelledby={labelId}
       data-focus-unit=""
+      data-slot="form-field"
       {...stylex.props(styles.field)}
     >
       <span id={labelId} {...stylex.props(styles.fieldLabel, type.uiSm)}>
         {label}
       </span>
-      {children}
+      <div {...stylex.props(styles.fieldBody)}>{children}</div>
     </div>
   );
 }

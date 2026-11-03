@@ -37,11 +37,6 @@ const EXAMPLE = {
   headers: JSON.stringify({ "X-API-Key": "…" }),
   timeoutSeconds: "60",
 };
-const column = {
-  display: "grid",
-  minWidth: 0,
-  gap: "var(--layout-control-gap)",
-} as const;
 const split = {
   display: "flex",
   justifyContent: "space-between",
@@ -190,43 +185,41 @@ export function ServerForm({
                 </span>
               )}
             </FormField>
-            <div style={column}>
-              <FormField label={t("mcp.form.env")}>
-                <TextArea
-                  font="mono"
-                  rows={3}
-                  aria-label={t("mcp.form.env")}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  pending={saving}
-                  value={draft.environment.text}
-                  invalid={jsonIssue === "environment"}
-                  aria-describedby={
-                    jsonIssue === "environment" ? jsonErrorId : undefined
-                  }
-                  onChange={(event) =>
-                    updateDraft(
-                      "environment",
-                      draft.environment.edited(event.target.value),
-                    )
-                  }
-                  placeholder={
-                    hasEnvironmentStored
-                      ? t("mcp.form.env.keep")
-                      : EXAMPLE.environment
-                  }
-                />
-                {jsonIssue === "environment" && (
-                  <span
-                    id={jsonErrorId}
-                    role="alert"
-                    style={{ color: "var(--color-negative)" }}
-                  >
-                    {t("mcp.form.env.invalid")}
-                  </span>
-                )}
-              </FormField>
+            <FormGroup label={t("mcp.form.env")}>
+              <TextArea
+                font="mono"
+                rows={3}
+                aria-label={t("mcp.form.env")}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                pending={saving}
+                value={draft.environment.text}
+                invalid={jsonIssue === "environment"}
+                aria-describedby={
+                  jsonIssue === "environment" ? jsonErrorId : undefined
+                }
+                onChange={(event) =>
+                  updateDraft(
+                    "environment",
+                    draft.environment.edited(event.target.value),
+                  )
+                }
+                placeholder={
+                  hasEnvironmentStored
+                    ? t("mcp.form.env.keep")
+                    : EXAMPLE.environment
+                }
+              />
+              {jsonIssue === "environment" && (
+                <span
+                  id={jsonErrorId}
+                  role="alert"
+                  style={{ color: "var(--color-negative)" }}
+                >
+                  {t("mcp.form.env.invalid")}
+                </span>
+              )}
               {hasEnvironmentStored && (
                 <div style={split}>
                   <span>{t("mcp.form.env.clear")}</span>
@@ -248,7 +241,7 @@ export function ServerForm({
                   {t("mcp.form.env.targetChanged")}
                 </span>
               )}
-            </div>
+            </FormGroup>
           </FormRow>
           <FormField label={t("mcp.form.dir.aria")}>
             <TextField

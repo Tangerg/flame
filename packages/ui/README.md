@@ -606,8 +606,12 @@ For interactive preview, append `&motion=full` to the fixture URL. Geometry
 fixtures disable motion by default; they do not represent the application
 motion preference.
 
-`FormRow`, `FormField` and `FormGroup` keep intrinsic field heights when translated
-labels wrap. `FormField` uses a native label for one labelable control;
+Fields and groups placed directly in a `FormRow` share the intrinsic height of
+the row's label track, so their controls start at the same top edge when a
+translated label wraps. Controls and validation or feedback keep their own
+natural heights, and fields stack in source order when the row is too narrow.
+Standalone fields keep their intrinsic layout. `FormField` uses a native label
+for one labelable control;
 `FormGroup` names a composite control group without replacing its option names.
 Both share field spacing and label typography.
 Boxed single-line and multiline fields share `FIELD_SIZE` text insets and reset
