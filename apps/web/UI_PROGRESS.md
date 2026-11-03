@@ -23396,6 +23396,94 @@ The owned checkout and retired-resource preservation are rechecked, and the
 primary parallel checkout remains untouched. User-requested state: **paused**;
 resume only after a new explicit instruction.
 
+#### Current-main Tool-to-file native qualification (2026-11-04)
+
+The continued alignment review inspects current main
+`fd73103a227deb0ade031625ef071aa15099c9f4` through reply → Tool summary →
+recorded result and Arguments → current file → related panel → source return →
+continued draft. **No actionable layout findings** were established for these
+inspected paths. This batch changes only this progress section; it introduces no
+product, fixture, renderer, locale or native-host source change.
+
+Fresh read-only ZCode `ToolSummaryRow`, its actual `ToolLayout` caller,
+`ToolCallBody` and its fallback renderer distinguish compact identity from
+supporting input/output. They inform the review without copying their truncation,
+keyboard implementation or snapshot-loading policy. The better-layout skill's
+shared edges, control placement, content-driven wrapping and visible return
+criteria guide the native inspection. Earlier ChatGPT, HeroUI/Arc, Radix and Ace
+research retains its recorded limits; no new reference-app operation is claimed.
+
+The apparent second `README.md` is the host's canonical path preceding the
+renderer, not an extra Markdown heading or file content. The actual fixture
+starts with `# Workspace notes`. `FileWorkspace` and its existing regression
+contract deliberately retain the full selectable path, including root files,
+alongside the compact header basename. That identity contract is preserved.
+Recorded result Find filters captured rows: a matching prose row can contain
+several lines, while `flush` selects the original source row numbered **4**.
+Neither observation justifies deleting identity or rewriting recorded content.
+
+Actual Wails **v3.0.0** runs one signed private bundle serially with production
+chrome, native zoom/services, current Web source and canonical workspace
+providers. Only its asset directory, identity and initial fixture URL differ.
+There are no injected DOM observers, synthetic focus/scroll behavior, browser
+drivers or live Runtime. The private Runtime endpoint has no listener.
+
+| Native task                                       | Observed result                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| EN14 / light / Orange / full motion, Skill result | Open Arguments and `test` Find survive manual README Preview, **320 px** Dock, full-width presentation, a narrowed **1122 px** window and **200%** native zoom. Closing full-width reading restores the same Tool scope; the draft continues exactly.                                                                                                 |
+| EN14 / light / Orange / full motion, file Tool    | Keyboard and visible mouse actions open the current `runtime/internal/session/store.go` independently of its recorded six-line result. Full-width reading and Go to line → Escape preserve their own focus. Back to conversation restores the exact Tool action, open Arguments and `flush` query; the draft continues.                               |
+| ZH18 / dark / custom blue / motion off            | Reverse native Tab reaches the Tool action; Enter opens the current file full width in the narrowed window at **200%**. Go to line **8** reveals the complete final line. Native Tab enters the named reader; End remains in it. Return restores the original action, query and Arguments; scoped Escape closes Find and the Chinese draft continues. |
+| DE18 / light / custom purple / motion off         | Six native Tabs from the nonempty Composer reach the splitter; Home selects **320 px**. The complete file path wraps at directories and controls remain available. Dock arrows select Diff and return to the same file, query and Arguments. Back restores the Tool action; scoped Escape and the exact continued draft pass.                         |
+
+The four before/after drafts are observed in native accessibility state, including
+`Keep the tool-detail reading draft. Continue from the same reading context.`,
+`Continue after checking the file tool. Ready to continue.`,
+`核对工具和文件后继续。 已核对。`, and
+`Nach dem Lesen der Werkzeugdatei weiterarbeiten. Geprüft.`.
+No Send, Tool replay, file write, Save or native picker is invoked.
+
+An initial Chinese invocation used the harness-only invalid value
+`motion=reduced`; the actual parser accepts only `full` or `off`. Its blank
+startup is excluded, it exits normally, and the corrected `motion=off` process
+supplies the Chinese qualification above. Two element-index activations of a
+hover-only Tool action also fail to navigate; they are excluded from successful
+mouse evidence. Actual keyboard activation, mouse reentry from the returned
+source and a screenshot-grounded coordinate click do navigate. No product root
+cause or event workaround is inferred from those automation limits. All **five**
+native processes reach terminal **exit 0** through Cmd+Q, without overlap.
+
+`make stage-web`, the current private fixture asset build and native production
+host build pass. Existing Tool/inspection checks pass **3 files / 120 tests**;
+file-reader/navigation checks pass **2 files / 138 tests**. The latter command is
+`npm run test --workspace @flame/web -- src/features/workspace/ui/files/FileWorkspace.test.tsx src/features/workspace/application/navigation.test.ts`.
+Their wrapper times are **6.806 s** and **6.475 s**. No new tests are needed for a
+documentation-only result. Full product suites, browser visual suites,
+performance benchmarks, VoiceOver, OS IME, RTL, native clipboard bytes, live
+producer execution and a 320 px whole-window viewport are not verified here.
+Earlier full-suite results and the unrelated Feedback formatting findings retain
+their existing scope; they are not new results from this batch.
+
+Final source verification preserves all **6,803** original non-Markdown inputs,
+**22** installed resources, **333** compiled Web assets, **four** bundle files and
+**21** private host inputs. Scoped typography, whitespace, hierarchy, colors and
+responsive structure remain readable in the inspected native scenes; motion
+verification covers full/off end states, and interaction verification covers the
+actual return tasks above. Flame's existing identity is retained. This is scoped
+approval, not whole-product or award-level acceptance. Next inspect repeated
+same-name Tool summaries and their full input scope using actual provenance;
+do not invent page numbers or a competing state owner.
+
+Cleanup unregisters the private bundle, removes **eight** newly created checkout
+and Library targets, and restores all **nine** checkout plus **six** UID Library
+absence baselines. Both pre-existing Vitest cache files and the protected
+**123-byte** interrupted draft retain their exact hashes. The exact private root
+`/private/tmp/flame-detail-reading-cSsrrS` is absent after device/inode/birth/UID
+and no-symlink checks. The in-memory archive round-trips **86** UTF-8 records and
+**46** screenshot digests; gzip SHA-256 is
+`b9df0559df451807e5aa6226818914579fbdf8a304dbc12893efec5a0420d7ab`.
+Post-retirement verification again checks all original source/resource hashes,
+**16** restored absences, preserved cache files and the protected draft.
+
 ### Denied Tool argument reading
 
 A recorded denial still contains the request parameters. At frozen base
