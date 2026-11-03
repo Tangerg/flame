@@ -17,9 +17,11 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-The latest follow-up keeps the source reader's inset focus perimeter clear of
-painted target rows and uses the inner viewport for action visibility; see
-**Source reading and inner focus clearance (2026-11-03)**. Focus-managed floating
+The latest follow-up scopes file-preview Select All to the displayed file while
+preserving native formatted copy, source copying and nested-reader behavior; see
+**File preview selection and reading scope (2026-11-03)**. The source reader's
+inset perimeter remains qualified under **Source reading and inner focus
+clearance (2026-11-03)**. Focus-managed floating
 panels retain the established immediate closed state under **Shared popup closing
 and rapid keyboard reading (2026-11-03)**.
 Target file-line contrast and the reserved workspace focus perimeter remain
@@ -14579,6 +14581,10 @@ modifier, handled-event and editable-field guards. Partial selection stays nativ
 There is no selection state, clipboard implementation, global input listener,
 extra Tab stop, new dependency or change to request/line-placement/history owners.
 
+The later **File preview selection and reading scope (2026-11-03)** qualification
+extends the file-local Select All boundary to rendered Preview. Its formatted
+copy remains native; the source and fallback contracts recorded here remain intact.
+
 The existing shared CodeBody and recorded-output reader contracts provide the
 selection/focus model. Retained Radix focus, ChatGPT reading and ZCode compact
 identity research inform task continuity; no external reader implementation is
@@ -28269,6 +28275,130 @@ baseline-absent UID Library paths and `flame-ui-source-frame-cv9ebcor`
 assets/home/overlays/CLI/observer/log/cache root. Preserve the 123-byte interrupted
 draft backup and its original SHA-256, root dependencies, shared toolchain/cache,
 read-only references and user data. Keep this worktree and goal active.
+
+### File preview selection and reading scope (2026-11-03)
+
+This batch starts from synchronized main `7c5f566b8`. Inspecting source-to-preview
+and long-document reading confirms that existing paging and nested scrolling
+work, then exposes a separate selection defect. With the named
+`reading-guide.md` region focused in rendered Preview, native Cmd+A selects
+**2,918 DOM characters**, including the left conversation, file header, path and
+workspace chrome. The reader has the correct focus; its source-only key handler
+does not handle rendered content, leaving WebKit's whole-document default.
+
+#### Owner and repaired contract
+
+`FilePreview` remains the keyboard-selection owner for its named file region.
+`FileWorkspace.tsx:445` adds a ref to the existing DataView content wrapper;
+`selectFileContent` passes the mounted literal source, or that displayed wrapper,
+to the existing `selectAllInReader`. Neither boundary includes the host path or
+header. Source and renderer fallback still use the existing literal-copy handler.
+Rendered Preview keeps native formatted copy. The shared helper's handled-event,
+editable-field, composition and modifier guards remain authoritative, so a
+nested CodeBlock can consume Select All before the file region and a field keeps
+its native behavior. No plugin-internal markup is queried.
+
+There is no new wrapper, state, effect, listener, focus/scroll call, public API,
+token or dependency. Range navigation, accepted file data, renderer lifetime,
+layout, colors and motion retain their owners. The former test expectation that
+rendered Preview leaves Select All unhandled is intentionally replaced; its
+native-copy expectation is preserved. This is a keyboard-scope correction,
+with no protocol, persisted-data or external-consumer migration.
+
+| Severity         | Location                                                | Before                                                                               | After                                                                                   | Why                                                                          |
+| ---------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| MEDIUM, repaired | `src/features/workspace/ui/files/FileWorkspace.tsx:446` | Select All from the focused Preview includes unrelated conversation and host chrome. | The displayed file owns the range; nested code and fields keep their existing behavior. | Keyboard users can select the active document within its visible task scope. |
+
+The better-accessibility review applies predictable keyboard scope and the
+better-layout review follows the complete reading and return path. Read-only
+ZCode `previewPaneMarkdownContent.tsx` and
+`v4/MarkdownSelectionTooltip.tsx:36–40` distinguish the document root and require
+both selection endpoints inside it. They supply the boundary principle, not
+proof of ZCode's Select All handling; its tooltip/state machinery is not copied.
+Flame already has a contained-range helper and keeps that implementation.
+
+One bounded Claude Code CLI call completes the source/test detail work in
+**104.429 s / 20 turns**, with no permission denials. Root inspects the two-file
+diff, removes a redundant test-fixture comment and strengthens the path/header
+assertions with actual visible text and controls. All other ownership and
+verification remain with root.
+
+#### Verification and complete native tasks
+
+- Focused baseline passes **3 files / 117 tests** in **11.100 s**. The candidate
+  passes **3 files / 120 tests** in **6.775 s**. Both Cmd/Ctrl variants test the
+  rendered range, exclusion of outside text/path/header, native formatted-copy
+  dispatch and literal source/fallback copying. New preservation cases exercise
+  an editable renderer field and the actual shared CodeBlock. Restoring only the
+  original production file fails exactly **2 scope cases**, with **101 other
+  cases passing**, in **6.002 s**. Candidate bytes are restored exactly afterward.
+- All **25 non-Runtime Web gates** pass. Full frontend regression passes
+  **424 files / 4,447 tests** in **170.737 s**. Serial `make check-native` passes
+  in **37.516 s**. The qualified private production-tag Wails host builds/signs
+  in **3.995 s**. The initial private setup stops before compilation because
+  its Vite root leaves the entry under the wrong directory; correcting only
+  that private config produces the qualified host. Existing linker SDK and
+  deployment warnings remain non-failing. No browser visual suite, full Runtime
+  rerun or benchmark is used.
+- **EN/light/14px/Flame Orange/full motion:** pure keyboard sizing reaches a
+  **320px Dock**. The file reader's **316px** outer width retains a continuous
+  focus perimeter. Preview selects **2,472 DOM characters**, beginning with
+  Architecture review and ending with the final Chinese paragraph, excluding
+  conversation, path and host tabs. Native window Zoom to **1513 x 950**, DPR
+  **2**, preserves that exact selection; restore returns to **1120 x 755**.
+  The nested Go block selects only its **81 characters**. Source selects
+  **3,207 characters**; returning to Preview restores the same rendered range.
+  Back retains `reading-guide.md`; native input Select All and continued editing
+  produce the **33-character** `Preview selection draft continued` draft.
+- **ZH/custom gray `#505967` / `#f0f4fb`, blue, 18px/full motion/native 200%:**
+  measured viewport **560 x 377**, DPR **4**; the named reader remains
+  **x2 / y119 / 556 x 256.5**. Preview selects **2,446 DOM characters**, reflecting
+  localized image captions. Its Go block still selects only **81**; Page Down
+  passes into the outer document at **1,028 → 1,261px** while retaining code
+  focus. Source selection exactly matches the English **3,207-character**
+  string, and returning to Preview restores the original localized range.
+  Back restores the selected file; Close returns to Conversation and the
+  **11-character** `预览选区核对 继续编辑` draft remains editable.
+
+The original EN **500px** reading task also confirms normal outer Page Down and
+code-to-document Page Down at **380 → 981px**, followed by Preview/Source,
+selected-file return and a **31-character** continued draft. These are observed
+scroll positions, not a performance or latency benchmark. Observed candidate
+motion stays at scale **1**, with no motion-off attribute and reduced-motion
+media **false**. Accepted passive captures report no unhandled errors.
+
+After exact PID/script observer retirement, all **266 final HTML/JS/CSS files**
+are scanned free of its markers and endpoint; ports **56330/56331** are closed.
+Observer-free **EN/Orange/14px/320px Dock** and
+**ZH/custom-gray/18px/200%** controls repeat whole-preview selection, nested-code
+selection, source selection, returning to the same preview range and selected
+file return. The English control continues a **33-character** draft. The Chinese
+control uses native input Select All to create the **9-character**
+`预览检查草稿 保留`, reopens the file, repeats document selection and returns with
+that exact draft intact before appending to **12 characters**,
+`预览检查草稿 保留 继续`.
+
+All **five native launches exit 0** through normal Quit, verified using their
+original process receipts. Final **1,231 frozen inputs** and **22 installed
+JavaScript resources** retain their hashes. Actual Wails v3 services, Aqua
+chrome, native zoom and closing remain in place; identity, home, assets and an
+unavailable Runtime are private. The canonical workspace fixture renders real
+views and installed file-renderer/Tool-results ESM. All input uses CUA. This
+qualifies captured-file presentation, not live filesystem/provider execution.
+Clipboard formats/bytes, physical IME, VoiceOver speech, whole-application
+320px/RTL layout, other-platform GUI and whole-product award acceptance are not
+newly verified. Existing Runtime recovery, pointer-text reverse-Tab and
+placeholder-paint limits remain recorded.
+
+**Approve** for the inspected file-selection and continued-reading task.
+Publication uses normal hooks, a fresh latest-main fetch, guarded main
+fast-forward, push and direct remote equality. Cleanup is limited to nine
+baseline-absent checkout outputs, the exact app registration, six baseline-absent
+UID Library paths and `flame-ui-preview-nlu6qu03` assets/home/overlays/CLI/
+observer/log/cache root. Preserve the 123-byte interrupted-draft backup and its
+original SHA-256, dependencies, shared toolchain/cache, references and user data.
+Keep this worktree and goal active. Compare Skills material reading with its
+existing qualifications before selecting another observed task.
 
 ## Workspace file browser audit
 

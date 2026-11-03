@@ -440,10 +440,12 @@ function FilePreview({
   };
 
   // Set only while FileView presents the source, including as a renderer's fallback;
-  // rendered content and editable fields keep their native selection and copy.
+  // rendered content keeps the browser's formatted copy and editable fields stay native.
   const source = useRef<HTMLDivElement>(null);
-  const selectSource: KeyboardEventHandler<HTMLDivElement> = (event) => {
-    if (source.current) selectAllInReader(event, source.current);
+  const displayed = useRef<HTMLDivElement>(null);
+  const selectFileContent: KeyboardEventHandler<HTMLDivElement> = (event) => {
+    const content = source.current ?? displayed.current;
+    if (content) selectAllInReader(event, content);
   };
   const copySource: ClipboardEventHandler<HTMLDivElement> = (event) => {
     if (source.current && data) copyWholeReader(event, data.content, source.current);
@@ -489,7 +491,7 @@ function FilePreview({
     <FileContentLayout
       viewport={scrollPort}
       scrollLabel={viewer.path}
-      onScrollKeyDown={selectSource}
+      onScrollKeyDown={selectFileContent}
       onScrollCopy={copySource}
       notice={
         <>
@@ -571,7 +573,7 @@ function FilePreview({
           error={{ title: t("file.error.title"), sub: t("file.error.sub") }}
         >
           {(items) => (
-            <div>
+            <div ref={displayed}>
               {moreBefore && !showRendered && (
                 <div {...stylex.props(fp.edge)}>
                   <TextButton tone="accent" size="sm" onClick={loadEarlier}>

@@ -35,6 +35,7 @@ import {
 import { FileWorkspace } from "@/features/workspace/ui/files/FileWorkspace";
 import { FileTree } from "@/features/workspace/ui/files/FileTree";
 import { RpcError } from "@flame/runtime-client";
+import { CodeBlock } from "@flame/ui";
 import { ContentVisibility } from "@/ui/index";
 const selection = vi.hoisted(() => ({
   current: { status: "ready" } as
@@ -66,9 +67,12 @@ let uninstallLocalWorkspace: () => void;
 
 let isLocal = false;
 
+let renderedExtra: React.ReactNode = null;
+
 beforeEach(async () => {
   changes.clear();
   isLocal = false;
+  renderedExtra = null;
   uninstallLocalWorkspace = stubInstance(testClient.workspace.access.local, {
     available: () => isLocal,
     open: vi.fn(),
@@ -107,7 +111,10 @@ beforeEach(async () => {
             title: "Markdown",
             extension: "md",
             component: ({ content }) => (
-              <article data-testid="rendered-markdown">{content}</article>
+              <article data-testid="rendered-markdown">
+                {content}
+                {renderedExtra}
+              </article>
             ),
           },
           { key: "markdown" },
@@ -1580,33 +1587,90 @@ describe("file source selection", () => {
     },
   );
 
-  it("leaves rendered Markdown native and scopes its selected or fallback source", async () => {
-    readFile.mockResolvedValue(captured("# Guide\n\nA  paragraph\n"));
+  it.each(["metaKey", "ctrlKey"])(
+    "scopes rendered Markdown with %s, keeps its native copy, and scopes its selected or fallback source",
+    async (modifier) => {
+      const text = "# Guide\n\nA  paragraph\n";
+      readFile.mockResolvedValue(captured(text));
+      openWorkspaceFile(testClient.workspace.access, "docs/guide.md");
+      mount(
+        <>
+          <p>Conversation outside the file</p>
+          <FileWorkspace />
+        </>,
+      );
+      const rendered = await screen.findByTestId("rendered-markdown");
+      const host = screen.getByRole("region", { name: "docs/guide.md" });
+      act(() => host.focus());
+
+      expect(document.activeElement).toBe(host);
+      expect(fireEvent.keyDown(host, { key: "a", [modifier]: true })).toBe(false);
+      const selected = document.getSelection()!;
+      expect(selected.toString()).toBe(text);
+      const scope = selected.getRangeAt(0).commonAncestorContainer;
+      expect(scope.contains(rendered)).toBe(true);
+      for (const outside of [
+        within(host).getByText("docs/guide.md"),
+        screen.getByRole("button", { name: "Back to files" }),
+        screen.getByRole("radio", { name: "Preview" }),
+        screen.getByText("Conversation outside the file"),
+      ]) {
+        expect(scope.contains(outside)).toBe(false);
+      }
+      expect(document.activeElement).toBe(host);
+      const native = clipboard(host);
+      expect(native.native).toBe(true);
+      expect(native.setData).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole("radio", { name: "Source" }));
+      expect(fireEvent.keyDown(host, { key: "a", [modifier]: true })).toBe(false);
+      expectSourceRange(sourceView());
+      expect(clipboard(host).setData.mock.calls).toEqual([["text/plain", text]]);
+
+      fireEvent.click(screen.getByRole("radio", { name: "Preview" }));
+      await screen.findByTestId("rendered-markdown");
+      await resetKernelForTest();
+      expect(screen.queryByTestId("rendered-markdown")).toBeNull();
+      expect(fireEvent.keyDown(host, { key: "a", [modifier]: true })).toBe(false);
+      expectSourceRange(sourceView());
+      expect(clipboard(host).setData.mock.calls).toEqual([["text/plain", text]]);
+    },
+  );
+
+  it("keeps a rendered field's native selection inside the file reader", async () => {
+    renderedExtra = <input aria-label="Rendered note" defaultValue="Field draft" />;
+    readFile.mockResolvedValue(captured("# Guide\n"));
     openWorkspaceFile(testClient.workspace.access, "docs/guide.md");
     mount(<FileWorkspace />);
-    const rendered = await screen.findByTestId("rendered-markdown");
-    const host = screen.getByRole("region", { name: "docs/guide.md" });
-    document.getSelection()!.selectAllChildren(rendered);
-    expect(fireEvent.keyDown(host, { key: "a", metaKey: true })).toBe(true);
-    expect(clipboard(host).native).toBe(true);
-    expect(clipboard(host).setData).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole("radio", { name: "Source" }));
-    expect(fireEvent.keyDown(host, { key: "a", metaKey: true })).toBe(false);
-    expectSourceRange(sourceView());
-    expect(clipboard(host).setData.mock.calls).toEqual([
-      ["text/plain", "# Guide\n\nA  paragraph\n"],
-    ]);
-
-    fireEvent.click(screen.getByRole("radio", { name: "Preview" }));
     await screen.findByTestId("rendered-markdown");
-    await resetKernelForTest();
-    expect(screen.queryByTestId("rendered-markdown")).toBeNull();
-    expect(fireEvent.keyDown(host, { key: "a", ctrlKey: true })).toBe(false);
-    expectSourceRange(sourceView());
-    expect(clipboard(host).setData.mock.calls).toEqual([
-      ["text/plain", "# Guide\n\nA  paragraph\n"],
-    ]);
+    const field = screen.getByRole<HTMLInputElement>("textbox", { name: "Rendered note" });
+    act(() => field.focus());
+
+    expect(fireEvent.keyDown(field, { key: "a", metaKey: true })).toBe(true);
+    expect(document.getSelection()!.toString()).toBe("");
+    expect(field.value).toBe("Field draft");
+    const copied = clipboard(field);
+    expect(copied.native).toBe(true);
+    expect(copied.setData).not.toHaveBeenCalled();
+  });
+
+  it("keeps a rendered code block's own selection inside the file reader", async () => {
+    renderedExtra = <CodeBlock label="Example code">{"fmt.Println(1)"}</CodeBlock>;
+    readFile.mockResolvedValue(captured("# Guide\n"));
+    openWorkspaceFile(testClient.workspace.access, "docs/guide.md");
+    mount(<FileWorkspace />);
+    await screen.findByTestId("rendered-markdown");
+    const code = screen.getByRole("region", { name: "Example code" });
+    act(() => code.focus());
+
+    expect(fireEvent.keyDown(code, { key: "a", ctrlKey: true })).toBe(false);
+    const selected = document.getSelection()!;
+    expect(selected.toString()).toBe("fmt.Println(1)");
+    expect(selected.getRangeAt(0).commonAncestorContainer).toBe(code);
+    expect(document.activeElement).toBe(code);
+    const copied = clipboard(code);
+    expect(copied.native).toBe(true);
+    expect(copied.setData).not.toHaveBeenCalled();
   });
 
   it("copies accepted content through a pending page change and a shorter refresh", async () => {
