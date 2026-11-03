@@ -19,7 +19,8 @@ below. The latest resumed goal restores verified batch publication to main.
 
 Deliverables catalog opening now enters the existing revision-history reading
 region and reveals it after settlement while preserving later focus choices;
-see **Catalog opening and the revision reading entry (2026-11-03)**. All 4,465
+published as `c43bb63ea` under **Catalog opening and the revision reading entry
+(2026-11-03)**. All 4,465
 frontend tests and 25 non-Runtime Web gates pass, and actual native narrow,
 full-width, failed-read/retry and Chinese large-text/200% tasks are qualified.
 The preceding Schedules and shared alignment batch is published as `bdc532579`
@@ -13643,6 +13644,16 @@ separate toolchain/cache, read-only references and 123-byte interrupted draft
 backup are preserved. Populated Hooks and Diagnostics remain candidates for
 fresh task inspection; the preceding all-page sweep qualified their empty
 surfaces, and no speculative follow-up change is included here.
+
+The normal staged-formatting and workspace-lint commit hook passes in 4.577 s.
+All 1,441 production inputs and 26 explicitly protected source/test/README/resource
+hashes remain unchanged after cleanup and the hook. The publication fetch finds
+no incoming main commits; the primary checkout fast-forwards without conflict.
+Implementation `c43bb63ea7c9bf70d7a503772b82f6d433e59c43` is independently
+verified on remote main after an ordinary push. Both checkouts are clean and at
+that SHA. Post-publication checks again confirm all output/profile absences,
+closed ports and the preserved draft backup. This handoff updates only the
+maintained progress document; the continuous UI goal remains active.
 
 The retained-document list and revision-history page controls now use shared
 Button pending behavior and focusable disabled boundaries. Native HTML disabled
