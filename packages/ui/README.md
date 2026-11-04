@@ -176,9 +176,10 @@ compact numeric voice. Positive additions and removals use their semantic ink;
 known zeroes and unrecorded counts remain quiet and distinct. A count keeps its
 sign with its digits, and the pair wraps between counts when constrained.
 `RecordButton` is a whole-row resource that navigates rather than expands: a
-ghost `Button` with the shared row insets, start alignment, no row corners or
-edge, and a trailing chevron. It accepts the native button ref, events and
-attributes; `aria-current` selects the row with the shared selected state.
+ghost `Button` with the shared row insets, start-aligned content, no row corners
+or edge, and a trailing chevron centered on the complete row, matching the
+`RecordSummary` identity mark beside wrapping copy. It accepts the native button
+ref, events and attributes; `aria-current` selects the row with the shared selected state.
 Navigation history, origin focus and the destination belong to the consumer.
 `DiffFileList` renders its files as `RecordButton` rows with a primary filename, complete
 directory and compact state/count metadata. `DiffFileHeader` keeps the filename

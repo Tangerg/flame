@@ -17,11 +17,13 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-Record-summary identity icons now use muted ink without decorative tiles. The
-Skills, Trajectory and populated Diagnostics native tasks are qualified under
-**Quiet record icons and retained reading (2026-11-04)**. Existing icon geometry
-and reading axes are retained; the observed wrapped Skill row/chevron alignment
-is the next bounded review candidate.
+Navigation-row chevrons now center against the complete row, matching the
+record-summary mark when copy wraps. All three production consumer families have
+actual native reading and return qualification under **Whole-row chevron
+alignment and native record return (2026-11-04)**. Record-summary icons retain
+their unboxed muted treatment; see **Quiet record icons and retained reading
+(2026-11-04)**. Repeated outer list surfaces and dividers are the next bounded
+review candidate.
 
 Shared `Badge` status and metadata now render as unboxed text. Code/build checks
 and nine candidate native tasks are qualified under **Unboxed status text and
@@ -9194,6 +9196,86 @@ copy in archive feedback. The published ESM was rebuilt. Existing Runtime
 installations require explicit reinstallation and selection of the new package
 digest; a source/resource rebuild does not update an admitted installation.
 
+### Whole-row chevron alignment and native record return (2026-11-04)
+
+Continued from synchronized main `41d740112` and the observed 320 px Skills
+alignment issue. The shared `RecordButton` supplies all three production row
+families: Skills, changed files and Deliverables archive. Its first-line offset
+conflicts with the whole-copy alignment already owned by `RecordSummary`.
+
+| Severity | Location                         | Before                                                                            | After                                                             | Why                                                                                          |
+| -------- | -------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| LOW      | `packages/ui/src/records.tsx:36` | A fixed top margin holds the trailing arrow near the first line of wrapping copy. | `alignSelf: "center"` centers the arrow against the complete row. | Align the whole-row navigation affordance with its record mark without per-consumer offsets. |
+
+Content stays start-aligned. Row insets, gaps, sizes, radii, hit areas, refs,
+events and accessible state retain their existing contracts. Diff's explicit
+first-line file glyph and filename/reader-action baseline remain unchanged.
+The UI README states the shared rule. The bounded Read/Edit-only Claude Code
+CLI changed only the shared module and README in 15.876 seconds; root review
+confirmed the one-rule source diff. Read-only ZCode workflow-history rows supply
+a scoped reference for variable-height metadata with a centered open affordance.
+
+Passed checks: **127** focused tests in four files before and after the change;
+**229** shared UI tests in 13 files and the independent offline packed consumer;
+normal portable generation with all **22** installed ESM resources byte-identical;
+all **4,547** frontend tests in 424 files; and all **27** serial Web/native gates.
+`make check-native` passes in 64.640 seconds. Timings are receipts, not performance
+results. No cosmetic mirror test, browser suite, performance benchmark or Runtime/
+CLI/plugin backend suite was added or run.
+
+Two original and four candidate native processes quit normally with exit 0:
+
+- **Skills, English/light/14 px/orange/full motion:** original/candidate normal
+  and actual keyboard 320 px Dock reading. Candidate `runtime` search opens the
+  instructions; explicit Back retains the query and restores the original row's
+  focus. Collapse returns to and continues the exact Composer draft.
+- **Diff, English/light/14 px/orange/full motion:** three actual changed-file
+  rows, including a long basename and wrapping directory, at normal and 320 px
+  Dock widths. `RetainedCommand` search opens the exact file/path/source; Back
+  retains the query and restores the original row's focus, followed by continued
+  exact drafting.
+- **Diff, Chinese/dark/18 px/custom blue/200%:** actual sidebar collapse and
+  full-width reading, native wheel and 2878 × 1798 to 2244 × 1798 window resize.
+  The complete long row remains readable. Search, exact file reading, return
+  focus/query and continued Chinese drafting pass.
+- **Deliverables, German/light/18 px/custom purple/200%:** a populated catalog,
+  long and short titles, native wide/narrow reading, `Quarterly` search and
+  revision-history focus. Reverse keyboard traversal returns to the exact row;
+  Return reopens that revision. Expanded native identity facts, full IDs and ISO
+  timestamps wrap in their columns. Close/reopen retains query, revision and
+  disclosure; the exact German draft continues. Original English catalog reading
+  also supplies a normal/320 px comparison.
+
+The private qualification build extends the existing fixture transport with five
+read-only Deliverables responses and mounts the actual component through the
+existing public runtime client and `InstalledComponent` bridge. Original and
+candidate use the same frozen extension. Repository fixture/product files are
+unchanged. The synthetic document supplies catalog/revision metadata and inspection
+JSON, not a real DOCX renderer, asset-download, save or backend qualification.
+The adapted private host still uses the real Wails bridge, native zoom and chrome;
+the separate native gate builds production host source. Built-ESM native loading,
+RTL and unshown states are not newly qualified. No Send, live Runtime/provider,
+asset mutation or destructive business action is used.
+
+The custom Diff dataset initially lacks the canonical fixture's selected file;
+the actual missing-file notice remains, and Show changed files opens the accepted
+list. A wheel overshoot is corrected with an observed reverse wheel before the
+long-row reading claim. The first German startup snapshot lacks Composer; a fresh
+snapshot resolves startup before any GUI action or draft entry. None is hidden
+with fixture state or lifecycle overrides.
+
+Ownership-checked retirement removes **11** created output/UID-specific Library
+targets, unregisters the private bundle and removes
+`/private/tmp/flame-row-alignment-kMYeMu`. All **17** recorded absences, both
+original UI cache hashes and the protected **123-byte** draft are restored.
+The round-tripped in-memory archive retains **182** UTF-8 records, including
+`go.work`, the private host source and archive fixture, plus metadata/hashes for
+**48** captures. Its gzip SHA-256 is
+`87a2f10a99e6254bd24d25a6dcffa559034d4a8fb5df336389acacc2889dd955`.
+Approve this bounded alignment repair. Whole-product acceptance remains unproven;
+next trace the observed repeated list surfaces/dividers and their actual consumers
+before choosing a shared reduction. The whole-product goal remains active.
+
 ### Quiet record icons and retained reading (2026-11-04)
 
 Continued from synchronized main `8e176a36b` and the user's design-slop
@@ -9267,9 +9349,10 @@ Approve the bounded reduction in repeated accent decoration. Whole-product
 acceptance remains unproven. Native 320 px Skills reading exposes a separate
 existing alignment concern: `RecordButton` places its chevron near the first
 line while `RecordSummary` centers its mark against the complete wrapping copy.
-Next trace that shared composition and its real consumers before choosing a
-single alignment rule; also retain the user's preference against excess
-containers and dividers in subsequent actual-page reviews.
+The subsequent **Whole-row chevron alignment and native record return** chapter
+resolves that shared composition across all three production consumer families.
+Retain the user's preference against excess containers and dividers in subsequent
+actual-page reviews.
 
 Ownership-checked retirement removes **11** created output/UID-specific Library
 targets, unregisters the private bundle and removes

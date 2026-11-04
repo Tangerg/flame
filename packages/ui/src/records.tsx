@@ -33,7 +33,7 @@ const styles = stylex.create({
     borderRadius: 0,
     color: color.fg,
   },
-  recordChevron: { color: color.fgMuted, marginBlockStart: space.s0_5 },
+  recordChevron: { color: color.fgMuted, alignSelf: "center" },
   group: {
     // Callers hide a truly empty group from their read state; hiding on
     // :empty would collapse the frame while React replaces its children.
