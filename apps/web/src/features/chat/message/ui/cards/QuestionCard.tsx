@@ -269,7 +269,7 @@ export function QuestionCard({
     question: Extract<QuestionItem, { type: "choice" }>,
     selected: string[],
   ) => {
-    if (!runtimeAvailable || actions.pending) return;
+    if (actionsBlocked) return;
     setDraft((previous) => setQuestionOptions(previous, activeIndex, question, selected));
   };
 
@@ -292,6 +292,7 @@ export function QuestionCard({
     const value = event.currentTarget.value;
     const nativeComposing = (event.nativeEvent as { isComposing?: boolean }).isComposing === true;
     composition.noteChange(nativeComposing);
+    if (actionsBlocked) return;
     setDraft((previous) => setQuestionText(previous, activeIndex, activeQuestion, value));
   };
 
@@ -299,7 +300,7 @@ export function QuestionCard({
     event: CompositionEvent<HTMLTextAreaElement | HTMLInputElement>,
   ) => {
     composition.end();
-    if (!activeQuestion) return;
+    if (!activeQuestion || actionsBlocked) return;
     const value = event.currentTarget.value;
     setDraft((previous) => setQuestionText(previous, activeIndex, activeQuestion, value));
   };
@@ -372,7 +373,7 @@ export function QuestionCard({
               labelledBy={promptId}
               disabled={!runtimeAvailable}
               numbered
-              pending={actions.pending}
+              pending={actions.disabled}
               onValueChange={(selected) => selectOptions(activeQuestion, selected)}
             >
               {activeQuestion.options.map((option, optionIndex) => {
@@ -391,7 +392,7 @@ export function QuestionCard({
                     label={option.label}
                     description={option.description}
                     disabled={!runtimeAvailable}
-                    pending={actions.pending}
+                    pending={actions.disabled}
                   >
                     <span {...stylex.props(qc.optionLine)}>
                       <span {...stylex.props(qc.optionLabel, typeStep.uiMd)}>{label}</span>
@@ -426,7 +427,7 @@ export function QuestionCard({
                 aria-label={activeQuestion.prompt}
                 placeholder={t("question.freetext.placeholder")}
                 disabled={!runtimeAvailable}
-                pending={actions.pending}
+                pending={actions.disabled}
                 onChange={handleAnswerChange}
                 onCompositionStart={handleCompositionStart}
                 onCompositionEnd={handleCompositionEnd}
@@ -456,7 +457,7 @@ export function QuestionCard({
                 aria-label={activeQuestion.prompt}
                 placeholder={t("question.freetext.placeholder")}
                 disabled={!runtimeAvailable}
-                pending={actions.pending}
+                pending={actions.disabled}
                 onChange={handleAnswerChange}
                 onCompositionStart={handleCompositionStart}
                 onCompositionEnd={handleCompositionEnd}
@@ -470,13 +471,20 @@ export function QuestionCard({
         </div>
       </div>
       <div {...stylex.props(ms.cardActions, qc.footerShrink)}>
-        <Button variant="outline" size="sm" disabled={actionsBlocked} onClick={skipCurrent}>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={actionsBlocked}
+          focusableWhenDisabled={actions.disabled}
+          onClick={skipCurrent}
+        >
           {t("question.action.skip")}
         </Button>
         <Button
           variant="primary"
           size="sm"
           disabled={actionsBlocked || !activeQuestionComplete}
+          focusableWhenDisabled={actions.disabled}
           onClick={confirmCurrent}
         >
           {t(isLastQuestion ? "question.action.submit" : "question.action.advance")}

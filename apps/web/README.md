@@ -116,6 +116,12 @@ submit through its successor. An absent Runtime supplies no command generation.
 Question drafts retain raw text and one literal custom choice, including commas.
 The editor can explicitly skip a field with an empty answer. Runtime admits the
 complete candidate; Web does not trim or deduplicate answers before submission.
+While an answer is pending or staged, Skip and Next/Submit stay focusable and
+refuse activation through the shared disabled-control contract; incomplete and
+offline forms keep native disabled actions. The same command projection keeps
+choices and fields read-only, and refuses late pointer, paste or IME changes,
+until canonical history replaces the admitted answer or submission becomes
+available again.
 
 Conversation search covers revealed message text, including text reached by
 scrolling. Collapsed, hidden and inert content is excluded regardless of its

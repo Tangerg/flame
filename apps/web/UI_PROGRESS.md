@@ -32,6 +32,9 @@ The English, Chinese and German native tasks and final checks are recorded under
 Reopened MCP editors also retain the current accepted configuration after an
 older save clears its draft, preserving later focus, caret and authored changes;
 see **MCP current-server values after editor reopen (2026-11-04)**.
+Question submission now retains its initiating footer focus and keeps admitted
+choices and text immutable through acknowledgement until canonical replacement;
+see **Question submission focus and admitted-answer continuity (2026-11-04)**.
 The whole-product goal remains active.
 
 Diff filenames and same-row reader actions now share their first text baseline;
@@ -14056,6 +14059,131 @@ agreement. The earlier actual Wails flows qualify the same unchanged production
 behavior; the full Web/native checks above precede this test-only follow-up.
 The two new declaration-output directories are removed with path, UID, birth-time,
 symlink, tracked-file and exact-copy checks; no native app is launched.
+
+### Question submission focus and admitted-answer continuity (2026-11-04)
+
+Qualified from synchronized main `6945153f8`. Actual original Wails loses native
+focus to HTML when Submit becomes disabled. A footer-only candidate retains that
+focus, but its native preflight exposes a second defect: after the actual
+coordinator acknowledges the answer and before canonical history replaces the
+card, choices and custom text become editable again. Native paste displays
+`This later text was never admitted.` while the subsequent recorded answer still
+contains `Keep the admitted answer.` Both original and preflight captures are
+excluded from final acceptance.
+
+`QuestionCard.tsx` now projects the existing `actions.disabled` fact into the
+choice and field pending contracts and both footer controls' existing
+`focusableWhenDisabled` contract. Draft selection, text change and composition-end
+handlers use the same existing `actionsBlocked` guard. Pending and staged answers
+therefore remain read-only, and the initiating Submit or Skip stays mounted and
+focusable while refusing activation. No command owner, submitted snapshot, focus
+effect, timer, duplicate state, API, dependency, shared control, locale or style
+is added. Ordinary choice navigation, explicit confirmation, incomplete/offline
+actions, IME admission and ChatStream's existing replacement-focus owner remain.
+
+Two bounded Read/Edit-only Claude Code CLI tasks implement the three permitted
+paths in **116.034 s / 19 turns** and **166.324 s / 23 turns**, without permission
+denials. Root reviews the actual diff and native preflights. Initial new test
+fixtures reused one React element, preventing mocked command changes from
+rerendering the card: **3 failures / 51 passes**, 2.519 s. Root corrects the test
+fixtures to create fresh JSX on rerender; production bytes remain unchanged.
+Those initial logs and counters are retained separately from final evidence.
+
+| Check                 | Actual final result                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Original focused      | **4 files / 43 tests**, 2.683 s                                                                               |
+| Final focused         | **5 files / 54 tests**, 3.106 s, including the actual interrupt-response coordinator                          |
+| Original card counter | **4 failures / 50 passes**, 2.432 s; candidate restored byte-exact                                            |
+| Footer-only counter   | **4 failures / 50 passes**, 2.420 s; exposes staged choice/text mutation; candidate restored byte-exact       |
+| Complete frontend     | **424 files / 4,545 tests**, 102.917 s                                                                        |
+| Web and Native        | All **27 serial gates** pass: frontend, 25 non-Runtime Web gates and `make check-native`; Native **24.061 s** |
+| Owned checks          | Formatting and diff whitespace pass; final private assets build in **2.688 s**                                |
+
+The 23 QuestionCard tests cover pending and staged focus, guarded repeat actions,
+immutable radio/custom/freeform answers, late composition/change events,
+legitimate availability returning, and last-question Skip preserving earlier
+answers while clearing only the current one. Later outside focus remains owned
+by its new target. Existing incomplete and offline native-disabled coverage stays.
+Shared UI is unchanged; `d6e6dab34`'s **13 files / 229 tests** and packed offline
+consumer result (**8.659 s**) are reused, not rerun. Full Runtime, CLI, plugin
+backend, plugin-wide formatting, browser visual suites and benchmarks are not run.
+The historical Feedback formatting issue is not a newly run failure. Native
+linker target-version warnings are non-failing.
+
+Final actual Wails tasks use the production host, current installed components,
+normal shared controls, the actual coordinator acknowledgement and canonical
+fixture folding. A private bridge waits 12 seconds before the real `onSettled`,
+then 12 seconds before the original fixture snapshot update, without invoking
+`onSettled` twice. This exposes the existing pending/staged distinction. Private
+URLs seed the existing Composer draft before question handling and supply long
+Chinese/German question content; these drafts are not manually authored before
+the question. No DOM observer or injected focus mechanism supplies evidence.
+
+- **English/light/14px/Orange/full motion/100%, keyboard-resized 320px Dock:**
+  selecting Race detector, the long accessibility option and literal custom text
+  remains draft-only. Keyboard Submit retains native focus during pending and
+  after acknowledgement; repeated Return/Space are refused. Native late paste
+  cannot replace the accepted custom answer. Canonical replacement automatically
+  focuses the retained Composer. Opening and collapsing the recorded original
+  answers, then keyboard return, continues the unsent draft to
+  `Continue after question review. English verified. Reviewed.` The first
+  pointer/Home splitter probe did not focus the resizer and does not prove 320px;
+  the accepted keyboard Home capture does.
+- **Chinese/dark/18px/custom #4E80FF/motion off/200%:** actual resize from
+  **2878 × 1798** to **2244 × 1798** preserves complete wrapped option text,
+  distinguishing suffixes, reachable footer controls and local wheel reading.
+  Pointer/Option+Tab selects the first and last options and custom answer.
+  Submit retains focus through acknowledgement, and native paste cannot replace
+  `保留这份已提交的答案，继续核对上下文。` The actual recorded answer retains all
+  three accepted strings. Automatic Composer return and later keyboard review
+  return continue the draft to `提问提交后继续对话。 中文已核对。 已返回。`
+- **German/light/18px/custom #9B6DF8/motion off/200%, 2244 × 1798:** long option
+  labels and descriptions wrap and remain readable by wheel. Keyboard Skip on
+  the final question clears its selected choices and custom text, retaining the
+  same native focused disabled control during pending and after acknowledgement.
+  The user then opens full-width Files at 200%. Canonical history replacement
+  preserves that later Files focus; keyboard navigation reaches its Back control.
+  Explicit Close returns to the conversation, whose expanded record reads
+  `Keine Antwort angegeben`. Collapsing and keyboard return preserve the original
+  Composer, continued to `Nach der Frage weiterschreiben. Deutsch geprüft.`
+
+All three final processes exit normally with code 0 in **171.490 / 412.968 /
+188.215 s**; Actual Size is restored before Quit. Original and two preflight
+processes also exit normally in **97.095 / 71.670 / 68.016 s**, without qualifying
+their rejected behavior. Sky's unsupported PageUp and some offscreen AX targeting
+at 200% are probe limitations; fresh screenshots, coordinate focus and native
+wheel/keyboard provide final Chinese evidence. Fresh AX observations resolve
+reported user-activity guards. These probes do not establish a locked Mac or a
+product defect.
+
+The better-* review covers grouping, wrapped-label alignment, readable choices,
+control states, visible focus, themes and responsive reading in these scenes.
+ZCode's actual `ElicitationDialog.tsx` and HeroUI's radio Form example distinguish
+choice navigation from explicit submission; HeroUI's loading Button example
+informs state composition. Their three read-only files remain byte-exact and do
+not establish Flame's lifecycle behavior. Existing semantic tokens and focus
+styles supply the repair without decorative changes.
+
+| Severity | Location                  | Before                                    | After                                          | Why                                      |
+| -------- | ------------------------- | ----------------------------------------- | ---------------------------------------------- | ---------------------------------------- |
+| MEDIUM   | Pending question footer   | Native disablement drops initiating focus | Existing guarded focusable contract retains it | WCAG 2.4.3, continued task navigation    |
+| HIGH     | Acknowledged answer draft | UI can diverge from the admitted answer   | Existing admission projection stays read-only  | One admitted fact, consistent UI/history |
+
+**Approve for this question task only.** This isolated fixture does not exercise
+a live Runtime/provider/tool/Send or approval action. Physical IME, VoiceOver
+speech, RTL, other operating systems, 320px entire-window reflow, measured
+contrast, motion timing and every state permutation remain unverified. The
+whole-product award-tier goal remains active; continue from a newly observed task.
+
+Final verification preserves **6,804 source inputs**, **22 unchanged installed
+resources**, **333 Web / 4 app / 21 private host files** and three references.
+Cleanup unregisters the app, removes **11 created targets**, restores ten
+initially absent checkout roots and six UID-specific Library baselines, then
+removes the exact owned qualification root. No native process or private endpoint
+listener remains. Both existing UI cache files and the protected 123-byte draft
+remain byte-exact. Preserved in-thread evidence contains **211 text records /
+60 capture hashes**; round-trip-verified gzip SHA-256
+`22e31d52c529001c7ecb43845973c06334f9ce3639a6d5b695331b6e1d243171`.
 
 ## Captured Session naming task
 
