@@ -251,7 +251,12 @@ export function Schedules({ context }: { context: ComponentContext }) {
               <Button variant="ghost" disabled={busy} onClick={cancelTask}>
                 {t("cancel")}
               </Button>
-              <Button variant="primary" type="submit" disabled={!canSave}>
+              <Button
+                variant="primary"
+                type="submit"
+                focusableWhenDisabled={busy}
+                disabled={!canSave}
+              >
                 {t("command.save")}
               </Button>
             </>

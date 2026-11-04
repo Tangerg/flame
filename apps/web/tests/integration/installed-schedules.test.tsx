@@ -113,6 +113,33 @@ async function scheduleRequest(method: keyof MethodInputs, after = 0) {
   return matching()[0]!;
 }
 
+function scheduleRequests(method: keyof MethodInputs) {
+  return transport
+    .outbox()
+    .filter(
+      (request) =>
+        request.method === "plugins.call" &&
+        (request.params as CallPluginRequest).method === method,
+    );
+}
+
+async function submitFromSave(editor: HTMLElement) {
+  await waitFor(() =>
+    expect(document.activeElement).toBe(within(editor).getByRole("textbox", { name: "Title" })),
+  );
+  const save = within(editor).getByRole<HTMLButtonElement>("button", { name: "Save schedule" });
+  act(() => save.focus());
+  fireEvent.click(save);
+  return save;
+}
+
+function expectFocusableInert(editor: HTMLElement, save: HTMLButtonElement) {
+  expect(within(editor).getByRole("button", { name: "Save schedule" })).toBe(save);
+  expect(save.disabled).toBe(false);
+  expect(save.getAttribute("aria-disabled")).toBe("true");
+  expect(document.activeElement).toBe(save);
+}
+
 async function providerModels() {
   await waitFor(() =>
     expect(transport.outbox().filter((request) => request.method === "models.list")).toHaveLength(
@@ -357,7 +384,7 @@ it("keeps a pending save in its task and preserves the draft after rejection", a
   await act(async () => respondSuccess(transport, providers.id, { data: [] }));
   const editor = screen.getByRole("dialog", { name: `Edit ${schedule.Title}` });
   const title = within(editor).getByRole<HTMLInputElement>("textbox", { name: "Title" });
-  fireEvent.click(within(editor).getByRole("button", { name: "Save schedule" }));
+  const save = await submitFromSave(editor);
   const request = await scheduleRequest("flame.schedules/update.v1");
   expect(JSON.parse((request.params as CallPluginRequest).input)).toMatchObject({
     ID: schedule.ID,
@@ -369,9 +396,13 @@ it("keeps a pending save in its task and preserves the draft after rejection", a
       ReasoningEffort: schedule.ModelSelection.reasoningEffort,
     },
   });
+  expectFocusableInert(editor, save);
+  fireEvent.click(save);
+  fireEvent.submit(editor);
   fireEvent.keyDown(editor, { key: "Escape" });
   fireEvent.click(within(editor).getByRole("button", { name: "Cancel" }));
   fireEvent.click(within(editor).getByRole("button", { name: "Close schedule editor" }));
+  expect(scheduleRequests("flame.schedules/update.v1")).toHaveLength(1);
   expect(screen.getByRole("dialog")).toBe(editor);
   expect(title.disabled).toBe(true);
   expect(within(editor).getByRole("status").textContent).toBe("Save schedule…");
@@ -383,9 +414,15 @@ it("keeps a pending save in its task and preserves the draft after rejection", a
   expect((await within(editor).findByRole("status")).textContent).toBe("The schedule was refused.");
   expect(title.value).toBe("Retained draft");
   expect(title.disabled).toBe(false);
-  expect(
-    within(editor).getByRole<HTMLButtonElement>("button", { name: "Save schedule" }).disabled,
-  ).toBe(false);
+  expect(within(editor).getByRole("button", { name: "Save schedule" })).toBe(save);
+  expect(save.disabled).toBe(false);
+  expect(save.getAttribute("aria-disabled")).not.toBe("true");
+  expect(document.activeElement).toBe(save);
+  fireEvent.change(within(editor).getByRole("textbox", { name: "Instructions" }), {
+    target: { value: " " },
+  });
+  expect(save.disabled).toBe(true);
+  expect(save.getAttribute("aria-disabled")).not.toBe("true");
   fireEvent.click(within(editor).getByRole("button", { name: "Cancel" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   await waitFor(() =>
@@ -456,41 +493,95 @@ it("returns creation and cancellation to Add while a catalog read is pending", a
   await waitFor(() => expect(document.activeElement).toBe(add));
 });
 
-it("retains an uncertain save and reconciles only the original command", async () => {
+async function uncertainSave() {
   const send = vi.spyOn(transport, "send");
   const call = vi.spyOn(client.plugins, "call");
   const schedule = VISUAL_SCHEDULES_PAGE.Rows[0]!;
   const providers = await openEditor([schedule]);
   await act(async () => respondSuccess(transport, providers.id, { data: [] }));
   const editor = screen.getByRole("dialog", { name: `Edit ${schedule.Title}` });
-  fireEvent.submit(editor);
+  const save = await submitFromSave(editor);
   const first = await scheduleRequest("flame.schedules/update.v1");
   const original = send.mock.calls.find(([request]) => request.id === first.id)!;
   await act(async () => respondSuccess(transport, first.id, { output: 42 }));
   expect((await within(editor).findByRole("alert")).textContent).toContain(
     "The original outcome is not confirmed.",
   );
+  return { send, call, schedule, editor, save, first, original };
+}
+
+async function reconcileOriginal({
+  send,
+  editor,
+  first,
+  original,
+}: Awaited<ReturnType<typeof uncertainSave>>) {
+  const feedback = within(editor).getByRole("region", { name: "Schedule command status" });
+  const after = transport.outbox().length;
+  const reconcile = within(editor).getByRole("button", { name: "Reconcile original command" });
+  act(() => reconcile.focus());
+  fireEvent.click(reconcile);
+  expect(within(editor).queryByRole("button", { name: "Reconcile original command" })).toBeNull();
+  expect(document.activeElement).toBe(feedback);
+  const retry = await scheduleRequest("flame.schedules/update.v1", after);
+  expect(retry.params).toEqual(first.params);
+  const repeated = send.mock.calls.find(([request]) => request.id === retry.id)!;
+  expect(repeated[2]!.idempotencyKey).toBe(original[2]!.idempotencyKey);
+  expect(repeated[2]!.idempotencyNamespace).toBe(original[2]!.idempotencyNamespace);
+  expect(document.activeElement).toBe(feedback);
+  return { feedback, retry };
+}
+
+it("retains an uncertain save and reconciles only the original command", async () => {
+  const uncertain = await uncertainSave();
+  const { call, schedule, editor, save, original } = uncertain;
   expect(within(editor).getByText(`Original command: ${original[2]!.idempotencyKey}`)).toBeTruthy();
+  expectFocusableInert(editor, save);
+  fireEvent.click(save);
+  fireEvent.submit(editor);
+  expect(scheduleRequests("flame.schedules/update.v1")).toHaveLength(1);
   fireEvent.keyDown(editor, { key: "Escape" });
   fireEvent.click(within(editor).getByRole("button", { name: "Cancel" }));
   expect(screen.getByRole("dialog")).toBe(editor);
   expect(within(editor).getByRole<HTMLInputElement>("textbox", { name: "Title" }).value).toBe(
     "Retained draft",
   );
-  const after = transport.outbox().length;
-  fireEvent.click(within(editor).getByRole("button", { name: "Reconcile original command" }));
-  const retry = await scheduleRequest("flame.schedules/update.v1", after);
-  expect(retry.params).toEqual(first.params);
-  const repeated = send.mock.calls.find(([request]) => request.id === retry.id)!;
-  expect(repeated[2]!.idempotencyKey).toBe(original[2]!.idempotencyKey);
-  expect(repeated[2]!.idempotencyNamespace).toBe(original[2]!.idempotencyNamespace);
+  const { retry } = await reconcileOriginal(uncertain);
   expect(
     call.mock.calls.filter(([request]) => request.method === "flame.schedules/update.v1"),
   ).toHaveLength(1);
   await act(async () => respondSuccess(transport, retry.id, { output: stringifyJSON(schedule) }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByRole("searchbox", { name: "Search this page" }),
+    ),
+  );
   expect(screen.getByText("Save schedule completed.")).toBeTruthy();
 });
+
+it.each(["status region", "later Save"] as const)(
+  "keeps %s focus through a refused original-command retry",
+  async (choice) => {
+    const uncertain = await uncertainSave();
+    const { editor, save } = uncertain;
+    const { feedback, retry } = await reconcileOriginal(uncertain);
+    if (choice === "later Save") act(() => save.focus());
+    await act(async () =>
+      respondSuccess(transport, retry.id, {
+        failure: { code: "invalid", message: "The schedule was refused." },
+      }),
+    );
+    expect(await within(editor).findByText("The schedule was refused.")).toBeTruthy();
+    expect(within(editor).getByRole("region", { name: "Schedule command status" })).toBe(feedback);
+    expect(document.activeElement).toBe(choice === "later Save" ? save : feedback);
+    expect(within(editor).getByRole<HTMLInputElement>("textbox", { name: "Title" }).value).toBe(
+      "Retained draft",
+    );
+    expect(save.disabled).toBe(false);
+    expect(scheduleRequests("flame.schedules/update.v1")).toHaveLength(2);
+  },
+);
 
 it("returns to retained search after an acknowledged deletion removes its record", async () => {
   const schedule = VISUAL_SCHEDULES_PAGE.Rows[0]!;

@@ -35,6 +35,9 @@ see **MCP current-server values after editor reopen (2026-11-04)**.
 Question submission now retains its initiating footer focus and keeps admitted
 choices and text immutable through acknowledgement until canonical replacement;
 see **Question submission focus and admitted-answer continuity (2026-11-04)**.
+Schedules Save now retains its focused waiting control, and original-command
+reconciliation enters the existing status region while respecting later focus;
+see **Schedules save waiting and original-result focus (2026-11-04)**.
 The whole-product goal remains active.
 
 Diff filenames and same-row reader actions now share their first text baseline;
@@ -10022,6 +10025,145 @@ interrupted draft remains exact. The in-memory evidence archive retains
 Normal hooks, main integration and remote verification remain required
 publication steps. No protocol or data migration is needed; the rebuilt installed
 MCP digest is adopted only through its normal explicit package update.
+
+### Schedules save waiting and original-result focus (2026-11-04)
+
+Qualified from main `640ef46477f6209c7b4c58567f6929f9a91a2457`, which
+publishes the preceding Question submission repair. The original native path is
+conversation → Schedules → nightly search → Edit → retained Title → keyboard
+Save → uncertain result → reconcile the original command → known refusal →
+Cancel → original conversation draft. Native disablement drops the focused Save
+to HTML while waiting; removing the focused recovery action does so again. The
+original draft, exact command identity and filtered return already work.
+
+The existing Save now uses `focusableWhenDisabled={busy}` with its existing
+admission predicate. Pending and uncertain Save remains focusable and inert;
+an incomplete idle draft remains natively disabled. Original reconciliation
+uses its existing guarded transfer to the existing command status region for
+dialog commands as well as manual Runs. The transfer occurs before retiring
+the recovery action, only when focus is within that region or on the unclaimed
+body, and only while the region is available. A known refusal retains that node
+and its focus. Settlement does not reclaim a later user focus choice.
+
+The original command/promise, method/input/revision, idempotency identity,
+admission and accepted/refused/uncertain lifecycle remain authoritative. Cancel,
+Close, Escape, field disablement and accepted-result closure retain their
+existing policies. No shared UI, layout, token, locale, Runtime, API, dependency,
+state, effect, timer or listener is added. The normal component generator changes
+only the Schedules installed ESM among 22 recorded installed resources.
+
+One bounded Read/Edit-only Claude Code CLI call takes **136.552 s / 13 turns**
+with no permission denials. Root reviews its four allowed source/test/doc paths,
+wraps explicit test focus choices in `act`, adds repeated form-submit guards,
+and owns all checks, counters and real desktop acceptance. Tests cover the same
+focused Save through pending, uncertainty and refusal; blocked repeated click
+and form submission; dismissal guards; exact original retry payload/key/
+namespace; canonical acceptance and retained search; status-region and later
+Save focus through refusal; and invalid idle Save disablement.
+
+The better-interface owner skills guide this scoped review. Accessibility covers
+WCAG 2.4.3 and asynchronous focus continuity; layout/typography inspect the real
+14/18px and translated 200% reading paths; writing retains the existing lifecycle
+copy; color/UI retain established surfaces, accents and motion policy. Read-only
+HeroUI `apps/docs/src/demos/en/button/loading-state.tsx` informs waiting-control
+composition. ZCode `packages/ui/src/DeleteAllArchivedTasksButton.tsx` informs
+one in-flight operation and result ownership. Neither reference proves Flame's
+focus or command lifecycle. Existing Radix/Ace research remains applicable.
+
+| Severity | Location                                          | Before                                                                                                | After                                                                             | Why                                                        |
+| -------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| MEDIUM   | `plugins/schedules/component/component.tsx:254`   | Native disablement drops the initiating Save focus while waiting or uncertain                         | The same inert Save retains its keyboard position                                 | Preserve submission continuity without another command     |
+| MEDIUM   | `plugins/schedules/component/useSchedules.ts:302` | Dialog reconciliation removes its focused recovery action without entering the existing result region | Existing guarded status transfer also covers the dialog; later focus is respected | Keep original-command recovery within its task, WCAG 2.4.3 |
+
+| Verification                | Actual result                                                                                             |
+| --------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Original focused baseline   | **3 files / 47 tests pass**, 3.709 s                                                                      |
+| Final focused regressions   | **3 files / 49 tests pass**, 4.385 s                                                                      |
+| Original production counter | **4 failures / 45 passes**, 3.572 s; candidate restored byte-exactly                                      |
+| Complete frontend           | **424 files / 4,547 tests pass**, 105.609 s                                                               |
+| Final serial gates          | Frontend, all **25** non-Runtime Web gates and native: **27 pass**                                        |
+| Schedules plugin            | Normal ESM generation 1.787 s, typecheck 1.199 s, lint 0.202 s, eight-locale validation 0.313 s; all pass |
+| Native gate                 | `make check-native` passes supported Desktop Go checks and production Wails build, 18.582 s               |
+| Private native candidate    | Current Web assets build in 2.259 s; accepted host/app bytes remain unchanged                             |
+
+Owned formatting and `git diff --check` pass. Shared UI source is unchanged;
+the recorded `d6e6dab34` **13 files / 229 tests** and packed offline consumer
+qualification (**8.659 s**) are reused, not rerun. Runtime/CLI, plugin backend,
+plugin-wide formatting, browser visual suites and benchmarks are not run. The
+previous unrelated Feedback formatting issue is outside this diff.
+
+Actual final Wails tasks use current Schedules source through InstalledComponent
+and the real desktop host. Normal installed ESM is generated and independently
+checked; this fixture entry does not claim to load that generated ESM.
+
+- **English / light / 14px / Orange / full motion / 100%:** keyboard Home on
+  the actual Dock divider reports **320px**. With `nightly` retained, the edited
+  Title survives focused Save pending and uncertainty; repeated Return/Space
+  remain guarded. Original reconciliation enters the status region, then
+  acceptance closes to the focused retained search. The canonical updated row
+  and expanded **Revision 2** survive Files reading and return. The Composer
+  continues as `Continue after schedule review. English verified.`.
+- **Chinese / dark / 18px / custom #4E80FF / motion off:** native **200%** and
+  an edge-resized **2244 × 1798** window qualify the long Title, body scrolling,
+  aligned model/reasoning and workspace/enabled groups, focused pending/unknown
+  Save, status entry and retained status focus through a full known refusal.
+  The exact original Title remains editable and accepts `（已核对）`. Keyboard
+  Cancel returns to the original record action and retained `nightly` query;
+  closing full width returns to `定时任务核对后继续对话。 中文已核对。`.
+- **German / light / 18px / custom #9B6DF8 / motion off:** the same native
+  zoom and window size qualify long labels, control-top alignment, complete
+  unknown/refused feedback and fitting footer actions. Original retry enters
+  `Status des Zeitplanbefehls`; Option-Tab then deliberately chooses pending
+  Save. Known refusal preserves this later Save focus. The exact original Title
+  accepts ` geprüft`; observed keyboard Cancel restores the original opener
+  and query. The Composer continues as
+  `Nach der Zeitplanprüfung weiterschreiben. Deutsch geprüft.`.
+
+All final processes quit normally with exit **0 / 0 / 0**, taking
+**141.123 / 241.732 / 398.989 s**. The original English baseline also exits 0
+(**231.338 s**) and is excluded from final acceptance. Native interaction uses
+Sky screenshots and AX, pointer, keyboard, wheel, resize and webview zoom;
+there is no browser/DOM automation or injected focus observer. An offscreen AX
+Title-entry probe at 200% stops before paste when its focus assertion fails;
+native body scrolling and a screenshot-grounded pointer then enter the visible
+field. Keyboard targets are observed before activation.
+
+The private producer delays original and retry replies by 12 seconds and accepts
+only the captured `sch_nightly` update. Reconciliation requires the exact
+original method/input/idempotency identity and disallows overlap. English
+acceptance updates the existing private canonical row and increments its
+revision; Chinese/German retry returns the known refusal through the existing
+plugin result contract. All three begin with an uncertain original result.
+The Composer seed belongs to the actual private fixture owner; its continuation
+is native. No live Runtime, provider account, scheduler execution, RunNow,
+Delete, real database or Send is exercised. Direct-known-result native behavior,
+VoiceOver, physical IME, RTL, other OS, a 320px whole window, every preference
+permutation, contrast measurements and motion timing are not qualified.
+
+The eight award CHECK dimensions are reviewed only within this task: typography,
+whitespace and hierarchy remain readable in the inspected paths; color retains
+the approved theme system; responsive and micro-interaction behavior is qualified
+at the actual bounds above. Motion and originality retain Flame's existing
+policy and visual vocabulary. **Approve** the inspected Save/original-result
+flow; this is not whole-product award-tier acceptance.
+
+Before retirement, **6,804 source inputs**, **22 installed resources**,
+**333 Web / 4 app / 21 private-host files**, five private producer/build inputs,
+two read-only references, four native receipts and all 27 serial results match
+the accepted candidate. Only the Schedules ESM differs among installed resources.
+Ownership-checked cleanup removes **11** created checkout/UID-specific Library
+targets, unregisters the private bundle and removes its exact qualification root
+`/private/tmp/flame-schedule-command-d9HVE1`. All **17** recorded absences are
+restored; native processes and the inactive private endpoint are absent. Two
+original UI cache files and the protected **123-byte** draft retain their hashes.
+The round-tripped in-thread archive retains **196** UTF-8 records and metadata/
+hashes for **59** captures; gzip SHA-256 is
+`e025daed64706467bb0ddf3d66263f1fb8be74ae8ca9d463e70bbe22262278c0`.
+Source/resource/reference and cleanup proofs remain available across publication.
+
+Next inspect the observed German 200% saved-schedules heading behind the sticky
+toolbar after Cancel. Reproduce it separately before attributing a layout defect.
+The goal remains active; continue from actual observations after publication.
 
 ### Schedules model-choice reading and dialog feedback (2026-11-04)
 

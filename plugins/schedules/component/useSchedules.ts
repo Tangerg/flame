@@ -299,7 +299,6 @@ export function useSchedules(context: ComponentContext) {
       };
       const feedback = feedbackElement.current;
       if (
-        original.method === "flame.schedules/runNow.v1" &&
         feedback &&
         !feedback.closest("[hidden], [inert]") &&
         (feedback.contains(feedback.ownerDocument.activeElement) ||

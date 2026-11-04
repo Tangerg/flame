@@ -241,8 +241,13 @@ Command progress, rejection and original-outcome reconciliation render in the
 active task's persistent action zone, so scrolling the fields cannot hide the
 outcome or its next action. Pending or uncertain commands disable dismissal and new submission;
 they retain the exact draft and original command rather than treating cancellation
-as a business rollback. A rejected save keeps the draft editable unless the
-existing revision-conflict rule retires it. The existing command owner alone
+as a business rollback. A focused Save stays focusable and inert while its command
+is pending or uncertain; an incomplete idle draft keeps Save natively disabled.
+Original-command reconciliation moves focus from its retiring action to the
+existing command status region, in dialogs as for manual Runs, only while focus
+remains within that region or on the unclaimed document body. The region keeps
+focus through a known refusal; later user focus is preserved. A rejected save
+keeps the draft editable unless the existing revision-conflict rule retires it. The existing command owner alone
 settles acceptance and refreshes the catalog.
 
 Templates live in src/templates.ts as authoring content copied into a new draft.
