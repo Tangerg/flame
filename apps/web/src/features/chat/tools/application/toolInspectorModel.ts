@@ -1,4 +1,4 @@
-import { formatJSONText } from "@qimu/sdk/json";
+import { formatJSONText } from "@frame/sdk/json";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 export interface ToolInspectorBody {
   text: string;

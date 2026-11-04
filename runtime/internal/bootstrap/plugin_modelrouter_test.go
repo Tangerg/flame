@@ -3,10 +3,15 @@ package bootstrap
 import (
 	"context"
 	json "encoding/json/v2"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"testing"
+
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/model"
@@ -14,8 +19,7 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -26,18 +30,18 @@ func TestModelRouterInstalledPolicyBindsNewRunWithoutRewritingSessionOrAcceptedR
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "modelrouter"))
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
-	contracts, err := portable.ParseCapability([]byte(testsupport.ModelrouterCapabilityJSON))
+	contracts, err := plugincontract.ParseCapability([]byte(testsupport.ModelrouterCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
 	selected, _ := model.New("openai", "gpt-5-mini")
 	replace := func(revision uint64, rules string, key string) {
 		t.Helper()
-		requestInput := testsupport.ModelrouterReplaceInput{ExpectedRevision: revision}
+		requestInput := testsupport.ModelrouterReplaceInput{ExpectedRevision: generatedNumber(t, strconv.FormatUint(revision, 10))}
 		if err := json.Unmarshal([]byte(rules), &requestInput.Rules); err != nil {
 			t.Fatal(err)
 		}
-		input, err := jsonvalue.Encode(requestInput)
+		input, err := framevalue.EncodeJSON(requestInput)
 		if err != nil {
 			t.Fatal(err)
 		}

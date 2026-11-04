@@ -33,12 +33,13 @@ import { activeLocale, setLocale, t } from "@/lib/i18n/index";
 import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
 import { usePluginErrorStore } from "@/extensions/errors";
 import { RuntimeConnectionGeneration, RUNTIME_STREAM } from "@/features/connection/public/services";
-import { type ContributionLifetime } from "@/extensions/definePlugin";
+import { type ContributionScope } from "@/extensions/definePlugin";
 import { PACKAGES_KEY } from "@/features/plugins/adapters/packages";
 import { createInstalledPluginLoader } from "@/features/plugins/index";
 import { contributePaletteTheme } from "@/features/theme/public/appearance";
 import { retainThemeSelection } from "@/features/theme/public/appearance";
 let installed: InstalledPluginsOwner;
+const quarantinedOwners = new Set<InstalledPluginsOwner>();
 const installedLoader = (client: () => FlameClient) => {
   const owned = createInstalledPlugins(
     client,
@@ -48,7 +49,11 @@ const installedLoader = (client: () => FlameClient) => {
     async () => "requested",
   );
   installed = owned;
-  onTestFinished(() => owned.dispose());
+  onTestFinished(async () => {
+    if (quarantinedOwners.delete(owned))
+      await expect(owned.dispose()).rejects.toBeInstanceOf(AggregateError);
+    else await owned.dispose();
+  });
   return createInstalledPluginLoader(owned);
 };
 
@@ -57,9 +62,9 @@ vi.mock("@/features/theme/public/appearance", () => ({
   contributePaletteTheme: vi.fn(
     (
       _preference: ThemeAccess["preference"],
-      owner: Pick<ContributionLifetime, "contribute">,
+      owner: Pick<ContributionScope, "add">,
       theme: { id: string; label: string; scheme: "dark" | "light" },
-    ) => owner.contribute(COLOR_THEME, { id: theme.id, label: theme.label, scheme: theme.scheme }),
+    ) => owner.add(COLOR_THEME, { id: theme.id, label: theme.label, scheme: theme.scheme }),
   ),
 }));
 
@@ -305,7 +310,7 @@ it("joins the retired Runtime before publishing the latest package generation", 
   const retired = installed.access.captureOperations()!;
   generation = RuntimeConnectionGeneration.forProcess("intermediate");
   for (const listener of subscribers) listener();
-  expect(retired.signal.aborted).toBe(true);
+  await vi.waitFor(() => expect(retired.signal.aborted).toBe(true));
   generation = RuntimeConnectionGeneration.forProcess("latest");
   selected = client(successor);
   for (const listener of subscribers) listener();
@@ -344,7 +349,7 @@ it("keeps a failed realization local to this client and retries it on request", 
   expect(contributionsTo(COLOR_THEME)).toEqual([]);
   expect(list).not.toHaveBeenCalled();
 
-  installed.access.failure()!.retry();
+  installed.access.failure()!.retry!();
 
   expect(installed.access.failure()).toBeNull();
   await vi.waitFor(() =>
@@ -379,11 +384,11 @@ it("consumes a realization retry once and refuses it after retirement", async ()
   );
   await vi.waitFor(() => expect(installed.access.failure()).not.toBeNull());
   const failed = installed.access.failure()!;
-  failed.retry();
-  failed.retry();
+  failed.retry!();
+  failed.retry!();
   await vi.waitFor(() => expect(subscribe).toHaveBeenCalledTimes(2));
   await resetKernelForTest();
-  expect(() => failed.retry()).not.toThrow();
+  expect(() => failed.retry!()).not.toThrow();
   expect(subscribe).toHaveBeenCalledTimes(2);
 });
 
@@ -393,7 +398,7 @@ it("withdraws every contribution and reports failure when one cleanup rejects", 
   const disposed: string[] = [];
   contribute.mockImplementation((preference, owner, theme) => {
     original(preference, owner, theme);
-    owner.cleanup(() => {
+    owner.lifetime.defer(() => {
       disposed.push(theme.label);
       if (theme.label.startsWith("first")) throw new Error("page close failed");
     });
@@ -432,6 +437,7 @@ it("withdraws every contribution and reports failure when one cleanup rejects", 
     ),
   );
   await vi.waitFor(() => expect(contributionsTo(COLOR_THEME)).toHaveLength(2));
+  quarantinedOwners.add(installed);
   failure.resolve();
   await vi.waitFor(() => expect(contributionsTo(COLOR_THEME)).toEqual([]));
   expect(disposed.sort()).toEqual(["first · first", "second · second"]);
@@ -439,6 +445,8 @@ it("withdraws every contribution and reports failure when one cleanup rejects", 
   const reason = installed.access.failure()!.reason;
   expect(reason).toContain("event stream failed");
   expect(reason).toContain("page close failed");
+  expect(installed.access.failure()!.retry).toBeUndefined();
+  await expect(resetKernelForTest()).rejects.toMatchObject({ code: "HOST_QUARANTINED" });
 });
 
 it("preserves a snapshot failure when closing its subscription also fails", async () => {
@@ -466,11 +474,13 @@ it("preserves a snapshot failure when closing its subscription also fails", asyn
     ),
   );
   await vi.waitFor(() => expect(installed.access.failure()).not.toBeNull());
+  quarantinedOwners.add(installed);
   const reason = installed.access.failure()!.reason;
   expect(reason).toContain("snapshot refused");
   expect(reason).toContain("stream close failed");
   expect(close).toHaveBeenCalledOnce();
-  await resetKernelForTest();
+  expect(installed.access.failure()!.retry).toBeUndefined();
+  await expect(resetKernelForTest()).rejects.toMatchObject({ code: "HOST_QUARANTINED" });
   expect(close).toHaveBeenCalledOnce();
 });
 
@@ -577,7 +587,7 @@ it.each(["initial snapshot", "event refresh", "event stream"] as const)(
     expect(contributionsTo(COLOR_THEME)).toEqual([]);
 
     failing = false;
-    installed.access.failure()!.retry();
+    installed.access.failure()!.retry!();
 
     await vi.waitFor(() => expect(subscribe).toHaveBeenCalledTimes(2));
     await vi.waitFor(() =>

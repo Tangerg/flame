@@ -8,13 +8,15 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type roleCallbackEmbedder struct {
@@ -24,7 +26,7 @@ type roleCallbackEmbedder struct {
 
 func (*roleCallbackEmbedder) ID() string { return "configured-space" }
 func (e *roleCallbackEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
-	invocation, err := qimumcp.InvocationFromContext(ctx)
+	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil || invocation.ID == "caller" || invocation.Origin != extension.Model || invocation.Parent != "caller" || invocation.Target != (portable.Target{Scope: extension.ScopeCall, Reference: invocation.ID}) {
 		e.t.Errorf("ordinary embedding lost original ownership: %+v, %v", invocation, err)
 	}
@@ -35,7 +37,7 @@ func (e *roleCallbackEmbedder) Embed(ctx context.Context, texts []string) ([][]f
 func TestOrdinaryCallbackPublishesEmbeddingRoleWithoutFeaturePolicy(t *testing.T) {
 	for _, state := range []string{"configured", "absent", "failed", "typed nil"} {
 		t.Run(state, func(t *testing.T) {
-			callbacks := qimumcp.NewCallbacks()
+			callbacks := pluginmcp.NewCallbacks()
 			t.Cleanup(func() {
 				if err := callbacks.Close(); err != nil {
 					t.Error(err)
@@ -66,24 +68,24 @@ func TestOrdinaryCallbackPublishesEmbeddingRoleWithoutFeaturePolicy(t *testing.T
 			if err := callbacks.AdmitSession(session); err != nil {
 				t.Fatal(err)
 			}
-			ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "caller", Origin: extension.Model, Parent: "executing-owner", Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "author"}})
+			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "caller", Origin: extension.Model, Parent: "executing-owner", Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "author"}})
 			if err != nil {
 				t.Fatal(err)
 			}
 			ctx = executionctx.WithInvocationOwner(ctx, "executing-owner")
-			ref, release, err := callbacks.OpenRPC(ctx, session, qimumcp.CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 4096})
+			ref, release, err := callbacks.OpenRPC(ctx, session, pluginmcp.CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 4096})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer release()
 			for _, id := range []string{"first", "second", "third"} {
-				vectors, err := pluginsdk.CallTextEmbedding(t.Context(), ref, qimumcp.CommandID(id), []string{"text"})
+				vectors, err := pluginsdk.CallTextEmbedding(t.Context(), ref, pluginmcp.CommandID(id), []string{"text"})
 				if state == "configured" {
 					if err != nil || vectors.Space != model.ID() || len(vectors.Vectors) != 1 || len(vectors.Vectors[0]) != 1 || vectors.Vectors[0][0] != 1 {
 						t.Fatalf("ordinary embedding = %+v, %v", vectors, err)
 					}
 				} else {
-					refusal, known := errors.AsType[*portable.Refusal](err)
+					refusal, known := errors.AsType[*framemcp.Refusal](err)
 					if err == nil || known != (state == "absent") || known && refusal.Code != "model_role_unconfigured" {
 						t.Fatalf("role absence and failure were merged: %v", err)
 					}
@@ -106,7 +108,7 @@ func TestOrdinaryCallbackPublishesEmbeddingRoleWithoutFeaturePolicy(t *testing.T
 				t.Fatal("over-budget input reached model resolution")
 			}
 			release()
-			if _, err := pluginsdk.CallTextEmbedding(t.Context(), ref, "retired", []string{"text"}); !errors.Is(err, qimumcp.ErrStaleCall) {
+			if _, err := pluginsdk.CallTextEmbedding(t.Context(), ref, "retired", []string{"text"}); !errors.Is(err, pluginmcp.ErrStaleCall) {
 				t.Fatalf("retired callback remained usable: %v", err)
 			}
 		})

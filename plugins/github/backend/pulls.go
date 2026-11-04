@@ -5,7 +5,8 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"strconv"
-	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/instant"
 
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 )
@@ -46,8 +47,8 @@ type pullWire struct {
 	MaintainerCanModify *bool              `json:"maintainer_can_modify"`
 	Head                *branchWire        `json:"head"`
 	Base                *branchWire        `json:"base"`
-	UpdatedAt           time.Time          `json:"updated_at"`
-	MergedAt            *time.Time         `json:"merged_at"`
+	UpdatedAt           instant.Timestamp  `json:"updated_at"`
+	MergedAt            *instant.Timestamp `json:"merged_at"`
 	Mergeable           *bool              `json:"mergeable"`
 	MergeableState      *string            `json:"mergeable_state"`
 	Additions           *int64             `json:"additions"`

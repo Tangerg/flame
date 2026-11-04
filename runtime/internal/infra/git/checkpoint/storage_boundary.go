@@ -2,17 +2,17 @@ package checkpoint
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/frame/cancellation"
 )
 
 // A checkpoint cannot archive or restore its own mutable Git metadata. This
 // boundary precedes repository creation and pre-restore archiving, including
 // when storage is reached through an alias or has not been created yet.
 func (s *Store) checkStorageBoundary(ctx context.Context, cwd string) error {
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return err
 	}
 	workspace, err := filesystem.ResolvePath("", cwd)

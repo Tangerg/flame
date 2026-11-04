@@ -9,8 +9,9 @@ import (
 	"os"
 	"strconv"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func main() {
@@ -42,7 +43,7 @@ func run() error {
 			if err != nil {
 				return err
 			}
-			_, err = fmt.Fprintf(os.Stdout, "// Code generated from the Reviews contract. DO NOT EDIT.\nexport const ANALYZERS_JSON = %s;\nexport const listMethod = %q;\nexport const updateMethod = %q;\nexport const analyzeMethod = %q;\nexport const reviewStatuses = %s as const;\n", strconv.Quote(string(contract.Identity().JSON())), methods.List.Name(), methods.Update.Name(), methods.Analyzers.Name(), statuses)
+			_, err = fmt.Fprintf(os.Stdout, "// Code generated from the Reviews contract. DO NOT EDIT.\nexport const ANALYZERS_JSON = %s;\nexport const listMethod = %q;\nexport const updateMethod = %q;\nexport const analyzeMethod = %q;\nexport const reviewStatuses = %s as const;\n", strconv.Quote(string(contract.Identity().Bytes())), methods.List.Name(), methods.Update.Name(), methods.Analyzers.Name(), statuses)
 			return err
 		}
 		data, err := json.Marshal(contract.Definition(), json.Deterministic(true))
@@ -52,7 +53,7 @@ func run() error {
 		_, err = os.Stdout.Write(append(data, '\n'))
 		return err
 	}
-	var contract *portable.Capability
+	var contract *plugincontract.Capability
 	if *analyzerCapability {
 		contracts, err := reviews.NewAnalyzerContracts()
 		if err != nil {

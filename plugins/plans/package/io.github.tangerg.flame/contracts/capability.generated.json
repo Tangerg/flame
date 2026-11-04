@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.qimu/portable/1",
+  "protocol": "io.github.tangerg.flame/plugin/1",
   "reference": "flame.plan-workflow.v1",
   "composition": "selection",
   "scope": "installation",
@@ -60,14 +60,6 @@
       },
       "output": {
         "$defs": {
-          "integrity.Digest": {
-            "allOf": [
-              {
-                "pattern": "^[0-9a-f]{64}$"
-              }
-            ],
-            "type": "string"
-          },
           "planworkflow.Decision": {
             "additionalProperties": false,
             "properties": {
@@ -84,7 +76,7 @@
             "additionalProperties": false,
             "properties": {
               "digest": {
-                "$ref": "#/$defs/integrity.Digest"
+                "$ref": "#/$defs/value.Digest"
               },
               "steps": {
                 "items": {
@@ -114,6 +106,14 @@
               "status"
             ],
             "type": "object"
+          },
+          "value.Digest": {
+            "allOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            ],
+            "type": "string"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -136,19 +136,11 @@
       "description": "Prepare the human review of one exact immutable plan.",
       "input": {
         "$defs": {
-          "integrity.Digest": {
-            "allOf": [
-              {
-                "pattern": "^[0-9a-f]{64}$"
-              }
-            ],
-            "type": "string"
-          },
           "planworkflow.Document": {
             "additionalProperties": false,
             "properties": {
               "digest": {
-                "$ref": "#/$defs/integrity.Digest"
+                "$ref": "#/$defs/value.Digest"
               },
               "steps": {
                 "items": {
@@ -178,13 +170,21 @@
               "status"
             ],
             "type": "object"
+          },
+          "value.Digest": {
+            "allOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            ],
+            "type": "string"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "digest": {
-            "$ref": "#/$defs/integrity.Digest"
+            "$ref": "#/$defs/value.Digest"
           },
           "steps": {
             "items": {

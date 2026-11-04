@@ -2,7 +2,11 @@ import { METHODS } from "./methods";
 import { LIMITS } from "./limits";
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
-import { Capability, parseJSON, type CapabilityDescriptor } from "@qimu/node";
+import {
+  Capability,
+  parseJSON,
+  type CapabilityDescriptor,
+} from "@flame/backend-sdk/mcp";
 import descriptor, { schemas } from "./capability";
 
 it("publishes projections of the one descriptor owner", () => {
@@ -38,11 +42,11 @@ it("shares structural admission for backend calls and published contracts", () =
     expect(valid).toBe(accepted);
     if (valid)
       expect(() =>
-        contract.method(METHODS.open).validateInput(value),
+        contract.portable.method(METHODS.open).validateInput(value),
       ).not.toThrow();
     else
       expect(() =>
-        contract.method(METHODS.open).validateInput(value),
+        contract.portable.method(METHODS.open).validateInput(value),
       ).toThrow();
   }
 });

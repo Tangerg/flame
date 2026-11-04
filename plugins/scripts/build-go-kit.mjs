@@ -5,7 +5,6 @@ import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 
 const sdkPath = "github.com/Tangerg/flame/packages/go-sdk";
-const qimuPath = "github.com/Tangerg/qimu";
 const runtimePath = "github.com/Tangerg/flame/runtime";
 export function authorSDK(artifacts) {
   const version =
@@ -27,7 +26,7 @@ function environment(repository, artifacts, offline) {
     GOWORK: "off",
     GOTOOLCHAIN: "local",
     GONOPROXY: "none",
-    GONOSUMDB: "github.com/Tangerg/flame,github.com/Tangerg/qimu",
+    GONOSUMDB: "github.com/Tangerg/flame",
     GOPROXY: [
       pathToFileURL(artifacts.proxy).href,
       pathToFileURL(join(cache, "cache/download")).href,
@@ -89,7 +88,6 @@ export async function prepareDevelopmentTools({
     await mkdir(join(output, "tools"));
     for (const [name, tool] of [
       ["flame-sdk", `${sdkPath}/cmd/flame-sdk`],
-      ["qimu", `${qimuPath}/cmd/qimu`],
       ["pluginpack", `${runtimePath}/cmd/pluginpack`],
     ])
       execFileSync(
@@ -120,7 +118,7 @@ export async function prepareGoKit({
   offline,
   tools,
 }) {
-  const allowed = new Set([`${sdkPath}/cmd/flame-sdk`, `${qimuPath}/cmd/qimu`]);
+  const allowed = new Set([`${sdkPath}/cmd/flame-sdk`]);
   for (const tool of tools)
     if (!allowed.has(tool))
       throw new Error(`author tool is not public: ${tool}`);

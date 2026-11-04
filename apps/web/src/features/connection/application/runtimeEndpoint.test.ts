@@ -10,13 +10,7 @@ import { Configuration } from "@/extensions/config";
 let config: Configuration;
 import { type ConfigService } from "@/extensions/config";
 import { type KeyValueStore } from "@/extensions/storage";
-import {
-  createHost,
-  definePlugin,
-  type Host,
-  type LifetimeContext,
-  type LifetimeOperations,
-} from "dougong";
+import { createHost, definePlugin, type Host, type LifetimeContext } from "dougong";
 import {
   createRuntimeEndpoint,
   type RuntimeEndpoint,
@@ -31,18 +25,18 @@ let endpointHost: Host;
 let endpointLifetime: LifetimeContext;
 
 function connectionHost(initial?: unknown): {
-  host: { config: ConfigService; storage: KeyValueStore } & Pick<LifetimeOperations, "cleanup">;
+  host: { config: ConfigService; storage: KeyValueStore; lifetime: Pick<LifetimeContext, "defer"> };
   stored: Map<string, unknown>;
   dispose(): Promise<void>;
 } {
-  const owner = endpointLifetime.lifetime("endpoint");
+  const owner = endpointLifetime.child("endpoint");
   const stored = new Map<string, unknown>();
   if (initial !== undefined) stored.set("endpoint", initial);
   return {
     stored,
-    dispose: () => owner.dispose(),
+    dispose: () => owner[Symbol.asyncDispose](),
     host: {
-      cleanup: (cleanup) => owner.cleanup(cleanup),
+      lifetime: owner,
       config,
       storage: {
         get: (key: string) => stored.get(key),
@@ -64,15 +58,20 @@ let endpoint: RuntimeEndpoint;
 let configuration: RuntimeEndpointConfiguration;
 
 beforeEach(async () => {
-  endpointHost = createHost({ name: "runtime-endpoint-test" });
-  endpointHost.install(
-    definePlugin({
-      name: "test.endpoint-owner",
-      setup(ctx) {
-        endpointLifetime = ctx.lifetime("endpoint-configurations");
+  endpointHost = createHost({
+    name: "runtime-endpoint-test",
+    installations: [
+      {
+        id: "test.endpoint-owner",
+        plugin: definePlugin({
+          name: "test.endpoint-owner",
+          setup(ctx) {
+            endpointLifetime = ctx.lifetime.child("endpoint-configurations");
+          },
+        }),
       },
-    }),
-  );
+    ],
+  });
   await endpointHost.start();
   vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Runtime test discovery unavailable"));
   runtimeConnection = createRuntimeConnection(
@@ -112,7 +111,7 @@ function installConnection(
 function bindConnection(initial?: unknown) {
   const connection = connectionHost(initial);
   const binding = runtimeConnection.bind(connection.host);
-  connection.host.cleanup(binding.dispose);
+  connection.host.lifetime.defer(binding.dispose);
   endpoint = runtimeConnection.access.endpoint;
   return { ...connection, binding };
 }
@@ -503,7 +502,7 @@ it("binds the local token and filesystem capability only to the bootstrapped Run
   await runtimeConnection.initialize();
   const connection = connectionHost();
   const binding = runtimeConnection.bind(connection.host);
-  connection.host.cleanup(binding.dispose);
+  connection.host.lifetime.defer(binding.dispose);
   endpoint = runtimeConnection.access.endpoint;
   const request = vi
     .spyOn(globalThis, "fetch")

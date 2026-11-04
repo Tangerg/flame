@@ -14,9 +14,11 @@ func main() {
 
 func run(arguments []string) error {
 	if len(arguments) == 0 {
-		return fmt.Errorf("expected contract or backend-protocol")
+		return fmt.Errorf("expected contract, feature or backend-protocol")
 	}
 	switch arguments[0] {
+	case "feature":
+		return runFeature(arguments[1:])
 	case "contract":
 		return runContract(arguments[1:])
 	case "backend-protocol":

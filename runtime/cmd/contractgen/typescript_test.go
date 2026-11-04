@@ -7,8 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/wiregen"
+
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/qimu/contractgen"
 )
 
 type unconditionalRequiredShape struct {
@@ -20,7 +21,7 @@ func TestTypeScriptPublishesUnconditionalRequirements(t *testing.T) {
 
 	shape := reflect.TypeFor[unconditionalRequiredShape]()
 	set := &schemaSet{
-		defs:   make(map[string]*contractgen.Schema),
+		defs:   make(map[string]*wiregen.Schema),
 		origin: make(map[string]reflect.Type),
 		enums:  make(map[reflect.Type][]string),
 		unions: make(map[reflect.Type]dispatch.UnionSpec),
@@ -29,7 +30,7 @@ func TestTypeScriptPublishesUnconditionalRequirements(t *testing.T) {
 		},
 		values: make(map[reflect.Type][]dispatch.FieldConstraint),
 	}
-	body := contractgen.NewTypeScript(nil).ObjectBody(set.object(shape, nil), "")
+	body := wiregen.NewTypeScript(nil).ObjectBody(set.object(shape, nil), "")
 	if strings.Contains(body, "createdAt?") || !strings.Contains(body, "createdAt: string;") {
 		t.Fatalf("TypeScript body = %q, want required createdAt", body)
 	}
@@ -42,8 +43,8 @@ func TestTypeScriptValidatorsPreserveStringValues(t *testing.T) {
 			name string
 			call string
 		}{
-			{name: "literal", call: emitter.compile(&contractgen.Schema{Const: value})},
-			{name: "pattern", call: emitter.stringChecks(&contractgen.Schema{Pattern: value})[0]},
+			{name: "literal", call: emitter.compile(&wiregen.Schema{Const: value})},
+			{name: "pattern", call: emitter.stringChecks(&wiregen.Schema{Pattern: value})[0]},
 		} {
 			literal, ok := strings.CutPrefix(generation.call, generation.name+"(")
 			if !ok || !strings.HasSuffix(literal, ")") {

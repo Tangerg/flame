@@ -1,8 +1,9 @@
 package model
 
 import (
-	"github.com/Tangerg/scope/models/catalog"
 	"testing"
+
+	"github.com/Tangerg/scope/models/catalog"
 )
 
 func TestCatalogTokenLimitsPreserveIndependentFacts(t *testing.T) {

@@ -16,9 +16,9 @@ export function createWorkspaceBootstrapPlugin(
     requires: { runtime: RUNTIME_STREAM },
     provides: { scopes: WORKSPACE_SCOPE, mutationLifecycle: WORKSPACE_MUTATION_LIFECYCLE },
     setup(ctx) {
-      registerWorkspaceDataProviders(ctx, runtimeClient);
+      registerWorkspaceDataProviders(ctx.contributions, runtimeClient);
       workspace.start();
-      ctx.cleanup(workspace.dispose);
+      ctx.lifetime.defer(workspace.dispose);
       return {
         scopes: {
           adoptSessionScope: workspace.access.navigation.adoptSessionScope,

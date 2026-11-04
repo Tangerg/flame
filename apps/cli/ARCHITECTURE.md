@@ -67,7 +67,7 @@ The remote terminal detaches on exit without canceling an observed or newly acce
 
 The public Go SDK's `question` contract owns answer admission; Domain and terminal
 editing consume it without importing Runtime implementation or originating an
-accepted answer. The public Go SDK's `exactint` owns bounded counters; Qimu's `jsonvalue` owns exact JSON values. Command adapters use the SDK's `capture.Writer` for bounded output and UTF-8 truncation. Filesystem adapters use `filesystem.DirectoryLease` for their own
+accepted answer. The public Go SDK's `exactint` owns bounded counters; Frame's `jsonvalue` owns exact JSON values. Command adapters use the SDK's `capture.Writer` for bounded output and UTF-8 truncation. Filesystem adapters use `filesystem.DirectoryLease` for their own
 partition lifetime; Domain and Application do not import that I/O capability. Settings may read the independent `packages/local-runtime`
 deployment defaults; only process composition and the binding adapter use its
 filesystem capabilities.

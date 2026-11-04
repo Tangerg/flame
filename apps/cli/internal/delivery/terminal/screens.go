@@ -3,9 +3,8 @@ package terminal
 import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/program"
+	"github.com/Tangerg/oolong/ui/core/program"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 // screenHost is what a management screen uses of the terminal: background
@@ -19,7 +18,7 @@ type screenHost struct {
 	message      func(string)
 	confirm      func(title, question, action, content string, run func())
 	session      *sessionState
-	stack        *headless.Stack
+	stack        *workspaceScene
 	theme        kit.Theme
 	glyphs       kit.Glyphs
 	clipboard    program.Clipboard

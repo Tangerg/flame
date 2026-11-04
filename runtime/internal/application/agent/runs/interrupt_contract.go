@@ -9,11 +9,13 @@ import (
 	"strconv"
 	"strings"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/qimu/integrity"
+
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -39,7 +41,7 @@ func InterruptUnavailable(context.Context, toolcontract.Invocation, Interrupt) (
 type ApprovalPrompt struct {
 	Tool              tool.Ref
 	QualifiedName     bool
-	SourceFingerprint integrity.Digest
+	SourceFingerprint framevalue.Digest
 	CallID            string
 	Arguments         string
 	SafetyClass       tool.SafetyClass

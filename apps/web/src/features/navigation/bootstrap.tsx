@@ -10,9 +10,9 @@ export function createNavigationBootstrapPlugin(
     name: "flame.builtin.navigation-bootstrap",
     requires: { runtimeScope: RUNTIME_SERVER_SCOPE },
     setup(ctx) {
-      ctx.cleanup(picker.dispose);
-      ctx.cleanup(ctx.runtimeScope.subscribeReplacement(picker.cancel));
-      contributeLayout(ctx, "app.overlay", {
+      ctx.lifetime.defer(picker.dispose);
+      ctx.lifetime.defer(ctx.dependencies.runtimeScope.subscribeReplacement(picker.cancel));
+      contributeLayout(ctx.contributions, "app.overlay", {
         id: "navigation.directory-dialog",
         component: WorkingDirectoryDialog,
       });

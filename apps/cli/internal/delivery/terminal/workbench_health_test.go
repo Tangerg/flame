@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/oolong/components/kit"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 func TestWorkbenchProblemsArePrioritizedAndClearedIndependently(t *testing.T) {

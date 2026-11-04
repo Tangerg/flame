@@ -3,6 +3,11 @@
 package modelprovider
 
 import (
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
+
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json/jsontext"
@@ -18,9 +23,9 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 	"github.com/Tangerg/scope/models/catalog"
@@ -180,12 +185,12 @@ func (h Handle) Validate() error { return h.ID.Validate() }
 
 type Chat struct {
 	Handle
-	Original      qimumcp.CommandID `json:"original"`
-	Provider      string            `json:"provider"`
-	Model         string            `json:"model"`
-	Streaming     bool              `json:"streaming"`
-	TokenCounting bool              `json:"tokenCounting"`
-	Metadata      *catalog.Model    `json:"metadata,omitzero"`
+	Original      pluginmcp.CommandID `json:"original"`
+	Provider      string              `json:"provider"`
+	Model         string              `json:"model"`
+	Streaming     bool                `json:"streaming"`
+	TokenCounting bool                `json:"tokenCounting"`
+	Metadata      *catalog.Model      `json:"metadata,omitzero"`
 }
 
 func (c Chat) Validate() error {
@@ -210,7 +215,7 @@ func (c Chat) Validate() error {
 }
 
 type Reopen struct {
-	Original qimumcp.CommandID `json:"original"`
+	Original pluginmcp.CommandID `json:"original"`
 }
 
 func (r Reopen) Validate() error { return r.Original.Validate() }
@@ -284,9 +289,9 @@ func (FailureKind) JSONSchemaEnum() []string {
 // Failure preserves execution evidence separately from the failure category.
 // No category or receipt authorizes another provider dispatch.
 type Failure struct {
-	Kind             FailureKind          `json:"kind"`
-	Execution        chat.CallFailureKind `json:"execution"`
-	RetryAfterMillis int64                `json:"retryAfterMillis,omitzero" jsonschema:"minimum=0"`
+	Kind             FailureKind                `json:"kind"`
+	Execution        coreinvocation.FailureKind `json:"execution"`
+	RetryAfterMillis int64                      `json:"retryAfterMillis,omitzero" jsonschema:"minimum=0"`
 }
 
 func (f Failure) Validate() error {
@@ -358,7 +363,7 @@ func (r TokenCount) Validate() error {
 
 // The typed handle contains only a private pointer to the admitted schema.
 // Copying the handle preserves client ownership without compiling the schema again.
-func declaredMethod[T any](compile func(qimumcp.MethodConfig) (*T, error), config qimumcp.MethodConfig) func() (*T, error) {
+func declaredMethod[T any](compile func(portable.MethodConfig) (*T, error), config portable.MethodConfig) func() (*T, error) {
 	admitted := sync.OnceValues(func() (*T, error) { return compile(config) })
 	return func() (*T, error) {
 		method, err := admitted()
@@ -369,65 +374,69 @@ func declaredMethod[T any](compile func(qimumcp.MethodConfig) (*T, error), confi
 	}
 }
 
-var profilesMethod = declaredMethod(qimumcp.NewMethod[struct{}, []Profile], qimumcp.MethodConfig{Name: "flame.model-provider/profiles.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read this installed adapter's provider policies and published model facts."})
+var profilesMethod = declaredMethod(pluginmcp.NewMethod[struct{}, []Profile], portable.MethodConfig{Name: "flame.model-provider/profiles.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read this installed adapter's provider policies and published model facts."})
 
-func ProfilesMethod() (*qimumcp.Method[struct{}, []Profile], error) { return profilesMethod() }
+func ProfilesMethod() (*pluginmcp.Method[struct{}, []Profile], error) { return profilesMethod() }
 
-var remoteModelsMethod = declaredMethod(qimumcp.NewMethod[Connection, []string], qimumcp.MethodConfig{Name: "flame.model-provider/remote-models.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read model identities from the exact configured provider endpoint."})
+var remoteModelsMethod = declaredMethod(pluginmcp.NewMethod[Connection, []string], portable.MethodConfig{Name: "flame.model-provider/remote-models.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read model identities from the exact configured provider endpoint."})
 
-func RemoteModelsMethod() (*qimumcp.Method[Connection, []string], error) { return remoteModelsMethod() }
+func RemoteModelsMethod() (*pluginmcp.Method[Connection, []string], error) {
+	return remoteModelsMethod()
+}
 
-var verifyMethod = declaredMethod(qimumcp.NewMethod[Connection, struct{}], qimumcp.MethodConfig{Name: "flame.model-provider/verify.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Prove the exact configured connection authenticates with its provider."})
+var verifyMethod = declaredMethod(pluginmcp.NewMethod[Connection, struct{}], portable.MethodConfig{Name: "flame.model-provider/verify.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Prove the exact configured connection authenticates with its provider."})
 
-func VerifyMethod() (*qimumcp.Method[Connection, struct{}], error) { return verifyMethod() }
+func VerifyMethod() (*pluginmcp.Method[Connection, struct{}], error) { return verifyMethod() }
 
-var openChatMethod = declaredMethod(qimumcp.NewMethod[Open, Chat], qimumcp.MethodConfig{Name: "flame.model-provider/open-chat.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Capture one immutable provider client shared by chat, streaming and optional token counting."})
+var openChatMethod = declaredMethod(pluginmcp.NewMethod[Open, Chat], portable.MethodConfig{Name: "flame.model-provider/open-chat.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Capture one immutable provider client shared by chat, streaming and optional token counting."})
 
-func OpenChatMethod() (*qimumcp.Method[Open, Chat], error) { return openChatMethod() }
+func OpenChatMethod() (*pluginmcp.Method[Open, Chat], error) { return openChatMethod() }
 
-var openEmbeddingMethod = declaredMethod(qimumcp.NewMethod[Open, Embedder], qimumcp.MethodConfig{Name: "flame.model-provider/open-embedding.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Capture an immutable embedding client and its vector-space identity."})
+var openEmbeddingMethod = declaredMethod(pluginmcp.NewMethod[Open, Embedder], portable.MethodConfig{Name: "flame.model-provider/open-embedding.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Capture an immutable embedding client and its vector-space identity."})
 
-func OpenEmbeddingMethod() (*qimumcp.Method[Open, Embedder], error) { return openEmbeddingMethod() }
+func OpenEmbeddingMethod() (*pluginmcp.Method[Open, Embedder], error) { return openEmbeddingMethod() }
 
-var reopenChatMethod = declaredMethod(qimumcp.NewMethod[Reopen, Chat], qimumcp.MethodConfig{Name: "flame.model-provider/reopen-chat.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Reconstruct a fresh client from the original confirmed open receipt, without reading current credentials or authorizing generation."})
+var reopenChatMethod = declaredMethod(pluginmcp.NewMethod[Reopen, Chat], portable.MethodConfig{Name: "flame.model-provider/reopen-chat.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Reconstruct a fresh client from the original confirmed open receipt, without reading current credentials or authorizing generation."})
 
-func ReopenChatMethod() (*qimumcp.Method[Reopen, Chat], error) { return reopenChatMethod() }
+func ReopenChatMethod() (*pluginmcp.Method[Reopen, Chat], error) { return reopenChatMethod() }
 
-var closeMethod = declaredMethod(qimumcp.NewMethod[Handle, struct{}], qimumcp.MethodConfig{Name: "flame.model-provider/close.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Retire the captured client after its accepted calls have joined."})
+var closeMethod = declaredMethod(pluginmcp.NewMethod[Handle, struct{}], portable.MethodConfig{Name: "flame.model-provider/close.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Retire the captured client after its accepted calls have joined."})
 
-func CloseMethod() (*qimumcp.Method[Handle, struct{}], error) { return closeMethod() }
+func CloseMethod() (*pluginmcp.Method[Handle, struct{}], error) { return closeMethod() }
 
-var callMethod = declaredMethod(qimumcp.NewMethod[ChatRequest, ChatResult], qimumcp.MethodConfig{Name: "flame.model-provider/call.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Execute one original provider exchange using the captured client and preserve its complete outcome."})
+var callMethod = declaredMethod(pluginmcp.NewMethod[ChatRequest, ChatResult], portable.MethodConfig{Name: "flame.model-provider/call.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Execute one original provider exchange using the captured client and preserve its complete outcome."})
 
-func CallMethod() (*qimumcp.Method[ChatRequest, ChatResult], error) { return callMethod() }
+func CallMethod() (*pluginmcp.Method[ChatRequest, ChatResult], error) { return callMethod() }
 
-var streamMethod = declaredMethod(qimumcp.NewStreamingMethod[ChatRequest, chat.ResponseDelta, ChatResult], qimumcp.MethodConfig{Name: "flame.model-provider/stream.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Stream the original provider deltas and retain the final outcome without replaying an unconfirmed exchange."})
+var streamMethod = declaredMethod(pluginmcp.NewStreamingMethod[ChatRequest, chat.ResponseDelta, ChatResult], portable.MethodConfig{Name: "flame.model-provider/stream.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Stream the original provider deltas and retain the final outcome without replaying an unconfirmed exchange."})
 
-func StreamMethod() (*qimumcp.StreamingMethod[ChatRequest, chat.ResponseDelta, ChatResult], error) {
+func StreamMethod() (*pluginmcp.StreamingMethod[ChatRequest, chat.ResponseDelta, ChatResult], error) {
 	return streamMethod()
 }
 
-var countMethod = declaredMethod(qimumcp.NewMethod[ChatRequest, TokenCount], qimumcp.MethodConfig{Name: "flame.model-provider/count.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Count the complete request using the same captured provider instance, only when that capability was advertised."})
+var countMethod = declaredMethod(pluginmcp.NewMethod[ChatRequest, TokenCount], portable.MethodConfig{Name: "flame.model-provider/count.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Count the complete request using the same captured provider instance, only when that capability was advertised."})
 
-func CountMethod() (*qimumcp.Method[ChatRequest, TokenCount], error) { return countMethod() }
+func CountMethod() (*pluginmcp.Method[ChatRequest, TokenCount], error) { return countMethod() }
 
-var embedMethod = declaredMethod(qimumcp.NewMethod[EmbeddingRequest, EmbeddingResult], qimumcp.MethodConfig{Name: "flame.model-provider/embed.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Execute one original embedding exchange and preserve the complete provider response."})
+var embedMethod = declaredMethod(pluginmcp.NewMethod[EmbeddingRequest, EmbeddingResult], portable.MethodConfig{Name: "flame.model-provider/embed.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Execute one original embedding exchange and preserve the complete provider response."})
 
-func EmbedMethod() (*qimumcp.Method[EmbeddingRequest, EmbeddingResult], error) { return embedMethod() }
+func EmbedMethod() (*pluginmcp.Method[EmbeddingRequest, EmbeddingResult], error) {
+	return embedMethod()
+}
 
 // Checkpoints need the exact contract identity on every commit. Caching only
 // immutable JSON leaves each executable contract and its method handles private.
-func ContractIdentity() (jsonvalue.Value, error) { return contractIdentity() }
+func ContractIdentity() (framevalue.JSON, error) { return contractIdentity() }
 
-var contractIdentity = sync.OnceValues(func() (jsonvalue.Value, error) {
+var contractIdentity = sync.OnceValues(func() (framevalue.JSON, error) {
 	c, err := Contract()
 	if err != nil {
-		return jsonvalue.Value{}, err
+		return framevalue.JSON{}, err
 	}
 	return c.Identity(), nil
 })
 
-func Contract() (*portable.Capability, error) {
+func Contract() (*plugincontract.Capability, error) {
 	profiles, err := ProfilesMethod()
 	if err != nil {
 		return nil, err
@@ -472,5 +481,5 @@ func Contract() (*portable.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	return portable.NewCapability(portable.CapabilityConfig{Reference: Reference, Composition: portable.Selection, Scope: extension.ScopeInstallation}, profiles.Descriptor(), remote.Descriptor(), verify.Descriptor(), openChat.Descriptor(), openEmbedding.Descriptor(), reopenChat.Descriptor(), close.Descriptor(), call.Descriptor(), stream.Descriptor(), count.Descriptor(), embed.Descriptor())
+	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: Reference, Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, profiles.Descriptor(), remote.Descriptor(), verify.Descriptor(), openChat.Descriptor(), openEmbedding.Descriptor(), reopenChat.Descriptor(), close.Descriptor(), call.Descriptor(), stream.Descriptor(), count.Descriptor(), embed.Descriptor())
 }

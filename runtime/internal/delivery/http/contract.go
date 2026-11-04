@@ -72,7 +72,7 @@ const (
 
 const pluginResourcePrefix = endpointPrefix + "/plugin-resources/"
 
-const PluginControlPath = endpointPrefix + "/qimu"
+const PluginControlPath = endpointPrefix + "/frame"
 
 // EndpointSpec is one implemented HTTP entrypoint. ResponseType is nil for the
 // JSON-RPC binding because its typed method results live in operation.Contract;

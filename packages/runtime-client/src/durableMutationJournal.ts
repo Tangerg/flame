@@ -1,9 +1,10 @@
+import { canonicalJSON } from "@frame/sdk/json";
 import { z } from "zod";
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
 import { checkRequest, requestRequiresIdempotency, pluginDeliveryMethod } from "./request";
 import type { RequestMeta } from "./generated/wire.generated";
 import { validateWire } from "./generated/wire.validate.generated";
-import { cloneJSON, parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { cloneJSON, parseJSON } from "@frame/sdk/json";
 
 const MAX_ENTRIES = 256;
 const ENTRY_PREFIX = "entry:";
@@ -328,10 +329,7 @@ function commandFingerprintInput(
     : params;
   return fingerprintFields(
     method,
-    stringifyJSON(
-      { request: prepareCommand(method, params, requestMeta) ?? request, requestMeta },
-      true,
-    ),
+    canonicalJSON({ request: prepareCommand(method, params, requestMeta) ?? request, requestMeta }),
   );
 }
 
@@ -362,9 +360,9 @@ function sameEntry(left: JournalEntry, right: JournalEntry): boolean {
     left.idempotencyKey === right.idempotencyKey &&
     left.createdAt === right.createdAt &&
     left.expiresAt === right.expiresAt &&
-    stringifyJSON(left.installed ?? null, true) === stringifyJSON(right.installed ?? null, true) &&
-    stringifyJSON(left.command, true) === stringifyJSON(right.command, true) &&
-    stringifyJSON(left.requestMeta, true) === stringifyJSON(right.requestMeta, true)
+    canonicalJSON(left.installed ?? null) === canonicalJSON(right.installed ?? null) &&
+    canonicalJSON(left.command) === canonicalJSON(right.command) &&
+    canonicalJSON(left.requestMeta) === canonicalJSON(right.requestMeta)
   );
 }
 

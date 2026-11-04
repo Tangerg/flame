@@ -5,12 +5,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestTypedAndModelEntriesShareTaskBindingsAndOriginalReceipts(t *testing.T) {
@@ -21,7 +23,7 @@ func TestTypedAndModelEntriesShareTaskBindingsAndOriginalReceipts(t *testing.T) 
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "a2a-test", Version: "1"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -36,11 +38,11 @@ func TestTypedAndModelEntriesShareTaskBindingsAndOriginalReceipts(t *testing.T) 
 	}
 	defer session.Close()
 	contracts := testContracts(t)
-	exported, err := qimumcp.ResolveCapability(t.Context(), session, "remote-agents", contracts.Capability)
+	exported, err := pluginmcp.ResolveCapability(t.Context(), session, "remote-agents", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "human-send", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "a2a"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "human-send", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "a2a"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,11 +57,11 @@ func TestTypedAndModelEntriesShareTaskBindingsAndOriginalReceipts(t *testing.T) 
 		t.Fatal(err)
 	}
 	var typedResult wire.Result
-	if err := json.Unmarshal(typed.JSON(), &typedResult); err != nil {
+	if err := json.Unmarshal(typed.Bytes(), &typedResult); err != nil {
 		t.Fatal(err)
 	}
 	meta := make(sdk.Meta)
-	if err := meta.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: "model-send", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "a2a"}}); err != nil {
+	if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model-send", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "a2a"}}); err != nil {
 		t.Fatal(err)
 	}
 	var modelResult wire.Result
@@ -92,7 +94,7 @@ func TestTypedAndModelEntriesShareTaskBindingsAndOriginalReceipts(t *testing.T) 
 		t.Fatal(err)
 	}
 	var status wire.Result
-	if err := json.Unmarshal(statusValue.JSON(), &status); err != nil || status.TaskID != typedResult.TaskID {
+	if err := json.Unmarshal(statusValue.Bytes(), &status); err != nil || status.TaskID != typedResult.TaskID {
 		t.Fatalf("shared task binding: %+v %v", status, err)
 	}
 	agentsMethod, err := exported.Method(contracts.Agents.Name())
@@ -104,7 +106,7 @@ func TestTypedAndModelEntriesShareTaskBindingsAndOriginalReceipts(t *testing.T) 
 		t.Fatal(err)
 	}
 	var agents wire.Agents
-	if err := json.Unmarshal(agentsValue.JSON(), &agents); err != nil || len(agents.Agents) != 1 || agents.Agents[0].Name != "research" {
+	if err := json.Unmarshal(agentsValue.Bytes(), &agents); err != nil || len(agents.Agents) != 1 || agents.Agents[0].Name != "research" {
 		t.Fatalf("configured agents: %+v %v", agents, err)
 	}
 	remote.mu.Lock()

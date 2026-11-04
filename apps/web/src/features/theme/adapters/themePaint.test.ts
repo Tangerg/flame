@@ -97,8 +97,8 @@ it("forgets the paint of a package theme Runtime stops admitting so cold boot fo
   const uninstall = owner.start();
   try {
     await contributeForTest((ctx) => {
-      ctx.contribute(COLOR_THEME, { id: "dark", label: "Dark", scheme: "dark" });
-      ctx.contribute(COLOR_THEME, {
+      ctx.contributions.add(COLOR_THEME, { id: "dark", label: "Dark", scheme: "dark" });
+      ctx.contributions.add(COLOR_THEME, {
         id: theme,
         label: "Package",
         scheme: "light",

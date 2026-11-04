@@ -2,12 +2,13 @@ package persistence
 
 import (
 	"context"
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestMCPServerSchemaRejectsNonCanonicalIdentity(t *testing.T) {
@@ -76,7 +77,7 @@ func TestMCPServerExposureSchemaEnforcesCardinality(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	server := testsupport.ServerName("files")
-	if _, err := newMCPServerStore(db).fixtureGrant(t.Context(), testsupport.InstallationID(t), mcpserver.Server{Source: mcpserver.UserSource(), Name: server, Connection: mcpserver.StdioConnection{Command: "mcp-server"}}); err != nil {
+	if _, err := newMCPServerStore(databaseFor(db)).fixtureGrant(t.Context(), testsupport.InstallationID(t), mcpserver.Server{Source: mcpserver.UserSource(), Name: server, Connection: mcpserver.StdioConnection{Command: "mcp-server"}}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.ExecContext(
@@ -108,7 +109,7 @@ func TestMCPTransportGrantsAreBoundToConnectorServerAndExactMaterial(t *testing.
 		t.Fatal(err)
 	}
 	defer db.Close()
-	store := newMCPServerStore(db)
+	store := newMCPServerStore(databaseFor(db))
 	owner := testsupport.InstallationID(t)
 	s := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("local")}
 	var old string
@@ -172,7 +173,7 @@ func TestRejectedGrantCanNeverExposeCandidateMaterial(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	s := newMCPServerStore(db)
+	s := newMCPServerStore(databaseFor(db))
 	owner := testsupport.InstallationID(t)
 	srv := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("local"), Connection: mcpserver.StdioConnection{Command: "original"}}
 	current, err := s.fixtureGrant(t.Context(), owner, srv)

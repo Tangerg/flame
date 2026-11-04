@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/qimu/sqlite"
 )
 
 // List returns user-facing sessions (roots and forks), newest-updated first.
@@ -35,61 +34,57 @@ func (s *SessionStore) ListPage(ctx context.Context, read session.CatalogRead) (
 	}
 	return s.list(ctx, read.Filter(), after, read.Limit())
 }
-
-func (s *SessionStore) list(
-	ctx context.Context,
-	filter session.CatalogFilter,
-	after *session.CatalogAnchor,
-	limit int,
-) ([]session.Session, error) {
-	query := `SELECT ` + sessionColumns + ` FROM sessions`
-	var predicates []string
-	var args []any
-	if search, present := filter.Search(); present {
-		pattern := "%" + escapeSessionLikePattern(search) + "%"
-		predicates = append(predicates, `(title_search LIKE ? ESCAPE '\' OR workspace_search LIKE ? ESCAPE '\')`)
-		args = append(args, pattern, pattern)
-	}
-	if workspacePath, present := filter.WorkspacePath(); present {
-		predicates = append(predicates, `workspace_path = ?`)
-		args = append(args, workspacePath)
-	}
-	if after != nil {
-		favorite := boolToInt(after.Favorite())
-		updatedAt := after.UpdatedAt().UnixNano()
-		predicates = append(predicates, `(favorite < ?
+func (s *SessionStore) list(ctx context.Context, filter session.CatalogFilter, after *session.CatalogAnchor, limit int) ([]session.Session, error) {
+	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]session.Session, error) {
+		query := `SELECT ` + sessionColumns + ` FROM sessions`
+		var predicates []string
+		var args []any
+		if search, present := filter.Search(); present {
+			pattern := "%" + escapeSessionLikePattern(search) + "%"
+			predicates = append(predicates, `(title_search LIKE ? ESCAPE '\' OR workspace_search LIKE ? ESCAPE '\')`)
+			args = append(args, pattern, pattern)
+		}
+		if workspacePath, present := filter.WorkspacePath(); present {
+			predicates = append(predicates, `workspace_path = ?`)
+			args = append(args, workspacePath)
+		}
+		if after != nil {
+			favorite := boolToInt(after.Favorite())
+			updatedAt := after.UpdatedAt().UnixNano()
+			predicates = append(predicates, `(favorite < ?
 			OR (favorite = ? AND updated_at < ?)
 			OR (favorite = ? AND updated_at = ? AND id < ?))`)
-		args = append(args, favorite, favorite, updatedAt, favorite, updatedAt, after.ID())
-	}
-	if len(predicates) > 0 {
-		query += ` WHERE ` + strings.Join(predicates, ` AND `)
-	}
-	query += ` ORDER BY favorite DESC, updated_at DESC, id DESC`
-	if limit > 0 {
-		query += ` LIMIT ?`
-		args = append(args, limit)
-	}
-	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: list sessions: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	out := make([]session.Session, 0)
-	for rows.Next() {
-		sess, err := rowToSession(rows)
-		if err != nil {
-			return nil, err
+			args = append(args, favorite, favorite, updatedAt, favorite, updatedAt, after.ID())
 		}
-		out = append(out, sess)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("sqlite: list sessions: %w", err)
-	}
-	return out, nil
+		if len(predicates) > 0 {
+			query += ` WHERE ` + strings.Join(predicates, ` AND `)
+		}
+		query += ` ORDER BY favorite DESC, updated_at DESC, id DESC`
+		if limit > 0 {
+			query += ` LIMIT ?`
+			args = append(args, limit)
+		}
+		rows, err := s.db.connection(ctx).QueryContext(ctx, query, args...)
+		if err != nil {
+			return nil, fmt.Errorf("sqlite: list sessions: %w", err)
+		}
+		defer func() {
+			_ = rows.Close()
+		}()
+		out := make([]session.Session, 0)
+		for rows.Next() {
+			sess, err := rowToSession(rows)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, sess)
+		}
+		if err := rows.Err(); err != nil {
+			return nil, fmt.Errorf("sqlite: list sessions: %w", err)
+		}
+		return out, nil
+	})
 }
-
 func escapeSessionLikePattern(value string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(value)
 }
@@ -98,32 +93,34 @@ func escapeSessionLikePattern(value string) string {
 // goal driver uses to refuse a goal for a missing session and to sweep orphaned
 // goals at boot, without decoding the whole aggregate.
 func (s *SessionStore) Exists(ctx context.Context, id string) (bool, error) {
-	if err := validateSessionResource("check Session existence", id); err != nil {
-		return false, err
-	}
-	var one int
-	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT 1 FROM sessions WHERE id = ?`, id).Scan(&one)
-	if errors.Is(err, sql.ErrNoRows) {
-		return false, nil
-	}
-	if err != nil {
-		return false, fmt.Errorf("sqlite: session exists: %w", err)
-	}
-	return true, nil
+	return scopedValue(ctx, s.db.read, func(ctx context.Context) (bool, error) {
+		if err := validateSessionResource("check Session existence", id); err != nil {
+			return false, err
+		}
+		var one int
+		err := s.db.connection(ctx).QueryRowContext(ctx, `SELECT 1 FROM sessions WHERE id = ?`, id).Scan(&one)
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		if err != nil {
+			return false, fmt.Errorf("sqlite: session exists: %w", err)
+		}
+		return true, nil
+	})
 }
-
 func (s *SessionStore) Get(ctx context.Context, id string) (session.Session, error) {
-	if err := validateSessionResource("read Session", id); err != nil {
-		return session.Session{}, err
-	}
-	row := sqlite.Connection(ctx, s.db).QueryRowContext(ctx,
-		`SELECT `+sessionColumns+` FROM sessions WHERE id = ?`, id)
-	sess, err := rowToSession(row)
-	if errors.Is(err, sql.ErrNoRows) {
-		return session.Session{}, session.ErrNotFound
-	}
-	if err != nil {
-		return session.Session{}, fmt.Errorf("sqlite: get session: %w", err)
-	}
-	return sess, nil
+	return scopedValue(ctx, s.db.read, func(ctx context.Context) (session.Session, error) {
+		if err := validateSessionResource("read Session", id); err != nil {
+			return session.Session{}, err
+		}
+		row := s.db.connection(ctx).QueryRowContext(ctx, `SELECT `+sessionColumns+` FROM sessions WHERE id = ?`, id)
+		sess, err := rowToSession(row)
+		if errors.Is(err, sql.ErrNoRows) {
+			return session.Session{}, session.ErrNotFound
+		}
+		if err != nil {
+			return session.Session{}, fmt.Errorf("sqlite: get session: %w", err)
+		}
+		return sess, nil
+	})
 }

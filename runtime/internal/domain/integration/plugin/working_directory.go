@@ -2,8 +2,9 @@ package plugin
 
 import (
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/process"
 	"strings"
+
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/process"
 )
 
 // A package may spell the two process locations as placeholders in its

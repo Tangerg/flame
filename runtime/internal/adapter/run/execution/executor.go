@@ -10,8 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/integrity"
+	framevalue "github.com/Tangerg/frame/value"
+
+	"github.com/Tangerg/frame"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -23,8 +24,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+
+	"github.com/Tangerg/scope/agent/interaction"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	corechat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	otelagent "github.com/Tangerg/scope/otel/agent"
@@ -54,9 +56,9 @@ type interactionModelEvidence interface {
 }
 
 type originalToolResults interface {
-	OwnsToolSource(context.Context, domaintool.Ref, integrity.Digest, plugin.Activation) (bool, error)
-	AwaitOriginalToolSource(context.Context, domaintool.Ref, integrity.Digest, integrity.Digest, plugin.Activation) (bool, error)
-	OriginalToolResult(context.Context, domaintool.Ref, integrity.Digest, integrity.Digest, plugin.Activation, string, string) (*corechat.ToolOutput, error)
+	OwnsToolSource(context.Context, domaintool.Ref, framevalue.Digest, plugin.Activation) (bool, error)
+	AwaitOriginalToolSource(context.Context, domaintool.Ref, framevalue.Digest, framevalue.Digest, plugin.Activation) (bool, error)
+	OriginalToolResult(context.Context, domaintool.Ref, framevalue.Digest, framevalue.Digest, plugin.Activation, string, string) (*toolcontract.Output, error)
 }
 
 // InteractionExecutorConfig freezes the host-owned inputs shared by
@@ -64,7 +66,10 @@ type originalToolResults interface {
 // executable Interaction adapter or behavior-affecting dispatcher configuration
 // changes, so Agent Framework Deployment references remain honest.
 type InteractionExecutorConfig struct {
-	Admission *qimu.Admission
+	Admission *frame.Admission
+	// ValidatePluginSources rechecks captured plans and package releases under the
+	// original shared admission before the execution becomes a live use owner.
+	ValidatePluginSources func(context.Context, []plugin.Activation, []plugin.Dependency) error
 	// Lifetime is the process-owned root for every Interaction staged by this
 	// executor. Request contexts may bound staging and commands, but accepted
 	// execution must outlive the request that created it.
@@ -97,7 +102,7 @@ type InteractionExecutorConfig struct {
 // root owns an independent Engine and exactly one Interaction Process; the
 // Application owns durable Run state and consumes only [runs.ExecutorEvent].
 type InteractionExecutor struct {
-	installations *qimu.Admission
+	installations *frame.Admission
 	lifetime      context.Context
 	config        InteractionExecutorConfig
 	policy        interactionExecutionPolicy
@@ -118,6 +123,9 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 	}
 	if lo.IsNil(config.ModelEvidence) {
 		return nil, errors.New("execution: Interaction model evidence is required")
+	}
+	if config.ValidatePluginSources == nil {
+		return nil, errors.New("execution: plugin source validation is required")
 	}
 	if config.Admission == nil {
 		return nil, errors.New("execution: installation admission is required")
@@ -210,11 +218,6 @@ func (i *InteractionExecutor) StageRoot(
 		return runs.ExecutorRef{}, err
 	}
 	defer finishAssembly()
-	assembly, abandon, err := i.installations.Begin()
-	if err != nil {
-		return runs.ExecutorRef{}, err
-	}
-	defer abandon()
 	start = start.Clone()
 	if err := flameidentity.ValidateSession(start.SessionID); err != nil {
 		return runs.ExecutorRef{}, fmt.Errorf("execution: Interaction: %w", err)
@@ -232,16 +235,14 @@ func (i *InteractionExecutor) StageRoot(
 			err = errors.Join(err, i.discardInteraction(session))
 		}
 	}()
-	input, err := agent.EncodePayload(interaction.Input{
+	input, err := scoperun.EncodePayload(interaction.Input{
 		Messages: cloneChatMessages(start.WorkingContext), Options: executionOptions(start.ModelSelection, start.Options),
 	})
 	if err != nil {
 		return runs.ExecutorRef{}, fmt.Errorf("execution: encode Interaction input: %w", err)
 	}
 	session.input = input
-	if err := i.installations.Publish(ctx, assembly, dependencyInstallations(session.installationDependencies()), func() error {
-		return i.sessions.register(session)
-	}); err != nil {
+	if err := i.publishInteraction(ctx, session); err != nil {
 		return runs.ExecutorRef{}, err
 	}
 	return ref, nil
@@ -374,6 +375,19 @@ func (i *InteractionExecutor) assembleInteraction(
 	if err != nil {
 		return nil, fmt.Errorf("execution: observe Interaction model: %w", err)
 	}
+	store, err := telemetry.WrapStore(session)
+	if err != nil {
+		return nil, fmt.Errorf("execution: observe Interaction store: %w", err)
+	}
+	session.deltas = make(chan scoperun.Delta, i.policy.deltaBufferCapacity)
+	session.engine, err = scoperun.New(session.lifetime.execution, scoperun.Config{
+		Store: store, Build: i.buildID.String(),
+		ProcessAdmitter: scoperun.ProcessAdmitterFunc(session.admitProcess),
+		Deltas:          session.deltas, TreeLimits: interactionTreeLimits(start),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("execution: build Interaction Runtime: %w", err)
+	}
 	deployments, err := i.buildInteractionDeployments(
 		runExecutionContext(ctx, rootExecutionScope(start), start), session, start, observed, counter, checkpoint,
 	)
@@ -383,24 +397,6 @@ func (i *InteractionExecutor) assembleInteraction(
 	if installDeploymentsErr := session.installDeployments(deployments); installDeploymentsErr != nil {
 		return nil, errors.Join(installDeploymentsErr, deployments.close())
 	}
-	committer, err := telemetry.WrapTreeCommitter(session)
-	if err != nil {
-		return nil, fmt.Errorf("execution: observe Interaction tree commits: %w", err)
-	}
-	engine, err := agent.NewEngine(agent.EngineConfig{
-		TreeCommitter:   committer,
-		ProcessAdmitter: agent.ProcessAdmitterFunc(session.admitProcess),
-		EventListeners: []agent.EventListener{
-			agent.EventListenerFunc(session.observeFrameworkEvent), telemetry,
-		},
-		DeltaListeners:      []agent.DeltaListener{agent.DeltaListenerFunc(session.projectDelta)},
-		DeltaBufferCapacity: i.policy.deltaBufferCapacity,
-		TreeLimits:          deployments.treeLimits,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("execution: build Interaction engine: %w", err)
-	}
-	session.engine = engine
 	return session, nil
 }
 
@@ -413,7 +409,7 @@ func (i *InteractionExecutor) interactionConfiguration(
 	depth uint32,
 	instructions []corechat.Message,
 ) ([]byte, error) {
-	configuration, err := agent.EncodePayload(struct {
+	configuration, err := scoperun.EncodePayload(struct {
 		Provider               string                    `json:"provider"`
 		Model                  string                    `json:"model"`
 		Streaming              bool                      `json:"streaming"`
@@ -461,7 +457,7 @@ func (i *InteractionExecutor) interactionToolConfiguration(manifest toolset.Mani
 	slices.SortFunc(deferred, func(a, b toolConfigurationIdentity) int {
 		return strings.Compare(a.Reference, b.Reference)
 	})
-	configuration, err := agent.EncodePayload(struct {
+	configuration, err := scoperun.EncodePayload(struct {
 		Installations     []installationDependencyWire `json:"installations"`
 		ToolResultOffload *toolResultOffloadIdentity   `json:"toolResultOffload,omitzero"`
 		ToolHooks         bool                         `json:"toolHooks"`
@@ -475,7 +471,7 @@ func (i *InteractionExecutor) interactionToolConfiguration(manifest toolset.Mani
 }
 
 type toolConfigurationIdentity struct {
-	Definition        corechat.ToolDefinition `json:"definition"`
+	Definition        toolcontract.Definition `json:"definition"`
 	Reference         string                  `json:"reference"`
 	SourceFingerprint string                  `json:"sourceFingerprint,omitempty"`
 	Activation        string                  `json:"activation,omitempty"`
@@ -597,7 +593,7 @@ func (i *InteractionExecutor) BeginRoot(_ context.Context, ref runs.ExecutorRef)
 	process, err := session.engine.Start(
 		runExecutionContext(session.lifetime.execution, session.scope, session.start),
 		session.deployment,
-		session.input,
+		scoperun.StartRequest[scoperun.Payload]{ID: scoperun.StartID{Scope: session.start.SessionID, Key: session.ref.ExecutorID}, Input: session.input},
 	)
 	if err != nil {
 		session.failStart()
@@ -655,11 +651,6 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		return err
 	}
 	defer finishAssembly()
-	assembly, abandon, err := i.installations.Begin()
-	if err != nil {
-		return err
-	}
-	defer abandon()
 	if err := validateRestoreWorkspace(continuation); err != nil {
 		return err
 	}
@@ -667,7 +658,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	if err != nil {
 		return fmt.Errorf("%w: parse Interaction checkpoint: %w", runs.ErrExecutorStateLost, err)
 	}
-	rootID, err := agent.ParseProcessID(continuation.Checkpoint.RootMemberID)
+	rootID, err := scoperun.ParseProcessID(continuation.Checkpoint.RootMemberID)
 	if err != nil || checkpoint.handoff.rootID != rootID {
 		return fmt.Errorf("%w: checkpoint root differs from its tree", runs.ErrExecutorStateLost)
 	}
@@ -682,9 +673,13 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	if err != nil {
 		return fmt.Errorf("%w: %w", runs.ErrExecutorStateLost, err)
 	}
-	processSnapshots := checkpoint.tree.ProcessSnapshots()
-	if len(processSnapshots) == 0 || processSnapshots[0].Relation().ProcessID() != rootID ||
-		!isInteractionWaitingBoundary(processSnapshots[0].Status()) {
+	inspection, err := checkpoint.tree.Inspect()
+	if err != nil {
+		return err
+	}
+	processSnapshots := inspection.Processes
+	if len(processSnapshots) == 0 || processSnapshots[0].ID != rootID ||
+		!isInteractionWaitingBoundary(processSnapshots[0].Status) {
 		return fmt.Errorf("%w: Interaction restore requires a product waiting boundary", runs.ErrExecutorStateLost)
 	}
 	start := checkpoint.restoredStart(continuation)
@@ -703,18 +698,23 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	if err := session.validateWaitingTree(ctx, continuation, checkpoint, boundary == interactionBoundaryAcceptedPaused); err != nil {
 		return fmt.Errorf("execution: validate waiting tree: %w", err)
 	}
-	process, err := session.engine.RestoreTree(
+	// Recover commits activation without replaying process admission. Its first
+	// Store callback must already see the original product ownership projection.
+	if err := session.restoreContinuationProjection(continuation, checkpoint, boundary); err != nil {
+		return err
+	}
+	process, err := session.engine.Recover(
 		runExecutionContext(session.lifetime.execution, session.scope, session.start),
 		session.deployment,
-		checkpoint.tree,
+		checkpoint.tree.Root,
 	)
 	if err != nil {
 		return fmt.Errorf("execution: restore exact Interaction tree: %w", err)
 	}
 	session.state.setProcess(process)
-	if initializeRestoredContinuationErr := session.initializeRestoredContinuation(process, continuation, checkpoint, boundary); initializeRestoredContinuationErr != nil {
-		return initializeRestoredContinuationErr
-	}
+	session.state.mu.Lock()
+	session.state.restoreTree = scoperun.Log{}
+	session.state.mu.Unlock()
 	unknown, err := session.unknownEffectIDs(ctx)
 	if err != nil {
 		return fmt.Errorf("execution: inspect restored Interaction tree: %w", err)
@@ -729,9 +729,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		}
 		return fmt.Errorf("%w: restored Interaction tree has no pending input", runs.ErrExecutorStateLost)
 	}
-	if err := i.installations.Publish(ctx, assembly, dependencyInstallations(session.installationDependencies()), func() error {
-		return i.sessions.register(session)
-	}); err != nil {
+	if err := i.publishInteraction(ctx, session); err != nil {
 		return err
 	}
 	session.startWorkers()
@@ -827,8 +825,16 @@ func (i *InteractionExecutor) RequestRootCancellation(
 	if process == nil {
 		return runs.ErrExecutorNotLive
 	}
-	if err := process.RequestCancellation(ctx, scopeCancellationReason(reason)); err != nil &&
-		!errors.Is(err, agent.ErrProcessFinished) {
+	if err := process.Cancel(ctx, scopeCancellationReason(reason)); err != nil &&
+		!errors.Is(err, scoperun.ErrProcessFinished) {
+		// A completed Runtime may already have closed its local writer. Only a
+		// committed Exit, never the writer's closed state, proves this is late.
+		inspection, inspectErr := session.inspectCommittedTree(ctx)
+		if inspectErr == nil {
+			if root, found := inspection.Process(process.ID()); found && root.Status.Terminal() {
+				return nil
+			}
+		}
 		return fmt.Errorf("execution: submit Interaction cancellation intent: %w", err)
 	}
 	return nil

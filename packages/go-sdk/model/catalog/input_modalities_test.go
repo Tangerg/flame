@@ -1,6 +1,10 @@
 package catalog
 
 import (
+	corecontent "github.com/Tangerg/scope/core/content"
+
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"errors"
 	"strings"
 	"testing"
@@ -51,9 +55,9 @@ func TestAdmissionIncludesToolResultMedia(t *testing.T) {
 	}
 	messages := []chat.Message{chat.NewToolMessage(chat.ToolResult{
 		ID: "image-result", Name: "inspect",
-		Output: chat.ToolOutput{Content: []chat.ToolContent{
-			{Kind: chat.PartText, Text: "Inspect this image"},
-			{Kind: chat.PartMedia, Media: image},
+		Output: toolcontract.Output{Content: []corecontent.Block{
+			{Kind: corecontent.Text, Text: "Inspect this image"},
+			{Kind: corecontent.Media, Media: image},
 		}},
 	})}
 	for _, test := range []struct {

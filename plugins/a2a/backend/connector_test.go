@@ -12,12 +12,15 @@ import (
 	"sync"
 	"testing"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/a2a/internal/contract"
 	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/a2aproject/a2a-go/v2/a2a"
 )
 
@@ -134,9 +137,9 @@ func newTestConnector(t *testing.T, path string, spec agentSpec) *connector {
 	return c
 }
 
-func inputValue(t *testing.T, value any) jsonvalue.Value {
+func inputValue(t *testing.T, value any) framevalue.JSON {
 	t.Helper()
-	encoded, err := jsonvalue.Encode(value)
+	encoded, err := framevalue.EncodeJSON(value)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,11 +181,11 @@ func TestTaskBindingSurvivesRestartAndCardReplacement(t *testing.T) {
 	if err != nil || replayed != original {
 		t.Fatalf("original receipt changed: %+v %v", replayed, err)
 	}
-	receipt, err := pluginstorage.ReadReceipt(t.Context(), c.db, qimumcp.ReceiptRequest{ID: "send-original", Method: contracts.Send.Name(), InputDigest: input.Digest()})
+	receipt, err := pluginstorage.ReadReceipt(t.Context(), c.db, pluginmcp.ReceiptRequest{ID: "send-original", Method: contracts.Send.Name(), InputDigest: input.Digest()})
 	if err != nil || !receipt.Found {
 		t.Fatalf("durable receipt: %+v %v", receipt, err)
 	}
-	decoded, err := qimumcp.DecodeReply[wire.Result](receipt.Reply)
+	decoded, err := pluginmcp.DecodeReply[wire.Result](receipt.Reply)
 	if err != nil || decoded != original {
 		t.Fatalf("receipt: %+v %v", decoded, err)
 	}
@@ -308,7 +311,7 @@ func TestChangedAgentAndWrongRemoteIdentityAreRefused(t *testing.T) {
 	spec.CardURL += "?replacement=true"
 	c = newTestConnector(t, path, spec)
 	_, err := c.status(t.Context(), wire.TaskRequest{RequestID: "original"})
-	refusal, known := errors.AsType[*portable.Refusal](err)
+	refusal, known := errors.AsType[*framemcp.Refusal](err)
 	if !known || refusal.Code != "agent_changed" {
 		t.Fatalf("changed source: %v", err)
 	}

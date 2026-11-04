@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -28,7 +27,7 @@ func DefiniteToolFailure(cause error) error {
 	failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{
 		Kind:   toolcontract.FailureKindFailed,
 		Cause:  cause,
-		Output: chat.NewTextToolOutput(cause.Error()),
+		Output: toolcontract.NewTextOutput(cause.Error()),
 	})
 	if err != nil {
 		return err

@@ -2,10 +2,11 @@ package bootstrap
 
 import (
 	"errors"
-	"github.com/Tangerg/flame/packages/go-sdk/skill"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/Tangerg/flame/packages/go-sdk/skill"
 
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"

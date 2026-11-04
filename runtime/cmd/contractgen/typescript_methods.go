@@ -7,9 +7,10 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/wiregen"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/qimu/contractgen"
 )
 
 // The method surface, as TypeScript reads it: which methods exist, what each one
@@ -35,7 +36,7 @@ type methodsEmitter struct {
 }
 
 func newWireMethods(registry *delivery.Registry, set *schemaSet) string {
-	emitter := &methodsEmitter{tsTypes: tsTypes{set: set, TypeScript: contractgen.NewTypeScript(set.defs)}, imported: make(map[string]bool)}
+	emitter := &methodsEmitter{tsTypes: tsTypes{set: set, TypeScript: wiregen.NewTypeScript(set.defs)}, imported: make(map[string]bool)}
 	metas := registry.Metas()
 
 	// Rendered first: the shapes it names decide the import list.
@@ -74,12 +75,12 @@ func (m *methodsEmitter) methodPolicy(metas []delivery.MethodMeta) {
 	m.line("")
 	m.line("export const WIRE_METHOD_POLICY = {")
 	for _, meta := range metas {
-		m.line("  %s: {", contractgen.TypeScriptStringLiteral(meta.Name.String()))
-		m.line("    operation: %s,", contractgen.TypeScriptStringLiteral(meta.Operation.String()))
-		m.line("    response: %s,", contractgen.TypeScriptStringLiteral(meta.Kind.String()))
-		m.line("    idempotency: %s,", contractgen.TypeScriptStringLiteral(meta.Idempotency.String()))
-		m.line("    replayCursor: %s,", contractgen.TypeScriptStringLiteral(meta.ReplayCursor.String()))
-		m.line("    pagination: %s,", contractgen.TypeScriptStringLiteral(meta.Pagination.String()))
+		m.line("  %s: {", wiregen.StringLiteral(meta.Name.String()))
+		m.line("    operation: %s,", wiregen.StringLiteral(meta.Operation.String()))
+		m.line("    response: %s,", wiregen.StringLiteral(meta.Kind.String()))
+		m.line("    idempotency: %s,", wiregen.StringLiteral(meta.Idempotency.String()))
+		m.line("    replayCursor: %s,", wiregen.StringLiteral(meta.ReplayCursor.String()))
+		m.line("    pagination: %s,", wiregen.StringLiteral(meta.Pagination.String()))
 		m.line("  },")
 	}
 	m.line("} as const satisfies { readonly [M in WireMethodName]: WireMethodPolicy };")
@@ -151,7 +152,7 @@ func (m *methodsEmitter) policy(metas []delivery.MethodMeta) {
 		if len(meta.CapabilityRules) == 0 {
 			continue
 		}
-		m.line("  %s: [", contractgen.TypeScriptStringLiteral(meta.Name.String()))
+		m.line("  %s: [", wiregen.StringLiteral(meta.Name.String()))
 		for _, rule := range meta.CapabilityRules {
 			m.line("    { %s },", renderRule(rule))
 		}
@@ -168,17 +169,17 @@ func renderRule(rule delivery.CapabilityRule) string {
 		conditions := make([]string, 0, len(rule.When))
 		for _, condition := range rule.When {
 			parts := []string{
-				"field: " + contractgen.TypeScriptStringLiteral(condition.Field),
-				"operator: " + contractgen.TypeScriptStringLiteral(condition.Operator.String()),
+				"field: " + wiregen.StringLiteral(condition.Field),
+				"operator: " + wiregen.StringLiteral(condition.Operator.String()),
 			}
 			if condition.Value != "" {
-				parts = append(parts, "value: "+contractgen.TypeScriptStringLiteral(condition.Value))
+				parts = append(parts, "value: "+wiregen.StringLiteral(condition.Value))
 			}
 			conditions = append(conditions, "{ "+strings.Join(parts, ", ")+" }")
 		}
 		members = append(members, "when: ["+strings.Join(conditions, ", ")+"]")
 	}
-	members = append(members, "requires: ["+strings.Join(contractgen.QuoteAll(rule.Requires), ", ")+"]")
+	members = append(members, "requires: ["+strings.Join(wiregen.QuoteAll(rule.Requires), ", ")+"]")
 	return strings.Join(members, ", ")
 }
 
@@ -211,7 +212,7 @@ func (m *methodsEmitter) features() {
 	m.line("// derive the union, and a published array with no reader would be a second table.")
 	m.line("const FEATURES = [")
 	for _, key := range protocol.FeatureKeys() {
-		m.line("  %s,", contractgen.TypeScriptStringLiteral(key))
+		m.line("  %s,", wiregen.StringLiteral(key))
 	}
 	m.line("] as const;")
 	m.line("")
@@ -224,7 +225,7 @@ func (m *methodsEmitter) names(metas []delivery.MethodMeta) {
 	m.line("// Every method the runtime routes, in registration order.")
 	m.line("const METHOD_NAMES = [")
 	for _, meta := range metas {
-		m.line("  %s,", contractgen.TypeScriptStringLiteral(meta.Name.String()))
+		m.line("  %s,", wiregen.StringLiteral(meta.Name.String()))
 	}
 	m.line("] as const;")
 	m.line("")
@@ -238,7 +239,7 @@ func (m *methodsEmitter) streamingNames(metas []delivery.MethodMeta) {
 	m.line("export const WIRE_STREAMING_METHOD_NAMES = [")
 	for _, meta := range metas {
 		if meta.Event != nil {
-			m.line("  %s,", contractgen.TypeScriptStringLiteral(meta.Name.String()))
+			m.line("  %s,", wiregen.StringLiteral(meta.Name.String()))
 		}
 	}
 	m.line("] as const;")
@@ -258,7 +259,7 @@ func (m *methodsEmitter) valueMethodNames(metas []delivery.MethodMeta) {
 	m.line("const VALUE_METHOD_NAMES = [")
 	for _, meta := range metas {
 		if meta.Result != nil {
-			m.line("  %s,", contractgen.TypeScriptStringLiteral(meta.Name.String()))
+			m.line("  %s,", wiregen.StringLiteral(meta.Name.String()))
 		}
 	}
 	m.line("] as const;")
@@ -293,7 +294,7 @@ func (m *methodsEmitter) shapes(metas []delivery.MethodMeta) string {
 			}
 			members = append(members, "result: "+result)
 		}
-		fmt.Fprintf(&out, "  %s: { %s };\n", contractgen.TypeScriptStringLiteral(meta.Name.String()), strings.Join(members, "; "))
+		fmt.Fprintf(&out, "  %s: { %s };\n", wiregen.StringLiteral(meta.Name.String()), strings.Join(members, "; "))
 	}
 	fmt.Fprintln(&out, "}")
 	fmt.Fprintln(&out, "")
@@ -327,7 +328,7 @@ func (m *methodsEmitter) line(format string, arguments ...any) {
 func methodPolicyUnion(metas []delivery.MethodMeta, value func(delivery.MethodMeta) string) string {
 	values := make([]string, 0, len(metas))
 	for _, meta := range metas {
-		values = append(values, contractgen.TypeScriptStringLiteral(value(meta)))
+		values = append(values, wiregen.StringLiteral(value(meta)))
 	}
 	slices.Sort(values)
 	values = slices.Compact(values)

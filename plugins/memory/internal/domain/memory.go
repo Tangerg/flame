@@ -11,12 +11,11 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/invopop/jsonschema"
+	"github.com/Tangerg/scope/core/jsonschema"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 const (
@@ -236,15 +235,11 @@ type ItemSnapshot struct {
 	Embedding      []float32
 }
 
-func (ItemSnapshot) JSONSchemaExtend(schema *jsonschema.Schema) {
-	if revision, ok := schema.Properties.Get("Revision"); ok {
-		revision.Maximum = jsonvalue.Number(fmt.Sprint(exactint.Maximum))
-	}
-	content, ok := schema.Properties.Get("Content")
-	if ok {
-		content.Pattern = `\S`
-		content.MaxLength = new(uint64(MaxContentCharacters))
-	}
+func (itemProjection) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"Revision": {Maximum: new(float64(exactint.Maximum))},
+		"Content":  {MaxLength: new(uint64(MaxContentCharacters))},
+	}}
 }
 
 // Ordinary reads omit vectors, so only content authoring can authorize discarding the persisted cache.

@@ -6,12 +6,12 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/modelrouter/internal/contract"
 	routing "github.com/Tangerg/flame/plugins/modelrouter/internal/domain"
 	"github.com/Tangerg/flame/plugins/modelrouter/internal/wire"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 func newServer(store *store) (*sdk.Server, error) {
@@ -31,7 +31,7 @@ func newServer(store *store) (*sdk.Server, error) {
 		return nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.modelrouter", Version: "1.0.0"}, nil)
-	backend, err := qimumcp.NewBackend(server)
+	backend, err := pluginmcp.NewBackend(server)
 	if err != nil {
 		return nil, err
 	}
@@ -40,11 +40,11 @@ func newServer(store *store) (*sdk.Server, error) {
 		pluginstorage.RegisterCommand(backend, store.db, contracts.Replace, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.ReplaceInput) (routing.Snapshot, error) {
 			return store.replace(ctx, input.ExpectedRevision, input.Rules)
 		}),
-		contracts.Get.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ qimumcp.Command[struct{}]) (routing.Snapshot, error) {
+		contracts.Get.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ pluginmcp.Command[struct{}]) (routing.Snapshot, error) {
 			policy, err := store.read(ctx)
 			return policy.Snapshot(), err
 		}),
-		selection.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[pluginsdk.ModelSelectionRequest]) (pluginsdk.ModelSelection, error) {
+		selection.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginsdk.ModelSelectionRequest]) (pluginsdk.ModelSelection, error) {
 			if err := command.Input.Validate(); err != nil {
 				return pluginsdk.ModelSelection{}, err
 			}

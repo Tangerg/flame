@@ -10,7 +10,7 @@ import {
 } from "@opentelemetry/api";
 import { createParser } from "eventsource-parser";
 import { createPushPullChannel } from "../channel";
-import { stringifyJSON } from "@qimu/sdk/json";
+import { stringifyJSON } from "@frame/sdk/json";
 import {
   errorMessage,
   parseTransportProblem,

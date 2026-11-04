@@ -67,7 +67,7 @@ function SidebarFooter() {
 export const sidebarFooter = definePlugin({
   name: "flame.builtin.sidebar-footer",
   setup(ctx) {
-    contributeLayout(ctx, "sidebar.footer", {
+    contributeLayout(ctx.contributions, "sidebar.footer", {
       id: "user-card",
       order: 0,
       component: SidebarFooter,

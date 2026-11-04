@@ -8,7 +8,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/qimu/sqlite"
 	sqlite3 "modernc.org/sqlite"
 	sqlite3lib "modernc.org/sqlite/lib"
 )
@@ -34,13 +33,11 @@ func parseRunState(raw string) (rundomain.State, error) {
 // transition that makes them true, so "where is this Run" and "how did it end"
 // cannot disagree. A Run's open interrupts are the one part kept elsewhere: the
 // interrupts table owns them and reads compose them.
-type RunStore struct {
-	db *sql.DB
-}
+type RunStore struct{ db *database }
 
 // newRunStore binds the Run table to db. db must have been opened via [Open] so
 // the current schema was installed.
-func newRunStore(db *sql.DB) *RunStore {
+func newRunStore(db *database) *RunStore {
 	return &RunStore{db: db}
 }
 
@@ -50,6 +47,13 @@ func newRunStore(db *sql.DB) *RunStore {
 // rollback owns this Session or its working tree, and
 // [rundomain.ErrIdentityConflict] when the Run ID is already taken, since the
 // caller may supply one.
+// This is the capability set's only writer, here and in Restore. Suspend,
+// resume, and finish deliberately do not name the column: the value cannot change
+// after admission, and the way to guarantee that is to have nothing able to
+// change it.
+// Two constraints can reject this INSERT and they mean opposite things: the
+// primary key says the id is spoken for, the partial index says the Session
+// already owns another root tree.
 func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 	admitted, err := rundomain.Admit(draft)
 	if err != nil {
@@ -61,43 +65,20 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 		return fmt.Errorf("sqlite: admit run %q: %w", draft.RunID, err)
 	}
 	now := admitted.CreatedAt().UnixNano()
-	// This is the capability set's only writer, here and in Restore. Suspend,
-	// resume, and finish deliberately do not name the column: the value cannot change
-	// after admission, and the way to guarantee that is to have nothing able to
-	// change it.
-	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
+	return r.db.write(ctx, func(ctx context.Context) error {
 		if err := r.requireWorkspaceAdmission(ctx, draft.SessionID); err != nil {
 			return err
 		}
 		if lineage.IsChild() {
-			if err := r.validateChildPlacement(
-				ctx,
-				"admit",
-				draft.RunID,
-				draft.SessionID,
-				draft.ParentRunID,
-				draft.RootRunID,
-				true,
-			); err != nil {
+			if err := r.validateChildPlacement(ctx, "admit", draft.RunID, draft.SessionID, draft.ParentRunID, draft.RootRunID, true); err != nil {
 				return err
 			}
 		}
-		_, err = sqlite.Connection(ctx, r.db).ExecContext(ctx,
-			`INSERT INTO runs(
+		_, err = r.db.connection(ctx).ExecContext(ctx, `INSERT INTO runs(
 			   run_id, session_id, spawned_by_item_id, parent_run_id, root_run_id,
 			   state, active_segment_id, provider, model, reasoning_effort, goal_incarnation_id,
 			   capabilities, message_mark, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			admitted.ID(), admitted.SessionID(),
-			lineage.SpawnedByItemID(), lineage.ParentRunID(), lineage.RootRunID(),
-			string(rundomain.Running), admitted.ActiveSegmentID(),
-			admitted.ModelSelection().Provider(), admitted.ModelSelection().Model(), admitted.ModelSelection().ReasoningEffort(),
-			admitted.GoalIncarnationID(),
-			capabilities,
-			nil, now, now)
-		// Two constraints can reject this INSERT and they mean opposite things: the
-		// primary key says the id is spoken for, the partial index says the Session
-		// already owns another root tree.
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, admitted.ID(), admitted.SessionID(), lineage.SpawnedByItemID(), lineage.ParentRunID(), lineage.RootRunID(), string(rundomain.Running), admitted.ActiveSegmentID(), admitted.ModelSelection().Provider(), admitted.ModelSelection().Model(), admitted.ModelSelection().ReasoningEffort(), admitted.GoalIncarnationID(), capabilities, nil, now, now)
 		switch {
 		case isPrimaryKeyViolation(err):
 			return fmt.Errorf("%w: run %q already exists", rundomain.ErrIdentityConflict, draft.RunID)
@@ -115,167 +96,109 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 // The check shares the admission transaction, so completing an intent and
 // admitting the next Run have one serial order across Runtime processes.
 func (r *RunStore) requireWorkspaceAdmission(ctx context.Context, sessionID string) error {
-	connection := sqlite.Connection(ctx, r.db)
-	if pending, err := sessionResourceRetirementPending(ctx, connection, sessionID); err != nil || pending {
-		if err != nil {
-			return err
-		}
-		return rundomain.ErrSessionBusy
-	}
-	var cwd string
-	if err := connection.QueryRowContext(ctx, `SELECT workspace_path FROM sessions WHERE id = ?`, sessionID).Scan(&cwd); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil
-		}
-		return fmt.Errorf("sqlite: read Run workspace: %w", err)
-	}
-	rows, err := connection.QueryContext(ctx, `SELECT session_id, cwd FROM pending_workspace_mutations`)
-	if err != nil {
-		return fmt.Errorf("sqlite: inspect pending workspace mutations: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		var pending workspaceMutationRecord
-		if err := rows.Scan(&pending.SessionID, &pending.CWD); err != nil {
-			return fmt.Errorf("sqlite: read pending workspace mutation: %w", err)
-		}
-		conflicts, err := pending.conflictsWith(sessionID, cwd)
-		if err != nil {
-			return fmt.Errorf("sqlite: compare pending workspace mutation: %w", err)
-		}
-		if conflicts {
+	return r.db.read(ctx, func(ctx context.Context) error {
+		connection := r.db.connection(ctx)
+		if pending, err := sessionResourceRetirementPending(ctx, connection, sessionID); err != nil || pending {
+			if err != nil {
+				return err
+			}
 			return rundomain.ErrSessionBusy
 		}
-	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("sqlite: iterate pending workspace mutations: %w", err)
-	}
-	return nil
+		var cwd string
+		if err := connection.QueryRowContext(ctx, `SELECT workspace_path FROM sessions WHERE id = ?`, sessionID).Scan(&cwd); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil
+			}
+			return fmt.Errorf("sqlite: read Run workspace: %w", err)
+		}
+		rows, err := connection.QueryContext(ctx, `SELECT session_id, cwd FROM pending_workspace_mutations`)
+		if err != nil {
+			return fmt.Errorf("sqlite: inspect pending workspace mutations: %w", err)
+		}
+		defer func() {
+			_ = rows.Close()
+		}()
+		for rows.Next() {
+			var pending workspaceMutationRecord
+			if err := rows.Scan(&pending.SessionID, &pending.CWD); err != nil {
+				return fmt.Errorf("sqlite: read pending workspace mutation: %w", err)
+			}
+			conflicts, err := pending.conflictsWith(sessionID, cwd)
+			if err != nil {
+				return fmt.Errorf("sqlite: compare pending workspace mutation: %w", err)
+			}
+			if conflicts {
+				return rundomain.ErrSessionBusy
+			}
+		}
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("sqlite: iterate pending workspace mutations: %w", err)
+		}
+		return nil
+	})
 }
 
 // validateChildPlacement proves immutable Run-to-Run topology before inserting
 // a child. The spawning Item is validated by the application write-set that
 // owns Item creation and child admission/restore together.
-func (r *RunStore) validateChildPlacement(
-	ctx context.Context,
-	operation string,
-	runID string,
-	sessionID string,
-	parentRunID string,
-	rootRunID string,
-	requireOpen bool,
-) error {
-	var (
-		parentSession string
-		parentRoot    string
-		parentState   string
-		rootSession   string
-		rootParent    string
-		rootState     string
-	)
-	err := sqlite.Connection(ctx, r.db).QueryRowContext(ctx,
-		`SELECT parent.session_id, parent.root_run_id, parent.state,
+func (r *RunStore) validateChildPlacement(ctx context.Context, operation string, runID string, sessionID string, parentRunID string, rootRunID string, requireOpen bool) error {
+	return r.db.read(ctx, func(ctx context.Context) error {
+		var (
+			parentSession string
+			parentRoot    string
+			parentState   string
+			rootSession   string
+			rootParent    string
+			rootState     string
+		)
+		err := r.db.connection(ctx).QueryRowContext(ctx, `SELECT parent.session_id, parent.root_run_id, parent.state,
 		        root.session_id, root.parent_run_id, root.state
 		   FROM runs AS parent
 		   JOIN runs AS root ON root.run_id = ?
-		  WHERE parent.run_id = ?`,
-		rootRunID,
-		parentRunID,
-	).Scan(
-		&parentSession,
-		&parentRoot,
-		&parentState,
-		&rootSession,
-		&rootParent,
-		&rootState,
-	)
-	if errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf(
-			"sqlite: %s child run %q: parent %q or root %q does not exist",
-			operation,
-			runID,
-			parentRunID,
-			rootRunID,
-		)
-	}
-	if err != nil {
-		return fmt.Errorf("sqlite: %s child run %q: validate tree: %w", operation, runID, err)
-	}
-	parentRunState, err := parseRunState(parentState)
-	if err != nil {
-		return fmt.Errorf("sqlite: %s child run %q: parent: %w", operation, runID, err)
-	}
-	rootRunState, err := parseRunState(rootState)
-	if err != nil {
-		return fmt.Errorf("sqlite: %s child run %q: root: %w", operation, runID, err)
-	}
-	parentTreeRoot := parentRoot
-	if parentTreeRoot == "" {
-		parentTreeRoot = parentRunID
-	}
-	switch {
-	case parentSession != sessionID:
-		return fmt.Errorf(
-			"sqlite: %s child run %q: parent %q belongs to session %q, want %q",
-			operation,
-			runID,
-			parentRunID,
-			parentSession,
-			sessionID,
-		)
-	case rootSession != sessionID:
-		return fmt.Errorf(
-			"sqlite: %s child run %q: root %q belongs to session %q, want %q",
-			operation,
-			runID,
-			rootRunID,
-			rootSession,
-			sessionID,
-		)
-	case rootParent != "":
-		return fmt.Errorf(
-			"sqlite: %s child run %q: root %q is itself a child",
-			operation,
-			runID,
-			rootRunID,
-		)
-	case parentTreeRoot != rootRunID:
-		return fmt.Errorf(
-			"sqlite: %s child run %q: parent %q belongs to root %q, want %q",
-			operation,
-			runID,
-			parentRunID,
-			parentTreeRoot,
-			rootRunID,
-		)
-	case requireOpen && parentRunState == rundomain.Finished:
-		return fmt.Errorf(
-			"sqlite: %s child run %q: parent %q is terminal",
-			operation,
-			runID,
-			parentRunID,
-		)
-	case requireOpen && rootRunState == rundomain.Finished:
-		return fmt.Errorf(
-			"sqlite: %s child run %q: root %q is terminal",
-			operation,
-			runID,
-			rootRunID,
-		)
-	}
-	return nil
+		  WHERE parent.run_id = ?`, rootRunID, parentRunID).Scan(&parentSession, &parentRoot, &parentState, &rootSession, &rootParent, &rootState)
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("sqlite: %s child run %q: parent %q or root %q does not exist", operation, runID, parentRunID, rootRunID)
+		}
+		if err != nil {
+			return fmt.Errorf("sqlite: %s child run %q: validate tree: %w", operation, runID, err)
+		}
+		parentRunState, err := parseRunState(parentState)
+		if err != nil {
+			return fmt.Errorf("sqlite: %s child run %q: parent: %w", operation, runID, err)
+		}
+		rootRunState, err := parseRunState(rootState)
+		if err != nil {
+			return fmt.Errorf("sqlite: %s child run %q: root: %w", operation, runID, err)
+		}
+		parentTreeRoot := parentRoot
+		if parentTreeRoot == "" {
+			parentTreeRoot = parentRunID
+		}
+		switch {
+		case parentSession != sessionID:
+			return fmt.Errorf("sqlite: %s child run %q: parent %q belongs to session %q, want %q", operation, runID, parentRunID, parentSession, sessionID)
+		case rootSession != sessionID:
+			return fmt.Errorf("sqlite: %s child run %q: root %q belongs to session %q, want %q", operation, runID, rootRunID, rootSession, sessionID)
+		case rootParent != "":
+			return fmt.Errorf("sqlite: %s child run %q: root %q is itself a child", operation, runID, rootRunID)
+		case parentTreeRoot != rootRunID:
+			return fmt.Errorf("sqlite: %s child run %q: parent %q belongs to root %q, want %q", operation, runID, parentRunID, parentTreeRoot, rootRunID)
+		case requireOpen && parentRunState == rundomain.Finished:
+			return fmt.Errorf("sqlite: %s child run %q: parent %q is terminal", operation, runID, parentRunID)
+		case requireOpen && rootRunState == rundomain.Finished:
+			return fmt.Errorf("sqlite: %s child run %q: root %q is terminal", operation, runID, rootRunID)
+		}
+		return nil
+	})
 }
 
 // Suspend writes the domain-decided park of the exact active Segment, recording
 // what the Run had consumed up to the park. Every tree member is fenced by
 // segmentID on a running row; the root additionally supplies commitID so the
 // complete barrier can be reconciled after an ambiguous transaction result.
-func (r *RunStore) Suspend(
-	ctx context.Context,
-	value rundomain.Run,
-	segmentID string,
-	commitID runs.CommitID,
-) error {
+// The segment identity is cleared in the same statement that parks the Run:
+// a Run waiting on a person has no segment to attach to.
+func (r *RunStore) Suspend(ctx context.Context, value rundomain.Run, segmentID string, commitID runs.CommitID) error {
 	if err := validateRunCoordinates("suspend Run", value.SessionID(), value.ID(), segmentID); err != nil {
 		return err
 	}
@@ -292,19 +215,13 @@ func (r *RunStore) Suspend(
 		return fmt.Errorf("sqlite: suspend run %q: %w", value.ID(), err)
 	}
 	commitSegmentID, commitIDValue := marker.databaseValues()
-	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
+	return r.db.write(ctx, func(ctx context.Context) error {
 		if err := r.requireAdvance(ctx, "suspend", value); err != nil {
 			return err
 		}
-		// The segment identity is cleared in the same statement that parks the Run:
-		// a Run waiting on a person has no segment to attach to.
-		res, err := sqlite.Connection(ctx, r.db).ExecContext(ctx,
-			`UPDATE runs SET state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
+		res, err := r.db.connection(ctx).ExecContext(ctx, `UPDATE runs SET state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
 		        steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
-		 WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`,
-			string(value.State()), commitSegmentID, commitIDValue,
-			metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), value.UpdatedAt().UTC().UnixNano(),
-			value.SessionID(), value.ID(), string(rundomain.Running), segmentID)
+		 WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`, string(value.State()), commitSegmentID, commitIDValue, metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), value.UpdatedAt().UTC().UnixNano(), value.SessionID(), value.ID(), string(rundomain.Running), segmentID)
 		if err != nil {
 			return fmt.Errorf("sqlite: suspend run %q: %w", value.ID(), err)
 		}
@@ -332,21 +249,16 @@ func (r *RunStore) Resume(ctx context.Context, replacement rundomain.Replacement
 	if err != nil {
 		return fmt.Errorf("sqlite: resume run %q: %w", next.ID(), err)
 	}
-	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
+	return r.db.write(ctx, func(ctx context.Context) error {
 		if err := r.requireWorkspaceAdmission(ctx, expected.SessionID()); err != nil {
 			return err
 		}
 		if err := r.requireExpected(ctx, "resume", expected); err != nil {
 			return err
 		}
-		res, err := sqlite.Connection(ctx, r.db).ExecContext(ctx,
-			`UPDATE runs SET state = ?, active_segment_id = ?, commit_segment_id = '', commit_id = '',
+		res, err := r.db.connection(ctx).ExecContext(ctx, `UPDATE runs SET state = ?, active_segment_id = ?, commit_segment_id = '', commit_id = '',
 		        steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
-		 WHERE session_id = ? AND run_id = ? AND state = ? AND updated_at = ?`,
-			string(next.State()), next.ActiveSegmentID(),
-			metrics.steps, metrics.durationNs, metrics.usage, next.ContextTokens(), next.UpdatedAt().UTC().UnixNano(),
-			expected.SessionID(), expected.ID(), string(expected.State()),
-			expected.UpdatedAt().UTC().UnixNano())
+		 WHERE session_id = ? AND run_id = ? AND state = ? AND updated_at = ?`, string(next.State()), next.ActiveSegmentID(), metrics.steps, metrics.durationNs, metrics.usage, next.ContextTokens(), next.UpdatedAt().UTC().UnixNano(), expected.SessionID(), expected.ID(), string(expected.State()), expected.UpdatedAt().UTC().UnixNano())
 		if err != nil {
 			return fmt.Errorf("sqlite: resume run %q: %w", next.ID(), err)
 		}
@@ -366,37 +278,29 @@ func (r *RunStore) Resume(ctx context.Context, replacement rundomain.Replacement
 // transaction-bound connection before any projection write; a replacement,
 // park, or terminal transition therefore rejects the complete stale write-set.
 func (r *RunStore) RequireActiveSegment(ctx context.Context, sessionID, runID, segmentID string) error {
-	if err := validateRunCoordinates("require active Run Segment", sessionID, runID, segmentID); err != nil {
-		return err
-	}
-	var state, activeSegmentID string
-	err := sqlite.Connection(ctx, r.db).QueryRowContext(ctx,
-		`SELECT state, active_segment_id
+	return r.db.read(ctx, func(ctx context.Context) error {
+		if err := validateRunCoordinates("require active Run Segment", sessionID, runID, segmentID); err != nil {
+			return err
+		}
+		var state, activeSegmentID string
+		err := r.db.connection(ctx).QueryRowContext(ctx, `SELECT state, active_segment_id
 		   FROM runs
-		  WHERE session_id = ? AND run_id = ?`,
-		sessionID,
-		runID,
-	).Scan(&state, &activeSegmentID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("sqlite: Run %q was not found in session %q", runID, sessionID)
-	}
-	if err != nil {
-		return fmt.Errorf("sqlite: read active Segment for Run %q: %w", runID, err)
-	}
-	storedState, err := parseRunState(state)
-	if err != nil {
-		return fmt.Errorf("sqlite: read active Segment for Run %q: %w", runID, err)
-	}
-	if storedState != rundomain.Running || activeSegmentID != segmentID {
-		return fmt.Errorf(
-			"sqlite: Run %q is %s in Segment %q, want running Segment %q",
-			runID,
-			state,
-			activeSegmentID,
-			segmentID,
-		)
-	}
-	return nil
+		  WHERE session_id = ? AND run_id = ?`, sessionID, runID).Scan(&state, &activeSegmentID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("sqlite: Run %q was not found in session %q", runID, sessionID)
+		}
+		if err != nil {
+			return fmt.Errorf("sqlite: read active Segment for Run %q: %w", runID, err)
+		}
+		storedState, err := parseRunState(state)
+		if err != nil {
+			return fmt.Errorf("sqlite: read active Segment for Run %q: %w", runID, err)
+		}
+		if storedState != rundomain.Running || activeSegmentID != segmentID {
+			return fmt.Errorf("sqlite: Run %q is %s in Segment %q, want running Segment %q", runID, state, activeSegmentID, segmentID)
+		}
+		return nil
+	})
 }
 
 // UpdateProgress writes the Run the domain advanced at one model-call boundary:
@@ -411,23 +315,12 @@ func (r *RunStore) UpdateProgress(ctx context.Context, progressed rundomain.Run)
 	if err != nil {
 		return fmt.Errorf("sqlite: update Run progress for %q: %w", progressed.ID(), err)
 	}
-	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
+	return r.db.write(ctx, func(ctx context.Context) error {
 		if err := r.requireAdvance(ctx, "update progress", progressed); err != nil {
 			return err
 		}
-		result, err := sqlite.Connection(ctx, r.db).ExecContext(ctx,
-			`UPDATE runs SET steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
-		 WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`,
-			encoded.steps,
-			encoded.durationNs,
-			encoded.usage,
-			progressed.ContextTokens(),
-			progressed.UpdatedAt().UTC().UnixNano(),
-			progressed.SessionID(),
-			progressed.ID(),
-			string(rundomain.Running),
-			progressed.ActiveSegmentID(),
-		)
+		result, err := r.db.connection(ctx).ExecContext(ctx, `UPDATE runs SET steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
+		 WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`, encoded.steps, encoded.durationNs, encoded.usage, progressed.ContextTokens(), progressed.UpdatedAt().UTC().UnixNano(), progressed.SessionID(), progressed.ID(), string(rundomain.Running), progressed.ActiveSegmentID())
 		if err != nil {
 			return fmt.Errorf("sqlite: update Run progress for %q: %w", progressed.ID(), err)
 		}
@@ -451,22 +344,16 @@ func (r *RunStore) Terminalize(ctx context.Context, replacement rundomain.Replac
 // TerminalizeEvent ends one exact active Segment and stamps the immutable
 // Application EventCommit write-set identity into the Run row. The stamp shares
 // the caller's transaction with every projection in that EventCommit.
-func (r *RunStore) TerminalizeEvent(
-	ctx context.Context,
-	value rundomain.Run,
-	segmentID string,
-	commitID runs.CommitID,
-) error {
+func (r *RunStore) TerminalizeEvent(ctx context.Context, value rundomain.Run, segmentID string, commitID runs.CommitID) error {
 	marker, err := newRunCommitMarker(value.SessionID(), value.ID(), segmentID, commitID)
 	if err != nil {
 		return err
 	}
-	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
+	return r.db.write(ctx, func(ctx context.Context) error {
 		if err := r.requireAdvance(ctx, "terminalize", value); err != nil {
 			return err
 		}
-		return r.finish(ctx, "terminalize", value, marker,
-			`state = ? AND active_segment_id = ?`, string(rundomain.Running), segmentID)
+		return r.finish(ctx, "terminalize", value, marker, `state = ? AND active_segment_id = ?`, string(rundomain.Running), segmentID)
 	})
 }
 
@@ -483,15 +370,12 @@ func (r *RunStore) RebaseMessageMark(ctx context.Context, change rundomain.Repla
 	if !known {
 		return errors.New("sqlite: rebase Run message watermark: the rebased watermark is unknown")
 	}
-	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
+	return r.db.write(ctx, func(ctx context.Context) error {
 		if err := r.requireExpected(ctx, "rebase message watermark", expected); err != nil {
 			return err
 		}
-		result, err := sqlite.Connection(ctx, r.db).ExecContext(ctx,
-			`UPDATE runs SET message_mark = ?
-		 WHERE session_id = ? AND run_id = ? AND state = ? AND message_mark IS ?`,
-			count, expected.SessionID(), expected.ID(), string(rundomain.Finished), messageMarkValue(expected.MessageMark()),
-		)
+		result, err := r.db.connection(ctx).ExecContext(ctx, `UPDATE runs SET message_mark = ?
+		 WHERE session_id = ? AND run_id = ? AND state = ? AND message_mark IS ?`, count, expected.SessionID(), expected.ID(), string(rundomain.Finished), messageMarkValue(expected.MessageMark()))
 		if err != nil {
 			return fmt.Errorf("sqlite: rebase Run %q message watermark: %w", expected.ID(), err)
 		}
@@ -522,13 +406,11 @@ func (r *RunStore) replace(ctx context.Context, op string, replacement rundomain
 		return fmt.Errorf("sqlite: %s run: %w", op, err)
 	}
 	expected := replacement.Expected()
-	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
+	return r.db.write(ctx, func(ctx context.Context) error {
 		if err := r.requireExpected(ctx, op, expected); err != nil {
 			return err
 		}
-		return r.finish(ctx, op, replacement.State(), nil,
-			`state = ? AND active_segment_id = ? AND updated_at = ?`,
-			string(expected.State()), expected.ActiveSegmentID(), expected.UpdatedAt().UTC().UnixNano())
+		return r.finish(ctx, op, replacement.State(), nil, `state = ? AND active_segment_id = ? AND updated_at = ?`, string(expected.State()), expected.ActiveSegmentID(), expected.UpdatedAt().UTC().UnixNano())
 	})
 }
 
@@ -574,14 +456,14 @@ func (r *RunStore) requireAdvance(ctx context.Context, operation string, state r
 // Replacement fences the exact aggregate it was derived from, and an event
 // commit fences its active Segment. Either way the UPDATE is a CAS, so a row
 // that moved under the transaction fails instead of being overwritten.
-func (r *RunStore) finish(
-	ctx context.Context,
-	op string,
-	value rundomain.Run,
-	marker *runCommitMarker,
-	fence string,
-	fenceArgs ...any,
-) error {
+// A root Run's end is also a boundary of the session's Plan, and this CAS is
+// the only place a Run can reach terminal — so the boundary is stamped here
+// rather than by each caller that ends a Run, which is how "no terminal root
+// without a recorded boundary" holds by construction. A child ends inside its
+// root's tree, which is never cut before the root ends. Restore is deliberately
+// NOT a boundary: an imported Run finished in another runtime, and stamping the
+// importing session's live list would invent a value that Run never had.
+func (r *RunStore) finish(ctx context.Context, op string, value rundomain.Run, marker *runCommitMarker, fence string, fenceArgs ...any) error {
 	metrics, err := runMetricsRow(value.Metrics())
 	if err != nil {
 		return fmt.Errorf("sqlite: %s run %q: %w", op, value.ID(), err)
@@ -596,22 +478,15 @@ func (r *RunStore) finish(
 		return fmt.Errorf("sqlite: %s run %q: %w", op, value.ID(), err)
 	}
 	commitSegmentID, commitID := marker.databaseValues()
-	query :=
-		`UPDATE runs SET
+	query := `UPDATE runs SET
 		   state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
 		   outcome = ?, ending = ?, steps = ?, active_duration_ns = ?,
 		   usage = ?, context_tokens = ?, unresolved_effects = ?, message_mark = ?, finished_at = ?, updated_at = ?
 		 WHERE session_id = ? AND run_id = ? AND ` + fence
-	args := []any{
-		string(value.State()), commitSegmentID, commitID,
-		outcome, encodedEnding, metrics.steps, metrics.durationNs,
-		metrics.usage, value.ContextTokens(), encodedEffects,
-		messageMarkValue(value.MessageMark()), value.FinishedAt().UTC().UnixNano(),
-		value.UpdatedAt().UTC().UnixNano(), value.SessionID(), value.ID(),
-	}
+	args := []any{string(value.State()), commitSegmentID, commitID, outcome, encodedEnding, metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedEffects, messageMarkValue(value.MessageMark()), value.FinishedAt().UTC().UnixNano(), value.UpdatedAt().UTC().UnixNano(), value.SessionID(), value.ID()}
 	args = append(args, fenceArgs...)
-	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
-		res, err := sqlite.Connection(ctx, r.db).ExecContext(ctx, query, args...)
+	return r.db.write(ctx, func(ctx context.Context) error {
+		res, err := r.db.connection(ctx).ExecContext(ctx, query, args...)
 		if err != nil {
 			return fmt.Errorf("sqlite: %s run: %w", op, err)
 		}
@@ -622,13 +497,6 @@ func (r *RunStore) finish(
 		if n == 0 {
 			return fmt.Errorf("sqlite: %s run %q: Run changed after the application prepared its terminal state", op, value.ID())
 		}
-		// A root Run's end is also a boundary of the session's Plan, and this CAS is
-		// the only place a Run can reach terminal — so the boundary is stamped here
-		// rather than by each caller that ends a Run, which is how "no terminal root
-		// without a recorded boundary" holds by construction. A child ends inside its
-		// root's tree, which is never cut before the root ends. Restore is deliberately
-		// NOT a boundary: an imported Run finished in another runtime, and stamping the
-		// importing session's live list would invent a value that Run never had.
 		if value.Lineage().IsChild() {
 			return nil
 		}
@@ -641,85 +509,70 @@ func (r *RunStore) finish(
 // never claims the session's non-terminal slot and never passes through the
 // state machine. A non-terminal Run is refused — restoring one would hand the
 // session's admission slot to an executor that is not running.
+// A Run id belongs to one Session for its whole lifetime. An import that
+// would re-parent an existing Run is refused rather than silently taking it
+// over, which is what an upsert here would do.
 func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
-	if !value.State().IsTerminal() {
-		return fmt.Errorf("sqlite: restore run %q: state is %s, want terminal", value.ID(), value.State())
-	}
-	lineage := value.Lineage()
-	if lineage.IsChild() {
-		if err := r.validateChildPlacement(
-			ctx,
-			"restore",
-			value.ID(),
-			value.SessionID(),
-			lineage.ParentRunID(),
-			lineage.RootRunID(),
-			false,
-		); err != nil {
+	return r.db.write(ctx, func(ctx context.Context) error {
+		if !value.State().IsTerminal() {
+			return fmt.Errorf("sqlite: restore run %q: state is %s, want terminal", value.ID(), value.State())
+		}
+		lineage := value.Lineage()
+		if lineage.IsChild() {
+			if err := r.validateChildPlacement(ctx, "restore", value.ID(), value.SessionID(), lineage.ParentRunID(), lineage.RootRunID(), false); err != nil {
+				return err
+			}
+		}
+		metrics, err := runMetricsRow(value.Metrics())
+		if err != nil {
+			return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
+		}
+		encodedEffects, err := encodeUnresolvedEffects(value.UnresolvedEffects())
+		if err != nil {
 			return err
 		}
-	}
-	metrics, err := runMetricsRow(value.Metrics())
-	if err != nil {
-		return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
-	}
-	encodedEffects, err := encodeUnresolvedEffects(value.UnresolvedEffects())
-	if err != nil {
-		return err
-	}
-	ending, _ := value.Ending()
-	outcome, encodedEnding, err := encodeRunEnding(ending)
-	if err != nil {
-		return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
-	}
-	capabilities, err := encodeRunCapabilities(value.Capabilities())
-	if err != nil {
-		return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
-	}
-	selection := value.ModelSelection()
-	_, err = sqlite.Connection(ctx, r.db).ExecContext(ctx,
-		`INSERT INTO runs(
+		ending, _ := value.Ending()
+		outcome, encodedEnding, err := encodeRunEnding(ending)
+		if err != nil {
+			return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
+		}
+		capabilities, err := encodeRunCapabilities(value.Capabilities())
+		if err != nil {
+			return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
+		}
+		selection := value.ModelSelection()
+		_, err = r.db.connection(ctx).ExecContext(ctx, `INSERT INTO runs(
 		   run_id, session_id, spawned_by_item_id, parent_run_id, root_run_id,
 		   state, outcome, provider, model, reasoning_effort, goal_incarnation_id,
 		   ending, steps, active_duration_ns, usage, context_tokens, unresolved_effects,
 		   capabilities, message_mark, created_at, finished_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		value.ID(), value.SessionID(),
-		lineage.SpawnedByItemID(), lineage.ParentRunID(), lineage.RootRunID(),
-		string(value.State()), outcome,
-		selection.Provider(), selection.Model(), selection.ReasoningEffort(),
-		value.GoalIncarnationID(),
-		encodedEnding, metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedEffects,
-		capabilities, messageMarkValue(value.MessageMark()),
-		value.CreatedAt().UTC().UnixNano(), value.FinishedAt().UTC().UnixNano(), value.UpdatedAt().UTC().UnixNano())
-	if isPrimaryKeyViolation(err) {
-		// A Run id belongs to one Session for its whole lifetime. An import that
-		// would re-parent an existing Run is refused rather than silently taking it
-		// over, which is what an upsert here would do.
-		return fmt.Errorf("%w: run %q already exists", rundomain.ErrIdentityConflict, value.ID())
-	}
-	if err != nil {
-		return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
-	}
-	return nil
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, value.ID(), value.SessionID(), lineage.SpawnedByItemID(), lineage.ParentRunID(), lineage.RootRunID(), string(value.State()), outcome, selection.Provider(), selection.Model(), selection.ReasoningEffort(), value.GoalIncarnationID(), encodedEnding, metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedEffects, capabilities, messageMarkValue(value.MessageMark()), value.CreatedAt().UTC().UnixNano(), value.FinishedAt().UTC().UnixNano(), value.UpdatedAt().UTC().UnixNano())
+		if isPrimaryKeyViolation(err) {
+			return fmt.Errorf("%w: run %q already exists", rundomain.ErrIdentityConflict, value.ID())
+		}
+		if err != nil {
+			return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
+		}
+		return nil
+	})
 }
 
 // Delete drops one Run's row. The rollback boundary uses it: a Run being dropped
 // wholesale frees the session's admission slot by ceasing to exist, so there is
 // nothing left to terminalize.
 func (r *RunStore) Delete(ctx context.Context, sessionID, runID string) error {
-	if err := validateSessionResource("delete Run", sessionID); err != nil {
-		return err
-	}
-	if err := validateRunResource("delete Run", runID); err != nil {
-		return err
-	}
-	if _, err := sqlite.Connection(ctx, r.db).ExecContext(ctx,
-		`DELETE FROM runs WHERE run_id = ? AND session_id = ?`, runID, sessionID,
-	); err != nil {
-		return fmt.Errorf("sqlite: delete run: %w", err)
-	}
-	return nil
+	return r.db.write(ctx, func(ctx context.Context) error {
+		if err := validateSessionResource("delete Run", sessionID); err != nil {
+			return err
+		}
+		if err := validateRunResource("delete Run", runID); err != nil {
+			return err
+		}
+		if _, err := r.db.connection(ctx).ExecContext(ctx, `DELETE FROM runs WHERE run_id = ? AND session_id = ?`, runID, sessionID); err != nil {
+			return fmt.Errorf("sqlite: delete run: %w", err)
+		}
+		return nil
+	})
 }
 
 // DeleteForSession drops every Run row of a session whose durable state is being
@@ -728,15 +581,16 @@ func (r *RunStore) Delete(ctx context.Context, sessionID, runID string) error {
 // (not terminalization) keeps the runs table from accumulating dead rows for
 // sessions that no longer exist. Joins the caller's transaction via the context.
 func (r *RunStore) DeleteForSession(ctx context.Context, sessionID string) error {
-	if err := validateSessionResource("delete Session Runs", sessionID); err != nil {
-		return err
-	}
-	_, err := sqlite.Connection(ctx, r.db).ExecContext(ctx,
-		`DELETE FROM runs WHERE session_id = ?`, sessionID)
-	if err != nil {
-		return fmt.Errorf("sqlite: delete runs for session: %w", err)
-	}
-	return nil
+	return r.db.write(ctx, func(ctx context.Context) error {
+		if err := validateSessionResource("delete Session Runs", sessionID); err != nil {
+			return err
+		}
+		_, err := r.db.connection(ctx).ExecContext(ctx, `DELETE FROM runs WHERE session_id = ?`, sessionID)
+		if err != nil {
+			return fmt.Errorf("sqlite: delete runs for session: %w", err)
+		}
+		return nil
+	})
 }
 
 // isUniqueViolation reports whether err is a SQLite UNIQUE-index failure — for

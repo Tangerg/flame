@@ -1,5 +1,5 @@
 import type { ClientTelemetry } from "./telemetry";
-import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import { OperationFailure } from "@flame/runtime-client";
 import { pluginMethod } from "@flame/runtime-client";
 export { OperationFailure } from "@flame/runtime-client";

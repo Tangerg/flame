@@ -1,22 +1,25 @@
-// Package pluginpackage interprets Flame metadata in neutral Qimu releases.
-// Qimu owns archive admission, release identity, integrity and content claims.
+// Package pluginpackage interprets Flame metadata in neutral Frame releases.
+// Frame owns archive admission, release identity, integrity and content claims.
 package pluginpackage
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capture"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame/cancellation"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/distribution"
-	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/frame"
+	"github.com/Tangerg/frame/distribution"
+
 	"github.com/samber/lo"
 )
 
@@ -26,7 +29,7 @@ const maxManifestBytes int64 = 4 << 20
 var errResourceLimit = errors.New("pluginpackage: resource limit exceeded")
 
 type releaseCatalog interface {
-	Get(context.Context, integrity.Digest) (plugin.Release, error)
+	Get(context.Context, framevalue.Digest) (plugin.Release, error)
 	Admit(context.Context, plugin.Release) error
 }
 
@@ -57,8 +60,8 @@ func New(content *distribution.Store, dataDirectory string, catalog releaseCatal
 }
 
 // Root is a display projection, not a content claim. Reads and process launch
-// retain an original Qimu Lease before using this location.
-func (r *Releases) Root(digest integrity.Digest) (string, error) {
+// retain an original Frame Lease before using this location.
+func (r *Releases) Root(digest framevalue.Digest) (string, error) {
 	if err := digest.Validate(); err != nil {
 		return "", errors.Join(plugin.ErrInvalid, err)
 	}
@@ -87,7 +90,7 @@ func (c *Candidate) Discard() error { return c.lease.Close() }
 // claim survives metadata publication until the installation workflow discards
 // this original candidate, including admission failures and response loss.
 func (r *Releases) Materialize(ctx context.Context, source string) (_ plugins.Candidate, err error) {
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return nil, err
 	}
 	if !filepath.IsAbs(source) {
@@ -99,9 +102,13 @@ func (r *Releases) Materialize(ctx context.Context, source string) (_ plugins.Ca
 	}
 	var lease *distribution.Lease
 	if info.IsDir() {
-		lease, err = r.content.InstallDirectoryHeld(ctx, source)
+		lease, err = r.content.ImportDirectoryHeld(ctx, source)
 	} else if info.Mode().IsRegular() {
-		lease, err = r.content.InstallLocalArchiveHeld(ctx, source)
+		var digest framevalue.Digest
+		digest, err = localArchiveDigest(ctx, source, info)
+		if err == nil {
+			lease, err = r.content.ImportArchiveHeld(ctx, source, digest)
+		}
 	} else {
 		return nil, fmt.Errorf("%w: package source must be a directory or regular archive: %w", plugin.ErrInvalid, filesystem.ErrNotRegular)
 	}
@@ -113,7 +120,7 @@ func (r *Releases) Materialize(ctx context.Context, source string) (_ plugins.Ca
 			err = errors.Join(err, lease.Close())
 		}
 	}()
-	neutral := lease.Release()
+	neutral := lease.Snapshot()
 	digest := neutral.Digest
 	if err := digest.Validate(); err != nil {
 		return nil, err
@@ -152,7 +159,7 @@ func (r *Releases) Reclaim(ctx context.Context) error {
 	}
 	var failures []error
 	for _, digest := range digests {
-		if err := r.content.Remove(ctx, digest); err != nil && !errors.Is(err, qimu.ErrInUse) {
+		if err := r.content.Remove(ctx, digest); err != nil && !errors.Is(err, frame.ErrInUse) {
 			failures = append(failures, err)
 		}
 	}
@@ -168,7 +175,12 @@ func (r *Releases) readResource(ctx context.Context, installation plugin.Install
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, lease.Close()) }()
-	content, err := lease.ReadLimit(ctx, name, limit)
+	for _, artifact := range lease.Snapshot().Manifest.Artifacts {
+		if artifact.Path == name && artifact.Size > limit {
+			return nil, errResourceLimit
+		}
+	}
+	content, err := lease.Read(ctx, name)
 	if errors.Is(err, distribution.ErrCapacity) {
 		return nil, errors.Join(errResourceLimit, err)
 	}
@@ -176,7 +188,7 @@ func (r *Releases) readResource(ctx context.Context, installation plugin.Install
 }
 func (r *Releases) ReadResource(ctx context.Context, installation plugin.Installation, name string) ([]byte, error) {
 	body, err := r.readResource(ctx, installation, name, maxPackageBytes)
-	if err != nil && !errors.Is(err, plugin.ErrInvalid) && cancellation.Err(ctx) == nil {
+	if err != nil && !errors.Is(err, plugin.ErrInvalid) && errors.Join(ctx.Err(), context.Cause(ctx)) == nil {
 		return nil, errors.Join(plugin.ErrUnavailable, err)
 	}
 	return body, err
@@ -191,7 +203,7 @@ func packageInputError(err error) error {
 
 // read applies a Flame format budget inside an already acquired content tree.
 func read(ctx context.Context, root *os.Root, name string, limit int64) (body []byte, err error) {
-	if cause := cancellation.Err(ctx); cause != nil {
+	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		return nil, cause
 	}
 	file, _, err := filesystem.OpenFileAt(root, name, limit)
@@ -207,12 +219,38 @@ func read(ctx context.Context, root *os.Root, name string, limit int64) (body []
 			body = nil
 		}
 	}()
-	body, err = io.ReadAll(io.LimitReader(cancellation.Reader(ctx, file), limit+1))
+	contextReader, err := capture.NewReader(ctx, file)
+	if err != nil {
+		return nil, err
+	}
+	body, err = io.ReadAll(io.LimitReader(contextReader, limit+1))
 	if err != nil {
 		return nil, err
 	}
 	if int64(len(body)) > limit {
 		return nil, errResourceLimit
 	}
-	return body, cancellation.Err(ctx)
+	return body, errors.Join(ctx.Err(), context.Cause(ctx))
+}
+
+// Frame admits the archive against this exact local selection; a replacement
+// between selection and import must still contain the same pinned bytes.
+func localArchiveDigest(ctx context.Context, path string, expected os.FileInfo) (_ framevalue.Digest, err error) {
+	file, opened, err := filesystem.OpenFileExpected(path, expected, distribution.DefaultLimits().ArchiveBytes)
+	if err != nil {
+		return framevalue.Digest{}, err
+	}
+	defer func() { err = errors.Join(err, file.Close()) }()
+	reader, err := capture.NewReader(ctx, file)
+	if err != nil {
+		return framevalue.Digest{}, err
+	}
+	hash := sha256.New()
+	if _, err := io.Copy(hash, io.LimitReader(reader, distribution.DefaultLimits().ArchiveBytes+1)); err != nil {
+		return framevalue.Digest{}, err
+	}
+	if err := filesystem.VerifyPathVersion(file, opened, path); err != nil {
+		return framevalue.Digest{}, err
+	}
+	return framevalue.DigestOf([sha256.Size]byte(hash.Sum(nil))), nil
 }

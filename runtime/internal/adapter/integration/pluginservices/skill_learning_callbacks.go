@@ -7,14 +7,17 @@ import (
 	"reflect"
 	"sync"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 	skillspec "github.com/Tangerg/scope/skills"
 	"github.com/samber/lo"
@@ -24,23 +27,23 @@ type learningSourceRevision struct{ name, revision string }
 
 type learningAdmission struct {
 	mu                     sync.Mutex
-	modelCalls             map[string]jsonvalue.Value
+	modelCalls             map[string]framevalue.JSON
 	historyRead, skillRead bool
 	source                 learningSourceRevision
 	failure                error
 }
 
-func (a *learningAdmission) model(id string, input jsonvalue.Value) error {
+func (a *learningAdmission) model(id string, input framevalue.JSON) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if original, found := a.modelCalls[id]; found {
 		if original != input {
-			return &portable.Refusal{Code: portable.InvocationConflictCode, Message: portable.ErrInvocationConflict.Error()}
+			return &framemcp.Refusal{Code: framemcp.InvocationConflictCode, Message: framemcp.ErrInvocationConflict.Error()}
 		}
-		return &portable.Refusal{Code: "model_redelivery", Message: "skill learning: original model invocation cannot be redelivered"}
+		return &framemcp.Refusal{Code: "model_redelivery", Message: "skill learning: original model invocation cannot be redelivered"}
 	}
 	if len(a.modelCalls) >= skilllearning.MaxModelCalls {
-		return &portable.Refusal{Code: "model_budget", Message: "skill learning: model budget exhausted"}
+		return &framemcp.Refusal{Code: "model_budget", Message: "skill learning: model budget exhausted"}
 	}
 	// External models have no receipt: admission must precede their first I/O.
 	a.modelCalls[id] = input
@@ -55,7 +58,7 @@ func (a *learningAdmission) read(skill bool) error {
 		used = &a.skillRead
 	}
 	if *used {
-		return &portable.Refusal{Code: "read_budget", Message: "skill learning: source read budget exhausted"}
+		return &framemcp.Refusal{Code: "read_budget", Message: "skill learning: source read budget exhausted"}
 	}
 	*used = true
 	return nil
@@ -76,12 +79,12 @@ func (a *learningAdmission) outcome() (learningSourceRevision, error) {
 	return a.source, a.failure
 }
 
-func (s *SkillLearning) grant(ctx context.Context, session *sdk.ClientSession, sessionID string, state *learningAdmission) (qimumcp.CallbackRef, func(), error) {
+func (s *SkillLearning) grant(ctx context.Context, session *sdk.ClientSession, sessionID string, state *learningAdmission) (pluginmcp.CallbackRef, func(), error) {
 	conversationMethod, err := skilllearning.ConversationMethod()
 	if err != nil {
-		return qimumcp.CallbackRef{}, nil, err
+		return pluginmcp.CallbackRef{}, nil, err
 	}
-	conversation, err := qimumcp.NewCallback(conversationMethod, nil, func(ctx context.Context, _ qimumcp.Command[struct{}]) (result skilllearning.Conversation, err error) {
+	conversation, err := pluginmcp.NewCallback(conversationMethod, nil, func(ctx context.Context, _ pluginmcp.Command[struct{}]) (result skilllearning.Conversation, err error) {
 		defer func() { state.remember(learningSourceRevision{}, err) }()
 		if err := state.read(false); err != nil {
 			return result, err
@@ -97,16 +100,16 @@ func (s *SkillLearning) grant(ctx context.Context, session *sdk.ClientSession, s
 		return result, nil
 	})
 	if err != nil {
-		return qimumcp.CallbackRef{}, nil, err
+		return pluginmcp.CallbackRef{}, nil, err
 	}
 	read, err := s.readRevisionCallback(state)
 	if err != nil {
-		return qimumcp.CallbackRef{}, nil, err
+		return pluginmcp.CallbackRef{}, nil, err
 	}
-	model, err := pluginsdk.NewModelCallback(func(ctx context.Context, command qimumcp.Command[chat.Request]) (response *chat.Response, err error) {
+	model, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginmcp.Command[chat.Request]) (response *chat.Response, err error) {
 		defer func() { state.remember(learningSourceRevision{}, err) }()
 		if !learningModelRequest(command.Input) {
-			return nil, &portable.Refusal{Code: "model_envelope", Message: "skill learning: model envelope refused"}
+			return nil, &framemcp.Refusal{Code: "model_envelope", Message: "skill learning: model envelope refused"}
 		}
 		input, err := command.RequestInput()
 		if err != nil {
@@ -129,19 +132,19 @@ func (s *SkillLearning) grant(ctx context.Context, session *sdk.ClientSession, s
 		return captured.Model().Call(ctx, command.Input.Clone())
 	})
 	if err != nil {
-		return qimumcp.CallbackRef{}, nil, err
+		return pluginmcp.CallbackRef{}, nil, err
 	}
 	admissionMethod, err := skilllearning.AdmitMethod()
 	if err != nil {
-		return qimumcp.CallbackRef{}, nil, err
+		return pluginmcp.CallbackRef{}, nil, err
 	}
-	admit, err := qimumcp.NewCallback(admissionMethod, nil, func(_ context.Context, cmd qimumcp.Command[skilllearning.Proposal]) (skilllearning.Admission, error) {
+	admit, err := pluginmcp.NewCallback(admissionMethod, nil, func(_ context.Context, cmd pluginmcp.Command[skilllearning.Proposal]) (skilllearning.Admission, error) {
 		return state.admitDraft(cmd.Input, sessionID)
 	})
 	if err != nil {
-		return qimumcp.CallbackRef{}, nil, err
+		return pluginmcp.CallbackRef{}, nil, err
 	}
-	return s.callbacks.Open(ctx, session, qimumcp.CallbackLimits{MaxRequestBytes: skilllearning.MaxCallbackBytes, MaxResponseBytes: skilllearning.MaxCallbackBytes}, conversation, read, model, admit)
+	return s.callbacks.Open(ctx, session, pluginmcp.CallbackLimits{MaxRequestBytes: skilllearning.MaxCallbackBytes, MaxResponseBytes: skilllearning.MaxCallbackBytes}, conversation, read, model, admit)
 }
 
 func learningModelRequest(request chat.Request) bool {
@@ -185,12 +188,12 @@ func (a *learningAdmission) admitDraft(candidate skilllearning.Proposal, session
 	return skilllearning.Admission{Accepted: true}, nil
 }
 
-func (s *SkillLearning) readRevisionCallback(state *learningAdmission) (qimumcp.Callback, error) {
+func (s *SkillLearning) readRevisionCallback(state *learningAdmission) (pluginmcp.Callback, error) {
 	readMethod, err := skilllearning.ReadSkillMethod()
 	if err != nil {
-		return qimumcp.Callback{}, err
+		return pluginmcp.Callback{}, err
 	}
-	read, err := qimumcp.NewCallback(readMethod, nil, func(ctx context.Context, command qimumcp.Command[skilllearning.ReadSkill]) (result skilllearning.ReadResult, err error) {
+	read, err := pluginmcp.NewCallback(readMethod, nil, func(ctx context.Context, command pluginmcp.Command[skilllearning.ReadSkill]) (result skilllearning.ReadResult, err error) {
 		defer func() { state.remember(learningSourceRevision{}, err) }()
 		if err := state.read(true); err != nil {
 			return result, err

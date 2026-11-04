@@ -1,6 +1,6 @@
 import { METHODS } from "./methods";
 import { z } from "zod";
-import { PROTOCOL, type CapabilityDescriptor } from "@qimu/node";
+import { PROTOCOL, type CapabilityDescriptor } from "@flame/backend-sdk/mcp";
 import { LIMITS } from "./limits";
 
 const token = z.string().min(1).max(256);

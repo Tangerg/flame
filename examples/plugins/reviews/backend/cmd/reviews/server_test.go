@@ -10,21 +10,24 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 func modelToolMetadata(t *testing.T, id string) sdk.Meta {
 	t.Helper()
 	var meta sdk.Meta
 	if id != "" {
-		if err := meta.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: id, Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "reviews-owner"}}); err != nil {
+		if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: id, Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "reviews-owner"}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -128,7 +131,7 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "typed-review-client"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -142,7 +145,7 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	exported, err := qimumcp.ResolveCapability(t.Context(), session, "reviews", contracts.Capability)
+	exported, err := pluginmcp.ResolveCapability(t.Context(), session, "reviews", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,13 +194,13 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		actual, err := jsonvalue.Parse(encoded)
+		actual, err := framevalue.ParseJSON(encoded)
 		if err != nil {
 			t.Fatal(err)
 		}
-		want, err := jsonvalue.Encode(expected)
+		want, err := framevalue.EncodeJSON(expected)
 		if err != nil || actual != want {
-			t.Fatalf("Tool changed the typed business result: %s, want %s, %v", actual.JSON(), want.JSON(), err)
+			t.Fatalf("Tool changed the typed business result: %s, want %s, %v", actual.Bytes(), want.Bytes(), err)
 		}
 	}
 	assertToolOutcome("tool-stale", input, conflict)
@@ -207,19 +210,19 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 		{ID: strings.Repeat("界", 43), ExpectedRevision: 1, Status: reviews.Resolved},
 	} {
 		identity := fmt.Sprintf("invalid-%s-%d", invalid.ID, invalid.ExpectedRevision)
-		refused, err := updateMethod.CallCommand(t.Context(), qimumcp.CommandID(identity), invalid)
+		refused, err := updateMethod.CallCommand(t.Context(), pluginmcp.CommandID(identity), invalid)
 		if err != nil || refused.Type != reviews.Invalid || refused.Review != nil {
 			t.Fatalf("typed invalid-input refusal = %+v, %v", refused, err)
 		}
 		assertToolOutcome(identity, invalid, refused)
-		recovered, found, err := updateMethod.ReadReceipt(t.Context(), qimumcp.CommandID(identity), invalid)
+		recovered, found, err := updateMethod.ReadReceipt(t.Context(), pluginmcp.CommandID(identity), invalid)
 		if err != nil || !found || !reflect.DeepEqual(recovered, refused) {
 			t.Fatalf("typed invalid-input receipt = %+v, %t, %v", recovered, found, err)
 		}
 	}
 
 	missing := reviews.Update{ID: "history-missing", ExpectedRevision: 1, Status: reviews.Open}
-	admitted, err := jsonvalue.Encode(missing)
+	admitted, err := framevalue.EncodeJSON(missing)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +265,7 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 	if err == nil {
 		t.Fatal("storage failure succeeded")
 	}
-	if _, classified := errors.AsType[*portable.Refusal](err); classified {
+	if _, classified := errors.AsType[*framemcp.Refusal](err); classified {
 		t.Fatalf("unexpected storage error became a known refusal: %v", err)
 	}
 }

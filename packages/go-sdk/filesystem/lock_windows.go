@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/Tangerg/frame/cancellation"
 	"golang.org/x/sys/windows"
 )
 
@@ -90,7 +89,7 @@ func acquireDirectoryHandle(ctx context.Context, directory string, nonblocking b
 	}
 	for {
 		if !nonblocking {
-			if err := cancellation.Err(ctx); err != nil {
+			if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 				return 0, errors.Join(err, windows.CloseHandle(handle))
 			}
 		}
@@ -107,7 +106,7 @@ func acquireDirectoryHandle(ctx context.Context, directory string, nonblocking b
 			}
 			select {
 			case <-ctx.Done():
-				return 0, errors.Join(cancellation.Err(ctx), windows.CloseHandle(handle))
+				return 0, errors.Join(errors.Join(ctx.Err(), context.Cause(ctx)), windows.CloseHandle(handle))
 			default:
 			}
 		default:

@@ -1,13 +1,13 @@
 package maintenance
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestToolOutputMaintenanceUsesVisibleContent(t *testing.T) {
@@ -16,9 +16,9 @@ func TestToolOutputMaintenanceUsesVisibleContent(t *testing.T) {
 	details := jsontext.Value(`{"hidden":"` + strings.Repeat("x", 5000) + `"}`)
 	for _, tc := range []struct {
 		name   string
-		output chat.ToolOutput
+		output toolcontract.Output
 	}{
-		{"text", chat.NewTextToolOutput("visible")},
+		{"text", toolcontract.NewTextOutput("visible")},
 		{"media", mediaOutput},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -43,7 +43,7 @@ func TestToolOutputMaintenanceUsesVisibleContent(t *testing.T) {
 }
 
 func TestToolOutputMaintenancePreservesDetailsOnlyFallback(t *testing.T) {
-	output := chat.ToolOutput{Details: jsontext.Value(`{"value":"visible"}`)}
+	output := toolcontract.Output{Details: jsontext.Value(`{"value":"visible"}`)}
 	if trimmed, changed := trimToolOutput(output); changed || !reflect.DeepEqual(trimmed, output) {
 		t.Fatal("small details-only output changed")
 	}

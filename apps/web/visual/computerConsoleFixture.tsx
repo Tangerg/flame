@@ -4,7 +4,7 @@ import * as stylex from "@stylexjs/stylex";
 import { ScrollArea } from "@/ui/index";
 import { AgentWorkspaceView } from "@/ui/agent/index";
 import { createFlameClient, createHttpTransport } from "@flame/runtime-client";
-import { stringifyJSON } from "@qimu/sdk/json";
+import { stringifyJSON } from "@frame/sdk/json";
 import type { CallPluginRequest, ServerCapabilities } from "@flame/runtime-client/wire";
 import { CAPABILITY_JSON } from "../../../plugins/computer/component/methods.generated";
 import type { OperationRecord, Snapshot, Surface } from "../../../plugins/computer/component/types";

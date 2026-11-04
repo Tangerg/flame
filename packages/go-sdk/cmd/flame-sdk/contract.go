@@ -4,8 +4,10 @@ import (
 	json "encoding/json/v2"
 	"flag"
 	"fmt"
+
 	"github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/qimu/portable"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+
 	"os"
 )
 
@@ -21,7 +23,7 @@ func runContract(args []string) error {
 	return writeModelContract(*role)
 }
 func writeModelContract(role string) error {
-	var contract *portable.Capability
+	var contract *plugincontract.Capability
 	var err error
 	switch role {
 	case "context":

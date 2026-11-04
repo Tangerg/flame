@@ -5,14 +5,15 @@ import (
 	"errors"
 	"slices"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	framevalue "github.com/Tangerg/frame/value"
+
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -63,7 +64,7 @@ func contributionBindingsWire(bindings []plugins.ContributionBinding) []contribu
 	return values
 }
 
-func decodeContributionBindings(values []contributionBindingWire, contract jsonvalue.Value) ([]plugins.ContributionBinding, error) {
+func decodeContributionBindings(values []contributionBindingWire, contract framevalue.JSON) ([]plugins.ContributionBinding, error) {
 	if err := contract.Validate(); err != nil {
 		return nil, errors.New("execution: model composition contract is required")
 	}
@@ -74,7 +75,7 @@ func decodeContributionBindings(values []contributionBindingWire, contract jsonv
 		if err != nil {
 			return nil, err
 		}
-		digest, err := integrity.ParseDigest(value.Digest)
+		digest, err := framevalue.ParseDigest(value.Digest)
 		if err != nil {
 			return nil, err
 		}
@@ -87,13 +88,13 @@ func decodeContributionBindings(values []contributionBindingWire, contract jsonv
 			return nil, err
 		}
 		if value.Contract != contract.String() {
-			identity, err := jsonvalue.Parse([]byte(value.Contract))
+			identity, err := framevalue.ParseJSON([]byte(value.Contract))
 			if err != nil || identity != contract {
 				return nil, errors.Join(err, errors.New("execution: model contribution contract changed"))
 			}
 		}
 		member := plugin.CompositionMember{Installation: installation, Contribution: contribution}
-		if seen[member] || !portable.ValidExportName(value.Export) {
+		if seen[member] || !plugincontract.ValidExportName(value.Export) {
 			return nil, errors.New("execution: invalid model contribution binding")
 		}
 		seen[member] = true

@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-
-	"github.com/Tangerg/frame/sqlite"
 )
 
 // RuntimeTargetSchema binds a managed plugin's private database to exactly one
@@ -25,7 +23,7 @@ func CheckRuntimeTarget(ctx context.Context, db *sql.DB, namespace string) error
 		return errors.New("managed plugin: Runtime store namespace is required")
 	}
 	var bound string
-	err := sqlite.Connection(ctx, db).QueryRowContext(ctx, `SELECT namespace FROM runtime_target WHERE id=1`).Scan(&bound)
+	err := Connection(ctx, db).QueryRowContext(ctx, `SELECT namespace FROM runtime_target WHERE id=1`).Scan(&bound)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
@@ -41,11 +39,11 @@ func CheckRuntimeTarget(ctx context.Context, db *sql.DB, namespace string) error
 // BindRuntimeTarget binds the database to namespace, idempotent for the same
 // namespace and ErrRuntimeTargetConflict for any other.
 func BindRuntimeTarget(ctx context.Context, db *sql.DB, namespace string) error {
-	return sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
+	return WithinTransaction(ctx, db, func(ctx context.Context) error {
 		if err := CheckRuntimeTarget(ctx, db, namespace); err != nil {
 			return err
 		}
-		_, err := sqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO runtime_target(id,namespace) VALUES(1,?) ON CONFLICT(id) DO NOTHING`, namespace)
+		_, err := Connection(ctx, db).ExecContext(ctx, `INSERT INTO runtime_target(id,namespace) VALUES(1,?) ON CONFLICT(id) DO NOTHING`, namespace)
 		return err
 	})
 }

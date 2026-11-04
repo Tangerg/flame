@@ -15,7 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 )
 
 func newRunStores(t *testing.T) (*RunStore, *InterruptStore) {
@@ -25,7 +25,7 @@ func newRunStores(t *testing.T) (*RunStore, *InterruptStore) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return newRunStore(db), newInterruptStore(db)
+	return newRunStore(databaseFor(db)), newInterruptStore(databaseFor(db))
 }
 
 func newRunProjectionStores(t *testing.T) (*RunStore, *InterruptStore, *TranscriptStore) {
@@ -35,7 +35,7 @@ func newRunProjectionStores(t *testing.T) (*RunStore, *InterruptStore, *Transcri
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return newRunStore(db), newInterruptStore(db), newTranscriptStore(db)
+	return newRunStore(databaseFor(db)), newInterruptStore(databaseFor(db)), newTranscriptStore(databaseFor(db))
 }
 
 // terminalizeStoredRun ends the stored running Run with state through the
@@ -205,7 +205,7 @@ func TestParkCommitsInterruptAndSuspendAtomically(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	runStore, ints := newRunStore(db), newInterruptStore(db)
+	runStore, ints := newRunStore(databaseFor(db)), newInterruptStore(databaseFor(db))
 	ctx := context.Background()
 
 	if err := runStore.Admit(ctx, parkableDraft("run_1", "ses_A")); err != nil {
@@ -315,22 +315,22 @@ func TestRunLifecycleRetainsInvocationEvidenceUntilDeletion(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = database.Close() })
 			ctx := t.Context()
-			store := newRunStore(database)
+			store := newRunStore(databaseFor(database))
 			draft := runDraft("run_invocation_owner", "ses_invocation_owner")
 			if err := store.Admit(ctx, draft); err != nil {
 				t.Fatalf("admit Run: %v", err)
 			}
 			startedAt := draft.CreatedAt.Add(time.Second)
-			if err := newModelInvocationStore(database).StartModelInvocation(
+			if err := newModelInvocationStore(databaseFor(database)).StartModelInvocation(
 				ctx, draft.SessionID, draft.RunID, draft.SegmentID, "model_call_pending", startedAt, run.ModelConversation); err != nil {
 				t.Fatalf("start model invocation: %v", err)
 			}
-			if err := newModelInvocationStore(database).CompleteModelInvocation(
+			if err := newModelInvocationStore(databaseFor(database)).CompleteModelInvocation(
 				ctx, draft.SessionID, draft.RunID, draft.SegmentID, "model_call_pending", startedAt, startedAt.Add(time.Second), nil, nil,
 			); err != nil {
 				t.Fatalf("complete model invocation: %v", err)
 			}
-			if err := newToolInvocationStore(database).StartToolInvocation(
+			if err := newToolInvocationStore(databaseFor(database)).StartToolInvocation(
 				ctx, draft.SessionID, draft.RunID, draft.SegmentID,
 				"tool_call_pending", "item_call_pending", startedAt, nil,
 			); err != nil {

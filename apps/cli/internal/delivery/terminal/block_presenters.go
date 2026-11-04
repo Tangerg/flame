@@ -4,11 +4,11 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
-func presentUser(p blockPresentation, block conversation.Block) []headless.Block {
+func presentUser(p blockPresentation, block conversation.Block) []base.Block {
 	body := strings.TrimSpace(block.Text)
 	if len(block.Attachments) > 0 {
 		lines := make([]string, 0, len(block.Attachments))
@@ -24,11 +24,11 @@ func presentUser(p blockPresentation, block conversation.Block) []headless.Block
 	if speaker == "" {
 		speaker = selfSpeaker
 	}
-	return []headless.Block{newUserMessageBlock(p.Theme, speaker, body)}
+	return []base.Block{newUserMessageBlock(p.Theme, speaker, body)}
 }
 
-func presentMarkdown(speaker string) func(blockPresentation, conversation.Block) []headless.Block {
-	return func(p blockPresentation, block conversation.Block) []headless.Block {
+func presentMarkdown(speaker string) func(blockPresentation, conversation.Block) []base.Block {
+	return func(p blockPresentation, block conversation.Block) []base.Block {
 		label := speaker
 		if p.Speaker != "" {
 			label = p.Speaker
@@ -39,7 +39,7 @@ func presentMarkdown(speaker string) func(blockPresentation, conversation.Block)
 			look.Text, look.Strong = p.Theme.Muted, p.Theme.Subtle
 		}
 		message.setSource(block.Text, look)
-		rendered := []headless.Block{message}
+		rendered := []base.Block{message}
 		for _, image := range block.Images {
 			if p.Image == nil {
 				rendered = append(rendered, fallbackInlineImage(p.Theme, image))
@@ -51,21 +51,21 @@ func presentMarkdown(speaker string) func(blockPresentation, conversation.Block)
 	}
 }
 
-func presentTool(p blockPresentation, block conversation.Block) []headless.Block {
-	return []headless.Block{newToolBlock(p, block)}
+func presentTool(p blockPresentation, block conversation.Block) []base.Block {
+	return []base.Block{newToolBlock(p, block)}
 }
 
-func presentQuestion(p blockPresentation, block conversation.Block) []headless.Block {
+func presentQuestion(p blockPresentation, block conversation.Block) []base.Block {
 	if block.Question == nil {
 		return nil
 	}
-	return []headless.Block{newQuestionBlock(p.Theme, p.Glyphs, *block.Question)}
+	return []base.Block{newQuestionBlock(p.Theme, p.Glyphs, *block.Question)}
 }
 
-func presentNotice(p blockPresentation, block conversation.Block) []headless.Block {
-	return []headless.Block{&kit.Entry{Theme: p.Theme, Label: "notice", Body: block.Text}}
+func presentNotice(p blockPresentation, block conversation.Block) []base.Block {
+	return []base.Block{&kit.Entry{Theme: p.Theme, Label: "notice", Body: block.Text}}
 }
 
-func presentFailure(p blockPresentation, block conversation.Block) []headless.Block {
-	return []headless.Block{presentError(p.Theme, block.Text)}
+func presentFailure(p blockPresentation, block conversation.Block) []base.Block {
+	return []base.Block{presentError(p.Theme, block.Text)}
 }

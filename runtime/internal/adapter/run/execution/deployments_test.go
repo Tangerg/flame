@@ -6,19 +6,21 @@ import (
 	"errors"
 	"testing"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/integrity"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/metadata"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 func TestInteractionToolDeploymentBindsItsFrozenManifest(t *testing.T) {
-	binding := func(t *testing.T, description, schema string, fingerprint integrity.Digest, deferred bool) (agent.DeploymentRef, agent.DeploymentRef) {
+	binding := func(t *testing.T, description, schema string, fingerprint framevalue.Digest, deferred bool) scoperun.ProgramRef {
 		t.Helper()
-		executable := &scopeDefinitionTool{definition: chat.ToolDefinition{
+		executable := &scopeDefinitionTool{definition: toolcontract.Definition{
 			Name: "fixture_echo", Description: description, InputSchema: []byte(schema),
 		}}
 		identified, err := toolset.WithIdentity(executable, testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "echo"), fingerprint)
@@ -43,25 +45,24 @@ func TestInteractionToolDeploymentBindsItsFrozenManifest(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		children := session.deployment.Definition().ChildDeployments()
-		if len(children) != 1 {
-			t.Fatalf("static Tool deployments = %d, want 1", len(children))
+		if children := session.deployment.Definition().ChildPrograms(); len(children) != 0 {
+			t.Fatalf("ordinary tools created child programs: %d", len(children))
 		}
-		root, child := session.deployment.DeploymentRef(), children[0].DeploymentRef()
+		root := session.deployment.ProgramRef()
 		if err := executor.Release(t.Context(), ref); err != nil {
 			t.Fatal(err)
 		}
-		return root, child
+		return root
 	}
 
 	const schema = `{"type":"object","properties":{"revision":{"type":"integer","const":9007199254740992}}}`
 	authority := testsupport.Digest("first authority")
-	root, child := binding(t, "Return a fixed response.", schema, authority, false)
+	root := binding(t, "Return a fixed response.", schema, authority, false)
 	for _, test := range []struct {
 		name        string
 		description string
 		schema      string
-		fingerprint integrity.Digest
+		fingerprint framevalue.Digest
 		deferred    bool
 		changed     bool
 	}{
@@ -77,19 +78,16 @@ func TestInteractionToolDeploymentBindsItsFrozenManifest(t *testing.T) {
 			if !test.fingerprint.IsZero() {
 				currentFingerprint = test.fingerprint
 			}
-			candidateRoot, candidateChild := binding(t, test.description, test.schema, currentFingerprint, test.deferred)
-			if changed := candidateChild != child; changed != test.changed {
-				t.Fatalf("Tool deployment identity changed = %t, want %t", changed, test.changed)
-			}
-			if changed := candidateRoot.BindingsDigest() != root.BindingsDigest(); changed != test.changed {
-				t.Fatalf("static Tool binding changed = %t, want %t", changed, test.changed)
+			candidateRoot := binding(t, test.description, test.schema, currentFingerprint, test.deferred)
+			if changed := candidateRoot != root; changed != test.changed {
+				t.Fatalf("Interaction tool binding changed = %t, want %t", changed, test.changed)
 			}
 		})
 	}
 }
 
 func TestInteractionDeploymentBindsCanonicalInstructions(t *testing.T) {
-	binding := func(t *testing.T, rawMetadata string) agent.DeploymentRef {
+	binding := func(t *testing.T, rawMetadata string) scoperun.ProgramRef {
 		t.Helper()
 		instruction := chat.NewSystemMessage("Follow the workspace policy.")
 		instruction.Metadata = metadata.Map{"policy": jsontext.Value(rawMetadata)}
@@ -109,7 +107,7 @@ func TestInteractionDeploymentBindsCanonicalInstructions(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		deployment := session.deployment.DeploymentRef()
+		deployment := session.deployment.ProgramRef()
 		if err := executor.Release(t.Context(), ref); err != nil {
 			t.Fatal(err)
 		}

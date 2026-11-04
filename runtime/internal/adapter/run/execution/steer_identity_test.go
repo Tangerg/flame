@@ -10,7 +10,8 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
 type heldSteerAdmission struct {
@@ -21,15 +22,17 @@ type heldSteerAdmission struct {
 }
 
 func (s *heldSteerAdmission) SaveExecutionTree(ctx context.Context, update runs.ExecutionTreeUpdate) error {
-	tree, err := agent.ParseTreeSnapshot(update.Head.Payload)
+	root, err := scoperun.ParseProcessID(update.Head.RootID)
 	if err != nil {
 		return err
 	}
-	for _, process := range tree.ProcessSnapshots() {
-		for _, receipt := range process.SignalReceipts() {
-			if receipt.ID().String() == "steer:item_original" {
-				s.once.Do(func() { close(s.entered); <-s.release })
-			}
+	tree, err := decodeExecutionTree(update.Head, root)
+	if err != nil {
+		return err
+	}
+	for _, entry := range tree.Entries {
+		if admission, ok := entry.Record.(scoperun.SignalAdmitted); ok && admission.Signal.ID.String() == "steer:item_original" {
+			s.once.Do(func() { close(s.entered); <-s.release })
 		}
 	}
 	return s.ExecutionTreeStore.SaveExecutionTree(ctx, update)

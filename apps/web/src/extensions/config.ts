@@ -46,7 +46,7 @@ export class Configuration implements ConfigService {
     subscribers.add(notify);
     const owned = subscribers;
     return {
-      dispose: () => {
+      [Symbol.dispose]: () => {
         owned.delete(notify);
         if (owned.size === 0 && this.#subscribers.get(key) === owned) {
           this.#subscribers.delete(key);

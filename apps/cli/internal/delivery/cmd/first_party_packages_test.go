@@ -1,9 +1,10 @@
 package cmd
 
 import (
-	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"os"
 	"testing"
+
+	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 )

@@ -38,7 +38,7 @@ it("does not publish a dictionary after its source retires", async () => {
     definePlugin({
       name: "test.locale",
       setup(scope) {
-        contributeLocale(scope, { id: locale, label: "Owner", load });
+        contributeLocale(scope.contributions, { id: locale, label: "Owner", load });
       },
     }),
   );
@@ -56,7 +56,7 @@ it("shares one lazy activation and withdraws its dictionary on disposal", async 
     definePlugin({
       name: "test.locale",
       setup(scope) {
-        contributeLocale(scope, { id: locale, label: "Owner", load });
+        contributeLocale(scope.contributions, { id: locale, label: "Owner", load });
       },
     }),
   );
@@ -78,7 +78,7 @@ it("shares each load attempt and permits a new attempt after failure", async () 
     definePlugin({
       name: "test.locale",
       setup(scope) {
-        contributeLocale(scope, { id: locale, label: "Owner", load });
+        contributeLocale(scope.contributions, { id: locale, label: "Owner", load });
       },
     }),
   );
@@ -106,7 +106,7 @@ it("does not publish a retried dictionary after its source retires", async () =>
     definePlugin({
       name: "test.locale",
       setup(scope) {
-        contributeLocale(scope, { id: locale, label: "Owner", load });
+        contributeLocale(scope.contributions, { id: locale, label: "Owner", load });
       },
     }),
   );
@@ -130,7 +130,7 @@ async function localeCatalog() {
     definePlugin({
       name: "test.locale-catalog",
       setup(scope) {
-        reconcile = createLocaleReconciler(scope.lifetime("catalog"), report);
+        reconcile = createLocaleReconciler(scope.contributions.child("catalog"), report);
       },
     }),
   );

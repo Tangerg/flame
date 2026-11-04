@@ -425,7 +425,7 @@ it("opens only a unique admitted client diagnostics contribution", async () => {
   openWorkspaceClientDiagnostics(testClient.workspace.access);
   expect(testClient.navigation.get().dock).toBe(WORKSPACE_DOCK_CATALOG);
   await contributeForTest((ctx) =>
-    ctx.contribute(WORKSPACE_VIEW, {
+    ctx.contributions.add(WORKSPACE_VIEW, {
       id: "package:first:diagnostics",
       title: "Diagnostics",
       material: "diagnostics",
@@ -436,7 +436,7 @@ it("opens only a unique admitted client diagnostics contribution", async () => {
   openWorkspaceClientDiagnostics(testClient.workspace.access);
   expect(testClient.navigation.get().dock).toBe("package:first:diagnostics");
   await contributeForTest((ctx) =>
-    ctx.contribute(WORKSPACE_VIEW, {
+    ctx.contributions.add(WORKSPACE_VIEW, {
       id: "package:second:diagnostics",
       title: "Other diagnostics",
       material: "diagnostics",
@@ -453,7 +453,7 @@ it.each([0, 2])(
   async (count) => {
     await contributeForTest((ctx) => {
       for (let index = 0; index < count; index++) {
-        ctx.contribute(WORKSPACE_VIEW, {
+        ctx.contributions.add(WORKSPACE_VIEW, {
           id: "package:diagnostics:" + index,
           title: "Diagnostics " + index,
           material: "diagnostics",

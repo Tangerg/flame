@@ -6,10 +6,15 @@ import (
 	"errors"
 	"fmt"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/samber/lo"
 )
 
@@ -23,7 +28,7 @@ type PluginBinding struct {
 	InstallationID string
 	Digest         string
 	Contribution   string
-	Contract       *portable.Capability
+	Contract       *plugincontract.Capability
 	Target         portable.Target
 }
 
@@ -33,7 +38,7 @@ type PluginMethod[P, R any] struct {
 	method  *portable.Method
 }
 
-func BindPluginMethod[P, R any](caller PluginCaller, binding PluginBinding, method *qimumcp.Method[P, R]) (*PluginMethod[P, R], error) {
+func BindPluginMethod[P, R any](caller PluginCaller, binding PluginBinding, method *pluginmcp.Method[P, R]) (*PluginMethod[P, R], error) {
 	if lo.IsNil(caller) || binding.Contract == nil || method == nil {
 		return nil, errors.New("runtime: plugin caller, binding and typed method are required")
 	}
@@ -79,14 +84,14 @@ func (m *PluginMethod[P, R]) Call(ctx context.Context, input P, options protocol
 	if m.method.Kind() == portable.Query && (options.IdempotencyKey != "" || options.IdempotencyNamespace != "") {
 		return zero, errors.New("runtime: plugin query cannot carry a command identity")
 	}
-	inputJSON, err := jsonvalue.Encode(input)
+	inputJSON, err := framevalue.EncodeJSON(input)
 	if err != nil {
 		return zero, err
 	}
 	if err := m.method.ValidateInput(inputJSON); err != nil {
 		return zero, err
 	}
-	result, err := m.caller.CallPlugin(ctx, protocol.CallPluginRequest{InstallationID: m.binding.InstallationID, Digest: m.binding.Digest, Contribution: m.binding.Contribution, Contract: string(m.binding.Contract.Identity().JSON()), Method: m.method.Name(), Input: string(inputJSON.JSON()), Target: m.binding.Target}, options)
+	result, err := m.caller.CallPlugin(ctx, protocol.CallPluginRequest{InstallationID: m.binding.InstallationID, Digest: m.binding.Digest, Contribution: m.binding.Contribution, Contract: string(m.binding.Contract.Identity().Bytes()), Method: m.method.Name(), Input: string(inputJSON.Bytes()), Target: m.binding.Target}, options)
 	if err != nil {
 		return zero, err
 	}
@@ -97,13 +102,13 @@ func (m *PluginMethod[P, R]) Call(ctx context.Context, input P, options protocol
 		return zero, errors.Join(protocol.ErrInvalidResponse, err)
 	}
 	if result.Failure != nil {
-		return zero, &portable.Refusal{Code: result.Failure.Code, Message: result.Failure.Message}
+		return zero, &framemcp.Refusal{Code: result.Failure.Code, Message: result.Failure.Message}
 	}
 	if err := m.method.ValidateOutput([]byte(result.Output)); err != nil {
 		return zero, fmt.Errorf("runtime: plugin output: %w", errors.Join(protocol.ErrInvalidResponse, err))
 	}
 	var value R
-	if err := json.Unmarshal([]byte(result.Output), &value, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
+	if err := json.Unmarshal([]byte(result.Output), &value, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
 		return zero, errors.Join(protocol.ErrInvalidResponse, err)
 	}
 	return value, nil

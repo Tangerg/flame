@@ -13,8 +13,8 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/programtest"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/uitest"
 )
 
 type mcpFormAttempt struct {
@@ -59,7 +59,7 @@ func (m *controlledMCPFormService) UpdateServer(ctx context.Context, id authorin
 	}
 }
 
-func submitMCPCreateForm(t *testing.T, host *programtest.Host) {
+func submitMCPCreateForm(t *testing.T, host *uitest.Host) {
 	t.Helper()
 	host.Shows(t, "Ask flame")
 	host.Type("/mcp-create")

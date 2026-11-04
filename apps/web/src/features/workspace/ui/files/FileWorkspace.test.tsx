@@ -96,15 +96,15 @@ beforeEach(async () => {
     definePlugin({
       name: "test.workspace-files",
       setup(ctx) {
-        ctx.contribute(DATA_PROVIDER, {
+        ctx.contributions.add(DATA_PROVIDER, {
           key: WORKSPACE_LIST_FILES_KEY,
           fetcher: (params) => listFiles(params as WorkspaceListFilesQuery),
         });
-        ctx.contribute(DATA_PROVIDER, {
+        ctx.contributions.add(DATA_PROVIDER, {
           key: WORKSPACE_READ_FILE_KEY,
           fetcher: (params) => readFile(params as WorkspaceReadFileQuery),
         });
-        ctx.contribute(
+        ctx.contributions.add(
           WORKSPACE_FILE_RENDERER,
           {
             id: "markdown",

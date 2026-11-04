@@ -1,13 +1,10 @@
 package contract
 
 import (
-	"strconv"
-
-	"github.com/invopop/jsonschema"
+	"github.com/Tangerg/scope/core/jsonschema"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
-	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 const (
@@ -27,12 +24,10 @@ type ListInput struct {
 	Limit       *int `json:"Limit,omitzero"`
 }
 
-func (ListInput) JSONSchemaExtend(schema *jsonschema.Schema) {
-	limit, ok := schema.Properties.Get("Limit")
-	if ok {
-		limit.Minimum = jsonvalue.Number("1")
-		limit.Maximum = jsonvalue.Number(strconv.Itoa(memory.MaxManagementPageItems))
-	}
+func (ListInput) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"Limit": {Minimum: new(float64(1)), Maximum: new(float64(memory.MaxManagementPageItems))},
+	}}
 }
 
 type Page struct {
@@ -41,15 +36,11 @@ type Page struct {
 	Capacity   int
 }
 
-func (Page) JSONSchemaExtend(schema *jsonschema.Schema) {
-	rows, ok := schema.Properties.Get("Rows")
-	if ok {
-		rows.MaxItems = new(uint64(memory.MaxManagementPageItems))
-	}
-	capacity, ok := schema.Properties.Get("Capacity")
-	if ok {
-		capacity.Const = memory.MaxVisiblePerTarget
-	}
+func (Page) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"Rows":     {MaxItems: new(uint64(memory.MaxManagementPageItems))},
+		"Capacity": {Minimum: new(float64(memory.MaxVisiblePerTarget)), Maximum: new(float64(memory.MaxVisiblePerTarget))},
+	}}
 }
 
 type AddInput struct {
@@ -80,14 +71,14 @@ type ItemsInput struct {
 	Project string
 }
 
-func (UpdateInput) JSONSchemaExtend(schema *jsonschema.Schema) { boundRevision(schema) }
-func (ItemInput) JSONSchemaExtend(schema *jsonschema.Schema)   { boundRevision(schema) }
-func (ReviewInput) JSONSchemaExtend(schema *jsonschema.Schema) { boundRevision(schema) }
+func (UpdateInput) JSONSchemaConstraints() jsonschema.Constraints { return revisionBounds() }
+func (ItemInput) JSONSchemaConstraints() jsonschema.Constraints   { return revisionBounds() }
+func (ReviewInput) JSONSchemaConstraints() jsonschema.Constraints { return revisionBounds() }
 
-func boundRevision(schema *jsonschema.Schema) {
-	if revision, ok := schema.Properties.Get("ExpectedRevision"); ok {
-		revision.Maximum = jsonvalue.Number(strconv.FormatUint(exactint.Maximum, 10))
-	}
+func revisionBounds() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"ExpectedRevision": {Maximum: new(float64(exactint.Maximum))},
+	}}
 }
 
 type SearchInput struct {

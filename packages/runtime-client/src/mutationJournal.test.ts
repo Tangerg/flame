@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RpcError, RpcProtocolError, RpcTransportError } from "./errors";
 import { createMutationPromise, type MutationPromise } from "./mutation";
-import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { canonicalJSON, parseJSON, stringifyJSON } from "@frame/sdk/json";
 import {
   createMutationJournal,
   MutationJournalCapacityError,
@@ -102,7 +102,7 @@ describe("mutation journal", () => {
     const pending = journal(storage).pendingCommands();
     expect(pending).toHaveLength(1);
     expect(pending[0]!.idempotencyKey).toBe("original-exact");
-    expect(stringifyJSON(pending[0]!.params, true)).toBe(stringifyJSON(params, true));
+    expect(canonicalJSON(pending[0]!.params)).toBe(canonicalJSON(params));
   });
   it("keeps independent connection journals alive until their own owner retires them", async () => {
     const firstStorage = new MemoryStorage();

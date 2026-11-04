@@ -17,8 +17,8 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/programtest"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/uitest"
 )
 
 func TestExportNoticeDistinguishesPublicationFromConfirmation(t *testing.T) {
@@ -59,7 +59,7 @@ func TestParseExportArgumentSeparatesTheFormatFromAnOptionalSpacedFilename(t *te
 }
 
 type copyTestHost struct {
-	*programtest.Host
+	*uitest.Host
 	copied chan string
 }
 
@@ -107,7 +107,7 @@ func (outputTransferStub) ImportSession(context.Context, session.ImportRequest) 
 
 func runUIWithCopyHost(t *testing.T, backend Runtime, workspace string) (*copyTestHost, func()) {
 	t.Helper()
-	host := &copyTestHost{Host: programtest.New(t, programtest.Config{Width: 96, Height: 28}), copied: make(chan string, 8)}
+	host := &copyTestHost{Host: uitest.New(t, uitest.Config{Width: 96, Height: 28}), copied: make(chan string, 8)}
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {

@@ -7,18 +7,21 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+
+	"github.com/Tangerg/scope/agent/interaction"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -74,82 +77,51 @@ func appendPendingContinuation(
 	return append(messages, message), nil
 }
 
-// ReduceModelContext returns only the authored context Scope may retain. It
-// measures contributed instructions and the current Session tail with that
-// context, then transfers them once to the provider boundary.
-func (i *interactionModelContextReducer) ReduceModelContext(
+// PrepareContext returns only the authored context Scope may retain. The full
+// provider request is captured separately and commits with this preparation.
+func (i *interactionModelContextReducer) PrepareContext(
 	ctx context.Context,
-	invocation interaction.ModelInvocation,
+	preparation interaction.ContextInvocation,
 	request *corechat.Request,
-) ([]corechat.Message, error) {
-	if i == nil || i.session == nil || request == nil || !invocation.Valid() {
+) (messages []corechat.Message, err error) {
+	invocation := modelCallSource{process: preparation.Effect.ID().Process, effect: preparation.Effect.ID(),
+		program: preparation.Effect.ProgramRef(), sequence: preparation.Sequence}
+	if i == nil || i.session == nil || request == nil || !invocation.valid() {
 		return nil, errors.New("execution: model-context reduction requires an attributed Interaction request")
 	}
-	if i.session.callComposition != nil {
-		bindings := i.session.compositionBindings()
-		activations, err := i.session.callComposition.Activations(ctx, bindings)
+	if err := i.session.awaitDispatchSegment(ctx); err != nil {
+		return nil, err
+	}
+	if err := i.session.commitRejectedToolFeedback(ctx, invocation, request); err != nil {
+		return nil, err
+	}
+	request = request.Clone()
+	request.Messages = withoutPreparationReference(request.Messages)
+	invocation.steers, err = i.session.appliedSteers(request.Messages)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
 		if err != nil {
-			return nil, err
+			i.session.effectFailures.record(invocation.effect, err)
+			i.session.lifetime.wakeUnknown()
+			return
 		}
-		if !slices.EqualFunc(activations, i.session.compositionActivations, plugin.Activation.Equal) {
-			return nil, plugin.ErrStale
+		if len(messages) == 0 {
+			err = &interaction.ContextFailure{Cause: errors.New("execution: context preparation returned no messages")}
+			return
 		}
+		err = messages[len(messages)-1].Metadata.Set(preparationMetadataKey, preparedModelReference{
+			Process: invocation.process, Effect: invocation.effect, Sequence: invocation.sequence,
+		})
+	}()
+	if err := i.validateContextSources(ctx, request); err != nil {
+		return nil, err
 	}
-	prefixMatches, err := sameInteractionMessages(
-		request.Messages[:min(len(request.Messages), len(i.instructions))],
-		i.instructions,
-	)
+	calling, contextView, candidate, hasPendingContinuation, err := i.prepareContextView(ctx, invocation, request)
 	if err != nil {
 		return nil, err
 	}
-	if len(request.Messages) <= len(i.instructions) || !prefixMatches {
-		return nil, fmt.Errorf(
-			"execution: model context no longer starts with its frozen instructions (messages=%d instructions=%d prefix_matches=%t)",
-			len(request.Messages),
-			len(i.instructions),
-			prefixMatches,
-		)
-	}
-	pendingContinuation, hasPendingContinuation, err := i.session.pendingContinuationFor(
-		invocation.Relation().ProcessID(),
-	)
-	if err != nil {
-		return nil, err
-	}
-	tail, err := i.tail(ctx)
-	if err != nil {
-		return nil, err
-	}
-	// One attributed context binds this reduction's auxiliary model work to the
-	// executing member; context contribution, compaction, and input contribution
-	// all inherit it so every physical call they dispatch is owned by this Run,
-	// not re-derived (or dropped) per branch.
-	identity, err := modelInvocationID(invocation)
-	if err != nil {
-		return nil, err
-	}
-	calling := executionctx.WithModelCalls(ctx, modelCalls{session: i.session, member: i.session.executorMember(invocation.Relation())})
-	calling, err = qimumcp.WithInvocation(calling, portable.Invocation{ID: identity.String(), Origin: extension.Automatic, Parent: invocation.EffectID().String(), Target: portable.Target{Scope: extension.ScopeCall, Reference: identity.String()}})
-	if err != nil {
-		return nil, err
-	}
-	var material []corechat.Message
-	if len(i.session.modelContexts) > 0 {
-		candidate := request.Clone()
-		candidate.Messages, err = appendPendingContinuation(candidate.Messages, pendingContinuation, hasPendingContinuation)
-		if err != nil {
-			return nil, err
-		}
-		material, err = i.session.callComposition.PrepareContext(calling, i.session.modelContexts, i.start.ModelSelection, candidate, tail)
-		if err != nil {
-			return nil, err
-		}
-	}
-	candidate, err := appendPendingContinuation(request.Messages[len(i.instructions):], pendingContinuation, hasPendingContinuation)
-	if err != nil {
-		return nil, err
-	}
-	contextView := modelRequestContext{request: request, instructions: i.instructions, fixed: append(cloneChatMessages(i.instructions), cloneChatMessages(material)...), tail: tail}
 	if i.compactor == nil {
 		validation, err := i.admitContext(calling, invocation, contextView, candidate)
 		if err != nil {
@@ -160,6 +132,83 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		}
 		return contextView.canonical(candidate), nil
 	}
+	return i.compactContext(calling, invocation, contextView, candidate, hasPendingContinuation)
+}
+
+func (i *interactionModelContextReducer) validateContextSources(ctx context.Context, request *corechat.Request) error {
+	if i.session.callComposition != nil {
+		bindings := i.session.compositionBindings()
+		activations, err := i.session.callComposition.Activations(ctx, bindings)
+		if err != nil {
+			return err
+		}
+		if !slices.EqualFunc(activations, i.session.compositionActivations, plugin.Activation.Equal) {
+			return plugin.ErrStale
+		}
+	}
+	prefixMatches, err := sameInteractionMessages(
+		request.Messages[:min(len(request.Messages), len(i.instructions))],
+		i.instructions,
+	)
+	if err != nil {
+		return err
+	}
+	if len(request.Messages) <= len(i.instructions) || !prefixMatches {
+		return fmt.Errorf(
+			"execution: model context no longer starts with its frozen instructions (messages=%d instructions=%d prefix_matches=%t)",
+			len(request.Messages),
+			len(i.instructions),
+			prefixMatches,
+		)
+	}
+	return nil
+}
+
+func (i *interactionModelContextReducer) prepareContextView(ctx context.Context, invocation modelCallSource, request *corechat.Request) (context.Context, modelRequestContext, []corechat.Message, bool, error) {
+	pendingContinuation, hasPendingContinuation, err := i.session.pendingContinuationFor(
+		invocation.process,
+	)
+	if err != nil {
+		return nil, modelRequestContext{}, nil, false, err
+	}
+	tail, err := i.tail(ctx)
+	if err != nil {
+		return nil, modelRequestContext{}, nil, false, err
+	}
+	// One attributed context binds this reduction's auxiliary model work to the
+	// executing member; context contribution, compaction, and input contribution
+	// all inherit it so every physical call they dispatch is owned by this Run,
+	// not re-derived (or dropped) per branch.
+	identity, err := modelInvocationID(invocation)
+	if err != nil {
+		return nil, modelRequestContext{}, nil, false, err
+	}
+	calling := executionctx.WithModelCalls(ctx, modelCalls{session: i.session, member: i.session.executorMember(invocation.process)})
+	calling, err = pluginmcp.WithInvocation(calling, framemcp.Invocation{ID: identity.String(), Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: portable.Target{Scope: extension.ScopeCall, Reference: identity.String()}})
+	if err != nil {
+		return nil, modelRequestContext{}, nil, false, err
+	}
+	var material []corechat.Message
+	if len(i.session.modelContexts) > 0 {
+		candidate := request.Clone()
+		candidate.Messages, err = appendPendingContinuation(candidate.Messages, pendingContinuation, hasPendingContinuation)
+		if err != nil {
+			return nil, modelRequestContext{}, nil, false, err
+		}
+		material, err = i.session.callComposition.PrepareContext(calling, i.session.modelContexts, i.start.ModelSelection, candidate, tail)
+		if err != nil {
+			return nil, modelRequestContext{}, nil, false, err
+		}
+	}
+	candidate, err := appendPendingContinuation(request.Messages[len(i.instructions):], pendingContinuation, hasPendingContinuation)
+	if err != nil {
+		return nil, modelRequestContext{}, nil, false, err
+	}
+	contextView := modelRequestContext{request: request, instructions: i.instructions, fixed: append(cloneChatMessages(i.instructions), cloneChatMessages(material)...), tail: tail}
+	return calling, contextView, candidate, hasPendingContinuation, nil
+}
+
+func (i *interactionModelContextReducer) compactContext(calling context.Context, invocation modelCallSource, contextView modelRequestContext, candidate []corechat.Message, hasPendingContinuation bool) ([]corechat.Message, error) {
 	preCompact := func(ctx context.Context) (bool, error) {
 		if i.session.lifecycleHooks == nil {
 			return true, nil
@@ -179,9 +228,9 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		RequestFits:  i.session.selectedChat.RequestFits,
 		Instructions: contextView.fixed,
 		Candidate:    candidate,
-		Trailer:      tail,
-		Tools:        request.Tools,
-		Options:      request.Options,
+		Trailer:      contextView.tail,
+		Tools:        contextView.request.Tools,
+		Options:      contextView.request.Options,
 		Calibration:  calibration,
 		Counter:      i.counter,
 		PreCompact:   preCompact,
@@ -227,6 +276,13 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		i.session.accounting.discardPreparedModelContext(invocation)
 		return nil, err
 	}
+	if err := i.commitCompaction(calling, invocation.process, compaction, result); err != nil {
+		return nil, err
+	}
+	return effective, nil
+}
+
+func (i *interactionModelContextReducer) commitCompaction(ctx context.Context, process scoperun.ProcessID, compaction ModelContextCompaction, result ModelContextCompactionResult) error {
 	if result.Changed() {
 		summary := result.Summary()
 		if summary == "" {
@@ -237,18 +293,18 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		if compaction.Durable() {
 			rewrite, found := result.Rewrite()
 			if !found {
-				return nil, errors.New("execution: durable compaction has no history proposal")
+				return errors.New("execution: durable compaction has no history proposal")
 			}
 			fact.Rewrite = new(rewrite)
 		}
-		if err := i.session.commitFact(ctx, i.session.executorMember(invocation.Relation()), fact); err != nil {
-			return nil, err
+		if err := i.session.commitFact(ctx, i.session.executorMember(process), fact); err != nil {
+			return err
 		}
 		if compaction.Durable() {
 			i.session.state.markDurableContextCompacted()
 		}
 	}
-	return effective, nil
+	return nil
 }
 
 type modelRequestContext struct {
@@ -267,17 +323,17 @@ func (c modelRequestContext) compose(history []corechat.Message) *corechat.Reque
 	return request
 }
 
-func (i *interactionModelContextReducer) admitContext(ctx context.Context, invocation interaction.ModelInvocation, view modelRequestContext, history []corechat.Message) (*corechat.Request, error) {
+func (i *interactionModelContextReducer) admitContext(ctx context.Context, invocation modelCallSource, view modelRequestContext, history []corechat.Message) (*corechat.Request, error) {
 	request := view.compose(history)
 	if err := request.Validate(); err != nil {
-		return nil, fmt.Errorf("execution: reduced model context: %w", err)
+		return nil, &interaction.ContextFailure{Cause: fmt.Errorf("execution: reduced model context: %w", err)}
 	}
 	return i.prepareInput(ctx, invocation, request)
 }
 
-func invocationCompaction(invocation interaction.ModelInvocation, input ModelContextCompactionInput, pending bool) (ModelContextCompaction, error) {
-	if invocation.Relation().IsRoot() {
-		if invocation.ModelCallSequence() == 1 {
+func invocationCompaction(invocation modelCallSource, input ModelContextCompactionInput, pending bool) (ModelContextCompaction, error) {
+	if invocation.process.Depth() == 0 {
+		if invocation.sequence == 1 {
 			input.ProtectedTail = rootOpeningMessageCount
 		}
 		if pending {
@@ -285,9 +341,9 @@ func invocationCompaction(invocation interaction.ModelInvocation, input ModelCon
 		}
 		return NewDurableModelContextCompaction(input)
 	}
-	if invocation.ModelCallSequence() == 1 {
+	if invocation.sequence == 1 {
 		input.ProtectedTail = len(input.Candidate)
-	} else if signals := len(invocation.AppliedSteerSignalIDs()); signals > 0 {
+	} else if signals := len(invocation.steers); signals > 0 {
 		input.ProtectedTail = trailingUserMessageCount(input.Candidate)
 		if input.ProtectedTail < signals {
 			return ModelContextCompaction{}, fmt.Errorf("execution: delegated model context attributes %d steer Signals but has only %d trailing User messages", signals, input.ProtectedTail)
@@ -329,23 +385,23 @@ func sameInteractionMessages(left, right []corechat.Message) (bool, error) {
 	}
 	// Compare Scope's complete canonical values, including citations and future
 	// message fields, without making metadata whitespace part of identity.
-	effective, err := agent.EncodePayload(left)
+	effective, err := scoperun.EncodePayload(left)
 	if err != nil {
 		return false, fmt.Errorf("execution: effective instructions: %w", err)
 	}
-	frozen, err := agent.EncodePayload(right)
+	frozen, err := scoperun.EncodePayload(right)
 	if err != nil {
 		return false, fmt.Errorf("execution: frozen instructions: %w", err)
 	}
 	return bytes.Equal(effective.JSON(), frozen.JSON()), nil
 }
 
-var _ interaction.ModelContextReducer = (*interactionModelContextReducer)(nil)
+var _ interaction.ContextProcessor = (*interactionModelContextReducer)(nil)
 
-func (i *interactionModelContextReducer) prepareInput(calling context.Context, invocation interaction.ModelInvocation, request *corechat.Request) (*corechat.Request, error) {
+func (i *interactionModelContextReducer) prepareInput(calling context.Context, invocation modelCallSource, request *corechat.Request) (*corechat.Request, error) {
 	if len(i.session.modelInputs) == 0 {
 		if err := i.session.selectedChat.AdmitInput(request); err != nil {
-			return nil, err
+			return nil, &interaction.ContextFailure{Cause: err}
 		}
 		return request, nil
 	}
@@ -354,7 +410,12 @@ func (i *interactionModelContextReducer) prepareInput(calling context.Context, i
 		return nil, err
 	}
 	if err := pluginsdk.ValidateModelInput(request, transformed); err != nil {
-		return nil, err
+		return nil, &interaction.ContextFailure{Cause: err}
+	}
+	// Modality and request validation is local and proves refusal. The later
+	// provider capacity measurement can perform I/O and retains its own outcome.
+	if err := i.session.selectedChat.AdmitInput(transformed); err != nil {
+		return nil, &interaction.ContextFailure{Cause: err}
 	}
 	if err := i.session.selectedChat.AdmitRequest(calling, transformed); err != nil {
 		return nil, err

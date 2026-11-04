@@ -4,14 +4,14 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/layout"
-	"github.com/Tangerg/oolong/core/text"
-	"github.com/Tangerg/oolong/highlight"
-	"github.com/Tangerg/oolong/latex"
-	"github.com/Tangerg/oolong/markdown"
+	"github.com/Tangerg/oolong/extensions/highlight"
+	"github.com/Tangerg/oolong/extensions/latex"
+	"github.com/Tangerg/oolong/extensions/markdown"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/text"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 const userMessageInset = 1
@@ -25,8 +25,8 @@ type userMessageBlock struct {
 }
 
 var (
-	_ headless.Block         = (*userMessageBlock)(nil)
-	_ headless.TextProjector = (*userMessageBlock)(nil)
+	_ base.Block         = (*userMessageBlock)(nil)
+	_ base.TextProjector = (*userMessageBlock)(nil)
 )
 
 // selfSpeaker labels the operator's own turn. A block is styled as the
@@ -176,7 +176,7 @@ func markdownLook(theme kit.Theme, glyphs kit.Glyphs, locale string, syntax high
 	return look
 }
 
-func presentError(theme kit.Theme, message string) headless.Block {
+func presentError(theme kit.Theme, message string) base.Block {
 	danger := theme
 	danger.Text = theme.Danger
 	return &kit.Entry{Theme: danger, Label: "runtime", Body: message}

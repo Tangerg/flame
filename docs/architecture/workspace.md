@@ -5,17 +5,16 @@ module. Each maintained Go module has an independent compilation and dependency
 boundary; packages within one module follow cohesive ownership rather than a
 module-per-directory rule.
 
-| Module directory                   | Responsibility                                                        | Allowed first-party dependencies     |
-| ---------------------------------- | --------------------------------------------------------------------- | ------------------------------------ |
-| `qimu`                             | Generic contracts, Host, lifecycle, drivers, storage and distribution | None                                 |
-| `packages/go-sdk`                  | Flame values, protocol, client and product-specific author APIs       | Qimu                                 |
-| `packages/local-runtime`           | Runtime process and companion distribution contracts                  | None                                 |
-| `plugins`                          | First-party plugin implementations and publisher contracts            | Go SDK, Qimu                         |
-| `runtime`                          | Product domain, application, adapters and delivery                    | Go SDK, Qimu, local-runtime          |
-| `apps/cli`                         | Workbench and CLI/terminal delivery                                   | Go SDK, Qimu, local-runtime, Runtime |
-| `apps/desktop`                     | Native host, pure bridge DTOs and source generator                    | Go SDK, Qimu, local-runtime          |
-| `tooling`                          | Repository coordination, API inventory and cross-product tests        | Required public modules              |
-| `examples/plugins/reviews/backend` | Independent author namespace                                          | Go SDK, Qimu                         |
+| Module directory                   | Responsibility                                                  | Allowed first-party dependencies      |
+| ---------------------------------- | --------------------------------------------------------------- | ------------------------------------- |
+| `packages/go-sdk`                  | Flame values, protocol, client and product-specific author APIs | Frame                                 |
+| `packages/local-runtime`           | Runtime process and companion distribution contracts            | None                                  |
+| `plugins`                          | First-party plugin implementations and publisher contracts      | Go SDK, Frame                         |
+| `runtime`                          | Product domain, application, adapters and delivery              | Go SDK, Frame, local-runtime          |
+| `apps/cli`                         | Workbench and CLI/terminal delivery                             | Go SDK, Frame, local-runtime, Runtime |
+| `apps/desktop`                     | Native host, pure bridge DTOs and source generator              | Go SDK, Frame, local-runtime          |
+| `tooling`                          | Repository coordination, API inventory and cross-product tests  | Required public modules               |
+| `examples/plugins/reviews/backend` | Independent author namespace                                    | Go SDK, Frame                         |
 
 Root npm workspaces own one lock. Exported author projects select their own
 dependencies and locks. `module-candidates.json` maps an already selected module
@@ -42,13 +41,21 @@ metadata and handlers remain private.
 `packages/go-sdk/identity` owns lexical declaration IDs and pure digest encoding. Backend SDKs, ordinary SDK tests and author commands consume these public
 mechanisms without importing Runtime. SDK enum declarations carry closed-vocabulary
 markers; the Host generator resolves their typed constants. Derived runtime-event
-sets remain projections of their existing descriptor owners. Generic schema/TypeScript rendering and feature projection live in
-`qimu/contractgen`, exposed by `qimu/cmd/qimu`. `qimu/portable` and
-`qimu/jsonvalue` are pure value dependencies; the Qimu root owns Host and
-Lifecycle mechanisms. MCP, SQLite, runner and distribution packages remain
-infrastructure dependencies. Qimu source, tests and author commands cannot
-import a consumer module. Flame backend projection retains only Flame policy;
-Qimu owns its shared Go/TypeScript wire constants and descriptors.
+sets remain projections of their existing descriptor owners. Runtime's schema and TypeScript projections remain in its own contract generator;
+`protocol.WireFields` and `DecodeWire` describe the same DTO field ownership, required
+presence, timestamp and measurement rules. Opaque numbers use Frame's exact JSON codec.
+
+Frame is an external dependency, pinned in Go and npm manifests. `frame/portable`
+and `frame/value` own portable schema admission, method identity and exact JSON;
+the root owns Host and lifetimes. Browser, SQLite, process, runner and distribution
+remain the framework's execution/storage owners. Flame's `plugin/contract` owns
+product composition, scope and point declarations. `plugin/mcp` binds Flame's
+business metadata, setup, streams and receipt vocabulary to the native MCP SDK;
+its Go protocol generator emits the TypeScript transport constants. These bindings
+use Frame methods and invocations rather than a second schema or session engine.
+`flame-sdk feature` projects the product envelope through Frame's public
+`portable/contractgen.Generate` API. Frame source and its toolchain are not vendored
+into this workspace.
 Host registry walking remains in the Host command. Repository API discovery lives in
 `tooling/goapi` and consumes generated method names from the manifest. Runtime production and ordinary testsupport never
 import first-party implementation packages. Product integration uses public
@@ -56,7 +63,7 @@ bindings; private adapter/bootstrapping contract tests remain adjacent to the
 boundary they exercise.
 
 Web `app` composes product policy, `platform` supplies Browser/Wails effects,
-`features` owns actual user capabilities and Qimu supplies generic registration, lifetimes and React hosting.
+`features` owns actual user capabilities and Frame supplies generic registration, lifetimes and React hosting.
 The consumer adapters never import product features to select providers. Business point declarations, types and selectors live at the feature's
 real public source. Connection owns endpoint/client/journal/generation retirement;
 app injects product request metadata. Plugins owns installed component leases,

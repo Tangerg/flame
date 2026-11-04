@@ -34,7 +34,7 @@ func (r staticTestChatResolver) RestoreChat(ctx context.Context, selection model
 func (r staticTestChatResolver) Profiles(context.Context) ([]modelprovider.Profile, error) {
 	var result []modelprovider.Profile
 	for _, id := range []string{"anthropic", "openai", "deepseek", "alibaba"} {
-		entries := catalog.Default.Models(id)
+		entries := catalog.Models(id)
 		if len(entries) == 0 {
 			continue
 		}

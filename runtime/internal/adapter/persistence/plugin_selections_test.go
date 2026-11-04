@@ -14,7 +14,7 @@ func TestProviderSelectionSurvivesRestartWithoutAnInstallationOrImplicitReplacem
 	if err != nil {
 		t.Fatal(err)
 	}
-	store := newProviderSelectionStore(db)
+	store := newProviderSelectionStore(databaseFor(db))
 	selection, err := plugin.NewProviderSelection(plugin.SelectionRecord{Role: "consumer.role", Installation: testsupport.InstallationID(t), Contribution: plugin.ContributionID("provider")})
 	if err != nil {
 		t.Fatal(err)
@@ -30,7 +30,7 @@ func TestProviderSelectionSurvivesRestartWithoutAnInstallationOrImplicitReplacem
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store = newProviderSelectionStore(db)
+	store = newProviderSelectionStore(databaseFor(db))
 	actual, found, err := store.Get(t.Context(), "consumer.role")
 	if err != nil || !found || actual != selection {
 		t.Fatalf("original choice changed: %+v, %t, %v", actual, found, err)

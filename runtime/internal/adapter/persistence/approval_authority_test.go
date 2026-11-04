@@ -26,8 +26,8 @@ func openStore(t *testing.T) *sql.DB {
 func TestRemovedMCPSourceCannotRetainApproval(t *testing.T) {
 	grantOwner := testsupport.InstallationID(t)
 	db := openStore(t)
-	servers := newMCPServerStore(db)
-	rules := newApprovalRuleStore(db)
+	servers := newMCPServerStore(databaseFor(db))
+	rules := newApprovalRuleStore(databaseFor(db))
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("github"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: "https://old.example/mcp"}}
 	if _, err := servers.fixtureGrant(t.Context(), grantOwner, server); err != nil {
 		t.Fatal(err)
@@ -62,10 +62,10 @@ func TestRemovedMCPSourceCannotRetainApproval(t *testing.T) {
 // leaves nothing that a recreated server of the same name could inherit.
 func TestUserServerRemovalCascadesEveryRelation(t *testing.T) {
 	db := openStore(t)
-	servers := newMCPServerStore(db)
-	rules := newApprovalRuleStore(db)
+	servers := newMCPServerStore(databaseFor(db))
+	rules := newApprovalRuleStore(databaseFor(db))
 	grantOwner := testsupport.InstallationID(t)
-	authorization := newMCPAuthorizationStore(db)
+	authorization := newMCPAuthorizationStore(databaseFor(db))
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: "https://files.example/mcp"}}
 	if _, err := servers.fixtureGrant(t.Context(), grantOwner, server); err != nil {
 		t.Fatal(err)
@@ -107,9 +107,9 @@ func TestUserServerRemovalCascadesEveryRelation(t *testing.T) {
 func TestEqualNamesAcrossOriginsKeepSeparateRelations(t *testing.T) {
 	grantOwner := testsupport.InstallationID(t)
 	db := openStore(t)
-	servers := newMCPServerStore(db)
-	rules := newApprovalRuleStore(db)
-	catalog := newReleaseStore(db)
+	servers := newMCPServerStore(databaseFor(db))
+	rules := newApprovalRuleStore(databaseFor(db))
+	catalog := newReleaseStore(databaseFor(db))
 	installations := newInstallationStore(catalog)
 	release := testsupport.Release(t, "release", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("files"), Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "files"}}}}})
 	if err := catalog.Admit(t.Context(), release); err != nil {

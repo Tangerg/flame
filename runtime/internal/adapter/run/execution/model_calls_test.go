@@ -6,6 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -14,7 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -69,7 +72,7 @@ func TestIndependentModelPublisherUsesOriginalSourceAndCapturedMemberAfterCancel
 			}
 			finish := <-started
 			request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original independent input")))
-			source := modelref.EndpointInvocation{ID: "endpoint_independent", Caller: portable.Invocation{ID: fact.CallID, Origin: extension.Model, Parent: "original-owner", Target: portable.Target{Scope: extension.ScopeCall, Reference: fact.CallID}}, Provider: selection.Provider(), Model: selection.Model(), SessionID: draft.SessionID, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: time.Now().UTC()}
+			source := modelref.EndpointInvocation{ID: "endpoint_independent", Caller: framemcp.Invocation{ID: fact.CallID, Origin: extension.Model, Parent: "original-owner", Target: portable.Target{Scope: extension.ScopeCall, Reference: fact.CallID}}, Provider: selection.Provider(), Model: selection.Model(), SessionID: draft.SessionID, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: time.Now().UTC()}
 			if err := journal.StartEndpointInvocation(t.Context(), source, fact.CallID); err != nil {
 				t.Fatal(err)
 			}

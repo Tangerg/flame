@@ -440,8 +440,9 @@ func TestAgentFrameworkStaysBehindRunAdapters(t *testing.T) {
 		"internal/adapter/run/input":     {},
 	}
 	allowedImports := map[string]struct{}{
-		"github.com/Tangerg/scope/agent":                      {},
-		"github.com/Tangerg/scope/agent/strategy/interaction": {},
+		"github.com/Tangerg/scope/agent/run":         {},
+		"github.com/Tangerg/scope/agent/interaction": {},
+		"github.com/Tangerg/scope/agent/workflow":    {},
 	}
 	root := moduleRoot(t)
 	fset := token.NewFileSet()
@@ -475,11 +476,18 @@ func TestAgentFrameworkStaysBehindRunAdapters(t *testing.T) {
 			}
 			relativePath = filepath.ToSlash(relativePath)
 			relativeDir := filepath.ToSlash(filepath.Dir(relativePath))
-			if _, allowed := allowedConsumers[relativeDir]; !allowed {
+			_, allowedConsumer := allowedConsumers[relativeDir]
+			// Tool binders preserve Interaction's public scheduling and result
+			// capabilities; only Run adapters may own its execution lifecycle.
+			if importPath == "github.com/Tangerg/scope/agent/interaction" &&
+				(relativeDir == "internal/adapter/integration/mcp" || relativeDir == "internal/adapter/toolset") {
+				allowedConsumer = true
+			}
+			if !allowedConsumer {
 				t.Errorf("Agent Framework import escaped the Run execution/input adapters: %s imports %q", relativePath, importPath)
 			}
 			_, allowed := allowedImports[importPath]
-			if importPath == "github.com/Tangerg/scope/agent/agenttest" && strings.HasSuffix(path, "_test.go") {
+			if importPath == "github.com/Tangerg/scope/agent/run/runtest" && strings.HasSuffix(path, "_test.go") {
 				allowed = true
 			}
 			if !allowed {

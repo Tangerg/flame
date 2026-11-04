@@ -1,6 +1,10 @@
 package persistence
 
 import (
+	corecontent "github.com/Tangerg/scope/core/content"
+
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"path/filepath"
 	"testing"
 	"time"
@@ -8,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestTerminalEffectsSurviveDatabaseReopen(t *testing.T) {
@@ -19,13 +22,13 @@ func TestTerminalEffectsSurviveDatabaseReopen(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			store := newRunStore(db)
+			store := newRunStore(databaseFor(db))
 			draft := runDraft("run_effect", "session_effect")
 			if err := store.Admit(t.Context(), draft); err != nil {
 				t.Fatal(err)
 			}
 			value := admittedRunFromDraft(draft)
-			output := chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: "observed before cancellation"}}, Details: []byte(`{"receipt":9007199254740993}`)}
+			output := toolcontract.Output{Content: []corecontent.Block{{Kind: corecontent.Text, Text: "observed before cancellation"}}, Details: []byte(`{"receipt":9007199254740993}`)}
 			evidence, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{ProcessID: "process-tool", EffectID: "effect-tool", Cause: "host_cancellation", Reason: "operator stopped", Detail: "result unknown", Output: &output})
 			if err != nil {
 				t.Fatal(err)
@@ -45,7 +48,7 @@ func TestTerminalEffectsSurviveDatabaseReopen(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer db.Close()
-			restored, found, err := newRunStore(db).Run(t.Context(), terminal.ID())
+			restored, found, err := newRunStore(databaseFor(db)).Run(t.Context(), terminal.ID())
 			if err != nil || !found || !restored.Equal(terminal) {
 				t.Fatalf("reopened terminal lost evidence: %+v, %v", restored, err)
 			}

@@ -9,11 +9,14 @@ import (
 	"slices"
 	"strings"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 const installedCommandsName = "installed-commands.json"
@@ -67,18 +70,18 @@ func (p PendingInstalledCommand) validate() error {
 	if err := errors.Join(p.CommandID.Validate(), p.Replay.Validate(), protocol.ValidateWireTree(p.Request), p.Request.Target.Validate()); err != nil {
 		return err
 	}
-	contract, err := portable.ParseCapability([]byte(p.Request.Contract))
+	contract, err := plugincontract.ParseCapability([]byte(p.Request.Contract))
 	if err != nil {
 		return err
 	}
 	method, found := contract.Method(p.Request.Method)
-	if !found || method.Kind() != portable.Mutation {
+	if !found || method.Kind() != portable.Command {
 		return errors.New("installed command method is not a command")
 	}
 	if method.Descriptor().Target != p.Request.Target.Scope {
 		return errors.New("installed command target does not match its method")
 	}
-	input, err := jsonvalue.Parse([]byte(p.Request.Input))
+	input, err := framevalue.ParseJSON([]byte(p.Request.Input))
 	if err != nil {
 		return err
 	}
@@ -202,7 +205,7 @@ func ExecuteInstalledCommand(ctx context.Context, caller InstalledCaller, store 
 			return errors.New("staged installed command is absent")
 		}
 	}
-	var ownerRefusal *portable.Refusal
+	var ownerRefusal *framemcp.Refusal
 	_, err := mutation.ConfirmAdmitted(ctx, mutation.AcknowledgementBackoff(), mutation.ReplayAdmission(policy, pending.Replay), func(ctx context.Context) (struct{}, error) {
 		if err := store.DispatchReady(); err != nil {
 			return struct{}{}, err
@@ -218,7 +221,7 @@ func ExecuteInstalledCommand(ctx context.Context, caller InstalledCaller, store 
 			return struct{}{}, errors.New("installed command acknowledgement is absent")
 		}
 		if reply.Failure != nil {
-			ownerRefusal = &portable.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
+			ownerRefusal = &framemcp.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
 			return struct{}{}, ownerRefusal
 		}
 		return struct{}{}, nil

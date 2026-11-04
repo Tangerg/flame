@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { parseJSON } from "@qimu/sdk/json";
+import { parseJSON } from "@frame/sdk/json";
 import { checkRequest } from "@flame/runtime-client";
 import {
   type PluginInstallation,

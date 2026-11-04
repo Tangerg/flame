@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
-	qimumcp "github.com/Tangerg/qimu/mcp"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 const defaultMaximumMessageBytes = 128 << 20
@@ -98,7 +98,7 @@ func Connect(ctx context.Context, cfg RemoteConfig) (*Client, error) {
 // ConnectCallback uses the ordinary typed Runtime binding over a captured
 // backend call. Its connection never uses a proxy, follows a redirect or
 // changes the owning call. Closing observation does not cancel an accepted Run.
-func ConnectCallback(ctx context.Context, ref qimumcp.CallbackRef) (*Client, error) {
+func ConnectCallback(ctx context.Context, ref pluginmcp.CallbackRef) (*Client, error) {
 	if err := ref.Validate(); err != nil {
 		return nil, err
 	}

@@ -123,6 +123,17 @@ func (w *waitingDelegateFixture) waitForBarrier(t *testing.T, timeout time.Durat
 		}
 		select {
 		case <-deadline:
+			for _, session := range w.executor.sessions.snapshot() {
+				inspection, err := session.engine.Inspect(t.Context(), session.processRootID())
+				t.Logf("waiting tree inspection: head=%d, %v", inspection.Head, err)
+				if err == nil {
+					tree, loadErr := session.committedTree(t.Context(), session.processRootID())
+					if loadErr == nil {
+						_, checkpointErr := session.executorCheckpoint(tree)
+						t.Logf("waiting checkpoint: %v", checkpointErr)
+					}
+				}
+			}
 			t.Fatal("waiting Delegate did not publish a tree barrier")
 		case <-time.After(time.Millisecond):
 		}

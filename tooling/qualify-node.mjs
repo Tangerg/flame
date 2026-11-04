@@ -34,11 +34,7 @@ try {
     env,
   );
   for (const [name, member, owner] of [
-    [
-      "qimu-runner",
-      "runtime",
-      "github.com/Tangerg/qimu/runner/cmd/qimu-runner",
-    ],
+    ["frame-runner", "runtime", "github.com/Tangerg/frame/cmd/frame-runner"],
     ["flame-runtime", "runtime", "./cmd/flame-runtime"],
     ["flame", "apps/cli", "."],
     ["qualify", "tooling", "./nodequalification"],

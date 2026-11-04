@@ -18,7 +18,7 @@ func (s *Handler) ListTools(ctx context.Context) (*protocol.Page[protocol.ToolSp
 	}
 	out := make([]protocol.ToolSpec, 0, len(internal))
 	for _, t := range internal {
-		schema, err := presentToolSchema(t.ToolDefinition)
+		schema, err := presentToolSchema(t.Definition)
 		if err != nil {
 			return nil, err
 		}

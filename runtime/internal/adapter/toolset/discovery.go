@@ -21,7 +21,6 @@ import (
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/samber/lo"
 )
@@ -51,7 +50,7 @@ type discoveryArgs struct {
 
 // searchableTool is one withheld tool with its precomputed match terms.
 type discoverableTool struct {
-	definition chat.ToolDefinition
+	definition toolcontract.Definition
 	source     string   // runtime or MCP server identity, for grouping and fairness
 	nameTerms  []string // tokenized qualified name
 	nameLower  string
@@ -136,11 +135,16 @@ func (d *Discovery) DeferredToolNames() []string {
 	return names
 }
 
-func (d *Discovery) Definition() chat.ToolDefinition {
+func (d *Discovery) Definition() toolcontract.Definition {
 	return d.inner.Definition()
 }
 
-func (d *Discovery) Unwrap() toolcontract.Tool { return d.inner }
+func (d *Discovery) InputValidator() func([]byte) error {
+	if declaration, ok := d.inner.(toolcontract.InputValidatingTool); ok {
+		return declaration.InputValidator()
+	}
+	return nil
+}
 
 // Catalog renders the Run's deferred catalog for a per-request model context
 // message. It lists the exact names select: accepts, grouped in the stable
@@ -176,7 +180,7 @@ func (d *Discovery) Call(ctx context.Context, invocation toolcontract.Invocation
 	if err != nil {
 		return toolcontract.Result{}, err
 	}
-	result.Output.Content = chat.NewTextToolOutput(matched.Message).Content
+	result.Output.Content = toolcontract.NewTextOutput(matched.Message).Content
 	return result, nil
 }
 

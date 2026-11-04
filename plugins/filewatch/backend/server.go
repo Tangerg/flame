@@ -6,21 +6,21 @@ import (
 	"io"
 	"sync"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/filewatch/internal/contract"
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
 	"github.com/Tangerg/flame/plugins/filewatch/internal/wire"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
-func newServer(store *store) (*sdk.Server, *qimumcp.Backend, error) {
+func newServer(store *store) (*sdk.Server, *pluginmcp.Backend, error) {
 	contracts, err := rpc.NewContracts()
 	if err != nil {
 		return nil, nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.filewatch", Version: "1.0.0"}, nil)
-	backend, err := qimumcp.NewBackend(server)
+	backend, err := pluginmcp.NewBackend(server)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -33,17 +33,17 @@ func newServer(store *store) (*sdk.Server, *qimumcp.Backend, error) {
 		pluginstorage.RegisterCommand(backend, store.db, contracts.Configure, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.ConfigureInput) (filewatch.Snapshot, error) {
 			return store.configure(ctx, input.ExpectedRevision, input.Trigger)
 		}),
-		contracts.Get.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ qimumcp.Command[struct{}]) (filewatch.Snapshot, error) {
+		contracts.Get.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ pluginmcp.Command[struct{}]) (filewatch.Snapshot, error) {
 			configuration, err := store.configuration(ctx)
 			return configuration.Snapshot(), err
 		}),
-		contracts.Events.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ qimumcp.Command[struct{}]) ([]filewatch.Header, error) {
+		contracts.Events.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ pluginmcp.Command[struct{}]) ([]filewatch.Header, error) {
 			return store.headers(ctx)
 		}),
-		contracts.Event.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.EventInput]) (filewatch.Event, error) {
+		contracts.Event.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.EventInput]) (filewatch.Event, error) {
 			return store.event(ctx, command.Input.ID)
 		}),
-		contracts.Status.RegisterServer(backend, classify, func(context.Context, *sdk.ServerSession, qimumcp.Command[struct{}]) (filewatch.Status, error) {
+		contracts.Status.RegisterServer(backend, classify, func(context.Context, *sdk.ServerSession, pluginmcp.Command[struct{}]) (filewatch.Status, error) {
 			activation.Lock()
 			defer activation.Unlock()
 			if activation.worker == nil {
@@ -55,7 +55,7 @@ func newServer(store *store) (*sdk.Server, *qimumcp.Backend, error) {
 	); err != nil {
 		return nil, nil, err
 	}
-	if err := backend.OnSetup(func(ctx context.Context, setup qimumcp.Setup) (io.Closer, error) {
+	if err := backend.OnSetup(func(ctx context.Context, setup pluginmcp.Setup) (io.Closer, error) {
 		values, err := setup.Contributions()
 		if err != nil {
 			return nil, err
@@ -64,7 +64,7 @@ func newServer(store *store) (*sdk.Server, *qimumcp.Backend, error) {
 			if value.Export != "filewatch" || value.Background == nil {
 				continue
 			}
-			ref, err := qimumcp.CallbackFromContext(ctx)
+			ref, err := pluginmcp.CallbackFromContext(ctx)
 			if err != nil {
 				return nil, err
 			}

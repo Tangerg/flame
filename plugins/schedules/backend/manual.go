@@ -9,18 +9,19 @@ import (
 	"errors"
 	"time"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
-	"github.com/Tangerg/frame/sqlite"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
-func runNow(ctx context.Context, db *sql.DB, store store, connect runConnector, command qimumcp.Command[wire.ItemInput]) (app.RunReference, error) {
-	invocation, err := qimumcp.InvocationFromContext(ctx)
+func runNow(ctx context.Context, db *sql.DB, store store, connect runConnector, command pluginmcp.Command[wire.ItemInput]) (app.RunReference, error) {
+	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		return app.RunReference{}, err
 	}
@@ -36,17 +37,17 @@ func runNow(ctx context.Context, db *sql.DB, store store, connect runConnector, 
 
 type manualCommand struct {
 	id       string
-	admitted jsonvalue.Value
+	admitted framevalue.JSON
 }
 
 // A logical caller and its private receipt command have distinct identities.
 // The queue retains both so recovery never guesses a Tool's command namespace.
 func captureManual(ctx context.Context, db *sql.DB, store store, connect runConnector, command manualCommand) (result app.RunReference, err error) {
 	var input wire.ItemInput
-	if err := json.Unmarshal(command.admitted.JSON(), &input, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
+	if err := json.Unmarshal(command.admitted.Bytes(), &input, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
 		return result, err
 	}
-	invocation, err := qimumcp.InvocationFromContext(ctx)
+	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -60,10 +61,10 @@ func captureManual(ctx context.Context, db *sql.DB, store store, connect runConn
 	var captured schedule.RunRequest
 	var prepared *pluginstorage.PreparedCommand
 	var original []byte
-	err = sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
+	err = pluginstorage.WithinTransaction(ctx, db, func(ctx context.Context) error {
 		var err error
 		prepared, original, err = pluginstorage.AdmitCommand(ctx, db, wire.RunNow, command.id, command.admitted, func(ctx context.Context) error {
-			_, err := qimumcp.CallbackFromContext(ctx)
+			_, err := pluginmcp.CallbackFromContext(ctx)
 			return err
 		})
 		if err != nil {
@@ -83,11 +84,11 @@ func captureManual(ctx context.Context, db *sql.DB, store store, connect runConn
 		if err == nil {
 			return store.QueueManual(ctx, captured)
 		}
-		reply, replyErr := qimumcp.EncodeReply(app.RunReference{}, err, classify)
+		reply, replyErr := pluginmcp.EncodeReply(app.RunReference{}, err, classify)
 		if replyErr != nil {
 			return replyErr
 		}
-		original = reply.JSON()
+		original = reply.Bytes()
 		if err := prepared.Complete(ctx, original); err != nil {
 			return err
 		}
@@ -98,7 +99,7 @@ func captureManual(ctx context.Context, db *sql.DB, store store, connect runConn
 		return result, err
 	}
 	if prepared == nil {
-		return qimumcp.DecodeReply[app.RunReference](original)
+		return pluginmcp.DecodeReply[app.RunReference](original)
 	}
 	if captured.Invocation() != invocation || captured.CommandID() != command.id || captured.ScheduleID() != input.ID || captured.SessionID() != sessionID {
 		return result, errors.New("schedules: manual request differs from its original capture")

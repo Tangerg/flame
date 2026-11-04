@@ -1,6 +1,6 @@
 package terminal
 
-import "github.com/Tangerg/oolong/core/layout"
+import "github.com/Tangerg/oolong/ui/core/layout"
 
 const (
 	minimumFormDialogHeight = 8

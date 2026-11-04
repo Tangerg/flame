@@ -1,29 +1,29 @@
 package model
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"strings"
 	"testing"
-
-	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestToolOutputRenderingUsesVisibleContent(t *testing.T) {
 	image := mustBudgetImage(t, []byte("small image"))
 	mediaOutput := budgetToolImage(image).Parts[0].ToolResult.Output
 	hiddenDetails := jsontext.Value(`{"hidden":"` + strings.Repeat("x", 5000) + `"}`)
-	textOutput := chat.NewTextToolOutput("visible")
+	textOutput := toolcontract.NewTextOutput("visible")
 	textOutput.Details = hiddenDetails
 	mediaOutput.Details = hiddenDetails
 	for _, test := range []struct {
 		name   string
-		output chat.ToolOutput
+		output toolcontract.Output
 		want   string
 	}{
 		{"text", textOutput, "visible"},
 		{"media", mediaOutput, "image result " + mediaMarker},
-		{"details only", chat.ToolOutput{Details: jsontext.Value(`{"value":"visible"}`)}, `{"value":"visible"}`},
+		{"details only", toolcontract.Output{Details: jsontext.Value(`{"value":"visible"}`)}, `{"value":"visible"}`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			before, err := json.Marshal(test.output)

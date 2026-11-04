@@ -4,10 +4,10 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/text"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/text"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 // questionBlock separates an open human decision from its durable transcript
@@ -22,8 +22,8 @@ type questionBlock struct {
 }
 
 var (
-	_ headless.Block         = (*questionBlock)(nil)
-	_ headless.TextProjector = (*questionBlock)(nil)
+	_ base.Block         = (*questionBlock)(nil)
+	_ base.TextProjector = (*questionBlock)(nil)
 )
 
 func newQuestionBlock(theme kit.Theme, glyphs kit.Glyphs, question conversation.Question) *questionBlock {

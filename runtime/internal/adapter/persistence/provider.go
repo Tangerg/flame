@@ -7,20 +7,16 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
-	"github.com/Tangerg/qimu/sqlite"
 )
 
 // ProviderStore persists only stored provider configuration. Effective
 // environment credentials belong to the registry decorator and never reach
 // this adapter. Nullable columns encode absence directly.
-type ProviderStore struct {
-	db *sql.DB
-}
+type ProviderStore struct{ db *database }
 
-func newProviderStore(db *sql.DB) *ProviderStore {
+func newProviderStore(db *database) *ProviderStore {
 	return &ProviderStore{db: db}
 }
-
 func scanProvider(row scanRow) (provider.Provider, error) {
 	var (
 		id         string
@@ -55,41 +51,41 @@ func scanProvider(row scanRow) (provider.Provider, error) {
 	}
 	return entry, nil
 }
-
 func (p *ProviderStore) List(ctx context.Context) ([]provider.Provider, error) {
-	rows, err := sqlite.Connection(ctx, p.db).QueryContext(ctx,
-		`SELECT id, api_key, base_url FROM providers ORDER BY id`)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: list providers: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var out []provider.Provider
-	for rows.Next() {
-		entry, scanErr := scanProvider(rows)
-		if scanErr != nil {
-			return nil, fmt.Errorf("sqlite: scan provider: %w", scanErr)
+	return scopedValue(ctx, p.db.read, func(ctx context.Context) ([]provider.Provider, error) {
+		rows, err := p.db.connection(ctx).QueryContext(ctx, `SELECT id, api_key, base_url FROM providers ORDER BY id`)
+		if err != nil {
+			return nil, fmt.Errorf("sqlite: list providers: %w", err)
 		}
-		out = append(out, entry)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("sqlite: list providers: %w", err)
-	}
-	return out, nil
+		defer func() {
+			_ = rows.Close()
+		}()
+		var out []provider.Provider
+		for rows.Next() {
+			entry, scanErr := scanProvider(rows)
+			if scanErr != nil {
+				return nil, fmt.Errorf("sqlite: scan provider: %w", scanErr)
+			}
+			out = append(out, entry)
+		}
+		if err := rows.Err(); err != nil {
+			return nil, fmt.Errorf("sqlite: list providers: %w", err)
+		}
+		return out, nil
+	})
 }
-
 func (p *ProviderStore) Get(ctx context.Context, id string) (provider.Provider, bool, error) {
-	entry, err := scanProvider(sqlite.Connection(ctx, p.db).QueryRowContext(ctx,
-		`SELECT id, api_key, base_url FROM providers WHERE id = ?`, id))
-	if errors.Is(err, sql.ErrNoRows) {
-		return provider.Provider{}, false, nil
-	}
-	if err != nil {
-		return provider.Provider{}, false, fmt.Errorf("sqlite: get provider: %w", err)
-	}
-	return entry, true, nil
+	return scopedPair(ctx, p.db.read, func(ctx context.Context) (provider.Provider, bool, error) {
+		entry, err := scanProvider(p.db.connection(ctx).QueryRowContext(ctx, `SELECT id, api_key, base_url FROM providers WHERE id = ?`, id))
+		if errors.Is(err, sql.ErrNoRows) {
+			return provider.Provider{}, false, nil
+		}
+		if err != nil {
+			return provider.Provider{}, false, fmt.Errorf("sqlite: get provider: %w", err)
+		}
+		return entry, true, nil
+	})
 }
-
 func storedProviderValues(entry provider.Provider) (apiKey, baseURL any) {
 	if key, configured := entry.APIKey(); configured {
 		apiKey = key.Reveal()
@@ -105,7 +101,7 @@ func storedProviderValues(entry provider.Provider) (apiKey, baseURL any) {
 // to the storage adapter.
 func (p *ProviderStore) Update(ctx context.Context, id string, patch provider.Patch) (provider.Provider, error) {
 	var updated provider.Provider
-	err := sqlite.RunInTx(ctx, p.db, func(txCtx context.Context) error {
+	err := p.db.write(ctx, func(txCtx context.Context) error {
 		current, found, getErr := p.Get(txCtx, id)
 		if getErr != nil {
 			return getErr
@@ -123,13 +119,10 @@ func (p *ProviderStore) Update(ctx context.Context, id string, patch provider.Pa
 			return applyErr
 		}
 		apiKey, baseURL := storedProviderValues(updated)
-		_, writeErr := sqlite.Connection(txCtx, p.db).ExecContext(txCtx,
-			`INSERT INTO providers (id, api_key, base_url) VALUES (?, ?, ?)
+		_, writeErr := p.db.connection(txCtx).ExecContext(txCtx, `INSERT INTO providers (id, api_key, base_url) VALUES (?, ?, ?)
 			 ON CONFLICT(id) DO UPDATE SET
 			   api_key = excluded.api_key,
-			   base_url = excluded.base_url`,
-			updated.ID(), apiKey, baseURL,
-		)
+			   base_url = excluded.base_url`, updated.ID(), apiKey, baseURL)
 		return writeErr
 	})
 	if err != nil {

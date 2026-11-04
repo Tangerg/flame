@@ -19,7 +19,7 @@ import { type FlameClient } from "@flame/runtime-client";
 import { definePlugin } from "@/extensions/definePlugin";
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { type WorkspaceViewSpec } from "@/features/workspace/public/views";
-import { type ContributionLifetime } from "@/extensions/definePlugin";
+import { type ContributionScope } from "@/extensions/definePlugin";
 import { RuntimeConnectionGeneration } from "@/features/connection/public/services";
 import {
   InstalledToolResultComponent,
@@ -87,7 +87,7 @@ vi.mock("@/features/shell/workbench/panel/ChatStream", () => ({
 
 let host: Host;
 
-let lifetime: ContributionLifetime;
+let lifetime: ContributionScope;
 
 let resources: AbortController;
 
@@ -208,7 +208,7 @@ beforeEach(async () => {
     definePlugin({
       name: "test.installed-continuity",
       setup(ctx) {
-        lifetime = ctx.lifetime("installed-continuity");
+        lifetime = ctx.contributions.child("installed-continuity");
       },
     }),
   ]);
@@ -375,7 +375,7 @@ it("retires a main-only view when another main view replaces it", async () => {
 
 it.each([
   ["resources", () => resources.abort()],
-  ["lifetime", () => lifetime.dispose()],
+  ["lifetime", () => lifetime[Symbol.asyncDispose]()],
 ] as const)("does not revive the entry when its %s retire while hidden", async (_, retire) => {
   const navigate = mount(false);
   editMemory();

@@ -6,14 +6,16 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
 func TestModelInvocationIdentityBoundsMaximumFrameworkEffect(t *testing.T) {
-	frameworkID, err := agent.ParseEffectID(strings.Repeat("x", runs.MaximumIdentityBytes))
+	process, err := scoperun.ParseProcessID(strings.Repeat("x", runs.MaximumIdentityBytes) + "/" + strings.Repeat("y", runs.MaximumIdentityBytes))
 	if err != nil {
 		t.Fatalf("parse maximum Framework EffectID: %v", err)
 	}
+	frameworkID := scoperun.EffectID{Process: process, Step: math.MaxUint64, Index: math.MaxUint32}
 	identity, err := modelInvocationIDFrom(frameworkID, math.MaxUint64)
 	if err != nil {
 		t.Fatalf("modelInvocationIDFrom maximum inputs: %v", err)

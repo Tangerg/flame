@@ -4,11 +4,14 @@ import (
 	"encoding/base64"
 	"errors"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/integrity"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 const SessionMarkdownReference = "flame.session-markdown.v1"
@@ -22,11 +25,11 @@ type DocumentIdentity struct {
 }
 
 func IdentifyDocument(body []byte) DocumentIdentity {
-	return DocumentIdentity{Digest: integrity.Hash(body).String(), Bytes: int64(len(body))}
+	return DocumentIdentity{Digest: framevalue.Hash(body).String(), Bytes: int64(len(body))}
 }
 
 func (d DocumentIdentity) Validate() error {
-	if _, err := integrity.ParseDigest(d.Digest); err != nil {
+	if _, err := framevalue.ParseDigest(d.Digest); err != nil {
 		return err
 	}
 	if d.Bytes < 0 || d.Bytes > protocol.MaximumSessionArtifactBytes {
@@ -47,20 +50,20 @@ func (d DocumentIdentity) Read(source []byte, r DocumentRange) (string, error) {
 	return base64.StdEncoding.EncodeToString(source[r.Offset:min(r.Offset+SessionDocumentChunkBytes, d.Bytes)]), nil
 }
 
-func ReadDocumentRangeMethod() (*qimumcp.Method[DocumentRange, string], error) {
-	return qimumcp.NewMethod[DocumentRange, string](qimumcp.MethodConfig{Name: "flame.session-document/read-range.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Read a base64 range of the original immutable session document for this call."})
+func ReadDocumentRangeMethod() (*pluginmcp.Method[DocumentRange, string], error) {
+	return pluginmcp.NewMethod[DocumentRange, string](portable.MethodConfig{Name: "flame.session-document/read-range.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Read a base64 range of the original immutable session document for this call."})
 }
 
-func RenderSessionMarkdownMethod() (*qimumcp.StreamingMethod[DocumentIdentity, string, DocumentIdentity], error) {
-	return qimumcp.NewStreamingMethod[DocumentIdentity, string, DocumentIdentity](qimumcp.MethodConfig{Name: "flame.session-markdown/render.v1", Kind: portable.Query, Target: string(extension.ComponentScopeSession), Description: "Render a coherent session snapshot into ordered Markdown fragments and report the completed document identity."})
+func RenderSessionMarkdownMethod() (*pluginmcp.StreamingMethod[DocumentIdentity, string, DocumentIdentity], error) {
+	return pluginmcp.NewStreamingMethod[DocumentIdentity, string, DocumentIdentity](portable.MethodConfig{Name: "flame.session-markdown/render.v1", Kind: portable.Query, Target: string(extension.ComponentScopeSession), Description: "Render a coherent session snapshot into ordered Markdown fragments and report the completed document identity."})
 }
 
-func SessionMarkdownContract() (*portable.Capability, error) {
+func SessionMarkdownContract() (*plugincontract.Capability, error) {
 	method, err := RenderSessionMarkdownMethod()
 	if err != nil {
 		return nil, err
 	}
-	return portable.NewCapability(portable.CapabilityConfig{Reference: SessionMarkdownReference, Composition: portable.Selection, Scope: string(extension.ComponentScopeSession)}, method.Descriptor())
+	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: SessionMarkdownReference, Composition: plugincontract.Selection, Scope: string(extension.ComponentScopeSession)}, method.Descriptor())
 }
 
 // Both ends reject empty frames; the aggregate bound also applies to an arbitrarily long stream of valid short frames.

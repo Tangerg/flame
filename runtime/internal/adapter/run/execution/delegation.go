@@ -2,81 +2,35 @@ package execution
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
-	"github.com/Tangerg/qimu/portable"
-
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+	"github.com/Tangerg/scope/agent/interaction"
+	scoperun "github.com/Tangerg/scope/agent/run"
+	"github.com/Tangerg/scope/agent/workflow"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
 const defaultDelegateDepth = 4
 
-// delegatedInteractionDefinition adapts Runtime's task input to an Interaction.
-// Execution, recovery state, and the complete output remain Scope-owned.
-type delegatedInteractionDefinition struct {
-	descriptor   agent.Descriptor
-	inner        *interaction.Definition
-	instructions []corechat.Message
-	options      corechat.Options
-}
-
-func newDelegatedInteractionDefinition(
-	name string,
-	inner *interaction.Definition,
+// The task contract belongs to Flame. Scope's workflow adapter owns conversion,
+// the child Interaction's execution, and recovery of both sides of that call.
+func compileDelegatedInteraction(
+	compiler *scoperun.Compiler,
+	name, revision string,
+	inner scoperun.Program[interaction.Input, interaction.Output],
 	instructions []corechat.Message,
 	options corechat.Options,
-) (*delegatedInteractionDefinition, error) {
-	if inner == nil {
-		return nil, errors.New("execution: delegated Interaction definition is nil")
-	}
-	inputSchema, err := portable.SchemaFor[delegateInput]()
-	if err != nil {
-		return nil, fmt.Errorf("execution: delegated task input schema: %w", err)
-	}
-	descriptor, err := agent.NewDescriptor(agent.DescriptorConfig{
-		Name: name, Description: delegateDescription,
-		InputSchema: inputSchema, OutputSchema: inner.Descriptor().OutputSchema(), SignalSchema: inner.Descriptor().SignalSchema(),
+) (scoperun.Program[delegateInput, interaction.Output], error) {
+	return workflow.Adapt(compiler, workflow.AdaptConfig{
+		Name: name, Description: delegateDescription, Revision: revision,
+		Configuration: struct {
+			Instructions []corechat.Message
+			Options      corechat.Options
+		}{cloneChatMessages(instructions), options.Clone()},
+	}, inner, func(_ context.Context, task delegateInput) (interaction.Input, error) {
+		messages := cloneChatMessages(instructions)
+		messages = append(messages, corechat.NewUserMessage(corechat.NewTextPart(task.Instructions)))
+		return interaction.Input{Messages: messages, Options: options.Clone()}, nil
+	}, func(_ context.Context, output interaction.Output) (interaction.Output, error) {
+		return output, nil
 	})
-	if err != nil {
-		return nil, fmt.Errorf("execution: delegated Interaction descriptor: %w", err)
-	}
-	return &delegatedInteractionDefinition{
-		descriptor: descriptor, inner: inner,
-		instructions: cloneChatMessages(instructions), options: options.Clone(),
-	}, nil
-}
-
-func (d *delegatedInteractionDefinition) Descriptor() agent.Descriptor {
-	return d.descriptor
-}
-
-func (d *delegatedInteractionDefinition) ChildDeployments() []agent.Deployment {
-	return d.inner.ChildDeployments()
-}
-
-func (d *delegatedInteractionDefinition) Start(input agent.Payload) (agent.Execution, error) {
-	if err := d.descriptor.ValidateInput(input); err != nil {
-		return nil, err
-	}
-	task, err := input.Decode[delegateInput]()
-	if err != nil {
-		return nil, fmt.Errorf("execution: decode delegated task: %w", err)
-	}
-	messages := cloneChatMessages(d.instructions)
-	messages = append(messages, corechat.NewUserMessage(corechat.NewTextPart(task.Instructions)))
-	adapted, err := agent.EncodePayload(interaction.Input{Messages: messages, Options: d.options.Clone()})
-	if err != nil {
-		return nil, fmt.Errorf("execution: encode delegated Interaction input: %w", err)
-	}
-	return d.inner.Start(adapted)
-}
-
-func (d *delegatedInteractionDefinition) Restore(
-	ctx context.Context,
-	state agent.ExecutionState,
-) (agent.Execution, error) {
-	return d.inner.Restore(ctx, state)
 }

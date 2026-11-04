@@ -7,7 +7,6 @@ import (
 	"runtime/debug"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/frame/cancellation"
 	"github.com/Tangerg/go-sdk/auth"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -211,7 +210,7 @@ func admitSession(ctx context.Context, session *sdk.ClientSession, admit func(co
 			err = fmt.Errorf("mcp: connection admission panicked: %v\n%s", recovered, debug.Stack())
 		}
 	}()
-	return errors.Join(admit(ctx, session), cancellation.Err(ctx))
+	return errors.Join(admit(ctx, session), errors.Join(ctx.Err(), context.Cause(ctx)))
 }
 
 var errConnectionSuperseded = errors.New("mcp: connection operation superseded")

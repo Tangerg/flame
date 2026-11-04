@@ -3,6 +3,15 @@
   "$defs": {
     "BrowseInput": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "limit": {
+              "maximum": 8192
+            }
+          }
+        }
+      ],
       "properties": {
         "limit": {
           "allOf": [
@@ -11,7 +20,6 @@
               "minimum": -9223372036854775808
             }
           ],
-          "maximum": 8192,
           "minimum": 1,
           "type": "integer"
         },
@@ -42,100 +50,9 @@
       "$ref": "#/$defs/BrowseInput"
     },
     "BrowseV1Output": {
-      "$ref": "#/$defs/Page"
+      "$ref": "#/$defs/BrowseV1OutputDomainPage"
     },
-    "FetchRequest": {
-      "additionalProperties": false,
-      "properties": {
-        "format": {
-          "allOf": [
-            {
-              "enum": [
-                "markdown",
-                "html",
-                "text"
-              ]
-            }
-          ],
-          "description": "Content format: markdown (default and best for readable structure), html, or text.",
-          "type": "string"
-        },
-        "url": {
-          "description": "Absolute http(s) URL of the page to fetch.",
-          "minLength": 1,
-          "type": "string"
-        }
-      },
-      "required": [
-        "url"
-      ],
-      "type": "object"
-    },
-    "FetchV1Input": {
-      "$ref": "#/$defs/FetchRequest"
-    },
-    "FetchV1Output": {
-      "$ref": "#/$defs/Page"
-    },
-    "HTTPContent": {
-      "additionalProperties": false,
-      "properties": {
-        "data": {
-          "type": "string"
-        },
-        "encoding": {
-          "enum": [
-            "utf8",
-            "base64"
-          ],
-          "type": "string"
-        }
-      },
-      "required": [
-        "encoding",
-        "data"
-      ],
-      "type": "object"
-    },
-    "HTTPResponse": {
-      "additionalProperties": false,
-      "properties": {
-        "body": {
-          "$ref": "#/$defs/HTTPContent"
-        },
-        "duration": {
-          "type": "string"
-        },
-        "headers": {
-          "additionalProperties": {
-            "items": {
-              "$ref": "#/$defs/HTTPContent"
-            },
-            "type": "array"
-          },
-          "type": "object"
-        },
-        "status": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "truncated": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "status",
-        "body",
-        "duration"
-      ],
-      "type": "object"
-    },
-    "Page": {
+    "BrowseV1OutputDomainPage": {
       "additionalProperties": false,
       "properties": {
         "content": {
@@ -194,6 +111,159 @@
         "content",
         "offset",
         "totalRunes"
+      ],
+      "type": "object"
+    },
+    "FetchRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "allOf": [
+            {
+              "enum": [
+                "markdown",
+                "html",
+                "text"
+              ]
+            }
+          ],
+          "description": "Content format: markdown (default and best for readable structure), html, or text.",
+          "type": "string"
+        },
+        "url": {
+          "description": "Absolute http(s) URL of the page to fetch.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "type": "object"
+    },
+    "FetchV1Input": {
+      "$ref": "#/$defs/FetchRequest"
+    },
+    "FetchV1Output": {
+      "$ref": "#/$defs/FetchV1OutputDomainPage"
+    },
+    "FetchV1OutputDomainPage": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "format": {
+          "allOf": [
+            {
+              "enum": [
+                "markdown",
+                "html",
+                "text"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "nextOffset": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "offset": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "snapshotId": {
+          "type": "string"
+        },
+        "totalRunes": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "snapshotId",
+        "url",
+        "format",
+        "content",
+        "offset",
+        "totalRunes"
+      ],
+      "type": "object"
+    },
+    "HTTPContent": {
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "type": "string"
+        },
+        "encoding": {
+          "enum": [
+            "utf8",
+            "base64"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "encoding",
+        "data"
+      ],
+      "type": "object"
+    },
+    "HTTPResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "$ref": "#/$defs/HTTPContent"
+        },
+        "duration": {
+          "type": "string"
+        },
+        "headers": {
+          "additionalProperties": {
+            "items": {
+              "$ref": "#/$defs/HTTPContent"
+            },
+            "type": "array"
+          },
+          "type": "object"
+        },
+        "status": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "status",
+        "body",
+        "duration"
       ],
       "type": "object"
     },
@@ -366,8 +436,7 @@
           "type": "string"
         },
         "published_time": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/$defs/Timestamp"
         },
         "snippet": {
           "type": "string"
@@ -394,6 +463,9 @@
     },
     "SearchV1Output": {
       "$ref": "#/$defs/SearchResponse"
+    },
+    "Timestamp": {
+      "type": "string"
     }
   }
 }

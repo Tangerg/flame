@@ -60,7 +60,7 @@ text-body rewriting, OCR, redaction and arbitrary Office object restructuring ar
 outside the declared edit vocabulary. Unsupported form glyphs fail rather than
 producing a falsely successful appearance update.
 
-Content JSON uses Qimu's exact numeric codec before projection. Values that cannot
+Content JSON uses Frame's exact numeric codec before projection. Values that cannot
 be represented faithfully are refused at authoring boundaries. Imported workbook
 numbers outside that projection remain native decimal text in inspection; CSV
 retains their original numeric lexemes. Formula-like string values are escaped

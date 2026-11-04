@@ -19,10 +19,7 @@ var _ FileMutationReporter = (*fs.ApplyPatchTool)(nil)
 
 func mutationPaths(tool toolcontract.Tool, invocation toolcontract.Invocation) ([]string, error) {
 	var paths []string
-	reporter, ok, err := toolcontract.Capability[FileMutationReporter](tool)
-	if err != nil {
-		return nil, err
-	}
+	reporter, ok := tool.(FileMutationReporter)
 	if ok {
 		reported, err := reporter.MutationPaths(invocation.Arguments())
 		if err != nil {

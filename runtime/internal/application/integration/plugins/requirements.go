@@ -6,13 +6,14 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/qimu"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	framevalue "github.com/Tangerg/frame/value"
+
+	"github.com/Tangerg/frame"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/portable"
 )
 
 // Collaborator is an explicit absence or a fixed set of named consumer bindings.
@@ -28,7 +29,7 @@ type requirementCatalog struct {
 	compositions  map[string]plugin.CompositionRecord
 }
 
-func ResolveRequirements(ctx context.Context, host *qimu.Host, store Store, selections SelectionStore, compositions CompositionStore, installation identity.InstallationID, digest integrity.Digest, contribution plugin.ContributionID) ([]Collaborator, error) {
+func ResolveRequirements(ctx context.Context, host *frame.Host, store Store, selections SelectionStore, compositions CompositionStore, installation identity.InstallationID, digest framevalue.Digest, contribution plugin.ContributionID) ([]Collaborator, error) {
 	if host == nil {
 		return nil, plugin.ErrInvalid
 	}
@@ -84,7 +85,7 @@ func readRequirementCatalog(ctx context.Context, store Store, selections Selecti
 	}
 	for _, value := range ordered {
 		record := value.Snapshot()
-		contract, err := portable.ParseCapability(record.Contract.JSON())
+		contract, err := plugincontract.ParseCapability(record.Contract.Bytes())
 		if err != nil {
 			return requirementCatalog{}, err
 		}
@@ -93,7 +94,7 @@ func readRequirementCatalog(ctx context.Context, store Store, selections Selecti
 	return catalog, nil
 }
 
-func resolveEntryRequirements(ctx context.Context, host *qimu.Host, store Store, selections SelectionStore, compositions CompositionStore, root plugin.Snapshot, server mcpserver.ServerName) (*plugin.RequiredBindings, error) {
+func resolveEntryRequirements(ctx context.Context, host *frame.Host, store Store, selections SelectionStore, compositions CompositionStore, root plugin.Snapshot, server mcpserver.ServerName) (*plugin.RequiredBindings, error) {
 	if host == nil {
 		return nil, plugin.ErrInvalid
 	}
@@ -121,7 +122,7 @@ func resolveEntryRequirements(ctx context.Context, host *qimu.Host, store Store,
 
 // ProjectRequiredBindings projects already captured providers for the profile's
 // setup wire. It never consults a role selection or substitutes a provider.
-func ProjectRequiredBindings(ctx context.Context, store Store, root plugin.Snapshot, server mcpserver.ServerName, binding qimu.BindingSnapshot) (*plugin.RequiredBindings, error) {
+func ProjectRequiredBindings(ctx context.Context, store Store, root plugin.Snapshot, server mcpserver.ServerName, binding frame.BindingSnapshot) (*plugin.RequiredBindings, error) {
 	snapshots, err := store.List(ctx)
 	if err != nil {
 		return nil, err
@@ -133,7 +134,7 @@ func ProjectRequiredBindings(ctx context.Context, store Store, root plugin.Snaps
 	return catalog.projectRequirements(root, server, binding)
 }
 
-func (c requirementCatalog) projectRequirements(current plugin.Snapshot, server mcpserver.ServerName, binding qimu.BindingSnapshot) (*plugin.RequiredBindings, error) {
+func (c requirementCatalog) projectRequirements(current plugin.Snapshot, server mcpserver.ServerName, binding frame.BindingSnapshot) (*plugin.RequiredBindings, error) {
 	var values []plugin.ResolvedRequirement
 	for _, contribution := range current.Selected.Declaration().Contributions {
 		if contribution.Server != server {
@@ -168,13 +169,13 @@ func bindingKey(binding ContributionBinding) string {
 }
 
 func (c requirementCatalog) candidates(required plugin.Requirement) ([]ContributionBinding, error) {
-	contract, err := portable.ParseCapability(required.Contract.JSON())
+	contract, err := plugincontract.ParseCapability(required.Contract.Bytes())
 	if err != nil {
 		return nil, err
 	}
 	descriptor := contract.Descriptor()
 	var bindings []ContributionBinding
-	if descriptor.Composition == portable.Decoration {
+	if descriptor.Composition == plugincontract.Decoration {
 		record, found := c.compositions[descriptor.Reference]
 		if !found {
 			if required.Optional {
@@ -206,7 +207,7 @@ func (c requirementCatalog) candidates(required plugin.Requirement) ([]Contribut
 			if declaration.Contract != contract.Identity() || !snapshot.Installation.ServerEnabled(declaration.Server) {
 				continue
 			}
-			if descriptor.Composition == portable.Selection {
+			if descriptor.Composition == plugincontract.Selection {
 				choice, found := c.selections[descriptor.Reference]
 				if !found || choice.Installation != snapshot.Installation.ID() || choice.Contribution != declaration.ID {
 					continue
@@ -226,10 +227,10 @@ func (c requirementCatalog) candidates(required plugin.Requirement) ([]Contribut
 	return bindings, nil
 }
 
-func (c requirementCatalog) collaborators(root plugin.Snapshot, declaration plugin.Contribution, binding qimu.BindingSnapshot) ([]Collaborator, error) {
+func (c requirementCatalog) collaborators(root plugin.Snapshot, declaration plugin.Contribution, binding frame.BindingSnapshot) ([]Collaborator, error) {
 	resolved := make([]Collaborator, 0, len(declaration.Requires))
 	for _, required := range declaration.Requires {
-		var chosen *qimu.ImportDeclaration
+		var chosen *frame.ImportDeclaration
 		for _, unit := range binding.Units {
 			if unit.Source.InstallationID != root.Installation.ID().Host() || unit.Source.Release != root.Selected.Digest() || unit.Source.UnitID != BackendUnit(declaration.Server) {
 				continue
@@ -274,33 +275,54 @@ func (c requirementCatalog) collaborators(root plugin.Snapshot, declaration plug
 	return resolved, nil
 }
 
-func (c requirementCatalog) plan(ctx context.Context, host *qimu.Host, root plugin.Snapshot, server mcpserver.ServerName) (*qimu.BindingPlan, error) {
-	choices := []qimu.BindingChoice{}
-	for _, snapshot := range c.installations {
-		if !snapshot.Installation.Enabled() {
+func (c requirementCatalog) plan(ctx context.Context, host *frame.Host, root plugin.Snapshot, server mcpserver.ServerName) (*frame.BindingPlan, error) {
+	unit := frame.UnitRef{InstallationID: root.Installation.ID().Host(), Release: root.Selected.Digest(), UnitID: BackendUnit(server)}
+	type entry struct {
+		source frame.UnitRef
+		path   string
+	}
+	pending := []entry{{source: unit}}
+	visited := map[frame.UnitRef]bool{}
+	choices := []frame.BindingChoice{}
+	for len(pending) > 0 {
+		next := pending[0]
+		pending = pending[1:]
+		current := next.source
+		if visited[current] {
 			continue
 		}
+		visited[current] = true
+		id, err := identity.ParseHostInstallation(current.InstallationID)
+		if err != nil {
+			return nil, err
+		}
+		snapshot, found := c.installations[id]
+		if !found || !snapshot.Installation.Enabled() || snapshot.Selected.Digest() != current.Release {
+			return nil, fmt.Errorf("%s%s: %w", next.path, current, plugin.ErrUnavailable)
+		}
 		for _, contribution := range snapshot.Selected.Declaration().Contributions {
+			if BackendUnit(contribution.Server) != current.UnitID {
+				continue
+			}
 			for _, required := range contribution.Requires {
-				choice := qimu.BindingChoice{Unit: qimu.UnitRef{InstallationID: snapshot.Installation.ID().Host(), Release: snapshot.Selected.Digest(), UnitID: BackendUnit(contribution.Server)}, Slot: RequirementSlot(contribution.ID, required.ID), Providers: []qimu.ExportRef{}}
+				choice := frame.BindingChoice{Unit: current, Slot: RequirementSlot(contribution.ID, required.ID), Providers: []frame.ExportRef{}}
+				path := next.path + current.String() + " requires " + choice.Slot
 				providers, err := c.candidates(required)
 				if err != nil {
-					choice.Providers = nil
-					choice.Failure = err
-				} else {
-					for _, provider := range providers {
-						source, err := ContributionSource(provider)
-						if err != nil {
-							return nil, err
-						}
-						choice.Providers = append(choice.Providers, source)
+					return nil, fmt.Errorf("%s: %w", path, err)
+				}
+				for _, provider := range providers {
+					source, err := ContributionSource(provider)
+					if err != nil {
+						return nil, err
 					}
+					choice.Providers = append(choice.Providers, source)
+					pending = append(pending, entry{source: source.Unit(), path: path + ": "})
 				}
 				choices = append(choices, choice)
 			}
 		}
 	}
-	unit := qimu.UnitRef{InstallationID: root.Installation.ID().Host(), Release: root.Selected.Digest(), UnitID: BackendUnit(server)}
 	plan, err := host.PlanUnit(ctx, "", unit, choices)
 	return plan, FrameworkError(err)
 }

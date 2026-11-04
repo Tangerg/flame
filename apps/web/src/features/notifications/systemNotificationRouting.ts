@@ -31,8 +31,8 @@ export function createSystemNotificationsPlugin(notifications: NotificationOwner
   return definePlugin({
     name: "flame.builtin.system-notifications",
     setup(scope) {
-      scope.cleanup(notifications.dispose);
-      scope.contribute(READY_HANDLER, () => notifications.start());
+      scope.lifetime.defer(notifications.dispose);
+      scope.contributions.add(READY_HANDLER, () => notifications.start());
     },
   });
 }

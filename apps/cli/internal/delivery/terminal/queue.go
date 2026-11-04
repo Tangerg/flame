@@ -8,9 +8,9 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/text"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/text"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 const (
@@ -223,14 +223,13 @@ func (r *runs) retryAuthoringSettlement(slot operationSlot, settle func() error,
 		return
 	}
 	sessionID := r.session.current.ID
-	dispatcher := r.tasks.dispatch
 	r.tasks.operations.GoSessionSettlement(slot, false, func(ctx context.Context, lease operationLease) {
 		for failures := 1; ; failures++ {
 			if err := runtimeRecoveryBackoff.Wait(ctx, failures); err != nil {
 				return
 			}
 			completed := false
-			if err := post(ctx, dispatcher, func() {
+			if err := r.tasks.deliver(ctx, func() {
 				if !r.tasks.operations.Current(lease) || r.link.terminalClosed() || r.session.current.ID != sessionID {
 					return
 				}

@@ -1,5 +1,5 @@
 // Command pluginpack builds a Flame consumer release through its original
-// metadata interpretation and Qimu's neutral distribution contract.
+// metadata interpretation and Frame's neutral distribution contract.
 package main
 
 import (

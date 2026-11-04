@@ -72,7 +72,7 @@ func TestInstalledSkillLearningUsesAdmittedSkillDocuments(t *testing.T) {
 				t.Fatal(err)
 			}
 			model := &skillRevisionModel{}
-			client, err := chatclient.New(model, chatclient.Config{})
+			client, err := chatclient.New(model)
 			if err != nil {
 				t.Fatal(err)
 			}

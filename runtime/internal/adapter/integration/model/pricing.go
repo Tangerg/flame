@@ -24,16 +24,7 @@ func Pricing(providerID string, models []catalog.Model) accounting.Pricing {
 		}
 		if index := slices.IndexFunc(owned, func(model catalog.Model) bool { return model.ID == servedModel }); index >= 0 {
 			info := owned[index]
-			catalogUsage := catalog.Usage{
-				InputTokens:  usage.InputTokens,
-				OutputTokens: usage.OutputTokens,
-			}
-			if usage.CacheReadInputTokens != nil {
-				catalogUsage.CacheReadInputTokens = *usage.CacheReadInputTokens
-			}
-			if usage.CacheWriteInputTokens != nil {
-				catalogUsage.CacheWriteInputTokens = *usage.CacheWriteInputTokens
-			}
+			catalogUsage := *usage
 			usd, err := info.Pricing.Cost(catalogUsage)
 			if errors.Is(err, catalog.ErrUnknownPricing) {
 				return accounting.Cost{}, nil
@@ -48,10 +39,15 @@ func Pricing(providerID string, models []catalog.Model) accounting.Pricing {
 			// A missing breakdown can cover any unallocated input tokens. The
 			// catalog owns rates and band selection, so compare the possible
 			// endpoints of its linear pricing formula instead of copying it.
-			remaining := usage.InputTokens - catalogUsage.CacheReadInputTokens - catalogUsage.CacheWriteInputTokens
+			remaining := usage.InputTokens
+			for _, count := range []*int64{usage.CacheReadInputTokens, usage.CacheWriteInputTokens} {
+				if count != nil {
+					remaining -= *count
+				}
+			}
 			if remaining > 0 {
 				for _, dimension := range []struct {
-					count    *int64
+					count    **int64
 					reported *int64
 				}{
 					{&catalogUsage.CacheReadInputTokens, usage.CacheReadInputTokens},
@@ -60,9 +56,9 @@ func Pricing(providerID string, models []catalog.Model) accounting.Pricing {
 					if dimension.reported != nil {
 						continue
 					}
-					*dimension.count = remaining
+					*dimension.count = new(remaining)
 					alternative, err := info.Pricing.Cost(catalogUsage)
-					*dimension.count = 0
+					*dimension.count = nil
 					if err != nil {
 						return accounting.Cost{}, err
 					}

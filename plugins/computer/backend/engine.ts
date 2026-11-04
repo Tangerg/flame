@@ -1,6 +1,6 @@
 import { performance } from "node:perf_hooks";
-import { Method } from "@qimu/node";
-import { cloneJSON, parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { declareMethod } from "@flame/backend-sdk/mcp";
+import { cloneJSON, parseJSON, stringifyJSON } from "@frame/sdk/json";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { RequestOptions } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import {
@@ -268,7 +268,7 @@ export class Engine {
         if (tool.outputSchema)
           engine.#outputs.set(
             tool.name,
-            new Method({
+            declareMethod({
               name: tool.name,
               kind: "command",
               target: "call",

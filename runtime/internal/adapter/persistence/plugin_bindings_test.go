@@ -7,29 +7,30 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame"
 )
 
 type bindingPlanningDriver struct{}
 
-func (bindingPlanningDriver) Profile() qimu.Profile { return qimumcp.ProcessProfile }
-func (bindingPlanningDriver) Prepare(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
+func (bindingPlanningDriver) Profile() frame.Profile { return pluginmcp.ProcessProfile }
+func (bindingPlanningDriver) Prepare(context.Context, *frame.Setup) ([]frame.ExportValue, error) {
 	return nil, errors.New("durable binding fixture does not execute a backend")
 }
 
 type bindingFixture struct {
 	store      *Bundle
-	host       *qimu.Host
-	definition *qimu.Plugin
+	host       *frame.Host
+	definition *frame.Plugin
 	activation plugin.Activation
 	provider   plugin.Dependency
 }
@@ -41,10 +42,10 @@ func newBindingFixture(t *testing.T) bindingFixture {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-	host, err := qimu.NewHost(context.Background(), qimu.HostConfig{
-		Admission: store.Admission, Epoch: store.Qimu.Epoch(),
-		Installations: store.Qimu, ExecutionProtection: store.Qimu,
-		Drivers: []qimu.Driver{bindingPlanningDriver{}},
+	host, err := frame.NewHost(context.Background(), frame.HostConfig{
+		Admission: store.Admission, Epoch: store.Frame.Epoch(),
+		Installations: store.Frame, ExecutionProtection: store.Frame,
+		Drivers: []frame.Driver{bindingPlanningDriver{}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -63,7 +64,7 @@ func newBindingFixture(t *testing.T) bindingFixture {
 	if err := store.PluginReleases.Admit(t.Context(), release); err != nil {
 		t.Fatal(err)
 	}
-	projection, err := plugins.ProjectFrameworkRelease(release, qimumcp.ProcessProfile)
+	projection, err := plugins.ProjectFrameworkRelease(release, pluginmcp.ProcessProfile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,14 +83,14 @@ func newBindingFixture(t *testing.T) bindingFixture {
 		t.Fatal(err)
 	}
 	id := installation.ID().Host()
-	if _, err := host.Install(t.Context(), qimu.InstallationConfig{ID: id, Plugin: projection.Plugin, Configuration: configuration, Enabled: true}); err != nil {
+	if _, err := host.Install(t.Context(), frame.InstallationConfig{ID: id, Plugin: projection.Plugin, Configuration: configuration, Enabled: true}); err != nil {
 		t.Fatal(err)
 	}
-	plan, err := host.PlanUnit(t.Context(), "", qimu.UnitRef{InstallationID: id, Release: projection.Plugin.Revision(), UnitID: plugins.BackendUnit(testsupport.ServerName("backend"))}, nil)
+	plan, err := host.PlanUnit(t.Context(), "", frame.UnitRef{InstallationID: id, Release: projection.Plugin.Revision(), UnitID: plugins.BackendUnit(testsupport.ServerName("backend"))}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var binding qimu.BindingSnapshot
+	var binding frame.BindingSnapshot
 	if err := host.Admission().Admit(t.Context(), func(admitted context.Context) error {
 		var err error
 		binding, err = host.ValidatePlanUnder(admitted, plan)
@@ -112,7 +113,7 @@ func (f bindingFixture) checkpoint() runs.ExecutorCheckpoint {
 }
 
 func (f bindingFixture) saveCheckpoint(ctx context.Context, checkpoint runs.ExecutorCheckpoint) error {
-	_, err := sqlite.Connection(ctx, f.store.db).ExecContext(ctx, `INSERT INTO runs(run_id,session_id,state,created_at,updated_at) VALUES('run_retained',?,'waiting',0,0) ON CONFLICT(run_id) DO NOTHING`, checkpoint.SessionID)
+	_, err := f.store.db.connection(ctx).ExecContext(ctx, `INSERT INTO runs(run_id,session_id,state,created_at,updated_at) VALUES('run_retained',?,'waiting',0,0) ON CONFLICT(run_id) DO NOTHING`, checkpoint.SessionID)
 	if err != nil {
 		return err
 	}
@@ -188,7 +189,7 @@ func TestBusinessCheckpointAdmitsOriginalBindingInItsOwnAtomicWriteSet(t *testin
 	if err != nil || !reflect.DeepEqual(loaded, checkpoint) {
 		t.Fatalf("original checkpoint = %+v, %v", loaded, err)
 	}
-	if err := f.host.Uninstall(t.Context(), f.provider.InstallationID.Host()); !errors.Is(err, qimu.ErrInUse) {
+	if err := f.host.Uninstall(t.Context(), f.provider.InstallationID.Host()); !errors.Is(err, frame.ErrInUse) {
 		t.Fatalf("installation escaped retained business graph: %v", err)
 	}
 	if err := f.host.SetEnabled(t.Context(), f.provider.InstallationID.Host(), false); err != nil {
@@ -226,7 +227,7 @@ func TestBusinessCheckpointAndInstallationChangeHaveOneAdmission(t *testing.T) {
 					t.Fatal("a stale original graph reached its business write-set")
 					return nil
 				})
-				if !errors.Is(err, qimu.ErrStaleBinding) && !errors.Is(err, qimu.ErrUnavailable) {
+				if !errors.Is(err, frame.ErrStaleBinding) && !errors.Is(err, frame.ErrUnavailable) {
 					t.Fatalf("removed binding admitted = %v", err)
 				}
 				return
@@ -249,7 +250,7 @@ func TestBusinessCheckpointAndInstallationChangeHaveOneAdmission(t *testing.T) {
 			if err := <-committed; err != nil {
 				t.Fatal(err)
 			}
-			if err := <-changed; !errors.Is(err, qimu.ErrInUse) {
+			if err := <-changed; !errors.Is(err, frame.ErrInUse) {
 				t.Fatalf("installation missed the committed original reference: %v", err)
 			}
 		})
@@ -275,14 +276,14 @@ func TestOriginalCommandRetainsBindingUntilItsBusinessOwnerRetires(t *testing.T)
 			ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "records.write", extension.ScopeInstallation), ContributionID: "records", Export: "records",
 		}}, nil
 	}
-	command, err := commands.Bind(t.Context(), "original-command", "records.write", testsupport.JSONInput(t, `{}`), resolve, func(plugins.ContributionBinding) (portable.Invocation, error) {
-		return portable.Invocation{ID: "original-command", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: f.provider.InstallationID.String()}}, nil
+	command, err := commands.Bind(t.Context(), "original-command", "records.write", testsupport.JSONInput(t, `{}`), resolve, func(plugins.ContributionBinding) (framemcp.Invocation, error) {
+		return framemcp.Invocation{ID: "original-command", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: f.provider.InstallationID.String()}}, nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	id := f.provider.InstallationID.Host()
-	if err := f.host.Uninstall(t.Context(), id); !errors.Is(err, qimu.ErrInUse) {
+	if err := f.host.Uninstall(t.Context(), id); !errors.Is(err, frame.ErrInUse) {
 		t.Fatalf("prepared command did not protect its original graph: %v", err)
 	}
 	if err := commands.Retire(t.Context(), command.Snapshot().ID); err != nil {

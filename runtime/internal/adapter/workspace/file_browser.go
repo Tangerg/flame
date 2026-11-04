@@ -11,7 +11,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/frame/cancellation"
 	"github.com/Tangerg/scope/tools/textread"
 )
 
@@ -37,7 +36,7 @@ func (FileBrowser) List(ctx context.Context, root string, options workspaceapp.F
 }
 
 func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.FileReadPlan) (_ workspaceapp.FileReadResult, err error) {
-	if cause := cancellation.Err(ctx); cause != nil {
+	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		return workspaceapp.FileReadResult{}, cause
 	}
 	path := input.Path
@@ -87,7 +86,7 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 	}
 	source := &fileScanInput{reader: file}
 	result, err := scanFileWindow(ctx, source, input, start, lines)
-	err = errors.Join(err, source.readErr, cancellation.Err(ctx))
+	err = errors.Join(err, source.readErr, errors.Join(ctx.Err(), context.Cause(ctx)))
 	if err != nil {
 		switch {
 		case errors.Is(err, textread.ErrInputTooLarge):

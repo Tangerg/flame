@@ -8,15 +8,19 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/guardrails/internal/contract"
 	"github.com/Tangerg/flame/plugins/guardrails/internal/wire"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -39,7 +43,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 				t.Fatal(err)
 			}
 			client := sdk.NewClient(&sdk.Implementation{Name: "guardrails-test", Version: "1"}, nil)
-			if err := qimumcp.RegisterClient(client); err != nil {
+			if err := pluginmcp.RegisterClient(client); err != nil {
 				t.Fatal(err)
 			}
 			a, b := sdk.NewInMemoryTransports()
@@ -53,7 +57,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 				t.Fatal(err)
 			}
 			defer session.Close()
-			policyExport, err := qimumcp.ResolveCapability(t.Context(), session, "policy", contracts.Capability)
+			policyExport, err := pluginmcp.ResolveCapability(t.Context(), session, "policy", contracts.Capability)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -65,7 +69,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "edit-policy", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "guardrails"}})
+			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "edit-policy", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "guardrails"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -88,7 +92,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 			}
 			method, _ := pluginsdk.ModelInputMethod()
 			contract, _ := pluginsdk.ModelInputContract()
-			exported, err := qimumcp.ResolveCapability(t.Context(), session, "input", contract)
+			exported, err := pluginmcp.ResolveCapability(t.Context(), session, "input", contract)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -96,14 +100,14 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx, err = qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "inspect-input", Origin: extension.Model, Target: portable.Target{Scope: "call", Reference: "inspect-input"}})
+			ctx, err = pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "inspect-input", Origin: extension.Model, Target: portable.Target{Scope: "call", Reference: "inspect-input"}})
 			if err != nil {
 				t.Fatal(err)
 			}
 			for _, text := range []string{"public input", secret} {
 				request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart(text)))
 				before := request.Clone()
-				original, err := jsonvalue.Encode(request)
+				original, err := framevalue.EncodeJSON(request)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -116,7 +120,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 					if err != nil {
 						t.Fatal(err)
 					}
-					projected, err := jsonvalue.Encode(output)
+					projected, err := framevalue.EncodeJSON(output)
 					if err != nil || projected != original {
 						t.Fatalf("allowed wire input changed: %s %v", projected.String(), err)
 					}
@@ -141,7 +145,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 }
 
 func refusalCode(err error) string {
-	if refusal, ok := errors.AsType[*portable.Refusal](err); ok {
+	if refusal, ok := errors.AsType[*framemcp.Refusal](err); ok {
 		return refusal.Code
 	}
 	return ""

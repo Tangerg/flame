@@ -7,13 +7,16 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/models/catalog"
 )
@@ -33,7 +36,7 @@ func TestEndpointRecordsOneFailureForInvalidResponse(t *testing.T) {
 		}),
 		journal: store, selection: testsupport.MustModelSelection("anthropic", "captured-model"),
 	}
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "invalid-response", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "invalid-response"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "invalid-response", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "invalid-response"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +55,7 @@ func TestEndpointRecordsOneFailureForInvalidResponse(t *testing.T) {
 	}
 }
 
-func TestEndpointRetainsGenerationWhenCatalogCannotPriceUsage(t *testing.T) {
+func TestEndpointRetainsGenerationWhenCatalogRatesAreInvalid(t *testing.T) {
 	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -62,7 +65,7 @@ func TestEndpointRetainsGenerationWhenCatalogCannotPriceUsage(t *testing.T) {
 	response := &chat.Response{
 		Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop},
 		Metadata: &chat.ResponseMetadata{Model: "claude-opus-5", Usage: &chat.Usage{
-			InputTokens: 10, CacheReadInputTokens: new(int64(6)), CacheWriteInputTokens: new(int64(6)),
+			InputTokens: 10, CacheReadInputTokens: new(int64(6)), CacheWriteInputTokens: new(int64(4)),
 		}},
 	}
 	calls := 0
@@ -71,9 +74,9 @@ func TestEndpointRetainsGenerationWhenCatalogCannotPriceUsage(t *testing.T) {
 			calls++
 			return response, nil
 		}),
-		journal: db.ModelInvocations, selection: testsupport.MustModelSelection("anthropic", "claude-opus-5"), pricing: Pricing("anthropic", catalog.Default.Models("anthropic")),
+		journal: db.ModelInvocations, selection: testsupport.MustModelSelection("anthropic", "claude-opus-5"), pricing: Pricing("anthropic", []catalog.Model{{ID: "claude-opus-5", Pricing: catalog.PricingSchedule{{InputPer1M: -1}}}}),
 	}
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "pricing-failure", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "pricing-failure"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "pricing-failure", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "pricing-failure"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +129,7 @@ func TestEndpointStreamRecordsCompletionAndConsumerStopWithoutPromotion(t *testi
 	stream, _ := resolved.Streamer()
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original input")))
 	for _, id := range []string{"complete", "stop", "stop-final"} {
-		ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-operation", Target: portable.Target{Scope: extension.ScopeCall, Reference: id}})
+		ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-operation", Target: portable.Target{Scope: extension.ScopeCall, Reference: id}})
 		if err != nil {
 			t.Fatal(err)
 		}

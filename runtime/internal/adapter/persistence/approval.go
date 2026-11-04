@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"strings"
 
@@ -10,8 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // ApprovalRuleStore persists approval rules in SQLite. It satisfies the
@@ -19,100 +17,100 @@ import (
 // persistent home for fine-grained "remember this decision" rules. Put is an
 // upsert by deterministic rule id, replacing the decision and source authority.
 // The DB must have been opened via [Open] so the approval_rules table exists.
-type ApprovalRuleStore struct {
-	db *sql.DB
-}
+type ApprovalRuleStore struct{ db *database }
 
 // newApprovalRuleStore binds the rule store to db.
-func newApprovalRuleStore(db *sql.DB) *ApprovalRuleStore {
+func newApprovalRuleStore(db *database) *ApprovalRuleStore {
 	return &ApprovalRuleStore{db: db}
 }
-
 func (a *ApprovalRuleStore) Put(ctx context.Context, r approval.Rule) error {
-	_, err := sqlite.Connection(ctx, a.db).ExecContext(ctx, putApprovalRuleSQL, approvalRuleArgs(r)...)
-	if err != nil {
-		return fmt.Errorf("sqlite: put approval rule: %w", err)
-	}
-	return nil
+	return a.db.write(ctx, func(ctx context.Context) error {
+		_, err := a.db.connection(ctx).ExecContext(ctx, putApprovalRuleSQL, approvalRuleArgs(r)...)
+		if err != nil {
+			return fmt.Errorf("sqlite: put approval rule: %w", err)
+		}
+		return nil
+	})
 }
 
+// Scope predicate expressed as a WHERE clause — the mirror of approval's
+// visible(): session rules for this session, project rules for this cwd
+// (skipped entirely when the call has no cwd), and all global rules.
 func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID, projectDir string, limit int) ([]approval.Rule, error) {
-	if err := validateOptionalSessionResource("list visible approval rules", sessionID); err != nil {
-		return nil, err
-	}
-	if limit <= 0 || limit > approval.MaximumVisibleRules+1 {
-		return nil, fmt.Errorf("sqlite: list approval rules: invalid limit %d", limit)
-	}
-	// Scope predicate expressed as a WHERE clause — the mirror of approval's
-	// visible(): session rules for this session, project rules for this cwd
-	// (skipped entirely when the call has no cwd), and all global rules.
-	rows, err := sqlite.Connection(ctx, a.db).QueryContext(ctx,
-		`SELECT r.id, r.scope, r.scope_key, r.tool_kind, r.tool_name, s.origin, s.installation_id, s.name,
+	return scopedValue(ctx, a.db.read, func(ctx context.Context) ([]approval.Rule, error) {
+		if err := validateOptionalSessionResource("list visible approval rules", sessionID); err != nil {
+			return nil, err
+		}
+		if limit <= 0 || limit > approval.MaximumVisibleRules+1 {
+			return nil, fmt.Errorf("sqlite: list approval rules: invalid limit %d", limit)
+		}
+		rows, err := a.db.connection(ctx).QueryContext(ctx, `SELECT r.id, r.scope, r.scope_key, r.tool_kind, r.tool_name, s.origin, s.installation_id, s.name,
 		        r.source_fingerprint, r.subject_type, r.subject, r.decision
 		   FROM approval_rules r LEFT JOIN mcp_sources s ON s.id = r.mcp_source
 		 WHERE (r.scope = 'session' AND r.scope_key = ?)
 		    OR (r.scope = 'project' AND ? <> '' AND r.scope_key = ?)
 		    OR r.scope = 'global'
 		 ORDER BY r.scope, r.scope_key, r.tool_kind, s.origin <> 'user', s.installation_id, s.name, r.tool_name, r.subject_type, r.subject, r.id
-		 LIMIT ?`,
-		sessionID, projectDir, projectDir, limit)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: list approval rules: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var out []approval.Rule
-	for rows.Next() {
-		var storedID, scope, scopeKey, decision, kind, name, fingerprint string
-		var subject approval.Subject
-		var source storedMCPSource
-		if err := rows.Scan(&storedID, &scope, &scopeKey, &kind, &name, &source.origin, &source.installation, &source.name,
-			&fingerprint, &subject.Type, &subject.Value, &decision); err != nil {
-			return nil, fmt.Errorf("sqlite: scan approval rule: %w", err)
-		}
-		ref, err := decodeRuleTool(kind, name, source)
+		 LIMIT ?`, sessionID, projectDir, projectDir, limit)
 		if err != nil {
-			return nil, fmt.Errorf("sqlite: decode approval rule %q tool: %w", storedID, err)
+			return nil, fmt.Errorf("sqlite: list approval rules: %w", err)
 		}
-		var digest integrity.Digest
-		if err := digest.UnmarshalText([]byte(fingerprint)); err != nil {
-			return nil, fmt.Errorf("sqlite: decode approval rule %q fingerprint: %w", storedID, err)
+		defer func() {
+			_ = rows.Close()
+		}()
+		var out []approval.Rule
+		for rows.Next() {
+			var storedID, scope, scopeKey, decision, kind, name, fingerprint string
+			var subject approval.Subject
+			var source storedMCPSource
+			if err := rows.Scan(&storedID, &scope, &scopeKey, &kind, &name, &source.origin, &source.installation, &source.name, &fingerprint, &subject.Type, &subject.Value, &decision); err != nil {
+				return nil, fmt.Errorf("sqlite: scan approval rule: %w", err)
+			}
+			ref, err := decodeRuleTool(kind, name, source)
+			if err != nil {
+				return nil, fmt.Errorf("sqlite: decode approval rule %q tool: %w", storedID, err)
+			}
+			var digest framevalue.Digest
+			if err := digest.UnmarshalText([]byte(fingerprint)); err != nil {
+				return nil, fmt.Errorf("sqlite: decode approval rule %q fingerprint: %w", storedID, err)
+			}
+			ruleScope, err := approval.RestoreRuleScope(approval.Scope(scope), scopeKey)
+			if err != nil {
+				return nil, fmt.Errorf("sqlite: decode approval rule %q: %w", storedID, err)
+			}
+			r, err := approval.NewRule(ruleScope, ref, digest, subject, approval.Decision(decision))
+			if err != nil {
+				return nil, fmt.Errorf("sqlite: decode approval rule %q: %w", storedID, err)
+			}
+			if storedID != r.ID() {
+				return nil, fmt.Errorf("sqlite: approval rule %q is stored under another rule's identity", storedID)
+			}
+			out = append(out, r)
 		}
-		ruleScope, err := approval.RestoreRuleScope(approval.Scope(scope), scopeKey)
-		if err != nil {
-			return nil, fmt.Errorf("sqlite: decode approval rule %q: %w", storedID, err)
+		if err := rows.Err(); err != nil {
+			return nil, fmt.Errorf("sqlite: list approval rules: %w", err)
 		}
-		r, err := approval.NewRule(ruleScope, ref, digest, subject, approval.Decision(decision))
-		if err != nil {
-			return nil, fmt.Errorf("sqlite: decode approval rule %q: %w", storedID, err)
-		}
-		if storedID != r.ID() {
-			return nil, fmt.Errorf("sqlite: approval rule %q is stored under another rule's identity", storedID)
-		}
-		out = append(out, r)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("sqlite: list approval rules: %w", err)
-	}
-	return out, nil
+		return out, nil
+	})
 }
-
 func (a *ApprovalRuleStore) Delete(ctx context.Context, id string) error {
-	if _, err := sqlite.Connection(ctx, a.db).ExecContext(ctx, `DELETE FROM approval_rules WHERE id = ?`, id); err != nil {
-		return fmt.Errorf("sqlite: delete approval rule: %w", err)
-	}
-	return nil
+	return a.db.write(ctx, func(ctx context.Context) error {
+		if _, err := a.db.connection(ctx).ExecContext(ctx, `DELETE FROM approval_rules WHERE id = ?`, id); err != nil {
+			return fmt.Errorf("sqlite: delete approval rule: %w", err)
+		}
+		return nil
+	})
 }
-
 func (a *ApprovalRuleStore) DeleteSession(ctx context.Context, sessionID string) error {
-	if err := validateSessionResource("delete Session approval rules", sessionID); err != nil {
-		return err
-	}
-	if _, err := sqlite.Connection(ctx, a.db).ExecContext(ctx,
-		`DELETE FROM approval_rules WHERE scope = 'session' AND scope_key = ?`, sessionID); err != nil {
-		return fmt.Errorf("sqlite: delete session approval rules: %w", err)
-	}
-	return nil
+	return a.db.write(ctx, func(ctx context.Context) error {
+		if err := validateSessionResource("delete Session approval rules", sessionID); err != nil {
+			return err
+		}
+		if _, err := a.db.connection(ctx).ExecContext(ctx, `DELETE FROM approval_rules WHERE scope = 'session' AND scope_key = ?`, sessionID); err != nil {
+			return fmt.Errorf("sqlite: delete session approval rules: %w", err)
+		}
+		return nil
+	})
 }
 
 // approvalRulesSchema keeps the closed scope and tool reference vocabularies
@@ -141,8 +139,6 @@ func approvalRulesSchema() string {
 )`, sqlValues(string(approval.ScopeSession), string(approval.ScopeProject), string(approval.ScopeGlobal)), sqlValues(kinds...), approval.ScopeGlobal, tool.MCPKind)
 }
 
-// A rule naming a source that no longer exists resolves mcp_source to NULL,
-// which the table refuses: a removed server cannot regain a standing decision.
 const putApprovalRuleSQL = `INSERT INTO approval_rules
  (id,scope,scope_key,tool_kind,tool_name,mcp_source,source_fingerprint,subject_type,subject,decision)
  VALUES (?,?,?,?,?,` + mcpSourceIDQuery + `,?,?,?,?) ON CONFLICT(id) DO UPDATE SET decision=excluded.decision, source_fingerprint=excluded.source_fingerprint`
@@ -165,7 +161,6 @@ func approvalRuleArgs(r approval.Rule) []any {
 	subject := r.Subject()
 	return append(args, r.SourceFingerprint().String(), string(subject.Type), subject.Value, string(r.Decision()))
 }
-
 func decodeRuleTool(kind, name string, source storedMCPSource) (tool.Ref, error) {
 	switch tool.RefKind(kind) {
 	case tool.BuiltInKind:

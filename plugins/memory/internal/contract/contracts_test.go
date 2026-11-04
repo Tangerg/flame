@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	framevalue "github.com/Tangerg/frame/value"
+
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestGeneratedCapabilityMatchesTheActualMethodOwner(t *testing.T) {
@@ -23,7 +24,7 @@ func TestGeneratedCapabilityMatchesTheActualMethodOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	published, err := portable.ParseCapability(data)
+	published, err := plugincontract.ParseCapability(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +82,7 @@ func TestMutationContractsRequireTheObservedRevision(t *testing.T) {
 			if revision != nil {
 				fields["ExpectedRevision"] = revision
 			}
-			input, err := jsonvalue.Encode(fields)
+			input, err := framevalue.EncodeJSON(fields)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -90,7 +91,7 @@ func TestMutationContractsRequireTheObservedRevision(t *testing.T) {
 			}
 		}
 		fields["ExpectedRevision"] = 1
-		input, err := jsonvalue.Encode(fields)
+		input, err := framevalue.EncodeJSON(fields)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -123,7 +124,7 @@ func TestPublishedPageCapacityDerivesFromTheBusinessOwner(t *testing.T) {
 		t.Fatal("a competing capacity was admitted by the publisher contract")
 	}
 	for _, size := range []int{0, memory.MaxManagementPageItems + 1} {
-		request, err := jsonvalue.Encode(rpc.ListInput{Scope: memory.ScopeUser, Limit: &size})
+		request, err := framevalue.EncodeJSON(rpc.ListInput{Scope: memory.ScopeUser, Limit: &size})
 		if err != nil {
 			t.Fatal(err)
 		}

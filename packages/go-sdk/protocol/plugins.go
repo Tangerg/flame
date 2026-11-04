@@ -3,7 +3,7 @@ package protocol
 import (
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/frame/portable"
 )
 
 // PluginCommandRequest addresses original routing without another copy of input.

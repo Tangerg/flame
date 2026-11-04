@@ -2,20 +2,20 @@ package main
 
 import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/wiregen"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
-	"github.com/Tangerg/qimu/contractgen"
 )
 
 // bundle publishes the reusable wire graph. OpenRPC derives closed request
 // projections from this graph; results retain its open object definitions.
 type bundle struct {
-	Schema  string                         `json:"$schema"`
-	Title   string                         `json:"title"`
-	Version string                         `json:"protocolVersion"`
-	Defs    map[string]*contractgen.Schema `json:"$defs"`
+	Schema  string                     `json:"$schema"`
+	Title   string                     `json:"title"`
+	Version string                     `json:"protocolVersion"`
+	Defs    map[string]*wiregen.Schema `json:"$defs"`
 }
 
 // walkWireTypes walks every type a client can send or receive: each method's
@@ -73,7 +73,7 @@ func walkWireTypes(registry *delivery.Registry, shapes *dispatch.Shapes) (*schem
 
 func newBundle(set *schemaSet) bundle {
 	return bundle{
-		Schema:  contractgen.SchemaDialect,
+		Schema:  wiregen.SchemaDialect,
 		Title:   "Flame Runtime Protocol wire types",
 		Version: protocol.Version,
 		Defs:    set.Definitions(),

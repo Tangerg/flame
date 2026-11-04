@@ -149,7 +149,7 @@ func TestPendingValidateRequiresOneCanonicalConnectedTree(t *testing.T) {
 			mutate: func(p *Pending) {
 				p.Continuations[0].MemberID += " "
 			},
-			want: "executor member identity must contain 1 to 256 URI-safe ASCII bytes",
+			want: "executor member identity component must contain 1 to 256 URI-safe ASCII bytes",
 		},
 		{
 			name: "input request identity is not canonical",

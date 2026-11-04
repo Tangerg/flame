@@ -9,10 +9,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 // These fields are the consumed language-binding projection. Every protocol
@@ -63,7 +64,7 @@ func generateBackendProtocol(nodeReleasePath, output string) error {
 	if err != nil {
 		return err
 	}
-	toolReceiptJSON, err := jsonvalue.Encode(toolReceipt.Descriptor())
+	toolReceiptJSON, err := framevalue.EncodeJSON(toolReceipt.Descriptor())
 	if err != nil {
 		return err
 	}

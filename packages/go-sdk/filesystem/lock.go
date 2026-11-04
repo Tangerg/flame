@@ -5,8 +5,6 @@ import (
 	"errors"
 	"os"
 	"sync"
-
-	"github.com/Tangerg/frame/cancellation"
 )
 
 var ErrLockUnsupported = errors.New("advisory lock: unsupported platform")
@@ -55,7 +53,7 @@ func AcquireDirectoryLease(ctx context.Context, directory string) (*DirectoryLea
 	if ctx == nil {
 		return nil, errors.New("advisory lock: context is required")
 	}
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return nil, err
 	}
 	physical, err := resolveDirectory(directory)

@@ -11,7 +11,7 @@ const ConnectionPane = lazy(() =>
 export default definePlugin({
   name: "flame.builtin.connection-settings",
   setup(ctx) {
-    registerSettingsPane(ctx, {
+    registerSettingsPane(ctx.contributions, {
       id: CONNECTION_PANE,
       label: "settings.pane.connection",
       keywords: ["settings.connection.title", "settings.connection.url"],

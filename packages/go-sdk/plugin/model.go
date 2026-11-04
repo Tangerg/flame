@@ -5,20 +5,18 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
-	"github.com/invopop/jsonschema"
 )
 
 type ModelResult struct {
-	Response *chat.Response `json:"response,omitzero"`
-	Failure  *ModelFailure  `json:"failure,omitzero"`
-}
-
-func (ModelResult) JSONSchemaExtend(schema *jsonschema.Schema) {
-	schema.AnyOf = []*jsonschema.Schema{{Required: []string{"response"}}, {Required: []string{"failure"}}}
+	Response *chat.Response `json:"response,omitzero" jsonschema:"anyof_required=response"`
+	Failure  *ModelFailure  `json:"failure,omitzero" jsonschema:"anyof_required=failure"`
 }
 
 type ModelFailure struct {
@@ -45,14 +43,14 @@ func (f *ModelFailure) Is(target error) bool {
 }
 
 // ModelMethod publishes Scope's complete exchange without a text-only projection.
-func ModelMethod() (*qimumcp.Method[chat.Request, ModelResult], error) {
-	return qimumcp.NewMethod[chat.Request, ModelResult](qimumcp.MethodConfig{
-		Name: "flame.model/call.v1", Kind: portable.Mutation, Target: extension.ScopeCall,
+func ModelMethod() (*pluginmcp.Method[chat.Request, ModelResult], error) {
+	return pluginmcp.NewMethod[chat.Request, ModelResult](portable.MethodConfig{
+		Name: "flame.model/call.v1", Kind: portable.Command, Target: extension.ScopeCall,
 		Description: "Perform one complete exchange with the model captured by this call.",
 	})
 }
 
-func CallModel(ctx context.Context, ref qimumcp.CallbackRef, id qimumcp.CommandID, request *chat.Request) (*chat.Response, error) {
+func CallModel(ctx context.Context, ref pluginmcp.CallbackRef, id pluginmcp.CommandID, request *chat.Request) (*chat.Response, error) {
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
@@ -60,7 +58,7 @@ func CallModel(ctx context.Context, ref qimumcp.CallbackRef, id qimumcp.CommandI
 	if err != nil {
 		return nil, err
 	}
-	result, err := qimumcp.CallHost(ctx, ref, method, qimumcp.CommandID(id), *request.Clone())
+	result, err := pluginmcp.CallHost(ctx, ref, method, pluginmcp.CommandID(id), *request.Clone())
 	if err != nil {
 		return nil, err
 	}
@@ -69,15 +67,15 @@ func CallModel(ctx context.Context, ref qimumcp.CallbackRef, id qimumcp.CommandI
 
 // NewModelCallback leaves command admission and resource policy with its caller.
 // Each command projects a call-scoped child identity, preserving origin/parent.
-func NewModelCallback(call func(context.Context, qimumcp.Command[chat.Request]) (*chat.Response, error)) (qimumcp.Callback, error) {
+func NewModelCallback(call func(context.Context, pluginmcp.Command[chat.Request]) (*chat.Response, error)) (pluginmcp.Callback, error) {
 	if call == nil {
-		return qimumcp.Callback{}, errors.New("plugin: model call owner is required")
+		return pluginmcp.Callback{}, errors.New("plugin: model call owner is required")
 	}
 	method, err := ModelMethod()
 	if err != nil {
-		return qimumcp.Callback{}, err
+		return pluginmcp.Callback{}, err
 	}
-	return qimumcp.NewCallback(method, nil, func(ctx context.Context, command qimumcp.Command[chat.Request]) (ModelResult, error) {
+	return pluginmcp.NewCallback(method, nil, func(ctx context.Context, command pluginmcp.Command[chat.Request]) (ModelResult, error) {
 		if err := command.Input.Validate(); err != nil {
 			return ModelResult{}, err
 		}
@@ -87,7 +85,7 @@ func NewModelCallback(call func(context.Context, qimumcp.Command[chat.Request]) 
 			return ModelResult{}, err
 		}
 		response, err := call(ctx, command)
-		if refusal, known := errors.AsType[*portable.Refusal](err); known && response == nil {
+		if refusal, known := errors.AsType[*framemcp.Refusal](err); known && response == nil {
 			return ModelResult{}, refusal
 		}
 		return modelResult(response, err)
@@ -95,8 +93,8 @@ func NewModelCallback(call func(context.Context, qimumcp.Command[chat.Request]) 
 }
 
 func modelCallContext(ctx context.Context, id string) (context.Context, error) {
-	call := portable.Invocation{ID: id, Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: id}}
-	if parent, err := qimumcp.InvocationFromContext(ctx); err == nil {
+	call := framemcp.Invocation{ID: id, Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: id}}
+	if parent, err := pluginmcp.InvocationFromContext(ctx); err == nil {
 		if parent.ID == id && parent.Target == call.Target {
 			return ctx, nil
 		}
@@ -105,7 +103,7 @@ func modelCallContext(ctx context.Context, id string) (context.Context, error) {
 			call.Parent = parent.Parent
 		}
 	}
-	return qimumcp.WithInvocation(ctx, call)
+	return pluginmcp.WithInvocation(ctx, call)
 }
 
 func modelResult(response *chat.Response, err error) (ModelResult, error) {

@@ -28,7 +28,7 @@ it("finds appearance by field and section names without leaving the current pane
     definePlugin({
       name: "test.paper-search",
       setup(ctx) {
-        ctx.contribute(SETTINGS_PANE, {
+        ctx.contributions.add(SETTINGS_PANE, {
           id: "other",
           label: "Other",
           order: -1,

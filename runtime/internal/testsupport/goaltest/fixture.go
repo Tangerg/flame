@@ -2,11 +2,12 @@ package goaltest
 
 import (
 	"context"
+	"time"
+
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"time"
 )
 
 func New(sessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities, incarnation string, now time.Time) (goal.Goal, error) {

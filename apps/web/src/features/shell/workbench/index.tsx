@@ -32,13 +32,17 @@ export const workbenchChat = definePlugin({
     function InstalledWorkbenchChat() {
       return <WorkbenchChat panel={panel} />;
     }
-    contributeLayout(ctx, "app.main", { id: "chat", order: 0, component: InstalledWorkbenchChat });
-    contributeLayout(ctx, "composer.overlay.top", {
+    contributeLayout(ctx.contributions, "app.main", {
+      id: "chat",
+      order: 0,
+      component: InstalledWorkbenchChat,
+    });
+    contributeLayout(ctx.contributions, "composer.overlay.top", {
       id: "project",
       order: -10,
       component: ComposerProjectTray,
     });
-    ctx.contribute(COMMAND, {
+    ctx.contributions.add(COMMAND, {
       id: "composer.focus",
       label: "command.focusComposer",
       combo: "Mod+L",
@@ -50,7 +54,11 @@ export const workbenchChat = definePlugin({
 export const workbenchSidebar = definePlugin({
   name: "flame.builtin.workbench-sidebar",
   setup(ctx) {
-    contributeLayout(ctx, "app.sidebar", { id: "sidebar", order: 0, component: WorkbenchSidebar });
+    contributeLayout(ctx.contributions, "app.sidebar", {
+      id: "sidebar",
+      order: 0,
+      component: WorkbenchSidebar,
+    });
   },
 });
 
@@ -58,14 +66,14 @@ export const workbenchSettings = (workspaceAccess: WorkspaceAccess) =>
   definePlugin({
     name: "flame.builtin.workbench-settings",
     setup(ctx) {
-      ctx.contribute(WORKSPACE_VIEW, {
+      ctx.contributions.add(WORKSPACE_VIEW, {
         id: WORKSPACE_SETTINGS_VIEW,
         title: "settings.title",
         icon: "settings",
         order: 200,
         component: SettingsPage,
       });
-      ctx.contribute(COMMAND, {
+      ctx.contributions.add(COMMAND, {
         id: "settings.open",
         label: "settings.title",
         combo: "Mod+,",

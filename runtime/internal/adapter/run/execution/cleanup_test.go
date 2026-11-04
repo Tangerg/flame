@@ -4,20 +4,16 @@ import (
 	"context"
 	"errors"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"testing/synctest"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	agent "github.com/Tangerg/scope/agent"
+
+	"github.com/Tangerg/scope/agent/interaction"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
-	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 func TestInteractionShutdownJoinsAssemblyBeforeReleasingResources(t *testing.T) {
@@ -65,60 +61,51 @@ func TestInteractionShutdownJoinsAssemblyBeforeReleasingResources(t *testing.T) 
 }
 
 func TestInteractionFailedDiscardRemainsOwnedUntilShutdown(t *testing.T) {
-	workspace := t.TempDir()
-	checkpoint := captureInteractionQuestionCheckpoint(t, workspace)
-	trees := testTrees(t)
 	synctest.Test(t, func(t *testing.T) {
-		executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
-			t.Error("restored waiting tree called the model")
-			return nil, errors.New("unexpected model call")
-		}), InteractionExecutorConfig{
-			ExecutionTrees:  trees,
-			ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{newQuestionCheckpointTool(t)}}},
-			ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
+		trees := testTrees(t)
+		entered, proceed := make(chan struct{}), make(chan struct{})
+		unblock := sync.OnceFunc(func() { close(proceed) })
+		defer unblock()
+		model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+			close(entered)
+			<-proceed
+			return interactionTextResponse("finished"), nil
 		})
+		executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{ExecutionTrees: trees})
 		start := interactionTestStart()
-		start.CWD, start.WorkspaceCWD = workspace, workspace
-		start.InterruptTypes = []run.InterruptType{run.InterruptQuestion}
-		state, err := decodeExecutorCheckpoint(checkpoint)
-		if err != nil {
-			t.Fatal(err)
-		}
-		start.WorkingContext = cloneChatMessages(state.instructions)
 		ref := runs.ExecutorRef{SessionID: start.SessionID, ExecutorID: "exec_unpublished"}
 		session, err := executor.assembleInteraction(t.Context(), ref, start, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := session.engine.Close(t.Context()); err != nil {
-			t.Fatal(err)
-		}
-		entered, proceed := make(chan struct{}), make(chan struct{})
-		unblock := sync.OnceFunc(func() { close(proceed) })
-		defer unblock()
-		state.tree, err = session.committedTree(t.Context(), state.handoff.rootID)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		durability := &blockingCheckpointDurability{interactionSession: session, entered: entered, proceed: proceed}
-		session.engine, err = agent.NewEngine(agent.EngineConfig{
-			TreeCommitter: durability,
+		// An interrupted cleanup must retain the same external resources until
+		// Scope has joined the callback, even when that callback ignores cancel.
+		program, err := interaction.Compile(session.engine.Compiler(), interaction.Config{
+			Name: "cleanup", Description: "Exercise external work draining.", Revision: "cleanup",
+			Model: interaction.CallModel(model),
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		process, err := session.engine.RestoreTree(t.Context(), session.deployment, state.tree)
+		session.deployment = program.Erase()
+		session.state.deployments.root = session.deployment
+		session.state.deployments.interactions = map[scoperun.ProgramRef]scoperun.Program[interaction.Input, interaction.Output]{program.ProgramRef(): program}
+		input, err := program.Descriptor().EncodeInput(interaction.Input{Messages: start.WorkingContext, Options: chat.Options{Model: "test-model"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		process, err := session.engine.Start(t.Context(), session.deployment, scoperun.StartRequest[scoperun.Payload]{
+			ID: scoperun.StartID{Scope: ref.SessionID, Key: ref.ExecutorID}, Input: input,
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
 		session.state.setProcess(process)
-		durability.armed.Store(true)
+		<-entered
 		discarded := make(chan error, 1)
 		go func() { discarded <- executor.discardInteraction(session) }()
-		<-entered
 		if err := <-discarded; !errors.Is(err, context.DeadlineExceeded) {
-			t.Fatalf("discard with blocked terminal observer = %v", err)
+			t.Fatalf("discard with blocked external work = %v", err)
 		}
 		if _, err := executor.session(ref); !errors.Is(err, runs.ErrExecutorNotLive) {
 			t.Fatalf("failed assembly became callable: %v", err)
@@ -135,22 +122,8 @@ func TestInteractionFailedDiscardRemainsOwnedUntilShutdown(t *testing.T) {
 		if err := <-closed; err != nil {
 			t.Fatalf("shutdown retry: %v", err)
 		}
-		if _, err := session.engine.RestoreTree(t.Context(), session.deployment, state.tree); !errors.Is(err, agent.ErrEngineClosed) {
-			t.Fatalf("shutdown did not close recovered engine: %v", err)
+		if _, err := session.engine.Recover(t.Context(), program, process.ID()); !errors.Is(err, scoperun.ErrClosed) {
+			t.Fatalf("shutdown did not close the runtime: %v", err)
 		}
 	})
-}
-
-type blockingCheckpointDurability struct {
-	*interactionSession
-	armed            atomic.Bool
-	entered, proceed chan struct{}
-}
-
-func (b *blockingCheckpointDurability) CommitCheckpoint(ctx context.Context, checkpoint agent.TreeCheckpoint) error {
-	if b.armed.CompareAndSwap(true, false) {
-		close(b.entered)
-		<-b.proceed
-	}
-	return b.interactionSession.CommitCheckpoint(ctx, checkpoint)
 }

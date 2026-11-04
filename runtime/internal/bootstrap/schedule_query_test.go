@@ -3,12 +3,18 @@ package bootstrap
 import (
 	json "encoding/json/v2"
 	"slices"
+	"strconv"
+	"testing"
+
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
+	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func scheduleToolsReady(tools []protocol.MCPTool) bool {
@@ -19,7 +25,7 @@ func scheduleQuery(r *poMCPRuntime, query protocol.PageQuery) protocol.CallPlugi
 	r.t.Helper()
 	providers := r.must(delivery.PluginsListProviders, struct{}{}, "").(*protocol.Page[protocol.PluginProviderSelection])
 	installations := r.must(delivery.PluginsList, struct{}{}, "").(*protocol.Page[protocol.PluginInstallation])
-	contracts, err := portable.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
+	contracts, err := plugincontract.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -31,18 +37,18 @@ func scheduleQuery(r *poMCPRuntime, query protocol.PageQuery) protocol.CallPlugi
 			if installation.ID != provider.InstallationID {
 				continue
 			}
-			input, err := json.Marshal(testsupport.SchedulesListInput{Cursor: query.Cursor, Limit: schedulePageLimit(query.Limit)})
+			input, err := json.Marshal(testsupport.SchedulesListInput{Cursor: query.Cursor, Limit: schedulePageLimit(r.t, query.Limit)})
 			if err != nil {
 				r.t.Fatal(err)
 			}
-			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().JSON()), Method: testsupport.SchedulesListV1Method, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installation.ID}, Input: string(input)}
+			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV1Method, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installation.ID}, Input: string(input)}
 		}
 	}
 	r.t.Fatal("selected schedule contribution unavailable")
 	return protocol.CallPluginRequest{}
 }
 
-func readSchedulePage(r *poMCPRuntime, query protocol.PageQuery) *protocol.Page[testsupport.SchedulesSnapshot] {
+func readSchedulePage(r *poMCPRuntime, query protocol.PageQuery) *protocol.Page[*testsupport.SchedulesListV1OutputDomainSnapshot] {
 	r.t.Helper()
 	reply := r.must(delivery.PluginsCall, scheduleQuery(r, query), "").(*protocol.CallPluginResponse)
 	if reply.Failure != nil {
@@ -52,18 +58,13 @@ func readSchedulePage(r *poMCPRuntime, query protocol.PageQuery) *protocol.Page[
 	if err := json.Unmarshal([]byte(reply.Output), &page); err != nil {
 		r.t.Fatal(err)
 	}
-	values := make([]testsupport.SchedulesSnapshot, 0, len(page.Rows))
-	for _, row := range page.Rows {
-		out := testsupport.SchedulesSnapshot(row)
-		values = append(values, out)
-	}
-	return protocol.NewPageWithCursor(values, page.NextCursor)
+	return protocol.NewPageWithCursor(page.Rows, page.NextCursor)
 }
 
 func scheduleRunRequest(r *poMCPRuntime, id string) protocol.CallPluginRequest {
 	r.t.Helper()
 	request := scheduleQuery(r, protocol.PageQuery{})
-	input, err := json.Marshal(testsupport.SchedulesItemInput{ID: id})
+	input, err := json.Marshal(testsupport.SchedulesRunNowV1InputWireItemInput{ID: id})
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -87,6 +88,9 @@ func readScheduleRun(r *poMCPRuntime, request protocol.CallPluginRequest, key st
 func scheduleCreateRequest(r *poMCPRuntime, draft testsupport.SchedulesDraft) protocol.CallPluginRequest {
 	r.t.Helper()
 	request := scheduleQuery(r, protocol.PageQuery{})
+	if draft.ModelSelection == nil {
+		draft.ModelSelection = &testsupport.SchedulesCreateV1InputModelSelection{}
+	}
 	input, err := json.Marshal(draft)
 	if err != nil {
 		r.t.Fatal(err)
@@ -94,13 +98,13 @@ func scheduleCreateRequest(r *poMCPRuntime, draft testsupport.SchedulesDraft) pr
 	request.Method, request.Input = testsupport.SchedulesCreateV1Method, string(input)
 	return request
 }
-func readScheduleCreate(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *testsupport.SchedulesSnapshot {
+func readScheduleCreate(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *testsupport.SchedulesCreateV1OutputDomainSnapshot {
 	r.t.Helper()
 	reply := r.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse)
 	if reply.Failure != nil {
 		r.t.Fatal(reply.Failure)
 	}
-	var snapshot testsupport.SchedulesSnapshot
+	var snapshot testsupport.SchedulesCreateV1OutputDomainSnapshot
 	if err := json.Unmarshal([]byte(reply.Output), &snapshot); err != nil {
 		r.t.Fatal(err)
 	}
@@ -109,6 +113,9 @@ func readScheduleCreate(r *poMCPRuntime, request protocol.CallPluginRequest, key
 func scheduleUpdateRequest(r *poMCPRuntime, input testsupport.SchedulesUpdateInput) protocol.CallPluginRequest {
 	r.t.Helper()
 	request := scheduleQuery(r, protocol.PageQuery{})
+	if input.ModelSelection == nil {
+		input.ModelSelection = &testsupport.SchedulesModelPatch{}
+	}
 	encoded, err := json.Marshal(input)
 	if err != nil {
 		r.t.Fatal(err)
@@ -117,9 +124,9 @@ func scheduleUpdateRequest(r *poMCPRuntime, input testsupport.SchedulesUpdateInp
 	return request
 }
 
-func schedulePageLimit(limit *int) *int64 {
+func schedulePageLimit(t testing.TB, limit *int) framevalue.Number {
 	if limit == nil {
-		return nil
+		return framevalue.Number{}
 	}
-	return new(int64(*limit))
+	return generatedNumber(t, strconv.Itoa(*limit))
 }

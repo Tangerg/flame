@@ -9,6 +9,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
@@ -17,9 +22,9 @@ import (
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
 	"github.com/Tangerg/flame/plugins/web/internal/wire"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/tools/httpreq"
 	"github.com/Tangerg/scope/tools/web"
 )
@@ -31,13 +36,14 @@ func TestTypedAndModelToolsShareSearchFetchBrowseAndDefiniteReadFailure(t *testi
 	}
 	defer store.db.Close()
 	fail := false
+	published := time.Date(2026, time.November, 4, 12, 34, 56, 123456789, time.FixedZone("source", 8*60*60))
 	research, err := newResearch(store, func(context.Context, *web.FetchRequest) (*web.FetchResponse, error) {
 		if fail {
 			return nil, errors.New("upstream unavailable")
 		}
 		return &web.FetchResponse{Content: "captured content", Format: web.FormatMarkdown}, nil
 	}, func(_ context.Context, request *web.SearchRequest) (*web.SearchResponse, error) {
-		return &web.SearchResponse{Query: request.Query, Results: []*web.SearchResult{{Title: "Example", URL: "https://example.test", Snippet: "source"}}}, nil
+		return &web.SearchResponse{Query: request.Query, Results: []*web.SearchResult{{Title: "Example", URL: "https://example.test", Snippet: "source", PublishedTime: published}}}, nil
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -55,7 +61,7 @@ func TestTypedAndModelToolsShareSearchFetchBrowseAndDefiniteReadFailure(t *testi
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "web-test", Version: "1"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -73,25 +79,25 @@ func TestTypedAndModelToolsShareSearchFetchBrowseAndDefiniteReadFailure(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	exported, err := qimumcp.ResolveCapability(t.Context(), session, "web", contracts.Capability)
+	exported, err := pluginmcp.ResolveCapability(t.Context(), session, "web", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "web-entry", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "web"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "web-entry", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "web"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	meta := make(sdk.Meta)
-	if err := meta.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: "model-web-entry", Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "web"}}); err != nil {
+	if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model-web-entry", Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "web"}}); err != nil {
 		t.Fatal(err)
 	}
-	compare := func(method, name string, input any) jsonvalue.Value {
+	compare := func(method, name string, input any) framevalue.JSON {
 		t.Helper()
 		bound, err := exported.Method(method)
 		if err != nil {
 			t.Fatal(err)
 		}
-		encoded, err := jsonvalue.Encode(input)
+		encoded, err := framevalue.EncodeJSON(input)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -107,21 +113,28 @@ func TestTypedAndModelToolsShareSearchFetchBrowseAndDefiniteReadFailure(t *testi
 		if err != nil {
 			t.Fatal(err)
 		}
-		projected, err := jsonvalue.Parse(bytes)
+		projected, err := framevalue.ParseJSON(bytes)
 		if err != nil || projected != typed {
 			t.Fatalf("typed/model read diverged: %s %s %v", typed.String(), projected.String(), err)
 		}
 		return typed
 	}
-	compare(contracts.Search.Name(), "web_search", web.SearchRequest{Query: "query", MaxResults: 1})
+	searched := compare(contracts.Search.Name(), "web_search", web.SearchRequest{Query: "query", MaxResults: 1})
+	var searchResponse wire.SearchResponse
+	if err := json.Unmarshal(searched.Bytes(), &searchResponse); err != nil {
+		t.Fatal(err)
+	}
+	if len(searchResponse.Results) != 1 || !searchResponse.Results[0].PublishedTime.Equal(published) {
+		t.Fatalf("publication time changed at the portable boundary: %s", searched.String())
+	}
 	fetched := compare(contracts.Fetch.Name(), "web_fetch", web.FetchRequest{URL: "https://example.test"})
 	var page capture.Page
-	if err := json.Unmarshal(fetched.JSON(), &page); err != nil {
+	if err := json.Unmarshal(fetched.Bytes(), &page); err != nil {
 		t.Fatal(err)
 	}
 	compare(contracts.Browse.Name(), "web_browse", wire.BrowseInput{SnapshotID: page.SnapshotID, Limit: 8192})
 	httpInput := httpreq.Request{URL: "https://api.test/resource"}
-	httpRequest, err := jsonvalue.Encode(httpInput)
+	httpRequest, err := framevalue.EncodeJSON(httpInput)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +151,7 @@ func TestTypedAndModelToolsShareSearchFetchBrowseAndDefiniteReadFailure(t *testi
 		t.Fatalf("HTTP tool: %+v %v", modelHTTP, err)
 	}
 	var typedResponse, modelResponse wire.HTTPResponse
-	if err := json.Unmarshal(typedHTTP.JSON(), &typedResponse); err != nil {
+	if err := json.Unmarshal(typedHTTP.Bytes(), &typedResponse); err != nil {
 		t.Fatal(err)
 	}
 	encodedHTTP, err := json.Marshal(modelHTTP.StructuredContent)

@@ -1,33 +1,33 @@
 package contract
 
-//go:generate sh -c "go run github.com/Tangerg/flame/plugins/sandbox/backend/cmd/contracts | go run github.com/Tangerg/qimu/cmd/qimu contract --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
+//go:generate sh -c "go run github.com/Tangerg/flame/plugins/sandbox/backend/cmd/contracts | go run github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk feature --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
 
 import (
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/plugins/sandbox/contracts"
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
 	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type Contracts struct {
-	Capability *portable.Capability
-	Execute    *qimumcp.Method[wire.ExecuteInput, sandbox.Result]
-	Limits     *qimumcp.Method[struct{}, wire.Limits]
+	Capability *plugincontract.Capability
+	Execute    *pluginmcp.Method[wire.ExecuteInput, sandbox.Result]
+	Limits     *pluginmcp.Method[struct{}, wire.Limits]
 }
 
 func NewContracts() (Contracts, error) {
 	var c Contracts
 	var err error
-	c.Capability, err = portable.ParseCapability([]byte(contracts.CapabilityJSON))
+	c.Capability, err = plugincontract.ParseCapability([]byte(contracts.CapabilityJSON))
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Execute, err = qimumcp.ImplementMethod[wire.ExecuteInput, sandbox.Result](c.Capability, contracts.ExecuteV1Method)
+	c.Execute, err = pluginmcp.ImplementMethod[wire.ExecuteInput, sandbox.Result](c.Capability, contracts.ExecuteV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Limits, err = qimumcp.ImplementMethod[struct{}, wire.Limits](c.Capability, contracts.LimitsV1Method)
+	c.Limits, err = pluginmcp.ImplementMethod[struct{}, wire.Limits](c.Capability, contracts.LimitsV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}

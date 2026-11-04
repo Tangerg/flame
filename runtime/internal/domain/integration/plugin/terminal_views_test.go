@@ -6,10 +6,12 @@ import (
 	"slices"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func terminalViewRelease(t *testing.T, views ...TerminalView) (Release, error) {
@@ -17,10 +19,10 @@ func terminalViewRelease(t *testing.T, views ...TerminalView) (Release, error) {
 	listInput := `{"type":"object","required":["Scope","CWD"],"properties":{"Scope":{"allOf":[{"enum":["project","user"]}],"type":"string"},"CWD":{"type":"string"},"Cursor":{"type":"string"}}}`
 	listOutput := `{"type":"object","properties":{"Rows":{"type":"array","items":{"$ref":"#/$defs/memory.Item"}},"NextCursor":{"type":"string"}},"$defs":{"memory.Item":{"type":"object","properties":{"ID":{"type":"string"},"Content":{"type":"string"},"Revision":{"type":"integer"},"Pinned":{"type":"boolean"}}}}}`
 	updateInput := `{"type":"object","required":["ID","ExpectedRevision","Content","Pinned"],"properties":{"ID":{"type":"string"},"ExpectedRevision":{"type":"integer"},"Content":{"type":"string"},"Pinned":{"type":"boolean"},"Model":{"type":"object","required":["Provider"],"properties":{"Provider":{"type":"string"},"Model":{"type":"string"}}}}}`
-	contract, err := portable.NewCapability(
-		portable.CapabilityConfig{Reference: "memory", Composition: portable.Selection, Scope: extension.ScopeInstallation},
+	contract, err := plugincontract.NewCapability(
+		plugincontract.CapabilityConfig{Reference: "memory", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation},
 		portable.MethodDescriptor{Name: "memory/list", Kind: portable.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(listInput), Output: jsontext.Value(listOutput)},
-		portable.MethodDescriptor{Name: "memory/update", Kind: portable.Mutation, Target: extension.ScopeInstallation, Input: jsontext.Value(updateInput), Output: jsontext.Value(`{"type":"object"}`)},
+		portable.MethodDescriptor{Name: "memory/update", Kind: portable.Command, Target: extension.ScopeInstallation, Input: jsontext.Value(updateInput), Output: jsontext.Value(`{"type":"object"}`)},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -33,9 +35,9 @@ func terminalViewRelease(t *testing.T, views ...TerminalView) (Release, error) {
 	})
 }
 
-func literal(t *testing.T, value any) jsonvalue.Value {
+func literal(t *testing.T, value any) framevalue.JSON {
 	t.Helper()
-	encoded, err := jsonvalue.Encode(value)
+	encoded, err := framevalue.EncodeJSON(value)
 	if err != nil {
 		t.Fatal(err)
 	}

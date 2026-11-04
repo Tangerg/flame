@@ -1,12 +1,12 @@
 package terminal
 
 import (
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/keymap"
-	"github.com/Tangerg/oolong/core/layout"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/keymap"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 type shortcutRow struct {
@@ -24,14 +24,14 @@ type shortcutDefinition struct {
 
 // shortcutGuide shows every configured key binding.
 type shortcutGuide struct {
-	viewport *headless.Viewport
+	viewport *base.Viewport
 	dialog   *presentationDialog
 }
 
-func newShortcutGuide(stack *headless.Stack, theme kit.Theme, glyphs kit.Glyphs, wheel input.Wheel, applicationKeys, transcriptKeys *keymap.Map) *shortcutGuide {
-	guideKeys := headless.DefaultScrollKeys()
-	for _, binding := range headless.DefaultStackKeys().Keys(headless.Close) {
-		guideKeys.Bind(headless.Close, binding...)
+func newShortcutGuide(stack *workspaceScene, theme kit.Theme, glyphs kit.Glyphs, wheel input.Wheel, applicationKeys, transcriptKeys *keymap.Map) *shortcutGuide {
+	guideKeys := base.DefaultScrollKeys()
+	for _, binding := range base.DefaultDialogKeys().Keys(base.Close) {
+		guideKeys.Bind(base.Close, binding...)
 	}
 	rows := collectShortcutRows(applicationKeys, transcriptKeys, guideKeys)
 	table := &kit.Table{
@@ -51,13 +51,11 @@ func newShortcutGuide(stack *headless.Stack, theme kit.Theme, glyphs kit.Glyphs,
 			return kit.LabelCell(kit.Label{Text: values[column], Style: styles[column], Ellipsis: glyphs.Ellipsis})
 		},
 	}
-	viewport := headless.NewViewport(headless.Static{Of: table})
+	viewport := base.NewViewport(base.ViewportConfig{Content: passiveElement(table)})
 	viewport.Keys = guideKeys
 	viewport.Scroll().Wheel(wheel)
-	return &shortcutGuide{viewport: viewport, dialog: newPresentationDialog(kit.DialogConfig{
-		Stack: stack, Theme: theme, Glyphs: glyphs, Title: "Shortcuts", Body: viewport,
+	return &shortcutGuide{viewport: viewport, dialog: newPresentationDialog(stack, kit.DialogConfig{Theme: theme, Glyphs: glyphs, Title: "Shortcuts", Body: viewport.Element(),
 		Where: layout.Placement{Width: 88, Height: 24}, Keys: guideKeys,
-		Hints: []keymap.Action{headless.ScrollUp, headless.ScrollDown, headless.Close},
 	})}
 }
 
@@ -68,9 +66,9 @@ func (g *shortcutGuide) show() {
 
 func collectShortcutRows(applicationKeys, transcriptKeys, guideKeys *keymap.Map) []shortcutRow {
 	definitions := []shortcutDefinition{
-		{area: "Guide", action: headless.ScrollUp, description: "scroll this guide up", keys: guideKeys},
-		{area: "Guide", action: headless.ScrollDown, description: "scroll this guide down", keys: guideKeys},
-		{area: "Guide", action: headless.Close, description: "close this guide", keys: guideKeys},
+		{area: "Guide", action: base.ScrollUp, description: "scroll this guide up", keys: guideKeys},
+		{area: "Guide", action: base.ScrollDown, description: "scroll this guide down", keys: guideKeys},
+		{area: "Guide", action: base.Close, description: "close this guide", keys: guideKeys},
 		{area: "Composer", action: sendPrompt, description: "send prompt or queue follow-up", keys: applicationKeys},
 		{area: "Composer", action: insertNewline, description: "insert a newline", keys: applicationKeys},
 		{area: "Composer", action: cancelRun, description: "clear draft or cancel active run", keys: applicationKeys},
@@ -93,14 +91,14 @@ func collectShortcutRows(applicationKeys, transcriptKeys, guideKeys *keymap.Map)
 		{area: "Transcript", action: scrollPageDown, description: "scroll one page down", keys: applicationKeys},
 		{area: "Transcript", action: scrollTop, description: "jump to the beginning", keys: applicationKeys},
 		{area: "Transcript", action: scrollBottom, description: "jump to the latest output", keys: applicationKeys},
-		{area: "Transcript", action: headless.SelectPrev, description: "select previous entry", keys: transcriptKeys},
-		{area: "Transcript", action: headless.SelectNext, description: "select next entry", keys: transcriptKeys},
-		{area: "Transcript", action: headless.SelectFirst, description: "select first retained entry", keys: transcriptKeys},
-		{area: "Transcript", action: headless.SelectLast, description: "select last retained entry", keys: transcriptKeys},
-		{area: "Transcript", action: headless.Expand, description: "expand selected tool", keys: transcriptKeys},
-		{area: "Transcript", action: headless.Collapse, description: "collapse selected tool", keys: transcriptKeys},
+		{area: "Transcript", action: base.SelectPrev, description: "select previous entry", keys: transcriptKeys},
+		{area: "Transcript", action: base.SelectNext, description: "select next entry", keys: transcriptKeys},
+		{area: "Transcript", action: base.SelectFirst, description: "select first retained entry", keys: transcriptKeys},
+		{area: "Transcript", action: base.SelectLast, description: "select last retained entry", keys: transcriptKeys},
+		{area: "Transcript", action: base.Expand, description: "expand selected tool", keys: transcriptKeys},
+		{area: "Transcript", action: base.Collapse, description: "collapse selected tool", keys: transcriptKeys},
 		{area: "Transcript", action: toggleDetails, description: "toggle selected tool", keys: transcriptKeys},
-		{area: "Transcript", action: headless.Copy, description: "copy selected entry", keys: transcriptKeys},
+		{area: "Transcript", action: base.Copy, description: "copy selected entry", keys: transcriptKeys},
 		{area: "Transcript", action: transcriptPrompt, description: "return to the composer", keys: transcriptKeys},
 	}
 

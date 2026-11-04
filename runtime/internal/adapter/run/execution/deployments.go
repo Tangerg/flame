@@ -4,15 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
-	"strconv"
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+
+	"github.com/Tangerg/scope/agent/interaction"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	corechat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -22,18 +21,19 @@ var _ interaction.AdvertisingTool = (*toolset.Discovery)(nil)
 type interactionDeploymentSet struct {
 	// Connection publication can occur between group resolutions. Recovery must
 	// retain each group's authority rather than reconstructing their union.
-	manifests         map[domaintool.Group]toolset.Manifest
-	root              agent.Deployment
-	delegateSource    domaintool.Ref
-	delegatesByParent map[agent.DeploymentRef]map[string]agent.Deployment
-	managedChildren   map[agent.DeploymentRef]struct{}
-	toolChildren      map[agent.DeploymentRef]struct{}
+	manifests           map[domaintool.Group]toolset.Manifest
+	root                scoperun.Program[scoperun.Payload, scoperun.Payload]
+	delegateSource      domaintool.Ref
+	delegatesByParent   map[scoperun.ProgramRef]map[string]scoperun.Program[scoperun.Payload, scoperun.Payload]
+	managedChildren     map[scoperun.ProgramRef]struct{}
+	interactionChildren map[scoperun.ProgramRef]struct{}
+	interactions        map[scoperun.ProgramRef]scoperun.Program[interaction.Input, interaction.Output]
 	// Immutable Scope Contracts are indexed by the exact Tool deployment so a
 	// checkpoint cannot borrow another layer's input schema.
-	toolContracts map[agent.DeploymentRef]map[domaintool.Ref]toolcontract.Contract
-	toolSets      map[agent.DeploymentRef]interaction.ToolSet
-	observedTools map[agent.DeploymentRef]map[domaintool.Ref]*observedInteractionTool
-	treeLimits    agent.TreeLimits
+	toolContracts map[scoperun.ProgramRef]map[domaintool.Ref]toolcontract.Contract
+	toolSets      map[scoperun.ProgramRef]interaction.ToolSet
+	observedTools map[scoperun.ProgramRef]map[domaintool.Ref]*observedInteractionTool
+	treeLimits    scoperun.TreeLimits
 }
 
 func (i *interactionDeploymentSet) close() error {
@@ -47,16 +47,15 @@ func (i *interactionDeploymentSet) close() error {
 	return err
 }
 
-func (i *interactionDeploymentSet) managedChild(reference agent.DeploymentRef) bool {
+func (i *interactionDeploymentSet) managedChild(reference scoperun.ProgramRef) bool {
 	_, found := i.managedChildren[reference]
 	return found
 }
 
-// toolChild reports whether a child Process is one ordinary Tool call. A Tool
-// call is an Item of the Run that made it, not a Run of its own, so it carries
-// no Delegate binding and projects no child Run.
-func (i *interactionDeploymentSet) toolChild(reference agent.DeploymentRef) bool {
-	_, found := i.toolChildren[reference]
+// interactionChild is the inner model loop of a delegated task. The workflow
+// adapter owns the product child Run; its Interaction is execution machinery.
+func (i *interactionDeploymentSet) interactionChild(reference scoperun.ProgramRef) bool {
+	_, found := i.interactionChildren[reference]
 	return found
 }
 
@@ -75,9 +74,9 @@ func (i *interactionDeploymentSet) hasToolReceipts() bool {
 }
 
 func (i *interactionDeploymentSet) delegateTarget(
-	parent agent.DeploymentRef,
+	parent scoperun.ProgramRef,
 	name string,
-) (agent.Deployment, bool) {
+) (scoperun.Program[scoperun.Payload, scoperun.Payload], bool) {
 	target, found := i.delegatesByParent[parent][name]
 	return target, found
 }
@@ -140,15 +139,16 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 		executor: i, session: session, start: start, model: model, counter: counter,
 		instructions: instructions, rootManifest: rootManifest,
 		deployments: &interactionDeploymentSet{
-			delegateSource:    delegateSource,
-			manifests:         map[domaintool.Group]toolset.Manifest{domaintool.GroupRoot: rootManifest},
-			toolChildren:      make(map[agent.DeploymentRef]struct{}),
-			toolContracts:     make(map[agent.DeploymentRef]map[domaintool.Ref]toolcontract.Contract),
-			toolSets:          make(map[agent.DeploymentRef]interaction.ToolSet),
-			observedTools:     make(map[agent.DeploymentRef]map[domaintool.Ref]*observedInteractionTool),
-			delegatesByParent: make(map[agent.DeploymentRef]map[string]agent.Deployment),
-			managedChildren:   make(map[agent.DeploymentRef]struct{}),
-			treeLimits:        agent.TreeLimits{MaxDepth: 2, MaxActiveChildren: uint32(i.policy.maxConcurrentToolCalls)},
+			delegateSource:      delegateSource,
+			manifests:           map[domaintool.Group]toolset.Manifest{domaintool.GroupRoot: rootManifest},
+			interactionChildren: make(map[scoperun.ProgramRef]struct{}),
+			interactions:        make(map[scoperun.ProgramRef]scoperun.Program[interaction.Input, interaction.Output]),
+			toolContracts:       make(map[scoperun.ProgramRef]map[domaintool.Ref]toolcontract.Contract),
+			toolSets:            make(map[scoperun.ProgramRef]interaction.ToolSet),
+			observedTools:       make(map[scoperun.ProgramRef]map[domaintool.Ref]*observedInteractionTool),
+			delegatesByParent:   make(map[scoperun.ProgramRef]map[string]scoperun.Program[scoperun.Payload, scoperun.Payload]),
+			managedChildren:     make(map[scoperun.ProgramRef]struct{}),
+			treeLimits:          interactionTreeLimits(start),
 		},
 	}
 	defer func() {
@@ -158,8 +158,6 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 	}()
 	if start.ChildRunAdmissionEnabled {
 		builder.maxDepth = defaultDelegateDepth
-		builder.deployments.treeLimits.MaxDepth = defaultDelegateDepth + 1
-		builder.deployments.treeLimits.MaxActiveChildren = uint32(min(uint64(i.policy.maxConcurrentToolCalls)+runs.MaxActiveChildRuns, math.MaxUint32))
 	}
 	if builder.maxDepth > 0 {
 		builder.delegatedManifest, err = i.resolveInteractionManifest(ctx, domaintool.GroupDelegated, checkpoint)
@@ -172,19 +170,14 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 }
 
 func (i *interactionDeploymentBuilder) build(ctx context.Context) (*interactionDeploymentSet, error) {
-	var next agent.Deployment
+	var next scoperun.Program[scoperun.Payload, scoperun.Payload]
 	for depth := int(i.maxDepth); depth >= 0; depth-- {
 		deployment, err := i.buildAtDepth(ctx, depth, next)
 		if err != nil {
 			return nil, err
 		}
 		if depth > 0 {
-			i.deployments.managedChildren[deployment.DeploymentRef()] = struct{}{}
-		}
-		if next.Valid() {
-			i.deployments.delegatesByParent[deployment.DeploymentRef()] = map[string]agent.Deployment{
-				i.deployments.delegateSource.ModelName(): next,
-			}
+			i.deployments.managedChildren[deployment.ProgramRef()] = struct{}{}
 		}
 		next = deployment
 	}
@@ -192,13 +185,13 @@ func (i *interactionDeploymentBuilder) build(ctx context.Context) (*interactionD
 	return i.deployments, nil
 }
 
-func (i *interactionDeploymentBuilder) buildAtDepth(ctx context.Context, depth int, next agent.Deployment) (agent.Deployment, error) {
+func (i *interactionDeploymentBuilder) buildAtDepth(ctx context.Context, depth int, next scoperun.Program[scoperun.Payload, scoperun.Payload]) (scoperun.Program[scoperun.Payload, scoperun.Payload], error) {
 	group, manifest, definitionName, definitionDescription := i.layerIdentity(depth)
 	delegates, err := i.delegateLayer(depth, next)
 	if err != nil {
-		return agent.Deployment{}, err
+		return scoperun.Program[scoperun.Payload, scoperun.Payload]{}, err
 	}
-	visible, deferred, contracts, err := wrapInteractionTools(
+	visible, deferred, contracts, observed, err := wrapInteractionTools(
 		ctx,
 		manifest,
 		i.session,
@@ -207,103 +200,67 @@ func (i *interactionDeploymentBuilder) buildAtDepth(ctx context.Context, depth i
 		i.start,
 	)
 	if err != nil {
-		return agent.Deployment{}, fmt.Errorf("execution: wrap Interaction tools at depth %d: %w", depth, err)
+		return scoperun.Program[scoperun.Payload, scoperun.Payload]{}, fmt.Errorf("execution: wrap Interaction tools at depth %d: %w", depth, err)
 	}
-	manifest.Visible, manifest.Deferred = visible, deferred
-	// An ordinary Tool is a child Process with its own Deployment now, so the
-	// Tool authority belongs to the Definition rather than to the model
-	// boundary. Flame grants no Framework capability names, so a Tool child runs
-	// under the empty set its parent also holds. A layer with no Tools carries
-	// the zero ToolSet, which is how the absence is spelled.
 	var tools interaction.ToolSet
 	if len(visible)+len(deferred) > 0 {
 		configuration, err := i.executor.interactionToolConfiguration(manifest)
 		if err != nil {
-			return agent.Deployment{}, err
+			return scoperun.Program[scoperun.Payload, scoperun.Payload]{}, err
 		}
 		tools, err = interaction.NewToolSet(interaction.ToolSetConfig{
-			Name: definitionName + ".tools", Description: definitionDescription,
-			Tools: visible, DeferredTools: deferred,
-			DecorateDispatcher: func(inner agent.Dispatcher) (agent.Dispatcher, error) {
-				return &interactionDispatcher{inner: inner, session: i.session}, nil
-			},
-			ImplementationDigest: agent.ComputeDigest([]byte(i.executor.buildID.String())),
-			ConfigurationDigest:  agent.ComputeDigest(configuration),
+			Revision: i.executor.buildID.String() + ":" + scoperun.ComputeDigest(configuration).String(),
+			Tools:    visible, DeferredTools: deferred,
 		})
 		if err != nil {
-			return agent.Deployment{}, fmt.Errorf("execution: build Interaction Tool set at depth %d: %w", depth, err)
+			return scoperun.Program[scoperun.Payload, scoperun.Payload]{}, fmt.Errorf("execution: bind Interaction Tools at depth %d: %w", depth, err)
 		}
 	}
-	definitionConfig := interaction.DefinitionConfig{
+	configuration, err := i.executor.interactionConfiguration(i.session, group, uint32(depth), i.instructions)
+	if err != nil {
+		return scoperun.Program[scoperun.Payload, scoperun.Payload]{}, err
+	}
+	contextProcessor := newInteractionModelContextReducer(
+		i.executor.config.ModelContextCompactor, i.executor.config.ModelContextState,
+		i.session, i.start, i.instructions, deferredCatalogMessage(manifest), i.counter,
+	)
+	model := interaction.CallModel(i.model)
+	if i.executor.config.StreamModelResponses && i.model.Streams() {
+		model = interaction.StreamModel(interaction.StreamModelConfig{Streamer: i.model})
+	}
+	config := interaction.Config{
 		Name: definitionName, Description: definitionDescription,
-		Delegates: delegates,
+		Revision: i.executor.buildID.String() + ":" + scoperun.ComputeDigest(configuration).String(),
+		Model:    model, ContextProcessor: contextProcessor, Tools: tools, Delegates: delegates,
 	}
-	// Tool scheduling policy belongs to a layer that has Tools. A layer without
-	// them carries neither, so the absence is one fact rather than two.
 	if tools.Configured() {
-		definitionConfig.Tools = tools
-		definitionConfig.MaxConcurrentToolCalls = i.executor.policy.maxConcurrentToolCalls
-		toolDeployment := tools.Deployment()
-		i.deployments.managedChildren[toolDeployment.DeploymentRef()] = struct{}{}
-		i.deployments.toolChildren[toolDeployment.DeploymentRef()] = struct{}{}
-		i.deployments.toolContracts[toolDeployment.DeploymentRef()] = contracts
-		i.deployments.toolSets[toolDeployment.DeploymentRef()] = tools
-		observed := make(map[domaintool.Ref]*observedInteractionTool)
-		for _, executable := range append(visible, deferred...) {
-			owner, found, err := toolcontract.Capability[*observedInteractionTool](executable)
-			if err != nil || !found {
-				return agent.Deployment{}, errors.Join(errors.New("execution: Tool owner is unavailable"), err)
-			}
-			observed[owner.ref] = owner
+		config.MaxConcurrentToolCalls = i.executor.policy.maxConcurrentToolCalls
+	}
+	program, err := interaction.Compile(i.session.engine.Compiler(), config)
+	if err != nil {
+		return scoperun.Program[scoperun.Payload, scoperun.Payload]{}, fmt.Errorf("execution: compile Interaction at depth %d: %w", depth, err)
+	}
+	reference := program.ProgramRef()
+	i.deployments.interactions[reference] = program
+	i.deployments.toolContracts[reference] = contracts
+	i.deployments.toolSets[reference] = tools
+	i.deployments.observedTools[reference] = observed
+	if next.Valid() {
+		i.deployments.delegatesByParent[reference] = map[string]scoperun.Program[scoperun.Payload, scoperun.Payload]{
+			i.deployments.delegateSource.ModelName(): next,
 		}
-		i.deployments.observedTools[toolDeployment.DeploymentRef()] = observed
 	}
-	definition, err := interaction.NewDefinition(definitionConfig)
-	if err != nil {
-		return agent.Deployment{}, fmt.Errorf("execution: build Interaction definition at depth %d: %w", depth, err)
-	}
-	contextReducer := newInteractionModelContextReducer(
-		i.executor.config.ModelContextCompactor,
-		i.executor.config.ModelContextState,
-		i.session,
-		i.start,
-		i.instructions,
-		deferredCatalogMessage(manifest),
-		i.counter,
-	)
-	// The Dispatcher takes exactly one model capability. Streaming is requested
-	// by configuration but offered only by a provider that has it, so a
-	// non-streaming provider answers complete responses without a second switch.
-	dispatcherConfig := interaction.DispatcherConfig{ModelContextReducer: contextReducer}
-	model := i.model
-	if i.executor.config.StreamModelResponses && model.Streams() {
-		dispatcherConfig.Streamer = model
-	} else {
-		dispatcherConfig.Model = model
-	}
-	dispatcher, err := interaction.NewDispatcher(definition, dispatcherConfig)
-	if err != nil {
-		return agent.Deployment{}, fmt.Errorf("execution: build Interaction dispatcher at depth %d: %w", depth, err)
-	}
-	deploymentDefinition, err := i.deploymentDefinition(depth, definition)
-	if err != nil {
-		return agent.Deployment{}, err
-	}
-	configuration, err := i.executor.interactionConfiguration(
-		i.session, group, uint32(depth),
-		i.instructions,
-	)
-	if err != nil {
-		return agent.Deployment{}, err
-	}
-	deployment, err := agent.NewDeployment(agent.DeploymentConfig{
-		Definition:           deploymentDefinition,
-		Dispatcher:           &interactionDispatcher{inner: dispatcher, session: i.session},
-		ImplementationDigest: agent.ComputeDigest([]byte(i.executor.buildID.String())),
-		ConfigurationDigest:  agent.ComputeDigest(configuration),
-	})
-	if err != nil {
-		return agent.Deployment{}, fmt.Errorf("execution: build Interaction deployment at depth %d: %w", depth, err)
+	deployment := program.Erase()
+	if depth > 0 {
+		i.deployments.managedChildren[reference] = struct{}{}
+		i.deployments.interactionChildren[reference] = struct{}{}
+		adapted, err := compileDelegatedInteraction(i.session.engine.Compiler(),
+			fmt.Sprintf("flame.runtime.delegated_task.depth%d", depth),
+			config.Revision, program, i.instructions, delegatedExecutionOptions(i.session.start))
+		if err != nil {
+			return scoperun.Program[scoperun.Payload, scoperun.Payload]{}, err
+		}
+		deployment = adapted.Erase()
 	}
 	return deployment, nil
 }
@@ -340,14 +297,14 @@ func delegatedDefinitionName(depth int) string {
 
 func (i *interactionDeploymentBuilder) delegateLayer(
 	depth int,
-	next agent.Deployment,
+	next scoperun.Program[scoperun.Payload, scoperun.Payload],
 ) ([]interaction.Delegate, error) {
 	if !next.Valid() {
 		return nil, nil
 	}
 	delegate, err := interaction.NewDelegate(interaction.DelegateConfig{
 		Name: i.deployments.delegateSource.ModelName(), Description: delegateDescription,
-		Deployment: next,
+		Child: scoperun.ChildBinding{Program: next},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("execution: build Delegate at depth %d: %w", depth, err)
@@ -355,16 +312,16 @@ func (i *interactionDeploymentBuilder) delegateLayer(
 	return []interaction.Delegate{delegate}, nil
 }
 
-func (i *interactionDeploymentBuilder) deploymentDefinition(
-	depth int,
-	definition *interaction.Definition,
-) (agent.Definition, error) {
-	if depth == 0 {
-		return definition, nil
+func interactionTreeLimits(start runs.RootExecutionStart) scoperun.TreeLimits {
+	limits := scoperun.DefaultTreeLimits()
+	// Each delegated task is a workflow containing one Interaction child.
+	limits.MaxDepth = 2 * defaultDelegateDepth
+	limits.MaxActiveChildren = runs.MaxActiveChildRuns
+	if !start.ChildRunAdmissionEnabled {
+		limits.MaxDepth = 1
+		limits.MaxActiveChildren = 1
 	}
-	return newDelegatedInteractionDefinition(
-		"flame.runtime.delegated_task.depth"+strconv.Itoa(depth), definition, i.instructions, delegatedExecutionOptions(i.session.start),
-	)
+	return limits
 }
 
 func (i *InteractionExecutor) resolveInteractionManifest(

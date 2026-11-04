@@ -187,20 +187,20 @@ export function QuestionCard({
     }
     questionFocusIntent.current = null;
     const question = activeQuestionRef.current;
-    let cancelled = false;
+    const cancelledState = { value: false };
     // Let composite items publish their roving indexes before moving page focus.
     queueMicrotask(() => {
       const active = document.activeElement;
       const ownsFocus =
         active === intent.origin || (!intent.origin?.isConnected && active === document.body);
-      if (cancelled || !question?.isConnected || !ownsFocus) return;
+      if (cancelledState.value || !question?.isConnected || !ownsFocus) return;
       const target =
         question.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]') ??
         question.querySelector<HTMLElement>('[role="radio"], [role="checkbox"], textarea, input');
       target?.focus();
     });
     return () => {
-      cancelled = true;
+      cancelledState.value = true;
     };
   }, [activeIndex]);
 

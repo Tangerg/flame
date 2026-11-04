@@ -11,7 +11,7 @@
           "type": "array"
         },
         "review": {
-          "$ref": "#/$defs/Snapshot"
+          "$ref": "#/$defs/ReviewsAnalyzersOutputContractSnapshot"
         }
       },
       "required": [
@@ -55,7 +55,7 @@
       "properties": {
         "reviews": {
           "items": {
-            "$ref": "#/$defs/Snapshot"
+            "$ref": "#/$defs/ReviewsListOutputContractSnapshot"
           },
           "type": "array"
         }
@@ -73,6 +73,44 @@
     "ReviewsAnalyzersOutput": {
       "$ref": "#/$defs/Analysis"
     },
+    "ReviewsAnalyzersOutputContractSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "status": {
+          "allOf": [
+            {
+              "enum": [
+                "open",
+                "resolved"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "status",
+        "revision"
+      ],
+      "type": "object"
+    },
     "ReviewsListInput": {
       "additionalProperties": false,
       "properties": {},
@@ -81,13 +119,51 @@
     "ReviewsListOutput": {
       "$ref": "#/$defs/ListResult"
     },
+    "ReviewsListOutputContractSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "status": {
+          "allOf": [
+            {
+              "enum": [
+                "open",
+                "resolved"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "status",
+        "revision"
+      ],
+      "type": "object"
+    },
     "ReviewsUpdateInput": {
       "$ref": "#/$defs/Update"
     },
     "ReviewsUpdateOutput": {
       "$ref": "#/$defs/UpdateResult"
     },
-    "Snapshot": {
+    "ReviewsUpdateOutputContractSnapshot": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -127,6 +203,15 @@
     },
     "Update": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "id": {
+              "maxLength": 128
+            }
+          }
+        }
+      ],
       "properties": {
         "expectedRevision": {
           "allOf": [
@@ -138,7 +223,6 @@
           "type": "integer"
         },
         "id": {
-          "maxLength": 128,
           "type": "string"
         },
         "status": {
@@ -164,7 +248,7 @@
       "additionalProperties": false,
       "properties": {
         "review": {
-          "$ref": "#/$defs/Snapshot"
+          "$ref": "#/$defs/ReviewsUpdateOutputContractSnapshot"
         },
         "type": {
           "allOf": [

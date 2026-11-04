@@ -7,14 +7,16 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type streamCallbackOwnerKey struct{}
@@ -53,7 +55,7 @@ func TestCallbackInstalledStreamKeepsCapturedOwnerAndRefusesRetiredOrMissingCont
 	if err != nil {
 		t.Fatal(err)
 	}
-	callbacks := qimumcp.NewCallbacks()
+	callbacks := pluginmcp.NewCallbacks()
 	defer callbacks.Close()
 	if err := callbacks.PublishRPC(rpc); err != nil {
 		t.Fatal(err)
@@ -63,7 +65,7 @@ func TestCallbackInstalledStreamKeepsCapturedOwnerAndRefusesRetiredOrMissingCont
 		t.Fatal(err)
 	}
 	owner := context.WithValue(t.Context(), streamCallbackOwnerKey{}, "original owner")
-	ref, release, err := callbacks.OpenRPC(owner, session, qimumcp.CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 4096})
+	ref, release, err := callbacks.OpenRPC(owner, session, pluginmcp.CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 4096})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +94,7 @@ func TestCallbackInstalledStreamKeepsCapturedOwnerAndRefusesRetiredOrMissingCont
 	if chunks != 1 || results != 1 || target.calls.Load() != 1 {
 		t.Fatalf("callback chunks=%d results=%d calls=%d", chunks, results, target.calls.Load())
 	}
-	invoked, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original", Origin: extension.Model, Parent: "parent", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original"}})
+	invoked, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original", Origin: extension.Model, Parent: "parent", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +106,7 @@ func TestCallbackInstalledStreamKeepsCapturedOwnerAndRefusesRetiredOrMissingCont
 	retained := bound.Stream(t.Context(), map[string]string{}, protocol.PluginCallOptions{IdempotencyKey: "original"})
 	release()
 	for _, err := range retained {
-		if !errors.Is(err, qimumcp.ErrStaleCall) || errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
+		if !errors.Is(err, pluginmcp.ErrStaleCall) || errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
 			t.Fatalf("retired original reference=%v", err)
 		}
 	}

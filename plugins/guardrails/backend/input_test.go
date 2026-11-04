@@ -1,6 +1,8 @@
 package main
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"encoding/json/jsontext"
 	"errors"
@@ -25,10 +27,10 @@ func TestInspectionCoversComposedTextToolContractsAndOptionsWithJSONEscaping(t *
 		}},
 		{"quoted text", func(r *chat.Request) { r.Messages[0] = chat.NewUserMessage(chat.NewTextPart("private-\"quoted\"")) }},
 		{"tool description", func(r *chat.Request) {
-			r.Tools = []chat.ToolDefinition{{Name: "read", Description: phrase, InputSchema: jsontext.Value(`{"type":"object"}`)}}
+			r.Tools = []toolcontract.Definition{{Name: "read", Description: phrase, InputSchema: jsontext.Value(`{"type":"object"}`)}}
 		}},
 		{"escaped schema", func(r *chat.Request) {
-			r.Tools = []chat.ToolDefinition{{Name: "read", InputSchema: jsontext.Value(`{"type":"object","description":"\u0070atient@example.test"}`)}}
+			r.Tools = []toolcontract.Definition{{Name: "read", InputSchema: jsontext.Value(`{"type":"object","description":"\u0070atient@example.test"}`)}}
 		}},
 		{"options", func(r *chat.Request) { r.Options.Stop = []string{phrase} }},
 	} {

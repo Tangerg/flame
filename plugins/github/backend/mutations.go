@@ -10,44 +10,46 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
-	"github.com/Tangerg/frame/sqlite"
+
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/scope/core/chat"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/tool"
 )
 
 func decodeWriteReply[R any](method *portable.Method, reply []byte) (R, error) {
 	var result R
-	raw, err := qimumcp.DecodeReply[jsontext.Value](reply)
+	raw, err := pluginmcp.DecodeReply[jsontext.Value](reply)
 	if err != nil {
 		return result, err
 	}
 	if err := method.ValidateOutput(raw); err != nil {
 		return result, err
 	}
-	err = json.Unmarshal(raw, &result, json.RejectUnknownMembers(true), jsonvalue.Numbers())
+	err = json.Unmarshal(raw, &result, json.RejectUnknownMembers(true), framevalue.Numbers())
 	return result, err
 }
 
-func mutate[P, R any](ctx context.Context, c *connector, method *portable.Method, id string, admitted jsonvalue.Value, call func(context.Context, P) (R, error)) (R, error) {
+func mutate[P, R any](ctx context.Context, c *connector, method *portable.Method, id string, admitted framevalue.JSON, call func(context.Context, P) (R, error)) (R, error) {
 	var zero R
 	var input P
 	prepared, original, err := pluginstorage.AdmitCommand(ctx, c.store.db, method.Name(), id, admitted, func(ctx context.Context) error {
 		if err := method.ValidateInput(admitted); err != nil {
 			return err
 		}
-		if err := json.Unmarshal(admitted.JSON(), &input, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
+		if err := json.Unmarshal(admitted.Bytes(), &input, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
 			return err
 		}
 		// Any dispatched write can affect several query pages. Invalidation joins
 		// admission so a lost acknowledgement cannot preserve a pre-write cache.
-		_, err := sqlite.Connection(ctx, c.store.db).ExecContext(ctx, `DELETE FROM responses`)
+		_, err := pluginstorage.Connection(ctx, c.store.db).ExecContext(ctx, `DELETE FROM responses`)
 		return err
 	})
 	if err != nil {
@@ -61,27 +63,27 @@ func mutate[P, R any](ctx context.Context, c *connector, method *portable.Method
 	}
 	value, outcomeErr := call(ctx, input)
 	if outcomeErr == nil {
-		encoded, err := jsonvalue.Encode(value)
+		encoded, err := framevalue.EncodeJSON(value)
 		if err != nil {
 			return zero, err
 		}
-		if err := method.ValidateOutput(encoded.JSON()); err != nil {
+		if err := method.ValidateOutput(encoded.Bytes()); err != nil {
 			return zero, err
 		}
 	}
-	reply, err := qimumcp.EncodeReply(value, outcomeErr, classify)
+	reply, err := pluginmcp.EncodeReply(value, outcomeErr, classify)
 	if err != nil {
 		return zero, err
 	}
-	if err := prepared.SettleExternal(ctx, reply.JSON(), nil); err != nil {
+	if err := prepared.SettleExternal(ctx, reply.Bytes(), nil); err != nil {
 		return zero, err
 	}
-	return decodeWriteReply[R](method, reply.JSON())
+	return decodeWriteReply[R](method, reply.Bytes())
 }
 
-type toolReceiptReader func(context.Context, qimumcp.ReceiptRequest) (pluginsdk.ToolReceipt, error)
+type toolReceiptReader func(context.Context, pluginmcp.ReceiptRequest) (pluginsdk.ToolReceipt, error)
 
-func registerWrite[P, R any](backend *qimumcp.Backend, tools *[]tool.Tool, receipts map[string]toolReceiptReader, c *connector, method *qimumcp.Method[P, R], name string, call func(context.Context, P) (R, error)) error {
+func registerWrite[P, R any](backend *pluginmcp.Backend, tools *[]tool.Tool, receipts map[string]toolReceiptReader, c *connector, method *pluginmcp.Method[P, R], name string, call func(context.Context, P) (R, error)) error {
 	contract, err := portable.AdmitMethod(method.Descriptor())
 	if err != nil {
 		return err
@@ -92,7 +94,7 @@ func registerWrite[P, R any](backend *qimumcp.Backend, tools *[]tool.Tool, recei
 		if err != nil {
 			return zero, err
 		}
-		original, err := qimumcp.RequestInput(ctx)
+		original, err := pluginmcp.RequestInput(ctx)
 		if err != nil {
 			return zero, err
 		}
@@ -102,7 +104,7 @@ func registerWrite[P, R any](backend *qimumcp.Backend, tools *[]tool.Tool, recei
 	if err != nil {
 		return err
 	}
-	if err := method.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[P]) (R, error) {
+	if err := method.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[P]) (R, error) {
 		original, err := command.RequestInput()
 		if err != nil {
 			var zero R
@@ -112,7 +114,7 @@ func registerWrite[P, R any](backend *qimumcp.Backend, tools *[]tool.Tool, recei
 	}); err != nil {
 		return err
 	}
-	receipts[name] = func(ctx context.Context, input qimumcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
+	receipts[name] = func(ctx context.Context, input pluginmcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
 		input.Method = method.Name()
 		receipt, err := pluginstorage.ReadReceipt(ctx, c.store.db, input)
 		if err != nil || !receipt.Found {
@@ -130,7 +132,7 @@ func registerWrite[P, R any](backend *qimumcp.Backend, tools *[]tool.Tool, recei
 		if err != nil {
 			return pluginsdk.ToolReceipt{}, err
 		}
-		output, err := chat.NewJSONToolOutput(encoded)
+		output, err := tool.NewJSONOutput(encoded)
 		if err != nil {
 			return pluginsdk.ToolReceipt{}, err
 		}
@@ -144,7 +146,7 @@ func writeFailure(err error) error {
 	if _, refused := classify(err); err == nil || !refused {
 		return err
 	}
-	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: chat.NewTextToolOutput(err.Error()), Cause: err})
+	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: tool.NewTextOutput(err.Error()), Cause: err})
 	if failureErr != nil {
 		return errors.Join(failureErr, err)
 	}

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"iter"
 
-	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/frame"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -79,7 +79,7 @@ func wireRunResumeErr(err error) error {
 		return protocol.ErrSessionBusy
 	case errors.Is(err, runs.ErrRunNotFound):
 		return protocol.ErrRunNotFound
-	case errors.Is(err, runs.ErrInstallationChanged), errors.Is(err, qimu.ErrStaleBinding):
+	case errors.Is(err, runs.ErrInstallationChanged), errors.Is(err, frame.ErrStaleBinding):
 		return pluginChanged(err)
 	default:
 		return err

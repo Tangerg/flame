@@ -25,7 +25,7 @@ func TestContinuationPreflightDoesNotAssembleOrAcquireAWriter(t *testing.T) {
 	}
 	var answers []runs.InterruptAnswer
 	for wait, target := range state.handoff.inputs {
-		answers = append(answers, runs.InterruptAnswer{MemberID: target.memberID.String(), RequestID: wait.String(), InterruptItemID: "item_answer", Resolution: testsupport.QuestionAnswer(t, [][]string{{"chosen"}})})
+		answers = append(answers, runs.InterruptAnswer{MemberID: target.memberID.String(), RequestID: wait, InterruptItemID: "item_answer", Resolution: testsupport.QuestionAnswer(t, [][]string{{"chosen"}})})
 	}
 	executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		t.Fatal("preflight invoked a model")

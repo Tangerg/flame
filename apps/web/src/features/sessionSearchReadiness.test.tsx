@@ -32,7 +32,7 @@ beforeEach(async (context) => {
   readSessions.mockReset().mockRejectedValue(new Error("Runtime unavailable"));
   useSessionSearchStore.getState().setOpen(false);
   await contributeForTest((ctx) => {
-    ctx.contribute(DATA_PROVIDER, { key: AGENT_SESSIONS_KEY, fetcher: readSessions });
+    ctx.contributions.add(DATA_PROVIDER, { key: AGENT_SESSIONS_KEY, fetcher: readSessions });
   });
   const owned = createTestClient({ start: false });
   client = owned;

@@ -11,10 +11,13 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/qimu/integrity"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 // Worst-case JSON escaping still fits the standard 16 MiB MCP frame, including
@@ -24,14 +27,14 @@ const MaxProblems = 4096
 const MaxSummaryBytes = 64 << 10
 
 type Document struct {
-	Workspace string           `json:"workspace"`
-	Path      string           `json:"path"`
-	Version   integrity.Digest `json:"version"`
-	Content   string           `json:"content"`
+	Workspace string            `json:"workspace"`
+	Path      string            `json:"path"`
+	Version   framevalue.Digest `json:"version"`
+	Content   string            `json:"content"`
 }
 
 func NewDocument(workspace, path, content string) (Document, error) {
-	document := Document{Workspace: workspace, Path: path, Content: content, Version: integrity.Hash([]byte(content))}
+	document := Document{Workspace: workspace, Path: path, Content: content, Version: framevalue.Hash([]byte(content))}
 	return document, document.Validate()
 }
 
@@ -44,15 +47,15 @@ func (d Document) Validate() error {
 	if err := validateContent(d.Content); err != nil {
 		return err
 	}
-	if d.Version != integrity.Hash([]byte(d.Content)) {
+	if d.Version != framevalue.Hash([]byte(d.Content)) {
 		return errors.New("code intelligence: document version does not identify its content")
 	}
 	return nil
 }
 
 type Transformation struct {
-	Version integrity.Digest `json:"version"`
-	Content *string          `json:"content,omitzero"`
+	Version framevalue.Digest `json:"version"`
+	Content *string           `json:"content,omitzero"`
 }
 
 func (t Transformation) Validate(source Document) error {
@@ -77,9 +80,9 @@ func (i Inspection) Validate() error {
 }
 
 type Report struct {
-	Version  integrity.Digest `json:"version"`
-	Problems []string         `json:"problems"`
-	Summary  string           `json:"summary"`
+	Version  framevalue.Digest `json:"version"`
+	Problems []string          `json:"problems"`
+	Summary  string            `json:"summary"`
 }
 
 func (r Report) Validate(source Document) error {
@@ -117,15 +120,15 @@ func validateContent(value string) error {
 	return nil
 }
 
-func FormatMethod() (*qimumcp.Method[Document, Transformation], error) {
-	return qimumcp.NewMethod[Document, Transformation](qimumcp.MethodConfig{Name: "flame.code-intelligence/format.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Compute a transformation of the supplied exact source version without writing workspace files. Absent content means unsupported formatting."})
+func FormatMethod() (*pluginmcp.Method[Document, Transformation], error) {
+	return pluginmcp.NewMethod[Document, Transformation](portable.MethodConfig{Name: "flame.code-intelligence/format.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Compute a transformation of the supplied exact source version without writing workspace files. Absent content means unsupported formatting."})
 }
 
-func InspectMethod() (*qimumcp.Method[Inspection, Report], error) {
-	return qimumcp.NewMethod[Inspection, Report](qimumcp.MethodConfig{Name: "flame.code-intelligence/inspect.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Analyze the supplied source version and render newly introduced problems against the captured baseline. Unavailable or stale diagnostics are explicit failures."})
+func InspectMethod() (*pluginmcp.Method[Inspection, Report], error) {
+	return pluginmcp.NewMethod[Inspection, Report](portable.MethodConfig{Name: "flame.code-intelligence/inspect.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Analyze the supplied source version and render newly introduced problems against the captured baseline. Unavailable or stale diagnostics are explicit failures."})
 }
 
-func Contract() (*portable.Capability, error) {
+func Contract() (*plugincontract.Capability, error) {
 	format, err := FormatMethod()
 	if err != nil {
 		return nil, err
@@ -134,5 +137,5 @@ func Contract() (*portable.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.code-intelligence.v1", Composition: portable.Selection, Scope: extension.ScopeInstallation}, format.Descriptor(), inspect.Descriptor())
+	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "flame.code-intelligence.v1", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, format.Descriptor(), inspect.Descriptor())
 }

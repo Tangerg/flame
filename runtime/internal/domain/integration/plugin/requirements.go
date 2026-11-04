@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"slices"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type BoundContribution struct {
@@ -15,13 +16,13 @@ type BoundContribution struct {
 	Contribution ContributionID
 	Server       mcpserver.ServerName
 	Export       string
-	Contract     jsonvalue.Value
+	Contract     framevalue.JSON
 }
 
 type ResolvedRequirement struct {
 	Contribution ContributionID
 	ID           ContributionID
-	Contract     jsonvalue.Value
+	Contract     framevalue.JSON
 	Optional     bool
 	Bindings     []BoundContribution
 }
@@ -45,11 +46,11 @@ func NewRequiredBindings(values []ResolvedRequirement) (*RequiredBindings, error
 			return nil, fmt.Errorf("%w: duplicate resolved requirement %s", ErrInvalid, key)
 		}
 		seen[[2]ContributionID{value.Contribution, value.ID}] = true
-		contract, err := portable.ParseCapability(value.Contract.JSON())
+		contract, err := plugincontract.ParseCapability(value.Contract.Bytes())
 		if err != nil {
 			return nil, fmt.Errorf("%w: requirement %s contract: %w", ErrInvalid, key, err)
 		}
-		if !value.Optional && len(value.Bindings) == 0 || contract.Descriptor().Composition == portable.Selection && len(value.Bindings) > 1 {
+		if !value.Optional && len(value.Bindings) == 0 || contract.Descriptor().Composition == plugincontract.Selection && len(value.Bindings) > 1 {
 			return nil, fmt.Errorf("%w: requirement %s binding cardinality", ErrInvalid, key)
 		}
 		owned.values[i].Contract = contract.Identity()
@@ -69,7 +70,7 @@ func NewRequiredBindings(values []ResolvedRequirement) (*RequiredBindings, error
 			if err := binding.Server.Validate(); err != nil {
 				return nil, err
 			}
-			if !portable.ValidExportName(binding.Export) || binding.Contract != contract.Identity() {
+			if !plugincontract.ValidExportName(binding.Export) || binding.Contract != contract.Identity() {
 				return nil, fmt.Errorf("%w: requirement %s binding contract", ErrInvalid, key)
 			}
 			providerKey := provider{binding.Provider.InstallationID, binding.Contribution}
@@ -93,7 +94,7 @@ func (b *RequiredBindings) Snapshot() []ResolvedRequirement {
 	return values
 }
 
-func (b *RequiredBindings) Allows(provider Dependency, contribution ContributionID, contract jsonvalue.Value) bool {
+func (b *RequiredBindings) Allows(provider Dependency, contribution ContributionID, contract framevalue.JSON) bool {
 	if b == nil {
 		return false
 	}

@@ -7,9 +7,10 @@ package plan
 import (
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"slices"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"

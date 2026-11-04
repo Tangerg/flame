@@ -7,12 +7,12 @@ import { CommandMenu } from "@/features/command/menu/ui/CommandMenu";
 export default definePlugin({
   name: "flame.builtin.command-menu",
   setup(ctx) {
-    contributeLayout(ctx, "app.overlay", {
+    contributeLayout(ctx.contributions, "app.overlay", {
       id: "command-menu",
       order: 20,
       component: CommandMenu,
     });
-    ctx.contribute(COMMAND, {
+    ctx.contributions.add(COMMAND, {
       id: COMMAND_MENU_COMMAND,
       label: "command.openCommandMenu",
       combo: "Mod+Shift+P",

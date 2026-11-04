@@ -16,13 +16,13 @@
     "@flame/runtime-client": "*",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "@qimu/sdk": "0.1.0"
+    "@frame/sdk": "https://github.com/Tangerg/frame/releases/download/v0.1.0/frame-sdk-0.1.0.tgz"
   },
   "devDependencies": {
     "typescript": "^7.0.2",
     "@types/react": "^19.3.0",
-    "rolldown": "^1.2.15",
-    "oxlint": "^1.89.0",
+    "rolldown": "^1.2.16",
+    "oxlint": "^1.91.0",
     "prettier": "^3.9.10"
   }
 }

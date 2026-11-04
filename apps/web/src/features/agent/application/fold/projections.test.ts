@@ -1,4 +1,4 @@
-import { parseJSON } from "@qimu/sdk/json";
+import { parseJSON } from "@frame/sdk/json";
 import type { AgentToolInvocation } from "@/features/agent/public/events";
 import { describe, expect, it } from "vitest";
 import {

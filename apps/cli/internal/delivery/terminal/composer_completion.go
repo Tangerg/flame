@@ -2,19 +2,21 @@ package terminal
 
 import (
 	"context"
+	"image"
 	"strings"
 
+	"github.com/Tangerg/oolong/ui/core/scene"
+
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/layout"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 type completionQuery struct {
 	line  int
-	token headless.Token
+	token base.Token
 }
 
 // completionGate remembers a token whose popup was explicitly closed. A key-up
@@ -48,7 +50,8 @@ func (c *completionGate) Reset() {
 // under the prompt's cursor. gate keeps an explicitly closed offer closed until
 // its token changes.
 type promptCompletion struct {
-	popup    headless.Completion
+	popup    base.Completion
+	group    *scene.Group
 	gate     completionGate
 	composer *promptComposer
 	tasks    taskRunner
@@ -76,11 +79,11 @@ func newPromptCompletion(cfg promptCompletionConfig) *promptCompletion {
 		composer: cfg.composer, tasks: cfg.tasks, commands: cfg.commands, theme: cfg.theme, glyphs: cfg.glyphs,
 		notify: cfg.notify, availability: cfg.availability,
 	}
-	keys := headless.DefaultCompletionKeys()
-	keys.Bind(headless.Accept, input.Chord{Code: input.Enter})
-	p.popup = headless.Completion{
+	keys := base.DefaultCompletionKeys()
+	keys.Bind(base.Accept, input.Chord{Code: input.Enter})
+	p.popup = base.Completion{
 		Look: p.theme.Look(p.glyphs), Keys: keys,
-		Accept: func(candidate headless.Candidate, token headless.Token) {
+		Accept: func(candidate base.Candidate, token base.Token) {
 			// Acceptance closes both halves of completion: Oolong has already
 			// dismissed the list, while the application must retire its async
 			// producer so an older file lookup cannot reopen the accepted token.
@@ -90,7 +93,7 @@ func newPromptCompletion(cfg promptCompletionConfig) *promptCompletion {
 				return
 			}
 			p.gate.Reset()
-			p.composer.Editor().Replace(token.Start, token.End, candidate.Text)
+			p.composer.Controller().Replace(token.Start, token.End, candidate.Text)
 			p.composer.scheduleDraftPersistence()
 		},
 	}
@@ -115,14 +118,14 @@ func (c *promptCompletion) refreshCompletion() {
 		return
 	}
 	found := c.commands.find(token.Query)
-	candidates := make([]headless.Candidate, 0, len(found))
+	candidates := make([]base.Candidate, 0, len(found))
 	for _, match := range found {
 		availability := c.availability(match.Command.Name)
 		detail := match.Command.Title
 		if !availability.Enabled() {
 			detail = "unavailable: " + availability.Reason()
 		}
-		candidates = append(candidates, headless.Candidate{
+		candidates = append(candidates, base.Candidate{
 			Text: match.Command.Name, Label: match.Command.Name,
 			Detail: detail, Matched: match.At,
 		})
@@ -131,14 +134,14 @@ func (c *promptCompletion) refreshCompletion() {
 }
 
 func (c *promptCompletion) currentCompletionQuery() (completionQuery, bool) {
-	lines := strings.Split(c.composer.Editor().Text(), "\n")
-	line, column := c.composer.Editor().Cursor()
+	lines := strings.Split(c.composer.Controller().Text(), "\n")
+	line, column := c.composer.Controller().Cursor()
 	if line < 0 || line >= len(lines) {
 		return completionQuery{}, false
 	}
-	token, ok := headless.TokenAt(lines[line], column,
-		headless.Trigger{Prefix: "/", AtStart: true},
-		headless.Trigger{Prefix: "@"},
+	token, ok := base.TokenAt(lines[line], column,
+		base.Trigger{Prefix: "/", AtStart: true},
+		base.Trigger{Prefix: "@"},
 	)
 	if !ok {
 		return completionQuery{}, false
@@ -171,17 +174,17 @@ func (c *promptCompletion) completeFiles(query completionQuery) {
 	}
 	resolver := c.composer.attachments
 	c.tasks.session(completionOperation, true,
-		func(ctx context.Context) ([]headless.Candidate, error) {
+		func(ctx context.Context) ([]base.Candidate, error) {
 			matches, err := resolver.Complete(ctx, query.token.Query)
-			candidates := make([]headless.Candidate, 0, len(matches))
+			candidates := make([]base.Candidate, 0, len(matches))
 			for _, match := range matches {
-				candidates = append(candidates, headless.Candidate{
+				candidates = append(candidates, base.Candidate{
 					Text: match.Path, Label: match.Path, Detail: match.Detail, Matched: match.Matched,
 				})
 			}
 			return candidates, err
 		},
-		func(candidates []headless.Candidate, err error) {
+		func(candidates []base.Candidate, err error) {
 			if !c.gate.Allow(query) {
 				c.popup.Dismiss()
 				return
@@ -209,32 +212,38 @@ func (c *promptCompletion) exactCommandCompletion() bool {
 	return selected && candidate.Text == command.Name
 }
 
-func (c *promptCompletion) drawCompletion(frame headless.Frame) {
-	width, height := frame.Size()
+func (c *promptCompletion) Element() scene.Element {
+	if c.group == nil {
+		c.group = scene.NewGroup(scene.GroupConfig{
+			Items: []scene.Item{{Element: c.popup.Element(), Size: layout.Flex(1)}},
+			Element: scene.ElementConfig{Enabled: c.popup.Open, Paint: func(frame scene.Frame) {
+				box, area := c.placement(frame.Bounds().Size())
+				box.Draw(frame.View.Sub(area))
+			}},
+			Layout: func(space image.Point, _ []scene.Item) []image.Rectangle {
+				box, area := c.placement(space)
+				return []image.Rectangle{box.InnerRect(area.Size()).Add(area.Min)}
+			},
+		})
+	}
+	return c.group.Element()
+}
+
+func (c *promptCompletion) placement(space image.Point) (kit.Box, image.Rectangle) {
+	width, height := space.X, space.Y
 	rows := c.popup.HeightForWidth(width)
 	promptHeight := c.prompt.HeightForWidth(width)
 	availableHeight := height - promptHeight
 	if width <= 2 || availableHeight <= 2 || rows <= 0 {
-		return
+		return kit.Box{}, image.Rectangle{}
 	}
-	title := "commands"
-	footer := "enter complete"
+	title, footer := "commands", "enter complete"
 	if token, ok := c.popup.Token(); ok && token.Trigger.Prefix == "@" {
-		title = "workspace files"
-		footer = "enter attach"
+		title, footer = "workspace files", "enter attach"
 	} else if c.exactCommandCompletion() {
 		footer = "enter run"
 	}
-	box := kit.Box{
-		Theme: c.theme, Glyphs: c.glyphs,
-		Padding: layout.Symmetric(0, 1), Title: title, Footer: footer,
-		FooterAlign: layout.End,
-	}
-	space := frame.Sub(grid.Area(1, 0, width-2, availableHeight))
-	area := (layout.Placement{
-		Anchor: layout.BottomLeft, Width: max(c.popup.Width()+4, 32), Height: rows + 2,
-	}).In(space.Bounds().Size())
-	inner := box.InnerRect(area.Size())
-	box.Draw(space.View.Sub(area))
-	c.popup.Draw(space.Sub(area).Sub(inner))
+	box := kit.Box{Theme: c.theme, Glyphs: c.glyphs, Padding: layout.Symmetric(0, 1), Title: title, Footer: footer, FooterAlign: layout.End}
+	area := (layout.Placement{Anchor: layout.BottomLeft, Width: max(c.popup.Width()+4, 32), Height: rows + 2}).In(image.Pt(width-2, availableHeight))
+	return box, area.Add(image.Pt(1, 0))
 }

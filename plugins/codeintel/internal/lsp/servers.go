@@ -22,7 +22,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/frame/cancellation"
 	"github.com/samber/lo"
 )
 
@@ -142,7 +141,7 @@ func (s *Servers) clientFor(ctx context.Context, root string, spec ServerSpec) (
 			return awaitClientStart(ctx, slot)
 		}
 	}
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		s.mu.Unlock()
 		return nil, err
 	}
@@ -197,7 +196,7 @@ func (s *Servers) launchClient(
 		}
 	}
 	var c *client
-	err := cancellation.Err(ctx)
+	err := errors.Join(ctx.Err(), context.Cause(ctx))
 	if err == nil {
 		c, err = runClientLaunch(ctx, launch, spec, root)
 	}
@@ -240,7 +239,7 @@ func awaitClientStart(ctx context.Context, pending *clientSlot) (*client, error)
 	case <-pending.done:
 		return pending.client, pending.err
 	case <-ctx.Done():
-		return nil, cancellation.Err(ctx)
+		return nil, errors.Join(ctx.Err(), context.Cause(ctx))
 	}
 }
 
@@ -338,7 +337,7 @@ func (s *Servers) WorkspaceSymbols(ctx context.Context, root, query string) ([]S
 	var out []Symbol
 	var errs []error
 	for _, spec := range specs {
-		if err := cancellation.Err(ctx); err != nil {
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			return nil, errors.Join(append(errs, err)...)
 		}
 		c, err := s.clientFor(ctx, root, spec)
@@ -353,7 +352,7 @@ func (s *Servers) WorkspaceSymbols(ctx context.Context, root, query string) ([]S
 		}
 		out = append(out, syms...)
 	}
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return nil, errors.Join(append(errs, err)...)
 	}
 	return out, errors.Join(errs...)

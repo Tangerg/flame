@@ -6,7 +6,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -42,11 +43,12 @@ func TestBeginRootPreservesScopeUnacknowledgedStartIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = executor.BeginRoot(t.Context(), ref)
-	attempt, found := errors.AsType[*agent.StartError](err)
+	attempt, found := errors.AsType[*scoperun.RuntimeError](err)
 	if !found || !errors.Is(err, cause) {
 		t.Fatalf("start lost Scope's reconcilable evidence: %v", err)
 	}
-	if attempt.RootID().String() != trees.attempt.RootID || attempt.Incarnation().String() != trees.attempt.Writer || attempt.Sequence() != trees.attempt.Sequence || attempt.Digest().String() != trees.attempt.Digest {
+	expected := (scoperun.StartID{Scope: ref.SessionID, Key: ref.ExecutorID}).Root()
+	if attempt.ProcessID() != expected || expected.String() != trees.attempt.RootID || attempt.Epoch() != 0 || attempt.After() != 0 {
 		t.Fatalf("start evidence differs from the attempted head: %v, %+v", attempt, trees.attempt)
 	}
 	if calls != 0 {

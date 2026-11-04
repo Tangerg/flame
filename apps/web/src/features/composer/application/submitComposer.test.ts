@@ -40,7 +40,7 @@ async function command(run: (context: SlashCommandRunCtx) => void | Promise<void
     definePlugin({
       name: "test.submit.slash",
       setup: (ctx) => {
-        ctx.contribute(SLASH_COMMAND, { description: "echo", run }, { key: "/echo" });
+        ctx.contributions.add(SLASH_COMMAND, { description: "echo", run }, { key: "/echo" });
       },
     }),
   );
@@ -107,7 +107,7 @@ describe("submitComposer", () => {
       definePlugin({
         name: "test.submit.mode",
         setup: (ctx) => {
-          ctx.contribute(COMPOSER_SUBMIT_MODE, {
+          ctx.contributions.add(COMPOSER_SUBMIT_MODE, {
             id: "goal",
             matches: () => true,
             submit: (context) => {
@@ -130,7 +130,7 @@ describe("submitComposer", () => {
       definePlugin({
         name: "test.submit.mode",
         setup: (ctx) => {
-          ctx.contribute(COMPOSER_SUBMIT_MODE, {
+          ctx.contributions.add(COMPOSER_SUBMIT_MODE, {
             id: "goal",
             matches: () => true,
             submit: async () => {},
@@ -263,7 +263,7 @@ describe("submission feedback", () => {
       definePlugin({
         name: "test.submit.mode",
         setup: (ctx) => {
-          ctx.contribute(COMPOSER_SUBMIT_MODE, {
+          ctx.contributions.add(COMPOSER_SUBMIT_MODE, {
             id: "mode",
             matches: () => true,
             submit: () => Promise.reject(failure),
@@ -297,7 +297,7 @@ describe("submission feedback", () => {
       definePlugin({
         name: "test.replacement",
         setup: (ctx) => {
-          ctx.contribute(
+          ctx.contributions.add(
             SLASH_COMMAND,
             { description: "replacement", run: () => {} },
             { key: "/echo" },

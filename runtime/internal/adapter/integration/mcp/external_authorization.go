@@ -59,7 +59,7 @@ func (c *ExternalConnector) StartAuthorization(ctx context.Context, server mcpse
 	if err := u.session.release(context.Background()); err != nil {
 		return app.AuthorizationAttempt{}, nil, err
 	}
-	// A browser wait retains no Qimu Use. Only the same directory incarnation can settle its original receipt.
+	// A browser wait retains no Frame Use. Only the same directory incarnation can settle its original receipt.
 	finish := func(ctx context.Context, status app.AuthorizationAttemptStatus) error {
 		current, err := c.acquire(ctx)
 		if err != nil {

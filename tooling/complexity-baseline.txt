@@ -21,7 +21,7 @@
 23 apps/web/src/features/workspace/domain/eventInvalidation.ts:workspaceQueryAffected
 44 apps/web/src/features/workspace/ui/files/FileTree.tsx:TreeNode
 42 apps/web/src/features/workspace/ui/files/FileWorkspace.tsx:FilePreview
-30 apps/web/src/ui/agent/activity-disclosure.tsx:AgentActivityDisclosure
+28 apps/web/src/ui/agent/activity-disclosure.tsx:AgentActivityDisclosure
 27 apps/web/src/ui/agent/navigation-row.tsx:AgentRow
 24 apps/web/src/ui/agent/readingFollow.ts:prepareDisclosureReading
 21 apps/web/visual/computerConsoleFixture.tsx:fetch
@@ -72,7 +72,7 @@
 28 plugins/genui/contracts/document.ts:checkState
 23 plugins/genui/contracts/expression.ts:expressionReferences
 42 plugins/genui/contracts/validation.ts:validateField
-37 plugins/mcp/component/serverForm.tsx:ServerForm
+34 plugins/mcp/component/serverForm.tsx:ServerForm
 43 plugins/memory/component/component.tsx:Memory
 31 plugins/providers/component/providerRow.tsx:ProviderRow
 33 plugins/providers/component/roles.tsx:RoleSection
@@ -84,10 +84,5 @@
 23 plugins/tool-results/component/component.tsx:webPage
 46 plugins/trajectory/component/report.tsx:Observation
 31 plugins/trajectory/component/report.tsx:statusTone
-22 qimu/browser/src/runtime.ts:<anonymous>
-25 qimu/browser/src/runtime.ts:Runtime.<anonymous>
-24 qimu/node/src/diagnostic.ts:<anonymous>
-26 qimu/node/src/limits.ts:visit
-21 qimu/sdk/src/json.ts:write
 23 tooling/source-graph.mjs:<anonymous>
 26 tooling/workspace.mjs:main

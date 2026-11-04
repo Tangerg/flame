@@ -98,10 +98,10 @@ beforeEach(async () => {
   point.open.mockReset();
   vi.spyOn(console, "error").mockImplementation(() => {});
   await contributeForTest((ctx) => {
-    const action = ctx.contribute(TOOL_ACTION, actionSpec());
-    const opener = ctx.contribute(TOOL_VIEW_OPENER, openerSpec());
-    removeAction = () => action.dispose();
-    removeOpener = () => opener.dispose();
+    const action = ctx.contributions.add(TOOL_ACTION, actionSpec());
+    const opener = ctx.contributions.add(TOOL_VIEW_OPENER, openerSpec());
+    removeAction = () => action[Symbol.dispose]();
+    removeOpener = () => opener[Symbol.dispose]();
   }, "plugin.alpha");
 });
 
@@ -154,8 +154,8 @@ describe.each(consumers)("%s contributed controls", (_name, Row) => {
         if (control.owner === "action") removeAction();
         else removeOpener();
         await contributeForTest((ctx) => {
-          if (control.owner === "action") ctx.contribute(TOOL_ACTION, actionSpec());
-          else ctx.contribute(TOOL_VIEW_OPENER, openerSpec());
+          if (control.owner === "action") ctx.contributions.add(TOOL_ACTION, actionSpec());
+          else ctx.contributions.add(TOOL_VIEW_OPENER, openerSpec());
         }, "plugin.beta");
       });
       rerender(row(Row, call()));

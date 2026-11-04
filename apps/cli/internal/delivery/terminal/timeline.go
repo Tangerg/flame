@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/oolong/ui/core/scene"
+
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/layout"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 type timelineEntry struct {
@@ -19,6 +20,7 @@ type timelineEntry struct {
 }
 
 type timelinePane struct {
+	group  *scene.Group
 	theme  kit.Theme
 	glyphs kit.Glyphs
 	picker *picker[timelineEntry]
@@ -96,16 +98,18 @@ func appendTimelineDescendants(
 	}
 }
 
-func (t *timelinePane) Draw(frame headless.Frame) {
-	rows := frame.Subs((layout.Flow{Axis: layout.Down}).Rects(frame.Bounds().Size(), []layout.Slot{
-		{Size: layout.Flex(1)}, {Size: layout.Fixed(1)},
-	}))
-	t.picker.Draw(rows[0])
-	hint := "enter jump to retained output · alt+f fork from run · esc close"
-	if t.live {
-		hint = "live run tree · enter jump to retained output · esc close"
+func (t *timelinePane) Element() scene.Element {
+	if t.group == nil {
+		footer := scene.NewElement(scene.ElementConfig{Paint: func(frame scene.Frame) {
+			hint := "enter jump to retained output · alt+f fork from run · esc close"
+			if t.live {
+				hint = "live run tree · enter jump to retained output · esc close"
+			}
+			kit.Label{Text: hint, Style: t.theme.Subtle, Ellipsis: t.glyphs.Ellipsis}.Draw(frame.View)
+		}})
+		t.group = scene.NewGroup(scene.GroupConfig{Axis: layout.Down, Items: []scene.Item{{Element: t.picker.Element(), Size: layout.Flex(1)}, {Element: footer, Size: layout.Fixed(1)}}, Element: scene.ElementConfig{Preview: func(event scene.Event) scene.EventResult { return scene.EventResult{Consumed: t.Handle(event.Input())} }}})
 	}
-	kit.Label{Text: hint, Style: t.theme.Subtle, Ellipsis: t.glyphs.Ellipsis}.Draw(rows[1].View)
+	return t.group.Element()
 }
 
 func (t *timelinePane) Handle(event input.Event) bool {
@@ -119,10 +123,8 @@ func (t *timelinePane) Handle(event input.Event) bool {
 		}
 		return true
 	}
-	return t.picker.Handle(event)
+	return false
 }
-
-func (t *timelinePane) Focus(has bool) { t.picker.Focus(has) }
 
 // timelineDialog lists the current session's runs; choosing one jumps to it
 // or forks from it through the callbacks it was built with.
@@ -131,7 +133,7 @@ type timelineDialog struct {
 	dialog *presentationDialog
 }
 
-func newTimelineDialog(stack *headless.Stack, theme kit.Theme, glyphs kit.Glyphs, jump, fork func(timelineEntry)) *timelineDialog {
+func newTimelineDialog(stack *workspaceScene, theme kit.Theme, glyphs kit.Glyphs, jump, fork func(timelineEntry)) *timelineDialog {
 	t := &timelineDialog{}
 	chosen := func(act func(timelineEntry)) func(timelineEntry) {
 		return func(entry timelineEntry) {
@@ -141,8 +143,7 @@ func newTimelineDialog(stack *headless.Stack, theme kit.Theme, glyphs kit.Glyphs
 		}
 	}
 	t.pane = newTimelinePane(theme, glyphs, chosen(jump), chosen(fork))
-	t.dialog = newPresentationDialog(kit.DialogConfig{
-		Stack: stack, Theme: theme, Glyphs: glyphs, Title: "Current session timeline", Body: t.pane,
+	t.dialog = newPresentationDialog(stack, kit.DialogConfig{Theme: theme, Glyphs: glyphs, Title: "Current session timeline", Body: t.pane.Element(),
 		Where: layout.Placement{Width: 88, Height: 20},
 	})
 	t.pane.picker.cancel = t.dialog.Dismiss
@@ -172,7 +173,7 @@ func (a *app) buildTimeline(theme kit.Theme, glyphs kit.Glyphs) {
 				a.message("that run no longer has retained transcript output")
 				return
 			}
-			a.shell.focus(transcriptPaneKey)
+			_ = a.transcript.Element().RequestFocusFirst()
 		},
 		func(entry timelineEntry) {
 			if a.runs.blocksAdmission() {

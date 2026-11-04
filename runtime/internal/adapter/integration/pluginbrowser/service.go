@@ -1,6 +1,8 @@
 package pluginbrowser
 
 import (
+	framebrowser "github.com/Tangerg/frame/browser"
+
 	"context"
 	"errors"
 	"math"
@@ -12,26 +14,25 @@ import (
 	app "github.com/Tangerg/flame/runtime/internal/application/integration/pluginbrowser"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/control"
-	controlhost "github.com/Tangerg/qimu/control/host"
+	"github.com/Tangerg/frame"
 )
 
 type Config struct {
-	Bridge          *controlhost.Bridge
-	Registry        *plugins.Registry
-	ControlEndpoint string
-	ProofCapacity   int
-	PollInterval    time.Duration
+	Bridge              *framebrowser.Bridge
+	Registry            *plugins.Registry
+	ControlEndpoint     string
+	ProofCapacity       int
+	PreparationCapacity int
+	PollInterval        time.Duration
 }
 
 type Service struct {
 	config   Config
-	contract qimu.ContractRef
+	contract frame.ContractRef
 }
 
 func New(config Config) (*Service, error) {
-	if config.Bridge == nil || config.Registry == nil || config.Bridge.MaximumRequestBytes() < 1 || config.Bridge.MaximumRequestBytes() > math.MaxInt || config.ProofCapacity < 1 || config.PollInterval < time.Millisecond {
+	if config.Bridge == nil || config.Registry == nil || config.ProofCapacity < 1 || config.PreparationCapacity < 1 || config.PollInterval < time.Millisecond {
 		return nil, errors.New("plugin browser: bridge, registry and explicit transport budgets are required")
 	}
 	if !validControlEndpoint(config.ControlEndpoint) {
@@ -59,7 +60,7 @@ func validControlEndpoint(raw string) bool {
 }
 
 func (s *Service) Open(ctx context.Context, request app.OpenRequest) (app.Session, error) {
-	var credentials controlhost.Credentials
+	var credentials framebrowser.Credentials
 	var err error
 	if request.Resume != nil {
 		credentials, err = s.config.Bridge.ResumeRealm(ctx, *request.Resume, request.ResumeToken)
@@ -69,23 +70,26 @@ func (s *Service) Open(ctx context.Context, request app.OpenRequest) (app.Sessio
 	if err != nil {
 		return app.Session{}, consumerError(err)
 	}
-	return app.Session{Authority: credentials.Authority, Realm: credentials.Realm, Credential: credentials.Token, ControlEndpoint: s.config.ControlEndpoint, MaximumMessageBytes: int(s.config.Bridge.MaximumRequestBytes()), ProofCapacity: s.config.ProofCapacity, PollInterval: s.config.PollInterval, ComponentContract: s.contract}, nil
+	if credentials.MaxMessageBytes < 1 || credentials.MaxMessageBytes > math.MaxInt {
+		return app.Session{}, frame.ErrInvalid
+	}
+	return app.Session{Authority: credentials.Authority, Realm: credentials.Realm, Credential: credentials.Token, ControlEndpoint: s.config.ControlEndpoint, MaximumMessageBytes: int(credentials.MaxMessageBytes), ProofCapacity: s.config.ProofCapacity, PreparationCapacity: s.config.PreparationCapacity, PollInterval: s.config.PollInterval, ComponentContract: s.contract}, nil
 }
 
-func (s *Service) Acquire(ctx context.Context, request app.ComponentRequest) (control.UseGrant, error) {
+func (s *Service) Acquire(ctx context.Context, request app.ComponentRequest) (framebrowser.UseGrant, error) {
 	credentials, err := s.config.Bridge.Credentials(request.Realm)
 	if err != nil {
-		return control.UseGrant{}, consumerError(err)
+		return framebrowser.UseGrant{}, consumerError(err)
 	}
-	plan, err := s.config.Registry.ComponentPlan(ctx, controlhost.RealmID(credentials.Realm), request.Installation, request.Digest, request.Component)
+	plan, err := s.config.Registry.ComponentPlan(ctx, framebrowser.RealmID(credentials.Realm), request.Installation, request.Digest, request.Component)
 	if err != nil {
-		return control.UseGrant{}, consumerError(err)
+		return framebrowser.UseGrant{}, consumerError(err)
 	}
 	grant, err := s.config.Bridge.AcquirePlan(ctx, credentials.Token, request.OperationID, plan, request.ParentUseID)
 	return grant, consumerError(err)
 }
 
-func (s *Service) Close(ctx context.Context, realm control.Realm) error {
+func (s *Service) Close(ctx context.Context, realm framebrowser.Realm) error {
 	credentials, err := s.config.Bridge.Credentials(realm)
 	if err != nil {
 		return consumerError(err)
@@ -95,11 +99,11 @@ func (s *Service) Close(ctx context.Context, realm control.Realm) error {
 
 func consumerError(err error) error {
 	switch {
-	case errors.Is(err, qimu.ErrInvalid), errors.Is(err, qimu.ErrContractMismatch):
+	case errors.Is(err, frame.ErrInvalid), errors.Is(err, frame.ErrContractMismatch):
 		return errors.Join(plugin.ErrInvalid, err)
-	case errors.Is(err, qimu.ErrStaleBinding), errors.Is(err, qimu.ErrFenced), errors.Is(err, qimu.ErrClosed):
+	case errors.Is(err, frame.ErrStaleBinding), errors.Is(err, frame.ErrFenced), errors.Is(err, frame.ErrClosed):
 		return errors.Join(plugin.ErrStale, err)
-	case errors.Is(err, qimu.ErrUnavailable), errors.Is(err, qimu.ErrCapacity):
+	case errors.Is(err, frame.ErrUnavailable), errors.Is(err, frame.ErrCapacity):
 		return errors.Join(plugin.ErrUnavailable, err)
 	default:
 		return err

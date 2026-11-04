@@ -8,6 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	flameruns "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -15,7 +18,7 @@ import (
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 )
@@ -27,8 +30,8 @@ func TestUnobservedEndpointReopensUnknownWithoutReplayingCallingIdentity(t *test
 		t.Fatal(err)
 	}
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("captured input")))
-	invocation := modelref.EndpointInvocation{ID: "endpoint-original", Caller: portable.Invocation{ID: "model-operation", Origin: extension.Human, Parent: "human-command", Target: portable.Target{Scope: extension.ScopeCall, Reference: "model-operation"}}, Provider: "anthropic", Model: "captured-model", Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: time.Now().UTC()}
-	if err := newModelInvocationStore(db).StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
+	invocation := modelref.EndpointInvocation{ID: "endpoint-original", Caller: framemcp.Invocation{ID: "model-operation", Origin: extension.Human, Parent: "human-command", Target: portable.Target{Scope: extension.ScopeCall, Reference: "model-operation"}}, Provider: "anthropic", Model: "captured-model", Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: time.Now().UTC()}
+	if err := newModelInvocationStore(databaseFor(db)).StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {
@@ -39,7 +42,7 @@ func TestUnobservedEndpointReopensUnknownWithoutReplayingCallingIdentity(t *test
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newModelInvocationStore(db)
+	store := newModelInvocationStore(databaseFor(db))
 	if err := store.ReconcileEndpointInvocations(t.Context(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
@@ -62,8 +65,8 @@ func TestSessionEndpointDeletionIsAtomicAndRetainsUnrelatedEvidence(t *testing.T
 	insertTrajectorySession(t, t.Context(), db, "ses_endpoint")
 	insertTrajectorySession(t, t.Context(), db, "ses_other")
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original request")))
-	store := newModelInvocationStore(db)
-	invocation := modelref.EndpointInvocation{ID: "endpoint_session", Caller: portable.Invocation{ID: "utility_session", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "utility_session"}}, Provider: "anthropic", Model: "captured-model", SessionID: "ses_endpoint", Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: time.Unix(100, 0).UTC()}
+	store := newModelInvocationStore(databaseFor(db))
+	invocation := modelref.EndpointInvocation{ID: "endpoint_session", Caller: framemcp.Invocation{ID: "utility_session", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "utility_session"}}, Provider: "anthropic", Model: "captured-model", SessionID: "ses_endpoint", Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: time.Unix(100, 0).UTC()}
 	for _, scope := range []struct{ id, session string }{{"session", "ses_endpoint"}, {"other", "ses_other"}, {"global", ""}} {
 		value := invocation
 		value.ID = "endpoint_" + scope.id
@@ -77,7 +80,7 @@ func TestSessionEndpointDeletionIsAtomicAndRetainsUnrelatedEvidence(t *testing.T
 	if _, err := db.ExecContext(t.Context(), `CREATE TRIGGER refuse_session_delete BEFORE DELETE ON sessions BEGIN SELECT RAISE(ABORT,'refused'); END`); err != nil {
 		t.Fatal(err)
 	}
-	if err := newSessionStore(db).Delete(t.Context(), invocation.SessionID); err == nil {
+	if err := newSessionStore(databaseFor(db)).Delete(t.Context(), invocation.SessionID); err == nil {
 		t.Fatal("failed Session deletion succeeded")
 	}
 	if rows, err := store.ListSessionEndpoints(t.Context(), invocation.SessionID); err != nil || len(rows) != 1 {
@@ -86,7 +89,7 @@ func TestSessionEndpointDeletionIsAtomicAndRetainsUnrelatedEvidence(t *testing.T
 	if _, err := db.ExecContext(t.Context(), `DROP TRIGGER refuse_session_delete`); err != nil {
 		t.Fatal(err)
 	}
-	if err := newSessionStore(db).Delete(t.Context(), invocation.SessionID); err != nil {
+	if err := newSessionStore(databaseFor(db)).Delete(t.Context(), invocation.SessionID); err != nil {
 		t.Fatal(err)
 	}
 	if rows, err := store.PageEndpointInvocations(t.Context(), invocation.Caller.ID, nil, 10); err != nil || len(rows) != 0 {
@@ -103,7 +106,7 @@ func TestSessionEndpointDeletionIsAtomicAndRetainsUnrelatedEvidence(t *testing.T
 	if err := store.StartEndpointInvocation(t.Context(), invocation, ""); err == nil {
 		t.Fatal("new endpoint attached to deleted Session")
 	}
-	if _, err := newTrajectoryStore(db).Page(t.Context(), invocation.SessionID, true, nil, 100); !errors.Is(err, session.ErrNotFound) {
+	if _, err := newTrajectoryStore(databaseFor(db)).Page(t.Context(), invocation.SessionID, true, nil, 100); !errors.Is(err, session.ErrNotFound) {
 		t.Fatalf("deleted Session trajectory: %v", err)
 	}
 }
@@ -115,8 +118,8 @@ func TestEndpointReadRejectsCompetingUsageProjection(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original")))
-	invocation := modelref.EndpointInvocation{ID: "endpoint_usage", Caller: portable.Invocation{ID: "caller_usage", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeCall, Reference: "caller_usage"}}, Provider: "anthropic", Model: "captured-model", Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: time.Now().UTC()}
-	store := newModelInvocationStore(db)
+	invocation := modelref.EndpointInvocation{ID: "endpoint_usage", Caller: framemcp.Invocation{ID: "caller_usage", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeCall, Reference: "caller_usage"}}, Provider: "anthropic", Model: "captured-model", Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: time.Now().UTC()}
+	store := newModelInvocationStore(databaseFor(db))
 	if err := store.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 		t.Fatal(err)
 	}
@@ -143,10 +146,10 @@ func TestPhysicalUsageReadsAllScopesOnceAndSurvivesRestart(t *testing.T) {
 	insertTrajectorySession(t, t.Context(), db, "ses_usage")
 	insertTrajectorySession(t, t.Context(), db, "ses_other")
 	draft := runDraft("run_usage", "ses_usage")
-	if err := newRunStore(db).Admit(t.Context(), draft); err != nil {
+	if err := newRunStore(databaseFor(db)).Admit(t.Context(), draft); err != nil {
 		t.Fatal(err)
 	}
-	store := newModelInvocationStore(db)
+	store := newModelInvocationStore(databaseFor(db))
 	if err := store.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "logical_usage", draft.CreatedAt, rundomain.ModelConversation); err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +165,7 @@ func TestPhysicalUsageReadsAllScopesOnceAndSurvivesRestart(t *testing.T) {
 		{id: "unattached", caller: "utility_global", unknown: true},
 		{id: "other", caller: "utility_other", session: "ses_other", input: 2},
 	} {
-		invocation := modelref.EndpointInvocation{ID: "endpoint_" + source.id, Caller: portable.Invocation{ID: source.caller, Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: source.caller}}, Provider: draft.ModelSelection.Provider(), Model: draft.ModelSelection.Model(), SessionID: source.session, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: draft.CreatedAt}
+		invocation := modelref.EndpointInvocation{ID: "endpoint_" + source.id, Caller: framemcp.Invocation{ID: source.caller, Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: source.caller}}, Provider: draft.ModelSelection.Provider(), Model: draft.ModelSelection.Model(), SessionID: source.session, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: draft.CreatedAt}
 		owner := ""
 		if source.id == "primary" {
 			owner = "logical_usage"
@@ -211,7 +214,7 @@ func TestPhysicalUsageReadsAllScopesOnceAndSurvivesRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reporter, err = sessions.NewUsageReporter(sessions.UsageDependencies{Source: newModelInvocationStore(db), Now: clock})
+	reporter, err = sessions.NewUsageReporter(sessions.UsageDependencies{Source: newModelInvocationStore(databaseFor(db)), Now: clock})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,11 +239,11 @@ func TestEndpointAssociatesOnlyExplicitActiveModelOrToolOwner(t *testing.T) {
 	insertTrajectorySession(t, t.Context(), db, "ses_owner")
 	insertTrajectorySession(t, t.Context(), db, "ses_foreign")
 	draft := runDraft("run_owner", "ses_owner")
-	runs := newRunStore(db)
+	runs := newRunStore(databaseFor(db))
 	if err := runs.Admit(t.Context(), draft); err != nil {
 		t.Fatal(err)
 	}
-	journal := newModelInvocationStore(db)
+	journal := newModelInvocationStore(databaseFor(db))
 	if err := journal.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "logical_owner", draft.CreatedAt, rundomain.ModelConversation); err != nil {
 		t.Fatal(err)
 	}
@@ -248,12 +251,12 @@ func TestEndpointAssociatesOnlyExplicitActiveModelOrToolOwner(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := newToolInvocationStore(db).StartToolInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "tool_owner", "item_owner", draft.CreatedAt, nil); err != nil {
+	if err := newToolInvocationStore(databaseFor(db)).StartToolInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "tool_owner", "item_owner", draft.CreatedAt, nil); err != nil {
 		t.Fatal(err)
 	}
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original independent request")))
 	source := func(id, sessionID, parent string) modelref.EndpointInvocation {
-		return modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: portable.Invocation{ID: id, Origin: extension.Model, Parent: parent, Target: portable.Target{Scope: extension.ScopeCall, Reference: id}}, Provider: "anthropic", Model: "captured-model", SessionID: sessionID, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: draft.CreatedAt.Add(time.Second)}
+		return modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: framemcp.Invocation{ID: id, Origin: extension.Model, Parent: parent, Target: portable.Target{Scope: extension.ScopeCall, Reference: id}}, Provider: "anthropic", Model: "captured-model", SessionID: sessionID, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: draft.CreatedAt.Add(time.Second)}
 	}
 	for _, test := range []struct {
 		id, owner, parent string
@@ -329,13 +332,13 @@ func TestEmbeddingEndpointRecordsKindUsageServedModelAndRawEvidence(t *testing.T
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	insertTrajectorySession(t, t.Context(), db, "ses_embed")
-	store := newModelInvocationStore(db)
+	store := newModelInvocationStore(databaseFor(db))
 	request, err := embedding.NewRequest([]string{"first text", "second text"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	request.Options.Model = "embed-model"
-	invocation := modelref.EndpointInvocation{ID: "endpoint_embed", Caller: portable.Invocation{ID: "memory_search", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "memory_search"}}, Provider: "openai", Model: "embed-model", SessionID: "ses_embed", Request: modelref.EmbeddingEndpointRequest{Embedding: request}, StartedAt: time.Unix(100, 0).UTC()}
+	invocation := modelref.EndpointInvocation{ID: "endpoint_embed", Caller: framemcp.Invocation{ID: "memory_search", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "memory_search"}}, Provider: "openai", Model: "embed-model", SessionID: "ses_embed", Request: modelref.EmbeddingEndpointRequest{Embedding: request}, StartedAt: time.Unix(100, 0).UTC()}
 	if err := store.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 		t.Fatal(err)
 	}

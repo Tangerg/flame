@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/qimu/jsonvalue"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // canonicalJSON is the spelling every stored Arguments and Result already
@@ -187,11 +187,11 @@ func (r *Result) UnmarshalJSON(data []byte) error {
 }
 
 // decodeValue reads one complete tool document. Arguments carry identifiers past
-// IEEE-754's exact integer range, so [jsonvalue.Numbers] keeps every literal;
+// IEEE-754's exact integer range, so [framevalue.Numbers] keeps every literal;
 // rounding one would change cache identity and exported transcripts. A trailing
 // second value and a repeated member are both refused by the decoder itself —
 // the repeat matters here because these documents come from a provider, and
 // deciding it by position would let the same call mean two things.
 func decodeValue(data []byte, destination any) error {
-	return json.Unmarshal(data, destination, jsonvalue.Numbers())
+	return json.Unmarshal(data, destination, framevalue.Numbers())
 }

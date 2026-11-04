@@ -10,10 +10,12 @@ import (
 	"sync/atomic"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -22,24 +24,24 @@ func TestExecutableBackendStreamsDecorationThroughOriginalModelNext(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "model-decoration", Composition: portable.Decoration, Scope: "call"}, method.Descriptor())
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "model-decoration", Composition: plugincontract.Decoration, Scope: "call"}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if os.Getenv("FLAME_TEST_STREAMING_BACKEND") == "1" {
 		server := sdk.NewServer(&sdk.Implementation{Name: "public-executable-decorator"}, nil)
-		backend, err := qimumcp.NewBackend(server)
+		backend, err := pluginmcp.NewBackend(server)
 		if err == nil {
-			err = method.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[chat.Request]) iter.Seq2[qimumcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error] {
-				return func(yield func(qimumcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error) bool) {
-					next, err := qimumcp.CallbackFromContext(ctx)
+			err = method.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[chat.Request]) iter.Seq2[pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error] {
+				return func(yield func(pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error) bool) {
+					next, err := pluginmcp.CallbackFromContext(ctx)
 					if err != nil {
-						yield(qimumcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
+						yield(pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
 						return
 					}
 					request := command.Input.Clone()
 					request.Messages[0] = chat.NewUserMessage(chat.NewTextPart("captured transformed input"))
-					if !yield(qimumcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{Chunk: &chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("decorated ")}}}, nil) {
+					if !yield(pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{Chunk: &chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("decorated ")}}}, nil) {
 						return
 					}
 					for value, err := range pluginsdk.StreamModel(ctx, next, command.ID, request) {
@@ -69,7 +71,7 @@ func TestExecutableBackendStreamsDecorationThroughOriginalModelNext(t *testing.T
 		os.Exit(0)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "public-model-caller"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	command := exec.Command(os.Args[0], "-test.run=^TestExecutableBackendStreamsDecorationThroughOriginalModelNext$", "-test.count=1")
@@ -83,7 +85,7 @@ func TestExecutableBackendStreamsDecorationThroughOriginalModelNext(t *testing.T
 			t.Error(err)
 		}
 	})
-	callbacks := qimumcp.NewCallbacks()
+	callbacks := pluginmcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := callbacks.Close(); err != nil {
 			t.Error(err)
@@ -93,7 +95,7 @@ func TestExecutableBackendStreamsDecorationThroughOriginalModelNext(t *testing.T
 		t.Fatal(err)
 	}
 	var calls atomic.Int32
-	next, err := pluginsdk.NewModelStreamCallback(func(_ context.Context, command qimumcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+	next, err := pluginsdk.NewModelStreamCallback(func(_ context.Context, command pluginmcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 		return func(yield func(*chat.ResponseDelta, error) bool) {
 			calls.Add(1)
 			if command.ID != "original-executable-model" || command.Input.Messages[0].Text() != "captured transformed input" {
@@ -106,16 +108,16 @@ func TestExecutableBackendStreamsDecorationThroughOriginalModelNext(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, release, err := callbacks.Open(t.Context(), session, qimumcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, next)
+	ref, release, err := callbacks.Open(t.Context(), session, pluginmcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, next)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer release()
-	metadata, err := qimumcp.CallbackMetadata(ref)
+	metadata, err := pluginmcp.CallbackMetadata(ref)
 	if err != nil {
 		t.Fatal(err)
 	}
-	exported, err := qimumcp.ResolveCapability(t.Context(), session, "model-decoration", contract)
+	exported, err := pluginmcp.ResolveCapability(t.Context(), session, "model-decoration", contract)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +131,7 @@ func TestExecutableBackendStreamsDecorationThroughOriginalModelNext(t *testing.T
 	}
 	var observed chat.ResponseAccumulator
 	var final *pluginsdk.ModelResult
-	for value, err := range method.StreamWithMetadata(t.Context(), binding, callbacks, qimumcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, "original-executable-model", *request, metadata) {
+	for value, err := range method.StreamWithMetadata(t.Context(), binding, callbacks, pluginmcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, "original-executable-model", *request, metadata) {
 		if err != nil {
 			t.Fatal(err)
 		}

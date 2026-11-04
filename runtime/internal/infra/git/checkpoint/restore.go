@@ -8,8 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/Tangerg/frame/cancellation"
 )
 
 // Restore checks out the runID snapshot after archiving the currently admitted
@@ -118,7 +116,7 @@ func (s *Store) checkRestoreConflicts(ctx context.Context, gitDir, cwd, target s
 func checkTargetOwnership(ctx context.Context, root *os.Root, target string, archived map[string]struct{}) error {
 	var path string
 	for component := range strings.SplitSeq(target, "/") {
-		if err := cancellation.Err(ctx); err != nil {
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			return err
 		}
 		if path != "" {
@@ -143,7 +141,7 @@ func checkTargetOwnership(ctx context.Context, root *os.Root, target string, arc
 		if err != nil {
 			return fmt.Errorf("checkpoint: inspect restore subtree %q: %w", path, err)
 		}
-		if err := cancellation.Err(ctx); err != nil {
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			return err
 		}
 		if entry.IsDir() {

@@ -14,8 +14,10 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/instant"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
-	"github.com/Tangerg/qimu/portable"
 )
 
 const (
@@ -40,7 +42,7 @@ func newConnector(store *store, transport http.RoundTripper, credential credenti
 }
 
 func refused(code, message string) error {
-	return &portable.Refusal{Code: code, Message: "github: " + message}
+	return &framemcp.Refusal{Code: code, Message: "github: " + message}
 }
 
 func query[T any](ctx context.Context, c *connector, path string, parameters url.Values, decode func(response) (T, error)) (T, error) {
@@ -203,7 +205,7 @@ type issueWire struct {
 	URL         string             `json:"html_url"`
 	User        *userWire          `json:"user"`
 	PullRequest *struct{}          `json:"pull_request"`
-	UpdatedAt   time.Time          `json:"updated_at"`
+	UpdatedAt   instant.Timestamp  `json:"updated_at"`
 	Labels      []struct {
 		Name string `json:"name"`
 	} `json:"labels"`

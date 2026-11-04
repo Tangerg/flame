@@ -1,10 +1,10 @@
 package tool
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"errors"
 	"testing"
-
-	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestGroupVocabulary(t *testing.T) {
@@ -22,8 +22,8 @@ func TestGroupVocabulary(t *testing.T) {
 
 func TestToolValidate(t *testing.T) {
 	valid := Tool{
-		ToolDefinition: chat.ToolDefinition{Name: "read", Description: "Read a file", InputSchema: []byte(`{"type":"object"}`)},
-		SafetyClass:    SafetyClassSafe,
+		Definition:  toolcontract.Definition{Name: "read", Description: "Read a file", InputSchema: []byte(`{"type":"object"}`)},
+		SafetyClass: SafetyClassSafe,
 	}
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("valid Tool.Validate() error = %v", err)

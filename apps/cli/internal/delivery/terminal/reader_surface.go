@@ -8,12 +8,13 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/apps/cli/internal/application/retry"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/keymap"
-	"github.com/Tangerg/oolong/core/layout"
-	"github.com/Tangerg/oolong/core/program"
-	"github.com/Tangerg/oolong/highlight"
+	"github.com/Tangerg/oolong/extensions/highlight"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/keymap"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/program"
+	"github.com/Tangerg/oolong/ui/core/scene"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 // readerQuery is one authoritative read the reader can show. follows reports
@@ -43,7 +44,7 @@ type readerSurface struct {
 	pane         *readerPane
 	dialog       *presentationDialog
 	searchDialog *presentationDialog
-	searchQuery  string
+	searchField  *base.Text
 	shown        *readerQuery
 
 	tasks   taskRunner
@@ -55,7 +56,7 @@ type readerSurfaceConfig struct {
 	theme   kit.Theme
 	glyphs  kit.Glyphs
 	syntax  highlight.Renderer
-	stack   *headless.Stack
+	stack   *workspaceScene
 	loop    *program.Runtime
 	tasks   taskRunner
 	status  *statusView
@@ -65,36 +66,34 @@ type readerSurfaceConfig struct {
 func newReaderSurface(cfg readerSurfaceConfig) *readerSurface {
 	r := &readerSurface{tasks: cfg.tasks, status: cfg.status, message: cfg.message}
 	r.pane = newReaderPane(cfg.theme, cfg.glyphs, cfg.syntax, cfg.loop.Environment().Wheel(), cfg.loop.Clipboard())
-	r.dialog = newPresentationDialog(kit.DialogConfig{
-		Stack: cfg.stack, Theme: cfg.theme, Glyphs: cfg.glyphs, Title: "Reader", Body: r.pane,
+	r.dialog = newPresentationDialog(cfg.stack, kit.DialogConfig{Theme: cfg.theme, Glyphs: cfg.glyphs, Title: "Reader", Body: r.pane.Element(),
 		Where: layout.Placement{},
 	})
 	r.pane.dismiss = r.dismiss
 	r.pane.openSearch = func() {
 		if r.dialog.Open() {
-			r.searchQuery = ""
+			r.searchField.SetText("")
 			r.searchDialog.Show()
 		}
 	}
 	r.pane.onCopied = func() { r.status.note("copied reader text") }
 
-	field := headless.NewText(headless.TextConfig{Label: "Find in the reader", Placeholder: "text", Value: headless.Bind(&r.searchQuery), Check: requiredText})
-	form := headless.NewForm(field)
-	form.Keys = headless.DefaultFormKeys()
-	form.Done = func() {
+	field := base.NewText(base.TextConfig{Label: "Find in the reader", Placeholder: "text", Initial: "", Check: requiredText})
+	r.searchField = field
+	form := kit.FormConfig{Fields: []base.Field{field}, Theme: cfg.theme, Glyphs: cfg.glyphs,
+		Hints: []keymap.Action{base.Submit, base.Cancel}}
+	form.Keys = base.DefaultFormKeys()
+	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
 		if !r.dialog.Open() || !r.searchDialog.Open() {
-			return
+			return scene.Unchanged, nil
 		}
 		r.searchDialog.Dismiss()
-		r.pane.Find(r.searchQuery)
+		r.pane.Find(field.Text())
+		return scene.Applied, nil
 	}
-	form.GaveUp = func() { r.searchDialog.Dismiss() }
-	dressed := kit.NewForm(kit.FormConfig{
-		Theme: cfg.theme, Glyphs: cfg.glyphs, Controller: form,
-		Hints: []keymap.Action{headless.Submit, headless.Cancel},
-	})
-	r.searchDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: cfg.stack, Theme: cfg.theme, Glyphs: cfg.glyphs, Title: "Search reader", Body: dressed,
+
+	dressed := kit.NewForm(form)
+	r.searchDialog = newPresentationDialog(cfg.stack, kit.DialogConfig{Theme: cfg.theme, Glyphs: cfg.glyphs, Title: "Search reader", Body: formNavigation(dressed.Element(), func() { r.searchDialog.Dismiss() }),
 		Where: layout.Placement{Width: 68, Height: 7},
 	})
 	r.listenForSearch()
@@ -211,7 +210,7 @@ func (r *readerSurface) observingSource() bool { return r.pane.ObservingSource()
 
 func (r *readerSurface) shutdown() { r.pane.Shutdown() }
 
-var _ headless.Widget = (*readerPane)(nil)
+var _ interface{ Element() scene.Element } = (*readerPane)(nil)
 
 func (a *app) OpenReader() {
 	target, ok := a.transcript.selectedReaderTarget()

@@ -80,7 +80,7 @@ describe("optional result rendering", () => {
       definePlugin({
         name: "test.search-card",
         setup(ctx) {
-          ctx.contribute(TOOL_RESULT_RENDERER, card, { key: card.id });
+          ctx.contributions.add(TOOL_RESULT_RENDERER, card, { key: card.id });
         },
       }),
     );
@@ -127,7 +127,7 @@ describe("optional result rendering", () => {
       definePlugin({
         name: "test.result-package",
         setup(ctx) {
-          ctx.contribute(TOOL_RESULT_RENDERER, spec, { key: spec.id });
+          ctx.contributions.add(TOOL_RESULT_RENDERER, spec, { key: spec.id });
         },
       }),
     );
@@ -170,7 +170,7 @@ describe("optional result rendering", () => {
           definePlugin({
             name: "test.arguments-result",
             setup(ctx) {
-              ctx.contribute(TOOL_RESULT_RENDERER, spec, { key: spec.id });
+              ctx.contributions.add(TOOL_RESULT_RENDERER, spec, { key: spec.id });
             },
           }),
         );

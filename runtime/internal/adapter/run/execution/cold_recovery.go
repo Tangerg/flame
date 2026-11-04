@@ -10,9 +10,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
-	corechat "github.com/Tangerg/scope/core/chat"
+
+	"github.com/Tangerg/scope/agent/interaction"
+	scoperun "github.com/Tangerg/scope/agent/run"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, active runs.ActiveExecution) (_ runs.UncertainExecutionPlan, _ runs.RecoveryVerdict, resultErr error) {
@@ -27,7 +28,7 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 	if err != nil {
 		return zero, runs.RecoveryUnavailable, err
 	}
-	rootID, err := agent.ParseProcessID(active.Context.RootMemberID)
+	rootID, err := scoperun.ParseProcessID(active.Context.RootMemberID)
 	if err != nil {
 		return zero, runs.RecoveryUnavailable, err
 	}
@@ -80,9 +81,6 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 		tools = append(tools, runs.RecoveredTool{Start: metadata.Start, Invocation: invocation})
 		pendingCalls[invocation.CallID] = true
 	}
-	if err := i.verifySettledTools(ctx, active.Run.SessionID(), checkpoint, proofs, pendingCalls); err != nil {
-		return zero, runs.RecoveryUnavailable, err
-	}
 	slices.SortFunc(drained, func(a, b runs.DrainedTool) int { return strings.Compare(a.CallID, b.CallID) })
 	continuation, err := runs.NewExecutionContinuation(runs.ExecutionContinuation{SessionID: active.Run.SessionID(), ExecutorID: "exec_recovery_" + active.Run.ID(), RootRunID: active.Run.ID(), Checkpoint: active.Context.Clone(), Capabilities: active.Run.Capabilities(), GoalIncarnationID: active.Run.GoalIncarnationID(), Workspace: active.Session.Workspace().Path(), Isolated: active.Session.Isolated(), Members: []runs.ExecutionMember{{RunID: active.Run.ID(), MemberID: rootID.String(), ModelSelection: active.Run.ModelSelection(), Metrics: active.Run.Metrics(), DrainedTools: drained}}})
 	if err != nil {
@@ -106,16 +104,19 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 	if pendingCheckpointSources(session, checkpoint) {
 		return zero, runs.RecoveryDeferred, nil
 	}
+	if err := i.verifySettledTools(ctx, session, active.Run.SessionID(), checkpoint, proofs, pendingCalls); err != nil {
+		return zero, runs.RecoveryUnavailable, err
+	}
 	if err := session.validateCapturedToolArguments(proofs); err != nil {
 		return zero, runs.RecoveryUnavailable, err
 	}
-	if err := session.engine.ValidateRestorableTree(ctx, session.deployment, checkpoint.tree); err != nil {
-		if errors.Is(err, agent.ErrInvalidTreeSnapshot) {
+	if err := validateRecovery(ctx, session.deployment, checkpoint.tree); err != nil {
+		if errors.Is(err, scoperun.ErrInvalidLog) {
 			return zero, runs.RecoveryUnavailable, nil
 		}
 		return zero, runs.RecoveryUnavailable, err
 	}
-	if _, err := restoreInteractionAccounting(checkpoint, map[agent.ProcessID]runs.ExecutionMember{rootID: continuation.Members[0]}); err != nil {
+	if _, err := restoreInteractionAccounting(checkpoint, map[scoperun.ProcessID]runs.ExecutionMember{rootID: continuation.Members[0]}); err != nil {
 		return zero, runs.RecoveryUnavailable, err
 	}
 	return runs.UncertainExecutionPlan{Continuation: continuation, Tools: tools}, runs.RecoveryReady, nil
@@ -133,16 +134,11 @@ func (i *InteractionExecutor) StageUncertainExecution(ctx context.Context, conti
 		return runs.ExecutorRef{}, err
 	}
 	defer finish()
-	assembly, abandon, err := i.installations.Begin()
-	if err != nil {
-		return runs.ExecutorRef{}, err
-	}
-	defer abandon()
 	checkpoint, err := decodeExecutorCheckpoint(continuation.Checkpoint)
 	if err != nil {
 		return runs.ExecutorRef{}, err
 	}
-	rootID, _ := agent.ParseProcessID(continuation.Checkpoint.RootMemberID)
+	rootID, _ := scoperun.ParseProcessID(continuation.Checkpoint.RootMemberID)
 	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, continuation.SessionID, rootID.String())
 	if err != nil || !found {
 		return runs.ExecutorRef{}, errors.Join(errors.New("execution: recovery head is unavailable"), err)
@@ -161,19 +157,20 @@ func (i *InteractionExecutor) StageUncertainExecution(ctx context.Context, conti
 			err = errors.Join(err, i.discardInteraction(session))
 		}
 	}()
-	if err := session.engine.ValidateRestorableTree(ctx, session.deployment, checkpoint.tree); err != nil {
+	if err := validateRecovery(ctx, session.deployment, checkpoint.tree); err != nil {
 		return runs.ExecutorRef{}, err
 	}
-	usage, err := restoreInteractionAccounting(checkpoint, map[agent.ProcessID]runs.ExecutionMember{rootID: continuation.Members[0]})
+	usage, err := restoreInteractionAccounting(checkpoint, map[scoperun.ProcessID]runs.ExecutionMember{rootID: continuation.Members[0]})
 	if err != nil {
 		return runs.ExecutorRef{}, err
 	}
 	session.accounting.restore(usage, checkpoint.contextByProcess)
+	session.state.admittedProcessID = rootID
 	session.state.toolMetadata, session.state.pendingSteers, session.state.pendingContinuation = checkpoint.toolMetadata, checkpoint.pendingSteers, checkpoint.pendingContinuation
 	session.state.restoreTree = checkpoint.tree
 	session.state.boundary = interactionBoundaryRecovery
 	session.state.dispatchReady = make(chan struct{})
-	if err := i.installations.Publish(ctx, assembly, dependencyInstallations(session.installationDependencies()), func() error { return i.sessions.register(session) }); err != nil {
+	if err := i.publishInteraction(ctx, session); err != nil {
 		return runs.ExecutorRef{}, err
 	}
 	return ref, nil
@@ -187,22 +184,24 @@ func (i *InteractionExecutor) BeginUncertainExecution(ctx context.Context, ref r
 	if !session.state.observerAttached() || !session.state.begin() {
 		return errors.New("execution: recovery must be staged and observed")
 	}
-	process, err := session.engine.RestoreTree(runExecutionContext(session.lifetime.execution, session.scope, session.start), session.deployment, session.state.restoreTree)
+	process, err := session.engine.Recover(runExecutionContext(session.lifetime.execution, session.scope, session.start), session.deployment, session.state.restoreTree.Root)
 	if err != nil {
 		return fmt.Errorf("execution: restore uncertain tree: %w", err)
 	}
 	session.state.setProcess(process)
+	session.state.mu.Lock()
+	session.state.restoreTree = scoperun.Log{}
+	session.state.mu.Unlock()
 	session.reportUnknownEffects()
 	session.state.mu.Lock()
-	session.state.restoreTree = agent.TreeSnapshot{}
 	session.state.continueExecution()
 	session.state.mu.Unlock()
 	session.startWorkers()
 	return nil
 }
 
-func (i interactionCheckpointState) recoverableReceipts(rootID agent.ProcessID) (map[agent.EffectID]toolResultMetadata, error) {
-	proofs := make(map[agent.EffectID]toolResultMetadata)
+func (i interactionCheckpointState) recoverableReceipts(rootID scoperun.ProcessID) (map[scoperun.EffectID]toolResultMetadata, error) {
+	proofs := make(map[scoperun.EffectID]toolResultMetadata)
 	for _, metadata := range i.toolMetadata {
 		if metadata.Receipt == nil {
 			continue
@@ -210,7 +209,7 @@ func (i interactionCheckpointState) recoverableReceipts(rootID agent.ProcessID) 
 		if metadata.MemberID != rootID.String() {
 			return nil, nil
 		}
-		id, err := agent.ParseEffectID(metadata.Receipt.EffectID)
+		id, err := scoperun.ParseEffectID(metadata.Receipt.EffectID)
 		if err != nil {
 			return nil, fmt.Errorf("execution: retained tool receipt: %w", err)
 		}
@@ -222,31 +221,28 @@ func (i interactionCheckpointState) recoverableReceipts(rootID agent.ProcessID) 
 	if len(proofs) == 0 {
 		return nil, nil
 	}
-	rootWaiting := false
-	for _, snapshot := range i.tree.ProcessSnapshots() {
-		if snapshot.Relation().ProcessID() == rootID {
-			rootWaiting = snapshot.Status() == agent.StatusWaiting || snapshot.Status().Terminal()
+	inspection, err := i.tree.Inspect()
+	if err != nil {
+		return nil, err
+	}
+	root, found := inspection.Process(rootID)
+	if !found || (root.Status != scoperun.StatusWaiting && root.Status != scoperun.StatusDraining && !root.Status.Terminal()) {
+		return nil, nil
+	}
+	for _, process := range inspection.Processes {
+		if len(process.Waits) > 0 {
+			return nil, nil
 		}
-		for _, id := range snapshot.UnknownEffectIDs() {
-			if _, supported := proofs[id]; !supported || snapshot.Status().Terminal() {
+		for _, id := range unresolvedProcessEffects(process) {
+			if _, supported := proofs[id]; !supported || process.Status.Terminal() {
 				return nil, nil
 			}
 		}
 	}
-	if !rootWaiting {
-		return nil, nil
-	}
-	inputs, err := interaction.PendingToolInputs(i.tree)
-	if err != nil {
-		return nil, err
-	}
-	if len(inputs) > 0 {
-		return nil, nil
-	}
 	return proofs, nil
 }
 
-func (i *InteractionExecutor) verifySettledTools(ctx context.Context, sessionID string, checkpoint interactionCheckpointState, proofs map[agent.EffectID]toolResultMetadata, pendingCalls map[string]bool) error {
+func (i *InteractionExecutor) verifySettledTools(ctx context.Context, session *interactionSession, sessionID string, checkpoint interactionCheckpointState, proofs map[scoperun.EffectID]toolResultMetadata, pendingCalls map[string]bool) error {
 	var rounds []interaction.RoundResults
 	for _, metadata := range proofs {
 		if pendingCalls[metadata.Start.CallID] {
@@ -254,7 +250,7 @@ func (i *InteractionExecutor) verifySettledTools(ctx context.Context, sessionID 
 		}
 		if rounds == nil {
 			var err error
-			rounds, err = interaction.SettledResults(checkpoint.tree)
+			rounds, err = session.settledToolResults(checkpoint.tree)
 			if err != nil {
 				return err
 			}
@@ -262,7 +258,7 @@ func (i *InteractionExecutor) verifySettledTools(ctx context.Context, sessionID 
 		committed := false
 		for _, round := range rounds {
 			for _, entry := range round.Entries() {
-				identity, err := logicalToolCallID(round.Relation().ProcessID(), round.ModelCallSequence(), entry.ToolCallIndex, entry.Call.ID, entry.Call.Name)
+				identity, err := logicalToolCallID(round.ProcessID(), round.ModelCallSequence(), entry.ToolCallIndex, entry.Call.ID, entry.Call.Name)
 				if err != nil {
 					return err
 				}
@@ -286,25 +282,39 @@ func (i *InteractionExecutor) verifySettledTools(ctx context.Context, sessionID 
 	return nil
 }
 
-func (i *InteractionExecutor) originalSourcesAvailable(ctx context.Context, checkpoint interactionCheckpointState, rootID agent.ProcessID, proofs map[agent.EffectID]toolResultMetadata) (bool, error) {
+func (i *InteractionExecutor) originalSourcesAvailable(ctx context.Context, checkpoint interactionCheckpointState, rootID scoperun.ProcessID, proofs map[scoperun.EffectID]toolResultMetadata) (bool, error) {
+	inspection, err := checkpoint.tree.Inspect()
+	if err != nil {
+		return false, err
+	}
 	for _, metadata := range proofs {
 		proof := metadata.Receipt
-		processID, err := agent.ParseProcessID(proof.ProcessID)
+		processID, err := scoperun.ParseProcessID(proof.ProcessID)
 		if err != nil {
 			return false, fmt.Errorf("execution: retained tool receipt: %w", err)
 		}
-		effectID, err := agent.ParseEffectID(proof.EffectID)
+		effectID, err := scoperun.ParseEffectID(proof.EffectID)
 		if err != nil {
 			return false, fmt.Errorf("execution: retained tool receipt: %w", err)
 		}
-		if request, found := checkpoint.tree.EffectRequest(processID, effectID); found {
-			invocation, err := interaction.ToolInvocationFromRequest(request)
+		process, found := inspection.Process(processID)
+		if !found {
+			return false, errors.New("execution: retained Tool process is missing")
+		}
+		for _, pending := range process.PendingEffects {
+			if pending.Request.ID() != effectID {
+				continue
+			}
+			invocation, err := interaction.ToolInvocationFromRequest(pending.Request)
 			if err != nil {
 				return false, err
 			}
-			reference, found := invocation.Reference()
+			reference, err := toolProposalSource(checkpoint.tree, invocation.Reference(), invocation.ToolCall())
+			if err != nil {
+				return false, err
+			}
 			call := invocation.ToolCall()
-			if !found || reference.ProcessID() != rootID || reference.ModelCallSequence() != metadata.Start.ModelCallSequence || reference.ToolCallIndex() != metadata.Start.ToolCallIndex || call.ID != metadata.Start.SourceCallID || call.Name != metadata.Start.ToolName {
+			if reference.process != rootID || reference.sequence != metadata.Start.ModelCallSequence || reference.index != metadata.Start.ToolCallIndex || call.ID != metadata.Start.SourceCallID || call.Name != metadata.Start.ToolName {
 				return false, errors.New("execution: retained request differs from its captured attribution")
 			}
 		}
@@ -325,7 +335,7 @@ func (i *InteractionExecutor) originalSourcesAvailable(ctx context.Context, chec
 	return true, nil
 }
 
-func (i *interactionSession) validateCapturedToolArguments(proofs map[agent.EffectID]toolResultMetadata) error {
+func (i *interactionSession) validateCapturedToolArguments(proofs map[scoperun.EffectID]toolResultMetadata) error {
 	for _, metadata := range proofs {
 		var owner *observedInteractionTool
 		for _, tools := range i.state.deployments.observedTools {
@@ -337,7 +347,7 @@ func (i *interactionSession) validateCapturedToolArguments(proofs map[agent.Effe
 		if owner == nil {
 			return errors.New("execution: captured Tool owner is unavailable")
 		}
-		if _, err := owner.binding.Contract().Prepare(corechat.ToolCall{ID: metadata.Start.SourceCallID, Name: metadata.Start.ToolName, Arguments: metadata.Start.Arguments}, nil); err != nil {
+		if _, err := owner.binding.Contract().Prepare(toolcontract.Request{Name: metadata.Start.ToolName, Arguments: metadata.Start.Arguments}, toolcontract.Admission{}); err != nil {
 			return fmt.Errorf("execution: validate captured effective arguments: %w", err)
 		}
 	}

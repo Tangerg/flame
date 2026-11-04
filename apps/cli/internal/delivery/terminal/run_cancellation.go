@@ -99,7 +99,6 @@ func (r *runs) stageOpeningCancellation() (workbench.PendingRun, bool, error) {
 }
 
 func (r *runs) reconcileCanceledStart(pending workbench.PendingRun) {
-	dispatcher := r.tasks.dispatch
 	r.tasks.operations.GoSession(pendingRunRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
 		opened, err := openStartRunWithBackoff(
 			ctx, r.runtime, r.workbench, pending, r.replayPolicy, runtimeRecoveryBackoff,
@@ -107,7 +106,7 @@ func (r *runs) reconcileCanceledStart(pending workbench.PendingRun) {
 		if context.Cause(ctx) != nil {
 			return
 		}
-		_ = post(ctx, dispatcher, func() {
+		_ = r.tasks.deliver(ctx, func() {
 			if !r.tasks.operations.Current(lease) || r.link.terminalClosed() || r.session.current.ID != pending.Command.SessionID ||
 				!r.tasks.operations.Release(lease) {
 				return
@@ -253,10 +252,9 @@ func (r *runs) requestRuntimeCancellation(target conversation.CancelRun, policy 
 		}
 	}
 	r.execution.pendingCancel = &pending
-	dispatcher := r.tasks.dispatch
 	r.tasks.operations.Go(cancelRunOperation, true, func(ownerCtx context.Context, lease operationLease) {
 		err := r.cancelRootRun(ownerCtx, target, pending.replay)
-		_ = post(ownerCtx, dispatcher, func() {
+		_ = r.tasks.deliver(ownerCtx, func() {
 			r.handleRuntimeCancellation(lease, pending, err)
 		})
 	})

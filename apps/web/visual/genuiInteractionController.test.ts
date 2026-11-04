@@ -7,7 +7,7 @@ import {
   type FlameClient,
   type MutationJournalStorage,
 } from "@flame/runtime-client";
-import { stringifyJSON } from "@qimu/sdk/json";
+import { stringifyJSON } from "@frame/sdk/json";
 import { type CallPluginRequest, type ServerCapabilities } from "@flame/runtime-client/wire";
 import {
   Presentation,
@@ -22,7 +22,7 @@ import { limits } from "../../../plugins/genui/contracts/expression";
 
 const installationId = "12345678-1234-1234-1234-123456789abc";
 const contract = stringifyJSON({
-  protocol: "io.github.tangerg.qimu/portable/1",
+  protocol: "io.github.tangerg.flame/plugin/1",
   reference: "test.records",
   composition: "selection",
   scope: "installation",

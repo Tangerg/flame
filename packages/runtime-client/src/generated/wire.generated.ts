@@ -48,7 +48,7 @@ export const HTTP_ENDPOINTS = {
   pluginControl: {
     kind: "pluginControl",
     method: "POST",
-    path: "/v2/qimu",
+    path: "/v2/frame",
     authentication: "pluginRealm",
     responseStatuses: [200, 401, 409, 503],
   },
@@ -1268,6 +1268,7 @@ export interface PluginBrowserSession {
   credential: string;
   maximumMessageBytes: number;
   pollIntervalMilliseconds: number;
+  preparationCapacity: number;
   proofCapacity: number;
   realm: PluginBrowserRealm;
 }
@@ -1278,6 +1279,8 @@ export interface PluginBrowserUseGrant {
   execution: PluginBrowserExecution;
   id: string;
   objects: PluginBrowserObjectRef[];
+  operationId: string;
+  parentUseId?: string;
   realm: PluginBrowserRealm;
   scopeGeneration: string;
   scopeId: string;

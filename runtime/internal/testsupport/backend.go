@@ -4,15 +4,17 @@ import (
 	"context"
 	json "encoding/json/v2"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	framevalue "github.com/Tangerg/frame/value"
+
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
-func CallCapability[P, R any](ctx context.Context, session *sdk.ClientSession, contract *portable.Capability, export, method, id string, input P, metadata sdk.ParamsBase) (R, error) {
+func CallCapability[P, R any](ctx context.Context, session *sdk.ClientSession, contract *plugincontract.Capability, export, method, id string, input P, metadata sdk.ParamsBase) (R, error) {
 	var zero R
-	exported, err := qimumcp.NewCapabilityBinding(session, export, contract)
+	exported, err := pluginmcp.NewCapabilityBinding(session, export, contract)
 	if err != nil {
 		return zero, err
 	}
@@ -20,21 +22,21 @@ func CallCapability[P, R any](ctx context.Context, session *sdk.ClientSession, c
 	if err != nil {
 		return zero, err
 	}
-	admitted, err := jsonvalue.Encode(input)
+	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {
 		return zero, err
 	}
-	result, err := bound.InvokeWithMetadata(ctx, qimumcp.CommandID(id), admitted, metadata)
+	result, err := bound.InvokeWithMetadata(ctx, pluginmcp.CommandID(id), admitted, metadata)
 	if err != nil {
 		return zero, err
 	}
-	err = json.Unmarshal(result.JSON(), &zero, json.RejectUnknownMembers(true))
+	err = json.Unmarshal(result.Bytes(), &zero, json.RejectUnknownMembers(true))
 	return zero, err
 }
 
-func ReceiptCapability[P, R any](ctx context.Context, session *sdk.ClientSession, contract *portable.Capability, export, method, id string, input P) (R, bool, error) {
+func ReceiptCapability[P, R any](ctx context.Context, session *sdk.ClientSession, contract *plugincontract.Capability, export, method, id string, input P) (R, bool, error) {
 	var zero R
-	exported, err := qimumcp.NewCapabilityBinding(session, export, contract)
+	exported, err := pluginmcp.NewCapabilityBinding(session, export, contract)
 	if err != nil {
 		return zero, false, err
 	}
@@ -42,14 +44,14 @@ func ReceiptCapability[P, R any](ctx context.Context, session *sdk.ClientSession
 	if err != nil {
 		return zero, false, err
 	}
-	admitted, err := jsonvalue.Encode(input)
+	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {
 		return zero, false, err
 	}
-	result, found, err := bound.ReadReceipt(ctx, qimumcp.CommandID(id), admitted)
+	result, found, err := bound.ReadReceipt(ctx, pluginmcp.CommandID(id), admitted)
 	if err != nil || !found {
 		return zero, found, err
 	}
-	err = json.Unmarshal(result.JSON(), &zero, json.RejectUnknownMembers(true))
+	err = json.Unmarshal(result.Bytes(), &zero, json.RejectUnknownMembers(true))
 	return zero, true, err
 }

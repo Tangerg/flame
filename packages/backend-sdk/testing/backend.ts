@@ -4,7 +4,7 @@ import "./logging";
 import {
   Backend,
   Capability,
-  Method,
+  declareMethod,
   Refusal,
   invocationConflictCode,
   callHost,
@@ -12,7 +12,7 @@ import {
   type CapabilityDescriptor,
   type MethodDescriptor,
   type CallContext,
-} from "@qimu/node";
+} from "@flame/backend-sdk/mcp";
 
 console.info("conformance module loaded");
 const contract = new Capability(
@@ -20,7 +20,7 @@ const contract = new Capability(
     readFileSync(new URL("./contract.json", import.meta.url), "utf8"),
   ) as CapabilityDescriptor,
 );
-const host = new Method(
+const host = declareMethod(
   parseJSON(
     readFileSync(new URL("./host.json", import.meta.url), "utf8"),
   ) as MethodDescriptor,
@@ -53,9 +53,9 @@ const result = async (context: CallContext, input: Input) => {
       : input.value;
   return { value, source: context.requestInput };
 };
-backend.implement(contract.method("fixture.read"), decode, result);
+backend.implement(contract.portable.method("fixture.read"), decode, result);
 backend.implement(
-  contract.method("fixture.write"),
+  contract.portable.method("fixture.write"),
   decode,
   async (context, input) => {
     const previous = receipts.get(context.commandId!);
@@ -82,7 +82,7 @@ backend.implement(
 );
 for (const name of ["fixture.query-stream", "fixture.command-stream"])
   backend.implementStream(
-    contract.method(name),
+    contract.portable.method(name),
     decode,
     async function* (context, input) {
       try {

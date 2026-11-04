@@ -6,14 +6,16 @@ import (
 	"reflect"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestCompositionSurvivesRestartInOriginalOrderWithoutInstallationLookup(t *testing.T) {
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "model-observer", Composition: portable.Decoration, Scope: extension.ScopeCall}, portable.MethodDescriptor{Name: "observe", Kind: portable.Query, Target: extension.ScopeCall, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "model-observer", Composition: plugincontract.Decoration, Scope: extension.ScopeCall}, portable.MethodDescriptor{Name: "observe", Kind: portable.Query, Target: extension.ScopeCall, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +28,7 @@ func TestCompositionSurvivesRestartInOriginalOrderWithoutInstallationLookup(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := newCompositionStore(db).Save(t.Context(), value); err != nil {
+	if err := newCompositionStore(databaseFor(db)).Save(t.Context(), value); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {
@@ -37,7 +39,7 @@ func TestCompositionSurvivesRestartInOriginalOrderWithoutInstallationLookup(t *t
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newCompositionStore(db)
+	store := newCompositionStore(databaseFor(db))
 	actual, found, err := store.Get(t.Context(), "model-observer")
 	if err != nil || !found || !reflect.DeepEqual(actual.Snapshot(), value.Snapshot()) {
 		t.Fatalf("persisted order changed: %+v, %t, %v", actual.Snapshot(), found, err)

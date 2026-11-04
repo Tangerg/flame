@@ -3,8 +3,8 @@ package terminal
 import (
 	"testing"
 
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/keymap"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/keymap"
 )
 
 func TestCollectShortcutRowsUsesProvidedKeymaps(t *testing.T) {

@@ -18,7 +18,7 @@ for (;;) {
   const processes = stdout
     .split("\n")
     .filter((line) =>
-      /\/(?:qimu-runner|dsoffice)(?:\s|$)|\/runtimes\/node\/.+\/bin\/node/.test(
+      /\/(?:frame-runner|dsoffice)(?:\s|$)|\/runtimes\/node\/.+\/bin\/node/.test(
         line,
       ),
     );

@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
-	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"iter"
 	"log/slog"
 	"strconv"
@@ -15,6 +12,10 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
+	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"

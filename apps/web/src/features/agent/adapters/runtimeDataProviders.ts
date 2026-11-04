@@ -18,7 +18,7 @@ export function registerAgentDataProviders(
   ctx: Contributor,
   runtimeClient: () => FlameClient,
 ): void {
-  ctx.contribute(DATA_PROVIDER, {
+  ctx.add(DATA_PROVIDER, {
     key: AGENT_SESSIONS_KEY,
     fetcher: async (_params, signal) =>
       (await runtimeClient().sessions.list(undefined, signal).autoPagingToArray()).map(
@@ -32,11 +32,11 @@ export function registerApprovalPolicyDataProviders(
   ctx: Contributor,
   runtimeClient: () => FlameClient,
 ): void {
-  ctx.contribute(DATA_PROVIDER, {
+  ctx.add(DATA_PROVIDER, {
     key: APPROVAL_MODE_KEY,
     fetcher: (_params, signal) => runtimeClient().approval.getMode(signal),
   });
-  ctx.contribute(DATA_PROVIDER, {
+  ctx.add(DATA_PROVIDER, {
     key: APPROVAL_RULES_KEY,
     fetcher: async (params, signal) => {
       const query = requiredParams<ApprovalRulesQuery>(APPROVAL_RULES_KEY, params);

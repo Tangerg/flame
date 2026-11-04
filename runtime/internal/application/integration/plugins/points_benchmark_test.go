@@ -5,18 +5,20 @@ import (
 	"fmt"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func BenchmarkInstalledPointResolution(b *testing.B) {
-	for _, composition := range []portable.Composition{portable.Collection, portable.Decoration} {
+	for _, composition := range []plugincontract.Composition{plugincontract.Collection, plugincontract.Decoration} {
 		for _, count := range []int{1, 8, 32} {
 			b.Run(fmt.Sprintf("%s/members=%d", composition, count), func(b *testing.B) {
-				contract, err := portable.AdmitPoint(portable.PointDescriptor{Protocol: portable.Protocol, Reference: "knowledge.sources", Composition: composition, Scope: extension.ScopeInstallation, Optional: true, Ordering: portable.ExplicitList, Value: jsontext.Value(`{"type":"object","properties":{"title":{"type":"string"}},"required":["title"],"additionalProperties":false}`), Applicability: jsontext.Value(`{"type":"object"}`)})
+				contract, err := plugincontract.AdmitPoint(plugincontract.PointDescriptor{Protocol: plugincontract.Protocol, Reference: "knowledge.sources", Composition: composition, Scope: extension.ScopeInstallation, Optional: true, Ordering: plugincontract.ExplicitList, Value: jsontext.Value(`{"type":"object","properties":{"title":{"type":"string"}},"required":["title"],"additionalProperties":false}`), Applicability: jsontext.Value(`{"type":"object"}`)})
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -39,7 +41,7 @@ func BenchmarkInstalledPointResolution(b *testing.B) {
 				store := requirementInstallations{snapshots: []plugin.Snapshot{consumer}}
 				order := make([]PointReference, count)
 				for i := range count {
-					value, err := jsonvalue.Encode(struct {
+					value, err := framevalue.EncodeJSON(struct {
 						Title string `json:"title"`
 					}{Title: fmt.Sprintf("Source %d", i)})
 					if err != nil {
@@ -49,7 +51,7 @@ func BenchmarkInstalledPointResolution(b *testing.B) {
 					store.snapshots = append(store.snapshots, producer)
 					order[i] = PointReference{Installation: producer.Installation.ID(), Contribution: "source"}
 				}
-				context := portable.PointContext{Target: portable.Target{Scope: extension.ScopeInstallation, Reference: consumer.Installation.ID().String()}, Attributes: jsontext.Value(`{}`)}
+				context := plugincontract.PointContext{Target: portable.Target{Scope: extension.ScopeInstallation, Reference: consumer.Installation.ID().String()}, Attributes: jsontext.Value(`{}`)}
 				host := testFramework(b, store)
 				b.ReportAllocs()
 				for b.Loop() {

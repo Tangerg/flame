@@ -29,7 +29,7 @@ func TestMain(tests *testing.M) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	buildRunner := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "build", "-mod=readonly", "-trimpath", "-o", runner, "github.com/Tangerg/qimu/runner/cmd/qimu-runner")
+	buildRunner := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "build", "-mod=readonly", "-trimpath", "-o", runner, "github.com/Tangerg/frame/cmd/frame-runner")
 	buildRunner.Dir = filepath.Join(repository, "tooling")
 	buildRunner.Env = append(os.Environ(), "GOWORK=off")
 	buildRunner.Stdout, buildRunner.Stderr = os.Stdout, os.Stderr

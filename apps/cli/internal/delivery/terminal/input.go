@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/keymap"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/keymap"
 )
 
 func (a *app) Handle(event input.Event) bool {
@@ -26,11 +26,11 @@ func (a *app) matchConfiguredAction(event input.Event) (matched, handled bool) {
 	if !ok || !key.Down() {
 		return false, false
 	}
-	modal := a.stack.Depth() > 0
+	modal := a.stack.hasModal()
 	if modal {
 		a.prompt.SetPendingKeySequence("")
 	}
-	matched, handled, pending := a.keys.route(key, modal, func(action keymap.Action) bool {
+	matched, handled, pending := a.keys.route(key, modal, a.stack.Element().KeyboardLease().Valid, func(action keymap.Action) bool {
 		a.disarmConfirmation(event, action)
 		return a.handleConfiguredAction(event, action)
 	})
@@ -57,10 +57,7 @@ func (a *app) handleConfiguredAction(event input.Event, action keymap.Action) bo
 		a.runs.cancel()
 		return true
 	}
-	if a.stack.Depth() > 0 {
-		if a.stack.Handle(event) {
-			return true
-		}
+	if a.stack.hasModal() {
 		return a.handleGlobalAction(action)
 	}
 	if a.handleGlobalAction(action) {
@@ -89,8 +86,8 @@ func (a *app) handleConfiguredAction(event input.Event, action keymap.Action) bo
 		a.submit()
 		return true
 	case insertNewline:
-		before := a.composer.Editor().Revision()
-		if a.composer.Editor().Do(action) {
+		before := a.composer.Controller().Revision()
+		if a.composer.Controller().Do(action) {
 			a.scheduleDraftPersistenceAfter(before)
 			a.completion.refreshCompletion()
 			return true
@@ -100,11 +97,13 @@ func (a *app) handleConfiguredAction(event input.Event, action keymap.Action) bo
 }
 
 func (a *app) handleUnboundEvent(event input.Event) bool {
-	if a.stack.Depth() > 0 {
-		return a.stack.Handle(event)
+	if a.stack.hasModal() {
+		return false
 	}
 	if a.shell.TranscriptFocused() {
 		switch a.transcript.action(event) {
+		case transcriptPrompt:
+			return false
 		case commandPalette:
 			a.showCommandPalette()
 			return true
@@ -116,22 +115,13 @@ func (a *app) handleUnboundEvent(event input.Event) bool {
 	if a.completion.handleCompletion(event) {
 		return true
 	}
-	before := a.composer.Editor().Revision()
-	handled := a.stack.Handle(event)
-	a.scheduleDraftPersistenceAfter(before)
-	if !handled && isEscapeEvent(event) {
+	if isEscapeEvent(event) {
 		return a.handleEscape()
 	}
-	if !handled && a.shell.TranscriptFocused() && isPromptTextEvent(event) {
-		a.shell.FocusPrompt()
-		before = a.composer.Editor().Revision()
-		handled = a.stack.Handle(event)
-		a.scheduleDraftPersistenceAfter(before)
+	if a.shell.TranscriptFocused() && isPromptTextEvent(event) && a.shell.FocusPrompt() {
+		return a.composer.Controller().Handle(event)
 	}
-	if handled {
-		a.completion.refreshCompletion()
-	}
-	return handled
+	return false
 }
 
 func (a *app) disarmConfirmation(event input.Event, action keymap.Action) {
@@ -313,12 +303,12 @@ func (a *app) handleHistoryAction(action keymap.Action) bool {
 	switch action {
 	case historyPrevious:
 		if !a.composer.recallPrevious() {
-			a.composer.Editor().MoveUp()
+			a.composer.Controller().MoveUp()
 		}
 		return true
 	case historyNext:
 		if !a.composer.recallNext() {
-			a.composer.Editor().MoveDown()
+			a.composer.Controller().MoveDown()
 		}
 		return true
 	default:
@@ -330,7 +320,7 @@ func (a *app) handleHistoryAction(action keymap.Action) bool {
 // an event routed to the main composer. Navigation, focus and handled no-op edits
 // leave the token unchanged, so they cannot keep postponing durable recovery.
 func (a *app) scheduleDraftPersistenceAfter(before uint64) {
-	if a.composer.Editor().Revision() != before {
+	if a.composer.Controller().Revision() != before {
 		a.composer.scheduleDraftPersistence()
 	}
 }

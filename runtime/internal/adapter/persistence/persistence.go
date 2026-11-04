@@ -5,7 +5,6 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"os"
@@ -13,16 +12,16 @@ import (
 
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame"
+	"github.com/Tangerg/frame/sqlite"
 )
 
 // Bundle holds Runtime's host stores in one SQLite database under DataDirectory.
 // Managed plugin processes open their private stores separately.
 type Bundle struct {
-	db                *sql.DB
-	Qimu              *sqlite.Store
-	Admission         *qimu.Admission
+	db                *database
+	Frame             *sqlite.Store
+	Admission         *frame.Admission
 	PluginUses        *sqlite.Owner
 	closeOnce         sync.Once
 	closeErr          error
@@ -89,6 +88,9 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		return nil, fmt.Errorf("persistence: data directory: %w", directoryErr)
 	}
 	config.DataDirectory = dataDirectory.Path()
+	if err := checkLegacyLayout(config.DataDirectory); err != nil {
+		return nil, err
+	}
 	if mkdirErr := os.MkdirAll(config.DataDirectory, 0o700); mkdirErr != nil {
 		return nil, fmt.Errorf("persistence: create data directory %q: %w", config.DataDirectory, mkdirErr)
 	}
@@ -99,7 +101,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 	if err != nil {
 		return nil, err
 	}
-	db := store.Database()
+	db := installations.db
 	idempotencyNamespace, err := idempotencyNamespace(ctx, db)
 	if err != nil {
 		return nil, errors.Join(err, store.Close())
@@ -109,7 +111,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		return nil, errors.Join(err, store.Close())
 	}
 	bundle := &Bundle{
-		Qimu: store, Admission: admission, PluginUses: uses,
+		Frame: store, Admission: admission, PluginUses: uses,
 		validateDirectory:    config.ValidateDirectory,
 		db:                   db,
 		DataDirectory:        config.DataDirectory,
@@ -120,10 +122,10 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 					return err
 				}
 			}
-			return sqlite.RunInTx(ctx, db, fn)
+			return db.write(ctx, fn)
 		},
 		ReadSnapshot: func(ctx context.Context, read func(context.Context) error) error {
-			return sqlite.RunReadSnapshot(ctx, db, read)
+			return db.read(ctx, read)
 		},
 		Sessions:              newSessionStore(db),
 		Runs:                  newRunStore(db),
@@ -174,7 +176,10 @@ func (b *Bundle) Ping(ctx context.Context) error {
 	if err := b.ValidateDirectory(); err != nil {
 		return err
 	}
-	return b.db.PingContext(ctx)
+	return b.db.read(ctx, func(ctx context.Context) error {
+		var one int
+		return b.db.connection(ctx).QueryRowContext(ctx, "SELECT 1").Scan(&one)
+	})
 }
 
 func (b *Bundle) ValidateDirectory() error {
@@ -190,8 +195,8 @@ func (b *Bundle) Close() error {
 		return nil
 	}
 	b.closeOnce.Do(func() {
-		if b.Qimu != nil {
-			b.closeErr = b.Qimu.Close()
+		if b.Frame != nil {
+			b.closeErr = b.Frame.Close()
 		}
 	})
 	return b.closeErr

@@ -1,6 +1,8 @@
 package delivery
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	json "encoding/json/v2"
 	"errors"
@@ -170,7 +172,7 @@ func TestSessionExportImportCarriesQualifiedToolSourceAndOffloadedResultAcrossDa
 		t.Fatalf("append source item: %v", appendItemErr)
 	}
 	if seedHistoryErr := sourceRuntime.SeedHistory(ctx, ses.ID(), []chat.Message{
-		chat.NewToolMessage(chat.ToolResult{ID: "call_offload", Name: published, Output: chat.NewTextToolOutput(preview)}),
+		chat.NewToolMessage(chat.ToolResult{ID: "call_offload", Name: published, Output: toolcontract.NewTextOutput(preview)}),
 	}); seedHistoryErr != nil {
 		t.Fatalf("seed source history: %v", seedHistoryErr)
 	}

@@ -29,7 +29,7 @@ type wireManagedBackend struct {
 type wireRequirement struct {
 	ID       plugin.ContributionID `json:"id"`
 	Contract string                `json:"contract"`
-	Optional bool                  `json:"optional"`
+	Optional bool                  `json:"optional,omitzero"`
 }
 
 type wirePoint struct {
@@ -62,8 +62,8 @@ type wireComponent struct {
 
 type wireInput struct {
 	ID       string               `json:"id"`
-	Secret   bool                 `json:"secret"`
-	Required bool                 `json:"required"`
+	Secret   bool                 `json:"secret,omitzero"`
+	Required bool                 `json:"required,omitzero"`
 	Server   mcpserver.ServerName `json:"server"`
 	Target   string               `json:"target"`
 	Key      string               `json:"key,omitempty"`

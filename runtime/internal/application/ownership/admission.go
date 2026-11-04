@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/frame/cancellation"
 )
 
 // Gate serializes one writer per session, records live Runs, and coordinates
@@ -144,7 +143,7 @@ func (g *Gate) AcquireSession(ctx context.Context, sessionID string) (release fu
 		return nil, false, err
 	}
 	settled, err := g.settleRetirement(ctx, sessionID)
-	err = errors.Join(err, cancellation.Err(ctx))
+	err = errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx)))
 	if err != nil || !settled {
 		release()
 		return nil, false, err
@@ -177,7 +176,7 @@ func (g *Gate) AcquireRun(ctx context.Context, sessionID, cwd string) (RunAdmiss
 	if sessionID == "" {
 		return RunAdmission{}, false, errors.New("session admission: session identity is required")
 	}
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return RunAdmission{}, false, err
 	}
 	if cwd != "" {
@@ -196,7 +195,7 @@ func (g *Gate) AcquireRun(ctx context.Context, sessionID, cwd string) (RunAdmiss
 		return RunAdmission{}, false, err
 	}
 	settled, err := g.settleRetirement(ctx, sessionID)
-	err = errors.Join(err, cancellation.Err(ctx))
+	err = errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx)))
 	if err != nil || !settled {
 		admission.Release()
 		return RunAdmission{}, false, err
@@ -311,7 +310,7 @@ func (g *Gate) WaitRunStartable(ctx context.Context, sessionID, cwd string) erro
 	if ctx == nil {
 		return errors.New("session admission: wait context is required")
 	}
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return err
 	}
 	if cwd != "" {
@@ -323,7 +322,7 @@ func (g *Gate) WaitRunStartable(ctx context.Context, sessionID, cwd string) erro
 	}
 	for {
 		g.mu.Lock()
-		if err := cancellation.Err(ctx); err != nil {
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			g.mu.Unlock()
 			return err
 		}
@@ -341,7 +340,7 @@ func (g *Gate) WaitRunStartable(ctx context.Context, sessionID, cwd string) erro
 
 		select {
 		case <-ctx.Done():
-			return cancellation.Err(ctx)
+			return errors.Join(ctx.Err(), context.Cause(ctx))
 		case <-changed:
 		}
 	}
@@ -352,7 +351,7 @@ func (g *Gate) WaitRunStartable(ctx context.Context, sessionID, cwd string) erro
 func (g *Gate) lockForegroundSession(ctx context.Context, sessionID string) error {
 	for {
 		g.mu.Lock()
-		if err := cancellation.Err(ctx); err != nil {
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			g.mu.Unlock()
 			return err
 		}
@@ -363,7 +362,7 @@ func (g *Gate) lockForegroundSession(ctx context.Context, sessionID string) erro
 		g.mu.Unlock()
 		select {
 		case <-ctx.Done():
-			return cancellation.Err(ctx)
+			return errors.Join(ctx.Err(), context.Cause(ctx))
 		case <-changed:
 		}
 	}

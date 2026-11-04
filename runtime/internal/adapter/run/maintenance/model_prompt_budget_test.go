@@ -1,6 +1,10 @@
 package maintenance
 
 import (
+	corecontent "github.com/Tangerg/scope/core/content"
+
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
@@ -156,7 +160,7 @@ func TestMaintenanceModelTranscriptHasAggregateInputBound(t *testing.T) {
 		messages = append(messages, chat.NewToolMessage(chat.ToolResult{
 			ID:   "call",
 			Name: "shell",
-			Output: chat.NewTextToolOutput(
+			Output: toolcontract.NewTextOutput(
 				largeResult + string(rune('a'+index%26)),
 			),
 		}))
@@ -231,13 +235,13 @@ func TestModelContextEstimateDoesNotTreatInlineImageBytesAsText(t *testing.T) {
 }
 
 func budgetToolImage(image *media.Media) chat.Message {
-	return chat.NewToolMessage(chat.ToolResult{ID: "image", Name: "inspect", Output: chat.ToolOutput{
-		Content: []chat.ToolContent{{Kind: chat.PartText, Text: "image result"}, {Kind: chat.PartMedia, Media: image}},
+	return chat.NewToolMessage(chat.ToolResult{ID: "image", Name: "inspect", Output: toolcontract.Output{
+		Content: []corecontent.Block{{Kind: corecontent.Text, Text: "image result"}, {Kind: corecontent.Media, Media: image}},
 	}})
 }
 
 func TestModelContextEstimateCountsToolDetailsOnlyWithoutContent(t *testing.T) {
-	output := chat.NewTextToolOutput("visible result")
+	output := toolcontract.NewTextOutput("visible result")
 	message := chat.NewToolMessage(chat.ToolResult{ID: "details", Name: "inspect", Output: output})
 	baseline := mustEstimateModelContextTokens(t, []chat.Message{message}, nil, chat.Options{})
 	details := jsontext.Value(`"` + strings.Repeat("hidden", 2000) + `"`)
@@ -264,7 +268,7 @@ func TestModelContextEstimateCountsToolManifestAndOptions(t *testing.T) {
 	messages := []chat.Message{chat.NewUserMessage(chat.NewTextPart("inspect"))}
 	baseline := mustEstimateModelContextTokens(t, messages, nil, chat.Options{})
 	description := strings.Repeat("工具说明", 1_000)
-	tools := []chat.ToolDefinition{{
+	tools := []toolcontract.Definition{{
 		Name:        "inspect",
 		Description: description,
 		InputSchema: jsontext.Value(`{"type":"object","properties":{"path":{"type":"string"}}}`),
@@ -283,7 +287,7 @@ func TestModelContextEstimateCountsToolManifestAndOptions(t *testing.T) {
 func mustEstimateModelContextTokens(
 	t *testing.T,
 	messages []chat.Message,
-	tools []chat.ToolDefinition,
+	tools []toolcontract.Definition,
 	options chat.Options,
 ) int {
 	t.Helper()

@@ -3,13 +3,17 @@ package terminal
 import (
 	"errors"
 	"fmt"
+	"image"
+
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/scene"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/keymap"
-	"github.com/Tangerg/oolong/core/program"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/keymap"
+	"github.com/Tangerg/oolong/ui/core/program"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 // queueRun is what editing the queue asks of Run admission.
@@ -24,13 +28,14 @@ type queueRun interface {
 // entry already being sent cannot be edited, removed or moved; dispatch and
 // its settlement belong to Run admission.
 type queueEditor struct {
-	queue   *workbench.Queue
-	session *sessionState
-	run     queueRun
-	view    *queueView
-	prompt  *promptView
-	drawer  *queueDrawer
-	dialog  *headless.Dialog
+	queue     *workbench.Queue
+	session   *sessionState
+	run       queueRun
+	view      *queueView
+	prompt    *promptView
+	drawer    *queueDrawer
+	dialog    *base.Dialog
+	workspace *workspaceScene
 }
 
 type queueEditorConfig struct {
@@ -39,7 +44,7 @@ type queueEditorConfig struct {
 	run     queueRun
 	view    *queueView
 	prompt  *promptView
-	stack   *headless.Stack
+	stack   *workspaceScene
 	theme   kit.Theme
 	glyphs  kit.Glyphs
 	keys    *keymap.Map
@@ -47,9 +52,15 @@ type queueEditorConfig struct {
 }
 
 func newQueueEditor(cfg queueEditorConfig) *queueEditor {
-	q := &queueEditor{queue: cfg.queue, session: cfg.session, run: cfg.run, view: cfg.view, prompt: cfg.prompt}
+	q := &queueEditor{queue: cfg.queue, session: cfg.session, run: cfg.run, view: cfg.view, prompt: cfg.prompt, workspace: cfg.stack}
 	q.drawer = newQueueDrawer(cfg.theme, cfg.glyphs, cfg.keys, cfg.clip)
-	q.dialog = headless.NewDialog(headless.DialogConfig{Stack: cfg.stack, Title: "Queue", Content: q.drawer})
+	body := scene.NewGroup(scene.GroupConfig{Items: []scene.Item{{Element: q.drawer.Element(), Size: layout.Flex(1)}}, Element: scene.ElementConfig{Preview: func(event scene.Event) scene.EventResult {
+		if cfg.stack.preview != nil {
+			return cfg.stack.preview(event)
+		}
+		return scene.EventResult{}
+	}}})
+	q.dialog = base.NewDialog(base.DialogConfig{Title: "Queue", Content: body.Element(), Place: func(space image.Point) image.Rectangle { return q.drawer.Place(space).In(space) }, Dismissed: func() { cfg.stack.dismissDialog(q.dialog.Element()); q.drawer.Closed() }})
 	q.drawer.SetActions(queueDrawerActions{
 		BeginEdit:  q.holdQueuedPrompt,
 		SaveEdit:   q.saveQueuedPrompt,
@@ -59,7 +70,6 @@ func newQueueEditor(cfg queueEditorConfig) *queueEditor {
 		SendNow:    q.sendQueuedNow,
 		Dismiss:    q.dialog.Dismiss,
 	})
-	q.drawer.lifecycle.bind(q.dialog.Open)
 	return q
 }
 
@@ -90,8 +100,8 @@ func (q *queueEditor) ShowQueue() {
 		return
 	}
 	q.drawer.ResetNotice()
-	q.drawer.lifecycle.renew()
 	q.dialog.Show()
+	q.workspace.showDialog(q.dialog.Element())
 	q.run.message(fmt.Sprintf("queue · %d waiting", len(snapshot.Entries)))
 }
 

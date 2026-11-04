@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/frame/cancellation"
 
 	"github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -90,7 +89,12 @@ type runtimePathSearchResponse struct {
 
 type concurrentSearchTool struct{ toolcontract.Tool }
 
-func (c concurrentSearchTool) Unwrap() toolcontract.Tool { return c.Tool }
+func (source concurrentSearchTool) InputValidator() func([]byte) error {
+	if declaration, ok := source.Tool.(toolcontract.InputValidatingTool); ok {
+		return declaration.InputValidator()
+	}
+	return nil
+}
 
 func (concurrentSearchTool) ConcurrencyPolicy() func(toolcontract.Invocation) (string, bool) {
 	return func(toolcontract.Invocation) (string, bool) { return "", true }
@@ -140,7 +144,7 @@ func mustRuntimeSearchFunc[Input, Output any](
 }
 
 func runtimeGlob(ctx context.Context, root string, request runtimeGlobRequest) (runtimePathSearchResponse, error) {
-	if cause := cancellation.Err(ctx); cause != nil {
+	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		return runtimePathSearchResponse{}, cause
 	}
 	if err := validateRuntimeSearchText(request.Pattern, maxRuntimeGlobPatternBytes, "glob pattern"); err != nil {
@@ -187,7 +191,7 @@ func runtimeGlob(ctx context.Context, root string, request runtimeGlobRequest) (
 }
 
 func runtimeGrep(ctx context.Context, root string, request runtimeGrepRequest) (runtimeSearchResponse, error) {
-	if cause := cancellation.Err(ctx); cause != nil {
+	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		return runtimeSearchResponse{}, cause
 	}
 	if err := validateRuntimeSearchText(request.Pattern, maxRuntimeSearchPatternBytes, "grep pattern"); err != nil {

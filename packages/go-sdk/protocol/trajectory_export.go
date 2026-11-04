@@ -3,8 +3,9 @@ package protocol
 import (
 	"encoding/json/jsontext"
 	"errors"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 )
 
 const SessionTrajectoryVersion = 4

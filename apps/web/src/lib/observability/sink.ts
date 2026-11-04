@@ -5,7 +5,7 @@ import {
   type PushMetricExporter,
   type ResourceMetrics,
 } from "@opentelemetry/sdk-metrics";
-import { type LogRecordProcessor, type SdkLogRecord } from "@opentelemetry/sdk-logs";
+import { type LogRecordProcessor, type ReadableLogRecord } from "@opentelemetry/sdk-logs";
 import { type ReadableSpan, type SpanProcessor } from "@opentelemetry/sdk-trace";
 import { type LogRow, type SpanRow } from "@flame/component-sdk";
 import { useTelemetryStore } from "@/lib/observability/stores";
@@ -98,7 +98,7 @@ export class LocalLogProcessor implements LogRecordProcessor {
   private readonly batcher = new Batcher<LogRow>((rows) =>
     useTelemetryStore.getState().ingestLogs(rows),
   );
-  onEmit(record: SdkLogRecord): void {
+  onEmit(record: ReadableLogRecord): void {
     const ctx = record.spanContext;
     const body = record.body;
     this.batcher.add({

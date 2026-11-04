@@ -4,7 +4,7 @@ import { WORKSPACE_VIEW } from "@/features/workspace/public/views";
 export const fileView = definePlugin({
   name: "flame.builtin.view-file",
   setup(ctx) {
-    ctx.contribute(WORKSPACE_VIEW, {
+    ctx.contributions.add(WORKSPACE_VIEW, {
       id: "file",
       title: "workspace.view.title.file",
       icon: "folder",

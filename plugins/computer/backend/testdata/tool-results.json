@@ -245,7 +245,7 @@
     }
   },
   {
-    "name": "inferred resource link",
+    "name": "resource link without declared MIME",
     "result": {
       "content": [
         {
@@ -260,7 +260,6 @@
         {
           "kind": "media",
           "media": {
-            "mime": "image/png",
             "source": {
               "kind": "uri",
               "uri": "https://example.com/IMAGE.PNG?download=1"
@@ -269,8 +268,7 @@
           },
           "metadata": {
             "mcp/content": {
-              "type": "resource_link",
-              "mimeTypeInferred": true
+              "type": "resource_link"
             }
           }
         }
@@ -278,7 +276,7 @@
     }
   },
   {
-    "name": "opaque resource link",
+    "name": "opaque resource link without declared MIME",
     "result": {
       "content": [
         {
@@ -293,7 +291,6 @@
         {
           "kind": "media",
           "media": {
-            "mime": "application/octet-stream",
             "source": {
               "kind": "uri",
               "uri": "urn:example:42"
@@ -302,8 +299,7 @@
           },
           "metadata": {
             "mcp/content": {
-              "type": "resource_link",
-              "mimeTypeInferred": true
+              "type": "resource_link"
             }
           }
         }
@@ -355,7 +351,7 @@
     }
   },
   {
-    "name": "embedded binary resource inferred",
+    "name": "embedded binary resource without declared MIME",
     "result": {
       "content": [
         {
@@ -378,7 +374,6 @@
         {
           "kind": "media",
           "media": {
-            "mime": "application/pdf",
             "source": {
               "kind": "bytes",
               "bytes": "AQID"
@@ -395,8 +390,7 @@
                 "_meta": {
                   "version": 3
                 }
-              },
-              "mimeTypeInferred": true
+              }
             }
           }
         }
@@ -721,6 +715,62 @@
                 }
               ]
             }
+          }
+        }
+      ]
+    },
+    "rejected": true
+  },
+  {
+    "name": "image without declared MIME refused",
+    "result": {
+      "content": [
+        {
+          "type": "image",
+          "mimeType": "",
+          "data": "AQID"
+        }
+      ]
+    },
+    "rejected": true
+  },
+  {
+    "name": "audio without declared MIME refused",
+    "result": {
+      "content": [
+        {
+          "type": "audio",
+          "mimeType": "",
+          "data": "AQID"
+        }
+      ]
+    },
+    "rejected": true
+  },
+  {
+    "name": "invalid resource link MIME refused",
+    "result": {
+      "content": [
+        {
+          "type": "resource_link",
+          "name": "file",
+          "uri": "https://example.com/file.png",
+          "mimeType": "not-a-mime"
+        }
+      ]
+    },
+    "rejected": true
+  },
+  {
+    "name": "invalid embedded binary resource MIME refused",
+    "result": {
+      "content": [
+        {
+          "type": "resource",
+          "resource": {
+            "uri": "file:///file.pdf",
+            "mimeType": "not-a-mime",
+            "blob": "AQID"
           }
         }
       ]

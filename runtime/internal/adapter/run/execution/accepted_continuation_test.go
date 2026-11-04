@@ -14,8 +14,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -60,32 +60,36 @@ func TestAcceptedAnswerDeliveryAdvancesOnlyThePausedHead(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			before, err := session.committedTree(t.Context(), session.state.processHandle().Relation().ProcessID())
+			before, err := session.committedTree(t.Context(), session.state.processHandle().ID())
 			if err != nil {
 				t.Fatal(err)
 			}
 			if err := session.deliverContinuationAnswers(t.Context(), prepared[:delivered], nil); err != nil {
 				t.Fatal(err)
 			}
-			head, err := session.committedTree(t.Context(), before.RootID())
+			head, err := session.committedTree(t.Context(), before.Root)
 			if err != nil {
 				t.Fatal(err)
 			}
-			pending, err := interaction.PendingToolInputs(head)
+			pending, err := session.pendingInputs(head)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(pending) != 2-delivered || head.Digest() == before.Digest() {
+			if len(pending) != 2-delivered || head.Head() == before.Head() {
 				t.Fatalf("delivery did not commit the new head: pending=%d", len(pending))
 			}
-			original := make(map[agent.ProcessID]agent.ProcessSnapshot)
-			for _, snapshot := range before.ProcessSnapshots() {
-				original[snapshot.Relation().ProcessID()] = snapshot
+			priorInspection, err := before.Inspect()
+			if err != nil {
+				t.Fatal(err)
 			}
-			for _, snapshot := range head.ProcessSnapshots() {
-				prior := original[snapshot.Relation().ProcessID()]
-				if !snapshot.Status().Terminal() && (snapshot.Status() != agent.StatusPaused || snapshot.Usage().CommittedSteps != prior.Usage().CommittedSteps || snapshot.Usage().PreparedEffects != prior.Usage().PreparedEffects) {
-					t.Fatalf("answer advanced execution: %s", snapshot.Status())
+			inspection, err := head.Inspect()
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, snapshot := range inspection.Processes {
+				prior, found := priorInspection.Process(snapshot.ID)
+				if !found || !snapshot.Status.Terminal() && (snapshot.Status != scoperun.StatusPaused || snapshot.Usage.CommittedSteps != prior.Usage.CommittedSteps || snapshot.Usage.PreparedEffects != prior.Usage.PreparedEffects) {
+					t.Fatalf("answer advanced execution: %s", snapshot.Status)
 				}
 			}
 			if err := executor.Release(t.Context(), ref); err != nil {
@@ -205,9 +209,9 @@ func captureAcceptedTestBarrier(t *testing.T, executor *InteractionExecutor, ref
 	for {
 		root := session.state.processHandle()
 		if root != nil {
-			head, err := session.committedTree(ctx, root.Relation().ProcessID())
+			head, err := session.committedTree(ctx, root.ID())
 			if err == nil {
-				inputs, err := interaction.PendingToolInputs(head)
+				inputs, err := session.pendingInputs(head)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -239,7 +243,7 @@ func captureAcceptedTestBarrier(t *testing.T, executor *InteractionExecutor, ref
 	session.state.waitingCheckpoint = checkpoint.Clone()
 	session.state.dispatchReady = make(chan struct{})
 	session.state.mu.Unlock()
-	session.lifetime.send(runs.ExecutorEvent{Member: session.executorMember(session.state.processHandle().Relation()), Payload: barrier})
+	session.lifetime.send(runs.ExecutorEvent{Member: session.executorMember(session.state.processHandle().ID()), Payload: barrier})
 	select {
 	case result := <-ready:
 		return result

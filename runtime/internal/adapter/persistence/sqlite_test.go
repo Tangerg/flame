@@ -39,7 +39,7 @@ func newTempDB(t *testing.T) *SessionStore {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return newSessionStore(db)
+	return newSessionStore(databaseFor(db))
 }
 
 func TestSessionSchemaOwnsExactWorkspacePath(t *testing.T) {
@@ -81,7 +81,7 @@ func TestSessionSchemaOwnsExactWorkspacePath(t *testing.T) {
 	if _, err := db.Exec(insert, "ses_relative", "relative/work", "relative/work"); err != nil {
 		t.Fatalf("seed relative workspace: %v", err)
 	}
-	if _, err := newSessionStore(db).Get(t.Context(), "ses_relative"); !errors.Is(err, session.ErrInvalid) {
+	if _, err := newSessionStore(databaseFor(db)).Get(t.Context(), "ses_relative"); !errors.Is(err, session.ErrInvalid) {
 		t.Fatalf("decode relative workspace error = %v, want session.ErrInvalid", err)
 	}
 }
@@ -164,7 +164,7 @@ func TestSessionPersistAcrossReopen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open 1: %v", err)
 	}
-	svc1 := newSessionStore(db1)
+	svc1 := newSessionStore(databaseFor(db1))
 	created := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_persistent", Title: "persistent", Workspace: testsupport.MustWorkspace("/work"),
 	})
@@ -178,7 +178,7 @@ func TestSessionPersistAcrossReopen(t *testing.T) {
 		t.Fatalf("Open 2: %v", err)
 	}
 	defer func() { _ = db2.Close() }()
-	svc2 := newSessionStore(db2)
+	svc2 := newSessionStore(databaseFor(db2))
 
 	got, err := svc2.Get(ctx, created.ID())
 	if err != nil {
@@ -199,7 +199,7 @@ func TestMessageStore_RoundTrip(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newMessageStore(db)
+	store := newMessageStore(databaseFor(db))
 	ctx := context.Background()
 
 	var got []chat.Message
@@ -208,15 +208,15 @@ func TestMessageStore_RoundTrip(t *testing.T) {
 		t.Fatalf("Read empty = %v (err %v), want empty", got, err)
 	}
 
-	_, err = store.Write(ctx, "conv-a", chat.NewUserMessage(chat.NewTextPart("hello")), chat.NewAssistantMessage(chat.NewTextPart("hi")))
+	err = store.Write(ctx, "conv-a", chat.NewUserMessage(chat.NewTextPart("hello")), chat.NewAssistantMessage(chat.NewTextPart("hi")))
 	if err != nil {
 		t.Fatalf("Write: %v", err)
 	}
-	_, err = store.Write(ctx, "conv-a", chat.NewUserMessage(chat.NewTextPart("again")))
+	err = store.Write(ctx, "conv-a", chat.NewUserMessage(chat.NewTextPart("again")))
 	if err != nil {
 		t.Fatalf("Write 2: %v", err)
 	}
-	_, err = store.Write(ctx, "conv-b", chat.NewUserMessage(chat.NewTextPart("other")))
+	err = store.Write(ctx, "conv-b", chat.NewUserMessage(chat.NewTextPart("other")))
 	if err != nil {
 		t.Fatalf("Write conv-b: %v", err)
 	}
@@ -258,7 +258,7 @@ func TestTranscriptStore_RoundTrip(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newTranscriptStore(db)
+	store := newTranscriptStore(databaseFor(db))
 	ctx := context.Background()
 	now := time.Now().UTC()
 
@@ -285,8 +285,8 @@ func TestTranscriptStoreRejectsIdentityReparenting(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newTranscriptStore(db)
-	runs := newRunStore(db)
+	store := newTranscriptStore(databaseFor(db))
+	runs := newRunStore(databaseFor(db))
 	ctx := t.Context()
 	now := time.Now().UTC()
 
@@ -346,7 +346,7 @@ func TestTranscriptStoreReplaceItemUsesExactOptimisticSnapshot(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newTranscriptStore(db)
+	store := newTranscriptStore(databaseFor(db))
 	now := time.Date(2026, 7, 30, 1, 2, 3, 0, time.UTC)
 	original := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID:  "ses_a",
@@ -406,9 +406,9 @@ func TestTranscriptStoreKeepsOffloadRelationshipsImmutableAndOneToOne(t *testing
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newTranscriptStore(db)
+	store := newTranscriptStore(databaseFor(db))
 	for _, id := range []transcript.ToolResultID{"BLOB234", "OTHER234"} {
-		if err := newToolResultStore(db).Stage(t.Context(), transcript.ToolResultStage{ID: id, SessionID: "ses_a", Body: "body"}); err != nil {
+		if err := newToolResultStore(databaseFor(db)).Stage(t.Context(), transcript.ToolResultStage{ID: id, SessionID: "ses_a", Body: "body"}); err != nil {
 			t.Fatal(err)
 		}
 	}

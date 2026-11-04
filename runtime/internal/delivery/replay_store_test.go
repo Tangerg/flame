@@ -6,8 +6,9 @@ import (
 	"sync"
 	"time"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type memoryIdempotencyStore struct {
@@ -36,7 +37,7 @@ func (m *memoryIdempotencyStore) Lookup(_ context.Context, key, fingerprint stri
 		return operation.ReplayRecord{}, false, nil
 	}
 	if current.Fingerprint != fingerprint {
-		return operation.ReplayRecord{}, false, portable.ErrInvocationConflict
+		return operation.ReplayRecord{}, false, framemcp.ErrInvocationConflict
 	}
 	return current.ReplayRecord, true, nil
 }
@@ -53,7 +54,7 @@ func (m *memoryIdempotencyStore) Claim(_ context.Context, key, fingerprint strin
 	stored, ok := m.records[key]
 	if ok {
 		if stored.Fingerprint != fingerprint {
-			return operation.ReplayRecord{}, false, portable.ErrInvocationConflict
+			return operation.ReplayRecord{}, false, framemcp.ErrInvocationConflict
 		}
 		stored.Payload = bytes.Clone(stored.Payload)
 		return stored.ReplayRecord, false, nil
@@ -71,7 +72,7 @@ func (m *memoryIdempotencyStore) Complete(_ context.Context, record operation.Re
 		return operation.ErrClaimLost
 	}
 	if stored.Fingerprint != record.Fingerprint {
-		return portable.ErrInvocationConflict
+		return framemcp.ErrInvocationConflict
 	}
 	if len(stored.Payload) != 0 {
 		if !time.Now().Before(stored.expiresAt) {

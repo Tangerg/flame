@@ -9,11 +9,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capture"
+
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/frame/cancellation"
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
 )
@@ -83,7 +83,7 @@ func withMutationGuard(inner toolcontract.Tool, tr *readTracker, root *filesyste
 		}
 		if blocked != "" {
 			failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{
-				Kind: toolcontract.FailureKindRejected, Output: chat.NewTextToolOutput(blocked),
+				Kind: toolcontract.FailureKindRejected, Output: toolcontract.NewTextOutput(blocked),
 			})
 			if err != nil {
 				return toolcontract.Result{}, beforeCallFailure(ctx, err)
@@ -99,7 +99,7 @@ func withMutationGuard(inner toolcontract.Tool, tr *readTracker, root *filesyste
 
 // Only pre-dispatch checks have evidence that the mutable Tool did not run.
 func beforeCallFailure(ctx context.Context, cause error) error {
-	if cancelled := cancellation.Err(ctx); cancelled != nil {
+	if cancelled := errors.Join(ctx.Err(), context.Cause(ctx)); cancelled != nil {
 		return errors.Join(cause, cancelled)
 	}
 	return pluginsdk.DefiniteToolFailure(cause)
@@ -166,7 +166,7 @@ type fingerprintObservation struct {
 }
 
 func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, path string, maxBytes int64) (_ fingerprintObservation, exists bool, err error) {
-	if cause := cancellation.Err(ctx); cause != nil {
+	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		return fingerprintObservation{}, false, cause
 	}
 	preflight, err := root.Stat(path)
@@ -194,7 +194,11 @@ func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, p
 	}()
 	hash := sha256.New()
 	buffer := make([]byte, readBufferBytes)
-	var source io.Reader = cancellation.Reader(ctx, file)
+	contextReader, err := capture.NewReader(ctx, file)
+	if err != nil {
+		return fingerprintObservation{}, false, err
+	}
+	var source io.Reader = contextReader
 	if maxBytes > 0 {
 		source = io.LimitReader(source, maxBytes+1)
 	}

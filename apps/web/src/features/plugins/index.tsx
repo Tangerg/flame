@@ -13,8 +13,8 @@ export function createInstalledPluginLoader(installed: InstalledPluginsOwner) {
     name: "flame.builtin.installed-plugin-loader",
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
-      installed.start(ctx, ctx.runtime);
-      ctx.cleanup(installed.dispose);
+      installed.start(ctx, ctx.dependencies.runtime);
+      ctx.lifetime.defer(installed.dispose);
     },
   });
 }
@@ -22,7 +22,7 @@ export function createInstalledPluginLoader(installed: InstalledPluginsOwner) {
 export const pluginManagementPane = definePlugin({
   name: "flame.builtin.plugins-pane",
   setup(ctx) {
-    registerSettingsPane(ctx, {
+    registerSettingsPane(ctx.contributions, {
       id: PLUGINS_PANE,
       label: "settings.pane.plugins",
       keywords: [

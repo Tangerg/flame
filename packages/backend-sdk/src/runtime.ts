@@ -6,9 +6,13 @@ import {
   type ServerCapabilities,
 } from "@flame/runtime-client";
 import { HTTP_ENDPOINTS } from "@flame/runtime-client/wire";
-import { callbackFetch, callbackRef } from "@qimu/node/callback";
-import { freezeJSON } from "@qimu/node/contract";
-import type { CallContext, Invocation, SetupContext } from "@qimu/node";
+import { callbackFetch, callbackRef } from "@flame/backend-sdk/mcp/callback";
+import { freezeJSON } from "@flame/backend-sdk/mcp/contract";
+import type {
+  CallContext,
+  Invocation,
+  SetupContext,
+} from "@flame/backend-sdk/mcp";
 
 export function runtime(context: CallContext): Promise<FlameClient>;
 export function runtime(

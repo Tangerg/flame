@@ -10,8 +10,7 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/frame"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -42,36 +41,41 @@ type pendingInstallationCheckpoints map[identity.InstallationID]bool
 
 func (pendingInstallationCheckpoints) ID() string { return "fixture.checkpoints" }
 
-func (p pendingInstallationCheckpoints) Held(_ context.Context, id qimu.InstallationID) ([]qimu.Dependency, error) {
+func (p pendingInstallationCheckpoints) Held(_ context.Context, id frame.InstallationID) ([]frame.Dependency, error) {
 	for installation, pending := range p {
 		if pending && installation.String() == id.String() {
-			return []qimu.Dependency{{InstallationID: id, Release: testsupport.Digest("checkpoint release")}}, nil
+			return []frame.Dependency{{InstallationID: id, Release: testsupport.Digest("checkpoint release")}}, nil
 		}
 	}
 	return nil, nil
 }
 
-func installationTestPlugin(t testing.TB, revision string) *qimu.Plugin {
+func installationTestPlugin(t testing.TB, revision string) *frame.Plugin {
 	t.Helper()
-	definition, err := qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte(revision))})
+	definition, err := frame.Define(frame.Definition{Revision: testsupport.Digest(revision)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return definition
 }
 
-func installationTestHost(t *testing.T, executor *InteractionExecutor, owners ...qimu.UseOwner) *qimu.Host {
+func installationTestHost(t *testing.T, executor *InteractionExecutor, owners ...frame.UseOwner) *frame.Host {
 	t.Helper()
 	owners = append(owners, executor)
-	host, err := qimu.NewHost(context.Background(), qimu.HostConfig{Admission: executor.installations, UseOwners: owners})
+	host, err := frame.NewHost(context.Background(), frame.HostConfig{Admission: executor.installations, UseOwners: owners})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, id := range []identity.InstallationID{dependedInstallation, unrelatedInstallation} {
-		if _, err := host.Install(t.Context(), qimu.InstallationConfig{ID: id.Host(), Plugin: installationTestPlugin(t, id.String()), Enabled: true}); err != nil {
+		revision := "transitive leaf"
+		if id == dependedInstallation {
+			revision = "depended release"
+		}
+		if _, err := host.Install(t.Context(), frame.InstallationConfig{ID: id.Host(), Plugin: installationTestPlugin(t, revision), Enabled: true}); err != nil {
 			t.Fatal(err)
 		}
 	}
+	executor.config.ValidatePluginSources = resourceSourceValidator(host)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
@@ -130,7 +134,7 @@ func TestQuiescentInstallationChangeReadsOnlyDependencyProjections(t *testing.T)
 				err = host.Replace(t.Context(), dependedInstallation.Host(), installationTestPlugin(t, "replacement"), nil)
 			}
 			if test.refused {
-				if !errors.Is(err, qimu.ErrInUse) {
+				if !errors.Is(err, frame.ErrInUse) {
 					t.Fatalf("unsafe replacement admitted: %v", err)
 				}
 			} else if err != nil {
@@ -183,7 +187,7 @@ func TestInstallationChangeDoesNotWaitForAssembly(t *testing.T) {
 		if err != nil {
 			t.Fatalf("assembly behind a pending change: %v", err)
 		}
-		if err := host.Replace(t.Context(), dependedInstallation.Host(), installationTestPlugin(t, "depended replacement"), nil); !errors.Is(err, qimu.ErrInUse) {
+		if err := host.Replace(t.Context(), dependedInstallation.Host(), installationTestPlugin(t, "depended replacement"), nil); !errors.Is(err, frame.ErrInUse) {
 			t.Fatalf("change under a published dependency = %v", err)
 		}
 		if err := executor.Release(t.Context(), ref); err != nil {
@@ -194,7 +198,7 @@ func TestInstallationChangeDoesNotWaitForAssembly(t *testing.T) {
 		}
 
 		close(proceed)
-		if err := <-slow; !errors.Is(err, qimu.ErrStaleBinding) {
+		if err := <-slow; !errors.Is(err, frame.ErrStaleBinding) {
 			t.Fatalf("assembly raced by a dependency change = %v, want stale refusal", err)
 		}
 		if live := executor.sessions.snapshot(); len(live) != 0 {
@@ -243,12 +247,24 @@ func TestStagedModelTransitiveDependenciesBlockReplacementUntilRelease(t *testin
 		return nil, nil
 	}), InteractionExecutorConfig{CallComposition: owner})
 	host := installationTestHost(t, executor)
+	if err := host.Replace(t.Context(), dependedInstallation.Host(), installationTestPlugin(t, "context release"), nil); err != nil {
+		t.Fatal(err)
+	}
+	// This fixture supplies a captured model composition without a process.
+	// Its original dependency projection is still checked under Frame admission.
+	executor.config.ValidatePluginSources = func(ctx context.Context, bindings []plugin.Activation, resources []plugin.Dependency) error {
+		dependencies := slices.Clone(resources)
+		for _, binding := range bindings {
+			dependencies = append(dependencies, binding.Dependencies...)
+		}
+		return resourceSourceValidator(host)(ctx, nil, dependencies)
+	}
 	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = executor.Release(context.Background(), ref) })
-	if err := host.Replace(t.Context(), leaf.InstallationID.Host(), installationTestPlugin(t, "leaf replacement"), nil); !errors.Is(err, qimu.ErrInUse) {
+	if err := host.Replace(t.Context(), leaf.InstallationID.Host(), installationTestPlugin(t, "leaf replacement"), nil); !errors.Is(err, frame.ErrInUse) {
 		t.Fatalf("transitive replacement admitted: %v", err)
 	}
 	if err := executor.Release(t.Context(), ref); err != nil {

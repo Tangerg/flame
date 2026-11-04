@@ -1,6 +1,8 @@
 package maintenance
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"errors"
 	"fmt"
@@ -9,6 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/scope/core/chat"
+	corecontent "github.com/Tangerg/scope/core/content"
 )
 
 // modelContextBudget owns the compaction trigger and the exact immutable
@@ -22,7 +25,7 @@ type modelContextBudget struct {
 	maxTokens    int
 	instructions []chat.Message
 	tail         []chat.Message
-	tools        []chat.ToolDefinition
+	tools        []toolcontract.Definition
 	options      chat.Options
 	adjustment   int
 	counter      modelContextInputTokenCounter
@@ -56,7 +59,7 @@ func newModelContextBudget(
 	maxTokens int,
 	instructions []chat.Message,
 	tail []chat.Message,
-	tools []chat.ToolDefinition,
+	tools []toolcontract.Definition,
 	options chat.Options,
 	adjustment int,
 	counter modelContextInputTokenCounter,
@@ -148,7 +151,7 @@ func (m modelContextBudget) hasProviderPricedMedia(messages []chat.Message) bool
 				}
 				if part.ToolResult != nil {
 					for _, content := range part.ToolResult.Output.Content {
-						if content.Kind == chat.PartMedia {
+						if content.Kind == corecontent.Media {
 							return true
 						}
 					}
@@ -184,8 +187,8 @@ func calibratedTokenEstimate(estimate, adjustment int) int {
 	return estimate + adjustment
 }
 
-func cloneToolDefinitions(tools []chat.ToolDefinition) []chat.ToolDefinition {
-	cloned := make([]chat.ToolDefinition, len(tools))
+func cloneToolDefinitions(tools []toolcontract.Definition) []toolcontract.Definition {
+	cloned := make([]toolcontract.Definition, len(tools))
 	for index := range tools {
 		cloned[index] = tools[index].Clone()
 	}

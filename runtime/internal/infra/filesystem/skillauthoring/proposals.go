@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 

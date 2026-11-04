@@ -74,7 +74,7 @@ func TestDependenciesPointInward(t *testing.T) {
 // Add to this list only for a package with no Oolong imports of its own; one
 // that reaches back into the framework would carry it past the boundary.
 var oolongAlgorithms = map[string]struct{}{
-	oolongPath + "/core/fuzzy": {},
+	oolongPath + "/ui/core/fuzzy": {},
 }
 
 var oolongAlgorithmsUsed = map[string]bool{}
@@ -97,7 +97,7 @@ func TestExternalFrameworksStopAtTheirAdapters(t *testing.T) {
 					t.Errorf("%s imports %s outside its allowed Runtime boundary", relative, imported)
 				}
 			case importsPath(imported, oolongPath):
-				if strings.HasPrefix(relative, "internal/delivery/terminal/") || (packageWithin(relative, "internal/adapter/keybinding") && imported == oolongPath+"/core/input") {
+				if strings.HasPrefix(relative, "internal/delivery/terminal/") || (packageWithin(relative, "internal/adapter/keybinding") && imported == oolongPath+"/ui/core/input") {
 					continue
 				}
 				if _, algorithm := oolongAlgorithms[imported]; !algorithm {
@@ -124,6 +124,8 @@ func mayImportRuntime(relative, imported string) bool {
 	case sdkPath + "/filesystem", sdkPath + "/timezone":
 		ring := ringOf(relative)
 		return ring == ringAdapter || ring == ringDelivery
+	case sdkPath + "/plugin/contract":
+		return packageWithin(relative, "internal/application/pluginview") || packageWithin(relative, "internal/application/workbench") || packageWithin(relative, "internal/delivery/cmd")
 	case sdkPath + "/capture":
 		return ringOf(relative) == ringAdapter
 	case localRuntimePath:
@@ -145,6 +147,11 @@ func TestRuntimeImportBoundaries(t *testing.T) {
 		{consumer: "internal/application/settings/config.go", imported: sdkPath + "/httporigin", allowed: true},
 		{consumer: "internal/application/workbench/installed_commands.go", imported: sdkPath + "/extension", allowed: true},
 		{consumer: "internal/delivery/cmd/plugins.go", imported: sdkPath + "/extension", allowed: true},
+		{consumer: "internal/application/pluginview/view.go", imported: sdkPath + "/plugin/contract", allowed: true},
+		{consumer: "internal/application/workbench/installed_commands.go", imported: sdkPath + "/plugin/contract", allowed: true},
+		{consumer: "internal/delivery/cmd/plugins.go", imported: sdkPath + "/plugin/contract", allowed: true},
+		{consumer: "internal/domain/conversation/session.go", imported: sdkPath + "/plugin/contract"},
+		{consumer: "internal/application/agent/session/create.go", imported: sdkPath + "/plugin/contract"},
 		{consumer: "internal/application/workbench/installed_commands.go", imported: sdkPath + "/plugin"},
 		{consumer: "internal/application/workbench/installed_commands.go", imported: sdkPath + "/sqlite"},
 		{consumer: "main.go", imported: runtimePath},

@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -15,7 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -58,7 +61,7 @@ func TestProtocolSessionUsageKeepsCompleteProviderModelIdentities(t *testing.T) 
 		}
 		request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("captured")))
 		id := fmt.Sprintf("usage_model_%d", index)
-		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: portable.Invocation{ID: id, Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeCall, Reference: id}}, Provider: provider, Model: model, SessionID: sessionID, StartedAt: now, Request: modelref.ChatEndpointRequest{Chat: request}}
+		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: framemcp.Invocation{ID: id, Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeCall, Reference: id}}, Provider: provider, Model: model, SessionID: sessionID, StartedAt: now, Request: modelref.ChatEndpointRequest{Chat: request}}
 		if err := stores.ModelInvocations.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 			t.Fatal(err)
 		}

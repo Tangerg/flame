@@ -7,8 +7,14 @@ import (
 	"net/http"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"sync/atomic"
 	"testing"
+
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
@@ -21,9 +27,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -38,7 +44,7 @@ type ownedMemoryEmbedder struct {
 }
 
 func (e *ownedMemoryEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
-	invocation, err := qimumcp.InvocationFromContext(ctx)
+	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil || invocation.Origin != extension.Model || invocation.Parent != e.parent || invocation.ID == e.parent {
 		e.t.Errorf("Memory embedding detached from its original query: %+v, %v", invocation, err)
 	}
@@ -56,7 +62,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 		t.Fatalf("build Memory backend: %v\n%s", err, output)
 	}
 	environment := map[string]string{"PLUGIN_DATA": t.TempDir()}
-	contract, err := portable.ParseCapability([]byte(memorycontract.CapabilityJSON))
+	contract, err := plugincontract.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +83,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 	}
 	store := &toolInstallationStore{snapshot: plugin.Snapshot{Installation: installation, Selected: release}}
 	server := mcpserver.Server{Source: source, Name: name, Enabled: true, Connection: mcpserver.StdioConnection{Command: executable, Env: environment}}
-	callbacks := qimumcp.NewCallbacks()
+	callbacks := pluginmcp.NewCallbacks()
 	t.Cleanup(func() { _ = callbacks.Close() })
 	managed := newManagedFixture(t, store, server, callbacks, nil)
 	pool := managed.Pool
@@ -106,9 +112,9 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 		t.Fatal(err)
 	}
 	var modelCalls, releases atomic.Int32
-	modelInvocations := make(chan portable.Invocation, 2)
+	modelInvocations := make(chan framemcp.Invocation, 2)
 	model := chat.ModelFunc(func(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
-		invocation, err := qimumcp.InvocationFromContext(ctx)
+		invocation, err := pluginmcp.InvocationFromContext(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -151,7 +157,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 	if err := json.Unmarshal([]byte(hostInput), &input, json.RejectUnknownMembers(true)); err != nil {
 		t.Fatal(err)
 	}
-	if input.SessionID != "ses_metadata" || input.Project != project || !input.Compacted || input.Conversation.MessageCount != int64(len(history)) || input.Conversation.Transcript == "" || phase != string(plugin.CommandObserved) {
+	if input.SessionID != "ses_metadata" || input.Project != project || !input.Compacted || input.Conversation == nil || input.Conversation.MessageCount.String() != strconv.Itoa(len(history)) || input.Conversation.Transcript == "" || phase != string(plugin.CommandObserved) {
 		t.Fatalf("original business-only routing: %+v, phase=%s", input, phase)
 	}
 	borrowed, err := pool.BorrowSession(t.Context(), server.ID())
@@ -163,7 +169,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 		t.Fatalf("original maintenance command: %v, %v", found, err)
 	}
 	defer borrowed.Close()
-	bound, err := qimumcp.NewCapabilityBinding(borrowed.Session(), "memory", contract)
+	bound, err := pluginmcp.NewCapabilityBinding(borrowed.Session(), "memory", contract)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,11 +177,11 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	receiptContext, err := qimumcp.WithInvocation(borrowed.Context(), recorded.Snapshot().Invocation)
+	receiptContext, err := pluginmcp.WithInvocation(borrowed.Context(), recorded.Snapshot().Invocation)
 	if err != nil {
 		t.Fatal(err)
 	}
-	receipt, found, err := maintain.ReadReceipt(receiptContext, qimumcp.CommandID(id), recorded.Snapshot().Input)
+	receipt, found, err := maintain.ReadReceipt(receiptContext, pluginmcp.CommandID(id), recorded.Snapshot().Input)
 	if err != nil || !found {
 		t.Fatalf("original backend receipt: %v, %v", found, err)
 	}
@@ -183,7 +189,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 		t.Fatal(err)
 	}
 	var outcome memorycontract.MaintenanceResult
-	if err := json.Unmarshal(receipt.JSON(), &outcome, json.RejectUnknownMembers(true)); err != nil || !outcome.Published {
+	if err := json.Unmarshal(receipt.Bytes(), &outcome, json.RejectUnknownMembers(true)); err != nil || !outcome.Published {
 		t.Fatalf("maintenance receipt lost its published outcome: %+v, %v", outcome, err)
 	}
 	if _, err := owner.Search(t.Context(), project, "fact", 5); !errors.Is(err, resolutionFailure) {
@@ -197,7 +203,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 		t.Fatal(err)
 	}
 	addContext := operation.Bind(t.Context(), "memory.add", "keyword")
-	addition, err := jsonvalue.Encode(memorycontract.AddInput{Scope: memorycontract.AddInputScopeProject, CWD: project, Content: "keyword fact"})
+	addition, err := framevalue.EncodeJSON(memorycontract.AddInput{Scope: memorycontract.AddInputScopeProject, CWD: project, Content: "keyword fact"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +230,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 	if len(notices) != beforeRecovery+1 || notices[len(notices)-1].Resource != invalidation.PluginData {
 		t.Fatalf("public command recovery did not invalidate its consumer reads: %+v", notices)
 	}
-	if _, err := installed.Invoke(operation.Adopt(t.Context(), operation.Identity(addContext), extension.Model, "parent-tool")); !errors.Is(err, portable.ErrInvocationConflict) {
+	if _, err := installed.Invoke(operation.Adopt(t.Context(), operation.Identity(addContext), extension.Model, "parent-tool")); !errors.Is(err, framemcp.ErrInvocationConflict) {
 		t.Fatalf("changed calling origin reused an original identity: %v", err)
 	}
 	changed := request
@@ -233,7 +239,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := other.Invoke(addContext); !errors.Is(err, portable.ErrInvocationConflict) {
+	if _, err := other.Invoke(addContext); !errors.Is(err, framemcp.ErrInvocationConflict) {
 		t.Fatalf("changed installed binding reused an original identity: %v", err)
 	}
 	if len(notices) != beforeRecovery+1 {

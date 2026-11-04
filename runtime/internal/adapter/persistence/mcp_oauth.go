@@ -7,87 +7,84 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/qimu/sqlite"
 )
 
 // MCPAuthorizationStore keeps at most one credential per MCP source, bound to
 // the fingerprint of the OAuth target that requested it. A configuration
 // change yields a different target, so the earlier credential stops matching
 // without any invalidation step; removing the source removes it by cascade.
-type mcpAuthorizationStore struct{ db *sql.DB }
+type mcpAuthorizationStore struct{ db *database }
 
-func newMCPAuthorizationStore(db *sql.DB) *mcpAuthorizationStore {
+func newMCPAuthorizationStore(db *database) *mcpAuthorizationStore {
 	return &mcpAuthorizationStore{db: db}
 }
 
 // An authorization attempt owns one grant even before it has tokens. Replacing
 // that grant revokes every refresh and rejection callback from the old handler.
 func (m *mcpAuthorizationStore) BeginOAuthSession(ctx context.Context, target mcpserver.OAuthTarget) (string, error) {
-	var binding string
-	args := append([]any{target.Fingerprint().String()}, mcpSourceArgs(target.ID())...)
-	err := sqlite.Connection(ctx, m.db).QueryRowContext(ctx,
-		`INSERT INTO mcp_oauth_sessions(source_id, target_fingerprint, binding, payload)
+	return scopedValue(ctx, m.db.write, func(ctx context.Context) (string, error) {
+		var binding string
+		args := append([]any{target.Fingerprint().String()}, mcpSourceArgs(target.ID())...)
+		err := m.db.connection(ctx).QueryRowContext(ctx, `INSERT INTO mcp_oauth_sessions(source_id, target_fingerprint, binding, payload)
 		 SELECT id, ?, lower(hex(randomblob(16))), x'' FROM mcp_sources WHERE origin = ? AND installation_id IS ? AND name = ?
 		 ON CONFLICT(source_id) DO UPDATE SET
 		   target_fingerprint = excluded.target_fingerprint, binding = excluded.binding, payload = excluded.payload
 		 RETURNING binding`, args...).Scan(&binding)
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", fmt.Errorf("sqlite: begin mcp oauth session: %w: server %s was removed", mcpserver.ErrOAuthSessionSuperseded, target.ID())
-	}
-	if err != nil {
-		return "", fmt.Errorf("sqlite: begin mcp oauth session: %w", err)
-	}
-	return binding, nil
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", fmt.Errorf("sqlite: begin mcp oauth session: %w: server %s was removed", mcpserver.ErrOAuthSessionSuperseded, target.ID())
+		}
+		if err != nil {
+			return "", fmt.Errorf("sqlite: begin mcp oauth session: %w", err)
+		}
+		return binding, nil
+	})
 }
-
 func (m *mcpAuthorizationStore) LoadOAuthSession(ctx context.Context, target mcpserver.OAuthTarget) ([]byte, string, bool, error) {
-	var payload []byte
-	var binding string
-	args := append(mcpSourceArgs(target.ID()), target.Fingerprint().String())
-	err := sqlite.Connection(ctx, m.db).QueryRowContext(ctx,
-		`SELECT payload, binding FROM mcp_oauth_sessions
-		 WHERE source_id = `+mcpSourceIDQuery+` AND target_fingerprint = ? AND length(payload) > 0`,
-		args...).Scan(&payload, &binding)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, "", false, nil
-	}
-	if err != nil {
-		return nil, "", false, fmt.Errorf("sqlite: load mcp oauth session: %w", err)
-	}
-	if binding == "" {
-		return nil, "", false, errors.New("sqlite: mcp oauth credentials have no binding")
-	}
-	return payload, binding, true, nil
+	return scopedTriple(ctx, m.db.read, func(ctx context.Context) ([]byte, string, bool, error) {
+		var payload []byte
+		var binding string
+		args := append(mcpSourceArgs(target.ID()), target.Fingerprint().String())
+		err := m.db.connection(ctx).QueryRowContext(ctx, `SELECT payload, binding FROM mcp_oauth_sessions
+		 WHERE source_id = `+mcpSourceIDQuery+` AND target_fingerprint = ? AND length(payload) > 0`, args...).Scan(&payload, &binding)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, "", false, nil
+		}
+		if err != nil {
+			return nil, "", false, fmt.Errorf("sqlite: load mcp oauth session: %w", err)
+		}
+		if binding == "" {
+			return nil, "", false, errors.New("sqlite: mcp oauth credentials have no binding")
+		}
+		return payload, binding, true, nil
+	})
 }
-
 func (m *mcpAuthorizationStore) SaveOAuthSession(ctx context.Context, server mcpserver.ID, binding string, payload []byte) error {
-	if binding == "" {
-		return mcpserver.ErrOAuthSessionSuperseded
-	}
-	if len(payload) == 0 {
-		return errors.New("sqlite: mcp oauth session requires a payload")
-	}
-	result, err := sqlite.Connection(ctx, m.db).ExecContext(ctx,
-		`UPDATE mcp_oauth_sessions SET payload = ? WHERE source_id = `+mcpSourceIDQuery+` AND binding = ?`,
-		append(append([]any{payload}, mcpSourceArgs(server)...), binding)...)
-	if err != nil {
-		return fmt.Errorf("sqlite: save mcp oauth session: %w", err)
-	}
-	return oauthGrantApplied(result)
+	return m.db.write(ctx, func(ctx context.Context) error {
+		if binding == "" {
+			return mcpserver.ErrOAuthSessionSuperseded
+		}
+		if len(payload) == 0 {
+			return errors.New("sqlite: mcp oauth session requires a payload")
+		}
+		result, err := m.db.connection(ctx).ExecContext(ctx, `UPDATE mcp_oauth_sessions SET payload = ? WHERE source_id = `+mcpSourceIDQuery+` AND binding = ?`, append(append([]any{payload}, mcpSourceArgs(server)...), binding)...)
+		if err != nil {
+			return fmt.Errorf("sqlite: save mcp oauth session: %w", err)
+		}
+		return oauthGrantApplied(result)
+	})
 }
-
 func (m *mcpAuthorizationStore) RemoveOAuthSession(ctx context.Context, server mcpserver.ID, binding string) error {
-	if binding == "" {
-		return mcpserver.ErrOAuthSessionSuperseded
-	}
-	result, err := sqlite.Connection(ctx, m.db).ExecContext(ctx,
-		`DELETE FROM mcp_oauth_sessions WHERE source_id = `+mcpSourceIDQuery+` AND binding = ?`, append(mcpSourceArgs(server), binding)...)
-	if err != nil {
-		return fmt.Errorf("sqlite: remove mcp oauth session: %w", err)
-	}
-	return oauthGrantApplied(result)
+	return m.db.write(ctx, func(ctx context.Context) error {
+		if binding == "" {
+			return mcpserver.ErrOAuthSessionSuperseded
+		}
+		result, err := m.db.connection(ctx).ExecContext(ctx, `DELETE FROM mcp_oauth_sessions WHERE source_id = `+mcpSourceIDQuery+` AND binding = ?`, append(mcpSourceArgs(server), binding)...)
+		if err != nil {
+			return fmt.Errorf("sqlite: remove mcp oauth session: %w", err)
+		}
+		return oauthGrantApplied(result)
+	})
 }
-
 func oauthGrantApplied(result sql.Result) error {
 	changed, err := result.RowsAffected()
 	if err != nil {

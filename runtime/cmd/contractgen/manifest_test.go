@@ -5,12 +5,12 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/wiregen"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/qimu/contractgen"
-	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 func TestEveryPageInstantiationInheritsTheContinuationBound(t *testing.T) {
@@ -18,7 +18,7 @@ func TestEveryPageInstantiationInheritsTheContinuationBound(t *testing.T) {
 
 	set := testWalkWireTypes(t, delivery.Contract(), dispatch.WireShapes())
 	pageFamily := genericBaseOf(reflect.TypeFor[protocol.Page[protocol.Session]]())
-	continuationFields := jsonvalue.Fields(reflect.TypeFor[protocol.PageContinuation]())
+	continuationFields := protocol.WireFields(reflect.TypeFor[protocol.PageContinuation]())
 	if len(continuationFields) != 1 {
 		t.Fatalf("PageContinuation fields = %v, want exactly one", continuationFields)
 	}
@@ -30,7 +30,7 @@ func TestEveryPageInstantiationInheritsTheContinuationBound(t *testing.T) {
 			continue
 		}
 		found++
-		cursor, ok := set.defs[definition].Properties[cursorField].(*contractgen.Schema)
+		cursor, ok := set.defs[definition].Properties[cursorField].(*wiregen.Schema)
 		if !ok || cursor.MaxLength == nil || *cursor.MaxLength != protocol.MaximumPaginationCursorCharacters {
 			t.Errorf("%s.%s = %#v, want maxLength %d", definition, cursorField, cursor, protocol.MaximumPaginationCursorCharacters)
 		}
@@ -182,7 +182,7 @@ func TestManifestPublishesImplementedHTTPEndpoints(t *testing.T) {
 		"liveness":        {method: "GET", path: "/v2/health/live", response: "schema.json#/$defs/LivenessStatus"},
 		"readiness":       {method: "GET", path: "/v2/health/ready", response: "schema.json#/$defs/ReadinessStatus"},
 		"pluginResources": {method: "GET", path: "/v2/plugin-resources/{lease}/*", projects: "plugins.readResource"},
-		"pluginControl":   {method: "POST", path: "/v2/qimu"},
+		"pluginControl":   {method: "POST", path: "/v2/frame"},
 	}
 	if len(generated.HTTPEndpoints) != len(want) {
 		t.Fatalf("HTTP endpoints = %d, want %d", len(generated.HTTPEndpoints), len(want))

@@ -1,41 +1,28 @@
 package execution
 
 import (
-	"context"
 	"errors"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+
+	"github.com/Tangerg/scope/agent/interaction"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func (i *interactionSession) childPublications(ctx context.Context, tree agent.TreeSnapshot) ([]runs.ChildRunPublication, error) {
-	previous := make(map[agent.ProcessID]struct{})
-	head, found, err := i.executionTrees.LoadExecutionTree(ctx, i.start.SessionID, tree.RootID().String())
-	if err != nil {
-		return nil, err
-	}
-	if found {
-		committed, err := decodeExecutionTree(head, tree.RootID())
-		if err != nil {
-			return nil, err
-		}
-		for _, snapshot := range committed.ProcessSnapshots() {
-			previous[snapshot.Relation().ProcessID()] = struct{}{}
-		}
-	}
+func (i *interactionSession) childPublications(records []scoperun.Record) ([]runs.ChildRunPublication, error) {
 	var publications []runs.ChildRunPublication
-	for _, snapshot := range tree.ProcessSnapshots() {
-		relation := snapshot.Relation()
-		if relation.IsRoot() {
+	for _, record := range records {
+		started, ok := record.(scoperun.Started)
+		if !ok {
 			continue
 		}
-		if _, published := previous[relation.ProcessID()]; published {
+		relation := started.Process
+		if relation.Depth() == 0 {
 			continue
 		}
-		parent, _ := relation.ParentID()
-		key, _ := relation.ChildKey()
+		parent, _ := relation.Parent()
+		key, _ := relation.Key()
 		i.state.mu.Lock()
 		managed := i.state.delegateCalls[delegateCallIdentity{parentID: parent, childKey: key}]
 		i.state.mu.Unlock()
@@ -45,7 +32,7 @@ func (i *interactionSession) childPublications(ctx context.Context, tree agent.T
 		managed.mu.Lock()
 		admission, binding := managed.admission, managed.binding
 		managed.mu.Unlock()
-		if !admission.Valid() || admission.Relation() != relation || admission.DeploymentRef() != snapshot.DeploymentRef() {
+		if !admission.Valid() || admission.ProcessID() != relation || admission.ProgramRef() != started.Program {
 			return nil, errors.New("execution: published child differs from its admission")
 		}
 		publications = append(publications, runs.ChildRunPublication{Binding: binding, Outcome: runs.ChildRunStarted})
@@ -53,7 +40,7 @@ func (i *interactionSession) childPublications(ctx context.Context, tree agent.T
 	return publications, nil
 }
 
-func (i *interactionSession) failedChildPublication(tree agent.TreeSnapshot, parent agent.ProcessID, sequence uint64, call chat.ToolCall) (runs.ChildRunPublication, bool, error) {
+func (i *interactionSession) failedChildPublication(tree scoperun.Log, parent scoperun.ProcessID, sequence uint64, call chat.ToolCall) (runs.ChildRunPublication, bool, error) {
 	key, err := interaction.DelegateChildKey(sequence, call)
 	if err != nil {
 		return runs.ChildRunPublication{}, false, err
@@ -70,8 +57,8 @@ func (i *interactionSession) failedChildPublication(tree agent.TreeSnapshot, par
 	if !admission.Valid() {
 		return runs.ChildRunPublication{}, false, nil
 	}
-	for _, snapshot := range tree.ProcessSnapshots() {
-		if snapshot.Relation().ProcessID() == admission.Relation().ProcessID() {
+	for _, entry := range tree.Entries {
+		if started, ok := entry.Record.(scoperun.Started); ok && started.Process == admission.ProcessID() {
 			return runs.ChildRunPublication{}, false, nil
 		}
 	}
@@ -90,11 +77,11 @@ func (i *interactionSession) publishChildBindings(publications []runs.ChildRunPu
 			continue
 		}
 		var managed *managedDelegateCall
-		var processID agent.ProcessID
+		var processID scoperun.ProcessID
 		for _, candidate := range calls {
 			candidate.mu.Lock()
 			if candidate.binding == publication.Binding {
-				candidate.childProcessID = candidate.admission.Relation().ProcessID()
+				candidate.childProcessID = candidate.admission.ProcessID()
 				processID = candidate.childProcessID
 				managed = candidate
 			}

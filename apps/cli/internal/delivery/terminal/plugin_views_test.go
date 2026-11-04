@@ -4,6 +4,8 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
 	"strings"
 	"sync"
 	"testing"
@@ -13,9 +15,8 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/programtest"
-	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/uitest"
 )
 
 type noteRow struct {
@@ -63,12 +64,12 @@ func (p *notesPlugin) respond(request protocol.CallPluginRequest) (*protocol.Cal
 
 func notesInstallation(t *testing.T) *protocol.PluginInstallation {
 	t.Helper()
-	contract, err := portable.NewCapability(
-		portable.CapabilityConfig{Reference: "notes", Composition: portable.Selection, Scope: extension.ScopeInstallation},
+	contract, err := plugincontract.NewCapability(
+		plugincontract.CapabilityConfig{Reference: "notes", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation},
 		portable.MethodDescriptor{Name: "notes/list", Kind: portable.Query, Target: extension.ScopeInstallation,
 			Input:  jsontext.Value(`{"type":"object","additionalProperties":false,"required":["CWD"],"properties":{"CWD":{"type":"string"}}}`),
 			Output: jsontext.Value(`{"type":"object","properties":{"Rows":{"type":"array","items":{"type":"object"}}}}`)},
-		portable.MethodDescriptor{Name: "notes/update", Kind: portable.Mutation, Target: extension.ScopeInstallation,
+		portable.MethodDescriptor{Name: "notes/update", Kind: portable.Command, Target: extension.ScopeInstallation,
 			Input:  jsontext.Value(`{"type":"object","additionalProperties":false,"required":["ID","Revision","Content"],"properties":{"ID":{"type":"string"},"Revision":{"type":"integer"},"Content":{"type":"string"}}}`),
 			Output: jsontext.Value(`{"type":"object"}`)},
 	)
@@ -99,14 +100,14 @@ func notesInstallation(t *testing.T) *protocol.PluginInstallation {
 		Selected: protocol.PluginRelease{
 			Name: "flame.notes", Version: "1.0.0", Digest: strings.Repeat("c", 64),
 			TerminalViews: []protocol.PluginTerminalView{view},
-			Contributions: []protocol.PluginContribution{{ID: "notes-provider", Contract: string(contract.Identity().JSON())}},
+			Contributions: []protocol.PluginContribution{{ID: "notes-provider", Contract: string(contract.Identity().Bytes())}},
 		},
 		Presentation: protocol.PluginPresentationAdmitted,
 		Realization:  protocol.PluginRealization{Type: protocol.PluginRealizationAvailable},
 	}
 }
 
-func runNotesView(t *testing.T) (*notesPlugin, *installedPluginCatalog, *runtimeChangeSourceStub, *programtest.Host, func()) {
+func runNotesView(t *testing.T) (*notesPlugin, *installedPluginCatalog, *runtimeChangeSourceStub, *uitest.Host, func()) {
 	t.Helper()
 	plugin := &notesPlugin{notes: []noteRow{{ID: "note_release", Content: "confirm release steps", Revision: 1}}, updates: make(chan map[string]any, 1)}
 	catalog := &installedPluginCatalog{installation: notesInstallation(t), respond: plugin.respond}
@@ -121,7 +122,7 @@ func runNotesView(t *testing.T) (*notesPlugin, *installedPluginCatalog, *runtime
 
 // typeNotesCommand waits for the view command, which arrives after startup
 // reads the installed views.
-func typeNotesCommand(t *testing.T, host *programtest.Host, argument string) {
+func typeNotesCommand(t *testing.T, host *uitest.Host, argument string) {
 	t.Helper()
 	host.Type("/notes")
 	host.Shows(t, "Notes · edit <id>")

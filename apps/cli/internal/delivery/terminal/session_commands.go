@@ -14,11 +14,12 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/keymap"
-	"github.com/Tangerg/oolong/core/layout"
-	"github.com/Tangerg/oolong/core/program"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/keymap"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/program"
+	"github.com/Tangerg/oolong/ui/core/scene"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 // sessionBrowser is the Session center: it lists, favorites, renames and
@@ -27,8 +28,8 @@ import (
 type sessionBrowser struct {
 	pane         *sessionCenterPane
 	dialog       *presentationDialog
-	renameDialog *kit.Dialog
-	deleteDialog *kit.Dialog
+	renameDialog *presentationDialog
+	deleteDialog *presentationDialog
 
 	runtime      Runtime
 	workbench    *workbench.Store
@@ -37,7 +38,7 @@ type sessionBrowser struct {
 	session      *sessionState
 	tasks        taskRunner
 	status       *statusView
-	stack        *headless.Stack
+	stack        *workspaceScene
 	theme        kit.Theme
 	glyphs       kit.Glyphs
 	clipboard    program.Clipboard
@@ -63,8 +64,7 @@ func newSessionBrowser(cfg sessionBrowserConfig) *sessionBrowser {
 	b.pane.toggleFavorite = b.toggleSessionFavorite
 	b.pane.rename = b.openSessionRename
 	b.pane.delete = b.openSessionDelete
-	b.dialog = newPresentationDialog(kit.DialogConfig{
-		Stack: b.stack, Theme: b.theme, Glyphs: b.glyphs, Title: "Sessions · Center", Body: b.pane,
+	b.dialog = newPresentationDialog(b.stack, kit.DialogConfig{Theme: b.theme, Glyphs: b.glyphs, Title: "Sessions · Center", Body: b.pane.Element(),
 		Where: layout.Placement{Width: 96, Height: 24},
 	})
 	b.pane.picker.cancel = func() {
@@ -78,11 +78,11 @@ func newSessionBrowser(cfg sessionBrowserConfig) *sessionBrowser {
 func (b *sessionBrowser) dismiss() {
 	b.dialog.Dismiss()
 	if b.renameDialog != nil {
-		b.renameDialog.Controller().Dismiss()
+		b.renameDialog.Dismiss()
 		b.renameDialog = nil
 	}
 	if b.deleteDialog != nil {
-		b.deleteDialog.Controller().Dismiss()
+		b.deleteDialog.Dismiss()
 		b.deleteDialog = nil
 	}
 }
@@ -122,7 +122,7 @@ func (b *sessionBrowser) loadSessionPage(cursor string, appendPage bool) {
 				b.notify("could not load sessions: " + err.Error())
 				return
 			}
-			if !appendPage {
+			if !appendPage && !b.dialog.Open() {
 				b.dialog.Show()
 			}
 			b.status.note("choose a session")
@@ -139,24 +139,22 @@ func (b *sessionBrowser) toggleSessionFavorite(session conversation.Session) {
 
 func (b *sessionBrowser) openSessionRename(session conversation.Session) {
 	title := session.Title
-	field := headless.NewText(headless.TextConfig{Label: "Session title", Value: headless.Bind(&title), Check: requiredText})
+	field := base.NewText(base.TextConfig{Label: "Session title", Initial: title, Check: requiredText})
 	field.Clipboard = b.clipboard
-	form := headless.NewForm(field)
-	form.Keys = headless.DefaultFormKeys()
-	dressed := kit.NewForm(kit.FormConfig{
-		Theme: b.theme, Glyphs: b.glyphs, Controller: form,
-		Hints: []keymap.Action{headless.Submit, headless.Cancel},
-	})
-	var dialog *kit.Dialog
-	form.Done = func() {
+	form := kit.FormConfig{Fields: []base.Field{field}, Theme: b.theme, Glyphs: b.glyphs,
+		Hints: []keymap.Action{base.Submit, base.Cancel}}
+	form.Keys = base.DefaultFormKeys()
+	var dressed *kit.Form
+	var dialog *presentationDialog
+	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
 		if b.renameDialog != dialog {
-			return
+			return scene.Unchanged, nil
 		}
-		trimmed := strings.TrimSpace(title)
+		trimmed := strings.TrimSpace(field.Text())
 		if trimmed == strings.TrimSpace(session.Title) {
-			dialog.Controller().Dismiss()
+			dialog.Dismiss()
 			b.renameDialog = nil
-			return
+			return scene.Unchanged, nil
 		}
 		started := b.updateSessionFromCenter(conversation.UpdateSession{
 			SessionID: session.ID, Title: &trimmed, ExpectedRevision: session.Revision,
@@ -165,34 +163,35 @@ func (b *sessionBrowser) openSessionRename(session conversation.Session) {
 				return
 			}
 			if err != nil {
-				dressed.Title = "Rename failed: " + err.Error()
+				dressed.Controller().SetTitle("Rename failed: " + err.Error())
 				if errors.Is(err, conversation.ErrRevisionConflict) {
-					dressed.Title += "\nClose this edit and reopen Sessions to load the current title."
+					dressed.Controller().SetTitle(dressed.Controller().Title() + "\nClose this edit and reopen Sessions to load the current title.")
 				}
-				dialog.Controller().Show()
+				dialog.Show()
 				return
 			}
 			b.renameDialog = nil
 		})
 		if started {
-			dialog.Controller().Dismiss()
+			dialog.Dismiss()
 		} else {
-			dressed.Title = "Wait for the current Session action to finish."
+			dressed.Controller().SetTitle("Wait for the current Session action to finish.")
 		}
+		return scene.Applied, nil
 	}
-	form.GaveUp = func() {
+	leave := func() {
 		if b.renameDialog == dialog {
-			dialog.Controller().Dismiss()
+			dialog.Dismiss()
 			b.renameDialog = nil
 		}
 	}
-	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: b.stack, Theme: b.theme, Glyphs: b.glyphs,
-		Title: "Rename session", Body: dressed,
+	dressed = kit.NewForm(form)
+	dialog = newPresentationDialog(b.stack, kit.DialogConfig{Theme: b.theme, Glyphs: b.glyphs,
+		Title: "Rename session", Body: formNavigation(dressed.Element(), leave),
 		Where: layout.Placement{Width: 68, Height: 11},
 	})
 	b.renameDialog = dialog
-	dialog.Controller().Show()
+	dialog.Show()
 }
 
 func (b *sessionBrowser) openSessionDelete(session conversation.Session) {
@@ -201,38 +200,36 @@ func (b *sessionBrowser) openSessionDelete(session conversation.Session) {
 		return
 	}
 	confirmed := false
-	choice := headless.NewSelect(headless.SelectConfig[bool]{Same: headless.Equal[bool], Label: "Delete " + displayTitle(session) + "?", Value: headless.Bind(&confirmed), Rows: 2})
-	choice.SetOptions([]headless.Option[bool]{{Label: "Cancel", Value: false}, {Label: "Delete permanently", Value: true}})
-	form := headless.NewForm(choice)
-	form.Keys = headless.DefaultFormKeys()
-	var dialog *kit.Dialog
-	form.Done = func() {
+	choice := base.NewSelect(base.SelectConfig[bool]{Same: base.Equal[bool], Label: "Delete " + displayTitle(session) + "?", Initial: confirmed, Rows: 2})
+	choice.SetOptions([]base.Option[bool]{{Label: "Cancel", Value: false}, {Label: "Delete permanently", Value: true}})
+	form := kit.FormConfig{Fields: []base.Field{choice}, Theme: b.theme, Glyphs: b.glyphs,
+		Hints: []keymap.Action{base.Submit, base.Cancel}}
+	form.Keys = base.DefaultFormKeys()
+	var dialog *presentationDialog
+	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
 		if b.deleteDialog != dialog {
-			return
+			return scene.Unchanged, nil
 		}
-		dialog.Controller().Dismiss()
+		dialog.Dismiss()
 		b.deleteDialog = nil
-		if confirmed {
+		if selected, ok := choice.Chosen(); ok && selected.Value {
 			b.deleteSessionFromCenter(session.ID)
 		}
+		return scene.Applied, nil
 	}
-	form.GaveUp = func() {
+	leave := func() {
 		if b.deleteDialog == dialog {
-			dialog.Controller().Dismiss()
+			dialog.Dismiss()
 			b.deleteDialog = nil
 		}
 	}
-	dressed := kit.NewForm(kit.FormConfig{
-		Theme: b.theme, Glyphs: b.glyphs, Controller: form,
-		Hints: []keymap.Action{headless.Submit, headless.Cancel},
-	})
-	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: b.stack, Theme: b.theme, Glyphs: b.glyphs,
-		Title: "Delete session", Body: dressed,
+	dressed := kit.NewForm(form)
+	dialog = newPresentationDialog(b.stack, kit.DialogConfig{Theme: b.theme, Glyphs: b.glyphs,
+		Title: "Delete session", Body: formNavigation(dressed.Element(), leave),
 		Where: layout.Placement{Width: 68, Height: 8},
 	})
 	b.deleteDialog = dialog
-	dialog.Controller().Show()
+	dialog.Show()
 }
 
 func (b *sessionBrowser) updateSessionFromCenter(request conversation.UpdateSession, label string, settled func(error)) bool {

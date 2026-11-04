@@ -4,70 +4,7 @@
     "AuthorV1Input": {
       "$ref": "#/$defs/Proposal"
     },
-    "AuthorV1Output": {
-      "$ref": "#/$defs/Decision"
-    },
-    "Decision": {
-      "additionalProperties": false,
-      "properties": {
-        "document": {
-          "$ref": "#/$defs/Document"
-        },
-        "refusal": {
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
-    "Digest": {
-      "allOf": [
-        {
-          "pattern": "^[0-9a-f]{64}$"
-        }
-      ],
-      "type": "string"
-    },
-    "Document": {
-      "additionalProperties": false,
-      "properties": {
-        "digest": {
-          "$ref": "#/$defs/Digest"
-        },
-        "steps": {
-          "items": {
-            "$ref": "#/$defs/Step"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "steps",
-        "digest"
-      ],
-      "type": "object"
-    },
-    "Proposal": {
-      "additionalProperties": false,
-      "properties": {
-        "steps": {
-          "items": {
-            "$ref": "#/$defs/Step"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "steps"
-      ],
-      "type": "object"
-    },
-    "ReviewV1Input": {
-      "$ref": "#/$defs/Document"
-    },
-    "ReviewV1Output": {
-      "type": "string"
-    },
-    "Step": {
+    "AuthorV1InputPlanworkflowStep": {
       "additionalProperties": false,
       "properties": {
         "description": {
@@ -82,6 +19,128 @@
         "status"
       ],
       "type": "object"
+    },
+    "AuthorV1Output": {
+      "$ref": "#/$defs/Decision"
+    },
+    "AuthorV1OutputPlanworkflowDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "$ref": "#/$defs/AuthorV1OutputValueDigest"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/AuthorV1OutputPlanworkflowStep"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "steps",
+        "digest"
+      ],
+      "type": "object"
+    },
+    "AuthorV1OutputPlanworkflowStep": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "description",
+        "status"
+      ],
+      "type": "object"
+    },
+    "AuthorV1OutputValueDigest": {
+      "allOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      ],
+      "type": "string"
+    },
+    "Decision": {
+      "additionalProperties": false,
+      "properties": {
+        "document": {
+          "$ref": "#/$defs/AuthorV1OutputPlanworkflowDocument"
+        },
+        "refusal": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Proposal": {
+      "additionalProperties": false,
+      "properties": {
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/AuthorV1InputPlanworkflowStep"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "steps"
+      ],
+      "type": "object"
+    },
+    "ReviewV1Input": {
+      "$ref": "#/$defs/ReviewV1InputPlanworkflowDocument"
+    },
+    "ReviewV1InputPlanworkflowDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "$ref": "#/$defs/ReviewV1InputValueDigest"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/ReviewV1InputPlanworkflowStep"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "steps",
+        "digest"
+      ],
+      "type": "object"
+    },
+    "ReviewV1InputPlanworkflowStep": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "description",
+        "status"
+      ],
+      "type": "object"
+    },
+    "ReviewV1InputValueDigest": {
+      "allOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      ],
+      "type": "string"
+    },
+    "ReviewV1Output": {
+      "type": "string"
     }
   }
 }

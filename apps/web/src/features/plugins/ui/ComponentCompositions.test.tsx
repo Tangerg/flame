@@ -16,7 +16,7 @@ import { type FlameClient } from "@flame/runtime-client";
 import { type PluginInstallation, type PluginPointBinding } from "@flame/runtime-client/wire";
 import { definePlugin } from "@/extensions/definePlugin";
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
-import { type ContributionLifetime } from "@/extensions/definePlugin";
+import { type ContributionScope } from "@/extensions/definePlugin";
 import { queryClient } from "@/lib/queryClient";
 import { activeLocale, setLocale } from "@/lib/i18n/index";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
@@ -28,7 +28,7 @@ import { RenderingComponent } from "@/features/plugins/ui/InstalledComponent";
 import { RuntimeConnectionGeneration } from "@/features/connection/public/services";
 let host: Host;
 
-let lifetime: ContributionLifetime;
+let lifetime: ContributionScope;
 
 let installations: PluginInstallation[];
 
@@ -178,8 +178,11 @@ beforeEach(async () => {
     definePlugin({
       name: "test.composition",
       setup(ctx) {
-        lifetime = ctx.lifetime("installed-consumer");
-        ctx.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => installations });
+        lifetime = ctx.contributions.child("installed-consumer");
+        ctx.contributions.add(DATA_PROVIDER, {
+          key: PACKAGES_KEY,
+          fetcher: async () => installations,
+        });
       },
     }),
   ]);

@@ -1,6 +1,8 @@
 package execution
 
 import (
+	corecontent "github.com/Tangerg/scope/core/content"
+
 	"context"
 	"errors"
 	"fmt"
@@ -20,14 +22,14 @@ import (
 func TestInteractionToolFailureFeedbackMatchesDurableResult(t *testing.T) {
 	partial, err := toolcontract.NewFailure(toolcontract.FailureConfig{
 		Kind: toolcontract.FailureKindFailed, Cause: errors.New("partial write"),
-		Output: chat.NewTextToolOutput("one file written"),
+		Output: toolcontract.NewTextOutput("one file written"),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	denied, err := toolcontract.NewFailure(toolcontract.FailureConfig{
 		Kind: toolcontract.FailureKindRejected, Cause: context.DeadlineExceeded,
-		Output: chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: "write is not permitted"}}, Details: []byte(`{"permitted":false}`)},
+		Output: toolcontract.Output{Content: []corecontent.Block{{Kind: corecontent.Text, Text: "write is not permitted"}}, Details: []byte(`{"permitted":false}`)},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -95,7 +97,7 @@ func TestInteractionToolFailureFeedbackMatchesDurableResult(t *testing.T) {
 func TestInteractionResponseLostAfterSideEffectRemainsUnknown(t *testing.T) {
 	partial, err := toolcontract.NewFailure(toolcontract.FailureConfig{
 		Kind: toolcontract.FailureKindFailed, Cause: errors.New("partial write"),
-		Output: chat.NewTextToolOutput("one file written"),
+		Output: toolcontract.NewTextOutput("one file written"),
 	})
 	if err != nil {
 		t.Fatal(err)

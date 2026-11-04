@@ -3,7 +3,12 @@ package terminal
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
+	"time"
+
+	"github.com/Tangerg/oolong/ui/core/scene"
+	"github.com/Tangerg/oolong/ui/core/term"
 
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/attachment"
 	runworkflow "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
@@ -15,12 +20,12 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/keymap"
-	"github.com/Tangerg/oolong/core/layout"
-	"github.com/Tangerg/oolong/core/program"
-	"github.com/Tangerg/oolong/highlight"
+	"github.com/Tangerg/oolong/extensions/highlight"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/keymap"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/program"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 const (
@@ -53,6 +58,8 @@ const (
 type app struct {
 	ctx            context.Context
 	loop           *program.Runtime
+	scope          *program.Scope
+	runtimeErr     error
 	runtime        Runtime
 	workspaces     Workspaces
 	changes        changefeed.Source
@@ -91,7 +98,7 @@ type app struct {
 	commands       commandCatalog
 	completion     *promptCompletion
 	shell          *shellView
-	stack          headless.Stack
+	stack          workspaceScene
 	queue          *workbench.Queue
 	workbench      *workbench.Store
 	localDirectory string
@@ -162,8 +169,11 @@ func newTerminalAppearance(loop *program.Runtime) terminalAppearance {
 	}
 }
 
-func newApp(loop *program.Runtime, cfg appConfig) *app {
-	cfg.keyBindings.setResolver(loop.After)
+func newApp(loop *program.Runtime, cfg appConfig) (*app, error) {
+	scope, err := loop.NewScope(program.ScopeConfig{Context: cfg.context})
+	if err != nil {
+		return nil, fmt.Errorf("terminal lifetime: %w", err)
+	}
 	appearance := newTerminalAppearance(loop)
 	transcript := newTranscriptView(appearance.theme, appearance.glyphs, loop.Environment().Locale(), loop.Environment().Wheel(), appearance.syntax, cfg.settings.UI.TranscriptRetain, cfg.settings.UI.ToolDetails, loop.Clipboard())
 	brand := newBrandBanner(
@@ -175,7 +185,7 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	)
 	transcript.SetEntrance(brand)
 	a := &app{
-		ctx: cfg.context, loop: loop, runtime: cfg.runtime, workspaces: cfg.workspaces,
+		ctx: cfg.context, loop: loop, scope: scope, runtime: cfg.runtime, workspaces: cfg.workspaces,
 		runtimeProfile: cfg.runtimeProfile,
 		changes:        cfg.changes,
 
@@ -197,11 +207,13 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		attention:      newAttentionCenter(),
 		keys:           keyRouter{application: cfg.keyBindings.application, global: cfg.keyBindings.global},
 	}
+	a.operations.onFailure = loop.Quit
+	cfg.keyBindings.setResolver(a.after)
 	a.lifecycle = &sessionLifecycle{state: sessionState{current: cfg.snapshot.Session, context: newSessionContextLease()}}
 	a.runs = &runs{
 		execution: executionState{conversation: conversation.New()},
 		runtime:   cfg.runtime, workbench: cfg.workbench, queue: cfg.queue, replayPolicy: cfg.replayPolicy,
-		session: &a.lifecycle.state, every: loop.Every, setProgress: loop.Session().SetProgress,
+		session: &a.lifecycle.state, every: a.every, setProgress: a.setProgress,
 		report: a.reportWorkbenchIssue, link: a, transcript: func() *transcriptView { return a.transcript },
 		status: a.status, header: a.header, activity: a.activity,
 	}
@@ -211,18 +223,20 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		attachments: cfg.attachments, workbench: cfg.workbench, session: &a.lifecycle.state,
 		editor: cfg.editor, terminal: loop.Session(), localDirectory: cfg.localDirectory,
 		busy: func() bool { return a.runs.blocksAdmission() },
-		ctx:  cfg.context, after: loop.After, closed: func() bool { return a.closed },
+		ctx:  cfg.context, after: a.after, closed: func() bool { return a.closed },
 		notify: a.message, report: a.reportWorkbenchIssue, validate: a.validateMessageCapabilities,
 		appendNote: a.appendNote,
 		cleared:    a.confirmation.Reset,
 	}
 	a.composer.drafts.store = newDraftPersistence(cfg.workbench, func(result draftPersistenceResult) {
-		loop.Dispatcher().Post(func() {
+		if err := loop.Dispatcher().Post(func() {
 			if a.closed || !a.composer.drafts.store.Current(result.revision) {
 				return
 			}
 			a.reportWorkbenchIssue(workbenchDraft, result.err)
-		})
+		}); err != nil {
+			a.operations.failDelivery(err)
+		}
 	})
 	a.transcript.images = newTerminalImagePresenter(loop.Images())
 	diagramTheme := "dark"
@@ -241,6 +255,10 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	a.configureCompletion(appearance)
 	a.registerCommands()
 	a.buildInterface(appearance, cfg.keyBindings.editor)
+	a.composer.observe = a.composer.Controller().Session().Subscribe(func(base.ChangeMap) {
+		a.composer.scheduleDraftPersistence()
+		a.completion.refreshCompletion()
+	})
 	a.runs.prompt, a.runs.prompts, a.runs.queueEditor, a.runs.composer = a.prompt, a.prompts, a.queueEditor, a.composer
 	a.buildSessionPicker(appearance.theme, appearance.glyphs, cfg.replayPolicy)
 	a.steering = &steerDesk{
@@ -268,16 +286,55 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	_ = a.composer.persistDraft()
 	a.followRuntimeChanges()
 	a.loadPluginViews(true)
-	return a
+	return a, a.runtimeErr
+}
+
+func (a *app) stopWithError(err error) {
+	a.runtimeErr = errors.Join(a.runtimeErr, err)
+	a.loop.Quit()
+}
+
+func (a *app) after(delay time.Duration, apply func()) func() {
+	timer, err := a.loop.After(a.scope, delay, apply)
+	if err != nil {
+		if !a.clockCanceled(err) {
+			a.stopWithError(fmt.Errorf("terminal delayed action: %w", err))
+		}
+		return nil
+	}
+	return timer.Stop
+}
+
+func (a *app) every(interval time.Duration, apply func()) func() {
+	timer, err := a.loop.Every(a.scope, interval, apply)
+	if err != nil {
+		if !a.clockCanceled(err) {
+			a.stopWithError(fmt.Errorf("terminal animation: %w", err))
+		}
+		return nil
+	}
+	return timer.Stop
+}
+
+// An owner callback may observe lifetime cancellation before screen shutdown.
+// Only that explicit refusal is expected; capacity and other failures survive.
+func (a *app) clockCanceled(err error) bool {
+	return (err == program.ErrScopeClosed || err == program.ErrStopped) &&
+		(a.ctx.Err() != nil || a.scope.Context().Err() != nil)
+}
+
+func (a *app) setProgress(progress term.Progress) {
+	if err := a.loop.Session().SetProgress(progress); err != nil && !errors.Is(err, errors.ErrUnsupported) {
+		a.stopWithError(fmt.Errorf("terminal progress: %w", err))
+	}
 }
 
 func (a *app) configureComposer(appearance terminalAppearance, keys *keymap.Map, initial authoring.Message) {
-	a.composer.Theme = appearance.theme
-	a.composer.Prompt = appearance.glyphs.Marker + " "
-	a.composer.MaxRows = 6
-	a.composer.Editor().Placeholder = "Ask flame to inspect, explain, or change something"
-	a.composer.Editor().Keys = keys
-	a.composer.Editor().Clipboard = a.loop.Clipboard()
+	a.composer.Composer = kit.NewComposer(kit.ComposerConfig{
+		Theme: appearance.theme, Prompt: appearance.glyphs.Marker + " ", MaxRows: 6,
+		Placeholder: "Ask flame to inspect, explain, or change something",
+		Keys:        keys, Clipboard: a.loop.Clipboard(),
+	})
 	if a.workbench != nil {
 		a.composer.history.Load(a.workbench.History())
 	}
@@ -294,12 +351,18 @@ func (a *app) configureCompletion(appearance terminalAppearance) {
 
 func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.Map) {
 	theme, glyphs := appearance.theme, appearance.glyphs
-	a.prompt = newPromptView(theme, glyphs, editorKeys, &a.composer.Composer, a.displayOptions())
+	a.prompt = newPromptView(theme, glyphs, editorKeys, a.composer.Composer, a.displayOptions())
 	a.completion.prompt = a.prompt
 	a.shell = newShellView(a.header, a.transcript, a.activity, a.queueView, a.status, a.prompt)
 	a.wireTranscript(a.transcript)
-	a.shell.Focus(true)
-	a.stack.SetBase(a.shell)
+	a.stack.preview = func(event scene.Event) scene.EventResult { return scene.EventResult{Consumed: a.Handle(event.Input())} }
+	workbench := scene.NewGroup(scene.GroupConfig{
+		Overlay: true,
+		Element: scene.ElementConfig{Preview: a.stack.preview},
+		Items:   []scene.Item{{Element: a.shell.Element(), Size: layout.Flex(1)}, {Element: a.completion.Element(), Size: layout.Flex(1)}},
+	})
+	a.stack.setWorkbench(workbench.Element())
+
 	a.queueEditor = newQueueEditor(queueEditorConfig{
 		queue: a.queue, session: &a.lifecycle.state, run: a.runs, view: a.queueView, prompt: a.prompt,
 		stack: &a.stack, theme: theme, glyphs: glyphs, keys: editorKeys, clip: a.loop.Clipboard(),
@@ -355,19 +418,15 @@ func (a *app) buildSessionPicker(theme kit.Theme, glyphs kit.Glyphs, replayPolic
 	}, switchTo: func(id string) { a.lifecycle.switchSession(id) }})
 }
 
-func (a *app) Draw(frame headless.Frame) {
-	a.stack.Draw(frame)
-	if a.stack.Depth() == 0 && a.completion.popup.Open() {
-		a.completion.drawCompletion(frame)
-	}
-}
+func (a *app) Element() scene.Element { return a.stack.Element() }
 
 func (a *app) Close(ctx context.Context) error {
 	if a.closed {
 		return a.closeErr
 	}
-	closeErr := a.runs.settleOpeningForShutdown()
+	closeErr := errors.Join(a.runtimeErr, a.runs.settleOpeningForShutdown())
 	a.closed = true
+	a.scope.Close()
 	shutdown, err := a.runs.planShutdown(a.detachOnExit, closeErr == nil)
 	closeErr = errors.Join(closeErr, err)
 	a.runs.dropStream()
@@ -376,6 +435,9 @@ func (a *app) Close(ctx context.Context) error {
 	a.operations.Close()
 	if a.screens.mcp != nil && a.screens.mcp.form != nil {
 		a.screens.mcp.closeMCPForm(a.screens.mcp.form)
+	}
+	if a.composer.observe != nil {
+		a.composer.observe()
 	}
 	a.composer.drafts.cancel()
 	// Flush is a serialization barrier: any autosave already in the filesystem
@@ -389,6 +451,7 @@ func (a *app) Close(ctx context.Context) error {
 		a.reader.shutdown()
 	}
 	a.runs.stopClock()
+	closeErr = errors.Join(closeErr, a.operations.Failure())
 	a.closeErr = closeErr
 	return closeErr
 }

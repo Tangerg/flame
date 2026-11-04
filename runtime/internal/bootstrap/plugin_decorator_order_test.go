@@ -55,7 +55,7 @@ func TestInstalledModelDecoratorsObserveFrozenBeforeAfterOrder(t *testing.T) {
 		}
 		return completedTextResponse("decorated result"), nil
 	})}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}

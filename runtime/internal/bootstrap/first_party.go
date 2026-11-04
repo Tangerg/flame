@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	"io"
 	"os"
 	"path/filepath"
 	"slices"
+
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
@@ -20,11 +21,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame/cancellation"
-	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/frame"
 )
 
-func initializeFirstPartyPlugins(ctx context.Context, stores *persistence.Bundle, host *qimu.Host, packages *pluginpackage.Releases, directory string) error {
+func initializeFirstPartyPlugins(ctx context.Context, stores *persistence.Bundle, host *frame.Host, packages *pluginpackage.Releases, directory string) error {
 	return plugins.Initialize(ctx, host, stores.Installations, packages, func() ([]string, error) {
 		return distributionSources(ctx, directory)
 	}, stores.ProviderSelections, []plugins.DefaultProvider{
@@ -43,7 +43,7 @@ func initializeFirstPartyPlugins(ctx context.Context, stores *persistence.Bundle
 }
 
 func distributionSources(ctx context.Context, directory string) (sources []string, err error) {
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return nil, err
 	}
 	root, err := os.Open(directory)
@@ -55,7 +55,7 @@ func distributionSources(ctx context.Context, directory string) (sources []strin
 	if errors.Is(readErr, io.EOF) {
 		readErr = nil
 	}
-	if err := errors.Join(readErr, cancellation.Err(ctx)); err != nil {
+	if err := errors.Join(readErr, errors.Join(ctx.Err(), context.Cause(ctx))); err != nil {
 		return nil, fmt.Errorf("runtime: read plugin distribution: %w", err)
 	}
 	if len(entries) == 0 || len(entries) > plugin.MaxInstallations {

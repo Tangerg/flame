@@ -1,6 +1,10 @@
 package delivery
 
 import (
+	corecontent "github.com/Tangerg/scope/core/content"
+
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"crypto/rand"
 	json "encoding/json/v2"
 	"errors"
@@ -391,7 +395,7 @@ func seedCanceledRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	if err != nil {
 		t.Fatalf("model selection: %v", err)
 	}
-	observed := chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: "observed before cancellation"}}, Details: []byte(`{"receipt":9007199254740993}`)}
+	observed := toolcontract.Output{Content: []corecontent.Block{{Kind: corecontent.Text, Text: "observed before cancellation"}}, Details: []byte(`{"receipt":9007199254740993}`)}
 	effect, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{ProcessID: "process_historical", EffectID: "effect_historical", Cause: "canceled", Reason: "execution stopped", Detail: "external result is unconfirmed", Output: &observed})
 	if err != nil {
 		t.Fatalf("unresolved effect: %v", err)

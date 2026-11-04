@@ -15,11 +15,11 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/desktop/internal/bridge"
-	"github.com/Tangerg/qimu/contractgen"
+	"github.com/Tangerg/flame/packages/go-sdk/wiregen"
 )
 
 type contract struct {
-	definitions contractgen.Definitions
+	definitions wiregen.Definitions
 	methods     []method
 	events      []event
 }
@@ -28,12 +28,12 @@ type method struct {
 	name   string
 	fqn    string
 	params []parameter
-	result *contractgen.Schema
+	result *wiregen.Schema
 }
 
 type parameter struct {
 	name  string
-	shape *contractgen.Schema
+	shape *wiregen.Schema
 }
 
 type event struct {
@@ -44,12 +44,12 @@ type event struct {
 
 type schemaGraph struct {
 	pkg         *types.Package
-	definitions contractgen.Definitions
+	definitions wiregen.Definitions
 	enums       map[string][]string
 }
 
 func newGraph(pkg *types.Package, files []*ast.File) (*schemaGraph, []event, error) {
-	graph := &schemaGraph{pkg: pkg, definitions: make(contractgen.Definitions), enums: make(map[string][]string)}
+	graph := &schemaGraph{pkg: pkg, definitions: make(wiregen.Definitions), enums: make(map[string][]string)}
 	var events []event
 	for _, file := range files {
 		for _, declaration := range file.Decls {
@@ -243,18 +243,18 @@ func isImported(expression ast.Expr, imports map[string]string, path, name strin
 	return ok && imports[qualifier.Name] == path && selector.Sel.Name == name
 }
 
-func (g *schemaGraph) expression(expression ast.Expr, imports map[string]string) (*contractgen.Schema, error) {
+func (g *schemaGraph) expression(expression ast.Expr, imports map[string]string) (*wiregen.Schema, error) {
 	switch node := expression.(type) {
 	case *ast.Ident:
 		switch node.Name {
 		case "string":
-			return &contractgen.Schema{Type: contractgen.SchemaTypeString}, nil
+			return &wiregen.Schema{Type: wiregen.SchemaTypeString}, nil
 		case "bool":
-			return &contractgen.Schema{Type: contractgen.SchemaTypeBoolean}, nil
+			return &wiregen.Schema{Type: wiregen.SchemaTypeBoolean}, nil
 		case "int":
-			return &contractgen.Schema{Type: contractgen.SchemaTypeInteger}, nil
+			return &wiregen.Schema{Type: wiregen.SchemaTypeInteger}, nil
 		case "float64":
-			return &contractgen.Schema{Type: contractgen.SchemaTypeNumber}, nil
+			return &wiregen.Schema{Type: wiregen.SchemaTypeNumber}, nil
 		}
 	case *ast.SelectorExpr:
 		qualifier, ok := node.X.(*ast.Ident)
@@ -265,7 +265,7 @@ func (g *schemaGraph) expression(expression ast.Expr, imports map[string]string)
 	return nil, fmt.Errorf("unsupported wire type %T; use a pure bridge DTO or a supported JSON primitive", expression)
 }
 
-func (g *schemaGraph) named(name string) (*contractgen.Schema, error) {
+func (g *schemaGraph) named(name string) (*wiregen.Schema, error) {
 	object, ok := g.pkg.Scope().Lookup(name).(*types.TypeName)
 	if !ok || !object.Exported() {
 		return nil, fmt.Errorf("bridge has no exported wire type %s", name)
@@ -273,14 +273,14 @@ func (g *schemaGraph) named(name string) (*contractgen.Schema, error) {
 	return g.walk(object.Type())
 }
 
-func (g *schemaGraph) walk(value types.Type) (*contractgen.Schema, error) {
+func (g *schemaGraph) walk(value types.Type) (*wiregen.Schema, error) {
 	if named, ok := value.(*types.Named); ok {
 		if named.Obj().Pkg() != g.pkg || !named.Obj().Exported() {
 			return nil, fmt.Errorf("wire type %s is outside the pure bridge", named)
 		}
 		name := named.Obj().Name()
 		if _, found := g.definitions[name]; !found {
-			g.definitions[name] = &contractgen.Schema{}
+			g.definitions[name] = &wiregen.Schema{}
 			definition, err := g.walk(named.Underlying())
 			if err != nil {
 				return nil, err
@@ -288,22 +288,22 @@ func (g *schemaGraph) walk(value types.Type) (*contractgen.Schema, error) {
 			definition.Enum = slices.Clone(g.enums[name])
 			g.definitions[name] = definition
 		}
-		return &contractgen.Schema{Ref: contractgen.RefPrefix + name}, nil
+		return &wiregen.Schema{Ref: wiregen.RefPrefix + name}, nil
 	}
 	switch value := value.(type) {
 	case *types.Basic:
 		switch value.Kind() {
 		case types.String:
-			return &contractgen.Schema{Type: contractgen.SchemaTypeString}, nil
+			return &wiregen.Schema{Type: wiregen.SchemaTypeString}, nil
 		case types.Bool:
-			return &contractgen.Schema{Type: contractgen.SchemaTypeBoolean}, nil
+			return &wiregen.Schema{Type: wiregen.SchemaTypeBoolean}, nil
 		case types.Int:
-			return &contractgen.Schema{Type: contractgen.SchemaTypeInteger}, nil
+			return &wiregen.Schema{Type: wiregen.SchemaTypeInteger}, nil
 		case types.Float64:
-			return &contractgen.Schema{Type: contractgen.SchemaTypeNumber}, nil
+			return &wiregen.Schema{Type: wiregen.SchemaTypeNumber}, nil
 		}
 	case *types.Struct:
-		node := &contractgen.Schema{Type: contractgen.SchemaTypeObject, Properties: make(map[string]any)}
+		node := &wiregen.Schema{Type: wiregen.SchemaTypeObject, Properties: make(map[string]any)}
 		for index := range value.NumFields() {
 			field := value.Field(index)
 			if !field.Exported() {
@@ -372,7 +372,7 @@ func (g *schemaGraph) refine(rules []bridge.Rule) error {
 				if err != nil {
 					return err
 				}
-				node, matched = node.Properties[name].(*contractgen.Schema)
+				node, matched = node.Properties[name].(*wiregen.Schema)
 				break
 			}
 			if !matched {
@@ -381,17 +381,17 @@ func (g *schemaGraph) refine(rules []bridge.Rule) error {
 		}
 		switch rule.Kind {
 		case bridge.Nonempty:
-			if node.Type != contractgen.SchemaTypeString {
+			if node.Type != wiregen.SchemaTypeString {
 				return fmt.Errorf("nonempty rule requires a string")
 			}
 			node.MinLength = new(1)
 		case bridge.Nonnegative:
-			if node.Type != contractgen.SchemaTypeNumber {
+			if node.Type != wiregen.SchemaTypeNumber {
 				return fmt.Errorf("nonnegative rule requires a number")
 			}
 			node.Minimum = new(int64(0))
 		case bridge.URL:
-			if node.Type != contractgen.SchemaTypeString {
+			if node.Type != wiregen.SchemaTypeString {
 				return fmt.Errorf("URL rule requires a string")
 			}
 			node.Format = "url"

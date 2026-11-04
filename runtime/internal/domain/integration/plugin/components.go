@@ -8,10 +8,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 var componentExport = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]{0,63}$`)
@@ -144,7 +145,7 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 	return nil
 }
 
-func (i Installation) AuthorizeComponent(release Release, digest integrity.Digest, id ContributionID) (ClientComponent, error) {
+func (i Installation) AuthorizeComponent(release Release, digest framevalue.Digest, id ContributionID) (ClientComponent, error) {
 	if err := i.authorizePresentation(release, digest); err != nil {
 		return ClientComponent{}, err
 	}

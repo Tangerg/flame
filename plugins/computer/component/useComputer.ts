@@ -14,7 +14,7 @@ import {
   type MethodInputs,
   type MethodOutputs,
 } from "./methods.generated";
-import { parseJSON } from "@qimu/sdk/json";
+import { parseJSON } from "@frame/sdk/json";
 import type { HistoryPage, OperationRecord, Snapshot, Surface } from "./types";
 import { LIMITS } from "../contracts/limits";
 

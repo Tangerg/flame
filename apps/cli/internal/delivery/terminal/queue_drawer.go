@@ -5,11 +5,14 @@ import (
 	"image"
 	"slices"
 
+	"github.com/Tangerg/oolong/ui/core/scene"
+
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/keymap"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/keymap"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 const queueDrawerVisibleRows = 3
@@ -87,29 +90,85 @@ type queueDrawer struct {
 
 	entries  []authoring.QueueEntry
 	selected int
-	scroll   headless.Scroll
+	scroll   base.Scroll
 
 	editingEntry   *authoring.QueueEntry
 	editingMessage authoring.Message
-	editor         kit.Composer
-	focused        bool
+	editor         *kit.Composer
 
 	hovered        queueTarget
 	pointerGesture queuePointerGesture
 	notice         string
 
-	lifecycle    presentationLease
-	presentation headless.Snapshot[queuePresentation]
-	editorRegion headless.PointerRegion
+	presentation scene.Snapshot[queuePresentation]
+	group        *scene.Group
 }
 
-func newQueueDrawer(theme kit.Theme, glyphs kit.Glyphs, keys *keymap.Map, clipboard headless.Clipboard) *queueDrawer {
+func newQueueDrawer(theme kit.Theme, glyphs kit.Glyphs, keys *keymap.Map, clipboard base.Clipboard) *queueDrawer {
 	drawer := &queueDrawer{theme: theme, glyphs: glyphs, keys: keys}
-	drawer.editor = kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 4}
-	drawer.editor.Editor().Keys = keys
-	drawer.editor.Editor().Clipboard = clipboard
-	drawer.editor.Editor().Placeholder = "Edit queued prompt"
+	drawer.editor = kit.NewComposer(kit.ComposerConfig{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 4})
+	drawer.editor.Controller().Keys = keys
+	drawer.editor.Controller().Clipboard = clipboard
+	drawer.editor.Controller().Placeholder = "Edit queued prompt"
 	return drawer
+}
+
+func (q *queueDrawer) Element() scene.Element {
+	if q.group == nil {
+		q.group = scene.NewGroup(scene.GroupConfig{
+			Element: scene.ElementConfig{
+				Focusable: func() bool { return !q.Editing() },
+				Preview: func(event scene.Event) scene.EventResult {
+					if _, ok := event.Input().(input.Mouse); ok {
+						return scene.EventResult{}
+					}
+					return scene.EventResult{Consumed: q.Handle(event.Input())}
+				},
+				Handle: func(event scene.Event) scene.EventResult {
+					mouse, ok := event.Input().(input.Mouse)
+					if !ok {
+						return scene.EventResult{}
+					}
+					if mouse.Action != input.MouseCancel && !event.CurrentLayout() {
+						q.pointerGesture.cancel()
+						return scene.EventResult{Consumed: true}
+					}
+					consumed := q.handleMouse(mouse)
+					return scene.EventResult{Consumed: consumed, Capture: consumed && mouse.Action == input.MouseDown, Focus: consumed && mouse.Action == input.MouseDown}
+				},
+				Paint: q.Draw,
+				FocusChanged: func(has bool) {
+					if !has {
+						q.hovered = queueTarget{}
+						q.pointerGesture.cancel()
+					}
+				},
+				Detached: func() { q.pointerGesture.cancel() },
+			},
+			Layout: func(space image.Point, items []scene.Item) []image.Rectangle {
+				if len(items) == 0 {
+					return nil
+				}
+				box := kit.Box{Theme: q.theme, Glyphs: q.glyphs, Padding: layout.Symmetric(0, 1)}
+				inner := box.InnerRect(space)
+				return []image.Rectangle{image.Rect(inner.Min.X, min(inner.Min.Y+1, inner.Max.Y), inner.Max.X, inner.Max.Y)}
+			},
+		})
+		q.syncElements()
+	}
+	return q.group.Element()
+}
+func (q *queueDrawer) syncElements() {
+	if q.group == nil {
+		return
+	}
+	var items []scene.Item
+	if q.Editing() {
+		items = []scene.Item{{Element: q.editor.Element(), Size: layout.Flex(1)}}
+	}
+	if err := q.group.Set(items...); err != nil {
+		panic(err)
+	}
 }
 
 func (q *queueDrawer) SetActions(actions queueDrawerActions) { q.actions = actions }
@@ -130,7 +189,7 @@ func (q *queueDrawer) Set(snapshot authoring.QueueSnapshot) {
 		entries[editingIndex].CommandID == q.editingEntry.CommandID
 	// A sibling's transition does not replace the held editor or its input lease.
 	if !retainsEditor {
-		q.lifecycle.renew()
+		q.Element().Invalidate()
 	}
 	q.entries = entries
 	if q.Editing() && editingIndex < 0 {
@@ -156,9 +215,6 @@ func (q *queueDrawer) ResetNotice() { q.notice = "" }
 func (q *queueDrawer) Editing() bool { return q.editingEntry != nil }
 
 func (q *queueDrawer) Handle(event input.Event) bool {
-	if !q.lifecycle.acceptsInput() {
-		return true
-	}
 	if key, ok := event.(input.Key); ok && key.Down() {
 		q.pointerGesture.cancel()
 		return q.handleKey(key)
@@ -167,7 +223,7 @@ func (q *queueDrawer) Handle(event input.Event) bool {
 		return q.handleMouse(mouse)
 	}
 	if q.Editing() {
-		return q.editor.Handle(event)
+		return false
 	}
 	return false
 }
@@ -240,7 +296,7 @@ func (q *queueDrawer) handleEditKey(key input.Key) bool {
 		return true
 	}
 	action, _ := q.keys.Action(key.Chord())
-	if action == cancelRun && q.editor.Editor().Empty() {
+	if action == cancelRun && q.editor.Controller().Empty() {
 		q.cancelEdit()
 		return true
 	}
@@ -249,20 +305,19 @@ func (q *queueDrawer) handleEditKey(key input.Key) bool {
 		case key.Mods == input.Ctrl:
 			q.saveEdit(true)
 		case action == insertNewline || key.Mods == input.Shift || key.Mods == input.Alt:
-			q.editor.Editor().Insert("\n")
+			q.editor.Controller().Insert("\n")
 		default:
 			q.saveEdit(false)
 		}
 		return true
 	}
-	return q.editor.Handle(key)
+	return false
 }
 
 func (q *queueDrawer) handleMouse(mouse input.Mouse) bool {
 	if q.Editing() {
 		q.pointerGesture.cancel()
-		handled, delivered := q.editorRegion.Handle(mouse)
-		return handled || delivered
+		return false
 	}
 	switch mouse.Action {
 	case input.MouseCancel:
@@ -313,17 +368,7 @@ func (q *queueDrawer) handleMouse(mouse input.Mouse) bool {
 	return true
 }
 
-func (q *queueDrawer) Focus(has bool) {
-	q.focused = has
-	if !has {
-		q.hovered = queueTarget{}
-		q.pointerGesture.cancel()
-	}
-	q.editor.Focus(has && q.Editing())
-}
-
 func (q *queueDrawer) Closed() {
-	q.focused = false
 	_ = q.releaseEdit()
 	q.hovered = queueTarget{}
 	q.pointerGesture.cancel()
@@ -359,8 +404,9 @@ func (q *queueDrawer) beginEdit() {
 	}
 	q.editingEntry = new(entry)
 	q.editingMessage = entry.Message.Clone()
-	q.editor.Editor().SetText(entry.Message.Text)
-	q.editor.Focus(q.focused)
+	q.editor.Controller().SetText(entry.Message.Text)
+	q.syncElements()
+	_ = q.editor.Element().RequestFocusFirst()
 	q.notice = ""
 }
 
@@ -387,8 +433,9 @@ func (q *queueDrawer) releaseEdit() error {
 func (q *queueDrawer) cancelEditState() {
 	q.editingEntry = nil
 	q.editingMessage = authoring.Message{}
-	q.editor.Editor().Clear()
-	q.editor.Focus(false)
+	q.editor.Controller().Clear()
+	q.syncElements()
+	_ = q.Element().RequestFocus()
 }
 
 func (q *queueDrawer) saveEdit(sendNow bool) {
@@ -397,7 +444,7 @@ func (q *queueDrawer) saveEdit(sendNow bool) {
 	}
 	entry := *q.editingEntry
 	message := q.editingMessage.Clone()
-	message.Text = q.editor.Editor().Text()
+	message.Text = q.editor.Controller().Text()
 	if err := q.actions.SaveEdit(entry, message, sendNow); err != nil {
 		q.notice = err.Error()
 		return
@@ -460,6 +507,9 @@ func (q *queueDrawer) dismiss() {
 }
 
 func (q *queueDrawer) activate(target queueTarget) {
+	if queueEntryIndex(q.entries, target.id) < 0 {
+		return
+	}
 	q.selectID(target.id)
 	switch target.kind {
 	case queueTargetRow:

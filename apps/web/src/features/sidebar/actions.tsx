@@ -62,7 +62,7 @@ export function SidebarActions() {
 export const sidebarActions = definePlugin({
   name: "flame.builtin.sidebar-actions",
   setup(ctx) {
-    contributeWorkIndexItem(ctx, {
+    contributeWorkIndexItem(ctx.contributions, {
       id: "actions",
       order: -10,
       component: SidebarActions,

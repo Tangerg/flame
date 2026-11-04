@@ -9,18 +9,21 @@ import (
 	"sync"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/qimu/sqlite"
+
+	"github.com/Tangerg/frame/sqlite"
 )
 
 func TestReleaseReadCannotRetainRolledBackAdmission(t *testing.T) {
 	db := openStore(t)
-	catalog := newReleaseStore(db)
+	catalog := newReleaseStore(databaseFor(db))
 	release := testsupport.Release(t, "release", plugin.Declaration{Name: "package"})
 	abort := errors.New("abort admission")
 	err := sqlite.RunInTx(t.Context(), db, func(ctx context.Context) error {
@@ -49,7 +52,7 @@ func TestReleaseReadCannotRetainRolledBackAdmission(t *testing.T) {
 
 func TestReleaseReadFollowsRemovalAndReplacement(t *testing.T) {
 	db := openStore(t)
-	catalog := newReleaseStore(db)
+	catalog := newReleaseStore(databaseFor(db))
 	original := testsupport.Release(t, "release", plugin.Declaration{Name: "package", Description: "original"})
 	replacement := testsupport.Release(t, "release", plugin.Declaration{Name: "package", Description: "replacement"})
 	if err := catalog.Admit(t.Context(), original); err != nil {
@@ -98,7 +101,7 @@ func TestReleaseReadUsesTransactionSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = writerDB.Close() })
-	reader, writer := newReleaseStore(readerDB), newReleaseStore(writerDB)
+	reader, writer := newReleaseStore(databaseFor(readerDB)), newReleaseStore(databaseFor(writerDB))
 	original := testsupport.Release(t, "release", plugin.Declaration{Name: "package", Description: "original"})
 	replacement := testsupport.Release(t, "release", plugin.Declaration{Name: "package", Description: "replacement"})
 	if err := writer.Admit(t.Context(), original); err != nil {
@@ -134,7 +137,7 @@ func TestReleaseReadRejectsChangedInvalidDeclaration(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			db := openStore(t)
-			catalog := newReleaseStore(db)
+			catalog := newReleaseStore(databaseFor(db))
 			original := testsupport.Release(t, "release", plugin.Declaration{Name: "package"})
 			replacement := testsupport.Release(t, "release", plugin.Declaration{Name: "package", Version: "2"})
 			if err := catalog.Admit(t.Context(), original); err != nil {
@@ -171,9 +174,9 @@ func TestReleaseReadRejectsChangedInvalidDeclaration(t *testing.T) {
 
 func TestReleaseReadsDoNotShareMutableDeclarations(t *testing.T) {
 	db := openStore(t)
-	catalog := newReleaseStore(db)
-	contract, err := portable.NewCapability(
-		portable.CapabilityConfig{Reference: "consumer.role", Composition: portable.Selection, Scope: extension.ScopeInstallation},
+	catalog := newReleaseStore(databaseFor(db))
+	contract, err := plugincontract.NewCapability(
+		plugincontract.CapabilityConfig{Reference: "consumer.role", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation},
 		portable.MethodDescriptor{Name: "owner.read", Kind: portable.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)},
 	)
 	if err != nil {
@@ -241,7 +244,7 @@ func TestReleaseReadsDoNotShareMutableDeclarations(t *testing.T) {
 
 func TestReleaseReadsConcurrentlyPreserveAdmission(t *testing.T) {
 	db := openStore(t)
-	catalog := newReleaseStore(db)
+	catalog := newReleaseStore(databaseFor(db))
 	release := testsupport.Release(t, "release", plugin.Declaration{
 		Name: "package",
 		Servers: []plugin.Server{{
@@ -285,20 +288,20 @@ func requireStoredRelease(t *testing.T, ctx context.Context, catalog *ReleaseSto
 
 func TestReleaseStoresTerminalViewsWithTheirBindings(t *testing.T) {
 	db := openStore(t)
-	catalog := newReleaseStore(db)
-	contract, err := portable.NewCapability(
-		portable.CapabilityConfig{Reference: "notes", Composition: portable.Selection, Scope: extension.ScopeInstallation},
+	catalog := newReleaseStore(databaseFor(db))
+	contract, err := plugincontract.NewCapability(
+		plugincontract.CapabilityConfig{Reference: "notes", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation},
 		portable.MethodDescriptor{Name: "notes/list", Kind: portable.Query, Target: extension.ScopeInstallation,
 			Input:  jsontext.Value(`{"type":"object","required":["CWD","Cursor"],"properties":{"CWD":{"type":"string"},"Cursor":{"type":"string"}}}`),
 			Output: jsontext.Value(`{"type":"object","properties":{"Rows":{"type":"array","items":{"type":"object","properties":{"ID":{"type":"string"},"Pinned":{"type":"boolean"}}}},"Next":{"type":"string"}}}`)},
-		portable.MethodDescriptor{Name: "notes/pin", Kind: portable.Mutation, Target: extension.ScopeInstallation,
+		portable.MethodDescriptor{Name: "notes/pin", Kind: portable.Command, Target: extension.ScopeInstallation,
 			Input:  jsontext.Value(`{"type":"object","required":["ID","Pinned"],"properties":{"ID":{"type":"string"},"Pinned":{"type":"boolean"}}}`),
 			Output: jsontext.Value(`{"type":"object"}`)},
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	pinned, err := jsonvalue.Encode(true)
+	pinned, err := framevalue.EncodeJSON(true)
 	if err != nil {
 		t.Fatal(err)
 	}

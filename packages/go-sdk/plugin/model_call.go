@@ -6,9 +6,12 @@ import (
 	"errors"
 	"iter"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -61,13 +64,13 @@ func (r ModelCallRequest) Validate() error {
 	return nil
 }
 
-func SelectedModelMethod() (*qimumcp.Method[ModelCallRequest, ModelResult], error) {
-	return qimumcp.NewMethod[ModelCallRequest, ModelResult](qimumcp.MethodConfig{Name: "flame.model/selected-call.v1", Kind: portable.Mutation, Target: extension.ScopeCall, Description: "Perform one independently selected, budgeted and observed model exchange."})
+func SelectedModelMethod() (*pluginmcp.Method[ModelCallRequest, ModelResult], error) {
+	return pluginmcp.NewMethod[ModelCallRequest, ModelResult](portable.MethodConfig{Name: "flame.model/selected-call.v1", Kind: portable.Command, Target: extension.ScopeCall, Description: "Perform one independently selected, budgeted and observed model exchange."})
 }
-func SelectedModelStreamMethod() (*qimumcp.StreamingMethod[ModelCallRequest, chat.ResponseDelta, ModelResult], error) {
-	return qimumcp.NewStreamingMethod[ModelCallRequest, chat.ResponseDelta, ModelResult](qimumcp.MethodConfig{Name: "flame.model/selected-stream.v1", Kind: portable.Mutation, Target: extension.ScopeCall, Description: "Consume one independently selected, budgeted and observed model stream."})
+func SelectedModelStreamMethod() (*pluginmcp.StreamingMethod[ModelCallRequest, chat.ResponseDelta, ModelResult], error) {
+	return pluginmcp.NewStreamingMethod[ModelCallRequest, chat.ResponseDelta, ModelResult](portable.MethodConfig{Name: "flame.model/selected-stream.v1", Kind: portable.Command, Target: extension.ScopeCall, Description: "Consume one independently selected, budgeted and observed model stream."})
 }
-func CallSelectedModel(ctx context.Context, ref qimumcp.CallbackRef, id qimumcp.CommandID, input ModelCallRequest) (*chat.Response, error) {
+func CallSelectedModel(ctx context.Context, ref pluginmcp.CallbackRef, id pluginmcp.CommandID, input ModelCallRequest) (*chat.Response, error) {
 	if err := input.Validate(); err != nil {
 		return nil, err
 	}
@@ -76,34 +79,34 @@ func CallSelectedModel(ctx context.Context, ref qimumcp.CallbackRef, id qimumcp.
 	if err != nil {
 		return nil, err
 	}
-	result, err := qimumcp.CallHost(ctx, ref, method, qimumcp.CommandID(id), input)
+	result, err := pluginmcp.CallHost(ctx, ref, method, pluginmcp.CommandID(id), input)
 	if err != nil {
 		return nil, err
 	}
 	return modelOutcome(result)
 }
-func StreamSelectedModel(ctx context.Context, ref qimumcp.CallbackRef, id qimumcp.CommandID, input ModelCallRequest) iter.Seq2[qimumcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
+func StreamSelectedModel(ctx context.Context, ref pluginmcp.CallbackRef, id pluginmcp.CommandID, input ModelCallRequest) iter.Seq2[pluginmcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
 	method, err := SelectedModelStreamMethod()
 	if err == nil {
 		err = input.Validate()
 	}
 	if err != nil {
-		return func(yield func(qimumcp.StreamValue[chat.ResponseDelta, ModelResult], error) bool) {
-			yield(qimumcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
+		return func(yield func(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult], error) bool) {
+			yield(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
 		}
 	}
 	input.Request = *input.Request.Clone()
-	return qimumcp.StreamHost(ctx, ref, method, qimumcp.CommandID(id), input)
+	return pluginmcp.StreamHost(ctx, ref, method, pluginmcp.CommandID(id), input)
 }
-func NewSelectedModelCallback(call func(context.Context, qimumcp.Command[ModelCallRequest]) (*chat.Response, error)) (qimumcp.Callback, error) {
+func NewSelectedModelCallback(call func(context.Context, pluginmcp.Command[ModelCallRequest]) (*chat.Response, error)) (pluginmcp.Callback, error) {
 	if call == nil {
-		return qimumcp.Callback{}, errors.New("plugin: selected model call owner is required")
+		return pluginmcp.Callback{}, errors.New("plugin: selected model call owner is required")
 	}
 	method, err := SelectedModelMethod()
 	if err != nil {
-		return qimumcp.Callback{}, err
+		return pluginmcp.Callback{}, err
 	}
-	return qimumcp.NewCallback(method, nil, func(ctx context.Context, command qimumcp.Command[ModelCallRequest]) (ModelResult, error) {
+	return pluginmcp.NewCallback(method, nil, func(ctx context.Context, command pluginmcp.Command[ModelCallRequest]) (ModelResult, error) {
 		if err := command.Input.Validate(); err != nil {
 			return ModelResult{}, err
 		}
@@ -113,30 +116,30 @@ func NewSelectedModelCallback(call func(context.Context, qimumcp.Command[ModelCa
 			return ModelResult{}, err
 		}
 		response, err := call(ctx, command)
-		if refusal, known := errors.AsType[*portable.Refusal](err); known && response == nil {
+		if refusal, known := errors.AsType[*framemcp.Refusal](err); known && response == nil {
 			return ModelResult{}, refusal
 		}
 		return modelResult(response, err)
 	})
 }
-func NewSelectedModelStreamCallback(stream func(context.Context, qimumcp.Command[ModelCallRequest]) iter.Seq2[*chat.ResponseDelta, error]) (qimumcp.Callback, error) {
+func NewSelectedModelStreamCallback(stream func(context.Context, pluginmcp.Command[ModelCallRequest]) iter.Seq2[*chat.ResponseDelta, error]) (pluginmcp.Callback, error) {
 	if stream == nil {
-		return qimumcp.Callback{}, errors.New("plugin: selected model stream owner is required")
+		return pluginmcp.Callback{}, errors.New("plugin: selected model stream owner is required")
 	}
 	method, err := SelectedModelStreamMethod()
 	if err != nil {
-		return qimumcp.Callback{}, err
+		return pluginmcp.Callback{}, err
 	}
-	return qimumcp.NewStreamingCallback(method, func(ctx context.Context, command qimumcp.Command[ModelCallRequest]) iter.Seq2[qimumcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
-		return func(yield func(qimumcp.StreamValue[chat.ResponseDelta, ModelResult], error) bool) {
+	return pluginmcp.NewStreamingCallback(method, func(ctx context.Context, command pluginmcp.Command[ModelCallRequest]) iter.Seq2[pluginmcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
+		return func(yield func(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult], error) bool) {
 			if err := command.Input.Validate(); err != nil {
-				yield(qimumcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
+				yield(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
 				return
 			}
 			command.Input.Request = *command.Input.Request.Clone()
 			ctx, err := selectedModelCallContext(ctx, string(command.ID))
 			if err != nil {
-				yield(qimumcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
+				yield(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
 				return
 			}
 			modelStreamResult(ctx, func() iter.Seq2[*chat.ResponseDelta, error] { return stream(ctx, command) })(yield)
@@ -145,7 +148,7 @@ func NewSelectedModelStreamCallback(stream func(context.Context, qimumcp.Command
 }
 
 func selectedModelCallContext(ctx context.Context, id string) (context.Context, error) {
-	parent, err := qimumcp.InvocationFromContext(ctx)
+	parent, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		return nil, errors.Join(err, errors.New("plugin: selected model requires an owning invocation"))
 	}

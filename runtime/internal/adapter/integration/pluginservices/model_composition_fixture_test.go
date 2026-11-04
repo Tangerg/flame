@@ -5,16 +5,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
-func installedCallCompositionFixture(t *testing.T, contract *portable.Capability, members []string, register func(*qimumcp.Backend), handlers ...http.Handler) (*CallComposition, *toolInstallationStore) {
+func installedCallCompositionFixture(t *testing.T, contract *plugincontract.Capability, members []string, register func(*pluginmcp.Backend), handlers ...http.Handler) (*CallComposition, *toolInstallationStore) {
 	t.Helper()
 	name := testsupport.ServerName("observer")
 	contributions := make([]plugin.Contribution, len(members))
@@ -38,7 +39,7 @@ func installedCallCompositionFixture(t *testing.T, contract *portable.Capability
 	}
 	store := &toolInstallationStore{snapshot: plugin.Snapshot{Installation: installation, Selected: release}}
 	remote := sdk.NewServer(&sdk.Implementation{Name: "installed-model-composition"}, nil)
-	backend, err := qimumcp.NewBackend(remote)
+	backend, err := pluginmcp.NewBackend(remote)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +53,7 @@ func installedCallCompositionFixture(t *testing.T, contract *portable.Capability
 	endpoint := httptest.NewServer(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil))
 	t.Cleanup(endpoint.Close)
 	server := mcpserver.Server{Source: source, Name: name, Enabled: true, Connection: mcpserver.HTTPConnection{URL: endpoint.URL}}
-	callbacks := qimumcp.NewCallbacks()
+	callbacks := pluginmcp.NewCallbacks()
 	t.Cleanup(func() { _ = callbacks.Close() })
 	if len(handlers) > 0 {
 		if err := callbacks.PublishRPC(handlers[0]); err != nil {
@@ -64,7 +65,7 @@ func installedCallCompositionFixture(t *testing.T, contract *portable.Capability
 	db := managed.Stores
 	compositions := db.PluginCompositions
 	selections := db.ProviderSelections
-	if contract.Descriptor().Composition == portable.Selection {
+	if contract.Descriptor().Composition == plugincontract.Selection {
 		choice, err := plugin.NewProviderSelection(plugin.SelectionRecord{Role: contract.Descriptor().Reference, Installation: installation.ID(), Contribution: plugin.ContributionID(members[0])})
 		if err != nil {
 			t.Fatal(err)

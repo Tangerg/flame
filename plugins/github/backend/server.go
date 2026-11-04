@@ -4,18 +4,19 @@ import (
 	"context"
 	"errors"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/scope/core/chat"
+
 	"github.com/Tangerg/scope/core/tool"
 )
 
 func classify(err error) (string, bool) {
-	if refusal, known := errors.AsType[*portable.Refusal](err); known {
+	if refusal, known := errors.AsType[*framemcp.Refusal](err); known {
 		return refusal.Code, true
 	}
 	if errors.Is(err, errResource) {
@@ -30,17 +31,17 @@ func toolQuery[P, R any](name, description string, call func(context.Context, P)
 		if _, refused := classify(err); err == nil || !refused {
 			return result, err
 		}
-		failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: chat.NewTextToolOutput(err.Error()), Cause: err})
+		failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: tool.NewTextOutput(err.Error()), Cause: err})
 		return result, errors.Join(failure, failureErr)
 	})
 }
 
-func registerRead[P, R any](backend *qimumcp.Backend, tools *[]tool.Tool, method *qimumcp.Method[P, R], name string, call func(context.Context, P) (R, error)) error {
+func registerRead[P, R any](backend *pluginmcp.Backend, tools *[]tool.Tool, method *pluginmcp.Method[P, R], name string, call func(context.Context, P) (R, error)) error {
 	modelTool, err := toolQuery(name, method.Descriptor().Description, call)
 	if err != nil {
 		return err
 	}
-	if err := method.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[P]) (R, error) {
+	if err := method.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[P]) (R, error) {
 		return call(ctx, command.Input)
 	}); err != nil {
 		return err
@@ -58,7 +59,7 @@ func newServer(connector *connector) (*sdk.Server, error) {
 		return nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.github", Version: "1.0.0"}, nil)
-	backend, err := qimumcp.NewBackend(server)
+	backend, err := pluginmcp.NewBackend(server)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +95,7 @@ func newServer(connector *connector) (*sdk.Server, error) {
 		registerWrite(backend, &tools, receipts, connector, contracts.UpdateReviewComment, "update_pull_request_comment", connector.updateReviewComment),
 		registerWrite(backend, &tools, receipts, connector, contracts.DeleteReviewComment, "delete_pull_request_comment", connector.deleteReviewComment),
 		pluginstorage.RegisterReceipts(backend, connector.store.db),
-		toolReceipts.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
+		toolReceipts.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginmcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
 			read := receipts[command.Input.Method]
 			if read == nil {
 				return pluginsdk.ToolReceipt{}, nil

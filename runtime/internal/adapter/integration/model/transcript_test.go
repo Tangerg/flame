@@ -1,6 +1,11 @@
 package model
 
 import (
+	"github.com/Tangerg/scope/core/content"
+	corecontent "github.com/Tangerg/scope/core/content"
+
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"fmt"
 	"strings"
 	"testing"
@@ -61,8 +66,8 @@ func TestTranscriptPreservesToolCallAndFailureIdentity(t *testing.T) {
 			chat.NewToolCallPart(chat.ToolCall{ID: "test-1", Name: "shell", Arguments: `{"command":"go test ./..."}`}),
 		),
 		chat.NewToolMessage(
-			chat.ToolResult{ID: "patch-1", Name: "apply_patch", IsError: true, Output: chat.NewTextToolOutput("hunk did not match")},
-			chat.ToolResult{ID: "test-1", Name: "shell", Output: chat.NewTextToolOutput("ok")},
+			chat.ToolResult{ID: "patch-1", Name: "apply_patch", IsError: true, Output: toolcontract.NewTextOutput("hunk did not match")},
+			chat.ToolResult{ID: "test-1", Name: "shell", Output: toolcontract.NewTextOutput("ok")},
 		),
 	}
 	rendered := RenderTranscript(messages)
@@ -103,7 +108,7 @@ func TestToolResultKeepsItsErrorStatusUnderPressure(t *testing.T) {
 			Kind: chat.PartToolResult,
 			ToolResult: &chat.ToolResult{
 				ID: "call_1", Name: "apply_patch", IsError: true,
-				Output: chat.NewTextToolOutput(strings.Repeat("patch rejected. ", 400)),
+				Output: toolcontract.NewTextOutput(strings.Repeat("patch rejected. ", 400)),
 			},
 		}},
 	}
@@ -127,7 +132,7 @@ func TestToolResultsThatDoNotFitAreCountedNotHalfWritten(t *testing.T) {
 			Kind: chat.PartToolResult,
 			ToolResult: &chat.ToolResult{
 				ID: fmt.Sprintf("call_%d", index), Name: "shell", IsError: index%2 == 0,
-				Output: chat.NewTextToolOutput("output"),
+				Output: toolcontract.NewTextOutput("output"),
 			},
 		})
 	}
@@ -157,7 +162,7 @@ func TestToolResultsNeverSpendAnotherMessagesShare(t *testing.T) {
 			Kind: chat.PartToolResult,
 			ToolResult: &chat.ToolResult{
 				ID: fmt.Sprintf("call_%d", index), Name: "shell", IsError: true,
-				Output: chat.NewTextToolOutput("output"),
+				Output: toolcontract.NewTextOutput("output"),
 			},
 		})
 	}
@@ -177,8 +182,8 @@ func TestToolResultsNeverSpendAnotherMessagesShare(t *testing.T) {
 }
 
 func budgetToolImage(image *media.Media) chat.Message {
-	return chat.NewToolMessage(chat.ToolResult{ID: "image", Name: "inspect", Output: chat.ToolOutput{
-		Content: []chat.ToolContent{{Kind: chat.PartText, Text: "image result"}, {Kind: chat.PartMedia, Media: image}},
+	return chat.NewToolMessage(chat.ToolResult{ID: "image", Name: "inspect", Output: toolcontract.Output{
+		Content: []corecontent.Block{{Kind: content.Text, Text: "image result"}, {Kind: content.Media, Media: image}},
 	}})
 }
 

@@ -1,7 +1,7 @@
 import { asyncDisposeSymbol } from "dougong";
 import { expect, it, onTestFinished, vi } from "vitest";
 import { type RootRunSettlement } from "@flame/component-sdk";
-import { definePlugin, type ContributionLifetime } from "@/extensions/definePlugin";
+import { definePlugin, type ContributionScope } from "@/extensions/definePlugin";
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { usePluginErrorStore } from "@/extensions/errors";
 import { type AgentAccess } from "@/features/agent/public/agent";
@@ -13,18 +13,18 @@ import {
 } from "./clientNotifications";
 
 async function fixture() {
-  let lifetime!: ContributionLifetime;
+  let lifetime!: ContributionScope;
   const host = await startKernel([
     definePlugin({
       name: "test.component-notifications",
       setup(scope) {
-        lifetime = scope.lifetime("notifications");
+        lifetime = scope.contributions.child("notifications");
       },
     }),
   ]);
   onTestFinished(() => stopKernel(host));
   const controller = new AbortController();
-  const signal = AbortSignal.any([controller.signal, lifetime.signal]);
+  const signal = AbortSignal.any([controller.signal, lifetime.lifetime.signal]);
   const component = {
     installationId: "installed",
     digest: "a".repeat(64),

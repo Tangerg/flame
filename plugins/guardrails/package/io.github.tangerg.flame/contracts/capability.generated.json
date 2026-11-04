@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.qimu/portable/1",
+  "protocol": "io.github.tangerg.flame/plugin/1",
   "reference": "flame.guardrails.v1",
   "composition": "collection",
   "scope": "installation",
@@ -19,6 +19,15 @@
         "$defs": {
           "domain.Summary": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "protectedPhraseCount": {
+                    "maximum": 32
+                  }
+                }
+              }
+            ],
             "properties": {
               "protectedPhraseCount": {
                 "allOf": [
@@ -27,7 +36,6 @@
                     "minimum": -9223372036854775808
                   }
                 ],
-                "maximum": 32,
                 "minimum": 0,
                 "type": "integer"
               },
@@ -51,6 +59,15 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "protectedPhraseCount": {
+                "maximum": 32
+              }
+            }
+          }
+        ],
         "properties": {
           "protectedPhraseCount": {
             "allOf": [
@@ -59,7 +76,6 @@
                 "minimum": -9223372036854775808
               }
             ],
-            "maximum": 32,
             "minimum": 0,
             "type": "integer"
           },
@@ -90,6 +106,15 @@
         "$defs": {
           "wire.ReplaceInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "phrases": {
+                    "maxItems": 32
+                  }
+                }
+              }
+            ],
             "properties": {
               "expectedRevision": {
                 "allOf": [
@@ -105,7 +130,6 @@
                 "items": {
                   "type": "string"
                 },
-                "maxItems": 32,
                 "type": "array"
               }
             },
@@ -118,6 +142,15 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "phrases": {
+                "maxItems": 32
+              }
+            }
+          }
+        ],
         "properties": {
           "expectedRevision": {
             "allOf": [
@@ -133,7 +166,6 @@
             "items": {
               "type": "string"
             },
-            "maxItems": 32,
             "type": "array"
           }
         },
@@ -147,6 +179,15 @@
         "$defs": {
           "domain.Summary": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "protectedPhraseCount": {
+                    "maximum": 32
+                  }
+                }
+              }
+            ],
             "properties": {
               "protectedPhraseCount": {
                 "allOf": [
@@ -155,7 +196,6 @@
                     "minimum": -9223372036854775808
                   }
                 ],
-                "maximum": 32,
                 "minimum": 0,
                 "type": "integer"
               },
@@ -179,6 +219,15 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "protectedPhraseCount": {
+                "maximum": 32
+              }
+            }
+          }
+        ],
         "properties": {
           "protectedPhraseCount": {
             "allOf": [
@@ -187,7 +236,6 @@
                 "minimum": -9223372036854775808
               }
             ],
-            "maximum": 32,
             "minimum": 0,
             "type": "integer"
           },

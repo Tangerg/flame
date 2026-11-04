@@ -4,15 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+
 	"github.com/Tangerg/flame/packages/go-sdk/skill"
+	framemcp "github.com/Tangerg/frame/process/mcp"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	storage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	"github.com/Tangerg/frame/sqlite"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 const reviewsSchema = `CREATE TABLE IF NOT EXISTS reviews (
@@ -21,10 +22,10 @@ const reviewsSchema = `CREATE TABLE IF NOT EXISTS reviews (
 )`
 
 func staleReview() error {
-	return &portable.Refusal{Code: skilllearning.StaleReview, Message: "the proposal is no longer available for this decision"}
+	return &framemcp.Refusal{Code: skilllearning.StaleReview, Message: "the proposal is no longer available for this decision"}
 }
 
-func registerReviews(server *qimumcp.Backend, db *sql.DB) error {
+func registerReviews(server *pluginmcp.Backend, db *sql.DB) error {
 	propose, e1 := skilllearning.ProposeMethod()
 	queue, e2 := skilllearning.QueueMethod()
 	approve, e3 := skilllearning.ApproveMethod()
@@ -36,7 +37,7 @@ func registerReviews(server *qimumcp.Backend, db *sql.DB) error {
 	reviews := reviewQueue{db: db}
 	return errors.Join(
 		reviewCommand(server, db, propose, reviews.stage),
-		queue.RegisterServer(server, nil, func(ctx context.Context, _ *sdk.ServerSession, cmd qimumcp.Command[skilllearning.Libraries]) (skilllearning.Queue, error) {
+		queue.RegisterServer(server, nil, func(ctx context.Context, _ *sdk.ServerSession, cmd pluginmcp.Command[skilllearning.Libraries]) (skilllearning.Queue, error) {
 			return reviews.pending(ctx, cmd.Input)
 		}),
 		reviewCommand(server, db, approve, reviews.authorize),
@@ -45,15 +46,15 @@ func registerReviews(server *qimumcp.Backend, db *sql.DB) error {
 	)
 }
 
-func reviewCommand[P, R any](server *qimumcp.Backend, db *sql.DB, method *qimumcp.Method[P, R], apply func(context.Context, *sdk.ServerSession, P) (R, error)) error {
-	return method.RegisterServer(server, nil, func(ctx context.Context, session *sdk.ServerSession, command qimumcp.Command[P]) (R, error) {
+func reviewCommand[P, R any](server *pluginmcp.Backend, db *sql.DB, method *pluginmcp.Method[P, R], apply func(context.Context, *sdk.ServerSession, P) (R, error)) error {
+	return method.RegisterServer(server, nil, func(ctx context.Context, session *sdk.ServerSession, command pluginmcp.Command[P]) (R, error) {
 		var zero R
-		inv, err := qimumcp.InvocationFromContext(ctx)
+		inv, err := pluginmcp.InvocationFromContext(ctx)
 		if err != nil {
 			return zero, err
 		}
 		if inv.ID != string(command.ID) {
-			return zero, portable.ErrInvocationConflict
+			return zero, framemcp.ErrInvocationConflict
 		}
 		input, err := command.RequestInput()
 		if err != nil {
@@ -66,7 +67,7 @@ func reviewCommand[P, R any](server *qimumcp.Backend, db *sql.DB, method *qimumc
 type reviewQueue struct{ db *sql.DB }
 
 func (r reviewQueue) stage(ctx context.Context, _ *sdk.ServerSession, draft skilllearning.Draft) (skilllearning.ReviewRef, error) {
-	inv, err := qimumcp.InvocationFromContext(ctx)
+	inv, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		return skilllearning.ReviewRef{}, err
 	}
@@ -75,7 +76,7 @@ func (r reviewQueue) stage(ctx context.Context, _ *sdk.ServerSession, draft skil
 
 func (r reviewQueue) stageCommand(ctx context.Context, command string, draft skilllearning.Draft) (skilllearning.ReviewRef, error) {
 	ref := skilllearning.ReviewRef{Command: command}
-	conn := sqlite.Connection(ctx, r.db)
+	conn := storage.Connection(ctx, r.db)
 	// Replacing a pending name is free at capacity. An in-flight publication
 	// keeps the slot reserved until the filesystem owner reconciles its permit.
 	result, err := conn.ExecContext(ctx, `INSERT INTO reviews(library,name,proposal)
@@ -88,7 +89,7 @@ func (r reviewQueue) stageCommand(ctx context.Context, command string, draft ski
 }
 
 func (r reviewQueue) pending(ctx context.Context, libs skilllearning.Libraries) (skilllearning.Queue, error) {
-	rows, err := sqlite.Connection(ctx, r.db).QueryContext(ctx, `SELECT proposal FROM reviews WHERE library IN (?,?) ORDER BY library,name`, libs.Project, libs.User)
+	rows, err := storage.Connection(ctx, r.db).QueryContext(ctx, `SELECT proposal FROM reviews WHERE library IN (?,?) ORDER BY library,name`, libs.Project, libs.User)
 	if err != nil {
 		return skilllearning.Queue{}, err
 	}
@@ -104,13 +105,13 @@ func (r reviewQueue) pending(ctx context.Context, libs skilllearning.Libraries) 
 	return queue, rows.Err()
 }
 
-func humanDecision(ctx context.Context) (portable.Invocation, error) {
-	inv, err := qimumcp.InvocationFromContext(ctx)
+func humanDecision(ctx context.Context) (framemcp.Invocation, error) {
+	inv, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		return inv, err
 	}
 	if inv.Origin != extension.Human {
-		return inv, &portable.Refusal{Code: "human_required", Message: "an explicit human review is required"}
+		return inv, &framemcp.Refusal{Code: "human_required", Message: "an explicit human review is required"}
 	}
 	return inv, nil
 }
@@ -121,7 +122,7 @@ func (r reviewQueue) authorize(ctx context.Context, _ *sdk.ServerSession, ref sk
 		return skilllearning.Permit{}, err
 	}
 	var permit skilllearning.Permit
-	err = sqlite.Connection(ctx, r.db).QueryRowContext(ctx, `UPDATE reviews SET decision=COALESCE(decision,?) WHERE proposal=? RETURNING decision`, inv.ID, ref.Command).Scan(&permit.Decision)
+	err = storage.Connection(ctx, r.db).QueryRowContext(ctx, `UPDATE reviews SET decision=COALESCE(decision,?) WHERE proposal=? RETURNING decision`, inv.ID, ref.Command).Scan(&permit.Decision)
 	if errors.Is(err, sql.ErrNoRows) {
 		return permit, staleReview()
 	}
@@ -132,14 +133,14 @@ func (r reviewQueue) confirm(ctx context.Context, _ *sdk.ServerSession, effect s
 	if _, err := humanDecision(ctx); err != nil {
 		return struct{}{}, err
 	}
-	result, err := sqlite.Connection(ctx, r.db).ExecContext(ctx, `DELETE FROM reviews WHERE proposal=? AND decision=?`, effect.Proposal.Command, effect.Permit.Decision)
+	result, err := storage.Connection(ctx, r.db).ExecContext(ctx, `DELETE FROM reviews WHERE proposal=? AND decision=?`, effect.Proposal.Command, effect.Permit.Decision)
 	return struct{}{}, reviewChanged(result, err)
 }
 func (r reviewQueue) reject(ctx context.Context, _ *sdk.ServerSession, ref skilllearning.ReviewRef) (struct{}, error) {
 	if _, err := humanDecision(ctx); err != nil {
 		return struct{}{}, err
 	}
-	result, err := sqlite.Connection(ctx, r.db).ExecContext(ctx, `DELETE FROM reviews WHERE proposal=? AND decision IS NULL`, ref.Command)
+	result, err := storage.Connection(ctx, r.db).ExecContext(ctx, `DELETE FROM reviews WHERE proposal=? AND decision IS NULL`, ref.Command)
 	return struct{}{}, reviewChanged(result, err)
 }
 func reviewChanged(result sql.Result, err error) error {

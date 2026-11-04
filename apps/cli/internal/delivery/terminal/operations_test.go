@@ -4,25 +4,31 @@ import (
 	"context"
 	"errors"
 	"math"
+	"sync"
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/program"
-	"github.com/Tangerg/oolong/core/programtest"
+	"github.com/Tangerg/oolong/ui/core/program"
+	"github.com/Tangerg/oolong/ui/core/scene"
+	"github.com/Tangerg/oolong/ui/kit"
+	"github.com/Tangerg/oolong/ui/uitest"
 )
 
 func TestPostReleasesItsCallerWhenTheClaimedCallbackPanics(t *testing.T) {
-	host := programtest.New(t, programtest.Config{Width: 20, Height: 4})
+	host := uitest.New(t, uitest.Config{Width: 20, Height: 4})
 	ready := make(chan program.Dispatcher, 1)
 	panicked := make(chan any, 1)
 	go func() {
 		defer func() { panicked <- recover() }()
-		if err := program.Run(t.Context(), program.Config{Host: host, Root: func(loop *program.Runtime) program.Component {
+		screen, err := program.NewScreen(program.ScreenConfig{Config: program.Config{Host: host}, Build: func(loop *program.Runtime) (scene.Element, error) {
 			ready <- loop.Dispatcher()
-			return headless.NewRoot(&headless.Static{Of: kit.Label{Text: "ready"}})
-		}}); err != nil {
+			return passiveElement(kit.Label{Text: "ready"}), nil
+		}})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		if err := screen.Run(t.Context()); err != nil {
 			t.Error(err)
 		}
 	}()
@@ -32,7 +38,7 @@ func TestPostReleasesItsCallerWhenTheClaimedCallbackPanics(t *testing.T) {
 	if got := awaitValue(t, panicked, "original callback panic"); got != "callback failed" {
 		t.Fatalf("callback panic = %v", got)
 	}
-	if err := awaitValue(t, posted, "post caller release"); err != nil && !errors.Is(err, program.ErrStopped) {
+	if err := awaitValue(t, posted, "post caller release"); !errors.Is(err, program.ErrInvocationAborted) {
 		t.Fatal(err)
 	}
 }
@@ -238,4 +244,43 @@ func TestSessionSettlementOwnsRunAdmissionUntilItsExactLeaseEnds(t *testing.T) {
 // the dispatcher.
 func unattachedTasks(operations *operationOwner) taskRunner {
 	return taskRunner{operations: operations, dispatch: (&program.Runtime{}).Dispatcher(), settled: func() {}}
+}
+
+func TestPostReturnsCapacityRefusalBeforeApplying(t *testing.T) {
+	host := uitest.New(t, uitest.Config{Width: 20, Height: 4})
+	ready := make(chan program.Dispatcher, 1)
+	releaseBuild := make(chan struct{})
+	var releaseOnce sync.Once
+	release := func() { releaseOnce.Do(func() { close(releaseBuild) }) }
+	t.Cleanup(release)
+	screen, err := program.NewScreen(program.ScreenConfig{
+		Config: program.Config{Host: host, Actions: 1},
+		Build: func(loop *program.Runtime) (scene.Element, error) {
+			if err := loop.Dispatcher().Post(loop.Quit); err != nil {
+				return scene.Element{}, err
+			}
+			ready <- loop.Dispatcher()
+			<-releaseBuild
+			return passiveElement(kit.Label{Text: "capacity"}), nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- screen.Run(t.Context()) }()
+	dispatcher := awaitValue(t, ready, "occupied terminal action queue")
+	var applied atomic.Bool
+	result := make(chan error, 1)
+	go func() { result <- post(t.Context(), dispatcher, func() { applied.Store(true) }) }()
+	if err := awaitValue(t, result, "capacity refusal"); !errors.Is(err, program.ErrQueueFull) {
+		t.Fatalf("post = %v, want capacity refusal", err)
+	}
+	release()
+	if err := awaitValue(t, done, "terminal exit"); err != nil {
+		t.Fatal(err)
+	}
+	if applied.Load() {
+		t.Fatal("refused callback ran")
+	}
 }

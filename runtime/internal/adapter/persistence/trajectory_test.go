@@ -10,13 +10,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -26,7 +29,7 @@ func insertTrajectorySession(t testing.TB, ctx context.Context, db *sql.DB, id s
 		ID: id, Workspace: testsupport.MustWorkspace("/work"),
 		CreatedAt: time.Unix(1, 0).UTC(), UpdatedAt: time.Unix(1, 0).UTC(), Revision: 1,
 	})
-	if err := newSessionStore(db).Insert(ctx, value); err != nil {
+	if err := newSessionStore(databaseFor(db)).Insert(ctx, value); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -63,12 +66,12 @@ func TestSessionTrajectorySurvivesRestartAndPagesSameTimeSourcesWithoutLoss(t *t
 	defer func() { _ = db.Close() }()
 	draft := runDraft("run_trajectory", "ses_trajectory")
 	insertTrajectorySession(t, ctx, db, draft.SessionID)
-	runStore := newRunStore(db)
+	runStore := newRunStore(databaseFor(db))
 	if err := runStore.Admit(ctx, draft); err != nil {
 		t.Fatal(err)
 	}
-	models := newModelInvocationStore(db)
-	items := newTranscriptStore(db)
+	models := newModelInvocationStore(databaseFor(db))
+	items := newTranscriptStore(databaseFor(db))
 	for index := range 151 {
 		id := fmt.Sprintf("call_%03d", index)
 		if err := models.StartModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, id, draft.CreatedAt, run.ModelConversation); err != nil {
@@ -89,7 +92,7 @@ func TestSessionTrajectorySurvivesRestartAndPagesSameTimeSourcesWithoutLoss(t *t
 	if err := terminalizeStoredRun(t, ctx, runStore, finishedRunFromDraft(draft, run.OutcomeCompleted)); err != nil {
 		t.Fatal(err)
 	}
-	reader := newTrajectoryStore(db)
+	reader := newTrajectoryStore(databaseFor(db))
 	before, err := reader.Page(ctx, draft.SessionID, true, nil, 100)
 	if err != nil || len(before) != 100 {
 		t.Fatalf("before restart page: %d, %v", len(before), err)
@@ -101,7 +104,7 @@ func TestSessionTrajectorySurvivesRestartAndPagesSameTimeSourcesWithoutLoss(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	reader = newTrajectoryStore(db)
+	reader = newTrajectoryStore(databaseFor(db))
 	after, err := reader.Page(ctx, draft.SessionID, true, nil, 100)
 	if err != nil || !reflect.DeepEqual(before, after) {
 		t.Fatalf("restart changed durable trajectory: %v", err)
@@ -156,13 +159,13 @@ func TestSessionTrajectoryKeepsDescendantAndSessionOwnership(t *testing.T) {
 	child.ParentRunID, child.RootRunID, child.SpawnedByItemID = root.RunID, root.RunID, "item_spawn"
 	other := runDraft("run_other", "ses_other")
 	for _, draft := range []run.Draft{root, child, other} {
-		if err := newRunStore(db).Admit(ctx, draft); err != nil {
+		if err := newRunStore(databaseFor(db)).Admit(ctx, draft); err != nil {
 			t.Fatal(err)
 		}
-		if err := newModelInvocationStore(db).StartModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, "call_"+draft.RunID, draft.CreatedAt, run.ModelConversation); err != nil {
+		if err := newModelInvocationStore(databaseFor(db)).StartModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, "call_"+draft.RunID, draft.CreatedAt, run.ModelConversation); err != nil {
 			t.Fatal(err)
 		}
-		if err := newTranscriptStore(db).AppendItem(ctx, trajectoryItem("item_"+draft.RunID, draft.RunID, draft.SessionID, draft.CreatedAt)); err != nil {
+		if err := newTranscriptStore(databaseFor(db)).AppendItem(ctx, trajectoryItem("item_"+draft.RunID, draft.RunID, draft.SessionID, draft.CreatedAt)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -172,7 +175,7 @@ func TestSessionTrajectoryKeepsDescendantAndSessionOwnership(t *testing.T) {
 		{"endpoint_session", "utility_session", root.SessionID}, {"endpoint_other", "utility_other", other.SessionID},
 		{"endpoint_global", "utility_global", ""},
 	} {
-		value := modelref.EndpointInvocation{ID: source.id, Caller: portable.Invocation{ID: source.caller, Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: source.caller}}, Provider: "anthropic", Model: "captured-model", SessionID: source.session, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: root.CreatedAt}
+		value := modelref.EndpointInvocation{ID: source.id, Caller: framemcp.Invocation{ID: source.caller, Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: source.caller}}, Provider: "anthropic", Model: "captured-model", SessionID: source.session, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: root.CreatedAt}
 		owner := ""
 		if source.caller == "call_run_root" {
 			owner = source.caller
@@ -184,11 +187,11 @@ func TestSessionTrajectoryKeepsDescendantAndSessionOwnership(t *testing.T) {
 			value.SessionID = child.SessionID
 			value.StartedAt = child.CreatedAt
 		}
-		if err := newModelInvocationStore(db).StartEndpointInvocation(ctx, value, owner); err != nil {
+		if err := newModelInvocationStore(databaseFor(db)).StartEndpointInvocation(ctx, value, owner); err != nil {
 			t.Fatal(err)
 		}
 	}
-	reader := newTrajectoryStore(db)
+	reader := newTrajectoryStore(databaseFor(db))
 	for _, includeDescendants := range []bool{false, true} {
 		page, err := reader.Page(ctx, root.SessionID, includeDescendants, nil, 100)
 		want := 5
@@ -223,10 +226,10 @@ func BenchmarkSessionTrajectoryPage(b *testing.B) {
 			defer func() { _ = db.Close() }()
 			insertTrajectorySession(b, ctx, db, "ses_bench")
 			draft := runDraft("run_bench", "ses_bench")
-			if err := newRunStore(db).Admit(ctx, draft); err != nil {
+			if err := newRunStore(databaseFor(db)).Admit(ctx, draft); err != nil {
 				b.Fatal(err)
 			}
-			if err := newTranscriptStore(db).AppendItem(ctx, trajectoryItem("item_template", draft.RunID, draft.SessionID, draft.CreatedAt)); err != nil {
+			if err := newTranscriptStore(databaseFor(db)).AppendItem(ctx, trajectoryItem("item_template", draft.RunID, draft.SessionID, draft.CreatedAt)); err != nil {
 				b.Fatal(err)
 			}
 			if _, err := db.ExecContext(ctx, `WITH RECURSIVE numbers(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM numbers WHERE n < ?)
@@ -239,7 +242,7 @@ func BenchmarkSessionTrajectoryPage(b *testing.B) {
 				SELECT printf('call_%06d', n), 'ses_bench', 'run_bench', 'seg_open', 'completed', 1000000000 + n, 1000000001 + n FROM numbers`, count/2); err != nil {
 				b.Fatal(err)
 			}
-			reader := newTrajectoryStore(db)
+			reader := newTrajectoryStore(databaseFor(db))
 			for b.Loop() {
 				rows, err := reader.Page(ctx, draft.SessionID, true, nil, 100)
 				if err != nil || len(rows) != 100 {

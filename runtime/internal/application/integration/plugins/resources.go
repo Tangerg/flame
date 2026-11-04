@@ -4,12 +4,13 @@ import (
 	"context"
 	"strings"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/integrity"
 )
 
-func (c *Coordinator) Component(ctx context.Context, id identity.InstallationID, digest integrity.Digest, component plugin.ContributionID) (plugin.ClientComponent, error) {
+func (c *Coordinator) Component(ctx context.Context, id identity.InstallationID, digest framevalue.Digest, component plugin.ContributionID) (plugin.ClientComponent, error) {
 	var value plugin.ClientComponent
 	err := c.framework.Admission().Admit(ctx, func(ctx context.Context) error {
 		snapshot, err := c.installationSnapshot(ctx, id)
@@ -22,7 +23,7 @@ func (c *Coordinator) Component(ctx context.Context, id identity.InstallationID,
 	return value, err
 }
 
-func (c *Coordinator) Resource(ctx context.Context, id identity.InstallationID, digest integrity.Digest, component plugin.ContributionID, resource string) ([]byte, error) {
+func (c *Coordinator) Resource(ctx context.Context, id identity.InstallationID, digest framevalue.Digest, component plugin.ContributionID, resource string) ([]byte, error) {
 	if !plugin.ValidResourcePath(resource) || !strings.HasPrefix(resource, plugin.Namespace+"/") {
 		return nil, plugin.ErrInvalid
 	}
@@ -44,7 +45,7 @@ func (c *Coordinator) Resource(ctx context.Context, id identity.InstallationID, 
 	return c.packages.ReadResource(ctx, installation, resource)
 }
 
-func (c *Coordinator) Locale(ctx context.Context, id identity.InstallationID, digest integrity.Digest, tag string) (map[string]string, error) {
+func (c *Coordinator) Locale(ctx context.Context, id identity.InstallationID, digest framevalue.Digest, tag string) (map[string]string, error) {
 	var installation plugin.Installation
 	var locale plugin.Locale
 	err := c.framework.Admission().Admit(ctx, func(ctx context.Context) error {

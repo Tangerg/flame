@@ -7,49 +7,16 @@
       "type": "object"
     },
     "GetPolicyV1Output": {
-      "$ref": "#/$defs/Snapshot"
+      "$ref": "#/$defs/GetPolicyV1OutputDomainSnapshot"
     },
-    "ReplaceInput": {
-      "additionalProperties": false,
-      "properties": {
-        "expectedRevision": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
-        },
-        "rules": {
-          "items": {
-            "$ref": "#/$defs/Rule"
-          },
-          "maxItems": 3,
-          "type": "array"
-        }
-      },
-      "required": [
-        "expectedRevision",
-        "rules"
-      ],
-      "type": "object"
-    },
-    "ReplacePolicyV1Input": {
-      "$ref": "#/$defs/ReplaceInput"
-    },
-    "ReplacePolicyV1Output": {
-      "$ref": "#/$defs/Snapshot"
-    },
-    "Rule": {
+    "GetPolicyV1OutputDomainRule": {
       "additionalProperties": false,
       "properties": {
         "ceiling": {
-          "$ref": "#/$defs/SelectionLimits"
+          "$ref": "#/$defs/GetPolicyV1OutputModelSelectionLimits"
         },
         "selection": {
-          "$ref": "#/$defs/Selection"
+          "$ref": "#/$defs/GetPolicyV1OutputModelSelection"
         },
         "use": {
           "allOf": [
@@ -70,7 +37,42 @@
       ],
       "type": "object"
     },
-    "Selection": {
+    "GetPolicyV1OutputDomainSnapshot": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "rules": {
+              "maxItems": 3
+            }
+          }
+        }
+      ],
+      "properties": {
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/GetPolicyV1OutputDomainRule"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "revision",
+        "rules"
+      ],
+      "type": "object"
+    },
+    "GetPolicyV1OutputModelSelection": {
       "additionalProperties": false,
       "properties": {
         "model": {
@@ -90,7 +92,7 @@
       ],
       "type": "object"
     },
-    "SelectionLimits": {
+    "GetPolicyV1OutputModelSelectionLimits": {
       "additionalProperties": false,
       "properties": {
         "inputKind": {
@@ -132,8 +134,176 @@
       ],
       "type": "object"
     },
-    "Snapshot": {
+    "ReplaceInput": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "rules": {
+              "maxItems": 3
+            }
+          }
+        }
+      ],
+      "properties": {
+        "expectedRevision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/ReplacePolicyV1InputDomainRule"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "expectedRevision",
+        "rules"
+      ],
+      "type": "object"
+    },
+    "ReplacePolicyV1Input": {
+      "$ref": "#/$defs/ReplaceInput"
+    },
+    "ReplacePolicyV1InputDomainRule": {
+      "additionalProperties": false,
+      "properties": {
+        "ceiling": {
+          "$ref": "#/$defs/ReplacePolicyV1InputModelSelectionLimits"
+        },
+        "selection": {
+          "$ref": "#/$defs/ReplacePolicyV1InputModelSelection"
+        },
+        "use": {
+          "allOf": [
+            {
+              "enum": [
+                "interaction",
+                "utility",
+                "independent"
+              ]
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "use",
+        "selection"
+      ],
+      "type": "object"
+    },
+    "ReplacePolicyV1InputModelSelection": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reasoningEffort": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "model",
+        "provider",
+        "reasoningEffort"
+      ],
+      "type": "object"
+    },
+    "ReplacePolicyV1InputModelSelectionLimits": {
+      "additionalProperties": false,
+      "properties": {
+        "inputKind": {
+          "allOf": [
+            {
+              "enum": [
+                "text",
+                "request"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "maxInputBytes": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "maxOutputTokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "inputKind",
+        "maxInputBytes",
+        "maxOutputTokens"
+      ],
+      "type": "object"
+    },
+    "ReplacePolicyV1Output": {
+      "$ref": "#/$defs/ReplacePolicyV1OutputDomainSnapshot"
+    },
+    "ReplacePolicyV1OutputDomainRule": {
+      "additionalProperties": false,
+      "properties": {
+        "ceiling": {
+          "$ref": "#/$defs/ReplacePolicyV1OutputModelSelectionLimits"
+        },
+        "selection": {
+          "$ref": "#/$defs/ReplacePolicyV1OutputModelSelection"
+        },
+        "use": {
+          "allOf": [
+            {
+              "enum": [
+                "interaction",
+                "utility",
+                "independent"
+              ]
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "use",
+        "selection"
+      ],
+      "type": "object"
+    },
+    "ReplacePolicyV1OutputDomainSnapshot": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "rules": {
+              "maxItems": 3
+            }
+          }
+        }
+      ],
       "properties": {
         "revision": {
           "allOf": [
@@ -147,15 +317,76 @@
         },
         "rules": {
           "items": {
-            "$ref": "#/$defs/Rule"
+            "$ref": "#/$defs/ReplacePolicyV1OutputDomainRule"
           },
-          "maxItems": 3,
           "type": "array"
         }
       },
       "required": [
         "revision",
         "rules"
+      ],
+      "type": "object"
+    },
+    "ReplacePolicyV1OutputModelSelection": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reasoningEffort": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "model",
+        "provider",
+        "reasoningEffort"
+      ],
+      "type": "object"
+    },
+    "ReplacePolicyV1OutputModelSelectionLimits": {
+      "additionalProperties": false,
+      "properties": {
+        "inputKind": {
+          "allOf": [
+            {
+              "enum": [
+                "text",
+                "request"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "maxInputBytes": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "maxOutputTokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "inputKind",
+        "maxInputBytes",
+        "maxOutputTokens"
       ],
       "type": "object"
     }

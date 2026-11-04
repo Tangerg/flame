@@ -50,7 +50,7 @@ export const composerKeymap = (
             recall: recallNextComposerHistory.bind(null, composerAccess),
           }),
       })) {
-        ctx.contribute(COMPOSER_KEY_BINDING, binding);
+        ctx.contributions.add(COMPOSER_KEY_BINDING, binding);
       }
     },
   });

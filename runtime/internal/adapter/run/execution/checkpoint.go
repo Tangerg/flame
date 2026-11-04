@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"encoding/json/jsontext"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
@@ -19,7 +20,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -104,12 +106,12 @@ type interactionCheckpointState struct {
 	mcpManifests        map[domaintool.Group][]domaintool.Ref
 	options             corechat.Options
 	toolMetadata        map[string]toolResultMetadata
-	tree                agent.TreeSnapshot
+	tree                scoperun.Log
 	handoff             interactionHandoff
-	callsByProcess      map[agent.ProcessID]map[string]int
-	contextByProcess    map[agent.ProcessID]ModelContextTokenCalibration
+	callsByProcess      map[scoperun.ProcessID]map[string]int
+	contextByProcess    map[scoperun.ProcessID]ModelContextTokenCalibration
 	instructions        []corechat.Message
-	pendingSteers       map[agent.SignalID]runs.PreparedSteer
+	pendingSteers       map[scoperun.SignalID]runs.PreparedSteer
 	pendingContinuation *pendingInteractionContinuation
 }
 
@@ -129,7 +131,7 @@ func (i interactionCheckpointState) restoredStart(continuation runs.ExecutionCon
 }
 
 func (i *interactionSession) executorCheckpoint(
-	tree agent.TreeSnapshot,
+	tree scoperun.Log,
 ) (runs.ExecutorCheckpoint, error) {
 	payload, err := i.interactionCheckpointPayload(tree)
 	if err != nil {
@@ -144,7 +146,7 @@ func (i *interactionSession) executorCheckpoint(
 		ToolResultIDs: checkpointToolResultIDs(decoded),
 		Bindings:      bindings,
 		Resources:     resources,
-		RootMemberID:  tree.RootID().String(), SessionID: i.scope.SessionID,
+		RootMemberID:  tree.Root.String(), SessionID: i.scope.SessionID,
 		Payload: payload, BuildID: i.buildID.String(),
 	}
 	if err := checkpoint.Validate(); err != nil {
@@ -154,11 +156,11 @@ func (i *interactionSession) executorCheckpoint(
 }
 
 func encodeInteractionCheckpointPayload(
-	tree agent.TreeSnapshot,
-	usageByProcess map[agent.ProcessID]map[string]accounting.ModelUsage,
-	contextByProcess map[agent.ProcessID]ModelContextTokenCalibration,
+	tree scoperun.Log,
+	usageByProcess map[scoperun.ProcessID]map[string]accounting.ModelUsage,
+	contextByProcess map[scoperun.ProcessID]ModelContextTokenCalibration,
 	instructions []corechat.Message,
-	pendingSteers map[agent.SignalID]runs.PreparedSteer,
+	pendingSteers map[scoperun.SignalID]runs.PreparedSteer,
 	pendingContinuation *pendingInteractionContinuation,
 	toolMetadata []toolResultMetadata,
 	options corechat.Options,
@@ -171,7 +173,7 @@ func encodeInteractionCheckpointPayload(
 	toolProposals []plugins.ContributionBinding,
 	provider *modeladapter.ProviderCapture,
 ) ([]byte, error) {
-	if !tree.Valid() {
+	if err := tree.Validate(); err != nil {
 		return nil, errors.New("execution: encode invalid Interaction tree checkpoint")
 	}
 	frozenInstructions := cloneChatMessages(instructions)
@@ -197,8 +199,17 @@ func encodeInteractionCheckpointPayload(
 	if _, err := interactionInstructionContext(*wire.Instructions); err != nil {
 		return nil, err
 	}
-	accounted := make(map[agent.ProcessID]struct{}, len(usageByProcess))
+	accounted := make(map[scoperun.ProcessID]struct{}, len(usageByProcess))
+	retained := make(map[string]bool, len(handoff.Processes))
+	for _, process := range handoff.Processes {
+		retained[process.ProcessID] = true
+	}
 	for processID, byModel := range usageByProcess {
+		// Reaped siblings already own durable product metrics. Their counters
+		// cannot become state of a surviving member on continuation.
+		if !retained[processID.String()] {
+			continue
+		}
 		models, err := interactionCallCounts(byModel)
 		if err != nil {
 			return nil, fmt.Errorf("execution: encode Interaction member %s accounting: %w", processID, err)
@@ -223,7 +234,7 @@ func encodeInteractionCheckpointPayload(
 		return nil, fmt.Errorf("execution: encode pending Interaction steers: %w", err)
 	}
 	wire.PendingContinuation, err = encodeInteractionPendingContinuation(
-		pendingContinuation, tree.RootID(),
+		pendingContinuation, tree.Root,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("execution: encode pending Interaction continuation: %w", err)
@@ -241,8 +252,8 @@ func encodeInteractionCheckpointPayload(
 // those calls, so a member that made none has nothing to carry and a restore
 // would rightly refuse a calibration it cannot attribute.
 func encodeInteractionModelContexts(
-	contexts map[agent.ProcessID]ModelContextTokenCalibration,
-	accounted map[agent.ProcessID]struct{},
+	contexts map[scoperun.ProcessID]ModelContextTokenCalibration,
+	accounted map[scoperun.ProcessID]struct{},
 ) ([]interactionModelContextWire, error) {
 	values := make([]interactionModelContextWire, 0, len(contexts))
 	for processID, calibration := range contexts {
@@ -271,7 +282,7 @@ func encodeInteractionModelContexts(
 }
 
 func encodeInteractionPendingSteers(
-	pending map[agent.SignalID]runs.PreparedSteer,
+	pending map[scoperun.SignalID]runs.PreparedSteer,
 ) ([]interactionPendingSteerWire, error) {
 	values := make([]interactionPendingSteerWire, 0, len(pending))
 	for signalID, steer := range pending {
@@ -288,7 +299,7 @@ func encodeInteractionPendingSteers(
 }
 
 func encodeInteractionPendingSteer(
-	signalID agent.SignalID,
+	signalID scoperun.SignalID,
 	steer runs.PreparedSteer,
 ) (interactionPendingSteerWire, error) {
 	if err := identity.ValidateItem(steer.ItemID); err != nil {
@@ -328,7 +339,7 @@ func encodeInteractionPendingSteer(
 
 func encodeInteractionPendingContinuation(
 	pending *pendingInteractionContinuation,
-	rootID agent.ProcessID,
+	rootID scoperun.ProcessID,
 ) (*interactionPendingContinuationWire, error) {
 	if pending == nil {
 		return nil, nil
@@ -536,26 +547,26 @@ func decodeInteractionCheckpointInstructions(messages []corechat.Message) ([]cor
 func admitCheckpointMember(
 	memberID, previousMemberID string,
 	index int,
-	processes map[agent.ProcessID]struct{},
-) (agent.ProcessID, error) {
+	processes map[scoperun.ProcessID]struct{},
+) (scoperun.ProcessID, error) {
 	if index > 0 && memberID <= previousMemberID {
-		return agent.ProcessID{}, errors.New("not in canonical order")
+		return scoperun.ProcessID{}, errors.New("not in canonical order")
 	}
-	processID, err := agent.ParseProcessID(memberID)
+	processID, err := scoperun.ParseProcessID(memberID)
 	if err != nil {
-		return agent.ProcessID{}, fmt.Errorf("member identity: %w", err)
+		return scoperun.ProcessID{}, fmt.Errorf("member identity: %w", err)
 	}
 	if _, found := processes[processID]; !found {
-		return agent.ProcessID{}, errors.New("names a foreign member")
+		return scoperun.ProcessID{}, errors.New("names a foreign member")
 	}
 	return processID, nil
 }
 
 func decodeInteractionCheckpointMembers(
 	values []interactionMemberCallsWire,
-	processes map[agent.ProcessID]struct{},
-) (map[agent.ProcessID]map[string]int, error) {
-	members := make(map[agent.ProcessID]map[string]int, len(values))
+	processes map[scoperun.ProcessID]struct{},
+) (map[scoperun.ProcessID]map[string]int, error) {
+	members := make(map[scoperun.ProcessID]map[string]int, len(values))
 	previousMember := ""
 	for index, member := range values {
 		processID, err := admitCheckpointMember(member.MemberID, previousMember, index, processes)
@@ -577,10 +588,10 @@ func decodeInteractionCheckpointMembers(
 
 func decodeInteractionModelContexts(
 	values []interactionModelContextWire,
-	processes map[agent.ProcessID]struct{},
-	callsByProcess map[agent.ProcessID]map[string]int,
-) (map[agent.ProcessID]ModelContextTokenCalibration, error) {
-	contexts := make(map[agent.ProcessID]ModelContextTokenCalibration, len(values))
+	processes map[scoperun.ProcessID]struct{},
+	callsByProcess map[scoperun.ProcessID]map[string]int,
+) (map[scoperun.ProcessID]ModelContextTokenCalibration, error) {
+	contexts := make(map[scoperun.ProcessID]ModelContextTokenCalibration, len(values))
 	previous := ""
 	for index, value := range values {
 		processID, err := admitCheckpointMember(value.MemberID, previous, index, processes)
@@ -605,8 +616,8 @@ func decodeInteractionModelContexts(
 
 func decodeInteractionPendingSteers(
 	values []interactionPendingSteerWire,
-) (map[agent.SignalID]runs.PreparedSteer, error) {
-	pending := make(map[agent.SignalID]runs.PreparedSteer, len(values))
+) (map[scoperun.SignalID]runs.PreparedSteer, error) {
+	pending := make(map[scoperun.SignalID]runs.PreparedSteer, len(values))
 	previous := ""
 	for _, value := range values {
 		signalID, steer, err := value.decode(previous)
@@ -621,15 +632,15 @@ func decodeInteractionPendingSteers(
 
 func (w interactionPendingSteerWire) decode(
 	previousSignalID string,
-) (agent.SignalID, runs.PreparedSteer, error) {
-	var zeroSignalID agent.SignalID
+) (scoperun.SignalID, runs.PreparedSteer, error) {
+	var zeroSignalID scoperun.SignalID
 	if err := identity.ValidateItem(w.ItemID); err != nil {
 		return zeroSignalID, runs.PreparedSteer{}, err
 	}
 	if previousSignalID != "" && w.SignalID <= previousSignalID || len(w.Content) == 0 {
 		return zeroSignalID, runs.PreparedSteer{}, errors.New("not in canonical order")
 	}
-	signalID, err := agent.ParseSignalID(w.SignalID)
+	signalID, err := scoperun.ParseSignalID(w.SignalID)
 	if err != nil {
 		return zeroSignalID, runs.PreparedSteer{}, fmt.Errorf("pending steer identity: %w", err)
 	}
@@ -658,12 +669,12 @@ func (w interactionPendingSteerWire) decode(
 
 func decodeInteractionPendingContinuation(
 	wire *interactionPendingContinuationWire,
-	rootID agent.ProcessID,
+	rootID scoperun.ProcessID,
 ) (*pendingInteractionContinuation, error) {
 	if wire == nil {
 		return nil, nil
 	}
-	processID, err := agent.ParseProcessID(wire.MemberID)
+	processID, err := scoperun.ParseProcessID(wire.MemberID)
 	if err != nil || processID != rootID {
 		return nil, errors.New("does not name the root member")
 	}

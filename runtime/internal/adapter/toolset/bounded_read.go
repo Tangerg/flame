@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/frame/cancellation"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
 	"github.com/samber/lo"
@@ -56,7 +55,7 @@ func withDefiniteOutcome(inner toolcontract.Tool) toolcontract.Tool {
 		if err == nil {
 			return output, err
 		}
-		if cause := cancellation.Err(ctx); cause != nil {
+		if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 			return output, errors.Join(err, cause)
 		}
 		return output, pluginsdk.DefiniteToolFailure(err)
@@ -64,14 +63,14 @@ func withDefiniteOutcome(inner toolcontract.Tool) toolcontract.Tool {
 }
 
 func (r runtimeReadExecutor) Read(ctx context.Context, input fs.ReadInput) (fs.ReadOutput, error) {
-	if cause := cancellation.Err(ctx); cause != nil {
+	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		return fs.ReadOutput{}, cause
 	}
 	input.MaxInputBytes = maxRuntimeReadFileBytes
 	input.MaxLineBytes = maxRuntimeReadLineBytes
 	input.MaxOutputBytes = maxRuntimeReadOutputBytes
 	result, err := r.next.Read(ctx, input)
-	err = errors.Join(err, cancellation.Err(ctx))
+	err = errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx)))
 	if err != nil {
 		switch {
 		case errors.Is(err, fs.ErrFileTooLarge):

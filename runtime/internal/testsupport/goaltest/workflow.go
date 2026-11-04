@@ -2,12 +2,13 @@ package goaltest
 
 import (
 	"context"
-	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
 	"strings"
+
+	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
+	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 // These canned replies let coordinator tests exercise competing storage and Run
@@ -18,7 +19,7 @@ func (Workflow) RequireGoalAuthor(context.Context, extension.ContributionSource)
 
 func (Workflow) DecideGoal(_ context.Context, source extension.ContributionSource, r goalworkflow.Request) (goalworkflow.AuthoredDecision, error) {
 	if source == (extension.ContributionSource{}) {
-		source = extension.ContributionSource{InstallationID: "eeb329cd-c7ce-40c9-bd90-6821fef06d30", Contribution: "test", Release: integrity.Hash([]byte("goal")).String()}
+		source = extension.ContributionSource{InstallationID: "eeb329cd-c7ce-40c9-bd90-6821fef06d30", Contribution: "test", Release: framevalue.Hash([]byte("goal")).String()}
 	}
 	value, err := cannedGoalDecision(r)
 	return goalworkflow.AuthoredDecision{Source: source, Decision: value}, err

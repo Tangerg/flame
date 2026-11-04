@@ -9,6 +9,10 @@ import (
 	"testing"
 	"time"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 
@@ -17,7 +21,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type persistence struct {
@@ -68,11 +71,11 @@ func policy(t *testing.T, namespace string, now *time.Time) mutation.ReplayPolic
 
 func request(t *testing.T) protocol.CallPluginRequest {
 	t.Helper()
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "schedules", Composition: portable.Selection, Scope: "installation"}, portable.MethodDescriptor{Name: "flame.schedules/delete.v1", Kind: portable.Mutation, Target: "installation", Description: "Delete a schedule", Input: []byte(`{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}`), Output: []byte(`{"type":"object","properties":{},"additionalProperties":false}`)})
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "schedules", Composition: plugincontract.Selection, Scope: "installation"}, portable.MethodDescriptor{Name: "flame.schedules/delete.v1", Kind: portable.Command, Target: "installation", Description: "Delete a schedule", Input: []byte(`{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}`), Output: []byte(`{"type":"object","properties":{},"additionalProperties":false}`)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: strings.Repeat("1", 64), Contribution: "schedules-provider", Contract: string(contract.Identity().JSON()), Method: "flame.schedules/delete.v1", Target: portable.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: `{"id":"sch_original"}`}
+	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: strings.Repeat("1", 64), Contribution: "schedules-provider", Contract: string(contract.Identity().Bytes()), Method: "flame.schedules/delete.v1", Target: portable.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: `{"id":"sch_original"}`}
 }
 
 func execute(ctx context.Context, caller workbench.InstalledCaller, store *workbench.Store, intent string, policy mutation.ReplayPolicy, prepare func(context.Context) (protocol.CallPluginRequest, error)) error {
@@ -229,7 +232,7 @@ func TestOnlyOwnerEvidenceRetiresTheOriginalIntent(t *testing.T) {
 	if _, pending := store.PendingInstalledCommand("delete"); pending {
 		t.Fatal("confirmed owner receipt remains unresolved")
 	}
-	refusal := &portable.Refusal{Code: "revision_conflict", Message: "schedule changed"}
+	refusal := &framemcp.Refusal{Code: "revision_conflict", Message: "schedule changed"}
 	owner = callerFunc(func(_ context.Context, _ protocol.CallPluginRequest, id authoring.CommandID) (*protocol.CallPluginResponse, error) {
 		if id == originalID {
 			t.Fatal("new intent reused the original identity")

@@ -9,7 +9,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-	"unicode/utf8"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
@@ -18,10 +17,10 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/scene"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 func newTestQueue(t *testing.T, store *workbench.Store) *workbench.Queue {
@@ -237,27 +236,12 @@ func testQueueDrawer(t *testing.T, messages ...authoring.Message) (*queueDrawer,
 	return drawer, prompts
 }
 
-func drawQueueDrawer(t *testing.T, drawer *queueDrawer, width, height int) (*headless.Root, *grid.Surface, string) {
+func drawQueueDrawer(t *testing.T, drawer *queueDrawer, width, height int) (*sceneTestRoot, *grid.Surface, string) {
 	t.Helper()
-	root := headless.NewRoot(drawer)
+	root := newSceneTestRoot(t, drawer.Element())
 	surface := grid.NewSurface(width, height)
 	root.Draw(surface.View())
 	return root, surface, strings.Join(surface.Rows(), "\n")
-}
-
-// drawnTextOrigin finds a cell a click can be aimed at. A pointer test aims at
-// what the user sees, so it reads the drawn screen instead of asking the drawer
-// to publish a rectangle whose one consumer would be this assertion.
-func drawnTextOrigin(t *testing.T, surface *grid.Surface, drawn string) image.Point {
-	t.Helper()
-	rows := surface.Rows()
-	for y, row := range rows {
-		if index := strings.Index(row, drawn); index >= 0 {
-			return image.Pt(utf8.RuneCountInString(row[:index]), y)
-		}
-	}
-	t.Fatalf("%q was not drawn:\n%s", drawn, strings.Join(rows, "\n"))
-	return image.Point{}
 }
 
 func queueDrawerHit(t *testing.T, drawer *queueDrawer, target queueTarget) queueHit {
@@ -298,7 +282,8 @@ func TestQueueViewKeepsTheNextPromptAndOverflowVisible(t *testing.T) {
 
 func TestQueueDrawerRendersPreviewActionsAndResponsiveFallback(t *testing.T) {
 	drawer, _ := testQueueDrawer(t, authoring.Message{Text: "first line\nsecond line", Attachments: []authoring.Attachment{{ID: "a", Kind: protocol.ContentBlockText, Name: "context.txt", Path: "/tmp/context.txt"}}}, authoring.Message{Text: "second prompt"})
-	_, _, rendered := drawQueueDrawer(t, drawer, 96, 9)
+	root, _, rendered := drawQueueDrawer(t, drawer, 96, 9)
+	root.Close()
 	for _, want := range []string{
 		"Queue · 2 prompts", "Preview · full queued prompt", "second line",
 		"[send now]", "[edit]", "[remove]", "J/K reorder",
@@ -313,35 +298,39 @@ func TestQueueDrawerRendersPreviewActionsAndResponsiveFallback(t *testing.T) {
 	}
 }
 
-func TestQueueDrawerRejectsCommandsAgainstAReplacedPresentation(t *testing.T) {
+func TestQueueDrawerRejectsRetiredPointerTargetsAndDetachedKeyboardLeases(t *testing.T) {
 	bindings, err := configuredKeyBindings(settings.Default())
 	if err != nil {
 		t.Fatal(err)
 	}
 	drawer := newQueueDrawer(kit.Dark(), kit.Unicode(), bindings.editor, nil)
-	active := true
-	drawer.lifecycle.bind(func() bool { return active })
 	removed := make([]authoring.QueueEntryID, 0, 1)
 	drawer.SetActions(queueDrawerActions{Remove: func(id authoring.QueueEntryID) error {
 		removed = append(removed, id)
 		return nil
 	}})
-	drawer.Set(authoring.QueueSnapshot{Entries: []authoring.QueueEntry{{ID: testQueueEntryID(t, 1), Message: authoring.Message{Text: "visible"}}}})
-	root := headless.NewRoot(drawer)
-	surface := grid.NewSurface(72, 8)
-	root.Draw(surface.View())
+	visibleID := testQueueEntryID(t, 1)
+	drawer.Set(authoring.QueueSnapshot{Entries: []authoring.QueueEntry{{ID: visibleID, Message: authoring.Message{Text: "visible"}}}})
+	root, surface, _ := drawQueueDrawer(t, drawer, 72, 8)
+	lease := drawer.Element().KeyboardLease()
+	remove := queueDrawerHit(t, drawer, queueTarget{kind: queueTargetRemove, id: visibleID})
 
 	replacementID := testQueueEntryID(t, 2)
 	drawer.Set(authoring.QueueSnapshot{Entries: []authoring.QueueEntry{{ID: replacementID, Message: authoring.Message{Text: "replacement"}}}})
-	if !root.Handle(input.Key{Code: input.Delete}) || len(removed) != 0 {
-		t.Fatalf("undrawn replacement removed entries %v", removed)
+	root.Handle(input.Mouse{Pos: remove.area.Min, Action: input.MouseDown, Button: input.ButtonLeft})
+	root.Handle(input.Mouse{Pos: remove.area.Min, Action: input.MouseUp, Button: input.ButtonLeft})
+	if len(removed) != 0 {
+		t.Fatalf("retired pointer target removed entries %v", removed)
 	}
 	root.Draw(surface.View())
 	if !root.Handle(input.Key{Code: input.Delete}) || len(removed) != 1 || removed[0] != replacementID {
-		t.Fatalf("visible replacement removed entries %v", removed)
+		t.Fatalf("current keyboard route removed entries %v", removed)
 	}
 
-	active = false
+	root.Close()
+	if lease.Valid() {
+		t.Fatal("detached drawer retained a keyboard lease")
+	}
 	root.Handle(input.Key{Code: input.Delete})
 	if len(removed) != 1 {
 		t.Fatalf("closed drawer removed entries %v", removed)
@@ -351,19 +340,19 @@ func TestQueueDrawerRejectsCommandsAgainstAReplacedPresentation(t *testing.T) {
 func TestQueueDrawerEditsMultilineTextAndKeepsAttachments(t *testing.T) {
 	attachment := authoring.Attachment{ID: "a", Kind: protocol.ContentBlockText, Name: "context.txt", Path: "/tmp/context.txt"}
 	drawer, prompts := testQueueDrawer(t, authoring.Message{Text: "original", Attachments: []authoring.Attachment{attachment}})
-	drawer.Focus(true)
-	drawer.Handle(input.Key{Code: input.Enter})
+	root, _, _ := drawQueueDrawer(t, drawer, 72, 8)
+	root.Handle(input.Key{Code: input.Enter})
 	if !drawer.Editing() {
 		t.Fatal("Enter did not begin queue editing")
 	}
 	if held := prompts.Snapshot("session").Entries[0].Held; !held {
 		t.Fatal("queue editor did not hold its entry")
 	}
-	drawer.Handle(input.Key{Code: input.Character, Rune: 'u', Mods: input.Ctrl})
-	drawer.Handle(input.Paste{Text: "  edited"})
-	drawer.Handle(input.Key{Code: input.Enter, Mods: input.Shift})
-	drawer.Handle(input.Paste{Text: "second line  "})
-	drawer.Handle(input.Key{Code: input.Enter})
+	root.Handle(input.Key{Code: input.Character, Rune: 'u', Mods: input.Ctrl})
+	root.Handle(input.Paste{Text: "  edited"})
+	root.Handle(input.Key{Code: input.Enter, Mods: input.Shift})
+	root.Handle(input.Paste{Text: "second line  "})
+	root.Handle(input.Key{Code: input.Enter})
 	if drawer.Editing() {
 		t.Fatal("Enter did not save queue editing")
 	}
@@ -373,12 +362,12 @@ func TestQueueDrawerEditsMultilineTextAndKeepsAttachments(t *testing.T) {
 	}
 	prompts.ReleaseDispatch("session")
 
-	drawer.Handle(input.Key{Code: input.Enter})
-	drawer.Handle(input.Paste{Text: " discarded"})
-	if !drawer.Handle(input.Key{Code: input.Esc}) || drawer.Editing() {
+	root.Handle(input.Key{Code: input.Enter})
+	root.Handle(input.Paste{Text: " discarded"})
+	if !root.Handle(input.Key{Code: input.Esc}) || drawer.Editing() {
 		t.Fatal("first Esc did not discard the edit")
 	}
-	if drawer.Handle(input.Key{Code: input.Esc}) {
+	if root.Handle(input.Key{Code: input.Esc}) {
 		t.Fatal("browse-mode Esc should be left for the dialog controller")
 	}
 	entries := prompts.Snapshot("session").Entries
@@ -389,26 +378,30 @@ func TestQueueDrawerEditsMultilineTextAndKeepsAttachments(t *testing.T) {
 
 func TestQueueDrawerPreservesItsEditThroughAnExtremeResize(t *testing.T) {
 	drawer, prompts := testQueueDrawer(t, authoring.Message{Text: "original"})
-	drawer.Focus(true)
-	drawer.Handle(input.Key{Code: input.Enter})
-	drawer.Handle(input.Key{Code: input.Character, Rune: 'u', Mods: input.Ctrl})
-	drawer.Handle(input.Paste{Text: "first line"})
-	drawer.Handle(input.Key{Code: input.Enter, Mods: input.Shift})
-	drawer.Handle(input.Paste{Text: "second line"})
+	root, _, _ := drawQueueDrawer(t, drawer, 72, 8)
+	root.Handle(input.Key{Code: input.Enter})
+	root.Handle(input.Key{Code: input.Character, Rune: 'u', Mods: input.Ctrl})
+	root.Handle(input.Paste{Text: "first line"})
+	root.Handle(input.Key{Code: input.Enter, Mods: input.Shift})
+	root.Handle(input.Paste{Text: "second line"})
 
-	_, _, tiny := drawQueueDrawer(t, drawer, 1, 1)
+	tinySurface := grid.NewSurface(1, 1)
+	root.Draw(tinySurface.View())
+	tiny := strings.Join(tinySurface.Rows(), "\n")
 	if tiny == "" {
 		t.Fatal("extreme queue layout did not retain ownership of its viewport")
 	}
-	drawer.Handle(input.Paste{Text: " while tiny"})
-	_, _, restored := drawQueueDrawer(t, drawer, 72, 8)
+	root.Handle(input.Paste{Text: " while tiny"})
+	restoredSurface := grid.NewSurface(72, 8)
+	root.Draw(restoredSurface.View())
+	restored := strings.Join(restoredSurface.Rows(), "\n")
 	for _, want := range []string{"Editing queued prompt", "first line", "second line while tiny"} {
 		if !strings.Contains(restored, want) {
 			t.Fatalf("restored queue editor does not contain %q:\n%s", want, restored)
 		}
 	}
 
-	drawer.Handle(input.Key{Code: input.Enter})
+	root.Handle(input.Key{Code: input.Enter})
 	entry, ok := prompts.BeginDispatch("session")
 	if !ok || entry.Message.Text != "first line\nsecond line while tiny" {
 		t.Fatalf("saved queue edit after resize = %+v, %v", entry.Message, ok)
@@ -417,8 +410,8 @@ func TestQueueDrawerPreservesItsEditThroughAnExtremeResize(t *testing.T) {
 
 func TestClosingQueueDrawerReleasesItsEditedEntry(t *testing.T) {
 	drawer, prompts := testQueueDrawer(t, authoring.Message{Text: "editable"})
-	drawer.Focus(true)
-	drawer.Handle(input.Key{Code: input.Enter})
+	root, _, _ := drawQueueDrawer(t, drawer, 72, 8)
+	root.Handle(input.Key{Code: input.Enter})
 	if !prompts.Snapshot("session").Entries[0].Held {
 		t.Fatal("test did not hold the edited entry")
 	}
@@ -431,18 +424,19 @@ func TestClosingQueueDrawerReleasesItsEditedEntry(t *testing.T) {
 func TestQueueDrawerReleasesTheOriginalSessionWhenSnapshotChanges(t *testing.T) {
 	drawer, prompts := testQueueDrawer(t, authoring.Message{Text: "old session prompt"})
 	enqueueTestPrompt(t, prompts, "next-session", authoring.Message{Text: "next session prompt"})
-	drawer.lifecycle.bind(func() bool { return true })
-	drawer.Focus(true)
 	root, surface, _ := drawQueueDrawer(t, drawer, 72, 8)
-	drawer.Handle(input.Key{Code: input.Enter})
+	root.Handle(input.Key{Code: input.Enter})
 	root.Draw(surface.View())
 	if !prompts.Snapshot("session").Entries[0].Held {
 		t.Fatal("test did not hold the original session entry")
 	}
 
+	lease := drawer.editor.Element().KeyboardLease()
 	drawer.Set(prompts.Snapshot("next-session"))
-	drawer.Handle(input.Paste{Text: "stale editor input"})
-	drawer.Handle(input.Key{Code: input.Enter})
+	if lease.Valid() {
+		t.Fatal("session replacement retained the previous editor keyboard lease")
+	}
+	root.Handle(input.Paste{Text: "stale editor input"})
 	if drawer.Editing() {
 		t.Fatal("snapshot replacement accepted input from the previous session's editor")
 	}
@@ -452,7 +446,9 @@ func TestQueueDrawerReleasesTheOriginalSessionWhenSnapshotChanges(t *testing.T) 
 	if entries := prompts.Snapshot("session").Entries; len(entries) != 1 || entries[0].Message.Text != "old session prompt" || entries[0].Held {
 		t.Fatalf("released original entry = %+v", entries)
 	}
-	_, _, rendered := drawQueueDrawer(t, drawer, 72, 7)
+	restoredSurface := grid.NewSurface(72, 7)
+	root.Draw(restoredSurface.View())
+	rendered := strings.Join(restoredSurface.Rows(), "\n")
 	if !strings.Contains(rendered, "next session prompt") || strings.Contains(rendered, "old session prompt") {
 		t.Fatalf("replacement snapshot rendered the wrong session:\n%s", rendered)
 	}
@@ -460,18 +456,18 @@ func TestQueueDrawerReleasesTheOriginalSessionWhenSnapshotChanges(t *testing.T) 
 
 func TestQueueDrawerEditorOwnsPointerPlacement(t *testing.T) {
 	drawer, _ := testQueueDrawer(t, authoring.Message{Text: "move this cursor"})
-	drawer.Focus(true)
-	drawer.Handle(input.Key{Code: input.Enter})
 	root, surface, _ := drawQueueDrawer(t, drawer, 72, 8)
+	root.Handle(input.Key{Code: input.Enter})
+	root.Draw(surface.View())
 	first := drawnTextOrigin(t, surface, "move this cursor")
-	_, before := drawer.editor.Editor().Cursor()
+	_, before := drawer.editor.Controller().Cursor()
 	if before == 0 {
 		t.Fatal("queue editor cursor did not start at the end")
 	}
 	if !root.Handle(input.Mouse{Pos: first, Action: input.MouseDown, Button: input.ButtonLeft}) {
 		t.Fatal("queue editor click was not routed")
 	}
-	line, column := drawer.editor.Editor().Cursor()
+	line, column := drawer.editor.Controller().Cursor()
 	if line != 0 || column != 0 {
 		t.Fatalf("queue editor click moved cursor to %d:%d, want 0:0", line, column)
 	}
@@ -479,13 +475,14 @@ func TestQueueDrawerEditorOwnsPointerPlacement(t *testing.T) {
 
 func TestQueueDrawerReordersAndPromotesTheSelectedEntry(t *testing.T) {
 	drawer, prompts := testQueueDrawer(t, authoring.Message{Text: "first"}, authoring.Message{Text: "second"}, authoring.Message{Text: "third"})
-	drawer.Handle(input.Key{Code: input.Down})
-	drawer.Handle(input.Key{Code: input.Character, Rune: 'J', Mods: input.Shift})
+	root, _, _ := drawQueueDrawer(t, drawer, 72, 8)
+	root.Handle(input.Key{Code: input.Down})
+	root.Handle(input.Key{Code: input.Character, Rune: 'J', Mods: input.Shift})
 	got := prompts.Snapshot("session").Entries
 	if got[0].Message.Text != "first" || got[1].Message.Text != "third" || got[2].Message.Text != "second" {
 		t.Fatalf("reordered queue = %+v", got)
 	}
-	drawer.Handle(input.Key{Code: input.Character, Rune: 's'})
+	root.Handle(input.Key{Code: input.Character, Rune: 's'})
 	got = prompts.Snapshot("session").Entries
 	if got[0].Message.Text != "second" {
 		t.Fatalf("send-now promotion = %+v", got)
@@ -544,38 +541,19 @@ func TestQueueDrawerResizeKeepsTheSettledSelectionVisible(t *testing.T) {
 	}
 }
 
-type failingQueueFrame struct {
-	*queueDrawer
-	abort bool
-}
-
-func (f *failingQueueFrame) Draw(frame headless.Frame) {
-	f.queueDrawer.Draw(frame)
-	if f.abort {
-		panic("abort queue frame")
-	}
-}
-
 func TestQueueDrawerPublishesResizeScrollAndActionsOnlyWithACompleteFrame(t *testing.T) {
 	drawer, prompts := testQueueDrawer(t, authoring.Message{Text: "first prompt"}, authoring.Message{Text: "second prompt"}, authoring.Message{Text: "third prompt"})
-	frame := &failingQueueFrame{queueDrawer: drawer}
-	root := headless.NewRoot(frame)
-	wide := grid.NewSurface(96, 5)
-	root.Draw(wide.View())
+	root, wide, _ := drawQueueDrawer(t, drawer, 96, 5)
 	root.Handle(input.Key{Code: input.End})
 	root.Draw(wide.View())
 	remove := drawnTextOrigin(t, wide, "[remove]")
 	before := drawer.scroll.Offset()
 
-	frame.abort = true
-	func() {
-		defer func() {
-			if recovered := recover(); recovered != "abort queue frame" {
-				t.Fatalf("failed frame panic = %v", recovered)
-			}
-		}()
-		root.Draw(grid.NewSurface(48, 3).View())
-	}()
+	candidate, err := root.Prepare(grid.NewSurface(48, 3).View())
+	if err != nil {
+		t.Fatal(err)
+	}
+	candidate.Abort()
 	if got := drawer.scroll.Offset(); got != before {
 		t.Fatalf("aborted frame published scroll offset %d, want %d", got, before)
 	}
@@ -585,7 +563,6 @@ func TestQueueDrawerPublishesResizeScrollAndActionsOnlyWithACompleteFrame(t *tes
 	if len(entries) != 2 || entries[1].Message.Text != "second prompt" {
 		t.Fatalf("aborted frame replaced the visible action target: %+v", entries)
 	}
-	frame.abort = false
 	narrow := grid.NewSurface(48, 3)
 	root.Draw(narrow.View())
 	if rendered := strings.Join(narrow.Rows(), "\n"); !strings.Contains(rendered, "second prompt") {
@@ -633,49 +610,53 @@ func TestQueueDrawerMouseActionsCommitOnlyOnAnUndraggedMatchingRelease(t *testin
 func TestQueueDrawerCancelsAStalePointerGesture(t *testing.T) {
 	tests := []struct {
 		name      string
-		interrupt func(*queueDrawer, *headless.Root, *workbench.Queue, image.Point)
+		interrupt func(*queueDrawer, *sceneTestRoot, *workbench.Queue, image.Point)
+		preserves bool
 	}{
 		{
 			name: "capture cancellation",
-			interrupt: func(drawer *queueDrawer, _ *headless.Root, _ *workbench.Queue, point image.Point) {
-				drawer.Handle(input.Mouse{Pos: point, Action: input.MouseCancel})
+			interrupt: func(_ *queueDrawer, root *sceneTestRoot, _ *workbench.Queue, point image.Point) {
+				root.Handle(input.Mouse{Pos: point, Action: input.MouseCancel})
 			},
 		},
 		{
-			name: "different button release",
-			interrupt: func(_ *queueDrawer, root *headless.Root, _ *workbench.Queue, point image.Point) {
+			name:      "unrelated button release preserves the owned gesture",
+			preserves: true,
+			interrupt: func(_ *queueDrawer, root *sceneTestRoot, _ *workbench.Queue, point image.Point) {
 				root.Handle(input.Mouse{Pos: point, Action: input.MouseUp, Button: input.ButtonRight})
 			},
 		},
 		{
 			name: "different button press",
-			interrupt: func(_ *queueDrawer, root *headless.Root, _ *workbench.Queue, point image.Point) {
+			interrupt: func(_ *queueDrawer, root *sceneTestRoot, _ *workbench.Queue, point image.Point) {
 				root.Handle(input.Mouse{Pos: point, Action: input.MouseDown, Button: input.ButtonRight})
 			},
 		},
 		{
 			name: "focus loss",
-			interrupt: func(drawer *queueDrawer, _ *headless.Root, _ *workbench.Queue, _ image.Point) {
-				drawer.Focus(false)
-				drawer.Focus(true)
+			interrupt: func(_ *queueDrawer, root *sceneTestRoot, _ *workbench.Queue, _ image.Point) {
+				root.FocusNext(false)
+				root.FlushNotifications()
+				root.FocusNext(false)
+				root.FlushNotifications()
 			},
 		},
 		{
 			name: "snapshot replacement",
-			interrupt: func(drawer *queueDrawer, root *headless.Root, prompts *workbench.Queue, _ image.Point) {
+			interrupt: func(drawer *queueDrawer, root *sceneTestRoot, prompts *workbench.Queue, _ image.Point) {
 				drawer.Set(prompts.Snapshot("session"))
 				root.Draw(grid.NewSurface(80, 5).View())
 			},
 		},
 		{
 			name: "keyboard navigation",
-			interrupt: func(drawer *queueDrawer, _ *headless.Root, _ *workbench.Queue, _ image.Point) {
-				drawer.Handle(input.Key{Code: input.Down})
+			interrupt: func(_ *queueDrawer, root *sceneTestRoot, _ *workbench.Queue, _ image.Point) {
+				root.Handle(input.Key{Code: input.Down})
 			},
 		},
 		{
 			name: "wheel navigation",
-			interrupt: func(_ *queueDrawer, root *headless.Root, _ *workbench.Queue, point image.Point) {
+			interrupt: func(_ *queueDrawer, root *sceneTestRoot, _ *workbench.Queue, point image.Point) {
 				root.Handle(input.Mouse{Pos: point, Action: input.WheelDown})
 			},
 		},
@@ -683,15 +664,24 @@ func TestQueueDrawerCancelsAStalePointerGesture(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			drawer, prompts := testQueueDrawer(t, authoring.Message{Text: "first"}, authoring.Message{Text: "second"})
-			root, _, _ := drawQueueDrawer(t, drawer, 80, 5)
+			peer := scene.NewElement(scene.ElementConfig{Focusable: func() bool { return true }})
+			group := scene.NewGroup(scene.GroupConfig{Items: []scene.Item{{Element: drawer.Element()}, {Element: peer}}, Layout: func(space image.Point, _ []scene.Item) []image.Rectangle {
+				return []image.Rectangle{image.Rectangle{Max: space}, {}}
+			}})
+			root := newSceneTestRoot(t, group.Element())
+			root.Draw(grid.NewSurface(80, 5).View())
 			firstID := prompts.Snapshot("session").Entries[0].ID
 			remove := queueDrawerHit(t, drawer, queueTarget{kind: queueTargetRemove, id: firstID})
 
 			root.Handle(input.Mouse{Pos: remove.area.Min, Action: input.MouseDown, Button: input.ButtonLeft})
 			test.interrupt(drawer, root, prompts, remove.area.Min)
 			root.Handle(input.Mouse{Pos: remove.area.Min, Action: input.MouseUp, Button: input.ButtonLeft})
-			if got := len(prompts.Snapshot("session").Entries); got != 2 {
-				t.Fatalf("stale pointer gesture left %d entries", got)
+			want := 2
+			if test.preserves {
+				want = 1
+			}
+			if got := len(prompts.Snapshot("session").Entries); got != want {
+				t.Fatalf("pointer interruption left %d entries, want %d", got, want)
 			}
 		})
 	}

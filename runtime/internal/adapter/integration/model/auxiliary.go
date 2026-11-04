@@ -6,14 +6,17 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/model/catalog"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	"github.com/google/uuid"
@@ -127,11 +130,11 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 		return "", err
 	}
 	id := uuid.NewString()
-	invocation := portable.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: portable.Target{Scope: extension.ScopeCall, Reference: id}}
-	if parent, err := qimumcp.InvocationFromContext(ctx); err == nil {
+	invocation := framemcp.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: portable.Target{Scope: extension.ScopeCall, Reference: id}}
+	if parent, err := pluginmcp.InvocationFromContext(ctx); err == nil {
 		invocation.Origin, invocation.Parent = parent.Origin, parent.ID
 	}
-	ctx, err = qimumcp.WithInvocation(ctx, invocation)
+	ctx, err = pluginmcp.WithInvocation(ctx, invocation)
 	if err != nil {
 		return "", err
 	}
@@ -175,7 +178,7 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 	if lo.IsNil(captured.Model()) {
 		return "", errors.New("auxiliary model: model is required")
 	}
-	client, err := chatclient.New(captured.Model(), chatclient.Config{})
+	client, err := chatclient.New(captured.Model())
 	if err != nil {
 		return "", err
 	}

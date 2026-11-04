@@ -1,6 +1,8 @@
 package runs
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"crypto/sha256"
 	"errors"
@@ -1775,8 +1777,8 @@ func TestCoordinatorKeepsConcurrentSiblingSegmentsIsolated(t *testing.T) {
 				{CallID: "canonical_a", SourceCallID: childA.SpawnCallID, ToolName: "delegate_task", ModelCallSequence: 1, ToolCallIndex: 0, Arguments: `{}`},
 				{CallID: "canonical_b", SourceCallID: childB.SpawnCallID, ToolName: "delegate_task", ModelCallSequence: 1, ToolCallIndex: 1, Arguments: `{}`},
 			},
-			ToolCallFinished{CallID: "canonical_a", OutputText: "alpha", ModelResult: &corechat.ToolResult{ID: childA.SpawnCallID, Name: "delegate_task", Output: corechat.NewTextToolOutput("alpha")}},
-			ToolCallFinished{CallID: "canonical_b", OutputText: "beta", ModelResult: &corechat.ToolResult{ID: childB.SpawnCallID, Name: "delegate_task", Output: corechat.NewTextToolOutput("beta")}},
+			ToolCallFinished{CallID: "canonical_a", OutputText: "alpha", ModelResult: &corechat.ToolResult{ID: childA.SpawnCallID, Name: "delegate_task", Output: toolcontract.NewTextOutput("alpha")}},
+			ToolCallFinished{CallID: "canonical_b", OutputText: "beta", ModelResult: &corechat.ToolResult{ID: childB.SpawnCallID, Name: "delegate_task", Output: toolcontract.NewTextOutput("beta")}},
 		))},
 		{Member: rootMember, Payload: SegmentEnded{Ending: run.Completed{}}},
 	}}

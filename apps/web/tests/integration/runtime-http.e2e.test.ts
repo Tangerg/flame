@@ -863,7 +863,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     const directory = join(runtimeStore, "runner");
     const socketPath = join(directory, "control.sock");
     const child = spawn(
-      join(environmentRoot, "qimu-runner"),
+      join(environmentRoot, "frame-runner"),
       ["--directory", directory, "--socket", socketPath],
       { cwd: root, stdio: ["ignore", "pipe", "pipe"] },
     );
@@ -1186,8 +1186,13 @@ for await (const line of lines) {
       }),
       execFileAsync(
         "go",
-        ["build", "-o", join(environmentRoot, "qimu-runner"), "./runner/cmd/qimu-runner"],
-        { cwd: resolve(runtimeDirectory, "../qimu") },
+        [
+          "build",
+          "-o",
+          join(environmentRoot, "frame-runner"),
+          "github.com/Tangerg/frame/cmd/frame-runner",
+        ],
+        { cwd: runtimeDirectory },
       ),
       execFileAsync("go", ["build", "-o", cliExecutable, "."], {
         cwd: resolve(runtimeDirectory, "../apps/cli"),

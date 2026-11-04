@@ -3,10 +3,11 @@ package sessions
 import (
 	"context"
 	"errors"
-	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"slices"
 	"testing"
 	"time"
+
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"

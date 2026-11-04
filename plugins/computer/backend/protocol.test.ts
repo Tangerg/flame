@@ -1,3 +1,4 @@
+import mcpProtocol from "@flame/backend-sdk/mcp/protocol" with { type: "json" };
 import type { ToolReceipt } from "@flame/backend-sdk";
 import { METHODS } from "../contracts/methods";
 import { randomUUID } from "node:crypto";
@@ -11,7 +12,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import {
   Capability,
-  Method,
+  declareMethod,
   PROTOCOL,
   canonicalJSON,
   decodeReply,
@@ -19,9 +20,9 @@ import {
   type CapabilityDescriptor,
   type MethodDescriptor,
   type Invocation,
-} from "@qimu/node";
+} from "@flame/backend-sdk/mcp";
 import { z } from "zod";
-import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import descriptor, {
   type ControlSession,
   type ExecuteInput,
@@ -35,14 +36,14 @@ import { createBackend } from "./backend";
 import { Engine } from "./engine";
 
 const rpc = {
-  describe: "io.github.tangerg.qimu/operations.describe",
-  setup: "io.github.tangerg.qimu/operations.setup",
-  activate: "io.github.tangerg.qimu/operations.activate",
-  validate: "io.github.tangerg.qimu/operations.validate",
-  invoke: "io.github.tangerg.qimu/operations.invoke",
-  receipt: "io.github.tangerg.qimu/commands.get",
+  describe: mcpProtocol.constants.describeMethod,
+  setup: mcpProtocol.constants.setupMethod,
+  activate: mcpProtocol.constants.activateMethod,
+  validate: mcpProtocol.constants.validateMethod,
+  invoke: mcpProtocol.constants.invokeMethod,
+  receipt: mcpProtocol.constants.ReceiptMethod,
   toolReceipt: "io.github.tangerg.flame/tools.getResult",
-  invocation: "io.github.tangerg.qimu/invocation",
+  invocation: mcpProtocol.constants.InvocationMetadataKey,
 };
 const fixture = fileURLToPath(
   new URL("./fixtures/engine.mjs", import.meta.url),
@@ -102,7 +103,7 @@ async function connect(data: string) {
     capabilities: Array<{ name: string; contract: CapabilityDescriptor }>;
   };
   const methods = new Map(
-    described.methods.map((value) => [value.name, new Method(value)]),
+    described.methods.map((value) => [value.name, declareMethod(value)]),
   );
   const capability = new Capability(
     described.capabilities.find((value) => value.name === "control")!.contract,

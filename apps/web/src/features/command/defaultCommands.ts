@@ -126,7 +126,7 @@ export const defaultCommands = (
         previousSession: () => agentAccess.stepActiveAgentSession(-1),
         nextSession: () => agentAccess.stepActiveAgentSession(1),
       })) {
-        ctx.contribute(COMMAND, command);
+        ctx.contributions.add(COMMAND, command);
       }
     },
   });

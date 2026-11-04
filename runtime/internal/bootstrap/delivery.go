@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -13,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 // runtimeApplication is the immutable application capsule owned by Instance. Delivery
@@ -28,8 +28,8 @@ type runtimeApplication struct {
 	admissions       *ownership.Gate
 	workers          runtimeWorkers
 	idempotencyStore operation.ReplayStore
-	callbacks        *qimumcp.Callbacks
-	modelCallbacks   []qimumcp.Callback
+	callbacks        *pluginmcp.Callbacks
+	modelCallbacks   []pluginmcp.Callback
 	// recoverUncertainExecutions resolves crash-uncertain executions and
 	// reconciles abandoned ownership. It queries live plugin sessions, which a
 	// background plugin cannot serve until the callback RPC is published, so its

@@ -74,7 +74,11 @@ func runStdioMCPServer() {
 	if err != nil {
 		log.Fatalf("build tool: %v", err)
 	}
-	if err := scopemcp.Register(srv, ping); err != nil {
+	binding, err := toolcontract.Bind(ping)
+	if err != nil {
+		log.Fatalf("bind tool: %v", err)
+	}
+	if err := scopemcp.Register(srv, binding); err != nil {
 		log.Fatalf("register tools: %v", err)
 	}
 	transport := &sdkmcp.StdioTransport{}
@@ -105,7 +109,7 @@ func TestToolEnvironmentDialsMCPServer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("build tool: %v", err)
 	}
-	err = scopemcp.Register(mcpServer, ping)
+	err = scopemcp.Register(mcpServer, bindRegisteredTool(t, ping))
 	if err != nil {
 		t.Fatalf("register tools: %v", err)
 	}
@@ -325,7 +329,7 @@ func TestMCPNameCollisionsAfterDialAndReconnect(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := scopemcp.Register(remote, executable); err != nil {
+			if err := scopemcp.Register(remote, bindRegisteredTool(t, executable)); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -359,7 +363,13 @@ func TestMCPNameCollisionsAfterDialAndReconnect(t *testing.T) {
 			if names["a_b_c"] == collision || !names["a_b_healthy"] || !names["a_healthy"] {
 				t.Fatalf("manifest tools = %v", names)
 			}
-			if _, err := toolcontract.NewRegistry(catalog...); err != nil {
+			if _, err := toolcontract.NewRegistry(func() []toolcontract.Binding {
+				var bindings []toolcontract.Binding
+				for _, executable := range catalog {
+					bindings = append(bindings, bindRegisteredTool(t, executable))
+				}
+				return bindings
+			}()...); err != nil {
 				t.Fatal(err)
 			}
 			_, conflicts, err := built.Resolver.MCPTools(nil)

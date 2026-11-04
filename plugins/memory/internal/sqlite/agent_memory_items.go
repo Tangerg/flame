@@ -10,8 +10,9 @@ import (
 	"math"
 	"time"
 
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+
 	agentmemory "github.com/Tangerg/flame/plugins/memory/internal/domain"
-	"github.com/Tangerg/frame/sqlite"
 )
 
 func newMemoryItemID() agentmemory.ItemID {
@@ -53,7 +54,7 @@ func (a *AgentMemoryStore) reconcileItems(ctx context.Context, publication agent
 		return fmt.Errorf("sqlite: plan agent memory fold: %w", err)
 	}
 	for _, id := range plan.PruneIDs {
-		if _, execContextErr := sqlite.Connection(ctx, a.db).ExecContext(ctx, `DELETE FROM agent_memory_items WHERE id = ?`, id.String()); execContextErr != nil {
+		if _, execContextErr := pluginstorage.Connection(ctx, a.db).ExecContext(ctx, `DELETE FROM agent_memory_items WHERE id = ?`, id.String()); execContextErr != nil {
 			return fmt.Errorf("sqlite: prune agent memory item: %w", execContextErr)
 		}
 	}
@@ -85,7 +86,7 @@ func (a *AgentMemoryStore) GenerationItems(ctx context.Context, project string) 
 	if err := agentmemory.ValidateTarget(agentmemory.ScopeProject, project); err != nil {
 		return nil, err
 	}
-	rows, err := sqlite.Connection(ctx, a.db).QueryContext(ctx,
+	rows, err := pluginstorage.Connection(ctx, a.db).QueryContext(ctx,
 		`SELECT `+agentMemoryItemColumns+` FROM agent_memory_items
 		 WHERE scope = 'project' AND project = ?
 		 LIMIT ?`, project, agentmemory.MaxVisiblePerTarget+agentmemory.MaxRejectedPerTarget+1)
@@ -120,7 +121,7 @@ func (a *AgentMemoryStore) GenerationItems(ctx context.Context, project string) 
 
 // Pinned and user-authored facts may already occupy the content identity; insertion must preserve them.
 func (a *AgentMemoryStore) insertItem(ctx context.Context, item agentmemory.Item) (bool, error) {
-	result, err := sqlite.Connection(ctx, a.db).ExecContext(ctx,
+	result, err := pluginstorage.Connection(ctx, a.db).ExecContext(ctx,
 		`INSERT OR IGNORE INTO agent_memory_items(
 			id, scope, project, content, digest, origin, status, pinned, session_id, day, created_at, updated_at, revision
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -210,7 +211,7 @@ func (a *AgentMemoryStore) SearchCorpus(ctx context.Context, project string) ([]
 	if _, err := memoryPartition(agentmemory.ScopeProject, project); err != nil {
 		return nil, err
 	}
-	rows, err := sqlite.Connection(ctx, a.db).QueryContext(ctx,
+	rows, err := pluginstorage.Connection(ctx, a.db).QueryContext(ctx,
 		`SELECT `+agentMemoryItemColumns+`, embedding_space, embedding
 		 FROM agent_memory_items
 		 WHERE status = 'active' AND (
@@ -283,7 +284,7 @@ func (a *AgentMemoryStore) listItems(
 	args ...any,
 ) ([]agentmemory.Item, error) {
 	args = append(args, maximum+1)
-	rows, err := sqlite.Connection(ctx, a.db).QueryContext(ctx, query, args...)
+	rows, err := pluginstorage.Connection(ctx, a.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list %s: %w", operation, err)
 	}
@@ -306,7 +307,7 @@ func (a *AgentMemoryStore) listItems(
 }
 
 func (a *AgentMemoryStore) Get(ctx context.Context, id agentmemory.ItemID) (agentmemory.Item, bool, error) {
-	item, err := scanItem(sqlite.Connection(ctx, a.db).QueryRowContext(ctx,
+	item, err := scanItem(pluginstorage.Connection(ctx, a.db).QueryRowContext(ctx,
 		`SELECT `+agentMemoryItemColumns+` FROM agent_memory_items WHERE id = ?`, id.String()))
 	if errors.Is(err, sql.ErrNoRows) {
 		return agentmemory.Item{}, false, nil
@@ -319,7 +320,7 @@ func (a *AgentMemoryStore) Get(ctx context.Context, id agentmemory.ItemID) (agen
 
 func (a *AgentMemoryStore) Update(ctx context.Context, id agentmemory.ItemID, expectedRevision uint64, content *string, pinned *bool, now time.Time) (agentmemory.Item, error) {
 	var updated agentmemory.Item
-	err := sqlite.RunInTx(ctx, a.db, func(ctx context.Context) error {
+	err := pluginstorage.WithinTransaction(ctx, a.db, func(ctx context.Context) error {
 		current, found, err := a.Get(ctx, id)
 		if err != nil {
 			return err
@@ -358,7 +359,7 @@ func (a *AgentMemoryStore) Update(ctx context.Context, id agentmemory.ItemID, ex
 }
 
 func (a *AgentMemoryStore) Review(ctx context.Context, id agentmemory.ItemID, expectedRevision uint64, decision agentmemory.ReviewDecision, now time.Time) error {
-	return sqlite.RunInTx(ctx, a.db, func(ctx context.Context) error {
+	return pluginstorage.WithinTransaction(ctx, a.db, func(ctx context.Context) error {
 		current, found, err := a.Get(ctx, id)
 		if err != nil {
 			return err
@@ -370,7 +371,7 @@ func (a *AgentMemoryStore) Review(ctx context.Context, id agentmemory.ItemID, ex
 		if err != nil {
 			return err
 		}
-		result, err := sqlite.Connection(ctx, a.db).ExecContext(ctx,
+		result, err := pluginstorage.Connection(ctx, a.db).ExecContext(ctx,
 			`UPDATE agent_memory_items SET status = ?, updated_at = ?, revision = ? WHERE id = ? AND status = 'pending'`,
 			replacement.Status().String(), replacement.UpdatedAt().UnixNano(), replacement.Revision(), id.String())
 		if err != nil {
@@ -391,7 +392,7 @@ func (a *AgentMemoryStore) Review(ctx context.Context, id agentmemory.ItemID, ex
 }
 
 func (a *AgentMemoryStore) pruneRejectedItems(ctx context.Context, preserved agentmemory.Item) error {
-	if _, err := sqlite.Connection(ctx, a.db).ExecContext(ctx, `
+	if _, err := pluginstorage.Connection(ctx, a.db).ExecContext(ctx, `
 		DELETE FROM agent_memory_items
 		WHERE id IN (
 			SELECT id FROM agent_memory_items
@@ -405,7 +406,7 @@ func (a *AgentMemoryStore) pruneRejectedItems(ctx context.Context, preserved age
 }
 
 func (a *AgentMemoryStore) Delete(ctx context.Context, id agentmemory.ItemID, expectedRevision uint64) error {
-	return sqlite.RunInTx(ctx, a.db, func(ctx context.Context) error {
+	return pluginstorage.WithinTransaction(ctx, a.db, func(ctx context.Context) error {
 		item, found, err := a.Get(ctx, id)
 		if err != nil {
 			return err
@@ -416,7 +417,7 @@ func (a *AgentMemoryStore) Delete(ctx context.Context, id agentmemory.ItemID, ex
 		if err := item.ValidateRemoval(expectedRevision); err != nil {
 			return err
 		}
-		result, err := sqlite.Connection(ctx, a.db).ExecContext(ctx,
+		result, err := pluginstorage.Connection(ctx, a.db).ExecContext(ctx,
 			`DELETE FROM agent_memory_items WHERE id = ?`, id.String())
 		if err != nil {
 			return fmt.Errorf("sqlite: delete agent memory: %w", err)
@@ -431,7 +432,7 @@ func (a *AgentMemoryStore) Add(ctx context.Context, scope agentmemory.Scope, pro
 		return agentmemory.Item{}, false, fmt.Errorf("sqlite: add agent memory: %w", err)
 	}
 	addition := userMemoryAddition{store: a, scope: scope, project: project, content: content, now: now.UTC()}
-	err = sqlite.RunInTx(ctx, a.db, addition.apply)
+	err = pluginstorage.WithinTransaction(ctx, a.db, addition.apply)
 	if err != nil {
 		return agentmemory.Item{}, false, err
 	}
@@ -531,7 +532,7 @@ func (a *AgentMemoryStore) replaceItem(
 ) error {
 	item := change.Item()
 	discardEmbedding := boolToInt(change.DiscardsEmbedding())
-	result, err := sqlite.Connection(ctx, a.db).ExecContext(ctx, `
+	result, err := pluginstorage.Connection(ctx, a.db).ExecContext(ctx, `
 		UPDATE agent_memory_items
 		SET content = ?, digest = ?, origin = ?, status = ?, pinned = ?,
 			session_id = ?, day = ?,
@@ -567,7 +568,7 @@ func (a *AgentMemoryStore) countVisibleItems(
 		return 0, err
 	}
 	var count int
-	if err := sqlite.Connection(ctx, a.db).QueryRowContext(ctx, `
+	if err := pluginstorage.Connection(ctx, a.db).QueryRowContext(ctx, `
 		SELECT count(*) FROM agent_memory_items
 		WHERE scope = ? AND project = ? AND status IN ('active','pending')`,
 		token, project).Scan(&count); err != nil {
@@ -587,7 +588,7 @@ func (a *AgentMemoryStore) itemByDigest(ctx context.Context, scope agentmemory.S
 	if err != nil {
 		return agentmemory.Item{}, false, err
 	}
-	item, err := scanItem(sqlite.Connection(ctx, a.db).QueryRowContext(ctx,
+	item, err := scanItem(pluginstorage.Connection(ctx, a.db).QueryRowContext(ctx,
 		`SELECT `+agentMemoryItemColumns+` FROM agent_memory_items WHERE scope = ? AND project = ? AND digest = ?`,
 		token, project, digest))
 	if errors.Is(err, sql.ErrNoRows) {
@@ -632,9 +633,9 @@ func (a *AgentMemoryStore) SetEmbeddings(ctx context.Context, updates []agentmem
 		}
 		seen[update.ItemID] = struct{}{}
 	}
-	return sqlite.RunInTx(ctx, a.db, func(ctx context.Context) error {
+	return pluginstorage.WithinTransaction(ctx, a.db, func(ctx context.Context) error {
 		for _, update := range updates {
-			if _, err := sqlite.Connection(ctx, a.db).ExecContext(ctx,
+			if _, err := pluginstorage.Connection(ctx, a.db).ExecContext(ctx,
 				`UPDATE agent_memory_items SET embedding_space = ?, embedding = ?
 				 WHERE id = ? AND digest = ? AND status = 'active'`,
 				update.Space, encodeVec(update.Vector), update.ItemID.String(), update.ContentDigest); err != nil {

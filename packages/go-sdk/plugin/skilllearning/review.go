@@ -2,9 +2,9 @@ package skilllearning
 
 import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/skill"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/frame/portable"
 )
 
 const (
@@ -43,18 +43,18 @@ type Publication struct {
 	Published bool      `json:"published"`
 }
 
-func ProposeMethod() (*qimumcp.Method[Draft, ReviewRef], error) {
-	return qimumcp.NewMethod[Draft, ReviewRef](qimumcp.MethodConfig{Name: "flame.skills/propose.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Stage a reviewed library draft under its immutable originating command."})
+func ProposeMethod() (*pluginmcp.Method[Draft, ReviewRef], error) {
+	return pluginmcp.NewMethod[Draft, ReviewRef](portable.MethodConfig{Name: "flame.skills/propose.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Stage a reviewed library draft under its immutable originating command."})
 }
-func QueueMethod() (*qimumcp.Method[Libraries, Queue], error) {
-	return qimumcp.NewMethod[Libraries, Queue](qimumcp.MethodConfig{Name: "flame.skills/reviews.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "List outstanding proposal commands in the admitted libraries, including publications awaiting confirmation."})
+func QueueMethod() (*pluginmcp.Method[Libraries, Queue], error) {
+	return pluginmcp.NewMethod[Libraries, Queue](portable.MethodConfig{Name: "flame.skills/reviews.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "List outstanding proposal commands in the admitted libraries, including publications awaiting confirmation."})
 }
-func ApproveMethod() (*qimumcp.Method[ReviewRef, Permit], error) {
-	return qimumcp.NewMethod[ReviewRef, Permit](qimumcp.MethodConfig{Name: "flame.skills/approve.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Record a human decision for the current proposal and retain its original publication permit."})
+func ApproveMethod() (*pluginmcp.Method[ReviewRef, Permit], error) {
+	return pluginmcp.NewMethod[ReviewRef, Permit](portable.MethodConfig{Name: "flame.skills/approve.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Record a human decision for the current proposal and retain its original publication permit."})
 }
-func ConfirmMethod() (*qimumcp.Method[Publication, struct{}], error) {
-	return qimumcp.NewMethod[Publication, struct{}](qimumcp.MethodConfig{Name: "flame.skills/confirm.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Close the original publication after the authorized filesystem owner confirms publication or a definite precondition conflict."})
+func ConfirmMethod() (*pluginmcp.Method[Publication, struct{}], error) {
+	return pluginmcp.NewMethod[Publication, struct{}](portable.MethodConfig{Name: "flame.skills/confirm.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Close the original publication after the authorized filesystem owner confirms publication or a definite precondition conflict."})
 }
-func RejectMethod() (*qimumcp.Method[ReviewRef, struct{}], error) {
-	return qimumcp.NewMethod[ReviewRef, struct{}](qimumcp.MethodConfig{Name: "flame.skills/reject.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Withdraw an exact pending proposal before approval."})
+func RejectMethod() (*pluginmcp.Method[ReviewRef, struct{}], error) {
+	return pluginmcp.NewMethod[ReviewRef, struct{}](portable.MethodConfig{Name: "flame.skills/reject.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Withdraw an exact pending proposal before approval."})
 }

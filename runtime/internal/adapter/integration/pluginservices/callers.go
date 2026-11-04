@@ -3,11 +3,13 @@ package pluginservices
 import (
 	"context"
 	"errors"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/samber/lo"
 )
 
@@ -27,7 +29,7 @@ func NewCallerRestorer(commands *plugins.Commands, tools toolCallers) (*CallerRe
 	return &CallerRestorer{commands: commands, tools: tools}, nil
 }
 
-func (r *CallerRestorer) RestoreInvocation(ctx context.Context, invocation portable.Invocation) (context.Context, error) {
+func (r *CallerRestorer) RestoreInvocation(ctx context.Context, invocation framemcp.Invocation) (context.Context, error) {
 	if err := extension.ValidateInvocation(invocation); err != nil {
 		return nil, err
 	}

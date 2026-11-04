@@ -5,19 +5,21 @@ import (
 	json "encoding/json/v2"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func testView(t *testing.T) View {
 	t.Helper()
-	contract, err := portable.NewCapability(
-		portable.CapabilityConfig{Reference: "memory", Composition: portable.Selection, Scope: extension.ScopeInstallation},
+	contract, err := plugincontract.NewCapability(
+		plugincontract.CapabilityConfig{Reference: "memory", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation},
 		portable.MethodDescriptor{Name: "memory/list", Kind: portable.Query, Target: extension.ScopeInstallation,
 			Input:  jsontext.Value(`{"type":"object","additionalProperties":false,"required":["Scope","CWD","Cursor"],"properties":{"Scope":{"enum":["project","user"],"type":"string"},"CWD":{"type":"string"},"Cursor":{"type":"string"}}}`),
 			Output: jsontext.Value(`{"type":"object","properties":{"Rows":{"type":"array","items":{"type":"object"}},"NextCursor":{"type":"string"}}}`)},
-		portable.MethodDescriptor{Name: "memory/update", Kind: portable.Mutation, Target: extension.ScopeInstallation,
+		portable.MethodDescriptor{Name: "memory/update", Kind: portable.Command, Target: extension.ScopeInstallation,
 			Input:  jsontext.Value(`{"type":"object","additionalProperties":false,"required":["ID","Revision","Model"],"properties":{"ID":{"type":"string"},"Revision":{"type":"integer"},"Pinned":{"type":"boolean"},"Model":{"type":"object","additionalProperties":false,"properties":{"Provider":{"type":"string"}}}}}`),
 			Output: jsontext.Value(`{"type":"object"}`)},
 	)
@@ -45,7 +47,7 @@ func testView(t *testing.T) View {
 		}},
 	}
 	views, problems := Views([]protocol.PluginInstallation{
-		{ID: "installation", Enabled: true, Presentation: protocol.PluginPresentationAdmitted, Selected: protocol.PluginRelease{Name: "flame.memory", Digest: "digest", TerminalViews: []protocol.PluginTerminalView{declared}, Contributions: []protocol.PluginContribution{{ID: "memory-provider", Contract: string(contract.Identity().JSON())}}}},
+		{ID: "installation", Enabled: true, Presentation: protocol.PluginPresentationAdmitted, Selected: protocol.PluginRelease{Name: "flame.memory", Digest: "digest", TerminalViews: []protocol.PluginTerminalView{declared}, Contributions: []protocol.PluginContribution{{ID: "memory-provider", Contract: string(contract.Identity().Bytes())}}}},
 		{ID: "disabled", Selected: protocol.PluginRelease{TerminalViews: []protocol.PluginTerminalView{declared}}},
 	})
 	if len(problems) != 0 || len(views) != 1 {

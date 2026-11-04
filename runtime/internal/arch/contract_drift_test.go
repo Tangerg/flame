@@ -18,7 +18,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 // TestGeneratedContractHasNoDrift compares freshly generated artifacts with
@@ -526,6 +525,7 @@ func collectRefs(node any) []string {
 // it, the way a shape goes unpublished is silently: nobody notices that no method
 // reaches it.
 var notOnTheWire = map[string]string{
+	"WireField":              "Go reflection metadata for the Runtime DTO projection, never transported",
 	"Failure":                "Go error carrier; ProblemData owns its wire projection",
 	"SubscriptionOptions":    "Go call metadata projected to headers and request metadata",
 	"RunSubscriptionOptions": "Go call metadata projected to headers and request metadata",
@@ -663,11 +663,11 @@ func constraintKeyword(t *testing.T, typ reflect.Type, rule dispatch.FieldConstr
 	case dispatch.ConstraintNonEmpty:
 		return "minLength"
 	case dispatch.ConstraintPositive:
-		_, field, ok := jsonvalue.GoPath(typ, rule.Field)
+		_, field, ok := protocol.WireGoPath(typ, rule.Field)
 		if !ok {
 			t.Fatalf("%s.%s is not a wire field", typ.Name(), rule.Field)
 		}
-		if jsonvalue.Deref(field.Type).Kind() == reflect.Float64 {
+		if protocol.WireBaseType(field.Type).Kind() == reflect.Float64 {
 			return "exclusiveMinimum"
 		}
 		return "minimum"

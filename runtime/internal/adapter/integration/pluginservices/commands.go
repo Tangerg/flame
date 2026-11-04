@@ -6,22 +6,27 @@ import (
 	"errors"
 	"fmt"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/frame"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/samber/lo"
 )
 
 type CommandCalls struct {
-	framework     *qimu.Host
+	framework     *frame.Host
 	publish       invalidation.Publish
 	installations plugins.Store
 	selections    plugins.SelectionStore
@@ -30,7 +35,7 @@ type CommandCalls struct {
 	routing       *plugins.Commands
 }
 
-func NewCommandCalls(host *qimu.Host, store plugins.Store, selections plugins.SelectionStore, compositions plugins.CompositionStore, pool *mcp.Pool, routing *plugins.Commands, publish invalidation.Publish) (*CommandCalls, error) {
+func NewCommandCalls(host *frame.Host, store plugins.Store, selections plugins.SelectionStore, compositions plugins.CompositionStore, pool *mcp.Pool, routing *plugins.Commands, publish invalidation.Publish) (*CommandCalls, error) {
 	if host == nil || lo.IsNil(store) || lo.IsNil(selections) || lo.IsNil(compositions) || pool == nil || routing == nil {
 		return nil, errors.New("managed plugin: command routing, installation store and connections are required")
 	}
@@ -61,7 +66,7 @@ func (c *CommandCalls) original(ctx context.Context, record plugin.CommandBindin
 	return plugins.ContributionBinding{InstallationID: record.Provider.InstallationID, ContributionID: record.Contribution, Digest: record.Provider.Digest, ServerName: record.Server, ServerID: id, Export: record.Export, Contract: record.Contract}, nil
 }
 
-func invokeCommand[P, R any](ctx context.Context, c *CommandCalls, required *portable.Capability, method string, input P, validate func(R) error) (commandReply[R], error) {
+func invokeCommand[P, R any](ctx context.Context, c *CommandCalls, required *plugincontract.Capability, method string, input P, validate func(R) error) (commandReply[R], error) {
 	return invokeResolvedCommand(ctx, c, method, input, validate, func(ctx context.Context) (plugins.ContributionBinding, error) {
 		binding, found, err := plugins.SelectedContribution(ctx, c.framework, c.installations, c.selections, required)
 		if err != nil {
@@ -74,13 +79,13 @@ func invokeCommand[P, R any](ctx context.Context, c *CommandCalls, required *por
 	}, nil)
 }
 func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, method string, input P, validate func(R) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func() error, error)) (commandReply[R], error) {
-	admitted, err := jsonvalue.Encode(input)
+	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {
 		return commandReply[R]{}, err
 	}
 	var value R
-	reply, err := invokeRawCommand(ctx, c, method, admitted, func(result jsonvalue.Value) error {
-		if err := json.Unmarshal(result.JSON(), &value, json.RejectUnknownMembers(true)); err != nil {
+	reply, err := invokeRawCommand(ctx, c, method, admitted, func(result framevalue.JSON) error {
+		if err := json.Unmarshal(result.Bytes(), &value, json.RejectUnknownMembers(true)); err != nil {
 			return err
 		}
 		if validate != nil {
@@ -97,14 +102,14 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 	return commandReply[R]{value: value, binding: reply.binding}, err
 }
 
-func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admitted jsonvalue.Value, validate func(jsonvalue.Value) error, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func() error, error), target func(plugins.ContributionBinding) portable.Target) (_ commandReply[jsonvalue.Value], returned error) {
-	var zero commandReply[jsonvalue.Value]
+func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admitted framevalue.JSON, validate func(framevalue.JSON) error, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func() error, error), target func(plugins.ContributionBinding) portable.Target) (_ commandReply[framevalue.JSON], returned error) {
+	var zero commandReply[framevalue.JSON]
 	record, err := c.admitCommandRoute(ctx, method, admitted, accepts, resolve, target, false)
 	if err != nil {
 		return zero, err
 	}
 	id := record.ID
-	ctx, err = qimumcp.WithInvocation(ctx, record.Invocation)
+	ctx, err = pluginmcp.WithInvocation(ctx, record.Invocation)
 	if err != nil {
 		return zero, err
 	}
@@ -125,19 +130,19 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 	defer borrowed.Close()
 	ctx = borrowed.Context()
 	session := borrowed.Session()
-	contract, err := portable.ParseCapability(record.Contract.JSON())
+	contract, err := plugincontract.ParseCapability(record.Contract.Bytes())
 	if err != nil {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
 	}
-	exported, err := qimumcp.NewCapabilityBinding(session, record.Export, contract)
+	exported, err := pluginmcp.NewCapabilityBinding(session, record.Export, contract)
 	if err != nil {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
 	}
 	bound, err := exported.Method(method)
-	if err != nil || bound.Descriptor().Kind != portable.Mutation {
+	if err != nil || bound.Descriptor().Kind != portable.Command {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err, plugin.ErrInvalid)
 	}
-	var result jsonvalue.Value
+	var result framevalue.JSON
 	if record.Phase == plugin.CommandPrepared {
 		metadata := sdk.ParamsBase{}
 		if collaborators != nil {
@@ -153,15 +158,15 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 			return zero, err
 		}
 		defer c.publish.Notify(invalidation.Notice{Resource: invalidation.PluginData})
-		result, err = bound.InvokeWithMetadata(ctx, qimumcp.CommandID(id), record.Input, metadata)
+		result, err = bound.InvokeWithMetadata(ctx, pluginmcp.CommandID(id), record.Input, metadata)
 	} else {
 		var found bool
-		result, found, err = bound.ReadReceipt(ctx, qimumcp.CommandID(id), record.Input)
+		result, found, err = bound.ReadReceipt(ctx, pluginmcp.CommandID(id), record.Input)
 		if !found && err == nil {
 			err = plugin.ErrCommandUnconfirmed
 		}
 	}
-	_, known := errors.AsType[*portable.Refusal](err)
+	_, known := errors.AsType[*framemcp.Refusal](err)
 	if err != nil && !known {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
 	}
@@ -173,7 +178,7 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 	if observeErr := c.routing.Observe(ctx, id); observeErr != nil {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, observeErr)
 	}
-	return commandReply[jsonvalue.Value]{value: result, binding: binding}, err
+	return commandReply[framevalue.JSON]{value: result, binding: binding}, err
 }
 
 // Dispatch validates the original frozen graph under the owner's admission.
@@ -210,9 +215,9 @@ func (c *CommandCalls) NotifyChange(ctx context.Context, contribution plugin.Con
 	return nil
 }
 
-func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, admitted jsonvalue.Value, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), target func(plugins.ContributionBinding) portable.Target, streaming bool) (plugin.CommandBinding, error) {
+func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, admitted framevalue.JSON, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), target func(plugins.ContributionBinding) portable.Target, streaming bool) (plugin.CommandBinding, error) {
 	id := operation.Identity(ctx)
-	capture := func(binding plugins.ContributionBinding) (portable.Invocation, error) {
+	capture := func(binding plugins.ContributionBinding) (framemcp.Invocation, error) {
 		return operation.Capture(ctx, target(binding))
 	}
 	command, found, routeErr := c.routing.Find(ctx, id, method, admitted)
@@ -230,11 +235,11 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 		defer borrowed.Close()
 		ctx = borrowed.Context()
 		session := borrowed.Session()
-		required, err := portable.ParseCapability(candidate.Contract.JSON())
+		required, err := plugincontract.ParseCapability(candidate.Contract.Bytes())
 		if err != nil {
 			return plugin.CommandBinding{}, err
 		}
-		exported, err := qimumcp.ResolveCapability(ctx, session, candidate.Export, required)
+		exported, err := pluginmcp.ResolveCapability(ctx, session, candidate.Export, required)
 		if err != nil {
 			return plugin.CommandBinding{}, err
 		}
@@ -245,7 +250,7 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 		if (len(binding.Descriptor().Stream) != 0) != streaming {
 			return plugin.CommandBinding{}, plugin.ErrInvalid
 		}
-		if binding.Descriptor().Kind != portable.Mutation {
+		if binding.Descriptor().Kind != portable.Command {
 			return plugin.CommandBinding{}, errors.New("managed plugin: command requires a command contract")
 		}
 		if err := validateInput(ctx, binding, admitted); err != nil {
@@ -277,7 +282,7 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 		}, capture)
 	}
 	if errors.Is(routeErr, plugin.ErrCommandConflict) {
-		return plugin.CommandBinding{}, fmt.Errorf("managed plugin: %w", errors.Join(portable.ErrInvocationConflict, routeErr))
+		return plugin.CommandBinding{}, fmt.Errorf("managed plugin: %w", errors.Join(framemcp.ErrInvocationConflict, routeErr))
 	}
 	if routeErr != nil {
 		return plugin.CommandBinding{}, routeErr
@@ -288,7 +293,7 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 		return plugin.CommandBinding{}, err
 	}
 	if invocation != record.Invocation {
-		return plugin.CommandBinding{}, errors.Join(portable.ErrInvocationConflict, plugin.ErrCommandConflict)
+		return plugin.CommandBinding{}, errors.Join(framemcp.ErrInvocationConflict, plugin.ErrCommandConflict)
 	}
 	if accepts != nil {
 		if err := accepts(record); err != nil {

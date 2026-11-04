@@ -3,28 +3,28 @@ package plugin
 import (
 	"slices"
 
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type Point struct {
 	ID       ContributionID
-	Contract jsonvalue.Value
+	Contract framevalue.JSON
 }
 
 // PointValue is consumer-defined data, independent of executable exports.
 // A value can name an operation; only that consumer interprets the reference.
 type PointValue struct {
 	ID       ContributionID
-	Contract jsonvalue.Value
-	Value    jsonvalue.Value
+	Contract framevalue.JSON
+	Value    framevalue.JSON
 }
 
 func (b *Builder) AdmitPoint(value Point) error {
 	if err := value.ID.Validate(); err != nil {
 		return err
 	}
-	contract, err := portable.ParsePoint(value.Contract.JSON())
+	contract, err := plugincontract.ParsePoint(value.Contract.Bytes())
 	if err != nil {
 		return refuse(DiagnosticInvalidDeclaration, "invalid point contract: %v", err)
 	}
@@ -40,7 +40,7 @@ func (b *Builder) AdmitPointValue(value PointValue) error {
 	if err := value.ID.Validate(); err != nil {
 		return err
 	}
-	contract, err := portable.ParsePoint(value.Contract.JSON())
+	contract, err := plugincontract.ParsePoint(value.Contract.Bytes())
 	if err != nil {
 		return refuse(DiagnosticInvalidDeclaration, "invalid point value contract: %v", err)
 	}

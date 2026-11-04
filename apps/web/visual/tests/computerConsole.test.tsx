@@ -7,7 +7,7 @@ import {
   createHttpTransport,
   type MutationJournalStorage,
 } from "@flame/runtime-client";
-import { stringifyJSON } from "@qimu/sdk/json";
+import { stringifyJSON } from "@frame/sdk/json";
 import type { CallPluginRequest, ServerCapabilities } from "@flame/runtime-client/wire";
 import { createTestClient } from "@/test/renderClient";
 import { mockSelectLayout } from "@/test/selectLayout";

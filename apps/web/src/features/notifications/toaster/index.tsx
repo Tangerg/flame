@@ -124,7 +124,7 @@ export function AppToaster() {
 export default definePlugin({
   name: "flame.builtin.toaster",
   setup(ctx) {
-    contributeLayout(ctx, "app.overlay", {
+    contributeLayout(ctx.contributions, "app.overlay", {
       id: "toaster",
       order: 100,
       component: AppToaster,

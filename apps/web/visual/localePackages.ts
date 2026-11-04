@@ -15,9 +15,12 @@ const dictionaries = import.meta.glob<Record<string, string>>(
 export const visualLocalePackages = definePlugin<{}, {}>({
   name: "test.installed-locales",
   async setup(scope) {
-    const reconcile = createLocaleReconciler(scope.lifetime("locale-packages"), (error) => {
-      throw error;
-    });
+    const reconcile = createLocaleReconciler(
+      scope.contributions.child("locale-packages"),
+      (error) => {
+        throw error;
+      },
+    );
     await reconcile(
       Object.entries(declarations).flatMap(([path, declaration]) =>
         declaration.contributes.locales.map((locale) => ({

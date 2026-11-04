@@ -10,12 +10,12 @@ import (
 	"os/exec"
 	"time"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
 	"github.com/Tangerg/flame/packages/go-sdk/procgroup"
-	"github.com/Tangerg/frame/cancellation"
-	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 const (
@@ -30,7 +30,7 @@ type Shell struct{}
 // RunHookCommand runs req.Command via the host shell, encoding the typed domain
 // input into the external hook JSON contract at this adapter boundary.
 func (Shell) RunHookCommand(ctx context.Context, req commandRequest) commandResult {
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return commandResult{
 			Err: err, ExitCode: -1, TimedOut: ctx.Err() == context.DeadlineExceeded,
 		}
@@ -72,7 +72,7 @@ func (Shell) RunHookCommand(ctx context.Context, req commandRequest) commandResu
 	cmd.Cancel = func() error { return procgroup.Stop(cmd) }
 
 	runErr := cmd.Run()
-	cancellationErr := cancellation.Err(cctx)
+	cancellationErr := errors.Join(cctx.Err(), context.Cause(cctx))
 	timedOut := cctx.Err() == context.DeadlineExceeded
 	cleanupErr := procgroup.Stop(cmd)
 	if errors.Is(cleanupErr, os.ErrProcessDone) {
@@ -143,7 +143,7 @@ func hookDecisionFromWire(stdout []byte) (hook.CommandDecision, error) {
 		return hook.CommandDecision{}, errors.New("hooks: command decision must be a JSON object")
 	}
 	var wire hookDecisionWire
-	if err := jsonvalue.UnmarshalNonNull(stdout, &wire); err != nil {
+	if err := framevalue.DecodeValue(stdout, &wire, "hook configuration"); err != nil {
 		return hook.CommandDecision{}, fmt.Errorf("hooks: decode command decision: %w", err)
 	}
 	verdict, err := hookVerdictFromWire(wire.Decision)

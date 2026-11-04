@@ -6,7 +6,7 @@ export function defineVisualStylePlugin(spec: VisualStyleSpec): AnyPlugin {
   return definePlugin({
     name: `flame.builtin.visual-style-${spec.id}`,
     setup(ctx) {
-      ctx.contribute(VISUAL_STYLE, spec);
+      ctx.contributions.add(VISUAL_STYLE, spec);
     },
   });
 }

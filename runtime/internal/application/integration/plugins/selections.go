@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu"
+
 	"github.com/samber/lo"
 )
 
@@ -27,15 +27,15 @@ type Selections struct {
 	connector     connectorSelection
 	store         SelectionStore
 	installations Store
-	admission     *qimu.Admission
+	transact      func(context.Context, func(context.Context) error) error
 	publish       invalidation.Publish
 }
 
-func NewSelections(store SelectionStore, installations Store, admission *qimu.Admission, publish invalidation.Publish, connector connectorSelection) (*Selections, error) {
-	if lo.IsNil(store) || lo.IsNil(installations) || admission == nil || lo.IsNil(connector) {
+func NewSelections(store SelectionStore, installations Store, transact func(context.Context, func(context.Context) error) error, publish invalidation.Publish, connector connectorSelection) (*Selections, error) {
+	if lo.IsNil(store) || lo.IsNil(installations) || transact == nil || lo.IsNil(connector) {
 		return nil, errors.New("plugins: provider selections, installations and admission are required")
 	}
-	return &Selections{connector: connector, store: store, installations: installations, admission: admission, publish: publish}, nil
+	return &Selections{connector: connector, store: store, installations: installations, transact: transact, publish: publish}, nil
 }
 
 func (s *Selections) List(ctx context.Context) ([]plugin.ProviderSelection, error) {
@@ -47,7 +47,7 @@ func (s *Selections) Select(ctx context.Context, record plugin.SelectionRecord) 
 	if err != nil {
 		return plugin.ProviderSelection{}, err
 	}
-	err = s.admission.Under(ctx, func() error {
+	err = s.transact(ctx, func(ctx context.Context) error {
 		snapshot, found, err := s.installations.Get(ctx, record.Installation)
 		if err != nil {
 			return err

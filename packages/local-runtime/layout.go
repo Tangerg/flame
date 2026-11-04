@@ -12,7 +12,7 @@ const (
 	// resolves the same root, so it is spelled once.
 	productRootName  = ".flame"
 	runtimeStateName = "runtime"
-	databaseFilename = "flame-qimu.db"
+	databaseFilename = "flame-frame.db"
 	localTokenName   = "local-token"
 )
 
@@ -97,11 +97,11 @@ func FirstPartyDirectory(executable string) (string, error) {
 	return filepath.Join(filepath.Dir(executable), "plugins"), nil
 }
 
-// RunnerExecutable names the independently running Qimu process authority in
+// RunnerExecutable names the independently running Frame process authority in
 // the same distribution as the Runtime host.
 func RunnerExecutable(executable string) (string, error) {
 	if !filepath.IsAbs(executable) {
 		return "", errors.New("runner distribution: executable must be absolute")
 	}
-	return filepath.Join(filepath.Dir(executable), "qimu-runner"), nil
+	return filepath.Join(filepath.Dir(executable), "frame-runner"), nil
 }

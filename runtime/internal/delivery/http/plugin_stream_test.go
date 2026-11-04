@@ -10,14 +10,16 @@ import (
 	"testing"
 	"time"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type streamRuntime struct {
@@ -43,11 +45,11 @@ func TestRemotePluginCallPreservesSharedNumericCorpus(t *testing.T) {
 		t.Fatal(err)
 	}
 	source := strings.TrimSpace(string(data))
-	method, err := qimumcp.NewMethod[map[string]any, map[string]any](qimumcp.MethodConfig{Name: "records.echo", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read original JSON evidence."})
+	method, err := pluginmcp.NewMethod[map[string]any, map[string]any](portable.MethodConfig{Name: "records.echo", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read original JSON evidence."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "records", Composition: portable.Selection, Scope: extension.ScopeInstallation}, method.Descriptor())
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "records", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +62,7 @@ func TestRemotePluginCallPreservesSharedNumericCorpus(t *testing.T) {
 	}
 	defer client.Close()
 	id := testsupport.InstallationID(t).String()
-	reply, err := client.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.Identity().JSON()), Method: method.Name(), Input: source, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: id}}, protocol.PluginCallOptions{})
+	reply, err := client.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.Identity().Bytes()), Method: method.Name(), Input: source, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: id}}, protocol.PluginCallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +79,7 @@ func (s *streamRuntime) Discover(ctx context.Context) (*protocol.DiscoverRespons
 }
 
 func (s *streamRuntime) PreparePluginStream(_ context.Context, request protocol.CallPluginRequest) (delivery.OperationKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error) {
-	contract, err := portable.ParseCapability([]byte(request.Contract))
+	contract, err := plugincontract.ParseCapability([]byte(request.Contract))
 	if err != nil {
 		return "", nil, err
 	}
@@ -86,7 +88,7 @@ func (s *streamRuntime) PreparePluginStream(_ context.Context, request protocol.
 		return "", nil, errors.New("missing stream method")
 	}
 	kind := delivery.OperationQuery
-	if method.Kind() == portable.Mutation {
+	if method.Kind() == portable.Command {
 		kind = delivery.OperationCommand
 	}
 	return kind, func(ctx context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
@@ -137,7 +139,7 @@ func TestRemotePluginCommandStreamDistinguishesFinalRefusalAndMissingTerminal(t 
 				t.Fatal(err)
 			}
 			defer client.Close()
-			request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(testsupport.CommandContract(t, "records.stream", extension.ScopeInstallation).JSON()), Method: "records.stream", Input: `{}`, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: testsupport.InstallationID(t).String()}}
+			request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(testsupport.CommandContract(t, "records.stream", extension.ScopeInstallation).Bytes()), Method: "records.stream", Input: `{}`, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: testsupport.InstallationID(t).String()}}
 			_, events, err := client.StreamPlugin(t.Context(), request, protocol.PluginCallOptions{IdempotencyKey: "original"})
 			if err != nil {
 				t.Fatal(err)
@@ -162,11 +164,11 @@ func TestRemotePluginCommandStreamDistinguishesFinalRefusalAndMissingTerminal(t 
 }
 
 func TestRemotePluginQueryStreamUsesReadAdmissionAndCancellation(t *testing.T) {
-	method, err := qimumcp.NewStreamingMethod[struct{}, uint64, bool](qimumcp.MethodConfig{Name: "records.query", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read streamed records."})
+	method, err := pluginmcp.NewStreamingMethod[struct{}, uint64, bool](portable.MethodConfig{Name: "records.query", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read streamed records."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "records", Composition: portable.Selection, Scope: extension.ScopeInstallation}, method.Descriptor())
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "records", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +180,7 @@ func TestRemotePluginQueryStreamUsesReadAdmissionAndCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer client.Close()
-	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.Identity().JSON()), Method: "records.query", Input: `{}`, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: testsupport.InstallationID(t).String()}}
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.Identity().Bytes()), Method: "records.query", Input: `{}`, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: testsupport.InstallationID(t).String()}}
 	if _, _, err := client.StreamPlugin(t.Context(), request, protocol.PluginCallOptions{IdempotencyKey: "invalid-query-key"}); !errors.Is(err, protocol.ErrInvalidParams) {
 		t.Fatalf("query admitted a command identity: %v", err)
 	}

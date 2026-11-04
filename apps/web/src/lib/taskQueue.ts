@@ -1,4 +1,4 @@
-import { SerialQueue } from "dougong";
+import { SerialQueue } from "dougong/advanced";
 // A retired view must release callers even when a remote operation ignores cancellation.
 // Dougong owns sequencing; the cohort owns identity partitions and publication eligibility.
 export class RetirableTaskCohort {
@@ -62,7 +62,7 @@ export class RetirableTaskCohort {
         this.#queues.set(identity, queue);
       }
       const ownedQueue = queue;
-      const result = ownedQueue.run(() => this.run(operation));
+      const result = ownedQueue.run(() => this.run(operation)).then(({ value }) => value);
       const settlement = ownedQueue.settled;
       void settlement.then(() => {
         if (ownedQueue.settled === settlement && this.#queues.get(identity) === ownedQueue) {

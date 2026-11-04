@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ExactNumber } from "@qimu/sdk/json";
+import { ExactNumber } from "@frame/sdk/json";
 import { WIRE_ENUMS } from "@flame/runtime-client/wire";
 import { type AgentToolInvocation } from "@/features/agent/public/events";
 import { TOOL_FAMILIES } from "@/lib/toolFamilies";

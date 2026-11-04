@@ -7,13 +7,15 @@ import (
 	"runtime"
 	"slices"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/distribution"
-	"github.com/Tangerg/qimu/integrity"
-	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/frame/distribution"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 // Connection transfers the original content lease to the real process owner.
@@ -46,7 +48,7 @@ func (r *Releases) Connection(ctx context.Context, installation plugin.Installat
 	}
 	declaration := release.Declaration()
 	declared := declaration.Servers[slices.IndexFunc(declaration.Servers, func(s plugin.Server) bool { return s.Name == name })]
-	variant, err := selectedVariant(lease.Release().Manifest, declared.Name)
+	variant, err := selectedVariant(lease.Snapshot().Manifest, declared.Name)
 	if err != nil {
 		return mcpapp.Launch{}, false, err
 	}
@@ -61,13 +63,13 @@ func (r *Releases) Connection(ctx context.Context, installation plugin.Installat
 	if err := realizeBackend(ctx, executable, declared, directory, data); err != nil {
 		return mcpapp.Launch{}, false, fmt.Errorf("%w: server %q backend: %w", plugin.ErrUnavailable, name, err)
 	}
-	var expected integrity.Digest
+	var expected framevalue.Digest
 	if _, managed := declared.Startup.(plugin.ManagedBackend); managed {
 		node, nodeErr := hostNode()
 		if nodeErr != nil {
 			return mcpapp.Launch{}, false, nodeErr
 		}
-		expected, err = integrity.ParseDigest(node.ExecutableDigest())
+		expected, err = framevalue.ParseDigest(node.ExecutableDigest())
 		if variant.Runtime == nil || expected != variant.Runtime.Digest {
 			return mcpapp.Launch{}, false, fmt.Errorf("%w: installed interpreter differs from its original runtime pin", plugin.ErrUnavailable)
 		}
@@ -76,7 +78,7 @@ func (r *Releases) Connection(ctx context.Context, installation plugin.Installat
 		if !packaged {
 			return mcpapp.Launch{}, false, fmt.Errorf("%w: installed process entry must be a packaged executable", plugin.ErrInvalid)
 		}
-		for _, artifact := range lease.Release().Manifest.Artifacts {
+		for _, artifact := range lease.Snapshot().Manifest.Artifacts {
 			if artifact.Path == command && artifact.Executable {
 				expected = artifact.Digest
 				break
@@ -99,7 +101,7 @@ func (r *Releases) Connection(ctx context.Context, installation plugin.Installat
 
 func selectedVariant(manifest distribution.Manifest, server mcpserver.ServerName) (distribution.Variant, error) {
 	for _, unit := range manifest.Units {
-		if unit.ID != plugins.BackendUnit(server) || unit.Profile != qimumcp.ProcessProfile {
+		if unit.ID != plugins.BackendUnit(server) || unit.Profile != pluginmcp.ProcessProfile {
 			continue
 		}
 		for _, variant := range unit.Variants {

@@ -7,7 +7,6 @@ import (
 	"math"
 	"slices"
 	"strconv"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -17,8 +16,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+
+	"github.com/Tangerg/scope/agent/interaction"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -153,7 +153,7 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 	if delegatedResult == nil || len(delegatedResult.Output.Content) != 0 {
 		t.Fatalf("durable Delegate model result = %#v, want exact structured child output", delegatedResult)
 	}
-	payload, err := agent.ParsePayload(delegatedResult.Output.Details)
+	payload, err := scoperun.ParsePayload(delegatedResult.Output.Details)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -250,18 +250,15 @@ func TestInteractionExecutorCanceledDelegateWithUnknownModelOutcomeFailsRoot(t *
 		t.Fatal("running Delegate cancellation did not stop its in-flight model call")
 	}
 
-	var canceledResult runs.CancelResult
 	select {
 	case outcome := <-canceled:
-		if outcome.err != nil {
+		if !errors.Is(outcome.err, runs.ErrRunFinished) {
 			close(model.releaseRootContinuation)
-			t.Fatalf("Cancel running Delegate: %v", outcome.err)
+			t.Fatalf("Cancel running Delegate with unknown work = %v, want ErrRunFinished", outcome.err)
 		}
-		canceledResult = outcome.value
 	case <-time.After(waitBudget(3 * time.Second)):
 		t.Fatal("running Delegate cancellation did not settle")
 	}
-	assertRunningDelegateCancellationResult(t, canceledResult)
 	close(model.releaseRootContinuation)
 	var events []runs.Event
 	select {
@@ -281,18 +278,6 @@ func TestInteractionExecutorCanceledDelegateWithUnknownModelOutcomeFailsRoot(t *
 	}
 }
 
-func assertRunningDelegateCancellationResult(t *testing.T, result runs.CancelResult) {
-	t.Helper()
-	if result.Run.ID() != "run_child" || !result.Run.Canceled() ||
-		!runHasOutcome(result.Run, run.OutcomeCanceled) ||
-		result.Run.Detail() != "caller canceled delegated work" {
-		t.Fatalf("canceled child = %+v", result.Run)
-	}
-	if result.RootRun == nil || result.RootRun.ID() != "run_root" {
-		t.Fatalf("root identity after child cancellation = %+v", result.RootRun)
-	}
-}
-
 func runHasOutcome(record run.Run, expected run.Outcome) bool {
 	outcome, terminal := record.Outcome()
 	return terminal && outcome == expected
@@ -307,12 +292,12 @@ func assertRunningDelegateCancellationEvents(t *testing.T, events []runs.Event) 
 			continue
 		}
 		if event.RunID == "run_child" {
-			childFinished = finished.Run.Canceled() &&
-				finished.Run.Detail() == "caller canceled delegated work"
+			loss, lost := finished.Run.Loss()
+			childFinished = lost && loss.Reason == run.LossUnresolvedEffects && len(finished.Run.UnresolvedEffects()) == 1
 		}
 		if event.RunID == "run_root" {
 			loss, lost := finished.Run.Loss()
-			rootFinished = lost && loss.Reason == run.LossUnresolvedEffects && strings.Contains(loss.Detail, "unresolved Effects")
+			rootFinished = lost && loss.Reason == run.LossUnresolvedEffects
 		}
 	}
 	if !childFinished || !rootFinished {
@@ -382,8 +367,8 @@ func TestInteractionExecutorInternalDelegateWaitDoesNotFreezeRunningChild(t *tes
 		if !readable {
 			t.Fatal("Interaction tree is not inspectable")
 		}
-		root, inspected := inspection.Process(execution.state.processHandle().Relation().ProcessID())
-		if inspected && root.Snapshot.Status() == agent.StatusWaiting {
+		root, inspected := inspection.Process(execution.state.processHandle().ID())
+		if inspected && root.Status == scoperun.StatusWaiting {
 			break
 		}
 		select {
@@ -398,7 +383,7 @@ func TestInteractionExecutorInternalDelegateWaitDoesNotFreezeRunningChild(t *tes
 	if err != nil {
 		t.Fatalf("inspect internal Delegate wait: %v", err)
 	}
-	if found || tree.Valid() || len(interruptions) != 0 {
+	if found || tree.Root.Valid() || len(interruptions) != 0 {
 		t.Fatalf("internal Delegate wait created a human-input barrier: %v", interruptions)
 	}
 	release()
@@ -596,6 +581,11 @@ func (d *delegateTreeFixture) finish(t *testing.T, wantProcesses int) delegateTr
 	openings := slices.Clone(d.projection.openings)
 	d.projection.mu.Unlock()
 	if len(openings) != wantProcesses {
+		for _, event := range events {
+			if finished, ok := event.Payload.(runs.SegmentFinished); ok {
+				t.Logf("Run %s finished: %s, %s", finished.Run.ID(), finished.Run.State(), finished.Run.Detail())
+			}
+		}
 		t.Fatalf("delegate tree openings = %d, want %d", len(openings), wantProcesses)
 	}
 	return delegateTreeResult{events: events, openings: openings}
@@ -622,8 +612,8 @@ func (d delegateTreeResult) assertAllRunsCompleted(t *testing.T) {
 		}
 		if testsupport.RunOutcome(finished.Run) != run.OutcomeCompleted {
 			t.Fatalf(
-				"Run %q finished as %s outcome=%v detail=%q error=%+v",
-				finished.Run.ID(), finished.Run.State(), finished.Run.Snapshot().Ending, finished.Run.Detail(), finished.Run.Snapshot().Ending,
+				"Run %q finished as %s outcome=%v detail=%q effects=%+v",
+				finished.Run.ID(), finished.Run.State(), finished.Run.Snapshot().Ending, finished.Run.Detail(), finished.Run.UnresolvedEffects(),
 			)
 		}
 		completed[finished.Run.ID()]++

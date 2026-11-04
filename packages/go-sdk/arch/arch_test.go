@@ -13,7 +13,7 @@ import (
 )
 
 const sdkModulePath = "github.com/Tangerg/flame/packages/go-sdk"
-const qimuModulePath = "github.com/Tangerg/qimu"
+const frameModulePath = "github.com/Tangerg/frame"
 
 // moduleRoot resolves this module from its manifest; it never guesses a checkout layout.
 func moduleRoot(t *testing.T) string {
@@ -54,7 +54,7 @@ func TestStandaloneImports(t *testing.T) {
 		}
 		for _, imported := range file.Imports {
 			value := strings.Trim(imported.Path.Value, `"`)
-			if (value == "github.com/Tangerg/flame" || strings.HasPrefix(value, "github.com/Tangerg/flame/")) && value != sdkModulePath && !strings.HasPrefix(value, sdkModulePath+"/") && value != qimuModulePath && !strings.HasPrefix(value, qimuModulePath+"/") {
+			if (value == "github.com/Tangerg/flame" || strings.HasPrefix(value, "github.com/Tangerg/flame/")) && value != sdkModulePath && !strings.HasPrefix(value, sdkModulePath+"/") && value != frameModulePath && !strings.HasPrefix(value, frameModulePath+"/") {
 				relative, _ := filepath.Rel(root, path)
 				t.Errorf("%s imports host/repository package %s; the SDK must be independently buildable", relative, value)
 			}
@@ -118,7 +118,7 @@ func forbidExternalImports(t *testing.T, dir string, banned []string) {
 		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
-		f, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ImportsOnly)
+		f, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
 		if err != nil {
 			return err
 		}
@@ -126,7 +126,7 @@ func forbidExternalImports(t *testing.T, dir string, banned []string) {
 			ip := strings.Trim(imp.Path.Value, `"`)
 			// net/url and net/netip are deterministic syntax/value parsers, not network
 			// capability. All packages capable of network I/O remain excluded.
-			if ip == "net/url" || ip == "net/netip" {
+			if ip == "net/url" || ip == "net/netip" || protocolInvocationValue(f, imp) {
 				continue
 			}
 			for _, bad := range banned {
@@ -271,7 +271,7 @@ func TestProtocolStaysWireOnly(t *testing.T) {
 	root := moduleRoot(t)
 	// These packages remain outward capabilities after moving into the SDK;
 	// their public paths must not escape the former private-import boundary.
-	banned := []string{"github.com/Tangerg/flame/runtime", qimuModulePath + "/mcp", qimuModulePath + "/sqlite", qimuModulePath + "/runner", qimuModulePath + "/distribution", qimuModulePath + "/process", qimuModulePath + "/control"}
+	banned := []string{"github.com/Tangerg/flame/runtime", frameModulePath + "/sqlite", frameModulePath + "/distribution", frameModulePath + "/process", frameModulePath + "/browser"}
 	for _, name := range []string{
 		"client", "plugin", "sqlite", "contractgen", "cmd", "filesystem", "sandbox",
 		"httpresponse", "model/catalog", "cancellation", "capture", "pagination",
@@ -280,5 +280,49 @@ func TestProtocolStaysWireOnly(t *testing.T) {
 	}
 	for _, name := range []string{"protocol"} {
 		forbidExternalImports(t, filepath.Join(root, name), append(banned, frameworkImports...))
+	}
+}
+
+// The Runtime wire projects Frame's original invocation value. Other symbols
+// from the mixed MCP package can create capabilities and stay outside protocol.
+func protocolInvocationValue(file *ast.File, imported *ast.ImportSpec) bool {
+	if file.Name.Name != "protocol" || strings.Trim(imported.Path.Value, `"`) != frameModulePath+"/process/mcp" {
+		return false
+	}
+	name := "mcp"
+	if imported.Name != nil {
+		name = imported.Name.Name
+	}
+	if name == "_" || name == "." {
+		return false
+	}
+	used, valueOnly := false, true
+	ast.Inspect(file, func(node ast.Node) bool {
+		selector, ok := node.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		owner, ok := selector.X.(*ast.Ident)
+		if ok && owner.Name == name {
+			used = true
+			valueOnly = valueOnly && selector.Sel.Name == "Invocation"
+		}
+		return true
+	})
+	return used && valueOnly
+}
+
+func TestProtocolInvocationDoesNotPermitMCPTransport(t *testing.T) {
+	for _, source := range []struct {
+		selector string
+		allowed  bool
+	}{{"Invocation", true}, {"NewCallbackReceiver", false}} {
+		file, err := parser.ParseFile(token.NewFileSet(), "projection.go", "package protocol\nimport mcp \""+frameModulePath+"/process/mcp\"\nvar _ = mcp."+source.selector, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if allowed := protocolInvocationValue(file, file.Imports[0]); allowed != source.allowed {
+			t.Fatalf("%s: allowed=%t, want %t", source.selector, allowed, source.allowed)
+		}
 	}
 }

@@ -12,7 +12,7 @@ prepareTestClient(() => {
 });
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { ExactNumber, stringifyJSON, type JSONNumber } from "@qimu/sdk/json";
+import { ExactNumber, stringifyJSON, type JSONNumber } from "@frame/sdk/json";
 import {
   createFlameClient,
   MutationLookupError,

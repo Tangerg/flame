@@ -23,12 +23,12 @@ describe("slot", () => {
       definePlugin({
         name: "test.layout.a",
         setup: (ctx) => {
-          contributeLayout(ctx, "test.slot", {
+          contributeLayout(ctx.contributions, "test.slot", {
             id: "a",
             order: 2,
             component: () => <span>A</span>,
           });
-          contributeLayout(ctx, "test.slot", {
+          contributeLayout(ctx.contributions, "test.slot", {
             id: "b",
             order: 1,
             component: () => <span>B</span>,
@@ -46,14 +46,14 @@ describe("slot", () => {
       definePlugin({
         name: "test.boundary",
         setup: (ctx) => {
-          contributeLayout(ctx, "test.boundary.slot", {
+          contributeLayout(ctx.contributions, "test.boundary.slot", {
             id: "boom",
             order: 0,
             component: () => {
               throw new Error("boom");
             },
           });
-          contributeLayout(ctx, "test.boundary.slot", {
+          contributeLayout(ctx.contributions, "test.boundary.slot", {
             id: "ok",
             order: 1,
             component: () => <span>still-here</span>,
@@ -72,7 +72,7 @@ describe("slot", () => {
       definePlugin({
         name: "test.wrapper",
         setup: (ctx) => {
-          contributeLayout(ctx, "test.wrap", {
+          contributeLayout(ctx.contributions, "test.wrap", {
             id: "one",
             order: 0,
             component: () => <span>x</span>,

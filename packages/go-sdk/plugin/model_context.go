@@ -4,9 +4,12 @@ import (
 	"errors"
 	"sync"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -26,22 +29,22 @@ type ModelContextResult struct {
 	Messages []chat.Message `json:"messages"`
 }
 
-func ModelContextMethod() (*qimumcp.Method[ModelContextRequest, ModelContextResult], error) {
-	return qimumcp.NewMethod[ModelContextRequest, ModelContextResult](qimumcp.MethodConfig{Name: "flame.model-context/contribute.v2", Kind: portable.Query, Target: extension.ScopeCall, Description: "Contribute additional system context using the captured request and its original user input before capacity admission."})
+func ModelContextMethod() (*pluginmcp.Method[ModelContextRequest, ModelContextResult], error) {
+	return pluginmcp.NewMethod[ModelContextRequest, ModelContextResult](portable.MethodConfig{Name: "flame.model-context/contribute.v2", Kind: portable.Query, Target: extension.ScopeCall, Description: "Contribute additional system context using the captured request and its original user input before capacity admission."})
 }
 
 // ModelContextContract orders independent context contributions before the final
 // request is admitted. It grants no next proxy, model call or route replacement.
-func ModelContextContract() (*portable.Capability, error) { return modelContextContract() }
+func ModelContextContract() (*plugincontract.Capability, error) { return modelContextContract() }
 
 // The published contract is immutable. Checkpoint validation shares its compiled
 // schemas instead of repeating admission on every durable tree commit.
-var modelContextContract = sync.OnceValues(func() (*portable.Capability, error) {
+var modelContextContract = sync.OnceValues(func() (*plugincontract.Capability, error) {
 	method, err := ModelContextMethod()
 	if err != nil {
 		return nil, err
 	}
-	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.model-context.v2", Composition: portable.Decoration, Scope: extension.ScopeCall}, method.Descriptor())
+	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "flame.model-context.v2", Composition: plugincontract.Decoration, Scope: extension.ScopeCall}, method.Descriptor())
 })
 
 func (r ModelContextResult) Validate() error {

@@ -8,7 +8,6 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/Tangerg/frame/cancellation"
 	"github.com/samber/lo"
 )
 
@@ -54,7 +53,7 @@ func (c *RecoveryCoordinator) Reconcile(ctx context.Context) (acquired bool, err
 	case c.sweepSlot <- struct{}{}:
 		defer func() { <-c.sweepSlot }()
 	default:
-		return false, cancellation.Err(ctx)
+		return false, errors.Join(ctx.Err(), context.Cause(ctx))
 	}
 	return true, c.reconcileOwned(ctx)
 }
@@ -67,7 +66,7 @@ func (c *RecoveryCoordinator) ReconcileStartup(ctx context.Context) error {
 	}
 	select {
 	case <-ctx.Done():
-		return cancellation.Err(ctx)
+		return errors.Join(ctx.Err(), context.Cause(ctx))
 	case c.sweepSlot <- struct{}{}:
 		defer func() { <-c.sweepSlot }()
 	}
@@ -113,17 +112,17 @@ func (c *RecoveryCoordinator) sweep(ctx context.Context) (err error) {
 }
 
 func (c *RecoveryCoordinator) reconcileOwned(ctx context.Context) error {
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return err
 	}
 	if _, err := c.runs.Reconcile(ctx); err != nil {
-		return fmt.Errorf("ownership recovery: reconcile Runs: %w", errors.Join(err, cancellation.Err(ctx)))
+		return fmt.Errorf("ownership recovery: reconcile Runs: %w", errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx))))
 	}
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return err
 	}
 	if err := c.goals.Reconcile(ctx); err != nil {
-		return fmt.Errorf("ownership recovery: reconcile Goals: %w", errors.Join(err, cancellation.Err(ctx)))
+		return fmt.Errorf("ownership recovery: reconcile Goals: %w", errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx))))
 	}
 	return nil
 }
@@ -132,5 +131,5 @@ func recoveryContextError(ctx context.Context) error {
 	if lo.IsNil(ctx) {
 		return errors.New("ownership recovery: context is required")
 	}
-	return cancellation.Err(ctx)
+	return errors.Join(ctx.Err(), context.Cause(ctx))
 }

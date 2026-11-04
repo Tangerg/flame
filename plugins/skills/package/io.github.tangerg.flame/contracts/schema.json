@@ -2,17 +2,40 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "ApproveV1Input": {
-      "$ref": "#/$defs/ReviewRef"
+      "$ref": "#/$defs/ApproveV1InputSkilllearningReviewRef"
+    },
+    "ApproveV1InputSkilllearningReviewRef": {
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "command"
+      ],
+      "type": "object"
     },
     "ApproveV1Output": {
-      "$ref": "#/$defs/Permit"
+      "$ref": "#/$defs/ApproveV1OutputSkilllearningPermit"
+    },
+    "ApproveV1OutputSkilllearningPermit": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision"
+      ],
+      "type": "object"
     },
     "ArchiveAdvice": {
       "additionalProperties": false,
       "properties": {
         "inactiveSince": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/$defs/ArchiveV2OutputInstantTimestamp"
         }
       },
       "type": "object"
@@ -21,8 +44,7 @@
       "additionalProperties": false,
       "properties": {
         "now": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/$defs/ArchiveV2InputInstantTimestamp"
         }
       },
       "required": [
@@ -33,10 +55,19 @@
     "ArchiveV2Input": {
       "$ref": "#/$defs/ArchiveRequest"
     },
+    "ArchiveV2InputInstantTimestamp": {
+      "type": "string"
+    },
     "ArchiveV2Output": {
       "$ref": "#/$defs/ArchiveAdvice"
     },
-    "Candidate": {
+    "ArchiveV2OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "CaptureV1Input": {
+      "$ref": "#/$defs/CaptureV1InputSkilllearningCandidates"
+    },
+    "CaptureV1InputSkilllearningCandidate": {
       "additionalProperties": false,
       "properties": {
         "name": {
@@ -56,12 +87,12 @@
       ],
       "type": "object"
     },
-    "Candidates": {
+    "CaptureV1InputSkilllearningCandidates": {
       "additionalProperties": false,
       "properties": {
         "items": {
           "items": {
-            "$ref": "#/$defs/Candidate"
+            "$ref": "#/$defs/CaptureV1InputSkilllearningCandidate"
           },
           "type": "array"
         },
@@ -75,18 +106,15 @@
       ],
       "type": "object"
     },
-    "CaptureV1Input": {
-      "$ref": "#/$defs/Candidates"
-    },
     "CaptureV1Output": {
-      "$ref": "#/$defs/Catalog"
+      "$ref": "#/$defs/CaptureV1OutputSkilllearningCatalog"
     },
-    "Catalog": {
+    "CaptureV1OutputSkilllearningCatalog": {
       "additionalProperties": false,
       "properties": {
         "entries": {
           "items": {
-            "$ref": "#/$defs/Choice"
+            "$ref": "#/$defs/CaptureV1OutputSkilllearningChoice"
           },
           "type": "array"
         }
@@ -96,7 +124,7 @@
       ],
       "type": "object"
     },
-    "Choice": {
+    "CaptureV1OutputSkilllearningChoice": {
       "additionalProperties": false,
       "properties": {
         "name": {
@@ -115,16 +143,110 @@
     "ConfirmV1Input": {
       "$ref": "#/$defs/Publication"
     },
+    "ConfirmV1InputSkilllearningPermit": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision"
+      ],
+      "type": "object"
+    },
+    "ConfirmV1InputSkilllearningReviewRef": {
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "command"
+      ],
+      "type": "object"
+    },
     "ConfirmV1Output": {
       "additionalProperties": false,
       "properties": {},
       "type": "object"
     },
     "DiscoverV1Input": {
-      "$ref": "#/$defs/Candidates"
+      "$ref": "#/$defs/DiscoverV1InputSkilllearningCandidates"
+    },
+    "DiscoverV1InputSkilllearningCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "source",
+        "scope"
+      ],
+      "type": "object"
+    },
+    "DiscoverV1InputSkilllearningCandidates": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/DiscoverV1InputSkilllearningCandidate"
+          },
+          "type": "array"
+        },
+        "library": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "library",
+        "items"
+      ],
+      "type": "object"
     },
     "DiscoverV1Output": {
-      "$ref": "#/$defs/Catalog"
+      "$ref": "#/$defs/DiscoverV1OutputSkilllearningCatalog"
+    },
+    "DiscoverV1OutputSkilllearningCatalog": {
+      "additionalProperties": false,
+      "properties": {
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/DiscoverV1OutputSkilllearningChoice"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "entries"
+      ],
+      "type": "object"
+    },
+    "DiscoverV1OutputSkilllearningChoice": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "source"
+      ],
+      "type": "object"
     },
     "Draft": {
       "additionalProperties": false,
@@ -145,7 +267,7 @@
           "type": "string"
         },
         "skill": {
-          "$ref": "#/$defs/Skill"
+          "$ref": "#/$defs/ProposeV1InputSkilllearningSkill"
         },
         "sourceSession": {
           "type": "string"
@@ -193,15 +315,23 @@
     "MineV2Output": {
       "$ref": "#/$defs/MineResult"
     },
-    "Permit": {
+    "MineV2OutputSkilllearningSkill": {
       "additionalProperties": false,
       "properties": {
-        "decision": {
+        "description": {
+          "type": "string"
+        },
+        "instructions": {
+          "type": "string"
+        },
+        "name": {
           "type": "string"
         }
       },
       "required": [
-        "decision"
+        "name",
+        "description",
+        "instructions"
       ],
       "type": "object"
     },
@@ -215,7 +345,7 @@
           "type": "boolean"
         },
         "skill": {
-          "$ref": "#/$defs/Skill"
+          "$ref": "#/$defs/MineV2OutputSkilllearningSkill"
         }
       },
       "required": [
@@ -227,17 +357,49 @@
     "ProposeV1Input": {
       "$ref": "#/$defs/Draft"
     },
+    "ProposeV1InputSkilllearningSkill": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "instructions": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "instructions"
+      ],
+      "type": "object"
+    },
     "ProposeV1Output": {
-      "$ref": "#/$defs/ReviewRef"
+      "$ref": "#/$defs/ProposeV1OutputSkilllearningReviewRef"
+    },
+    "ProposeV1OutputSkilllearningReviewRef": {
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "command"
+      ],
+      "type": "object"
     },
     "Publication": {
       "additionalProperties": false,
       "properties": {
         "permit": {
-          "$ref": "#/$defs/Permit"
+          "$ref": "#/$defs/ConfirmV1InputSkilllearningPermit"
         },
         "proposal": {
-          "$ref": "#/$defs/ReviewRef"
+          "$ref": "#/$defs/ConfirmV1InputSkilllearningReviewRef"
         },
         "published": {
           "type": "boolean"
@@ -255,7 +417,7 @@
       "properties": {
         "proposals": {
           "items": {
-            "$ref": "#/$defs/ReviewRef"
+            "$ref": "#/$defs/ReviewsV1OutputSkilllearningReviewRef"
           },
           "type": "array"
         }
@@ -266,14 +428,9 @@
       "type": "object"
     },
     "RejectV1Input": {
-      "$ref": "#/$defs/ReviewRef"
+      "$ref": "#/$defs/RejectV1InputSkilllearningReviewRef"
     },
-    "RejectV1Output": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
-    "ReviewRef": {
+    "RejectV1InputSkilllearningReviewRef": {
       "additionalProperties": false,
       "properties": {
         "command": {
@@ -285,11 +442,28 @@
       ],
       "type": "object"
     },
+    "RejectV1Output": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
     "ReviewsV1Input": {
       "$ref": "#/$defs/Libraries"
     },
     "ReviewsV1Output": {
       "$ref": "#/$defs/Queue"
+    },
+    "ReviewsV1OutputSkilllearningReviewRef": {
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "command"
+      ],
+      "type": "object"
     },
     "Run": {
       "additionalProperties": false,
@@ -315,26 +489,6 @@
         "library",
         "sessionId",
         "toolCalls"
-      ],
-      "type": "object"
-    },
-    "Skill": {
-      "additionalProperties": false,
-      "properties": {
-        "description": {
-          "type": "string"
-        },
-        "instructions": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "name",
-        "description",
-        "instructions"
       ],
       "type": "object"
     }

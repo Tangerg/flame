@@ -56,8 +56,8 @@ func prepareTestInvocation(
 	if err != nil {
 		return toolcontract.Binding{}, toolcontract.Invocation{}, err
 	}
-	invocation, err := binding.Contract().Prepare(chat.ToolCall{
+	invocation, err := binding.Contract().Prepare((chat.ToolCall{
 		ID: "test_call", Name: binding.Contract().Definition().Name, Arguments: arguments,
-	}, nil)
+	}).Request(), toolcontract.Admission{})
 	return binding, invocation, err
 }

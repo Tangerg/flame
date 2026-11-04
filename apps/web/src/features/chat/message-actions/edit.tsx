@@ -26,6 +26,10 @@ function EditButton() {
 export const messageEdit = definePlugin({
   name: "flame.builtin.message-edit",
   setup(ctx) {
-    contributeLayout(ctx, "message.actions", { id: "edit", order: 5, component: EditButton });
+    contributeLayout(ctx.contributions, "message.actions", {
+      id: "edit",
+      order: 5,
+      component: EditButton,
+    });
   },
 });

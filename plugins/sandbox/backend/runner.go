@@ -8,23 +8,24 @@ import (
 	"path/filepath"
 	"runtime"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/frame/sqlite"
-	"github.com/Tangerg/qimu/jsonvalue"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	processsandbox "github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
 	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	toolshell "github.com/Tangerg/scope/tools/shell"
 )
 
 type homeRead func(context.Context) (string, error)
 
 func coreHome(ctx context.Context) (home string, err error) {
-	ref, err := qimumcp.CallbackFromContext(ctx)
+	ref, err := pluginmcp.CallbackFromContext(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -57,10 +58,10 @@ func (r *runner) limits() wire.Limits {
 	return wire.Limits{Available: processsandbox.Available(), Platform: runtime.GOOS, MaxScriptBytes: sandbox.MaxScriptBytes, MaxTimeoutMillis: sandbox.MaxTimeoutMillis, RetainedBytesPerStream: processsandbox.MaxCommandOutputBytes}
 }
 
-func (r *runner) execute(ctx context.Context, method, id string, original jsonvalue.Value) (sandbox.Result, error) {
+func (r *runner) execute(ctx context.Context, method, id string, original framevalue.JSON) (sandbox.Result, error) {
 	var input wire.ExecuteInput
 	prepared, reply, err := pluginstorage.AdmitCommand(ctx, r.db, method, id, original, func(context.Context) error {
-		return json.Unmarshal(original.JSON(), &input, json.RejectUnknownMembers(true), jsonvalue.Numbers())
+		return json.Unmarshal(original.Bytes(), &input, json.RejectUnknownMembers(true), framevalue.Numbers())
 	})
 	if err != nil {
 		return sandbox.Result{}, err
@@ -114,11 +115,11 @@ func (r *runner) complete(ctx context.Context, prepared *pluginstorage.PreparedC
 			return sandbox.Result{}, err
 		}
 	}
-	reply, err := qimumcp.EncodeReply(result, operationErr, classify)
+	reply, err := pluginmcp.EncodeReply(result, operationErr, classify)
 	if err != nil {
 		return sandbox.Result{}, err
 	}
-	encoded := reply.JSON()
+	encoded := reply.Bytes()
 	if err := prepared.SettleExternal(ctx, encoded, nil); err != nil {
 		return sandbox.Result{}, err
 	}
@@ -126,7 +127,7 @@ func (r *runner) complete(ctx context.Context, prepared *pluginstorage.PreparedC
 }
 
 func readOutcome(encoded []byte) (sandbox.Result, error) {
-	result, err := qimumcp.DecodeReply[sandbox.Result](encoded)
+	result, err := pluginmcp.DecodeReply[sandbox.Result](encoded)
 	if err != nil {
 		return sandbox.Result{}, err
 	}

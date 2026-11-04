@@ -4,18 +4,19 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame/cancellation"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
-	chat "github.com/Tangerg/scope/core/chat"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
+	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	toolcontract "github.com/Tangerg/scope/core/tool"
-	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
 type sourceRegistry interface {
@@ -35,7 +36,15 @@ type authorizedTool struct {
 	host     ToolHost
 }
 
-func (t authorizedTool) Unwrap() toolcontract.Tool { return t.Tool }
+func (t authorizedTool) MCPSource() (CapturedSource, bool)    { return t.source.MCPSource() }
+func (t authorizedTool) SourceFingerprint() framevalue.Digest { return t.source.SourceFingerprint() }
+func (t authorizedTool) SourceConfig() ServerConfig           { return t.source.SourceConfig() }
+func (t authorizedTool) InstallationActivation() (plugin.Activation, error) {
+	return t.source.InstallationActivation()
+}
+func (t authorizedTool) ConcurrencyPolicy() func(toolcontract.Invocation) (string, bool) {
+	return t.source.ConcurrencyPolicy()
+}
 func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invocation) (_ toolcontract.Result, returned error) {
 	if err := t.admit(ctx); err != nil {
 		return toolcontract.Result{}, err
@@ -45,12 +54,13 @@ func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invoca
 		if err != nil {
 			return toolcontract.Result{}, err
 		}
-		metadata := scopemcp.RequestMetaFromContext(ctx)
-		if err := metadata.Set(qimumcp.InvocationMetadataKey, captured); err != nil {
+		metadata := sdkmcp.ParamsBase{}
+		if err := metadata.Set(pluginmcp.InvocationMetadataKey, captured); err != nil {
 			return toolcontract.Result{}, err
 		}
-		ctx = scopemcp.WithRequestMeta(ctx, metadata)
-		ctx, err = qimumcp.WithInvocation(ctx, captured)
+		t.source = t.source.WithCallMetadata(metadata)
+		t.Tool = t.source
+		ctx, err = pluginmcp.WithInvocation(ctx, captured)
 		if err != nil {
 			return toolcontract.Result{}, err
 		}
@@ -76,15 +86,15 @@ func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invoca
 }
 
 func (t authorizedTool) admit(ctx context.Context) error {
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return err
 	}
 	current, found, err := t.registry.Dispatchable(ctx, t.config.ID())
-	if cause := cancellation.Err(ctx); cause != nil {
+	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		return errors.Join(err, cause)
 	}
 	if err != nil {
-		failure, failureErr := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindFailed, Cause: err, Output: chat.NewTextToolOutput("current source authority could not be verified")})
+		failure, failureErr := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindFailed, Cause: err, Output: toolcontract.NewTextOutput("current source authority could not be verified")})
 		if failureErr != nil {
 			return failureErr
 		}
@@ -94,7 +104,7 @@ func (t authorizedTool) admit(ctx context.Context) error {
 		return rejected("source authority is no longer admitted")
 	}
 	if err := current.Validate(); err != nil {
-		failure, failureErr := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindFailed, Cause: err, Output: chat.NewTextToolOutput("current source configuration could not be verified")})
+		failure, failureErr := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindFailed, Cause: err, Output: toolcontract.NewTextOutput("current source configuration could not be verified")})
 		if failureErr != nil {
 			return failureErr
 		}
@@ -112,7 +122,7 @@ func (t authorizedTool) admit(ctx context.Context) error {
 // rejected is the definite refusal of a call whose admitted authority or
 // connection was withdrawn; nothing reached the remote server.
 func rejected(reason string) error {
-	failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindRejected, Output: chat.NewTextToolOutput(reason)})
+	failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindRejected, Output: toolcontract.NewTextOutput(reason)})
 	if err != nil {
 		return err
 	}
@@ -127,7 +137,7 @@ func (p *Pool) authorizedTools(catalog []Executable, prepare ToolPreparation) []
 	return result
 }
 
-// CallActivation preserves both the frozen Qimu graph and Flame's per-call
+// CallActivation preserves both the frozen Frame graph and Flame's per-call
 // authority and callback preparation. It never borrows today's catalog graph.
 func (t authorizedTool) CallActivation(ctx context.Context, activation plugin.Activation, invocation toolcontract.Invocation) (result toolcontract.Result, err error) {
 	if t.pool == nil {
@@ -158,7 +168,7 @@ func (t authorizedTool) CallActivation(ctx context.Context, activation plugin.Ac
 	if err != nil || !found {
 		return result, errors.Join(ErrUnavailable, err)
 	}
-	definition, err := jsonvalue.Encode(t.source.Definition())
+	definition, err := framevalue.EncodeJSON(t.source.Definition())
 	if err != nil {
 		return result, err
 	}
@@ -170,7 +180,7 @@ func (t authorizedTool) CallActivation(ctx context.Context, activation plugin.Ac
 		if !found || ref != original {
 			continue
 		}
-		actual, err := jsonvalue.Encode(candidate.Definition())
+		actual, err := framevalue.EncodeJSON(candidate.Definition())
 		if err != nil {
 			return result, err
 		}

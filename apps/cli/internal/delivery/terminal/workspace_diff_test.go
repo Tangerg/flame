@@ -6,11 +6,10 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/highlight"
+	"github.com/Tangerg/oolong/extensions/highlight"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 func TestWorkspaceDiffReaderPreservesFileIdentityAndRows(t *testing.T) {
@@ -38,7 +37,7 @@ func TestWorkspaceDiffReaderPreservesFileIdentityAndRows(t *testing.T) {
 	reader := newReaderPane(kit.Dark(), kit.Unicode(), highlight.New("github-dark"), input.Wheel{}, clipboard)
 	t.Cleanup(reader.Shutdown)
 	reader.Open(readerTarget{document: document})
-	root := headless.NewRoot(reader)
+	root := newSceneTestRoot(t, reader.Element())
 	surface := grid.NewSurface(100, 40)
 	root.Draw(surface.View())
 	reader.copy()

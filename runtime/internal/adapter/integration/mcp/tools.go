@@ -5,11 +5,15 @@ import (
 	"errors"
 	"fmt"
 
+	framevalue "github.com/Tangerg/frame/value"
+	"github.com/Tangerg/scope/agent/interaction"
+	"github.com/Tangerg/scope/core/metadata"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/integrity"
+
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"
 )
@@ -24,6 +28,7 @@ func sourceTools(ctx context.Context, owner *connections, descriptor ServerConfi
 	server := descriptor.ID()
 	source := scopemcp.ToolSource{Name: descriptor.Name.String(), Session: session}
 	var remoteNameErr error
+	callKey := &sourceCallMetadata{}
 	tools, discoverErr := scopemcp.DiscoverTools(ctx, []scopemcp.ToolSource{source}, scopemcp.ToolDiscoveryConfig{
 		PublicName: func(_ string, toolName string) string {
 			remoteName, err := mcpserver.ParseRemoteToolName(toolName)
@@ -40,7 +45,10 @@ func sourceTools(ctx context.Context, owner *connections, descriptor ServerConfi
 			return ref.DiscoveryName()
 		},
 		ConcurrencyPolicy: scopemcp.AnnotatedReadOnlyConcurrencyPolicy,
-		RequestMeta:       scopemcp.RequestMetaFromContext,
+		RequestMeta: func(ctx context.Context, _ toolcontract.Invocation) sdkmcp.Meta {
+			captured, _ := ctx.Value(callKey).(sdkmcp.Meta)
+			return sdkmcp.Meta(metadata.Map(captured).Clone())
+		},
 	})
 	if remoteNameErr != nil {
 		return nil, fmt.Errorf("mcp: validate tool from server %q: %w", server, remoteNameErr)
@@ -52,7 +60,7 @@ func sourceTools(ctx context.Context, owner *connections, descriptor ServerConfi
 	config.OAuthHandler = nil
 	result := make([]Executable, len(tools))
 	for index, executable := range tools {
-		result[index] = Executable{Tool: executable, config: config, owner: owner, session: session}
+		result[index] = Executable{Tool: executable, config: config, owner: owner, session: session, callKey: callKey}
 	}
 	if err := validateSourceToolMaterial(server, result); err != nil {
 		return nil, err
@@ -88,6 +96,11 @@ func validateSourceToolMaterial(server mcpserver.ID, tools []Executable) error {
 // Executable retains the configuration and the session that admitted it. It
 // cannot advance registry configuration or the connection's live OAuth
 // credentials.
+// sourceCallMetadata is a private transport key bound to this discovery. The
+// executable supplies explicitly captured wire parameters for one synchronous
+// call; no ambient context metadata or current host identity is consulted.
+type sourceCallMetadata struct{ marker byte }
+
 type Executable struct {
 	toolcontract.Tool
 	config         ServerConfig
@@ -95,6 +108,8 @@ type Executable struct {
 	session        *sdkmcp.ClientSession
 	held           *BorrowedSession
 	catalogVersion uint64
+	callKey        *sourceCallMetadata
+	callMetadata   sdkmcp.Meta
 }
 
 func (t Executable) Call(ctx context.Context, invocation toolcontract.Invocation) (_ toolcontract.Result, err error) {
@@ -103,7 +118,11 @@ func (t Executable) Call(ctx context.Context, invocation toolcontract.Invocation
 		return toolcontract.Result{}, err
 	}
 	defer func() { err = errors.Join(err, borrowed.Close()) }()
-	return t.Tool.Call(borrowed.Context(), invocation)
+	callCtx := borrowed.Context()
+	if t.callKey != nil {
+		callCtx = context.WithValue(callCtx, t.callKey, t.callMetadata)
+	}
+	return t.Tool.Call(callCtx, invocation)
 }
 
 // Current reports whether this executable's admitted catalog revision still
@@ -116,9 +135,35 @@ func (t Executable) Current() bool {
 	return t.owner != nil && t.owner.current(t.config.ID(), t.session, t.catalogVersion)
 }
 
-func (t Executable) Unwrap() toolcontract.Tool           { return t.Tool }
-func (t Executable) SourceFingerprint() integrity.Digest { return t.config.AuthorityFingerprint() }
-func (t Executable) SourceConfig() ServerConfig          { return t.config.Clone() }
+// WithCallMetadata creates one call's immutable metadata projection. Its
+// caller must retain and release any callback grant for the whole call.
+func (t Executable) WithCallMetadata(params sdkmcp.ParamsBase) Executable {
+	combined := metadata.Map(t.callMetadata).Clone()
+	if combined == nil {
+		combined = make(metadata.Map)
+	}
+	for key, value := range params.Meta {
+		combined[key] = append([]byte(nil), value...)
+	}
+	t.callMetadata = sdkmcp.Meta(combined)
+	return t
+}
+
+func (t Executable) MCPSource() (CapturedSource, bool) {
+	captured := CapturedSource{Config: t.SourceConfig()}
+	if identity, ok := t.Tool.(remoteToolIdentity); ok {
+		_, captured.RemoteName = identity.MCPToolIdentity()
+	}
+	return captured, true
+}
+func (t Executable) ConcurrencyPolicy() func(toolcontract.Invocation) (string, bool) {
+	if declared, ok := t.Tool.(interaction.ConcurrentTool); ok {
+		return declared.ConcurrencyPolicy()
+	}
+	return nil
+}
+func (t Executable) SourceFingerprint() framevalue.Digest { return t.config.AuthorityFingerprint() }
+func (t Executable) SourceConfig() ServerConfig           { return t.config.Clone() }
 
 // BorrowSession holds this executable's original Use while callback grants are
 // being prepared and used. The caller closes it after revoking those grants.

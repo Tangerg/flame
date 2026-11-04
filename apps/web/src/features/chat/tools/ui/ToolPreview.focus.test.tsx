@@ -59,7 +59,7 @@ async function installResult(component: ToolResultRendererSpec["component"] = En
     definePlugin({
       name: "test.result-focus",
       setup(ctx) {
-        ctx.contribute(TOOL_RESULT_RENDERER, spec);
+        ctx.contributions.add(TOOL_RESULT_RENDERER, spec);
       },
     }),
   );

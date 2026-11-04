@@ -16,11 +16,11 @@ export function visualFileRenderers(runtimeClient: () => FlameClient) {
       for (const entry of declaration.components as PluginClientComponent[]) {
         if (entry.placement !== "fileRenderer" || entry.selector?.type !== "fileExtension")
           continue;
-        const lifetime = ctx.lifetime(entry.id);
+        const lifetime = ctx.contributions.child(entry.id);
         const sources = visualComponentProps(runtimeClient(), lifetime, entry.id);
         const File = ({ file, fallback }: { file: CapturedFile; fallback: ReactNode }) =>
           createElement(InstalledFileComponent, { ...sources, file, fallback, entry: Markdown });
-        lifetime.contribute(
+        lifetime.add(
           WORKSPACE_FILE_RENDERER,
           {
             id: `visual:${entry.id}`,

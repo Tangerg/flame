@@ -1,12 +1,41 @@
 package persistence
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 )
+
+func TestOpenRefusesEarlierAuthorityWithoutCreatingReplacementState(t *testing.T) {
+	for _, name := range []string{"flame-qimu.db", "flame.db"} {
+		t.Run(name, func(t *testing.T) {
+			directory := t.TempDir()
+			original := []byte("original unresolved operation evidence")
+			path := filepath.Join(directory, name)
+			if err := os.WriteFile(path, original, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := Open(t.Context(), Config{DataDirectory: directory}); err == nil || !strings.Contains(err.Error(), "original Runtime for recovery") {
+				t.Fatalf("earlier authority was silently bypassed: %v", err)
+			}
+			bytes, err := os.ReadFile(path)
+			if err != nil || string(bytes) != string(original) {
+				t.Fatalf("original recovery evidence changed: %q, %v", bytes, err)
+			}
+			layout, err := localruntime.DataDirectoryAt(directory)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := os.Lstat(layout.DatabasePath()); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("refusal created new authority: %v", err)
+			}
+		})
+	}
+}
 
 func TestOpenRequiresAndUsesExplicitProcessPaths(t *testing.T) {
 	if _, err := Open(t.Context(), Config{}); err == nil {

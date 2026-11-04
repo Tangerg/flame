@@ -11,7 +11,7 @@ const ApprovalsPane = lazy(() =>
 export default definePlugin({
   name: "flame.builtin.approvals-pane",
   setup(ctx) {
-    registerSettingsPane(ctx, {
+    registerSettingsPane(ctx.contributions, {
       id: APPROVALS_PANE,
       label: "settings.pane.approvals",
       keywords: ["approvals.mode", "approvals.rules"],

@@ -9,9 +9,10 @@ import (
 	"strings"
 	"testing"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 type testCodeIntelligence struct {
@@ -50,7 +51,7 @@ func TestFormattingRefusesAnotherVersionAndConcurrentReplacement(t *testing.T) {
 				t.Fatal(err)
 			}
 			use := &testCodeIntelligence{format: func(document codeintel.Document) (codeintel.Transformation, error) {
-				version := integrity.Hash([]byte("another source"))
+				version := framevalue.Hash([]byte("another source"))
 				if replace {
 					version = document.Version
 					if err := os.WriteFile(path, []byte("external change"), 0600); err != nil {

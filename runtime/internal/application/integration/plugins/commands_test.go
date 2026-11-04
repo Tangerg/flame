@@ -8,14 +8,16 @@ import (
 	"testing"
 	"testing/synctest"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/frame"
 )
 
 func TestCommandsKeepOriginalRouteAndAdmitDispatchOnlyOnce(t *testing.T) {
@@ -117,7 +119,7 @@ func (s *blockedCommandStore) Save(_ context.Context, command *plugin.Command) e
 
 func TestCommandBindingAndInstallationChangeShareAdmission(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		admission := qimu.NewAdmission()
+		admission := frame.NewAdmission()
 		persist := make(chan struct{})
 		store := &blockedCommandStore{persist: persist}
 		commands, err := plugins.NewCommands(store, admission)
@@ -133,11 +135,11 @@ func TestCommandBindingAndInstallationChangeShareAdmission(t *testing.T) {
 		synctest.Wait()
 		changed := make(chan error, 1)
 		go func() {
-			changed <- admission.Change(t.Context(), provider.InstallationID.Host(), func() (bool, error) {
+			changed <- admission.Under(t.Context(), func() error {
 				if store.command == nil || !store.command.Pending() {
-					return false, errors.New("change missed the pending command")
+					return errors.New("change missed the pending command")
 				}
-				return false, plugin.ErrInUse
+				return plugin.ErrInUse
 			})
 		}()
 		synctest.Wait()
@@ -157,8 +159,8 @@ func TestCommandBindingAndInstallationChangeShareAdmission(t *testing.T) {
 	})
 }
 
-func capturedCommand(binding plugins.ContributionBinding) (portable.Invocation, error) {
-	invocation := portable.Invocation{ID: "command", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}}
+func capturedCommand(binding plugins.ContributionBinding) (framemcp.Invocation, error) {
+	invocation := framemcp.Invocation{ID: "command", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}}
 	return invocation, invocation.Validate()
 }
 
@@ -178,7 +180,7 @@ func TestBackgroundRestoresOnlyItsDispatchedOriginalCaller(t *testing.T) {
 		t.Fatal(err)
 	}
 	original.Parent = "original-parent"
-	command, err := commands.Bind(t.Context(), original.ID, "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.CommandAdmission, error) { return commandAdmission(provider), nil }, func(plugins.ContributionBinding) (portable.Invocation, error) { return original, nil })
+	command, err := commands.Bind(t.Context(), original.ID, "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.CommandAdmission, error) { return commandAdmission(provider), nil }, func(plugins.ContributionBinding) (framemcp.Invocation, error) { return original, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,11 +207,11 @@ func TestBackgroundRestoresOnlyItsDispatchedOriginalCaller(t *testing.T) {
 	if !found || retained.InstallationID() != actor.InstallationID() || retained.Authority() != actor.Authority() {
 		t.Fatal("invocation replaced authenticated Actor")
 	}
-	for _, change := range []func(*portable.Invocation){
-		func(v *portable.Invocation) { v.Origin = extension.Model },
-		func(v *portable.Invocation) { v.Parent = "changed-parent" },
-		func(v *portable.Invocation) { v.ID = "unknown-human" },
-		func(v *portable.Invocation) { v.Target.Reference = testsupport.InstallationID(t).String() },
+	for _, change := range []func(*framemcp.Invocation){
+		func(v *framemcp.Invocation) { v.Origin = extension.Model },
+		func(v *framemcp.Invocation) { v.Parent = "changed-parent" },
+		func(v *framemcp.Invocation) { v.ID = "unknown-human" },
+		func(v *framemcp.Invocation) { v.Target.Reference = testsupport.InstallationID(t).String() },
 	} {
 		altered := original
 		change(&altered)
@@ -217,7 +219,7 @@ func TestBackgroundRestoresOnlyItsDispatchedOriginalCaller(t *testing.T) {
 			t.Fatalf("changed caller accepted: %+v, %v", altered, err)
 		}
 	}
-	automatic := portable.Invocation{ID: "private-trigger", Origin: extension.Automatic, Target: original.Target}
+	automatic := framemcp.Invocation{ID: "private-trigger", Origin: extension.Automatic, Target: original.Target}
 	if _, err := commands.RestoreInvocation(calling, automatic); err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +231,7 @@ func TestBackgroundRestoresOnlyItsDispatchedOriginalCaller(t *testing.T) {
 
 func TestBackgroundRestoresOriginalResourceTargetAfterRestart(t *testing.T) {
 	for _, target := range []portable.Target{{Scope: "session", Reference: "ses_original"}, {Scope: "workspace", Reference: "/original/workspace"}} {
-		for _, origin := range []portable.Origin{extension.Human, extension.Model, extension.Automatic} {
+		for _, origin := range []framemcp.Origin{extension.Human, extension.Model, extension.Automatic} {
 			t.Run(target.Scope+"/"+string(origin), func(t *testing.T) {
 				path := filepath.Join(t.TempDir(), "flame.db")
 				db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(path))
@@ -242,8 +244,8 @@ func TestBackgroundRestoresOriginalResourceTargetAfterRestart(t *testing.T) {
 					t.Fatal(err)
 				}
 				provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", target.Scope), ContributionID: "owner", Export: "operations"}
-				original := portable.Invocation{ID: "original-command", Origin: origin, Parent: "original-parent", Target: target}
-				command, err := commands.Bind(t.Context(), original.ID, "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.CommandAdmission, error) { return commandAdmission(provider), nil }, func(plugins.ContributionBinding) (portable.Invocation, error) { return original, nil })
+				original := framemcp.Invocation{ID: "original-command", Origin: origin, Parent: "original-parent", Target: target}
+				command, err := commands.Bind(t.Context(), original.ID, "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.CommandAdmission, error) { return commandAdmission(provider), nil }, func(plugins.ContributionBinding) (framemcp.Invocation, error) { return original, nil })
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -285,12 +287,12 @@ func TestBackgroundRestoresOriginalResourceTargetAfterRestart(t *testing.T) {
 						t.Fatalf("original resource caller changed: %+v %v", captured, err)
 					}
 				}
-				for _, change := range []func(*portable.Invocation){
-					func(v *portable.Invocation) { v.Target.Reference = "different-resource" },
-					func(v *portable.Invocation) {
+				for _, change := range []func(*framemcp.Invocation){
+					func(v *framemcp.Invocation) { v.Target.Reference = "different-resource" },
+					func(v *framemcp.Invocation) {
 						v.Target = portable.Target{Scope: extension.ScopeInstallation, Reference: actor.InstallationID().String()}
 					},
-					func(v *portable.Invocation) { v.Parent = "different-parent" },
+					func(v *framemcp.Invocation) { v.Parent = "different-parent" },
 				} {
 					altered := original
 					change(&altered)
@@ -298,7 +300,7 @@ func TestBackgroundRestoresOriginalResourceTargetAfterRestart(t *testing.T) {
 						t.Fatalf("resource caller retargeted: %+v %v", altered, err)
 					}
 				}
-				fresh := portable.Invocation{ID: "unrecorded-resource-trigger", Origin: extension.Automatic, Target: target}
+				fresh := framemcp.Invocation{ID: "unrecorded-resource-trigger", Origin: extension.Automatic, Target: target}
 				if _, err := commands.RestoreInvocation(calling, fresh); !errors.Is(err, plugin.ErrCommandConflict) {
 					t.Fatalf("unrecorded resource target accepted: %v", err)
 				}

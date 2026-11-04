@@ -8,7 +8,8 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
 // PrepareWaitingSubtreeCancellation projects one exact waiting Interaction tree
@@ -63,7 +64,7 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 			"execution: waiting subtree preparation requires a deadline",
 		)
 	}
-	targetID, err := agent.ParseProcessID(memberID)
+	targetID, err := scoperun.ParseProcessID(memberID)
 	if err != nil {
 		return runs.PreparedWaitingSubtreeCancellation{}, fmt.Errorf(
 			"execution: parse waiting subtree member: %w",
@@ -96,7 +97,7 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 			runs.ErrInvalidExecutorCheckpoint,
 		)
 	}
-	rootID := i.state.process.Relation().RootID()
+	rootID := i.state.process.ID().Root()
 	managed := i.state.delegateChildren[targetID]
 	if managed == nil {
 		i.state.mu.Unlock()
@@ -135,7 +136,10 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 		i.failSubtreePreparation(preparedSignal)
 		return runs.PreparedWaitingSubtreeCancellation{}, err
 	}
-	canceled := i.canceledSubtree(stagedTree, targetID)
+	canceled, err := i.canceledSubtree(stagedTree, targetID)
+	if err != nil {
+		return runs.PreparedWaitingSubtreeCancellation{}, err
+	}
 	resultingTree, err := i.committedTree(ctx, rootID)
 	if err != nil {
 		i.failSubtreePreparation(preparedSignal)
@@ -193,7 +197,7 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 }
 
 func (i *interactionSession) executorMemberIDs(
-	processIDs []agent.ProcessID,
+	processIDs []scoperun.ProcessID,
 ) ([]string, error) {
 	members := make([]string, len(processIDs))
 	for index, processID := range processIDs {
@@ -242,47 +246,53 @@ func (i *interactionSession) completeSubtreePreparation(
 }
 
 // The waiting cut precedes cancellation. Terminal processes are historical
-// evidence, not members that this cancellation can end or resume. Tool children
-// travel with their owning product member.
+// evidence, not members that this cancellation can end or resume. Each task's
+// inner Interaction travels with its owning product member.
 func (i *interactionSession) canceledSubtree(
-	tree agent.TreeSnapshot,
-	targetID agent.ProcessID,
-) []agent.ProcessID {
+	tree scoperun.Log,
+	targetID scoperun.ProcessID,
+) ([]scoperun.ProcessID, error) {
 	i.state.mu.Lock()
 	deployments := i.state.deployments
 	i.state.mu.Unlock()
 	parents := capturedParents(tree)
-	canceled := make([]agent.ProcessID, 0)
-	for _, snapshot := range tree.ProcessSnapshots() {
-		if snapshot.Status().Terminal() ||
-			(deployments != nil && deployments.toolChild(snapshot.DeploymentRef())) {
+	inspection, err := tree.Inspect()
+	if err != nil {
+		return nil, err
+	}
+	canceled := make([]scoperun.ProcessID, 0)
+	for _, snapshot := range inspection.Processes {
+		if snapshot.Status.Terminal() ||
+			(deployments != nil && deployments.interactionChild(snapshot.Program)) {
 			continue
 		}
-		processID := snapshot.Relation().ProcessID()
+		processID := snapshot.ID
 		if descendsFrom(parents, processID, targetID) {
 			canceled = append(canceled, processID)
 		}
 	}
-	slices.SortFunc(canceled, func(left, right agent.ProcessID) int {
+	slices.SortFunc(canceled, func(left, right scoperun.ProcessID) int {
 		return strings.Compare(left.String(), right.String())
 	})
-	return canceled
+	return canceled, nil
 }
 
-func capturedParents(tree agent.TreeSnapshot) map[agent.ProcessID]agent.ProcessID {
-	parents := make(map[agent.ProcessID]agent.ProcessID, len(tree.ProcessSnapshots()))
-	for _, snapshot := range tree.ProcessSnapshots() {
-		if parentID, child := snapshot.Relation().ParentID(); child {
-			parents[snapshot.Relation().ProcessID()] = parentID
+func capturedParents(tree scoperun.Log) map[scoperun.ProcessID]scoperun.ProcessID {
+	parents := make(map[scoperun.ProcessID]scoperun.ProcessID)
+	for _, entry := range tree.Entries {
+		if started, ok := entry.Record.(scoperun.Started); ok {
+			if parent, child := started.Process.Parent(); child {
+				parents[started.Process] = parent
+			}
 		}
 	}
 	return parents
 }
 
 func descendsFrom(
-	parents map[agent.ProcessID]agent.ProcessID,
-	processID agent.ProcessID,
-	ancestorID agent.ProcessID,
+	parents map[scoperun.ProcessID]scoperun.ProcessID,
+	processID scoperun.ProcessID,
+	ancestorID scoperun.ProcessID,
 ) bool {
 	for range len(parents) + 1 {
 		if processID == ancestorID {

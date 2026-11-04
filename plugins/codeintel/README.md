@@ -31,7 +31,7 @@ reported as unavailable, never as a successful empty analysis.
 Build through `node plugins/scripts/build-packages.mjs`; the first-party catalog
 selects this package's code-intelligence contribution on a fresh default install.
 Disabling it removes its Tools and prevents new analysis. An existing borrowed
-activation retains the usual Qimu cancellation and release protections.
+activation retains the usual Frame cancellation and release protections.
 
 Rebuild the Runtime and its consumers together after removing the built-in `lsp`
 Tool identity. Select the new installed release and move custom server settings

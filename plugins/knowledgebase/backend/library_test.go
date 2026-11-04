@@ -7,14 +7,16 @@ import (
 	"sync/atomic"
 	"testing"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
 	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *testing.T) {
@@ -47,7 +49,7 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 		t.Fatal(err)
 	}
 	input := wire.ImportInput{Content: knowledge.Content{ID: "guide", Title: "Guide", Source: "docs/guide.md", Text: "A source-owned document."}}
-	admitted, err := jsonvalue.Encode(input)
+	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,11 +81,11 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	}
 	changed := input
 	changed.Content.Text = "Another intent."
-	changedJSON, err := jsonvalue.Encode(changed)
+	changedJSON, err := framevalue.EncodeJSON(changed)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "original", changedJSON); !errors.Is(err, portable.ErrInvocationConflict) {
+	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "original", changedJSON); !errors.Is(err, framemcp.ErrInvocationConflict) {
 		t.Fatalf("changed intent = %v", err)
 	}
 	staleCalls := calls.Load()
@@ -94,7 +96,7 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 		t.Fatalf("known refusal was re-executed: %v", err)
 	}
 	input.ExpectedRevision = 1
-	admitted, err = jsonvalue.Encode(input)
+	admitted, err = framevalue.EncodeJSON(input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +108,7 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "unknown", admitted); !errors.Is(err, pluginstorage.ErrCommandUnconfirmed) || calls.Load() != before {
 		t.Fatalf("pending work repeated its external exchange: %v", err)
 	}
-	receipt, err := pluginstorage.ReadReceipt(t.Context(), reopened.db, qimumcp.ReceiptRequest{ID: "unknown", Method: contracts.Import.Name(), InputDigest: admitted.Digest()})
+	receipt, err := pluginstorage.ReadReceipt(t.Context(), reopened.db, pluginmcp.ReceiptRequest{ID: "unknown", Method: contracts.Import.Name(), InputDigest: admitted.Digest()})
 	if err != nil || receipt.Found {
 		t.Fatalf("uncertainty invented a receipt: %+v, %v", receipt, err)
 	}

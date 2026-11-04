@@ -25,6 +25,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	infraexec "github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -35,7 +36,7 @@ import (
 // restore, and delegate tests exercise the real continuation path rather than a
 // substitute. render projects the restored answer into the model-visible result.
 type questionTool struct {
-	definition chat.ToolDefinition
+	definition toolcontract.Definition
 	prompt     runs.Interrupt
 	render     func(run.InterruptResolution) (string, error)
 }
@@ -46,7 +47,7 @@ func newQuestionTool(t *testing.T, name, description string, fields []runs.Quest
 	if err != nil {
 		t.Fatal(err)
 	}
-	definition := chat.ToolDefinition{Name: name, Description: description, InputSchema: schema.JSON()}
+	definition := toolcontract.Definition{Name: name, Description: description, InputSchema: schema.JSON()}
 	if err := definition.Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +58,7 @@ func newQuestionTool(t *testing.T, name, description string, fields []runs.Quest
 	}
 }
 
-func (q *questionTool) Definition() chat.ToolDefinition { return q.definition }
+func (q *questionTool) Definition() toolcontract.Definition { return q.definition }
 
 func (q *questionTool) Call(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 	resolution, request, err := runinput.Require(ctx, invocation, q.prompt)
@@ -71,7 +72,7 @@ func (q *questionTool) Call(ctx context.Context, invocation toolcontract.Invocat
 	if err != nil {
 		return toolcontract.Result{}, err
 	}
-	output := chat.NewTextToolOutput(text)
+	output := toolcontract.NewTextOutput(text)
 	if err := output.Validate(); err != nil {
 		return toolcontract.Result{}, err
 	}
@@ -235,7 +236,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	if !reflect.DeepEqual(steers[0].Messages[0].Content, committedInput.Content) {
 		t.Fatal("resume rewrote original media evidence")
 	}
-	estimated, err := flamemodel.EstimateRequestTokens(&chat.Request{Messages: requests[0], Options: chat.Options{Temperature: new(0.27), MaxOutputTokens: new(int64(321)), Stop: []string{"TRANSFORMED"}}, Tools: []chat.ToolDefinition{question.Definition()}})
+	estimated, err := flamemodel.EstimateRequestTokens(&chat.Request{Messages: requests[0], Options: chat.Options{Temperature: new(0.27), MaxOutputTokens: new(int64(321)), Stop: []string{"TRANSFORMED"}}, Tools: []toolcontract.Definition{question.Definition()}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -480,8 +481,8 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 	}
 	observed := <-events
 	ended := payloadsOf[runs.SegmentEnded](observed)
-	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCanceled {
-		t.Fatalf("segment end = %#v, want canceled", ended)
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeLost || len(ended[0].UnresolvedEffects()) != 1 {
+		t.Fatalf("segment end = %#v, want retained unresolved effect", ended)
 	}
 	if err := executor.Release(t.Context(), ref); err != nil {
 		t.Fatal(err)
@@ -556,8 +557,8 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 	}
 	observed := <-events
 	ended := payloadsOf[runs.SegmentEnded](observed)
-	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCanceled {
-		t.Fatalf("segment end = %#v, want canceled", ended)
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeLost || len(ended[0].UnresolvedEffects()) != 1 {
+		t.Fatalf("segment end = %#v, want retained unresolved effect", ended)
 	}
 	if running := shells.RetainedForSession(start.SessionID); len(running) != 0 {
 		t.Fatalf("approved foreground shell survived cancellation: %#v", running)
@@ -916,8 +917,9 @@ func TestInteractionExecutorTerminatesWithoutReplayingUnknownEffect(t *testing.T
 		t.Fatal("unknown Interaction has no Process")
 	}
 	result, err := process.Await(t.Context())
-	if err != nil || len(result.Termination().UnresolvedEffectIDs()) == 0 {
-		t.Fatalf("terminal evidence missing: %v", err)
+	failure, interrupted := errors.AsType[*scoperun.RuntimeError](err)
+	if !interrupted || result.Valid() || len(failure.UnresolvedEffectIDs()) == 0 {
+		t.Fatalf("unknown execution evidence missing: %v", err)
 	}
 	if err := executor.Release(t.Context(), ref); err != nil {
 		t.Fatal(err)

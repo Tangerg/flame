@@ -3,12 +3,13 @@ package main
 import (
 	"errors"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
-	"github.com/Tangerg/qimu/portable"
 )
 
 // modelInputCode reports a model selection the model contract rejects; it has
@@ -46,7 +47,7 @@ func classify(err error) (string, bool) {
 	if modelchoice.IsInvalid(err) {
 		return modelInputCode, true
 	}
-	if failure, ok := errors.AsType[*portable.Refusal](err); ok {
+	if failure, ok := errors.AsType[*framemcp.Refusal](err); ok {
 		if codedCause(failure.Code) != nil || failure.Code == modelInputCode {
 			return failure.Code, true
 		}
@@ -60,7 +61,7 @@ func classify(err error) (string, bool) {
 }
 
 func decodeError(err error) error {
-	var failure *portable.Refusal
+	var failure *framemcp.Refusal
 	if errors.As(err, &failure) {
 		if cause := codedCause(failure.Code); cause != nil {
 			return errors.Join(cause, err)

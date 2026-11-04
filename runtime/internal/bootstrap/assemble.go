@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
@@ -28,7 +29,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 // assemble transfers acquired resources directly to the Runtime lifecycle.
@@ -49,7 +49,7 @@ func assemble(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime
 	if err != nil {
 		return nil, err
 	}
-	callbacks := qimumcp.NewCallbacks()
+	callbacks := pluginmcp.NewCallbacks()
 	lifetime.toolResources = append(lifetime.toolResources, terminalStep(func(context.Context) error { return callbacks.Close() }))
 	policy, err := buildPolicyComposition(ctx, cfg, lifetime, callbacks)
 	if err != nil {
@@ -306,15 +306,15 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct MCP coordinator: %w", err)
 	}
 	lifetime.mcpCoordinator = mcpCoordinator
-	pluginCoordinator, err := plugins.New(lifetime.context, policy.framework.host, cfg.stores.Installations, cfg.stores.PluginReleases, policy.packages, mcpCoordinator, policy.invalidations.publish)
+	pluginCoordinator, err := plugins.New(lifetime.context, policy.framework.host, cfg.stores.Installations, cfg.stores.PluginReleases, policy.packages, mcpCoordinator, cfg.stores.Transactor, policy.invalidations.publish)
 	if err != nil {
 		return nil, err
 	}
-	pluginSelections, err := plugins.NewSelections(cfg.stores.ProviderSelections, cfg.stores.Installations, execution.tools.admission, policy.invalidations.publish, mcpCoordinator)
+	pluginSelections, err := plugins.NewSelections(cfg.stores.ProviderSelections, cfg.stores.Installations, cfg.stores.Transactor, policy.invalidations.publish, mcpCoordinator)
 	if err != nil {
 		return nil, err
 	}
-	pluginCompositions, err := plugins.NewCompositions(cfg.stores.PluginCompositions, cfg.stores.Installations, execution.tools.admission, policy.invalidations.publish)
+	pluginCompositions, err := plugins.NewCompositions(cfg.stores.PluginCompositions, cfg.stores.Installations, cfg.stores.Transactor, policy.invalidations.publish)
 	if err != nil {
 		return nil, err
 	}

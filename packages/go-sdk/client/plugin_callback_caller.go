@@ -6,16 +6,18 @@ import (
 	"iter"
 	"sync/atomic"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 // PluginCallbackCaller binds background work to setup's activation and nested
 // operations to their calling-owner callback, preserving original context.
-type PluginCallbackCaller struct{ activation qimumcp.CallbackRef }
+type PluginCallbackCaller struct{ activation pluginmcp.CallbackRef }
 
-func NewPluginCallbackCaller(activation qimumcp.CallbackRef) (*PluginCallbackCaller, error) {
+func NewPluginCallbackCaller(activation pluginmcp.CallbackRef) (*PluginCallbackCaller, error) {
 	if err := activation.Validate(); err != nil {
 		return nil, err
 	}
@@ -35,14 +37,14 @@ func (c *PluginCallbackCaller) CallPlugin(ctx context.Context, request protocol.
 	return client.CallPlugin(ctx, request, options)
 }
 
-func (c *PluginCallbackCaller) reference(ctx context.Context) (qimumcp.CallbackRef, error) {
+func (c *PluginCallbackCaller) reference(ctx context.Context) (pluginmcp.CallbackRef, error) {
 	if c == nil {
-		return qimumcp.CallbackRef{}, errors.New("runtime: plugin callback caller is required")
+		return pluginmcp.CallbackRef{}, errors.New("runtime: plugin callback caller is required")
 	}
-	ref, refErr := qimumcp.CallbackFromContext(ctx)
+	ref, refErr := pluginmcp.CallbackFromContext(ctx)
 	if refErr != nil {
-		if _, invocationErr := qimumcp.InvocationFromContext(ctx); invocationErr == nil {
-			return qimumcp.CallbackRef{}, errors.New("runtime: an invoked plugin dependency requires its calling-owner callback")
+		if _, invocationErr := pluginmcp.InvocationFromContext(ctx); invocationErr == nil {
+			return pluginmcp.CallbackRef{}, errors.New("runtime: an invoked plugin dependency requires its calling-owner callback")
 		}
 		ref = c.activation
 	}
@@ -59,11 +61,11 @@ func (c *PluginCallbackCaller) StreamPlugin(ctx context.Context, request protoco
 	if err := protocol.ValidateWireTree(request); err != nil {
 		return struct{}{}, nil, err
 	}
-	input, err := jsonvalue.Parse([]byte(request.Input))
+	input, err := framevalue.ParseJSON([]byte(request.Input))
 	if err != nil {
 		return struct{}{}, nil, err
 	}
-	request.Input = string(input.JSON())
+	request.Input = string(input.Bytes())
 	options, err = captureStreamOptions(options)
 	if err != nil {
 		return struct{}{}, nil, err

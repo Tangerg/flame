@@ -9,12 +9,15 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -36,7 +39,7 @@ func testModelRequest() *chat.Request {
 }
 
 func TestMemoryGrantKeepsCompleteModelEvidenceWithKnownResponseAndFailure(t *testing.T) {
-	callbacks := qimumcp.NewCallbacks()
+	callbacks := pluginmcp.NewCallbacks()
 	defer callbacks.Close()
 	session := new(sdk.ClientSession)
 	if err := callbacks.AdmitSession(session); err != nil {
@@ -61,7 +64,7 @@ func TestModelTransportFailurePreservesCauseWithoutCapability(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	token := strings.Repeat("a", 64)
-	_, err := pluginsdk.CallModel(ctx, qimumcp.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: token, Call: token, MaxResponseBytes: 1024}, "original", testModelRequest())
+	_, err := pluginsdk.CallModel(ctx, pluginmcp.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: token, Call: token, MaxResponseBytes: 1024}, "original", testModelRequest())
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled transport lost its cause: %v", err)
 	}
@@ -71,7 +74,7 @@ func TestModelTransportFailurePreservesCauseWithoutCapability(t *testing.T) {
 }
 
 func TestModelGrantBindsSessionBudgetAndRevocation(t *testing.T) {
-	broker := qimumcp.NewCallbacks()
+	broker := pluginmcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
@@ -93,7 +96,7 @@ func TestModelGrantBindsSessionBudgetAndRevocation(t *testing.T) {
 		t.Fatal("another connection borrowed model authority")
 	}
 	for index := range memorycontract.MaxModelCalls {
-		value, err := pluginsdk.CallModel(t.Context(), grant, qimumcp.CommandID(fmt.Sprintf("original-%d", index)), testModelRequest())
+		value, err := pluginsdk.CallModel(t.Context(), grant, pluginmcp.CommandID(fmt.Sprintf("original-%d", index)), testModelRequest())
 		if err != nil || value == nil || value.Output.Message.Text() != "fact" {
 			t.Fatalf("completion=%+v %v", value, err)
 		}
@@ -114,7 +117,7 @@ func TestModelGrantBindsSessionBudgetAndRevocation(t *testing.T) {
 func TestModelInvocationIdentityFencesExternalCalls(t *testing.T) {
 	for _, lost := range []bool{false, true} {
 		t.Run(fmt.Sprint("response lost ", lost), func(t *testing.T) {
-			callbacks := qimumcp.NewCallbacks()
+			callbacks := pluginmcp.NewCallbacks()
 			t.Cleanup(func() {
 				if err := callbacks.Close(); err != nil {
 					t.Error(err)
@@ -140,7 +143,7 @@ func TestModelInvocationIdentityFencesExternalCalls(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if method.Descriptor().Kind != portable.Mutation {
+			if method.Descriptor().Kind != portable.Command {
 				t.Fatal("external model call was declared as a query")
 			}
 			value, err := pluginsdk.CallModel(t.Context(), grant, "first", testModelRequest())
@@ -156,7 +159,7 @@ func TestModelInvocationIdentityFencesExternalCalls(t *testing.T) {
 			changed := testModelRequest()
 			changed.Messages[1] = chat.NewUserMessage(chat.NewTextPart("changed input"))
 			_, err = pluginsdk.CallModel(t.Context(), grant, "first", changed)
-			failure, known := errors.AsType[*portable.Refusal](err)
+			failure, known := errors.AsType[*framemcp.Refusal](err)
 			if !known || failure.Code != "command_conflict" {
 				t.Fatalf("changed original input did not conflict: %v", err)
 			}
@@ -174,7 +177,7 @@ func TestModelInvocationIdentityFencesExternalCalls(t *testing.T) {
 	}
 }
 func TestGrantRetirementCancelsAndJoinsAdmittedModelCall(t *testing.T) {
-	broker := qimumcp.NewCallbacks()
+	broker := pluginmcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
@@ -214,22 +217,22 @@ func TestGrantRetirementCancelsAndJoinsAdmittedModelCall(t *testing.T) {
 	}
 }
 func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
-	broker := qimumcp.NewCallbacks()
+	broker := pluginmcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
 		}
 	})
 	server := sdk.NewServer(&sdk.Implementation{Name: "memory"}, nil)
-	binding, err := qimumcp.NewBackend(server)
+	binding, err := pluginmcp.NewBackend(server)
 	if err != nil {
 		t.Fatal(err)
 	}
-	method, err := qimumcp.NewMethod[qimumcp.CallbackRef, string](qimumcp.MethodConfig{Name: "fixture.memory/test.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Exercise the model callback captured by the Host."})
+	method, err := pluginmcp.NewMethod[pluginmcp.CallbackRef, string](portable.MethodConfig{Name: "fixture.memory/test.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Exercise the model callback captured by the Host."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := method.RegisterServer(binding, func(error) (string, bool) { return "model", true }, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.CallbackRef]) (string, error) {
+	if err := method.RegisterServer(binding, func(error) (string, bool) { return "model", true }, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginmcp.CallbackRef]) (string, error) {
 		response, err := pluginsdk.CallModel(ctx, command.Input, "original-model-call", testModelRequest())
 		if err != nil {
 			return "", err
@@ -242,7 +245,7 @@ func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "runtime"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -270,7 +273,7 @@ func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
 	}
 }
 func TestCanceledInvocationRefusesNewModelCalls(t *testing.T) {
-	broker := qimumcp.NewCallbacks()
+	broker := pluginmcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
@@ -305,7 +308,7 @@ func (e *boundedEmbeddings) Embed(_ context.Context, texts []string) ([][]float3
 }
 
 func TestEmbeddingCapabilityAcceptsMaximumEscapedActiveCorpus(t *testing.T) {
-	broker := qimumcp.NewCallbacks()
+	broker := pluginmcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
@@ -340,7 +343,7 @@ func TestEmbeddingCapabilityAcceptsMaximumEscapedActiveCorpus(t *testing.T) {
 }
 
 func TestRetiredConnectionRefusesLateModelGrant(t *testing.T) {
-	broker := qimumcp.NewCallbacks()
+	broker := pluginmcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
@@ -356,7 +359,7 @@ func TestRetiredConnectionRefusesLateModelGrant(t *testing.T) {
 		release()
 		t.Fatalf("retired connection issued model capability %+v", grant)
 	}
-	if grant != (qimumcp.CallbackRef{}) || release != nil {
+	if grant != (pluginmcp.CallbackRef{}) || release != nil {
 		t.Fatal("refused grant retained model authority")
 	}
 }
@@ -379,7 +382,7 @@ func TestModelGrantRefusesRequestsOutsideCapturedAuthority(t *testing.T) {
 		{"missing captured format", func(request *chat.Request) { request.Options.OutputFormat = nil }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			broker := qimumcp.NewCallbacks()
+			broker := pluginmcp.NewCallbacks()
 			t.Cleanup(func() {
 				if err := broker.Close(); err != nil {
 					t.Error(err)

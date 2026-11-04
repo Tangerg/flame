@@ -1,4 +1,4 @@
-import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import { tupleKey } from "@/lib/tupleKey";
 const ROOT = "flame.plugin";
 

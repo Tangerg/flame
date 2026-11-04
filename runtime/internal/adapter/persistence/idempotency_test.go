@@ -8,9 +8,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/qimu/sqlite"
+
+	"github.com/Tangerg/frame/sqlite"
 )
 
 func TestIdempotencyStoreReplayConflictAndExpiry(t *testing.T) {
@@ -19,7 +21,7 @@ func TestIdempotencyStoreReplayConflictAndExpiry(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newIdempotencyStore(db)
+	store := newIdempotencyStore(databaseFor(db))
 	ctx := context.Background()
 
 	first := operation.ReplayRecord{Key: "request-key", Fingerprint: "first", Payload: []byte(`{"result":1}`)}
@@ -38,7 +40,7 @@ func TestIdempotencyStoreReplayConflictAndExpiry(t *testing.T) {
 		t.Fatalf("aged pending claim: record=%+v claimed=%v err=%v", got, claimed, err)
 	}
 	conflicting := operation.ReplayRecord{Key: first.Key, Fingerprint: "second"}
-	if _, _, claimErr := store.Claim(ctx, conflicting.Key, conflicting.Fingerprint); !errors.Is(claimErr, portable.ErrInvocationConflict) {
+	if _, _, claimErr := store.Claim(ctx, conflicting.Key, conflicting.Fingerprint); !errors.Is(claimErr, framemcp.ErrInvocationConflict) {
 		t.Fatalf("reuse aged pending claim = %v, want ErrKeyConflict", claimErr)
 	}
 	if completeErr := store.Complete(ctx, first); completeErr != nil {
@@ -56,7 +58,7 @@ func TestIdempotencyStoreReplayConflictAndExpiry(t *testing.T) {
 	if err != nil || claimed || string(got.Payload) != string(first.Payload) {
 		t.Fatalf("completed claim: record=%+v claimed=%v err=%v", got, claimed, err)
 	}
-	if _, _, claimErr := store.Claim(ctx, conflicting.Key, conflicting.Fingerprint); !errors.Is(claimErr, portable.ErrInvocationConflict) {
+	if _, _, claimErr := store.Claim(ctx, conflicting.Key, conflicting.Fingerprint); !errors.Is(claimErr, framemcp.ErrInvocationConflict) {
 		t.Fatalf("claim conflicting record = %v, want ErrKeyConflict", claimErr)
 	}
 
@@ -75,7 +77,7 @@ func TestIdempotencyStoreKeepsAbandonedClaimAcrossReopen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	store := newIdempotencyStore(db)
+	store := newIdempotencyStore(databaseFor(db))
 	record, claimed, err := store.Claim(t.Context(), "abandoned", "first")
 	if err != nil || !claimed {
 		t.Fatalf("initial claim = (%+v, %v, %v)", record, claimed, err)
@@ -94,12 +96,12 @@ func TestIdempotencyStoreKeepsAbandonedClaimAcrossReopen(t *testing.T) {
 		t.Fatalf("reopen: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store = newIdempotencyStore(db)
+	store = newIdempotencyStore(databaseFor(db))
 	got, claimed, err := store.Claim(t.Context(), record.Key, record.Fingerprint)
 	if err != nil || claimed || len(got.Payload) != 0 {
 		t.Fatalf("claim after reopen = (%+v, %v, %v), want unresolved reservation", got, claimed, err)
 	}
-	if _, _, err := store.Claim(t.Context(), record.Key, "second"); !errors.Is(err, portable.ErrInvocationConflict) {
+	if _, _, err := store.Claim(t.Context(), record.Key, "second"); !errors.Is(err, framemcp.ErrInvocationConflict) {
 		t.Fatalf("reuse after reopen = %v, want ErrKeyConflict", err)
 	}
 }
@@ -111,7 +113,7 @@ func TestIdempotencyNamespaceIdentifiesOneDurableStore(t *testing.T) {
 		if err != nil {
 			t.Fatalf("open: %v", err)
 		}
-		namespace, err := idempotencyNamespace(t.Context(), db)
+		namespace, err := idempotencyNamespace(t.Context(), databaseFor(db))
 		if err != nil {
 			_ = db.Close()
 			t.Fatalf("read namespace: %v", err)
@@ -154,7 +156,7 @@ func TestIdempotencyNamespaceRejectsCorruptIdentity(t *testing.T) {
 	); err != nil {
 		t.Fatalf("corrupt namespace fixture: %v", err)
 	}
-	if _, err := idempotencyNamespace(t.Context(), db); err == nil {
+	if _, err := idempotencyNamespace(t.Context(), databaseFor(db)); err == nil {
 		t.Fatal("read corrupt namespace succeeded")
 	}
 }
@@ -167,7 +169,7 @@ func TestAtomicReplaySurvivesFailedWriteAndReopen(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		r, err := operation.NewReplay(newIdempotencyStore(db))
+		r, err := operation.NewReplay(newIdempotencyStore(databaseFor(db)))
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -8,12 +8,16 @@ import (
 	"strings"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
@@ -26,7 +30,7 @@ func TestGeneratedAnalyzerPointPreservesTheConsumerContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	artifact, err := portable.ParsePoint(data)
+	artifact, err := plugincontract.ParsePoint(data)
 	if err != nil || artifact.Identity() != owner.Identity() {
 		t.Fatalf("packaged analyzer point differs from its consumer owner: %v", err)
 	}
@@ -42,7 +46,7 @@ func TestGeneratedContractsPreserveBackendAdmission(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := portable.ParseCapability(capabilityData)
+	contract, err := plugincontract.ParseCapability(capabilityData)
 	if err != nil || contract.Identity() != contracts.Capability.Identity() {
 		t.Fatalf("generated capability differs from the backend owner: %v", err)
 	}
@@ -135,14 +139,14 @@ func TestUpdateStructuralAdmissionBoundsInputBeforeBusinessDecision(t *testing.T
 		{"unknown_status", reviews.Update{ID: reviews.ExampleReviewID, ExpectedRevision: 1, Status: "unknown"}, false, false},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
-			admitted, err := jsonvalue.Encode(scenario.input)
+			admitted, err := framevalue.EncodeJSON(scenario.input)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if accepted := method.ValidateInput(admitted) == nil; accepted != scenario.shape {
 				t.Fatalf("structural admission = %t, want %t", accepted, scenario.shape)
 			}
-			if accepted := scenario.input.Validate() == nil; accepted != scenario.business {
+			if accepted := scenario.input.ValidateChange() == nil; accepted != scenario.business {
 				t.Fatalf("business admission = %t, want %t", accepted, scenario.business)
 			}
 		})
@@ -173,7 +177,7 @@ func TestLiveCapabilityMatchesGeneratedReviewsContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "contract-client"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -191,11 +195,11 @@ func TestLiveCapabilityMatchesGeneratedReviewsContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := portable.ParseCapability(data)
+	contract, err := plugincontract.ParseCapability(data)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := qimumcp.ResolveCapability(t.Context(), session, "reviews", contract); err != nil {
+	if _, err := pluginmcp.ResolveCapability(t.Context(), session, "reviews", contract); err != nil {
 		t.Fatalf("live export differs from generated capability: %v", err)
 	}
 }

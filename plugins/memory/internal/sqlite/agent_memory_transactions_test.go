@@ -7,8 +7,9 @@ import (
 	"testing"
 	"time"
 
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+
 	agentmemory "github.com/Tangerg/flame/plugins/memory/internal/domain"
-	"github.com/Tangerg/frame/sqlite"
 )
 
 func TestAgentMemoryQueriesJoinCallerTransaction(t *testing.T) {
@@ -39,7 +40,7 @@ func TestAgentMemoryQueriesJoinCallerTransaction(t *testing.T) {
 		}},
 	}
 
-	if err := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
+	if err := pluginstorage.WithinTransaction(ctx, db, func(ctx context.Context) error {
 		for _, query := range queries {
 			items, err := query.list(ctx)
 			if err != nil {

@@ -3,12 +3,13 @@ package annotation
 
 import (
 	"errors"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 type Subject struct{ SessionID, RunID, ItemID string }
@@ -17,7 +18,7 @@ type Entry struct {
 	CommandID string
 	Source    extension.AnnotationSource
 	Subject   Subject
-	Content   jsonvalue.Value
+	Content   framevalue.JSON
 	CreatedAt time.Time
 }
 

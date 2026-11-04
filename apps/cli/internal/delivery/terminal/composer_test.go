@@ -7,7 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
+	"github.com/Tangerg/oolong/ui/base"
 )
 
 func TestPromptHistoryRestoresAttachmentsAndDraft(t *testing.T) {
@@ -56,11 +56,11 @@ func TestPromptHistoryOwnsAndEnforcesItsRetentionCapacity(t *testing.T) {
 
 func TestCommittedComposerCannotUndoIntoReleasedAttachmentPayloads(t *testing.T) {
 	a := &app{composer: testPromptComposer(t)}
-	editor := a.composer.Editor()
+	editor := a.composer.Controller()
 	a.composer.attach(authoring.Attachment{Name: "design.md"})
 	editor.Insert(" inspect this")
 	a.composer.clearComposer()
-	editor.Do(headless.Undo)
+	editor.Do(base.Undo)
 	if !editor.Empty() || len(editor.Elements()) != 0 {
 		t.Fatal("committed draft can resurrect text or released attachments")
 	}
@@ -68,7 +68,7 @@ func TestCommittedComposerCannotUndoIntoReleasedAttachmentPayloads(t *testing.T)
 
 func TestRejectedSteerAttachmentsNeverReplaceAnUnreadableDraft(t *testing.T) {
 	steering := &steerDesk{composer: testPromptComposer(t)}
-	editor := steering.composer.Editor()
+	editor := steering.composer.Controller()
 	editor.InsertElement(fileElement, "@orphan.md")
 	editor.Insert(" keep this text")
 	steering.restoreSteerAttachments([]authoring.Attachment{{Name: "rejected.md"}})

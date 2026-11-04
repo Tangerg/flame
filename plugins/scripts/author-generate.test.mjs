@@ -87,7 +87,7 @@ async function developmentTool(directory, fail = false) {
 import { join } from "node:path";
 const args = process.argv.slice(2);
 const option = name => args[args.indexOf(name) + 1];
-if (args[0] !== "contract" || !args.includes("--feature") || !args.includes("--out"))
+if (args[0] !== "feature" || !args.includes("--feature") || !args.includes("--out"))
   throw new Error("invalid development tool invocation");
 const feature = await readFile(option("--feature"), "utf8");
 await writeFile("observed-feature.json", feature);
@@ -127,8 +127,8 @@ async function noTemporaryFiles(directory) {
 
 const typedDescriptor = `
 import { z } from "zod";
-import { PROTOCOL, type CapabilityDescriptor } from "@qimu/node";
-import { ExactNumber } from "@qimu/sdk/json";
+import { PROTOCOL, type CapabilityDescriptor } from "@flame/backend-sdk/mcp";
+import { ExactNumber } from "@frame/sdk/json";
 const descriptor: CapabilityDescriptor = {
   protocol: PROTOCOL,
   reference: "test.exact.v1",
@@ -166,7 +166,7 @@ test("declared author contributions still require their contract generator", () 
     await assert.rejects(
       run(process.execPath, [join(directory, "generate.mjs")]),
       (error) =>
-        /tools[/\\]qimu(?:\.exe)?/.test(error.stderr) &&
+        /tools[/\\]flame-sdk(?:\.exe)?/.test(error.stderr) &&
         /ENOENT/.test(error.stderr),
     );
     await noTemporaryFiles(directory);

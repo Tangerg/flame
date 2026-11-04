@@ -39,9 +39,9 @@ async function mount(read: () => Promise<SelectableModel[]>, explicit = true) {
   finishTestClient(() => queryClient.setQueryDefaults([MODELS_KEY], defaults));
   useRecentModelsStore.setState({ recent: [] });
   await contributeForTest((ctx) => {
-    ctx.contribute(DATA_PROVIDER, { key: MODELS_KEY, fetcher: read });
-    ctx.contribute(DATA_PROVIDER, { key: AGENT_SESSIONS_KEY, fetcher: async () => [] });
-    ctx.contribute(SETTINGS_PANE, {
+    ctx.contributions.add(DATA_PROVIDER, { key: MODELS_KEY, fetcher: read });
+    ctx.contributions.add(DATA_PROVIDER, { key: AGENT_SESSIONS_KEY, fetcher: async () => [] });
+    ctx.contributions.add(SETTINGS_PANE, {
       id: "package:chosen:models",
       label: "Model settings",
       intent: "model-providers",

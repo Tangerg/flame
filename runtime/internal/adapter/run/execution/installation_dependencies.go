@@ -2,8 +2,9 @@ package execution
 
 import (
 	"context"
-	"github.com/Tangerg/qimu"
 	"slices"
+
+	"github.com/Tangerg/frame"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
@@ -12,7 +13,7 @@ import (
 // references belong to the SQLite owner, which reads their original bindings.
 func (i *InteractionExecutor) ID() string { return "flame.executions" }
 
-func (i *InteractionExecutor) Held(ctx context.Context, id qimu.InstallationID) ([]qimu.Dependency, error) {
+func (i *InteractionExecutor) Held(ctx context.Context, id frame.InstallationID) ([]frame.Dependency, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -23,13 +24,13 @@ func (i *InteractionExecutor) Held(ctx context.Context, id qimu.InstallationID) 
 	for _, session := range i.sessions.snapshot() {
 		held = append(held, session.installationDependencies()...)
 	}
-	var result []qimu.Dependency
+	var result []frame.Dependency
 	for _, dependency := range held {
 		if dependency.InstallationID.String() == id.String() {
-			result = append(result, qimu.Dependency{InstallationID: id, Release: dependency.Digest})
+			result = append(result, frame.Dependency{InstallationID: id, Release: dependency.Digest})
 		}
 	}
-	return qimu.CompactDependencies(result), nil
+	return frame.CompactDependencies(result), nil
 }
 
 // installationDependencies is the session's single dependency projection: the
@@ -80,11 +81,14 @@ func installationDependencies(dependencies []plugin.Dependency) []installationDe
 	return result
 }
 
-// dependencyInstallations projects the original business binding at Qimu admission.
-func dependencyInstallations(dependencies []plugin.Dependency) []qimu.InstallationID {
-	result := make([]qimu.InstallationID, 0, len(dependencies))
-	for _, dependency := range dependencies {
-		result = append(result, dependency.InstallationID.Host())
-	}
-	return result
+// Publication and installation mutation share Frame's admission. The validator
+// reads only original captures; assembly never holds this gate during I/O.
+func (i *InteractionExecutor) publishInteraction(ctx context.Context, session *interactionSession) error {
+	bindings, resources := session.checkpointPluginReferences()
+	return i.installations.Admit(ctx, func(admitted context.Context) error {
+		if err := i.config.ValidatePluginSources(admitted, bindings, resources); err != nil {
+			return err
+		}
+		return i.sessions.register(session)
+	})
 }

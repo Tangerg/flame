@@ -11,9 +11,11 @@ import (
 	"sync/atomic"
 	"testing"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/a2aproject/a2a-go/v2/a2a"
 )
 
@@ -59,7 +61,7 @@ func TestEndpointAuthorityAndRedirectsAreEnforcedBeforeFollowing(t *testing.T) {
 				if !errors.Is(retryErr, pluginstorage.ErrCommandUnconfirmed) || rpcCalls.Load() != 1 {
 					t.Fatalf("redirect lost mutation evidence: %v calls=%d", retryErr, rpcCalls.Load())
 				}
-			} else if refusal, ok := errors.AsType[*portable.Refusal](retryErr); !ok || refusal.Code != "discovery_failed" || rpcCalls.Load() != 0 {
+			} else if refusal, ok := errors.AsType[*framemcp.Refusal](retryErr); !ok || refusal.Code != "discovery_failed" || rpcCalls.Load() != 0 {
 				t.Fatalf("pre-dispatch refusal: %v calls=%d", retryErr, rpcCalls.Load())
 			}
 			if externalCalls.Load() != 0 {

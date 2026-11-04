@@ -2,8 +2,8 @@ import { METHODS } from "../contracts/methods";
 import { mkdirSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { toolReceipts } from "@flame/backend-sdk";
-import { Backend, Capability, canonicalJSON } from "@qimu/node";
-import { projectNumber } from "@qimu/sdk/json";
+import { Backend, Capability, canonicalJSON } from "@flame/backend-sdk/mcp";
+import { projectNumber } from "@frame/sdk/json";
 import { z } from "zod";
 import descriptor, { schemas, type Snapshot } from "../contracts/capability";
 import { LIMITS } from "../contracts/limits";
@@ -35,22 +35,22 @@ export function createBackend(
     return { close: () => control.close() };
   });
   backend.implement(
-    contract.method(METHODS.read),
+    contract.portable.method(METHODS.read),
     (value) => schemas.empty.parse(value),
     () => control.snapshot(),
   );
   backend.implementStream<z.infer<typeof schemas.empty>, Snapshot, boolean>(
-    contract.method(METHODS.watch),
+    contract.portable.method(METHODS.watch),
     (value) => schemas.empty.parse(value),
     (context) => control.watch(context.signal),
   );
   backend.implement(
-    contract.method(METHODS.context),
+    contract.portable.method(METHODS.context),
     (value) => schemas.empty.parse(value),
     () => control.context(),
   );
   backend.implement(
-    contract.method(METHODS.open),
+    contract.portable.method(METHODS.open),
     (value) =>
       schemas.open.parse({
         ...(value as object),
@@ -61,28 +61,28 @@ export function createBackend(
     (context, input) => control.open(context, input.leaseSeconds),
   );
   backend.implement(
-    contract.method(METHODS.close),
+    contract.portable.method(METHODS.close),
     (value) => schemas.sessionInput.parse(value),
     (context, input) => control.closeSession(context, input.sessionId),
   );
   backend.implement(
-    contract.method(METHODS.stop),
+    contract.portable.method(METHODS.stop),
     (value) => schemas.stop.parse(value),
     (context, input) =>
       control.stop(context, input.sessionId, input.operationId),
   );
   backend.implement(
-    contract.method(METHODS.execute),
+    contract.portable.method(METHODS.execute),
     (value) => schemas.execute.parse(value),
     (context, input) => control.execute(context, input),
   );
   backend.implement(
-    contract.method(METHODS.reply),
+    contract.portable.method(METHODS.reply),
     (value) => schemas.reply.parse(value),
     (context, input) => control.reply(context, input),
   );
   backend.implement(
-    contract.method(METHODS.history),
+    contract.portable.method(METHODS.history),
     (value) =>
       schemas.history.parse({
         ...(value as object),
@@ -91,7 +91,7 @@ export function createBackend(
     (_context, input) => control.history(input.before, input.limit),
   );
   backend.implement(
-    contract.method(METHODS.result),
+    contract.portable.method(METHODS.result),
     (value) => schemas.resultInput.parse(value),
     (_context, input) => control.result(input.id),
   );

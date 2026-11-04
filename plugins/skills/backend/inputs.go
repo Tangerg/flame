@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -15,7 +15,7 @@ import (
 type remoteInputs struct{}
 
 func (remoteInputs) Conversation(ctx context.Context) (skilllearning.Conversation, error) {
-	grant, err := qimumcp.CallbackFromContext(ctx)
+	grant, err := pluginmcp.CallbackFromContext(ctx)
 	if err != nil {
 		return skilllearning.Conversation{}, err
 	}
@@ -23,11 +23,11 @@ func (remoteInputs) Conversation(ctx context.Context) (skilllearning.Conversatio
 	if err != nil {
 		return skilllearning.Conversation{}, err
 	}
-	return qimumcp.CallHost(ctx, grant, method, "", struct{}{})
+	return pluginmcp.CallHost(ctx, grant, method, "", struct{}{})
 }
 
 func (remoteInputs) ReadSkill(ctx context.Context, name string) (skilllearning.ReadResult, error) {
-	grant, err := qimumcp.CallbackFromContext(ctx)
+	grant, err := pluginmcp.CallbackFromContext(ctx)
 	if err != nil {
 		return skilllearning.ReadResult{}, err
 	}
@@ -35,20 +35,20 @@ func (remoteInputs) ReadSkill(ctx context.Context, name string) (skilllearning.R
 	if err != nil {
 		return skilllearning.ReadResult{}, err
 	}
-	return qimumcp.CallHost(ctx, grant, method, "", skilllearning.ReadSkill{Name: name})
+	return pluginmcp.CallHost(ctx, grant, method, "", skilllearning.ReadSkill{Name: name})
 }
 
 func (remoteInputs) Complete(ctx context.Context, system, user string) (string, error) {
 	if len(system)+len(user) > skilllearning.MaxModelInputBytes {
 		return "", errors.New("skill learning: model input exceeds its limit")
 	}
-	grant, err := qimumcp.CallbackFromContext(ctx)
+	grant, err := pluginmcp.CallbackFromContext(ctx)
 	if err != nil {
 		return "", err
 	}
 	client, err := chatclient.New(chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
-		return pluginsdk.CallModel(ctx, grant, qimumcp.NewCommandID(), request)
-	}), chatclient.Config{})
+		return pluginsdk.CallModel(ctx, grant, pluginmcp.NewCommandID(), request)
+	}))
 	if err != nil {
 		return "", err
 	}
@@ -64,7 +64,7 @@ func (remoteInputs) Complete(ctx context.Context, system, user string) (string, 
 }
 
 func admitMined(ctx context.Context, proposal skilllearning.Proposal) (bool, error) {
-	grant, err := qimumcp.CallbackFromContext(ctx)
+	grant, err := pluginmcp.CallbackFromContext(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -72,6 +72,6 @@ func admitMined(ctx context.Context, proposal skilllearning.Proposal) (bool, err
 	if err != nil {
 		return false, err
 	}
-	admission, err := qimumcp.CallHost(ctx, grant, method, "", proposal)
+	admission, err := pluginmcp.CallHost(ctx, grant, method, "", proposal)
 	return admission.Accepted, err
 }

@@ -4,7 +4,7 @@ import { LOCALE } from "@/features/i18n/public/extensionPoints";
 export const i18nPlugin = definePlugin({
   name: "flame.builtin.i18n",
   setup(scope) {
-    scope.contribute(LOCALE, {
+    scope.contributions.add(LOCALE, {
       id: "en",
       label: "English",
       order: -1,

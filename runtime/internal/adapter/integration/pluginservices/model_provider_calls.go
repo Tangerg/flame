@@ -1,6 +1,11 @@
 package pluginservices
 
 import (
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
+
 	"context"
 	json "encoding/json/v2"
 	"errors"
@@ -15,9 +20,9 @@ import (
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 	"github.com/google/uuid"
@@ -90,18 +95,18 @@ type providerChat struct{ use *providerUse }
 
 func (p *providerChat) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
 	if err := p.use.admitRequest(ctx, request); err != nil {
-		return nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err}
+		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
 	}
 	if err := request.Validate(); err != nil {
-		return nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err}
+		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
 	}
-	caller, err := qimumcp.InvocationFromContext(ctx)
+	caller, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
-		return nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err}
+		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
 	}
 	method, err := modelprovider.CallMethod()
 	if err != nil {
-		return nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err}
+		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
 	}
 	result, err := providerMethod(ctx, p.use, method, caller.ID, modelprovider.ChatRequest{Handle: p.use.handle, Request: *request.Clone()})
 	if err != nil {
@@ -120,32 +125,32 @@ func (p *streamingProviderChat) Stream(ctx context.Context, request *chat.Reques
 	return func(yield func(*chat.ResponseDelta, error) bool) {
 		sender := newStreamSender(yield)
 		if err := p.use.admitRequest(ctx, request); err != nil {
-			sender.fail(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
 			return
 		}
 		if err := request.Validate(); err != nil {
-			sender.fail(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
 			return
 		}
-		caller, err := qimumcp.InvocationFromContext(ctx)
+		caller, err := pluginmcp.InvocationFromContext(ctx)
 		if err != nil {
-			sender.fail(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
 			return
 		}
 		calling, leave, err := p.use.enter(ctx)
 		if err != nil {
-			sender.fail(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
 			return
 		}
 		defer leave()
 		calling, err = providerContext(calling, p.use.binding, caller.ID)
 		if err != nil {
-			sender.fail(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
 			return
 		}
 		borrowed, err := borrowContribution(calling, p.use.owner.config.Connections, p.use.binding)
 		if err != nil {
-			sender.fail(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
 			return
 		}
 		defer func() {
@@ -155,23 +160,23 @@ func (p *streamingProviderChat) Stream(ctx context.Context, request *chat.Reques
 		}()
 		method, err := modelprovider.StreamMethod()
 		if err != nil {
-			sender.fail(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
 			return
 		}
-		exported, err := qimumcp.NewCapabilityBinding(borrowed.Session(), p.use.binding.Export, p.use.owner.contract)
+		exported, err := pluginmcp.NewCapabilityBinding(borrowed.Session(), p.use.binding.Export, p.use.owner.contract)
 		if err != nil {
-			sender.fail(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
 			return
 		}
 		binding, err := exported.Method(method.Descriptor().Name)
 		if err != nil {
-			sender.fail(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
 			return
 		}
 		input := modelprovider.ChatRequest{Handle: p.use.handle, Request: *request}
-		limits := qimumcp.CallbackLimits{MaxRequestBytes: sdk.DefaultMaxLineLength, MaxResponseBytes: sdk.DefaultMaxLineLength}
+		limits := pluginmcp.CallbackLimits{MaxRequestBytes: sdk.DefaultMaxLineLength, MaxResponseBytes: sdk.DefaultMaxLineLength}
 		chunks, complete := 0, false
-		for value, err := range method.StreamWithMetadata(borrowed.Context(), binding, p.use.owner.config.Callbacks, limits, qimumcp.CommandID(caller.ID), input, sdk.ParamsBase{}) {
+		for value, err := range method.StreamWithMetadata(borrowed.Context(), binding, p.use.owner.config.Callbacks, limits, pluginmcp.CommandID(caller.ID), input, sdk.ParamsBase{}) {
 			if err != nil {
 				sender.fail(unconfirmedProvider(err))
 				return
@@ -226,11 +231,11 @@ type providerEmbedding struct{ use *providerUse }
 
 func (p *providerEmbedding) Call(ctx context.Context, request *embedding.Request) (*embedding.Response, error) {
 	if err := request.Validate(); err != nil {
-		return nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err}
+		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
 	}
-	caller, err := qimumcp.InvocationFromContext(ctx)
+	caller, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
-		return nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err}
+		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
 	}
 	method, err := modelprovider.EmbedMethod()
 	if err != nil {
@@ -238,20 +243,20 @@ func (p *providerEmbedding) Call(ctx context.Context, request *embedding.Request
 	}
 	encoded, err := json.Marshal(request)
 	if err != nil {
-		return nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err}
+		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
 	}
 	input := modelprovider.EmbeddingRequest{Handle: p.use.handle, Request: encoded}
-	admitted, err := jsonvalue.Encode(input)
+	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {
-		return nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err}
+		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
 	}
 	target, err := providerContext(ctx, p.use.binding, caller.ID)
 	if err != nil {
-		return nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err}
+		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
 	}
 	fits, err := p.use.frameFits(target, method.Name(), caller.ID, admitted)
 	if err != nil || !fits {
-		return nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: errors.Join(err, errors.New("model provider: embedding request exceeds transport capacity"))}
+		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: errors.Join(err, errors.New("model provider: embedding request exceeds transport capacity"))}
 	}
 	result, err := providerMethod(ctx, p.use, method, caller.ID, input)
 	if err != nil {
@@ -288,15 +293,15 @@ func providerFailure(failure *modelprovider.Failure) error {
 		kind = run.FailureProviderUnavailable
 	}
 	delay := time.Duration(min(failure.RetryAfterMillis, run.MaximumRetryAfter.Milliseconds())) * time.Millisecond
-	return &chat.CallFailure{Kind: failure.Execution, Cause: &run.FailureError{Kind: kind, RetryAfter: delay, Err: cause}}
+	return &coreinvocation.Failure{Kind: failure.Execution, Cause: &run.FailureError{Kind: kind, RetryAfter: delay, Err: cause}}
 }
 
 func unconfirmedProvider(err error) error {
-	return &chat.CallFailure{Kind: chat.CallFailureUnknown, Cause: &run.FailureError{Kind: run.FailureProviderUnavailable, Err: fmt.Errorf("model provider: exchange is unconfirmed: %w", err)}}
+	return &coreinvocation.Failure{Kind: coreinvocation.FailureUnknown, Cause: &run.FailureError{Kind: run.FailureProviderUnavailable, Err: fmt.Errorf("model provider: exchange is unconfirmed: %w", err)}}
 }
 
 func (u *providerUse) futureRequestFits(ctx context.Context, request *chat.Request) (bool, error) {
-	caller, err := qimumcp.InvocationFromContext(ctx)
+	caller, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -304,7 +309,7 @@ func (u *providerUse) futureRequestFits(ctx context.Context, request *chat.Reque
 	if caller.ID == id {
 		id = "endpoint_00000000-0000-0000-0000-000000000001"
 	}
-	ctx, err = qimumcp.WithInvocation(ctx, portable.Invocation{ID: id, Origin: caller.Origin, Parent: caller.ID, Target: portable.Target{Scope: extension.ScopeCall, Reference: id}})
+	ctx, err = pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: id, Origin: caller.Origin, Parent: caller.ID, Target: portable.Target{Scope: extension.ScopeCall, Reference: id}})
 	if err != nil {
 		return false, err
 	}
@@ -314,11 +319,11 @@ func (u *providerUse) requestFits(ctx context.Context, request *chat.Request) (b
 	if request == nil {
 		return false, errors.New("model provider: request is required")
 	}
-	caller, err := qimumcp.InvocationFromContext(ctx)
+	caller, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		return false, err
 	}
-	input, err := jsonvalue.Encode(modelprovider.ChatRequest{Handle: u.handle, Request: *request.Clone()})
+	input, err := framevalue.EncodeJSON(modelprovider.ChatRequest{Handle: u.handle, Request: *request.Clone()})
 	if err != nil {
 		return false, err
 	}
@@ -345,7 +350,7 @@ func (u *providerUse) admitRequest(ctx context.Context, request *chat.Request) e
 	return nil
 }
 
-func (u *providerUse) frameFits(ctx context.Context, name, id string, input jsonvalue.Value) (bool, error) {
-	size, err := qimumcp.ProcessRequestFrameBytes(ctx, u.owner.contract, u.binding.Export, name, qimumcp.CommandID(id), input, sdk.ParamsBase{})
+func (u *providerUse) frameFits(ctx context.Context, name, id string, input framevalue.JSON) (bool, error) {
+	size, err := pluginmcp.ProcessRequestFrameBytes(ctx, u.owner.contract, u.binding.Export, name, pluginmcp.CommandID(id), input, sdk.ParamsBase{})
 	return size <= sdk.DefaultMaxLineLength, err
 }

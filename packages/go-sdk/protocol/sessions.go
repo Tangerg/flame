@@ -2,8 +2,9 @@ package protocol
 
 import (
 	"encoding/json/jsontext"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 )
 
 // SessionStatus is the Session lifecycle vocabulary.

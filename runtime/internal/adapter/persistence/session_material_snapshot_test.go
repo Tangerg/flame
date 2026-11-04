@@ -3,10 +3,11 @@ package persistence
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -17,7 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 )
 
 type blockingGoalProjection struct {
@@ -50,8 +51,8 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	t.Cleanup(func() { _ = writerDB.Close() })
 	ctx := t.Context()
 	createdAt := time.Date(2026, 8, 14, 1, 0, 0, 0, time.UTC)
-	readerSessionStore := newSessionStore(readerDB)
-	writerSessionStore := newSessionStore(writerDB)
+	readerSessionStore := newSessionStore(databaseFor(readerDB))
+	writerSessionStore := newSessionStore(databaseFor(writerDB))
 	original := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_snapshot", Workspace: testsupport.MustWorkspace("/workspace"), Title: "before",
 		CreatedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
@@ -59,8 +60,8 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	if insertErr := writerSessionStore.Insert(ctx, original); insertErr != nil {
 		t.Fatalf("seed Session: %v", insertErr)
 	}
-	readerPlanStore := newPlanStore(readerDB)
-	writerPlanStore := newPlanStore(writerDB)
+	readerPlanStore := newPlanStore(databaseFor(readerDB))
+	writerPlanStore := newPlanStore(databaseFor(writerDB))
 	originalPlan, err := (plan.Current{}).Replace([]plan.Step{{
 		Description: "before", Status: plan.StatusInProgress,
 	}}, createdAt)
@@ -74,8 +75,8 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	if saveErr := writerPlanStore.Save(ctx, original.ID(), originalPlanReplacement); saveErr != nil {
 		t.Fatalf("seed Plan: %v", saveErr)
 	}
-	readerGoalStore := newGoalStore(readerDB)
-	writerGoalStore := newGoalStore(writerDB)
+	readerGoalStore := newGoalStore(databaseFor(readerDB))
+	writerGoalStore := newGoalStore(databaseFor(writerDB))
 	selection, err := modelchoice.New("provider", "model")
 	if err != nil {
 		t.Fatal(err)
@@ -102,25 +103,25 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	blockingGoal := &blockingGoalProjection{
 		GoalStore: readerGoalStore, entered: make(chan struct{}), release: make(chan struct{}),
 	}
-	readerMessages := newMessageStore(readerDB)
+	readerMessages := newMessageStore(databaseFor(readerDB))
 	readerHistory, err := runsapp.NewConversationHistory(mustConversationStore(t, readerMessages))
 	if err != nil {
 		t.Fatal(err)
 	}
 	stores, err := NewSessionStores(SessionStoresConfig{
-		ResourceRetirements: newResourceRetirementStore(readerDB),
-		CommandAcceptances:  newCommandAcceptanceStore(readerDB),
+		ResourceRetirements: newResourceRetirementStore(databaseFor(readerDB)),
+		CommandAcceptances:  newCommandAcceptanceStore(databaseFor(readerDB)),
 		Sessions:            readerSessionStore,
-		Transcript:          newTranscriptStore(readerDB),
-		Interrupts:          newInterruptStore(readerDB),
-		Runs:                newRunStore(readerDB),
-		ExecutorCheckpoints: newExecutorCheckpointStore(readerDB),
+		Transcript:          newTranscriptStore(databaseFor(readerDB)),
+		Interrupts:          newInterruptStore(databaseFor(readerDB)),
+		Runs:                newRunStore(databaseFor(readerDB)),
+		ExecutorCheckpoints: newExecutorCheckpointStore(databaseFor(readerDB)),
 		History:             readerHistory,
 		Plan:                readerPlanStore,
-		ApprovalRules:       newApprovalRuleStore(readerDB),
-		ApprovalModes:       newModeStore(readerDB),
-		ToolResults:         newToolResultStore(readerDB),
-		ChildRunStarts:      newChildRunStartReservationStore(readerDB),
+		ApprovalRules:       newApprovalRuleStore(databaseFor(readerDB)),
+		ApprovalModes:       newModeStore(databaseFor(readerDB)),
+		ToolResults:         newToolResultStore(databaseFor(readerDB)),
+		ChildRunStarts:      newChildRunStartReservationStore(databaseFor(readerDB)),
 		Goals:               blockingGoal,
 		GoalRuns:            mustGoalRuns(t, writerGoalStore),
 		ReadSnapshot: func(ctx context.Context, read func(context.Context) error) error {

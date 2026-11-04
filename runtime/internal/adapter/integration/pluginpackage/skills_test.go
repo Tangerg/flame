@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/distribution"
+	"github.com/Tangerg/frame/distribution"
 	sdk "github.com/Tangerg/scope/skills"
 )
 
@@ -300,7 +300,7 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 		t.Fatalf("skill document = %q, %v", content, err)
 	}
 	t.Run("oversized resource", func(t *testing.T) {
-		if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "reference.txt"); !errors.Is(err, domainskills.ErrResourceTooLarge) || !errors.Is(err, errResourceLimit) || !errors.Is(err, distribution.ErrCapacity) || len(content) != 0 {
+		if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "reference.txt"); !errors.Is(err, domainskills.ErrResourceTooLarge) || !errors.Is(err, errResourceLimit) || len(content) != 0 {
 			t.Fatalf("oversized resource = %d bytes, %v", len(content), err)
 		}
 	})

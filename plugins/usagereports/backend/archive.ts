@@ -10,8 +10,8 @@ import {
   parseJSON,
   type CallContext,
   type Method,
-} from "@qimu/node";
-import { validCommand } from "@qimu/node/contract";
+} from "@flame/backend-sdk/mcp";
+import { validCommand } from "@flame/backend-sdk/mcp/contract";
 import { validateWire } from "@flame/runtime-client/validation";
 import { LIMITS } from "../contracts/limits";
 
@@ -119,9 +119,9 @@ export class Archive {
   #closed = false;
 
   constructor(path: string, contract: Capability) {
-    this.#capture = contract.method("flame.usage-reports/capture.v1");
-    this.#remove = contract.method("flame.usage-reports/delete.v1");
-    this.#get = contract.method("flame.usage-reports/get.v1");
+    this.#capture = contract.portable.method("flame.usage-reports/capture.v1");
+    this.#remove = contract.portable.method("flame.usage-reports/delete.v1");
+    this.#get = contract.portable.method("flame.usage-reports/get.v1");
     this.#commands = new Map(
       [this.#capture, this.#remove].map((method) => [
         method.descriptor.name,

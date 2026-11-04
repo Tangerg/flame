@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"encoding/json/jsontext"
 	"fmt"
@@ -36,10 +38,10 @@ func TestMCPNotificationUpdatesManagementAndSubsequentRunDiscovery(t *testing.T)
 			return completedTextResponse("title"), nil
 		}
 		name := target.Load().(string)
-		if name == "catalog_write" && slices.ContainsFunc(request.Tools, func(definition chat.ToolDefinition) bool { return definition.Name == "catalog_read" }) {
+		if name == "catalog_write" && slices.ContainsFunc(request.Tools, func(definition toolcontract.Definition) bool { return definition.Name == "catalog_read" }) {
 			return nil, fmt.Errorf("removed tool was advertised to the next Run")
 		}
-		if slices.ContainsFunc(request.Tools, func(definition chat.ToolDefinition) bool { return definition.Name == name }) {
+		if slices.ContainsFunc(request.Tools, func(definition toolcontract.Definition) bool { return definition.Name == name }) {
 			seen.Store(name, true)
 			return completedTextResponse("discovered " + name), nil
 		}
@@ -54,7 +56,7 @@ func TestMCPNotificationUpdatesManagementAndSubsequentRunDiscovery(t *testing.T)
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
 	})}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}

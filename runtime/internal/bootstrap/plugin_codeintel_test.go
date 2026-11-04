@@ -42,7 +42,7 @@ func TestInstalledCodeIntelligenceFormatsThroughTheRuntimeFileOwner(t *testing.T
 		}
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
-	})}, chatclient.Config{})
+	})})
 	if err != nil {
 		t.Fatal(err)
 	}

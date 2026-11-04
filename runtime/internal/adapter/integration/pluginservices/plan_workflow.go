@@ -3,12 +3,12 @@ package pluginservices
 import (
 	"context"
 	"errors"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	planmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/planworkflow/mcp"
 
 	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	"github.com/Tangerg/frame/cancellation"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -36,7 +36,7 @@ func (c *CommandCalls) AuthorPlan(ctx context.Context, source extension.Contribu
 		return planworkflow.AuthoredDocument{}, err
 	}
 	decision, err := query[planworkflow.Proposal, planworkflow.Decision](borrow.Context(), location, borrow.Session(), method.Name(), proposal, sdk.ParamsBase{})
-	if err = errors.Join(err, cancellation.Err(borrow.Context())); err != nil {
+	if err = errors.Join(err, errors.Join(borrow.Context().Err(), context.Cause(borrow.Context()))); err != nil {
 		return planworkflow.AuthoredDocument{}, err
 	}
 	document, err := decision.Open()
@@ -58,5 +58,5 @@ func (c *CommandCalls) ReviewPlan(ctx context.Context, source extension.Contribu
 		return "", err
 	}
 	text, err := query[planworkflow.Document, string](borrow.Context(), location, borrow.Session(), method.Name(), document, sdk.ParamsBase{})
-	return text, errors.Join(err, cancellation.Err(borrow.Context()))
+	return text, errors.Join(err, errors.Join(borrow.Context().Err(), context.Cause(borrow.Context())))
 }

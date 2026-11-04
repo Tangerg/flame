@@ -1,5 +1,5 @@
 import { toolCommandId } from "@flame/backend-sdk";
-import { Lifetime } from "@qimu/sdk";
+import { Lifetime } from "@frame/sdk";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -10,7 +10,7 @@ import {
   digestJSON,
   type CallContext,
   type Invocation,
-} from "@qimu/node";
+} from "@flame/backend-sdk/mcp";
 import type {
   CallToolResult,
   ElicitRequestParams,

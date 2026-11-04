@@ -5,9 +5,11 @@ import (
 	"reflect"
 	"testing"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/qimu/integrity"
+
 	"github.com/google/uuid"
 )
 
@@ -574,7 +576,7 @@ func testRelease(t *testing.T, seed string, declaration Declaration) Release {
 	return release
 }
 
-func testDigest(seed string) integrity.Digest { return identity.DigestStrings(seed) }
+func testDigest(seed string) framevalue.Digest { return identity.DigestStrings(seed) }
 
 func serverName(raw string) mcpserver.ServerName {
 	parsed, err := mcpserver.ParseServerName(raw)

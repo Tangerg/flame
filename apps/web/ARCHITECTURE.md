@@ -41,7 +41,7 @@ shared by client read models. Runtime contract generation derives this limited
 projection from the same Go enum and schema owners as the wire binding, without
 bringing Runtime records or operation handles into the client models.
 
-The pure `@qimu/sdk/json` entry supplies exact JSON data handling.
+The pure `@frame/sdk/json` entry supplies exact JSON data handling.
 Its checked dependency closure excludes Runtime calls and wire records; those
 remain translated at adapters rather than entering context application models.
 
@@ -268,7 +268,7 @@ composition root. The existing Browser/Native host owns file transfer and the
 user-selected destination; Workspace text exports encode UTF-8 through that same
 owner. Plugins supply exact bytes and keep their document, review and delivery
 facts private. Browser download dispatch is `requested`; only a completed native
-write is `saved`, and native cancellation is `cancelled`. Component and Qimu Use
+write is `saved`, and native cancellation is `cancelled`. Component and Frame Use
 lifetimes join accepted saves and refuse new saves after retirement. No file
 ledger, artifact state or download implementation is added to the client.
 
@@ -510,7 +510,7 @@ image-save dependencies rather than a host bag.
 The Go module under `apps/desktop` remains a small Wails host. Its actual
 `DesktopHost` receiver methods own the method list; `internal/bridge` owns the pure
 wire DTOs and their existing refinements. `cmd/bridgegen` reads the actual method AST,
-uses Qimu’s public schema/TypeScript renderer, and generates
+uses Frame’s public schema/TypeScript renderer, and generates
 `platform/desktop.generated.ts` plus the portable component SDK notification enum.
 The host adapter validates those generated wire contracts. Native
 `bridge_contract_test.go` compares the actual binding surface; pure generator drift

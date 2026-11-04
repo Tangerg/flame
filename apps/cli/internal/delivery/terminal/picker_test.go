@@ -5,10 +5,9 @@ import (
 	"image"
 	"testing"
 
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 func TestPickerClickCommitsOnlyAfterMatchingRelease(t *testing.T) {
@@ -19,9 +18,10 @@ func TestPickerClickCommitsOnlyAfterMatchingRelease(t *testing.T) {
 		func(value string) { picked = value },
 	)
 	picker.SetItems([]string{"first", "second", "third"})
-	root := headless.NewRoot(picker)
-	root.Draw(grid.NewSurface(40, 7).View())
-	second := pickerPoint(picker, 1)
+	root := newSceneTestRoot(t, picker.Element())
+	surface := grid.NewSurface(40, 7)
+	root.Draw(surface.View())
+	second := pickerPoint(t, picker, surface, 1)
 
 	if !root.Handle(input.Mouse{Pos: second, Action: input.MouseDown, Button: input.ButtonLeft}) {
 		t.Fatal("picker press was not handled")
@@ -29,7 +29,7 @@ func TestPickerClickCommitsOnlyAfterMatchingRelease(t *testing.T) {
 	if picked != "" || picker.items.Selected() != 1 {
 		t.Fatalf("press picked %q with selection %d", picked, picker.items.Selected())
 	}
-	picker.Handle(input.Mouse{Action: input.MouseLeave})
+	root.Handle(input.Mouse{Action: input.MouseLeave})
 	if !root.Handle(input.Mouse{Pos: second, Action: input.MouseUp, Button: input.ButtonLeft}) {
 		t.Fatal("picker release was not handled")
 	}
@@ -46,9 +46,10 @@ func TestPickerDragChangesSelectionWithoutActivation(t *testing.T) {
 		func(value string) { picked = value },
 	)
 	picker.SetItems([]string{"first", "second", "third"})
-	root := headless.NewRoot(picker)
-	root.Draw(grid.NewSurface(40, 7).View())
-	first, third := pickerPoint(picker, 0), pickerPoint(picker, 2)
+	root := newSceneTestRoot(t, picker.Element())
+	surface := grid.NewSurface(40, 7)
+	root.Draw(surface.View())
+	first, third := pickerPoint(t, picker, surface, 0), pickerPoint(t, picker, surface, 2)
 
 	root.Handle(input.Mouse{Pos: first, Action: input.MouseDown, Button: input.ButtonLeft})
 	root.Handle(input.Mouse{Pos: third, Action: input.MouseDrag, Button: input.ButtonLeft})
@@ -71,9 +72,10 @@ func TestPickerReleaseOutsideTheListDoesNotActivateThePressedRow(t *testing.T) {
 				func(value string) { picked = value },
 			)
 			picker.SetItems([]string{"first", "second", "third"})
-			root := headless.NewRoot(picker)
-			root.Draw(grid.NewSurface(40, 7).View())
-			second := pickerPoint(picker, 1)
+			root := newSceneTestRoot(t, picker.Element())
+			surface := grid.NewSurface(40, 7)
+			root.Draw(surface.View())
+			second := pickerPoint(t, picker, surface, 1)
 
 			root.Handle(input.Mouse{Pos: second, Action: input.MouseDown, Button: input.ButtonLeft})
 			root.Handle(input.Mouse{Pos: image.Pt(x, second.Y), Action: input.MouseUp, Button: input.ButtonLeft})
@@ -87,36 +89,30 @@ func TestPickerReleaseOutsideTheListDoesNotActivateThePressedRow(t *testing.T) {
 func TestPickerCancelsAStalePointerGesture(t *testing.T) {
 	tests := []struct {
 		name      string
-		interrupt func(*picker[string], *headless.Root, image.Point)
+		interrupt func(*picker[string], *sceneTestRoot, image.Point)
 	}{
 		{
 			name: "capture cancellation",
-			interrupt: func(picker *picker[string], _ *headless.Root, point image.Point) {
-				picker.Handle(input.Mouse{Pos: point, Action: input.MouseCancel})
-			},
-		},
-		{
-			name: "different button release",
-			interrupt: func(_ *picker[string], root *headless.Root, point image.Point) {
-				root.Handle(input.Mouse{Pos: point, Action: input.MouseUp, Button: input.ButtonRight})
+			interrupt: func(_ *picker[string], root *sceneTestRoot, point image.Point) {
+				root.Handle(input.Mouse{Pos: point, Action: input.MouseCancel})
 			},
 		},
 		{
 			name: "different button press",
-			interrupt: func(_ *picker[string], root *headless.Root, point image.Point) {
+			interrupt: func(_ *picker[string], root *sceneTestRoot, point image.Point) {
 				root.Handle(input.Mouse{Pos: point, Action: input.MouseDown, Button: input.ButtonRight})
 			},
 		},
 		{
 			name: "focus loss",
-			interrupt: func(picker *picker[string], _ *headless.Root, _ image.Point) {
-				picker.Focus(false)
-				picker.Focus(true)
+			interrupt: func(picker *picker[string], _ *sceneTestRoot, _ image.Point) {
+				_ = picker.query.Element().RequestFocusFirst()
+
 			},
 		},
 		{
 			name: "catalog replacement",
-			interrupt: func(picker *picker[string], _ *headless.Root, _ image.Point) {
+			interrupt: func(picker *picker[string], _ *sceneTestRoot, _ image.Point) {
 				picker.SetItems([]string{"replacement first", "replacement second", "replacement third"})
 			},
 		},
@@ -130,10 +126,11 @@ func TestPickerCancelsAStalePointerGesture(t *testing.T) {
 				func(value string) { picked = value },
 			)
 			picker.SetItems([]string{"first", "second", "third"})
-			picker.Focus(true)
-			root := headless.NewRoot(picker)
-			root.Draw(grid.NewSurface(40, 7).View())
-			second := pickerPoint(picker, 1)
+
+			root := newSceneTestRoot(t, picker.Element())
+			surface := grid.NewSurface(40, 7)
+			root.Draw(surface.View())
+			second := pickerPoint(t, picker, surface, 1)
 
 			root.Handle(input.Mouse{Pos: second, Action: input.MouseDown, Button: input.ButtonLeft})
 			test.interrupt(picker, root, second)
@@ -145,21 +142,44 @@ func TestPickerCancelsAStalePointerGesture(t *testing.T) {
 	}
 }
 
+func TestPickerForeignButtonReleasePreservesTheNativeCapture(t *testing.T) {
+	picked := ""
+	picker := newPicker(kit.Dark(), kit.Unicode(), "search",
+		func(value string) string { return value },
+		func(string) string { return "" },
+		func(value string) { picked = value },
+	)
+	picker.SetItems([]string{"first", "second"})
+	root := newSceneTestRoot(t, picker.Element())
+	surface := grid.NewSurface(40, 7)
+	root.Draw(surface.View())
+	second := pickerPoint(t, picker, surface, 1)
+	root.Handle(input.Mouse{Pos: second, Action: input.MouseDown, Button: input.ButtonLeft})
+	root.Handle(input.Mouse{Pos: second, Action: input.MouseUp, Button: input.ButtonRight})
+	if picked != "" {
+		t.Fatal("an unrelated release committed the captured left-button press")
+	}
+	root.Handle(input.Mouse{Pos: second, Action: input.MouseUp, Button: input.ButtonLeft})
+	if picked != "second" {
+		t.Fatalf("the matching release selected %q, want second", picked)
+	}
+}
+
 func TestPickerDoesNotCommitAPointerGestureInterruptedByNavigation(t *testing.T) {
 	tests := []struct {
 		name      string
-		interrupt func(*headless.Root, image.Point)
+		interrupt func(*sceneTestRoot, image.Point)
 	}{
 		{
 			name: "keyboard",
-			interrupt: func(root *headless.Root, _ image.Point) {
+			interrupt: func(root *sceneTestRoot, _ image.Point) {
 				root.Handle(input.Key{Code: input.Down})
 				root.Handle(input.Key{Code: input.Up})
 			},
 		},
 		{
 			name: "wheel",
-			interrupt: func(root *headless.Root, point image.Point) {
+			interrupt: func(root *sceneTestRoot, point image.Point) {
 				root.Handle(input.Mouse{Pos: point, Action: input.WheelDown})
 				root.Handle(input.Mouse{Pos: point, Action: input.WheelUp})
 			},
@@ -174,9 +194,10 @@ func TestPickerDoesNotCommitAPointerGestureInterruptedByNavigation(t *testing.T)
 				func(value string) { picked = value },
 			)
 			picker.SetItems([]string{"first", "second", "third", "fourth", "fifth", "sixth", "seventh"})
-			root := headless.NewRoot(picker)
-			root.Draw(grid.NewSurface(40, 7).View())
-			second := pickerPoint(picker, 1)
+			root := newSceneTestRoot(t, picker.Element())
+			surface := grid.NewSurface(40, 7)
+			root.Draw(surface.View())
+			second := pickerPoint(t, picker, surface, 1)
 
 			root.Handle(input.Mouse{Pos: second, Action: input.MouseDown, Button: input.ButtonLeft})
 			test.interrupt(root, second)
@@ -188,7 +209,7 @@ func TestPickerDoesNotCommitAPointerGestureInterruptedByNavigation(t *testing.T)
 	}
 }
 
-func pickerPoint[T any](picker *picker[T], row int) image.Point {
-	area := picker.areas.Value().list
-	return image.Pt(area.Min.X+1, area.Min.Y+row)
+func pickerPoint[T any](t testing.TB, picker *picker[T], surface *grid.Surface, sourceIndex int) image.Point {
+	t.Helper()
+	return drawnTextOrigin(t, surface, picker.label(picker.items.Items()[sourceIndex]))
 }

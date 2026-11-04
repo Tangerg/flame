@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
-	"github.com/Tangerg/frame/cancellation"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/samber/lo"
 )
@@ -129,13 +128,13 @@ func (c *Openings) WaitSessionStartable(ctx context.Context, sessionID string) e
 			return err
 		}
 		_, active, err := c.activeRuns.ActiveRun(ctx, sess.ID())
-		err = errors.Join(err, cancellation.Err(ctx))
+		err = errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx)))
 		if err != nil || !active {
 			return err
 		}
 		select {
 		case <-ctx.Done():
-			return cancellation.Err(ctx)
+			return errors.Join(ctx.Err(), context.Cause(ctx))
 		case <-changed:
 		}
 	}

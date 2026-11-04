@@ -9,7 +9,8 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
 func (i *interactionSession) sendExecutorRequest(
@@ -34,6 +35,9 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 		calls = append(calls, managed)
 	}
 	i.state.mu.Unlock()
+	if len(calls) == 0 {
+		return false, nil
+	}
 	slices.SortFunc(calls, func(left, right *managedDelegateCall) int {
 		if depth := int(right.parentRelation.Depth()+1) - int(left.parentRelation.Depth()+1); depth != 0 {
 			return depth
@@ -52,9 +56,12 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 	// One inspection decides which delegated children have finished. Asking each
 	// child separately would compose the answer out of readings taken at
 	// different moments, and this reconciliation publishes terminal facts.
-	inspection, err := i.engine.InspectTree(ctx, i.processRootID())
+	inspection, candidate, err := i.inspectCompletedDelegates(ctx, calls)
 	if err != nil {
 		return false, fmt.Errorf("execution: inspect delegated terminals: %w", err)
+	}
+	if !candidate {
+		return false, nil
 	}
 	progressed := false
 	for _, managed := range calls {
@@ -67,7 +74,7 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 			continue
 		}
 		member, inspected := inspection.Process(processID)
-		if !inspected || !member.Snapshot.Status().Terminal() || !subtreeDrained(inspection, processID) {
+		if !inspected || !member.Status.Terminal() || !subtreeDrained(inspection, processID) {
 			continue
 		}
 		process, found := i.engine.Process(processID)
@@ -88,22 +95,62 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 	return progressed, nil
 }
 
+func (i *interactionSession) inspectCompletedDelegates(
+	ctx context.Context,
+	calls []*managedDelegateCall,
+) (scoperun.TreeInspection, bool, error) {
+	targets := make(map[scoperun.ProcessID]struct{}, len(calls))
+	for _, managed := range calls {
+		managed.mu.Lock()
+		if !managed.segmentProjected && managed.childProcessID.Valid() {
+			targets[managed.childProcessID] = struct{}{}
+		}
+		managed.mu.Unlock()
+	}
+	if len(targets) == 0 {
+		return scoperun.TreeInspection{}, false, nil
+	}
+	history, err := i.committedTree(ctx, i.processRootID())
+	if err != nil || !hasDelegateExit(history, targets) {
+		return scoperun.TreeInspection{}, false, err
+	}
+	inspection, err := i.logCache.inspect(history)
+	return inspection, true, err
+}
+
+func hasDelegateExit(history scoperun.Log, targets map[scoperun.ProcessID]struct{}) bool {
+	for _, entry := range history.Entries {
+		switch record := entry.Record.(type) {
+		case scoperun.Checkpoint:
+			return true
+		case scoperun.Exited:
+			if _, found := targets[record.Process]; found {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (i *interactionSession) projectDelegateTerminal(
 	ctx context.Context,
 	managed *managedDelegateCall,
-	result agent.Result,
+	result scoperun.Result[scoperun.Payload],
 ) (bool, error) {
 	managed.mu.Lock()
-	defer managed.mu.Unlock()
 	if result.ProcessID() != managed.childProcessID {
+		managed.mu.Unlock()
 		return false, errors.New("execution: delegated result changed child identity")
 	}
 	if managed.segmentProjected {
+		managed.mu.Unlock()
 		return false, nil
 	}
+	parent, callID := managed.parentRelation, managed.call.ID
+	managed.mu.Unlock()
 	member := runs.ExecutorMember{
-		MemberID: result.ProcessID().String(), ParentID: managed.identity.parentID.String(),
-		SpawnCallID: managed.call.ID,
+		MemberID: result.ProcessID().String(), ParentID: i.executorMember(parent).MemberID,
+		SpawnCallID: callID,
 	}
 	end, err := i.segmentEnd(result)
 	if err != nil {
@@ -112,7 +159,9 @@ func (i *interactionSession) projectDelegateTerminal(
 	if err := i.commitFact(context.WithoutCancel(ctx), member, end); err != nil {
 		return false, fmt.Errorf("execution: publish delegated child terminal: %w", err)
 	}
+	managed.mu.Lock()
 	managed.segmentProjected = true
+	managed.mu.Unlock()
 	i.modelFailures.forget(result.ProcessID())
 	return true, nil
 }

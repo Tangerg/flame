@@ -1,17 +1,20 @@
 package terminal
 
 import (
+	"context"
 	"fmt"
+	"github.com/Tangerg/oolong/ui/core/scene"
+	"image"
 	"strings"
 
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/keymap"
-	"github.com/Tangerg/oolong/core/layout"
-	"github.com/Tangerg/oolong/core/text"
-	"github.com/Tangerg/oolong/highlight"
+	"github.com/Tangerg/oolong/extensions/highlight"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/keymap"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/text"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 const (
@@ -58,17 +61,20 @@ type readerPane struct {
 	glyphs    kit.Glyphs
 	syntax    highlight.Renderer
 	wheel     input.Wheel
-	clipboard headless.Clipboard
+	clipboard base.Clipboard
 	keys      *keymap.Map
 
-	content          headless.Transcript
-	scroll           headless.Scroll
-	selection        headless.Selection
-	view             kit.Transcript
-	bodyRegion       headless.PointerRegion
+	content          *base.Transcript
+	scroll           *base.Scroll
+	selection        *base.Selection
+	view             *kit.Transcript
+	group            *scene.Group
+	body             *scene.Group
+	blocks           []base.Block
+	viewport         scene.Snapshot[image.Point]
 	selectionGesture readerSelectionGesture
-	search           *headless.Search
-	matches          []headless.Match
+	search           *readingSearch
+	matches          []base.Match
 	current          int
 	query            string
 	problem          string
@@ -83,8 +89,8 @@ type readerPane struct {
 	observingSource bool
 }
 
-func newReaderPane(theme kit.Theme, glyphs kit.Glyphs, syntax highlight.Renderer, wheel input.Wheel, clipboard headless.Clipboard) *readerPane {
-	keys := headless.DefaultScrollKeys()
+func newReaderPane(theme kit.Theme, glyphs kit.Glyphs, syntax highlight.Renderer, wheel input.Wheel, clipboard base.Clipboard) *readerPane {
+	keys := base.DefaultScrollKeys()
 	keys.Bind(readerFind, input.Ctrl.Rune('f'))
 	keys.Bind(readerNext, input.Chord{Code: input.F3})
 	keys.Bind(readerPrevious, input.Shift.With(input.F3))
@@ -92,16 +98,39 @@ func newReaderPane(theme kit.Theme, glyphs kit.Glyphs, syntax highlight.Renderer
 	keys.Bind(readerClose, input.Chord{Code: input.Esc})
 	r := &readerPane{
 		theme: theme, glyphs: glyphs, syntax: syntax, wheel: wheel, clipboard: clipboard,
-		keys: keys, search: headless.NewSearch(), current: -1,
+		keys: keys, search: newReadingSearch(), current: -1,
 	}
-	r.resetContent(false)
+	r.body = scene.NewGroup(scene.GroupConfig{Overlay: true, Element: scene.ElementConfig{Key: "reader-body", Focusable: func() bool { return true }, Preview: func(event scene.Event) scene.EventResult {
+		if !event.CurrentLayout() {
+			return scene.EventResult{}
+		}
+		handled := r.handleBody(event.Input())
+		mouse, pointer := event.Input().(input.Mouse)
+		return scene.EventResult{Consumed: handled, Capture: handled && pointer && mouse.Action == input.MouseDown, Focus: handled && pointer && mouse.Action == input.MouseDown}
+	}, Handle: func(event scene.Event) scene.EventResult {
+		if mouse, ok := event.Input().(input.Mouse); ok && mouse.Action == input.MouseCancel {
+			r.handleBody(mouse)
+		}
+		return scene.EventResult{}
+	}, FocusChanged: func(focused bool) {
+		if !focused {
+			r.selectionGesture.cancel()
+		}
+	}}})
+	r.group = scene.NewGroup(scene.GroupConfig{Axis: layout.Down, Element: scene.ElementConfig{Key: "reader", Preview: func(event scene.Event) scene.EventResult {
+		return scene.EventResult{Consumed: r.handleShortcut(event.Input())}
+	}}, Items: []scene.Item{
+		{Size: layout.Fixed(1), Element: scene.NewElement(scene.ElementConfig{Paint: r.drawHeading})},
+		{Size: layout.Flex(1), Element: r.body.Element()},
+	}})
+	r.resetContent(nil, false, false)
 	return r
 }
 
 func (r *readerPane) Open(target readerTarget) {
 	r.CloseDocument()
 	r.query, r.problem, r.matches, r.current = "", "", nil, -1
-	r.search.Submit(&r.content, "", false)
+	r.search.Submit(nil, "", 0)
 	if target.source != nil {
 		r.observingSource = true
 		initial := true
@@ -122,77 +151,114 @@ func (r *readerPane) replace(document readerDocument, preserveScroll, follow boo
 		r.title = "Transcript entry"
 	}
 	r.detail = strings.TrimSpace(document.Detail)
-	r.resetContent(preserveScroll)
+	var blocks []base.Block
 	presentation := blockPresentation{Theme: r.theme, Glyphs: r.glyphs, Syntax: r.syntax}
 	for _, section := range document.Sections {
-		blocks := renderToolSections(presentation, []toolSection{section}, false)
-		for _, block := range blocks {
-			id := r.content.Append(newReaderSectionBlock(r.theme, section.Title, block))
-			r.content.Finish(id)
+		rendered := renderToolSections(presentation, []toolSection{section}, false)
+		for _, block := range rendered {
+			blocks = append(blocks, newReaderSectionBlock(r.theme, section.Title, block))
 		}
 	}
-	if r.content.Len() == 0 {
-		id := r.content.Append(&kit.Entry{Theme: r.theme, Body: "No content is available for this entry."})
-		r.content.Finish(id)
+	if len(blocks) == 0 {
+		blocks = append(blocks, &kit.Entry{Theme: r.theme, Body: "No content is available for this entry."})
 	}
+	r.resetContent(blocks, preserveScroll, follow)
 	if follow {
 		r.scroll.ToBottom()
 	}
 	r.selection.Clear()
 	if r.query != "" {
-		r.search.Submit(&r.content, r.query, false)
+		r.search.Submit(r.searchRows(), r.query, 0)
 	}
 }
 
-func (r *readerPane) resetContent(preserveScroll bool) {
-	r.interruptSelectionGesture()
-	r.content = headless.Transcript{}
-	if !preserveScroll {
-		r.scroll = headless.Scroll{}
-		r.scroll.Wheel(r.wheel)
-		r.scroll.ToTop()
+func (r *readerPane) resetContent(blocks []base.Block, preserveScroll, follow bool) {
+	offset := 0
+	if r.content != nil {
+		r.interruptSelectionGesture()
+		if preserveScroll {
+			offset = r.scroll.Offset()
+		}
+		r.content.Close()
 	}
-	r.selection = headless.Selection{}
-	r.view = kit.Transcript{
-		Content: &r.content, Scroll: &r.scroll, Selection: &r.selection,
-		Theme: r.theme, Glyphs: r.glyphs, Keys: r.keys, Current: -1,
+	view, err := kit.NewTranscript(kit.TranscriptConfig{Behavior: base.TranscriptConfig{Key: "reader-window", MaxItems: max(len(blocks), 1), Keys: r.keys}, Theme: r.theme, Glyphs: r.glyphs})
+	if err != nil {
+		panic(err)
+	}
+	r.view, r.content, r.blocks = view, view.Controller(), blocks
+	r.scroll, r.selection = r.content.Scroll(), r.content.Selection()
+	r.scroll.Wheel(r.wheel)
+	for _, block := range blocks {
+		if _, err := r.content.Add(block); err != nil {
+			panic(err)
+		}
+	}
+	r.scroll.ToTop()
+	if follow {
+		r.scroll.ToBottom()
+	} else if preserveScroll {
+		r.scroll.Reveal(offset, offset+max(r.viewport.Value().Y, 1)-1)
+	}
+	if err := view.Element().SetPaint(r.drawBody); err != nil {
+		panic(err)
+	}
+	if err := view.Element().SetFocusable(func() bool { return false }); err != nil {
+		panic(err)
+	}
+	if err := r.body.Set(scene.Item{Element: view.Element()}); err != nil {
+		panic(err)
 	}
 }
 
-func (r *readerPane) Draw(frame headless.Frame) {
-	width, height := frame.Size()
-	if width <= 0 || height <= 0 {
-		return
-	}
-	rects := (layout.Flow{Axis: layout.Down}).Rects(frame.Bounds().Size(), []layout.Slot{
-		{Size: layout.Fixed(1)},
-		{Size: layout.Flex(1)},
-		{Size: layout.Fixed(1)},
-	})
-	r.bodyRegion.Stage(frame, rects[1], &r.view)
-	rows := frame.Subs(rects)
-	kit.Label{Text: r.title, Style: r.theme.Strong, Ellipsis: r.glyphs.Ellipsis}.Draw(rows[0].View)
+func (r *readerPane) Element() scene.Element { return r.group.Element() }
+
+func (r *readerPane) drawHeading(frame scene.Frame) {
+	kit.Label{Text: r.title, Style: r.theme.Strong, Ellipsis: r.glyphs.Ellipsis}.Draw(frame.View)
 	if r.detail != "" {
-		kit.Label{Text: r.detail, Style: r.theme.Subtle, Align: layout.End, Ellipsis: r.glyphs.Ellipsis}.Draw(rows[0].View)
+		kit.Label{Text: r.detail, Style: r.theme.Subtle, Align: layout.End, Ellipsis: r.glyphs.Ellipsis}.Draw(frame.View)
 	}
-	r.view.Matches, r.view.Current = r.matches, r.current
-	r.view.Draw(rows[1])
-	kit.Label{Text: r.footer(max(height-2, 1)), Style: r.theme.Subtle, Align: layout.End, Ellipsis: r.glyphs.Ellipsis}.Draw(rows[2].View)
 }
 
-func (r *readerPane) footer(window int) string {
+func (r *readerPane) drawBody(frame scene.Frame) {
+	width, height := frame.Size()
+	body := frame.Sub(grid.Area(0, 0, width, max(height-1, 0)))
+	r.viewport.Stage(frame, body.Bounds().Size())
+	window := r.content.StageWindow(body)
+	window.Content.Draw(window.Body, window.BodyFrom)
+	paintReadingSelection(window.Body, window.BodyFrom, window.Content, r.selection, r.theme.Selection)
+	result, err := base.Scan(context.Background(), base.ScanConfig{Query: r.query, Rows: window.Content.Rows(window.Content.StartRow(), window.Content.Height()), StartRow: window.Content.StartRow()})
+	if err == nil {
+		paintReadingMatches(window.Body, window.BodyFrom, result.Matches, r.current, r.theme)
+	}
+	footer := frame.Sub(grid.Area(0, max(height-1, 0), width, min(height, 1)))
+	kit.Label{Text: r.footerAt(window.Content.Height(), window.BodyFrom-window.Content.StartRow(), max(height-1, 1)), Style: r.theme.Subtle, Align: layout.End, Ellipsis: r.glyphs.Ellipsis}.Draw(footer.View)
+}
+
+func (r *readerPane) searchRows() []text.Row {
+	width := max(r.viewport.Value().X, 1)
+	var rows []text.Row
+	for _, block := range r.blocks {
+		if body, ok := block.(base.TextProjector); ok {
+			rows = append(rows, body.Rows(width)...)
+		} else {
+			rows = append(rows, make([]text.Row, block.HeightForWidth(width))...)
+		}
+	}
+	return rows
+}
+
+func (r *readerPane) footerAt(total, offset, window int) string {
 	if r.refreshFailure != "" {
 		return r.refreshFailure
 	}
 	if r.problem != "" {
 		return r.problem
 	}
-	total := r.content.Height()
 	if total <= 0 {
 		return "esc close"
 	}
-	first := min(r.scroll.Offset()+1, total)
-	last := min(r.scroll.Offset()+window, total)
+	first := min(offset+1, total)
+	last := min(offset+window, total)
 	percent := min((last*100)/total, 100)
 	search := ""
 	if r.query != "" {
@@ -209,16 +275,28 @@ func (r *readerPane) Handle(event input.Event) bool {
 	if r.handleShortcut(event) {
 		return true
 	}
+	if mouse, ok := event.(input.Mouse); ok {
+		mouse.Pos.Y--
+		return r.handleBody(mouse)
+	}
+	return r.handleBody(event)
+}
+
+func (r *readerPane) handleBody(event input.Event) bool {
 	switch event.(type) {
 	case input.Paste, input.FocusOut:
 		r.interruptSelectionGesture()
 	}
+	handled := r.content.Handle(event)
 	if mouse, ok := event.(input.Mouse); ok {
-		handled, delivered := r.bodyRegion.Handle(mouse)
+		bounds := grid.Area(0, 0, r.viewport.Value().X, r.viewport.Value().Y)
+		delivered := !bounds.Empty()
+		if mouse.Action == input.MouseDown {
+			delivered = mouse.Pos.In(bounds)
+		}
 		r.handleMouse(mouse, handled, delivered)
-		return handled
 	}
-	return r.view.Handle(event)
+	return handled
 }
 
 func (r *readerPane) handleShortcut(event input.Event) bool {
@@ -290,11 +368,11 @@ func (r *readerPane) Closed() { r.CloseDocument() }
 func (r *readerPane) Find(query string) {
 	r.query = strings.TrimSpace(query)
 	r.problem, r.matches, r.current = "", nil, -1
-	r.search.Submit(&r.content, r.query, false)
+	r.search.Submit(r.searchRows(), r.query, 0)
 }
 
-func (r *readerPane) AcceptSearch(result headless.Result) bool {
-	if !result.Current() {
+func (r *readerPane) AcceptSearch(result readingSearchResult) bool {
+	if !r.search.Current(result) {
 		return false
 	}
 	if result.Err != nil {
@@ -309,9 +387,8 @@ func (r *readerPane) AcceptSearch(result headless.Result) bool {
 	if len(r.matches) > 0 {
 		r.current = max(r.current, 0)
 	}
-	r.view.Matches = r.matches
 	if navigate {
-		r.view.RevealMatch(r.current)
+		r.revealMatch()
 	}
 	return true
 }
@@ -324,18 +401,29 @@ func (r *readerPane) StepMatch(delta int) bool {
 	if r.current < 0 {
 		r.current += len(r.matches)
 	}
-	r.view.Matches = r.matches
-	return r.view.RevealMatch(r.current)
+	return r.revealMatch()
 }
 
-func (r *readerPane) SearchResults() <-chan headless.Result { return r.search.Results() }
+func (r *readerPane) revealMatch() bool {
+	if r.current < 0 || r.current >= len(r.matches) {
+		return false
+	}
+	match := r.matches[r.current]
+	r.scroll.Reveal(match.Row, match.Row+max(len(match.Spans)-1, 0))
+	return true
+}
+
+func (r *readerPane) SearchResults() <-chan readingSearchResult { return r.search.Results() }
 
 func (r *readerPane) ObservingSource() bool {
 	return r != nil && r.observingSource
 }
 
 func (r *readerPane) copy() {
-	value := r.selection.Text(&r.content)
+	value, err := r.selection.Text(r.content.Layout())
+	if err != nil {
+		value = ""
+	}
 	if value == "" {
 		value = copyableRowsText(r.content.Rows(r.content.StartRow(), r.content.Height()))
 	}
@@ -360,17 +448,18 @@ func (r *readerPane) CloseDocument() {
 func (r *readerPane) Shutdown() {
 	r.CloseDocument()
 	r.search.Close()
+	r.content.Close()
 }
 
 type readerSectionBlock struct {
 	theme   kit.Theme
 	title   string
-	content headless.Block
+	content base.Block
 }
 
-var _ headless.TextProjector = (*readerSectionBlock)(nil)
+var _ base.TextProjector = (*readerSectionBlock)(nil)
 
-func newReaderSectionBlock(theme kit.Theme, title string, content headless.Block) *readerSectionBlock {
+func newReaderSectionBlock(theme kit.Theme, title string, content base.Block) *readerSectionBlock {
 	return &readerSectionBlock{theme: theme, title: strings.TrimSpace(title), content: content}
 }
 
@@ -395,7 +484,7 @@ func (r *readerSectionBlock) Rows(width int) []text.Row {
 	if r.title != "" {
 		rows = append(rows, text.Row{Text: r.title})
 	}
-	if copyable, ok := r.content.(headless.TextProjector); ok {
+	if copyable, ok := r.content.(base.TextProjector); ok {
 		rows = append(rows, copyable.Rows(width)...)
 	} else {
 		rows = append(rows, make([]text.Row, r.content.HeightForWidth(width))...)

@@ -6,11 +6,10 @@ import (
 	jsonv2 "encoding/json/v2"
 	"fmt"
 
-	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/frame/portable"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -20,7 +19,7 @@ import (
 // projection. plan builds the request and resolve renders the answer, so a
 // tool adds just those two product halves.
 type interruptTool[Args any] struct {
-	definition chat.ToolDefinition
+	definition toolcontract.Definition
 	interrupt  runs.InterruptFunc
 	plan       func(context.Context, Args) (runs.Interrupt, error)
 	resolve    func(context.Context, Args, run.InterruptResolution) (string, error)
@@ -36,7 +35,7 @@ func newInterruptTool[Args any](
 	if err != nil {
 		return nil, fmt.Errorf("%s: derive input schema: %w", config.Name, err)
 	}
-	definition := chat.ToolDefinition{Name: config.Name, Description: config.Description, InputSchema: schema.JSON()}
+	definition := toolcontract.Definition{Name: config.Name, Description: config.Description, InputSchema: schema}
 	if err := definition.Validate(); err != nil {
 		return nil, fmt.Errorf("%s: invalid definition: %w", config.Name, err)
 	}
@@ -46,8 +45,8 @@ func newInterruptTool[Args any](
 	return &interruptTool[Args]{definition: definition, interrupt: interrupt, plan: plan, resolve: resolve}, nil
 }
 
-func (t *interruptTool[Args]) Definition() chat.ToolDefinition {
-	return chat.ToolDefinition{
+func (t *interruptTool[Args]) Definition() toolcontract.Definition {
+	return toolcontract.Definition{
 		Name:        t.definition.Name,
 		Description: t.definition.Description,
 		InputSchema: bytes.Clone(t.definition.InputSchema),
@@ -83,7 +82,7 @@ func (t *interruptTool[Args]) Call(ctx context.Context, invocation toolcontract.
 	if err != nil {
 		return toolcontract.Result{}, err
 	}
-	output := chat.NewTextToolOutput(text)
+	output := toolcontract.NewTextOutput(text)
 	if err := output.Validate(); err != nil {
 		return toolcontract.Result{}, err
 	}

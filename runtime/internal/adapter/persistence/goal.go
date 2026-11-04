@@ -10,7 +10,6 @@ import (
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/qimu/sqlite"
 )
 
 // GoalStore is the SQLite persistence adapter for autonomous goals: one row per
@@ -19,13 +18,13 @@ import (
 //
 // Safe for concurrent use; the *sql.DB serializes writes (MaxOpenConns 1, see
 // [Open]).
-type GoalStore struct {
-	db *sql.DB
-}
+type GoalStore struct{ db *database }
 
 // newGoalStore wires a database with the current [Open]-installed schema to the
 // autonomous-goal persistence surface.
-func newGoalStore(db *sql.DB) *GoalStore { return &GoalStore{db: db} }
+func newGoalStore(db *database) *GoalStore {
+	return &GoalStore{db: db}
+}
 
 // Get reads the Goal and its Run-owned usage from one storage snapshot.
 func (g *GoalStore) Get(ctx context.Context, sessionID string) (goal.Current, error) {
@@ -34,9 +33,8 @@ func (g *GoalStore) Get(ctx context.Context, sessionID string) (goal.Current, er
 		return goal.Current{}, err
 	}
 	current := unwritten
-	err = sqlite.RunReadSnapshot(ctx, g.db, func(ctx context.Context) error {
-		row := sqlite.Connection(ctx, g.db).QueryRowContext(ctx,
-			`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, author, incarnation_id, revision, created_at, updated_at
+	err = g.db.read(ctx, func(ctx context.Context) error {
+		row := g.db.connection(ctx).QueryRowContext(ctx, `SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, author, incarnation_id, revision, created_at, updated_at
 			 FROM goals WHERE session_id = ?`, sessionID)
 		snapshot, err := scanGoal(row)
 		if errors.Is(err, sql.ErrNoRows) {
@@ -66,54 +64,48 @@ func (g *GoalStore) Get(ctx context.Context, sessionID string) (goal.Current, er
 // INSERT-if-absent (not INSERT OR REPLACE) is deliberate — a stale writer whose
 // row was cleared must not resurrect it.
 func (g *GoalStore) Save(ctx context.Context, replacement goal.Replacement) (bool, error) {
-	record := replacement.State()
-	expected := replacement.ExpectedVersion()
-	snapshot := record.Snapshot()
-	author, err := encodeStoredJSON(snapshot.Author)
-	if err != nil {
-		return false, err
-	}
-	capabilities, err := encodeRunCapabilities(snapshot.Capabilities)
-	if err != nil {
-		return false, fmt.Errorf("sqlite: encode goal capabilities: %w", err)
-	}
-	if expected.IsUnwritten() {
-		res, execContextErr := sqlite.Connection(ctx, g.db).ExecContext(ctx,
-			`INSERT INTO goals(session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, author, incarnation_id, revision, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			 ON CONFLICT(session_id) DO NOTHING`,
-			snapshot.SessionID, snapshot.Objective, string(snapshot.Status), string(snapshot.ReasonCode), storedGoalReasonDetail(snapshot), snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(),
-			capabilities, string(author), snapshot.IncarnationID, snapshot.Revision, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano())
-		if execContextErr != nil {
-			return false, fmt.Errorf("sqlite: insert goal: %w", execContextErr)
+	return scopedValue(ctx, g.db.write, func(ctx context.Context) (bool, error) {
+		record := replacement.State()
+		expected := replacement.ExpectedVersion()
+		snapshot := record.Snapshot()
+		author, err := encodeStoredJSON(snapshot.Author)
+		if err != nil {
+			return false, err
 		}
-		applied, execContextErr := rowsAffected(res)
-		if execContextErr != nil || !applied {
-			return applied, execContextErr
+		capabilities, err := encodeRunCapabilities(snapshot.Capabilities)
+		if err != nil {
+			return false, fmt.Errorf("sqlite: encode goal capabilities: %w", err)
+		}
+		if expected.IsUnwritten() {
+			res, execContextErr := g.db.connection(ctx).ExecContext(ctx, `INSERT INTO goals(session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, author, incarnation_id, revision, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			 ON CONFLICT(session_id) DO NOTHING`, snapshot.SessionID, snapshot.Objective, string(snapshot.Status), string(snapshot.ReasonCode), storedGoalReasonDetail(snapshot), snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), capabilities, string(author), snapshot.IncarnationID, snapshot.Revision, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano())
+			if execContextErr != nil {
+				return false, fmt.Errorf("sqlite: insert goal: %w", execContextErr)
+			}
+			applied, execContextErr := rowsAffected(res)
+			if execContextErr != nil || !applied {
+				return applied, execContextErr
+			}
+			return true, nil
+		}
+		expectedIncarnation, committed := expected.IncarnationID()
+		expectedRevision, revisionCommitted := expected.Revision()
+		if !committed || !revisionCommitted {
+			return false, errors.New("sqlite: committed Goal version lost identity")
+		}
+		res, err := g.db.connection(ctx).ExecContext(ctx, `UPDATE goals SET objective = ?, status = ?, reason_code = ?, reason_detail = ?, provider = ?, model = ?, reasoning_effort = ?, capabilities = ?, author = ?, incarnation_id = ?, revision = ?, created_at = ?, updated_at = ?
+		 WHERE session_id = ? AND incarnation_id = ? AND revision = ?`, snapshot.Objective, string(snapshot.Status), string(snapshot.ReasonCode), storedGoalReasonDetail(snapshot), snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), capabilities, string(author), snapshot.IncarnationID, snapshot.Revision, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(), snapshot.SessionID, expectedIncarnation, expectedRevision)
+		if err != nil {
+			return false, fmt.Errorf("sqlite: save goal: %w", err)
+		}
+		applied, err := rowsAffected(res)
+		if err != nil || !applied {
+			return applied, err
 		}
 		return true, nil
-	}
-	expectedIncarnation, committed := expected.IncarnationID()
-	expectedRevision, revisionCommitted := expected.Revision()
-	if !committed || !revisionCommitted {
-		return false, errors.New("sqlite: committed Goal version lost identity")
-	}
-	res, err := sqlite.Connection(ctx, g.db).ExecContext(ctx,
-		`UPDATE goals SET objective = ?, status = ?, reason_code = ?, reason_detail = ?, provider = ?, model = ?, reasoning_effort = ?, capabilities = ?, author = ?, incarnation_id = ?, revision = ?, created_at = ?, updated_at = ?
-		 WHERE session_id = ? AND incarnation_id = ? AND revision = ?`,
-		snapshot.Objective, string(snapshot.Status), string(snapshot.ReasonCode), storedGoalReasonDetail(snapshot), snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(),
-		capabilities, string(author), snapshot.IncarnationID, snapshot.Revision, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(),
-		snapshot.SessionID, expectedIncarnation, expectedRevision)
-	if err != nil {
-		return false, fmt.Errorf("sqlite: save goal: %w", err)
-	}
-	applied, err := rowsAffected(res)
-	if err != nil || !applied {
-		return applied, err
-	}
-	return true, nil
+	})
 }
-
 func rowsAffected(res sql.Result) (bool, error) {
 	n, err := res.RowsAffected()
 	if err != nil {
@@ -125,40 +117,42 @@ func rowsAffected(res sql.Result) (bool, error) {
 // Clear removes the session's goal unconditionally; a missing goal is not an
 // error.
 func (g *GoalStore) Clear(ctx context.Context, sessionID string) error {
-	if err := validateSessionResource("clear Goal", sessionID); err != nil {
-		return err
-	}
-	if _, err := sqlite.Connection(ctx, g.db).ExecContext(ctx, `DELETE FROM goals WHERE session_id = ?`, sessionID); err != nil {
-		return fmt.Errorf("sqlite: clear goal: %w", err)
-	}
-	return nil
+	return g.db.write(ctx, func(ctx context.Context) error {
+		if err := validateSessionResource("clear Goal", sessionID); err != nil {
+			return err
+		}
+		if _, err := g.db.connection(ctx).ExecContext(ctx, `DELETE FROM goals WHERE session_id = ?`, sessionID); err != nil {
+			return fmt.Errorf("sqlite: clear goal: %w", err)
+		}
+		return nil
+	})
 }
 
 // ClearIf removes the session's goal only when its version matches expected
 // (the loop's CAS delete), reporting whether it applied.
 func (g *GoalStore) ClearIf(ctx context.Context, sessionID string, expected goal.Version) (bool, error) {
-	if err := validateSessionResource("clear Goal with version", sessionID); err != nil {
-		return false, err
-	}
-	incarnationID, committed := expected.IncarnationID()
-	revision, revisionCommitted := expected.Revision()
-	if err := expected.Validate(); err != nil || !committed || !revisionCommitted || expected.SessionID() != sessionID {
-		return false, fmt.Errorf("sqlite: clear Goal with invalid version: %w", errors.Join(err, goal.ErrInvalid))
-	}
-	res, err := sqlite.Connection(ctx, g.db).ExecContext(ctx,
-		`DELETE FROM goals WHERE session_id = ? AND incarnation_id = ? AND revision = ?`, sessionID, incarnationID, revision)
-	if err != nil {
-		return false, fmt.Errorf("sqlite: clear goal (cas): %w", err)
-	}
-	return rowsAffected(res)
+	return scopedValue(ctx, g.db.write, func(ctx context.Context) (bool, error) {
+		if err := validateSessionResource("clear Goal with version", sessionID); err != nil {
+			return false, err
+		}
+		incarnationID, committed := expected.IncarnationID()
+		revision, revisionCommitted := expected.Revision()
+		if err := expected.Validate(); err != nil || !committed || !revisionCommitted || expected.SessionID() != sessionID {
+			return false, fmt.Errorf("sqlite: clear Goal with invalid version: %w", errors.Join(err, goal.ErrInvalid))
+		}
+		res, err := g.db.connection(ctx).ExecContext(ctx, `DELETE FROM goals WHERE session_id = ? AND incarnation_id = ? AND revision = ?`, sessionID, incarnationID, revision)
+		if err != nil {
+			return false, fmt.Errorf("sqlite: clear goal (cas): %w", err)
+		}
+		return rowsAffected(res)
+	})
 }
 
 // List returns every stored goal (for the boot reconcile).
 func (g *GoalStore) List(ctx context.Context) ([]goal.Goal, error) {
 	var out []goal.Goal
-	err := sqlite.RunReadSnapshot(ctx, g.db, func(ctx context.Context) error {
-		rows, err := sqlite.Connection(ctx, g.db).QueryContext(ctx,
-			`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, author, incarnation_id, revision, created_at, updated_at FROM goals`)
+	err := g.db.read(ctx, func(ctx context.Context) error {
+		rows, err := g.db.connection(ctx).QueryContext(ctx, `SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, author, incarnation_id, revision, created_at, updated_at FROM goals`)
 		if err != nil {
 			return fmt.Errorf("sqlite: list goals: %w", err)
 		}
@@ -220,13 +214,7 @@ func scanGoal(row scanRow) (goal.Snapshot, error) {
 	if err != nil {
 		return goal.Snapshot{}, fmt.Errorf("sqlite: decode goal capabilities: %w", err)
 	}
-	snapshot := goal.Snapshot{
-		SessionID: sessionID, Objective: objective, Status: goal.Status(status),
-		ReasonCode:     goal.ReasonCode(reasonCode),
-		ModelSelection: selection, Capabilities: capabilities,
-		IncarnationID: incarnationID, Revision: revision,
-		CreatedAt: time.Unix(0, createdAt).UTC(), UpdatedAt: time.Unix(0, updatedAt).UTC(),
-	}
+	snapshot := goal.Snapshot{SessionID: sessionID, Objective: objective, Status: goal.Status(status), ReasonCode: goal.ReasonCode(reasonCode), ModelSelection: selection, Capabilities: capabilities, IncarnationID: incarnationID, Revision: revision, CreatedAt: time.Unix(0, createdAt).UTC(), UpdatedAt: time.Unix(0, updatedAt).UTC()}
 	if err := decodeStoredJSON([]byte(authorJSON), &snapshot.Author); err != nil {
 		return goal.Snapshot{}, err
 	}
@@ -251,36 +239,35 @@ func storedGoalReasonDetail(snapshot goal.Snapshot) string {
 	}
 	return string(snapshot.ReasonRunOutcome)
 }
-
 func (g *GoalStore) restore(ctx context.Context, snapshot goal.Snapshot) (goal.Goal, error) {
-	rows, err := sqlite.Connection(ctx, g.db).QueryContext(ctx,
-		`SELECT `+runColumns+` FROM runs AS r `+runReadJoins+`
+	return scopedValue(ctx, g.db.read, func(ctx context.Context) (goal.Goal, error) {
+		rows, err := g.db.connection(ctx).QueryContext(ctx, `SELECT `+runColumns+` FROM runs AS r `+runReadJoins+`
 		   JOIN runs AS root ON root.run_id = CASE
 		        WHEN r.root_run_id = '' THEN r.run_id ELSE r.root_run_id END
-		  WHERE root.session_id = ? AND root.goal_incarnation_id = ? AND root.state = ?`,
-		snapshot.SessionID, snapshot.IncarnationID, string(run.Finished))
-	if err != nil {
-		return goal.Goal{}, fmt.Errorf("sqlite: read goal Runs: %w", err)
-	}
-	var charged []run.Run
-	for rows.Next() {
-		value, err := scanRun(rows)
+		  WHERE root.session_id = ? AND root.goal_incarnation_id = ? AND root.state = ?`, snapshot.SessionID, snapshot.IncarnationID, string(run.Finished))
 		if err != nil {
-			_ = rows.Close()
-			return goal.Goal{}, fmt.Errorf("sqlite: scan goal Run: %w", err)
+			return goal.Goal{}, fmt.Errorf("sqlite: read goal Runs: %w", err)
 		}
-		charged = append(charged, value)
-	}
-	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
-		return goal.Goal{}, fmt.Errorf("sqlite: read goal Runs: %w", err)
-	}
-	snapshot.Used, err = goal.UsageOf(snapshot.SessionID, snapshot.IncarnationID, charged)
-	if err != nil {
-		return goal.Goal{}, fmt.Errorf("sqlite: fold goal usage: %w", err)
-	}
-	value, err := goal.Restore(snapshot)
-	if err != nil {
-		return goal.Goal{}, fmt.Errorf("sqlite: validate goal: %w", err)
-	}
-	return value, nil
+		var charged []run.Run
+		for rows.Next() {
+			value, err := scanRun(rows)
+			if err != nil {
+				_ = rows.Close()
+				return goal.Goal{}, fmt.Errorf("sqlite: scan goal Run: %w", err)
+			}
+			charged = append(charged, value)
+		}
+		if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+			return goal.Goal{}, fmt.Errorf("sqlite: read goal Runs: %w", err)
+		}
+		snapshot.Used, err = goal.UsageOf(snapshot.SessionID, snapshot.IncarnationID, charged)
+		if err != nil {
+			return goal.Goal{}, fmt.Errorf("sqlite: fold goal usage: %w", err)
+		}
+		value, err := goal.Restore(snapshot)
+		if err != nil {
+			return goal.Goal{}, fmt.Errorf("sqlite: validate goal: %w", err)
+		}
+		return value, nil
+	})
 }

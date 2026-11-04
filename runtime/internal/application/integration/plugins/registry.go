@@ -7,20 +7,22 @@ import (
 	"fmt"
 	"slices"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/frame"
+
 	"github.com/samber/lo"
 )
 
 type Store interface {
 	List(context.Context) ([]plugin.Snapshot, error)
 	Get(context.Context, identity.InstallationID) (plugin.Snapshot, bool, error)
-	Stage(context.Context, identity.InstallationID, integrity.Digest) error
+	Stage(context.Context, identity.InstallationID, framevalue.Digest) error
 }
 type packageSources interface {
 	Definitions(context.Context, plugin.Installation, plugin.Release) ([]mcpserver.Server, error)
@@ -48,7 +50,7 @@ type userServers interface {
 // Registry is the only MCP registry projection. Installation descriptors are
 // always derived from the installation owner; no editable server rows exist.
 type Registry struct {
-	framework     *qimu.Host
+	framework     *frame.Host
 	user          userServers
 	installations Store
 	packages      packageSources
@@ -56,7 +58,7 @@ type Registry struct {
 	compositions  CompositionStore
 }
 
-func NewRegistry(host *qimu.Host, installations Store, packages packageSources, selections SelectionStore, compositions CompositionStore) (*Registry, error) {
+func NewRegistry(host *frame.Host, installations Store, packages packageSources, selections SelectionStore, compositions CompositionStore) (*Registry, error) {
 	for _, required := range []struct {
 		name  string
 		value any
@@ -77,7 +79,7 @@ func (r Registry) WithExternalDirectory(user userServers) *Registry { r.user = u
 
 // ComponentPlan prepares one immutable component export in its target Realm.
 // The Host revalidates the plan before the browser receives execution authority.
-func (r *Registry) ComponentPlan(ctx context.Context, realm qimu.RealmID, id identity.InstallationID, digest integrity.Digest, component plugin.ContributionID) (*qimu.BindingPlan, error) {
+func (r *Registry) ComponentPlan(ctx context.Context, realm frame.RealmID, id identity.InstallationID, digest framevalue.Digest, component plugin.ContributionID) (*frame.BindingPlan, error) {
 	snapshot, found, err := r.installations.Get(ctx, id)
 	if err != nil {
 		return nil, err
@@ -92,7 +94,7 @@ func (r *Registry) ComponentPlan(ctx context.Context, realm qimu.RealmID, id ide
 	if err != nil {
 		return nil, err
 	}
-	return r.framework.PlanWith(ctx, realm, nil, qimu.ExportRef{
+	return r.framework.PlanWith(ctx, realm, nil, frame.ExportRef{
 		InstallationID: id.Host(),
 		Release:        digest,
 		UnitID:         ComponentUnit(component),
@@ -160,9 +162,9 @@ func (r *Registry) Dispatchable(ctx context.Context, id mcpserver.ID) (mcpserver
 	return r.resolve(ctx, id, Dispatchable)
 }
 
-// BackendPlan captures consumer choices once for Qimu admission of the complete
+// BackendPlan captures consumer choices once for Frame admission of the complete
 // exact Unit graph, including an entry with no public export.
-func (r *Registry) BackendPlan(ctx context.Context, id mcpserver.ID) (*qimu.BindingPlan, error) {
+func (r *Registry) BackendPlan(ctx context.Context, id mcpserver.ID) (*frame.BindingPlan, error) {
 	installationID, installed := id.Origin().Installation()
 	if !installed {
 		return nil, plugin.ErrInvalid
@@ -189,10 +191,10 @@ func (r *Registry) BackendPlan(ctx context.Context, id mcpserver.ID) (*qimu.Bind
 }
 
 // Connection supplies ordinary user-owned MCP configuration. Installed Units
-// are materialized only through BackendPlan and Qimu's execution profiles.
+// are materialized only through BackendPlan and Frame's execution profiles.
 func (r *Registry) Connection(ctx context.Context, id mcpserver.ID) (mcpapp.Launch, error) {
 	if _, installed := id.Origin().Installation(); installed {
-		return mcpapp.Launch{}, fmt.Errorf("%w: installed backend requires an approved Qimu Use", plugin.ErrInvalid)
+		return mcpapp.Launch{}, fmt.Errorf("%w: installed backend requires an approved Frame Use", plugin.ErrInvalid)
 	}
 	server, found, err := r.user.Get(ctx, id.Name())
 	if err != nil {

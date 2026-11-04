@@ -5,9 +5,10 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	"maps"
 	"slices"
+
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"

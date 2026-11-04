@@ -7,12 +7,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *testing.T) {
@@ -32,7 +34,7 @@ func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *t
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
-	contracts, err := portable.ParseCapability([]byte(testsupport.UsageReportsCapabilityJSON))
+	contracts, err := plugincontract.ParseCapability([]byte(testsupport.UsageReportsCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,14 +51,14 @@ func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *t
 		t.Fatal(recovered.Failure)
 	}
 	reply := recovered.Value.(*protocol.CallPluginResponse)
-	var saved testsupport.UsageReportsHeader
+	var saved testsupport.UsageReportsCaptureV1OutputRpcHeader
 	if reply.Failure != nil || json.Unmarshal([]byte(reply.Output), &saved) != nil || saved.Id == "" {
 		t.Fatalf("original capture was not reconciled: %+v", reply)
 	}
 	request.Method, request.Input = testsupport.UsageReportsListV2Method, `{}`
 	listed := r.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
 	var headers testsupport.UsageReportsListV2Output
-	if err := json.Unmarshal([]byte(listed.Output), &headers); err != nil || len(headers.Reports) != 1 || headers.Reports[0].Id != saved.Id || !headers.Reports[0].ObservedAt.Equal(saved.ObservedAt) {
+	if err := json.Unmarshal([]byte(listed.Output), &headers); err != nil || len(headers.Reports) != 1 || headers.Reports[0].Id != saved.Id || headers.Reports[0].ObservedAt != saved.ObservedAt {
 		t.Fatalf("recovery repeated or changed the captured accounting observation: %s: %v", listed.Output, err)
 	}
 }
@@ -66,13 +68,13 @@ func TestUsageReportsInstalledCaptureKeepsCoreFactsAcrossLaterWorkAndRestart(t *
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "usagereports"))
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
-	contracts, err := portable.ParseCapability([]byte(testsupport.UsageReportsCapabilityJSON))
+	contracts, err := plugincontract.ParseCapability([]byte(testsupport.UsageReportsCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
 	call := func(method string, input any, key string) *protocol.CallPluginResponse {
 		t.Helper()
-		encoded, err := jsonvalue.Encode(input)
+		encoded, err := framevalue.EncodeJSON(input)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -98,17 +100,17 @@ func TestUsageReportsInstalledCaptureKeepsCoreFactsAcrossLaterWorkAndRestart(t *
 	run("before-capture")
 	input := testsupport.UsageReportsCaptureInput{Period: "daily"}
 	captured := call(testsupport.UsageReportsCaptureV1Method, input, "save-report")
-	var header testsupport.UsageReportsHeader
+	var header testsupport.UsageReportsCaptureV1OutputRpcHeader
 	if err := json.Unmarshal([]byte(captured.Output), &header); err != nil {
 		t.Fatal(err)
 	}
-	request := testsupport.UsageReportsReportInput{Id: header.Id}
+	request := testsupport.UsageReportsGetV1InputRpcReportInput{Id: header.Id}
 	original := call(testsupport.UsageReportsGetV1Method, request, "").Output
 	var saved testsupport.UsageReportsReportGithubComTangergFlameRuntimeProtocolUsageSummary
 	if err := json.Unmarshal([]byte(original), &saved); err != nil {
 		t.Fatal(err)
 	}
-	if saved.Summary.Coverage.Calls == 0 || saved.Since == nil || saved.Summary.Since == nil || !saved.ObservedAt.Equal(saved.Summary.ObservedAt) || !saved.Since.Equal(*saved.Summary.Since) {
+	if saved.Summary == nil || saved.Summary.Coverage == nil || generatedInteger(t, saved.Summary.Coverage.Calls) == 0 || saved.Since == nil || saved.Summary.Since == nil || saved.ObservedAt != saved.Summary.ObservedAt || *saved.Since != *saved.Summary.Since {
 		t.Fatalf("capture lost core evidence or range: %+v", saved)
 	}
 	run("after-capture")
@@ -128,7 +130,7 @@ func TestUsageReportsInstalledCaptureKeepsCoreFactsAcrossLaterWorkAndRestart(t *
 		t.Fatalf("capture replay recreated removed evidence: %s %v", listed.Output, err)
 	}
 	current := r.must(delivery.UsageSummary, protocol.UsageSummaryRequest{SinceDays: new(1)}, "").(*protocol.UsageSummary)
-	if int64(current.Coverage.Calls) <= saved.Summary.Coverage.Calls {
+	if uint64(current.Coverage.Calls) <= generatedInteger(t, saved.Summary.Coverage.Calls) {
 		t.Fatal("archive deletion changed or replaced the core accounting ledger")
 	}
 }

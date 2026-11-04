@@ -6,8 +6,8 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -31,7 +31,7 @@ func (o *CallComposition) PrepareToolProposal(ctx context.Context, bindings []pl
 	if err := proposal.Validate(); err != nil {
 		return chat.ToolCall{}, err
 	}
-	invocation, err := qimumcp.InvocationFromContext(ctx)
+	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		return chat.ToolCall{}, err
 	}
@@ -65,7 +65,7 @@ func (o *CallComposition) PrepareToolProposal(ctx context.Context, bindings []pl
 		if _, err := o.calls.pool.SessionActor(calling, binding.ServerID, session); err != nil {
 			return chat.ToolCall{}, err
 		}
-		exported, err := qimumcp.NewCapabilityBinding(session, binding.Export, contract)
+		exported, err := pluginmcp.NewCapabilityBinding(session, binding.Export, contract)
 		if err != nil {
 			return chat.ToolCall{}, err
 		}

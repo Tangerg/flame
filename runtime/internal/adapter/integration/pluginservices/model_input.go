@@ -6,8 +6,8 @@ import (
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -35,7 +35,7 @@ func (o *CallComposition) PrepareInput(ctx context.Context, bindings []plugins.C
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
-	if _, err := qimumcp.InvocationFromContext(ctx); err != nil {
+	if _, err := pluginmcp.InvocationFromContext(ctx); err != nil {
 		return nil, err
 	}
 	if err := o.ValidateInput(ctx, bindings); err != nil {
@@ -65,7 +65,7 @@ func (o *CallComposition) PrepareInput(ctx context.Context, bindings []plugins.C
 		if _, err := o.calls.pool.SessionActor(calling, binding.ServerID, session); err != nil {
 			return nil, err
 		}
-		exported, err := qimumcp.ResolveCapability(calling, session, binding.Export, contract)
+		exported, err := pluginmcp.ResolveCapability(calling, session, binding.Export, contract)
 		if err != nil {
 			return nil, err
 		}

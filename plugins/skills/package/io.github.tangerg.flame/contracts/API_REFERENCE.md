@@ -14,6 +14,6 @@ Generated from the feature's Go-owned method contracts.
 | `flame.skills/reject.v1` | command | installation | Withdraw an exact pending proposal before approval. |
 | `flame.skills/reviews.v1` | query | installation | List outstanding proposal commands in the admitted libraries, including publications awaiting confirmation. |
 
-Capability `flame.skill-learning.v2` uses `selection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.qimu/portable/1`.
+Capability `flame.skill-learning.v2` exposes the declared methods. Required backend protocol: `io.github.tangerg.frame/portable/1`.
 
 `capability.generated.json` preserves the canonical callable contract; `schema.json` and the method references are presentation projections.

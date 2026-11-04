@@ -19,5 +19,12 @@ function errorDetails(error: unknown, seen: Set<Error>): string {
 }
 
 export function failureMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  const seen = new Set<unknown>();
+  const messages = (value: unknown): string[] => {
+    if (seen.has(value)) return [];
+    seen.add(value);
+    if (value instanceof AggregateError) return [value.message, ...value.errors.flatMap(messages)];
+    return [value instanceof Error ? value.message : String(value)];
+  };
+  return [...new Set(messages(error))].join("; ");
 }

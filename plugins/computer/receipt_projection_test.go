@@ -8,8 +8,10 @@ import (
 	"os"
 	"testing"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"
@@ -43,11 +45,11 @@ func TestReceiptProjectionMatchesScope(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			actual, err := jsonvalue.Encode(output)
+			actual, err := framevalue.EncodeJSON(output)
 			if err != nil {
 				t.Fatal(err)
 			}
-			expected, err := jsonvalue.Parse(test.Expected)
+			expected, err := framevalue.ParseJSON(test.Expected)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -58,7 +60,7 @@ func TestReceiptProjectionMatchesScope(t *testing.T) {
 	}
 }
 
-func scopeProjection(ctx context.Context, encoded json.RawMessage) (output chat.ToolOutput, err error) {
+func scopeProjection(ctx context.Context, encoded json.RawMessage) (output tool.Output, err error) {
 	var result sdkmcp.CallToolResult
 	if err := jsonv2.Unmarshal(encoded, &result); err != nil {
 		return output, err
@@ -87,7 +89,7 @@ func scopeProjection(ctx context.Context, encoded json.RawMessage) (output chat.
 	if err != nil {
 		return output, err
 	}
-	invocation, err := bound.Contract().Prepare(chat.ToolCall{ID: "original", Name: bound.Contract().Definition().Name, Arguments: `{}`}, nil)
+	invocation, err := bound.Contract().Prepare((chat.ToolCall{ID: "original", Name: bound.Contract().Definition().Name, Arguments: `{}`}).Request(), tool.Admission{})
 	if err != nil {
 		return output, err
 	}

@@ -7,7 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/frame"
 )
 
 // CommitWaitingSubtreeCancellation claims the prepared Pending snapshot and
@@ -39,7 +39,7 @@ func (e *Effects) CommitWaitingSubtreeCancellation(
 		root = commit.RootRun()
 		return e.persistWaitingCancellationDisposition(ctx, commit, &root)
 	})
-	if errors.Is(err, qimu.ErrRecoveryRequired) {
+	if errors.Is(err, frame.ErrRecoveryRequired) {
 		return runs.WaitingSubtreeCancellationResult{}, err
 	}
 	if err != nil {

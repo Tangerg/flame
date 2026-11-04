@@ -2,11 +2,13 @@ package execution
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"fmt"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
 type treeCommitIdentityExpectation struct {
@@ -22,59 +24,27 @@ func (s *scopeCommitCheckingStore) SaveExecutionTree(ctx context.Context, update
 		return fmt.Errorf("test: missing Scope commit expectation")
 	}
 	if update.Head.CommitID != expected.id || update.Head.CommitDigest != expected.digest {
-		return fmt.Errorf("test: Runtime derived a second Scope commit identity: got (%q, %q), want (%q, %q)",
+		return fmt.Errorf("test: persisted batch identity differs: got (%q, %q), want (%q, %q)",
 			update.Head.CommitID, update.Head.CommitDigest, expected.id, expected.digest)
 	}
 	return s.ExecutionTreeStore.SaveExecutionTree(ctx, update)
 }
 
-func (d *sqliteTreeCommitterDriver) ActivateTree(ctx context.Context, activation agent.TreeActivation) error {
-	digest, err := activation.ContentDigest()
+func (d *sqliteScopeStore) Append(ctx context.Context, batch scoperun.Batch) error {
+	payload, err := json.Marshal(batch, json.Deterministic(true))
 	if err != nil {
 		return err
 	}
+	digest := scoperun.ComputeDigest(payload).String()
 	ctx = context.WithValue(ctx, treeCommitIdentityExpectation{}, treeCommitIdentityExpectation{
-		id: activation.Identity(), digest: digest.String(),
+		id: digest, digest: digest,
 	})
-	return d.interactionSession.ActivateTree(ctx, activation)
+	return d.interactionSession.Append(ctx, batch)
 }
 
-func (d *sqliteTreeCommitterDriver) CommitEffect(ctx context.Context, boundary agent.EffectBoundary) error {
-	digest, err := boundary.ContentDigest()
-	if err != nil {
-		return err
-	}
-	ctx = context.WithValue(ctx, treeCommitIdentityExpectation{}, treeCommitIdentityExpectation{
-		id: boundary.Identity(), digest: digest.String(),
-	})
-	return d.interactionSession.CommitEffect(ctx, boundary)
-}
-
-func (d *sqliteTreeCommitterDriver) CommitCheckpoint(ctx context.Context, checkpoint agent.TreeCheckpoint) error {
-	digest, err := checkpoint.ContentDigest()
-	if err != nil {
-		return err
-	}
-	ctx = context.WithValue(ctx, treeCommitIdentityExpectation{}, treeCommitIdentityExpectation{
-		id: checkpoint.Identity(), digest: digest.String(),
-	})
-	return d.interactionSession.CommitCheckpoint(ctx, checkpoint)
-}
-
-func TestScopeTreeCommitterRejectsInvalidBoundaryBeforeStorage(t *testing.T) {
+func TestScopeStoreRejectsInvalidBatchBeforeStorage(t *testing.T) {
 	session := &interactionSession{}
-	for _, test := range []struct {
-		name   string
-		commit func() error
-	}{
-		{"activation", func() error { return session.ActivateTree(t.Context(), agent.TreeActivation{}) }},
-		{"effect", func() error { return session.CommitEffect(t.Context(), agent.EffectBoundary{}) }},
-		{"checkpoint", func() error { return session.CommitCheckpoint(t.Context(), agent.TreeCheckpoint{}) }},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if err := test.commit(); err == nil {
-				t.Fatal("invalid Scope boundary reached the host's storage lifecycle")
-			}
-		})
+	if err := session.Append(t.Context(), scoperun.Batch{}); err == nil {
+		t.Fatal("invalid Scope batch reached the host's storage lifecycle")
 	}
 }

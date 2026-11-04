@@ -1,9 +1,10 @@
 package terminal
 
 import (
-	"errors"
+	"context"
 	"fmt"
-	"slices"
+	"github.com/Tangerg/oolong/ui/core/content"
+	"github.com/Tangerg/oolong/ui/core/grid"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -63,17 +64,22 @@ func (t *transcriptView) begin(block conversation.Block) error {
 	}
 	t.sealToolGroup()
 	speaker := t.history.Speaker(block)
-	live := &liveText{
-		runID: block.RunID, kind: block.Kind, text: conversation.NewStreamedText(block.Text),
-		block: &markdownBlock{theme: t.theme, speaker: speaker},
+	document, err := content.NewStreamDocument(content.StreamConfig{Format: "markdown"})
+	if err != nil {
+		return err
 	}
-	live.stream.SetLook(t.lookFor(block.Kind))
+	live := &liveText{runID: block.RunID, kind: block.Kind, document: document, block: &markdownBlock{theme: t.theme, speaker: speaker}}
+	if err := document.Append([]byte(block.Text)); err != nil {
+		return err
+	}
+	if err := t.prepareLiveText(live); err != nil {
+		return err
+	}
 	live.id = t.place(live.block, false)
+	t.entries[live.id].document = document
+	t.resetWindow(true)
 	t.history.Append(block.RunID, live.id)
 	t.textStreams[key] = live
-	if block.Text != "" {
-		t.updateLiveText(live, block.Text)
-	}
 	return nil
 }
 
@@ -82,25 +88,35 @@ func (t *transcriptView) delta(key string, delta conversation.BlockDelta) error 
 	if !ok {
 		return fmt.Errorf("terminal transcript: delta for inactive text block %s", delta.BlockID)
 	}
-	if err := live.text.Apply(delta); err != nil {
+	if delta.Text == "" {
+		return fmt.Errorf("terminal transcript: stream text block %s: empty delta", delta.BlockID)
+	}
+	if err := live.document.Append([]byte(delta.Text)); err != nil {
 		return fmt.Errorf("terminal transcript: stream text block %s: %w", delta.BlockID, err)
 	}
-	t.updateLiveText(live, delta.Text)
+	if err := t.prepareLiveText(live); err != nil {
+		return err
+	}
+	t.refreshSearch()
 	return nil
 }
 
-func (t *transcriptView) updateLiveText(live *liveText, text string) {
-	stable, feedErr := live.stream.Feed(text)
-	live.stable = append(live.stable, stable...)
-	if feedErr != nil {
-		live.diagnostic = errors.Join(live.diagnostic, feedErr)
+func (t *transcriptView) prepareLiveText(live *liveText) error {
+	var next *markdownBlock
+	prepared := live.document.Snapshot().Prepare(context.Background(), func(_ context.Context, source string) (grid.Drawable, error) {
+		block := &markdownBlock{theme: t.theme, speaker: live.block.speaker}
+		block.setSource(source, t.lookFor(live.kind))
+		next = block
+		return newTranscriptEntry(t.theme, t.glyphs, block), nil
+	})
+	if err := live.document.Accept(prepared); err != nil {
+		return err
 	}
-	blocks := slices.Clone(live.stable)
-	open, openErr := live.stream.Open()
-	blocks = append(blocks, open...)
-	live.block.setBlocks(blocks, errors.Join(live.diagnostic, openErr))
-	t.content.Changed(live.id)
-	t.refreshSearch()
+	live.block = next
+	if entry := t.entries[live.id]; entry != nil {
+		entry.content = live.block
+	}
+	return nil
 }
 
 func (t *transcriptView) deltaTool(key string, delta conversation.BlockDelta) error {
@@ -110,7 +126,7 @@ func (t *transcriptView) deltaTool(key string, delta conversation.BlockDelta) er
 	}
 	for _, tracked := range live.blocks {
 		tracked.block.AppendOutput(delta.Text)
-		t.content.Changed(tracked.id)
+		t.projectEntry(tracked.id)
 	}
 	t.refreshSearch()
 	t.announceSelection()
@@ -137,11 +153,17 @@ func (t *transcriptView) completeStream(block conversation.Block) error {
 	if !ok {
 		return fmt.Errorf("terminal transcript: completion for inactive text block %s", block.ID)
 	}
+	if err := live.document.End(nil); err != nil {
+		return err
+	}
+	if err := t.prepareLiveText(live); err != nil {
+		return err
+	}
 	// The completed value is authoritative. Re-rendering it once also repairs a
 	// transport that intentionally replaced an earlier provisional tail.
-	live.block.setSource(block.Text, t.lookFor(block.Kind))
-	t.finishMarkdown(live.id, live.block)
-	live.stream.Reset()
+	final := &markdownBlock{theme: t.theme, speaker: live.block.speaker}
+	final.setSource(block.Text, t.lookFor(block.Kind))
+	t.finishMarkdown(live.id, final)
 	delete(t.textStreams, key)
 	for _, image := range block.Images {
 		id := t.append(t.presentImage(image))
@@ -168,7 +190,7 @@ func (t *transcriptView) completeLiveTool(block conversation.Block) bool {
 		t.finishToolGroupIfReady(live.group)
 	} else {
 		for _, id := range live.ids {
-			t.content.Finish(id)
+			t.settleEntry(id)
 		}
 	}
 	delete(t.tools, key)
@@ -184,18 +206,24 @@ func (t *transcriptView) completeLiveTool(block conversation.Block) bool {
 // outcome. An authoritative cold snapshot replaces the last observed evidence.
 func (t *transcriptView) rejectLivePresentation() {
 	for id, live := range t.textStreams {
-		live.block.setSource(live.text.String(), t.lookFor(live.kind))
-		t.finishMarkdown(live.id, live.block)
-		live.stream.Reset()
+		if err := live.document.End(context.Canceled); err != nil {
+			panic(err)
+		}
+		if err := t.prepareLiveText(live); err != nil {
+			panic(err)
+		}
+		final := &markdownBlock{theme: t.theme, speaker: live.block.speaker}
+		final.setSource(live.document.Snapshot().Text(), t.lookFor(live.kind))
+		t.finishMarkdown(live.id, final)
 		delete(t.textStreams, id)
 	}
 	t.sealToolGroup()
 	for id, live := range t.tools {
 		if live.group != nil {
-			t.content.Finish(live.group.id)
+			t.settleEntry(live.group.id)
 		} else {
 			for _, blockID := range live.ids {
-				t.content.Finish(blockID)
+				t.settleEntry(blockID)
 			}
 		}
 		delete(t.tools, id)

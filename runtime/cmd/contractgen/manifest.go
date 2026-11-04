@@ -6,12 +6,13 @@ import (
 	"reflect"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/wiregen"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
-	"github.com/Tangerg/qimu/contractgen"
 )
 
 // manifest is the machine-readable projection of the Contract Registry.
@@ -41,14 +42,14 @@ type manifest struct {
 }
 
 type httpEndpointEntry struct {
-	Name             string              `json:"name"`
-	Kind             string              `json:"kind"`
-	Method           string              `json:"method"`
-	Path             string              `json:"path"`
-	Authentication   string              `json:"authentication"`
-	ResponseStatuses []int               `json:"responseStatuses"`
-	Response         *contractgen.Schema `json:"response,omitzero"`
-	Projects         string              `json:"projects,omitzero"`
+	Name             string          `json:"name"`
+	Kind             string          `json:"kind"`
+	Method           string          `json:"method"`
+	Path             string          `json:"path"`
+	Authentication   string          `json:"authentication"`
+	ResponseStatuses []int           `json:"responseStatuses"`
+	Response         *wiregen.Schema `json:"response,omitzero"`
+	Projects         string          `json:"projects,omitzero"`
 }
 
 type methodEntry struct {
@@ -127,8 +128,8 @@ type topicEntry struct {
 // The carrier is part of the answer: a bare type list would publish the shape
 // without saying where a client would ever meet it.
 type carriedEntry struct {
-	Carrier string              `json:"carrier"`
-	Schema  *contractgen.Schema `json:"schema"`
+	Carrier string          `json:"carrier"`
+	Schema  *wiregen.Schema `json:"schema"`
 }
 
 // toolResultPresentationEntry binds a built-in identity to the exact object Presenter puts
@@ -136,8 +137,8 @@ type carriedEntry struct {
 // it a client cannot distinguish two valid result objects that ride in the same
 // opaque carrier.
 type toolResultPresentationEntry struct {
-	ToolName string              `json:"toolName"`
-	Schema   *contractgen.Schema `json:"schema"`
+	ToolName string          `json:"toolName"`
+	Schema   *wiregen.Schema `json:"schema"`
 }
 
 type unionEntry struct {
@@ -232,10 +233,10 @@ func httpEndpoints(walked *schemaSet) []httpEndpointEntry {
 	contract := runtimehttp.Contract()
 	out := make([]httpEndpointEntry, 0, len(contract.Endpoints))
 	for _, endpoint := range contract.Endpoints {
-		var response *contractgen.Schema
+		var response *wiregen.Schema
 		if endpoint.ResponseType != nil {
 			local := walked.walk(endpoint.ResponseType)
-			response = &contractgen.Schema{Ref: "schema.json" + local.Ref}
+			response = &wiregen.Schema{Ref: "schema.json" + local.Ref}
 		}
 		out = append(out, httpEndpointEntry{
 			Name:             endpoint.Name,

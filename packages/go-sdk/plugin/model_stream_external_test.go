@@ -12,14 +12,14 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestExecutableConsumesFrozenRemainingModelStream(t *testing.T) {
 	if encoded := os.Getenv("FLAME_TEST_MODEL_STREAM_CALLBACK"); encoded != "" {
-		var ref qimumcp.CallbackRef
+		var ref pluginmcp.CallbackRef
 		if err := json.Unmarshal([]byte(encoded), &ref); err != nil {
 			t.Fatal(err)
 		}
@@ -50,7 +50,7 @@ func TestExecutableConsumesFrozenRemainingModelStream(t *testing.T) {
 		}
 		return
 	}
-	host := qimumcp.NewCallbacks()
+	host := pluginmcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := host.Close(); err != nil {
 			t.Error(err)
@@ -89,7 +89,7 @@ func TestExecutableConsumesFrozenRemainingModelStream(t *testing.T) {
 	}
 	order := []chat.StreamMiddleware{prefix("first "), prefix("second ")}
 	remaining := chat.WrapStream(base, order...)
-	callback, err := pluginsdk.NewModelStreamCallback(func(ctx context.Context, command qimumcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+	callback, err := pluginsdk.NewModelStreamCallback(func(ctx context.Context, command pluginmcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 		if command.ID != "frozen-model-call" {
 			return func(yield func(*chat.ResponseDelta, error) bool) { yield(nil, errors.New("call identity replaced")) }
 		}
@@ -99,7 +99,7 @@ func TestExecutableConsumesFrozenRemainingModelStream(t *testing.T) {
 		t.Fatal(err)
 	}
 	order[0] = prefix("replacement ")
-	ref, release, err := host.Open(t.Context(), session, qimumcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
+	ref, release, err := host.Open(t.Context(), session, pluginmcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
 	if err != nil {
 		t.Fatal(err)
 	}

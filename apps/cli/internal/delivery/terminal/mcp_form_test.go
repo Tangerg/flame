@@ -9,8 +9,9 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/input"
 )
 
 func TestMCPFormPreservesExactProcessMaterial(t *testing.T) {
@@ -70,18 +71,19 @@ func TestMCPEnvironmentFormPreservesProcessValues(t *testing.T) {
 
 func TestMCPFormRejectsSubmissionFromAReplacedStepPresentation(t *testing.T) {
 	transcript := testTranscriptView(t)
-	var stack headless.Stack
-	stack.SetBase(transcript)
+	var stack workspaceScene
+	stack.setWorkbench(transcript.Element())
 	screens := &mcpScreens{screenHost: testScreenHost(t, transcript, &stack, nil)}
 	flow := newMCPFormFlow(mcpFormCreate, protocol.MCPServer{})
 	flow.draft.name = "docs"
 	flow.draft.transport = protocol.MCPTransportStreamableHTTP
 	screens.showMCPFormStep(flow)
-	drawRoot(t, &stack, 96, 28)
+	root := newSceneTestRoot(t, stack.Element())
+	root.Draw(grid.NewSurface(96, 28).View())
 
 	oldDialog := flow.dialog
 	screens.showMCPFormStep(flow)
-	stack.Handle(input.Key{Code: input.Enter})
+	root.Handle(input.Key{Code: input.Enter})
 	if flow.step != mcpFormGeneral {
 		t.Fatalf("stale form advanced to step %d", flow.step)
 	}
@@ -89,8 +91,8 @@ func TestMCPFormRejectsSubmissionFromAReplacedStepPresentation(t *testing.T) {
 		t.Fatal("stale form replaced or dismissed the current dialog")
 	}
 
-	drawRoot(t, &stack, 96, 28)
-	stack.Handle(input.Key{Code: input.Enter})
+	root.Draw(grid.NewSurface(96, 28).View())
+	root.Handle(input.Key{Code: input.Enter})
 	if flow.step != mcpFormHTTP {
 		t.Fatalf("current form advanced to step %d, want HTTP", flow.step)
 	}
@@ -143,7 +145,7 @@ func TestMCPFormFlowClearsEverySecretProjection(t *testing.T) {
 	flow.draft.headers = `{"X-Key":"private"}`
 	flow.draft.environment = `{"TOKEN":"private"}`
 	for range 3 {
-		field := &headless.Text{}
+		field := &base.Text{}
 		field.SetText("private")
 		flow.secretFields = append(flow.secretFields, field)
 	}
@@ -192,8 +194,8 @@ func TestMCPFormBusyAdmissionKeepsTheOriginalDraftAndStep(t *testing.T) {
 				t.Fatal("could not occupy MCP operation")
 			}
 			service := newMCPServiceStub()
-			var stack headless.Stack
-			stack.SetBase(transcript)
+			var stack workspaceScene
+			stack.setWorkbench(transcript.Element())
 			host := testScreenHost(t, transcript, &stack, operations)
 			host.replayPolicy = testReplayPolicy(t, featuredTerminalProfile(t))
 			application := &mcpScreens{screenHost: host, service: service}
@@ -206,7 +208,7 @@ func TestMCPFormBusyAdmissionKeepsTheOriginalDraftAndStep(t *testing.T) {
 			flow.draft.url = "https://private.example/tools"
 			flow.draft.authorizationMode = formChangeSet
 			flow.draft.authorization = "Bearer retained-secret"
-			secret := &headless.Text{}
+			secret := &base.Text{}
 			secret.SetText(flow.draft.authorization)
 			flow.secretFields = append(flow.secretFields, secret)
 			before := flow.draft

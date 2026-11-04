@@ -19,7 +19,7 @@ export type PackageOperations = Methods["plugins"] & {
 
 export interface PackageRealizationFailure {
   readonly reason: string;
-  retry(): void;
+  readonly retry?: () => void;
 }
 
 export function createInstalledPackageState(endpoint: () => string) {

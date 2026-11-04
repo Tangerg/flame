@@ -1,6 +1,10 @@
 package delivery
 
 import (
+	corecontent "github.com/Tangerg/scope/core/content"
+
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	json "encoding/json/v2"
 	"errors"
 	"slices"
@@ -14,11 +18,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestArtifactOutcomePreservesUnresolvedEffects(t *testing.T) {
-	output := chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: "observed before cancellation"}}, Details: []byte(`{"receipt":9007199254740993}`)}
+	output := toolcontract.Output{Content: []corecontent.Block{{Kind: corecontent.Text, Text: "observed before cancellation"}}, Details: []byte(`{"receipt":9007199254740993}`)}
 	effect, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{ProcessID: "process_source", EffectID: "effect_source", Cause: "canceled", Reason: "owner stopped", Detail: "external result is unconfirmed", Output: &output})
 	if err != nil {
 		t.Fatal(err)
@@ -88,7 +91,7 @@ func TestSessionExportImportPreservesUnresolvedEffectsAsHistory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	output := chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: "observed before cancellation"}}, Details: []byte(`{"receipt":9007199254740993}`)}
+	output := toolcontract.Output{Content: []corecontent.Block{{Kind: corecontent.Text, Text: "observed before cancellation"}}, Details: []byte(`{"receipt":9007199254740993}`)}
 	rootEffect, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{ProcessID: "process_root_source", EffectID: "effect_root_source", Cause: "failed", Reason: "delegate unresolved", Detail: "root observation", Output: &output})
 	if err != nil {
 		t.Fatal(err)

@@ -7,14 +7,15 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/qimu/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/qimu/jsonvalue"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 )
@@ -119,7 +120,7 @@ func (r EmbeddingEndpointResponse) reportedUsage() *chat.Usage {
 // its logical calling operation. Its immutable input is persisted before I/O.
 type EndpointInvocation struct {
 	ID        string
-	Caller    portable.Invocation
+	Caller    framemcp.Invocation
 	Provider  string
 	Model     string
 	SessionID string
@@ -276,9 +277,9 @@ type EndpointRecord struct {
 	State          InvocationState
 	Failure        string
 	FinishedAt     time.Time
-	InvocationJSON jsonvalue.Value
-	RequestJSON    jsonvalue.Value
-	ResponseJSON   jsonvalue.Value
+	InvocationJSON framevalue.JSON
+	RequestJSON    framevalue.JSON
+	ResponseJSON   framevalue.JSON
 }
 
 // EndpointObservation owns one admitted, immutable physical request observation.
@@ -331,7 +332,7 @@ func RestoreEndpointObservation(record EndpointRecord) (EndpointObservation, err
 		switch record.Invocation.Kind() {
 		case EndpointChat:
 			var response *chat.Response
-			if err := json.Unmarshal(record.ResponseJSON.JSON(), &response, json.RejectUnknownMembers(true)); err != nil {
+			if err := json.Unmarshal(record.ResponseJSON.Bytes(), &response, json.RejectUnknownMembers(true)); err != nil {
 				return zero, err
 			}
 			if response == nil {
@@ -349,7 +350,7 @@ func RestoreEndpointObservation(record EndpointRecord) (EndpointObservation, err
 			}
 		case EndpointEmbedding:
 			var response *embedding.Response
-			if err := json.Unmarshal(record.ResponseJSON.JSON(), &response, json.RejectUnknownMembers(true)); err != nil {
+			if err := json.Unmarshal(record.ResponseJSON.Bytes(), &response, json.RejectUnknownMembers(true)); err != nil {
 				return zero, err
 			}
 			if response == nil {

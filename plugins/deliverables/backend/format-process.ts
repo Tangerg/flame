@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
-import { Refusal } from "@qimu/node";
+import { Refusal } from "@flame/backend-sdk/mcp";
 import { z } from "zod";
 import { inspectionSchema } from "../contracts/content";
 import { LIMITS } from "../contracts/limits";

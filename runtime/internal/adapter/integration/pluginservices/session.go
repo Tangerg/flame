@@ -6,22 +6,25 @@ import (
 	"errors"
 	"fmt"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/frame"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 var errInactive = errors.New("managed plugin: no enabled owner")
 
-func contributionSession(ctx context.Context, host *qimu.Host, store plugins.Store, selections plugins.SelectionStore, pool *mcp.Pool, required *portable.Capability) (plugins.ContributionBinding, *mcp.BorrowedSession, error) {
+func contributionSession(ctx context.Context, host *frame.Host, store plugins.Store, selections plugins.SelectionStore, pool *mcp.Pool, required *plugincontract.Capability) (plugins.ContributionBinding, *mcp.BorrowedSession, error) {
 	binding, found, err := plugins.SelectedContribution(ctx, host, store, selections, required)
 	if err != nil {
 		return binding, nil, err
@@ -33,7 +36,7 @@ func contributionSession(ctx context.Context, host *qimu.Host, store plugins.Sto
 	return binding, session, err
 }
 
-func workflowSession(ctx context.Context, c *CommandCalls, contract *portable.Capability, source extension.ContributionSource) (plugins.ContributionBinding, *mcp.BorrowedSession, error) {
+func workflowSession(ctx context.Context, c *CommandCalls, contract *plugincontract.Capability, source extension.ContributionSource) (plugins.ContributionBinding, *mcp.BorrowedSession, error) {
 	var binding plugins.ContributionBinding
 	var found bool
 	var err error
@@ -73,11 +76,11 @@ func query[P, R any](ctx context.Context, location plugins.ContributionBinding, 
 	if err != nil {
 		return zero, err
 	}
-	contract, err := portable.ParseCapability(location.Contract.JSON())
+	contract, err := plugincontract.ParseCapability(location.Contract.Bytes())
 	if err != nil {
 		return zero, err
 	}
-	exported, err := qimumcp.ResolveCapability(ctx, session, location.Export, contract)
+	exported, err := pluginmcp.ResolveCapability(ctx, session, location.Export, contract)
 	if err != nil {
 		return zero, err
 	}
@@ -85,7 +88,7 @@ func query[P, R any](ctx context.Context, location plugins.ContributionBinding, 
 	if err != nil {
 		return zero, err
 	}
-	admitted, err := jsonvalue.Encode(input)
+	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {
 		return zero, err
 	}
@@ -94,7 +97,7 @@ func query[P, R any](ctx context.Context, location plugins.ContributionBinding, 
 		return zero, err
 	}
 	var value R
-	if err := json.Unmarshal(output.JSON(), &value, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal(output.Bytes(), &value, json.RejectUnknownMembers(true)); err != nil {
 		return zero, err
 	}
 	return value, nil
@@ -110,7 +113,7 @@ func queryContext(ctx context.Context, location plugins.ContributionBinding) (co
 	if err != nil {
 		return nil, err
 	}
-	return qimumcp.WithInvocation(ctx, invocation)
+	return pluginmcp.WithInvocation(ctx, invocation)
 }
 
 func borrowContribution(ctx context.Context, pool *mcp.Pool, binding plugins.ContributionBinding) (*mcp.BorrowedSession, error) {

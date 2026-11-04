@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { type ComponentContext, useTranslator } from "@flame/component-sdk";
 import { asSessionId } from "@flame/runtime-client";
-import { stringifyJSON } from "@qimu/sdk/json";
+import { stringifyJSON } from "@frame/sdk/json";
 import { catalogs } from "./catalogs";
 
 type Format = "md" | "json" | "trajectory";

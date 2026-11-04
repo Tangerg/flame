@@ -1,20 +1,12 @@
 package terminal
 
 import (
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/scene"
+	"github.com/Tangerg/oolong/ui/kit"
 )
-
-// presentationLease separates the semantic lifetime of a reusable control from
-// the last complete frame that displayed it. Reopening the same dialog advances
-// the lease, so input routed through an older frame is consumed without reaching
-// the replacement presentation.
-type presentationLease struct {
-	current   *presentationIdentity
-	presented headless.Snapshot[*presentationIdentity]
-	active    func() bool
-}
 
 type presentationIdentity struct {
 	retired bool
@@ -30,88 +22,63 @@ func (p *presentationIdentity) current(candidate *presentationIdentity) bool {
 	return p != nil && p == candidate && !p.retired
 }
 
-func (p *presentationLease) bind(active func() bool) {
-	if active == nil {
-		panic("terminal: presentation lease requires an activity predicate")
-	}
-	if p.active != nil {
-		panic("terminal: presentation lease is already bound")
-	}
-	p.active = active
-}
-
-func (p *presentationLease) renew() {
-	p.current.retire()
-	p.current = &presentationIdentity{}
-}
-
-func (p *presentationLease) stage(frame headless.Frame) {
-	p.presented.Stage(frame, p.current)
-}
-
-func (p *presentationLease) acceptsInput() bool {
-	if p.active == nil {
-		return true
-	}
-	return p.active() && p.current.current(p.presented.Value())
-}
-
-// presentationGuard is a decorator for reusable dialog bodies. It preserves
-// the wrapped component's focus contract while owning the cross-frame input
-// boundary in one place.
-type presentationGuard struct {
-	body  headless.Widget
-	lease presentationLease
-}
-
-func (p *presentationGuard) Draw(frame headless.Frame) {
-	p.lease.stage(frame)
-	if p.body != nil {
-		p.body.Draw(frame)
-	}
-}
-
-func (p *presentationGuard) Handle(event input.Event) bool {
-	if !p.lease.acceptsInput() {
-		return true
-	}
-	interactive, ok := p.body.(headless.Interactive)
-	return ok && interactive.Handle(event)
-}
-
-func (p *presentationGuard) Focus(has bool) {
-	if focusable, ok := p.body.(headless.Focusable); ok {
-		focusable.Focus(has)
-	}
-}
-
-// presentationDialog gives a reusable kit dialog a distinct input identity for
-// every Show call. It intentionally exposes only the controller operations the
-// terminal needs, keeping the generation boundary impossible to bypass.
+// presentationDialog owns the business identity captured by asynchronous answers.
+// Renewal preserves the native attachment, but input must first see a frame for
+// that presentation. Scene still owns focus, capture and attachment generations.
 type presentationDialog struct {
-	dialog *kit.Dialog
-	guard  *presentationGuard
+	dialog    *kit.Dialog
+	workspace *workspaceScene
+	identity  *presentationIdentity
+	presented scene.Snapshot[*presentationIdentity]
 }
 
-func newPresentationDialog(config kit.DialogConfig) *presentationDialog {
-	guard := &presentationGuard{body: config.Body}
-	config.Body = guard
-	dialog := kit.NewDialog(config)
-	guard.lease.bind(dialog.Controller().Open)
-	return &presentationDialog{dialog: dialog, guard: guard}
+func newPresentationDialog(workspace *workspaceScene, config kit.DialogConfig) *presentationDialog {
+	p := &presentationDialog{workspace: workspace}
+	body := scene.NewGroup(scene.GroupConfig{
+		Items: []scene.Item{{Element: config.Body, Size: layout.Flex(1)}},
+		Element: scene.ElementConfig{
+			Paint: func(frame scene.Frame) { p.presented.Stage(frame, p.identity) },
+			Preview: func(event scene.Event) scene.EventResult {
+				shown, valid := p.presented.Value(), true
+				if _, pointer := event.Input().(input.Mouse); pointer {
+					shown, valid = event.Read(&p.presented)
+				}
+				if !valid || !p.identity.current(shown) {
+					return scene.EventResult{Consumed: true}
+				}
+				if workspace.preview != nil {
+					return workspace.preview(event)
+				}
+				return scene.EventResult{}
+			},
+		},
+	})
+	config.Body = body.Element()
+	dismissed := config.Dismissed
+	config.Dismissed = func() {
+		p.identity.retire()
+		workspace.dismissDialog(p.dialog.Element())
+		if dismissed != nil {
+			dismissed()
+		}
+	}
+	p.dialog = kit.NewDialog(config)
+	return p
 }
 
 func (p *presentationDialog) Show() {
-	if p == nil || p.dialog == nil || p.guard == nil {
+	if p == nil || p.dialog == nil {
 		return
 	}
-	p.guard.lease.renew()
+	p.identity.retire()
+	p.identity = &presentationIdentity{}
 	p.dialog.Controller().Show()
+	p.dialog.Element().Invalidate()
+	p.workspace.showDialog(p.dialog.Element())
 }
 
 func (p *presentationDialog) Dismiss() {
 	if p != nil && p.dialog != nil {
-		p.guard.lease.current.retire()
 		p.dialog.Controller().Dismiss()
 	}
 }
@@ -120,14 +87,14 @@ func (p *presentationDialog) Identity() *presentationIdentity {
 	if !p.Open() {
 		return nil
 	}
-	return p.guard.lease.current
+	return p.identity
 }
 
 func (p *presentationDialog) Open() bool {
 	return p != nil && p.dialog != nil && p.dialog.Controller().Open()
 }
 
-func (p *presentationDialog) Controller() *headless.Dialog {
+func (p *presentationDialog) Controller() *base.Dialog {
 	if p == nil || p.dialog == nil {
 		return nil
 	}

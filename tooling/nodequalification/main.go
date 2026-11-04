@@ -16,10 +16,12 @@ import (
 	"runtime"
 	"time"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func main() {
@@ -206,11 +208,15 @@ func (d *distribution) captureRequest(ctx context.Context) (protocol.CallPluginR
 		if len(usage.Selected.Components) != 1 {
 			break
 		}
-		contract, err := portable.ParseCapability([]byte(UsageReportsCapabilityJSON))
+		contract, err := plugincontract.ParseCapability([]byte(UsageReportsCapabilityJSON))
 		if err != nil {
 			return protocol.CallPluginRequest{}, err
 		}
-		return protocol.CallPluginRequest{InstallationID: usage.ID, Digest: usage.Selected.Digest, Contribution: "usage-reports", Contract: contract.Identity().String(), Method: UsageReportsCaptureV1Method, Input: `{"period":"daily"}`, Target: portable.Target{Scope: "installation", Reference: usage.ID}}, nil
+		input, err := json.Marshal(UsageReportsCaptureInput{Period: UsageReportsCaptureInputPeriodDaily})
+		if err != nil {
+			return protocol.CallPluginRequest{}, err
+		}
+		return protocol.CallPluginRequest{InstallationID: usage.ID, Digest: usage.Selected.Digest, Contribution: "usage-reports", Contract: contract.Identity().String(), Method: UsageReportsCaptureV1Method, Input: string(input), Target: portable.Target{Scope: "installation", Reference: usage.ID}}, nil
 	}
 	return protocol.CallPluginRequest{}, errors.New("qualification: complete managed usage package is absent")
 }
@@ -259,11 +265,11 @@ func (d *distribution) checkReports(ctx context.Context) error {
 	if err := d.captureWithCLI(ctx, request); err != nil {
 		return err
 	}
-	var header UsageReportsHeader
+	var header UsageReportsCaptureV1OutputRpcHeader
 	if err := json.Unmarshal([]byte(original.Output), &header); err != nil {
 		return err
 	}
-	encoded, err := json.Marshal(UsageReportsReportInput{Id: header.Id})
+	encoded, err := json.Marshal(UsageReportsGetV1InputRpcReportInput{Id: header.Id})
 	if err != nil {
 		return err
 	}
@@ -289,7 +295,11 @@ func (d *distribution) checkReports(ctx context.Context) error {
 		return err
 	}
 	remove := read
-	remove.Method = UsageReportsDeleteV1Method
+	encoded, err = json.Marshal(UsageReportsDeleteV1InputRpcReportInput{Id: header.Id})
+	if err != nil {
+		return err
+	}
+	remove.Method, remove.Input = UsageReportsDeleteV1Method, string(encoded)
 	if _, err := d.call(ctx, remove, "original-remove"); err != nil {
 		return err
 	}

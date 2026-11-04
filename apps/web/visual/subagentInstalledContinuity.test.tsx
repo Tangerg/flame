@@ -160,8 +160,8 @@ it("keeps an installed result in the retained parent reader alive until the read
     definePlugin({
       name: "test.installed-result",
       setup(ctx) {
-        const lifetime = ctx.lifetime("installed-result");
-        ctx.contribute(
+        const lifetime = ctx.contributions.child("installed-result");
+        ctx.contributions.add(
           TOOL_RESULT_RENDERER,
           {
             id: "installed-grep",

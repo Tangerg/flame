@@ -4,7 +4,7 @@ import { LIMITS } from "../contracts/limits";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
-import { Refusal, canonicalJSON, digestJSON } from "@qimu/node";
+import { Refusal, canonicalJSON, digestJSON } from "@flame/backend-sdk/mcp";
 import { Archive, type Original } from "./archive";
 import { Document, digest, revision } from "./document";
 

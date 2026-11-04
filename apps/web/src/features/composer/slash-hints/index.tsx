@@ -5,7 +5,7 @@ export default definePlugin({
   name: "flame.builtin.slash-hints",
   setup(ctx) {
     for (const { cmd, spec } of slashHintContributions()) {
-      ctx.contribute(SLASH_COMMAND, spec, { key: cmd });
+      ctx.contributions.add(SLASH_COMMAND, spec, { key: cmd });
     }
   },
 });

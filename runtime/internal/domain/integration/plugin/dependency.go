@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"slices"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 // Dependency names the exact release an execution admitted from one
@@ -14,7 +15,7 @@ import (
 // owner only asks whether any execution holds one before an unsafe change.
 type Dependency struct {
 	InstallationID identity.InstallationID
-	Digest         integrity.Digest
+	Digest         framevalue.Digest
 }
 
 func (d Dependency) Validate() error {
@@ -55,8 +56,8 @@ func ValidateDependencies(dependencies []Dependency) error {
 // staged release of each installation and each release an execution holds.
 // Every other admitted release is unreferenced, and nothing can name it again
 // without admitting its bytes anew, so its owner may reclaim it.
-func RetainedReleases(installations []Installation, held []Dependency) []integrity.Digest {
-	var retained []integrity.Digest
+func RetainedReleases(installations []Installation, held []Dependency) []framevalue.Digest {
+	var retained []framevalue.Digest
 	for _, installation := range installations {
 		retained = append(retained, installation.record.Selected)
 		if installation.record.Staged != nil {
@@ -66,6 +67,6 @@ func RetainedReleases(installations []Installation, held []Dependency) []integri
 	for _, dependency := range held {
 		retained = append(retained, dependency.Digest)
 	}
-	slices.SortFunc(retained, func(left, right integrity.Digest) int { return cmp.Compare(left.String(), right.String()) })
+	slices.SortFunc(retained, func(left, right framevalue.Digest) int { return cmp.Compare(left.String(), right.String()) })
 	return slices.Compact(retained)
 }

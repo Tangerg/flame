@@ -141,7 +141,7 @@ function dataProviderPlugin(state: VisualWorkIndexState): AnyPlugin {
   return definePlugin({
     name: "flame.visual.work-index-data",
     setup(ctx) {
-      ctx.contribute(DATA_PROVIDER, {
+      ctx.contributions.add(DATA_PROVIDER, {
         key: WORKSPACE_PROJECTS_KEY,
         fetcher: async () => {
           if (state === "loading") return pending<WorkspaceProjectSummary[]>();
@@ -151,7 +151,7 @@ function dataProviderPlugin(state: VisualWorkIndexState): AnyPlugin {
           return state === "empty" ? [] : PROJECTS;
         },
       });
-      ctx.contribute(DATA_PROVIDER, {
+      ctx.contributions.add(DATA_PROVIDER, {
         key: AGENT_SESSIONS_KEY,
         fetcher: async () => (state === "populated" ? SESSIONS : []),
       });
@@ -163,9 +163,9 @@ function sessionActionsPlugin(runtimeClient: () => FlameClient): AnyPlugin {
   return definePlugin({
     name: "flame.visual.session-actions",
     setup(ctx) {
-      const lifetime = ctx.lifetime("visual-rename-session");
+      const lifetime = ctx.contributions.child("visual-rename-session");
       const sources = visualComponentProps(runtimeClient(), lifetime, "rename-session");
-      lifetime.contribute(SESSION_ACTION, {
+      lifetime.add(SESSION_ACTION, {
         id: "package:visual:rename-session",
         title: "flame.trajectory · Name this investigation",
         component: ({ session }) =>

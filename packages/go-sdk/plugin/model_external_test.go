@@ -11,14 +11,14 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestExecutableUsesThePublicCapturedModelContract(t *testing.T) {
 	if encoded := os.Getenv("FLAME_TEST_MODEL_CALLBACK"); encoded != "" {
-		var ref qimumcp.CallbackRef
+		var ref pluginmcp.CallbackRef
 		if err := json.Unmarshal([]byte(encoded), &ref); err != nil {
 			t.Fatal(err)
 		}
@@ -32,7 +32,7 @@ func TestExecutableUsesThePublicCapturedModelContract(t *testing.T) {
 		}
 		return
 	}
-	host := qimumcp.NewCallbacks()
+	host := pluginmcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := host.Close(); err != nil {
 			t.Error(err)
@@ -42,7 +42,7 @@ func TestExecutableUsesThePublicCapturedModelContract(t *testing.T) {
 	if err := host.AdmitSession(session); err != nil {
 		t.Fatal(err)
 	}
-	callback, err := pluginsdk.NewModelCallback(func(_ context.Context, command qimumcp.Command[chat.Request]) (*chat.Response, error) {
+	callback, err := pluginsdk.NewModelCallback(func(_ context.Context, command pluginmcp.Command[chat.Request]) (*chat.Response, error) {
 		if command.ID != "executable-model-call" {
 			return nil, errors.New("model identity was replaced")
 		}
@@ -52,7 +52,7 @@ func TestExecutableUsesThePublicCapturedModelContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, release, err := host.Open(t.Context(), session, qimumcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
+	ref, release, err := host.Open(t.Context(), session, pluginmcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
 	if err != nil {
 		t.Fatal(err)
 	}

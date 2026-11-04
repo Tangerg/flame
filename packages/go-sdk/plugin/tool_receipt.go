@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/scope/core/chat"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/tool"
 )
 
@@ -22,15 +24,15 @@ type ToolReceipt struct {
 }
 
 type ToolResult struct {
-	Output  chat.ToolOutput `json:"output"`
-	IsError bool            `json:"isError,omitzero"`
+	Output  tool.Output `json:"output"`
+	IsError bool        `json:"isError,omitzero"`
 }
 
-func ToolReceiptQuery() (*qimumcp.Method[qimumcp.ReceiptRequest, ToolReceipt], error) {
-	return qimumcp.NewMethod[qimumcp.ReceiptRequest, ToolReceipt](qimumcp.MethodConfig{Name: ToolReceiptMethod, Kind: portable.Query, Target: extension.ScopeInstallation, Description: ToolReceiptMethod})
+func ToolReceiptQuery() (*pluginmcp.Method[pluginmcp.ReceiptRequest, ToolReceipt], error) {
+	return pluginmcp.NewMethod[pluginmcp.ReceiptRequest, ToolReceipt](portable.MethodConfig{Name: ToolReceiptMethod, Kind: portable.Query, Target: extension.ScopeInstallation, Description: ToolReceiptMethod})
 }
 
-func NewToolReceipt(output chat.ToolOutput, failed bool) (ToolReceipt, error) {
+func NewToolReceipt(output tool.Output, failed bool) (ToolReceipt, error) {
 	if err := output.Validate(); err != nil {
 		return ToolReceipt{}, err
 	}
@@ -39,7 +41,7 @@ func NewToolReceipt(output chat.ToolOutput, failed bool) (ToolReceipt, error) {
 
 // ReadToolReceipt binds the original remote Tool, logical call and admitted JSON.
 // A missing or unsupported read never permits another Tool invocation.
-func ReadToolReceipt(ctx context.Context, session *sdk.ClientSession, callID, remote string, admitted jsonvalue.Value) (*chat.ToolOutput, error) {
+func ReadToolReceipt(ctx context.Context, session *sdk.ClientSession, callID, remote string, admitted framevalue.JSON) (*tool.Output, error) {
 	if session == nil {
 		return nil, errors.New("plugin: client session is required")
 	}
@@ -50,7 +52,7 @@ func ReadToolReceipt(ctx context.Context, session *sdk.ClientSession, callID, re
 	if err != nil {
 		return nil, err
 	}
-	request := qimumcp.ReceiptRequest{ID: qimumcp.CommandID(id), Method: remote, InputDigest: admitted.Digest()}
+	request := pluginmcp.ReceiptRequest{ID: pluginmcp.CommandID(id), Method: remote, InputDigest: admitted.Digest()}
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}

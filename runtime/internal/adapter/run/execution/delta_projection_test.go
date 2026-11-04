@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/scope/agent"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"go.opentelemetry.io/otel"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
@@ -26,7 +26,7 @@ func TestUnparsableDeltaIsReportedNotDropped(t *testing.T) {
 	session := &interactionSession{}
 	// The zero Delta carries no payload, which the strict Interaction decoder
 	// rejects — the same class of failure as an unknown wire member.
-	session.projectDelta(ctx, agent.Delta{})
+	session.projectDelta(ctx, scoperun.Delta{})
 	span.End()
 
 	spans := exporter.GetSpans()

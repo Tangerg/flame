@@ -1,7 +1,6 @@
 package toolset
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,7 +10,7 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// rejectedArguments are schema-valid calls each tool refuses on its own terms.
+// rejectedArguments are calls each tool refuses at admission or execution.
 // A tool missing from this table fails the guard rather than being skipped: the
 // question it answers has to be asked of every tool the Runtime exposes.
 var rejectedArguments = map[string]string{
@@ -72,12 +71,18 @@ func TestRejectedCallsDoNotCostTheRun(t *testing.T) {
 		if arguments == "" {
 			continue
 		}
-		_, callErr := callTextTool(t.Context(), exposed, arguments)
+		binding, invocation, admissionErr := prepareTestInvocation(exposed, arguments)
+		if admissionErr != nil {
+			if _, rejected := toolcontract.ClassifyInputRejection(admissionErr); !rejected {
+				t.Errorf("tool %q returned an unclassified admission error: %v", name, admissionErr)
+			}
+			continue
+		}
+		_, callErr := binding.Call(t.Context(), invocation)
 		if callErr == nil {
 			continue // Query tools may answer normally, including empty results.
 		}
-		var failure *toolcontract.Failure
-		if !errors.As(callErr, &failure) {
+		if _, known := toolcontract.ClassifyFailure(callErr); !known {
 			t.Errorf("tool %q returned an unclassified error (%v); the Host loses the Run tree on those",
 				name, callErr)
 		}

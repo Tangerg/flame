@@ -5,11 +5,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestA2AInstalledConnectorOwnsConfigurationAndAvailability(t *testing.T) {
@@ -18,7 +20,7 @@ func TestA2AInstalledConnectorOwnsConfigurationAndAvailability(t *testing.T) {
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "a2a"))
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "a2a"}
 	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 4 })
-	contract, err := portable.ParseCapability([]byte(testsupport.A2ACapabilityJSON))
+	contract, err := plugincontract.ParseCapability([]byte(testsupport.A2ACapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}

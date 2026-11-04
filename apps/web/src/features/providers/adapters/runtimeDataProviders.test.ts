@@ -16,7 +16,9 @@ async function runProvider<T>(
   const t = createMemoryTransport();
   const client = createFlameClient(t);
   try {
-    await contributeForTest((ctx) => registerProviderDataProviders(ctx, () => client));
+    await contributeForTest((ctx) =>
+      registerProviderDataProviders(ctx.contributions, () => client),
+    );
 
     const fetcher = lookupDataProvider<T>(key);
     if (!fetcher) throw new Error(`no provider for "${key}"`);
@@ -116,7 +118,9 @@ describe("providers Runtime data providers", () => {
     const successorClient = createFlameClient(successorTransport);
     try {
       let activeClient = retiredClient;
-      await contributeForTest((ctx) => registerProviderDataProviders(ctx, () => activeClient));
+      await contributeForTest((ctx) =>
+        registerProviderDataProviders(ctx.contributions, () => activeClient),
+      );
       const fetcher = lookupDataProvider("models");
       if (!fetcher) throw new Error('no provider for "models"');
 
@@ -174,7 +178,9 @@ describe("providers Runtime data providers", () => {
   it("models: preserves a Runtime failure instead of presenting an empty catalog", async () => {
     const transport = createMemoryTransport();
     const client = createFlameClient(transport);
-    await contributeForTest((ctx) => registerProviderDataProviders(ctx, () => client));
+    await contributeForTest((ctx) =>
+      registerProviderDataProviders(ctx.contributions, () => client),
+    );
     const fetcher = lookupDataProvider("models");
     if (!fetcher) throw new Error('no provider for "models"');
 

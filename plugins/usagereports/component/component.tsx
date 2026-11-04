@@ -18,7 +18,7 @@ import {
   useTranslator,
 } from "@flame/component-sdk";
 import { scrollPositions, type ScrollPosition } from "@flame/component-sdk";
-import type { JSONNumber } from "@qimu/sdk/json";
+import type { JSONNumber } from "@frame/sdk/json";
 import {
   Button,
   Disclosure,
@@ -435,7 +435,6 @@ function Archive({ context }: { context: BoundContext }) {
     }
   }
 
-  const headers = archive.accepted;
   return (
     <Panel
       ref={panel}
@@ -552,70 +551,15 @@ function Archive({ context }: { context: BoundContext }) {
         />
       )}
       <div hidden={Boolean(opened)}>
-        <PanelSection
-          title={t("archive.title")}
-          description={
-            headers &&
-            t("archive.count", {
-              count: headers.length,
-              capacity: LIMITS.maxReports,
-            })
-          }
-        >
-          <Metadata>
-            {t("archive.capture.note", {
-              daily: t("period.daily.window"),
-              weekly: t("period.weekly.window"),
-            })}
-          </Metadata>
-          {archive.loading && !headers && (
-            <Metadata role="status">{t("archive.reading")}</Metadata>
-          )}
-          {archive.error && (
-            <Metadata role="alert">
-              {t(headers ? "archive.error.retained" : "archive.error", {
-                error: archive.error,
-              })}
-            </Metadata>
-          )}
-          {headers && !headers.length && (
-            <EmptyState
-              title={t("archive.empty.title")}
-              sub={t("archive.empty.sub")}
-            />
-          )}
-          {headers && headers.length > 0 && (
-            <RecordGroup variant="list" aria-label={t("archive.list.label")}>
-              {headers.map((header) => (
-                <ListRow key={header.id}>
-                  <RecordHeading
-                    title={t("row.title", {
-                      period: t(`period.${header.period}.label`),
-                      observed: observed(header, locale),
-                    })}
-                    description={t("row.description", {
-                      window: t(`period.${header.period}.window`),
-                      since: lowerBound(header, t, locale),
-                    })}
-                    actions={
-                      <Button
-                        aria-label={t("report.view.aria", {
-                          title: reportTitle(header, t, locale),
-                        })}
-                        onClick={(event) => {
-                          setMessage(undefined);
-                          open(header, event.currentTarget, activeElement());
-                        }}
-                      >
-                        {t("report.view")}
-                      </Button>
-                    }
-                  />
-                </ListRow>
-              ))}
-            </RecordGroup>
-          )}
-        </PanelSection>
+        <ArchiveCatalog
+          archive={archive}
+          t={t}
+          locale={locale}
+          onOpen={(header, opener) => {
+            setMessage(undefined);
+            open(header, opener, activeElement());
+          }}
+        />
       </div>
       {removing && (
         <ModalDialog
@@ -789,5 +733,84 @@ function SavedReport({
         </Button>
       </Toolbar>
     </>
+  );
+}
+
+function ArchiveCatalog({
+  archive,
+  t,
+  locale,
+  onOpen,
+}: {
+  archive: ArchiveRead;
+  t: Translate;
+  locale: string;
+  onOpen(header: Header, opener: HTMLElement): void;
+}) {
+  const headers = archive.accepted;
+  return (
+    <PanelSection
+      title={t("archive.title")}
+      description={
+        headers &&
+        t("archive.count", {
+          count: headers.length,
+          capacity: LIMITS.maxReports,
+        })
+      }
+    >
+      <Metadata>
+        {t("archive.capture.note", {
+          daily: t("period.daily.window"),
+          weekly: t("period.weekly.window"),
+        })}
+      </Metadata>
+      {archive.loading && !headers && (
+        <Metadata role="status">{t("archive.reading")}</Metadata>
+      )}
+      {archive.error && (
+        <Metadata role="alert">
+          {t(headers ? "archive.error.retained" : "archive.error", {
+            error: archive.error,
+          })}
+        </Metadata>
+      )}
+      {headers && !headers.length && (
+        <EmptyState
+          title={t("archive.empty.title")}
+          sub={t("archive.empty.sub")}
+        />
+      )}
+      {headers && headers.length > 0 && (
+        <RecordGroup variant="list" aria-label={t("archive.list.label")}>
+          {headers.map((header) => (
+            <ListRow key={header.id}>
+              <RecordHeading
+                title={t("row.title", {
+                  period: t(`period.${header.period}.label`),
+                  observed: observed(header, locale),
+                })}
+                description={t("row.description", {
+                  window: t(`period.${header.period}.window`),
+                  since: lowerBound(header, t, locale),
+                })}
+                actions={
+                  <Button
+                    aria-label={t("report.view.aria", {
+                      title: reportTitle(header, t, locale),
+                    })}
+                    onClick={(event) => {
+                      onOpen(header, event.currentTarget);
+                    }}
+                  >
+                    {t("report.view")}
+                  </Button>
+                }
+              />
+            </ListRow>
+          ))}
+        </RecordGroup>
+      )}
+    </PanelSection>
   );
 }

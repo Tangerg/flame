@@ -9,7 +9,7 @@ export default function createToolViewOpener(workspaceAccess: WorkspaceAccess) {
   return definePlugin({
     name: "flame.builtin.workspace.tool-view-opener",
     setup(ctx) {
-      ctx.contribute(TOOL_VIEW_OPENER, {
+      ctx.contributions.add(TOOL_VIEW_OPENER, {
         id: "workspace-tool-view",
         order: 0,
         predicate: hasWorkspaceViewForTool,

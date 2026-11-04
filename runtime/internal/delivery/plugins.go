@@ -49,7 +49,7 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
-	// Browser lifecycle retries re-enter Qimu's original operation owner. Generic
+	// Browser lifecycle retries re-enter Frame's original operation owner. Generic
 	// response replay must not retain Realm credentials or mint competing Uses.
 	r.command(MethodMeta{Name: PluginsOpenBrowserRealm, GoName: "OpenPluginBrowserRealm", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors(), Idempotency: idempotencyOwnerResponse}, func(s interface {
 		OpenPluginBrowserRealm(context.Context, protocol.OpenPluginBrowserRealmRequest) (*protocol.PluginBrowserSession, error)

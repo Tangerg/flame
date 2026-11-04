@@ -44,37 +44,37 @@ export function createGoalPlugin(
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
       const composerMode = goals.composerMode;
-      ctx.cleanup(() => composerMode.reset());
+      ctx.lifetime.defer(() => composerMode.reset());
       const runtimeAdapter = createGoalRuntimeAdapter(
         agentAccess,
         runtimeAccess,
         runtimeClient,
         goals.commands,
-        ctx.runtime.connectionGeneration() !== null,
+        ctx.dependencies.runtime.connectionGeneration() !== null,
       );
-      ctx.cleanup(() => runtimeAdapter.dispose());
-      ctx.cleanup(
-        followRuntimeGeneration(ctx.runtime, (next) => {
+      ctx.lifetime.defer(() => runtimeAdapter.dispose());
+      ctx.lifetime.defer(
+        followRuntimeGeneration(ctx.dependencies.runtime, (next) => {
           composerMode.reset();
           if (next === null) runtimeAdapter.retireRuntimeGeneration();
           else runtimeAdapter.replaceRuntimeGeneration();
         }),
       );
-      contributeLayout(ctx, "composer.overlay.top", {
+      contributeLayout(ctx.contributions, "composer.overlay.top", {
         id: "goal",
         order: 10,
         component: GoalStatusSurface,
       });
-      contributeLayout(ctx, "composer.toolbar.start", {
+      contributeLayout(ctx.contributions, "composer.toolbar.start", {
         id: "goal-mode",
         order: 4,
         component: GoalModeIndicator,
       });
       for (const key of toolFamilyNames("goals")) {
-        ctx.contribute(TOOL_STANDING_SURFACE, GOAL_SURFACE, { key });
+        ctx.contributions.add(TOOL_STANDING_SURFACE, GOAL_SURFACE, { key });
       }
       // A withdrawn /goal draft must never be delivered as an ordinary chat message.
-      ctx.contribute(
+      ctx.contributions.add(
         COMPOSER_SUBMIT_MODE,
         createGoalComposerSubmitMode(composerMode, {
           getActiveSessionId: agentAccess.getActiveSessionId,
@@ -123,10 +123,10 @@ export function createGoalPlugin(
         unregister = undefined;
         composerMode.reset();
         if (source === undefined) return;
-        const slash = ctx.contribute(SLASH_COMMAND, GOAL_SLASH_COMMAND, { key: "/goal" });
-        unregister = () => slash.dispose();
+        const slash = ctx.contributions.add(SLASH_COMMAND, GOAL_SLASH_COMMAND, { key: "/goal" });
+        unregister = () => slash[Symbol.dispose]();
       };
-      ctx.cleanup(providers.subscribe(refresh));
+      ctx.lifetime.defer(providers.subscribe(refresh));
       refresh();
     },
   });

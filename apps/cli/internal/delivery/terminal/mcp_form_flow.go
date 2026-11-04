@@ -7,8 +7,8 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 type mcpFormStep uint8
@@ -48,10 +48,10 @@ type mcpFormFlow struct {
 	server       protocol.MCPServer
 	draft        mcpFormDraft
 	step         mcpFormStep
-	secretFields []*headless.Text
+	secretFields []*base.Text
 	state        mcpFormState
 	submission   *mcpFormSubmission
-	dialog       *kit.Dialog
+	dialog       *presentationDialog
 	view         *kit.Form
 }
 
@@ -209,14 +209,14 @@ func (m *mcpFormFlow) close() {
 	m.state, m.submission = mcpFormClosed, nil
 	m.clearSecrets()
 	if m.dialog != nil {
-		m.dialog.Controller().Dismiss()
+		m.dialog.Dismiss()
 		m.dialog = nil
 	}
 	m.view = nil
 }
 
 func (m *mcpFormFlow) feedback(message string) {
-	m.view.Title = message
+	m.view.Controller().SetTitle(message)
 	m.dialog.Controller().SetDescription(message)
 }
 

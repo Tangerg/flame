@@ -28,7 +28,7 @@ func openStore(ctx context.Context, path string) (*store, error) {
 
 func (c *store) readCache(ctx context.Context, key string) (response, error) {
 	var result response
-	err := sqlite.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT etag,links,body FROM responses WHERE key=?`, key).Scan(&result.etag, &result.links, &result.body)
+	err := pluginstorage.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT etag,links,body FROM responses WHERE key=?`, key).Scan(&result.etag, &result.links, &result.body)
 	if errors.Is(err, sql.ErrNoRows) {
 		return response{}, nil
 	}
@@ -42,8 +42,8 @@ func (c *store) readCache(ctx context.Context, key string) (response, error) {
 }
 
 func (c *store) saveCache(ctx context.Context, key string, result response) error {
-	return sqlite.RunInTx(ctx, c.db, func(ctx context.Context) error {
-		connection := sqlite.Connection(ctx, c.db)
+	return pluginstorage.WithinTransaction(ctx, c.db, func(ctx context.Context) error {
+		connection := pluginstorage.Connection(ctx, c.db)
 		if result.etag == "" {
 			_, err := connection.ExecContext(ctx, `DELETE FROM responses WHERE key=?`, key)
 			return err

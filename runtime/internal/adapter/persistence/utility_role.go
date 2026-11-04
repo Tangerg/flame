@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
@@ -11,7 +10,7 @@ type utilityRoleStore struct {
 	store *roleStore
 }
 
-func newUtilityRoleStore(db *sql.DB) *utilityRoleStore {
+func newUtilityRoleStore(db *database) *utilityRoleStore {
 	return &utilityRoleStore{store: newRoleStore(db, "utility_role", "utility role")}
 }
 

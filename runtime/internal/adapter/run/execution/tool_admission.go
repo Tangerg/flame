@@ -5,9 +5,10 @@ import (
 	"errors"
 	"fmt"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/qimu/integrity"
-	chat "github.com/Tangerg/scope/core/chat"
+
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -17,7 +18,7 @@ type toolAdmission struct {
 	binding     toolcontract.Binding
 	executable  toolcontract.Tool
 	ref         tool.Ref
-	fingerprint integrity.Digest
+	fingerprint framevalue.Digest
 	interpreter interactionToolInterpreter
 	authorizer  interactionToolAuthorizer
 	hooks       interactionToolHooks
@@ -42,7 +43,7 @@ func (a toolAdmission) prepare(ctx context.Context, callID string) (ToolAuthoriz
 	}
 	request := ToolAuthorizationRequest{SessionID: a.input.SessionID, WorkspaceCWD: a.input.WorkspaceCWD, CallID: callID, Tool: a.ref, QualifiedName: a.binding.Contract().Definition().Name != a.ref.ModelName(), SourceFingerprint: a.fingerprint, Arguments: arguments,
 		SafetyClass: a.interpreter.SafetyClass(a.ref), FileMutation: fileMutationScope(a.executable, arguments, a.input.CWD), ShellCommand: a.interpreter.ShellCommand(a.ref, arguments.Canonical()), RequireApproval: forceApproval}
-	if _, err := a.binding.Contract().Prepare(chat.ToolCall{ID: callID, Name: request.Tool.PublishedName(request.QualifiedName), Arguments: arguments.Canonical()}, nil); err != nil {
+	if _, err := a.binding.Contract().Prepare(toolcontract.Request{Name: request.Tool.PublishedName(request.QualifiedName), Arguments: arguments.Canonical()}, toolcontract.Admission{}); err != nil {
 		return request, ToolAuthorizationDecision{}, errors.Join(tool.ErrInvalidArguments, err)
 	}
 	if !a.interpreter.UsesStandardPolicy(a.ref) {

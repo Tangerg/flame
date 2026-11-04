@@ -1,8 +1,8 @@
 import { createElement, type ComponentProps, type ComponentType, type ReactNode } from "react";
-import { Lifetime, Service, QimuError, defineUnit, sameContract } from "@qimu/sdk";
-import { parseJSON } from "@qimu/sdk/json";
-import { ControlPump, HTTPControl, RealmModules, Runtime, type Use } from "@qimu/browser";
-import { type ObjectRef, type PlannedUnit } from "@qimu/sdk/protocol";
+import { Lifetime, Service, FrameError, defineUnit, sameContract } from "@frame/sdk";
+import { parseJSON } from "@frame/sdk/json";
+import { ControlPump, HTTPControl, RealmModules, Runtime, type Use } from "@frame/sdk/browser";
+import { type ObjectRef, type PlannedUnit } from "@frame/sdk/protocol";
 import { type FlameClient, type MutationPromise } from "@flame/runtime-client";
 import {
   HTTP_ENDPOINTS,
@@ -20,7 +20,7 @@ import {
   hostModuleProfile,
   hostModuleSpecifiers,
 } from "@flame/component-sdk/runtime-profile";
-import { type ContributionLifetime } from "@/extensions/definePlugin";
+import { type ContributionScope } from "@/extensions/definePlugin";
 import { reportPluginError } from "@/extensions/errors";
 import { NativeComponentMount } from "@/features/plugins/adapters/NativeComponentMount";
 
@@ -45,11 +45,10 @@ export type SourceComponent = ComponentType<
 
 interface ControlChannel {
   readonly lifetime: Lifetime;
-  readonly pump: Lifetime;
   readonly control: HTTPControl;
 }
 
-// This adapter owns the actual window bootstrap. Qimu owns plugin objects, work,
+// This adapter owns the actual window bootstrap. Frame owns plugin objects, work,
 // dependency protection and proofs; the private UI kernel only presents them.
 export class ComponentModules {
   readonly #bootstrap = new Lifetime("flame-browser-bootstrap");
@@ -65,6 +64,7 @@ export class ComponentModules {
   #session?: PluginBrowserSession;
   #runtime?: Runtime;
   #channel?: ControlChannel;
+  #pump?: ControlPump;
   #connection?: Promise<void>;
   #openingMutation?: MutationPromise<PluginBrowserSession>;
   #closingMutation?: MutationPromise<void>;
@@ -85,7 +85,7 @@ export class ComponentModules {
   }
 
   async #connect(client: FlameClient, endpoint: string, generation: object): Promise<void> {
-    if (this.#closed) throw new QimuError("closed", "browser plugin bootstrap is closed");
+    if (this.#closed) throw new FrameError("closed", "browser plugin bootstrap is closed");
     if (this.#connection) await this.#connection;
     if (this.#generation === generation && this.#runtime) return;
     const previousClient = this.#client;
@@ -96,9 +96,8 @@ export class ComponentModules {
         this.#runtime?.disconnect();
         const previous = this.#channel;
         if (previous) {
-          previous.pump.beginClose();
           previous.lifetime.beginClose();
-          await Promise.all([previous.pump.close(), previous.lifetime.close()]);
+          await previous.lifetime.close();
         }
         const request = {
           ...this.#opening,
@@ -116,9 +115,8 @@ export class ComponentModules {
           maximumMessageBytes: session.maximumMessageBytes,
           lifetime,
         });
-        const pumpOwner = this.#bootstrap.branch("realm-pump");
         this.#session = session;
-        this.#channel = { lifetime, pump: pumpOwner, control };
+        this.#channel = { lifetime, control };
         if (this.#runtime) await this.#runtime.reconnect(control);
         else {
           const contract = new Service<SourceComponent>(session.componentContract);
@@ -134,12 +132,12 @@ export class ComponentModules {
                 unit.exports[0]!.name !== componentExport ||
                 !sameContract(unit.exports[0]!.contract, contract.ref)
               )
-                throw new QimuError(
+                throw new FrameError(
                   "contract_mismatch",
                   "Flame component plan differs from its published native component contract",
                 );
               if (!HTMLScriptElement.supports("importmap"))
-                throw new QimuError(
+                throw new FrameError(
                   "unavailable",
                   "this client cannot share installed component modules",
                 );
@@ -153,7 +151,7 @@ export class ComponentModules {
                 typeof configuration.export !== "string" ||
                 !configuration.export
               )
-                throw new QimuError(
+                throw new FrameError(
                   "contract_mismatch",
                   "Flame component configuration omitted its declared export",
                 );
@@ -169,14 +167,14 @@ export class ComponentModules {
                     !hostModuleSpecifiers.some((approved) => approved === specifier),
                 )
               )
-                throw new QimuError(
+                throw new FrameError(
                   "contract_mismatch",
                   "component shared imports differ from the current native host module profile",
                 );
               const exports = await this.#modules.evaluate(unit, owner, plan);
               const component = exports[configuration.export];
               if (!component || (typeof component !== "function" && typeof component !== "object"))
-                throw new QimuError(
+                throw new FrameError(
                   "contract_mismatch",
                   "declared React component export is unavailable",
                 );
@@ -194,18 +192,23 @@ export class ComponentModules {
               });
             },
             remote: () => {
-              throw new QimuError(
+              throw new FrameError(
                 "contract_mismatch",
                 "Flame component authoring declares no portable setup imports",
               );
             },
           });
         }
-        const pump = new ControlPump(this.#runtime, control, {
-          intervalMilliseconds: session.pollIntervalMilliseconds,
-          onError: this.report,
-        });
-        void pumpOwner.run((signal) => pump.run(signal)).catch(this.report);
+        if (!this.#pump) {
+          const pump = new ControlPump(this.#runtime, {
+            intervalMilliseconds: session.pollIntervalMilliseconds,
+            preparationCapacity: session.preparationCapacity,
+            onError: this.report,
+          });
+          this.#pump = pump;
+          const pumpOwner = this.#bootstrap.branch("realm-pump");
+          void pumpOwner.run((signal) => pump.run(signal)).catch(this.report);
+        }
         this.#generation = generation;
       })
       .finally(() => {
@@ -219,7 +222,7 @@ export class ComponentModules {
     const endpoint = this.#endpoint;
     const configuration = parseJSON(unit.configurationJson) as { component?: { id?: unknown } };
     if (!client || typeof configuration.component?.id !== "string" || !configuration.component.id)
-      throw new QimuError("invalid_plan", "component execution has no Flame artifact source");
+      throw new FrameError("invalid_plan", "component execution has no Flame artifact source");
     const resources = await client.plugins.openResources(
       {
         installationId: unit.instance.source.installationId,
@@ -230,7 +233,7 @@ export class ComponentModules {
     );
     if (resources.result.entry !== unit.module.path) {
       await resources.close();
-      throw new QimuError(
+      throw new FrameError(
         "contract_mismatch",
         "leased component path differs from the approved artifact",
       );
@@ -264,18 +267,18 @@ export class ComponentModules {
   }
 
   async component(
-    scope: ContributionLifetime,
+    scope: ContributionScope,
     client: FlameClient,
     endpoint: string,
     generation: object,
     installation: PluginInstallation,
     entry: PluginClientComponent,
   ): Promise<LoadedComponent> {
-    scope.signal.throwIfAborted();
+    scope.lifetime.signal.throwIfAborted();
     await this.#connect(client, endpoint, generation);
-    scope.signal.throwIfAborted();
+    scope.lifetime.signal.throwIfAborted();
     if (this.#runtime!.connection === "cleanupOnly")
-      throw new QimuError(
+      throw new FrameError(
         "reload_required",
         "the previous browser authority requires a controlled Realm reload",
       );
@@ -288,7 +291,7 @@ export class ComponentModules {
       const runtime = this.#runtime!;
       const session = this.#session!;
       if (runtime.connection !== "connected")
-        throw new QimuError(
+        throw new FrameError(
           "unavailable",
           "component admission requires the current Host control channel",
         );
@@ -314,7 +317,7 @@ export class ComponentModules {
             sameContract(reference.export.contract, contract.ref),
         );
         if (objects.length !== 1)
-          throw new QimuError(
+          throw new FrameError(
             "contract_mismatch",
             "component grant must identify one exact component object",
           );
@@ -331,13 +334,13 @@ export class ComponentModules {
       definition: ComponentDefinition,
       resources: AbortSignal,
     ): PluginComponent => {
-      scope.signal.throwIfAborted();
+      scope.lifetime.signal.throwIfAborted();
       this.#bootstrap.signal.throwIfAborted();
       resources.throwIfAborted();
       if (!constructed) {
         const controller = new AbortController();
         const signal = AbortSignal.any([
-          scope.signal,
+          scope.lifetime.signal,
           this.#bootstrap.signal,
           resources,
           controller.signal,
@@ -351,7 +354,7 @@ export class ComponentModules {
             (typeof component !== "function" && typeof component !== "object") ||
             isComponentDefinition(component)
           )
-            throw new QimuError(
+            throw new FrameError(
               "contract_mismatch",
               "component source must construct a React component",
             );
@@ -370,7 +373,7 @@ export class ComponentModules {
         }
       }
       if (constructed.definition !== definition || constructed.resources !== resources)
-        throw new QimuError(
+        throw new FrameError(
           "contract_mismatch",
           "component factory changed within its admitted source",
         );
@@ -384,7 +387,7 @@ export class ComponentModules {
         wrap: this.#wrap,
         report: this.report,
       });
-    return { component, signal: scope.signal, reload: () => this.reload() };
+    return { component, signal: scope.lifetime.signal, reload: () => this.reload() };
   }
 
   close(): Promise<void> {
@@ -406,15 +409,15 @@ export class ComponentModules {
         this.#sealed = true;
         this.#closingMutation = undefined;
       }
-      // The original Runtime gate checks actual exits and the complete proof
-      // outbox, including reservations whose Host acknowledgement is unknown.
+      // The pump joins preparation and control work before the transport retires.
+      // The Runtime gate also checks the complete original proof outbox.
+      await this.#pump!.close();
       await this.#runtime.reload(() => {});
     }
-    this.#channel?.pump.beginClose();
     this.#channel?.lifetime.beginClose();
     const outcome = await this.#bootstrap.close();
     if (outcome.status !== "released")
-      throw new QimuError("close_unconfirmed", "browser control transport has not released");
+      throw new FrameError("close_unconfirmed", "browser control transport has not released");
   }
 
   async reload(): Promise<void> {

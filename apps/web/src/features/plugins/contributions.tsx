@@ -24,7 +24,7 @@ import {
 import { asyncDisposeSymbol, isCancellationReason } from "dougong";
 import { type FlameClient } from "@flame/runtime-client";
 import { type PluginInstallation } from "@flame/runtime-client/wire";
-import { type ContributionLifetime } from "@/extensions/definePlugin";
+import { type ContributionScope } from "@/extensions/definePlugin";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { WORKSPACE_VIEW, WORKSPACE_FILE_RENDERER } from "@/features/workspace/public/views";
 import { TOOL_RESULT_RENDERER } from "@/features/chat/public/tools/types";
@@ -50,6 +50,7 @@ import { createLocaleReconciler } from "@/features/i18n/public/locales";
 import { type RuntimeConnectionGeneration } from "@/features/connection/public/services";
 import {
   type InstalledPackageState,
+  type PackageRealizationFailure,
   PACKAGES_KEY,
   PROVIDERS_KEY,
 } from "@/features/plugins/adapters/packages";
@@ -91,11 +92,11 @@ function actionPlacement(placement: string) {
 }
 
 function createPackageReconciler(
-  scope: ContributionLifetime,
+  scope: ContributionScope,
   client: FlameClient,
   modules: ComponentModules,
   generation: RuntimeConnectionGeneration,
-  moduleScope: ContributionLifetime,
+  moduleScope: ContributionScope,
   endpoint: string,
   workspace: WorkspaceAccess,
   themeAccess: ThemeAccess,
@@ -108,7 +109,7 @@ function createPackageReconciler(
     generation,
     moduleScope,
   );
-  const resources = new Map<string, { signature: string; lifetime: ContributionLifetime }>();
+  const resources = new Map<string, { signature: string; lifetime: ContributionScope }>();
   const reconcileLocales = createLocaleReconciler(scope, (error) =>
     reportPluginError("flame.builtin.installed-plugin-loader", "setup", error),
   );
@@ -147,7 +148,7 @@ function createPackageReconciler(
       }
     }
     for (const installation of admitted) {
-      if (scope.signal.aborted) return;
+      if (scope.lifetime.signal.aborted) return;
       const release = installation.selected;
       const signature = release.digest;
       const previous = resources.get(installation.id);
@@ -156,8 +157,8 @@ function createPackageReconciler(
         resources.delete(installation.id);
         await previous.lifetime[asyncDisposeSymbol]();
       }
-      if (scope.signal.aborted) return;
-      const lifetime = scope.lifetime(installation.id);
+      if (scope.lifetime.signal.aborted) return;
+      const lifetime = scope.child(installation.id);
       resources.set(installation.id, { signature, lifetime });
       for (const entry of release.components) {
         const { placement, scope: contextScope } = entry;
@@ -201,7 +202,7 @@ function createPackageReconciler(
             };
           });
           const id = packageScopedId(installation.id, entry.id);
-          lifetime.contribute(
+          lifetime.add(
             WORKSPACE_FILE_RENDERER,
             {
               id,
@@ -261,7 +262,7 @@ function createPackageReconciler(
             };
           });
           const id = packageScopedId(installation.id, entry.id);
-          lifetime.contribute(
+          lifetime.add(
             TOOL_RESULT_RENDERER,
             {
               id,
@@ -315,7 +316,7 @@ function createPackageReconciler(
             };
           });
           const id = packageScopedId(installation.id, entry.id);
-          lifetime.contribute(
+          lifetime.add(
             SESSION_ACTION,
             {
               id,
@@ -399,7 +400,7 @@ function createPackageReconciler(
           continue;
         }
         if (placement === "sharedClientEffect") {
-          lifetime.contribute(
+          lifetime.add(
             SHARED_CLIENT_EFFECT,
             {
               id,
@@ -416,7 +417,7 @@ function createPackageReconciler(
           continue;
         }
         if (placement === "settingsPane") {
-          lifetime.contribute(
+          lifetime.add(
             SETTINGS_PANE,
             {
               id,
@@ -433,14 +434,14 @@ function createPackageReconciler(
           continue;
         }
         if (entry.toolCategory) {
-          lifetime.contribute(
+          lifetime.add(
             TOOL_VIEW_OPENER,
             {
               id,
               predicate: (tool) => tool.category === entry.toolCategory,
               label: () => presentationTitle(entry.title, entry.localizedTitles, activeLocale()),
               open: (tool, origin) => {
-                lifetime.signal.throwIfAborted();
+                lifetime.lifetime.signal.throwIfAborted();
                 openWorkspaceViewAtPath(
                   workspace,
                   id,
@@ -452,7 +453,7 @@ function createPackageReconciler(
             { key: id },
           );
         }
-        lifetime.contribute(
+        lifetime.add(
           WORKSPACE_VIEW,
           {
             id,
@@ -480,7 +481,7 @@ function createPackageReconciler(
 
 export function registerPackageContributions(
   packages: InstalledPackageState,
-  scope: ContributionLifetime,
+  scope: ContributionScope,
   client: FlameClient,
   modules: ComponentModules,
   generation: RuntimeConnectionGeneration,
@@ -493,40 +494,42 @@ export function registerPackageContributions(
     id: "installed-shared-effects",
     component: SharedEffects,
   });
-  scope.cleanup(
+  scope.lifetime.defer(
     packages.publishOperations({
       ...client.plugins,
-      signal: scope.signal,
+      signal: scope.lifetime.signal,
       track: (operation) => trackContributionIO(scope, operation),
     }),
   );
   const fetcher = async (_params?: unknown, signal?: AbortSignal) =>
     (
       await trackContributionIO(scope, () =>
-        client.plugins.list(signal ? AbortSignal.any([scope.signal, signal]) : scope.signal),
+        client.plugins.list(
+          signal ? AbortSignal.any([scope.lifetime.signal, signal]) : scope.lifetime.signal,
+        ),
       )
     ).data;
-  scope.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher });
+  scope.add(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher });
   const fetchProviders = async (_params?: unknown, signal?: AbortSignal) =>
     (
       await trackContributionIO(scope, () =>
         client.plugins.listProviders(
-          signal ? AbortSignal.any([scope.signal, signal]) : scope.signal,
+          signal ? AbortSignal.any([scope.lifetime.signal, signal]) : scope.lifetime.signal,
         ),
       )
     ).data;
-  scope.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: fetchProviders });
+  scope.add(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: fetchProviders });
 
-  let failure: { reason: string; retry(): void } | null = null;
+  let failure: PackageRealizationFailure | null = null;
   const withdrawFailure = () => {
     if (failure && packages.failure() === failure) packages.setFailure(null);
     failure = null;
   };
-  scope.cleanup(withdrawFailure);
+  scope.lifetime.defer(withdrawFailure);
   const realize = () => {
     withdrawFailure();
-    const contributions = scope.lifetime("package-realization");
-    contributions.cleanup(() => packages.workflows.publish([], []));
+    const contributions = scope.child("package-realization");
+    contributions.lifetime.defer(() => packages.workflows.publish([], []));
     const reconcile = createPackageReconciler(
       contributions,
       client,
@@ -539,7 +542,7 @@ export function registerPackageContributions(
       saveFile,
     );
     // The generation owns the task so it can join its contribution scope on failure.
-    scope.spawn(async (signal) => {
+    scope.lifetime.spawn(async (signal) => {
       const refresh = async () => {
         // Cache cancellation cannot retire the generation's presentation resources.
         const rows = await fetcher(undefined, signal);
@@ -570,14 +573,16 @@ export function registerPackageContributions(
           await events.return?.();
           return;
         }
-        const closeEvents = contributions.cleanup(() => events.return?.());
+        const closeEvents = contributions.lifetime.defer(() => events.return?.());
         await refresh();
         while (!(await events.next()).done) await refresh();
         await closeEvents[asyncDisposeSymbol]();
       } catch (error) {
         const reasons = [error];
+        let released = false;
         try {
           await contributions[asyncDisposeSymbol]();
+          released = true;
         } catch (cleanupError) {
           reasons.push(cleanupError);
         }
@@ -588,11 +593,13 @@ export function registerPackageContributions(
             throw new AggregateError(unexpected, "Package realization retirement failed");
           return;
         }
-        const failed = {
+        const failed: PackageRealizationFailure = {
           reason: reasons.map(failureMessage).join("; "),
-          retry() {
-            if (failure === failed && !scope.signal.aborted) realize();
-          },
+          retry: released
+            ? () => {
+                if (failure === failed && !scope.lifetime.signal.aborted) realize();
+              }
+            : undefined,
         };
         failure = failed;
         packages.setFailure(failure);

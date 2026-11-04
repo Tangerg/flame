@@ -31,12 +31,12 @@ export function registerWorkspaceDataProviders(
 ): void {
   const workspace = (cwd: string | undefined, signal: AbortSignal | undefined) =>
     runtimeClient().workspaces.open(cwd ? { path: cwd } : undefined, signal);
-  ctx.contribute(DATA_PROVIDER, {
+  ctx.add(DATA_PROVIDER, {
     key: WORKSPACE_PROJECTS_KEY,
     fetcher: async (_params, signal) =>
       (await pageData(runtimeClient().workspaces.list(signal))).map(toWorkspaceProjectSummary),
   });
-  ctx.contribute(DATA_PROVIDER, {
+  ctx.add(DATA_PROVIDER, {
     key: WORKSPACE_FILES_CHANGED_KEY,
     fetcher: async (params, signal) => {
       const resources = await workspace(
@@ -46,7 +46,7 @@ export function registerWorkspaceDataProviders(
       return (await pageData(resources.changes.list(signal))).map(toWorkspaceFileChangeSummary);
     },
   });
-  ctx.contribute(DATA_PROVIDER, {
+  ctx.add(DATA_PROVIDER, {
     key: WORKSPACE_LIST_FILES_KEY,
     fetcher: async (params, signal) => {
       const { cwd, ...query } = requiredParams<WorkspaceListFilesQuery>(
@@ -65,7 +65,7 @@ export function registerWorkspaceDataProviders(
       }));
     },
   });
-  ctx.contribute(DATA_PROVIDER, {
+  ctx.add(DATA_PROVIDER, {
     key: WORKSPACE_READ_FILE_KEY,
     fetcher: async (params, signal) => {
       const { cwd, ...query } = requiredParams<WorkspaceReadFileQuery>(

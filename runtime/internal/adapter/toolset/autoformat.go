@@ -8,7 +8,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/codeintel"
-	"github.com/Tangerg/frame/cancellation"
 	"github.com/Tangerg/scope/tools/fs"
 )
 
@@ -22,7 +21,7 @@ type autoFormatSource struct {
 }
 
 func readAutoFormatFile(ctx context.Context, root *filesystemRoot, executor *fs.LocalExecutor, path string) (autoFormatSource, error) {
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return autoFormatSource{}, err
 	}
 	before, err := root.Lstat(path)
@@ -37,16 +36,16 @@ func readAutoFormatFile(ctx context.Context, root *filesystemRoot, executor *fs.
 		MaxLineBytes: int(maxAutoFormatFileBytes), MaxOutputBytes: int(maxAutoFormatFileBytes),
 	})
 	if err != nil {
-		return autoFormatSource{}, errors.Join(err, cancellation.Err(ctx))
+		return autoFormatSource{}, errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx)))
 	}
 	if result.Truncated {
-		return autoFormatSource{}, errors.Join(errAutoFormatFileTooLarge, cancellation.Err(ctx))
+		return autoFormatSource{}, errors.Join(errAutoFormatFileTooLarge, errors.Join(ctx.Err(), context.Cause(ctx)))
 	}
 	after, err := root.Lstat(path)
 	if err != nil || !filesystem.SameVersion(before, after) {
-		return autoFormatSource{}, errors.Join(errors.New("file changed while reading for formatting"), err, cancellation.Err(ctx))
+		return autoFormatSource{}, errors.Join(errors.New("file changed while reading for formatting"), err, errors.Join(ctx.Err(), context.Cause(ctx)))
 	}
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return autoFormatSource{}, err
 	}
 	return autoFormatSource{content: result.Content, info: after}, nil
@@ -66,16 +65,16 @@ func validateAutoFormatSource(info os.FileInfo) error {
 // BOM, line endings, and mode. Formatting supplies only an exact-text edit of
 // the complete, bounded source it observed.
 func applyFormattedFile(ctx context.Context, root *filesystemRoot, executor *fs.LocalExecutor, path string, data []byte, source autoFormatSource) error {
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return err
 	}
 	current, err := root.Lstat(path)
 	if err != nil || !filesystem.SameVersion(source.info, current) {
-		return errors.Join(errors.New("file changed while formatting"), err, cancellation.Err(ctx))
+		return errors.Join(errors.New("file changed while formatting"), err, errors.Join(ctx.Err(), context.Cause(ctx)))
 	}
 	_, err = executor.Edit(ctx, fs.EditRequest{Path: path, OldString: source.content, NewString: string(data)})
 	if err != nil {
-		return errors.Join(err, cancellation.Err(ctx))
+		return errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx)))
 	}
 	return nil
 }

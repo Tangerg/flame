@@ -9,10 +9,11 @@ import (
 	"runtime"
 	"testing"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/distribution"
-	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/frame/distribution"
 )
 
 func TestNeutralDeclarationCannotSubstituteManagedRuntimeOrCapabilities(t *testing.T) {
@@ -26,7 +27,7 @@ func TestNeutralDeclarationCannotSubstituteManagedRuntimeOrCapabilities(t *testi
 			manifest := built.Manifest
 			switch change {
 			case "interpreter":
-				manifest.Units[0].Variants[0].Runtime.Digest = integrity.Hash([]byte("different interpreter"))
+				manifest.Units[0].Variants[0].Runtime.Digest = framevalue.Hash([]byte("different interpreter"))
 			case "capability":
 				manifest.Units[0].RequestedCapabilities = []string{"undeclared-host-access"}
 			}

@@ -12,16 +12,16 @@ export default definePlugin({
       e.preventDefault();
     };
     document.addEventListener("contextmenu", onContextMenu);
-    ctx.cleanup(() => document.removeEventListener("contextmenu", onContextMenu));
+    ctx.lifetime.defer(() => document.removeEventListener("contextmenu", onContextMenu));
 
     const syncFocus = () => {
       document.documentElement.toggleAttribute(WINDOW_INACTIVE_ATTR, !document.hasFocus());
     };
     syncFocus();
-    ctx.cleanup(() => document.documentElement.removeAttribute(WINDOW_INACTIVE_ATTR));
+    ctx.lifetime.defer(() => document.documentElement.removeAttribute(WINDOW_INACTIVE_ATTR));
     addEventListener("focus", syncFocus);
-    ctx.cleanup(() => removeEventListener("focus", syncFocus));
+    ctx.lifetime.defer(() => removeEventListener("focus", syncFocus));
     addEventListener("blur", syncFocus);
-    ctx.cleanup(() => removeEventListener("blur", syncFocus));
+    ctx.lifetime.defer(() => removeEventListener("blur", syncFocus));
   },
 });

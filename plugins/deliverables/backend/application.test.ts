@@ -4,8 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { inflateRawSync } from "node:zlib";
 import { afterEach, expect, it, vi } from "vitest";
-import { canonicalJSON, digestJSON, type CallContext } from "@qimu/node";
-import { Lifetime } from "@qimu/sdk";
+import {
+  canonicalJSON,
+  digestJSON,
+  type CallContext,
+} from "@flame/backend-sdk/mcp";
+import { Lifetime } from "@frame/sdk";
 import { PDFDocument } from "pdf-lib";
 import { METHODS, schemas } from "../contracts/capability";
 import { renderReportSchema, reviewReportSchema } from "../contracts/evidence";

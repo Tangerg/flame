@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.qimu/portable/1",
+  "protocol": "io.github.tangerg.flame/plugin/1",
   "reference": "memory",
   "composition": "selection",
   "scope": "installation",
@@ -95,23 +95,36 @@
             "type": "string"
           },
           "domain.ItemSnapshot": {
+            "$ref": "#/$defs/domain.itemProjection"
+          },
+          "domain.itemProjection": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "Content": {
+                    "maxLength": 4096
+                  },
+                  "Revision": {
+                    "maximum": 9.007199254740991e+15
+                  }
+                }
+              }
+            ],
             "properties": {
               "Content": {
-                "maxLength": 4096,
                 "pattern": "\\S",
                 "type": "string"
               },
               "CreatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "Day": {
                 "type": "string"
               },
               "Embedding": {
                 "items": {
-                  "type": "number"
+                  "$ref": "#/$defs/value.Number"
                 },
                 "type": "array"
               },
@@ -145,7 +158,6 @@
                     "minimum": 0
                   }
                 ],
-                "maximum": 9007199254740991,
                 "minimum": 1,
                 "type": "integer"
               },
@@ -176,8 +188,7 @@
                 "type": "string"
               },
               "UpdatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               }
             },
             "required": [
@@ -197,6 +208,12 @@
               "Embedding"
             ],
             "type": "object"
+          },
+          "instant.Timestamp": {
+            "type": "string"
+          },
+          "value.Number": {
+            "type": "number"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -225,6 +242,15 @@
         "$defs": {
           "contract.ItemInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "ExpectedRevision": {
+                    "maximum": 9.007199254740991e+15
+                  }
+                }
+              }
+            ],
             "properties": {
               "ExpectedRevision": {
                 "allOf": [
@@ -233,7 +259,6 @@
                     "minimum": 0
                   }
                 ],
-                "maximum": 9007199254740991,
                 "minimum": 1,
                 "type": "integer"
               },
@@ -250,6 +275,15 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "ExpectedRevision": {
+                "maximum": 9.007199254740991e+15
+              }
+            }
+          }
+        ],
         "properties": {
           "ExpectedRevision": {
             "allOf": [
@@ -258,7 +292,6 @@
                 "minimum": 0
               }
             ],
-            "maximum": 9007199254740991,
             "minimum": 1,
             "type": "integer"
           },
@@ -353,23 +386,36 @@
             "type": "string"
           },
           "domain.ItemSnapshot": {
+            "$ref": "#/$defs/domain.itemProjection"
+          },
+          "domain.itemProjection": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "Content": {
+                    "maxLength": 4096
+                  },
+                  "Revision": {
+                    "maximum": 9.007199254740991e+15
+                  }
+                }
+              }
+            ],
             "properties": {
               "Content": {
-                "maxLength": 4096,
                 "pattern": "\\S",
                 "type": "string"
               },
               "CreatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "Day": {
                 "type": "string"
               },
               "Embedding": {
                 "items": {
-                  "type": "number"
+                  "$ref": "#/$defs/value.Number"
                 },
                 "type": "array"
               },
@@ -403,7 +449,6 @@
                     "minimum": 0
                   }
                 ],
-                "maximum": 9007199254740991,
                 "minimum": 1,
                 "type": "integer"
               },
@@ -434,8 +479,7 @@
                 "type": "string"
               },
               "UpdatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               }
             },
             "required": [
@@ -455,6 +499,12 @@
               "Embedding"
             ],
             "type": "object"
+          },
+          "instant.Timestamp": {
+            "type": "string"
+          },
+          "value.Number": {
+            "type": "number"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -473,6 +523,16 @@
         "$defs": {
           "contract.ListInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "Limit": {
+                    "maximum": 100,
+                    "minimum": 1
+                  }
+                }
+              }
+            ],
             "properties": {
               "CWD": {
                 "type": "string"
@@ -487,8 +547,6 @@
                     "minimum": -9223372036854775808
                   }
                 ],
-                "maximum": 100,
-                "minimum": 1,
                 "type": "integer"
               },
               "Scope": {
@@ -513,6 +571,16 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "Limit": {
+                "maximum": 100,
+                "minimum": 1
+              }
+            }
+          }
+        ],
         "properties": {
           "CWD": {
             "type": "string"
@@ -527,8 +595,6 @@
                 "minimum": -9223372036854775808
               }
             ],
-            "maximum": 100,
-            "minimum": 1,
             "type": "integer"
           },
           "Scope": {
@@ -554,6 +620,19 @@
         "$defs": {
           "contract.Page": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "Capacity": {
+                    "maximum": 512,
+                    "minimum": 512
+                  },
+                  "Rows": {
+                    "maxItems": 100
+                  }
+                }
+              }
+            ],
             "properties": {
               "Capacity": {
                 "allOf": [
@@ -562,7 +641,6 @@
                     "minimum": -9223372036854775808
                   }
                 ],
-                "const": 512,
                 "type": "integer"
               },
               "NextCursor": {
@@ -572,7 +650,6 @@
                 "items": {
                   "$ref": "#/$defs/domain.ItemSnapshot"
                 },
-                "maxItems": 100,
                 "type": "array"
               }
             },
@@ -592,23 +669,36 @@
             "type": "string"
           },
           "domain.ItemSnapshot": {
+            "$ref": "#/$defs/domain.itemProjection"
+          },
+          "domain.itemProjection": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "Content": {
+                    "maxLength": 4096
+                  },
+                  "Revision": {
+                    "maximum": 9.007199254740991e+15
+                  }
+                }
+              }
+            ],
             "properties": {
               "Content": {
-                "maxLength": 4096,
                 "pattern": "\\S",
                 "type": "string"
               },
               "CreatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "Day": {
                 "type": "string"
               },
               "Embedding": {
                 "items": {
-                  "type": "number"
+                  "$ref": "#/$defs/value.Number"
                 },
                 "type": "array"
               },
@@ -642,7 +732,6 @@
                     "minimum": 0
                   }
                 ],
-                "maximum": 9007199254740991,
                 "minimum": 1,
                 "type": "integer"
               },
@@ -673,8 +762,7 @@
                 "type": "string"
               },
               "UpdatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               }
             },
             "required": [
@@ -694,10 +782,29 @@
               "Embedding"
             ],
             "type": "object"
+          },
+          "instant.Timestamp": {
+            "type": "string"
+          },
+          "value.Number": {
+            "type": "number"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "Capacity": {
+                "maximum": 512,
+                "minimum": 512
+              },
+              "Rows": {
+                "maxItems": 100
+              }
+            }
+          }
+        ],
         "properties": {
           "Capacity": {
             "allOf": [
@@ -706,7 +813,6 @@
                 "minimum": -9223372036854775808
               }
             ],
-            "const": 512,
             "type": "integer"
           },
           "NextCursor": {
@@ -716,7 +822,6 @@
             "items": {
               "$ref": "#/$defs/domain.ItemSnapshot"
             },
-            "maxItems": 100,
             "type": "array"
           }
         },
@@ -843,6 +948,15 @@
         "$defs": {
           "contract.ReviewInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "ExpectedRevision": {
+                    "maximum": 9.007199254740991e+15
+                  }
+                }
+              }
+            ],
             "properties": {
               "Decision": {
                 "allOf": [
@@ -862,7 +976,6 @@
                     "minimum": 0
                   }
                 ],
-                "maximum": 9007199254740991,
                 "minimum": 1,
                 "type": "integer"
               },
@@ -880,6 +993,15 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "ExpectedRevision": {
+                "maximum": 9.007199254740991e+15
+              }
+            }
+          }
+        ],
         "properties": {
           "Decision": {
             "allOf": [
@@ -899,7 +1021,6 @@
                 "minimum": 0
               }
             ],
-            "maximum": 9007199254740991,
             "minimum": 1,
             "type": "integer"
           },
@@ -1007,23 +1128,36 @@
             "type": "string"
           },
           "domain.ItemSnapshot": {
+            "$ref": "#/$defs/domain.itemProjection"
+          },
+          "domain.itemProjection": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "Content": {
+                    "maxLength": 4096
+                  },
+                  "Revision": {
+                    "maximum": 9.007199254740991e+15
+                  }
+                }
+              }
+            ],
             "properties": {
               "Content": {
-                "maxLength": 4096,
                 "pattern": "\\S",
                 "type": "string"
               },
               "CreatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "Day": {
                 "type": "string"
               },
               "Embedding": {
                 "items": {
-                  "type": "number"
+                  "$ref": "#/$defs/value.Number"
                 },
                 "type": "array"
               },
@@ -1057,7 +1191,6 @@
                     "minimum": 0
                   }
                 ],
-                "maximum": 9007199254740991,
                 "minimum": 1,
                 "type": "integer"
               },
@@ -1088,8 +1221,7 @@
                 "type": "string"
               },
               "UpdatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               }
             },
             "required": [
@@ -1109,6 +1241,12 @@
               "Embedding"
             ],
             "type": "object"
+          },
+          "instant.Timestamp": {
+            "type": "string"
+          },
+          "value.Number": {
+            "type": "number"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1127,6 +1265,15 @@
         "$defs": {
           "contract.UpdateInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "ExpectedRevision": {
+                    "maximum": 9.007199254740991e+15
+                  }
+                }
+              }
+            ],
             "properties": {
               "Content": {
                 "type": "string"
@@ -1138,7 +1285,6 @@
                     "minimum": 0
                   }
                 ],
-                "maximum": 9007199254740991,
                 "minimum": 1,
                 "type": "integer"
               },
@@ -1158,6 +1304,15 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "ExpectedRevision": {
+                "maximum": 9.007199254740991e+15
+              }
+            }
+          }
+        ],
         "properties": {
           "Content": {
             "type": "string"
@@ -1169,7 +1324,6 @@
                 "minimum": 0
               }
             ],
-            "maximum": 9007199254740991,
             "minimum": 1,
             "type": "integer"
           },
@@ -1197,23 +1351,36 @@
             "type": "string"
           },
           "domain.ItemSnapshot": {
+            "$ref": "#/$defs/domain.itemProjection"
+          },
+          "domain.itemProjection": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "Content": {
+                    "maxLength": 4096
+                  },
+                  "Revision": {
+                    "maximum": 9.007199254740991e+15
+                  }
+                }
+              }
+            ],
             "properties": {
               "Content": {
-                "maxLength": 4096,
                 "pattern": "\\S",
                 "type": "string"
               },
               "CreatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "Day": {
                 "type": "string"
               },
               "Embedding": {
                 "items": {
-                  "type": "number"
+                  "$ref": "#/$defs/value.Number"
                 },
                 "type": "array"
               },
@@ -1247,7 +1414,6 @@
                     "minimum": 0
                   }
                 ],
-                "maximum": 9007199254740991,
                 "minimum": 1,
                 "type": "integer"
               },
@@ -1278,8 +1444,7 @@
                 "type": "string"
               },
               "UpdatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               }
             },
             "required": [
@@ -1299,111 +1464,16 @@
               "Embedding"
             ],
             "type": "object"
+          },
+          "instant.Timestamp": {
+            "type": "string"
+          },
+          "value.Number": {
+            "type": "number"
           }
         },
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "Content": {
-            "maxLength": 4096,
-            "pattern": "\\S",
-            "type": "string"
-          },
-          "CreatedAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "Day": {
-            "type": "string"
-          },
-          "Embedding": {
-            "items": {
-              "type": "number"
-            },
-            "type": "array"
-          },
-          "EmbeddingSpace": {
-            "type": "string"
-          },
-          "ID": {
-            "$ref": "#/$defs/domain.ItemID"
-          },
-          "Origin": {
-            "allOf": [
-              {
-                "enum": [
-                  "auto",
-                  "user"
-                ]
-              }
-            ],
-            "type": "string"
-          },
-          "Pinned": {
-            "type": "boolean"
-          },
-          "Project": {
-            "type": "string"
-          },
-          "Revision": {
-            "allOf": [
-              {
-                "maximum": 18446744073709551615,
-                "minimum": 0
-              }
-            ],
-            "maximum": 9007199254740991,
-            "minimum": 1,
-            "type": "integer"
-          },
-          "Scope": {
-            "allOf": [
-              {
-                "enum": [
-                  "project",
-                  "user"
-                ]
-              }
-            ],
-            "type": "string"
-          },
-          "SessionID": {
-            "type": "string"
-          },
-          "Status": {
-            "allOf": [
-              {
-                "enum": [
-                  "active",
-                  "pending",
-                  "rejected"
-                ]
-              }
-            ],
-            "type": "string"
-          },
-          "UpdatedAt": {
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "required": [
-          "ID",
-          "Revision",
-          "Scope",
-          "Project",
-          "Content",
-          "Origin",
-          "Status",
-          "Pinned",
-          "SessionID",
-          "Day",
-          "CreatedAt",
-          "UpdatedAt",
-          "EmbeddingSpace",
-          "Embedding"
-        ],
-        "type": "object"
+        "$ref": "#/$defs/domain.itemProjection",
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
       }
     }
   ]

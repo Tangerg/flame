@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.qimu/portable/1",
+  "protocol": "io.github.tangerg.flame/plugin/1",
   "reference": "flame.sandbox.v1",
   "composition": "collection",
   "scope": "installation",
@@ -13,9 +13,20 @@
         "$defs": {
           "wire.ExecuteInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "script": {
+                    "maxLength": 65536
+                  },
+                  "timeoutMillis": {
+                    "maximum": 30000
+                  }
+                }
+              }
+            ],
             "properties": {
               "script": {
-                "maxLength": 65536,
                 "minLength": 1,
                 "type": "string"
               },
@@ -26,7 +37,6 @@
                     "minimum": -9223372036854775808
                   }
                 ],
-                "maximum": 30000,
                 "minimum": 1,
                 "type": "integer"
               }
@@ -40,9 +50,20 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "script": {
+                "maxLength": 65536
+              },
+              "timeoutMillis": {
+                "maximum": 30000
+              }
+            }
+          }
+        ],
         "properties": {
           "script": {
-            "maxLength": 65536,
             "minLength": 1,
             "type": "string"
           },
@@ -53,7 +74,6 @@
                 "minimum": -9223372036854775808
               }
             ],
-            "maximum": 30000,
             "minimum": 1,
             "type": "integer"
           }

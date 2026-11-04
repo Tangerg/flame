@@ -147,7 +147,7 @@ bytes })`, where `bytes` is a `Uint8Array` and `filename` is a suggested basenam
 The host captures the exact byte range synchronously, owns the browser download
 or native save panel, and joins accepted saves through the captured component
 lifetime. A retired context refuses new saves; an accepted native panel remains
-owned until its user choice and write settle. Composed components and their Qimu
+owned until its user choice and write settle. Composed components and their Frame
 Uses retain that same boundary.
 
 The result is `"requested"` after a browser download request, `"saved"` after a
@@ -250,7 +250,7 @@ Known refusals become `OperationFailure`;
 unconfirmed transport remains the shared Runtime client's uncertainty. The mapped
 command preserves its original idempotency key and explicit retry closure.
 
-`context.track(factory)` reserves work in the component's original Qimu Use
+`context.track(factory)` reserves work in the component's original Frame Use
 before invoking the factory synchronously. The factory receives the owned signal
 and must start the operation inside that call. The returned Promise is the
 factory's original object, including a command's idempotency key and retry
@@ -314,10 +314,10 @@ are rebuilt together by `make generate`.
 The SDK owns shared-module externalization and the prebuilt ESM/relative-asset
 format. The former implicit compiler lookup is removed; all in-repository build
 callers supply the compiler explicitly. Private dependencies are bundled. `HOST_MODULES` names shared React,
-React DOM, JSX runtimes, SDK, Runtime-client, Qimu exact JSON and UI modules;
+React DOM, JSX runtimes, SDK, Runtime-client, Frame exact JSON and UI modules;
 UI subpath imports are also external. The workbench derives its import map from
 that same declaration and deduplicates the Runtime-client package. Both
-`@flame/runtime-client` and `@qimu/sdk/json` therefore use the actual
+`@flame/runtime-client` and `@frame/sdk/json` therefore use the actual
 Host's error constructors and exact-number codec. Source-only tests cannot prove
 this identity; component builds and the production ESM linkage check exercise it.
 Unresolved imports, including Node built-ins, fail the browser build instead of

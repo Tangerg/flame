@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"io"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 // Launch transfers a fresh launch to the connection owner. Server describes
@@ -19,13 +19,13 @@ type Launch struct {
 	Stdio  *Stdio
 	Retire io.Closer
 	// Callable entries must prove this declared set before connection publication.
-	Exports       map[string]jsonvalue.Value
+	Exports       map[string]framevalue.JSON
 	Requirements  *plugin.RequiredBindings
 	Contributions []plugin.Contribution
 }
 
 type Stdio struct {
-	ExpectedExecutable integrity.Digest
+	ExpectedExecutable framevalue.Digest
 	Command            string
 	Args               []string
 	Env                map[string]string

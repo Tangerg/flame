@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	oteltool "github.com/Tangerg/scope/otel/tool"
 )
@@ -34,8 +33,8 @@ func (r releasedMCPToolStub) InstallationActivation() (plugin.Activation, error)
 // admitted it, so it has no server identity at all.
 type unrealizedMCPTool struct{ name, remote string }
 
-func (u unrealizedMCPTool) Definition() chat.ToolDefinition {
-	return chat.ToolDefinition{Name: u.name, InputSchema: []byte(`{"type":"object"}`)}
+func (u unrealizedMCPTool) Definition() toolcontract.Definition {
+	return toolcontract.Definition{Name: u.name, InputSchema: []byte(`{"type":"object"}`)}
 }
 func (unrealizedMCPTool) Call(context.Context, toolcontract.Invocation) (toolcontract.Result, error) {
 	return toolcontract.Result{}, nil
@@ -129,4 +128,9 @@ func TestManifestRetainsAndInvokesItsOriginalTransitiveGraph(t *testing.T) {
 	if !slices.Contains(manifest.Installations, leaf) {
 		t.Fatal("source change rewrote frozen dependencies")
 	}
+}
+
+func (r releasedMCPToolStub) MCPSource() (mcp.CapturedSource, bool) {
+	_, remote := r.MCPToolIdentity()
+	return mcp.CapturedSource{Config: r.SourceConfig(), RemoteName: remote}, true
 }

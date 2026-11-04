@@ -22,10 +22,10 @@ type mcpTool struct {
 
 type discoveryDecorator struct{ toolcontract.Tool }
 
-func (d discoveryDecorator) Unwrap() toolcontract.Tool { return d.Tool }
+func (d discoveryDecorator) MCPSource() (mcp.CapturedSource, bool) { return mcp.Source(d.Tool) }
 
-func (m mcpTool) Definition() chat.ToolDefinition {
-	return chat.ToolDefinition{
+func (m mcpTool) Definition() toolcontract.Definition {
+	return toolcontract.Definition{
 		Name:        m.name,
 		Description: m.desc,
 		InputSchema: jsontext.Value(`{"type":"object"}`),
@@ -34,9 +34,9 @@ func (m mcpTool) Definition() chat.ToolDefinition {
 
 func (m mcpTool) Call(context.Context, toolcontract.Invocation) (toolcontract.Result, error) {
 	if m.result == "" {
-		return toolcontract.Result{Output: chat.NewTextToolOutput("ok")}, nil
+		return toolcontract.Result{Output: toolcontract.NewTextOutput("ok")}, nil
 	}
-	return toolcontract.Result{Output: chat.NewTextToolOutput(m.result)}, nil
+	return toolcontract.Result{Output: toolcontract.NewTextOutput(m.result)}, nil
 }
 
 func (m mcpTool) MCPToolIdentity() (string, string) { return m.server, m.remote }
@@ -242,11 +242,11 @@ func TestDiscoveryRejectsUndecodableIntegersAtAdmission(t *testing.T) {
 		`{"query":"issue","limit":1e1}`,
 		`{"query":"issue","limit":10.0}`,
 	} {
-		if _, err := binding.Contract().Prepare(chat.ToolCall{ID: "search", Name: "search_tools", Arguments: arguments}, nil); !errors.Is(err, toolcontract.ErrInvalidInvocation) {
+		if _, err := binding.Contract().Prepare((chat.ToolCall{ID: "search", Name: "search_tools", Arguments: arguments}).Request(), toolcontract.Admission{}); !errors.Is(err, toolcontract.ErrInvalidInvocation) {
 			t.Errorf("discovery admitted %s: %v", arguments, err)
 		}
 	}
-	if _, err := binding.Contract().Prepare(chat.ToolCall{ID: "search", Name: "search_tools", Arguments: `{"query":"issue","limit":10}`}, nil); err != nil {
+	if _, err := binding.Contract().Prepare((chat.ToolCall{ID: "search", Name: "search_tools", Arguments: `{"query":"issue","limit":10}`}).Request(), toolcontract.Admission{}); err != nil {
 		t.Fatalf("discovery rejected valid integer: %v", err)
 	}
 }
@@ -257,7 +257,7 @@ func discover(t *testing.T, search *toolset.Discovery, arguments string) (toolco
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "search", Name: "search_tools", Arguments: arguments}, nil)
+	invocation, err := binding.Contract().Prepare((chat.ToolCall{ID: "search", Name: "search_tools", Arguments: arguments}).Request(), toolcontract.Admission{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,7 +306,7 @@ func TestDiscoveryDoesNotInferRemainingVisibilityFromOneSearch(t *testing.T) {
 func TestAdvertisementRequiresTheStructuredExecutedResult(t *testing.T) {
 	search := newSearch(t, catalog())
 	invocation, _ := discover(t, search, `{"query":"create issue"}`)
-	if _, err := search.AdvertiseDeferred(t.Context(), invocation, toolcontract.Result{Output: chat.NewTextToolOutput("linear_create_issue")}); err == nil {
+	if _, err := search.AdvertiseDeferred(t.Context(), invocation, toolcontract.Result{Output: toolcontract.NewTextOutput("linear_create_issue")}); err == nil {
 		t.Fatal("advertisement inferred matches from display text")
 	}
 }
@@ -318,4 +318,9 @@ func TestUnmatchedDiscoveryAdvertisesNothing(t *testing.T) {
 	if err != nil || len(advertised) != 0 {
 		t.Fatalf("unmatched advertisement = %v, %v", advertised, err)
 	}
+}
+
+func (m mcpTool) MCPSource() (mcp.CapturedSource, bool) {
+	_, remote := m.MCPToolIdentity()
+	return mcp.CapturedSource{Config: m.SourceConfig(), RemoteName: remote}, true
 }

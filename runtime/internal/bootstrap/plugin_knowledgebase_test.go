@@ -11,14 +11,16 @@ import (
 	"sync/atomic"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore(t *testing.T) {
@@ -144,13 +146,13 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 	if toolName.Load().(string) == "" {
 		t.Fatal("knowledge search Tool missing")
 	}
-	contracts, err := portable.ParseCapability([]byte(testsupport.KnowledgebaseCapabilityJSON))
+	contracts, err := plugincontract.ParseCapability([]byte(testsupport.KnowledgebaseCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
 	call := func(method string, input any, key string) *protocol.CallPluginResponse {
 		t.Helper()
-		admitted, err := jsonvalue.Encode(input)
+		admitted, err := framevalue.EncodeJSON(input)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -160,14 +162,14 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 		}
 		return response
 	}
-	input := testsupport.KnowledgebaseImportInput{}
+	input := testsupport.KnowledgebaseImportInput{Content: &testsupport.KnowledgebaseContent{}, ExpectedRevision: generatedNumber(t, "0")}
 	input.Content.Id, input.Content.Title = "fruit", "Fruit guide"
 	input.Content.Source, input.Content.Text = "docs/fruit.md", "apple guide"
 	first := call(testsupport.KnowledgebaseImportV1Method, input, "knowledge-import")
 	if replay := call(testsupport.KnowledgebaseImportV1Method, input, "knowledge-import"); replay.Output != first.Output || embeddings.Load() != 1 {
 		t.Fatalf("import repeated its model exchange: %+v, count=%d", replay, embeddings.Load())
 	}
-	typed := call(testsupport.KnowledgebaseSearchV1Method, testsupport.KnowledgebaseSearchInput{Query: "apple", Limit: 1}, "")
+	typed := call(testsupport.KnowledgebaseSearchV1Method, testsupport.KnowledgebaseSearchInput{Query: "apple", Limit: generatedNumber(t, "1")}, "")
 	contextContract, err := pluginsdk.ModelContextContract()
 	if err != nil {
 		t.Fatal(err)
@@ -188,7 +190,7 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 	if finished.Outcome == nil || finished.Outcome.Type != protocol.OutcomeCompleted {
 		t.Fatalf("knowledge Run did not complete: %+v", finished.Outcome)
 	}
-	toolJSON, err := jsonvalue.Parse([]byte(toolOutput.Load().(string)))
+	toolJSON, err := framevalue.ParseJSON([]byte(toolOutput.Load().(string)))
 	if err != nil || toolJSON.String() != typed.Output || !sawContext.Load() || !embeddedUserInput.Load() {
 		t.Fatalf("installed typed/Tool/context entrances diverged: typed=%s tool=%s context=%v error=%v", typed.Output, toolJSON.String(), sawContext.Load(), err)
 	}
@@ -203,7 +205,7 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 	if err := json.Unmarshal([]byte(read.Output), &original); err != nil || original.Text != input.Content.Text || embeddings.Load() != beforeRead {
 		t.Fatalf("installed original read performed embedding or lost text: %+v %v", original, err)
 	}
-	reindex := testsupport.KnowledgebaseDocumentInput{Id: "fruit", ExpectedRevision: uint64(original.Document.Revision)}
+	reindex := testsupport.KnowledgebaseReindexV1InputWireDocumentInput{Id: "fruit", ExpectedRevision: original.Document.Revision}
 	rebuilt := call(testsupport.KnowledgebaseReindexV1Method, reindex, "knowledge-reindex")
 	if replay := call(testsupport.KnowledgebaseReindexV1Method, reindex, "knowledge-reindex"); replay.Output != rebuilt.Output || embeddings.Load() != beforeRead+1 {
 		t.Fatalf("installed reindex repeated embedding: %+v count=%d", replay, embeddings.Load())

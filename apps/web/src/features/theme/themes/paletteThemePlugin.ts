@@ -19,8 +19,8 @@ export function paletteThemePlugin(
           preference.contrast,
           preference,
         );
-      const contribution = ctx.contribute(COLOR_THEME, derive(preference.read()));
-      ctx.cleanup(
+      const contribution = ctx.contributions.add(COLOR_THEME, derive(preference.read()));
+      ctx.lifetime.defer(
         preference.subscribe((next, previous) => {
           if (
             next.customTheme !== previous.customTheme ||

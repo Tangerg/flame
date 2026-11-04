@@ -13,9 +13,11 @@ export function createRpcAgentPlugin(agentAccess: AgentAccess, runtimeClient: ()
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
       const gateway = runtimeRunsGateway(runtimeClient);
-      ctx.cleanup(() => gateway.dispose());
-      ctx.cleanup(followRuntimeGeneration(ctx.runtime, () => gateway.replaceRuntimeGeneration()));
-      ctx.contribute(
+      ctx.lifetime.defer(() => gateway.dispose());
+      ctx.lifetime.defer(
+        followRuntimeGeneration(ctx.dependencies.runtime, () => gateway.replaceRuntimeGeneration()),
+      );
+      ctx.contributions.add(
         AGENT_SOURCE,
         rpcAgentSource(t, agentAccess.getActiveSessionId, () => gateway),
       );

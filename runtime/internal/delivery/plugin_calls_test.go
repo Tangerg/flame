@@ -6,18 +6,21 @@ import (
 	"iter"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type pluginCallTarget struct {
 	ids         []string
-	invocations []portable.Invocation
+	invocations []framemcp.Invocation
 }
 
 type pluginStreamOwner struct {
@@ -30,12 +33,12 @@ func (s *pluginStreamOwner) PrepareStream(_ context.Context, _ plugins.CallReque
 	return s, nil
 }
 
-func (*pluginStreamOwner) Kind() portable.MethodKind { return portable.Mutation }
+func (*pluginStreamOwner) Kind() portable.MethodKind { return portable.Command }
 
 func (s *pluginStreamOwner) Stream(ctx context.Context) iter.Seq2[plugins.StreamEvent, error] {
 	return func(yield func(plugins.StreamEvent, error) bool) {
 		s.ids = append(s.ids, operation.Identity(ctx))
-		value, _ := jsonvalue.Parse([]byte(`"partial"`))
+		value, _ := framevalue.ParseJSON([]byte(`"partial"`))
 		if !yield(plugins.StreamEvent{Kind: plugins.StreamChunk, Value: value}, nil) {
 			return
 		}
@@ -45,8 +48,8 @@ func (s *pluginStreamOwner) Stream(ctx context.Context) iter.Seq2[plugins.Stream
 
 func TestPluginStreamProjectsKnownRefusalWithoutSettlingUnknownError(t *testing.T) {
 	contract := testsupport.CommandContract(t, "records.stream", extension.ScopeInstallation)
-	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.JSON()), Method: "records.stream", Input: `{}`, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: testsupport.InstallationID(t).String()}}
-	owner := &pluginStreamOwner{err: &portable.Refusal{Code: "refused", Message: "owner refused"}}
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.Bytes()), Method: "records.stream", Input: `{}`, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: testsupport.InstallationID(t).String()}}
+	owner := &pluginStreamOwner{err: &framemcp.Refusal{Code: "refused", Message: "owner refused"}}
 	handler := &Handler{pluginCalls: owner, features: featureAvailability{plugins: true}}
 	endpoint := mustNewEndpoint(t, handler, EndpointConfig{})
 	for range 2 {
@@ -102,11 +105,11 @@ func (s *pluginCallTarget) PreparePluginCall(_ context.Context, request protocol
 }
 
 func TestPluginCallResolvesQueryAndOwnerCommandPoliciesAtTheSharedEndpoint(t *testing.T) {
-	contract, err := portable.ParseCapability(testsupport.CommandContract(t, "review.update", extension.ScopeInstallation).JSON())
+	contract, err := plugincontract.ParseCapability(testsupport.CommandContract(t, "review.update", extension.ScopeInstallation).Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "review-operations", Contract: string(contract.Identity().JSON()), Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "12345678-1234-1234-1234-123456789abc"}, Method: "review.update", Input: `{"revision":2}`}
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "review-operations", Contract: string(contract.Identity().Bytes()), Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "12345678-1234-1234-1234-123456789abc"}, Method: "review.update", Input: `{"revision":2}`}
 	target := &pluginCallTarget{}
 	endpoint := mustNewEndpoint(t, target, EndpointConfig{})
 	ctx := operation.Adopt(t.Context(), "parent-tool", extension.Model, "run_owner")
@@ -124,11 +127,11 @@ func TestPluginCallResolvesQueryAndOwnerCommandPoliciesAtTheSharedEndpoint(t *te
 	}
 	query := contract.Descriptor()
 	query.Methods[0].Kind = portable.Query
-	queryContract, err := portable.AdmitCapability(query)
+	queryContract, err := plugincontract.AdmitCapability(query)
 	if err != nil {
 		t.Fatal(err)
 	}
-	request.Contract = string(queryContract.Identity().JSON())
+	request.Contract = string(queryContract.Identity().Bytes())
 	if result := endpoint.Invoke(t.Context(), PluginsCall, request, Options{IdempotencyKey: "query"}); result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInvalidParams) {
 		t.Fatalf("query identity was admitted: %+v", result)
 	}

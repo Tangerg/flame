@@ -11,7 +11,7 @@ Skill. It runs through Flame's existing installation-origin MCP connection,
 deferred Tool discovery, approval Interrupt, Run execution and result storage.
 It declares an ordinary React board bound to the same operations.
 
-The backend uses `github.com/Tangerg/qimu/mcp` for generic typed MCP
+The backend uses `github.com/Tangerg/flame/packages/go-sdk/plugin/mcp` for generic typed MCP
 bindings and `github.com/Tangerg/flame/packages/go-sdk/plugin` for Flame Tools
 and product contracts.
 Its typed list and update operations share the same private use cases and receipt
@@ -27,14 +27,14 @@ method schemas; the former per-operation MCP endpoints are not registered.
 `backend/contract` publishes only the consumer-facing types and contracts.
 Private review transitions, storage, receipts and analyzer orchestration live in
 `backend/cmd/reviews`. `backend/contract/contracts.go` owns the method descriptions, typed bindings and
-the consumer's callable capability contract. The pure public `qimu/portable`
-package admits that contract; `qimu/mcp` binds it to MCP without a second
+the consumer's callable capability contract. The pure public `frame/portable`
+package admits that contract; `packages/go-sdk/plugin/mcp` binds it to MCP without a second
 schema or fingerprint owner.
 The Status and Outcome types publish their closed vocabularies to Scope's schema
 derivation. From `backend`, `go generate ./contract` projects the same methods into
 `package/io.github.tangerg.flame/contracts/{capability.generated.json,schema.json,methods.generated.json,API_REFERENCE.md}`
 and `component/methods.generated.ts` through the public
-`github.com/Tangerg/qimu/cmd/qimu contract` command.
+`github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk feature` command.
 Do not edit those generated files or maintain a second input/output schema.
 The canonical capability descriptor supplies the same contract for live export
 resolution, original-binding restoration and the generated TypeScript token.
@@ -74,7 +74,7 @@ go run ./runtime/cmd/pluginpack --source "$PWD/out/plugins/reviews" --os "$(go e
 ```
 
 Use a new output directory for each build. Install the assembled release rather
-than a source directory. `pluginpack` writes Qimu's neutral `manifest.json` and
+than a source directory. `pluginpack` writes Frame's neutral `manifest.json` and
 `plugin.lock.json` through the same Flame declaration projection used during
 admission. The manifest supplies the sole immutable release identity; a raw
 directory without those release files is refused. The commands above target
@@ -150,8 +150,8 @@ separate contracts; a backend test does not execute the board.
 ## Mutation and recovery
 
 Runtime supplies its calling-owner context, including its canonical logical Tool
-call ID, in MCP request metadata under the compiled `qimumcp.InvocationMetadataKey`
-from `github.com/Tangerg/qimu/mcp`. The backend never derives this identity
+call ID, in MCP request metadata under the compiled `pluginmcp.InvocationMetadataKey`
+from `github.com/Tangerg/flame/packages/go-sdk/plugin/mcp`. The backend never derives this identity
 from the provider's ToolCall ID, review revision, or user arguments. This metadata
 is a projection of execution identity, not a credential or approval grant.
 
@@ -262,7 +262,7 @@ Integer schemas can accept spellings such as `0.0` and `1e0` that the typed Go
 input owner refuses. Runtime performs that same typed structural admission before
 saving a command route. A malformed request never consumes its key; a later
 canonical input with that key can reach the business owner. The current backend
-protocol is the compiled `portable.Protocol` in `qimu/portable`; rebuild the
+protocol is the compiled `portable.Protocol` in `frame/portable`; rebuild the
 backend, contracts and components together. Flame's package declaration uses
 its separate `plugin.DeclarationProtocol`.
 
@@ -294,7 +294,7 @@ The namespace declaration now publishes `board` as an installation-scoped
 workspace component with its `review-operations` binding. The workbench uses the
 same generic ESM/resource subscription and shared module mapping for this ordinary
 installed package. Generation replacement requests a window reload; it cannot
-unload evaluated JavaScript. Unmount closes the component's original Qimu Use;
+unload evaluated JavaScript. Unmount closes the component's original Frame Use;
 its Lifetime joins owned SDK I/O before the Browser executor submits release
 evidence to the Go Host. Flame's local workbench composition is separate from
 this installed execution authority.

@@ -5,14 +5,14 @@ import (
 	"errors"
 	"fmt"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame/cancellation"
-	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 func decodeLocale(body []byte) (map[string]string, error) {
 	var messages map[string]string
-	if err := jsonvalue.UnmarshalNonNull(body, &messages); err != nil {
+	if err := framevalue.DecodeValue(body, &messages, "plugin declaration"); err != nil {
 		return nil, fmt.Errorf("%w: locale catalog: %w", plugin.ErrInvalid, err)
 	}
 	if len(messages) == 0 {
@@ -27,7 +27,7 @@ func decodeLocale(body []byte) (map[string]string, error) {
 func (r *Releases) ReadLocale(ctx context.Context, installation plugin.Installation, locale plugin.Locale) (map[string]string, error) {
 	body, err := r.readResource(ctx, installation, locale.Entry, maxManifestBytes)
 	if err != nil {
-		if cancellation.Err(ctx) != nil {
+		if errors.Join(ctx.Err(), context.Cause(ctx)) != nil {
 			return nil, err
 		}
 		return nil, errors.Join(plugin.ErrUnavailable, err)

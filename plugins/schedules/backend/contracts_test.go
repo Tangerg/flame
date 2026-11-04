@@ -6,14 +6,16 @@ import (
 	"path/filepath"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	"github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestGeneratedSchedulesContractMatchesLiveMethods(t *testing.T) {
@@ -23,7 +25,7 @@ func TestGeneratedSchedulesContractMatchesLiveMethods(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	server := sdk.NewServer(&sdk.Implementation{Name: "schedules-contract"}, nil)
-	registered, err := registerServer(server, db, sqlite.NewScheduleStore(db), filesystem.DirectoryResolver{}, func(context.Context, qimumcp.CallbackRef) (runHost, func() error, error) {
+	registered, err := registerServer(server, db, sqlite.NewScheduleStore(db), filesystem.DirectoryResolver{}, func(context.Context, pluginmcp.CallbackRef) (runHost, func() error, error) {
 		return &observedRunHost{db: db, namespace: "contract-store"}, func() error { return nil }, nil
 	})
 	if err != nil {
@@ -35,7 +37,7 @@ func TestGeneratedSchedulesContractMatchesLiveMethods(t *testing.T) {
 		}
 	})
 	client := sdk.NewClient(&sdk.Implementation{Name: "contract-consumer"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -53,11 +55,11 @@ func TestGeneratedSchedulesContractMatchesLiveMethods(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	required, err := portable.ParseCapability(data)
+	required, err := plugincontract.ParseCapability(data)
 	if err != nil {
 		t.Fatal(err)
 	}
-	description, err := qimumcp.Describe(t.Context(), session)
+	description, err := pluginmcp.Describe(t.Context(), session)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +93,7 @@ func TestGeneratedSchedulesContractMatchesLiveMethods(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	exported, err := qimumcp.ResolveCapability(t.Context(), session, "schedules", required)
+	exported, err := pluginmcp.ResolveCapability(t.Context(), session, "schedules", required)
 	if err != nil {
 		t.Fatal(err)
 	}

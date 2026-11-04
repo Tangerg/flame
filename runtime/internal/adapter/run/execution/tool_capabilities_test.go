@@ -270,8 +270,8 @@ func TestInteractionDirectToolCompletionUsesCommittedResults(t *testing.T) {
 		}
 	}
 	want := []chat.ToolResult{
-		{ID: "first", Name: "fixture_answer", Output: chat.NewTextToolOutput("first answer")},
-		{ID: "second", Name: "fixture_answer", Output: chat.NewTextToolOutput("second answer")},
+		{ID: "first", Name: "fixture_answer", Output: toolcontract.NewTextOutput("first answer")},
+		{ID: "second", Name: "fixture_answer", Output: toolcontract.NewTextOutput("second answer")},
 	}
 	if !reflect.DeepEqual(committed, want) {
 		t.Fatalf("direct results = %+v, want %+v", committed, want)

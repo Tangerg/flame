@@ -2,14 +2,12 @@ package main
 
 import (
 	"context"
-	json "encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/invopop/jsonschema"
+	"github.com/Tangerg/scope/core/jsonschema"
 	"github.com/samber/lo"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -81,7 +79,6 @@ func (a *agentMemorySearcher) run(ctx context.Context, req agentMemorySearchRequ
 	return memorySearchResults(items), nil
 }
 
-func (agentMemorySearchRequest) JSONSchemaExtend(schema *jsonschema.Schema) {
-	limit, _ := schema.Properties.Get("limit")
-	limit.Maximum = json.Number(strconv.Itoa(agentMemorySearchMaxLimit))
+func (agentMemorySearchRequest) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{"limit": {Maximum: new(float64(agentMemorySearchMaxLimit))}}}
 }

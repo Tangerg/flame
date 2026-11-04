@@ -15,7 +15,7 @@ func TestModeStoreTracksPlanEntryExitAndSessionLifecycle(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	modes, sessions := newModeStore(db), newSessionStore(db)
+	modes, sessions := newModeStore(databaseFor(db)), newSessionStore(databaseFor(db))
 	created := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_plan", Title: "Plan session", Workspace: testsupport.MustWorkspace("/repo"),
 	})
@@ -29,7 +29,7 @@ func TestModeStoreTracksPlanEntryExitAndSessionLifecycle(t *testing.T) {
 		}
 	}
 
-	plans := newPlanStore(db)
+	plans := newPlanStore(databaseFor(db))
 	first := savePlan(t, t.Context(), plans, created.ID(), nil)
 	active(false)
 	if changed, err := modes.StartPlanMode(t.Context(), created.ID()); err != nil || !changed {
@@ -69,7 +69,7 @@ func TestModeStoreKeepsTheChosenDefaultAcrossReopen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	modes := newModeStore(db)
+	modes := newModeStore(databaseFor(db))
 	if mode, found, err := modes.DefaultMode(t.Context()); err != nil || found {
 		t.Fatalf("unchosen DefaultMode = %q, %v, %v; want not found", mode, found, err)
 	}
@@ -87,10 +87,10 @@ func TestModeStoreKeepsTheChosenDefaultAcrossReopen(t *testing.T) {
 		t.Fatalf("reopen: %v", err)
 	}
 	t.Cleanup(func() { _ = reopened.Close() })
-	if mode, found, err := newModeStore(reopened).DefaultMode(t.Context()); err != nil || !found || mode != approval.ModeSafe {
+	if mode, found, err := newModeStore(databaseFor(reopened)).DefaultMode(t.Context()); err != nil || !found || mode != approval.ModeSafe {
 		t.Fatalf("reopened DefaultMode = %q, %v, %v; want safe", mode, found, err)
 	}
-	if err := newModeStore(reopened).SetDefaultMode(t.Context(), approval.ModePlan); err == nil {
+	if err := newModeStore(databaseFor(reopened)).SetDefaultMode(t.Context(), approval.ModePlan); err == nil {
 		t.Fatal("SetDefaultMode(plan) succeeded; Plan is session-only")
 	}
 }

@@ -85,9 +85,11 @@ export function ServerForm({
   const jsonIssue = edit.jsonIssue;
   const jsonErrorId = useId();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const hasAuthStored = (server?.authorizationMasked ?? "") !== "";
-  const hasHeadersStored = Object.keys(server?.headersMasked ?? {}).length > 0;
-  const hasEnvironmentStored = Object.keys(server?.envMasked ?? {}).length > 0;
+  const {
+    authorization: hasAuthStored,
+    headers: hasHeadersStored,
+    environment: hasEnvironmentStored,
+  } = storedSecrets(server);
   const updateDraft = <K extends keyof MCPServerFields>(
     key: K,
     value: MCPServerFields[K],
@@ -497,4 +499,15 @@ export function ServerForm({
       )}
     </RecordForm>
   );
+}
+
+function storedSecrets(server: MCPServerSettings | undefined) {
+  const hasAuthStored = (server?.authorizationMasked ?? "") !== "";
+  const hasHeadersStored = Object.keys(server?.headersMasked ?? {}).length > 0;
+  const hasEnvironmentStored = Object.keys(server?.envMasked ?? {}).length > 0;
+  return {
+    authorization: hasAuthStored,
+    headers: hasHeadersStored,
+    environment: hasEnvironmentStored,
+  };
 }

@@ -6,34 +6,36 @@ import (
 	"strings"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type inspectedPoint struct {
 	pluginCallUseCases
-	contract *portable.Point
+	contract *plugincontract.Point
 }
 
-func (s *inspectedPoint) ResolvePoint(_ context.Context, contract *portable.Point, _ portable.PointContext, _ []plugins.PointReference) ([]plugins.PointBinding, error) {
+func (s *inspectedPoint) ResolvePoint(_ context.Context, contract *plugincontract.Point, _ plugincontract.PointContext, _ []plugins.PointReference) ([]plugins.PointBinding, error) {
 	s.contract = contract
 	return []plugins.PointBinding{}, nil
 }
 
 func TestPointProjectionAndQueryPreserveCanonicalNumericSchema(t *testing.T) {
-	contract, err := portable.AdmitPoint(portable.PointDescriptor{
-		Protocol: portable.Protocol, Reference: "example.threshold", Scope: "workspace",
-		Composition: portable.Collection, Ordering: portable.CanonicalKeys, Optional: true,
+	contract, err := plugincontract.AdmitPoint(plugincontract.PointDescriptor{
+		Protocol: plugincontract.Protocol, Reference: "example.threshold", Scope: "workspace",
+		Composition: plugincontract.Collection, Ordering: plugincontract.CanonicalKeys, Optional: true,
 		Value: []byte(`{"type":"integer","maximum":18446744073709551615}`), Applicability: []byte(`true`),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	value, err := jsonvalue.Parse([]byte(`18446744073709551615`))
+	value, err := framevalue.ParseJSON([]byte(`18446744073709551615`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +51,7 @@ func TestPointProjectionAndQueryPreserveCanonicalNumericSchema(t *testing.T) {
 	if err := protocol.ValidateWireTree(projected); err != nil {
 		t.Fatal(err)
 	}
-	raw := string(contract.Identity().JSON())
+	raw := string(contract.Identity().Bytes())
 	if projected.Points[0].Contract != raw || projected.PointValues[0].Contract != raw || projected.PointValues[0].Value != "18446744073709551615" || !strings.Contains(raw, "18446744073709551615") {
 		t.Fatal("point projection changed the admitted schema identity")
 	}

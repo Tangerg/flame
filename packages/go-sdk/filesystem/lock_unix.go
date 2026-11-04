@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/Tangerg/frame/cancellation"
 	"golang.org/x/sys/unix"
 )
 
@@ -32,7 +31,7 @@ func acquireDirectory(ctx context.Context, directory string) (*DirectoryLease, e
 	retry := time.NewTicker(directoryLockRetryInterval)
 	defer retry.Stop()
 	for {
-		if err := cancellation.Err(ctx); err != nil {
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			return nil, errors.Join(err, file.Close())
 		}
 		acquired, err := lockFile(file)
@@ -44,7 +43,7 @@ func acquireDirectory(ctx context.Context, directory string) (*DirectoryLease, e
 		}
 		select {
 		case <-ctx.Done():
-			return nil, errors.Join(cancellation.Err(ctx), file.Close())
+			return nil, errors.Join(errors.Join(ctx.Err(), context.Cause(ctx)), file.Close())
 		case <-retry.C:
 		}
 	}

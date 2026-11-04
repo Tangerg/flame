@@ -5,11 +5,13 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"path/filepath"
 	"slices"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
@@ -18,8 +20,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/history"
 )
@@ -91,7 +92,7 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, err := db.ChatHistory.Write(t.Context(), history.ConversationID(ses.ID),
+	if err := db.ChatHistory.Write(t.Context(), history.ConversationID(ses.ID),
 		chat.NewUserMessage(chat.NewTextPart("retained question")),
 	); err != nil {
 		t.Fatal(err)
@@ -123,8 +124,8 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 		}
 	}
 	for i, subject := range []annotation.Subject{{RunID: root.ID()}, {ItemID: "item_export_child"}, {SessionID: ses.ID, RunID: "run_already_removed"}, {}} {
-		content, _ := jsonvalue.Encode(map[string]string{"text": "retained observation"})
-		entry := annotation.Entry{CommandID: fmt.Sprintf("note-%d", i), Source: extension.AnnotationSource{ContributionSource: extension.ContributionSource{InstallationID: "f630f241-28b4-4fba-89bb-ddac2710a683", Release: integrity.Hash([]byte("original release")).String(), Contribution: "notes"}, ContractReference: "test.notes.v1"}, Subject: subject, Content: content, CreatedAt: at}
+		content, _ := framevalue.EncodeJSON(map[string]string{"text": "retained observation"})
+		entry := annotation.Entry{CommandID: fmt.Sprintf("note-%d", i), Source: extension.AnnotationSource{ContributionSource: extension.ContributionSource{InstallationID: "f630f241-28b4-4fba-89bb-ddac2710a683", Release: framevalue.Hash([]byte("original release")).String(), Contribution: "notes"}, ContractReference: "test.notes.v1"}, Subject: subject, Content: content, CreatedAt: at}
 		if err := db.Annotations.Append(t.Context(), entry); err != nil {
 			t.Fatal(err)
 		}

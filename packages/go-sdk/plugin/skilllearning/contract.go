@@ -3,13 +3,15 @@ package skilllearning
 
 import (
 	"errors"
-	"github.com/Tangerg/flame/packages/go-sdk/skill"
 	"time"
+
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/flame/packages/go-sdk/skill"
+	"github.com/Tangerg/frame/portable"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 const (
@@ -87,33 +89,33 @@ type ReadResult struct {
 	Skill    *Skill `json:"skill,omitzero"`
 }
 
-func MineMethod() (*qimumcp.Method[Run, MineResult], error) {
-	return qimumcp.NewMethod[Run, MineResult](qimumcp.MethodConfig{Name: "flame.skill-learning/mine.v2", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Mine a completed Run using bounded collaborators. Commit an admitted proposal and its original mining receipt in the same transaction."})
+func MineMethod() (*pluginmcp.Method[Run, MineResult], error) {
+	return pluginmcp.NewMethod[Run, MineResult](portable.MethodConfig{Name: "flame.skill-learning/mine.v2", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Mine a completed Run using bounded collaborators. Commit an admitted proposal and its original mining receipt in the same transaction."})
 }
 
-func ArchiveMethod() (*qimumcp.Method[ArchiveRequest, ArchiveAdvice], error) {
-	return qimumcp.NewMethod[ArchiveRequest, ArchiveAdvice](qimumcp.MethodConfig{Name: "flame.skill-learning/archive.v2", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Return an optional absolute activity cutoff for the supplied observation time. The caller alone admits and commits archival."})
+func ArchiveMethod() (*pluginmcp.Method[ArchiveRequest, ArchiveAdvice], error) {
+	return pluginmcp.NewMethod[ArchiveRequest, ArchiveAdvice](portable.MethodConfig{Name: "flame.skill-learning/archive.v2", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Return an optional absolute activity cutoff for the supplied observation time. The caller alone admits and commits archival."})
 }
 
-func ConversationMethod() (*qimumcp.Method[struct{}, Conversation], error) {
-	return qimumcp.NewMethod[struct{}, Conversation](qimumcp.MethodConfig{Name: "flame.skill-learning/conversation.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Read the committed conversation captured for this maintenance call."})
+func ConversationMethod() (*pluginmcp.Method[struct{}, Conversation], error) {
+	return pluginmcp.NewMethod[struct{}, Conversation](portable.MethodConfig{Name: "flame.skill-learning/conversation.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Read the committed conversation captured for this maintenance call."})
 }
 
-func ReadSkillMethod() (*qimumcp.Method[ReadSkill, ReadResult], error) {
-	return qimumcp.NewMethod[ReadSkill, ReadResult](qimumcp.MethodConfig{Name: "flame.skill-learning/read.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Read one admitted current user skill before proposing its revision. Absent or invalid documents return no skill."})
+func ReadSkillMethod() (*pluginmcp.Method[ReadSkill, ReadResult], error) {
+	return pluginmcp.NewMethod[ReadSkill, ReadResult](portable.MethodConfig{Name: "flame.skill-learning/read.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Read one admitted current user skill before proposing its revision. Absent or invalid documents return no skill."})
 }
 
 type Admission struct {
 	Accepted bool `json:"accepted"`
 }
 
-func AdmitMethod() (*qimumcp.Method[Proposal, Admission], error) {
-	return qimumcp.NewMethod[Proposal, Admission](qimumcp.MethodConfig{Name: "flame.skill-learning/admit.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Validate a mined proposal against the source and user library admitted for this mining call."})
+func AdmitMethod() (*pluginmcp.Method[Proposal, Admission], error) {
+	return pluginmcp.NewMethod[Proposal, Admission](portable.MethodConfig{Name: "flame.skill-learning/admit.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Validate a mined proposal against the source and user library admitted for this mining call."})
 }
 func (p Proposal) Draft(run Run) Draft {
 	return Draft{Library: run.Library, Scope: skill.User, Skill: p.Skill, Origin: skill.Mined, SourceSession: run.SessionID, Revises: p.Revises, Previous: p.Previous}
 }
-func Contract() (*portable.Capability, error) {
+func Contract() (*plugincontract.Capability, error) {
 	mine, err := MineMethod()
 	if err != nil {
 		return nil, err
@@ -132,5 +134,5 @@ func Contract() (*portable.Capability, error) {
 	if err := errors.Join(e1, e2, e3, e4, e5, e6, e7); err != nil {
 		return nil, err
 	}
-	return portable.NewCapability(portable.CapabilityConfig{Reference: Reference, Composition: portable.Selection, Scope: extension.ScopeInstallation}, mine.Descriptor(), archive.Descriptor(), propose.Descriptor(), queue.Descriptor(), approve.Descriptor(), confirm.Descriptor(), reject.Descriptor(), discover.Descriptor(), capture.Descriptor())
+	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: Reference, Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, mine.Descriptor(), archive.Descriptor(), propose.Descriptor(), queue.Descriptor(), approve.Descriptor(), confirm.Descriptor(), reject.Descriptor(), discover.Descriptor(), capture.Descriptor())
 }

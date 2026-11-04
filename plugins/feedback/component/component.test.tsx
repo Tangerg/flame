@@ -54,7 +54,11 @@ it("submits the displayed item to the captured producer and marks it only after 
   fireEvent.click(good);
   fireEvent.click(good);
   expect(create).toHaveBeenCalledExactlyOnceWith({
-    source:{installationId:binding.installationId,release:binding.digest,contribution:binding.contribution},
+    source: {
+      installationId: binding.installationId,
+      release: binding.digest,
+      contribution: binding.contribution,
+    },
     sessionId: message.sessionId,
     runId: message.runId,
     itemId: message.itemId,

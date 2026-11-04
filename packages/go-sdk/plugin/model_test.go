@@ -4,15 +4,18 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"errors"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -40,14 +43,14 @@ func TestModelCallbackProjectsDistinctCallsWithOriginalOriginAndParent(t *testin
 	if err := host.AdmitSession(session); err != nil {
 		t.Fatal(err)
 	}
-	parent := portable.Invocation{ID: "original-maintenance", Origin: extension.Human, Parent: "original-operation", Target: portable.Target{Scope: "installation", Reference: "captured-installation"}}
-	ctx, err := qimumcp.WithInvocation(t.Context(), parent)
+	parent := framemcp.Invocation{ID: "original-maintenance", Origin: extension.Human, Parent: "original-operation", Target: portable.Target{Scope: "installation", Reference: "captured-installation"}}
+	ctx, err := pluginmcp.WithInvocation(t.Context(), parent)
 	if err != nil {
 		t.Fatal(err)
 	}
-	seen := make(chan portable.Invocation, 2)
-	callback, err := NewModelCallback(func(ctx context.Context, command qimumcp.Command[chat.Request]) (*chat.Response, error) {
-		invocation, err := qimumcp.InvocationFromContext(ctx)
+	seen := make(chan framemcp.Invocation, 2)
+	callback, err := NewModelCallback(func(ctx context.Context, command pluginmcp.Command[chat.Request]) (*chat.Response, error) {
+		invocation, err := pluginmcp.InvocationFromContext(ctx)
 		if err != nil || invocation.ID != string(command.ID) {
 			return nil, errors.Join(err, errors.New("model command identity was not projected"))
 		}
@@ -58,14 +61,14 @@ func TestModelCallbackProjectsDistinctCallsWithOriginalOriginAndParent(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, release, err := host.Open(ctx, session, qimumcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
+	ref, release, err := host.Open(ctx, session, pluginmcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer release()
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original input")))
 	for _, id := range []string{"extract", "curate"} {
-		if _, err := CallModel(ctx, ref, qimumcp.CommandID(id), request); err != nil {
+		if _, err := CallModel(ctx, ref, pluginmcp.CommandID(id), request); err != nil {
 			t.Fatal(err)
 		}
 		actual := <-seen
@@ -76,7 +79,7 @@ func TestModelCallbackProjectsDistinctCallsWithOriginalOriginAndParent(t *testin
 }
 
 func TestModelCallRejectsInvalidInputBeforeTransport(t *testing.T) {
-	if _, err := CallModel(t.Context(), qimumcp.CallbackRef{}, "model-call", &chat.Request{}); !errors.Is(err, chat.ErrInvalidRequest) {
+	if _, err := CallModel(t.Context(), pluginmcp.CallbackRef{}, "model-call", &chat.Request{}); !errors.Is(err, chat.ErrInvalidRequest) {
 		t.Fatalf("invalid input entered model transport: %v", err)
 	}
 }
@@ -88,7 +91,7 @@ func TestCapturedModelCancellationStopsOwnerWork(t *testing.T) {
 		t.Fatal(err)
 	}
 	started, stopped := make(chan struct{}), make(chan struct{})
-	callback, err := NewModelCallback(func(ctx context.Context, _ qimumcp.Command[chat.Request]) (*chat.Response, error) {
+	callback, err := NewModelCallback(func(ctx context.Context, _ pluginmcp.Command[chat.Request]) (*chat.Response, error) {
 		close(started)
 		<-ctx.Done()
 		close(stopped)
@@ -97,7 +100,7 @@ func TestCapturedModelCancellationStopsOwnerWork(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, release, err := host.Open(t.Context(), session, qimumcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
+	ref, release, err := host.Open(t.Context(), session, pluginmcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +146,7 @@ func TestModelCallbackRetainsCompleteScopeResponseAndAuthority(t *testing.T) {
 	var calls atomic.Int32
 	message := chat.NewAssistantMessage(chat.NewTextPart("answer"), chat.NewReasoningPart("basis", nil))
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "inner-model", Usage: &chat.Usage{InputTokens: 12, OutputTokens: 3, CacheReadInputTokens: new(int64(0))}}}
-	callback, err := NewModelCallback(func(ctx context.Context, command qimumcp.Command[chat.Request]) (*chat.Response, error) {
+	callback, err := NewModelCallback(func(ctx context.Context, command pluginmcp.Command[chat.Request]) (*chat.Response, error) {
 		if ctx.Value(modelAuthorityKey{}) != "captured-model" || command.ID != "original-model-call" {
 			return nil, errors.New("captured model identity changed")
 		}
@@ -154,7 +157,7 @@ func TestModelCallbackRetainsCompleteScopeResponseAndAuthority(t *testing.T) {
 		t.Fatal(err)
 	}
 	owner := context.WithValue(t.Context(), modelAuthorityKey{}, "captured-model")
-	ref, release, err := host.Open(owner, session, qimumcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
+	ref, release, err := host.Open(owner, session, pluginmcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
 	if err != nil {
 		t.Fatal(err)
 	}

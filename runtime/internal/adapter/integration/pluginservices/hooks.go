@@ -3,18 +3,19 @@ package pluginservices
 import (
 	"context"
 	"errors"
+
 	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/google/uuid"
 )
 
@@ -73,7 +74,7 @@ func (u *hookUse) Evaluate(ctx context.Context, request hookprovider.Evaluation)
 	stop := context.AfterFunc(u.session.Context(), func() { cancel(context.Cause(u.session.Context())) })
 	defer func() { stop(); cancel(nil) }()
 	if operation.Identity(calling) == "" {
-		if caller, err := qimumcp.InvocationFromContext(calling); err == nil {
+		if caller, err := pluginmcp.InvocationFromContext(calling); err == nil {
 			calling = operation.Adopt(calling, caller.ID, caller.Origin, caller.Parent)
 		} else {
 			calling = operation.Start(calling, extension.Automatic, "hooks.capture", u.captureID)

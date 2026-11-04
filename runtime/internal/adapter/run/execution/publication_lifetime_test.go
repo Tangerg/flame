@@ -60,12 +60,12 @@ func TestExecutionWaitsForSlowDurableReceipts(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					tree, err := session.engine.InspectTree(t.Context(), session.processRootID())
+					tree, err := session.engine.Inspect(t.Context(), session.processRootID())
 					if err != nil {
 						t.Fatal(err)
 					}
 					root, found := tree.Process(session.processRootID())
-					if !found || root.Snapshot.Status().Terminal() {
+					if !found || root.Status.Terminal() {
 						t.Fatal("Scope completed before Runtime accepted the model response")
 					}
 				}

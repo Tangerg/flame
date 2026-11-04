@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from "react";
-import { SnapshotPublisher, type ContributionView, type Host, type HostSnapshot } from "dougong";
-import { type Contribution } from "@/extensions/contracts";
+import { disposeSymbol, type ContributionView, type Host, type HostSnapshot } from "dougong";
+import { SnapshotPublisher } from "dougong/advanced";
+import { retainContribution } from "@/extensions/contributionScope";
+import { type Contribution, type PublishedContribution } from "@/extensions/contracts";
 import { type ExtensionPoint } from "@/extensions/types/extensionPoint";
 import { reportPluginError } from "@/extensions/errors";
 const NOTHING: ReadonlyArray<Contribution<never>> = Object.freeze([]);
@@ -16,17 +18,27 @@ const publication = new SnapshotPublisher(
   (error) => reportPluginError("kernel", "events", error),
 );
 
-let views = new Map<string, ContributionView<Contribution<unknown>>>();
+let views = new Map<string, ContributionView<PublishedContribution<unknown>>>();
 
 let releases: Array<() => void> = [];
 
 let entries = new Map<string, ReadonlyArray<Contribution<unknown>>>();
+let borrowed = new Map<string, Array<() => void>>();
+const pending = new WeakMap<Host, Set<Promise<void>>>();
+
+function releasePoint(id: string): void {
+  const release = borrowed.get(id);
+  borrowed.delete(id);
+  entries.delete(id);
+  for (const end of release ?? []) end();
+}
 
 function announce(): void {
   publication.invalidate();
 }
 
 function retractViews(): void {
+  for (const id of borrowed.keys()) releasePoint(id);
   for (const release of releases) release();
   releases = [];
   views = new Map();
@@ -37,36 +49,45 @@ function retractViews(): void {
 export function publishKernel(next: Host): void {
   retractViews();
   host = next;
-  const subscription = next.diagnostics.subscribe(announce);
-  releases.push(() => subscription.dispose());
+  installedSnapshot();
+  const subscription = next.diagnostics.subscribe(() => {
+    const previous = installations?.names;
+    if (installedSnapshot() !== previous) announce();
+  });
+  releases.push(() => subscription[disposeSymbol]());
   announce();
 }
 
-export function retractKernel(owner: Host): boolean {
-  if (host !== owner) return false;
+export function retractKernel(owner: Host): Promise<boolean> {
+  if (host !== owner) {
+    return Promise.all(pending.get(owner) ?? []).then(() => false);
+  }
   retractViews();
   host = undefined;
   announce();
-  return true;
+  const readers = pending.get(owner);
+  return readers?.size ? Promise.all(readers).then(() => true) : Promise.resolve(true);
 }
 
 export function publishedKernel(): Host | undefined {
   return publication.view.get();
 }
 
-function viewOf<T>(point: ExtensionPoint<T>): ContributionView<Contribution<T>> | undefined {
+function viewOf<T>(
+  point: ExtensionPoint<T>,
+): ContributionView<PublishedContribution<T>> | undefined {
   const owner = host;
   if (!owner) return undefined;
   const cached = views.get(point.id);
-  if (cached) return cached as ContributionView<Contribution<T>>;
+  if (cached) return cached as ContributionView<PublishedContribution<T>>;
   const view = owner.contributions(point.token);
-  views.set(point.id, view as ContributionView<Contribution<unknown>>);
+  views.set(point.id, view as ContributionView<PublishedContribution<unknown>>);
   const subscription = view.subscribe(() => {
     if (host !== owner) return;
-    entries.delete(point.id);
+    releasePoint(point.id);
     announce();
   });
-  releases.push(() => subscription.dispose());
+  releases.push(() => subscription[disposeSymbol]());
   return view;
 }
 
@@ -76,9 +97,28 @@ function sortKey(entry: Contribution<unknown>): number {
 
 function resolve<T>(
   point: ExtensionPoint<T>,
-  view: ContributionView<Contribution<T>>,
+  view: ContributionView<PublishedContribution<T>>,
 ): ReadonlyArray<Contribution<T>> {
-  const all = [...view.get().values()];
+  const owner = host;
+  if (!owner) return NOTHING;
+  const all: Contribution<T>[] = [];
+  const active = pending.get(owner) ?? new Set<Promise<void>>();
+  pending.set(owner, active);
+  const close: Array<() => void> = [];
+  for (const id of view.get()) {
+    const lease = retainContribution(view, id);
+    close.push(lease.release);
+    active.add(lease.settled);
+    void lease.settled.then(
+      () => active.delete(lease.settled),
+      (error) => {
+        active.delete(lease.settled);
+        reportPluginError("kernel", "events", error);
+      },
+    );
+    if (lease.value) all.push(lease.value);
+  }
+  borrowed.set(point.id, close);
   const kept =
     point.keying === "multi"
       ? all
@@ -101,7 +141,7 @@ export function contributionsTo<T>(point: ExtensionPoint<T>): ReadonlyArray<Cont
 
 function subscribe(onChange: () => void): () => void {
   const subscription = publication.view.subscribe(onChange);
-  return () => subscription.dispose();
+  return () => subscription[disposeSymbol]();
 }
 
 export function subscribeContributions(listener: () => void): () => void {
@@ -112,11 +152,14 @@ function installedSnapshot(): ReadonlyArray<string> {
   const source = host?.diagnostics.get();
   if (!source) return EMPTY_NAMES;
   if (installations?.source !== source) {
+    const names = [...new Set(source.installations.map((entry) => entry.pluginName))].sort();
+    const prior = installations?.names;
     installations = {
       source,
-      names: Object.freeze(
-        [...new Set([...source.installations.values()].map((entry) => entry.pluginName))].sort(),
-      ),
+      names:
+        prior?.length === names.length && prior.every((name, index) => name === names[index])
+          ? prior
+          : Object.freeze(names),
     };
   }
   return installations.names;

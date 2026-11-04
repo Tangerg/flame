@@ -5,8 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestGeneratedCapabilityMatchesTheActualMethodOwner(t *testing.T) {
@@ -18,7 +19,7 @@ func TestGeneratedCapabilityMatchesTheActualMethodOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	published, err := portable.ParseCapability(data)
+	published, err := plugincontract.ParseCapability(data)
 	if err != nil {
 		t.Fatal(err)
 	}

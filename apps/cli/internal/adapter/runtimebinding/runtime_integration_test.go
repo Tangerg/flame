@@ -15,9 +15,10 @@ import (
 	"testing"
 	"time"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/portable"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
@@ -68,7 +69,7 @@ func TestRuntimeConnectionResourceFailures(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, err = runtime.CallPlugin(t.Context(), request, mutation.NewCommandID())
-		var refusal *portable.Refusal
+		var refusal *framemcp.Refusal
 		if !errors.As(err, &refusal) || refusal.Code != "not_found" {
 			t.Fatalf("missing installed schedule: %v", err)
 		}

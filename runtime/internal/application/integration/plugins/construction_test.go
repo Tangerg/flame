@@ -4,7 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+
+	"github.com/Tangerg/frame"
 )
 
 type constructionContext struct{ context.Context }
@@ -16,7 +18,7 @@ func TestCoordinatorRejectsMissingCollaborators(t *testing.T) {
 		catalog     catalog
 		packages    packages
 		connections connections
-		host        *qimu.Host
+		host        *frame.Host
 	}
 	for _, test := range []struct {
 		name   string
@@ -37,7 +39,7 @@ func TestCoordinatorRejectsMissingCollaborators(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			c := collaborators{t.Context(), &installationMemory{}, releaseMemory{}, installationPackages{}, installationConnections{}, testFramework(t, nil)}
 			test.remove(&c)
-			coordinator, err := New(c.lifetime, c.host, c.store, c.catalog, c.packages, c.connections, nil)
+			coordinator, err := newTestCoordinator(c.lifetime, c.host, c.store, c.catalog, c.packages, c.connections, nil)
 			if err == nil || coordinator != nil {
 				t.Fatalf("invalid coordinator constructed: %v, %v", coordinator, err)
 			}
@@ -68,4 +70,12 @@ func TestRegistryRejectsMissingCollaborators(t *testing.T) {
 			}
 		})
 	}
+}
+
+func newTestCoordinator(lifetime context.Context, host *frame.Host, store Store, catalog catalog, packages packages, connections connections, publish invalidation.Publish) (*Coordinator, error) {
+	admission := frame.NewAdmission()
+	if host != nil {
+		admission = host.Admission()
+	}
+	return New(lifetime, host, store, catalog, packages, connections, admission.Admit, publish)
 }

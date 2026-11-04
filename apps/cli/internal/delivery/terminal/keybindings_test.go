@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/keymap"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/keymap"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 )
@@ -21,7 +21,7 @@ func TestConfiguredKeysBindProductActions(t *testing.T) {
 	var matcher keymap.Matcher
 	var got keymap.Action
 	for _, chord := range []input.Chord{{Rune: 'g', Code: input.Character}, {Rune: 's', Code: input.Character}} {
-		matcher.Handle(bindings.application, input.Key{Code: chord.Code, Rune: chord.Rune}, func(action keymap.Action) bool {
+		matcher.Handle(bindings.application, input.Key{Code: chord.Code, Rune: chord.Rune}, nil, func(action keymap.Action) bool {
 			got = action
 			return true
 		})
@@ -57,7 +57,7 @@ func TestConfiguredKeysExposeMultilineAndTranscriptNavigation(t *testing.T) {
 		chord input.Chord
 		want  keymap.Action
 	}{
-		{chord: input.Shift.With(input.Enter), want: headless.InsertNewline},
+		{chord: input.Shift.With(input.Enter), want: base.InsertNewline},
 		{chord: input.Chord{Code: input.PageUp}, want: scrollPageUp},
 		{chord: input.Chord{Code: input.PageDown}, want: scrollPageDown},
 		{chord: input.Ctrl.With(input.Home), want: scrollTop},

@@ -11,29 +11,33 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 	tool "github.com/Tangerg/scope/core/tool"
 )
 
-func callMemoryModelTool(t *testing.T, session *sdk.ClientSession, project, id, name string, input any) (*sdk.CallToolResult, jsonvalue.Value) {
+func callMemoryModelTool(t *testing.T, session *sdk.ClientSession, project, id, name string, input any) (*sdk.CallToolResult, framevalue.JSON) {
 	t.Helper()
 	var meta sdk.Meta
-	if err := meta.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: id, Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "memory-owner"}}); err != nil {
+	if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: id, Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "memory-owner"}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := meta.Set(pluginsdk.ToolContextMetadataKey, pluginsdk.ToolContext{CWD: project}); err != nil {
 		t.Fatal(err)
 	}
-	admitted, err := jsonvalue.Encode(input)
+	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,11 +85,11 @@ func assertMemoryRevisionAdmission[T any](t *testing.T, decision bool) {
 		if revision != nil {
 			input["expected_revision"] = revision
 		}
-		encoded, err := jsonvalue.Encode(input)
+		encoded, err := framevalue.EncodeJSON(input)
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = bound.Contract().Prepare(chat.ToolCall{ID: "admission", Name: "mutation", Arguments: encoded.String()}, nil)
+		_, err = bound.Contract().Prepare((chat.ToolCall{ID: "admission", Name: "mutation", Arguments: encoded.String()}).Request(), tool.Admission{})
 		if (err == nil) != (revision == uint64(1)) {
 			t.Fatalf("revision %v admission: %v", revision, err)
 		}
@@ -112,11 +116,11 @@ func TestMemoryContentConflictHasOneDurableRefusalForHumanAndModelCalls(t *testi
 	}
 	humanInput := rpc.UpdateInput{ID: first.ID().String(), ExpectedRevision: first.Revision(), Content: new(second.Content()), Pinned: new(true)}
 	_, err = callMemoryCapability[rpc.UpdateInput, memory.ItemSnapshot](t.Context(), session, memoryContract(t), "memory", rpc.Update, "human-collision", humanInput, sdk.ParamsBase{})
-	refusal, known := errors.AsType[*portable.Refusal](err)
+	refusal, known := errors.AsType[*framemcp.Refusal](err)
 	if !known || refusal.Code != "duplicate_content" {
 		t.Fatalf("human content conflict remained unconfirmed: %v", err)
 	}
-	model, admitted := callMemoryModelTool(t, session, "", "model-collision", "update_memory", updateMemoryArgs{memoryItemArgs: memoryItemArgs{Scope: memory.ScopeUser, ID: first.ID().String(), ExpectedRevision: first.Revision()}, Content: new(second.Content()), Pinned: new(true)})
+	model, admitted := callMemoryModelTool(t, session, t.TempDir(), "model-collision", "update_memory", updateMemoryArgs{memoryItemArgs: memoryItemArgs{Scope: memory.ScopeUser, ID: first.ID().String(), ExpectedRevision: first.Revision()}, Content: new(second.Content()), Pinned: new(true)})
 	if !model.IsError {
 		t.Fatal("model content conflict was accepted")
 	}
@@ -130,7 +134,7 @@ func TestMemoryContentConflictHasOneDurableRefusalForHumanAndModelCalls(t *testi
 	closeBackend()
 	store, session, _ = connectMemoryBackend(t, path)
 	_, found, err := receiptMemoryCapability[rpc.UpdateInput, memory.ItemSnapshot](t.Context(), session, memoryContract(t), "memory", rpc.Update, "human-collision", humanInput)
-	refusal, known = errors.AsType[*portable.Refusal](err)
+	refusal, known = errors.AsType[*framemcp.Refusal](err)
 	if !found || !known || refusal.Code != "duplicate_content" {
 		t.Fatalf("restart lost the human refusal: found=%v %v", found, err)
 	}
@@ -184,8 +188,8 @@ func TestMemoryToolsShareTheOwnerAndRecoverOriginalResultsAfterRestart(t *testin
 	}
 	type proof struct {
 		id, method string
-		input      jsonvalue.Value
-		output     *chat.ToolOutput
+		input      framevalue.JSON
+		output     *tool.Output
 		failed     bool
 	}
 	proofs := []proof{{id: "add", method: "add_memory", input: addInput}, {id: "update", method: "update_memory", input: updateInput}, {id: "delete", method: "delete_memory", input: removeInput}, {id: "stale", method: "update_memory", input: staleInput, failed: true}}

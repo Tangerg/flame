@@ -7,7 +7,7 @@
       "imports": [
         "@flame/component-sdk",
         "@flame/ui",
-        "@qimu/sdk/json",
+        "@frame/sdk/json",
         "react",
         "react/jsx-runtime"
       ],
@@ -20,7 +20,7 @@
   "sharedSpecifiers": [
     "@flame/component-sdk",
     "@flame/ui",
-    "@qimu/sdk/json",
+    "@frame/sdk/json",
     "react",
     "react/jsx-runtime"
   ]

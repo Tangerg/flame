@@ -31,13 +31,33 @@ func TestExecutorIdentitiesAreDistinctExactValues(t *testing.T) {
 	if member.String() != text || effect.String() != text {
 		t.Fatalf("exact identities changed: %q/%q", member.String(), effect.String())
 	}
-	// The kinds that no caller carries are rules rather than values, and the
-	// rule is one: the same text is legal for every executor identity.
+	// A single component is legal for every identity; only members carry paths.
 	for _, validateExecutionIdentity := range []func(string) error{
 		ValidateExecutor, ValidateMember, validateRequest, ValidateInvocation,
 	} {
 		if err := validateExecutionIdentity(text); err != nil {
 			t.Fatalf("executor identity rule rejected %q: %v", text, err)
+		}
+	}
+}
+
+func TestExecutorMemberIdentityPreservesNestedPaths(t *testing.T) {
+	component := strings.Repeat("x", MaximumIdentityBytes)
+	for _, path := range []string{"root/child", "root/delegate/interaction/child", component + "/" + component} {
+		member, err := ParseMember(path)
+		if err != nil {
+			t.Fatalf("parse member %q: %v", path, err)
+		}
+		if member.String() != path || member.Validate() != nil {
+			t.Fatalf("member path changed: %q", member.String())
+		}
+		if err := ValidateInvocation(path); err == nil {
+			t.Fatalf("invocation accepted member path %q", path)
+		}
+	}
+	for _, path := range []string{"", "/root", "root/", "root//child", "root/child name", "root/" + component + "x"} {
+		if _, err := ParseMember(path); err == nil {
+			t.Fatalf("invalid member path %q accepted", path)
 		}
 	}
 }

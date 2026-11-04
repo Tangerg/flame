@@ -16,7 +16,7 @@ import type { WireCallPath } from "./wireCallPath";
 import type { RpcClient } from "./client";
 import { deliverPluginStream } from "./pluginStream";
 import { pluginDeliveryMethod } from "./request";
-import { parseJSON } from "@qimu/sdk/json";
+import { parseJSON } from "@frame/sdk/json";
 
 export interface PluginCommandRecovery {
   readonly idempotencyKey: string;

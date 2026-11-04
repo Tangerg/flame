@@ -29,7 +29,7 @@ describe("shortcuts provider", () => {
       definePlugin({
         name: "test.command.combo",
         setup: (ctx) => {
-          ctx.contribute(COMMAND, { id: "test.act", label: "Act", combo: "Alt+K", run });
+          ctx.contributions.add(COMMAND, { id: "test.act", label: "Act", combo: "Alt+K", run });
         },
       }),
     );
@@ -47,13 +47,13 @@ describe("shortcuts provider", () => {
       definePlugin({
         name: "test.command.contested",
         setup: (ctx) => {
-          ctx.contribute(COMMAND, {
+          ctx.contributions.add(COMMAND, {
             id: "test.act",
             label: "Act",
             combo: "Alt+K",
             run: command,
           });
-          ctx.contribute(SHORTCUT, {
+          ctx.contributions.add(SHORTCUT, {
             key: "Alt+K",
             description: "shortcut.test",
             allowInInputs: true,
@@ -77,8 +77,13 @@ describe("shortcuts provider", () => {
       definePlugin({
         name: "test.command.inputsafe",
         setup: (ctx) => {
-          ctx.contribute(COMMAND, { id: "test.bare", label: "Bare", combo: "j", run: bare });
-          ctx.contribute(COMMAND, { id: "test.mod", label: "Mod", combo: "Alt+K", run: modified });
+          ctx.contributions.add(COMMAND, { id: "test.bare", label: "Bare", combo: "j", run: bare });
+          ctx.contributions.add(COMMAND, {
+            id: "test.mod",
+            label: "Mod",
+            combo: "Alt+K",
+            run: modified,
+          });
         },
       }),
     );
@@ -108,7 +113,7 @@ describe("shortcuts provider", () => {
       definePlugin({
         name: "test.command.rebound",
         setup: (ctx) => {
-          ctx.contribute(COMMAND, { id: "test.rebound", label: "Act", combo: "Alt+K", run });
+          ctx.contributions.add(COMMAND, { id: "test.rebound", label: "Act", combo: "Alt+K", run });
         },
       }),
     );
@@ -134,7 +139,12 @@ describe("shortcuts provider", () => {
         definePlugin({
           name: "test.command.consumed",
           setup: (ctx) => {
-            ctx.contribute(COMMAND, { id: "test.focus", label: "Focus", combo: "Ctrl+A", run });
+            ctx.contributions.add(COMMAND, {
+              id: "test.focus",
+              label: "Focus",
+              combo: "Ctrl+A",
+              run,
+            });
           },
         }),
     ],
@@ -144,7 +154,7 @@ describe("shortcuts provider", () => {
         definePlugin({
           name: "test.shortcut.consumed",
           setup: (ctx) => {
-            ctx.contribute(SHORTCUT, { key: "Ctrl+A", handler: run });
+            ctx.contributions.add(SHORTCUT, { key: "Ctrl+A", handler: run });
           },
         }),
     ],

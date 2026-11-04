@@ -6,12 +6,14 @@ import (
 	"reflect"
 	"testing"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 func TestPublicReceiptLookupRetainsOriginalOutcomeAcrossBackendRestart(t *testing.T) {
@@ -43,7 +45,7 @@ func TestPublicReceiptLookupRetainsOriginalOutcomeAcrossBackendRestart(t *testin
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "receipt-client"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -57,7 +59,7 @@ func TestPublicReceiptLookupRetainsOriginalOutcomeAcrossBackendRestart(t *testin
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	capability, err := qimumcp.NewCapabilityBinding(session, "reviews", contracts.Capability)
+	capability, err := pluginmcp.NewCapabilityBinding(session, "reviews", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +71,7 @@ func TestPublicReceiptLookupRetainsOriginalOutcomeAcrossBackendRestart(t *testin
 		id     string
 		result reviews.UpdateResult
 	}{{"original", original}, {"refused", refused}} {
-		value, found, err := updateMethod.ReadReceipt(t.Context(), qimumcp.CommandID(expected.id), input)
+		value, found, err := updateMethod.ReadReceipt(t.Context(), pluginmcp.CommandID(expected.id), input)
 		if err != nil || !found || !reflect.DeepEqual(value, expected.result) {
 			t.Fatalf("original receipt = %+v, %t, %v", value, found, err)
 		}
@@ -85,7 +87,7 @@ func TestPublicReceiptLookupRetainsOriginalOutcomeAcrossBackendRestart(t *testin
 		if err != nil {
 			t.Fatal(err)
 		}
-		admitted, err := jsonvalue.Encode(binding.input)
+		admitted, err := framevalue.EncodeJSON(binding.input)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -93,7 +95,7 @@ func TestPublicReceiptLookupRetainsOriginalOutcomeAcrossBackendRestart(t *testin
 		if err == nil {
 			t.Fatal("changed binding adopted an earlier receipt")
 		}
-		if _, known := errors.AsType[*portable.Refusal](err); known {
+		if _, known := errors.AsType[*framemcp.Refusal](err); known {
 			t.Fatalf("binding error fabricated a known mutation result: %v", err)
 		}
 	}
@@ -119,7 +121,7 @@ func TestMalformedPrivateReceiptCannotBecomeKnownEvidence(t *testing.T) {
 	if _, err := testUpdate(t.Context(), store, "original", input); err != nil {
 		t.Fatal(err)
 	}
-	digest, err := jsonvalue.Encode(input)
+	digest, err := framevalue.EncodeJSON(input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +129,7 @@ func TestMalformedPrivateReceiptCannotBecomeKnownEvidence(t *testing.T) {
 		if _, err := store.db.ExecContext(t.Context(), `UPDATE invocations SET result=? WHERE id='original'`, []byte(result)); err != nil {
 			t.Fatal(err)
 		}
-		receipt, err := store.receipt(t.Context(), qimumcp.ReceiptRequest{ID: "original", Method: contracts.Update.Name(), InputDigest: digest.Digest()}, contracts.Update.Name())
+		receipt, err := store.receipt(t.Context(), pluginmcp.ReceiptRequest{ID: "original", Method: contracts.Update.Name(), InputDigest: digest.Digest()}, contracts.Update.Name())
 		if err == nil || receipt.Found {
 			t.Fatalf("corrupt private result became receipt evidence: %s, %v", result, err)
 		}
@@ -151,7 +153,7 @@ func TestMalformedPrivateReceiptCannotBecomeKnownEvidence(t *testing.T) {
 	if _, err := store.db.ExecContext(t.Context(), `UPDATE invocations SET input_json=? WHERE id='original'`, data); err != nil {
 		t.Fatal(err)
 	}
-	if receipt, err := store.receipt(t.Context(), qimumcp.ReceiptRequest{ID: "original", Method: contracts.Update.Name(), InputDigest: digest.Digest()}, contracts.Update.Name()); err == nil || receipt.Found {
+	if receipt, err := store.receipt(t.Context(), pluginmcp.ReceiptRequest{ID: "original", Method: contracts.Update.Name(), InputDigest: digest.Digest()}, contracts.Update.Name()); err == nil || receipt.Found {
 		t.Fatalf("corrupt binding became known evidence: %+v, %v", receipt, err)
 	}
 }

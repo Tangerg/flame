@@ -43,7 +43,7 @@ import {
   type PluginOperationBinding,
 } from "@flame/runtime-client/wire";
 import { trackContributionIO } from "@/extensions/contributionIO";
-import { type ContributionLifetime } from "@/extensions/definePlugin";
+import { type ContributionScope } from "@/extensions/definePlugin";
 import { type RuntimeConnectionGeneration } from "@/features/connection/public/services";
 import { useSubmitCapturedAgentInput } from "@/features/agent/public/input";
 import {
@@ -168,7 +168,7 @@ class ComponentInstance {
   private capture(): CapturedContext {
     const signal = AbortSignal.any([
       this.controller.signal,
-      this.sources.lifetime.signal,
+      this.sources.lifetime.lifetime.signal,
       this.sources.resources,
     ]);
     const track: ComponentContext["track"] = (operation) =>
@@ -413,7 +413,7 @@ type ComponentProps = {
   children?: ReactNode;
   runtime: FlameClient;
   binding: PluginOperationBinding | undefined;
-  lifetime: ContributionLifetime;
+  lifetime: ContributionScope;
   resources: AbortSignal;
 };
 

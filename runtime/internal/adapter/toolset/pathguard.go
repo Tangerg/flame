@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
 )
@@ -43,7 +42,7 @@ func withPathGuard(inner toolcontract.Tool, root *filesystemRoot) toolcontract.T
 		for _, path := range paths {
 			if refusal, ok := guardMutationPath(root, path); !ok {
 				failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{
-					Kind: toolcontract.FailureKindRejected, Output: chat.NewTextToolOutput(refusal),
+					Kind: toolcontract.FailureKindRejected, Output: toolcontract.NewTextOutput(refusal),
 				})
 				if err != nil {
 					return toolcontract.Result{}, beforeCallFailure(ctx, err)

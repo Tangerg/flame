@@ -1,6 +1,10 @@
 package bootstrap
 
 import (
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	json "encoding/json/v2"
 	"os"
@@ -12,11 +16,11 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -27,11 +31,11 @@ func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *test
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build managed fixture: %s: %v", output, err)
 	}
-	method, err := qimumcp.NewMethod[protocol.UsageSummaryRequest, protocol.UsageSummary](qimumcp.MethodConfig{Name: "fixture.usage", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read core accounting through the calling host."})
+	method, err := pluginmcp.NewMethod[protocol.UsageSummaryRequest, protocol.UsageSummary](portable.MethodConfig{Name: "fixture.usage", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read core accounting through the calling host."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "flame.fixture.usage", Composition: portable.Collection, Scope: extension.ScopeInstallation}, method.Descriptor())
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "flame.fixture.usage", Composition: plugincontract.Collection, Scope: extension.ScopeInstallation}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,13 +72,13 @@ func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *test
 			}
 		}
 		call := chat.ToolCall{ID: "managed-probe-call", Name: "search_tools", Arguments: `{"query":"select:` + toolName + `"}`}
-		if slices.ContainsFunc(request.Tools, func(tool chat.ToolDefinition) bool { return tool.Name == toolName }) {
+		if slices.ContainsFunc(request.Tools, func(tool toolcontract.Definition) bool { return tool.Name == toolName }) {
 			call.Name, call.Arguments = toolName, `{}`
 		}
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
 	})}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}

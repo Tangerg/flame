@@ -4,18 +4,19 @@ import (
 	"context"
 	"errors"
 	"strconv"
-	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/instant"
 
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 )
 
 type commentWire struct {
-	ID        int64     `json:"id"`
-	URL       string    `json:"html_url"`
-	User      *userWire `json:"user"`
-	Body      *string   `json:"body"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        int64             `json:"id"`
+	URL       string            `json:"html_url"`
+	User      *userWire         `json:"user"`
+	Body      *string           `json:"body"`
+	CreatedAt instant.Timestamp `json:"created_at"`
+	UpdatedAt instant.Timestamp `json:"updated_at"`
 }
 
 func (wire commentWire) admit() (contractwire.Comment, error) {
@@ -36,13 +37,13 @@ func (c *connector) listComments(ctx context.Context, input contractwire.ThreadI
 }
 
 type reviewWire struct {
-	ID          int64      `json:"id"`
-	URL         string     `json:"html_url"`
-	User        *userWire  `json:"user"`
-	Body        *string    `json:"body"`
-	State       string     `json:"state"`
-	CommitID    *string    `json:"commit_id"`
-	SubmittedAt *time.Time `json:"submitted_at"`
+	ID          int64              `json:"id"`
+	URL         string             `json:"html_url"`
+	User        *userWire          `json:"user"`
+	Body        *string            `json:"body"`
+	State       string             `json:"state"`
+	CommitID    *string            `json:"commit_id"`
+	SubmittedAt *instant.Timestamp `json:"submitted_at"`
 }
 
 func (wire reviewWire) admit() (contractwire.Review, error) {

@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"sync"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/frame/sqlite"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 	"github.com/Tangerg/scope/models/catalog"
@@ -92,7 +94,7 @@ func constructClient(ctx context.Context, kind clientKind, input modelprovider.O
 // The durable snapshot alone decides whether a handle is usable: commands never
 // publish into the in-memory cache, so a close cannot be overtaken by a late
 // publication of the client it retired.
-func openClient[R any](ctx context.Context, s *store, method string, kind clientKind, command qimumcp.Command[modelprovider.Open], project func(modelprovider.Handle, *client, modelprovider.Open) R) (R, error) {
+func openClient[R any](ctx context.Context, s *store, method string, kind clientKind, command pluginmcp.Command[modelprovider.Open], project func(modelprovider.Handle, *client, modelprovider.Open) R) (R, error) {
 	var zero R
 	input, err := command.RequestInput()
 	if err != nil {
@@ -110,7 +112,7 @@ func openClient[R any](ctx context.Context, s *store, method string, kind client
 func (s *store) insertClient(ctx context.Context, kind clientKind, input modelprovider.Open) (modelprovider.Handle, *client, error) {
 	created, err := constructClient(ctx, kind, input)
 	if err != nil {
-		return modelprovider.Handle{}, nil, &portable.Refusal{Code: "model_unavailable", Message: "model provider: client construction was refused"}
+		return modelprovider.Handle{}, nil, &framemcp.Refusal{Code: "model_unavailable", Message: "model provider: client construction was refused"}
 	}
 	id, err := modelprovider.NewHandleID()
 	if err != nil {
@@ -121,13 +123,13 @@ func (s *store) insertClient(ctx context.Context, kind clientKind, input modelpr
 	if err != nil {
 		return modelprovider.Handle{}, nil, err
 	}
-	if _, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO clients(id,kind,snapshot) VALUES(?,?,?)`, handle.ID, string(kind), string(encoded)); err != nil {
+	if _, err := pluginstorage.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO clients(id,kind,snapshot) VALUES(?,?,?)`, handle.ID, string(kind), string(encoded)); err != nil {
 		return modelprovider.Handle{}, nil, err
 	}
 	return handle, created, nil
 }
 
-func (s *store) reopenChat(ctx context.Context, method, originalMethod string, command qimumcp.Command[modelprovider.Reopen]) (modelprovider.Chat, error) {
+func (s *store) reopenChat(ctx context.Context, method, originalMethod string, command pluginmcp.Command[modelprovider.Reopen]) (modelprovider.Chat, error) {
 	input, err := command.RequestInput()
 	if err != nil {
 		return modelprovider.Chat{}, err
@@ -138,13 +140,13 @@ func (s *store) reopenChat(ctx context.Context, method, originalMethod string, c
 		}
 		var storedMethod, snapshot string
 		var reply []byte
-		if err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, input.Original).Scan(&storedMethod, &snapshot, &reply); err != nil {
+		if err := pluginstorage.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, input.Original).Scan(&storedMethod, &snapshot, &reply); err != nil {
 			return modelprovider.Chat{}, err
 		}
 		if storedMethod != originalMethod || len(reply) == 0 {
 			return modelprovider.Chat{}, errors.New("model provider: original chat construction is unconfirmed")
 		}
-		original, err := qimumcp.DecodeReply[modelprovider.Chat](reply)
+		original, err := pluginmcp.DecodeReply[modelprovider.Chat](reply)
 		if err != nil || original.Original != input.Original {
 			return modelprovider.Chat{}, errors.New("model provider: original chat construction was refused")
 		}
@@ -253,9 +255,9 @@ func (s *store) Close() error {
 	return s.db.Close()
 }
 
-func chatProjection(handle modelprovider.Handle, client *client, input modelprovider.Open, original qimumcp.CommandID) modelprovider.Chat {
+func chatProjection(handle modelprovider.Handle, client *client, input modelprovider.Open, original pluginmcp.CommandID) modelprovider.Chat {
 	result := modelprovider.Chat{Handle: handle, Original: original, Provider: input.Connection.Provider, Model: input.Model, Streaming: client.stream != nil, TokenCounting: client.count != nil}
-	if metadata, ok := catalog.Default.Lookup(input.Connection.Provider, input.Model); ok {
+	if metadata, ok := catalog.LookupModel(input.Connection.Provider, input.Model); ok {
 		copy := metadata.Clone()
 		result.Metadata = &copy
 	}

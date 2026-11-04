@@ -35,7 +35,7 @@ function RecentsSection() {
 export const sidebarRecents = definePlugin({
   name: "flame.builtin.sidebar-recents",
   setup(ctx) {
-    contributeWorkIndexItem(ctx, {
+    contributeWorkIndexItem(ctx.contributions, {
       id: "recents",
       order: 10,
       component: RecentsSection,

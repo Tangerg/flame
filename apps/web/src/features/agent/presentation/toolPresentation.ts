@@ -1,4 +1,4 @@
-import { parseJSON } from "@qimu/sdk/json";
+import { parseJSON } from "@frame/sdk/json";
 import { type Translate } from "@/lib/i18n/index";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { fmtDuration } from "@/lib/format";

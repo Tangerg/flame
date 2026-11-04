@@ -6,6 +6,8 @@ export const workspaceSessionNavigation = definePlugin({
   name: "flame.builtin.workspace.session-navigation",
   requires: { sessions: AGENT_SESSIONS, scopes: WORKSPACE_SCOPE },
   setup(ctx) {
-    ctx.cleanup(bindWorkspaceSessionNavigation({ ...ctx.sessions, ...ctx.scopes }));
+    ctx.lifetime.defer(
+      bindWorkspaceSessionNavigation({ ...ctx.dependencies.sessions, ...ctx.dependencies.scopes }),
+    );
   },
 });

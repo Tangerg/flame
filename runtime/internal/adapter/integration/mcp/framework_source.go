@@ -7,19 +7,22 @@ import (
 	"slices"
 	"sync"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/frame"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/qimu/process"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
+	"github.com/Tangerg/frame/process"
 	"github.com/samber/lo"
 )
 
@@ -28,32 +31,34 @@ type installedPackages interface {
 	Server(context.Context, plugin.Installation, plugin.Release, mcpserver.ServerName, plugins.Reach) (mcpserver.Server, bool, error)
 }
 
-// ProcessSource owns Flame's process configuration and callback authority. Qimu
+// ProcessSource owns Flame's process configuration and callback authority. Frame
 // owns the process, exact imports and resource lifetime. These projections never
 // resolve a role or select a replacement provider.
 type ProcessSource struct {
 	installations plugins.Store
 	packages      installedPackages
-	callbacks     *qimumcp.Callbacks
+	callbacks     *pluginmcp.Callbacks
 	commands      invocationRestorer
 	mu            sync.Mutex
 	projections   map[string]processProjection
 }
 
 type processProjection struct {
+	source      frame.UnitRef
+	session     *sdk.ClientSession
 	actor       operation.Actor
-	fingerprint integrity.Digest
+	fingerprint framevalue.Digest
 	bindings    *plugin.RequiredBindings
 }
 
-func NewProcessSource(installations plugins.Store, packages installedPackages, callbacks *qimumcp.Callbacks, commands invocationRestorer) (*ProcessSource, error) {
+func NewProcessSource(installations plugins.Store, packages installedPackages, callbacks *pluginmcp.Callbacks, commands invocationRestorer) (*ProcessSource, error) {
 	if lo.IsNil(installations) || lo.IsNil(packages) || callbacks == nil || lo.IsNil(commands) {
 		return nil, errors.New("mcp: installed process source requires original stores, packages, callbacks and invocation owner")
 	}
 	return &ProcessSource{installations: installations, packages: packages, callbacks: callbacks, commands: commands, projections: map[string]processProjection{}}, nil
 }
 
-func (s *ProcessSource) snapshot(ctx context.Context, binding qimu.UnitBinding) (plugin.Snapshot, mcpserver.ServerName, error) {
+func (s *ProcessSource) snapshot(ctx context.Context, binding frame.UnitBinding) (plugin.Snapshot, mcpserver.ServerName, error) {
 	id, err := identity.ParseHostInstallation(binding.Source.InstallationID)
 	if err != nil {
 		return plugin.Snapshot{}, mcpserver.ServerName{}, err
@@ -67,16 +72,16 @@ func (s *ProcessSource) snapshot(ctx context.Context, binding qimu.UnitBinding) 
 		return plugin.Snapshot{}, server, err
 	}
 	if !found || !snapshot.Installation.ServerEnabled(server) || snapshot.Selected.Digest().String() != binding.Source.Release.String() {
-		return plugin.Snapshot{}, server, qimu.ErrStaleBinding
+		return plugin.Snapshot{}, server, frame.ErrStaleBinding
 	}
 	configuration, err := plugins.EncodeFrameworkConfiguration(snapshot.Installation.Snapshot())
-	if err != nil || integrity.Hash(configuration) != binding.Configuration {
-		return plugin.Snapshot{}, server, errors.Join(qimu.ErrStaleBinding, err)
+	if err != nil || framevalue.Hash(configuration) != binding.Configuration {
+		return plugin.Snapshot{}, server, errors.Join(frame.ErrStaleBinding, err)
 	}
 	return snapshot, server, nil
 }
 
-func (s *ProcessSource) Program(ctx context.Context, binding qimu.UnitBinding) (program process.Program, err error) {
+func (s *ProcessSource) Program(ctx context.Context, binding frame.UnitBinding) (program process.Program, err error) {
 	snapshot, server, err := s.snapshot(ctx, binding)
 	if err != nil {
 		return program, err
@@ -100,22 +105,24 @@ func (s *ProcessSource) Program(ctx context.Context, binding qimu.UnitBinding) (
 	program.Env = processEnvironment(launch.Stdio.Env)
 	program.Directory = launch.Stdio.Dir
 	program.CredentialRevision = binding.Configuration.String()
-	null, err := jsonvalue.Encode[any](nil)
-	if err != nil {
-		return program, err
-	}
-	program.Exports = map[string]string{}
-	program.Metadata = map[string]jsonvalue.Value{}
+	program.Metadata = process.ExportMetadata{}
 	for _, contribution := range snapshot.Selected.Declaration().Contributions {
 		if contribution.Server == server {
-			program.Exports[contribution.ID.String()] = contribution.Export
-			program.Metadata[contribution.ID.String()] = null
+			contract, err := plugincontract.ParseCapability(contribution.Contract.Bytes())
+			if err != nil {
+				return program, err
+			}
+			metadata, err := framevalue.EncodeJSON(processExport{Name: contribution.Export, Contract: contract.Descriptor()})
+			if err != nil {
+				return program, err
+			}
+			program.Metadata[contribution.ID.String()] = metadata
 		}
 	}
 	return program, nil
 }
 
-func (s *ProcessSource) Configure(ctx context.Context, setup *qimu.Setup, session *sdk.ClientSession) ([]qimumcp.SetupContribution, sdk.ParamsBase, error) {
+func (s *ProcessSource) Configure(ctx context.Context, setup *frame.Setup, session *sdk.ClientSession) ([]pluginmcp.SetupContribution, sdk.ParamsBase, error) {
 	snapshot, serverName, err := s.snapshot(ctx, setup.Binding())
 	if err != nil {
 		return nil, sdk.ParamsBase{}, err
@@ -153,7 +160,7 @@ func (s *ProcessSource) Configure(ctx context.Context, setup *qimu.Setup, sessio
 	}
 	actor = actor.WithBindings(bindings)
 	s.mu.Lock()
-	s.projections[setup.InstanceID()] = processProjection{actor: actor, fingerprint: server.AuthorityFingerprint(), bindings: bindings}
+	s.projections[setup.InstanceID()] = processProjection{source: setup.Binding().Source, session: session, actor: actor, fingerprint: server.AuthorityFingerprint(), bindings: bindings}
 	s.mu.Unlock()
 	releaseAuthority := func() error {
 		s.mu.Lock()
@@ -178,15 +185,15 @@ func (s *ProcessSource) Configure(ctx context.Context, setup *qimu.Setup, sessio
 		return nil, sdk.ParamsBase{}, err
 	}
 	calling := operation.WithActor(setup.Lifetime().Context(), actor)
-	var reference qimumcp.CallbackRef
+	var reference pluginmcp.CallbackRef
 	var closeRPC func()
 	if background {
-		reference, closeRPC, err = s.callbacks.OpenRPCWithInvocation(calling, session, callbackPayloadLimits, func(ctx context.Context, invocation portable.Invocation) (context.Context, error) {
+		reference, closeRPC, err = s.callbacks.OpenRPCWithInvocation(calling, session, callbackPayloadLimits, func(ctx context.Context, invocation framemcp.Invocation) (context.Context, error) {
 			ctx, err := s.commands.RestoreInvocation(ctx, invocation)
 			if err != nil {
 				return nil, err
 			}
-			return qimumcp.WithInvocation(ctx, invocation)
+			return pluginmcp.WithInvocation(ctx, invocation)
 		})
 	} else {
 		reference, closeRPC, err = s.callbacks.OpenRPC(calling, session, callbackPayloadLimits)
@@ -198,6 +205,6 @@ func (s *ProcessSource) Configure(ctx context.Context, setup *qimu.Setup, sessio
 		closeRPC()
 		return nil, sdk.ParamsBase{}, err
 	}
-	metadata, err := qimumcp.CallbackMetadata(reference)
+	metadata, err := pluginmcp.CallbackMetadata(reference)
 	return contributions, metadata, err
 }

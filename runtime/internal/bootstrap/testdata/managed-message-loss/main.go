@@ -7,10 +7,12 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"os"
 	"os/exec"
 	"os/signal"
@@ -72,7 +74,7 @@ func run() (err error) {
 				return
 			}
 			semantic := request.Method
-			if semantic == qimumcp.InvokeMethod {
+			if semantic == pluginmcp.InvokeMethod {
 				semantic = request.Params.Method
 			}
 			matched := semantic == os.Args[3] && (os.Args[4] == "" || request.Params.Name == os.Args[4])
@@ -210,17 +212,17 @@ func receiptFault(stage string, response []byte) ([]byte, error) {
 	var result jsontext.Value
 	switch stage {
 	case "absent":
-		encoded, err := qimumcp.EncodeReply(pluginsdk.ToolReceipt{}, nil, nil)
+		encoded, err := pluginmcp.EncodeReply(pluginsdk.ToolReceipt{}, nil, nil)
 		if err != nil {
 			return nil, err
 		}
-		result = encoded.JSON()
+		result = encoded.Bytes()
 	case "conflict":
-		encoded, err := qimumcp.EncodeReply(pluginsdk.ToolReceipt{}, portable.ErrInvocationConflict, nil)
+		encoded, err := pluginmcp.EncodeReply(pluginsdk.ToolReceipt{}, framemcp.ErrInvocationConflict, nil)
 		if err != nil {
 			return nil, err
 		}
-		result = encoded.JSON()
+		result = encoded.Bytes()
 	case "malformed":
 		result = jsontext.Value(`{"unexpected":"result"}`)
 	default:

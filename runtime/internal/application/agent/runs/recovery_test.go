@@ -1,6 +1,8 @@
 package runs
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"errors"
 	"fmt"
@@ -1276,7 +1278,7 @@ func TestRecoveryAtomicallyClosesLostQuestionToolContext(t *testing.T) {
 		ItemID: toolItem.ID(),
 		CallID: "tool:runtime:0", SourceCallID: "provider_call_open",
 	}}
-	known := corechat.ToolResult{ID: "provider_written", Name: "write", Output: corechat.NewTextToolOutput("external write acknowledged before restart")}
+	known := corechat.ToolResult{ID: "provider_written", Name: "write", Output: toolcontract.NewTextOutput("external write acknowledged before restart")}
 	conversation := []corechat.Message{
 		corechat.NewUserMessage(corechat.NewTextPart("ask me")),
 		corechat.NewAssistantMessage(corechat.NewToolCallPart(corechat.ToolCall{

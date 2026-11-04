@@ -15,12 +15,12 @@ func TestInvocationAdmissionsRequireTheOriginalActiveSegment(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	draft := runDraft("run_admission", "ses_admission")
-	store := newRunStore(db)
+	store := newRunStore(databaseFor(db))
 	if err := store.Admit(t.Context(), draft); err != nil {
 		t.Fatal(err)
 	}
-	models := newModelInvocationStore(db)
-	tools := newToolInvocationStore(db)
+	models := newModelInvocationStore(databaseFor(db))
+	tools := newToolInvocationStore(databaseFor(db))
 	refuse := func(segmentID string) {
 		t.Helper()
 		if err := models.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, segmentID, "model_admission", draft.CreatedAt, run.ModelConversation); err == nil {

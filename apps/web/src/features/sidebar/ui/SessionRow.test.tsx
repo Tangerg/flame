@@ -28,7 +28,7 @@ vi.mock("@/ui/index", async (original) => ({
 it("exposes rename only through a captured installed session action", async () => {
   const name = "Rename this session";
   await contributeForTest((ctx) =>
-    ctx.contribute(SESSION_ACTION, {
+    ctx.contributions.add(SESSION_ACTION, {
       id: "installed-rename",
       title: name,
       component: ({ session }) => (

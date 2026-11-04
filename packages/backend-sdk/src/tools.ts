@@ -1,13 +1,13 @@
 import {
   Backend,
   decodeReceipt,
-  Method,
+  declareMethod,
   parseJSON,
   type CallContext,
   type ReceiptRequest,
   type MethodDescriptor,
-} from "@qimu/node";
-import { validCommand } from "@qimu/node/contract";
+} from "@flame/backend-sdk/mcp";
+import { validCommand } from "@flame/backend-sdk/mcp/contract";
 import wire from "./protocol.generated.json";
 
 export interface ToolReceipt {
@@ -33,6 +33,6 @@ export function toolReceipts(
     request: ReceiptRequest,
   ) => ToolReceipt | Promise<ToolReceipt>,
 ): void {
-  const method = new Method(parseJSON(wire.toolReceipt) as MethodDescriptor);
+  const method = declareMethod(parseJSON(wire.toolReceipt) as MethodDescriptor);
   backend.implement(method, decodeReceipt, handler);
 }

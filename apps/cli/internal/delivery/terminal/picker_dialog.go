@@ -1,9 +1,8 @@
 package terminal
 
 import (
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/layout"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 // pickerDialog is a searchable list in a modal. Choosing an item closes the
@@ -15,7 +14,7 @@ type pickerDialog[T any] struct {
 }
 
 type pickerDialogConfig[T any] struct {
-	stack     *headless.Stack
+	stack     *workspaceScene
 	theme     kit.Theme
 	glyphs    kit.Glyphs
 	title     string
@@ -36,9 +35,7 @@ func newPickerDialog[T any](cfg pickerDialogConfig[T]) *pickerDialog[T] {
 		d.dismiss(cfg.dismissed)
 		cfg.choose(item)
 	})
-	d.dialog = newPresentationDialog(kit.DialogConfig{
-		Stack: cfg.stack, Theme: cfg.theme, Glyphs: cfg.glyphs, Title: cfg.title, Body: d.picker, Where: cfg.where,
-	})
+	d.dialog = newPresentationDialog(cfg.stack, kit.DialogConfig{Theme: cfg.theme, Glyphs: cfg.glyphs, Title: cfg.title, Body: d.picker.Element(), Where: cfg.where})
 	d.picker.cancel = func() { d.dismiss(cfg.dismissed) }
 	return d
 }

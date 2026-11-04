@@ -3,7 +3,8 @@ package mcp
 import (
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
-	"github.com/Tangerg/qimu/jsonvalue"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"testing"
 )
 
@@ -21,7 +22,7 @@ func TestContractCarriesBoundedOriginalHookMaterial(t *testing.T) {
 	if err := input.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	encoded, err := jsonvalue.Encode(hookprovider.Evaluation{Rules: []hook.Hook{{Event: input.Input.Event, Command: input.Command, Scope: hook.ScopeGlobal, Source: directory}}, Input: input.Input})
+	encoded, err := framevalue.EncodeJSON(hookprovider.Evaluation{Rules: []hook.Hook{{Event: input.Input.Event, Command: input.Command, Scope: hook.ScopeGlobal, Source: directory}}, Input: input.Input})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +33,7 @@ func TestContractCarriesBoundedOriginalHookMaterial(t *testing.T) {
 		`{"command":"exit 2","cwd":"/workspace","input":{"event":"unknown"},"timeoutMillis":1000}`,
 		`{"command":"exit 2","cwd":"/workspace","timeoutMillis":1000}`,
 	} {
-		value, err := jsonvalue.Parse([]byte(invalid))
+		value, err := framevalue.ParseJSON([]byte(invalid))
 		if err != nil {
 			t.Fatal(err)
 		}

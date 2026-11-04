@@ -13,8 +13,8 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/programtest"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/uitest"
 )
 
 type workspaceServiceStub struct {
@@ -169,11 +169,11 @@ func (c *changeSourceStub) Subscribe(ctx context.Context, _ changefeed.Subscript
 	}, nil
 }
 
-func runUIWithWorkspaceBackend(t *testing.T, service Workspaces, source changefeed.Source) (*programtest.Host, func()) {
+func runUIWithWorkspaceBackend(t *testing.T, service Workspaces, source changefeed.Source) (*uitest.Host, func()) {
 	t.Helper()
 	backend := runtimefixture.New()
 	backend.Instant = true
-	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
+	host := uitest.New(t, uitest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {

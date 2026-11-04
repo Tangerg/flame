@@ -5,12 +5,13 @@ import (
 	json "encoding/json/v2"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestPackageAdmitsLocalPointContractsAndIsolatesInvalidValues(t *testing.T) {
-	contract, err := portable.AdmitPoint(portable.PointDescriptor{Protocol: portable.Protocol, Reference: "example.com/analyzers", Composition: portable.Collection, Scope: extension.ScopeInstallation, Optional: true, Ordering: portable.CanonicalKeys, Value: jsontext.Value(`{"type":"object","required":["title"],"properties":{"title":{"type":"string"}},"additionalProperties":false}`), Applicability: jsontext.Value(`{"type":"object"}`)})
+	contract, err := plugincontract.AdmitPoint(plugincontract.PointDescriptor{Protocol: plugincontract.Protocol, Reference: "example.com/analyzers", Composition: plugincontract.Collection, Scope: extension.ScopeInstallation, Optional: true, Ordering: plugincontract.CanonicalKeys, Value: jsontext.Value(`{"type":"object","required":["title"],"properties":{"title":{"type":"string"}},"additionalProperties":false}`), Applicability: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}

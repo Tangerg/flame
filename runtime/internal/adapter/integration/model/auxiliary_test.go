@@ -38,7 +38,7 @@ func (r *recordingModel) Stream(ctx context.Context, request *chat.Request) iter
 
 func TestCompleteBuildsOneMiddlewareFreePrompt(t *testing.T) {
 	model := &recordingModel{}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func TestCompleteRejectsIncompleteTextGenerations(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			client, err := chatclient.New(auxiliaryResponseModel{response: tc.response}, chatclient.Config{})
+			client, err := chatclient.New(auxiliaryResponseModel{response: tc.response})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -193,7 +193,7 @@ func TestAuxiliaryRequestLifetimeBelongsToCaller(t *testing.T) {
 						return nil, callCtx.Err()
 					}
 				})
-				client, err := chatclient.New(model, chatclient.Config{})
+				client, err := chatclient.New(model)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -232,7 +232,7 @@ func TestCompleteUsesScopeTypedTextContract(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			client, err := chatclient.New(auxiliaryResponseModel{response: response}, chatclient.Config{})
+			client, err := chatclient.New(auxiliaryResponseModel{response: response})
 			if err != nil {
 				t.Fatal(err)
 			}

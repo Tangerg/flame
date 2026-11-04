@@ -1,9 +1,10 @@
 package persistence
 
 import (
+	"testing"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/scope/core/chat"
-	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )

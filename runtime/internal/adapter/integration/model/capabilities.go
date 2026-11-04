@@ -6,12 +6,15 @@ import (
 	"fmt"
 	"slices"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/scope/core/chat"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	modelcatalog "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	modelsapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
-	"github.com/Tangerg/qimu/portable"
+
 	catalog "github.com/Tangerg/scope/models/catalog"
 	"github.com/samber/lo"
 )
@@ -117,7 +120,7 @@ func (c *Capabilities) Probe(ctx context.Context, entry provider.Provider) error
 		return err
 	}
 	if err := c.adapters.Verify(ctx, connection); err != nil {
-		if refusal, ok := errors.AsType[*portable.Refusal](err); ok {
+		if refusal, ok := errors.AsType[*framemcp.Refusal](err); ok {
 			switch modelprovider.FailureKind(refusal.Code) {
 			case modelprovider.InvalidCredentials:
 				return errors.Join(modelsapp.ErrProviderCredentialsRejected, err)
@@ -203,11 +206,11 @@ func catalogModel(providerID string, entry catalog.Model) (modelsapp.Model, erro
 func catalogPriceBand(band catalog.Pricing) (modelsapp.PriceBand, error) {
 	const million = 1_000_000
 	rates := make([]float64, 4)
-	for index, usage := range []catalog.Usage{
+	for index, usage := range []chat.Usage{
 		{InputTokens: million},
 		{OutputTokens: million},
-		{InputTokens: million, CacheReadInputTokens: million},
-		{InputTokens: million, CacheWriteInputTokens: million},
+		{InputTokens: million, CacheReadInputTokens: new(int64(million))},
+		{InputTokens: million, CacheWriteInputTokens: new(int64(million))},
 	} {
 		rate, err := band.Cost(usage)
 		if err != nil {

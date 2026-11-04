@@ -11,7 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/distribution"
+	"github.com/Tangerg/frame/distribution"
 )
 
 type moduleGraph struct {
@@ -96,7 +96,7 @@ func (r *Releases) ComponentModules(ctx context.Context, release plugin.Release,
 		return nil, err
 	}
 	defer lease.Close()
-	for _, unit := range lease.Release().Manifest.Units {
+	for _, unit := range lease.Snapshot().Manifest.Units {
 		if unit.ID == plugins.ComponentUnit(id) && unit.Module != nil {
 			return unit.Module, nil
 		}

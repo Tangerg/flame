@@ -281,6 +281,8 @@ Raw MCP content is retained once, including text, images, audio, embedded
 resources, resource links, structured content and metadata. Tool recovery derives
 Scope `ToolOutput` from that same record; a public Go/Scope oracle verifies its
 projection against the pinned framework. Media is not replaced with base64 text.
+Resource MIME types preserve the original declaration; filenames and URI suffixes
+never supply a missing type. Image and audio content require a declared MIME type.
 The selected model/provider must support the actual resulting tool media; this
 plugin does not bypass Runtime's final model-input capability checks.
 

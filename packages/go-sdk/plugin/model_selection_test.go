@@ -4,8 +4,11 @@ import (
 	"strings"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -18,7 +21,7 @@ func TestModelSelectionContractRequiresExactProposalAndPreservesInputAbsence(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	if contract.Descriptor().Composition != portable.Selection || method.Descriptor().Kind != portable.Query {
+	if contract.Descriptor().Composition != plugincontract.Selection || method.Descriptor().Kind != portable.Query {
 		t.Fatal("model route does not use explicit query selection")
 	}
 	proposal := ModelSelection{Provider: "provider", Model: "model", ReasoningEffort: "high"}

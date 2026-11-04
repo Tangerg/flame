@@ -1,8 +1,9 @@
 package protocol
 
 import (
-	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
 )
 
 // RunEvent is the params of the notifications.run.event notification —

@@ -9,13 +9,13 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/desktop/internal/bridge"
-	"github.com/Tangerg/qimu/contractgen"
+	"github.com/Tangerg/flame/packages/go-sdk/wiregen"
 )
 
 const notificationAuthorization = "NotificationAuthorization"
 
 func render(contract *contract) ([]byte, []byte, error) {
-	types := contractgen.NewTypeScript(contract.definitions)
+	types := wiregen.NewTypeScript(contract.definitions)
 	authorization := contract.definitions[notificationAuthorization]
 	if authorization == nil || len(authorization.Enum) == 0 {
 		return nil, nil, fmt.Errorf("notification authorization must retain its typed enum")
@@ -60,7 +60,7 @@ func render(contract *contract) ([]byte, []byte, error) {
 	for _, method := range contract.methods {
 		arguments := make([]string, 0, len(method.params))
 		for _, parameter := range method.params {
-			arguments = append(arguments, contractgen.PropertyKey(parameter.name)+": "+types.TypeOf(parameter.shape))
+			arguments = append(arguments, wiregen.PropertyKey(parameter.name)+": "+types.TypeOf(parameter.shape))
 		}
 		result := "void"
 		if method.result != nil {
@@ -103,7 +103,7 @@ func render(contract *contract) ([]byte, []byte, error) {
 
 // The native bridge uses a deliberately small JSON subset. A new keyword must
 // get an actual client projection before generation can accept it.
-func zod(node *contractgen.Schema, definitions contractgen.Definitions) (string, error) {
+func zod(node *wiregen.Schema, definitions wiregen.Definitions) (string, error) {
 	if node == nil || node.TypeScriptType != "" {
 		return "", fmt.Errorf("missing or opaque wire schema")
 	}
@@ -123,7 +123,7 @@ func zod(node *contractgen.Schema, definitions contractgen.Definitions) (string,
 		}
 	}
 	if node.Ref != "" {
-		name, valid := strings.CutPrefix(node.Ref, contractgen.RefPrefix)
+		name, valid := strings.CutPrefix(node.Ref, wiregen.RefPrefix)
 		if !valid || definitions[name] == nil || len(keywords) != 1 {
 			return "", fmt.Errorf("unresolved or refined reference %q", node.Ref)
 		}
@@ -131,13 +131,13 @@ func zod(node *contractgen.Schema, definitions contractgen.Definitions) (string,
 	}
 	var result string
 	switch node.Type {
-	case contractgen.SchemaTypeString:
+	case wiregen.SchemaTypeString:
 		if node.Minimum != nil {
 			return "", fmt.Errorf("number refinement on a string")
 		}
 		result = "z.string()"
 		if len(node.Enum) > 0 {
-			result = "z.enum([" + strings.Join(contractgen.QuoteAll(node.Enum), ", ") + "])"
+			result = "z.enum([" + strings.Join(wiregen.QuoteAll(node.Enum), ", ") + "])"
 			if node.Format != "" || node.MinLength != nil {
 				return "", fmt.Errorf("refined string enum is unsupported")
 			}
@@ -151,23 +151,23 @@ func zod(node *contractgen.Schema, definitions contractgen.Definitions) (string,
 		if node.MinLength != nil {
 			result += fmt.Sprintf(".min(%d)", *node.MinLength)
 		}
-	case contractgen.SchemaTypeInteger, contractgen.SchemaTypeNumber:
+	case wiregen.SchemaTypeInteger, wiregen.SchemaTypeNumber:
 		if len(node.Enum) != 0 || node.MinLength != nil || node.Format != "" {
 			return "", fmt.Errorf("string refinement on a number")
 		}
 		result = "z.number()"
-		if node.Type == contractgen.SchemaTypeInteger {
+		if node.Type == wiregen.SchemaTypeInteger {
 			result = "z.int()"
 		}
 		if node.Minimum != nil {
 			result += fmt.Sprintf(".min(%d)", *node.Minimum)
 		}
-	case contractgen.SchemaTypeBoolean:
+	case wiregen.SchemaTypeBoolean:
 		if len(keywords) != 1 {
 			return "", fmt.Errorf("refined boolean is unsupported")
 		}
 		result = "z.boolean()"
-	case contractgen.SchemaTypeObject:
+	case wiregen.SchemaTypeObject:
 		return zodObject(node, definitions)
 	default:
 		return "", fmt.Errorf("unsupported Zod type %q", node.Type)
@@ -175,13 +175,13 @@ func zod(node *contractgen.Schema, definitions contractgen.Definitions) (string,
 	return result, nil
 }
 
-func zodObject(node *contractgen.Schema, definitions contractgen.Definitions) (string, error) {
+func zodObject(node *wiregen.Schema, definitions wiregen.Definitions) (string, error) {
 	if node.Format != "" || node.MinLength != nil || node.Minimum != nil || len(node.Enum) != 0 {
 		return "", fmt.Errorf("scalar refinement on an object")
 	}
 	var fields []string
 	for _, name := range slices.Sorted(maps.Keys(node.Properties)) {
-		child, ok := node.Properties[name].(*contractgen.Schema)
+		child, ok := node.Properties[name].(*wiregen.Schema)
 		if !ok {
 			return "", fmt.Errorf("unsupported property schema %s", name)
 		}
@@ -192,7 +192,7 @@ func zodObject(node *contractgen.Schema, definitions contractgen.Definitions) (s
 		if !slices.Contains(node.Required, name) {
 			expression += ".optional()"
 		}
-		fields = append(fields, "  "+contractgen.PropertyKey(name)+": "+expression+",")
+		fields = append(fields, "  "+wiregen.PropertyKey(name)+": "+expression+",")
 	}
 	for _, name := range node.Required {
 		if _, exists := node.Properties[name]; !exists {

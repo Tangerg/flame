@@ -1,13 +1,15 @@
 package persistence
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"errors"
 	"path/filepath"
 	"reflect"
 	"testing"
 
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -17,16 +19,16 @@ func TestResultPublicationsFollowTheExactConversationRound(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	runs, messages := newRunStore(db), newMessageStore(db)
+	runs, messages := newRunStore(databaseFor(db)), newMessageStore(databaseFor(db))
 	const sessionID, runID, segmentID = "ses_results", "run_results", "seg_open"
 	if err := runs.Admit(t.Context(), runDraft(runID, sessionID)); err != nil {
 		t.Fatal(err)
 	}
 	request := chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: "reused_call", Name: "inspect", Arguments: `{}`}))
-	if _, err := messages.Write(t.Context(), sessionID, request); err != nil {
+	if err := messages.Write(t.Context(), sessionID, request); err != nil {
 		t.Fatal(err)
 	}
-	first := chat.ToolResult{ID: "reused_call", Name: "inspect", Output: chat.NewTextToolOutput("first exact result")}
+	first := chat.ToolResult{ID: "reused_call", Name: "inspect", Output: toolcontract.NewTextOutput("first exact result")}
 	cause := errors.New("publication transaction failed")
 	err = sqlite.RunInTx(t.Context(), db, func(ctx context.Context) error {
 		if err := runs.RecordResultPublication(ctx, sessionID, runID, segmentID, "pub_rollback", "digest_rollback", []chat.ToolResult{first}); err != nil {
@@ -47,14 +49,14 @@ func TestResultPublicationsFollowTheExactConversationRound(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(got, []chat.ToolResult{first}) {
 		t.Fatalf("pending exact results = %+v, err %v", got, err)
 	}
-	if _, err := messages.Write(t.Context(), sessionID, chat.NewToolMessage(first), request); err != nil {
+	if err := messages.Write(t.Context(), sessionID, chat.NewToolMessage(first), request); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := runs.UnpublishedToolResults(t.Context(), sessionID, runID); err != nil || len(got) != 0 {
 		t.Fatalf("prior round result reused by provider call ID: count=%d err=%v", len(got), err)
 	}
 	second := first
-	second.Output = chat.NewTextToolOutput("second exact result")
+	second.Output = toolcontract.NewTextOutput("second exact result")
 	if err := runs.RecordResultPublication(t.Context(), sessionID, runID, segmentID, "pub_second", "digest_second", []chat.ToolResult{second}); err != nil {
 		t.Fatal(err)
 	}

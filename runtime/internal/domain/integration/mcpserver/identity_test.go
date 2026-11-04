@@ -5,8 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 func TestServerNameOwnsCanonicalLocalName(t *testing.T) {
@@ -105,13 +106,13 @@ func TestSourceBindsReleaseOnlyToInstallations(t *testing.T) {
 			return InstallationSource(identity.InstallationID{}, release, authority, recipient)
 		},
 		"missing release": func() (Source, error) {
-			return InstallationSource(installation, integrity.Digest{}, authority, recipient)
+			return InstallationSource(installation, framevalue.Digest{}, authority, recipient)
 		},
 		"missing authority": func() (Source, error) {
-			return InstallationSource(installation, release, integrity.Digest{}, recipient)
+			return InstallationSource(installation, release, framevalue.Digest{}, recipient)
 		},
 		"missing recipient": func() (Source, error) {
-			return InstallationSource(installation, release, authority, integrity.Digest{})
+			return InstallationSource(installation, release, authority, framevalue.Digest{})
 		},
 	} {
 		if _, err := build(); !errors.Is(err, ErrInvalidOrigin) {

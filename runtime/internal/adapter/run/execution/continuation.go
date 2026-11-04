@@ -1,6 +1,7 @@
 package execution
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -14,8 +15,8 @@ import (
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
 // BeginContinuation converts every validated application answer into an
@@ -68,8 +69,8 @@ func (i *InteractionExecutor) BeginContinuation(
 }
 
 type preparedInteractionAnswer struct {
-	process  *agent.Process
-	signal   agent.SignalRequest
+	process  *scoperun.Handle[scoperun.Payload]
+	signal   scoperun.Signal
 	admitted bool
 }
 
@@ -110,99 +111,88 @@ func (i *interactionSession) prepareContinuationAnswers(
 }
 
 type interactionAnswerPlan struct {
-	processID agent.ProcessID
-	signal    agent.SignalRequest
+	processID scoperun.ProcessID
+	signal    scoperun.Signal
 	admitted  bool
 }
 
 // Plans are derived only from acknowledged facts. Constructing Signals here
 // validates responses but grants no delivery or writer authority.
-func continuationAnswerPlans(cut interactionHandoff, head agent.TreeSnapshot, retired map[agent.ProcessID]bool, answers []runs.InterruptAnswer) ([]interactionAnswerPlan, error) {
-	targets := make(map[agent.WaitID]interactionInputTarget)
-	for wait, target := range cut.inputs {
+func continuationAnswerPlans(cut interactionHandoff, head scoperun.Log, retired map[scoperun.ProcessID]bool, answers []runs.InterruptAnswer) ([]interactionAnswerPlan, error) {
+	targets := make(map[string]interactionInputTarget)
+	for request, target := range cut.inputs {
 		if !retired[target.processID] {
-			targets[wait] = target
+			targets[request] = target
 		}
 	}
-	orderedAnswers := slices.Clone(answers)
-	slices.SortFunc(orderedAnswers, func(left, right runs.InterruptAnswer) int {
-		if order := strings.Compare(left.MemberID, right.MemberID); order != 0 {
+	ordered := slices.Clone(answers)
+	slices.SortFunc(ordered, func(a, b runs.InterruptAnswer) int {
+		if order := strings.Compare(a.MemberID, b.MemberID); order != 0 {
 			return order
 		}
-		return strings.Compare(left.RequestID, right.RequestID)
+		return strings.Compare(a.RequestID, b.RequestID)
 	})
-	if len(orderedAnswers) != len(targets) {
-		return nil, fmt.Errorf("%w: %d Interaction answers do not match %d accepted targets", runs.ErrExecutorStateLost, len(orderedAnswers), len(targets))
+	if len(ordered) != len(targets) {
+		return nil, fmt.Errorf("%w: answer set does not cover the accepted inputs", runs.ErrExecutorStateLost)
 	}
-	currentInputs, err := interaction.PendingToolInputs(head)
+	inspection, err := head.Inspect()
 	if err != nil {
 		return nil, err
 	}
-	currentByWait := make(map[agent.WaitID]interaction.PendingToolInput)
-	for _, pending := range currentInputs {
-		if retired[pending.ProcessID()] {
+	waits := make(map[inputAddress]scoperun.Wait)
+	for _, process := range inspection.Processes {
+		if retired[process.ID] {
 			continue
 		}
-		target, found := targets[pending.WaitID()]
-		if !found || target.processID != pending.ProcessID() {
-			return nil, fmt.Errorf("%w: current input differs from its accepted target", runs.ErrExecutorStateLost)
+		for _, wait := range process.Waits {
+			address := inputAddress{process: process.ID, wait: wait.Key}
+			target, found := targets[inputRequestID(process.ID, wait.Key)]
+			if !found || target.processID != process.ID || target.waitKey != wait.Key {
+				return nil, fmt.Errorf("%w: current input differs from its accepted target", runs.ErrExecutorStateLost)
+			}
+			waits[address] = wait
 		}
-		currentByWait[pending.WaitID()] = pending
 	}
-	snapshots := make(map[agent.ProcessID]agent.ProcessSnapshot)
-	for _, snapshot := range head.ProcessSnapshots() {
-		snapshots[snapshot.Relation().ProcessID()] = snapshot
-	}
-	prepared := make([]interactionAnswerPlan, 0, len(orderedAnswers))
-	seenWaits := make(map[agent.WaitID]bool, len(orderedAnswers))
-	for _, answer := range orderedAnswers {
-		waitID, err := agent.ParseWaitID(answer.RequestID)
-		if err != nil {
-			return nil, fmt.Errorf("%w: parse answered Interaction input: %w", runs.ErrExecutorStateLost, err)
+	plans := make([]interactionAnswerPlan, 0, len(ordered))
+	seen := make(map[string]bool)
+	for _, answer := range ordered {
+		target, found := targets[answer.RequestID]
+		if !found || target.memberID.String() != answer.MemberID || seen[answer.RequestID] {
+			return nil, fmt.Errorf("%w: answer does not address one accepted input", runs.ErrExecutorStateLost)
 		}
-		if seenWaits[waitID] {
-			return nil, fmt.Errorf("%w: answer set repeats a wait", runs.ErrExecutorStateLost)
-		}
-		seenWaits[waitID] = true
-		// The answer addresses a wait, not a member. The Tool child holding that
-		// wait is the staged cut's own fact, so the member never has to name it.
-		pending, found := targets[waitID]
-		if !found || pending.memberID.String() != answer.MemberID {
-			return nil, fmt.Errorf("%w: interrupt answer does not address the accepted Interaction input", runs.ErrExecutorStateLost)
-		}
-		parent, child := snapshots[pending.processID].Relation().ParentID()
-		if !child || parent != pending.memberID {
-			return nil, fmt.Errorf("%w: accepted input recipient changed its member", runs.ErrExecutorStateLost)
+		seen[answer.RequestID] = true
+		if cut.progress[target.processID].OwnerID != target.memberID.String() {
+			return nil, fmt.Errorf("%w: input recipient changed its product owner", runs.ErrExecutorStateLost)
 		}
 		response, err := runinput.EncodeResolution(answer.Resolution)
 		if err != nil {
 			return nil, err
 		}
-		signalID, err := interactionAnswerSignalID(answer, response)
+		id, err := interactionAnswerSignalID(answer, response)
 		if err != nil {
 			return nil, err
 		}
-		signal, err := agent.NewSignalRequest(signalID, waitID, response)
+		payload, err := scoperun.ParsePayload(response)
 		if err != nil {
-			return nil, fmt.Errorf("execution: construct Interaction answer Signal: %w", err)
+			return nil, err
 		}
-		admitted, err := exactAnswerReceipt(snapshots[pending.processID], signal)
+		signal := scoperun.Signal{ID: id, Wait: target.waitKey, Payload: payload}
+		admitted, err := exactSignalAdmission(head, target.processID, signal)
 		if err != nil {
 			return nil, err
 		}
 		if !admitted {
-			current, found := currentByWait[waitID]
-			if !found || current.ProcessID() != pending.processID {
-				return nil, fmt.Errorf("%w: accepted answer has neither an exact receipt nor its wait", runs.ErrExecutorStateLost)
+			wait, found := waits[inputAddress{process: target.processID, wait: target.waitKey}]
+			if !found {
+				return nil, fmt.Errorf("%w: accepted answer has neither its receipt nor its wait", runs.ErrExecutorStateLost)
 			}
-			signal, err = current.ResponseSignal(signalID, response)
-			if err != nil {
+			if err := wait.AnswerSchema.Validate(payload.JSON()); err != nil {
 				return nil, err
 			}
 		}
-		prepared = append(prepared, interactionAnswerPlan{processID: pending.processID, signal: signal, admitted: admitted})
+		plans = append(plans, interactionAnswerPlan{processID: target.processID, signal: signal, admitted: admitted})
 	}
-	return prepared, nil
+	return plans, nil
 }
 
 func (i *interactionSession) deliverContinuationAnswers(
@@ -250,20 +240,24 @@ func (i *interactionSession) deliverContinuationAnswers(
 	return nil
 }
 
-func exactAnswerReceipt(snapshot agent.ProcessSnapshot, signal agent.SignalRequest) (bool, error) {
-	for _, receipt := range snapshot.SignalReceipts() {
-		if receipt.ID() != signal.ID() {
+// The paused handoff's committed-step counters prove that an admitted answer
+// has not been consumed. The admission record proves its exact immutable input.
+func exactSignalAdmission(history scoperun.Log, process scoperun.ProcessID, signal scoperun.Signal) (bool, error) {
+	for _, entry := range history.Entries {
+		admission, ok := entry.Record.(scoperun.SignalAdmitted)
+		if !ok || admission.Process != process || admission.Signal.ID != signal.ID {
 			continue
 		}
-		if !receipt.Matches(signal) {
-			return false, fmt.Errorf("%w: accepted answer Signal identity conflicts with its receipt", runs.ErrExecutorStateLost)
-		}
-		if receipt.Consumed() {
-			return false, fmt.Errorf("%w: accepted answer was consumed", runs.ErrExecutorStateLost)
+		if !sameSignal(admission.Signal, signal) {
+			return false, fmt.Errorf("%w: Signal identity conflicts with committed input", runs.ErrExecutorStateLost)
 		}
 		return true, nil
 	}
 	return false, nil
+}
+
+func sameSignal(left, right scoperun.Signal) bool {
+	return left.ID == right.ID && left.Wait == right.Wait && bytes.Equal(left.Payload.JSON(), right.Payload.JSON())
 }
 
 func (i *interactionSession) proveContinuationDelivery(ctx context.Context, answers []preparedInteractionAnswer) error {
@@ -271,7 +265,7 @@ func (i *interactionSession) proveContinuationDelivery(ctx context.Context, answ
 	if root == nil {
 		return runs.ErrExecutorNotLive
 	}
-	head, err := i.committedTree(ctx, root.Relation().ProcessID())
+	head, err := i.committedTree(ctx, root.ID())
 	if err != nil {
 		return err
 	}
@@ -285,12 +279,8 @@ func (i *interactionSession) proveContinuationDelivery(ctx context.Context, answ
 	if err := validateAcceptedPausedTree(state.handoff, head, i.acceptedRetiredProcesses(state.handoff, head)); err != nil {
 		return err
 	}
-	snapshots := make(map[agent.ProcessID]agent.ProcessSnapshot)
-	for _, snapshot := range head.ProcessSnapshots() {
-		snapshots[snapshot.Relation().ProcessID()] = snapshot
-	}
 	for _, answer := range answers {
-		matched, err := exactAnswerReceipt(snapshots[answer.process.Relation().ProcessID()], answer.signal)
+		matched, err := exactSignalAdmission(head, answer.process.ID(), answer.signal)
 		if err != nil {
 			return err
 		}
@@ -318,7 +308,7 @@ func (i *interactionSession) prepareCommittedContinuationInput(
 		return nil, runs.ErrExecutorNotLive
 	}
 	return &pendingInteractionContinuation{
-		processID: process.Relation().ProcessID(), itemID: input.ItemID,
+		processID: process.ID(), itemID: input.ItemID,
 		content: transcript.CloneContent(input.Content),
 	}, nil
 }
@@ -346,7 +336,7 @@ func (i *InteractionExecutor) SubmitSteer(
 func interactionAnswerSignalID(
 	answer runs.InterruptAnswer,
 	response jsontext.Value,
-) (agent.SignalID, error) {
+) (scoperun.SignalID, error) {
 	digest := sha256.New()
 	_, _ = digest.Write([]byte(answer.InterruptItemID))
 	_, _ = digest.Write([]byte{0})
@@ -355,5 +345,5 @@ func interactionAnswerSignalID(
 	_, _ = digest.Write([]byte(answer.RequestID))
 	_, _ = digest.Write([]byte{0})
 	_, _ = digest.Write(response)
-	return agent.ParseSignalID("answer:" + hex.EncodeToString(digest.Sum(nil)))
+	return scoperun.ParseSignalID("answer:" + hex.EncodeToString(digest.Sum(nil)))
 }

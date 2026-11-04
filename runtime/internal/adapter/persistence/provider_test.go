@@ -14,7 +14,7 @@ func TestProviderStoreUpdatePreservesOmittedFieldsAndClearsExplicitly(t *testing
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newProviderStore(db)
+	store := newProviderStore(databaseFor(db))
 
 	oldKey, _ := provider.NewAPIKey("sk-old")
 	oldBaseURL, _ := provider.NewBaseURL("https://old.test")
@@ -46,7 +46,7 @@ func TestProviderStoreUsesNullForAbsentConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newProviderStore(db)
+	store := newProviderStore(databaseFor(db))
 	if _, err := store.Update(t.Context(), "openai", provider.Patch{}); err != nil {
 		t.Fatal(err)
 	}

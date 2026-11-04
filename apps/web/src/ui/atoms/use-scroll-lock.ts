@@ -61,10 +61,10 @@ export function useScrollLock<T extends HTMLElement = HTMLElement>(
     }
     if (!container) return;
     const release = acquireScrollLock(container);
-    let finished = false;
+    const finishedState = { value: false };
     const finish = () => {
-      if (finished) return;
-      finished = true;
+      if (finishedState.value) return;
+      finishedState.value = true;
       clearTimeout(timeoutId);
       animatedElement.removeEventListener("transitionend", onTransition);
       animatedElement.removeEventListener("transitioncancel", onTransition);

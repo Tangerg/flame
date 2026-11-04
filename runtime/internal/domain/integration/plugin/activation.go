@@ -3,16 +3,15 @@ package plugin
 import (
 	"slices"
 
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // Activation is an immutable projection of a session-owned binding graph. Its
 // identity includes configuration and ordered collaborators; releases alone cannot
 // distinguish two different compositions inside the same installed bytes.
 type Activation struct {
-	Binding      jsonvalue.Value
-	Identity     integrity.Digest
+	Binding      framevalue.JSON
+	Identity     framevalue.Digest
 	Dependencies []Dependency
 }
 

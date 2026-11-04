@@ -4,24 +4,27 @@ import (
 	"errors"
 	"sync"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func ToolProposalMethod() (*qimumcp.Method[chat.ToolCall, chat.ToolCall], error) {
-	return qimumcp.NewMethod[chat.ToolCall, chat.ToolCall](qimumcp.MethodConfig{Name: "flame.tool-proposal/transform.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Transform a captured Tool proposal's arguments before final schema admission and approval, preserving its logical identity and Tool name."})
+func ToolProposalMethod() (*pluginmcp.Method[chat.ToolCall, chat.ToolCall], error) {
+	return pluginmcp.NewMethod[chat.ToolCall, chat.ToolCall](portable.MethodConfig{Name: "flame.tool-proposal/transform.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Transform a captured Tool proposal's arguments before final schema admission and approval, preserving its logical identity and Tool name."})
 }
 
-func ToolProposalContract() (*portable.Capability, error) { return toolProposalContract() }
+func ToolProposalContract() (*plugincontract.Capability, error) { return toolProposalContract() }
 
-var toolProposalContract = sync.OnceValues(func() (*portable.Capability, error) {
+var toolProposalContract = sync.OnceValues(func() (*plugincontract.Capability, error) {
 	method, err := ToolProposalMethod()
 	if err != nil {
 		return nil, err
 	}
-	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.tool-proposal.v1", Composition: portable.Decoration, Scope: extension.ScopeCall}, method.Descriptor())
+	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "flame.tool-proposal.v1", Composition: plugincontract.Decoration, Scope: extension.ScopeCall}, method.Descriptor())
 })
 
 // Identity and Tool authority belong to execution. Only the final Tool owner can

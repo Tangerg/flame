@@ -9,12 +9,12 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/samber/lo"
 )
@@ -166,14 +166,14 @@ type modelCapture struct {
 }
 
 func (c *modelCapture) enter(ctx context.Context) (context.Context, func(), error) {
-	invocation, err := qimumcp.InvocationFromContext(ctx)
+	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil || invocation.Target.Scope != extension.ScopeCall {
 		return nil, nil, errors.Join(err, errors.New("model composition: model call identity is required"))
 	}
 	c.mu.Lock()
 	if c.closed || c.lifetime.Err() != nil {
 		c.mu.Unlock()
-		return nil, nil, errors.Join(qimumcp.ErrStaleCall, c.lifetime.Err(), context.Cause(c.lifetime))
+		return nil, nil, errors.Join(pluginmcp.ErrStaleCall, c.lifetime.Err(), context.Cause(c.lifetime))
 	}
 	c.active.Add(1)
 	c.mu.Unlock()
@@ -289,7 +289,7 @@ func (c *modelCapture) close() error {
 	}
 	c.closed = true
 	c.mu.Unlock()
-	c.cancel(qimumcp.ErrStaleCall)
+	c.cancel(pluginmcp.ErrStaleCall)
 	c.active.Wait()
 	c.err = c.release()
 	o := c.owner
@@ -301,7 +301,7 @@ func (c *modelCapture) close() error {
 }
 
 func beginCapturedModelCall(ctx context.Context, selection modelchoice.Selection) (context.Context, func(context.Context, error) error, error) {
-	invocation, err := qimumcp.InvocationFromContext(ctx)
+	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

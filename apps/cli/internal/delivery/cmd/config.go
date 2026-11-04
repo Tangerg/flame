@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/apps/cli/internal/adapter/keybinding"
 	"io"
 	"maps"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/Tangerg/flame/apps/cli/internal/adapter/keybinding"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

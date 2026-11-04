@@ -8,27 +8,31 @@ import (
 	"sync/atomic"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func phaseHostRequest(ctx context.Context, ref qimumcp.CallbackRef) (int, error) {
+func phaseHostRequest(ctx context.Context, ref pluginmcp.CallbackRef) (int, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, ref.Endpoint+"v2/rpc", strings.NewReader(`{}`))
 	if err != nil {
 		return 0, err
 	}
 	request.Header.Set("Authorization", ref.Credential)
-	request.Header.Set(qimumcp.CallHeader, ref.Call)
+	request.Header.Set(pluginmcp.CallHeader, ref.Call)
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return 0, err
@@ -41,7 +45,7 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 	for _, phase := range []string{"selection", "context", "input"} {
 		for _, fail := range []bool{false, true} {
 			t.Run(phase+map[bool]string{false: "/success", true: "/failure"}[fail], func(t *testing.T) {
-				var contract *portable.Capability
+				var contract *plugincontract.Capability
 				var err error
 				switch phase {
 				case "selection":
@@ -61,13 +65,13 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 				var backendCalls atomic.Int32
 				selection := testsupport.DefaultModelSelection()
 				request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("question")))
-				original := portable.Invocation{ID: "preparing-model", Origin: extension.Model, Parent: "original-tool", Target: portable.Target{Scope: extension.ScopeCall, Reference: "preparing-model"}}
-				callers := make(chan portable.Invocation, 1)
-				refs := make(chan qimumcp.CallbackRef, 1)
+				original := framemcp.Invocation{ID: "preparing-model", Origin: extension.Model, Parent: "original-tool", Target: portable.Target{Scope: extension.ScopeCall, Reference: "preparing-model"}}
+				callers := make(chan framemcp.Invocation, 1)
+				refs := make(chan pluginmcp.CallbackRef, 1)
 				host := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					actor, found := operation.ActorFrom(r.Context())
-					invocation, err := qimumcp.InvocationFromContext(r.Context())
-					var expected portable.Invocation
+					invocation, err := pluginmcp.InvocationFromContext(r.Context())
+					var expected framemcp.Invocation
 					select {
 					case expected = <-callers:
 					default:
@@ -100,7 +104,7 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 					if backendCalls.Add(1) != 1 {
 						return errors.New("active contributor was called recursively")
 					}
-					invocation, err := qimumcp.InvocationFromContext(ctx)
+					invocation, err := pluginmcp.InvocationFromContext(ctx)
 					if err != nil {
 						return err
 					}
@@ -111,7 +115,7 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 					} else if invocation != original {
 						return errors.New("preparation changed original invocation")
 					}
-					ref, err := qimumcp.CallbackFromContext(ctx)
+					ref, err := pluginmcp.CallbackFromContext(ctx)
 					if err != nil {
 						return err
 					}
@@ -126,14 +130,14 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 					}
 					return nil
 				}
-				installed, installation := installedCallCompositionFixture(t, contract, []string{"phase"}, func(backend *qimumcp.Backend) {
+				installed, installation := installedCallCompositionFixture(t, contract, []string{"phase"}, func(backend *pluginmcp.Backend) {
 					switch phase {
 					case "selection":
 						method, err := pluginsdk.ModelSelectionMethod()
 						if err != nil {
 							t.Fatal(err)
 						}
-						err = method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, input qimumcp.Command[pluginsdk.ModelSelectionRequest]) (pluginsdk.ModelSelection, error) {
+						err = method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, input pluginmcp.Command[pluginsdk.ModelSelectionRequest]) (pluginsdk.ModelSelection, error) {
 							return input.Input.Proposed, callback(ctx)
 						})
 						if err != nil {
@@ -144,7 +148,7 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 						if err != nil {
 							t.Fatal(err)
 						}
-						err = method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ qimumcp.Command[pluginsdk.ModelContextRequest]) (pluginsdk.ModelContextResult, error) {
+						err = method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ pluginmcp.Command[pluginsdk.ModelContextRequest]) (pluginsdk.ModelContextResult, error) {
 							return pluginsdk.ModelContextResult{Messages: []chat.Message{chat.NewSystemMessage("retrieved")}}, callback(ctx)
 						})
 						if err != nil {
@@ -155,7 +159,7 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 						if err != nil {
 							t.Fatal(err)
 						}
-						err = method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, input qimumcp.Command[pluginsdk.ModelInputRequest]) (chat.Request, error) {
+						err = method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, input pluginmcp.Command[pluginsdk.ModelInputRequest]) (chat.Request, error) {
 							return input.Input.Request, callback(ctx)
 						})
 						if err != nil {
@@ -165,7 +169,7 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 				}, host)
 				composition = installed
 				store = installation
-				ctx, err := qimumcp.WithInvocation(t.Context(), original)
+				ctx, err := pluginmcp.WithInvocation(t.Context(), original)
 				if err != nil {
 					t.Fatal(err)
 				}

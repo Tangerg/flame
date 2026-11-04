@@ -1,7 +1,7 @@
 package wire
 
 import (
-	"time"
+	"github.com/Tangerg/flame/packages/go-sdk/instant"
 )
 
 type PullListInput struct {
@@ -38,24 +38,24 @@ type Branch struct {
 }
 
 type PullRequest struct {
-	Repository          string     `json:"repository"`
-	Number              int64      `json:"number"`
-	Title               string     `json:"title"`
-	Body                string     `json:"body"`
-	State               State      `json:"state"`
-	URL                 string     `json:"url"`
-	Author              string     `json:"author"`
-	Draft               bool       `json:"draft"`
-	MaintainerCanModify *bool      `json:"maintainerCanModify,omitzero"`
-	Head                Branch     `json:"head"`
-	Base                Branch     `json:"base"`
-	UpdatedAt           time.Time  `json:"updatedAt"`
-	MergedAt            *time.Time `json:"mergedAt,omitzero"`
-	Mergeable           *bool      `json:"mergeable,omitzero"`
-	MergeableState      *string    `json:"mergeableState,omitzero"`
-	Additions           *int64     `json:"additions,omitzero"`
-	Deletions           *int64     `json:"deletions,omitzero"`
-	ChangedFiles        *int64     `json:"changedFiles,omitzero"`
+	Repository          string             `json:"repository"`
+	Number              int64              `json:"number"`
+	Title               string             `json:"title"`
+	Body                string             `json:"body"`
+	State               State              `json:"state"`
+	URL                 string             `json:"url"`
+	Author              string             `json:"author"`
+	Draft               bool               `json:"draft"`
+	MaintainerCanModify *bool              `json:"maintainerCanModify,omitzero"`
+	Head                Branch             `json:"head"`
+	Base                Branch             `json:"base"`
+	UpdatedAt           instant.Timestamp  `json:"updatedAt"`
+	MergedAt            *instant.Timestamp `json:"mergedAt,omitzero"`
+	Mergeable           *bool              `json:"mergeable,omitzero"`
+	MergeableState      *string            `json:"mergeableState,omitzero"`
+	Additions           *int64             `json:"additions,omitzero"`
+	Deletions           *int64             `json:"deletions,omitzero"`
+	ChangedFiles        *int64             `json:"changedFiles,omitzero"`
 }
 
 type PullPage struct {
@@ -81,12 +81,12 @@ type FilePage struct {
 }
 
 type Comment struct {
-	ID        int64     `json:"id"`
-	URL       string    `json:"url"`
-	Author    string    `json:"author"`
-	Body      string    `json:"body"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID        int64             `json:"id"`
+	URL       string            `json:"url"`
+	Author    string            `json:"author"`
+	Body      string            `json:"body"`
+	CreatedAt instant.Timestamp `json:"createdAt"`
+	UpdatedAt instant.Timestamp `json:"updatedAt"`
 }
 
 type CommentPage struct {
@@ -95,13 +95,13 @@ type CommentPage struct {
 }
 
 type Review struct {
-	ID          int64      `json:"id"`
-	URL         string     `json:"url"`
-	Author      string     `json:"author"`
-	Body        string     `json:"body"`
-	State       string     `json:"state"`
-	CommitID    *string    `json:"commitId,omitzero"`
-	SubmittedAt *time.Time `json:"submittedAt,omitzero"`
+	ID          int64              `json:"id"`
+	URL         string             `json:"url"`
+	Author      string             `json:"author"`
+	Body        string             `json:"body"`
+	State       string             `json:"state"`
+	CommitID    *string            `json:"commitId,omitzero"`
+	SubmittedAt *instant.Timestamp `json:"submittedAt,omitzero"`
 }
 
 type ReviewPage struct {
@@ -130,18 +130,18 @@ type ReviewCommentPage struct {
 }
 
 type CheckRun struct {
-	ID               int64      `json:"id"`
-	Name             string     `json:"name"`
-	HeadSHA          string     `json:"headSha"`
-	Status           string     `json:"status"`
-	Conclusion       *string    `json:"conclusion,omitzero"`
-	URL              string     `json:"url"`
-	StartedAt        *time.Time `json:"startedAt,omitzero"`
-	CompletedAt      *time.Time `json:"completedAt,omitzero"`
-	Title            string     `json:"title"`
-	Summary          string     `json:"summary"`
-	Text             string     `json:"text"`
-	AnnotationsCount int64      `json:"annotationsCount"`
+	ID               int64              `json:"id"`
+	Name             string             `json:"name"`
+	HeadSHA          string             `json:"headSha"`
+	Status           string             `json:"status"`
+	Conclusion       *string            `json:"conclusion,omitzero"`
+	URL              string             `json:"url"`
+	StartedAt        *instant.Timestamp `json:"startedAt,omitzero"`
+	CompletedAt      *instant.Timestamp `json:"completedAt,omitzero"`
+	Title            string             `json:"title"`
+	Summary          string             `json:"summary"`
+	Text             string             `json:"text"`
+	AnnotationsCount int64              `json:"annotationsCount"`
 }
 
 type CheckPage struct {
@@ -167,13 +167,13 @@ type AnnotationPage struct {
 }
 
 type CommitStatus struct {
-	ID          int64     `json:"id"`
-	State       string    `json:"state"`
-	Context     string    `json:"context"`
-	Description *string   `json:"description,omitzero"`
-	URL         *string   `json:"url,omitzero"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID          int64             `json:"id"`
+	State       string            `json:"state"`
+	Context     string            `json:"context"`
+	Description *string           `json:"description,omitzero"`
+	URL         *string           `json:"url,omitzero"`
+	CreatedAt   instant.Timestamp `json:"createdAt"`
+	UpdatedAt   instant.Timestamp `json:"updatedAt"`
 }
 
 type StatusPage struct {

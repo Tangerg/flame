@@ -8,10 +8,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-	"github.com/Tangerg/qimu/distribution"
-	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/frame/distribution"
 )
 
 func TestReleaseStoreRejectsMissingCatalogBeforeCreatingDirectory(t *testing.T) {
@@ -27,7 +28,7 @@ func TestReleaseStoreRejectsMissingCatalogBeforeCreatingDirectory(t *testing.T) 
 	content, err := distribution.Open(distribution.Config{
 		Directory: filepath.Join(t.TempDir(), "content"), Admission: stores.Admission,
 		Trust:    func(context.Context, distribution.Source, distribution.Manifest, distribution.Lock) error { return nil },
-		Retained: func(context.Context, integrity.Digest) (bool, error) { return false, nil },
+		Retained: func(context.Context, framevalue.Digest) (bool, error) { return false, nil },
 	})
 	if err != nil {
 		t.Fatal(err)

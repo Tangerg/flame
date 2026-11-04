@@ -27,6 +27,12 @@ restart reconstructs that same snapshot; changing current credentials cannot
 change an existing handle. Embedding space identity includes the exact provider,
 model and configured endpoint, with credential rotation excluded.
 
+Connection probes use the capabilities declared by the released Scope binding.
+A binding with model discovery verifies credentials through that read. A
+stream-only binding, including DeepSeek, verifies one ordinary exchange with its
+default model; Flame does not infer discovery from the underlying wire protocol.
+The current Anthropic Messages binding sends its API key as a bearer credential.
+
 The backend retains original command input and results in its private database.
 An interrupted exchange remains unconfirmed and cannot be sent again under the
 same command identity. Streaming stores its final complete response or failure

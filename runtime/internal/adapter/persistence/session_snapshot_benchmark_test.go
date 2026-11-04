@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 )
 
 // Measure the coherent storage read and application validation together. Network
@@ -29,24 +29,24 @@ func BenchmarkSessionMaterialSnapshot(b *testing.B) {
 			tx := func(ctx context.Context, fn func(context.Context) error) error {
 				return sqlite.RunInTx(ctx, db, fn)
 			}
-			messages := newMessageStore(db)
-			runs := newRunStore(db)
+			messages := newMessageStore(databaseFor(db))
+			runs := newRunStore(databaseFor(db))
 			history, err := runsapp.NewConversationHistory(mustConversationStore(b, messages))
 			if err != nil {
 				b.Fatal(err)
 			}
-			sessions := newSessionStore(db)
-			items := newTranscriptStore(db)
+			sessions := newSessionStore(databaseFor(db))
+			items := newTranscriptStore(databaseFor(db))
 			stores, err := NewSessionStores(SessionStoresConfig{
-				ResourceRetirements: newResourceRetirementStore(db),
-				CommandAcceptances:  newCommandAcceptanceStore(db),
+				ResourceRetirements: newResourceRetirementStore(databaseFor(db)),
+				CommandAcceptances:  newCommandAcceptanceStore(databaseFor(db)),
 				Sessions:            sessions, Transcript: items, Runs: runs, History: history,
-				Interrupts:          newInterruptStore(db),
-				ExecutorCheckpoints: newExecutorCheckpointStore(db),
-				Plan:                newPlanStore(db), ApprovalRules: newApprovalRuleStore(db),
-				ApprovalModes: newModeStore(db), ToolResults: newToolResultStore(db),
-				ChildRunStarts: newChildRunStartReservationStore(db), Goals: newGoalStore(db),
-				GoalRuns: mustGoalRuns(b, newGoalStore(db)), Tx: tx,
+				Interrupts:          newInterruptStore(databaseFor(db)),
+				ExecutorCheckpoints: newExecutorCheckpointStore(databaseFor(db)),
+				Plan:                newPlanStore(databaseFor(db)), ApprovalRules: newApprovalRuleStore(databaseFor(db)),
+				ApprovalModes: newModeStore(databaseFor(db)), ToolResults: newToolResultStore(databaseFor(db)),
+				ChildRunStarts: newChildRunStartReservationStore(databaseFor(db)), Goals: newGoalStore(databaseFor(db)),
+				GoalRuns: mustGoalRuns(b, newGoalStore(databaseFor(db))), Tx: tx,
 				ReadSnapshot: func(ctx context.Context, read func(context.Context) error) error {
 					return sqlite.RunReadSnapshot(ctx, db, read)
 				},

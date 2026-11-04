@@ -68,6 +68,10 @@ function CopyItem({
 export const messageCopy = definePlugin({
   name: "flame.builtin.message-copy",
   setup(ctx) {
-    contributeLayout(ctx, "message.actions", { id: "copy", order: 0, component: CopyButton });
+    contributeLayout(ctx.contributions, "message.actions", {
+      id: "copy",
+      order: 0,
+      component: CopyButton,
+    });
   },
 });

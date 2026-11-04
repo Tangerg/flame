@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.qimu/portable/1",
+  "protocol": "io.github.tangerg.flame/plugin/1",
   "reference": "io.github.tangerg.flame.examples/reviews",
   "composition": "collection",
   "scope": "installation",
@@ -217,6 +217,15 @@
         "$defs": {
           "contract.Update": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "id": {
+                    "maxLength": 128
+                  }
+                }
+              }
+            ],
             "properties": {
               "expectedRevision": {
                 "allOf": [
@@ -228,7 +237,6 @@
                 "type": "integer"
               },
               "id": {
-                "maxLength": 128,
                 "type": "string"
               },
               "status": {
@@ -253,6 +261,15 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "id": {
+                "maxLength": 128
+              }
+            }
+          }
+        ],
         "properties": {
           "expectedRevision": {
             "allOf": [
@@ -264,7 +281,6 @@
             "type": "integer"
           },
           "id": {
-            "maxLength": 128,
             "type": "string"
           },
           "status": {

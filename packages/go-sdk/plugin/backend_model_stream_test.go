@@ -3,12 +3,13 @@ package plugin
 import (
 	"context"
 	"errors"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/scope/core/chat"
 	"iter"
 	"sync/atomic"
 	"testing"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestBackendDecoratorStreamsThroughCapturedModelNextWithoutDeadlock(t *testing.T) {
@@ -17,20 +18,20 @@ func TestBackendDecoratorStreamsThroughCapturedModelNextWithoutDeadlock(t *testi
 		t.Fatal(err)
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "external-model-decorator"}, nil)
-	backend, err := qimumcp.NewBackend(server)
+	backend, err := pluginmcp.NewBackend(server)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := method.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[chat.Request]) iter.Seq2[qimumcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
-		return func(yield func(qimumcp.StreamValue[chat.ResponseDelta, ModelResult], error) bool) {
-			next, err := qimumcp.CallbackFromContext(ctx)
+	if err := method.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[chat.Request]) iter.Seq2[pluginmcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
+		return func(yield func(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult], error) bool) {
+			next, err := pluginmcp.CallbackFromContext(ctx)
 			if err != nil {
-				yield(qimumcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
+				yield(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
 				return
 			}
 			request := command.Input.Clone()
 			request.Messages[0] = chat.NewUserMessage(chat.NewTextPart("transformed by decorator"))
-			if !yield(qimumcp.StreamValue[chat.ResponseDelta, ModelResult]{Chunk: &chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("outer ")}}}, nil) {
+			if !yield(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult]{Chunk: &chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("outer ")}}}, nil) {
 				return
 			}
 			for value, err := range StreamModel(ctx, next, command.ID, request) {
@@ -43,7 +44,7 @@ func TestBackendDecoratorStreamsThroughCapturedModelNextWithoutDeadlock(t *testi
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "host-model-chain"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	session := connectPublishedBackend(t, backend, server, client)
@@ -52,7 +53,7 @@ func TestBackendDecoratorStreamsThroughCapturedModelNextWithoutDeadlock(t *testi
 		t.Fatal(err)
 	}
 	var innerCalls atomic.Int32
-	next, err := NewModelStreamCallback(func(_ context.Context, command qimumcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+	next, err := NewModelStreamCallback(func(_ context.Context, command pluginmcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 		return func(yield func(*chat.ResponseDelta, error) bool) {
 			innerCalls.Add(1)
 			if command.ID != "original-decorated-model" || command.Input.Messages[0].Text() != "transformed by decorator" {
@@ -65,16 +66,16 @@ func TestBackendDecoratorStreamsThroughCapturedModelNextWithoutDeadlock(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, release, err := callbacks.Open(t.Context(), session, qimumcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, next)
+	ref, release, err := callbacks.Open(t.Context(), session, pluginmcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, next)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer release()
-	metadata, err := qimumcp.CallbackMetadata(ref)
+	metadata, err := pluginmcp.CallbackMetadata(ref)
 	if err != nil {
 		t.Fatal(err)
 	}
-	binding, err := qimumcp.Resolve(t.Context(), session, method.Descriptor().Name)
+	binding, err := pluginmcp.Resolve(t.Context(), session, method.Descriptor().Name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,11 +85,11 @@ func TestBackendDecoratorStreamsThroughCapturedModelNextWithoutDeadlock(t *testi
 	}
 	var outer chat.ResponseAccumulator
 	var inner *ModelResult
-	sequence := method.StreamWithMetadata(t.Context(), binding, callbacks, qimumcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, "original-decorated-model", *request, metadata)
-	for index := range metadata.Meta[qimumcp.CallbackMetadataKey] {
-		metadata.Meta[qimumcp.CallbackMetadataKey][index] = ' '
+	sequence := method.StreamWithMetadata(t.Context(), binding, callbacks, pluginmcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, "original-decorated-model", *request, metadata)
+	for index := range metadata.Meta[pluginmcp.CallbackMetadataKey] {
+		metadata.Meta[pluginmcp.CallbackMetadataKey][index] = ' '
 	}
-	if err := metadata.Set(qimumcp.CallbackMetadataKey, "replacement callback"); err != nil {
+	if err := metadata.Set(pluginmcp.CallbackMetadataKey, "replacement callback"); err != nil {
 		t.Fatal(err)
 	}
 	for value, err := range sequence {

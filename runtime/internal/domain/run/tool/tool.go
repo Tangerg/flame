@@ -2,11 +2,11 @@
 package tool
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"errors"
 	"fmt"
 	"unicode/utf8"
-
-	"github.com/Tangerg/scope/core/chat"
 )
 
 // errInvalidDefinition reports registered Tool metadata that cannot be used as
@@ -29,13 +29,13 @@ func (g Group) Valid() bool { return g == GroupRoot || g == GroupDelegated }
 
 // Tool projects a Scope definition with the Runtime-owned safety class.
 type Tool struct {
-	chat.ToolDefinition
+	toolcontract.Definition
 	SafetyClass SafetyClass
 }
 
 // Validate checks the metadata invariants shared by every Tool catalog.
 func (t Tool) Validate() error {
-	if err := t.ToolDefinition.Validate(); err != nil {
+	if err := t.Definition.Validate(); err != nil {
 		return fmt.Errorf("%w: %w", errInvalidDefinition, err)
 	}
 	if !utf8.ValidString(t.Description) {

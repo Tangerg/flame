@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	identitytool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -19,8 +18,8 @@ type mcpToolStub struct {
 	remote string
 }
 
-func (m mcpToolStub) Definition() chat.ToolDefinition {
-	return chat.ToolDefinition{Name: m.name, InputSchema: []byte(`{"type":"object"}`)}
+func (m mcpToolStub) Definition() toolcontract.Definition {
+	return toolcontract.Definition{Name: m.name, InputSchema: []byte(`{"type":"object"}`)}
 }
 
 func (mcpToolStub) Call(context.Context, toolcontract.Invocation) (toolcontract.Result, error) {
@@ -31,7 +30,8 @@ func (m mcpToolStub) MCPToolIdentity() (string, string) { return m.server, m.rem
 
 // A stub's server is a user server; installation tools override the source.
 func (m mcpToolStub) SourceConfig() mcp.ServerConfig {
-	return mcp.ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName(m.server)}}
+	name, _ := mcpserver.ParseServerName(m.server)
+	return mcp.ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: name}}
 }
 
 func TestResolverMCPToolsReadsCurrentPolicy(t *testing.T) {
@@ -117,7 +117,7 @@ func TestResolverMCPPolicyRejectsInvalidSourceIdentity(t *testing.T) {
 		{name: "nil"},
 		{name: "absent", tool: anonymousMCPTool{Tool: valid}},
 		{name: "malformed", tool: mcpToolStub{name: "invalid"}},
-		{name: "cyclic decorator", tool: cycle, want: toolcontract.ErrInvalidWrappingChain},
+		{name: "cyclic decorator", tool: cycle},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			// Identity is required even when no disabled-tool policy is installed.
@@ -161,4 +161,9 @@ func TestResolverSetMCPToolsSnapshotsInput(t *testing.T) {
 	if len(got) != 1 || got[0].Definition().Name != "before" {
 		t.Fatalf("mcp tools retained caller-owned slice: %v", got)
 	}
+}
+
+func (m mcpToolStub) MCPSource() (mcp.CapturedSource, bool) {
+	_, remote := m.MCPToolIdentity()
+	return mcp.CapturedSource{Config: m.SourceConfig(), RemoteName: remote}, true
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/invopop/jsonschema"
+	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 var (
@@ -29,10 +29,10 @@ type Snapshot struct {
 	Rules    []Rule `json:"rules"`
 }
 
-func (Snapshot) JSONSchemaExtend(schema *jsonschema.Schema) {
-	if rules, ok := schema.Properties.Get("rules"); ok {
-		rules.MaxItems = new(uint64(MaxRules))
-	}
+func (Snapshot) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"rules": {MaxItems: new(uint64(MaxRules))},
+	}}
 }
 
 type Policy struct {

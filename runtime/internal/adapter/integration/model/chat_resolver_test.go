@@ -3,10 +3,11 @@ package model
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
-	"github.com/Tangerg/scope/core/chat"
 	"path/filepath"
 	"testing"
+
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
+	"github.com/Tangerg/scope/core/chat"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"

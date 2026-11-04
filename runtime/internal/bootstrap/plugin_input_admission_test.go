@@ -6,11 +6,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestReviewTypedInputRefusalPreservesIdentityAcrossExecutableCLI(t *testing.T) {
@@ -53,7 +54,7 @@ func TestReviewTypedInputRefusalPreservesIdentityAcrossExecutableCLI(t *testing.
 		}
 	}
 	request.Input = `{"id":"example-review","expectedRevision":0,"status":"resolved"}`
-	want, err := jsonvalue.Parse([]byte(`{"type":"invalidUpdate"}`))
+	want, err := framevalue.ParseJSON([]byte(`{"type":"invalidUpdate"}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +67,7 @@ func TestReviewTypedInputRefusalPreservesIdentityAcrossExecutableCLI(t *testing.
 		if err := json.Unmarshal(output, &reply, json.RejectUnknownMembers(true)); err != nil {
 			t.Fatal(err)
 		}
-		actual, err := jsonvalue.Parse([]byte(reply.Output))
+		actual, err := framevalue.ParseJSON([]byte(reply.Output))
 		if err != nil || actual != want || reply.Failure != nil {
 			t.Fatalf("admitted business refusal lost its original receipt: %+v, %v", reply, err)
 		}

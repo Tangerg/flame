@@ -2,21 +2,18 @@ package terminal
 
 import (
 	"fmt"
+	"github.com/Tangerg/oolong/ui/core/scene"
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/keymap"
-	"github.com/Tangerg/oolong/core/layout"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/keymap"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
-type interruptSummaryPane struct {
-	viewport *headless.Viewport
-	form     *kit.Form
-}
+type interruptSummaryPane = confirmationContentPane
 
 // interruptReviewCancellationReason is the reason a cancel decision carries,
 // not a fourth decision. It stays out of the block below: a spelled-out value
@@ -40,24 +37,6 @@ func (d interruptReviewDecision) Validate() error {
 	}
 }
 
-func (i *interruptSummaryPane) Draw(frame headless.Frame) {
-	rows := frame.Subs((layout.Flow{Axis: layout.Down}).Rects(frame.Bounds().Size(), []layout.Slot{
-		{Size: layout.Flex(1)},
-		{Size: layout.Fixed(min(i.form.HeightForWidth(frame.Bounds().Dx()), 7))},
-	}))
-	i.viewport.Draw(rows[0])
-	i.form.Draw(rows[1])
-}
-
-func (i *interruptSummaryPane) Handle(event input.Event) bool {
-	if i.form.Handle(event) {
-		return true
-	}
-	return i.viewport.Handle(event)
-}
-
-func (i *interruptSummaryPane) Focus(has bool) { i.form.Focus(has) }
-
 func (p *interruptPrompts) openInterruptSummary() {
 	review := p.review
 	if review == nil || !review.Reviewing() {
@@ -68,29 +47,35 @@ func (p *interruptPrompts) openInterruptSummary() {
 		return
 	}
 	decision := interruptReviewSubmit
-	choice := headless.NewSelect(headless.SelectConfig[interruptReviewDecision]{
-		Same:  headless.Equal[interruptReviewDecision],
-		Label: "Review complete", Value: headless.Bind(&decision), Rows: 3,
+	choice := base.NewSelect(base.SelectConfig[interruptReviewDecision]{
+		Same:  base.Equal[interruptReviewDecision],
+		Label: "Review complete", Initial: decision, Rows: 3,
 	})
-	choice.SetOptions([]headless.Option[interruptReviewDecision]{
+	choice.SetOptions([]base.Option[interruptReviewDecision]{
 		{Label: "Submit all decisions", Value: interruptReviewSubmit},
 		{Label: "Go back and edit", Value: interruptReviewBack},
 		{Label: "Cancel the run", Value: interruptReviewCancel},
 	})
-	form := headless.NewForm(choice)
-	form.Keys = headless.DefaultFormKeys()
-	var dialog *kit.Dialog
+	form := kit.FormConfig{Fields: []base.Field{choice}, Theme: p.theme, Glyphs: p.glyphs,
+		Hints: []keymap.Action{base.Submit, base.Cancel}}
+	form.Keys = base.DefaultFormKeys()
+	var dialog *presentationDialog
 	settled := false
-	form.Done = func() {
+	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
 		if settled || p.review != review || p.reviewDialog != dialog {
-			return
+			return scene.Unchanged, nil
 		}
+		selected, selectedOK := choice.Chosen()
+		if !selectedOK {
+			return scene.Unchanged, fmt.Errorf("review decision is required")
+		}
+		decision := selected.Value
 		if err := decision.Validate(); err != nil {
 			p.run.fail(err)
-			return
+			return scene.Unchanged, nil
 		}
 		settled = true
-		dialog.Controller().Dismiss()
+		dialog.Dismiss()
 		p.reviewDialog = nil
 		switch decision {
 		case interruptReviewSubmit:
@@ -100,33 +85,30 @@ func (p *interruptPrompts) openInterruptSummary() {
 		case interruptReviewCancel:
 			p.abort(interruptReviewCancellationReason)
 		}
+		return scene.Applied, nil
 	}
-	form.GaveUp = func() {
+	leave := func() {
 		if settled || p.review != review || p.reviewDialog != dialog {
 			return
 		}
 		settled = true
-		dialog.Controller().Dismiss()
+		dialog.Dismiss()
 		p.reviewDialog = nil
 		if !p.backInterrupt() {
 			p.abort(interruptReviewCancellationReason)
 		}
 	}
-	dressed := kit.NewForm(kit.FormConfig{
-		Theme: p.theme, Glyphs: p.glyphs, Controller: form,
-		Hints: []keymap.Action{headless.Submit, headless.Cancel},
-	})
+	dressed := kit.NewForm(form)
 	summary := kit.NewParagraph(interruptSummary(review), p.theme.Text)
-	viewport := headless.NewViewport(headless.Static{Of: summary})
+	viewport := base.NewViewport(base.ViewportConfig{Content: passiveElement(summary)})
 	viewport.Scroll().Wheel(p.wheel)
 	pane := &interruptSummaryPane{viewport: viewport, form: dressed}
-	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: p.stack, Theme: p.theme, Glyphs: p.glyphs,
-		Title: "Review interrupts", Body: pane,
+	dialog = newPresentationDialog(p.stack, kit.DialogConfig{Theme: p.theme, Glyphs: p.glyphs,
+		Title: "Review interrupts", Body: formNavigation(pane.Element(), leave),
 		Where: layout.Placement{Width: 88, Height: 22},
 	})
 	p.reviewDialog = dialog
-	dialog.Controller().Show()
+	dialog.Show()
 }
 
 func interruptSummary(review *interruptReview) string {

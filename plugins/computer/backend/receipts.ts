@@ -8,8 +8,8 @@ import {
   parseJSON,
   type Invocation,
   type ReceiptRequest,
-} from "@qimu/node";
-import { validCommand } from "@qimu/node/contract";
+} from "@flame/backend-sdk/mcp";
+import { validCommand } from "@flame/backend-sdk/mcp/contract";
 import type { ToolReceipt } from "@flame/backend-sdk";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { admitToolResult, projectToolOutput } from "./tool-result";

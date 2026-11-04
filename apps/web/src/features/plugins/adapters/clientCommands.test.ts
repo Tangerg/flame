@@ -1,7 +1,7 @@
 import { asyncDisposeSymbol } from "dougong";
 import { expect, it, onTestFinished, vi } from "vitest";
 import { type ClientCommandInvocation } from "@flame/component-sdk";
-import { definePlugin, type ContributionLifetime } from "@/extensions/definePlugin";
+import { definePlugin, type ContributionScope } from "@/extensions/definePlugin";
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { contributionsTo } from "@/extensions/kernel";
 import { usePluginErrorStore } from "@/extensions/errors";
@@ -15,12 +15,12 @@ vi.mock("@/features/notifications/public/notifications", async (original) => ({
 }));
 
 async function fixture(captureSessionId: () => string | undefined = () => "captured") {
-  let lifetime!: ContributionLifetime;
+  let lifetime!: ContributionScope;
   const host = await startKernel([
     definePlugin({
       name: "test.installed-commands",
       setup(scope) {
-        lifetime = scope.lifetime("component");
+        lifetime = scope.contributions.child("component");
       },
     }),
   ]);
@@ -28,7 +28,7 @@ async function fixture(captureSessionId: () => string | undefined = () => "captu
   vi.mocked(notifyFrom).mockClear();
   usePluginErrorStore.getState().clearAll();
   const controller = new AbortController();
-  const signal = AbortSignal.any([controller.signal, lifetime.signal]);
+  const signal = AbortSignal.any([controller.signal, lifetime.lifetime.signal]);
   const register = createClientCommandRegistration(
     lifetime,
     signal,
@@ -66,7 +66,7 @@ it("captures the invocation's Session synchronously and joins accepted work on w
   });
   try {
     await vi.waitFor(() => expect(contributionsTo(COMMAND)).toHaveLength(0));
-    expect(signal.aborted).toBe(true);
+    await vi.waitFor(() => expect(signal.aborted).toBe(true));
     expect(closed).toBe(false);
     await expect(command.run()).rejects.toBe(signal.reason);
   } finally {

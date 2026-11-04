@@ -38,10 +38,14 @@ export async function stageDesktopCompanions({ arch, output }) {
       "build",
       "-trimpath",
       "-o",
-      join(destination, "qimu-runner"),
-      "./runner/cmd/qimu-runner",
+      join(destination, "frame-runner"),
+      "github.com/Tangerg/frame/cmd/frame-runner",
     ],
-    { cwd: join(repository, "qimu"), env: target, maxBuffer: 32 * 1024 * 1024 },
+    {
+      cwd: join(repository, "runtime"),
+      env: target,
+      maxBuffer: 32 * 1024 * 1024,
+    },
   );
   await execute(
     "go",

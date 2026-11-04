@@ -2,7 +2,7 @@ package wire
 
 import (
 	guardrail "github.com/Tangerg/flame/plugins/guardrails/internal/domain"
-	"github.com/invopop/jsonschema"
+	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 type ReplaceInput struct {
@@ -10,7 +10,8 @@ type ReplaceInput struct {
 	Phrases          []string `json:"phrases"`
 }
 
-func (ReplaceInput) JSONSchemaExtend(schema *jsonschema.Schema) {
-	phrases, _ := schema.Properties.Get("phrases")
-	phrases.MaxItems = new(uint64(guardrail.MaxPhrases))
+func (ReplaceInput) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"phrases": {MaxItems: new(uint64(guardrail.MaxPhrases))},
+	}}
 }

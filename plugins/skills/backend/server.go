@@ -5,11 +5,12 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func newServer(learning *learner) (*sdk.Server, error) {
@@ -29,7 +30,7 @@ func newServer(learning *learner) (*sdk.Server, error) {
 		return nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.skills", Version: "5.0.0"}, nil)
-	backend, err := qimumcp.NewBackend(server)
+	backend, err := pluginmcp.NewBackend(server)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +38,7 @@ func newServer(learning *learner) (*sdk.Server, error) {
 		pluginstorage.RegisterReceipts(backend, learning.db),
 		registerReviews(backend, learning.db),
 		registerDiscovery(backend, learning.db),
-		mine.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[skilllearning.Run]) (skilllearning.MineResult, error) {
+		mine.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[skilllearning.Run]) (skilllearning.MineResult, error) {
 			return learningCommand(ctx, learning, mine.Name(), command, skilllearning.Run.Validate, func(ctx context.Context, run skilllearning.Run) (skilllearning.MineResult, error) {
 				result, err := learning.mine(ctx, run, remoteInputs{})
 				if err != nil || result.Proposal == nil {
@@ -53,7 +54,7 @@ func newServer(learning *learner) (*sdk.Server, error) {
 			})
 
 		}),
-		archive.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[skilllearning.ArchiveRequest]) (skilllearning.ArchiveAdvice, error) {
+		archive.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[skilllearning.ArchiveRequest]) (skilllearning.ArchiveAdvice, error) {
 			return learningCommand(ctx, learning, archive.Name(), command, func(request skilllearning.ArchiveRequest) error {
 				if request.Now.IsZero() {
 					return errors.New("skill learning: archive time is required")
@@ -73,7 +74,7 @@ func newServer(learning *learner) (*sdk.Server, error) {
 	return server, nil
 }
 
-func learningCommand[P, R any](ctx context.Context, l *learner, method string, command qimumcp.Command[P], validate func(P) error, execute func(context.Context, P) (R, error), record func(context.Context, P, R) error) (R, error) {
+func learningCommand[P, R any](ctx context.Context, l *learner, method string, command pluginmcp.Command[P], validate func(P) error, execute func(context.Context, P) (R, error), record func(context.Context, P, R) error) (R, error) {
 	var zero R
 	input, err := command.RequestInput()
 	if err != nil {
@@ -81,11 +82,11 @@ func learningCommand[P, R any](ctx context.Context, l *learner, method string, c
 	}
 	var request P
 	prepared, reply, err := pluginstorage.AdmitCommand(ctx, l.db, method, string(command.ID), input, func(context.Context) error {
-		if err := json.Unmarshal(input.JSON(), &request, json.RejectUnknownMembers(true)); err != nil {
+		if err := json.Unmarshal(input.Bytes(), &request, json.RejectUnknownMembers(true)); err != nil {
 			return err
 		}
 		if err := validate(request); err != nil {
-			return &portable.Refusal{Code: "invalid_input", Message: err.Error()}
+			return &framemcp.Refusal{Code: "invalid_input", Message: err.Error()}
 		}
 		return nil
 	})
@@ -93,19 +94,19 @@ func learningCommand[P, R any](ctx context.Context, l *learner, method string, c
 		return zero, err
 	}
 	if len(reply) != 0 {
-		return qimumcp.DecodeReply[R](reply)
+		return pluginmcp.DecodeReply[R](reply)
 	}
 	if !prepared.NewlyAdmitted() {
 		return zero, pluginstorage.ErrCommandUnconfirmed
 	}
 	value, err := execute(ctx, request)
 	if errors.Is(err, errInvalidSkillDraft) {
-		refusal := &portable.Refusal{Code: "invalid_skill_draft", Message: errInvalidSkillDraft.Error()}
-		reply, encodeErr := qimumcp.EncodeReply(zero, refusal, nil)
+		refusal := &framemcp.Refusal{Code: "invalid_skill_draft", Message: errInvalidSkillDraft.Error()}
+		reply, encodeErr := pluginmcp.EncodeReply(zero, refusal, nil)
 		if encodeErr != nil {
 			return zero, encodeErr
 		}
-		if settleErr := prepared.SettleExternal(ctx, reply.JSON(), nil); settleErr != nil {
+		if settleErr := prepared.SettleExternal(ctx, reply.Bytes(), nil); settleErr != nil {
 			return zero, settleErr
 		}
 		return zero, refusal
@@ -113,7 +114,7 @@ func learningCommand[P, R any](ctx context.Context, l *learner, method string, c
 	if err != nil {
 		return zero, err
 	}
-	outcome, err := qimumcp.EncodeReply(value, nil, nil)
+	outcome, err := pluginmcp.EncodeReply(value, nil, nil)
 	if err != nil {
 		return zero, err
 	}
@@ -121,13 +122,13 @@ func learningCommand[P, R any](ctx context.Context, l *learner, method string, c
 	if record != nil {
 		commit = func(tx context.Context) error { return record(tx, request, value) }
 	}
-	if err := prepared.SettleExternal(ctx, outcome.JSON(), commit); err != nil {
-		if _, known := errors.AsType[*portable.Refusal](err); known {
-			refusal, encodeErr := qimumcp.EncodeReply(zero, err, nil)
+	if err := prepared.SettleExternal(ctx, outcome.Bytes(), commit); err != nil {
+		if _, known := errors.AsType[*framemcp.Refusal](err); known {
+			refusal, encodeErr := pluginmcp.EncodeReply(zero, err, nil)
 			if encodeErr != nil {
 				return zero, encodeErr
 			}
-			if settleErr := prepared.SettleExternal(ctx, refusal.JSON(), nil); settleErr != nil {
+			if settleErr := prepared.SettleExternal(ctx, refusal.Bytes(), nil); settleErr != nil {
 				return zero, settleErr
 			}
 		}

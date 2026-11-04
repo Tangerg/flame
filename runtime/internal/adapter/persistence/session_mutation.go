@@ -7,70 +7,65 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 )
 
 // Insert persists one already-decided initial Session. Identity, timestamps,
 // lineage, editable values, and revision all belong to the aggregate.
 func (s *SessionStore) Insert(ctx context.Context, value session.Session) error {
-	firstRevision := exactint.First().Value()
-	if value.Revision() != firstRevision {
-		return fmt.Errorf("sqlite: initial Session revision is %d, want %d: %w", value.Revision(), firstRevision, session.ErrInvalid)
-	}
-	if err := s.execInsert(ctx, sqlite.Connection(ctx, s.db), value); err != nil {
-		return err
-	}
-	return nil
+	return s.db.write(ctx, func(ctx context.Context) error {
+		firstRevision := exactint.First().Value()
+		if value.Revision() != firstRevision {
+			return fmt.Errorf("sqlite: initial Session revision is %d, want %d: %w", value.Revision(), firstRevision, session.ErrInvalid)
+		}
+		if err := s.execInsert(ctx, s.db.connection(ctx), value); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 // Save persists an application-decided replacement iff expectedRevision is
 // still current. It never normalizes fields, reads a clock, applies a Patch, or
 // assigns the next revision.
-func (s *SessionStore) Save(
-	ctx context.Context,
-	change session.Replacement,
-) error {
-	expected, replacing := change.Expected()
-	if !replacing {
-		return fmt.Errorf("sqlite: initial Session replacement passed to Save: %w", session.ErrInvalid)
-	}
-	expectedRevision := expected.Revision()
-	replacement := change.State()
-	snapshot := replacement.Snapshot()
-	titleSearch, err := session.NormalizeCatalogText(snapshot.Title)
-	if err != nil {
-		return fmt.Errorf("sqlite: normalize Session title search material: %w", err)
-	}
-	workspaceSearch, err := session.NormalizeCatalogText(snapshot.Workspace.Path())
-	if err != nil {
-		return fmt.Errorf("sqlite: normalize Session workspace search material: %w", err)
-	}
-	result, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `UPDATE sessions SET
+func (s *SessionStore) Save(ctx context.Context, change session.Replacement) error {
+	return s.db.write(ctx, func(ctx context.Context) error {
+		expected, replacing := change.Expected()
+		if !replacing {
+			return fmt.Errorf("sqlite: initial Session replacement passed to Save: %w", session.ErrInvalid)
+		}
+		expectedRevision := expected.Revision()
+		replacement := change.State()
+		snapshot := replacement.Snapshot()
+		titleSearch, err := session.NormalizeCatalogText(snapshot.Title)
+		if err != nil {
+			return fmt.Errorf("sqlite: normalize Session title search material: %w", err)
+		}
+		workspaceSearch, err := session.NormalizeCatalogText(snapshot.Workspace.Path())
+		if err != nil {
+			return fmt.Errorf("sqlite: normalize Session workspace search material: %w", err)
+		}
+		result, err := s.db.connection(ctx).ExecContext(ctx, `UPDATE sessions SET
 		title = ?, title_search = ?, workspace_path = ?, workspace_search = ?, parent_id = ?, created_at = ?, updated_at = ?,
 		provider = ?, model = ?, reasoning_effort = ?, favorite = ?, isolated = ?, revision = ?
-		WHERE id = ? AND revision = ?`,
-		snapshot.Title, titleSearch, snapshot.Workspace.Path(), workspaceSearch, snapshot.ParentID,
-		snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(),
-		snapshot.Selection.Provider(), snapshot.Selection.Model(), snapshot.Selection.ReasoningEffort(),
-		boolToInt(snapshot.Favorite), boolToInt(snapshot.Isolated),
-		snapshot.Revision, snapshot.ID, expectedRevision,
-	)
-	if err != nil {
-		return fmt.Errorf("sqlite: save Session: %w", err)
-	}
-	written, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: inspect Session save: %w", err)
-	}
-	if written == 1 {
-		return nil
-	}
-	if _, err := s.Get(ctx, snapshot.ID); errors.Is(err, session.ErrNotFound) {
-		return session.ErrNotFound
-	} else if err != nil {
-		return err
-	}
-	return session.ErrRevisionConflict
+		WHERE id = ? AND revision = ?`, snapshot.Title, titleSearch, snapshot.Workspace.Path(), workspaceSearch, snapshot.ParentID, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(), snapshot.Selection.Provider(), snapshot.Selection.Model(), snapshot.Selection.ReasoningEffort(), boolToInt(snapshot.Favorite), boolToInt(snapshot.Isolated), snapshot.Revision, snapshot.ID, expectedRevision)
+		if err != nil {
+			return fmt.Errorf("sqlite: save Session: %w", err)
+		}
+		written, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("sqlite: inspect Session save: %w", err)
+		}
+		if written == 1 {
+			return nil
+		}
+		if _, err := s.Get(ctx, snapshot.ID); errors.Is(err, session.ErrNotFound) {
+			return session.ErrNotFound
+		} else if err != nil {
+			return err
+		}
+		return session.ErrRevisionConflict
+	})
 }
 
 // Delete is idempotent. It joins an ambient transaction through sqlitebase.Connection(ctx).
@@ -78,17 +73,16 @@ func (s *SessionStore) Delete(ctx context.Context, id string) error {
 	if err := validateSessionResource("delete Session", id); err != nil {
 		return err
 	}
-	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
-		if _, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM model_invocations WHERE session_id=? AND endpoint_json IS NOT NULL`, id); err != nil {
+	return s.db.write(ctx, func(ctx context.Context) error {
+		if _, err := s.db.connection(ctx).ExecContext(ctx, `DELETE FROM model_invocations WHERE session_id=? AND endpoint_json IS NOT NULL`, id); err != nil {
 			return fmt.Errorf("sqlite: delete Session endpoints: %w", err)
 		}
-		if _, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM sessions WHERE id = ?`, id); err != nil {
+		if _, err := s.db.connection(ctx).ExecContext(ctx, `DELETE FROM sessions WHERE id = ?`, id); err != nil {
 			return fmt.Errorf("sqlite: delete Session: %w", err)
 		}
 		return nil
 	})
 }
-
 func (s *SessionStore) execInsert(ctx context.Context, executor sqlite.Executor, value session.Session) error {
 	snapshot := value.Snapshot()
 	titleSearch, err := session.NormalizeCatalogText(snapshot.Title)
@@ -99,14 +93,7 @@ func (s *SessionStore) execInsert(ctx context.Context, executor sqlite.Executor,
 	if err != nil {
 		return fmt.Errorf("sqlite: normalize Session workspace search material: %w", err)
 	}
-	_, err = executor.ExecContext(ctx,
-		`INSERT INTO sessions(`+sessionColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		snapshot.ID, snapshot.Title, titleSearch, snapshot.Workspace.Path(), workspaceSearch, snapshot.ParentID,
-		snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(),
-		snapshot.Selection.Provider(), snapshot.Selection.Model(), snapshot.Selection.ReasoningEffort(),
-		boolToInt(snapshot.Favorite), boolToInt(snapshot.Isolated),
-		snapshot.Revision,
-	)
+	_, err = executor.ExecContext(ctx, `INSERT INTO sessions(`+sessionColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, snapshot.ID, snapshot.Title, titleSearch, snapshot.Workspace.Path(), workspaceSearch, snapshot.ParentID, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(), snapshot.Selection.Provider(), snapshot.Selection.Model(), snapshot.Selection.ReasoningEffort(), boolToInt(snapshot.Favorite), boolToInt(snapshot.Isolated), snapshot.Revision)
 	if err != nil {
 		return fmt.Errorf("sqlite: insert Session: %w", err)
 	}

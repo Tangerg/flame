@@ -6,50 +6,52 @@ import (
 	"errors"
 	"iter"
 
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func ModelStreamMethod() (*qimumcp.StreamingMethod[chat.Request, chat.ResponseDelta, ModelResult], error) {
-	return qimumcp.NewStreamingMethod[chat.Request, chat.ResponseDelta, ModelResult](qimumcp.MethodConfig{
-		Name: "flame.model/stream.v1", Kind: portable.Mutation, Target: extension.ScopeCall,
+func ModelStreamMethod() (*pluginmcp.StreamingMethod[chat.Request, chat.ResponseDelta, ModelResult], error) {
+	return pluginmcp.NewStreamingMethod[chat.Request, chat.ResponseDelta, ModelResult](portable.MethodConfig{
+		Name: "flame.model/stream.v1", Kind: portable.Command, Target: extension.ScopeCall,
 		Description: "Consume the captured model's canonical stream and final outcome.",
 	})
 }
 
-func StreamModel(ctx context.Context, ref qimumcp.CallbackRef, id qimumcp.CommandID, request *chat.Request) iter.Seq2[qimumcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
+func StreamModel(ctx context.Context, ref pluginmcp.CallbackRef, id pluginmcp.CommandID, request *chat.Request) iter.Seq2[pluginmcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
 	method, err := ModelStreamMethod()
 	if err == nil {
 		err = request.Validate()
 	}
 	if err != nil {
-		return func(yield func(qimumcp.StreamValue[chat.ResponseDelta, ModelResult], error) bool) {
-			yield(qimumcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
+		return func(yield func(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult], error) bool) {
+			yield(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
 		}
 	}
-	return qimumcp.StreamHost(ctx, ref, method, qimumcp.CommandID(id), *request.Clone())
+	return pluginmcp.StreamHost(ctx, ref, method, pluginmcp.CommandID(id), *request.Clone())
 }
 
-func NewModelStreamCallback(stream func(context.Context, qimumcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error]) (qimumcp.Callback, error) {
+func NewModelStreamCallback(stream func(context.Context, pluginmcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error]) (pluginmcp.Callback, error) {
 	if stream == nil {
-		return qimumcp.Callback{}, errors.New("plugin: model stream owner is required")
+		return pluginmcp.Callback{}, errors.New("plugin: model stream owner is required")
 	}
 	method, err := ModelStreamMethod()
 	if err != nil {
-		return qimumcp.Callback{}, err
+		return pluginmcp.Callback{}, err
 	}
-	return qimumcp.NewStreamingCallback(method, func(ctx context.Context, command qimumcp.Command[chat.Request]) iter.Seq2[qimumcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
-		return func(yield func(qimumcp.StreamValue[chat.ResponseDelta, ModelResult], error) bool) {
+	return pluginmcp.NewStreamingCallback(method, func(ctx context.Context, command pluginmcp.Command[chat.Request]) iter.Seq2[pluginmcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
+		return func(yield func(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult], error) bool) {
 			if err := command.Input.Validate(); err != nil {
-				yield(qimumcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
+				yield(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
 				return
 			}
 			command.Input = *command.Input.Clone()
 			ctx, err := modelCallContext(ctx, string(command.ID))
 			if err != nil {
-				yield(qimumcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
+				yield(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
 				return
 			}
 			modelStreamResult(ctx, func() iter.Seq2[*chat.ResponseDelta, error] { return stream(ctx, command) })(yield)
@@ -57,13 +59,13 @@ func NewModelStreamCallback(stream func(context.Context, qimumcp.Command[chat.Re
 	})
 }
 
-func modelStreamResult(ctx context.Context, source func() iter.Seq2[*chat.ResponseDelta, error]) iter.Seq2[qimumcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
-	return func(yield func(qimumcp.StreamValue[chat.ResponseDelta, ModelResult], error) bool) {
+func modelStreamResult(ctx context.Context, source func() iter.Seq2[*chat.ResponseDelta, error]) iter.Seq2[pluginmcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
+	return func(yield func(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult], error) bool) {
 		var accumulated chat.ResponseAccumulator
 		var failure error
-		capacity, ok := qimumcp.StreamCapacity(ctx)
+		capacity, ok := pluginmcp.StreamCapacity(ctx)
 		if !ok || capacity <= 0 {
-			yield(qimumcp.StreamValue[chat.ResponseDelta, ModelResult]{}, errors.New("plugin: model stream response capacity is required"))
+			yield(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult]{}, errors.New("plugin: model stream response capacity is required"))
 			return
 		}
 		var consumed int64
@@ -82,7 +84,7 @@ func modelStreamResult(ctx context.Context, source func() iter.Seq2[*chat.Respon
 				failure = err
 				break
 			}
-			if !yield(qimumcp.StreamValue[chat.ResponseDelta, ModelResult]{Chunk: delta.Clone()}, nil) {
+			if !yield(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult]{Chunk: delta.Clone()}, nil) {
 				return
 			}
 		}
@@ -93,9 +95,9 @@ func modelStreamResult(ctx context.Context, source func() iter.Seq2[*chat.Respon
 		}
 		result, err := modelResult(response, failure)
 		if err != nil {
-			yield(qimumcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
+			yield(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
 			return
 		}
-		yield(qimumcp.StreamValue[chat.ResponseDelta, ModelResult]{Result: &result}, nil)
+		yield(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult]{Result: &result}, nil)
 	}
 }

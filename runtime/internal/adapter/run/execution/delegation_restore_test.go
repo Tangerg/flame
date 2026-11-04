@@ -119,10 +119,9 @@ func assertWaitingDelegateBoundary(t *testing.T, barrier runs.TreeBarrierCommit)
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The cut also carries the Tool child that holds the input wait, which is an
-	// execution detail of the member that called it rather than a member of its
-	// own. What the barrier must agree on is that every member it suspends was
-	// captured, and that no Interrupt is addressed to anything else.
+	// The cut also carries the task's inner Interaction holding its Tool wait.
+	// It shares the task's product member. Every suspended member must be
+	// captured, and every Interrupt must address one of those members.
 	captured := make(map[string]struct{}, len(checkpointState.handoff.progress))
 	for processID := range checkpointState.handoff.progress {
 		captured[processID.String()] = struct{}{}

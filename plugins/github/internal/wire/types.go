@@ -1,7 +1,7 @@
 package wire
 
 import (
-	"time"
+	"github.com/Tangerg/flame/packages/go-sdk/instant"
 )
 
 type State string
@@ -36,19 +36,19 @@ type FileInput struct {
 }
 
 type Issue struct {
-	ID          int64     `json:"id" jsonschema:"minimum=1"`
-	Repository  string    `json:"repository"`
-	Number      int64     `json:"number" jsonschema:"minimum=1"`
-	Title       string    `json:"title"`
-	Body        string    `json:"body"`
-	State       State     `json:"state"`
-	URL         string    `json:"url"`
-	Author      string    `json:"author"`
-	PullRequest bool      `json:"pullRequest"`
-	UpdatedAt   time.Time `json:"updatedAt"`
-	Labels      []string  `json:"labels"`
-	Assignees   []string  `json:"assignees"`
-	StateReason *string   `json:"stateReason,omitzero"`
+	ID          int64             `json:"id" jsonschema:"minimum=1"`
+	Repository  string            `json:"repository"`
+	Number      int64             `json:"number" jsonschema:"minimum=1"`
+	Title       string            `json:"title"`
+	Body        string            `json:"body"`
+	State       State             `json:"state"`
+	URL         string            `json:"url"`
+	Author      string            `json:"author"`
+	PullRequest bool              `json:"pullRequest"`
+	UpdatedAt   instant.Timestamp `json:"updatedAt"`
+	Labels      []string          `json:"labels"`
+	Assignees   []string          `json:"assignees"`
+	StateReason *string           `json:"stateReason,omitzero"`
 }
 
 type IssuePage struct {

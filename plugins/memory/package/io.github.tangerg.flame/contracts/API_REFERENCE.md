@@ -13,6 +13,6 @@ Generated from the feature's Go-owned method contracts.
 | `flame.memory/search.v2` | query | installation | Rank active memories for the supplied project and query. |
 | `flame.memory/update.v2` | command | installation | Edit the current content or pin state of a memory item. |
 
-Capability `memory` uses `selection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.qimu/portable/1`.
+Capability `memory` exposes the declared methods. Required backend protocol: `io.github.tangerg.frame/portable/1`.
 
 `capability.generated.json` preserves the canonical callable contract; `schema.json` and the method references are presentation projections.

@@ -1,6 +1,8 @@
 package model
 
 import (
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
+
 	"context"
 	"errors"
 	"fmt"
@@ -9,11 +11,11 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 	"github.com/google/uuid"
@@ -136,7 +138,7 @@ func (e *embedder) Embed(ctx context.Context, texts []string) ([][]float32, erro
 	if cause == nil {
 		response, cause = e.model.Call(calling, cloneEmbeddingRequest(request))
 	} else {
-		cause = &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: cause}
+		cause = &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: cause}
 	}
 	if response != nil && cause == nil {
 		cause = response.ValidateFor(request)
@@ -170,7 +172,7 @@ func projectEmbeddingVectors(response *embedding.Response) ([][]float32, error) 
 }
 
 func (e *embedder) start(ctx context.Context, request *embedding.Request) (modelref.EndpointInvocation, error) {
-	caller, err := qimumcp.InvocationFromContext(ctx)
+	caller, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		return modelref.EndpointInvocation{}, err
 	}

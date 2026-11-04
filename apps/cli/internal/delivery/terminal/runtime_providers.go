@@ -8,21 +8,22 @@ import (
 
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/keymap"
-	"github.com/Tangerg/oolong/core/layout"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/keymap"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/kit"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/oolong/ui/core/scene"
 )
 
 // modelConfigScreens inspects and configures model providers and roles.
 type modelConfigScreens struct {
 	screenHost
 	service        ModelConfiguration
-	providerDialog *kit.Dialog
+	providerDialog *presentationDialog
 }
 
 func (m *modelConfigScreens) ShowProviders() {
@@ -141,17 +142,18 @@ func (m *modelConfigScreens) openProviderConfig(provider models.Provider) {
 		baseMode = formChangeSet
 	}
 	keyMode, apiKey := formChangeKeep, ""
-	baseChoice := headless.NewSelect(headless.SelectConfig[formChange]{Same: headless.Equal[formChange], Label: "Endpoint change", Value: headless.Bind(&baseMode), Rows: 3})
-	baseChoice.SetOptions([]headless.Option[formChange]{
+	baseChoice := base.NewSelect(base.SelectConfig[formChange]{Same: base.Equal[formChange], Label: "Endpoint change", Initial: baseMode, Rows: 3})
+	baseChoice.SetOptions([]base.Option[formChange]{
 		{Label: "Keep current endpoint", Value: formChangeKeep},
 		{Label: "Set endpoint", Value: formChangeSet},
 		{Label: "Clear endpoint", Value: formChangeClear},
 	})
-	endpointDraft := &providerEndpointDraft{value: baseURL, policy: provider.Endpoint()}
-	baseField := headless.NewText(headless.TextConfig{
-		Placeholder: endpointDraft.policy.Example, Value: endpointDraft,
+	baseChoice.Choose(baseMode)
+	endpointDraft := &providerEndpointDraft{policy: provider.Endpoint()}
+	baseField := base.NewText(base.TextConfig{
+		Placeholder: endpointDraft.policy.Example, Initial: baseURL,
 		Check: func(value string) error {
-			if !baseMode.SetsValue() {
+			if selected, ok := baseChoice.Chosen(); !ok || !selected.Value.SetsValue() {
 				return nil
 			}
 			if err := requiredText(value); err != nil {
@@ -162,24 +164,25 @@ func (m *modelConfigScreens) openProviderConfig(provider models.Provider) {
 	})
 	endpointDraft.field = baseField
 	endpointDraft.Set(baseURL)
-	keyChoice := headless.NewSelect(headless.SelectConfig[formChange]{Same: headless.Equal[formChange], Label: "API key change", Value: headless.Bind(&keyMode), Rows: 3})
-	keyOptions := []headless.Option[formChange]{
+	keyChoice := base.NewSelect(base.SelectConfig[formChange]{Same: base.Equal[formChange], Label: "API key change", Initial: keyMode, Rows: 3})
+	keyOptions := []base.Option[formChange]{
 		{Label: "Keep current key", Value: formChangeKeep},
 		{Label: "Set a stored key", Value: formChangeSet},
 	}
 	credential, hasCredential := provider.Credential()
 	if hasCredential && credential.Stored() {
-		keyOptions = append(keyOptions, headless.Option[formChange]{Label: "Clear stored key", Value: formChangeClear})
+		keyOptions = append(keyOptions, base.Option[formChange]{Label: "Clear stored key", Value: formChangeClear})
 	}
 	keyChoice.SetOptions(keyOptions)
+	keyChoice.Choose(keyMode)
 	keyPlaceholder := ""
 	if hasCredential {
 		keyPlaceholder = credential.Masked()
 	}
-	keyField := headless.NewText(headless.TextConfig{
-		Label: "New API key", Placeholder: keyPlaceholder, Value: headless.Bind(&apiKey),
+	keyField := base.NewText(base.TextConfig{
+		Label: "New API key", Placeholder: keyPlaceholder, Initial: apiKey,
 		Check: func(value string) error {
-			if keyMode.SetsValue() {
+			if selected, ok := keyChoice.Chosen(); ok && selected.Value.SetsValue() {
 				return requiredText(value)
 			}
 			return nil
@@ -188,9 +191,10 @@ func (m *modelConfigScreens) openProviderConfig(provider models.Provider) {
 	keyField.SetMask("•")
 	baseField.Clipboard = m.clipboard
 	keyField.Clipboard = m.clipboard
-	form := headless.NewForm(baseChoice, baseField, keyChoice, keyField)
-	form.Keys = headless.DefaultFormKeys()
-	var dialog *kit.Dialog
+	form := kit.FormConfig{Fields: []base.Field{baseChoice, baseField, keyChoice, keyField}, Theme: m.theme, Glyphs: m.glyphs,
+		Hints: []keymap.Action{base.Submit, base.Cancel}}
+	form.Keys = base.DefaultFormKeys()
+	var dialog *presentationDialog
 	clearKey := func() {
 		apiKey = ""
 		keyField.SetText("")
@@ -198,50 +202,51 @@ func (m *modelConfigScreens) openProviderConfig(provider models.Provider) {
 	dismiss := func() {
 		clearKey()
 		if m.providerDialog == dialog {
-			dialog.Controller().Dismiss()
+			dialog.Dismiss()
 			m.providerDialog = nil
 		}
 	}
-	form.Done = func() {
+	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
 		if m.providerDialog != dialog {
 			clearKey()
-			return
+			return scene.Unchanged, nil
 		}
-		update, err := providerUpdate(provider.ID(), baseMode, endpointDraft.Value(), keyMode, apiKey)
+		baseOption, baseOK := baseChoice.Chosen()
+		keyOption, keyOK := keyChoice.Chosen()
+		if !baseOK || !keyOK {
+			return scene.Unchanged, errors.New("provider configuration choice is required")
+		}
+		update, err := providerUpdate(provider.ID(), baseOption.Value, baseField.Text(), keyOption.Value, keyField.Text())
 		if err != nil {
 			m.message("provider form: " + err.Error())
-			return
+			return scene.Unchanged, nil
 		}
 		dismiss()
 		if update.BaseURL == nil && update.APIKey == nil {
 			m.message("provider configuration unchanged")
-			return
+			return scene.Unchanged, nil
 		}
 		m.updateProvider(update)
+		return scene.Applied, nil
 	}
-	form.GaveUp = dismiss
-	dressed := kit.NewForm(kit.FormConfig{
-		Theme: m.theme, Glyphs: m.glyphs, Controller: form,
-		Hints: []keymap.Action{headless.Submit, headless.Cancel},
-	})
-	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: m.stack, Theme: m.theme, Glyphs: m.glyphs,
-		Title: "Configure provider · " + provider.ID(), Body: dressed,
+
+	dressed := kit.NewForm(form)
+	dialog = newPresentationDialog(m.stack, kit.DialogConfig{Theme: m.theme, Glyphs: m.glyphs,
+		Title: "Configure provider · " + provider.ID(), Body: formNavigation(dressed.Element(), dismiss),
 		Where: layout.Placement{Width: 82, Height: 18},
 	})
 	m.providerDialog = dialog
-	dialog.Controller().Show()
+	dialog.Show()
 }
 
 type providerEndpointDraft struct {
-	value  string
 	policy flamemodel.EndpointPolicy
-	field  *headless.Text
+	field  *base.Text
 }
 
-func (d *providerEndpointDraft) Value() string { return d.value }
+func (d *providerEndpointDraft) Value() string { return d.field.Text() }
 func (d *providerEndpointDraft) Set(value string) {
-	d.value = value
+	d.field.SetText(value)
 	label := "Endpoint URL"
 	switch {
 	case d.policy.AppendsPath != "":

@@ -4,9 +4,10 @@ import (
 	"errors"
 	"slices"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type CompositionMember struct {
@@ -15,7 +16,7 @@ type CompositionMember struct {
 }
 
 type CompositionRecord struct {
-	Contract jsonvalue.Value
+	Contract framevalue.JSON
 	Members  []CompositionMember
 }
 
@@ -24,11 +25,11 @@ type CompositionRecord struct {
 type OrderedComposition struct{ record CompositionRecord }
 
 func NewOrderedComposition(record CompositionRecord) (OrderedComposition, error) {
-	contract, err := portable.ParseCapability(record.Contract.JSON())
+	contract, err := plugincontract.ParseCapability(record.Contract.Bytes())
 	if err != nil {
 		return OrderedComposition{}, errors.Join(ErrInvalid, err)
 	}
-	if contract.Descriptor().Composition != portable.Decoration {
+	if contract.Descriptor().Composition != plugincontract.Decoration {
 		return OrderedComposition{}, errors.Join(ErrInvalid, errors.New("ordered composition requires a decoration contract"))
 	}
 	seen := make(map[CompositionMember]bool, len(record.Members))

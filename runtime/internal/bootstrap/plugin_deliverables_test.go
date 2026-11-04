@@ -10,10 +10,12 @@ import (
 	"strings"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestDeliverablesInstalledNativeRevisionsAndReceiptsSurviveRuntimeRestart(t *testing.T) {
@@ -26,13 +28,13 @@ func TestDeliverablesInstalledNativeRevisionsAndReceiptsSurviveRuntimeRestart(t 
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := portable.ParseCapability(encoded)
+	contract, err := plugincontract.ParseCapability(encoded)
 	if err != nil {
 		t.Fatal(err)
 	}
 	call := func(method string, input any, key string) *protocol.CallPluginResponse {
 		t.Helper()
-		value, err := jsonvalue.Encode(input)
+		value, err := framevalue.EncodeJSON(input)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -71,7 +73,7 @@ func TestDeliverablesInstalledNativeRevisionsAndReceiptsSurviveRuntimeRestart(t 
 	if err := json.Unmarshal([]byte(opened.InspectionJSON), &inspection); err != nil || len(inspection.Items) != 1 {
 		t.Fatalf("native inspection was not retained: %s: %v", opened.InspectionJSON, err)
 	}
-	operations, err := jsonvalue.Encode(map[string]any{"operations": []any{map[string]any{"type": "replaceText", "id": inspection.Items[0].ID, "expect": inspection.Items[0].Text, "text": "Revised native content"}}})
+	operations, err := framevalue.EncodeJSON(map[string]any{"operations": []any{map[string]any{"type": "replaceText", "id": inspection.Items[0].ID, "expect": inspection.Items[0].Text, "text": "Revised native content"}}})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -13,7 +13,7 @@ import {
   type PrimitiveSchemaDefinition,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { parseJSON } from "@qimu/sdk/json";
+import { parseJSON } from "@frame/sdk/json";
 import { LIMITS } from "./limits";
 
 export class InvalidPermission extends Error {}

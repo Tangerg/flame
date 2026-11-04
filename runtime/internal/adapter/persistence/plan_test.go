@@ -21,7 +21,7 @@ func planStoreFixture(t *testing.T) *PlanStore {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return newPlanStore(db)
+	return newPlanStore(databaseFor(db))
 }
 
 func savePlan(t *testing.T, ctx context.Context, store *PlanStore, sessionID string, steps []plan.Step) plan.State {
@@ -132,7 +132,7 @@ func TestPlanBoundaryAndSessionShareOneImmutableDocument(t *testing.T) {
 		t.Fatal(err)
 	}
 	var same bool
-	if err := plans.db.QueryRowContext(ctx, `SELECT p.document = b.document FROM session_plans p, plan_boundaries b WHERE p.session_id = ? AND b.run_id = ?`, sessionID, runID).Scan(&same); err != nil || !same {
+	if err := rawFixtureDatabase(plans.db).QueryRowContext(ctx, `SELECT p.document = b.document FROM session_plans p, plan_boundaries b WHERE p.session_id = ? AND b.run_id = ?`, sessionID, runID).Scan(&same); err != nil || !same {
 		t.Fatalf("shared reference = %v, %v", same, err)
 	}
 	savePlan(t, ctx, plans, sessionID, []plan.Step{{Description: "review second", Status: plan.StatusPending}})
@@ -148,7 +148,7 @@ func TestPlanStoreRejectsUnknownStoredStepFields(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newPlanStore(db)
+	store := newPlanStore(databaseFor(db))
 	savePlan(t, t.Context(), store, "ses_plan_codec", []plan.Step{{
 		Description: "preserve exact plan meaning", Status: plan.StatusPending,
 	}})
@@ -174,7 +174,7 @@ func TestPlanStoreRejectsMissingStoredCollections(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = db.Close() })
-			plans, runs := newPlanStore(db), newRunStore(db)
+			plans, runs := newPlanStore(databaseFor(db)), newRunStore(databaseFor(db))
 			const sessionID, runID = "ses_plan_collection", "run_plan_collection"
 			savePlan(t, t.Context(), plans, sessionID, []plan.Step{{Description: "keep the recorded Plan", Status: plan.StatusPending}})
 			if err := runs.Admit(t.Context(), runDraft(runID, sessionID)); err != nil {
@@ -207,7 +207,7 @@ func newPlanBoundaryStores(t *testing.T) (*PlanStore, *RunStore) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return newPlanStore(db), newRunStore(db)
+	return newPlanStore(databaseFor(db)), newRunStore(databaseFor(db))
 }
 
 // TestPlanBoundaryIsRecordedByTheRunThatEnds is the whole reason this table

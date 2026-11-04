@@ -1,7 +1,8 @@
 package protocol
 
 import (
-	"github.com/Tangerg/qimu/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"time"
 )
 
@@ -29,7 +30,7 @@ type ModelEndpointInvocation struct {
 	SessionID string               `json:"sessionId,omitzero"`
 	RunID     string               `json:"runId,omitzero"`
 	SegmentID string               `json:"segmentId,omitzero"`
-	Caller    portable.Invocation  `json:"caller"`
+	Caller    framemcp.Invocation  `json:"caller"`
 	Provider  string               `json:"provider"`
 	Model     string               `json:"model"`
 	Request   string               `json:"request"`

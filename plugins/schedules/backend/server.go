@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/timezone"
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
@@ -16,7 +17,6 @@ import (
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/google/uuid"
 )
 
@@ -29,7 +29,7 @@ type store interface {
 	CapturedRun(context.Context, string) (schedule.RunRequest, error)
 }
 
-func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDResolver, connect runConnector) (*qimumcp.Backend, error) {
+func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDResolver, connect runConnector) (*pluginmcp.Backend, error) {
 	if connect == nil {
 		return nil, errors.New("schedules: Runtime Run connector is required")
 	}
@@ -37,7 +37,7 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDRe
 	if err != nil {
 		return nil, err
 	}
-	backend, err := qimumcp.NewBackend(server)
+	backend, err := pluginmcp.NewBackend(server)
 	if err != nil {
 		return nil, err
 	}
@@ -64,11 +64,11 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDRe
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, db),
-		toolReceipts.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
+		toolReceipts.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginmcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
 			input := command.Input
 			return toolReceipt(ctx, db, input)
 		}),
-		contracts.List.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.ListInput]) (wire.Page, error) {
+		contracts.List.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ListInput]) (wire.Page, error) {
 			input := command.Input
 			limit := pagination.DefaultLimit()
 			if input.Limit != nil {
@@ -96,7 +96,7 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDRe
 		pluginstorage.RegisterCommand(backend, db, contracts.Delete, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.ItemInput) (wire.Ack, error) {
 			return wire.Ack{}, coordinator.Delete(ctx, input.ID)
 		}),
-		contracts.RunNow.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.ItemInput]) (app.RunReference, error) {
+		contracts.RunNow.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ItemInput]) (app.RunReference, error) {
 			return runNow(ctx, db, store, connect, command)
 		}),
 	); err != nil {
@@ -105,7 +105,7 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDRe
 	if err := backend.BindCapability(wire.CapabilityReference, contracts.Capability); err != nil {
 		return nil, err
 	}
-	if err := backend.OnSetup(func(ctx context.Context, setup qimumcp.Setup) (io.Closer, error) {
+	if err := backend.OnSetup(func(ctx context.Context, setup pluginmcp.Setup) (io.Closer, error) {
 		values, err := setup.Contributions()
 		if err != nil {
 			return nil, err
@@ -114,7 +114,7 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDRe
 			if value.Export != wire.CapabilityReference || value.Background == nil {
 				continue
 			}
-			ref, err := qimumcp.CallbackFromContext(ctx)
+			ref, err := pluginmcp.CallbackFromContext(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -156,7 +156,7 @@ func (t toolCommands) Create(ctx context.Context, _ createScheduleArgs) (schedul
 	if err != nil {
 		return schedule.Schedule{}, decodeError(err)
 	}
-	admitted, err := qimumcp.RequestInput(ctx)
+	admitted, err := pluginmcp.RequestInput(ctx)
 	if err != nil {
 		return schedule.Schedule{}, decodeError(err)
 	}
@@ -178,7 +178,7 @@ func (t toolCommands) Update(ctx context.Context, _ updateScheduleArgs) (schedul
 	if err != nil {
 		return schedule.Schedule{}, decodeError(err)
 	}
-	admitted, err := qimumcp.RequestInput(ctx)
+	admitted, err := pluginmcp.RequestInput(ctx)
 	if err != nil {
 		return schedule.Schedule{}, decodeError(err)
 	}
@@ -197,7 +197,7 @@ func (t toolCommands) RunNow(ctx context.Context, _ wire.ItemInput) (app.RunRefe
 	if err != nil {
 		return app.RunReference{}, err
 	}
-	admitted, err := qimumcp.RequestInput(ctx)
+	admitted, err := pluginmcp.RequestInput(ctx)
 	if err != nil {
 		return app.RunReference{}, err
 	}
@@ -210,7 +210,7 @@ func (t toolCommands) Delete(ctx context.Context, _ deleteScheduleArgs) error {
 	if err != nil {
 		return err
 	}
-	admitted, err := qimumcp.RequestInput(ctx)
+	admitted, err := pluginmcp.RequestInput(ctx)
 	if err != nil {
 		return err
 	}

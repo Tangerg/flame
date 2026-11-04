@@ -110,15 +110,19 @@ describe("built-in contributions", () => {
     for (const [name, candidate] of Object.entries(kernelPoints)) {
       const point = candidate as { id?: string; token?: unknown; keying?: string };
       if (!point.token || !point.id || point.keying === "multi") continue;
-      const raw = [
-        ...(host!
-          .contributions(point.token as never)
-          .get()
-          .values() as Iterable<{
+      const view = host!.contributions(
+        point.token as import("dougong").ExtensionPoint<{
           key: string;
           plugin: string;
-        }>),
-      ];
+        }>,
+      );
+      const raw = await Promise.all(
+        view
+          .get()
+          .map((id) =>
+            view.use(id, ({ key, plugin }) => ({ key, plugin })).then(({ value }) => value),
+          ),
+      );
       const owners = new Map<string, string[]>();
       for (const entry of raw)
         owners.set(entry.key, [...(owners.get(entry.key) ?? []), entry.plugin]);

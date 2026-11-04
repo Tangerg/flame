@@ -1,11 +1,9 @@
 package wire
 
 import (
-	"strconv"
-
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/invopop/jsonschema"
+
+	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 type ImportInput struct {
@@ -22,10 +20,10 @@ type ReadInput struct {
 	ID string `json:"id" jsonschema:"minLength=1"`
 }
 
-func (ReadInput) JSONSchemaExtend(schema *jsonschema.Schema) {
-	if id, ok := schema.Properties.Get("id"); ok {
-		id.MaxLength = new(uint64(knowledge.MaxIDRunes))
-	}
+func (ReadInput) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"id": {MaxLength: new(uint64(knowledge.MaxIDRunes))},
+	}}
 }
 
 type DocumentRead struct {
@@ -33,10 +31,10 @@ type DocumentRead struct {
 	Text     string           `json:"text"`
 }
 
-func (DocumentInput) JSONSchemaExtend(schema *jsonschema.Schema) {
-	if id, ok := schema.Properties.Get("id"); ok {
-		id.MaxLength = new(uint64(knowledge.MaxIDRunes))
-	}
+func (DocumentInput) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"id": {MaxLength: new(uint64(knowledge.MaxIDRunes))},
+	}}
 }
 
 type SearchInput struct {
@@ -44,11 +42,9 @@ type SearchInput struct {
 	Limit int    `json:"limit" jsonschema:"minimum=1"`
 }
 
-func (SearchInput) JSONSchemaExtend(schema *jsonschema.Schema) {
-	if query, ok := schema.Properties.Get("query"); ok {
-		query.MaxLength = new(uint64(knowledge.MaxQueryRunes))
-	}
-	if limit, ok := schema.Properties.Get("limit"); ok {
-		limit.Maximum = jsonvalue.Number(strconv.Itoa(knowledge.MaxResults))
-	}
+func (SearchInput) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"query": {MaxLength: new(uint64(knowledge.MaxQueryRunes))},
+		"limit": {Maximum: new(float64(knowledge.MaxResults))},
+	}}
 }

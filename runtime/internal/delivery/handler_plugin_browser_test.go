@@ -1,20 +1,20 @@
 package delivery
 
 import (
+	framebrowser "github.com/Tangerg/frame/browser"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"bytes"
 	json "encoding/json/v2"
 	"reflect"
 	"testing"
-
-	"github.com/Tangerg/qimu/control"
-	"github.com/Tangerg/qimu/integrity"
 )
 
-// Populate every actual source field, including fields added by a future Qimu
+// Populate every actual source field, including fields added by a future Frame
 // change. A forgotten delivery projection must fail before publishing that wire.
 func populateBrowserProjection(value reflect.Value, path string) {
-	if value.Type() == reflect.TypeFor[integrity.Digest]() {
-		value.Set(reflect.ValueOf(integrity.Hash([]byte(path))))
+	if value.Type() == reflect.TypeFor[framevalue.Digest]() {
+		value.Set(reflect.ValueOf(framevalue.Hash([]byte(path))))
 		return
 	}
 	switch value.Kind() {
@@ -22,7 +22,7 @@ func populateBrowserProjection(value reflect.Value, path string) {
 		if vocabulary, ok := value.Interface().(interface{ Values() []string }); ok {
 			value.SetString(vocabulary.Values()[0])
 		} else {
-			value.SetString(integrity.Hash([]byte(path)).String())
+			value.SetString(framevalue.Hash([]byte(path)).String())
 		}
 	case reflect.Struct:
 		for i := range value.NumField() {
@@ -39,7 +39,7 @@ func populateBrowserProjection(value reflect.Value, path string) {
 }
 
 func TestBrowserDeliveryProjectionPreservesTheCompleteApprovedUse(t *testing.T) {
-	var original control.UseGrant
+	var original framebrowser.UseGrant
 	populateBrowserProjection(reflect.ValueOf(&original).Elem(), "grant")
 	want, err := json.Marshal(original)
 	if err != nil {

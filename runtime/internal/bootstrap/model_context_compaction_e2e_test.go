@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"errors"
 	"fmt"
@@ -33,7 +35,7 @@ func TestRuntimeCompactsDuringOneLongRunBeforeTheNextMainModelCall(t *testing.T)
 		t.Fatal(err)
 	}
 	model := &longContextModel{}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +236,7 @@ func isCompactionRequest(request *chat.Request) bool {
 	return request != nil && len(request.Messages) > 0 && len(request.Tools) == 0
 }
 
-func hasToolDefinition(definitions []chat.ToolDefinition, name string) bool {
+func hasToolDefinition(definitions []toolcontract.Definition, name string) bool {
 	for _, definition := range definitions {
 		if definition.Name == name {
 			return true

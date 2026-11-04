@@ -15,7 +15,6 @@ import (
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
-	"github.com/Tangerg/frame/cancellation"
 )
 
 // DiscoverAgentDocs walks the project tree + user-level locations and returns
@@ -178,7 +177,7 @@ func (a *agentDocScan) try(ctx context.Context, root *os.Root, path string, scop
 }
 
 func resolveAgentDocCandidate(ctx context.Context, path string) (string, bool, error) {
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return "", false, err
 	}
 	if path == "" {

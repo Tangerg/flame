@@ -4,12 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
+
+	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
@@ -17,9 +21,8 @@ import (
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 func connectHooks(t *testing.T, path string) (*sql.DB, *sdk.ClientSession, func()) {
@@ -33,7 +36,7 @@ func connectHooks(t *testing.T, path string) (*sql.DB, *sdk.ClientSession, func(
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "hook-test", Version: "1"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -59,20 +62,20 @@ func connectHooks(t *testing.T, path string) (*sql.DB, *sdk.ClientSession, func(
 
 func hookContext(t *testing.T) context.Context {
 	t.Helper()
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "hook-test", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "hooks"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "hook-test", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "hooks"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return ctx
 }
 
-func hookMethod[P, R any](t *testing.T, session *sdk.ClientSession, method *qimumcp.Method[P, R]) *qimumcp.BoundMethod[P, R] {
+func hookMethod[P, R any](t *testing.T, session *sdk.ClientSession, method *pluginmcp.Method[P, R]) *pluginmcp.BoundMethod[P, R] {
 	t.Helper()
 	contract, err := hookmcp.Contract()
 	if err != nil {
 		t.Fatal(err)
 	}
-	capability, err := qimumcp.NewCapabilityBinding(session, "hook-provider", contract)
+	capability, err := pluginmcp.NewCapabilityBinding(session, "hook-provider", contract)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +128,7 @@ func TestPendingHookCommandCannotDispatchAndTimeoutKeepsItsKnownOutcome(t *testi
 		t.Fatal(err)
 	}
 	request := hookprovider.Evaluation{Rules: []hook.Hook{{Event: hook.PreToolUse, Scope: hook.ScopeGlobal, Source: cwd, Command: `printf x > effect`, TimeoutMillis: 1000}}, Input: hook.Input{Event: hook.PreToolUse, CWD: cwd}}
-	input, err := jsonvalue.Encode(request)
+	input, err := framevalue.EncodeJSON(request)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2,10 +2,11 @@ package builtin
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"

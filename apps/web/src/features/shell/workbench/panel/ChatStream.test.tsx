@@ -702,7 +702,7 @@ describe("ChatStream conversation notices", () => {
   it("includes contributed notices and their actions in the same keyboard reader", async () => {
     const acknowledge = vi.fn();
     await contributeForTest((ctx) => {
-      contributeLayout(ctx, "chat.banner.top", {
+      contributeLayout(ctx.contributions, "chat.banner.top", {
         id: "notice",
         component: () => (
           <div role="status">

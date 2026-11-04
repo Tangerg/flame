@@ -33,7 +33,7 @@ export const defaultAccents = definePlugin({
   name: "flame.builtin.default-accents",
   setup(ctx) {
     for (const accent of DEFAULT_ACCENTS) {
-      ctx.contribute(ACCENT, accent);
+      ctx.contributions.add(ACCENT, accent);
     }
   },
 });

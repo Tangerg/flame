@@ -6,9 +6,12 @@ import (
 	"errors"
 	"reflect"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/samber/lo"
 )
 
@@ -25,36 +28,36 @@ type PointValue[T any] struct {
 
 // ResolvePointValues checks the consumer's typed schema against its published
 // point before decoding immutable installed bindings into consumer-owned values.
-func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contract *portable.Point, target portable.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error) {
+func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contract *plugincontract.Point, target portable.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error) {
 	if lo.IsNil(caller) || contract == nil {
 		return nil, errors.New("runtime: point resolver and admitted contract are required")
 	}
-	if err := jsonvalue.ValidateType(reflect.TypeFor[T]()); err != nil {
+	if err := framevalue.ValidateType(reflect.TypeFor[T]()); err != nil {
 		return nil, err
 	}
 	schema, err := portable.SchemaFor[T]()
 	if err != nil {
 		return nil, err
 	}
-	actual, err := jsonvalue.Parse(schema.JSON())
+	actual, err := framevalue.ParseJSON(schema)
 	if err != nil {
 		return nil, err
 	}
-	required, err := jsonvalue.Parse(contract.Definition().Value)
+	required, err := framevalue.ParseJSON(contract.Definition().Value)
 	if err != nil {
 		return nil, err
 	}
 	if actual != required {
 		return nil, errors.New("runtime: consumer type differs from its point value schema")
 	}
-	contextJSON, err := jsonvalue.Encode(attributes)
+	contextJSON, err := framevalue.EncodeJSON(attributes)
 	if err != nil {
 		return nil, err
 	}
 	if order == nil {
 		order = []protocol.PluginPointReference{}
 	}
-	page, err := caller.ResolvePluginPoint(ctx, protocol.ResolvePluginPointRequest{Contract: string(contract.Identity().JSON()), Target: target, Attributes: string(contextJSON.JSON()), Order: order}, options)
+	page, err := caller.ResolvePluginPoint(ctx, protocol.ResolvePluginPointRequest{Contract: string(contract.Identity().Bytes()), Target: target, Attributes: string(contextJSON.Bytes()), Order: order}, options)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +69,7 @@ func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contra
 	}
 	values := make([]PointValue[T], 0, len(page.Data))
 	for _, binding := range page.Data {
-		input, err := jsonvalue.Parse([]byte(binding.Value))
+		input, err := framevalue.ParseJSON([]byte(binding.Value))
 		if err != nil {
 			return nil, errors.Join(protocol.ErrInvalidResponse, err)
 		}
@@ -74,7 +77,7 @@ func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contra
 			return nil, errors.Join(protocol.ErrInvalidResponse, err)
 		}
 		var value T
-		if err := json.Unmarshal(input.JSON(), &value, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
+		if err := json.Unmarshal(input.Bytes(), &value, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
 			return nil, errors.Join(protocol.ErrInvalidResponse, err)
 		}
 		values = append(values, PointValue[T]{InstallationID: binding.InstallationID, Digest: binding.Digest, Contribution: binding.Contribution, Value: value})

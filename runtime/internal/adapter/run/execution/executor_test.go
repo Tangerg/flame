@@ -18,7 +18,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/samber/lo"
@@ -113,7 +114,7 @@ func TestInteractionToolManifestRequiresPolicyOwners(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			_, _, _, err := wrapInteractionTools(t.Context(), manifest, &interactionSession{}, test.config, toolResultOffloadPolicy{}, runs.RootExecutionStart{})
+			_, _, _, _, err := wrapInteractionTools(t.Context(), manifest, &interactionSession{}, test.config, toolResultOffloadPolicy{}, runs.RootExecutionStart{})
 			if test.want == "" && err != nil {
 				t.Fatalf("validate complete Tool policy = %v", err)
 			}
@@ -464,7 +465,7 @@ func TestInteractionExecutorBindsRunLifetimeToProcessOwner(t *testing.T) {
 	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), func() {
 		runContext := <-modelContext
 		for _, session := range executor.sessions.snapshot() {
-			session.modelFailures.record(session.state.process.Relation().ProcessID(), errors.New("provider unavailable"))
+			session.modelFailures.record(session.state.process.ID(), errors.New("provider unavailable"))
 		}
 		stopLifetime()
 		select {
@@ -474,7 +475,7 @@ func TestInteractionExecutorBindsRunLifetimeToProcessOwner(t *testing.T) {
 		}
 	})
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCanceled {
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeLost || len(ended[0].UnresolvedEffects()) != 1 {
 		t.Fatalf("segment end after process cancellation = %#v", ended)
 	}
 	for _, event := range events {
@@ -525,18 +526,17 @@ func TestInteractionTerminationMappingIsComplete(t *testing.T) {
 		{name: "invalid model response", reason: "invalid response", failureKind: "external", failureCode: failureInvalidModelResponse, wantOutcome: run.OutcomeFailed, wantFailure: run.FailureProviderRejected, hasFailure: true},
 		{name: "incomplete tool calls", reason: "incomplete tool calls", failureKind: "external", failureCode: failureToolCallsNotCompleted, wantOutcome: run.OutcomeFailed, wantFailure: run.FailureProviderRejected, hasFailure: true},
 		{name: "unknown external failure", reason: "external failure", failureKind: "external", failureCode: "new.external.failure", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
-		{name: "unresolved delegate", reason: "unresolved external work", failureKind: "external", failureCode: failureUnresolvedDelegateEffects, wantOutcome: run.OutcomeLost},
 		{name: "host projection failure", reason: "journal unavailable", failureKind: "external", failureCode: "interaction.host.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
 		{name: "contract failure", reason: "contract failed", failureKind: "contract", failureCode: "contract.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
 		{name: "panic", reason: "execution panicked", failureKind: "panic", failureCode: "execution.panic", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
-		{name: "engine kill", cause: "engine_kill", reason: "engine shutdown", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
+		{name: "engine kill", cause: "runtime_kill", reason: "engine shutdown", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			wire := map[string]any{}
 			switch {
 			case test.failureKind != "":
-				failure, err := agent.NewFailure(agent.FailureKind(test.failureKind), test.failureCode, test.reason)
+				failure, err := scoperun.NewFailure(scoperun.FailureKind(test.failureKind), test.failureCode, test.reason)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -544,7 +544,7 @@ func TestInteractionTerminationMappingIsComplete(t *testing.T) {
 			case test.cause != "":
 				wire["cause"], wire["reason"] = test.cause, test.reason
 			default:
-				output, err := agent.EncodePayload("completed")
+				output, err := scoperun.EncodePayload("completed")
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -554,7 +554,7 @@ func TestInteractionTerminationMappingIsComplete(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var termination agent.Termination
+			var termination scoperun.Termination
 			if err := json.Unmarshal(payload, &termination); err != nil {
 				t.Fatal(err)
 			}

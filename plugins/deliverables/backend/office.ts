@@ -3,7 +3,7 @@ import { createReadStream } from "node:fs";
 import { lstat, readFile, realpath } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { pathToFileURL } from "node:url";
-import { Refusal } from "@qimu/node";
+import { Refusal } from "@flame/backend-sdk/mcp";
 import { LIMITS } from "../contracts/limits";
 import type { PrivateDirectory } from "./confinement";
 import release from "./office-release.json";

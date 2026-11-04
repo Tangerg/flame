@@ -3,13 +3,13 @@ package pluginservices
 import (
 	"context"
 	"errors"
+
 	goalmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/goalworkflow/mcp"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame/cancellation"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -55,5 +55,5 @@ func (c *CommandCalls) DecideGoal(ctx context.Context, source extension.Contribu
 		return goalworkflow.AuthoredDecision{}, err
 	}
 	decision, err := query[goalworkflow.Request, goalworkflow.Decision](borrow.Context(), location, borrow.Session(), method.Name(), input, sdk.ParamsBase{})
-	return goalworkflow.AuthoredDecision{Source: location.ContributionSource(), Decision: decision}, errors.Join(err, cancellation.Err(borrow.Context()))
+	return goalworkflow.AuthoredDecision{Source: location.ContributionSource(), Decision: decision}, errors.Join(err, errors.Join(borrow.Context().Err(), context.Cause(borrow.Context())))
 }

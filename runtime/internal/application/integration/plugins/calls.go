@@ -4,20 +4,21 @@ import (
 	"context"
 	"iter"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type CallRequest struct {
 	Installation identity.InstallationID
-	Digest       integrity.Digest
+	Digest       framevalue.Digest
 	Contribution plugin.ContributionID
-	Contract     *portable.Capability
+	Contract     *plugincontract.Capability
 	Method       string
-	Input        jsonvalue.Value
+	Input        framevalue.JSON
 	Target       portable.Target
 }
 
@@ -25,7 +26,7 @@ type CallRequest struct {
 // Preparation performs no backend I/O or business effect.
 type Call interface {
 	Kind() portable.MethodKind
-	Invoke(context.Context) (jsonvalue.Value, error)
+	Invoke(context.Context) (framevalue.JSON, error)
 }
 
 type StreamKind string
@@ -37,7 +38,7 @@ const (
 
 type StreamEvent struct {
 	Kind  StreamKind
-	Value jsonvalue.Value
+	Value framevalue.JSON
 }
 
 type StreamCall interface {

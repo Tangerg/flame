@@ -22,16 +22,18 @@ let host: Host | undefined;
 
 afterEach(async () => {
   if (host) {
-    retractKernel(host);
+    await retractKernel(host);
     await host.stop();
   }
   host = undefined;
 });
 
 function stand(plugins: AnyPlugin[]): Host {
-  const next = createHost({ name: "test", onError: () => {} });
-  for (const plugin of plugins) next.install(plugin);
-  return next;
+  return createHost({
+    name: "test",
+    onError: () => {},
+    installations: plugins.map((plugin) => ({ id: plugin.name, plugin })),
+  });
 }
 
 const index = { entries: contributionsTo };
@@ -46,7 +48,7 @@ async function start(plugins: AnyPlugin[]) {
 describe("plugin declaration ownership", () => {
   it("captures setup and attributes contributions to the installed identity", async () => {
     const setup = vi.fn((ctx: PluginContext) => {
-      ctx.contribute(THEME, { id: "declared", label: "Declared" });
+      ctx.contributions.add(THEME, { id: "declared", label: "Declared" });
     });
     const spec = { name: "test.declared", setup };
     const plugin = definePlugin(spec);
@@ -112,7 +114,7 @@ describe("kernel contribution reads", () => {
     const contributor = definePlugin({
       name: "test.contributor",
       setup: (ctx) => {
-        ctx.contribute(THEME, { id: "dark", label: "Dark" });
+        ctx.contributions.add(THEME, { id: "dark", label: "Dark" });
       },
     });
 
@@ -123,19 +125,19 @@ describe("kernel contribution reads", () => {
   });
 
   it("lets the same Host lifetime retire a package's nested contributions", async () => {
-    let owned: import("@/extensions/definePlugin").ContributionLifetime | undefined;
+    let owned: import("@/extensions/definePlugin").ContributionScope | undefined;
     const index = await start([
       definePlugin({
         name: "test.package",
         setup(ctx) {
-          owned = ctx.lifetime("release");
-          owned.lifetime("view").contribute(THEME, { id: "package-theme", label: "Package" });
+          owned = ctx.contributions.child("release");
+          owned.child("view").add(THEME, { id: "package-theme", label: "Package" });
         },
       }),
     ]);
     expect(index.entries(THEME).map((entry) => entry.key)).toEqual(["package-theme"]);
     await owned![asyncDisposeSymbol]();
-    expect(owned!.signal.aborted).toBe(true);
+    expect(owned!.lifetime.signal.aborted).toBe(true);
     expect(index.entries(THEME)).toEqual([]);
   });
 
@@ -144,9 +146,9 @@ describe("kernel contribution reads", () => {
     const plugin = definePlugin({
       name: "test.many",
       setup: (ctx) => {
-        ctx.contribute(THEME, { id: "c", label: "C", order: 30 });
-        update = ctx.contribute(THEME, { id: "a", label: "A", order: 1 }).update;
-        ctx.contribute(THEME, { id: "b", label: "B", order: 20 });
+        ctx.contributions.add(THEME, { id: "c", label: "C", order: 30 });
+        update = ctx.contributions.add(THEME, { id: "a", label: "A", order: 1 }).update;
+        ctx.contributions.add(THEME, { id: "b", label: "B", order: 20 });
       },
     });
 
@@ -161,13 +163,13 @@ describe("kernel contribution reads", () => {
     const base = definePlugin({
       name: "test.base",
       setup: (ctx) => {
-        ctx.contribute(THEME, { id: "dark", label: "Base" });
+        ctx.contributions.add(THEME, { id: "dark", label: "Base" });
       },
     });
     const override = definePlugin({
       name: "test.override",
       setup: (ctx) => {
-        ctx.contribute(THEME, { id: "dark", label: "Override" });
+        ctx.contributions.add(THEME, { id: "dark", label: "Override" });
       },
     });
 
@@ -184,8 +186,8 @@ describe("kernel contribution reads", () => {
     const plugin = definePlugin({
       name: "test.handlers",
       setup: (ctx) => {
-        ctx.contribute(HANDLER, { run: () => {} });
-        ctx.contribute(HANDLER, { run: () => {} });
+        ctx.contributions.add(HANDLER, { run: () => {} });
+        ctx.contributions.add(HANDLER, { run: () => {} });
       },
     });
 
@@ -198,7 +200,7 @@ describe("kernel contribution reads", () => {
     const plugin = definePlugin({
       name: "test.stable",
       setup: (ctx) => {
-        ctx.contribute(THEME, { id: "dark", label: "Dark" });
+        ctx.contributions.add(THEME, { id: "dark", label: "Dark" });
       },
     });
 
@@ -220,13 +222,13 @@ describe("kernel contribution reads", () => {
     const base = definePlugin({
       name: "test.base",
       setup: (ctx) => {
-        ctx.contribute(THEME, { id: "dark", label: "Base" });
+        ctx.contributions.add(THEME, { id: "dark", label: "Base" });
       },
     });
     const late = definePlugin({
       name: "test.late",
       setup: (ctx) => {
-        ctx.contribute(THEME, { id: "light", label: "Light" });
+        ctx.contributions.add(THEME, { id: "light", label: "Light" });
       },
     });
 
@@ -236,8 +238,10 @@ describe("kernel contribution reads", () => {
     index.entries(THEME);
 
     const change = host!.change();
-    change.install(late);
-    await change.commit();
+    change.install(late, { id: late.name });
+    await retractKernel(host!);
+    await host!.apply(await host!.plan(change));
+    publishKernel(host!);
 
     expect(notified).toBeGreaterThan(0);
     expect(index.entries(THEME).map((e) => e.key)).toEqual(["dark", "light"]);
@@ -248,23 +252,29 @@ describe("kernel contribution reads", () => {
     const base = definePlugin({
       name: "test.base",
       setup: (ctx) => {
-        ctx.contribute(THEME, { id: "dark", label: "Base" });
+        ctx.contributions.add(THEME, { id: "dark", label: "Base" });
       },
     });
     const override = definePlugin({
       name: "test.override",
       setup: (ctx) => {
-        ctx.contribute(THEME, { id: "dark", label: "Override" });
+        ctx.contributions.add(THEME, { id: "dark", label: "Override" });
       },
     });
 
     host = stand([base]);
-    const installed = host.install(override);
+    const installation = host.change();
+    const installed = installation.install(override, { id: override.name });
+    await host.apply(await host.plan(installation));
     await host.start();
     publishKernel(host);
     expect(index.entries(THEME).map((e) => e.item.label)).toEqual(["Override"]);
 
-    await installed.remove();
+    const removal = host.change();
+    removal.remove(installed);
+    await retractKernel(host);
+    await host.apply(await host.plan(removal));
+    publishKernel(host);
 
     expect(index.entries(THEME).map((e) => e.item.label)).toEqual(["Base"]);
   });
@@ -274,17 +284,19 @@ describe("kernel contribution reads", () => {
     const base = definePlugin({
       name: "test.updatable-base",
       setup(ctx) {
-        update = ctx.contribute(THEME, { id: "dark", label: "Base" }).update;
+        update = ctx.contributions.add(THEME, { id: "dark", label: "Base" }).update;
       },
     });
     const override = definePlugin({
       name: "test.update-override",
       setup(ctx) {
-        ctx.contribute(THEME, { id: "dark", label: "Override" });
+        ctx.contributions.add(THEME, { id: "dark", label: "Override" });
       },
     });
     host = stand([base]);
-    const installed = host.install(override);
+    const installation = host.change();
+    const installed = installation.install(override, { id: override.name });
+    await host.apply(await host.plan(installation));
     await host.start();
     publishKernel(host);
 
@@ -294,9 +306,14 @@ describe("kernel contribution reads", () => {
       "cannot change its key",
     );
 
-    await installed.remove();
+    const removal = host.change();
+    removal.remove(installed);
+    await retractKernel(host);
+    await host.apply(await host.plan(removal));
+    publishKernel(host);
 
     expect(index.entries(THEME).map((entry) => entry.item.label)).toEqual(["Updated base"]);
+    await retractKernel(host);
     await host.stop();
     expect(() => update({ id: "dark", label: "Late update" })).toThrow(/disposed/i);
   });
@@ -310,7 +327,7 @@ describe("contribute policy", () => {
       definePlugin({
         name: "test.captured-options",
         setup(ctx) {
-          update = ctx.contribute(THEME, { id: "theme", label: "Original" }, options).update;
+          update = ctx.contributions.add(THEME, { id: "theme", label: "Original" }, options).update;
         },
       }),
     ]);
@@ -339,7 +356,7 @@ describe("contribute policy", () => {
     const plugin = definePlugin({
       name: "test.icons",
       setup: (ctx) => {
-        ctx.contribute(ICON, { id: "ignored", fn: "read_file" });
+        ctx.contributions.add(ICON, { id: "ignored", fn: "read_file" });
       },
     });
 
@@ -357,7 +374,7 @@ describe("contribute policy", () => {
     const plugin = definePlugin({
       name: "test.slashes",
       setup: (ctx) => {
-        ctx.contribute(SLASH, { label: "Ping" }, { key: "ping" });
+        ctx.contributions.add(SLASH, { label: "Ping" }, { key: "ping" });
       },
     });
 
@@ -374,12 +391,17 @@ describe("contribute policy", () => {
     const plugin = definePlugin({
       name: "test.keyless",
       setup: (ctx) => {
-        ctx.contribute(KEYLESS, { label: "no id" });
+        ctx.contributions.add(KEYLESS, { label: "no id" });
       },
     });
 
     host = stand([plugin]);
 
-    await expect(host.start()).rejects.toThrow(/requires opts.key, keyOf, or a non-empty item.id/);
+    await expect(host.start()).rejects.toMatchObject({
+      cause: expect.objectContaining({
+        message: expect.stringContaining("requires a non-empty key"),
+      }),
+      details: { outcome: "restored" },
+    });
   });
 });

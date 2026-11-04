@@ -7,9 +7,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/frame/sqlite"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestPreparedCommandRetainsUnknownAdmissionAcrossRestart(t *testing.T) {
@@ -34,10 +35,10 @@ func TestPreparedCommandRetainsUnknownAdmissionAcrossRestart(t *testing.T) {
 	if pending, reply, err := AdmitCommand(t.Context(), db, "maintain", "original", input, nil); err != nil || pending == nil || pending.NewlyAdmitted() || len(reply) != 0 {
 		t.Fatalf("pending command lost its reconciliation-only admission: %v, %s, %v", pending, reply, err)
 	}
-	if _, _, err := AdmitCommand(t.Context(), db, "changed", "original", input, nil); !errors.Is(err, portable.ErrInvocationConflict) {
+	if _, _, err := AdmitCommand(t.Context(), db, "changed", "original", input, nil); !errors.Is(err, framemcp.ErrInvocationConflict) {
 		t.Fatalf("changed method=%v", err)
 	}
-	if _, _, err := AdmitCommand(t.Context(), db, "maintain", "original", receiptInput(t, "changed"), nil); !errors.Is(err, portable.ErrInvocationConflict) {
+	if _, _, err := AdmitCommand(t.Context(), db, "maintain", "original", receiptInput(t, "changed"), nil); !errors.Is(err, framemcp.ErrInvocationConflict) {
 		t.Fatalf("changed input=%v", err)
 	}
 	if _, err := Command(t.Context(), db, "maintain", "original", input, nil, func(context.Context, string) (string, error) {
@@ -59,21 +60,21 @@ func TestPreparedCompletionIsAtomicWithItsMutationAndImmutable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	outcome, err := qimumcp.EncodeReply("saved", nil, nil)
+	outcome, err := pluginmcp.EncodeReply("saved", nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	reply := outcome.JSON()
+	reply := outcome.Bytes()
 	if _, err := db.ExecContext(t.Context(), `CREATE TRIGGER abort_completion BEFORE UPDATE OF reply ON commands BEGIN SELECT RAISE(ABORT,'receipt failure'); END`); err != nil {
 		t.Fatal(err)
 	}
 	mutate := func(ctx context.Context) error {
-		if _, err := sqlite.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`); err != nil {
+		if _, err := Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`); err != nil {
 			return err
 		}
 		return prepared.Complete(ctx, reply)
 	}
-	if err := sqlite.RunInTx(t.Context(), db, mutate); err == nil {
+	if err := WithinTransaction(t.Context(), db, mutate); err == nil {
 		t.Fatal("receipt failure committed mutation")
 	}
 	var count int
@@ -87,18 +88,18 @@ func TestPreparedCompletionIsAtomicWithItsMutationAndImmutable(t *testing.T) {
 	if _, err := db.ExecContext(t.Context(), `DROP TRIGGER abort_completion`); err != nil {
 		t.Fatal(err)
 	}
-	if err := sqlite.RunInTx(t.Context(), db, mutate); err != nil {
+	if err := WithinTransaction(t.Context(), db, mutate); err != nil {
 		t.Fatal(err)
 	}
 	if err := prepared.Complete(t.Context(), reply); err != nil {
 		t.Fatal(err)
 	}
-	other, err := qimumcp.EncodeReply("different", nil, nil)
+	other, err := pluginmcp.EncodeReply("different", nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	changed := other.JSON()
-	if err := prepared.Complete(t.Context(), changed); !errors.Is(err, portable.ErrInvocationConflict) {
+	changed := other.Bytes()
+	if err := prepared.Complete(t.Context(), changed); !errors.Is(err, framemcp.ErrInvocationConflict) {
 		t.Fatalf("completed outcome changed: %v", err)
 	}
 	duplicate, original, err := AdmitCommand(t.Context(), db, "maintain", "original", input, nil)
@@ -117,7 +118,7 @@ func TestExternalSettlementCommitsEvidenceOnceOutsideCancelledCall(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	outcome, err := qimumcp.EncodeReply("upstream-accepted", nil, nil)
+	outcome, err := pluginmcp.EncodeReply("upstream-accepted", nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,11 +128,11 @@ func TestExternalSettlementCommitsEvidenceOnceOutsideCancelledCall(t *testing.T)
 		if _, ok := ctx.Deadline(); !ok {
 			t.Fatal("settlement has no deadline")
 		}
-		_, err := sqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO evidence VALUES('remote-id')`)
+		_, err := Connection(ctx, db).ExecContext(ctx, `INSERT INTO evidence VALUES('remote-id')`)
 		return err
 	}
 	failure := errors.New("local failure")
-	err = prepared.SettleExternal(call, outcome.JSON(), func(ctx context.Context) error {
+	err = prepared.SettleExternal(call, outcome.Bytes(), func(ctx context.Context) error {
 		if err := evidence(ctx); err != nil {
 			return err
 		}
@@ -140,10 +141,10 @@ func TestExternalSettlementCommitsEvidenceOnceOutsideCancelledCall(t *testing.T)
 	if !errors.Is(err, failure) {
 		t.Fatalf("settlement: %v", err)
 	}
-	if err := prepared.SettleExternal(call, outcome.JSON(), evidence); err != nil {
+	if err := prepared.SettleExternal(call, outcome.Bytes(), evidence); err != nil {
 		t.Fatal(err)
 	}
-	if err := prepared.SettleExternal(call, outcome.JSON(), evidence); err != nil {
+	if err := prepared.SettleExternal(call, outcome.Bytes(), evidence); err != nil {
 		t.Fatalf("settled evidence was replayed: %v", err)
 	}
 }

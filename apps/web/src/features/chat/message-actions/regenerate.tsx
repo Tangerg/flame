@@ -28,7 +28,7 @@ function RegenerateButton() {
 export const messageRegenerate = definePlugin({
   name: "flame.builtin.message-regenerate",
   setup(ctx) {
-    contributeLayout(ctx, "message.actions", {
+    contributeLayout(ctx.contributions, "message.actions", {
       id: "regenerate",
       order: 10,
       component: RegenerateButton,

@@ -3,10 +3,11 @@ package bootstrap
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"

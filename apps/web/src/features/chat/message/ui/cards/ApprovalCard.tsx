@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useId } from "react";
-import { prettyJSON } from "@qimu/sdk/json";
+import { prettyJSON } from "@frame/sdk/json";
 import { toolFamilyId } from "@/lib/toolFamilies";
 import { toolIconFor } from "@/features/agent/public/toolIcon";
 import { type ApprovalDecision } from "@/features/agent/public/hitl";

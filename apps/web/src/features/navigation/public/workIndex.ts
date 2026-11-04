@@ -31,5 +31,5 @@ export {
 } from "@/features/navigation/domain/workIndex";
 
 export function contributeWorkIndexItem(ctx: Contributor, item: WorkIndexItemSpec): Disposable {
-  return ctx.contribute(WORK_INDEX_ITEM, item);
+  return ctx.add(WORK_INDEX_ITEM, item);
 }

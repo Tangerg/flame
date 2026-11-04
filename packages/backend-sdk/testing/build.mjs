@@ -1,7 +1,7 @@
 import protocol from "@flame/backend-sdk/protocol" with { type: "json" };
 import { rolldown } from "rolldown";
 import { fileURLToPath } from "node:url";
-import { buildBackend } from "@qimu/node/build";
+import { buildBackend } from "@flame/backend-sdk/build";
 
 await buildBackend({
   target: protocol.constants.nodeTarget,

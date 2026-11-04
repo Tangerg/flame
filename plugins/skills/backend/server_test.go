@@ -10,17 +10,21 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func connectLearning(t *testing.T, path string) (*sdk.ClientSession, *qimumcp.Binding, func()) {
+func connectLearning(t *testing.T, path string) (*sdk.ClientSession, *pluginmcp.Binding, func()) {
 	t.Helper()
 	learner, err := openLearner(t.Context(), path)
 	if err != nil {
@@ -31,7 +35,7 @@ func connectLearning(t *testing.T, path string) (*sdk.ClientSession, *qimumcp.Bi
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "skill-learning-test", Version: "1"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -56,7 +60,7 @@ func connectLearning(t *testing.T, path string) (*sdk.ClientSession, *qimumcp.Bi
 	if err != nil {
 		t.Fatal(err)
 	}
-	exported, err := qimumcp.ResolveCapability(t.Context(), session, "skill-learning", contract)
+	exported, err := pluginmcp.ResolveCapability(t.Context(), session, "skill-learning", contract)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +77,7 @@ func connectLearning(t *testing.T, path string) (*sdk.ClientSession, *qimumcp.Bi
 
 func learningInvocation(t *testing.T, id string) context.Context {
 	t.Helper()
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: id, Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "skills"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: id, Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "skills"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,13 +89,13 @@ func TestLearningReceiptsSurviveRestartWithoutRepeatingModelCalls(t *testing.T) 
 		t.Run(outcome, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "learning.db")
 			session, mine, closeBackend := connectLearning(t, path)
-			callbacks := qimumcp.NewCallbacks()
+			callbacks := pluginmcp.NewCallbacks()
 			t.Cleanup(func() { _ = callbacks.Close() })
 			if err := callbacks.AdmitSession(session); err != nil {
 				t.Fatal(err)
 			}
 			var modelCalls atomic.Int32
-			model, err := pluginsdk.NewModelCallback(func(context.Context, qimumcp.Command[chat.Request]) (*chat.Response, error) {
+			model, err := pluginsdk.NewModelCallback(func(context.Context, pluginmcp.Command[chat.Request]) (*chat.Response, error) {
 				modelCalls.Add(1)
 				if outcome == "response lost" {
 					return nil, errors.New("model reply lost")
@@ -113,7 +117,7 @@ func TestLearningReceiptsSurviveRestartWithoutRepeatingModelCalls(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			history, err := qimumcp.NewCallback(historyMethod, nil, func(context.Context, qimumcp.Command[struct{}]) (skilllearning.Conversation, error) {
+			history, err := pluginmcp.NewCallback(historyMethod, nil, func(context.Context, pluginmcp.Command[struct{}]) (skilllearning.Conversation, error) {
 				return skilllearning.Conversation{MessageCount: 4, Transcript: "retained conversation"}, nil
 			})
 			if err != nil {
@@ -123,61 +127,61 @@ func TestLearningReceiptsSurviveRestartWithoutRepeatingModelCalls(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			admit, err := qimumcp.NewCallback(admitMethod, nil, func(_ context.Context, cmd qimumcp.Command[skilllearning.Proposal]) (skilllearning.Admission, error) {
+			admit, err := pluginmcp.NewCallback(admitMethod, nil, func(_ context.Context, cmd pluginmcp.Command[skilllearning.Proposal]) (skilllearning.Admission, error) {
 				return skilllearning.Admission{Accepted: cmd.Input.Skill.Name == "run-tests"}, nil
 			})
 			if err != nil {
 				t.Fatal(err)
 			}
 			ctx := learningInvocation(t, "maintenance")
-			grant, release, err := callbacks.Open(ctx, session, qimumcp.CallbackLimits{MaxRequestBytes: skilllearning.MaxCallbackBytes, MaxResponseBytes: skilllearning.MaxCallbackBytes}, model, history, admit)
+			grant, release, err := callbacks.Open(ctx, session, pluginmcp.CallbackLimits{MaxRequestBytes: skilllearning.MaxCallbackBytes, MaxResponseBytes: skilllearning.MaxCallbackBytes}, model, history, admit)
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer release()
-			metadata, err := qimumcp.CallbackMetadata(grant)
+			metadata, err := pluginmcp.CallbackMetadata(grant)
 			if err != nil {
 				t.Fatal(err)
 			}
-			input, err := jsonvalue.Encode(skilllearning.Run{Library: "frozen-user-library", SessionID: "ses_receipt", ToolCalls: 8})
+			input, err := framevalue.EncodeJSON(skilllearning.Run{Library: "frozen-user-library", SessionID: "ses_receipt", ToolCalls: 8})
 			if err != nil {
 				t.Fatal(err)
 			}
 			for n := range 2 {
-				if _, err := mine.Invoke(ctx, qimumcp.CommandID(fmt.Sprintf("cadence-%d", n)), input); err != nil {
+				if _, err := mine.Invoke(ctx, pluginmcp.CommandID(fmt.Sprintf("cadence-%d", n)), input); err != nil {
 					t.Fatal(err)
 				}
 			}
 			value, err := mine.InvokeWithMetadata(ctx, "due", input, metadata)
 			complete := outcome == "completed"
 			if complete != (err == nil) {
-				t.Fatalf("mining outcome = %s, %v", value.JSON(), err)
+				t.Fatalf("mining outcome = %s, %v", value.Bytes(), err)
 			}
 			if complete {
 				var result skilllearning.MineResult
-				if err := json.Unmarshal(value.JSON(), &result); err != nil || result.Proposal == nil || result.Proposal.Skill.Name != "run-tests" {
+				if err := json.Unmarshal(value.Bytes(), &result); err != nil || result.Proposal == nil || result.Proposal.Skill.Name != "run-tests" {
 					t.Fatalf("draft = %+v, %v", result, err)
 				}
 			}
 			release()
 			for range 2 {
 				if repeated, err := mine.Invoke(ctx, "due", input); complete != (err == nil) || complete && repeated != value {
-					t.Fatalf("repeated outcome = %s, %v", repeated.JSON(), err)
+					t.Fatalf("repeated outcome = %s, %v", repeated.Bytes(), err)
 				}
 			}
 			closeBackend()
 			_, restarted, _ := connectLearning(t, path)
 			if repeated, err := restarted.Invoke(ctx, "due", input); complete != (err == nil) || complete && repeated != value {
-				t.Fatalf("restart outcome = %s, %v", repeated.JSON(), err)
+				t.Fatalf("restart outcome = %s, %v", repeated.Bytes(), err)
 			}
 			receipt, found, err := restarted.ReadReceipt(ctx, "due", input)
 			if err != nil || found != complete || complete && receipt != value {
-				t.Fatalf("receipt = %s, %t, %v", receipt.JSON(), found, err)
+				t.Fatalf("receipt = %s, %t, %v", receipt.Bytes(), found, err)
 			}
 			if modelCalls.Load() != 1 {
 				t.Fatalf("replayed model calls = %d", modelCalls.Load())
 			}
-			changed, err := jsonvalue.Encode(skilllearning.Run{Library: "frozen-user-library", SessionID: "ses_other", ToolCalls: 8})
+			changed, err := framevalue.EncodeJSON(skilllearning.Run{Library: "frozen-user-library", SessionID: "ses_other", ToolCalls: 8})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -11,15 +11,19 @@ import (
 	"testing"
 	"time"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	app "github.com/Tangerg/flame/plugins/memory/internal/application"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -54,7 +58,7 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryThroughCapturedModels(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	broker := qimumcp.NewCallbacks()
+	broker := pluginmcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
@@ -124,7 +128,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 		t.Fatal(err)
 	}
 	store, session, closeBackend := connectMemoryBackend(t, path)
-	broker := qimumcp.NewCallbacks()
+	broker := pluginmcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
@@ -265,7 +269,7 @@ func TestMaintenancePublicationAndReceiptFailTogetherWithoutLosingLedger(t *test
 	if _, err := db.ExecContext(t.Context(), `CREATE TRIGGER fail_maintenance_receipt BEFORE UPDATE OF reply ON commands BEGIN SELECT RAISE(ABORT,'receipt failed'); END`); err != nil {
 		t.Fatal(err)
 	}
-	broker := qimumcp.NewCallbacks()
+	broker := pluginmcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
@@ -308,9 +312,9 @@ func TestMaintenancePublicationAndReceiptFailTogetherWithoutLosingLedger(t *test
 	}
 }
 
-func invokeMaintenance(t *testing.T, ctx context.Context, session *sdk.ClientSession, id string, input rpc.MaintenanceInput, ref qimumcp.CallbackRef) (rpc.MaintenanceResult, error) {
+func invokeMaintenance(t *testing.T, ctx context.Context, session *sdk.ClientSession, id string, input rpc.MaintenanceInput, ref pluginmcp.CallbackRef) (rpc.MaintenanceResult, error) {
 	t.Helper()
-	metadata, err := qimumcp.CallbackMetadata(ref)
+	metadata, err := pluginmcp.CallbackMetadata(ref)
 	if err != nil {
 		return rpc.MaintenanceResult{}, err
 	}
@@ -318,7 +322,7 @@ func invokeMaintenance(t *testing.T, ctx context.Context, session *sdk.ClientSes
 	if err != nil {
 		return rpc.MaintenanceResult{}, err
 	}
-	exported, err := qimumcp.NewCapabilityBinding(session, "memory", contracts.Capability)
+	exported, err := pluginmcp.NewCapabilityBinding(session, "memory", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -326,16 +330,16 @@ func invokeMaintenance(t *testing.T, ctx context.Context, session *sdk.ClientSes
 	if err != nil {
 		return rpc.MaintenanceResult{}, err
 	}
-	admitted, err := jsonvalue.Encode(input)
+	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {
 		return rpc.MaintenanceResult{}, err
 	}
-	reply, err := binding.InvokeWithMetadata(ctx, qimumcp.CommandID(id), admitted, metadata)
+	reply, err := binding.InvokeWithMetadata(ctx, pluginmcp.CommandID(id), admitted, metadata)
 	if err != nil {
 		return rpc.MaintenanceResult{}, err
 	}
 	var result rpc.MaintenanceResult
-	err = json.Unmarshal(reply.JSON(), &result, json.RejectUnknownMembers(true))
+	err = json.Unmarshal(reply.Bytes(), &result, json.RejectUnknownMembers(true))
 	return result, err
 }
 
@@ -361,7 +365,7 @@ func TestSearchRequiresMetadataForConfiguredEmbeddingAndRejectsFormerGrantInput(
 		if err != nil {
 			t.Fatal(err)
 		}
-		admitted, err := jsonvalue.Encode(call.input)
+		admitted, err := framevalue.EncodeJSON(call.input)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -369,11 +373,11 @@ func TestSearchRequiresMetadataForConfiguredEmbeddingAndRejectsFormerGrantInput(
 			t.Fatalf("valid business input: %v", err)
 		}
 		var former map[string]any
-		if err := json.Unmarshal(admitted.JSON(), &former); err != nil {
+		if err := json.Unmarshal(admitted.Bytes(), &former); err != nil {
 			t.Fatal(err)
 		}
-		former["Grant"] = qimumcp.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: strings.Repeat("a", 64), Call: strings.Repeat("b", 64), MaxResponseBytes: 1024}
-		admitted, err = jsonvalue.Encode(former)
+		former["Grant"] = pluginmcp.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: strings.Repeat("a", 64), Call: strings.Repeat("b", 64), MaxResponseBytes: 1024}
+		admitted, err = framevalue.EncodeJSON(former)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -383,7 +387,7 @@ func TestSearchRequiresMetadataForConfiguredEmbeddingAndRejectsFormerGrantInput(
 	}
 }
 
-func memoryContract(t *testing.T) *portable.Capability {
+func memoryContract(t *testing.T) *plugincontract.Capability {
 	t.Helper()
 	contracts, err := rpc.NewContracts()
 	if err != nil {
@@ -394,20 +398,20 @@ func memoryContract(t *testing.T) *portable.Capability {
 
 // The callback fixture supplies the public model exchange. Runtime owns admission
 // and provider budgets; these tests assert Memory's private publication lifetime.
-func openTestModel(ctx context.Context, callbacks *qimumcp.Callbacks, session *sdk.ClientSession, model chat.Model) (qimumcp.CallbackRef, func(), error) {
-	completion, err := pluginsdk.NewModelCallback(func(ctx context.Context, command qimumcp.Command[chat.Request]) (*chat.Response, error) {
+func openTestModel(ctx context.Context, callbacks *pluginmcp.Callbacks, session *sdk.ClientSession, model chat.Model) (pluginmcp.CallbackRef, func(), error) {
+	completion, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginmcp.Command[chat.Request]) (*chat.Response, error) {
 		return model.Call(ctx, command.Input.Clone())
 	})
 	if err != nil {
-		return qimumcp.CallbackRef{}, nil, err
+		return pluginmcp.CallbackRef{}, nil, err
 	}
 	policy := rpc.ModelCallerPolicy()
-	return callbacks.Open(ctx, session, qimumcp.CallbackLimits{MaxRequestBytes: policy.MaxCallbackInputBytes, MaxResponseBytes: policy.MaxCallbackOutputBytes}, completion)
+	return callbacks.Open(ctx, session, pluginmcp.CallbackLimits{MaxRequestBytes: policy.MaxCallbackInputBytes, MaxResponseBytes: policy.MaxCallbackOutputBytes}, completion)
 }
 
-func callMemoryCapability[P, R any](ctx context.Context, session *sdk.ClientSession, contract *portable.Capability, export, method, id string, input P, metadata sdk.ParamsBase) (R, error) {
+func callMemoryCapability[P, R any](ctx context.Context, session *sdk.ClientSession, contract *plugincontract.Capability, export, method, id string, input P, metadata sdk.ParamsBase) (R, error) {
 	var zero R
-	exported, err := qimumcp.NewCapabilityBinding(session, export, contract)
+	exported, err := pluginmcp.NewCapabilityBinding(session, export, contract)
 	if err != nil {
 		return zero, err
 	}
@@ -415,21 +419,21 @@ func callMemoryCapability[P, R any](ctx context.Context, session *sdk.ClientSess
 	if err != nil {
 		return zero, err
 	}
-	admitted, err := jsonvalue.Encode(input)
+	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {
 		return zero, err
 	}
-	result, err := bound.InvokeWithMetadata(ctx, qimumcp.CommandID(id), admitted, metadata)
+	result, err := bound.InvokeWithMetadata(ctx, pluginmcp.CommandID(id), admitted, metadata)
 	if err != nil {
 		return zero, err
 	}
-	err = json.Unmarshal(result.JSON(), &zero, json.RejectUnknownMembers(true))
+	err = json.Unmarshal(result.Bytes(), &zero, json.RejectUnknownMembers(true))
 	return zero, err
 }
 
-func receiptMemoryCapability[P, R any](ctx context.Context, session *sdk.ClientSession, contract *portable.Capability, export, method, id string, input P) (R, bool, error) {
+func receiptMemoryCapability[P, R any](ctx context.Context, session *sdk.ClientSession, contract *plugincontract.Capability, export, method, id string, input P) (R, bool, error) {
 	var zero R
-	exported, err := qimumcp.NewCapabilityBinding(session, export, contract)
+	exported, err := pluginmcp.NewCapabilityBinding(session, export, contract)
 	if err != nil {
 		return zero, false, err
 	}
@@ -437,14 +441,14 @@ func receiptMemoryCapability[P, R any](ctx context.Context, session *sdk.ClientS
 	if err != nil {
 		return zero, false, err
 	}
-	admitted, err := jsonvalue.Encode(input)
+	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {
 		return zero, false, err
 	}
-	result, found, err := bound.ReadReceipt(ctx, qimumcp.CommandID(id), admitted)
+	result, found, err := bound.ReadReceipt(ctx, pluginmcp.CommandID(id), admitted)
 	if err != nil || !found {
 		return zero, found, err
 	}
-	err = json.Unmarshal(result.JSON(), &zero, json.RejectUnknownMembers(true))
+	err = json.Unmarshal(result.Bytes(), &zero, json.RejectUnknownMembers(true))
 	return zero, true, err
 }

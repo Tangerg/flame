@@ -6,10 +6,9 @@ package keylock
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"sync"
-
-	"github.com/Tangerg/frame/cancellation"
 )
 
 // Set owns one exclusion per key. The zero value is not usable; build one with
@@ -27,7 +26,7 @@ func NewSet() *Set { return &Set{held: make(map[string]chan struct{})} }
 func (s *Set) Acquire(ctx context.Context, key string) (func(), error) {
 	for {
 		s.mu.Lock()
-		if err := cancellation.Err(ctx); err != nil {
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			s.mu.Unlock()
 			return nil, err
 		}
@@ -49,7 +48,7 @@ func (s *Set) Acquire(ctx context.Context, key string) (func(), error) {
 		s.mu.Unlock()
 		select {
 		case <-ctx.Done():
-			return nil, cancellation.Err(ctx)
+			return nil, errors.Join(ctx.Err(), context.Cause(ctx))
 		case <-held:
 		}
 	}

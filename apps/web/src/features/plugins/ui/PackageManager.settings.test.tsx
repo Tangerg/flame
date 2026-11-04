@@ -70,21 +70,21 @@ async function openSettings(install = vi.fn<Install>(async () => installation)) 
     definePlugin({
       name: "test.settings-drafts",
       setup(ctx) {
-        ctx.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => [] });
-        ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
-        ctx.contribute(SETTINGS_PANE, {
+        ctx.contributions.add(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => [] });
+        ctx.contributions.add(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
+        ctx.contributions.add(SETTINGS_PANE, {
           id: "plugins",
           label: "Plugins",
           order: 0,
           component: PackageManager,
         });
-        ctx.contribute(SETTINGS_PANE, {
+        ctx.contributions.add(SETTINGS_PANE, {
           id: "appearance",
           label: "Appearance",
           order: 1,
           component: () => <Button>Appearance action</Button>,
         });
-        ctx.contribute(SETTINGS_PANE, {
+        ctx.contributions.add(SETTINGS_PANE, {
           id: "reader",
           label: "Reader",
           order: 2,

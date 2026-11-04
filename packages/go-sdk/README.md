@@ -1,7 +1,7 @@
 # Go SDK
 
 This module owns Flame's public Go contracts and product-specific authoring APIs.
-It consumes the independent Qimu module. It has no dependency on Runtime,
+It consumes the independent Frame module. It has no dependency on Runtime,
 products, first-party plugins or repository tooling,
 including in tests and development commands.
 
@@ -11,6 +11,7 @@ including in tests and development commands.
 | `protocol`                                                                             | Runtime wire values, complete tree admission and strict RPC envelopes                |
 | `extension`                                                                            | Invocation scopes and installed client contribution metadata                         |
 | `builtin`                                                                              | Runtime built-in identities, arguments and normalized result values                  |
+| `wiregen`                                                                              | Pure schema graph and TypeScript rendering for Runtime and native bridge generators  |
 | `question`                                                                             | Runtime's ordered answer space and field-specific validation                         |
 | `hook`                                                                                 | Portable lifecycle events, rules and bounded command material                        |
 | `plugin`                                                                               | Flame model roles, tool authoring and product receipt contracts                      |
@@ -58,18 +59,21 @@ plugin declarations and clients together; the former result-shape `name` field
 is refused without conversion.
 
 `cmd/flame-sdk` generates Flame model-role contracts and projects Flame backend
-policy. Runtime's `cmd/pluginpack` translates Flame declarations into Qimu releases;
-Qimu owns their archive format, validation and immutable content. Generic capability generation is
-`go run github.com/Tangerg/qimu/cmd/qimu contract --feature ...`.
-Qimu owns SQLite transactions, cancellation, Portable contracts, exact JSON, MCP backend authoring, callback and
-stream transport, and their Go/TypeScript protocol projection. Consumers import
-those packages directly; this SDK does not re-export the old generic API.
+policy. Runtime's `cmd/pluginpack` translates Flame declarations into Frame releases;
+Frame owns their archive format, validation and immutable content. Generic capability generation is
+`go run github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk feature --feature ...`.
+Frame owns scoped SQLite transactions, Host admission, lifetimes, process and
+browser executions, portable contracts and exact JSON. Flame owns its product
+composition envelope and its MCP business method/setup/callback/receipt bindings;
+`plugin/mcp.ProtocolJSON` generates their TypeScript transport projection. The
+adapter uses Frame's `process.Protocol` extension point, without another process,
+session, instance or release owner. Cancellation is the standard context contract.
 Both generators use their compiled contract owners and run without source files
 from another checkout.
 
 Runtime owns execution identities, durable replay and transcript rendering.
 The SDK's lexical mechanisms do not own product lifecycle policy. Plugin receipts
-are encoded through `qimu/mcp.EncodeReply`; only the business owner commits their durable
+are encoded through `packages/go-sdk/plugin/mcp.EncodeReply`; only the business owner commits their durable
 representation. Protocol consumers validate complete values with
 `ValidateWireTree`; individual generated node validators are private.
 

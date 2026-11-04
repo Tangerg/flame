@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { parseJSON } from "@qimu/sdk/json";
+import { parseJSON } from "@frame/sdk/json";
 
 export const JSONRPC_VERSION = "2.0" as const;
 

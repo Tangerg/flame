@@ -1,6 +1,10 @@
 package pluginservices
 
 import (
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"encoding/json/jsontext"
 	"errors"
@@ -17,6 +21,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -28,8 +33,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"
 )
@@ -50,10 +54,10 @@ func selectedCallInput(model string) pluginsdk.ModelCallRequest {
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original input")))
 	request.Options.Model = model
 	request.Options.MaxOutputTokens = new(int64(64))
-	request.Tools = []chat.ToolDefinition{{Name: "echo", Description: "Echo.", InputSchema: jsontext.Value(`{"type":"object"}`)}}
+	request.Tools = []toolcontract.Definition{{Name: "echo", Description: "Echo.", InputSchema: jsontext.Value(`{"type":"object"}`)}}
 	return pluginsdk.ModelCallRequest{Selection: pluginsdk.ModelSelection{Provider: "anthropic", Model: model}, Budget: pluginsdk.ModelCallBudget{MaxRequestBytes: 4096, MaxOutputTokens: 64}, Request: *request}
 }
-func selectedCallRef(t *testing.T, composition *CallComposition, resolver models.ChatModelResolver) (qimumcp.CallbackRef, func()) {
+func selectedCallRef(t *testing.T, composition *CallComposition, resolver models.ChatModelResolver) (pluginmcp.CallbackRef, func()) {
 	t.Helper()
 	callbacks, err := composition.ModelCallbacks(resolver)
 	if err != nil {
@@ -66,11 +70,11 @@ func selectedCallRef(t *testing.T, composition *CallComposition, resolver models
 	if err := composition.callbacks.AdmitSession(session); err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-plugin-operation", Origin: extension.Model, Parent: "original-effect", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-plugin-operation"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-plugin-operation", Origin: extension.Model, Parent: "original-effect", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-plugin-operation"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, release, err := composition.callbacks.OpenRPC(ctx, session, qimumcp.CallbackLimits{MaxRequestBytes: 64 << 10, MaxResponseBytes: 64 << 10})
+	ref, release, err := composition.callbacks.OpenRPC(ctx, session, pluginmcp.CallbackLimits{MaxRequestBytes: 64 << 10, MaxResponseBytes: 64 << 10})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +97,7 @@ func TestSelectedModelCallsHaveIndependentRoutesBudgetsAndDurableEvidence(t *tes
 			var physical atomic.Int32
 			endpoint := chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
 				physical.Add(1)
-				inv, err := qimumcp.InvocationFromContext(ctx)
+				inv, err := pluginmcp.InvocationFromContext(ctx)
 				row, found, evidenceErr := db.ModelInvocations.EndpointForCaller(ctx, inv.Parent)
 				evidence := row.Snapshot()
 				if err != nil || evidenceErr != nil || !found || evidence.Invocation.ID != inv.ID || evidence.Invocation.Caller.Parent != "original-plugin-operation" || inv.Origin != extension.Model || inv.ID != inv.Target.Reference || len(request.Tools) != 1 {
@@ -115,7 +119,7 @@ func TestSelectedModelCallsHaveIndependentRoutesBudgetsAndDurableEvidence(t *tes
 			for i := range 3 {
 				input.Selection.Model = fmt.Sprintf("route-%d", i)
 				input.Request.Options.Model = input.Selection.Model
-				response, err := pluginsdk.CallSelectedModel(t.Context(), ref, qimumcp.CommandID(fmt.Sprintf("independent-%d", i)), input)
+				response, err := pluginsdk.CallSelectedModel(t.Context(), ref, pluginmcp.CommandID(fmt.Sprintf("independent-%d", i)), input)
 				if response == nil || response.Text() != "known "+input.Selection.Model || (err != nil) != outerFailure {
 					t.Fatalf("independent outcome %d: %+v %v", i, response, err)
 				}
@@ -137,7 +141,7 @@ func TestSelectedModelCallsHaveIndependentRoutesBudgetsAndDurableEvidence(t *tes
 				t.Fatal("finished model calls retained contributions")
 			}
 			release()
-			if _, err := pluginsdk.CallSelectedModel(t.Context(), ref, "after-release", input); !errors.Is(err, qimumcp.ErrStaleCall) {
+			if _, err := pluginsdk.CallSelectedModel(t.Context(), ref, "after-release", input); !errors.Is(err, pluginmcp.ErrStaleCall) {
 				t.Fatalf("released operation remained callable: %v", err)
 			}
 			if err := db.Close(); err != nil {
@@ -169,9 +173,9 @@ func TestSelectedModelFinalRequestBudgetRefusesBeforeProviderDispatch(t *testing
 			if err != nil {
 				t.Fatal(err)
 			}
-			composition, _ := installedCallCompositionFixture(t, contract, []string{"converter"}, func(backend *qimumcp.Backend) {
+			composition, _ := installedCallCompositionFixture(t, contract, []string{"converter"}, func(backend *pluginmcp.Backend) {
 				method, _ := pluginsdk.ModelInputMethod()
-				err := method.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command qimumcp.Command[pluginsdk.ModelInputRequest]) (chat.Request, error) {
+				err := method.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginsdk.ModelInputRequest]) (chat.Request, error) {
 					request := command.Input.Request.Clone()
 					request.Messages[0] = chat.NewUserMessage(chat.NewTextPart("converted"))
 					if mode == "final-bytes" {
@@ -301,10 +305,10 @@ func TestSelectedModelResolvesInstalledSelectionForEveryIndependentCall(t *testi
 		t.Fatal(err)
 	}
 	var choices atomic.Int32
-	composition, _ := installedCallCompositionFixture(t, contract, []string{"selector"}, func(backend *qimumcp.Backend) {
+	composition, _ := installedCallCompositionFixture(t, contract, []string{"selector"}, func(backend *pluginmcp.Backend) {
 		method, _ := pluginsdk.ModelSelectionMethod()
-		err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[pluginsdk.ModelSelectionRequest]) (pluginsdk.ModelSelection, error) {
-			parent, err := qimumcp.InvocationFromContext(ctx)
+		err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginsdk.ModelSelectionRequest]) (pluginsdk.ModelSelection, error) {
+			parent, err := pluginmcp.InvocationFromContext(ctx)
 			if err != nil || parent.Parent != fmt.Sprintf("selected-route-%d", choices.Load()) || parent.Origin != extension.Model || command.Input.Request.Options.Model != "proposed-model" {
 				return pluginsdk.ModelSelection{}, errors.New("selector lost original independent request")
 			}
@@ -325,7 +329,7 @@ func TestSelectedModelResolvesInstalledSelectionForEveryIndependentCall(t *testi
 	ref, _ := selectedCallRef(t, composition, routing)
 	input := selectedCallInput("proposed-model")
 	for i := range 3 {
-		response, err := pluginsdk.CallSelectedModel(t.Context(), ref, qimumcp.CommandID(fmt.Sprintf("selected-route-%d", i)), input)
+		response, err := pluginsdk.CallSelectedModel(t.Context(), ref, pluginmcp.CommandID(fmt.Sprintf("selected-route-%d", i)), input)
 		if err != nil || response == nil || response.Text() != fmt.Sprintf("chosen-%d", i+1) {
 			t.Fatalf("fresh selection %d: %+v %v", i, response, err)
 		}
@@ -357,7 +361,7 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 	}
 	var calls atomic.Int32
 	observed, err := models.NewObservedResolver(&routedCallResolver{model: chat.ModelFunc(func(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
-		inv, _ := qimumcp.InvocationFromContext(ctx)
+		inv, _ := pluginmcp.InvocationFromContext(ctx)
 		row, found, err := journal.EndpointForCaller(ctx, inv.Parent)
 		evidence := row.Snapshot()
 		if err != nil || !found || evidence.RunID != draft.RunID || evidence.SegmentID != draft.SegmentID {
@@ -384,11 +388,11 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 	ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: sessionID})
 	ctx = executionctx.WithInvocationOwner(ctx, "logical_executing_owner")
 	ctx = executionctx.WithModelCalls(ctx, sourceAdmissionPublisher{journal: journal, draft: draft})
-	ctx, err = qimumcp.WithInvocation(ctx, portable.Invocation{ID: "original-plugin-operation", Origin: extension.Model, Parent: "logical_executing_owner", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-plugin-operation"}})
+	ctx, err = pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: "original-plugin-operation", Origin: extension.Model, Parent: "logical_executing_owner", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-plugin-operation"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, release, err := composition.callbacks.OpenRPC(ctx, sdkSession, qimumcp.CallbackLimits{MaxRequestBytes: 64 << 10, MaxResponseBytes: 64 << 10})
+	ref, release, err := composition.callbacks.OpenRPC(ctx, sdkSession, pluginmcp.CallbackLimits{MaxRequestBytes: 64 << 10, MaxResponseBytes: 64 << 10})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -396,7 +400,7 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 	input := selectedCallInput("independent-route")
 	forged := executionctx.WithInvocationOwner(t.Context(), "foreign-wire-owner")
 	forged = executionctx.WithScope(forged, runs.ExecutionScope{SessionID: "ses_foreign"})
-	forged, err = qimumcp.WithInvocation(forged, portable.Invocation{ID: "foreign-wire-owner", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeCall, Reference: "foreign-wire-owner"}})
+	forged, err = pluginmcp.WithInvocation(forged, framemcp.Invocation{ID: "foreign-wire-owner", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeCall, Reference: "foreign-wire-owner"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -429,7 +433,7 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 	if _, err := auxiliary.Model().Call(executionctx.WithInvocationOwner(ctx, "original-plugin-operation"), &input.Request); err == nil {
 		t.Fatal("auxiliary capture claimed its executing owner identity")
 	}
-	fresh, err := qimumcp.WithInvocation(ctx, portable.Invocation{ID: "auxiliary-owned", Origin: extension.Model, Parent: "original-plugin-operation", Target: portable.Target{Scope: extension.ScopeCall, Reference: "auxiliary-owned"}})
+	fresh, err := pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: "auxiliary-owned", Origin: extension.Model, Parent: "original-plugin-operation", Target: portable.Target{Scope: extension.ScopeCall, Reference: "auxiliary-owned"}})
 	if err != nil {
 		t.Fatal(err)
 	}

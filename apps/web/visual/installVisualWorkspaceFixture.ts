@@ -171,10 +171,10 @@ function workspaceDataPlugin(
   return definePlugin({
     name: "flame.visual.workspace-data",
     setup(ctx) {
-      const brandLifetime = ctx.lifetime("visual-brand");
+      const brandLifetime = ctx.contributions.child("visual-brand");
       const brandSources = visualComponentProps(runtimeClient(), brandLifetime, "brand");
       const saveBrandFile = createBrowserHost().saveFile;
-      brandLifetime.contribute(SETTINGS_PANE, {
+      brandLifetime.add(SETTINGS_PANE, {
         id: "brand",
         label: "Brand identity",
         group: "extensions",
@@ -186,7 +186,7 @@ function workspaceDataPlugin(
             saveFile: saveBrandFile,
           }),
       });
-      const providersLifetime = ctx.lifetime("visual-providers");
+      const providersLifetime = ctx.contributions.child("visual-providers");
       const providersSources = visualComponentProps(
         runtimeClient(),
         providersLifetime,
@@ -195,9 +195,9 @@ function workspaceDataPlugin(
       const ProviderSettings = Providers.create({
         runtimeIdentity: providersSources.runtime,
         component: providersSources.component,
-        signal: providersLifetime.signal,
+        signal: providersLifetime.lifetime.signal,
       });
-      providersLifetime.contribute(SETTINGS_PANE, {
+      providersLifetime.add(SETTINGS_PANE, {
         id: "providers",
         label: providersDeclaration.components[0]!.title,
         material: "providers",
@@ -210,14 +210,14 @@ function workspaceDataPlugin(
             entry: ProviderSettings,
           }),
       });
-      const mcpLifetime = ctx.lifetime("visual-mcp");
+      const mcpLifetime = ctx.contributions.child("visual-mcp");
       const mcpSources = visualComponentProps(runtimeClient(), mcpLifetime, "mcp");
       const MCPSettingsView = MCPServers.create({
         runtimeIdentity: mcpSources.runtime,
         component: mcpSources.component,
-        signal: mcpLifetime.signal,
+        signal: mcpLifetime.lifetime.signal,
       });
-      mcpLifetime.contribute(SETTINGS_PANE, {
+      mcpLifetime.add(SETTINGS_PANE, {
         id: "mcp-servers",
         label: mcpDeclaration.components[0]!.title,
         intent: "mcp-servers",
@@ -229,22 +229,22 @@ function workspaceDataPlugin(
             entry: MCPSettingsView,
           }),
       });
-      const hooksLifetime = ctx.lifetime("visual-hooks");
+      const hooksLifetime = ctx.contributions.child("visual-hooks");
       const hooksSources = visualComponentProps(runtimeClient(), hooksLifetime, "hooks");
-      hooksLifetime.contribute(SETTINGS_PANE, {
+      hooksLifetime.add(SETTINGS_PANE, {
         id: "hooks",
         label: "Hooks",
         group: "extensions",
         component: () =>
           createElement(InstalledComponent, { ...hooksSources, scope: "client", entry: Hooks }),
       });
-      const diagnosticsLifetime = ctx.lifetime("visual-diagnostics");
+      const diagnosticsLifetime = ctx.contributions.child("visual-diagnostics");
       const diagnosticsSources = visualComponentProps(
         runtimeClient(),
         diagnosticsLifetime,
         "diagnostics",
       );
-      diagnosticsLifetime.contribute(WORKSPACE_VIEW, {
+      diagnosticsLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:diagnostics",
         title: "Diagnostics",
         icon: "activity",
@@ -257,9 +257,9 @@ function workspaceDataPlugin(
             entry: Diagnostics,
           }),
       });
-      const galleryLifetime = ctx.lifetime("visual-icon-gallery");
+      const galleryLifetime = ctx.contributions.child("visual-icon-gallery");
       const gallerySources = visualComponentProps(runtimeClient(), galleryLifetime, "icon-gallery");
-      galleryLifetime.contribute(WORKSPACE_VIEW, {
+      galleryLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:icon-gallery",
         title: "Icon gallery",
         component: () =>
@@ -269,9 +269,9 @@ function workspaceDataPlugin(
             entry: Gallery,
           }),
       });
-      const lifetime = ctx.lifetime("visual-trajectory");
+      const lifetime = ctx.contributions.child("visual-trajectory");
       const trajectorySources = visualComponentProps(runtimeClient(), lifetime, "trajectory");
-      lifetime.contribute(WORKSPACE_VIEW, {
+      lifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:trajectory",
         title: "Session trajectory",
         dock: "session",
@@ -282,9 +282,9 @@ function workspaceDataPlugin(
             entry: Trajectory,
           }),
       });
-      const diffLifetime = ctx.lifetime("visual-diff");
+      const diffLifetime = ctx.contributions.child("visual-diff");
       const diffSources = visualComponentProps(runtimeClient(), diffLifetime, "diff");
-      diffLifetime.contribute(WORKSPACE_VIEW, {
+      diffLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:diff",
         title: "Workspace diff",
         icon: "diff",
@@ -297,9 +297,9 @@ function workspaceDataPlugin(
             entry: WorkspaceDiff,
           }),
       });
-      const usageLifetime = ctx.lifetime("visual-usage");
+      const usageLifetime = ctx.contributions.child("visual-usage");
       const usageSources = visualComponentProps(runtimeClient(), usageLifetime, "usage");
-      usageLifetime.contribute(WORKSPACE_VIEW, {
+      usageLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:usage",
         title: "Usage",
         icon: "chart",
@@ -307,14 +307,14 @@ function workspaceDataPlugin(
         component: () =>
           createElement(InstalledComponent, { ...usageSources, scope: "client", entry: Usage }),
       });
-      const memoryLifetime = ctx.lifetime("visual-memory");
+      const memoryLifetime = ctx.contributions.child("visual-memory");
       const memorySources = visualComponentProps(
         runtimeClient(),
         memoryLifetime,
         "memory",
         VISUAL_MEMORY_BINDING,
       );
-      memoryLifetime.contribute(WORKSPACE_VIEW, {
+      memoryLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:memory",
         title: "Agent memory",
         icon: "brain",
@@ -327,14 +327,14 @@ function workspaceDataPlugin(
           }),
       });
 
-      const schedulesLifetime = ctx.lifetime("visual-schedules");
+      const schedulesLifetime = ctx.contributions.child("visual-schedules");
       const schedulesSources = visualComponentProps(
         runtimeClient(),
         schedulesLifetime,
         "schedules",
         VISUAL_SCHEDULES_BINDING,
       );
-      schedulesLifetime.contribute(WORKSPACE_VIEW, {
+      schedulesLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:schedules",
         title: "Schedules",
         icon: "calendar",
@@ -347,9 +347,9 @@ function workspaceDataPlugin(
           }),
       });
 
-      const skillsLifetime = ctx.lifetime("visual-skills");
+      const skillsLifetime = ctx.contributions.child("visual-skills");
       const skillsSources = visualComponentProps(runtimeClient(), skillsLifetime, "skills");
-      skillsLifetime.contribute(WORKSPACE_VIEW, {
+      skillsLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:skills",
         title: "Skills",
         icon: "book",
@@ -362,7 +362,7 @@ function workspaceDataPlugin(
           }),
       });
 
-      ctx.contribute(DATA_PROVIDER, {
+      ctx.contributions.add(DATA_PROVIDER, {
         key: WORKSPACE_FILES_CHANGED_KEY,
         fetcher: async (_, signal) => {
           const diff = await readDiff(signal);
@@ -374,7 +374,7 @@ function workspaceDataPlugin(
           }));
         },
       });
-      ctx.contribute(DATA_PROVIDER, {
+      ctx.contributions.add(DATA_PROVIDER, {
         key: WORKSPACE_LIST_FILES_KEY,
         fetcher: async (params) =>
           (params as { path?: string } | undefined)?.path === "apps"
@@ -404,7 +404,7 @@ function workspaceDataPlugin(
               ] satisfies WorkspaceFileEntry[]),
       });
 
-      ctx.contribute(DATA_PROVIDER, {
+      ctx.contributions.add(DATA_PROVIDER, {
         key: WORKSPACE_READ_FILE_KEY,
         fetcher: async (params) => {
           const path = (params as WorkspaceReadFileQuery).path;
@@ -423,15 +423,16 @@ const visualNotifier = definePlugin({
   name: "flame.visual.notifier",
   setup(ctx) {
     const host = window as unknown as { flameVisualNotify?: (message: string) => void };
-    host.flameVisualNotify = (message: string) => notifyFrom(ctx.meta.pluginName, message, "info");
-    ctx.cleanup(() => delete host.flameVisualNotify);
+    host.flameVisualNotify = (message: string) =>
+      notifyFrom(ctx.metadata.pluginName, message, "info");
+    ctx.lifetime.defer(() => delete host.flameVisualNotify);
   },
 });
 
 const visualShortcuts = definePlugin({
   name: "flame.visual.shortcuts",
   setup(ctx) {
-    ctx.contribute(SHORTCUT, {
+    ctx.contributions.add(SHORTCUT, {
       key: "Mod+N",
       description: "sidebar.action.newSession",
       handler: () => undefined,

@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -27,9 +27,9 @@ func TestRunInTx_AtomicAcrossStores(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	sess := newSessionStore(db)
-	msg := newMessageStore(db)
-	ints := newInterruptStore(db)
+	sess := newSessionStore(databaseFor(db))
+	msg := newMessageStore(databaseFor(db))
+	ints := newInterruptStore(databaseFor(db))
 	ctx := context.Background()
 
 	// A multi-store write-set that fails mid-way must leave NO partial state.
@@ -39,7 +39,7 @@ func TestRunInTx_AtomicAcrossStores(t *testing.T) {
 		if insertErr := sess.Insert(ctx, value); insertErr != nil {
 			return insertErr
 		}
-		if _, writeErr := msg.Write(ctx, "s1", chat.NewUserMessage(chat.NewTextPart("hi"))); writeErr != nil {
+		if writeErr := msg.Write(ctx, "s1", chat.NewUserMessage(chat.NewTextPart("hi"))); writeErr != nil {
 			return writeErr
 		}
 		return boom // a later step fails (e.g. a DB IO error during import)
@@ -60,7 +60,7 @@ func TestRunInTx_AtomicAcrossStores(t *testing.T) {
 		if insertErr := sess.Insert(ctx, value); insertErr != nil {
 			return insertErr
 		}
-		_, writeErr := msg.Write(ctx, "s2", chat.NewUserMessage(chat.NewTextPart("hi")))
+		writeErr := msg.Write(ctx, "s2", chat.NewUserMessage(chat.NewTextPart("hi")))
 		return writeErr
 	}); runInTxErr != nil {
 		t.Fatalf("commit tx: %v", runInTxErr)

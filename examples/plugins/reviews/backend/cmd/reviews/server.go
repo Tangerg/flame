@@ -7,16 +7,16 @@ import (
 	"fmt"
 	"io"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
-	"github.com/Tangerg/qimu/portable"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
 )
 
@@ -42,11 +42,11 @@ func newServer(store *store) (*sdk.Server, error) {
 		if len(current) != 1 {
 			return reviews.Analysis{}, fmt.Errorf("reviews: expected the owned example review")
 		}
-		invocation, err := qimumcp.InvocationFromContext(ctx)
+		invocation, err := pluginmcp.InvocationFromContext(ctx)
 		if err != nil {
 			return reviews.Analysis{}, err
 		}
-		ref, err := qimumcp.CallbackFromContext(ctx)
+		ref, err := pluginmcp.CallbackFromContext(ctx)
 		if err != nil {
 			return reviews.Analysis{}, err
 		}
@@ -68,7 +68,7 @@ func newServer(store *store) (*sdk.Server, error) {
 		if err != nil {
 			return reviews.UpdateResult{}, rejected("bounded invocation identity is required")
 		}
-		admitted, err := qimumcp.RequestInput(ctx)
+		admitted, err := pluginmcp.RequestInput(ctx)
 		if err != nil {
 			return reviews.UpdateResult{}, err
 		}
@@ -83,7 +83,7 @@ func newServer(store *store) (*sdk.Server, error) {
 		if err != nil {
 			return reviews.UpdateResult{}, err
 		}
-		output := chat.NewTextToolOutput(string(encoded))
+		output := tool.NewTextOutput(string(encoded))
 		output.Details = encoded
 		failure, err := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindFailed, Output: output, Cause: fmt.Errorf("reviews: %s", result.Type)})
 		if err != nil {
@@ -101,11 +101,11 @@ func newServer(store *store) (*sdk.Server, error) {
 		return nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame-review-example", Version: "1.0.0"}, nil)
-	backend, err := qimumcp.NewBackend(server)
+	backend, err := pluginmcp.NewBackend(server)
 	if err != nil {
 		return nil, err
 	}
-	if err := backend.OnSetup(func(_ context.Context, setup qimumcp.Setup) (io.Closer, error) {
+	if err := backend.OnSetup(func(_ context.Context, setup pluginmcp.Setup) (io.Closer, error) {
 		values, err := setup.Contributions()
 		if err != nil {
 			return nil, err
@@ -118,7 +118,7 @@ func newServer(store *store) (*sdk.Server, error) {
 			if value.Export != "reviews" || len(value.Requires) != 1 || value.Requires[0].ID != "analyzers" || !value.Requires[0].Optional {
 				return nil, fmt.Errorf("reviews: named optional analyzers dependency is required")
 			}
-			actual, err := portable.AdmitCapability(value.Requires[0].Contract)
+			actual, err := plugincontract.AdmitCapability(value.Requires[0].Contract)
 			if err != nil {
 				return nil, err
 			}
@@ -133,21 +133,21 @@ func newServer(store *store) (*sdk.Server, error) {
 	if err := pluginsdk.RegisterTools(server, list, update, analyzeTool); err != nil {
 		return nil, err
 	}
-	receipts, err := qimumcp.ReceiptQuery()
+	receipts, err := pluginmcp.ReceiptQuery()
 	if err != nil {
 		return nil, err
 	}
-	if err := receipts.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (qimumcp.Receipt, error) {
+	if err := receipts.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginmcp.ReceiptRequest]) (pluginmcp.Receipt, error) {
 		return store.receipt(ctx, command.Input, contracts.Update.Name())
 	}); err != nil {
 		return nil, err
 	}
-	if err := contracts.List.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ qimumcp.Command[struct{}]) (reviews.ListResult, error) {
+	if err := contracts.List.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ pluginmcp.Command[struct{}]) (reviews.ListResult, error) {
 		return read(ctx)
 	}); err != nil {
 		return nil, err
 	}
-	if err := contracts.Update.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[reviews.Update]) (reviews.UpdateResult, error) {
+	if err := contracts.Update.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[reviews.Update]) (reviews.UpdateResult, error) {
 		admitted, err := command.RequestInput()
 		if err != nil {
 			return reviews.UpdateResult{}, err
@@ -156,7 +156,7 @@ func newServer(store *store) (*sdk.Server, error) {
 	}); err != nil {
 		return nil, err
 	}
-	if err := contracts.Analyzers.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ qimumcp.Command[struct{}]) (reviews.Analysis, error) {
+	if err := contracts.Analyzers.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ pluginmcp.Command[struct{}]) (reviews.Analysis, error) {
 		return analyze(ctx)
 	}); err != nil {
 		return nil, err
@@ -171,7 +171,7 @@ func newServer(store *store) (*sdk.Server, error) {
 }
 
 func rejected(message string) error {
-	failure, err := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: chat.NewTextToolOutput(message)})
+	failure, err := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: tool.NewTextOutput(message)})
 	if err != nil {
 		return err
 	}

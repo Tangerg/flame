@@ -1,11 +1,13 @@
 package terminal
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/ui/core/input"
 )
 
 type attentionPriority uint8
@@ -91,7 +93,9 @@ func (a *app) raiseAttention(signal attentionSignal) {
 	}
 	a.setWindowTitle()
 	if a.settings.UI.Notifications && signal.notification != "" {
-		a.loop.Session().Notify(signal.notification)
+		if err := a.loop.Session().Notify(signal.notification); err != nil && !errors.Is(err, errors.ErrUnsupported) {
+			a.stopWithError(fmt.Errorf("terminal notification: %w", err))
+		}
 	}
 }
 
@@ -100,7 +104,9 @@ func (a *app) setWindowTitle() {
 	if marker := a.attention.Marker(); marker != "" {
 		title += " · " + marker
 	}
-	a.loop.Session().SetTitle(title)
+	if err := a.loop.Session().SetTitle(title); err != nil && !errors.Is(err, errors.ErrUnsupported) {
+		a.stopWithError(fmt.Errorf("terminal title: %w", err))
+	}
 }
 
 func interruptAttention(interrupts []conversation.Interrupt) attentionSignal {

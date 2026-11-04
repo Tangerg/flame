@@ -6,10 +6,11 @@ import (
 	"regexp"
 	"strings"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 type RefKind string
@@ -190,7 +191,7 @@ func (r *Ref) UnmarshalText(text []byte) error {
 
 // ValidateFingerprint states which references carry source authority: a
 // built-in's authority is the Runtime binary, every other source has one.
-func (r Ref) ValidateFingerprint(source integrity.Digest) error {
+func (r Ref) ValidateFingerprint(source framevalue.Digest) error {
 	if err := r.Validate(); err != nil {
 		return err
 	}

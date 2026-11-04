@@ -7,11 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetime(t *testing.T) {

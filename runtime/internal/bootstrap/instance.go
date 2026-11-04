@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/runner"
 	"net/http"
 	"path/filepath"
 	"time"
+
+	"github.com/Tangerg/frame"
+	"github.com/Tangerg/frame/process/runner"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -220,5 +221,5 @@ func (i *Instance) PluginControl() http.Handler { return i.application.pluginCon
 func (i *Instance) CheckPlugins(context.Context) error { return i.stores.Admission.RecoveryError() }
 
 func startupRecoveryDeferred(err error) bool {
-	return errors.Is(err, qimu.ErrRecoveryRequired) || errors.Is(err, runs.ErrOriginalSourcePending)
+	return errors.Is(err, frame.ErrRecoveryRequired) || errors.Is(err, runs.ErrOriginalSourcePending)
 }

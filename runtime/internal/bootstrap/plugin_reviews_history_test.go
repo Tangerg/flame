@@ -15,12 +15,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -141,7 +143,7 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 		Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`,
 	}
 	initial := runtime.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
-	before, err := jsonvalue.Parse([]byte(initial.Output))
+	before, err := framevalue.ParseJSON([]byte(initial.Output))
 	if err != nil || initial.Failure != nil {
 		t.Fatalf("initial review read: %+v, %v", initial, err)
 	}
@@ -156,7 +158,7 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 		t.Fatalf("malformed input entered command execution: %+v", refused)
 	}
 	assertReviewToolRefusal(t, runtime, expected)
-	want, err := jsonvalue.Parse([]byte(expected))
+	want, err := framevalue.ParseJSON([]byte(expected))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,9 +172,9 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	arguments := []string{"plugins", "call", "--request", string(encoded), "--command-id", key}
 	assertReply := func(reply *protocol.CallPluginResponse) {
 		t.Helper()
-		actual, err := jsonvalue.Parse([]byte(reply.Output))
+		actual, err := framevalue.ParseJSON([]byte(reply.Output))
 		if err != nil || reply.Failure != nil || actual != want {
-			t.Fatalf("business refusal lost original facts: %+v, want %s, %v", reply, want.JSON(), err)
+			t.Fatalf("business refusal lost original facts: %+v, want %s, %v", reply, want.Bytes(), err)
 		}
 	}
 	for range 2 {
@@ -186,7 +188,7 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	assertReply(runtime.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse))
 	request.Method, request.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
 	current := runtime.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
-	after, err := jsonvalue.Parse([]byte(current.Output))
+	after, err := framevalue.ParseJSON([]byte(current.Output))
 	if err != nil || current.Failure != nil || after != before {
 		t.Fatalf("refused entrances changed the private review: %+v, %v", current, err)
 	}
@@ -214,7 +216,7 @@ func reviewRefusalChat(t *testing.T, updateInput string) chatclient.Client {
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
 	})}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +249,7 @@ func assertReviewToolRefusal(t *testing.T, runtime *poMCPRuntime, expected strin
 		t.Fatalf("known history refusal became uncertain execution: %+v", finished)
 	}
 	items := runtime.must(delivery.ItemsList, protocol.ListItemsRequest{Scope: protocol.ItemListScope{Type: protocol.ItemScopeRun, RunID: runID}}, "").(*protocol.ListItemsResponse)
-	want, err := jsonvalue.Parse([]byte(expected))
+	want, err := framevalue.ParseJSON([]byte(expected))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +259,7 @@ func assertReviewToolRefusal(t *testing.T, runtime *poMCPRuntime, expected strin
 			continue
 		}
 		calls++
-		actual, err := jsonvalue.Encode(item.Tool.Result)
+		actual, err := framevalue.EncodeJSON(item.Tool.Result)
 		if err != nil || actual != want || item.Status != protocol.ItemStatusIncomplete || item.Error == nil || item.Error.Type != protocol.ProblemToolFailed {
 			t.Fatalf("Tool lost its history facts/classification: %+v, %v", item, err)
 		}

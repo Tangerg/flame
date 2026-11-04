@@ -515,7 +515,7 @@ describe("standing tool outcomes", () => {
       definePlugin({
         name: "test.plan-surface",
         setup(ctx) {
-          ctx.contribute(TOOL_STANDING_SURFACE, "plan", { key: "set_plan" });
+          ctx.contributions.add(TOOL_STANDING_SURFACE, "plan", { key: "set_plan" });
         },
       }),
     );

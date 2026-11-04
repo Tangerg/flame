@@ -1,6 +1,10 @@
 package segment
 
 import (
+	corecontent "github.com/Tangerg/scope/core/content"
+
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"crypto/sha256"
 	"encoding/json/jsontext"
@@ -65,7 +69,7 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 					return err
 				},
 			})
-			modelResult := chat.ToolResult{ID: "provider_call", Name: "unavailable", IsError: true, Output: chat.NewTextToolOutput("exact rejection\n" + strings.Repeat("界", 900))}
+			modelResult := chat.ToolResult{ID: "provider_call", Name: "unavailable", IsError: true, Output: toolcontract.NewTextOutput("exact rejection\n" + strings.Repeat("界", 900))}
 			presentation, err := tool.NewResult("UI summary")
 			if err != nil {
 				t.Fatal(err)
@@ -191,11 +195,11 @@ func TestTerminalConversationPreservesSparseResultsAcrossRestart(t *testing.T) {
 				chat.NewToolCallPart(chat.ToolCall{ID: "first", Name: "waiting", Arguments: `{}`}),
 				chat.NewToolCallPart(chat.ToolCall{ID: "second", Name: "write", Arguments: `{}`}),
 			)
-			if _, err := messages.Write(ctx, chathistory.ConversationID(draft.SessionID), request); err != nil {
+			if err := messages.Write(ctx, chathistory.ConversationID(draft.SessionID), request); err != nil {
 				t.Fatal(err)
 			}
-			exact := chat.ToolResult{ID: "second", Name: "write", Output: chat.ToolOutput{
-				Content: []chat.ToolContent{{Kind: chat.PartText, Text: "external write acknowledged", Metadata: metadata.Map{"evidence": jsontext.Value(`{"etag":"ack-1","rank":9007199254740993}`)}}, {Kind: chat.PartText, Text: "second exact block"}},
+			exact := chat.ToolResult{ID: "second", Name: "write", Output: toolcontract.Output{
+				Content: []corecontent.Block{{Kind: corecontent.Text, Text: "external write acknowledged", Metadata: metadata.Map{"evidence": jsontext.Value(`{"etag":"ack-1","rank":9007199254740993}`)}}, {Kind: corecontent.Text, Text: "second exact block"}},
 				Details: jsontext.Value(`{"written":true,"bytes":42}`),
 			}}
 			preview, err := tool.NewResult("UI preview is intentionally different")

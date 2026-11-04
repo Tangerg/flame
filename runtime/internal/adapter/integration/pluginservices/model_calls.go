@@ -7,17 +7,17 @@ import (
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/samber/lo"
 )
 
 // ModelCallbacks uses the existing observed provider resolver and retained chain.
 // Each request is independent; a continuation still refers to its frozen endpoint.
-func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]qimumcp.Callback, error) {
+func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]pluginmcp.Callback, error) {
 	if lo.IsNil(resolve) {
 		return nil, errors.New("model composition: selected model resolver is required")
 	}
@@ -25,7 +25,7 @@ func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]qi
 		if err := input.Validate(); err != nil {
 			return models.SelectedChat{}, nil, nil, err
 		}
-		invocation, err := qimumcp.InvocationFromContext(ctx)
+		invocation, err := pluginmcp.InvocationFromContext(ctx)
 		if err != nil {
 			return models.SelectedChat{}, nil, nil, err
 		}
@@ -64,7 +64,7 @@ func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]qi
 		request.Options.ReasoningEffort = chat.ReasoningEffort(selection.ReasoningEffort())
 		return captured, request, release, nil
 	}
-	call, err := pluginsdk.NewSelectedModelCallback(func(ctx context.Context, command qimumcp.Command[pluginsdk.ModelCallRequest]) (response *chat.Response, returned error) {
+	call, err := pluginsdk.NewSelectedModelCallback(func(ctx context.Context, command pluginmcp.Command[pluginsdk.ModelCallRequest]) (response *chat.Response, returned error) {
 		selected, request, release, err := capture(ctx, command.Input)
 		if err != nil {
 			return nil, err
@@ -75,7 +75,7 @@ func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]qi
 	if err != nil {
 		return nil, err
 	}
-	stream, err := pluginsdk.NewSelectedModelStreamCallback(func(ctx context.Context, command qimumcp.Command[pluginsdk.ModelCallRequest]) iter.Seq2[*chat.ResponseDelta, error] {
+	stream, err := pluginsdk.NewSelectedModelStreamCallback(func(ctx context.Context, command pluginmcp.Command[pluginsdk.ModelCallRequest]) iter.Seq2[*chat.ResponseDelta, error] {
 		return func(yield func(*chat.ResponseDelta, error) bool) {
 			sender := newStreamSender(yield)
 			selected, request, release, err := capture(ctx, command.Input)
@@ -99,5 +99,5 @@ func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]qi
 	if err != nil {
 		return nil, err
 	}
-	return []qimumcp.Callback{call, stream}, nil
+	return []pluginmcp.Callback{call, stream}, nil
 }

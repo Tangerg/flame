@@ -73,7 +73,7 @@ func TestInteractionPolicyRefusalPublishesItsExactReasonBeforeModelContinuation(
 				}
 				return nil
 			})
-			if committed == nil || !committed.IsError || !reflect.DeepEqual(committed.Output, chat.NewTextToolOutput(reason)) {
+			if committed == nil || !committed.IsError || !reflect.DeepEqual(committed.Output, toolcontract.NewTextOutput(reason)) {
 				t.Fatalf("refusal lost its public reason: %#v", committed)
 			}
 			finished := payloadsOf[runs.ToolCallFinished](events)
@@ -91,7 +91,7 @@ func TestInteractionPolicyRefusalPublishesItsExactReasonBeforeModelContinuation(
 
 func TestInteractionAuthorizationErrorsDoNotPublishNestedOutcomes(t *testing.T) {
 	inner, err := toolcontract.NewFailure(toolcontract.FailureConfig{
-		Kind: toolcontract.FailureKindRejected, Output: chat.NewTextToolOutput("private nested refusal"),
+		Kind: toolcontract.FailureKindRejected, Output: toolcontract.NewTextOutput("private nested refusal"),
 	})
 	if err != nil {
 		t.Fatal(err)

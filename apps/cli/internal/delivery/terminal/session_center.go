@@ -2,18 +2,19 @@ package terminal
 
 import (
 	"fmt"
+	"github.com/Tangerg/oolong/ui/core/scene"
 	"slices"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/layout"
-	"github.com/Tangerg/oolong/core/text"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/text"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 type sessionCenterPane struct {
+	group          *scene.Group
 	theme          kit.Theme
 	glyphs         kit.Glyphs
 	picker         *picker[conversation.Session]
@@ -104,20 +105,23 @@ func (s *sessionCenterPane) HasMore() bool { return s.cursor != "" }
 
 func (s *sessionCenterPane) Cursor() string { return s.cursor }
 
-func (s *sessionCenterPane) Draw(frame headless.Frame) {
-	rows := frame.Subs((layout.Flow{Axis: layout.Down}).Rects(frame.Bounds().Size(), []layout.Slot{
-		{Size: layout.Flex(1)},
-		{Size: layout.Fixed(4)},
-		{Size: layout.Fixed(1)},
-	}))
-	s.picker.Draw(rows[0])
-	s.drawPreview(rows[1].View)
-	more := "all sessions loaded"
-	if s.HasMore() {
-		more = "alt+l load more"
+func (s *sessionCenterPane) Element() scene.Element {
+	if s.group == nil {
+		preview := scene.NewElement(scene.ElementConfig{Paint: func(frame scene.Frame) { s.drawPreview(frame.View) }})
+		help := scene.NewElement(scene.ElementConfig{Paint: func(frame scene.Frame) {
+			more := "all sessions loaded"
+			if s.HasMore() {
+				more = "alt+l load more"
+			}
+			kit.Label{Text: "alt+f favorite · alt+r rename · alt+d delete · " + more, Style: s.theme.Subtle, Ellipsis: s.glyphs.Ellipsis}.Draw(frame.View)
+		}})
+		s.group = scene.NewGroup(scene.GroupConfig{
+			Axis:    layout.Down,
+			Items:   []scene.Item{{Element: s.picker.Element(), Size: layout.Flex(1)}, {Element: preview, Size: layout.Fixed(4)}, {Element: help, Size: layout.Fixed(1)}},
+			Element: scene.ElementConfig{Preview: func(event scene.Event) scene.EventResult { return scene.EventResult{Consumed: s.Handle(event.Input())} }},
+		})
 	}
-	help := "alt+f favorite · alt+r rename · alt+d delete · " + more
-	kit.Label{Text: help, Style: s.theme.Subtle, Ellipsis: s.glyphs.Ellipsis}.Draw(rows[2].View)
+	return s.group.Element()
 }
 
 func (s *sessionCenterPane) drawPreview(view grid.View) {
@@ -168,7 +172,5 @@ func (s *sessionCenterPane) Handle(event input.Event) bool {
 			return true
 		}
 	}
-	return s.picker.Handle(event)
+	return false
 }
-
-func (s *sessionCenterPane) Focus(has bool) { s.picker.Focus(has) }

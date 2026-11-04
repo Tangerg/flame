@@ -18,7 +18,7 @@
         "@flame/component-sdk",
         "@flame/runtime-client",
         "@flame/ui",
-        "@qimu/sdk/json",
+        "@frame/sdk/json",
         "react",
         "react/jsx-runtime",
         "rolldown-runtime-XKyaHtl9.js"
@@ -45,7 +45,7 @@
     "@flame/component-sdk",
     "@flame/runtime-client",
     "@flame/ui",
-    "@qimu/sdk/json",
+    "@frame/sdk/json",
     "react",
     "react/jsx-runtime"
   ]

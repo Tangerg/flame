@@ -6,7 +6,7 @@ import { createFlameClient } from "@flame/runtime-client";
 import { createMemoryTransport } from "@flame/runtime-client/testing";
 import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
 import type { Page, TrajectoryEntry } from "@flame/runtime-client/wire";
-import { cloneJSON, parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { cloneJSON, parseJSON, stringifyJSON } from "@frame/sdk/json";
 import { createTestClient } from "@/test/renderClient";
 import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
 import { Trajectory } from "../../../plugins/trajectory/component/component";

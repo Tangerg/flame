@@ -11,7 +11,7 @@ import type {
   ExportSessionResponse,
   ExportTrajectoryResponse,
 } from "@flame/runtime-client/wire";
-import { parseJSON } from "@qimu/sdk/json";
+import { parseJSON } from "@frame/sdk/json";
 import { SessionExports, saveSessionExport } from "./exports";
 
 afterEach(cleanup);

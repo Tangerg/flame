@@ -6,10 +6,13 @@ import (
 	"slices"
 	"unicode/utf8"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 var (
@@ -32,15 +35,15 @@ const (
 type CommandBinding struct {
 	ID           string
 	Method       string
-	Input        jsonvalue.Value
-	Contract     jsonvalue.Value
+	Input        framevalue.JSON
+	Contract     framevalue.JSON
 	Contribution ContributionID
 	Export       string
 	Provider     Dependency
 	Activation   Activation
 	Server       mcpserver.ServerName
 	Phase        CommandPhase
-	Invocation   portable.Invocation
+	Invocation   framemcp.Invocation
 }
 
 type Command struct{ record CommandBinding }
@@ -60,15 +63,15 @@ func RestoreCommand(record CommandBinding) (*Command, error) {
 	if err := record.Contribution.Validate(); err != nil {
 		return nil, err
 	}
-	if !portable.ValidExportName(record.Export) {
+	if !plugincontract.ValidExportName(record.Export) {
 		return nil, fmt.Errorf("%w: command export", ErrInvalid)
 	}
-	contract, err := portable.ParseCapability(record.Contract.JSON())
+	contract, err := plugincontract.ParseCapability(record.Contract.Bytes())
 	if err != nil {
 		return nil, err
 	}
 	method, found := contract.Method(record.Method)
-	if !found || method.Kind() != portable.Mutation {
+	if !found || method.Kind() != portable.Command {
 		return nil, fmt.Errorf("%w: command does not belong to its original capability", ErrInvalid)
 	}
 	if err := method.ValidateInput(record.Input); err != nil {
@@ -110,7 +113,7 @@ func (c *Command) Snapshot() CommandBinding {
 	record.Activation = record.Activation.Clone()
 	return record
 }
-func (c *Command) Matches(method string, input jsonvalue.Value) bool {
+func (c *Command) Matches(method string, input framevalue.JSON) bool {
 	return c.record.Method == method && c.record.Input == input
 }
 func (c *Command) Pending() bool {

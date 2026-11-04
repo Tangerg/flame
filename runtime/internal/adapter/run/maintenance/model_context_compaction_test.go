@@ -1,6 +1,10 @@
 package maintenance
 
 import (
+	corecontent "github.com/Tangerg/scope/core/content"
+
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"errors"
 	"reflect"
@@ -43,7 +47,7 @@ func TestModelContextCompactionRewritesDurableHistoryAndPreservesPendingInput(t 
 	candidate := append(cloneMessages(history), pending)
 	threshold := contextTokenEstimate(t, candidate)
 	model := newTextStubModel("MID-RUN SUMMARY")
-	client, clientErr := chatclient.New(model, chatclient.Config{})
+	client, clientErr := chatclient.New(model)
 	if clientErr != nil {
 		t.Fatal(clientErr)
 	}
@@ -98,7 +102,7 @@ func TestModelContextCompactionChecksEveryCallButRewritesOnlyAtThreshold(t *test
 		t.Fatal(err)
 	}
 	model := newTextStubModel("THRESHOLD SUMMARY")
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +215,7 @@ func TestModelContextCompactionCountsMediaButDoesNotCompactBelowProviderThreshol
 		t.Fatal(err)
 	}
 	summaryModel := newTextStubModel("MUST NOT RUN")
-	summaryClient, err := chatclient.New(summaryModel, chatclient.Config{})
+	summaryClient, err := chatclient.New(summaryModel)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,7 +269,7 @@ func TestModelContextCompactionCountFailureLeavesDurableStateUntouched(t *testin
 		t.Fatal(err)
 	}
 	summaryModel := newTextStubModel("MUST NOT RUN")
-	summaryClient, err := chatclient.New(summaryModel, chatclient.Config{})
+	summaryClient, err := chatclient.New(summaryModel)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -322,7 +326,7 @@ func TestModelContextCompactionCompactsMediaOnlyAtProviderThreshold(t *testing.T
 		t.Fatal(err)
 	}
 	summaryModel := newTextStubModel("PROVIDER MEASURED SUMMARY")
-	summaryClient, err := chatclient.New(summaryModel, chatclient.Config{})
+	summaryClient, err := chatclient.New(summaryModel)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -408,7 +412,7 @@ func TestModelContextCompactionCalibratesThresholdFromProviderUsage(t *testing.T
 		t.Fatal(err)
 	}
 	model := newTextStubModel("CALIBRATED SUMMARY")
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -457,7 +461,7 @@ func TestModelContextCompactionCalibratesThresholdFromProviderUsage(t *testing.T
 }
 
 func TestModelContextCompactionUsesSelectedModelHardInputLimit(t *testing.T) {
-	modelInfo, found := catalog.Default.Lookup("openai", "gpt-5.4-mini")
+	modelInfo, found := catalog.LookupModel("openai", "gpt-5.4-mini")
 	if !found {
 		t.Fatal("catalog omitted openai/gpt-5.4-mini")
 	}
@@ -493,7 +497,7 @@ func TestModelContextCompactionUsesSelectedModelHardInputLimit(t *testing.T) {
 		t.Fatal(err)
 	}
 	model := newTextStubModel("HARD INPUT SUMMARY")
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -534,7 +538,7 @@ func TestModelContextCompactionUsesSelectedModelHardInputLimit(t *testing.T) {
 }
 
 func TestModelContextCompactionReservesExplicitOutputWindow(t *testing.T) {
-	modelInfo, found := catalog.Default.Lookup("alibaba", "qwen-mt-plus")
+	modelInfo, found := catalog.LookupModel("alibaba", "qwen-mt-plus")
 	if !found {
 		t.Fatal("catalog omitted alibaba/qwen-mt-plus")
 	}
@@ -575,7 +579,7 @@ func TestModelContextCompactionReservesExplicitOutputWindow(t *testing.T) {
 		t.Fatal(err)
 	}
 	model := newTextStubModel("OUTPUT RESERVATION SUMMARY")
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -625,7 +629,7 @@ func TestFirstModelContextCompactionPreservesCurrentUserMessageVerbatim(t *testi
 	if err := store.Write(t.Context(), sessionID, history...); err != nil {
 		t.Fatal(err)
 	}
-	client, err := chatclient.New(newTextStubModel("OLDER TURNS"), chatclient.Config{})
+	client, err := chatclient.New(newTextStubModel("OLDER TURNS"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -656,7 +660,7 @@ func TestModelContextCompactionFailsClosedWhenProtectedInputCannotFit(t *testing
 		t.Fatal(err)
 	}
 	model := newTextStubModel("must not summarize unseen input")
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -768,8 +772,8 @@ func TestDurableModelContextCompactionRejectsConversationDrift(t *testing.T) {
 func TestDurableModelContextCompactionAcceptsEquivalentToolMessageGrouping(t *testing.T) {
 	store := newCompactionTestStore()
 	const sessionID = "session:tool-grouping"
-	first := chat.ToolResult{ID: "call_1", Name: "shell", Output: chat.NewTextToolOutput("one")}
-	second := chat.ToolResult{ID: "call_2", Name: "shell", Output: chat.NewTextToolOutput("two")}
+	first := chat.ToolResult{ID: "call_1", Name: "shell", Output: toolcontract.NewTextOutput("one")}
+	second := chat.ToolResult{ID: "call_2", Name: "shell", Output: toolcontract.NewTextOutput("two")}
 	durable := []chat.Message{
 		chat.NewUserMessage(chat.NewTextPart("run both")),
 		chat.NewAssistantMessage(
@@ -800,8 +804,8 @@ func TestDurableModelContextCompactionRetainsAnnotatedToolMessageBoundaries(t *t
 	for _, grouped := range []bool{false, true} {
 		store := newCompactionTestStore()
 		const sessionID = "session:annotated-tool-grouping"
-		first := chat.ToolResult{ID: "call_1", Name: "read", Output: chat.NewTextToolOutput("one")}
-		second := chat.ToolResult{ID: "call_2", Name: "read", Output: chat.NewTextToolOutput("two")}
+		first := chat.ToolResult{ID: "call_1", Name: "read", Output: toolcontract.NewTextOutput("one")}
+		second := chat.ToolResult{ID: "call_2", Name: "read", Output: toolcontract.NewTextOutput("two")}
 		durable := []chat.Message{chat.NewToolMessage(first), chat.NewToolMessage(second)}
 		durable[0].Metadata = metadata.Map{"source": []byte(`"one"`)}
 		durable[1].Metadata = metadata.Map{"source": []byte(`"two"`)}
@@ -833,14 +837,14 @@ func TestDurableModelContextCompactionAcceptsEquivalentStructuredToolResultJSON(
 	const sessionID = "session:tool-json-order"
 	durable := chat.NewToolMessage(chat.ToolResult{
 		ID: "call_1", Name: "get_goal",
-		Output: chat.ToolOutput{Details: []byte(`{"goal":{"status":"active","usage":{"runs":1,"steps":2}}}`)},
+		Output: toolcontract.Output{Details: []byte(`{"goal":{"status":"active","usage":{"runs":1,"steps":2}}}`)},
 	})
 	if err := store.Write(t.Context(), sessionID, durable); err != nil {
 		t.Fatal(err)
 	}
 	candidate := []chat.Message{chat.NewToolMessage(chat.ToolResult{
 		ID: "call_1", Name: "get_goal",
-		Output: chat.ToolOutput{Details: []byte(`{"goal":{"usage":{"steps":2,"runs":1},"status":"active"}}`)},
+		Output: toolcontract.Output{Details: []byte(`{"goal":{"usage":{"steps":2,"runs":1},"status":"active"}}`)},
 	})}
 	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
@@ -879,8 +883,8 @@ func TestDurableModelContextCompactionUsesCanonicalMetadata(t *testing.T) {
 				const sessionID = "session:canonical-tool-content"
 				stored := chat.NewToolMessage(chat.ToolResult{
 					ID: "call_1", Name: "read",
-					Output: chat.ToolOutput{Content: []chat.ToolContent{{
-						Kind: chat.PartText, Text: "file content",
+					Output: toolcontract.Output{Content: []corecontent.Block{{
+						Kind: corecontent.Text, Text: "file content",
 					}}},
 				})
 				*location.target(&stored) = metadata.Map{"source": []byte(`{"id":9007199254740992,"revision":1}`)}
@@ -917,12 +921,12 @@ func TestDurableModelContextCompactionUsesCanonicalMetadata(t *testing.T) {
 func TestDurableModelContextCompactionRejectsToolResultPayloadDrift(t *testing.T) {
 	store := newCompactionTestStore()
 	const sessionID = "session:tool-payload-drift"
-	stored := chat.NewToolMessage(chat.ToolResult{ID: "call_1", Name: "shell", Output: chat.NewTextToolOutput("stored")})
+	stored := chat.NewToolMessage(chat.ToolResult{ID: "call_1", Name: "shell", Output: toolcontract.NewTextOutput("stored")})
 	if err := store.Write(t.Context(), sessionID, stored); err != nil {
 		t.Fatal(err)
 	}
 	candidate := []chat.Message{
-		chat.NewToolMessage(chat.ToolResult{ID: "call_1", Name: "shell", Output: chat.NewTextToolOutput("candidate")}),
+		chat.NewToolMessage(chat.ToolResult{ID: "call_1", Name: "shell", Output: toolcontract.NewTextOutput("candidate")}),
 	}
 	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
@@ -937,14 +941,14 @@ func TestDurableModelContextCompactionRejectsStructuredToolResultDrift(t *testin
 	const sessionID = "session:tool-json-drift"
 	stored := chat.NewToolMessage(chat.ToolResult{
 		ID: "call_1", Name: "get_goal",
-		Output: chat.ToolOutput{Details: []byte(`{"goal":{"status":"active"}}`)},
+		Output: toolcontract.Output{Details: []byte(`{"goal":{"status":"active"}}`)},
 	})
 	if err := store.Write(t.Context(), sessionID, stored); err != nil {
 		t.Fatal(err)
 	}
 	candidate := []chat.Message{chat.NewToolMessage(chat.ToolResult{
 		ID: "call_1", Name: "get_goal",
-		Output: chat.ToolOutput{Details: []byte(`{"goal":{"status":"paused"}}`)},
+		Output: toolcontract.Output{Details: []byte(`{"goal":{"status":"paused"}}`)},
 	})}
 	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
@@ -1039,7 +1043,7 @@ func TestDurableModelContextCompactionTrimsInPlaceWithoutSummarizing(t *testing.
 			ID: "c1", Name: "read", Arguments: `{"path":"big.txt"}`,
 		})),
 		chat.NewToolMessage(chat.ToolResult{
-			ID: "c1", Name: "read", Output: chat.NewTextToolOutput(oversized),
+			ID: "c1", Name: "read", Output: toolcontract.NewTextOutput(oversized),
 		}),
 		chat.NewUserMessage(chat.NewTextPart("now summarize it for me")),
 		chat.NewAssistantMessage(chat.NewTextPart("here is the summary")),
@@ -1122,7 +1126,7 @@ func TestDurableProtectedTailSpanningEphemeralProtectsTheSameHistory(t *testing.
 			t.Fatal(err)
 		}
 		model := newTextStubModel("SUMMARY")
-		client, err := chatclient.New(model, chatclient.Config{})
+		client, err := chatclient.New(model)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1153,7 +1157,7 @@ func TestDurableProtectedTailSpanningEphemeralProtectsTheSameHistory(t *testing.
 }
 
 func TestModelContextCompactionCountsTrailerWithoutReturningIt(t *testing.T) {
-	modelInfo, found := catalog.Default.Lookup("openai", "gpt-5.4-mini")
+	modelInfo, found := catalog.LookupModel("openai", "gpt-5.4-mini")
 	if !found {
 		t.Fatal("catalog omitted openai/gpt-5.4-mini")
 	}
@@ -1189,7 +1193,7 @@ func TestModelContextCompactionCountsTrailerWithoutReturningIt(t *testing.T) {
 		if err := store.Write(t.Context(), sessionID, history...); err != nil {
 			t.Fatal(err)
 		}
-		client, err := chatclient.New(newTextStubModel("TRAILER SUMMARY"), chatclient.Config{})
+		client, err := chatclient.New(newTextStubModel("TRAILER SUMMARY"))
 		if err != nil {
 			t.Fatal(err)
 		}

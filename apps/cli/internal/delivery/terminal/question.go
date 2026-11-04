@@ -7,10 +7,11 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/keymap"
-	"github.com/Tangerg/oolong/core/layout"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/keymap"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/scene"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 type questionnaire struct {
@@ -267,70 +268,55 @@ func (p *interruptPrompts) openQuestionField() {
 	p.showQuestionDialog(review, fields)
 }
 
-func (p *interruptPrompts) buildQuestionFields(response *questionResponse) ([]headless.Field, error) {
+func (p *interruptPrompts) buildQuestionFields(response *questionResponse) ([]base.Field, error) {
 	specification := response.field
 	label := questionFieldLabel(specification)
 	switch specification.Kind {
 	case conversation.QuestionText:
-		return []headless.Field{p.buildQuestionText(&response.text, label, "Leave empty to skip this field", func(value string) error {
+		return []base.Field{p.buildQuestionText(&response.text, label, "Leave empty to skip this field", func(value string) error {
 			return response.contract.ValidateField(response.index, textQuestionValues(value))
 		})}, nil
 	case conversation.QuestionSingle:
-		fields := []headless.Field{p.buildQuestionSingle(response, specification, label)}
+		fields := []base.Field{p.buildQuestionSingle(response, specification, label)}
 		return p.appendCustomQuestionField(fields, response), nil
 	case conversation.QuestionMulti:
-		fields := []headless.Field{p.buildQuestionMulti(response, specification, label)}
+		fields := []base.Field{p.buildQuestionMulti(response, specification, label)}
 		return p.appendCustomQuestionField(fields, response), nil
 	default:
 		return nil, errors.New("runtime returned an unsupported question field kind")
 	}
 }
 
-func (p *interruptPrompts) buildQuestionText(value *string, label, placeholder string, check func(string) error) headless.Field {
-	field := headless.NewText(headless.TextConfig{Label: label, Placeholder: placeholder, Value: headless.Bind(value), Check: check})
+func (p *interruptPrompts) buildQuestionText(value *string, label, placeholder string, check func(string) error) base.Field {
+	field := base.NewText(base.TextConfig{Label: label, Placeholder: placeholder, Initial: *value, Check: check})
 	field.Clipboard = p.clipboard
 	return field
 }
 
-func (p *interruptPrompts) buildQuestionSingle(response *questionResponse, specification conversation.QuestionField, label string) headless.Field {
-	options := append(questionOptions(specification), headless.Option[questionChoice]{Label: "Skip this field", Value: skippedQuestionChoice()})
-	field := headless.NewSelect(headless.SelectConfig[questionChoice]{
-		Label: label, Value: headless.Bind(&response.single), Rows: min(len(options), 5),
+func (p *interruptPrompts) buildQuestionSingle(response *questionResponse, specification conversation.QuestionField, label string) base.Field {
+	options := append(questionOptions(specification), base.Option[questionChoice]{Label: "Skip this field", Value: skippedQuestionChoice()})
+	field := base.NewSelect(base.SelectConfig[questionChoice]{
+		Label: label, Initial: response.single, Options: options, Rows: min(len(options), 5),
 		Same: sameQuestionChoice,
 	})
-	field.SetOptions(options)
 	return field
 }
 
-func (p *interruptPrompts) buildQuestionMulti(response *questionResponse, specification conversation.QuestionField, label string) headless.Field {
+func (p *interruptPrompts) buildQuestionMulti(response *questionResponse, specification conversation.QuestionField, label string) base.Field {
 	options := questionOptions(specification)
-	field := headless.NewMultiSelect(headless.MultiSelectConfig[questionChoice]{
-		Label: label, Value: headless.Bind(&response.multiple), Rows: min(len(options), 5),
-		Same: sameQuestionChoice, Check: func(values []questionChoice) error {
-			candidate, err := response.multipleValues(values, response.custom)
-			if err != nil {
-				return err
-			}
-			return response.contract.ValidateField(response.index, candidate)
-		},
+	field := base.NewMultiSelect(base.MultiSelectConfig[questionChoice]{
+		Label: label, Initial: response.multiple, Options: options, Rows: min(len(options), 5),
+		Same: sameQuestionChoice,
 	})
-	field.SetOptions(options)
 	return field
 }
 
-func (p *interruptPrompts) appendCustomQuestionField(fields []headless.Field, response *questionResponse) []headless.Field {
+func (p *interruptPrompts) appendCustomQuestionField(fields []base.Field, response *questionResponse) []base.Field {
 	if !response.field.AllowCustom {
 		return fields
 	}
 	placeholder := "One value when Other is selected; commas are kept"
-	check := func(value string) error {
-		if !response.choosesCustom() {
-			return nil
-		}
-		_, err := response.values()
-		return err
-	}
-	return append(fields, p.buildQuestionText(&response.custom, "Custom answer", placeholder, check))
+	return append(fields, p.buildQuestionText(&response.custom, "Custom answer", placeholder, nil))
 }
 
 func questionFieldLabel(specification conversation.QuestionField) string {
@@ -352,37 +338,56 @@ func (q *questionResponse) choosesCustom() bool {
 	return false
 }
 
-func (p *interruptPrompts) showQuestionDialog(review *questionnaire, fields []headless.Field) {
-	form := headless.NewForm(fields...)
-	var dialog *kit.Dialog
-	form.Done = func() {
-		if p.questionnaire == review && p.questionDialog == dialog {
-			p.advanceQuestionnaire()
-		}
-	}
-	form.GaveUp = func() {
-		if p.questionnaire == review && p.questionDialog == dialog {
-			p.backOrCancelQuestionnaire()
-		}
-	}
-	dressed := kit.NewForm(kit.FormConfig{
-		Theme: p.theme, Glyphs: p.glyphs, Controller: form,
+func (p *interruptPrompts) showQuestionDialog(review *questionnaire, fields []base.Field) {
+	form := kit.FormConfig{Fields: fields, Theme: p.theme, Glyphs: p.glyphs,
 		Title: strings.Join(nonEmptyStrings([]string{
 			p.review.SubmissionFailure(), review.question.Detail,
 		}), " · "),
-		Hints: []keymap.Action{headless.Submit, headless.Cancel},
-	})
+		Hints: []keymap.Action{base.Submit, base.Cancel}}
+	response := review.response(review.current)
+	collect := func() questionResponse {
+		candidate := *response
+		switch field := fields[0].(type) {
+		case *base.Text:
+			candidate.text = field.Text()
+		case *base.Select[questionChoice]:
+			if chosen, ok := field.Chosen(); ok {
+				candidate.single = chosen.Value
+			}
+		case *base.MultiSelect[questionChoice]:
+			candidate.multiple = field.Taken()
+		}
+		if candidate.field.AllowCustom && len(fields) > 1 {
+			candidate.custom = fields[len(fields)-1].(*base.Text).Text()
+		}
+		return candidate
+	}
+	form.Check = func() error { candidate := collect(); _, err := candidate.values(); return err }
+	var dialog *presentationDialog
+	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
+		if p.questionnaire == review && p.questionDialog == dialog {
+			*response = collect()
+			p.advanceQuestionnaire()
+		}
+		return scene.Applied, nil
+	}
+	leave := func() {
+		if p.questionnaire == review && p.questionDialog == dialog {
+			*response = collect()
+			p.backOrCancelQuestionnaire()
+		}
+	}
+	dressed := kit.NewForm(form)
 	title := review.Title()
 	if review.question.Fields[review.current].Kind != conversation.QuestionSingle {
 		title += " · empty skips"
 	}
-	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: p.stack, Theme: p.theme, Glyphs: p.glyphs,
-		Title: title, Body: dressed,
+	dialog = newPresentationDialog(p.stack, kit.DialogConfig{Theme: p.theme, Glyphs: p.glyphs,
+		Title: title, Body: formNavigation(dressed.Element(), leave),
 		Where: layout.Placement{Width: 88, Height: formDialogHeight(dressed.HeightForWidth(80), len(fields), 18)},
 	})
 	p.questionDialog = dialog
-	dialog.Controller().Show()
+	dialog.Show()
 }
 
 func (p *interruptPrompts) advanceQuestionnaire() {
@@ -394,7 +399,7 @@ func (p *interruptPrompts) advanceQuestionnaire() {
 		p.run.fail(err)
 		return
 	}
-	p.questionDialog.Controller().Dismiss()
+	p.questionDialog.Dismiss()
 	p.questionDialog = nil
 	if review.Advance() {
 		p.openQuestionField()
@@ -408,7 +413,7 @@ func (p *interruptPrompts) backOrCancelQuestionnaire() {
 	if review == nil {
 		return
 	}
-	p.questionDialog.Controller().Dismiss()
+	p.questionDialog.Dismiss()
 	p.questionDialog = nil
 	if review.Back() {
 		p.openQuestionField()
@@ -423,7 +428,7 @@ func (p *interruptPrompts) finishQuestionnaire(canceled bool) {
 		return
 	}
 	if p.questionDialog != nil {
-		p.questionDialog.Controller().Dismiss()
+		p.questionDialog.Dismiss()
 		p.questionDialog = nil
 	}
 	if canceled {
@@ -447,8 +452,8 @@ func (p *interruptPrompts) finishQuestionnaire(canceled bool) {
 	p.advanceInterruptReview()
 }
 
-func questionOptions(field conversation.QuestionField) []headless.Option[questionChoice] {
-	out := make([]headless.Option[questionChoice], 0, len(field.Options)+1)
+func questionOptions(field conversation.QuestionField) []base.Option[questionChoice] {
+	out := make([]base.Option[questionChoice], 0, len(field.Options)+1)
 	for _, option := range field.Options {
 		label := option.Label
 		if option.Description != "" {
@@ -457,10 +462,10 @@ func questionOptions(field conversation.QuestionField) []headless.Option[questio
 		if option.Preview != "" {
 			label += " · " + option.Preview
 		}
-		out = append(out, headless.Option[questionChoice]{Label: label, Value: offeredQuestionChoice(option.Label)})
+		out = append(out, base.Option[questionChoice]{Label: label, Value: offeredQuestionChoice(option.Label)})
 	}
 	if field.AllowCustom {
-		out = append(out, headless.Option[questionChoice]{Label: "Other — provide a custom answer", Value: customQuestionChoice()})
+		out = append(out, base.Option[questionChoice]{Label: "Other — provide a custom answer", Value: customQuestionChoice()})
 	}
 	return out
 }

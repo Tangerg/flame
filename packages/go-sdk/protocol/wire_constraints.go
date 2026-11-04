@@ -13,7 +13,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/Tangerg/qimu/jsonvalue"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // Generated node checks share the registry's rules. Only complete JSON-tree
@@ -36,7 +36,7 @@ func ValidateWireTree(value any) error {
 	if !root.IsValid() {
 		return nil
 	}
-	if err := jsonvalue.ValidateType(root.Type()); err != nil {
+	if err := ValidateWireType(root.Type()); err != nil {
 		return err
 	}
 	rootType := root.Type()
@@ -91,7 +91,7 @@ func validateWireValue(value reflect.Value, path string, visiting map[wirePointe
 
 	switch value.Kind() {
 	case reflect.Struct:
-		for _, field := range jsonvalue.Fields(value.Type()) {
+		for _, field := range WireFields(value.Type()) {
 			fields = append(fields, validateWireValue(
 				value.FieldByName(field.GoName),
 				joinWirePath(path, field.Name),
@@ -110,7 +110,7 @@ func validateWireValue(value reflect.Value, path string, visiting map[wirePointe
 		keys := value.MapKeys()
 		slices.SortFunc(keys, func(left, right reflect.Value) int { return strings.Compare(left.String(), right.String()) })
 		for _, key := range keys {
-			fields = append(fields, validateWireValue(value.MapIndex(key), jsonvalue.MapPath(path, key.String()), visiting)...)
+			fields = append(fields, validateWireValue(value.MapIndex(key), framevalue.MapPath(path, key.String()), visiting)...)
 		}
 	}
 	return fields
@@ -411,7 +411,7 @@ func textPatternItems[Identity ~string](field string, values []Identity, pattern
 
 func maxPropertyNameLength[Value any](field string, values map[string]Value, maximum int) FieldError {
 	for _, key := range slices.Sorted(maps.Keys(values)) {
-		if violation := maxLength(jsonvalue.MapPath(field, key), key, maximum); violation.Field != "" {
+		if violation := maxLength(framevalue.MapPath(field, key), key, maximum); violation.Field != "" {
 			return violation
 		}
 	}
@@ -420,7 +420,7 @@ func maxPropertyNameLength[Value any](field string, values map[string]Value, max
 
 func identityPropertyNames[Value any](field string, values map[string]Value) FieldError {
 	for _, key := range slices.Sorted(maps.Keys(values)) {
-		if violation := identity(jsonvalue.MapPath(field, key), key); violation.Field != "" {
+		if violation := identity(framevalue.MapPath(field, key), key); violation.Field != "" {
 			return violation
 		}
 	}
@@ -634,10 +634,12 @@ func lookupWireValue(value reflect.Value, path string) (reflect.Value, bool, boo
 		if !current.IsValid() || current.Kind() != reflect.Struct {
 			return reflect.Value{}, false, false
 		}
-		wireField, found := jsonvalue.LookupField(current.Type(), segment)
-		if !found {
+		fields := WireFields(current.Type())
+		index := slices.IndexFunc(fields, func(field WireField) bool { return field.Name == segment })
+		if index < 0 {
 			return reflect.Value{}, false, false
 		}
+		wireField := fields[index]
 		current = current.FieldByName(wireField.GoName)
 		optional = wireField.Optional
 	}

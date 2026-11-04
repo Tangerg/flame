@@ -7,10 +7,9 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 func TestTimelineGroupsDescendantsBeneathNewestRoots(t *testing.T) {
@@ -53,10 +52,11 @@ func TestTimelineCommandInterruptsAPendingPickerClick(t *testing.T) {
 		{ID: "one", Lineage: conversation.RootRunLineage()},
 		{ID: "two", Lineage: conversation.RootRunLineage()},
 	})
-	pane.Focus(true)
-	root := headless.NewRoot(pane)
-	root.Draw(grid.NewSurface(80, 20).View())
-	first := pickerPoint(pane.picker, 0)
+
+	root := newSceneTestRoot(t, pane.Element())
+	surface := grid.NewSurface(80, 20)
+	root.Draw(surface.View())
+	first := pickerPoint(t, pane.picker, surface, 0)
 
 	root.Handle(input.Mouse{Pos: first, Action: input.MouseDown, Button: input.ButtonLeft})
 	root.Handle(input.Key{Code: input.Character, Rune: 'f', Mods: input.Alt})
@@ -75,9 +75,8 @@ func TestLiveTimelineDisablesForkAndExplainsItsMode(t *testing.T) {
 	pane := newTimelinePane(kit.Dark(), kit.Unicode(), nil, func(timelineEntry) { forked++ })
 	pane.SetRuns([]conversation.Run{{ID: "root", Lineage: conversation.RootRunLineage(), Status: protocol.RunStatusRunning}})
 	pane.SetLive(true)
-	pane.Focus(true)
 
-	root := headless.NewRoot(pane)
+	root := newSceneTestRoot(t, pane.Element())
 	surface := grid.NewSurface(80, 20)
 	root.Draw(surface.View())
 	root.Handle(input.Key{Code: input.Character, Rune: 'f', Mods: input.Alt})

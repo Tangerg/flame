@@ -6699,6 +6699,10 @@
           "type": "integer",
           "minimum": 1
         },
+        "preparationCapacity": {
+          "type": "integer",
+          "minimum": 1
+        },
         "proofCapacity": {
           "type": "integer",
           "minimum": 1
@@ -6714,6 +6718,7 @@
         "credential",
         "maximumMessageBytes",
         "pollIntervalMilliseconds",
+        "preparationCapacity",
         "proofCapacity",
         "realm"
       ]
@@ -6739,6 +6744,12 @@
             "$ref": "#/$defs/PluginBrowserObjectRef"
           }
         },
+        "operationId": {
+          "type": "string"
+        },
+        "parentUseId": {
+          "type": "string"
+        },
         "realm": {
           "$ref": "#/$defs/PluginBrowserRealm"
         },
@@ -6755,6 +6766,7 @@
         "execution",
         "id",
         "objects",
+        "operationId",
         "realm",
         "scopeGeneration",
         "scopeId"

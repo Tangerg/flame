@@ -10,9 +10,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/frame"
+	"github.com/Tangerg/frame/process/runner"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/runner"
 )
 
 func TestRestorationFailureBelongsToTheExactCurrentAttempt(t *testing.T) {
@@ -80,7 +80,7 @@ func TestRestorationProbePreservesUnconfirmedActivation(t *testing.T) {
 	}
 	for _, test := range []struct {
 		name      string
-		attempted qimu.BindingSnapshot
+		attempted frame.BindingSnapshot
 		cause     error
 		outer     error
 		cancel    bool
@@ -88,14 +88,14 @@ func TestRestorationProbePreservesUnconfirmedActivation(t *testing.T) {
 		{name: "admission read", cause: errors.New("activation read failed")},
 		{name: "preparation read", attempted: binding, cause: errors.New("activation storage read failed")},
 		{name: "caller cancellation", attempted: binding, cause: context.Canceled, cancel: true},
-		{name: "recovery barrier", attempted: binding, cause: qimu.ErrRecoveryRequired},
+		{name: "recovery barrier", attempted: binding, cause: frame.ErrRecoveryRequired},
 		{name: "runner uncertainty", attempted: binding, cause: runner.ErrUnknown},
-		{name: "unavailable and unknown", attempted: binding, cause: errors.Join(qimu.ErrUnavailable, runner.ErrUnknown)},
-		{name: "stale and recovery required", attempted: binding, cause: errors.Join(qimu.ErrStaleBinding, qimu.ErrRecoveryRequired)},
+		{name: "unavailable and unknown", attempted: binding, cause: errors.Join(frame.ErrUnavailable, runner.ErrUnknown)},
+		{name: "stale and recovery required", attempted: binding, cause: errors.Join(frame.ErrStaleBinding, frame.ErrRecoveryRequired)},
 		{name: "closed connection and cancellation", attempted: binding, cause: errors.Join(sdk.ErrConnectionClosed, context.Canceled)},
 		{name: "outer cancellation", attempted: binding, cause: sdk.ErrConnectionClosed, outer: context.Canceled},
-		{name: "outer recovery required", attempted: binding, cause: sdk.ErrConnectionClosed, outer: qimu.ErrRecoveryRequired},
-		{name: "closed connection and unconfirmed release", attempted: binding, cause: errors.Join(sdk.ErrConnectionClosed, qimu.ErrUnconfirmedRelease)},
+		{name: "outer recovery required", attempted: binding, cause: sdk.ErrConnectionClosed, outer: frame.ErrRecoveryRequired},
+		{name: "closed connection and unconfirmed release", attempted: binding, cause: errors.Join(sdk.ErrConnectionClosed, frame.ErrUnconfirmedRelease)},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())

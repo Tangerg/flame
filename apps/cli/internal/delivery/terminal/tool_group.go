@@ -7,11 +7,11 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/layout"
-	"github.com/Tangerg/oolong/core/text"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/text"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 // toolGroupBlock is one disclosure for adjacent resource-inspection calls.
@@ -27,10 +27,10 @@ type toolGroupBlock struct {
 }
 
 var (
-	_ headless.Block         = (*toolGroupBlock)(nil)
-	_ headless.TextProjector = (*toolGroupBlock)(nil)
-	_ toolDisclosure         = (*toolGroupBlock)(nil)
-	_ readerDocumentSource   = (*toolGroupBlock)(nil)
+	_ base.Block           = (*toolGroupBlock)(nil)
+	_ base.TextProjector   = (*toolGroupBlock)(nil)
+	_ toolDisclosure       = (*toolGroupBlock)(nil)
+	_ readerDocumentSource = (*toolGroupBlock)(nil)
 )
 
 func newToolGroupBlock(theme kit.Theme, glyphs kit.Glyphs, expanded bool) *toolGroupBlock {

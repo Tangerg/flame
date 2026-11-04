@@ -5,13 +5,17 @@ import (
 	"errors"
 	"iter"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 type installedStream struct{ installedCall }
@@ -36,7 +40,7 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 			yield(plugins.StreamEvent{}, err)
 			return
 		}
-		ctx, err = qimumcp.WithInvocation(ctx, record.Invocation)
+		ctx, err = pluginmcp.WithInvocation(ctx, record.Invocation)
 		if err != nil {
 			yield(plugins.StreamEvent{}, err)
 			return
@@ -57,12 +61,12 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 		defer borrowed.Close()
 		ctx = borrowed.Context()
 		session := borrowed.Session()
-		contract, err := portable.ParseCapability(record.Contract.JSON())
+		contract, err := plugincontract.ParseCapability(record.Contract.Bytes())
 		if err != nil {
 			fail(err)
 			return
 		}
-		exported, err := qimumcp.NewCapabilityBinding(session, record.Export, contract)
+		exported, err := pluginmcp.NewCapabilityBinding(session, record.Export, contract)
 		if err != nil {
 			fail(err)
 			return
@@ -72,7 +76,7 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 			fail(err)
 			return
 		}
-		var result jsonvalue.Value
+		var result framevalue.JSON
 		if record.Phase == plugin.CommandPrepared {
 			metadata, release, err := c.calls.pool.OpenRPC(ctx, location.ServerID, session)
 			if err != nil {
@@ -88,7 +92,7 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 			defer c.calls.publish.Notify(invalidation.Notice{Resource: invalidation.PluginData})
 			for value, err := range c.calls.pool.Stream(ctx, location.ServerID, session, binding, record.ID, record.Input, metadata) {
 				if err != nil {
-					if refusal, known := errors.AsType[*portable.Refusal](err); known {
+					if refusal, known := errors.AsType[*framemcp.Refusal](err); known {
 						if observeErr := c.calls.routing.Observe(ctx, record.ID); observeErr != nil {
 							fail(errors.Join(err, observeErr))
 							return
@@ -100,7 +104,7 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 					return
 				}
 				if value.Chunk != nil {
-					chunk, err := jsonvalue.Parse(*value.Chunk)
+					chunk, err := framevalue.ParseJSON(*value.Chunk)
 					if err != nil {
 						fail(err)
 						return
@@ -109,7 +113,7 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 						return
 					}
 				} else if value.Result != nil {
-					result, err = jsonvalue.Parse(*value.Result)
+					result, err = framevalue.ParseJSON(*value.Result)
 					if err != nil {
 						fail(err)
 						return
@@ -118,9 +122,9 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 			}
 		} else {
 			var found bool
-			result, found, err = binding.ReadReceipt(ctx, qimumcp.CommandID(record.ID), record.Input)
+			result, found, err = binding.ReadReceipt(ctx, pluginmcp.CommandID(record.ID), record.Input)
 			if err != nil {
-				if _, known := errors.AsType[*portable.Refusal](err); known {
+				if _, known := errors.AsType[*framemcp.Refusal](err); known {
 					if observeErr := c.calls.routing.Observe(ctx, record.ID); observeErr != nil {
 						fail(errors.Join(err, observeErr))
 						return
@@ -163,7 +167,7 @@ func (c *installedStream) streamQuery(ctx context.Context, yield func(plugins.St
 	defer borrowed.Close()
 	ctx = borrowed.Context()
 	session := borrowed.Session()
-	exported, err := qimumcp.ResolveCapability(ctx, session, location.Export, c.request.Contract)
+	exported, err := pluginmcp.ResolveCapability(ctx, session, location.Export, c.request.Contract)
 	if err != nil {
 		fail(err)
 		return
@@ -182,7 +186,7 @@ func (c *installedStream) streamQuery(ctx context.Context, yield func(plugins.St
 		fail(err)
 		return
 	}
-	ctx, err = qimumcp.WithInvocation(ctx, invocation)
+	ctx, err = pluginmcp.WithInvocation(ctx, invocation)
 	if err != nil {
 		fail(err)
 		return
@@ -201,12 +205,12 @@ func (c *installedStream) streamQuery(ctx context.Context, yield func(plugins.St
 		var event plugins.StreamEvent
 		if value.Chunk != nil {
 			event.Kind = plugins.StreamChunk
-			event.Value, err = jsonvalue.Parse(*value.Chunk)
+			event.Value, err = framevalue.ParseJSON(*value.Chunk)
 		} else if value.Result != nil {
 			event.Kind = plugins.StreamResult
-			event.Value, err = jsonvalue.Parse(*value.Result)
+			event.Value, err = framevalue.ParseJSON(*value.Result)
 		} else {
-			err = qimumcp.ErrStreamUnconfirmed
+			err = pluginmcp.ErrStreamUnconfirmed
 		}
 		if err != nil {
 			fail(err)

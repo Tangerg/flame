@@ -1,6 +1,8 @@
 package delivery
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	jsonv1 "encoding/json"
 	"errors"
@@ -10,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/scope/core/chat"
 )
 
 // toolRegistryFake is the diagnostic tool registry the tools coordinator drives.
@@ -33,7 +34,7 @@ func (t *toolRegistryFake) Invoke(_ context.Context, in workspaceapp.DiagnosticT
 func TestListToolsMapsRegisteredToolsToWire(t *testing.T) {
 	s := handlerWithTools(&toolRegistryFake{tools: []tool.Tool{
 		{
-			ToolDefinition: chat.ToolDefinition{
+			Definition: toolcontract.Definition{
 				Name: "shell", Description: "run a command",
 				InputSchema: []byte(`{"type":"object","properties":{"cmd":{"type":"string"},"limit":{"maximum":9007199254740993}}}`),
 			},

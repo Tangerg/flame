@@ -8,10 +8,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
 	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestUnsupportedPlatformSettlesARefusalWithoutHostAccess(t *testing.T) {
@@ -27,10 +28,10 @@ func TestUnsupportedPlatformSettlesARefusalWithoutHostAccess(t *testing.T) {
 	}
 	contracts, _ := rpc.NewContracts()
 	input := wire.ExecuteInput{Script: "exit 0", TimeoutMillis: 1000}
-	encoded, _ := jsonvalue.Encode(input)
+	encoded, _ := framevalue.EncodeJSON(input)
 	for range 2 {
 		_, err := runner.execute(t.Context(), contracts.Execute.Name(), "unavailable", encoded)
-		refusal, known := errors.AsType[*portable.Refusal](err)
+		refusal, known := errors.AsType[*framemcp.Refusal](err)
 		if !known || refusal.Code != "sandbox_unavailable" {
 			t.Fatalf("unsupported confinement was not refused: %v", err)
 		}

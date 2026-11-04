@@ -7,7 +7,7 @@ import {
   OperationFailure,
   type ComponentContext,
 } from "@flame/component-sdk";
-import { stringifyJSON } from "@qimu/sdk/json";
+import { stringifyJSON } from "@frame/sdk/json";
 import {
   CAPABILITY_JSON,
   METHODS as DECLARATIONS,

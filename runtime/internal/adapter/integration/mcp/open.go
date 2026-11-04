@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/samber/lo"
 	"go.opentelemetry.io/otel"
 )
@@ -16,7 +16,7 @@ var tracer = otel.Tracer("scope/flame/adapter/integration/mcp")
 
 // newConnections validates the complete ledger before any owned attempt starts.
 func newConnections(ctx, lifetime context.Context, servers []ServerConfig, oauthSessions oauthSessionStore,
-	callbacks *qimumcp.Callbacks,
+	callbacks *pluginmcp.Callbacks,
 ) (*connections, error) {
 	if lo.IsNil(ctx) {
 		return nil, errors.New("mcp: startup context is required")

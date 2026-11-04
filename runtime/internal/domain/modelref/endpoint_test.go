@@ -5,10 +5,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -18,22 +21,22 @@ func endpointRecord(t *testing.T) EndpointRecord {
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation := EndpointInvocation{ID: "physical-request", Caller: portable.Invocation{ID: "logical-call", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "logical-call"}}, Provider: "provider", Model: "selected", Request: ChatEndpointRequest{Chat: request}, StartedAt: time.Unix(100, 0).UTC()}
-	input, err := jsonvalue.Encode(invocation)
+	invocation := EndpointInvocation{ID: "physical-request", Caller: framemcp.Invocation{ID: "logical-call", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "logical-call"}}, Provider: "provider", Model: "selected", Request: ChatEndpointRequest{Chat: request}, StartedAt: time.Unix(100, 0).UTC()}
+	input, err := framevalue.EncodeJSON(invocation)
 	if err != nil {
 		t.Fatal(err)
 	}
-	requestJSON, err := jsonvalue.Encode(request)
+	requestJSON, err := framevalue.EncodeJSON(request)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return EndpointRecord{Invocation: invocation, InvocationJSON: input, RequestJSON: requestJSON}
 }
 
-func endpointResponse(t *testing.T, usage *chat.Usage) jsonvalue.Value {
+func endpointResponse(t *testing.T, usage *chat.Usage) framevalue.JSON {
 	t.Helper()
 	message := chat.NewAssistantMessage(chat.NewTextPart("known response"))
-	value, err := jsonvalue.Encode(&chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served", Usage: usage}})
+	value, err := framevalue.EncodeJSON(&chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served", Usage: usage}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +97,7 @@ func TestEndpointOutcomeAndRestorationShareAdmission(t *testing.T) {
 				message := chat.NewAssistantMessage(chat.NewTextPart("known"))
 				response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}}
 				outcome.Response = ChatEndpointResponse{Chat: response}
-				encoded, err := jsonvalue.Encode(response)
+				encoded, err := framevalue.EncodeJSON(response)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -149,7 +152,7 @@ func TestEndpointEvidenceRequiresExactTimingAndAccounting(t *testing.T) {
 		func(r *EndpointRecord) { r.FinishedAt = r.Invocation.StartedAt.Add(-time.Second) },
 		func(r *EndpointRecord) { r.Usage = &chat.Usage{InputTokens: 1} },
 		func(r *EndpointRecord) { r.Cost = mustCost(t, 1.0) },
-		func(r *EndpointRecord) { r.ResponseJSON = jsonvalue.Value{} },
+		func(r *EndpointRecord) { r.ResponseJSON = framevalue.JSON{} },
 	} {
 		record := endpointRecord(t)
 		record.State, record.FinishedAt, record.ResponseJSON = InvocationCompleted, record.Invocation.StartedAt.Add(time.Second), endpointResponse(t, nil)

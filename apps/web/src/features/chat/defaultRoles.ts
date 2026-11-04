@@ -28,7 +28,7 @@ export const defaultRoles = definePlugin({
   name: "flame.builtin.default-roles",
   setup(ctx) {
     for (const role of defaultMessageRoles()) {
-      ctx.contribute(MESSAGE_ROLE, role);
+      ctx.contributions.add(MESSAGE_ROLE, role);
     }
   },
 });

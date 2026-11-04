@@ -1,6 +1,11 @@
 import { mkdirSync, lstatSync, realpathSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
-import { Backend, Capability, Refusal, canonicalJSON } from "@qimu/node";
+import {
+  Backend,
+  Capability,
+  Refusal,
+  canonicalJSON,
+} from "@flame/backend-sdk/mcp";
 import { toolReceipts } from "@flame/backend-sdk";
 import descriptor, {
   METHODS,
@@ -65,7 +70,7 @@ export function createBackend(
   });
   for (const definition of definitions) {
     const { operation, input } = definition;
-    const method = contract.method(METHODS[operation]);
+    const method = contract.portable.method(METHODS[operation]);
     backend.implement(
       method,
       (value) => decodeInput(input, value) as Record<string, unknown>,

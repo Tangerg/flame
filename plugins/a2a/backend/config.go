@@ -8,10 +8,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 type agentSpec struct {
@@ -26,7 +27,7 @@ type agent struct {
 	cardURL    string
 	cardOrigin httporigin.Origin
 	origins    []httporigin.Origin
-	authority  integrity.Digest
+	authority  framevalue.Digest
 }
 
 var agentName = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)

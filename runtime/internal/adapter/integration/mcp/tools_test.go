@@ -17,7 +17,6 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"
-	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
 type concurrencyPolicy interface {
@@ -26,7 +25,7 @@ type concurrencyPolicy interface {
 
 type toolDecorator struct{ toolcontract.Tool }
 
-func (t toolDecorator) Unwrap() toolcontract.Tool { return t.Tool }
+func (t toolDecorator) MCPSource() (CapturedSource, bool) { return Source(t.Tool) }
 
 func TestSourceToolsForwardsInvocationMetadataWithoutLeakingBetweenCalls(t *testing.T) {
 	serverTransport, clientTransport := sdkmcp.NewInMemoryTransports()
@@ -54,7 +53,7 @@ func TestSourceToolsForwardsInvocationMetadataWithoutLeakingBetweenCalls(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "provider-id", Name: binding.Contract().Definition().Name, Arguments: `{}`}, nil)
+	invocation, err := binding.Contract().Prepare((chat.ToolCall{ID: "provider-id", Name: binding.Contract().Definition().Name, Arguments: `{}`}).Request(), toolcontract.Admission{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +69,16 @@ func TestSourceToolsForwardsInvocationMetadataWithoutLeakingBetweenCalls(t *test
 				t.Fatal(err)
 			}
 		}
-		output, err := binding.Call(scopemcp.WithRequestMeta(t.Context(), meta), invocation)
+		captured := tools[0].WithCallMetadata(sdkmcp.ParamsBase{Meta: meta})
+		callBinding, err := toolcontract.Bind(captured)
+		if err != nil {
+			t.Fatal(err)
+		}
+		admitted, err := callBinding.Contract().Prepare(toolcontract.Request{Name: invocation.Definition().Name, Arguments: string(invocation.Arguments())}, toolcontract.Admission{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		output, err := callBinding.Call(t.Context(), admitted)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -186,17 +194,17 @@ func TestSourceToolsEnablesOnlyAnnotatedReadOnlyConcurrencyPolicy(t *testing.T) 
 			(remote.String() != "lookup" && remote.String() != "mutate") {
 			t.Fatalf("decorated Scope Tool identity = %+v, %t, %v", ref, found, err)
 		}
-		keyer, ok, err := toolcontract.Capability[concurrencyPolicy](tool)
-		if err != nil || !ok {
+		keyer, ok := any(tool).(concurrencyPolicy)
+		if !ok {
 			t.Fatalf("tool %q does not expose concurrency policy", tool.Definition().Name)
 		}
 		binding, err := toolcontract.Bind(tool)
 		if err != nil {
 			t.Fatal(err)
 		}
-		invocation, err := binding.Contract().Prepare(chat.ToolCall{
+		invocation, err := binding.Contract().Prepare((chat.ToolCall{
 			ID: "test_call", Name: binding.Contract().Definition().Name, Arguments: `{"id":"one"}`,
-		}, nil)
+		}).Request(), toolcontract.Admission{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -300,7 +308,7 @@ func TestSourceToolsPreservesStructuredResultThroughTransport(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "exact", Name: binding.Contract().Definition().Name, Arguments: `{}`}, nil)
+			invocation, err := binding.Contract().Prepare((chat.ToolCall{ID: "exact", Name: binding.Contract().Definition().Name, Arguments: `{}`}).Request(), toolcontract.Admission{})
 			if err != nil {
 				t.Fatal(err)
 			}

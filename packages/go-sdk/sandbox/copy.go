@@ -12,8 +12,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capture"
+
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/frame/cancellation"
 )
 
 const (
@@ -258,7 +259,11 @@ func (t *treeCopier) copyFile(
 		return fmt.Errorf("create destination file %q: %w", portableName, errors.Join(err, source.Close()))
 	}
 
-	reader := io.LimitReader(cancellation.Reader(ctx, source), size+1)
+	contextReader, err := capture.NewReader(ctx, source)
+	if err != nil {
+		return errors.Join(err, source.Close(), destination.Close())
+	}
+	reader := io.LimitReader(contextReader, size+1)
 	written, copyErr := io.CopyBuffer(writeOnly{writer: destination}, reader, t.buffer)
 	verifyErr := filesystem.VerifyAtVersion(source, openedInfo, t.source, localName)
 	closeErr := errors.Join(destination.Close(), source.Close())

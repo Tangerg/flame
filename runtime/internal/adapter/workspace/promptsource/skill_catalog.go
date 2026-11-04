@@ -4,8 +4,9 @@ import (
 	"cmp"
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/packages/go-sdk/skill"
 	"slices"
+
+	"github.com/Tangerg/flame/packages/go-sdk/skill"
 
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	app "github.com/Tangerg/flame/runtime/internal/application/workspace"

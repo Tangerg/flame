@@ -6,7 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
-	"github.com/Tangerg/oolong/core/grid"
+	"github.com/Tangerg/oolong/ui/core/grid"
 )
 
 func TestToolGroupObserverUnsubscribeIsIdempotentAndPreservesOtherSubscriptions(t *testing.T) {
@@ -33,11 +33,11 @@ func TestAdjacentResourceToolsShareOneDisclosureWithoutLosingChildDetails(t *tes
 	if first != second || view.content.Len() != 1 || len(first.block.tools) != 2 {
 		t.Fatalf("adjacent group = first %p second %p blocks %d children %d", first, second, view.content.Len(), len(first.block.tools))
 	}
-	if view.content.Finished(first.id) {
+	if view.entrySettled(first.id) {
 		t.Fatal("open adjacency window was marked finished before its boundary")
 	}
 	view.SealToolGroups()
-	if !view.content.Finished(first.id) {
+	if !view.entrySettled(first.id) {
 		t.Fatal("settled group did not finish at its semantic boundary")
 	}
 
@@ -64,7 +64,7 @@ func TestAConversationBlockClosesToolAdjacency(t *testing.T) {
 	if first == second || view.content.Len() != 3 {
 		t.Fatalf("boundary did not split groups: first %p second %p blocks %d", first, second, view.content.Len())
 	}
-	if !view.content.Finished(first.id) {
+	if !view.entrySettled(first.id) {
 		t.Fatal("first group remained unfinished after a conversation boundary")
 	}
 }
@@ -86,14 +86,14 @@ func TestLiveGroupedToolFinishesOnlyAfterItsAdjacencyWindowCloses(t *testing.T) 
 	if !view.completeLiveTool(conversation.Block{ID: "read", RunID: "run-1", Kind: conversation.BlockTool, Tool: &completed}) {
 		t.Fatal("live grouped tool was not completed")
 	}
-	if view.content.Finished(group.id) {
+	if view.entrySettled(group.id) {
 		t.Fatal("completed child prematurely closed the adjacency group")
 	}
 	if got := group.block.readerDocument(); !readerDocumentContains(got, "package final") || readerDocumentContains(got, "package live") {
 		t.Fatalf("reader did not receive authoritative grouped-tool content: %+v", got)
 	}
 	view.SealToolGroups()
-	if !view.content.Finished(group.id) {
+	if !view.entrySettled(group.id) {
 		t.Fatal("closed grouped tool did not become retainable")
 	}
 }

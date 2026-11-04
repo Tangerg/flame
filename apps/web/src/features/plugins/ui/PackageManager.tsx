@@ -1,6 +1,6 @@
 import { useInstalledPlugins } from "@/features/plugins/context";
 import { checkRequest, pluginContract, RpcProtocolError } from "@flame/runtime-client";
-import { parseJSON } from "@qimu/sdk/json";
+import { parseJSON } from "@frame/sdk/json";
 import { useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { z } from "zod";
@@ -33,7 +33,11 @@ import {
 import { space } from "@flame/ui/tokens.stylex";
 import { useAsyncFeedback } from "@/lib/useAsyncFeedback";
 import { failureText } from "@/lib/rpcErrors";
-import { type PackageOperations, usePackages } from "@/features/plugins/adapters/packages";
+import {
+  type PackageOperations,
+  type PackageRealizationFailure,
+  usePackages,
+} from "@/features/plugins/adapters/packages";
 import { ProviderSelections } from "@/features/plugins/ui/ProviderSelections";
 import { ContributionRequirements } from "@/features/plugins/ui/ContributionRequirements";
 import { PointInspection } from "@/features/plugins/ui/PointInspection";
@@ -132,14 +136,7 @@ export function PackageManager() {
         {installed && installed.signal === operations?.signal && (
           <SystemMessage>{t("packages.installed", { name: installed.name })}</SystemMessage>
         )}
-        {realization && (
-          <SystemMessage
-            variant="warning"
-            action={{ label: t("common.retry"), onClick: realization.retry }}
-          >
-            {t("packages.realizationFailed", { reason: realization.reason })}
-          </SystemMessage>
-        )}
+        {realization && <RealizationFailure failure={realization} />}
       </PanelSection>
       <PanelSection
         title={
@@ -464,5 +461,17 @@ function realizationMessages(t: Translate, realization: PluginRealization): stri
   if (realization.type === "releaseUnavailable") return [t("packages.releaseUnavailable")];
   return (realization.unavailableBackends ?? []).map((name) =>
     t("packages.backendUnavailable", { name }),
+  );
+}
+
+function RealizationFailure({ failure }: { failure: PackageRealizationFailure }) {
+  const t = useT();
+  return (
+    <SystemMessage
+      variant="warning"
+      action={failure.retry ? { label: t("common.retry"), onClick: failure.retry } : undefined}
+    >
+      {t("packages.realizationFailed", { reason: failure.reason })}
+    </SystemMessage>
   );
 }

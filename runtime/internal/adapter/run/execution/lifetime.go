@@ -79,8 +79,15 @@ func (i *interactionLifetime) start(
 	await func(),
 	reconcileUnknownEffects func(),
 	reconcileExecutionState func(),
+	readers ...func(),
 ) {
-	i.workers.Add(1)
+	i.workers.Add(1 + len(readers))
+	for _, reader := range readers {
+		go func() {
+			defer i.workers.Done()
+			reader()
+		}()
+	}
 	i.reconcilers.Add(2)
 	go func() {
 		defer i.reconcilers.Done()

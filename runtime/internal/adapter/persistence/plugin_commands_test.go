@@ -7,10 +7,12 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestPluginCommandBindingSurvivesRestartAndCannotRetarget(t *testing.T) {
@@ -19,12 +21,12 @@ func TestPluginCommandBindingSurvivesRestartAndCannotRetarget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	store := newPluginCommandStore(db, nil)
+	store := newPluginCommandStore(databaseFor(db), nil)
 	provider := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1")}
 	contract := testsupport.CommandContract(t, "review.update", "workspace")
 	leaf := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("leaf")}
 	dependencies := plugin.CompactDependencies([]plugin.Dependency{provider, leaf})
-	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "command", Invocation: portable.Invocation{ID: "command", Origin: extension.Human, Target: portable.Target{Scope: "workspace", Reference: "workspace:/review"}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: contract, Provider: provider, Activation: testsupport.ServerActivation("activation", "backend", dependencies...), Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
+	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "command", Invocation: framemcp.Invocation{ID: "command", Origin: extension.Human, Target: portable.Target{Scope: "workspace", Reference: "workspace:/review"}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: contract, Provider: provider, Activation: testsupport.ServerActivation("activation", "backend", dependencies...), Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +47,7 @@ func TestPluginCommandBindingSurvivesRestartAndCannotRetarget(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store = newPluginCommandStore(db, nil)
+	store = newPluginCommandStore(databaseFor(db), nil)
 	restored, found, err := store.Get(t.Context(), "command")
 	if err != nil || !found || !reflect.DeepEqual(restored.Snapshot(), command.Snapshot()) {
 		t.Fatalf("original binding=%v, %v, %v", restored, found, err)
@@ -134,8 +136,8 @@ INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installa
 	if err != nil {
 		t.Fatal(err)
 	}
-	store := newPluginCommandStore(db, nil)
-	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "new", Invocation: portable.Invocation{ID: "new", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: provider.InstallationID.String()}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: testsupport.CommandContract(t, "review.update", extension.ScopeInstallation), Provider: provider, Activation: testsupport.ServerActivation("activation", "backend", provider), Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
+	store := newPluginCommandStore(databaseFor(db), nil)
+	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "new", Invocation: framemcp.Invocation{ID: "new", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: provider.InstallationID.String()}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: testsupport.CommandContract(t, "review.update", extension.ScopeInstallation), Provider: provider, Activation: testsupport.ServerActivation("activation", "backend", provider), Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
 	if err != nil {
 		t.Fatal(err)
 	}

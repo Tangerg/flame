@@ -3,13 +3,15 @@ package plugins
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/portable"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/jsonvalue"
+
 	"github.com/samber/lo"
 )
 
@@ -23,10 +25,10 @@ type CommandStore interface {
 // replacement. All network I/O happens after this boundary has been released.
 type Commands struct {
 	store     CommandStore
-	admission *qimu.Admission
+	admission *frame.Admission
 }
 
-func NewCommands(store CommandStore, admission *qimu.Admission) (*Commands, error) {
+func NewCommands(store CommandStore, admission *frame.Admission) (*Commands, error) {
 	if lo.IsNil(store) || admission == nil {
 		return nil, errors.New("plugins: command store and admission are required")
 	}
@@ -80,7 +82,7 @@ func (c *Commands) Retire(ctx context.Context, id string) error {
 // RestoreInvocation validates a private owner's retained caller against original
 // host routing, including the resource owner's original target. Only a fresh
 // automatic trigger needs the background contribution's own installation target.
-func (c *Commands) RestoreInvocation(ctx context.Context, invocation portable.Invocation) (context.Context, error) {
+func (c *Commands) RestoreInvocation(ctx context.Context, invocation framemcp.Invocation) (context.Context, error) {
 	if err := extension.ValidateInvocation(invocation); err != nil {
 		return nil, err
 	}
@@ -106,7 +108,7 @@ func (c *Commands) RestoreInvocation(ctx context.Context, invocation portable.In
 // Find projects an original binding before new-call discovery does network I/O.
 // Bind rereads under admission before persisting, so this read cannot admit a
 // competing route or race installation replacement.
-func (c *Commands) Find(ctx context.Context, id, method string, input jsonvalue.Value) (*plugin.Command, bool, error) {
+func (c *Commands) Find(ctx context.Context, id, method string, input framevalue.JSON) (*plugin.Command, bool, error) {
 	command, found, err := c.store.Get(ctx, id)
 	if err == nil && found && !command.Matches(method, input) {
 		return nil, false, plugin.ErrCommandConflict
@@ -121,7 +123,7 @@ type CommandAdmission struct {
 	Activation plugin.Activation
 }
 
-func (c *Commands) Bind(ctx context.Context, id, method string, input jsonvalue.Value, resolve func(context.Context) (CommandAdmission, error), capture func(ContributionBinding) (portable.Invocation, error)) (*plugin.Command, error) {
+func (c *Commands) Bind(ctx context.Context, id, method string, input framevalue.JSON, resolve func(context.Context) (CommandAdmission, error), capture func(ContributionBinding) (framemcp.Invocation, error)) (*plugin.Command, error) {
 	var command *plugin.Command
 	err := c.admission.Admit(ctx, func(ctx context.Context) error {
 		previous, found, err := c.store.Get(ctx, id)

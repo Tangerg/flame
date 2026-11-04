@@ -20,14 +20,14 @@ async function loadPanes() {
     definePlugin({
       name: "test.settings",
       setup: (ctx) => {
-        ctx.contribute(SETTINGS_PANE, {
+        ctx.contributions.add(SETTINGS_PANE, {
           id: "appearance",
           label: "Appearance",
           description: "Tune the interface",
           order: 0,
           component: () => <div data-testid="appearance-body">appearance body</div>,
         });
-        ctx.contribute(SETTINGS_PANE, {
+        ctx.contributions.add(SETTINGS_PANE, {
           id: "plugins",
           label: "Plugins",
           keywords: ["Hot reload"],
@@ -53,7 +53,7 @@ async function loadRailPanes() {
           { id: "plugins", label: "Plugins", group: "extensions", keywords: ["Hot reload"] },
         ];
         panes.forEach((pane, order) =>
-          ctx.contribute(SETTINGS_PANE, {
+          ctx.contributions.add(SETTINGS_PANE, {
             ...pane,
             order,
             component: () =>
@@ -207,7 +207,7 @@ describe("settingsPage", () => {
       definePlugin({
         name: "test.settings.failing",
         setup: (ctx) => {
-          ctx.contribute(SETTINGS_PANE, {
+          ctx.contributions.add(SETTINGS_PANE, {
             id: "broken-look",
             label: "settings.pane.appearance",
             component: () => {

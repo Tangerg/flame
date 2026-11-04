@@ -13,13 +13,12 @@ import (
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
-	"github.com/Tangerg/frame/sqlite"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/scope/core/chat"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-func toolReceipt(ctx context.Context, db *sql.DB, input qimumcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
+func toolReceipt(ctx context.Context, db *sql.DB, input pluginmcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
 	remote := input.Method
 	switch remote {
 	case createScheduleTool:
@@ -37,7 +36,7 @@ func toolReceipt(ctx context.Context, db *sql.DB, input qimumcp.ReceiptRequest) 
 	if err != nil || !receipt.Found {
 		return pluginsdk.ToolReceipt{}, err
 	}
-	_, err = qimumcp.DecodeReply[jsontext.Value](receipt.Reply)
+	_, err = pluginmcp.DecodeReply[jsontext.Value](receipt.Reply)
 	if err != nil {
 		failure, known := toolcontract.ClassifyFailure(commandFailure(remote, decodeError(err)))
 		if !known {
@@ -48,7 +47,7 @@ func toolReceipt(ctx context.Context, db *sql.DB, input qimumcp.ReceiptRequest) 
 	var projection any
 	switch remote {
 	case createScheduleTool, updateScheduleTool:
-		snapshot, err := qimumcp.DecodeReply[schedule.Snapshot](receipt.Reply)
+		snapshot, err := pluginmcp.DecodeReply[schedule.Snapshot](receipt.Reply)
 		if err != nil {
 			return pluginsdk.ToolReceipt{}, err
 		}
@@ -58,11 +57,11 @@ func toolReceipt(ctx context.Context, db *sql.DB, input qimumcp.ReceiptRequest) 
 		}
 		projection = scheduleResponse{Schedule: viewSchedule(state)}
 	case deleteScheduleTool:
-		if _, err := qimumcp.DecodeReply[wire.Ack](receipt.Reply); err != nil {
+		if _, err := pluginmcp.DecodeReply[wire.Ack](receipt.Reply); err != nil {
 			return pluginsdk.ToolReceipt{}, err
 		}
 		var original string
-		if err := sqlite.Connection(ctx, db).QueryRowContext(ctx, `SELECT business_input_json FROM commands WHERE id=?`, input.ID).Scan(&original); err != nil {
+		if err := pluginstorage.Connection(ctx, db).QueryRowContext(ctx, `SELECT business_input_json FROM commands WHERE id=?`, input.ID).Scan(&original); err != nil {
 			return pluginsdk.ToolReceipt{}, err
 		}
 		var arguments deleteScheduleArgs
@@ -74,7 +73,7 @@ func toolReceipt(ctx context.Context, db *sql.DB, input qimumcp.ReceiptRequest) 
 		}
 		projection = scheduleDeleteResponse(arguments)
 	case runScheduleTool:
-		reference, err := qimumcp.DecodeReply[app.RunReference](receipt.Reply)
+		reference, err := pluginmcp.DecodeReply[app.RunReference](receipt.Reply)
 		if err != nil {
 			return pluginsdk.ToolReceipt{}, err
 		}
@@ -87,7 +86,7 @@ func toolReceipt(ctx context.Context, db *sql.DB, input qimumcp.ReceiptRequest) 
 	if err != nil {
 		return pluginsdk.ToolReceipt{}, err
 	}
-	output, err := chat.NewJSONToolOutput(encoded)
+	output, err := toolcontract.NewJSONOutput(encoded)
 	if err != nil {
 		return pluginsdk.ToolReceipt{}, err
 	}

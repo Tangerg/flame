@@ -17,7 +17,7 @@ const hosts: Host[] = [];
 afterEach(async () => {
   await Promise.allSettled(
     hosts.splice(0).map(async (host) => {
-      retractKernel(host);
+      await retractKernel(host);
       await host.stop();
     }),
   );
@@ -74,13 +74,15 @@ describe("kernel generation ownership", () => {
     hosts.push(host);
     const hook = testClient.renderHook(() => useInstalledPlugins());
     const change = host.change();
-    const late = change.install(plugin("test.late"));
+    const late = change.install(plugin("test.late"), { id: "test.late" });
 
-    await act(() => change.commit());
+    await act(async () => host.apply(await host.plan(change)));
 
     expect(hook.result.current).toEqual(["test.active", "test.late"]);
 
-    await act(() => late.remove());
+    const removal = host.change();
+    removal.remove(late);
+    await act(async () => host.apply(await host.plan(removal)));
 
     expect(hook.result.current).toEqual(["test.active"]);
     hook.unmount();
@@ -98,10 +100,14 @@ describe("kernel generation ownership", () => {
           throw new Error("setup failed");
         },
       }),
+      { id: "test.failed" },
     );
 
     await act(async () => {
-      await expect(change.commit()).rejects.toThrow("setup failed");
+      await expect(host.apply(await host.plan(change))).rejects.toMatchObject({
+        cause: expect.objectContaining({ message: "setup failed" }),
+        details: { outcome: "restored" },
+      });
     });
 
     expect(hook.result.current).toEqual(["test.active"]);
@@ -117,7 +123,7 @@ describe("kernel generation ownership", () => {
         definePlugin<{}, {}>({
           name: "test.delayed",
           async setup(ctx) {
-            ctx.cleanup(cleanup);
+            ctx.lifetime.defer(cleanup);
             await setup.promise;
           },
         }),

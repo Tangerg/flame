@@ -34,7 +34,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = scopemcp.Register(remote, executable); err != nil {
+	if err = scopemcp.Register(remote, bindRegisteredTool(t, executable)); err != nil {
 		t.Fatal(err)
 	}
 	server := httptest.NewServer(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil))
@@ -55,7 +55,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: "park", Name: "ask_user", Arguments: `{"questions":[{"question":"Review the pending work?"}]}`}))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
 	})}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}

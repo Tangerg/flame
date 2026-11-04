@@ -1,6 +1,8 @@
 package runs
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"errors"
 	"testing"
@@ -87,7 +89,7 @@ func TestExecutionFactCommitOwnsMutableFacts(t *testing.T) {
 	}
 
 	modelResult := corechat.ToolResult{
-		ID: "provider-call", Name: "tool", Output: corechat.NewTextToolOutput("original"),
+		ID: "provider-call", Name: "tool", Output: toolcontract.NewTextOutput("original"),
 	}
 	failure := tool.Failure{Kind: tool.FailureExecution, Detail: "original"}
 	toolFact := ToolCallFinished{
@@ -168,7 +170,7 @@ func TestExecutorMemberValidate(t *testing.T) {
 		{
 			name:    "executor member whitespace",
 			member:  ExecutorMember{MemberID: " member_root"},
-			wantErr: "runs: executor member identity must contain 1 to 256 URI-safe ASCII bytes",
+			wantErr: "runs: executor member identity component must contain 1 to 256 URI-safe ASCII bytes",
 		},
 		{
 			name: "parent whitespace",
@@ -176,7 +178,7 @@ func TestExecutorMemberValidate(t *testing.T) {
 				MemberID: "member_child",
 				ParentID: "member_root ",
 			},
-			wantErr: "runs: executor parent: executor member identity must contain 1 to 256 URI-safe ASCII bytes",
+			wantErr: "runs: executor parent: executor member identity component must contain 1 to 256 URI-safe ASCII bytes",
 		},
 		{
 			name: "opaque provider spawn call",

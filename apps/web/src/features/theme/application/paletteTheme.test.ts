@@ -18,7 +18,7 @@ beforeEach(() => {
 
 it("updates a contributed palette for paper and strength, then restores its plain inks", async () => {
   await contributeForTest((ctx) => {
-    contributePaletteTheme(owner.access.preference, ctx.lifetime("paper"), {
+    contributePaletteTheme(owner.access.preference, ctx.contributions.child("paper"), {
       id: "package:paper",
       label: "Paper",
       scheme: "light",
@@ -38,7 +38,7 @@ it("updates a contributed palette for paper and strength, then restores its plai
 
 it("re-derives a palette theme from the current accent and contrast", async () => {
   await contributeForTest((ctx) => {
-    contributePaletteTheme(owner.access.preference, ctx.lifetime("palette"), {
+    contributePaletteTheme(owner.access.preference, ctx.contributions.child("palette"), {
       id: "package:theme",
       label: "Package",
       scheme: "dark",

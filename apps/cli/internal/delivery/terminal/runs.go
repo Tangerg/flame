@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/oolong/core/term"
+	"github.com/Tangerg/oolong/ui/core/term"
 )
 
 // runLink is what Run execution asks of the rest of the terminal: notices,

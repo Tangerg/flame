@@ -13,15 +13,18 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 const inspectedSHA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -46,7 +49,7 @@ func connectGitHubWrites(t *testing.T, path string, transport http.RoundTripper,
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "github-write-test"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -70,9 +73,9 @@ func connectGitHubWrites(t *testing.T, path string, transport http.RoundTripper,
 	return c, session, close
 }
 
-func githubBinding(t *testing.T, session *sdk.ClientSession, contracts rpc.Contracts, method string) *qimumcp.Binding {
+func githubBinding(t *testing.T, session *sdk.ClientSession, contracts rpc.Contracts, method string) *pluginmcp.Binding {
 	t.Helper()
-	bound, err := qimumcp.ResolveCapability(t.Context(), session, "github", contracts.Capability)
+	bound, err := pluginmcp.ResolveCapability(t.Context(), session, "github", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,13 +86,13 @@ func githubBinding(t *testing.T, session *sdk.ClientSession, contracts rpc.Contr
 	return operation
 }
 
-func invokeGitHub(t *testing.T, session *sdk.ClientSession, contracts rpc.Contracts, method, id string, input jsonvalue.Value) (jsonvalue.Value, error) {
+func invokeGitHub(t *testing.T, session *sdk.ClientSession, contracts rpc.Contracts, method, id string, input framevalue.JSON) (framevalue.JSON, error) {
 	t.Helper()
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: id, Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: id, Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return githubBinding(t, session, contracts, method).Invoke(ctx, qimumcp.CommandID(id), input)
+	return githubBinding(t, session, contracts, method).Invoke(ctx, pluginmcp.CommandID(id), input)
 }
 
 func TestGitHubTypedAndModelWritesShareAdmissionOutcomesAndRecovery(t *testing.T) {
@@ -144,8 +147,8 @@ func TestGitHubTypedAndModelWritesShareAdmissionOutcomesAndRecovery(t *testing.T
 						t.Errorf("delete carried a different payload: %s", body)
 					}
 				} else {
-					actual, err := jsonvalue.Parse(body)
-					expected, _ := jsonvalue.Parse([]byte(test.payload))
+					actual, err := framevalue.ParseJSON(body)
+					expected, _ := framevalue.ParseJSON([]byte(test.payload))
 					if err != nil || actual != expected {
 						t.Errorf("wire write differs: got %s want %s %v", body, test.payload, err)
 					}
@@ -155,7 +158,7 @@ func TestGitHubTypedAndModelWritesShareAdmissionOutcomesAndRecovery(t *testing.T
 			var session *sdk.ClientSession
 			var close func()
 			c, session, close = connectGitHubWrites(t, path, transport, &token)
-			admitted, err := jsonvalue.Encode(test.input)
+			admitted, err := framevalue.EncodeJSON(test.input)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -167,7 +170,7 @@ func TestGitHubTypedAndModelWritesShareAdmissionOutcomesAndRecovery(t *testing.T
 				t.Fatalf("human replay redispatched: %s calls=%d %v", replay.String(), calls, err)
 			}
 			var meta sdk.Meta
-			if err := meta.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: "model", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
+			if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
 				t.Fatal(err)
 			}
 			commandID = "tool:model"
@@ -176,7 +179,7 @@ func TestGitHubTypedAndModelWritesShareAdmissionOutcomesAndRecovery(t *testing.T
 				t.Fatalf("model write failed: %+v %v", result, err)
 			}
 			encoded, _ := json.Marshal(result.StructuredContent)
-			projected, err := jsonvalue.Parse(encoded)
+			projected, err := framevalue.ParseJSON(encoded)
 			if err != nil || projected != value || calls != 2 {
 				t.Fatalf("typed/model outcome diverged: %s %s calls=%d %v", value.String(), encoded, calls, err)
 			}
@@ -229,12 +232,12 @@ func TestUnknownGitHubWriteNeverRedispatchesAfterRestart(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			input, _ := jsonvalue.Encode(contractwire.CreateIssueInput{Repository: "owner/repo", Title: "Original"})
+			input, _ := framevalue.EncodeJSON(contractwire.CreateIssueInput{Repository: "owner/repo", Title: "Original"})
 			_, err := invokeGitHub(t, session, contracts, contracts.CreateIssue.Name(), "original", input)
 			if err == nil {
 				t.Fatal("uncertain write invented success")
 			}
-			if _, known := errors.AsType[*portable.Refusal](err); known {
+			if _, known := errors.AsType[*framemcp.Refusal](err); known {
 				t.Fatalf("uncertain write became a definite refusal: %v", err)
 			}
 			if calls != 1 {
@@ -254,9 +257,9 @@ func TestUnknownGitHubWriteNeverRedispatchesAfterRestart(t *testing.T) {
 			if err != nil || found || calls != 1 {
 				t.Fatalf("receipt lookup invented an outcome: found=%v calls=%d %v", found, calls, err)
 			}
-			changed, _ := jsonvalue.Encode(contractwire.CreateIssueInput{Repository: "owner/repo", Title: "Different"})
+			changed, _ := framevalue.EncodeJSON(contractwire.CreateIssueInput{Repository: "owner/repo", Title: "Different"})
 			_, err = invokeGitHub(t, session, contracts, contracts.CreateIssue.Name(), "original", changed)
-			refusal, known := errors.AsType[*portable.Refusal](err)
+			refusal, known := errors.AsType[*framemcp.Refusal](err)
 			if !known || refusal.Code != "command_conflict" || calls != 1 {
 				t.Fatalf("unknown identity was rebound: calls=%d %v", calls, err)
 			}
@@ -277,9 +280,9 @@ func TestGitHubKnownWriteRefusalsAndOriginalModelReceiptSurviveLaterSuccess(t *t
 				return upstream(status, "do not echo provider body or credential", nil), nil
 			}), &token)
 			input := contractwire.MergePullInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, HeadSHA: inspectedSHA, MergeMethod: contractwire.Merge}
-			admitted, _ := jsonvalue.Encode(input)
+			admitted, _ := framevalue.EncodeJSON(input)
 			var meta sdk.Meta
-			if err := meta.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: "refused", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
+			if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "refused", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
 				t.Fatal(err)
 			}
 			result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "merge_pull_request", Arguments: input, Meta: meta})
@@ -329,7 +332,7 @@ func TestGitHubWriteInvalidatesReadProjectionsBeforeExternalIO(t *testing.T) {
 	if _, err := c.getIssue(t.Context(), input); err != nil {
 		t.Fatal(err)
 	}
-	admitted, _ := jsonvalue.Encode(contractwire.CreateCommentInput{IssueInput: input, Body: "Comment"})
+	admitted, _ := framevalue.EncodeJSON(contractwire.CreateCommentInput{IssueInput: input, Body: "Comment"})
 	if _, err := invokeGitHub(t, session, contracts, contracts.CreateComment.Name(), "unknown-write", admitted); err == nil {
 		t.Fatal("unknown comment invented success")
 	}
@@ -339,7 +342,7 @@ func TestGitHubWriteInvalidatesReadProjectionsBeforeExternalIO(t *testing.T) {
 	if !reflect.DeepEqual(readTags, []string{"", ""}) {
 		t.Fatalf("post-write query borrowed an old conditional response: %+v", readTags)
 	}
-	if receipt, err := pluginstorage.ReadReceipt(t.Context(), c.store.db, qimumcp.ReceiptRequest{ID: "unknown-write", Method: contracts.CreateComment.Name(), InputDigest: admitted.Digest()}); err != nil || receipt.Found {
+	if receipt, err := pluginstorage.ReadReceipt(t.Context(), c.store.db, pluginmcp.ReceiptRequest{ID: "unknown-write", Method: contracts.CreateComment.Name(), InputDigest: admitted.Digest()}); err != nil || receipt.Found {
 		t.Fatalf("unknown write acquired a receipt: %+v %v", receipt, err)
 	}
 }
@@ -360,7 +363,7 @@ func TestConfirmedDeleteSurvivesCancellationBeforeSettlement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsonvalue.Encode(contractwire.CommentInput{Repository: "fixture/repo", CommentID: 42})
+	input, err := framevalue.EncodeJSON(contractwire.CommentInput{Repository: "fixture/repo", CommentID: 42})
 	if err != nil {
 		t.Fatal(err)
 	}

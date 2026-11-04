@@ -6,6 +6,6 @@ const project = fileURLToPath(new URL("./", import.meta.url));
 await generateContracts(project, {
   command: join(
     project,
-    "tools/qimu" + (process.platform === "win32" ? ".exe" : ""),
+    "tools/flame-sdk" + (process.platform === "win32" ? ".exe" : ""),
   ),
 });

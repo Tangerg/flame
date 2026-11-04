@@ -3,17 +3,19 @@ package feedback
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/annotation"
-	"github.com/Tangerg/qimu/jsonvalue"
+
 	"github.com/samber/lo"
 )
 
 type preparer interface {
-	PrepareFeedback(context.Context, extension.FeedbackDraft) (extension.AnnotationSource, jsonvalue.Value, error)
+	PrepareFeedback(context.Context, extension.FeedbackDraft) (extension.AnnotationSource, framevalue.JSON, error)
 }
 type ledger interface {
 	Append(context.Context, annotation.Entry) error

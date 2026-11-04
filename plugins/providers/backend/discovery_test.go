@@ -212,7 +212,7 @@ func TestListRemoteModelsBlocksCredentialRedirectAcrossOrigins(t *testing.T) {
 	}))
 	t.Cleanup(target.Close)
 	source := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.Header.Get("x-api-key") != "test-key" {
+		if request.Header.Get("Authorization") != "Bearer test-key" || request.Header.Get("x-api-key") != "" {
 			t.Error("source request did not carry the provider credential")
 		}
 		http.Redirect(writer, request, target.URL, http.StatusTemporaryRedirect)
@@ -240,7 +240,7 @@ func TestVerifyConnectionAuthenticatesWithoutGenerating(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			err := verifyConnection(t.Context(), mustClientSpec(t, providerDeepSeek, "sk-test", srv.URL+"/v1"))
+			err := verifyConnection(t.Context(), mustClientSpec(t, providerOpenAI, "sk-test", srv.URL+"/v1"))
 			if !slices.Equal(requests, []string{"GET /v1/models"}) {
 				t.Fatalf("verification requests = %v, want one model listing", requests)
 			}
@@ -249,6 +249,36 @@ func TestVerifyConnectionAuthenticatesWithoutGenerating(t *testing.T) {
 			}
 			if status != http.StatusOK && failure(err).Kind != modelprovider.InvalidCredentials {
 				t.Fatalf("verifyConnection = %v, want invalid credentials", err)
+			}
+		})
+	}
+}
+
+func TestVerifyConnectionUsesTheDeclaredStreamOnlyProvider(t *testing.T) {
+	for name, status := range map[string]int{"accepted": http.StatusOK, "rejected": http.StatusUnauthorized} {
+		t.Run(name, func(t *testing.T) {
+			var requests []string
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				requests = append(requests, request.Method+" "+request.URL.Path)
+				if request.Header.Get("Authorization") != "Bearer sk-test" {
+					t.Error("verification did not retain its provider credential")
+				}
+				writer.Header().Set("Content-Type", "text/event-stream")
+				writer.WriteHeader(status)
+				if status == http.StatusOK {
+					_, _ = writer.Write([]byte(`data: {"id":"probe","model":"deepseek-v4-flash","choices":[{"index":0,"delta":{"role":"assistant","content":"pong"},"finish_reason":"stop"}]}` + "\n\ndata: [DONE]\n\n"))
+				}
+			}))
+			t.Cleanup(server.Close)
+			err := verifyConnection(t.Context(), mustClientSpec(t, providerDeepSeek, "sk-test", server.URL+"/v1"))
+			if !slices.Equal(requests, []string{"POST /v1/chat/completions"}) {
+				t.Fatalf("verification invented discovery outside the binding: %v", requests)
+			}
+			if status == http.StatusOK && err != nil {
+				t.Fatalf("verify connection: %v", err)
+			}
+			if status != http.StatusOK && failure(err).Kind != modelprovider.InvalidCredentials {
+				t.Fatalf("verify connection = %v, want invalid credentials", err)
 			}
 		})
 	}

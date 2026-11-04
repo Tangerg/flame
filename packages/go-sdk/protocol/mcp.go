@@ -1,8 +1,9 @@
 package protocol
 
 import (
-	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 )
 
 // MCPOriginType names the owner of an MCP server record.

@@ -6,12 +6,13 @@ import (
 	"strings"
 	"testing"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
@@ -85,7 +86,7 @@ func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 
 func TestApprovalPromptRequiresIdentityRegardlessOfRememberability(t *testing.T) {
 	for _, rememberable := range []bool{false, true} {
-		for _, fingerprint := range []integrity.Digest{{}, testsupport.Digest("source")} {
+		for _, fingerprint := range []framevalue.Digest{{}, testsupport.Digest("source")} {
 			prompt := runs.ApprovalPrompt{
 				CallID: "call_approval", Arguments: `{}`,
 				SafetyClass: tool.SafetyClassExec, Risk: tool.RiskHigh,

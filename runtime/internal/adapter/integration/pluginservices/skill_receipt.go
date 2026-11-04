@@ -4,9 +4,10 @@ import (
 	"context"
 	json "encoding/json/v2"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 // Listing and recovery read immutable source evidence without dispatching a
@@ -17,7 +18,7 @@ func originalSkillReceipt[R any](ctx context.Context, calls *CommandCalls, recor
 	if err != nil {
 		return value, err
 	}
-	ctx, err = qimumcp.WithInvocation(ctx, record.Invocation)
+	ctx, err = pluginmcp.WithInvocation(ctx, record.Invocation)
 	if err != nil {
 		return value, err
 	}
@@ -26,11 +27,11 @@ func originalSkillReceipt[R any](ctx context.Context, calls *CommandCalls, recor
 		return value, err
 	}
 	defer connection.Close()
-	contract, err := portable.ParseCapability(record.Contract.JSON())
+	contract, err := plugincontract.ParseCapability(record.Contract.Bytes())
 	if err != nil {
 		return value, err
 	}
-	export, err := qimumcp.NewCapabilityBinding(connection.Session(), record.Export, contract)
+	export, err := pluginmcp.NewCapabilityBinding(connection.Session(), record.Export, contract)
 	if err != nil {
 		return value, err
 	}
@@ -38,13 +39,13 @@ func originalSkillReceipt[R any](ctx context.Context, calls *CommandCalls, recor
 	if err != nil {
 		return value, err
 	}
-	reply, found, err := method.ReadReceipt(connection.Context(), qimumcp.CommandID(record.ID), record.Input)
+	reply, found, err := method.ReadReceipt(connection.Context(), pluginmcp.CommandID(record.ID), record.Input)
 	if err != nil {
 		return value, err
 	}
 	if !found {
 		return value, plugin.ErrCommandUnconfirmed
 	}
-	err = json.Unmarshal(reply.JSON(), &value, json.RejectUnknownMembers(true))
+	err = json.Unmarshal(reply.Bytes(), &value, json.RejectUnknownMembers(true))
 	return value, err
 }

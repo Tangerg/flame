@@ -18,7 +18,8 @@ import (
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -43,16 +44,18 @@ func (s answerCrashTrees) SaveExecutionTree(ctx context.Context, update runs.Exe
 	if err := s.ExecutionTreeStore.SaveExecutionTree(ctx, update); err != nil {
 		return err
 	}
-	tree, err := agent.ParseTreeSnapshot(update.Head.Payload)
+	root, err := scoperun.ParseProcessID(update.Head.RootID)
+	if err != nil {
+		return err
+	}
+	tree, err := decodeExecutionTree(update.Head, root)
 	if err != nil {
 		return err
 	}
 	count := 0
-	for _, snapshot := range tree.ProcessSnapshots() {
-		for _, receipt := range snapshot.SignalReceipts() {
-			if strings.HasPrefix(receipt.ID().String(), "answer:") {
-				count++
-			}
+	for _, entry := range tree.Entries {
+		if admission, ok := entry.Record.(scoperun.SignalAdmitted); ok && strings.HasPrefix(admission.Signal.ID.String(), "answer:") {
+			count++
 		}
 	}
 	if count == s.count {
@@ -94,7 +97,7 @@ func checkpointAnswers(t *testing.T, checkpoint runs.ExecutorCheckpoint) []runs.
 	}
 	var answers []runs.InterruptAnswer
 	for waitID, target := range state.handoff.inputs {
-		answers = append(answers, runs.InterruptAnswer{InterruptItemID: "item_" + waitID.String(), MemberID: target.memberID.String(), RequestID: waitID.String(), Resolution: testsupport.QuestionAnswer(t, [][]string{{"chosen"}})})
+		answers = append(answers, runs.InterruptAnswer{InterruptItemID: "item_" + waitID, MemberID: target.memberID.String(), RequestID: waitID, Resolution: testsupport.QuestionAnswer(t, [][]string{{"chosen"}})})
 	}
 	return answers
 }

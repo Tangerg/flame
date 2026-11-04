@@ -5,7 +5,7 @@ import {
   type ToolInteractionInput,
 } from "@flame/component-sdk";
 import { asRunId, type FlameClient } from "@flame/runtime-client";
-import { parseJSON } from "@qimu/sdk/json";
+import { parseJSON } from "@frame/sdk/json";
 import { type AgentInput, type AgentInputSettlement } from "@/features/agent/public/input";
 
 export type SubmitCapturedAgentInput = (

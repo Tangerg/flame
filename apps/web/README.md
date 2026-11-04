@@ -68,7 +68,7 @@ registration and lifetime mechanisms; it never owns business extension points.
 `src/platform` translates Browser/Wails effects. `src/ui` contains product
 presentation composites over shared `@flame/ui` controls and tokens.
 
-Recorded JSON formatting belongs to `@qimu/sdk/json`: `prettyJSON` indents values
+Recorded JSON formatting belongs to `@frame/sdk/json`: `prettyJSON` indents values
 through the exact codec, while `formatJSONText` changes only captured source
 whitespace. Agent projections, approval drafts, Tool inspection and conversation
 archives consume those helpers directly, sharing numeric preservation with

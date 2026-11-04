@@ -23,6 +23,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
+	"github.com/Tangerg/scope/core/invocation"
 )
 
 // TestProtocolLifecycleSurvivesColdRestart is the protocol conformance smoke
@@ -345,7 +346,13 @@ func (p *protocolLifecycleFixture) resumeAndCancelWith(
 		p.t.Fatalf("runs.resume userItemId = %q without resume input", *resumed.UserItemID)
 	}
 	resumeEventsDone := collectRunEvents(resumeEvents)
-	waitForSignal(p.t, p.model.resumedCallStarted, "resumed model call")
+	select {
+	case <-p.model.resumedCallStarted:
+	case events := <-resumeEventsDone:
+		p.t.Fatalf("resumed segment stopped before its model call: %v; ending: %s", events.err, p.domainFailureDiagnostic(p.started.RunID))
+	case <-time.After(lifecycleWaitBudget(p.t)):
+		p.t.Fatalf("timed out waiting for resumed model call; ending: %s", p.domainFailureDiagnostic(p.started.RunID))
+	}
 	items, err := api.ListItems(p.ctx, protocol.ListItemsRequest{
 		Scope: protocol.ItemListScope{Type: protocol.ItemScopeRun, RunID: p.started.RunID},
 	})
@@ -484,7 +491,7 @@ func (l *lifecycleModel) Call(ctx context.Context, _ *chat.Request) (*chat.Respo
 		select {
 		case <-l.releaseFirstCall:
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return nil, &invocation.Failure{Kind: invocation.FailureNotExecuted, Cause: ctx.Err()}
 		}
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
 			ID:        "call_question",
@@ -501,7 +508,9 @@ func (l *lifecycleModel) Call(ctx context.Context, _ *chat.Request) (*chat.Respo
 			message := chat.NewAssistantMessage(chat.NewTextPart("settled before cancellation"))
 			return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			// This fixture has produced no response or external effect before
+			// release. Its definite refusal permits a known canceled outcome.
+			return nil, &invocation.Failure{Kind: invocation.FailureNotExecuted, Cause: ctx.Err()}
 		}
 	}
 }
@@ -532,7 +541,7 @@ func openProtocolRuntime(t *testing.T, model chat.Model) (*Instance, *delivery.H
 
 func protocolRuntimeConfig(t *testing.T, stores *persistence.Bundle, model chat.Model) assemblyConfig {
 	t.Helper()
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		_ = stores.Close()
 		t.Fatalf("build chat client: %v", err)

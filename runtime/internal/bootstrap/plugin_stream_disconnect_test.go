@@ -9,10 +9,12 @@ import (
 	"sync/atomic"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestInstalledStreamProcessExitRetainsOutputAndNeverRedispatchesOriginalCommand(t *testing.T) {
@@ -21,7 +23,7 @@ func TestInstalledStreamProcessExitRetainsOutputAndNeverRedispatchesOriginalComm
 	if err != nil {
 		t.Fatalf("describe public stream contract: %s, %v", output, err)
 	}
-	contract, err := portable.ParseCapability(output)
+	contract, err := plugincontract.ParseCapability(output)
 	if err != nil {
 		t.Fatal(err)
 	}

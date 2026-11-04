@@ -3,10 +3,11 @@ package mcp
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )

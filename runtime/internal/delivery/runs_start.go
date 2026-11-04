@@ -8,7 +8,7 @@ import (
 	"slices"
 
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/frame"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -162,7 +162,7 @@ func wireRunStartErr(err error) error {
 		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, rundomain.ErrSessionBusy):
 		return protocol.ErrSessionBusy
-	case errors.Is(err, runs.ErrInstallationChanged), errors.Is(err, qimu.ErrStaleBinding):
+	case errors.Is(err, runs.ErrInstallationChanged), errors.Is(err, frame.ErrStaleBinding):
 		return pluginChanged(err)
 	case errors.Is(err, session.ErrNotFound):
 		return protocol.ErrSessionNotFound

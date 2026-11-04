@@ -2,8 +2,9 @@ package sessions
 
 import (
 	"context"
-	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"sync"
+
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 // Admissions is the session lifecycle's view of the shared run and

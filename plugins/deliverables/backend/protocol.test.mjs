@@ -1,6 +1,7 @@
+import mcpProtocol from "@flame/backend-sdk/mcp/protocol" with { type: "json" };
 import protocol from "@flame/backend-sdk/protocol" with { type: "json" };
 import { rolldown } from "rolldown";
-import { buildBackend } from "@qimu/node/build";
+import { buildBackend } from "@flame/backend-sdk/build";
 import { randomUUID } from "node:crypto";
 import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -11,11 +12,11 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import {
   Capability,
-  Method,
+  declareMethod,
   PROTOCOL,
   decodeReply,
   digestJSON,
-} from "@qimu/node";
+} from "@flame/backend-sdk/mcp";
 import { z } from "zod";
 import descriptor, { METHODS } from "../contracts/capability";
 import { digest } from "./document";
@@ -46,12 +47,12 @@ afterAll(async () => {
     });
 });
 const rpc = {
-  describe: "io.github.tangerg.qimu/operations.describe",
-  setup: "io.github.tangerg.qimu/operations.setup",
-  activate: "io.github.tangerg.qimu/operations.activate",
-  invoke: "io.github.tangerg.qimu/operations.invoke",
-  receipt: "io.github.tangerg.qimu/commands.get",
-  invocation: "io.github.tangerg.qimu/invocation",
+  describe: mcpProtocol.constants.describeMethod,
+  setup: mcpProtocol.constants.setupMethod,
+  activate: mcpProtocol.constants.activateMethod,
+  invoke: mcpProtocol.constants.invokeMethod,
+  receipt: mcpProtocol.constants.ReceiptMethod,
+  invocation: mcpProtocol.constants.InvocationMetadataKey,
   toolReceipt: "io.github.tangerg.flame/tools.getResult",
 };
 const response = z.record(z.string(), z.unknown());
@@ -119,7 +120,7 @@ async function connect(data) {
     ),
   );
   const methods = new Map(
-    described.methods.map((method) => [method.name, new Method(method)]),
+    described.methods.map((method) => [method.name, declareMethod(method)]),
   );
   const capability = new Capability(
     described.capabilities.find((entry) => entry.name === "deliverables")

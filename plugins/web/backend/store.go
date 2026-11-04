@@ -25,7 +25,7 @@ func openStore(ctx context.Context, path string) (*store, error) {
 
 func (s *store) read(ctx context.Context, id string) (capture.Document, error) {
 	var raw string
-	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT snapshot FROM snapshots WHERE id=?`, id).Scan(&raw)
+	err := pluginstorage.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT snapshot FROM snapshots WHERE id=?`, id).Scan(&raw)
 	if errors.Is(err, sql.ErrNoRows) {
 		return capture.Document{}, capture.ErrNotFound
 	}
@@ -44,7 +44,7 @@ func (s *store) read(ctx context.Context, id string) (capture.Document, error) {
 }
 
 func (s *store) capture(ctx context.Context, document capture.Document) error {
-	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	return pluginstorage.WithinTransaction(ctx, s.db, func(ctx context.Context) error {
 		original, err := s.read(ctx, document.Snapshot().ID)
 		if err == nil {
 			if original.Snapshot() != document.Snapshot() {
@@ -59,10 +59,10 @@ func (s *store) capture(ctx context.Context, document capture.Document) error {
 		if err != nil {
 			return err
 		}
-		if _, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO snapshots(id,snapshot) VALUES(?,?)`, document.Snapshot().ID, string(encoded)); err != nil {
+		if _, err := pluginstorage.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO snapshots(id,snapshot) VALUES(?,?)`, document.Snapshot().ID, string(encoded)); err != nil {
 			return err
 		}
-		_, err = sqlite.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM snapshots WHERE id IN (SELECT id FROM (SELECT id, row_number() OVER (ORDER BY rowid DESC) AS position, sum(length(CAST(snapshot AS BLOB))) OVER (ORDER BY rowid DESC) AS bytes FROM snapshots) WHERE position>? OR bytes>?)`, capture.MaxDocuments, capture.MaxArchiveBytes)
+		_, err = pluginstorage.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM snapshots WHERE id IN (SELECT id FROM (SELECT id, row_number() OVER (ORDER BY rowid DESC) AS position, sum(length(CAST(snapshot AS BLOB))) OVER (ORDER BY rowid DESC) AS bytes FROM snapshots) WHERE position>? OR bytes>?)`, capture.MaxDocuments, capture.MaxArchiveBytes)
 		return err
 	})
 }

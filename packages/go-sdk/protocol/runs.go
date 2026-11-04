@@ -1,8 +1,9 @@
 package protocol
 
 import (
-	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
 )
 
 // RunStatus is the lifecycle position of a run. The three values answer

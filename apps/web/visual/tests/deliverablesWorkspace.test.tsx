@@ -17,7 +17,7 @@ import {
   type MutationJournalStorage,
 } from "@flame/runtime-client";
 import type { CallPluginRequest, ServerCapabilities } from "@flame/runtime-client/wire";
-import { stringifyJSON } from "@qimu/sdk/json";
+import { stringifyJSON } from "@frame/sdk/json";
 import { createTestClient } from "@/test/renderClient";
 import { mockSelectLayout } from "@/test/selectLayout";
 import { Deliverables } from "../../../../plugins/deliverables/component/component";

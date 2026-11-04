@@ -6,15 +6,18 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/frame"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -23,12 +26,12 @@ func TestCapturedContributionActivationClassifiesMissingLiveSource(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	composition, _ := installedCallCompositionFixture(t, contract, []string{"proposal"}, func(backend *qimumcp.Backend) {
+	composition, _ := installedCallCompositionFixture(t, contract, []string{"proposal"}, func(backend *pluginmcp.Backend) {
 		method, err := pluginsdk.ToolProposalMethod()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := method.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command qimumcp.Command[chat.ToolCall]) (chat.ToolCall, error) {
+		if err := method.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command pluginmcp.Command[chat.ToolCall]) (chat.ToolCall, error) {
 			return command.Input, nil
 		}); err != nil {
 			t.Fatal(err)
@@ -52,10 +55,10 @@ func TestCapturedContributionActivationClassifiesMissingLiveSource(t *testing.T)
 	if err != nil || len(activations) != 1 || !activations[0].Equal(*captured[0].Activation) {
 		t.Fatalf("original captured graph depended on the current catalog: %+v, %v", activations, err)
 	}
-	if err := composition.calls.framework.WaitRetired(t.Context(), qimu.InstallationID(captured[0].InstallationID.String())); err != nil {
+	if err := composition.calls.framework.WaitRetired(t.Context(), frame.InstallationID(captured[0].InstallationID.String())); err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original", Origin: extension.Model, Parent: "run_owner", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original", Origin: extension.Model, Parent: "run_owner", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,13 +77,13 @@ func TestInstalledToolProposalsPreserveOrderCallerAndWithdrawal(t *testing.T) {
 				t.Fatal(err)
 			}
 			var calls int
-			composition, store := installedCallCompositionFixture(t, contract, []string{"first", "second"}, func(backend *qimumcp.Backend) {
+			composition, store := installedCallCompositionFixture(t, contract, []string{"first", "second"}, func(backend *pluginmcp.Backend) {
 				method, err := pluginsdk.ToolProposalMethod()
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[chat.ToolCall]) (chat.ToolCall, error) {
-					caller, err := qimumcp.InvocationFromContext(ctx)
+				if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[chat.ToolCall]) (chat.ToolCall, error) {
+					caller, err := pluginmcp.InvocationFromContext(ctx)
 					if err != nil || caller.ID != "original" || caller.Parent != "run_owner" || caller.Origin != extension.Model || caller.Target.Reference != "original" || command.ID != "" {
 						return chat.ToolCall{}, errors.New("original Tool caller was replaced")
 					}
@@ -119,7 +122,7 @@ func TestInstalledToolProposalsPreserveOrderCallerAndWithdrawal(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original", Origin: extension.Model, Parent: "run_owner", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original"}})
+			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original", Origin: extension.Model, Parent: "run_owner", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original"}})
 			if err != nil {
 				t.Fatal(err)
 			}

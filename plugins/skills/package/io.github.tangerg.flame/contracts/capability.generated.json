@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.qimu/portable/1",
+  "protocol": "io.github.tangerg.flame/plugin/1",
   "reference": "flame.skill-learning.v2",
   "composition": "selection",
   "scope": "installation",
@@ -11,12 +11,17 @@
       "description": "Return an optional absolute activity cutoff for the supplied observation time. The caller alone admits and commits archival.",
       "input": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "skilllearning.ArchiveRequest": {
+            "$ref": "#/$defs/skilllearning.archiveRequestProjection"
+          },
+          "skilllearning.archiveRequestProjection": {
             "additionalProperties": false,
             "properties": {
               "now": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               }
             },
             "required": [
@@ -25,41 +30,29 @@
             "type": "object"
           }
         },
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "now": {
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "required": [
-          "now"
-        ],
-        "type": "object"
+        "$ref": "#/$defs/skilllearning.archiveRequestProjection",
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "skilllearning.ArchiveAdvice": {
+            "$ref": "#/$defs/skilllearning.archiveAdviceProjection"
+          },
+          "skilllearning.archiveAdviceProjection": {
             "additionalProperties": false,
             "properties": {
               "inactiveSince": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               }
             },
             "type": "object"
           }
         },
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "inactiveSince": {
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "type": "object"
+        "$ref": "#/$defs/skilllearning.archiveAdviceProjection",
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
       }
     },
     {

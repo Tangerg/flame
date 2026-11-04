@@ -8,40 +8,45 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+
+	"github.com/Tangerg/scope/agent/interaction"
+	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
 func (i *interactionSession) validateWaitingTree(ctx context.Context, continuation runs.ExecutionContinuation, checkpoint interactionCheckpointState, accepted bool) error {
 
 	// A retained Unknown settlement is a restorable fact to the Engine; refusing
 	// to resume on top of one is this Runtime's policy, so it stays here.
-	snapshots := make(map[agent.ProcessID]agent.ProcessSnapshot)
-	for _, snapshot := range checkpoint.tree.ProcessSnapshots() {
-		snapshots[snapshot.Relation().ProcessID()] = snapshot
-		if len(snapshot.UnknownEffectIDs()) != 0 {
+	inspection, err := checkpoint.tree.Inspect()
+	if err != nil {
+		return err
+	}
+	snapshots := make(map[scoperun.ProcessID]scoperun.ProcessInspection)
+	for _, snapshot := range inspection.Processes {
+		snapshots[snapshot.ID] = snapshot
+		if hasUnknownEffects(snapshot) {
 			return fmt.Errorf("%w: waiting tree contains unresolved effects", runs.ErrExecutorStateLost)
 		}
 	}
 	// Scope's pure restore validation may wrap cancellation as an invalid
 	// snapshot. An interrupted check proves nothing about checkpoint validity.
-	if err := i.engine.ValidateRestorableTree(ctx, i.deployment, checkpoint.tree); err != nil {
+	if err := validateRecovery(ctx, i.deployment, checkpoint.tree); err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			return err
 		}
-		if errors.Is(err, agent.ErrInvalidTreeSnapshot) {
+		if errors.Is(err, scoperun.ErrInvalidLog) {
 			return fmt.Errorf("%w: %w", runs.ErrExecutorStateLost, err)
 		}
 		return err
 	}
-	members, err := i.restoredExecutionMembers(continuation, snapshots, checkpoint.tree.RootID())
+	members, err := i.restoredExecutionMembers(continuation, snapshots, checkpoint.tree.Root)
 	if err != nil {
 		return fmt.Errorf("%w: waiting members: %w", runs.ErrExecutorStateLost, err)
 	}
 	if _, err := restoreInteractionAccounting(checkpoint, members); err != nil {
 		return fmt.Errorf("%w: waiting accounting: %w", runs.ErrExecutorStateLost, err)
 	}
-	_, children, err := i.restoreDelegateCalls(snapshots, members)
+	_, children, err := i.restoreDelegateCalls(checkpoint.tree, snapshots, members)
 	if err != nil {
 		return fmt.Errorf("%w: waiting Delegate bindings: %w", runs.ErrExecutorStateLost, err)
 	}
@@ -51,8 +56,7 @@ func (i *interactionSession) validateWaitingTree(ctx context.Context, continuati
 	return nil
 }
 
-func (i *interactionSession) initializeRestoredContinuation(
-	root *agent.Process,
+func (i *interactionSession) restoreContinuationProjection(
 	continuation runs.ExecutionContinuation,
 	checkpoint interactionCheckpointState,
 	boundary interactionBoundary,
@@ -60,19 +64,23 @@ func (i *interactionSession) initializeRestoredContinuation(
 	if boundary != interactionBoundaryWaiting && boundary != interactionBoundaryAcceptedPaused {
 		return errors.New("invalid restored Interaction boundary")
 	}
-	snapshots := make(map[agent.ProcessID]agent.ProcessSnapshot, len(checkpoint.tree.ProcessSnapshots()))
-	for _, snapshot := range checkpoint.tree.ProcessSnapshots() {
-		snapshots[snapshot.Relation().ProcessID()] = snapshot
+	inspection, err := checkpoint.tree.Inspect()
+	if err != nil {
+		return err
+	}
+	snapshots := make(map[scoperun.ProcessID]scoperun.ProcessInspection, len(inspection.Processes))
+	for _, snapshot := range inspection.Processes {
+		snapshots[snapshot.ID] = snapshot
 	}
 	// The boundary being restored is the checkpoint's, so the checkpoint is what
 	// has to carry it. A live status would describe the tree after restore
 	// rather than the cut this continuation answers.
-	rootSnapshot, captured := snapshots[checkpoint.tree.RootID()]
-	if root == nil || root.Relation().ProcessID() != checkpoint.tree.RootID() || !captured ||
-		!isInteractionWaitingBoundary(rootSnapshot.Status()) {
+	rootSnapshot, captured := snapshots[checkpoint.tree.Root]
+	if !captured ||
+		!isInteractionWaitingBoundary(rootSnapshot.Status) {
 		return fmt.Errorf("%w: restored Interaction root is not at a waiting boundary", runs.ErrExecutorStateLost)
 	}
-	members, err := i.restoredExecutionMembers(continuation, snapshots, root.Relation().ProcessID())
+	members, err := i.restoredExecutionMembers(continuation, snapshots, checkpoint.tree.Root)
 	if err != nil {
 		return err
 	}
@@ -80,17 +88,18 @@ func (i *interactionSession) initializeRestoredContinuation(
 	if err != nil {
 		return fmt.Errorf("%w: restore Interaction accounting: %w", runs.ErrExecutorStateLost, err)
 	}
-	delegateCalls, delegateChildren, err := i.restoreDelegateCalls(snapshots, members)
+	delegateCalls, delegateChildren, err := i.restoreDelegateCalls(checkpoint.tree, snapshots, members)
 	if err != nil {
 		return fmt.Errorf("%w: restore Delegate bindings: %w", runs.ErrExecutorStateLost, err)
 	}
 	i.accounting.restore(usageByProcess, checkpoint.contextByProcess)
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
-	if i.state.phase != interactionPending || i.state.process != root {
+	if i.state.phase != interactionPending || i.state.process != nil {
 		return runs.ErrExecutionClaimed
 	}
-	i.state.admittedProcessID = root.Relation().ProcessID()
+	i.state.admittedProcessID = checkpoint.tree.Root
+	i.state.restoreTree = checkpoint.tree
 	i.state.phase = interactionBegun
 	i.state.boundary = boundary
 	i.state.dispatchReady = make(chan struct{})
@@ -105,49 +114,36 @@ func (i *interactionSession) initializeRestoredContinuation(
 
 func (i *interactionSession) restoredExecutionMembers(
 	continuation runs.ExecutionContinuation,
-	snapshots map[agent.ProcessID]agent.ProcessSnapshot,
-	rootID agent.ProcessID,
-) (map[agent.ProcessID]runs.ExecutionMember, error) {
+	snapshots map[scoperun.ProcessID]scoperun.ProcessInspection,
+	rootID scoperun.ProcessID,
+) (map[scoperun.ProcessID]runs.ExecutionMember, error) {
 	i.state.mu.Lock()
 	deployments := i.state.deployments
 	i.state.mu.Unlock()
 	if deployments == nil {
 		return nil, errors.New("execution: Interaction deployments are unavailable")
 	}
-	members := make(map[agent.ProcessID]runs.ExecutionMember, len(continuation.Members))
-	runByProcess := make(map[agent.ProcessID]string, len(continuation.Members))
+	members := make(map[scoperun.ProcessID]runs.ExecutionMember, len(continuation.Members))
 	for _, member := range continuation.Members {
-		processID, err := agent.ParseProcessID(member.MemberID)
+		processID, err := scoperun.ParseProcessID(member.MemberID)
 		if err != nil {
 			return nil, fmt.Errorf("waiting member %q: %w", member.MemberID, err)
 		}
 		snapshot, found := snapshots[processID]
-		if !found || snapshot.Status().Terminal() {
+		if !found || snapshot.Status.Terminal() {
 			return nil, fmt.Errorf("waiting member %s has no active Process", processID)
 		}
 		members[processID] = member
-		runByProcess[processID] = member.RunID
 	}
 	rootMember, found := members[rootID]
 	if !found || rootMember.RunID != continuation.RootRunID || rootMember.ParentRunID != "" {
 		return nil, errors.New("restored root Process differs from the product root member")
 	}
-	for processID, member := range members {
-		relation := snapshots[processID].Relation()
-		if processID == rootID {
-			if !relation.IsRoot() {
-				return nil, errors.New("restored product root has a child Process relation")
-			}
-			continue
-		}
-		parentID, child := relation.ParentID()
-		parentRunID, parentSurvives := runByProcess[parentID]
-		if !child || !parentSurvives || parentRunID != member.ParentRunID {
-			return nil, fmt.Errorf("restored member %s differs from product lineage", processID)
-		}
+	if err := validateRestoredLineage(deployments, members, snapshots, rootID); err != nil {
+		return nil, err
 	}
 	for processID, snapshot := range snapshots {
-		if snapshot.Status().Terminal() || deployments.toolChild(snapshot.DeploymentRef()) {
+		if snapshot.Status.Terminal() || deployments.interactionChild(snapshot.Program) {
 			continue
 		}
 		if _, survives := members[processID]; !survives {
@@ -157,42 +153,64 @@ func (i *interactionSession) restoredExecutionMembers(
 	return members, nil
 }
 
+func validateRestoredLineage(deployments *interactionDeploymentSet, members map[scoperun.ProcessID]runs.ExecutionMember, snapshots map[scoperun.ProcessID]scoperun.ProcessInspection, rootID scoperun.ProcessID) error {
+	for processID, member := range members {
+		relation := snapshots[processID].ID
+		if processID == rootID {
+			if relation.Depth() != 0 {
+				return errors.New("restored product root has a child Process relation")
+			}
+			continue
+		}
+		parentID, child := relation.Parent()
+		for child && deployments.interactionChild(snapshots[parentID].Program) {
+			parentID, child = parentID.Parent()
+		}
+		parentMember, parentSurvives := members[parentID]
+		if !child || !parentSurvives || parentMember.RunID != member.ParentRunID {
+			return fmt.Errorf("restored member %s differs from product lineage", processID)
+		}
+	}
+	return nil
+}
+
 func (i *interactionSession) restoreDelegateCalls(
-	snapshots map[agent.ProcessID]agent.ProcessSnapshot,
-	members map[agent.ProcessID]runs.ExecutionMember,
-) (map[delegateCallIdentity]*managedDelegateCall, map[agent.ProcessID]*managedDelegateCall, error) {
-	i.state.mu.Lock()
+	history scoperun.Log,
+	snapshots map[scoperun.ProcessID]scoperun.ProcessInspection,
+	members map[scoperun.ProcessID]runs.ExecutionMember,
+) (map[delegateCallIdentity]*managedDelegateCall, map[scoperun.ProcessID]*managedDelegateCall, error) {
 	deployments := i.state.deployments
-	i.state.mu.Unlock()
 	if deployments == nil {
-		return nil, nil, errors.New("execution: Interaction deployments are unavailable")
+		return nil, nil, errors.New("execution: Interaction programs are unavailable")
 	}
 	calls := make(map[delegateCallIdentity]*managedDelegateCall)
-	children := make(map[agent.ProcessID]*managedDelegateCall)
-	for parentID, parentSnapshot := range snapshots {
-		if _, active := members[parentID]; !active {
-			continue
-		}
-		attributions, found, err := interaction.DelegateAttributions(parentSnapshot)
+	children := make(map[scoperun.ProcessID]*managedDelegateCall)
+	for _, program := range deployments.interactions {
+		attributions, err := interaction.DelegateAttributions(program, history)
 		if err != nil {
-			return nil, nil, fmt.Errorf("inspect parent %s: %w", parentID, err)
-		}
-		if !found {
-			continue
+			return nil, nil, err
 		}
 		for _, child := range attributions {
-			managedCall, err := restoreManagedDelegateCall(
-				deployments, snapshots, members, parentID, parentSnapshot, child,
-			)
+			parentID, _ := child.ProcessID().Parent()
+			parentSnapshot, parentExists := snapshots[parentID]
+			if !parentExists {
+				continue
+			}
+			if _, childExists := snapshots[child.ProcessID()]; !childExists {
+				if _, survives := members[child.ProcessID()]; survives {
+					return nil, nil, errors.New("execution: surviving child was reaped")
+				}
+				continue
+			}
+			managed, err := restoreManagedDelegateCall(deployments, snapshots, members, parentID, parentSnapshot, child)
 			if err != nil {
 				return nil, nil, err
 			}
-			calls[managedCall.identity] = managedCall
-			children[child.ProcessID()] = managedCall
+			calls[managed.identity], children[child.ProcessID()] = managed, managed
 		}
 	}
 	for processID := range members {
-		if snapshots[processID].Relation().IsRoot() {
+		if processID.Depth() == 0 {
 			continue
 		}
 		if children[processID] == nil {
@@ -202,30 +220,44 @@ func (i *interactionSession) restoreDelegateCalls(
 	return calls, children, nil
 }
 
+func nearestProductMember(process scoperun.ProcessID, members map[scoperun.ProcessID]runs.ExecutionMember) (runs.ExecutionMember, bool) {
+	for process.Valid() {
+		if member, found := members[process]; found {
+			return member, true
+		}
+		parent, child := process.Parent()
+		if !child {
+			break
+		}
+		process = parent
+	}
+	return runs.ExecutionMember{}, false
+}
+
 func restoreManagedDelegateCall(
 	deployments *interactionDeploymentSet,
-	snapshots map[agent.ProcessID]agent.ProcessSnapshot,
-	members map[agent.ProcessID]runs.ExecutionMember,
-	parentID agent.ProcessID,
-	parentSnapshot agent.ProcessSnapshot,
+	snapshots map[scoperun.ProcessID]scoperun.ProcessInspection,
+	members map[scoperun.ProcessID]runs.ExecutionMember,
+	parentID scoperun.ProcessID,
+	parentSnapshot scoperun.ProcessInspection,
 	child interaction.DelegateAttribution,
 ) (*managedDelegateCall, error) {
 	childSnapshot, exists := snapshots[child.ProcessID()]
 	if !exists {
 		return nil, fmt.Errorf("delegate child %s is absent from the tree", child.ProcessID())
 	}
-	relation := childSnapshot.Relation()
-	relationParent, hasParent := relation.ParentID()
-	relationKey, hasKey := relation.ChildKey()
+	relation := childSnapshot.ID
+	relationParent, hasParent := relation.Parent()
+	relationKey, hasKey := relation.Key()
 	if !hasParent || !hasKey || relationParent != parentID || relationKey != child.ChildKey() {
 		return nil, fmt.Errorf("delegate child %s relation differs from interaction state", child.ProcessID())
 	}
 	member, survives := members[child.ProcessID()]
-	if !survives && !childSnapshot.Status().Terminal() {
+	if !survives && !childSnapshot.Status.Terminal() {
 		return nil, fmt.Errorf("delegate child %s has no surviving run binding", child.ProcessID())
 	}
-	target, managed := deployments.delegateTarget(parentSnapshot.DeploymentRef(), child.ToolCall().Name)
-	if !managed || target.DeploymentRef() != childSnapshot.DeploymentRef() {
+	target, managed := deployments.delegateTarget(parentSnapshot.Program, child.ToolCall().Name)
+	if !managed || target.ProgramRef() != childSnapshot.Program {
 		return nil, fmt.Errorf("delegate child %s changed exact deployment", child.ProcessID())
 	}
 	input, arguments, err := decodeDelegateCall(child.ToolCall(), target.Descriptor())
@@ -242,13 +274,14 @@ func restoreManagedDelegateCall(
 		}
 	}
 	callID, err := logicalToolCallID(
-		parentSnapshot.Relation().ProcessID(), child.ModelCallSequence(), child.ToolCallIndex(), child.ToolCall().ID, child.ToolCall().Name,
+		parentSnapshot.ID, child.ModelCallSequence(), child.ToolCallIndex(), child.ToolCall().ID, child.ToolCall().Name,
 	)
 	if err != nil {
 		return nil, err
 	}
 	var pending bool
-	for _, drained := range members[parentID].DrainedTools {
+	parentMember, _ := nearestProductMember(parentID, members)
+	for _, drained := range parentMember.DrainedTools {
 		if drained.CallID != callID.String() {
 			continue
 		}
@@ -264,8 +297,8 @@ func restoreManagedDelegateCall(
 	return &managedDelegateCall{
 		source:            deployments.delegateSource,
 		identity:          delegateCallIdentity{parentID: parentID, childKey: child.ChildKey()},
-		parentRelation:    parentSnapshot.Relation(),
-		target:            target.DeploymentRef(),
+		parentRelation:    parentSnapshot.ID,
+		target:            target.ProgramRef(),
 		call:              child.ToolCall(),
 		input:             input,
 		arguments:         arguments,
@@ -285,15 +318,24 @@ func restoreManagedDelegateCall(
 // per-model call counts the Run does not record.
 func restoreInteractionAccounting(
 	checkpoint interactionCheckpointState,
-	members map[agent.ProcessID]runs.ExecutionMember,
-) (map[agent.ProcessID]map[string]accounting.ModelUsage, error) {
-	usageByProcess := make(map[agent.ProcessID]map[string]accounting.ModelUsage, len(members))
-	for processID, member := range members {
-		usage, err := accountingFromRunMetrics(member.Metrics, checkpoint.callsByProcess[processID])
-		if err != nil {
-			return nil, fmt.Errorf("member %s: %w", processID, err)
+	members map[scoperun.ProcessID]runs.ExecutionMember,
+) (map[scoperun.ProcessID]map[string]accounting.ModelUsage, error) {
+	usageByProcess := make(map[scoperun.ProcessID]map[string]accounting.ModelUsage, len(members))
+	for owner, member := range members {
+		process := owner
+		for id, progress := range checkpoint.handoff.progress {
+			if progress.OwnerID == owner.String() && len(checkpoint.callsByProcess[id]) > 0 {
+				if process != owner && process != id {
+					return nil, errors.New("execution: product member has multiple model accounting owners")
+				}
+				process = id
+			}
 		}
-		usageByProcess[processID] = usage
+		usage, err := accountingFromRunMetrics(member.Metrics, checkpoint.callsByProcess[process])
+		if err != nil {
+			return nil, fmt.Errorf("member %s: %w", owner, err)
+		}
+		usageByProcess[process] = usage
 	}
 	return usageByProcess, nil
 }

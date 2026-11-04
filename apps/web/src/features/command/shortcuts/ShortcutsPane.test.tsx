@@ -26,19 +26,19 @@ beforeEach(async () => {
     definePlugin({
       name: "test.shortcuts",
       setup(ctx) {
-        ctx.contribute(COMMAND, {
+        ctx.contributions.add(COMMAND, {
           id: "open",
           label: "Open thing",
           combo: "Mod+O",
           run: runs.open,
         });
-        ctx.contribute(COMMAND, {
+        ctx.contributions.add(COMMAND, {
           id: "search",
           label: "Search thing",
           combo: "Mod+K",
           run: runs.search,
         });
-        ctx.contribute(SHORTCUT, {
+        ctx.contributions.add(SHORTCUT, {
           key: "Mod+N",
           description: "New session",
           handler: () => undefined,
@@ -254,7 +254,7 @@ describe("ShortcutsPane", () => {
     let rename!: (label: string) => void;
     const run = vi.fn();
     await contributeForTest((ctx) => {
-      const command = ctx.contribute(COMMAND, { id: "effect", label: "Effect thing", run });
+      const command = ctx.contributions.add(COMMAND, { id: "effect", label: "Effect thing", run });
       rename = (label) => command.update({ id: "effect", label, run });
     });
     const view = testClient.render(<RetainedPane visible />);
@@ -289,13 +289,17 @@ describe("ShortcutsPane", () => {
     let renameEffect!: () => void;
     let withdraw!: () => Promise<void>;
     await contributeForTest((ctx) => {
-      const source = ctx.lifetime("source");
-      const effect = source.contribute(COMMAND, {
+      const source = ctx.contributions.child("source");
+      const effect = source.add(COMMAND, {
         id: "effect",
         label: "Effect thing",
         run: vi.fn(),
       });
-      const other = ctx.contribute(COMMAND, { id: "other", label: "Other thing", run: vi.fn() });
+      const other = ctx.contributions.add(COMMAND, {
+        id: "other",
+        label: "Other thing",
+        run: vi.fn(),
+      });
       renameEffect = () => effect.update({ id: "effect", label: "Effect renamed", run: vi.fn() });
       renameOther = () => other.update({ id: "other", label: "Other renamed", run: vi.fn() });
       withdraw = () => source[asyncDisposeSymbol]();

@@ -17,7 +17,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame/cancellation"
 )
 
 // Definitions and dispatch projections never repair the filesystem as a read effect.
@@ -37,7 +36,7 @@ func (r *Releases) Prepare(ctx context.Context, installation plugin.Installation
 	}
 	var failures error
 	for _, server := range release.Declaration().Servers {
-		if err := cancellation.Err(ctx); err != nil {
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			return errors.Join(failures, err)
 		}
 		if !installation.ServerEnabled(server.Name) || server.Transport() != mcpserver.TransportStdio {
@@ -75,13 +74,13 @@ func (r *Releases) Server(ctx context.Context, installation plugin.Installation,
 	}
 	lease, err := r.content.Acquire(ctx, release.Digest())
 	if err != nil {
-		if cause := cancellation.Err(ctx); cause != nil {
+		if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 			return mcpserver.Server{}, false, errors.Join(err, cause)
 		}
 		return mcpserver.Server{}, false, fmt.Errorf("%w: verify release %s: %w", plugin.ErrUnavailable, release.Digest(), err)
 	}
 	defer func() { err = errors.Join(err, lease.Close()) }()
-	if _, err := selectedVariant(lease.Release().Manifest, declared.Name); err != nil {
+	if _, err := selectedVariant(lease.Snapshot().Manifest, declared.Name); err != nil {
 		return mcpserver.Server{}, false, err
 	}
 	if err := realizeBackend(ctx, server, declared, dir, data); err != nil {
@@ -146,7 +145,7 @@ func (r *Releases) Definitions(ctx context.Context, installation plugin.Installa
 	declaration := release.Declaration()
 	result := make([]mcpserver.Server, 0, len(declaration.Servers))
 	for _, declared := range declaration.Servers {
-		if err := cancellation.Err(ctx); err != nil {
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			return nil, err
 		}
 		server, err := descriptorServer(installation, release, declaration, declared, dir, data)
@@ -169,7 +168,7 @@ func (r *Releases) Realize(ctx context.Context, installation plugin.Installation
 		return plugins.Realization{}, fmt.Errorf("pluginpackage: release directory: %w", err)
 	}
 	lease, verifyErr := r.content.Acquire(ctx, release.Digest())
-	if cause := cancellation.Err(ctx); cause != nil {
+	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		cause = errors.Join(cause, verifyErr)
 		if lease != nil {
 			cause = errors.Join(cause, lease.Close())
@@ -184,10 +183,10 @@ func (r *Releases) Realize(ctx context.Context, installation plugin.Installation
 	data := r.dataRoot(installation.ID())
 	declaration := release.Declaration()
 	for _, declared := range declaration.Servers {
-		if err := cancellation.Err(ctx); err != nil {
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			return plugins.Realization{}, err
 		}
-		if _, err := selectedVariant(lease.Release().Manifest, declared.Name); err != nil {
+		if _, err := selectedVariant(lease.Snapshot().Manifest, declared.Name); err != nil {
 			result.UnavailableBackends = append(result.UnavailableBackends, declared.Name)
 			continue
 		}

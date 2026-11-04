@@ -14,8 +14,8 @@ func TestCheckpointOwnsResultsAcrossRestartAndReleasesThem(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	results := newToolResultStore(db)
-	checkpoints := newExecutorCheckpointStore(db)
+	results := newToolResultStore(databaseFor(db))
+	checkpoints := newExecutorCheckpointStore(databaseFor(db))
 	retained := stageShellResult(t, results, "session-1", "retained body")
 	orphan := stageShellResult(t, results, "session-1", "orphan body")
 	checkpoint := storedExecutorCheckpoint("member_root", "session-1", `{"waiting":true}`)
@@ -34,8 +34,8 @@ func TestCheckpointOwnsResultsAcrossRestartAndReleasesThem(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	results = newToolResultStore(db)
-	checkpoints = newExecutorCheckpointStore(db)
+	results = newToolResultStore(databaseFor(db))
+	checkpoints = newExecutorCheckpointStore(databaseFor(db))
 	if removed, err := results.PurgeUnbound(t.Context()); err != nil || removed != 1 {
 		t.Fatalf("purge removed=%d err=%v", removed, err)
 	}
@@ -50,7 +50,7 @@ func TestCheckpointOwnsResultsAcrossRestartAndReleasesThem(t *testing.T) {
 		t.Fatalf("orphan remains: %t %v", found, err)
 	}
 	// Once published, the Item owns the body even after its checkpoint is consumed.
-	if err := newTranscriptStore(db).AppendItem(t.Context(), toolItem("session-1", "item_result", "preview", &transcript.ToolResultRef{ID: retained})); err != nil {
+	if err := newTranscriptStore(databaseFor(db)).AppendItem(t.Context(), toolItem("session-1", "item_result", "preview", &transcript.ToolResultRef{ID: retained})); err != nil {
 		t.Fatal(err)
 	}
 	if err := checkpoints.DeleteCheckpoints(t.Context(), "session-1", []string{checkpoint.RootMemberID}); err != nil {
@@ -63,7 +63,7 @@ func TestCheckpointOwnsResultsAcrossRestartAndReleasesThem(t *testing.T) {
 
 func TestCheckpointResultReplacementIsAtomicAndSessionScoped(t *testing.T) {
 	db, checkpoints := newExecutorCheckpointStorage(t)
-	results := newToolResultStore(db)
+	results := newToolResultStore(databaseFor(db))
 	owned := stageShellResult(t, results, "session-1", "owned")
 	foreign := stageShellResult(t, results, "session-2", "foreign")
 	checkpoint := storedExecutorCheckpoint("member_root", "session-1", `{"waiting":true}`)
@@ -100,7 +100,7 @@ func TestDeletingCheckpointReleasesUnpublishedResults(t *testing.T) {
 	for _, mode := range []string{"consumed", "session deleted"} {
 		t.Run(mode, func(t *testing.T) {
 			db, checkpoints := newExecutorCheckpointStorage(t)
-			results := newToolResultStore(db)
+			results := newToolResultStore(databaseFor(db))
 			id := stageShellResult(t, results, "session-1", "pending body")
 			checkpoint := storedExecutorCheckpoint("member_root", "session-1", `{"waiting":true}`)
 			checkpoint.ToolResultIDs = []transcript.ToolResultID{id}

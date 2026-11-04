@@ -95,9 +95,9 @@
     "check": "npm run build && npm run typecheck && npm run lint && npm run format:check && npm run test && node --test test/package.test.mjs"
   },
   "peerDependencies": {
-    "motion": "^14.1.0",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "motion": "^14.9.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -105,25 +105,25 @@
     "@stylexjs/stylex": "^0.19.1",
     "@types/mdast": "^4.0.4",
     "clsx": "^2.1.1",
-    "unist-util-visit": "^5.1.0"
+    "unist-util-visit": "^5.2.0"
   },
   "devDependencies": {
-    "@babel/core": "^8.0.7",
+    "@babel/core": "^8.1.0",
     "@babel/preset-react": "^8.0.1",
     "@babel/preset-typescript": "^8.0.7",
     "@flame/icons": "*",
     "@stylexjs/babel-plugin": "^0.19.1",
     "@testing-library/react": "^16.3.3",
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "happy-dom": "^21.0.4",
-    "motion": "^14.6.0",
-    "oxlint": "^1.89.0",
+    "motion": "^14.9.1",
+    "oxlint": "^1.91.0",
     "prettier": "^3.9.10",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   }
 }

@@ -148,7 +148,7 @@ func presentTrajectoryExport(result sessions.TrajectoryExport) (protocol.Session
 		out.Annotations = append(out.Annotations, protocol.SessionAnnotation{
 			CommandID: entry.CommandID, Source: entry.Source,
 			SessionID: entry.Subject.SessionID, RunID: entry.Subject.RunID, ItemID: entry.Subject.ItemID,
-			Content: entry.Content.JSON(), CreatedAt: entry.CreatedAt,
+			Content: entry.Content.Bytes(), CreatedAt: entry.CreatedAt,
 		})
 	}
 	return out, nil

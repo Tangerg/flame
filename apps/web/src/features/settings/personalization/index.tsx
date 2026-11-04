@@ -11,7 +11,7 @@ const PersonalizationPane = lazy(() =>
 export default definePlugin({
   name: "flame.builtin.personalization",
   setup(ctx) {
-    registerSettingsPane(ctx, {
+    registerSettingsPane(ctx.contributions, {
       id: PERSONALIZATION_PANE,
       label: "settings.pane.personalization",
       keywords: ["settings.streamReveal"],

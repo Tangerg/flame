@@ -32,21 +32,25 @@ async function withCommands(open = true) {
     definePlugin({
       name: "test.command-menu",
       setup: (ctx) => {
-        ctx.contribute(COMMAND, {
+        ctx.contributions.add(COMMAND, {
           id: "chat.new",
           label: "New chat",
           combo: "Mod+N",
           run: newChat,
         });
-        ctx.contribute(COMMAND, { id: "chat.rename", label: "Rename chat", run: () => undefined });
-        ctx.contribute(WORKSPACE_VIEW, {
+        ctx.contributions.add(COMMAND, {
+          id: "chat.rename",
+          label: "Rename chat",
+          run: () => undefined,
+        });
+        ctx.contributions.add(WORKSPACE_VIEW, {
           id: "terminal",
           title: "Terminal",
           icon: "terminal",
           dock: "workspace",
           component: () => null,
         });
-        ctx.contribute(WORKSPACE_VIEW, {
+        ctx.contributions.add(WORKSPACE_VIEW, {
           id: "icon-gallery",
           title: "Icon Gallery",
           icon: "spark",

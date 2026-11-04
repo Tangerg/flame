@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.qimu/portable/1",
+  "protocol": "io.github.tangerg.flame/plugin/1",
   "reference": "flame.knowledgebase.v1",
   "composition": "collection",
   "scope": "installation",
@@ -13,6 +13,15 @@
         "$defs": {
           "wire.DocumentInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "id": {
+                    "maxLength": 128
+                  }
+                }
+              }
+            ],
             "properties": {
               "expectedRevision": {
                 "allOf": [
@@ -25,7 +34,6 @@
                 "type": "integer"
               },
               "id": {
-                "maxLength": 128,
                 "minLength": 1,
                 "type": "string"
               }
@@ -39,6 +47,15 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "id": {
+                "maxLength": 128
+              }
+            }
+          }
+        ],
         "properties": {
           "expectedRevision": {
             "allOf": [
@@ -51,7 +68,6 @@
             "type": "integer"
           },
           "id": {
-            "maxLength": 128,
             "minLength": 1,
             "type": "string"
           }
@@ -76,24 +92,38 @@
         "$defs": {
           "domain.Content": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "id": {
+                    "maxLength": 128
+                  },
+                  "source": {
+                    "maxLength": 2048
+                  },
+                  "text": {
+                    "maxLength": 16384
+                  },
+                  "title": {
+                    "maxLength": 256
+                  }
+                }
+              }
+            ],
             "properties": {
               "id": {
-                "maxLength": 128,
                 "minLength": 1,
                 "type": "string"
               },
               "source": {
-                "maxLength": 2048,
                 "minLength": 1,
                 "type": "string"
               },
               "text": {
-                "maxLength": 16384,
                 "minLength": 1,
                 "type": "string"
               },
               "title": {
-                "maxLength": 256,
                 "minLength": 1,
                 "type": "string"
               }
@@ -319,9 +349,17 @@
         "$defs": {
           "wire.ReadInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "id": {
+                    "maxLength": 128
+                  }
+                }
+              }
+            ],
             "properties": {
               "id": {
-                "maxLength": 128,
                 "minLength": 1,
                 "type": "string"
               }
@@ -334,9 +372,17 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "id": {
+                "maxLength": 128
+              }
+            }
+          }
+        ],
         "properties": {
           "id": {
-            "maxLength": 128,
             "minLength": 1,
             "type": "string"
           }
@@ -435,6 +481,15 @@
         "$defs": {
           "wire.DocumentInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "id": {
+                    "maxLength": 128
+                  }
+                }
+              }
+            ],
             "properties": {
               "expectedRevision": {
                 "allOf": [
@@ -447,7 +502,6 @@
                 "type": "integer"
               },
               "id": {
-                "maxLength": 128,
                 "minLength": 1,
                 "type": "string"
               }
@@ -461,6 +515,15 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "id": {
+                "maxLength": 128
+              }
+            }
+          }
+        ],
         "properties": {
           "expectedRevision": {
             "allOf": [
@@ -473,7 +536,6 @@
             "type": "integer"
           },
           "id": {
-            "maxLength": 128,
             "minLength": 1,
             "type": "string"
           }
@@ -585,6 +647,18 @@
         "$defs": {
           "wire.SearchInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "limit": {
+                    "maximum": 8
+                  },
+                  "query": {
+                    "maxLength": 4096
+                  }
+                }
+              }
+            ],
             "properties": {
               "limit": {
                 "allOf": [
@@ -593,12 +667,10 @@
                     "minimum": -9223372036854775808
                   }
                 ],
-                "maximum": 8,
                 "minimum": 1,
                 "type": "integer"
               },
               "query": {
-                "maxLength": 4096,
                 "minLength": 1,
                 "type": "string"
               }
@@ -612,6 +684,18 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "limit": {
+                "maximum": 8
+              },
+              "query": {
+                "maxLength": 4096
+              }
+            }
+          }
+        ],
         "properties": {
           "limit": {
             "allOf": [
@@ -620,12 +704,10 @@
                 "minimum": -9223372036854775808
               }
             ],
-            "maximum": 8,
             "minimum": 1,
             "type": "integer"
           },
           "query": {
-            "maxLength": 4096,
             "minLength": 1,
             "type": "string"
           }
@@ -683,6 +765,9 @@
             "type": "object"
           },
           "domain.Match": {
+            "$ref": "#/$defs/domain.matchProjection"
+          },
+          "domain.matchProjection": {
             "additionalProperties": false,
             "properties": {
               "chunk": {
@@ -698,7 +783,7 @@
                 "$ref": "#/$defs/domain.Header"
               },
               "score": {
-                "type": "number"
+                "$ref": "#/$defs/value.Number"
               },
               "text": {
                 "type": "string"
@@ -711,6 +796,9 @@
               "score"
             ],
             "type": "object"
+          },
+          "value.Number": {
+            "type": "number"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",

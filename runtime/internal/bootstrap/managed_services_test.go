@@ -9,11 +9,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"slices"
+	"strconv"
 	"testing"
 	"time"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -21,8 +25,7 @@ import (
 	plugin "github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -49,7 +52,7 @@ func TestScheduleModelToolCommitsToBackendAndInvalidatesHumanReads(t *testing.T)
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
 	})}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +150,7 @@ func TestMemoryServiceHasOneSelectedOwnerAndReenableRetainsItsPrivateFacts(t *te
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: first.ID, Enabled: true}, "reenable")
 	r.poMCPTools(server(first.ID), memoryToolsReady)
 	page := readMemoryPage(r, memorycontract.ListInput{Scope: memorycontract.ListInputScopeUser})
-	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *fact) {
+	if len(page.Data) != 1 || generatedJSON(t, page.Data[0]) != generatedJSON(t, fact) {
 		t.Fatalf("reenable lost private facts=%+v", page)
 	}
 }
@@ -186,7 +189,7 @@ func TestScheduleManualCommandReplaysAcceptedRunAcrossDisableAndRestart(t *testi
 		t.Fatal("restart reopened an accepted Run")
 	}
 	page := readSchedulePage(r, protocol.PageQuery{})
-	if len(page.Data) != 1 || page.Data[0].Revision != saved.Revision+1 {
+	if len(page.Data) != 1 || generatedInteger(t, page.Data[0].Revision) != generatedInteger(t, saved.Revision)+1 {
 		t.Fatalf("acceptance replay advanced definition again=%+v", page.Data)
 	}
 }
@@ -216,8 +219,8 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 		t.Fatalf("original command binding missing: %t, %v", found, err)
 	}
 	contract := original.Snapshot().Contract
-	var document portable.CapabilityDescriptor
-	if err := json.Unmarshal(contract.JSON(), &document); err != nil {
+	var document plugincontract.CapabilityDescriptor
+	if err := json.Unmarshal(contract.Bytes(), &document); err != nil {
 		t.Fatalf("original contract not captured: %v", err)
 	}
 	var add portable.MethodDescriptor
@@ -226,7 +229,7 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 			add = method
 		}
 	}
-	if add.Kind != portable.Mutation || len(add.Input) == 0 || len(add.Output) == 0 {
+	if add.Kind != portable.Command || len(add.Input) == 0 || len(add.Output) == 0 {
 		t.Fatalf("original contract did not capture flame.memory/add.v2: %+v", document.Methods)
 	}
 	requireManagedServiceChange(t, changed)
@@ -251,7 +254,7 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 	r.poMCPTools(&server, memoryToolsReady)
 	replay := mustMemoryAdd(r, request, "lost")
 	page := readMemoryPage(r, memorycontract.ListInput{Scope: memorycontract.ListInputScopeUser})
-	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *replay) {
+	if len(page.Data) != 1 || generatedJSON(t, page.Data[0]) != generatedJSON(t, replay) {
 		t.Fatalf("lost reply replay repeated the mutation=%+v", page.Data)
 	}
 	observed, found, err := cfg.stores.PluginCommands.Get(t.Context(), commandID)
@@ -382,7 +385,7 @@ func TestScheduleLostCreateReplyReplaysAfterRevocationAndRestart(t *testing.T) {
 	if err := json.Unmarshal(raw, &captured); err != nil {
 		t.Fatal(err)
 	}
-	committed, err := qimumcp.DecodeReply[testsupport.SchedulesSnapshot](captured.Response.Result)
+	committed, err := pluginmcp.DecodeReply[testsupport.SchedulesCreateV1OutputDomainSnapshot](captured.Response.Result)
 	if err != nil {
 		t.Fatalf("create did not commit before response loss: %v", err)
 	}
@@ -392,7 +395,7 @@ func TestScheduleLostCreateReplyReplaysAfterRevocationAndRestart(t *testing.T) {
 	r.poMCPTools(server, ready)
 	replay := readScheduleCreate(r, request, "lost-create")
 	page := readSchedulePage(r, protocol.PageQuery{})
-	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *replay) || replay.ID != committed.ID {
+	if len(page.Data) != 1 || generatedJSON(t, page.Data[0]) != generatedJSON(t, replay) || replay.ID != committed.ID {
 		t.Fatalf("lost create repeated mutation: %+v", page.Data)
 	}
 }
@@ -423,7 +426,7 @@ func TestScheduleRunNowReplyLossRetainsAcceptanceAfterRestartAndSessionDeletion(
 	if err := json.Unmarshal(raw, &captured); err != nil {
 		t.Fatal(err)
 	}
-	accepted, err := qimumcp.DecodeReply[testsupport.SchedulesRunReference](captured.Response.Result)
+	accepted, err := pluginmcp.DecodeReply[testsupport.SchedulesRunReference](captured.Response.Result)
 	if err != nil {
 		t.Fatalf("manual acceptance did not commit before response loss: %v", err)
 	}
@@ -451,7 +454,7 @@ func TestScheduleRunNowReplyLossRetainsAcceptanceAfterRestartAndSessionDeletion(
 		}
 	}
 	page := readSchedulePage(r, protocol.PageQuery{})
-	if len(page.Data) != 1 || page.Data[0].Revision != saved.Revision+1 {
+	if len(page.Data) != 1 || generatedInteger(t, page.Data[0].Revision) != generatedInteger(t, saved.Revision)+1 {
 		t.Fatalf("manual replay advanced definition: %+v", page.Data)
 	}
 	sessions := r.must(delivery.SessionsList, protocol.ListSessionsRequest{}, "").(*protocol.Page[protocol.Session])
@@ -486,14 +489,14 @@ func TestScheduleLostRunNowReplyRetainsCapturedWorkOnStartup(t *testing.T) {
 	if err := json.Unmarshal(raw, &captured); err != nil {
 		t.Fatal(err)
 	}
-	pending, err := qimumcp.DecodeReply[testsupport.SchedulesRunReference](captured.Response.Result)
+	pending, err := pluginmcp.DecodeReply[testsupport.SchedulesRunReference](captured.Response.Result)
 	if err != nil {
 		t.Fatalf("manual acceptance did not commit: %v", err)
 	}
 	r.must(delivery.MCPServersReconnect, protocol.MCPServerRequest{Server: server}, "reconnect")
 	r.poMCPTools(&server, ready)
 	title, instructions := "edited title", "edited instructions"
-	r.must(delivery.PluginsCall, scheduleUpdateRequest(r, testsupport.SchedulesUpdateInput{ID: saved.ID, ExpectedRevision: saved.Revision + 1, Title: &title, Instructions: &instructions}), "edit-after-capture")
+	r.must(delivery.PluginsCall, scheduleUpdateRequest(r, testsupport.SchedulesUpdateInput{ID: saved.ID, ExpectedRevision: generatedNumber(t, strconv.FormatUint(generatedInteger(t, saved.Revision)+1, 10)), Title: &title, Instructions: &instructions}), "edit-after-capture")
 	r = reopenPluginRuntime(t, r, &cfg)
 	r.poMCPTools(&server, ready)
 	workerCtx, cancelWorkers := context.WithCancel(t.Context())

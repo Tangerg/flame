@@ -10,13 +10,15 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
 	"github.com/Tangerg/frame/sqlite"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/a2aproject/a2a-go/v2/a2a"
 )
 
@@ -29,7 +31,7 @@ type connector struct {
 // persisted here: it remains the remote agent's fact.
 type taskBinding struct {
 	Agent     string             `json:"agent"`
-	Authority integrity.Digest   `json:"authority"`
+	Authority framevalue.Digest  `json:"authority"`
 	Endpoint  a2a.AgentInterface `json:"endpoint"`
 	TaskID    a2a.TaskID         `json:"taskId"`
 	ContextID string             `json:"contextId"`
@@ -58,11 +60,11 @@ func (c *connector) list(context.Context, struct{}) (wire.Agents, error) {
 	return result, nil
 }
 
-func (c *connector) send(ctx context.Context, method, id string, input jsonvalue.Value) (_ wire.Result, err error) {
+func (c *connector) send(ctx context.Context, method, id string, input framevalue.JSON) (_ wire.Result, err error) {
 	var request wire.SendRequest
 	var selected agent
 	prepared, reply, err := pluginstorage.AdmitCommand(ctx, c.db, method, id, input, func(context.Context) error {
-		if err := json.Unmarshal(input.JSON(), &request, json.RejectUnknownMembers(true)); err != nil {
+		if err := json.Unmarshal(input.Bytes(), &request, json.RejectUnknownMembers(true)); err != nil {
 			return invalidRequest()
 		}
 		if !utf8.ValidString(request.Message) || len(request.Message) > 64<<10 || strings.TrimSpace(request.Message) == "" {
@@ -71,7 +73,7 @@ func (c *connector) send(ctx context.Context, method, id string, input jsonvalue
 		var found bool
 		selected, found = c.agents[request.Agent]
 		if !found {
-			return &portable.Refusal{Code: "agent_unconfigured", Message: "a2a: agent is not configured"}
+			return &framemcp.Refusal{Code: "agent_unconfigured", Message: "a2a: agent is not configured"}
 		}
 		return nil
 	})
@@ -79,7 +81,7 @@ func (c *connector) send(ctx context.Context, method, id string, input jsonvalue
 		return wire.Result{}, err
 	}
 	if prepared == nil {
-		return qimumcp.DecodeReply[wire.Result](reply)
+		return pluginmcp.DecodeReply[wire.Result](reply)
 	}
 	if !prepared.NewlyAdmitted() {
 		return wire.Result{}, pluginstorage.ErrCommandUnconfirmed
@@ -89,7 +91,7 @@ func (c *connector) send(ctx context.Context, method, id string, input jsonvalue
 		if ctx.Err() != nil {
 			return wire.Result{}, errors.Join(err, ctx.Err(), context.Cause(ctx))
 		}
-		return complete(ctx, prepared, wire.Result{}, &portable.Refusal{Code: "discovery_failed", Message: "a2a: agent discovery or endpoint admission failed"})
+		return complete(ctx, prepared, wire.Result{}, &framemcp.Refusal{Code: "discovery_failed", Message: "a2a: agent discovery or endpoint admission failed"})
 	}
 	defer func() { err = errors.Join(err, client.Destroy()) }()
 	message := a2a.NewMessage(a2a.MessageRoleUser, a2a.NewTextPart(request.Message))
@@ -101,11 +103,11 @@ func (c *connector) send(ctx context.Context, method, id string, input jsonvalue
 	if err != nil {
 		return wire.Result{}, err
 	}
-	encoded, err := qimumcp.EncodeReply(result, nil, nil)
+	encoded, err := pluginmcp.EncodeReply(result, nil, nil)
 	if err != nil {
 		return wire.Result{}, err
 	}
-	err = prepared.SettleExternal(ctx, encoded.JSON(), func(ctx context.Context) error {
+	err = prepared.SettleExternal(ctx, encoded.Bytes(), func(ctx context.Context) error {
 		if result.TaskID == "" {
 			return nil
 		}
@@ -114,7 +116,7 @@ func (c *connector) send(ctx context.Context, method, id string, input jsonvalue
 		if err != nil {
 			return err
 		}
-		_, err = sqlite.Connection(ctx, c.db).ExecContext(ctx, `INSERT INTO bindings(request_id,binding) VALUES(?,?)`, id, string(data))
+		_, err = pluginstorage.Connection(ctx, c.db).ExecContext(ctx, `INSERT INTO bindings(request_id,binding) VALUES(?,?)`, id, string(data))
 		return err
 	})
 	return result, err
@@ -137,12 +139,12 @@ func (c *connector) status(ctx context.Context, request wire.TaskRequest) (_ wir
 	return binding.project(request.RequestID, task)
 }
 
-func (c *connector) cancel(ctx context.Context, method, id string, input jsonvalue.Value) (_ wire.Result, err error) {
+func (c *connector) cancel(ctx context.Context, method, id string, input framevalue.JSON) (_ wire.Result, err error) {
 	var request wire.TaskRequest
 	var binding taskBinding
 	var selected agent
 	prepared, reply, err := pluginstorage.AdmitCommand(ctx, c.db, method, id, input, func(ctx context.Context) error {
-		if err := json.Unmarshal(input.JSON(), &request, json.RejectUnknownMembers(true)); err != nil {
+		if err := json.Unmarshal(input.Bytes(), &request, json.RejectUnknownMembers(true)); err != nil {
 			return invalidRequest()
 		}
 		var err error
@@ -153,14 +155,14 @@ func (c *connector) cancel(ctx context.Context, method, id string, input jsonval
 		return wire.Result{}, err
 	}
 	if prepared == nil {
-		return qimumcp.DecodeReply[wire.Result](reply)
+		return pluginmcp.DecodeReply[wire.Result](reply)
 	}
 	if !prepared.NewlyAdmitted() {
 		return wire.Result{}, pluginstorage.ErrCommandUnconfirmed
 	}
 	client, err := selected.connect(ctx, binding.Endpoint)
 	if err != nil {
-		return complete(ctx, prepared, wire.Result{}, &portable.Refusal{Code: "endpoint_rejected", Message: "a2a: original endpoint cannot be admitted"})
+		return complete(ctx, prepared, wire.Result{}, &framemcp.Refusal{Code: "endpoint_rejected", Message: "a2a: original endpoint cannot be admitted"})
 	}
 	defer func() { err = errors.Join(err, client.Destroy()) }()
 	task, err := client.CancelTask(ctx, &a2a.CancelTaskRequest{ID: binding.TaskID})
@@ -175,13 +177,13 @@ func (c *connector) cancel(ctx context.Context, method, id string, input jsonval
 }
 
 func (c *connector) binding(ctx context.Context, id string) (taskBinding, agent, error) {
-	if qimumcp.CommandID(id).Validate() != nil {
+	if pluginmcp.CommandID(id).Validate() != nil {
 		return taskBinding{}, agent{}, invalidRequest()
 	}
 	var raw string
-	err := sqlite.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT binding FROM bindings WHERE request_id=?`, id).Scan(&raw)
+	err := pluginstorage.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT binding FROM bindings WHERE request_id=?`, id).Scan(&raw)
 	if errors.Is(err, sql.ErrNoRows) {
-		return taskBinding{}, agent{}, &portable.Refusal{Code: "task_unavailable", Message: "a2a: original request has no confirmed remote task binding"}
+		return taskBinding{}, agent{}, &framemcp.Refusal{Code: "task_unavailable", Message: "a2a: original request has no confirmed remote task binding"}
 	}
 	if err != nil {
 		return taskBinding{}, agent{}, err
@@ -195,7 +197,7 @@ func (c *connector) binding(ctx context.Context, id string) (taskBinding, agent,
 	}
 	selected, found := c.agents[binding.Agent]
 	if !found || selected.authority != binding.Authority {
-		return taskBinding{}, agent{}, &portable.Refusal{Code: "agent_changed", Message: "a2a: original agent authority is no longer configured"}
+		return taskBinding{}, agent{}, &framemcp.Refusal{Code: "agent_changed", Message: "a2a: original agent authority is no longer configured"}
 	}
 	return binding, selected, nil
 }
@@ -238,16 +240,16 @@ func project(id, agent string, remote a2a.SendMessageResult) (wire.Result, error
 }
 
 func complete(ctx context.Context, prepared *pluginstorage.PreparedCommand, result wire.Result, operationErr error) (wire.Result, error) {
-	encoded, err := qimumcp.EncodeReply(result, operationErr, nil)
+	encoded, err := pluginmcp.EncodeReply(result, operationErr, nil)
 	if err != nil {
 		return wire.Result{}, err
 	}
-	if err := prepared.SettleExternal(ctx, encoded.JSON(), nil); err != nil {
+	if err := prepared.SettleExternal(ctx, encoded.Bytes(), nil); err != nil {
 		return wire.Result{}, err
 	}
-	return qimumcp.DecodeReply[wire.Result](encoded.JSON())
+	return pluginmcp.DecodeReply[wire.Result](encoded.Bytes())
 }
 
 func invalidRequest() error {
-	return &portable.Refusal{Code: "invalid_request", Message: "a2a: invalid request"}
+	return &framemcp.Refusal{Code: "invalid_request", Message: "a2a: invalid request"}
 }

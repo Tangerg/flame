@@ -7,7 +7,7 @@ import {
   Capability,
   parseJSON,
   type CapabilityDescriptor,
-} from "@qimu/node";
+} from "@flame/backend-sdk/mcp";
 import { Archive } from "./archive";
 
 const root = process.env.PLUGIN_ROOT;
@@ -31,7 +31,7 @@ backend.onSetup((context) => {
   context.defer(() => archive.close());
 });
 backend.implement(
-  contract.method("flame.usage-reports/capture.v1"),
+  contract.portable.method("flame.usage-reports/capture.v1"),
   (value) => value,
   async (context) =>
     archive.capture(context, async (days) => {
@@ -44,17 +44,17 @@ backend.implement(
     }),
 );
 backend.implement(
-  contract.method("flame.usage-reports/list.v2"),
+  contract.portable.method("flame.usage-reports/list.v2"),
   (value) => value,
   () => ({ reports: archive.list() }),
 );
 backend.implement(
-  contract.method("flame.usage-reports/get.v1"),
+  contract.portable.method("flame.usage-reports/get.v1"),
   (value) => value as { id: string },
   (_context, input) => archive.read(input.id),
 );
 backend.implement(
-  contract.method("flame.usage-reports/delete.v1"),
+  contract.portable.method("flame.usage-reports/delete.v1"),
   (value) => value,
   (context) => archive.remove(context),
 );

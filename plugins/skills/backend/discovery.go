@@ -4,17 +4,18 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/Tangerg/flame/packages/go-sdk/skill"
 	"maps"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/skill"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	storage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
-func registerDiscovery(server *qimumcp.Backend, db *sql.DB) error {
+func registerDiscovery(server *pluginmcp.Backend, db *sql.DB) error {
 	discover, err := skilllearning.DiscoverMethod()
 	if err != nil {
 		return err
@@ -23,7 +24,7 @@ func registerDiscovery(server *qimumcp.Backend, db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	return errors.Join(discover.RegisterServer(server, nil, func(_ context.Context, _ *sdk.ServerSession, c qimumcp.Command[skilllearning.Candidates]) (skilllearning.Catalog, error) {
+	return errors.Join(discover.RegisterServer(server, nil, func(_ context.Context, _ *sdk.ServerSession, c pluginmcp.Command[skilllearning.Candidates]) (skilllearning.Catalog, error) {
 		return selectSources(c.Input), nil
 	}),
 		storage.RegisterCommand(server, db, capture, nil, func(_ context.Context, _ *sdk.ServerSession, c skilllearning.Candidates) (skilllearning.Catalog, error) {

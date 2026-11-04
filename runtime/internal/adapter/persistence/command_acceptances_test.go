@@ -39,15 +39,15 @@ func TestCommandAcceptanceSurvivesReopenAndRetiresWithItsRun(t *testing.T) {
 		RunID: acceptance.RunID, SessionID: acceptance.SessionID, SegmentID: acceptance.SegmentID,
 		ModelSelection: testsupport.MustModelSelection("test", "test-model"), CreatedAt: time.Unix(100, 0).UTC(),
 	}
-	if err := newRunStore(db).Admit(ctx, admit); err != nil {
+	if err := newRunStore(databaseFor(db)).Admit(ctx, admit); err != nil {
 		t.Fatalf("admit run: %v", err)
 	}
-	if err := newCommandAcceptanceStore(db).Save(ctx, acceptance); err != nil {
+	if err := newCommandAcceptanceStore(databaseFor(db)).Save(ctx, acceptance); err != nil {
 		t.Fatalf("save acceptance: %v", err)
 	}
 	// A second write under the same key is the global-key refusal that keeps a
 	// retried opening from admitting a second Run.
-	if err := newCommandAcceptanceStore(db).Save(ctx, acceptance); err == nil {
+	if err := newCommandAcceptanceStore(databaseFor(db)).Save(ctx, acceptance); err == nil {
 		t.Fatal("re-saving the same key must violate the global command key")
 	}
 	if err := db.Close(); err != nil {
@@ -59,7 +59,7 @@ func TestCommandAcceptanceSurvivesReopenAndRetiresWithItsRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = reopened.Close() })
-	store := newCommandAcceptanceStore(reopened)
+	store := newCommandAcceptanceStore(databaseFor(reopened))
 
 	record, err := store.Lookup(ctx, acceptance.Key)
 	if err != nil {
@@ -84,7 +84,7 @@ func TestCommandAcceptanceSurvivesReopenAndRetiresWithItsRun(t *testing.T) {
 	}
 
 	// Importing the same RunID must not refill the retired material reference.
-	if err := newRunStore(reopened).Admit(ctx, admit); err != nil {
+	if err := newRunStore(databaseFor(reopened)).Admit(ctx, admit); err != nil {
 		t.Fatalf("re-admit run: %v", err)
 	}
 	refilled, err := store.Lookup(ctx, acceptance.Key)
@@ -112,7 +112,7 @@ func TestCommandAcceptanceLookupReportsForeignOperation(t *testing.T) {
 	); err != nil {
 		t.Fatalf("seed generic response: %v", err)
 	}
-	record, err := newCommandAcceptanceStore(db).Lookup(ctx, "cancel-once")
+	record, err := newCommandAcceptanceStore(databaseFor(db)).Lookup(ctx, "cancel-once")
 	if err != nil {
 		t.Fatalf("lookup foreign key: %v", err)
 	}

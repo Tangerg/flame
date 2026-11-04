@@ -1,12 +1,9 @@
 package protocol
 
 import (
-	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"reflect"
-
-	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 // DecodeRequest preserves authored presence, typed nulls, and exact numbers.
@@ -17,9 +14,9 @@ func DecodeRequest(encoded []byte, target any) error {
 		return fmt.Errorf("%w: request target must be a non-nil pointer", ErrInvalidParams)
 	}
 	request := reflect.New(destination.Type().Elem())
-	if err := jsonvalue.DecodeValue(jsontext.Value(encoded), request.Interface(), "params"); err != nil {
-		if shape, ok := errors.AsType[*jsonvalue.ShapeError](err); ok {
-			err = &ConstraintError{Shape: request.Elem().Type().Name(), Fields: []FieldError{{Field: joinWirePath("", shape.Field), Detail: shape.Detail}}}
+	if err := DecodeWire(encoded, request.Interface()); err != nil {
+		if shape, ok := errors.AsType[*ConstraintError](err); ok {
+			shape.Shape = request.Elem().Type().Name()
 		}
 		return fmt.Errorf("%w: %w", ErrInvalidParams, err)
 	}

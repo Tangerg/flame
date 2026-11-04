@@ -70,7 +70,13 @@ func TestResolverQualifiesCollidingRemoteIdentities(t *testing.T) {
 			if !definitionNames(manifestTools(manifest))["other_read"] {
 				t.Fatal("collision removed unrelated tool")
 			}
-			if _, err := toolcontract.NewRegistry(manifestTools(manifest)...); err != nil {
+			if _, err := toolcontract.NewRegistry(func() []toolcontract.Binding {
+				var bindings []toolcontract.Binding
+				for _, executable := range manifestTools(manifest) {
+					bindings = append(bindings, bindRegisteredTool(t, executable))
+				}
+				return bindings
+			}()...); err != nil {
 				t.Fatalf("manifest is not executable: %v", err)
 			}
 		})

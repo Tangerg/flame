@@ -8,7 +8,7 @@ import (
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/scope/core/chat"
+
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	oteltool "github.com/Tangerg/scope/otel/tool"
 )
@@ -44,7 +44,7 @@ func (r DiagnosticRegistry) List(context.Context) (_ []tool.Tool, err error) {
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, manifest.Close()) }()
-	registry, err := toolcontract.NewRegistry(manifest.Visible...)
+	registry, err := diagnosticRegistry(manifest.Visible, r.telemetry)
 	if err != nil {
 		return nil, fmt.Errorf("toolset: bind diagnostic catalog: %w", err)
 	}
@@ -56,8 +56,8 @@ func (r DiagnosticRegistry) List(context.Context) (_ []tool.Tool, err error) {
 			return nil, err
 		}
 		out = append(out, tool.Tool{
-			ToolDefinition: definition,
-			SafetyClass:    interpreter.SafetyClass(ref),
+			Definition:  definition,
+			SafetyClass: interpreter.SafetyClass(ref),
 		})
 	}
 	return out, nil
@@ -72,11 +72,7 @@ func (r DiagnosticRegistry) Invoke(ctx context.Context, root, name string, argum
 		return tool.Result{}, err
 	}
 	defer func() { err = errors.Join(err, direct.Close()) }()
-	instrumented, err := instrumentTools(r.telemetry, direct.Visible)
-	if err != nil {
-		return tool.Result{}, err
-	}
-	registry, err := toolcontract.NewRegistry(instrumented...)
+	registry, err := diagnosticRegistry(direct.Visible, r.telemetry)
 	if err != nil {
 		return tool.Result{}, fmt.Errorf("toolset: bind diagnostic catalog: %w", err)
 	}
@@ -84,7 +80,7 @@ func (r DiagnosticRegistry) Invoke(ctx context.Context, root, name string, argum
 	if !found {
 		return tool.Result{}, fmt.Errorf("toolset: direct tool %q is not registered", name)
 	}
-	proposed, prepareErr := binding.Contract().Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: arguments.Canonical()}, nil)
+	proposed, prepareErr := binding.Contract().Prepare(toolcontract.Request{Name: name, Arguments: arguments.Canonical()}, toolcontract.Admission{})
 	if prepareErr != nil {
 		return tool.Result{}, fmt.Errorf("%w: direct tool %q: %w", tool.ErrInvalidArguments, name, prepareErr)
 	}
@@ -92,7 +88,7 @@ func (r DiagnosticRegistry) Invoke(ctx context.Context, root, name string, argum
 	if err != nil {
 		return tool.Result{}, err
 	}
-	invocation, prepareErr := binding.Contract().Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: normalized}, nil)
+	invocation, prepareErr := binding.Contract().Prepare(toolcontract.Request{Name: name, Arguments: normalized}, toolcontract.Admission{})
 	if prepareErr != nil {
 		return tool.Result{}, fmt.Errorf("toolset: prepare direct tool %q: %w", name, prepareErr)
 	}
@@ -101,4 +97,16 @@ func (r DiagnosticRegistry) Invoke(ctx context.Context, root, name string, argum
 		return tool.Result{}, callErr
 	}
 	return directResult(output.Output)
+}
+
+func diagnosticRegistry(tools []toolcontract.Tool, telemetry oteltool.Middleware) (*toolcontract.Registry, error) {
+	bindings := make([]toolcontract.Binding, len(tools))
+	for index, executable := range tools {
+		binding, err := toolcontract.Bind(executable, telemetry.Call)
+		if err != nil {
+			return nil, err
+		}
+		bindings[index] = binding
+	}
+	return toolcontract.NewRegistry(bindings...)
 }

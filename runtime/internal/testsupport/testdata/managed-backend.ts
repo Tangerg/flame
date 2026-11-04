@@ -5,7 +5,7 @@ import {
   Capability,
   parseJSON,
   type CapabilityDescriptor,
-} from "@qimu/node";
+} from "@flame/backend-sdk/mcp";
 
 console.info("managed conformance initialized");
 const contract = new Capability(

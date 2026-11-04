@@ -8,10 +8,12 @@ import (
 	"path/filepath"
 	"testing"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	storage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 const miningCrashExit = 93
@@ -24,7 +26,7 @@ func TestMiningCrashAtomicallyPreservesProposalAndOriginalReceipt(t *testing.T) 
 		t.Fatal(err)
 	}
 	run := skilllearning.Run{Library: "captured-user-library", SessionID: "ses_source", ToolCalls: 8}
-	input, err := jsonvalue.Encode(run)
+	input, err := framevalue.EncodeJSON(run)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,11 +41,11 @@ func TestMiningCrashAtomicallyPreservesProposalAndOriginalReceipt(t *testing.T) 
 		if err != nil {
 			t.Fatal(err)
 		}
-		reply, err := qimumcp.EncodeReply(result, nil, nil)
+		reply, err := pluginmcp.EncodeReply(result, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = cmd.SettleExternal(t.Context(), reply.JSON(), func(ctx context.Context) error {
+		err = cmd.SettleExternal(t.Context(), reply.Bytes(), func(ctx context.Context) error {
 			if err := l.recordMined(ctx, id, run, result); err != nil {
 				return err
 			}
@@ -87,7 +89,7 @@ func TestMiningCrashAtomicallyPreservesProposalAndOriginalReceipt(t *testing.T) 
 				}
 				return
 			}
-			got, err := qimumcp.DecodeReply[skilllearning.MineResult](reply)
+			got, err := pluginmcp.DecodeReply[skilllearning.MineResult](reply)
 			if err != nil || got.Proposal == nil || *got.Proposal != *result.Proposal || len(pending.Proposals) != 1 || pending.Proposals[0].Command != id {
 				t.Fatalf("original receipt and queue diverged: %+v %+v %v", pending, got, err)
 			}

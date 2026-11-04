@@ -14,7 +14,7 @@
     "generate": "node scripts/generate-contracts.mjs && npm run build"
   },
   "dependencies": {
-    "@flame/backend-sdk": "^0.1.0",
+    "@flame/backend-sdk": "*",
     "@flame/brand-assets": "*",
     "@flame/component-sdk": "*",
     "@flame/icons": "*",
@@ -22,15 +22,13 @@
     "@flame/ui": "*",
     "@js-temporal/polyfill": "^0.5.1",
     "@modelcontextprotocol/sdk": "1.32.2",
-    "@openuidev/lang-core": "1.0.1",
-    "@openuidev/react-lang": "1.0.1",
-    "@qimu/node": "*",
-    "@qimu/sdk": "0.1.0",
+    "@openuidev/lang-core": "1.1.0",
+    "@openuidev/react-lang": "1.1.0",
     "@stylexjs/stylex": "^0.19.1",
-    "docx": "9.15.0",
+    "docx": "9.15.2",
     "exceljs": "4.4.0",
     "jpeg-js": "0.4.4",
-    "katex": "0.19.0",
+    "katex": "0.19.1",
     "pdf-lib": "1.17.1",
     "pigeon-maps": "0.22.1",
     "pngjs": "7.0.0",
@@ -40,19 +38,20 @@
     "react-markdown": "10.1.0",
     "remark-gfm": "4.0.1",
     "saxes": "6.0.0",
-    "zod": "4.6.7"
+    "zod": "4.6.7",
+    "@frame/sdk": "https://github.com/Tangerg/frame/releases/download/v0.1.0/frame-sdk-0.1.0.tgz"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.3",
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "@types/pngjs": "6.0.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "happy-dom": "^21.0.4",
-    "oxlint": "^1.89.0",
+    "oxlint": "^1.91.0",
     "prettier": "^3.9.10",
-    "rolldown": "^1.2.15",
+    "rolldown": "^1.2.16",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   }
 }

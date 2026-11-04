@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/qimu/jsonvalue"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 var ErrTokenTooLarge = errors.New("opaque token exceeds maximum encoded size")
@@ -41,7 +41,7 @@ func DecodeToken(token string, maximumCharacters int, target any) error {
 	if err != nil {
 		return err
 	}
-	if err := json.Unmarshal(payload, target, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
+	if err := json.Unmarshal(payload, target, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
 		return err
 	}
 	return nil

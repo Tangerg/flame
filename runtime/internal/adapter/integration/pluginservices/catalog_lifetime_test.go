@@ -12,13 +12,13 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/frame"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -38,7 +38,7 @@ func TestManagedCatalogProtectsCallsWithoutRetainingAnIdleUse(t *testing.T) {
 		t.Fatal(err)
 	}
 	remote := sdk.NewServer(&sdk.Implementation{Name: "owned-call"}, nil)
-	backend, err := qimumcp.NewBackend(remote)
+	backend, err := pluginmcp.NewBackend(remote)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestManagedCatalogProtectsCallsWithoutRetainingAnIdleUse(t *testing.T) {
 	})
 	endpoint := httptest.NewServer(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil))
 	t.Cleanup(endpoint.Close)
-	callbacks := qimumcp.NewCallbacks()
+	callbacks := pluginmcp.NewCallbacks()
 	t.Cleanup(func() { _ = callbacks.Close() })
 	store := &toolInstallationStore{snapshot: plugin.Snapshot{Installation: installation, Selected: release}}
 	managed := newManagedFixture(t, store, mcpserver.Server{Source: source, Name: name, Enabled: true, Connection: mcpserver.HTTPConnection{URL: endpoint.URL}}, callbacks, nil)
@@ -76,7 +76,7 @@ func TestManagedCatalogProtectsCallsWithoutRetainingAnIdleUse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation, err := bound.Contract().Prepare(chat.ToolCall{ID: "original", Name: bound.Contract().Definition().Name, Arguments: `{}`}, nil)
+	invocation, err := bound.Contract().Prepare((chat.ToolCall{ID: "original", Name: bound.Contract().Definition().Name, Arguments: `{}`}).Request(), toolcontract.Admission{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestManagedCatalogProtectsCallsWithoutRetainingAnIdleUse(t *testing.T) {
 		t.Fatal(t.Context().Err())
 	}
 	id := installation.ID().Host()
-	if err := managed.Host.Uninstall(t.Context(), id); !errors.Is(err, qimu.ErrInUse) {
+	if err := managed.Host.Uninstall(t.Context(), id); !errors.Is(err, frame.ErrInUse) {
 		t.Fatalf("active call lost its exact Use: %v", err)
 	}
 	finish()
@@ -124,7 +124,7 @@ func TestManagedReconnectWaitsForOriginalUseBeforeStartingReplacement(t *testing
 		t.Fatal(err)
 	}
 	remote := sdk.NewServer(&sdk.Implementation{Name: "reconnect-owner"}, nil)
-	backend, err := qimumcp.NewBackend(remote)
+	backend, err := pluginmcp.NewBackend(remote)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +133,7 @@ func TestManagedReconnectWaitsForOriginalUseBeforeStartingReplacement(t *testing
 	}
 	endpoint := httptest.NewServer(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil))
 	t.Cleanup(endpoint.Close)
-	callbacks := qimumcp.NewCallbacks()
+	callbacks := pluginmcp.NewCallbacks()
 	t.Cleanup(func() { _ = callbacks.Close() })
 	store := &toolInstallationStore{snapshot: plugin.Snapshot{Installation: installation, Selected: release}}
 	server := mcpserver.Server{Source: source, Name: name, Enabled: true, Connection: mcpserver.HTTPConnection{URL: endpoint.URL}}

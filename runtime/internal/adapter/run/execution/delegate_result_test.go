@@ -3,14 +3,16 @@ package execution
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"reflect"
 	"strings"
 	"testing"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/scope/agent/interaction"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -68,7 +70,7 @@ type rejectingChildCompactor struct{}
 
 func (rejectingChildCompactor) CompactModelContext(_ context.Context, request ModelContextCompaction) (ModelContextCompactionResult, error) {
 	if !request.Durable() {
-		return ModelContextCompactionResult{}, errors.New(strings.Repeat("worker diagnostic 界", 400))
+		return ModelContextCompactionResult{}, &interaction.ContextFailure{Cause: errors.New(strings.Repeat("worker diagnostic 界", 400))}
 	}
 	return NewModelContextCompactionResult(request.Candidate(), false, "", len(request.Candidate()), 100)
 }

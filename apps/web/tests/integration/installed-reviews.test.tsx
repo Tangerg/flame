@@ -1,3 +1,4 @@
+import { canonicalJSON } from "@frame/sdk/json";
 import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
 import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
 import type { ServerCapabilities } from "@flame/runtime-client/wire";
@@ -11,7 +12,7 @@ prepareTestClient(() => {
 });
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import { createFlameClient } from "@flame/runtime-client";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -176,7 +177,7 @@ describe("installed Reviews contextual actions", () => {
     const lookup = await waitForRequest(transport, "plugins.getCommand");
     const admittedRequest = {
       ...(originalRequest.params as CallPluginRequest),
-      input: stringifyJSON(parseJSON((originalRequest.params as CallPluginRequest).input), true),
+      input: canonicalJSON(parseJSON((originalRequest.params as CallPluginRequest).input)),
     };
     await act(async () => respondSuccess(transport, lookup.id, admittedRequest));
     const recovered = await waitFor(() => {

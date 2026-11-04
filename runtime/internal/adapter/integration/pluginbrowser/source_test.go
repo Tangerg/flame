@@ -4,16 +4,17 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"strings"
 	"testing"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/distribution"
-	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/frame"
+	"github.com/Tangerg/frame/distribution"
 )
 
 type sourceStore struct{ snapshot plugin.Snapshot }
@@ -24,7 +25,7 @@ func (s *sourceStore) Get(context.Context, identity.InstallationID) (plugin.Snap
 func (s *sourceStore) List(context.Context) ([]plugin.Snapshot, error) {
 	return []plugin.Snapshot{s.snapshot}, nil
 }
-func (*sourceStore) Stage(context.Context, identity.InstallationID, integrity.Digest) error {
+func (*sourceStore) Stage(context.Context, identity.InstallationID, framevalue.Digest) error {
 	return errors.New("fixture must not mutate installations")
 }
 
@@ -45,9 +46,9 @@ func (s *sourceResources) ReadResource(_ context.Context, _ plugin.Installation,
 	return bytes.Clone(s.body), nil
 }
 
-func sourceFixture(t *testing.T) (*Source, *sourceStore, *sourceResources, qimu.UnitBinding) {
+func sourceFixture(t *testing.T) (*Source, *sourceStore, *sourceResources, frame.UnitBinding) {
 	t.Helper()
-	digest, err := integrity.ParseDigest(strings.Repeat("a", 64))
+	digest, err := framevalue.ParseDigest(strings.Repeat("a", 64))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,26 +78,26 @@ func sourceFixture(t *testing.T) (*Source, *sourceStore, *sourceResources, qimu.
 	if err != nil {
 		t.Fatal(err)
 	}
-	binding := qimu.UnitBinding{Source: qimu.UnitRef{InstallationID: id.Host(), Release: digest, UnitID: plugins.ComponentUnit("panel")}, Configuration: integrity.Hash(configuration), Imports: []qimu.ImportDeclaration{}}
+	binding := frame.UnitBinding{Source: frame.UnitRef{InstallationID: id.Host(), Release: digest, UnitID: plugins.ComponentUnit("panel")}, Configuration: framevalue.Hash(configuration), Imports: []frame.ImportDeclaration{}}
 	return source, store, resources, binding
 }
 
 func TestComponentArtifactUsesExactAdmittedBytesAndRefusesChangedConfiguration(t *testing.T) {
 	source, store, resources, binding := sourceFixture(t)
 	artifact, err := source.Module(t.Context(), binding)
-	if err != nil || artifact.Path != plugin.Namespace+"/component.js" || artifact.Digest != integrity.Hash(resources.body) {
+	if err != nil || artifact.Path != plugin.Namespace+"/component.js" || artifact.Digest != framevalue.Hash(resources.body) {
 		t.Fatalf("artifact = %+v, %v", artifact, err)
 	}
 	if resources.reads != 1 {
 		t.Fatal("module did not use the original verified resource owner")
 	}
 	changed := binding.Clone()
-	changed.Configuration = integrity.Hash([]byte("different configuration"))
-	if _, err := source.Module(t.Context(), changed); !errors.Is(err, qimu.ErrStaleBinding) {
+	changed.Configuration = framevalue.Hash([]byte("different configuration"))
+	if _, err := source.Module(t.Context(), changed); !errors.Is(err, frame.ErrStaleBinding) {
 		t.Fatalf("changed configuration = %v", err)
 	}
 	changed = binding.Clone()
-	changed.Source.Release = integrity.Hash([]byte("different release"))
+	changed.Source.Release = framevalue.Hash([]byte("different release"))
 	if _, err := source.Module(t.Context(), changed); !errors.Is(err, plugin.ErrStale) {
 		t.Fatalf("changed release = %v", err)
 	}
@@ -114,8 +115,8 @@ type configurationDriver struct {
 	observed []byte
 }
 
-func (*configurationDriver) Profile() qimu.Profile { return qimu.BrowserJS }
-func (d *configurationDriver) Prepare(ctx context.Context, setup *qimu.Setup) ([]qimu.ExportValue, error) {
+func (*configurationDriver) Profile() frame.Profile { return frame.BrowserJS }
+func (d *configurationDriver) Prepare(ctx context.Context, setup *frame.Setup) ([]frame.ExportValue, error) {
 	var err error
 	d.observed, err = d.source.Configuration(ctx, setup)
 	if err != nil {
@@ -125,13 +126,13 @@ func (d *configurationDriver) Prepare(ctx context.Context, setup *qimu.Setup) ([
 	if err != nil {
 		return nil, err
 	}
-	return []qimu.ExportValue{qimu.Provide[any]("component", contract, struct{}{})}, nil
+	return []frame.ExportValue{frame.Provide[any]("component", contract, struct{}{})}, nil
 }
 
 func TestBrowserConfigurationIsThePublicProjectionOfTheApprovedUnit(t *testing.T) {
 	source, store, _, binding := sourceFixture(t)
 	driver := &configurationDriver{source: source}
-	host, err := qimu.NewHost(t.Context(), qimu.HostConfig{Drivers: []qimu.Driver{driver}})
+	host, err := frame.NewHost(t.Context(), frame.HostConfig{Drivers: []frame.Driver{driver}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +142,7 @@ func TestBrowserConfigurationIsThePublicProjectionOfTheApprovedUnit(t *testing.T
 			t.Errorf("host close = %+v, %v", outcome, err)
 		}
 	})
-	release, err := plugins.ProjectFrameworkRelease(store.snapshot.Selected, qimumcp.ProcessProfile)
+	release, err := plugins.ProjectFrameworkRelease(store.snapshot.Selected, pluginmcp.ProcessProfile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,14 +153,14 @@ func TestBrowserConfigurationIsThePublicProjectionOfTheApprovedUnit(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := host.Install(t.Context(), qimu.InstallationConfig{ID: binding.Source.InstallationID, Plugin: release.Plugin, Configuration: configuration, Enabled: true}); err != nil {
+	if _, err := host.Install(t.Context(), frame.InstallationConfig{ID: binding.Source.InstallationID, Plugin: release.Plugin, Configuration: configuration, Enabled: true}); err != nil {
 		t.Fatal(err)
 	}
 	contract, err := plugins.ComponentContract()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := host.Activate(t.Context(), qimu.ExportRef{InstallationID: binding.Source.InstallationID, Release: binding.Source.Release, UnitID: binding.Source.UnitID, Export: "component", Contract: contract.Ref()}); err != nil {
+	if _, err := host.Activate(t.Context(), frame.ExportRef{InstallationID: binding.Source.InstallationID, Release: binding.Source.Release, UnitID: binding.Source.UnitID, Export: "component", Contract: contract.Ref()}); err != nil {
 		t.Fatal(err)
 	}
 	expected, err := plugins.PublicComponentConfiguration(store.snapshot.Selected, "panel")

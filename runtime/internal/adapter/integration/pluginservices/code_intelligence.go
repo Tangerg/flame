@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame/cancellation"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -57,7 +56,7 @@ func (u *codeIntelligenceUse) Format(document codeintel.Document) (codeintel.Tra
 	if err == nil {
 		err = result.Validate(document)
 	}
-	return result, errors.Join(err, cancellation.Err(u.session.Context()))
+	return result, errors.Join(err, errors.Join(u.session.Context().Err(), context.Cause(u.session.Context())))
 }
 
 func (u *codeIntelligenceUse) Inspect(input codeintel.Inspection) (codeintel.Report, error) {
@@ -72,7 +71,7 @@ func (u *codeIntelligenceUse) Inspect(input codeintel.Inspection) (codeintel.Rep
 	if err == nil {
 		err = result.Validate(input.Document)
 	}
-	return result, errors.Join(err, cancellation.Err(u.session.Context()))
+	return result, errors.Join(err, errors.Join(u.session.Context().Err(), context.Cause(u.session.Context())))
 }
 
 func (u *codeIntelligenceUse) Close() error { return u.session.Close() }

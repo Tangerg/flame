@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/oolong/ui/base"
 )
 
 func TestPluginCommandIdentityExhaustionPreservesExistingCancellationOwner(t *testing.T) {
@@ -270,9 +271,9 @@ func TestRejectedSlashCommandsPreserveTheEditorAndAttachments(t *testing.T) {
 			if err := application.commands.add("test", extensions.CommandDescriptor{Name: "inspect", Title: "Inspect", Arguments: test.arguments}, func(string, func()) { t.Fatal("rejected command executed") }, test.availability); err != nil {
 				t.Fatal(err)
 			}
-			editor := application.composer.Editor()
+			editor := application.composer.Controller()
 			attachment := editor.InsertElement(fileElement, "@context.txt")
-			application.composer.chips = map[uint64]authoring.Attachment{attachment.ID: {ID: "context", Kind: protocol.ContentBlockText, Name: "context.txt", MimeType: "text/plain"}}
+			application.composer.chips = map[base.ElementID]authoring.Attachment{attachment.ID: {ID: "context", Kind: protocol.ContentBlockText, Name: "context.txt", MimeType: "text/plain"}}
 			editor.Insert(test.text)
 			editor.SetCursor(0, 3)
 			revision := editor.Revision()

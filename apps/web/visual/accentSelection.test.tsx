@@ -79,7 +79,7 @@ it.each([
 ])("selects a contributed preset %s for the current value %s", async (color, accent) => {
   await loadPluginsForTest(defaultAccents);
   await contributeForTest((ctx) =>
-    ctx.contribute(ACCENT, { id: "teal", label: "Teal", color, order: 4 }),
+    ctx.contributions.add(ACCENT, { id: "teal", label: "Teal", color, order: 4 }),
   );
   testClient.theme.access.preference.edit().setAccent(accent);
   testClient.render(<AccentSection />);

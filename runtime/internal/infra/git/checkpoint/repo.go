@@ -9,9 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capture"
+
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspacegit "github.com/Tangerg/flame/runtime/internal/infra/git"
-	"github.com/Tangerg/frame/cancellation"
 )
 
 // commonExcludes keep a checkpoint from ballooning into dependency / build
@@ -192,7 +193,7 @@ func (seed sourceRepositorySeed) resolveAlternates(sourceObjects string) ([]stri
 		return nil, fmt.Errorf("checkpoint: read source alternates: %w", err)
 	}
 	for line := range strings.SplitSeq(strings.TrimSpace(string(data)), "\n") {
-		if err := cancellation.Err(seed.ctx); err != nil {
+		if err := errors.Join(seed.ctx.Err(), context.Cause(seed.ctx)); err != nil {
 			return nil, err
 		}
 		alternate, present, err := resolveSourceAlternate(sourceObjects, line)
@@ -233,7 +234,7 @@ func resolveSourceAlternate(sourceObjects, line string) (string, bool, error) {
 }
 
 func (seed sourceRepositorySeed) writeAlternates(alternates []string) error {
-	if err := cancellation.Err(seed.ctx); err != nil {
+	if err := errors.Join(seed.ctx.Err(), context.Cause(seed.ctx)); err != nil {
 		return err
 	}
 	if err := os.MkdirAll(filepath.Join(seed.gitDir, "objects", "info"), 0o755); err != nil {
@@ -253,15 +254,15 @@ func (seed sourceRepositorySeed) writeAlternates(alternates []string) error {
 }
 
 func readSourceAlternates(ctx context.Context, path string) (data []byte, err error) {
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return nil, err
 	}
 	file, opened, err := filesystem.OpenFile(path, maxSourceAlternatesBytes)
 	if errors.Is(err, os.ErrNotExist) {
-		return nil, cancellation.Err(ctx)
+		return nil, errors.Join(ctx.Err(), context.Cause(ctx))
 	}
 	if err != nil {
-		return nil, errors.Join(checkpointSourceError(err), cancellation.Err(ctx))
+		return nil, errors.Join(checkpointSourceError(err), errors.Join(ctx.Err(), context.Cause(ctx)))
 	}
 	defer func() {
 		err = errors.Join(err, file.Close())
@@ -269,7 +270,11 @@ func readSourceAlternates(ctx context.Context, path string) (data []byte, err er
 			data = nil
 		}
 	}()
-	data, readErr := io.ReadAll(io.LimitReader(cancellation.Reader(ctx, file), maxSourceAlternatesBytes+1))
+	contextReader, err := capture.NewReader(ctx, file)
+	if err != nil {
+		return nil, err
+	}
+	data, readErr := io.ReadAll(io.LimitReader(contextReader, maxSourceAlternatesBytes+1))
 	var capacityErr error
 	if len(data) > maxSourceAlternatesBytes {
 		capacityErr = fmt.Errorf(
@@ -278,7 +283,7 @@ func readSourceAlternates(ctx context.Context, path string) (data []byte, err er
 		)
 	}
 	verifyErr := filesystem.VerifyPathVersion(file, opened, path)
-	if err := errors.Join(readErr, capacityErr, verifyErr, cancellation.Err(ctx)); err != nil {
+	if err := errors.Join(readErr, capacityErr, verifyErr, errors.Join(ctx.Err(), context.Cause(ctx))); err != nil {
 		return nil, err
 	}
 	return data, nil
