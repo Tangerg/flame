@@ -159,9 +159,10 @@ Page actions belong to the persistent `Panel.controls` zone, alongside filters.
 a single vertical flex flow. Wrapped controls keep their natural height when
 retained content moves between main reading and a narrow Dock; the section
 does not keep an inflated intrinsic grid row after native page zoom.
-`PanelFooter` groups paging only when another page exists. `RecordGroup variant="list"` owns the shared resource surface, corners
-and separators. Its rows follow their natural content height in a vertical flow,
-including complete wrapping paths in native WebKit. Callers own read and empty state: a truly empty group uses the
+`PanelFooter` groups paging only when another page exists. `RecordGroup variant="list"` owns the shared resource surface and corners.
+Its rows follow their natural content height in a vertical flow, including
+complete wrapping paths in native WebKit; existing row insets group the rows
+without automatic separators. Callers own read and empty state: a truly empty group uses the
 native `hidden` attribute, and the group never infers visibility from transient
 DOM emptiness while its children are replaced. Its `cards` variant provides the responsive schedule grid;
 `ListRow variant="card"` owns each independent card surface.

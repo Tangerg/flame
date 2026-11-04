@@ -17,13 +17,18 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-Navigation-row chevrons now center against the complete row, matching the
+Shared list rows now use their existing insets without automatic inter-row
+hairlines. Actual native page reading, all 11 Settings categories, checks and
+explicit fixture limits are recorded under **Quiet list grouping and native page
+review (2026-11-04)**. Complete the remaining populated-state qualification before
+judging repeated outer list surfaces or expanded-detail boundaries.
+
+Navigation-row chevrons center against the complete row, matching the
 record-summary mark when copy wraps. All three production consumer families have
 actual native reading and return qualification under **Whole-row chevron
 alignment and native record return (2026-11-04)**. Record-summary icons retain
 their unboxed muted treatment; see **Quiet record icons and retained reading
-(2026-11-04)**. Repeated outer list surfaces and dividers are the next bounded
-review candidate.
+(2026-11-04)**.
 
 Shared `Badge` status and metadata now render as unboxed text. Code/build checks
 and nine candidate native tasks are qualified under **Unboxed status text and
@@ -9195,6 +9200,141 @@ report when its initiating focus remains unclaimed; otherwise it names the saved
 copy in archive feedback. The published ESM was rebuilt. Existing Runtime
 installations require explicit reinstallation and selection of the new package
 digest; a source/resource rebuild does not update an admitted installation.
+
+### Quiet list grouping and native page review (2026-11-04)
+
+Continued from synchronized main `75afb2f31` and the user's design-slop
+checklist. The original native Skills and Settings views show repeated hairlines
+between records that already have complete row insets. The shared stylesheet
+adds these lines independently of the consumer's information structure.
+
+| Severity | Location                          | Before                                                                                              | After                                                                    | Why                                                                                              |
+| -------- | --------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| LOW      | `packages/ui/src/globals.css:674` | Every subsequent shared list child gains relative positioning and an inset hairline pseudo-element. | Both automatic rules are removed; existing row insets group the records. | Reduce repeated visual decoration at its shared owner without changing content or task behavior. |
+
+All direct `RecordGroup` list consumers and `SettingsGroup` projections were
+traced. The public `record-list` slot remains for its real visual-contract
+consumer. Natural-height vertical flow, row insets, wrapping, surfaces, corners,
+whole-row chevrons, hover/selection/focus states and native hidden ownership are
+unchanged. The adjacent panel focus/reveal rule is byte-identical. Independent
+cards, disclosure-body structure, table/code boundaries and authored documents
+retain their existing contracts. No prop, state, token, dependency or cosmetic
+mirror test was added. The UI README describes the current grouping rule.
+
+Read-only HeroUI list-box CSS supplies a narrow reference: separators are
+explicit elements rather than automatic decoration on every row. ZCode's real
+workflow-history rows supply variable-height composition evidence; its borders
+and tags do not override the user's direction. The bounded Read/Edit-only Claude
+Code CLI changed only the shared stylesheet and README in **24.227 seconds**, with
+no permission denials. Root review confirmed the exact two-rule deletion and
+corrected the README to name existing row insets rather than imply a new list gap.
+
+Passed: **314** focused tests in nine files before and after the change; **229**
+shared UI tests in 13 files and the independent offline packed consumer; normal
+portable generation with all **22** installed ESM resources byte-identical; all
+**4,547** frontend tests in 424 files; and all **27** serial Web/native gates.
+`make check-native` passes in **33.272 seconds**. These timings are receipts, not
+performance measurements. No browser visual suite, performance benchmark or
+Runtime/CLI/plugin backend suite was run for this batch.
+
+Two original and twelve candidate native processes were inspected and quit
+normally with exit 0. Accepted reading scopes are:
+
+- **Settings:** all 11 actual categories were opened: Appearance, Personalization,
+  Connection, Keyboard shortcuts, Approvals, Plugins, Brand identity, Providers,
+  MCP, Hooks and Notifications. Long plugin rows and release details were scrolled
+  and read. The actual NotificationSettings component was inspected at normal
+  and 200% wide/narrow sizes, with its two switch values unchanged. Native tab
+  navigation, close/reopen category selection and exact continued drafting pass.
+  Hooks, initial MCP and pending plugin commands are empty in this scene; those
+  observations do not qualify their populated rows.
+- **Populated MCP:** Chinese/dark/18 px/custom blue shows one connected stdio
+  server and one tool, including native 200% wide/narrow reading. A fresh repeat
+  verifies read-only Tools opening, selected-category return, explicit reopening
+  of Tools, keyboard traversal and exact continued Chinese drafting. The
+  interruption and disclosure-probe limits below remain part of this result.
+- **Skills:** English/light/14 px/orange/full motion at normal and actual keyboard
+  320 px Dock widths. `runtime` query, full instructions, Back with original row
+  focus/query and exact continued Composer input pass.
+- **Diff:** Chinese/dark/18 px/blue/native 200%, actual sidebar collapse and
+  full-width reading, native wheel and 3024 × 1898 to 2244 × 1898 resize. Three
+  accepted changed-file rows, the complete filtered long path, exact single-file
+  reading, Back row focus/query and continued Chinese drafting pass. The canonical
+  fixture's missing-file notice is retained before Show changed files.
+- **Deliverables archive:** German/light/18 px/purple/native 200%, two populated
+  long/short catalog rows, wide/narrow reading, `Quarterly` query and revision
+  history. Reverse Tab returns to the exact row; Return enters history again.
+  Expanded full IDs and ISO timestamps, retained Dock query/revision/disclosure
+  and continued German drafting pass.
+- **Memory:** Chinese/dark/18 px/blue/native 200%, two records at wide/narrow
+  widths, original pending and active/pinned details and `cutpoint` search. Dock
+  close/reopen retains query/details; clearing restores both rows and search
+  focus, followed by exact continued drafting.
+- **Trajectory:** German/light/18 px/purple/native 200%, normal five-row reading
+  and wide/narrow first rows. `unbekannt` yields the original unknown record;
+  keyboard-activated wrapping reveals its exact JSON, IDs and timestamps. Dock
+  return retains query/evidence; clearing restores five rows and search focus,
+  followed by exact continued drafting. The three lower rows are not newly
+  qualified at 200% after the failed wheel probe described below.
+- **Diagnostics:** English/light/14 px at normal and keyboard 320 px widths, with
+  one trace, two metrics and one log. All three signals, expanded trace facts,
+  histogram values and the literal multiline log were read. Dock reopening
+  retains Logs and its expanded record; exact continued drafting passes.
+- **Schedules:** English/light/14 px at normal and keyboard 320 px widths, two
+  saved list records, schedule details and a read-only new-editor review. Escape
+  returns to Add schedule. `Weekly` survives Dock close/reopen; clearing restores
+  both records and search focus, followed by exact continued drafting.
+- **Usage:** English/light/14 px at normal and keyboard 320 px widths, both
+  provider/model rows, keyboard grouping and complete token/coverage details
+  through native wheel reading. Dock reopening retains `anthropic`, Model,
+  details and totals; clearing restores both rows and search focus. Exact
+  continued drafting passes.
+- **GenUI:** actual report result, Delivery evidence and Explore displays,
+  advanced Disclosure, authored formatting/math, wide/narrow reading and original
+  Arguments with the exact identifier. Closing restores the tool trigger and
+  continued draft. The fixture has an unused `accordion` state field but no
+  Accordion nodes; this is not populated Accordion qualification.
+
+The Settings switch-focus capture names initially overstate their targets: the
+first two focus containers are Notifications and System notifications. Later
+actual traversal captures the Sound target; no switch is toggled. During the
+first populated MCP task, Sky reports desktop interaction and stops the pending
+GUI sequence. A fresh capture shows rejection of the fixture's unmodeled
+`mcp.tools.setExposure` write. No live Runtime is configured; this is not a policy
+write pass. The fresh repeat also rejects an incorrect probe assumption that
+Tools should remain expanded across closing all Settings. The selected category
+returns with Tools collapsed, then explicit reopening completes the read path.
+No fixture success response or product lifecycle override hides either result.
+
+Two wheel probes return `windowNotFoundAtPosition` before action; fresh state and
+observed AX/keyboard targets replace the failed steps. The first Usage pointer
+Composer probe lacks a focused AX line and stops before paste. Fresh native
+Tab/reverse Tab confirms Composer focus before exact drafting. Unaccepted probes
+remain in the archive, separate from the successful later captures.
+
+Original and candidate private builds use the same frozen inputs: five read-only
+Deliverables transport responses, the real registered NotificationSettings
+component and a seed through the existing telemetry store ingress. They use the
+actual public runtime client/InstalledComponent paths and current Wails host;
+the separate native gate builds production host source. No repository fixture,
+live provider/Runtime, Send, real configuration save or business mutation was
+used. Nonempty Hooks/pending-command/unresolved-operation/report-archive/Accordion
+scenes, RTL, real Office asset/render/export/save paths and native loading of
+published ESM are not newly qualified. Unit and offline consumer checks retain
+their separate scope.
+
+Ownership-checked retirement removes **11** created output/UID-specific Library
+targets, unregisters the private bundle and removes
+`/private/tmp/flame-list-separators-BAgqt7`. All **17** recorded absences, both
+original UI cache hashes and the protected **123-byte** draft are restored.
+The round-tripped in-memory archive retains **317** UTF-8 records, including all
+private recipes, `go.work` and host/fixture sources, plus metadata/hashes for
+**166** captures. Its gzip SHA-256 is
+`c7c32567fca6310e06acd20b77d97fb806a670da7c0bd99cdc538d78ce55129b`.
+Approve the bounded automatic-divider removal and inspected reading scope.
+Complete remaining populated-state native coverage, then trace the observed
+repeated outer surfaces and expanded-detail boundaries before another shared
+change. Whole-product acceptance remains unproven; the goal remains active.
 
 ### Whole-row chevron alignment and native record return (2026-11-04)
 

@@ -671,26 +671,12 @@ html:not([data-input-modality]) [data-focus-proxy]:focus-within {
   }
 }
 
-[data-slot="record-list"] > * + * {
-  position: relative;
-}
-
 [data-slot="panel-body"]
   :where(:focus, [id], label:focus-within, [data-focus-unit]:focus-within) {
   scroll-margin-block-start: calc(
     var(--panel-controls-height, 0px) + var(--disclosure-header-height, 0px) +
       var(--layout-control-gap)
   );
-}
-
-[data-slot="record-list"] > * + *::before {
-  content: "";
-  position: absolute;
-  pointer-events: none;
-  inset-inline: var(--layout-card-padding);
-  inset-block-start: 0;
-  block-size: 0;
-  border-block-start: var(--hairline-width) solid var(--color-divider);
 }
 
 [data-slot="form-row"] > [data-slot="form-field"] {
