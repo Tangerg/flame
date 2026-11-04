@@ -276,11 +276,7 @@ function HookRow({ value, t }: { value: HookInfo; t: Translate }) {
             {value.matcher}
           </code>
         )}
-        <code
-          style={{ ...literal, fontStyle: value.inject ? "italic" : undefined }}
-        >
-          {value.command || value.inject}
-        </code>
+        <code style={literal}>{value.command || value.inject}</code>
         <Metadata>
           <code style={literal}>{value.source}</code>
         </Metadata>

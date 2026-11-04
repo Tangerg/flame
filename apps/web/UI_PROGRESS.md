@@ -17,11 +17,17 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-Shared list rows now use their existing insets without automatic inter-row
-hairlines. Actual native page reading, all 11 Settings categories, checks and
-explicit fixture limits are recorded under **Quiet list grouping and native page
-review (2026-11-04)**. Complete the remaining populated-state qualification before
-judging repeated outer list surfaces or expanded-detail boundaries.
+Shared resource lists now read on the existing canvas without an elevated card
+face, retaining their frame, row insets and interaction states. Hook injection
+text retains its literal whitespace without forced italics. Five original and
+fourteen candidate native processes qualify the inspected populated states,
+including saved reports, pending SDK commands, unresolved effects and actual
+GenUI Accordion nodes; see **Quiet list surfaces and populated native reading
+(2026-11-04)** for checks and explicit limits. Continue reviewing observed
+expanded-detail boundaries before choosing another shared change.
+
+Shared list rows also retain their existing insets without automatic inter-row
+hairlines; see **Quiet list grouping and native page review (2026-11-04)**.
 
 Navigation-row chevrons center against the complete row, matching the
 record-summary mark when copy wraps. All three production consumer families have
@@ -9200,6 +9206,166 @@ report when its initiating focus remains unclaimed; otherwise it names the saved
 copy in archive feedback. The published ESM was rebuilt. Existing Runtime
 installations require explicit reinstallation and selection of the new package
 digest; a source/resource rebuild does not update an admitted installation.
+
+### Quiet list surfaces and populated native reading (2026-11-04)
+
+Continued from synchronized main `092a04e03`. Five original native scenes
+complete the previous batch's missing populated comparisons: two Hook rules,
+two saved usage reports, two SDK-owned pending commands, two unresolved effects
+and a GenUI report with two actual Accordion nodes. Their shared list groups
+repeat elevated plates over the existing reading canvas. Injected Hook text also
+receives forced italics independently of its original content.
+
+| Severity | Location                                           | Before                                                    | After                                                                | Why                                                                     |
+| -------- | -------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| LOW      | `packages/ui/src/records.tsx`, existing list style | List groups inherit the independent card face and shadow. | List overrides the background to transparent and shadow to none.     | Existing row insets and the reading canvas already group the resources. |
+| LOW      | `plugins/hooks/component/component.tsx`, `HookRow` | Injected literal text is forced into italics.             | Commands and injection text share the existing normal literal style. | Preserve exact authored content without ornamental emphasis.            |
+
+The existing StyleX list composition keeps the card frame, corners, clipping,
+natural-height flex flow, row insets, gaps, focus, hover, selection and native
+hidden ownership. Independent cards retain their faces. No new token, prop,
+state, API, dependency or cosmetic mirror test is added. Hook whitespace,
+newlines, paths, trust and command lifecycle remain with their existing owners.
+Normal generation updates only the Hook ESM among 22 installed resources. An
+existing Runtime installation still requires explicit reinstallation/selection
+of the new package digest; rebuilding source/resources does not replace an
+admitted installation. Native tasks load the actual source components; published
+ESM loading is not newly claimed.
+
+Read-only HeroUI list-box CSS provides explicit row spacing and separator
+composition evidence. ZCode's actual workflow-history rows provide
+variable-height metadata evidence. Neither supplies a border/tag recipe to copy.
+The bounded Read/Edit-only Claude Code CLI changes the two source files and UI
+README in **23.463 seconds**, with no permission denials. Root reviews the actual
+diff and corrects the README's second, stale resource-face description.
+
+Passed: **327** focused tests in 11 files before and after the change, the six
+Hook tests, **229** shared UI tests in 13 files and the independent offline
+packed consumer, plugin typecheck/lint, owned-file formatting and normal
+22-resource generation. All **4,547** frontend tests in 424 files and all **27**
+serial Web/native gates pass; `make check-native` takes **65.785 seconds**.
+Timings are receipts, not performance measurements. No browser visual suite,
+performance benchmark or Runtime/CLI/plugin backend suite is run.
+
+The first independent offline consumer install fails because its owned cache
+lacks `use-sync-external-store@1.7.0`; its initial failure remains recorded.
+Copying the protected existing cache into the owned cache allows the complete
+shared UI check to rerun successfully. Full plugin formatting still fails only
+`feedback/component/component.test.tsx` and `feedback/component/component.tsx`.
+Both files are byte-identical to the baseline and HEAD; no unrelated formatting
+is changed and no full plugin-check pass is claimed.
+
+All **19** native processes quit normally with exit 0. Accepted candidate scopes:
+
+- **Settings:** all 11 actual categories opened in English/light/14 px/orange/
+  full motion. Two pending SDK records are read at normal, 200% wide and native
+  2244 px narrow widths. Both original keys are read at normal; the first is
+  above the viewport in the 200% narrow capture. Read-only refresh, keyboard
+  focus on Check/Retire without activation, retained Plugins selection and
+  within-process keys, close/reopen and exact continued drafting pass. Actual
+  Notifications switches stay unchanged; independent Brand cards retain faces.
+- **Hooks:** Chinese/dark/18 px/blue/no motion, normal and native 200% wide/narrow.
+  Both rules, project trust off, complete multiline injection whitespace and
+  source path, and the exact 17-digit command are read. Settings return retains
+  Hooks/trust and the exact Chinese draft continues.
+- **Saved reports:** English/light/14 px at normal and keyboard 320 px Dock
+  widths. Two real saved-report components, Weekly View heading focus, keyboard
+  Refresh/identity navigation and the complete report ID, ISO timestamps,
+  **9,007,199,254,740,993** input count, zero output and Not reported total are
+  read. Dock reopening retains Weekly/expanded identity; Back restores its View
+  focus, Return reenters the heading and the exact draft continues.
+- **Unresolved effects:** Chinese/dark/18 px/blue, normal zoom and actual native
+  3024 to 2244 px resize. Both records open independently by keyboard. Wrapping
+  reveals the original JSON receipt `9007199254740993`, amount `1.10` and ID
+  `00042`. Closing the first preserves the second; both closing and continued
+  Chinese drafting retain their original owners. No recovery/retirement runs.
+- **GenUI:** actual two-node Accordion in the report, English/light/14 px at
+  normal and native wide/narrow sizes. Opening both reveals complete literal
+  text and path. Keyboard closing the second retains the first; reverse Tab
+  closes the first, and closing the tool restores trigger focus. Independent
+  metric cards retain their face and the exact draft continues. Lower authored
+  report sections are unchanged but not all newly viewed in this task.
+- **Skills:** English/light/14 px at normal and keyboard 320 px widths. Both
+  rows, `runtime` search, actual bilingual instructions and authored numbering,
+  Back row focus/query, Return heading focus and exact continued drafting pass.
+- **Diff:** Chinese/dark/18 px/blue/native 200%, sidebar collapse/full width and
+  actual 3024 to 2244 px resize. The canonical missing-target notice remains;
+  Show changed files opens three accepted rows. The filtered complete long
+  filename/path, centered arrow/focus, reader heading/first source rows, Back
+  row focus/query and exact continued drafting pass. Full source scrolling is
+  not newly qualified.
+- **Deliverables archive:** German/light/18 px/purple/native 200%, two catalog
+  rows, `Quarterly` search, sidebar collapse/full width and wide/narrow resize.
+  Keyboard row entry and revision-facts expansion reveal full document/revision
+  IDs and ISO timestamps. Full SHA is read after Cmd0 at normal Dock width;
+  it is not claimed fully visible at 200%. Query/revision/disclosure survive
+  return and the exact draft continues. The asset is synthetic metadata, not
+  a real Office rendering/export/save qualification.
+- **Memory:** Chinese/dark/18 px/blue, two actual pending and active/pinned
+  records, complete normal identity/source details and `cutpoint` query. Native
+  200% wide/narrow reading, keyboard expansion focus and wheel are inspected;
+  the active ID extends below the narrow viewport, so complete 200% detail
+  reading is not claimed. Dock retains query/active details; clear restores both
+  rows/search focus and the exact draft continues.
+- **Trajectory:** German/light/18 px/purple at normal zoom, all five rows and
+  actual native wide/narrow resize. `unbekannt` yields one unknown observation;
+  full IDs/timestamps and keyboard-wrapped original JSON are read. Dock return
+  retains query/evidence; clear restores five rows/search focus and the exact
+  draft continues. This task does not use 200% zoom.
+- **Diagnostics:** English/light/14 px, normal and keyboard 320 px. One trace,
+  two metrics and one log; trace facts, histogram count/sum/percentiles/average
+  and the complete original multiline log stack are read. Dock retains Logs
+  and its expansion; the exact draft continues.
+- **Schedules:** English/light/14 px, normal and keyboard 320 px, two saved
+  rows, actual details and a read-only new editor. Escape returns focus to Add
+  schedule. `Weekly`/expanded detail survive Dock reopening; clear restores both
+  rows/search focus and the exact draft continues. Lower created-time fields
+  are not all newly read; no editor input or save occurs.
+- **Usage:** English/light/14 px, normal and keyboard 320 px, both provider/model
+  rows and the separate Stats card. Keyboard grouping selects Model; `anthropic`
+  filtering and native wheel reveal all eight original cost/coverage/token
+  fields. Dock retains query/group/details; clear restores both rows/search
+  focus and the exact draft continues.
+- **Populated MCP:** Chinese/dark/18 px/blue, normal and native 200% wide/narrow,
+  one connected stdio server and one tool. Explicit Tools opening, enabled on/
+  autoapproval off, complete description and keyboard focus are read without
+  activation. Reopened Settings retains MCP and resets Tools collapsed;
+  explicit keyboard reopening reads its unchanged states. The exact Chinese
+  draft continues.
+
+The original pending URL uses unsupported `pane=packages`; actual Plugins
+navigation completes that comparison. The first fast Diff startup capture is
+blank and is not accepted; a fresh ready state precedes actions. In Trajectory,
+the initial pointer Composer focus guard stops before paste and a bounded
+reverse-Tab probe does not reach Composer. Fresh observed controls, actual window
+Raise and an explicit Composer click establish focus before drafting. MCP's
+first wide-settled capture is transiently 2696 px; a fresh actual 3024 px state
+precedes the narrow resize. All probes remain recorded separately from accepted
+reading, without a fixture state or lifecycle override.
+
+Original/candidate use the same ten frozen private inputs and current Wails
+host. Read-only transport fixtures supply the actual components; the public SDK
+creates its own two pending journal records after interrupted fixture requests.
+No handcrafted journal records, production UI overrides, live Runtime/provider,
+Send, real policy/trust/config save, command recovery/retirement or destructive
+business action is used. All page/state permutations, RTL, loading/error paths
+and real backend/Office execution remain outside this batch's native scope.
+
+Final review checks **6,804** source inputs, all **22** installed resources
+(only Hook changes), **333** built web files, four app files, 21 host files,
+ten frozen private inputs, two read-only references and 200 capture hashes.
+Ownership-checked retirement removes **12** created output/UID-specific Library
+targets, unregisters the private bundle and removes
+`/private/tmp/flame-list-surfaces-FBkSMM`. All **17** absences, both original UI
+cache hashes and the protected **123-byte** draft are restored. The separate
+primary checkout's pre-existing `.task` is preserved. The round-tripped in-memory
+archive retains **379** UTF-8 records and metadata/hashes for **200** captures;
+gzip SHA-256 is
+`05c3cbda2c02822548245b8a68fb6688aff3a0ff9e9fe30d2f1a34cc280f6adb`.
+
+Approve only the bounded list-face and literal-typography reduction at this
+inspected scope. Review the observed expanded-detail boundaries before another
+shared change. Whole-product acceptance remains unproven; the goal remains active.
 
 ### Quiet list grouping and native page review (2026-11-04)
 

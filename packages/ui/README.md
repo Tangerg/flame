@@ -159,8 +159,9 @@ Page actions belong to the persistent `Panel.controls` zone, alongside filters.
 a single vertical flex flow. Wrapped controls keep their natural height when
 retained content moves between main reading and a narrow Dock; the section
 does not keep an inflated intrinsic grid row after native page zoom.
-`PanelFooter` groups paging only when another page exists. `RecordGroup variant="list"` owns the shared resource surface and corners.
-Its rows follow their natural content height in a vertical flow, including
+`PanelFooter` groups paging only when another page exists. `RecordGroup variant="list"`
+belongs to its existing reading canvas, without an elevated card face; it keeps
+the shared corners and clipping. Its rows follow their natural content height in a vertical flow, including
 complete wrapping paths in native WebKit; existing row insets group the rows
 without automatic separators. Callers own read and empty state: a truly empty group uses the
 native `hidden` attribute, and the group never infers visibility from transient
@@ -604,7 +605,8 @@ disabled. System reduced motion is honored separately. A `Segmented` track uses
 `segment-radius`, the track radius minus the track padding.
 
 The former large-control radius and resource-surface tokens are removed. All
-field sizes use `field-radius`; cards and resource lists use `app-card-surface`.
+field sizes use `field-radius`; independent cards use `app-card-surface`.
+Resource lists retain their frame while reading on the existing canvas.
 Repository consumers migrate together; external authored components must use
 these shared roles when rebuilt.
 

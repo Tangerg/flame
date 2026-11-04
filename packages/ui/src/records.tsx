@@ -48,6 +48,8 @@ const styles = stylex.create({
     flexDirection: "column",
     gap: 0,
     overflow: "clip",
+    backgroundColor: "transparent",
+    boxShadow: "none",
   },
   cards: {
     gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,20rem),1fr))",
