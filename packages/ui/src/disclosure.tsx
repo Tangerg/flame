@@ -92,9 +92,6 @@ const styles = stylex.create({
   rowContent: {
     paddingBlockStart: space.s4,
     marginBlockStart: space.s2,
-    borderBlockStartWidth: "var(--control-edge-width)",
-    borderBlockStartStyle: "solid",
-    borderBlockStartColor: surface.divider,
   },
   actions: {
     display: "flex",

@@ -17,6 +17,14 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Expanded resource rows now separate their summary and body with existing
+whitespace. Six original and six candidate native processes qualify the six
+actual consumer families, including 320 px Dock reading, German 200% reading
+and Chinese dark large-text window resizing; see **Expanded row reading without
+automatic separators (2026-11-04)**. Bounded reverse-Tab probes remain explicitly
+unqualified. Next inspect repeated path context in actual file headers while
+preserving literal source identities and useful navigation.
+
 Shared resource lists now read on the existing canvas without an elevated card
 face, retaining their frame, row insets and interaction states. Hook injection
 text retains its literal whitespace without forced italics. Five original and
@@ -9206,6 +9214,118 @@ report when its initiating focus remains unclaimed; otherwise it names the saved
 copy in archive feedback. The published ESM was rebuilt. Existing Runtime
 installations require explicit reinstallation and selection of the new package
 digest; a source/resource rebuild does not update an admitted installation.
+
+### Expanded row reading without automatic separators (2026-11-04)
+
+Continued from synchronized main `f9520bfff`. Original populated native Skills
+proposals, Diagnostics, Trajectory, inspected Deliverables content, unresolved
+effects and GenUI Accordion nodes show an automatic hairline between their
+summary and body. Their existing row insets, margin and padding already separate
+the two reading levels.
+
+| Severity | Location                                       | Before                                 | After                                                             | Why                                                                                    |
+| -------- | ---------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| LOW      | `packages/ui/src/disclosure.tsx`, `rowContent` | Every row body paints a top separator. | Remove its three border declarations; retain existing whitespace. | The shared row owner can reduce repeated decoration without changing reading geometry. |
+
+All six actual production `variant="row"` consumer families are traced. The
+change retains summary/body insets, sticky geometry, cards, plain disclosures,
+content mounting, native hidden ownership, keyboard/focus behavior and every
+consumer's state and commands. No new prop, token, state, event handler,
+dependency or cosmetic mirror test is added. The UI README describes the
+existing whitespace boundary. All 22 normally generated component resources
+remain byte-identical; no installed component migration is introduced.
+
+Read-only HeroUI Accordion CSS provides body-padding evidence; ZCode's actual
+workflow-history rows provide variable-height metadata evidence. The bounded
+Read/Edit-only Claude Code CLI completes the two allowed paths in **24.412
+seconds**, without permission denials. Root reviews the three-rule deletion and
+the retained StyleX/base-style composition.
+
+Passed: **188** focused tests in seven files both before and after the change,
+**229** shared UI tests in 13 files and the independent offline packed consumer,
+normal resource generation, owned-file formatting and `git diff --check`.
+All **4,547** frontend tests in 424 files and all **27** serial Web/native gates
+pass; `make check-native` takes **23.196 seconds**. Timings are receipts, not
+performance measurements. No browser visual suite, performance benchmark,
+Runtime/CLI/plugin backend suite or full plugin formatting check is run in this
+batch. The preceding batch's two unchanged Feedback formatting failures are not
+newly cleared or included in a claimed plugin-check pass.
+
+All **12** native processes quit normally with exit 0. The six originals use
+English/light/14 px/orange/full motion. Accepted candidate scopes:
+
+- **Skills proposals:** English/light/14 px, normal and keyboard 320 px Dock.
+  Both proposals, complete instructions, source session, origin and revisions
+  are read. Keyboard second-row opening, independent expansion/closing,
+  `release` filtering, retained query/expansion after Dock reopening, clear focus
+  and exact continued drafting pass. Approve/Reject are focused but not invoked.
+- **Diagnostics:** English/light/14 px, normal and keyboard 320 px Dock. One
+  trace, two metrics and one log; complete trace facts, histogram count, sum,
+  percentiles and average, and the original multiline stack are read. Keyboard
+  signal navigation, retained Logs/expansion and exact continued drafting pass.
+- **Trajectory:** German/light/18 px/purple/no motion, normal and native 200%
+  wide/narrow reading at settled 3024/2244 px. All five rows, the `unbekannt`
+  result, complete identity facts and original JSON across two views are read.
+  Keyboard wrapping, retained query/expansion/wrap after Dock reopening, clear
+  search focus and exact continued drafting pass.
+- **Deliverables content:** German/light/18 px/purple/no motion, normal and
+  native 200% wide/narrow. Two catalog rows and two inspected items are read.
+  The first full paragraph retains its 17-digit receipt, path and triple spaces.
+  `receipt` filtering, Return reopening, retained query/expansion after Dock
+  reopening and exact continued drafting pass. The asset is synthetic metadata;
+  real Office rendering, editing, export and saving remain unqualified.
+- **Unresolved effects:** Chinese/dark/18 px/blue/no motion, normal zoom and
+  actual 3024 to 2244 px resize. Both original records, process/effect/reason
+  facts, the first exact JSON receipt `9007199254740993`, amount `1.10`, ID
+  `00042` and the second invoice `INV-7` are read. Forward keyboard expansion,
+  wrapping, independent closing, wheel reading and exact continued drafting
+  pass. No original-command recovery or retirement runs.
+- **GenUI:** Chinese/dark/18 px/blue/no motion, normal zoom and actual 3024 to
+  2244 px resize. Both actual Accordion nodes, complete original receipt/path
+  and the second body are read. Forward keyboard opening, Return closing,
+  independent state, first-row keyboard reopening, outer tool trigger return
+  and exact continued drafting pass. Lower authored report sections remain
+  unchanged but are not all newly viewed.
+
+An inherited GUI helper first targets the retired previous qualification app;
+fresh uniquely bound helpers precede current actions. The initial Skills
+Composer focus guard stops before paste; an observed coordinate click then
+establishes actual focus. Bounded reverse-Tab probes do not reach the archive
+search or first effect row, and their dependent actions stop. Visible search
+focus and actual pointer collapse complete those paths; these probes are not
+passed reverse-navigation checks. They do not establish a regression from the
+three removed CSS declarations.
+
+Large archive wheels overshoot before smaller observed reverse wheels reveal
+the complete paragraph. Sky refuses an initial archive drag before action; a
+fresh wide state with no blocking alert precedes a newly derived drag.
+Trajectory's 988 px and GenUI's 860 px transient captures do not qualify narrow
+reading; fresh settled 2244 x 1898 captures do. The first Effects image is blank
+despite ready AX; a fresh ready image precedes accepted actions. Capture names
+and AX text alone are not treated as visible-reading proof.
+
+Original and candidate use the same ten frozen private inputs and actual
+current Wails host. Read-only transport supplies deterministic data to actual
+source components. No production UI override, live Runtime/provider, Send,
+policy/trust/config save or destructive business action is used. Published ESM
+loading, every page/state permutation, RTL, loading/error paths and real backend
+execution remain outside this batch's native scope.
+
+Final review checks **6,804** source inputs with only the shared Disclosure
+delta, all **22** unchanged installed resources, **333** built web files, four
+app files, 21 host files, ten frozen private inputs, two read-only references and
+**134** capture hashes. Ownership-checked retirement removes **11** created
+output/UID-specific Library targets, unregisters the private bundle and removes
+`/private/tmp/flame-row-details-EYQBmZ`. All **17** absences, both original UI
+cache hashes and the protected **123-byte** draft are restored; the separate
+primary checkout's pre-existing `.task` is preserved. The round-tripped
+in-memory archive retains **288** UTF-8 records and metadata/hashes for **134**
+captures; gzip SHA-256 is
+`632bf1e1bb5d0e57929752ef2f8b7fa3dba766e2cb4767a2cd5b478f47ace630`.
+
+Accept only the bounded row-detail separator reduction at this inspected scope.
+Next inspect the repeated path context observed in the actual file reader.
+Whole-product acceptance remains unproven; the goal remains active.
 
 ### Quiet list surfaces and populated native reading (2026-11-04)
 

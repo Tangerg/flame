@@ -170,9 +170,10 @@ DOM emptiness while its children are replaced. Its `cards` variant provides the 
 `Disclosure variant="row"` owns resource summaries that expand directly. Hover
 feedback belongs to its summary trigger; the expanded reading body remains
 untinted while the pointer moves through it. Header and body keep the shared row
-insets and existing sticky-header geometry. A consumer's `data-focused` record
-marker uses the summary button's shared active state; it never tints the expanded
-source or its semantic change colors.
+insets and existing sticky-header geometry. An expanded row's summary and body
+are separated by existing whitespace, without an automatic separator.
+A consumer's `data-focused` record marker uses the summary button's shared active
+state; it never tints the expanded source or its semantic change colors.
 `DiffStat` gives Tool summaries, workspace entry points and portable Diff files one
 compact numeric voice. Positive additions and removals use their semantic ink;
 known zeroes and unrecorded counts remain quiet and distinct. A count keeps its
