@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { color, surface } from "./tokens.stylex";
 
 export const toneFill = stylex.create({
-  neutral: { backgroundColor: surface.surface2, color: color.fgMuted },
+  neutral: { color: color.fgMuted },
   accent: {
     backgroundColor: surface.accentBadge,
     color: color.accentBadgeText,

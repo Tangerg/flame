@@ -411,8 +411,11 @@ visible label; paragraphs and nested lists remain selectable document content.
 The marker follows the reading font size and does not enter the keyboard path.
 Its primitive projects document semantics without registering a form control.
 `IconMark` owns the decorative identity frame used by record summaries, empty
-states and modal headers. Its emphasis surface derives from the host accent;
-changing the accent recolors these marks and selected rows together.
+states and modal headers. Record summaries use its quiet neutral tone: muted
+ink without a filled tile, keeping the same frame geometry and alignment beside
+the title. Empty states and modal headers keep the default accent emphasis
+derived from the host accent, so changing the accent recolors those marks and
+selected rows together; semantic tones keep their existing fills.
 
 ## Review preview
 

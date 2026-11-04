@@ -316,7 +316,7 @@ export function RecordSummary({
   return (
     <span {...stylex.props(styles.summary)}>
       {icon && (
-        <IconMark>
+        <IconMark tone="neutral">
           <Icon glyph={icon} size="md" />
         </IconMark>
       )}

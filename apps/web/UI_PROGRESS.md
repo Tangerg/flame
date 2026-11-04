@@ -17,6 +17,12 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Record-summary identity icons now use muted ink without decorative tiles. The
+Skills, Trajectory and populated Diagnostics native tasks are qualified under
+**Quiet record icons and retained reading (2026-11-04)**. Existing icon geometry
+and reading axes are retained; the observed wrapped Skill row/chevron alignment
+is the next bounded review candidate.
+
 Shared `Badge` status and metadata now render as unboxed text. Code/build checks
 and nine candidate native tasks are qualified under **Unboxed status text and
 continued reading (2026-11-04)**, with explicit limits for empty or absent
@@ -9188,6 +9194,93 @@ copy in archive feedback. The published ESM was rebuilt. Existing Runtime
 installations require explicit reinstallation and selection of the new package
 digest; a source/resource rebuild does not update an admitted installation.
 
+### Quiet record icons and retained reading (2026-11-04)
+
+Continued from synchronized main `8e176a36b` and the user's design-slop
+checklist. Actual Skills and Trajectory rows repeat accent-colored icon tiles
+beside the object title and status. A private original Wails comparison also
+shows those tiles in all three populated Diagnostics signal lists.
+
+`RecordSummary` now requests the existing neutral `IconMark` tone, and
+`toneFill.neutral` retains its existing muted ink without a background. Frame
+sizes, glyphs, gaps, row insets, text origins, wrapping, hit areas and accessible
+names are unchanged. Default accent and the other semantic tones keep their
+existing fills. The UI README describes the current contract; no presentation
+variant, theme state, dependency or lifecycle rule is added. The bounded
+Read/Edit-only Claude Code CLI changed exactly the two source files and README
+in 19.378 seconds; root review confirmed the actual diff. Read-only ZCode
+workflow-history icon/text composition supplies a scoped reference.
+
+Passed checks: **226** focused reading/palette tests before and after the change;
+**229** shared UI tests in 13 files and the independent offline packed consumer;
+normal portable component generation with all **22** installed ESM resources
+byte-identical; all **4,547** frontend tests in 424 files; and all **27** serial
+Web/native gates. The full frontend command takes 124.264 seconds and
+`make check-native` takes 30.804 seconds; these are receipts, not benchmarks.
+Existing palette checks cover muted/semantic ink on supported reading surfaces.
+No cosmetic mirror tests, browser suite, performance benchmark or Runtime/CLI/
+plugin backend suite was added or run.
+
+The signed private host uses the unchanged installed-component/public capture
+bridge and current repository component source. Diagnostics test inputs enter
+the existing telemetry store's ingest APIs through a frozen private build
+fragment before mounting. The same fragment is used for the original and
+candidate; it changes no repository fixture, adapter, renderer or capture owner.
+It produces **1 trace, 2 metrics and 1 log**, confirmed in actual native state.
+This is deterministic qualification input, not live telemetry or a measurement.
+
+The original and four candidate native processes quit normally with exit 0:
+
+- **Skills, English/light/14 px/orange/full motion:** normal and actual keyboard
+  320 px Dock reading; `runtime` search, instruction reading, explicit Back with
+  query retained and original row focused, collapse and continued exact draft.
+- **Trajectory, Chinese/dark/18 px/custom blue/200%:** actual collapsed fixture
+  sidebar and full-width material, unknown-outcome filtering, expanded original
+  evidence, native wheel/resize, close/reopen with query/disclosure retained,
+  then continued exact Chinese Composer draft.
+- **Diagnostics, German/light/18 px/custom purple/200%:** all three populated
+  signal lists, trace expansion, native radio-arrow navigation, histogram facts
+  (12 observations, 840 ms sum, 50/100 ms p50/p95 and 70 ms average), native
+  resize and literal multiline log/source/time reading. Close/reopen retains
+  Logs and the expanded record; the exact German draft continues afterward.
+- **Schedules, English/light/14 px/orange/full motion:** the actual New schedule
+  modal enters Title, Escape returns to Add schedule, a no-match query retains
+  the existing accent calendar mark, Clear filters restores rows, and returning
+  to conversation continues the original draft. No schedule is saved or run.
+
+The 200% sequences reset native zoom and observe each of twenty 5% steps;
+captures verify 2878 × 1798 and 2244 × 1798 native windows. The Schedule modal
+has no icon, so it does not establish a modal accent-icon visual claim. Other
+semantic IconMark tones, unshown row combinations and built-ESM native loading
+are not newly qualified here. The normal generated-resource and packed-consumer
+checks cover their shared contracts. No live Runtime/provider, Send, Save,
+Clear-observations or destructive business command is used.
+
+An initial cache-seed invocation assumed a Node executable in the pinned bin
+directory and exited 127 before running its script. The verified actual Node
+executable completes the same offline seed with 31 lock-selected packages.
+The private workspace recipe was recovered from a retained predecessor recipe
+and checked against its accepted frozen hash before reuse. These are
+qualification setup corrections, not suppressed product failures.
+
+Approve the bounded reduction in repeated accent decoration. Whole-product
+acceptance remains unproven. Native 320 px Skills reading exposes a separate
+existing alignment concern: `RecordButton` places its chevron near the first
+line while `RecordSummary` centers its mark against the complete wrapping copy.
+Next trace that shared composition and its real consumers before choosing a
+single alignment rule; also retain the user's preference against excess
+containers and dividers in subsequent actual-page reviews.
+
+Ownership-checked retirement removes **11** created output/UID-specific Library
+targets, unregisters the private bundle and removes
+`/private/tmp/flame-record-icons-7WqWgb`. All **17** recorded absences, both original
+UI cache hashes and the protected **123-byte** draft are restored. The
+round-tripped in-memory archive retains **175** UTF-8 records, including the
+workspace and telemetry fragment, and metadata/hashes for **43** captures. Its
+gzip SHA-256 is
+`faeb31a161b9c15e519f7fedab29dce3cd3bc73acdc8abaa826ce27a2ce7b8cd`.
+The whole-product goal remains active.
+
 ### Unboxed status text and continued reading (2026-11-04)
 
 Continued from synchronized main `9f4d76790` using the user's design-slop
@@ -9279,9 +9372,9 @@ The round-tripped archive retains **229** UTF-8 records and metadata/hashes for
 **90** captures, including the noted observations; gzip SHA-256 is
 `2ff84f9f5d2df197e7e96f37160950bcb3772e0ba4294cbdf755151d08b792a1`.
 
-The whole-product goal remains active. Next inspect the repeated decorative
-icon tiles visible in Skills and Trajectory summaries, starting from shared
-`IconMark` consumers and their existing alignment before deciding on a change.
+The whole-product goal remains active. The quiet-record-icon follow-up above
+resolves the repeated decorative tiles and records the next observed alignment
+candidate without changing the preserved row geometry in this batch.
 
 ### Filter-bar group alignment and native page reading (2026-11-04)
 
