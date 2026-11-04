@@ -294,6 +294,10 @@ transparent resting edge and independent keyboard focus perimeter. The theme
 visual style owns these values; modules do not remove borders locally. Validation
 and system high-contrast edges retain their shared owners.
 
+Display text keeps its font's natural spacing: the existing `--tracking-display`
+role resolves to `normal`, so headings use native kerning without artificial
+negative tracking.
+
 Appearance settings use section headings and direct label/control rows. Existing
 control labels, selected values and error feedback carry the task; the page does
 not repeat explanatory introductions or one-line descriptions. Section headings

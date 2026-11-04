@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import {
   type ComponentContext,
   type Translate,
@@ -140,21 +140,40 @@ function displayLibrary(
       );
     },
     Image: (view) => <ImageView {...view} t={t} />,
-    Metric: ({ props }) => (
-      <Stats
-        values={[
-          [
-            props.label,
-            <>
-              <bdi>{String(props.value)}</bdi>
-              {props.detail !== undefined && (
-                <Metadata>{props.detail}</Metadata>
-              )}
-            </>,
-          ],
-        ]}
-      />
-    ),
+    Metric: ({ props }) => {
+      const value = String(props.value);
+      const digits = /^[0-9]+$/.test(value);
+      return (
+        <Stats
+          values={[
+            [
+              props.label,
+              <>
+                <bdi
+                  style={
+                    digits
+                      ? { display: "block", textWrap: "balance" }
+                      : undefined
+                  }
+                >
+                  {digits
+                    ? [...value].map((digit, index) => (
+                        <Fragment key={index}>
+                          {index > 0 && <wbr />}
+                          {digit}
+                        </Fragment>
+                      ))
+                    : value}
+                </bdi>
+                {props.detail !== undefined && (
+                  <Metadata>{props.detail}</Metadata>
+                )}
+              </>,
+            ],
+          ]}
+        />
+      );
+    },
     List: ({ props }) => {
       const Tag = props.ordered ? "ol" : "ul";
       return (

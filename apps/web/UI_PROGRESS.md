@@ -17,6 +17,15 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Display text now uses natural tracking. GenUI digit-only metrics retain exact
+text while wrapping into balanced lines, including the native 16-digit receipt
+at 200% zoom. Three original, six exploratory and eight final native processes
+qualify the inspected heading/value families; see **Natural display spacing and
+literal numeric reflow (2026-11-04)**. A cancellation after responsive Dock
+hiding loses its original focus target. Reproduce that observed return path on
+the baseline and repair its actual focus owner next. Whole-product acceptance
+remains unproven.
+
 Expanded resource rows now separate their summary and body with existing
 whitespace. Six original and six candidate native processes qualify the six
 actual consumer families, including 320 px Dock reading, German 200% reading
@@ -9214,6 +9223,142 @@ report when its initiating focus remains unclaimed; otherwise it names the saved
 copy in archive feedback. The published ESM was rebuilt. Existing Runtime
 installations require explicit reinstallation and selection of the new package
 digest; a source/resource rebuild does not update an admitted installation.
+
+### Natural display spacing and literal numeric reflow (2026-11-04)
+
+Continued from synchronized main `80195b76e`. The user explicitly identifies
+negative kerning as unwanted decoration. The shared display role applies
+`-0.02em` to headings and large values independently of the chosen typeface.
+Actual Wails inspection covers the report, empty workspace and removal title
+before editing. The existing canonical file-reader header retains its useful
+source identity and navigation; no path or breadcrumb is removed speculatively.
+
+The Web theme now resolves `--tracking-display` to `normal`. Native font
+kerning, the existing type scale, font preferences, line heights, widths,
+authored hierarchy and brand remain with their existing owners. Actual natural
+tracking exposes a long GenUI numeric value breaking as 15 digits plus one
+isolated final digit in its authored two-column Grid.
+
+GenUI's Metric renderer now gives ASCII digit-only values explicit ordinary
+`wbr` opportunities inside their existing `bdi`, with a balanced block. The
+native fixture then shows the exact 16-digit `9007199254740993` as eight plus
+eight digits, including at 200% in Chinese dark large-text reading. This value
+is 16 digits; earlier exploratory descriptions calling it 17 are corrected in
+the retained evidence. No numeric conversion, rounding, grouping, inserted
+character or forced grid change is used. Leading zeros remain literal. Other
+values retain ordinary text flow; label, optional detail and isolation remain.
+Native selection, copy and paste into the unsent Composer produce the exact
+original value without added spaces in both the accepted probe and final
+Chinese task. AX serializes separate inline nodes with spaces; that display is
+not taken as evidence of changed clipboard text.
+
+Shared Stats, count values, flex/Grid structure and text sizing are unchanged.
+Five observed alternatives are rejected: natural tracking alone, shared count
+balancing, a balanced digit block alone, `word-break: break-all`, and
+`line-break: anywhere`. Each still leaves the final digit isolated. All
+ineffective declarations and the shared-count change are removed. No new
+layout state, measurement, dependency, API or cosmetic mirror test is added.
+Normal component generation changes only GenUI's ESM among 22 resources.
+Existing admitted installations require explicit reinstallation/selection of
+the new package digest; rebuilding does not replace their installed renderer.
+
+Read-only HeroUI typography CSS and ZCode styles inform the role review;
+HeroUI's tight headings are not copied against the user's direction. Primary
+[CSS Text balancing](https://drafts.csswg.org/css-text-4/#valdef-text-wrap-style-balance)
+and [WebKit's inline constrainer](https://raw.githubusercontent.com/WebKit/WebKit/main/Source/WebCore/layout/formattingContexts/inline/InlineContentConstrainer.cpp)
+inform the inference that explicit inline wrap opportunities matter here.
+Actual native probe results, rather than CSS support alone, select the final
+implementation. Bounded Read/Edit-only Claude Code CLI performs the scoped
+detail edits; root reviews every actual diff and rejects unsuccessful native
+variants. The initial tracking edit takes 15.226 seconds and final soft-wrap
+edit 24.727 seconds; these are receipts, not performance measurements.
+
+Passed on the final source: **202** focused tests in nine files, **229** shared
+UI tests in 13 files and the independent offline packed consumer, plugin
+typecheck/lint, owned-file formatting, normal component generation and
+`git diff --check`. All **4,547** frontend tests in 424 files pass in
+**173.080 seconds**; all **27** serial Web/native gates pass, including
+`make check-native` in **19.197 seconds**. Final native assets build in
+3.688 seconds. No browser visual suite, performance benchmark, Runtime/CLI or
+plugin backend suite runs. Full plugin formatting is not rerun; the two
+unchanged Feedback formatting failures recorded previously are not cleared.
+
+The first private host attempts lack an immutable module proxy and the pinned
+Wails download; the first native gate lacks its standard root `out` prerequisite.
+All three failed receipts remain recorded. Preparing those isolated prerequisites
+allows the private host and final native gate to pass without changing any
+manifest, dependency, global setting or assertion.
+
+All **17** native processes quit normally with exit 0: three originals, six
+exploratory variants and eight final tasks. Final accepted scopes:
+
+- **GenUI English/light/14 px/orange/full motion:** report heading, eight-plus-
+  eight digit layout, adjacent value/detail, actual 3024 to 2244 px window
+  resizing, 200% metric/form reading, pointer field focus and exact continued
+  draft. All four form control tops remain aligned. A forward-Tab probe shows
+  selection without explicit AX field focus and is not qualified as focus.
+- **GenUI Chinese/dark/18 px/blue/no motion:** normal and actual narrow reading,
+  200% title, metric and form reading, exact numeric selection/copy/paste and
+  continued draft. Authored English report content remains unchanged.
+- **Skills English/light:** actual `risk-first-review` reader title, keyboard
+  splitter sizing to 320 px, keyboard Back, focus restored to the same row,
+  and exact continued draft.
+- **Usage English/light:** actual `4.12`, `128,400`, `41,900`, `3.04 USD` and
+  `1.08 USD` values, expanded Accounting, keyboard 320 px Dock, retained
+  label/value alignment after reflow, provider breakdown and continued draft.
+- **Removal German/light/18 px/purple/no motion:** named title, initial Cancel
+  focus, 200% actual wide/narrow reading, reachable footer and wheel facts,
+  Escape with the original visible Remove control focused, and retained report
+  and draft. No removal or save is invoked. The separate hidden-opener path
+  below remains a failure.
+- **Empty workspace English/light and Chinese/dark/18 px:** actual heading and
+  approved brand, project chooser cancellation and trigger focus, actual
+  narrow/200% reading, retained exact continued draft and disabled action
+  requiring project selection. No project is selected. The fixture sidebar
+  remains present; its non-collapsing toggle and partially offscreen Chinese
+  footer do not qualify production Sidebar or complete footer behavior.
+- **Table reader Chinese/dark/18 px/blue/no motion:** actual title and close
+  alignment at normal and 200% native narrow size, PageDown advancing rows
+  1–5 to 6–10, ten Right presses revealing the last Checks column, Escape
+  restoring the actual Expand table trigger, and exact continued draft.
+  Two horizontal mouse-scroll probes do not move the table and are unqualified.
+
+At 200%, native window narrowing hides the Dock while the removal decision
+remains open. Escape closes it and focus falls to HTML content because its
+original Remove opener is unavailable. Restoring Actual Size and repeating
+with the opener visible correctly restores Remove focus. This is an observed
+incomplete return path, not a passed cancellation-focus claim; reproduce the
+original baseline and trace modal/workspace focus ownership next. No arbitrary
+global focus fallback is included in this typography batch.
+
+GUI user-change guards require fresh state before subsequent actions. The
+user-edited Review date is retained until the explicit test-restart permission;
+both affected windows then quit normally. An English draft continuation uses
+an inappropriate Cmd-End probe, is undone to the exact prior draft, then passes
+using native Cmd-Right. This is a harness correction, not a product caret fix.
+Transient screenshots and offscreen AX-click probes are excluded from settled
+geometry claims. Final native captures use actual app pixels and accessibility
+state; no DOM/browser or production UI overrides are used.
+
+The deterministic read-only host keeps the same **12** frozen fixture inputs
+and current Wails executable. No live Runtime/provider, Send, project selection,
+trust/policy/config save or destructive business action runs. Published ESM
+loading, RTL, every page/state permutation and real backend execution remain
+outside this batch's native scope. This is not whole-product or award-level
+acceptance.
+
+Final review verifies **6,804** source inputs with exactly the theme CSS, GenUI
+renderer and generated GenUI ESM deltas; **22** resources with only that ESM
+changed; **333** built web files, four unchanged app files, 21 unchanged host
+files, 12 frozen private inputs, two unchanged references and **131** capture
+hashes. Both private bundles pass strict signature verification. Ownership-
+checked retirement removes **13** created output/UID-specific Library targets,
+unregisters both bundles and deletes `/private/tmp/flame-display-spacing-jAyIiz`.
+All **23** expected absences, both original UI cache hashes and the protected
+**123-byte** draft are verified. The primary checkout's pre-existing `.task`
+is preserved. The round-tripped in-memory archive retains **529** UTF-8 records
+and metadata/hashes for **131** captures; gzip SHA-256 is
+`28fdb0a483f78762b4500621a88ace70540391ab2342e32f017e3a778fc3596d`.
 
 ### Expanded row reading without automatic separators (2026-11-04)
 
