@@ -17,6 +17,11 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Shared `Badge` status and metadata now render as unboxed text. Code/build checks
+and nine candidate native tasks are qualified under **Unboxed status text and
+continued reading (2026-11-04)**, with explicit limits for empty or absent
+fixture states. The manual-unlock blocker is resolved.
+
 Shared filter bars now align independently wrapped groups at their top edge;
 all seven production consumer families have actual native reading qualification
 under **Filter-bar group alignment and native page reading (2026-11-04)**.
@@ -9182,6 +9187,101 @@ report when its initiating focus remains unclaimed; otherwise it names the saved
 copy in archive feedback. The published ESM was rebuilt. Existing Runtime
 installations require explicit reinstallation and selection of the new package
 digest; a source/resource rebuild does not update an admitted installation.
+
+### Unboxed status text and continued reading (2026-11-04)
+
+Continued from synchronized main `9f4d76790` using the user's design-slop
+checklist. Actual Schedules comparisons reproduce the repeated green/gray filled
+labels at normal width and a keyboard-resized 320 px Dock. The shared presentation
+owner is `packages/ui/src/badge.tsx`; product consumers own the state and label.
+
+| Severity | Location                      | Before                                                                | After                                                                                       | Why                                                                 |
+| -------- | ----------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| LOW      | `packages/ui/src/badge.tsx:8` | Filled, padded, rounded tags repeat through status and metadata rows. | Plain text uses existing `toneInk`, with neutral muted text and no fill, radius or padding. | Keep meaningful status facts without competing decorative surfaces. |
+
+Size, face, medium weight, title, children, wrapping structure and caller overrides
+retain their existing contracts. `toneFill` remains with its real `IconMark`
+consumer. No new variant, dependency, theme state or business transition is added.
+The UI README describes the current presentation and no longer assigns status
+labels a control radius. Read-only ZCode workflow-history status text supplies
+a scoped reference; the user's preference determines the intended appearance.
+The bounded Read/Edit-only Claude Code CLI changed Badge and its README in
+28.643 seconds with no permission denials. Root review confirmed the actual diff.
+
+Passed checks: **217** focused tests before and after the change; **229** shared
+UI tests in 13 files and the independent offline packed consumer; normal portable
+component generation with all **22** installed resource hashes unchanged; all
+**4,547** frontend tests in 424 files; and all **27** serial Web/native gates.
+`make check-native` passes in 21.638 seconds. Existing palette tests measure
+ordinary semantic/muted text against light/dark planes, paper, hover and selection;
+these are token-based checks, not native screenshot contrast measurements.
+No cosmetic mirror test, browser suite, performance benchmark or Runtime/CLI/
+plugin backend suite was added or run.
+
+The locked-Mac blocker is resolved by the user's reply and a fresh native state.
+Actual Wails qualification uses the signed private host and unchanged repository
+fixture transport. The original comparison and all nine candidate processes
+quit normally with exit 0. Native task coverage is:
+
+- **Schedules, English/light/14 px/full motion:** normal and 320 px Dock reading;
+  `nightly` search, complete Schedule details, related Files, retained query and
+  expanded record on return, and continued exact Composer draft.
+- **Memory, Chinese/dark/18 px/custom blue/200%:** actual full-width fallback,
+  collapsed sidebar, wide/narrow native windows, pending details, native scrolling
+  to active/pinned labels, close and continued retained Chinese draft.
+- **Skills, German/light/18 px/custom purple/200%:** wide/narrow full-width
+  catalog, wrapped scope labels, `runtime` search, instruction reading, explicit
+  Back with the original row focused and query retained, and continued draft.
+- **Trajectory, English/light/14 px/full motion:** unknown-outcome status, exact
+  captured evidence, Files and return with query/expanded record retained, then
+  continued conversation input.
+- **Settings, English/light/14 px/full motion:** actual navigation through MCP,
+  Providers, Hooks, Plugins and Approvals; connected/stdio/tool-count text, masked
+  configured and unconfigured provider labels, enabled packages, retained MCP
+  Tools disclosure, native resize, close and subsequent Composer input.
+- **Diagnostics, Chinese/dark/18 px:** all three accepted empty signal views,
+  native radio navigation, related-file return, retained signal and draft.
+- **Question card, German/light/18 px:** native choice navigation, text entry,
+  previous/next with both drafts retained, and narrow reflow without submission.
+- **Computer, English/light/14 px/full motion:** published ESM, original settled
+  outcome text, complete captured resource reading, narrow reflow and collapse
+  to the same original summary. No control lease or operation is admitted.
+- **GenUI, English/light/14 px/full motion:** published ESM, captured report,
+  Explore displays, visible plain accent `genui` label, native scroll/resize,
+  collapse to its original Tool and continued exact Composer draft.
+
+The 200% sequences reset native zoom, then observe each of twenty 5% menu steps.
+Capture dimensions verify 2878 × 1798 wide and 2244 × 1798 narrow native windows.
+The English 320 px reading task changes the Dock width within the wide window.
+An early capture helper failed before GUI action; a fresh state corrected it.
+The first Composer guard expected its text in AX Value; WKWebView exposes the
+authored content in a child text node, and fresh state confirms the exact draft.
+Initial Memory captures include the still-visible fixture sidebar and designed
+full-width fallback before the accepted material reading. A GenUI wheel gesture
+passed its label section; observed reverse scrolling brings the actual label
+into view. These observations are retained without changing product assertions.
+
+Scope limits remain explicit: Hooks and Approvals are empty in this canonical
+fixture; Diagnostics has no populated classifications; the Question fixture has
+no recommended option. Current native archive/evidence labels in Deliverables
+and other unshown state combinations are not newly qualified by this batch.
+Shared UI and frontend contracts cover those consumers. Most workspace entries
+load current source through the production installed-component lifecycle; only
+Computer and GenUI here establish built-ESM loading. No live Runtime, provider,
+configuration save, Send or destructive command is used. **Approve** the bounded
+shared presentation on inspected paths; whole-product acceptance is unproven.
+
+Fresh fetch finds zero incoming main commits. Ownership-checked retirement removes
+**11** created output/UID-specific Library targets, unregisters the private bundle
+and removes `/private/tmp/flame-status-text-ZxNpcG`. All **17** recorded absences,
+two original UI cache hashes and the protected **123-byte** draft are restored.
+The round-tripped archive retains **229** UTF-8 records and metadata/hashes for
+**90** captures, including the noted observations; gzip SHA-256 is
+`2ff84f9f5d2df197e7e96f37160950bcb3772e0ba4294cbdf755151d08b792a1`.
+
+The whole-product goal remains active. Next inspect the repeated decorative
+icon tiles visible in Skills and Trajectory summaries, starting from shared
+`IconMark` consumers and their existing alignment before deciding on a change.
 
 ### Filter-bar group alignment and native page reading (2026-11-04)
 

@@ -513,18 +513,18 @@ they do not manufacture transitions on otherwise static components.
 The default host theme owns the semantic roles (neutral planes, one accent scale
 generated from the user's configurable accent, and status colors) and follows HeroUI
 3.2.6 for rounded buttons, fields and quiet contact shadows. Button and field radii follow
-the user's radius scale at every size; text chips and status labels share the
-button role. Fixed circular marks and explicitly round buttons keep their geometry.
+the user's radius scale at every size; text chips share the button role.
+Fixed circular marks and explicitly round buttons keep their geometry.
 Desktop size roles are
 24/28/32/36px, independent of navigation density. Controls retain native cursors,
 keyboard focus, wrapping labels and the coarse-pointer target floor. Theme values
 remain with the host; the library renders them without a second appearance store.
 Settings and portable pages share `Panel` as the sole content-measure owner.
 
-Tonal `Badge` labels consume the host's on-tint text roles, derived from each
-semantic ink and the main text ink. The shared component keeps the state label
-visible; consumers select its tone from the product owner's state. Neutral labels
-retain muted ink, while icons, links and actions retain the ordinary semantic ink.
+`Badge` renders plain, unboxed text without fill, padding or corners. Tonal
+labels use the host's ordinary semantic ink; neutral labels use muted text. The
+shared component keeps the state label visible; consumers select its tone and
+label from the product owner's state.
 
 `ModalDialog` owns bounded modal geometry, accessible titles and descriptions,
 header and footer alignment, and internal body scrolling. Its body supplies the
