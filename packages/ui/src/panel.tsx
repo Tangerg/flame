@@ -136,7 +136,7 @@ const styles = stylex.create({
   filters: {
     display: "flex",
     flexWrap: "wrap",
-    alignItems: "stretch",
+    alignItems: "flex-start",
     gap: layout.controlGap,
     minWidth: 0,
   },

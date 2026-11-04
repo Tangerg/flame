@@ -17,6 +17,10 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Shared filter bars now align independently wrapped groups at their top edge;
+all seven production consumer families have actual native reading qualification
+under **Filter-bar group alignment and native page reading (2026-11-04)**.
+
 Shared form control tops remain aligned beneath wrapped labels (`d6e6dab34`),
 resized Settings navigation reveals its selected category (`d5b10e146`), and MCP
 read recovery retains its initiating focus (`264e82fd4`). Their actual native
@@ -9178,6 +9182,144 @@ report when its initiating focus remains unclaimed; otherwise it names the saved
 copy in archive feedback. The published ESM was rebuilt. Existing Runtime
 installations require explicit reinstallation and selection of the new package
 digest; a source/resource rebuild does not update an admitted installation.
+
+### Filter-bar group alignment and native page reading (2026-11-04)
+
+Qualified from main `ec13bbf5c668bf2bdffbc111ee3fd7603f9256a6`, which
+publishes the preceding Schedules Save/original-result repair. Its normal hooks,
+main fast-forward, push, independent remote check, two clean checkouts and
+post-publication source/cleanup proof pass before this follow-up begins.
+
+The original German native 18px/200% Schedules view shows the actual defect:
+search and creation actions wrap over two or three rows, while the separate
+status/refinement group stretches to their combined height and centers its one
+row between them. The owner is the shared FilterBar's outer cross-axis alignment.
+`packages/ui/src/panel.tsx:139` now uses `alignItems: "flex-start"` so both
+groups retain intrinsic height and begin at the same top edge. Their internal
+rows keep existing centered controls. Widths, growth, wrapping decisions, gaps,
+DOM and keyboard order, sticky measurement, focus and command owners are intact.
+No new component, wrapper, API, state, observer, breakpoint or token is added.
+
+The seven production consumers are Schedules, Memory, Session trajectory, Usage,
+Skills, Diff and icon gallery. Actual caller review covers their search/actions/
+refinement combinations, including search-only Diff and Skills' search/refresh
+row. All 22 generated installed resources remain byte-identical to base main.
+The shared README documents the intrinsic-height group contract. No CSS-property
+assertion or other test mirroring this reversible style change is added.
+
+One bounded Read/Edit-only Claude Code CLI call takes **19.943 s / 7 turns**, with
+no permission denials. It changes only the shared Panel source and README; root
+reviews the actual diff and owns verification, native acceptance and publication.
+Better-layout guides shared edges, grouping and translated reflow; the other
+better-interface owner principles retain the existing typography, interaction,
+copy and theme. Read-only ZCode `SettingsResourceHeaderActions.tsx` supplies
+wrapped action composition and `EnabledStatusFilterSelect.tsx` separates the
+refinement from its choices. HeroUI's `search-field/full-width.tsx` demonstrates
+search owning its available width. These references do not prove Flame geometry
+or focus behavior; no reference implementation or component system is imported.
+
+| Severity | Location                        | Before                                                                    | After                                                                            | Why                                                                  |
+| -------- | ------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| MEDIUM   | `packages/ui/src/panel.tsx:139` | A short filter group floats between the taller search/action group's rows | Independent groups begin at a shared top edge, with their existing row alignment | Align shared edges and make wrapped controls read as coherent groups |
+
+| Verification                     | Actual result                                                                                                       |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Shared UI complete check         | Build, typecheck, lint, formatting, **13 files / 229 tests**, independent packed offline consumer pass; **9.337 s** |
+| Focused Schedules baseline/final | **3 files / 49 tests** pass, **4.167 / 3.911 s**                                                                    |
+| Complete frontend                | **424 files / 4,547 tests** pass, **112.255 s**                                                                     |
+| Final serial gates               | Frontend, all **25** non-Runtime Web gates and native: **27 pass**                                                  |
+| Native gate                      | Supported Desktop Go checks and production Wails build pass, **22.021 s**                                           |
+| Normal component generation      | Pass, **1.491 s**; all **22** installed resources unchanged                                                         |
+| Private current-source assets    | Pass, **2.350 s**; accepted app and private-host bytes remain unchanged                                             |
+
+The offline consumer uses **31** lockfile-selected tarballs copied from existing
+read-only caches into this batch's private cache; its installation remains
+offline. Two original UI test-cache files are restored byte-exactly after the
+shared check. Owned formatting and `git diff --check` pass. Runtime/CLI and
+plugin backend suites, plugin-wide formatting, browser visual suites, benchmarks,
+new contrast measurements and motion timing are not run. The unrelated historical
+Feedback formatting issue is outside this change.
+
+All seven consumer families are actually inspected in Wails, using production
+source through InstalledComponent and the current shared UI. Native interaction
+uses Sky AX/screenshots, keyboard, pointer, wheel, window-edge resize and webview
+zoom. The canonical repository visual transport is unchanged; there is no
+command/draft/focus overlay or injected observer. Separate URL entries select
+fixture families that the fixture's panel browser does not expose. These entries
+are not claimed as production cross-page navigation; the English related-object
+path uses the actual retained workspace tabs.
+
+- **English, light, 14px, Orange, full motion, 100%:** keyboard Home on the
+  actual Dock divider reports **320px**. Schedules' native traversal follows
+  Search → Clear → Add → Templates → Status → Refresh → original record. Edit
+  and Escape restore its opener and retained `nightly` query. Actual Files
+  reads DockResizer.tsx; Diff's changed-file list supports `DockResizer` search
+  and Escape clear; Session supports `unknown` search and clear. Returning to
+  Schedules retains its query. The original Composer continues as
+  `Continue after filter-bar review. English verified.`.
+- **German, light, 18px, custom #9B6DF8, motion off, 200%:** wide **2878 × 1798**
+  and resized **2244 × 1798** captures qualify the corrected two/three-row
+  Schedules controls. Its status popup, Edit/Escape, retained opener/query,
+  complete heading reading and original Composer continuation pass. A separate
+  Memory entry qualifies collapsed/expanded filters, native Return collapse,
+  `compaction` search/clear and its original draft continuation.
+- **Chinese, dark, 18px, custom #4E80FF, motion off, 200%:** the same wide/narrow
+  bounds qualify Schedules' one/two-row controls and native search/clear. Usage
+  is natively scrolled to its actual detail filter, where source search and
+  grouping align; `openai` search/clear and its original draft continuation
+  pass. Skills' `runtime` query opens the actual instruction reader; Back
+  restores that query and the focused original record. Its original draft
+  continues. Each family has its own real native entry and exit receipt.
+- **German icon gallery, the same 18px/200% bounds:** the actual catalog contains
+  **601** icons; the exact `brain` query yields **2**, a no-match query yields
+  **0**, and native Escape restores **601**. Search and category controls align.
+  Closing full width permits new native authoring as
+  `Nach der Symbolprüfung weiterarbeiten. Galerie geprüft.`. This case does
+  not claim a draft seeded before gallery reading.
+
+Seven final native processes exit **0** in **177.063 / 129.704 / 72.047 /
+84.773 / 103.512 / 72.915 / 229.019 s**; the original German baseline exits **0**
+in **166.529 s** and is excluded from final acceptance. Initial rapid German
+zoom captures are preliminary; accepted captures follow reset and 20 individually
+observed native zoom increments. A clipboard-contaminated gallery query is
+rejected and its captures removed; exact native keyboard input requalifies the
+intended search. The keyboard simulator's omitted accented characters in its
+first following draft also fail the exact-text guard; fresh observed focus and
+paste establish the correct final text. Physical IME is not qualified. The final
+review covers all **eight** receipts and absence of any owned native process;
+the earlier four-receipt preliminary review is excluded.
+
+The preceding heading-edge observation motivates this inspection. The read-only
+Cancel task preserves its original context and allows complete heading reading;
+the earlier refused-Save outcome is not replayed in this batch. No heading-specific
+layout or scrolling patch is added. Live Runtime/provider/scheduler execution,
+installation, business writes, Send, VoiceOver, RTL, other OS, a 320px whole
+window and every preference/state permutation remain outside this qualification.
+
+**Approve** the inspected shared-group alignment and reading paths. The eight
+award CHECK dimensions are reviewed within that scope: reading hierarchy,
+spacing, typography and responsive grouping remain coherent; color, motion and
+originality retain Flame's existing vocabulary. Whole-product award-tier
+acceptance remains unproven.
+
+Final review matches **6,804 source inputs**, **22 installed resources**,
+**333 Web / 4 app / 21 private-host files**, three private build/host inputs,
+three read-only references, eight native receipts and all 27 serial results.
+Ownership-checked retirement removes **11** created output/UID-specific Library
+targets, unregisters the private bundle and removes the exact qualification root
+`/private/tmp/flame-schedule-reading-N8bzRX`. All **17** recorded absences,
+two original UI cache hashes and the protected **123-byte** draft are preserved.
+The round-tripped archive retains **199** UTF-8 records and metadata/hashes for
+**60** captures; gzip SHA-256 is
+`dcc22c0107ecf970bd4552a687a36b29129c827365108d075d6d337a49a47d58`.
+
+Next follow the user's new design-slop checklist: reduce tags, ornamental italics,
+Instrument Serif/negative kerning, excessive UI detail, dividers, redundant
+shade/opacity levels, bordered containers, elaborate diagrams, code breadcrumbs
+and section numbering. Use content, spacing and plain typography for hierarchy;
+preserve exact authored material and required object/status facts while reducing
+presentation chrome. Start with the observed repeated labels and container
+boundaries in the content/Dock surfaces. The goal remains active.
 
 ### Schedules page reading and shared alignment (2026-11-03)
 

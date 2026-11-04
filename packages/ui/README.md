@@ -208,8 +208,11 @@ growing search column, the page `actions` after it, and the refining filters as
 search carries the actions to the inline end; the filters follow, joining that
 row when the width allows. Each group wraps as a unit, so actions never strand
 between filters. Wrapped actions and filters start at the search's inline-start
-edge rather than jumping to the opposite edge. Multiple actions use one named
-`Toolbar` in the `actions` slot. When a page's actions are creation commands, as in
+edge rather than jumping to the opposite edge. The search/actions group and the
+filters keep their intrinsic heights and begin at the same top edge when either
+wraps, so a single filter row never floats between wrapped search and action
+rows; controls stay centered within each group's own rows. Multiple actions use
+one named `Toolbar` in the `actions` slot. When a page's actions are creation commands, as in
 Schedules, refresh stays with the filters it re-reads so the creation pair keeps
 one row. Scope and catalog navigation keep a separate
 preceding `Toolbar`.
