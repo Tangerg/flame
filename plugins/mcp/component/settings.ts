@@ -63,6 +63,8 @@ const ADD = "add";
 export const IMPORT = "import";
 export const editorKey = (server?: MCPServerID) =>
   server ? serverKey(server) : ADD;
+export const toolPolicyKey = (server: MCPServerID) =>
+  `tools:${serverKey(server)}`;
 const initial = (): Snapshot => ({
   servers: { phase: "loading" },
   tools: new Map(),
@@ -316,7 +318,7 @@ export class MCPSettings {
     const key = serverKey(server);
     return this.#start(
       context,
-      key,
+      toolPolicyKey(server),
       [key],
       [
         {
@@ -346,7 +348,6 @@ export class MCPSettings {
     name: string,
     on: boolean,
   ) {
-    const key = serverKey(server);
     const rules = this.#snapshot.rules;
     if (rules.phase !== "ready") return Promise.resolve(false);
     const steps: Step[] = on
@@ -377,7 +378,12 @@ export class MCPSettings {
               };
           },
         }));
-    return this.#start(context, key, [key], steps);
+    return this.#start(
+      context,
+      toolPolicyKey(server),
+      [serverKey(server)],
+      steps,
+    );
   }
   allowRules(server: MCPServerID, name: string) {
     return (
@@ -517,7 +523,10 @@ export class MCPSettings {
     this.#assert(context);
     if (
       this.busy(key) ||
-      resources.some((resource) => this.busy(resource)) ||
+      resources.some(
+        (resource) =>
+          this.busy(resource) || this.#snapshot.probing.has(resource),
+      ) ||
       this.#snapshot.probing.has(key)
     )
       return Promise.resolve(false);

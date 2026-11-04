@@ -109,6 +109,7 @@ export const zh: Record<string, string> = {
   "command.uncertain":
     "原始命令的结果未确认。在发出另一条命令或切换目录前请先核对。",
   "command.reconcile": "核对原始命令",
+  "command.confirmed": "原始结果已确认",
   "read.retained": "保留上次接受的读取。",
   "mcp.form.args.invalid": "请输入由字符串组成的 JSON 数组；留空表示不传参数。",
   "mcp.form.env.invalid": "请输入非空 JSON 对象，每个值必须是字符串。",

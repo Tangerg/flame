@@ -11,8 +11,8 @@ import {
   Switch,
 } from "@flame/ui";
 import { serverKey } from "./model";
-import type { MCPSettings } from "./settings";
-import { ReadStatus } from "./feedback";
+import { toolPolicyKey, type MCPSettings } from "./settings";
+import { CommandFeedback, ReadStatus } from "./feedback";
 const column = {
   display: "grid",
   minWidth: 0,
@@ -57,10 +57,19 @@ export function ToolControls({
   const exposure = state.exposure.get(key);
   const rules = state.rules;
   const disabled = new Set(exposure?.data);
-  const busy = settings.busy(key);
+  const busy = settings.busy(key) || state.probing.has(key);
+  const policy = toolPolicyKey(server);
+  const command = state.commands.get(policy);
   return (
     <div style={column}>
       <RecordBody>{t("mcp.tools.policyHint")}</RecordBody>
+      {command?.phase === "running" && <p role="status">{t("mcp.saving")}</p>}
+      <CommandFeedback
+        context={context}
+        settings={settings}
+        resource={policy}
+        t={t}
+      />
       <ReadStatus
         read={exposure}
         title={t("mcp.error.loadToolVisibility")}

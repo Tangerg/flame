@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { RpcError, RpcTransportError } from "@flame/runtime-client";
 import type { ApprovalRule, MCPServer } from "@flame/runtime-client/wire";
-import { MCPSettings, IMPORT } from "./settings";
+import { MCPSettings, IMPORT, toolPolicyKey } from "./settings";
 import { MCPServerEdit } from "./draft";
 import { serverKey, serverSettings } from "./model";
 import { fixture, mutation, server } from "./testing";
@@ -264,9 +264,138 @@ it("uses exact global allow rules and preserves the original sequential rule rem
   f.forgetRule.mockReturnValueOnce(mutation(Promise.reject(unknown()), retry));
   await f.settings.setAutoApprove(f.context, server.id, "read", false);
   expect(f.forgetRule.mock.calls.map(([id]) => id)).toEqual(["one"]);
-  await f.settings.recover(f.context, serverKey(server.id));
+  await f.settings.recover(f.context, toolPolicyKey(server.id));
   expect(f.forgetRule.mock.calls.map(([id]) => id)).toEqual(["one", "two"]);
   expect(retry).toHaveBeenCalledTimes(1);
+});
+it("owns tool-policy commands per exact server while locking that server's configuration", async () => {
+  const f = create();
+  const key = serverKey(server.id);
+  const policy = toolPolicyKey(server.id);
+  const installed = {
+    ...server.id,
+    origin: { type: "installation" as const, installationId: "package-one" },
+  };
+  f.settings.readRules(f.context);
+  await vi.waitFor(() =>
+    expect(f.settings.getSnapshot().rules.phase).toBe("ready"),
+  );
+  const draft = MCPServerEdit.of(serverSettings(server)).with(
+    "description",
+    "independent draft",
+  );
+  f.settings.edit(f.context, key, draft);
+  const done = Promise.withResolvers<void>();
+  f.setExposure.mockReturnValueOnce(mutation(done.promise));
+  const pending = f.settings.setExposure(f.context, server.id, "read", true);
+  expect(f.settings.getSnapshot().commands.get(policy)).toEqual({
+    phase: "running",
+  });
+  expect(f.settings.getSnapshot().commands.has(key)).toBe(false);
+  expect(f.settings.busy(key)).toBe(true);
+  await expect(f.settings.save(f.context, draft, server.id)).resolves.toBe(
+    false,
+  );
+  await expect(
+    f.settings.setEnabled(f.context, server.id, false),
+  ).resolves.toBe(false);
+  await expect(
+    f.settings.setAutoApprove(f.context, server.id, "read", true),
+  ).resolves.toBe(false);
+  await expect(
+    f.settings.setExposure(f.context, server.id, "read", false),
+  ).resolves.toBe(false);
+  f.settings.setImportText(
+    f.context,
+    JSON.stringify({ mcpServers: { docs: { command: "docs" } } }),
+  );
+  await expect(f.settings.importServers(f.context)).resolves.toBe(false);
+  await expect(
+    f.settings.setExposure(f.context, installed, "read", true),
+  ).resolves.toBe(true);
+  expect(f.setExposure.mock.calls).toEqual([
+    [{ server: server.id, name: "read", disabled: true }],
+    [{ server: installed, name: "read", disabled: true }],
+  ]);
+  for (const write of [f.update, f.create, f.setRule])
+    expect(write).not.toHaveBeenCalled();
+
+  done.reject(new Error("policy refused"));
+  await expect(pending).resolves.toBe(false);
+  expect(f.settings.getSnapshot().commands.has(policy)).toBe(false);
+  expect(f.settings.getSnapshot().feedback.get(policy)).toMatchObject({
+    kind: "error",
+  });
+  expect(f.settings.getSnapshot().feedback.has(key)).toBe(false);
+  expect(f.settings.getSnapshot().drafts.get(key)).toBe(draft);
+  f.settings.edit(f.context, key, draft.with("description", "later edit"));
+  expect(f.settings.getSnapshot().feedback.get(policy)).toMatchObject({
+    kind: "error",
+  });
+});
+it("blocks tool-policy writes while that exact server has a connection test in flight", async () => {
+  const f = create();
+  const key = serverKey(server.id);
+  const draft = MCPServerEdit.of(serverSettings(server));
+  f.settings.readRules(f.context);
+  await vi.waitFor(() =>
+    expect(f.settings.getSnapshot().rules.phase).toBe("ready"),
+  );
+  const result = Promise.withResolvers<Awaited<ReturnType<typeof f.test>>>();
+  f.test.mockReturnValueOnce(result.promise);
+  const testing = f.settings.test(f.context, key, draft);
+  try {
+    await expect(
+      f.settings.setExposure(f.context, server.id, "read", true),
+    ).resolves.toBe(false);
+    await expect(
+      f.settings.setAutoApprove(f.context, server.id, "read", true),
+    ).resolves.toBe(false);
+    expect(f.setExposure).not.toHaveBeenCalled();
+    expect(f.setRule).not.toHaveBeenCalled();
+  } finally {
+    result.resolve({ outcome: "reachable" });
+    await testing;
+  }
+  await expect(
+    f.settings.setExposure(f.context, server.id, "read", true),
+  ).resolves.toBe(true);
+  expect(f.setExposure).toHaveBeenCalledTimes(1);
+});
+it("recovers an unknown tool-policy write through its original promise without settling the editor draft", async () => {
+  const f = create();
+  const key = serverKey(server.id);
+  const policy = toolPolicyKey(server.id);
+  f.settings.readTools(f.context, server.id);
+  await vi.waitFor(() =>
+    expect(f.settings.getSnapshot().exposure.get(key)?.phase).toBe("ready"),
+  );
+  const draft = MCPServerEdit.of(serverSettings(server)).with(
+    "description",
+    "independent draft",
+  );
+  f.settings.edit(f.context, key, draft);
+  const retry = vi.fn().mockResolvedValue(undefined);
+  f.setExposure.mockReturnValueOnce(
+    mutation(Promise.reject<void>(unknown()), retry),
+  );
+  await expect(
+    f.settings.setExposure(f.context, server.id, "read", true),
+  ).resolves.toBe(false);
+  expect(f.settings.getSnapshot().commands.get(policy)?.phase).toBe("unknown");
+  expect(f.settings.getSnapshot().commands.has(key)).toBe(false);
+  expect(f.settings.busy(key)).toBe(true);
+  await expect(f.settings.recover(f.context, key)).resolves.toBe(false);
+  f.view.abort();
+  const next = f.openView();
+  f.exposure.mockResolvedValue({ server: server.id, disabledTools: ["read"] });
+  await expect(f.settings.recover(next.context, policy)).resolves.toBe(true);
+  expect(retry).toHaveBeenCalledWith({ signal: next.context.signal });
+  expect(f.setExposure).toHaveBeenCalledTimes(1);
+  expect(f.settings.getSnapshot().exposure.get(key)?.data).toEqual(["read"]);
+  expect(f.settings.getSnapshot().drafts.get(key)).toBe(draft);
+  expect(f.settings.getSnapshot().commands.size).toBe(0);
+  expect(f.settings.busy(key)).toBe(false);
 });
 it("submits auto-approve through the canonical approval operation", async () => {
   const f = create();

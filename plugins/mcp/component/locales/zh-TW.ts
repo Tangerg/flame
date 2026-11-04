@@ -108,6 +108,7 @@ export const zhTW: Record<string, string> = {
   "command.uncertain":
     "原始命令的結果未確認。在發出另一條命令或切換目錄前請先核對。",
   "command.reconcile": "核對原始命令",
+  "command.confirmed": "原始結果已確認",
   "read.retained": "保留上次接受的讀取。",
   "mcp.form.args.invalid": "請輸入由字串組成的 JSON 陣列；留空表示不傳參數。",
   "mcp.form.env.invalid": "請輸入非空 JSON 物件，每個值必須是字串。",

@@ -13,6 +13,23 @@ the accepted prefix and original in-flight command; they never restart that
 prefix after an unknown result. Accepted writes refresh read projections without
 making a failed read appear to undo a successful command.
 
+Tool visibility and auto-approve writes own one command and feedback key per exact
+server, separate from that server's configuration editor, while still locking the
+same server resource, including its in-flight connection test. Their progress,
+refusal and reconciliation appear in Tools.
+Editing or closing the configuration draft leaves them in place, and an accepted
+policy write never closes the editor or reports its draft as saved. The editor
+shows Saving… only for its own submission; other work on the server makes it
+read-only.
+
+While it holds focus, Reconcile original command stays the same button through
+the pending original retry. A known outcome, accepted or refused, leaves it disabled
+as Original outcome confirmed beside any literal refusal; a repeated unknown keeps
+it actionable. Leaving a pending or confirmed button retires its focus projection;
+a later completion never reclaims focus. Only an accepted recovery whose original
+editor is still mounted closes that editor; an older completion cannot close a
+later editor.
+
 Failed reads of tools, tool visibility and auto-approve rules name their object
 above the publisher's literal explanation. Each failure and its Retry form one
 reading unit. Tools and visibility retries reread that pair together; the rules

@@ -661,3 +661,351 @@ it.each(["view", "source"] as const)(
     expectNoWrites(f);
   },
 );
+const saving = en["mcp.saving"]!;
+async function openPolicyWithDraft() {
+  const { f } = await mount();
+  fireEvent.click(screen.getByRole("button", { name: "Tools for docs" }));
+  expect(await screen.findByText("Read documentation")).toBeTruthy();
+  for (const name of ["Enable read", "Auto-approve read"])
+    await waitFor(() =>
+      expect(
+        screen.getByRole("switch", { name }).getAttribute("aria-disabled"),
+      ).not.toBe("true"),
+    );
+  fireEvent.click(screen.getByRole("button", { name: "Edit docs" }));
+  const description = screen.getByLabelText<HTMLInputElement>("Description");
+  fireEvent.change(description, { target: { value: "Team documentation" } });
+  return { f, description };
+}
+it("keeps a deferred visibility write and its refusal in Tools without claiming the editor is saving", async () => {
+  const { f, description } = await openPolicyWithDraft();
+  const done = Promise.withResolvers<void>();
+  f.setExposure.mockReturnValueOnce(mutation(done.promise));
+  const enable = screen.getByRole("switch", { name: "Enable read" });
+  fireEvent.click(enable);
+  expect(f.setExposure).toHaveBeenCalledWith({
+    server: server.id,
+    name: "read",
+    disabled: true,
+  });
+  const status = screen.getByText(saving);
+  expect(status.getAttribute("role")).toBe("status");
+  expect(screen.getAllByText(saving)).toEqual([status]);
+  expect(screen.getByRole("button", { name: "Save" })).toHaveProperty(
+    "disabled",
+    true,
+  );
+  fireEvent.click(enable);
+  fireEvent.click(screen.getByRole("switch", { name: "Auto-approve read" }));
+  expect(f.setExposure).toHaveBeenCalledTimes(1);
+  expect(f.setRule).not.toHaveBeenCalled();
+
+  await act(async () => done.reject(new Error(reason)));
+  const failure = screen.getByText(reason, literal);
+  expect(screen.getAllByText(reason, literal)).toEqual([failure]);
+  expect(failure.closest("[role=alert]")).not.toBeNull();
+  expect(failure.closest("[data-focus-unit]")).not.toBeNull();
+  expect(screen.queryByText(saving)).toBeNull();
+  expect(enable.getAttribute("aria-checked")).toBe("true");
+  expect(description.value).toBe("Team documentation");
+  fireEvent.change(description, { target: { value: "Team docs" } });
+  expect(screen.getAllByText(reason, literal)).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByLabelText("Description")).toBeNull();
+  expect(screen.getAllByText(reason, literal)).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "Edit docs" }));
+  expect(screen.getByLabelText<HTMLInputElement>("Description").value).toBe(
+    "Team docs",
+  );
+  expect(screen.getAllByText(reason, literal)).toHaveLength(1);
+  expect(f.update).not.toHaveBeenCalled();
+});
+it("accepts a deferred auto-approve write without closing or saving the open editor", async () => {
+  const { f, description } = await openPolicyWithDraft();
+  const done = Promise.withResolvers<void>();
+  f.setRule.mockReturnValueOnce(mutation(done.promise));
+  fireEvent.click(screen.getByRole("switch", { name: "Auto-approve read" }));
+  expect(f.setRule).toHaveBeenCalledWith({
+    tool: { type: "mcp", server: server.id, name: "read" },
+    scope: "global",
+    subject: { type: "all" },
+    decision: "allow",
+  });
+  expect(screen.getByText(saving).getAttribute("role")).toBe("status");
+  expect(screen.getByRole("button", { name: "Save" })).toHaveProperty(
+    "disabled",
+    true,
+  );
+  fireEvent.click(screen.getByRole("switch", { name: "Enable read" }));
+  expect(f.setExposure).not.toHaveBeenCalled();
+  f.setRules([
+    {
+      id: "one",
+      decision: "allow",
+      scope: "global",
+      subject: { type: "all" },
+      stale: false,
+      modelName: "read",
+      tool: { type: "mcp", server: server.id, name: "read" },
+    },
+  ]);
+  await act(async () => done.resolve());
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole("switch", { name: "Auto-approve read" })
+        .getAttribute("aria-checked"),
+    ).toBe("true"),
+  );
+  expect(screen.queryByText(saving)).toBeNull();
+  expect(screen.getByRole("button", { name: "Save" })).toHaveProperty(
+    "disabled",
+    false,
+  );
+  expect(description.isConnected).toBe(true);
+  expect(description.value).toBe("Team documentation");
+  expect(f.setRule).toHaveBeenCalledTimes(1);
+  expect(f.update).not.toHaveBeenCalled();
+});
+it("reconciles an uncertain visibility write from Tools while the editor stays open", async () => {
+  const { f, description } = await openPolicyWithDraft();
+  const retry = vi.fn().mockResolvedValue(undefined);
+  f.setExposure.mockReturnValueOnce(
+    mutation(
+      Promise.reject<void>(new RpcTransportError("synthetic disconnect")),
+      retry,
+    ),
+  );
+  fireEvent.click(screen.getByRole("switch", { name: "Enable read" }));
+  const reconcile = await screen.findByRole("button", {
+    name: "Reconcile original command",
+  });
+  expect(
+    screen.getAllByRole("button", { name: "Reconcile original command" }),
+  ).toEqual([reconcile]);
+  expect(reconcile.closest("[data-focus-unit]")).not.toBeNull();
+  expect(screen.queryByText(saving)).toBeNull();
+  expect(screen.getByRole("button", { name: "Save" })).toHaveProperty(
+    "disabled",
+    true,
+  );
+  f.exposure.mockResolvedValue({ server: server.id, disabledTools: ["read"] });
+  fireEvent.click(reconcile);
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("button", { name: "Reconcile original command" }),
+    ).toBeNull(),
+  );
+  expect(retry).toHaveBeenCalledTimes(1);
+  expect(f.setExposure).toHaveBeenCalledTimes(1);
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole("switch", { name: "Enable read" })
+        .getAttribute("aria-checked"),
+    ).toBe("false"),
+  );
+  expect(description.isConnected).toBe(true);
+  expect(description.value).toBe("Team documentation");
+  expect(screen.getByRole("button", { name: "Save" })).toHaveProperty(
+    "disabled",
+    false,
+  );
+  expect(f.update).not.toHaveBeenCalled();
+});
+const reconcileName = en["command.reconcile"]!;
+const confirmedName = en["command.confirmed"]!;
+function expectFocusedRecovery(
+  action: HTMLElement,
+  name: string,
+  disabled: boolean,
+) {
+  expect(screen.getByRole("button", { name })).toBe(action);
+  expect(action.getAttribute("aria-disabled") === "true").toBe(disabled);
+  expect(document.activeElement).toBe(action);
+}
+async function focusedUncertainVisibility() {
+  const { f, description } = await openPolicyWithDraft();
+  const retry = vi.fn();
+  f.setExposure.mockReturnValueOnce(
+    mutation(
+      Promise.reject<void>(new RpcTransportError("synthetic disconnect")),
+      retry,
+    ),
+  );
+  fireEvent.click(screen.getByRole("switch", { name: "Enable read" }));
+  const reconcile = await screen.findByRole("button", { name: reconcileName });
+  act(() => reconcile.focus());
+  return { f, description, retry, reconcile };
+}
+it("keeps a focused Tools recovery as one button through acceptance until focus leaves", async () => {
+  const { f, description, retry, reconcile } =
+    await focusedUncertainVisibility();
+  const original = Promise.withResolvers<void>();
+  retry.mockReturnValueOnce(original.promise);
+  fireEvent.click(reconcile);
+  expect(retry).toHaveBeenCalledTimes(1);
+  expectFocusedRecovery(reconcile, reconcileName, true);
+  activateAgain(reconcile);
+  expect(retry).toHaveBeenCalledTimes(1);
+
+  f.exposure.mockResolvedValue({ server: server.id, disabledTools: ["read"] });
+  await act(async () => original.resolve());
+  expectFocusedRecovery(reconcile, confirmedName, true);
+  expect(screen.queryByRole("button", { name: reconcileName })).toBeNull();
+  activateAgain(reconcile);
+  expect(retry).toHaveBeenCalledTimes(1);
+  expect(f.setExposure).toHaveBeenCalledTimes(1);
+  expect(description.isConnected).toBe(true);
+  expect(description.value).toBe("Team documentation");
+
+  act(() => description.focus());
+  expect(reconcile.isConnected).toBe(false);
+  expect(document.activeElement).toBe(description);
+  expect(screen.queryByRole("button", { name: confirmedName })).toBeNull();
+  expect(f.update).not.toHaveBeenCalled();
+});
+it("keeps a focused known refusal on the confirmed button beside its literal error", async () => {
+  const { f, retry, reconcile } = await focusedUncertainVisibility();
+  const original = Promise.withResolvers<void>();
+  retry.mockReturnValueOnce(original.promise);
+  fireEvent.click(reconcile);
+  expectFocusedRecovery(reconcile, reconcileName, true);
+  await act(async () => original.reject(new Error(reason)));
+  expectFocusedRecovery(reconcile, confirmedName, true);
+  const failure = screen.getByText(reason, literal);
+  expect(failure.closest("[role=alert]")).not.toBeNull();
+  expect(failure.closest("[data-focus-unit]")).toBe(
+    reconcile.closest("[data-focus-unit]"),
+  );
+  expect(
+    screen
+      .getByRole("switch", { name: "Enable read" })
+      .getAttribute("aria-checked"),
+  ).toBe("true");
+
+  const cancel = screen.getByRole("button", { name: "Cancel" });
+  act(() => cancel.focus());
+  expect(reconcile.isConnected).toBe(false);
+  expect(document.activeElement).toBe(cancel);
+  expect(screen.getByText(reason, literal)).toBeTruthy();
+  expect(retry).toHaveBeenCalledTimes(1);
+  expect(f.setExposure).toHaveBeenCalledTimes(1);
+});
+it("keeps a repeated unknown recovery actionable and leaves later field focus in place", async () => {
+  const { f, description, retry, reconcile } =
+    await focusedUncertainVisibility();
+  const unknown = Promise.withResolvers<void>();
+  retry.mockReturnValueOnce(unknown.promise);
+  fireEvent.click(reconcile);
+  expectFocusedRecovery(reconcile, reconcileName, true);
+  await act(async () =>
+    unknown.reject(new RpcTransportError("synthetic disconnect")),
+  );
+  expectFocusedRecovery(reconcile, reconcileName, false);
+  expect(screen.getByText(en["command.uncertain"]!)).toBeTruthy();
+
+  const accepted = Promise.withResolvers<void>();
+  retry.mockReturnValueOnce(accepted.promise);
+  fireEvent.click(reconcile);
+  expect(retry).toHaveBeenCalledTimes(2);
+  expectFocusedRecovery(reconcile, reconcileName, true);
+  act(() => description.focus());
+  expect(reconcile.isConnected).toBe(false);
+  await act(async () => accepted.resolve());
+  expect(document.activeElement).toBe(description);
+  expect(screen.queryByRole("button", { name: reconcileName })).toBeNull();
+  expect(screen.queryByRole("button", { name: confirmedName })).toBeNull();
+  expect(f.setExposure).toHaveBeenCalledTimes(1);
+  expect(f.update).not.toHaveBeenCalled();
+});
+it("closes the editor through its completion path after a focused accepted recovery", async () => {
+  const { f } = await mount();
+  const opener = screen.getByRole("button", { name: "Add server" });
+  const original = Promise.withResolvers<typeof server>();
+  const retry = vi.fn().mockReturnValueOnce(original.promise);
+  f.create.mockReturnValueOnce(
+    mutation(
+      Promise.reject(new RpcTransportError("synthetic disconnect")),
+      retry,
+    ),
+  );
+  await add();
+  fireEvent.click(screen.getAllByRole("button", { name: "Add server" })[1]!);
+  const reconcile = await screen.findByRole("button", { name: reconcileName });
+  act(() => reconcile.focus());
+  fireEvent.click(reconcile);
+  expectFocusedRecovery(reconcile, reconcileName, true);
+  expect(screen.getByLabelText("Server name")).toHaveProperty(
+    "value",
+    "new-server",
+  );
+  await act(async () =>
+    original.resolve({
+      ...server,
+      id: { origin: { type: "user" }, name: "new-server" },
+    }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByLabelText("Server name")).toBeNull(),
+  );
+  expect(reconcile.isConnected).toBe(false);
+  await waitFor(() => expect(document.activeElement).toBe(opener));
+  expect(f.create).toHaveBeenCalledTimes(1);
+  expect(retry).toHaveBeenCalledTimes(1);
+});
+it("blocks policy controls during a connection test without changing the draft", async () => {
+  const { f, description } = await openPolicyWithDraft();
+  const result = Promise.withResolvers<Awaited<ReturnType<typeof f.test>>>();
+  f.test.mockReturnValueOnce(result.promise);
+  fireEvent.click(screen.getByRole("button", { name: "Test" }));
+  try {
+    for (const name of ["Enable read", "Auto-approve read"]) {
+      const action = screen.getByRole("switch", { name });
+      expect(action.getAttribute("aria-disabled")).toBe("true");
+      fireEvent.click(action);
+    }
+    expect(f.setExposure).not.toHaveBeenCalled();
+    expect(f.setRule).not.toHaveBeenCalled();
+    expect(description.value).toBe("Team documentation");
+  } finally {
+    await act(async () => result.resolve({ outcome: "reachable" }));
+  }
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole("switch", { name: "Enable read" })
+        .getAttribute("aria-disabled"),
+    ).not.toBe("true"),
+  );
+});
+it("does not let a retired editor recovery close a newly opened editor", async () => {
+  const { f } = await mount();
+  const result = Promise.withResolvers<typeof server>();
+  const retry = vi.fn().mockReturnValueOnce(result.promise);
+  f.update.mockReturnValueOnce(
+    mutation(
+      Promise.reject(new RpcTransportError("synthetic disconnect")),
+      retry,
+    ),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Edit docs" }));
+  fireEvent.change(screen.getByLabelText("Description"), {
+    target: { value: "Original recovery draft" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  const reconcile = await screen.findByRole("button", { name: reconcileName });
+  act(() => reconcile.focus());
+  fireEvent.click(reconcile);
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  fireEvent.click(screen.getByRole("button", { name: "Edit docs" }));
+  const reopened = screen.getByLabelText<HTMLInputElement>("Description");
+  await act(async () =>
+    result.resolve({ ...server, description: "Original recovery draft" }),
+  );
+  expect(reopened.isConnected).toBe(true);
+  fireEvent.change(reopened, { target: { value: "Newer editor continues" } });
+  expect(reopened.value).toBe("Newer editor continues");
+  expect(f.update).toHaveBeenCalledTimes(1);
+  expect(retry).toHaveBeenCalledTimes(1);
+});

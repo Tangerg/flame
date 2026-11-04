@@ -125,6 +125,7 @@ export const de: Record<string, string> = {
   "command.uncertain":
     "Das Ergebnis des ursprünglichen Befehls ist nicht bestätigt. Gleiche es ab, bevor du einen weiteren Befehl ausführst oder den Katalog wechselst.",
   "command.reconcile": "Ursprünglichen Befehl abgleichen",
+  "command.confirmed": "Ursprüngliches Ergebnis bestätigt",
   "read.retained": "Die letzte akzeptierte Lesung bleibt erhalten.",
   "mcp.form.args.invalid":
     "Gib ein JSON-Array mit Zeichenfolgen ein, oder lasse das Feld ohne Argumente leer.",

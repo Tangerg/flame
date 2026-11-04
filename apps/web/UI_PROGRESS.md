@@ -24,7 +24,12 @@ tasks, checks and boundaries are recorded in their Settings chapters. The native
 no-result search follow-up below reproduces successful keyboard/pointer recovery,
 so its existing implementation is retained. Actual interface/code-font selection
 also preserves reflow, retained MCP editing and continued conversation input in
-the English and Chinese native tasks below. The whole-product goal remains active.
+the English and Chinese native tasks below. MCP tool-policy progress and failures
+now remain with Tools, independent of the configuration draft; original-command
+recovery retains its focused control through settlement and respects later focus.
+The English, Chinese and German native tasks and final checks are recorded under
+**MCP tool-policy ownership and original-result continuity (2026-11-04)**.
+The whole-product goal remains active.
 
 Diff filenames and same-row reader actions now share their first text baseline;
 see **Diff filename and reader-action alignment (2026-11-03)**. Actual Wails
@@ -9368,6 +9373,146 @@ roots and six UID-specific Library roots, removes the exact qualification root,
 and preserves both existing UI caches and the protected 123-byte draft exactly.
 Preserved in-thread evidence: **69 text records / 35 capture hashes**; gzip SHA-256
 `717fc3a503bdf75863ceee47d6c4de14a026a61f61549ac4442efdb21ada5a6f`.
+
+### MCP tool-policy ownership and original-result continuity (2026-11-04)
+
+Qualified from synchronized main `81957ed33`. The original actual Wails task is
+conversation draft → Cmd+, → MCP servers → Edit workspace-tools → Description
+draft → expanded Tools → keyboard visibility change. The focused Switch already
+survives pending. However, the independent configuration Save falsely reports
+Saving…, the policy refusal appears beneath that form outside the Tools viewport,
+and editing Description clears it. The initial implementation moves feedback to
+Tools, but its native unknown-result preflight exposes a second defect: Return
+unmounts Reconcile original command and leaves native focus on HTML. That
+preflight is excluded from final acceptance despite its normal process exit.
+
+`settings.ts` gives visibility and auto-approve one `toolPolicyKey` per exact
+server, separate from the configuration command/feedback key. Both still lock
+the same canonical server resource. Existing MCPSettings batches, MutationPromise,
+original retries, source retirement, sequential rule removal and public protocol
+remain the owners. Root review catches an introduced connection-test exclusion
+gap: `#start` now checks probing for each locked resource as well as the command
+key, and ToolControls projects that same probe lock. No second command phase,
+optimistic policy state, API or dependency is added.
+
+`toolControls.tsx` renders its own running status and one continuously mounted
+CommandFeedback beside the tools. Editing, cancelling or reopening the separate
+configuration draft leaves policy feedback intact. `serverForm.tsx` distinguishes
+its resource lock from its own submission: fields become read-only and actions
+are blocked during policy work, while Save retains its ordinary name. Policy
+acceptance refreshes the authoritative switches without closing or saving the
+editor. Original editor recovery uses its existing presentation-lifetime ref;
+an older accepted completion cannot close a newly opened editor.
+
+`feedback.tsx` projects only the recovery Button's DOM focus through onFocus and
+onBlur. Unknown → running original retry → known outcome keeps the same focused
+control. Accepted and refused outcomes label that disabled control Original
+outcome confirmed, beside any literal refusal; the label means the outcome is
+known. Repeated unknown remains actionable. Leaving the pending or confirmed
+button retires that focus projection; later completion never reclaims focus.
+Existing shared Button owns pending/disabled activation guards. No focus call,
+timer, completion cache, new effect, CSS override or shared-control edit is added.
+ReadStatus is unchanged. All eight existing catalogs add the confirmed label.
+
+Two bounded Read/Edit-only Claude Code CLI tasks edit explicitly allowed paths:
+**210.860 s / 36 turns** and **190.837 s / 40 turns**, both without permission
+denials. Root reviews the actual diff, clarifies form-state naming, fixes the
+resource probe guard and retired-editor completion, and owns all checks. Twelve
+additional MCP regressions cover independent feedback/drafts, exact server
+origins, mutual exclusion, imports, probe locks, original retry identity, focused
+pending/accepted/refused/repeated-unknown controls, later focus, editor completion
+and cancellation/reopen lifetime. Synthetic key events do not substitute for
+native Return, Space and Option+Tab below.
+
+| Check                     | Actual result                                                                                                                  |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| MCP baseline              | **5 files / 104 tests**, 2.206 s                                                                                               |
+| Final MCP                 | **5 files / 116 tests**, 2.889 s                                                                                               |
+| Original policy counter   | Original ToolControls/ServerForm against the initial 109-test candidate: **3 failures / 106 passes**, 3.826 s                  |
+| Original recovery counter | Original feedback.tsx against final tests: **6 failures / 110 passes**, 3.114 s; candidate restored byte-exact                 |
+| Root review regressions   | Probe guard first fails, then passes; probe-control and retired-editor tests first give **2 failures**, then pass in final MCP |
+| Complete frontend         | **424 files / 4,543 tests**, 90.348 s                                                                                          |
+| Plugin gates              | Typecheck, lint, i18n and normal installed-component generation pass; only MCP changes among **22 installed resources**        |
+| Web and Native            | All **27 serial gates** pass: frontend, 25 non-Runtime Web gates and `make check-native`; Native 16.574 s                      |
+| Owned checks              | Formatting passes after the final README edit; final private assets build in 2.485 s                                           |
+
+Shared UI source is unchanged. The `d6e6dab34` complete shared UI result
+(**13 files / 229 tests**, packed offline consumer, 8.659 s) is reused, not rerun.
+Full Runtime, CLI, plugin backend and plugin-wide formatting suites are not run.
+The previously recorded unrelated Feedback formatting issue is outside this diff;
+it is not a newly run failure. Browser visual suites and benchmarks stay excluded.
+
+Final actual Wails tasks use production views, InstalledComponent, the generated
+MCP ESM, shared controls and canonical Runtime Protocol methods:
+
+- **English/light/14px/Orange/full motion:** keyboard exposure pending retains
+  Switch focus, Tools owns progress and Save remains Save. A known refusal
+  survives independent Description editing and Cancel/reopen. A fresh exposure
+  accepts off while later Description focus remains. Auto-approve refusal and a
+  fresh accepted on leave the editor open. Continued caret input produces exactly
+  `Keep this independent draft verified complete.` Keyboard Cancel returns to
+  Edit; Close and the original Composer continue with
+  `Continue after tool policy review. English verified.`
+- **Chinese/dark/18px/custom Blue/motion off, actual 200%:** resize from
+  **2878 × 1798** to **2244 × 1798** enters stacked Settings navigation with MCP
+  still visible. Keyboard exposure unknown → original retry → accepted off keeps
+  the same focused pending/confirmed button. Native repeated Return/Space remain
+  guarded. Option+Tab retires that projection and continues through both switches.
+  Auto-approve unknown → pointer original recovery → accepted on respects later
+  pointer focus in the read-only Description. No completed button reappears.
+  Continued caret input gives `工具策略之外保留这个草稿【已核对】。` Keyboard 取消
+  restores 编辑; Close/Cmd+0 retain the original Composer for
+  `策略核对后继续对话。 中文已核对。`
+- **German/light/18px/Purple/motion off, actual 200%, same resize:** the long
+  Reconcile and confirmed labels remain complete. Keyboard original recovery
+  reaches a known refusal while retaining the disabled confirmed button beside
+  its error; exposure stays on. Option+Tab removes that projection. Independent
+  Description editing gives `Dieser Entwurf bleibt unabhängig geprüft.` without
+  clearing the refusal. A fresh policy intent then accepts off. The wrapped
+  Timeout label and Beschreibung preserve aligned control tops. Keyboard
+  Abbrechen restores the Edit opener; Close/Cmd+0 retain the Composer for
+  `Nach der Richtlinienprüfung weiterschreiben. Deutsch geprüft.`
+
+Original, excluded preflight and three final processes all exit normally with
+code 0: **218.306 / 129.904 / 231.172 / 328.863 / 148.781 s**. The private producer
+delays writes by an abort-aware 12 seconds, rejects overlapping writes and
+requires original method/key/payload identity for unknown-result recovery; a new
+intent after a known refusal requires a new idempotency key. Only its in-memory
+policy projections advance. No live Runtime, provider, MCP process, real policy,
+configuration Save/Test/Reconnect/Delete or Send is used. Native observations
+use Sky accessibility, screenshots and real input without injected DOM or
+geometry. One automation assertion initially read an older local capture;
+fresh AX corrected the observation without repeating the product operation.
+
+The better-* review covers grouping, typography, hierarchy, feedback wording,
+themes/accents, focus, native reflow and visible control states in these scenes.
+HeroUI's real controlled/disabled Switch and pending Button demos inform state
+composition; ZCode's actual MCP server row informs server/action grouping, not
+tool-policy lifecycle. Installed Base UI Switch source confirms its existing
+focusable-disabled contract. All five references remain byte-exact. Motion timing,
+contrast measurements, VoiceOver speech, physical IME, RTL, other platforms,
+native 320-CSS-pixel reflow and every state permutation remain unverified.
+
+| Severity | Location                     | Before                                                     | After                                                         | Why                                    |
+| -------- | ---------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------- | -------------------------------------- |
+| MEDIUM   | MCPSettings / Tools / editor | Policy progress and refusal impersonate configuration work | Separate feedback owner with the same canonical resource lock | Correct task scope and retained drafts |
+| MEDIUM   | CommandFeedback              | Original retry unmounts the focused button                 | Stable pending/confirmed control until focus leaves           | Recovery continuity and WCAG 2.4.3     |
+| MEDIUM   | ServerForm completion        | Retired recovery can close a later editor                  | Existing presentation lifetime gates completion               | Preserve later editing intent          |
+| MEDIUM   | Resource probe guard         | Initial key split can bypass the existing connection test  | Resource and UI guards preserve mutual exclusion              | Preserve the original command contract |
+
+**Approve for the qualified tool-policy task only.** The whole-product goal
+remains active. Next inspect actual native configuration recovery and cancellation/
+reopen continuity, which have regression coverage but are outside this policy task.
+
+Final source verification covers **6,804 inputs**, **22 installed resources**,
+**333 Web / 4 app / 21 private host files** and five read-only references. Cleanup
+unregisters the owned app, removes **12 created targets**, restores all ten
+initially absent checkout roots and six UID-specific Library baselines, and
+removes the exact qualification root. No native process or private endpoint
+listener remains. Both pre-existing UI cache files and the protected 123-byte
+draft remain exact. Preserved in-thread evidence contains **253 text records /
+84 capture hashes**; gzip SHA-256:
+`fd27b8419796d3c459e9961b58432d17a704061efd084754df996c1b4d191da2`.
 
 ### MCP read recovery action continuity (2026-11-04)
 

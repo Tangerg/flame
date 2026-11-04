@@ -7,7 +7,7 @@ import {
 import { Button, Icon, Metadata, RecordBody } from "@flame/ui";
 import { Alert } from "@flame/icons/react";
 import type { ReactNode } from "react";
-import type { Read, MCPSettings } from "./settings";
+import type { Feedback, Read, MCPSettings } from "./settings";
 const column = {
   display: "grid",
   minWidth: 0,
@@ -66,14 +66,26 @@ export function CommandFeedback({
   onSettled?(): void;
 }) {
   const state = useSyncExternalStore(settings.subscribe, settings.getSnapshot);
+  // Projects DOM focus so a focused recovery keeps its identity through settlement.
+  const [focused, setFocused] = useState(false);
   const command = state.commands.get(resource);
+  const unknown = command?.phase === "unknown" ? command : undefined;
   const feedback = state.feedback.get(resource);
-  if (command?.phase === "unknown")
-    return (
-      <div role="alert" style={column}>
-        <RecordBody>{t("command.uncertain")}</RecordBody>
-        <RecordBody>{failureText(command.error)}</RecordBody>
+  const message = feedback && feedbackMessage(feedback, t);
+  const recovering = unknown !== undefined || focused;
+  if (!recovering && feedback?.kind !== "error") return message ?? null;
+  return (
+    <div role={unknown ? "alert" : undefined} data-focus-unit style={column}>
+      {unknown && <RecordBody>{t("command.uncertain")}</RecordBody>}
+      {unknown && <RecordBody>{failureText(unknown.error)}</RecordBody>}
+      {message}
+      {recovering && (
         <Button
+          pending={command?.phase === "running"}
+          disabled={!command}
+          focusableWhenDisabled
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           onClick={async () => {
             if (
               (await settings.recover(context, resource)) &&
@@ -82,13 +94,17 @@ export function CommandFeedback({
               onSettled?.();
           }}
         >
-          {t("command.reconcile")}
+          {t(command ? "command.reconcile" : "command.confirmed")}
         </Button>
-      </div>
-    );
-  if (feedback?.kind === "error")
+      )}
+    </div>
+  );
+}
+
+function feedbackMessage(feedback: Feedback, t: Translate) {
+  if (feedback.kind === "error")
     return <ErrorMessage>{failureText(feedback.error)}</ErrorMessage>;
-  if (feedback?.kind === "tested")
+  if (feedback.kind === "tested")
     return (
       <p role={feedback.outcome === "reachable" ? "status" : "alert"}>
         {t(
@@ -101,13 +117,11 @@ export function CommandFeedback({
         )}
       </p>
     );
-  if (feedback?.kind === "imported")
-    return (
-      <div role="status">
-        <RecordBody>{t("mcp.import.ok", { count: feedback.count })}</RecordBody>
-      </div>
-    );
-  return null;
+  return (
+    <div role="status">
+      <RecordBody>{t("mcp.import.ok", { count: feedback.count })}</RecordBody>
+    </div>
+  );
 }
 
 function ErrorMessage({ children }: { children: ReactNode }) {

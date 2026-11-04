@@ -78,7 +78,10 @@ export function ServerForm({
   }, []);
   const timeoutInvalid = edit.handshakeTimeout === undefined;
   const timeoutErrorId = useId();
-  const saving = settings.busy(key);
+  const busy = settings.busy(key);
+  // Tool-policy work locks this server without being a form submission.
+  const saving = state.commands.has(key);
+  const blocked = busy && !saving;
   const probing = state.probing.has(key);
   const jsonIssue = edit.jsonIssue;
   const jsonErrorId = useId();
@@ -119,7 +122,7 @@ export function ServerForm({
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
-            pending={saving}
+            pending={busy}
             value={draft.name}
             disabled={isEdit}
             onChange={(e) => updateDraft("name", e.target.value)}
@@ -134,7 +137,7 @@ export function ServerForm({
             ]}
             onChange={(value) => updateDraft("transport", value)}
             ariaLabel={t("mcp.form.transport.aria")}
-            disabled={saving}
+            disabled={busy}
           />
         </FormGroup>
       </FormRow>
@@ -151,7 +154,7 @@ export function ServerForm({
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              pending={saving}
+              pending={busy}
               value={draft.command}
               onChange={(e) => updateDraft("command", e.target.value)}
               placeholder={EXAMPLE.command}
@@ -166,7 +169,7 @@ export function ServerForm({
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
-                pending={saving}
+                pending={busy}
                 value={draft.args}
                 invalid={jsonIssue === "args"}
                 aria-describedby={
@@ -193,7 +196,7 @@ export function ServerForm({
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
-                pending={saving}
+                pending={busy}
                 value={draft.environment.text}
                 invalid={jsonIssue === "environment"}
                 aria-describedby={
@@ -232,7 +235,7 @@ export function ServerForm({
                       )
                     }
                     ariaLabel={t("mcp.form.env.clear")}
-                    disabled={saving}
+                    disabled={busy}
                   />
                 </div>
               )}
@@ -251,7 +254,7 @@ export function ServerForm({
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              pending={saving}
+              pending={busy}
               value={draft.dir}
               onChange={(e) => updateDraft("dir", e.target.value)}
             />
@@ -269,7 +272,7 @@ export function ServerForm({
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              pending={saving}
+              pending={busy}
               value={draft.url}
               onChange={(e) => updateDraft("url", e.target.value)}
               placeholder={EXAMPLE.url}
@@ -283,7 +286,7 @@ export function ServerForm({
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              pending={saving}
+              pending={busy}
               value={draft.authorization.text}
               onChange={(e) =>
                 updateDraft(
@@ -310,7 +313,7 @@ export function ServerForm({
                   )
                 }
                 ariaLabel={t("mcp.form.auth.clear")}
-                disabled={saving}
+                disabled={busy}
               />
             </div>
           )}
@@ -327,7 +330,7 @@ export function ServerForm({
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              pending={saving}
+              pending={busy}
               value={draft.headers.text}
               invalid={jsonIssue === "headers"}
               aria-describedby={
@@ -359,7 +362,7 @@ export function ServerForm({
                   updateDraft("headers", draft.headers.cleared(value))
                 }
                 ariaLabel={t("mcp.form.headers.clear")}
-                disabled={saving}
+                disabled={busy}
               />
             </div>
           )}
@@ -382,7 +385,7 @@ export function ServerForm({
             invalid={timeoutInvalid}
             aria-describedby={timeoutInvalid ? timeoutErrorId : undefined}
             aria-label={t("mcp.form.timeout")}
-            pending={saving}
+            pending={busy}
             value={draft.timeoutSec}
             onChange={(e) => updateDraft("timeoutSec", e.target.value)}
             placeholder={EXAMPLE.timeoutSeconds}
@@ -402,7 +405,7 @@ export function ServerForm({
           <TextField
             type="text"
             aria-label={t("mcp.form.description.aria")}
-            pending={saving}
+            pending={busy}
             value={draft.description}
             onChange={(e) => updateDraft("description", e.target.value)}
           />
@@ -417,6 +420,7 @@ export function ServerForm({
               variant="tonal"
               tone="negative"
               size="sm"
+              disabled={blocked}
               pending={saving}
               onClick={() => setConfirmingDelete(true)}
             >
@@ -430,14 +434,16 @@ export function ServerForm({
             settings={settings}
             resource={key}
             t={t}
-            onSettled={onDone}
+            onSettled={() => {
+              if (presented.current) onDone();
+            }}
           />
         }
       >
         <Button
           variant="outline"
           size="sm"
-          disabled={!valid}
+          disabled={!valid || blocked}
           pending={saving || probing}
           onClick={() => void onTest()}
         >
@@ -449,7 +455,7 @@ export function ServerForm({
         <Button
           variant="primary"
           size="sm"
-          disabled={!valid}
+          disabled={!valid || blocked}
           pending={saving}
           onClick={() => void onSave()}
         >
@@ -472,6 +478,7 @@ export function ServerForm({
               </Button>
               <Button
                 tone="negative"
+                disabled={blocked}
                 pending={saving}
                 onClick={() => {
                   setConfirmingDelete(false);

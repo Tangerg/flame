@@ -116,6 +116,7 @@ export const es: Record<string, string> = {
   "command.uncertain":
     "El resultado del comando original no está confirmado. Concílialo antes de emitir otro comando o cambiar de catálogo.",
   "command.reconcile": "Conciliar el comando original",
+  "command.confirmed": "Resultado original confirmado",
   "read.retained": "Se conserva la última lectura aceptada.",
   "mcp.form.args.invalid":
     "Introduce una matriz JSON de cadenas, o déjalo en blanco si no hay argumentos.",

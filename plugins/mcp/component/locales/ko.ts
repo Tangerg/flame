@@ -106,6 +106,7 @@ export const ko: Record<string, string> = {
   "command.uncertain":
     "원래 명령의 결과가 확인되지 않았습니다. 다른 명령을 실행하거나 카탈로그를 전환하기 전에 조정하세요.",
   "command.reconcile": "원래 명령 조정",
+  "command.confirmed": "원래 결과 확인됨",
   "read.retained": "마지막으로 수락된 읽기를 유지합니다.",
   "mcp.form.args.invalid":
     "문자열의 JSON 배열을 입력하세요. 인자가 없으면 비워 두세요.",
