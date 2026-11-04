@@ -6,7 +6,10 @@ controls. Runtime owns the server registry, connections, OAuth attempts and
 approval rules. The component calls those public operations directly.
 
 An explicitly constructed source retains drafts and original command observations
-across view closes. Source retirement clears secrets and fences new work. Writes
+across view closes. An authored draft is the only editable state of its editor;
+without one, the editor presents its current accepted server, so a save that
+accepts and clears the draft leaves any open editor showing the accepted values.
+Source retirement clears secrets and fences new work. Writes
 to one exact server identity are blocked while an earlier command is unconfirmed.
 Reconciliation observes its original promise and key. Sequential imports retain
 the accepted prefix and original in-flight command; they never restart that

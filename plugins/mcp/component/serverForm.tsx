@@ -63,8 +63,7 @@ export function ServerForm({
 }: Props) {
   const state = useSyncExternalStore(settings.subscribe, settings.getSnapshot);
   const key = editorKey(server?.id);
-  const [initialDraft] = useState(() => MCPServerEdit.of(server));
-  const edit = state.drafts.get(key) ?? initialDraft;
+  const edit = state.drafts.get(key) ?? MCPServerEdit.of(server);
   const draft = edit.fields;
   const isEdit = server !== undefined;
   const firstField = useRef<HTMLInputElement>(null);

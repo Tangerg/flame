@@ -29,6 +29,9 @@ now remain with Tools, independent of the configuration draft; original-command
 recovery retains its focused control through settlement and respects later focus.
 The English, Chinese and German native tasks and final checks are recorded under
 **MCP tool-policy ownership and original-result continuity (2026-11-04)**.
+Reopened MCP editors also retain the current accepted configuration after an
+older save clears its draft, preserving later focus, caret and authored changes;
+see **MCP current-server values after editor reopen (2026-11-04)**.
 The whole-product goal remains active.
 
 Diff filenames and same-row reader actions now share their first text baseline;
@@ -9373,6 +9376,116 @@ roots and six UID-specific Library roots, removes the exact qualification root,
 and preserves both existing UI caches and the protected 123-byte draft exactly.
 Preserved in-thread evidence: **69 text records / 35 capture hashes**; gzip SHA-256
 `717fc3a503bdf75863ceee47d6c4de14a026a61f61549ac4442efdb21ada5a6f`.
+
+### MCP current-server values after editor reopen (2026-11-04)
+
+Qualified from synchronized main `08a62f158`. The original actual Wails task is
+conversation draft → Settings → MCP servers → Edit workspace-tools → Description
+draft → Save → unknown result → original reconciliation → Cancel and reopen
+while that reconciliation runs. Acceptance correctly updates the canonical server
+but blanks Description in the newer, still-focused editor. Cancelling and
+reopening again shows the correct accepted value. This baseline reproduction is
+excluded from final acceptance, despite its normal process exit.
+
+`plugins/mcp/component/serverForm.tsx` removes its cached initial edit value.
+An authored source draft remains the sole editable state; without one, the form
+derives its fields from the current accepted server already supplied by ServerRow.
+Accepted draft cleanup therefore cannot expose an older initial server. The same
+input remains mounted, and later authored changes outlast registry refreshes.
+No effect, remount key, completion cache, state owner, API, dependency or shared UI
+change is added. Existing command identity, resource locks, masked secrets,
+original reconciliation and presentation-lifetime close guards remain intact.
+
+One bounded Read/Edit-only Claude Code CLI task takes **112.237 s / 16 turns**,
+with no permission denials. Root reviews the actual diff and all verification.
+The existing retired-editor recovery regression now checks accepted value,
+retained input/focus and continued drafting. One additional regression covers
+direct save acceptance after reopen, followed by a later authored draft surviving
+registry refresh. Its explicit later focus choice precedes deferred read
+settlement; synthetic click does not stand in for native focus behavior.
+
+| Check                   | Actual result                                                                                                       |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| MCP baseline            | **5 files / 116 tests**, 2.664 s                                                                                    |
+| Final MCP               | **5 files / 117 tests**, 2.683 s                                                                                    |
+| Original form counter   | Original ServerForm against final tests: **2 failures / 115 passes**, 3.249 s; candidate restored byte-exact        |
+| Complete frontend       | **424 files / 4,543 tests**, 88.830 s                                                                               |
+| Plugin gates            | Typecheck, lint and i18n pass; normal installed-component generation passes in 1.459 s                              |
+| Web and Native          | All **27 serial gates** pass: frontend, 25 non-Runtime Web gates and `make check-native`; Native 15.990 s           |
+| Owned checks and assets | Formatting and diff whitespace pass; final private assets build in 2.255 s; only MCP changes among 22 installed ESM |
+
+Shared UI is unchanged. The `d6e6dab34` result (**13 files / 229 tests**, packed
+offline consumer, 8.659 s) is reused, not rerun. Full Runtime, CLI, plugin backend,
+plugin-wide formatting, browser visual suites and benchmarks are not run. The
+historical unrelated Feedback formatting issue is not a newly run failure.
+
+Final actual Wails tasks use production views, InstalledComponent, the normal
+generated MCP ESM, shared controls and canonical Runtime Protocol commands:
+
+- **English/light/14px/Orange/full motion/100%:** original reconciliation runs
+  after an unknown Save; Cancel/reopen preserves the pending Description. A
+  native caret placed before the final period during that wait survives
+  acceptance: continued input produces `Keep the reopened server description verified.`
+  Keyboard Cancel returns to Edit and reopening retains the new draft. A fresh
+  configuration intent and its original reconciliation accept with the original
+  editor still mounted; that editor closes normally to its opener. Reopening
+  reads the accepted value, then continues to
+  `Keep the reopened server description verified continued.` Close returns to
+  `Continue after reopening the server editor. English verified.` in the unsent Composer.
+- **Chinese/dark/18px/custom #4E80FF/motion off/200%:** actual resize from
+  **2878 × 1798** to **2244 × 1798** enters stacked Settings navigation. Cancel
+  and reopen during a direct pending Save; later acceptance preserves the input,
+  focus and caret placed before the final punctuation while read-only. Continued
+  input produces exactly `等待保存后保留这个新编辑器的描述【已核对】。` Repeated
+  Return/Space on pending Save stay guarded. Keyboard 取消 returns to 编辑;
+  another reopen retains the authored draft. Close/Cmd+0 preserve the original
+  Composer for `重新打开编辑器后继续对话。 中文已核对。`
+- **German/light/18px/custom #4E80FF/motion off/200%, 2244 × 1798:** unknown
+  Save → keyboard original reconciliation → known refusal retains the original
+  focused pending/confirmed control and literal publisher refusal. Long action
+  labels fit; the wrapped Timeout label and Beschreibung retain aligned input
+  tops. Option+Tab retires the confirmed focus projection. Editing Description
+  clears its own refusal and continues to
+  `Diesen Konfigurationsentwurf behalten geprüft.` Cancel returns to Edit and
+  reopening retains that draft. Close/Cmd+0 continues the original Composer to
+  `Nach dem erneuten Öffnen weiterschreiben. Deutsch geprüft.` Native Appearance
+  confirms the actual custom Blue; the literal `accent=purple` fixture query was
+  ignored and does not qualify Purple in this batch.
+
+The baseline and three final processes exit normally with code 0 in
+**123.564 / 220.085 / 299.980 / 118.820 s**. The private producer delays writes by
+an abort-aware 12 seconds, permits description-only updates of the exact captured
+server, rejects overlap and requires the same original method/key/payload during
+unknown-result recovery. Accepted results advance the existing private canonical
+server array read by the registry. Save is exercised only against this isolated
+in-memory configuration; no live Runtime, provider, MCP process, real configuration
+write, tool-policy change, Test, Reconnect, Delete or Send occurs. Native evidence
+comes from Sky accessibility, screenshots and real input without DOM injection.
+
+The better-* review covers task grouping, readable feedback, typography, themes,
+visible focus, wrapped-label alignment and responsive layout in these scenes.
+HeroUI's actual controlled state and pending Button examples inform composition;
+ZCode's real server row informs grouping, without supplying lifecycle evidence.
+The same five read-only references remain byte-exact. Physical IME, VoiceOver
+speech, RTL, other platforms, native 320-CSS-pixel reflow, measured contrast,
+motion timing and every state permutation remain unverified.
+
+| Severity | Location            | Before                                              | After                                                     | Why                                      |
+| -------- | ------------------- | --------------------------------------------------- | --------------------------------------------------------- | ---------------------------------------- |
+| MEDIUM   | Reopened ServerForm | Accepted draft cleanup exposes stale initial fields | Absent authored draft renders the current accepted server | Preserve configuration and later editing |
+
+**Approve for this configuration reopen task only.** The whole-product goal
+remains active. Continue with an observed task in the content/Dock or another
+page family; no broader defect or award-level completion is inferred.
+
+Final verification covers **6,804 source inputs**, **22 installed resources**,
+**333 Web / 4 app / 21 private host files** and five read-only references. Cleanup
+unregisters the app, removes **12 created targets**, restores ten initially
+absent checkout roots and six UID-specific Library baselines, and removes the
+exact qualification root. No native process or private endpoint listener remains.
+Both existing UI caches and the protected 123-byte draft remain byte-exact.
+Preserved in-thread evidence: **180 text records / 51 capture hashes**; gzip SHA-256
+`f81a5197e52ecb0b67a2780d1c5bd939d9cdea89c21903dca024ff0277341bb0`.
 
 ### MCP tool-policy ownership and original-result continuity (2026-11-04)
 

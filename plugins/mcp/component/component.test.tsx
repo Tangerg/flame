@@ -979,8 +979,11 @@ it("blocks policy controls during a connection test without changing the draft",
     ).not.toBe("true"),
   );
 });
+const acceptedDescription = "Keep the reopened server description.";
+const continued = `${acceptedDescription} Newer editor continues.`;
 it("does not let a retired editor recovery close a newly opened editor", async () => {
   const { f } = await mount();
+  const accepted = { ...server, description: acceptedDescription };
   const result = Promise.withResolvers<typeof server>();
   const retry = vi.fn().mockReturnValueOnce(result.promise);
   f.update.mockReturnValueOnce(
@@ -991,7 +994,7 @@ it("does not let a retired editor recovery close a newly opened editor", async (
   );
   fireEvent.click(screen.getByRole("button", { name: "Edit docs" }));
   fireEvent.change(screen.getByLabelText("Description"), {
-    target: { value: "Original recovery draft" },
+    target: { value: acceptedDescription },
   });
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
   const reconcile = await screen.findByRole("button", { name: reconcileName });
@@ -1000,12 +1003,58 @@ it("does not let a retired editor recovery close a newly opened editor", async (
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   fireEvent.click(screen.getByRole("button", { name: "Edit docs" }));
   const reopened = screen.getByLabelText<HTMLInputElement>("Description");
-  await act(async () =>
-    result.resolve({ ...server, description: "Original recovery draft" }),
-  );
+  expect(reopened.value).toBe(acceptedDescription);
+  act(() => reopened.focus());
+  f.list.mockResolvedValue({ data: [accepted] });
+  await act(async () => result.resolve(accepted));
   expect(reopened.isConnected).toBe(true);
-  fireEvent.change(reopened, { target: { value: "Newer editor continues" } });
-  expect(reopened.value).toBe("Newer editor continues");
+  expect(document.activeElement).toBe(reopened);
+  expect(reopened.value).toBe(acceptedDescription);
+  fireEvent.change(reopened, { target: { value: continued } });
+  expect(reopened.value).toBe(continued);
   expect(f.update).toHaveBeenCalledTimes(1);
   expect(retry).toHaveBeenCalledTimes(1);
+});
+it("keeps a reopened editor on its accepted server after an in-flight save, then lets its new draft outlast a registry refresh", async () => {
+  const { f } = await mount();
+  const accepted = { ...server, description: acceptedDescription };
+  const result = Promise.withResolvers<typeof server>();
+  f.update.mockReturnValueOnce(mutation(result.promise));
+  fireEvent.click(screen.getByRole("button", { name: "Edit docs" }));
+  fireEvent.change(screen.getByLabelText("Description"), {
+    target: { value: acceptedDescription },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  fireEvent.click(screen.getByRole("button", { name: "Edit docs" }));
+  const reopened = screen.getByLabelText<HTMLInputElement>("Description");
+  expect(reopened.value).toBe(acceptedDescription);
+  act(() => reopened.focus());
+  f.list.mockResolvedValue({ data: [accepted] });
+  await act(async () => result.resolve(accepted));
+  expect(reopened.isConnected).toBe(true);
+  expect(document.activeElement).toBe(reopened);
+  expect(reopened.value).toBe(acceptedDescription);
+  fireEvent.change(reopened, { target: { value: continued } });
+  expect(reopened.value).toBe(continued);
+
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole("button", { name: "Refresh" })
+        .getAttribute("aria-disabled"),
+    ).not.toBe("true"),
+  );
+  const registry = Promise.withResolvers<Awaited<ReturnType<typeof f.list>>>();
+  f.list.mockReturnValueOnce(registry.promise);
+  fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+  act(() => reopened.focus());
+  await act(async () =>
+    registry.resolve({
+      data: [{ ...accepted, description: "Registry description elsewhere" }],
+    }),
+  );
+  expect(document.activeElement).toBe(reopened);
+  expect(reopened.value).toBe(continued);
+  expect(f.update).toHaveBeenCalledTimes(1);
 });
