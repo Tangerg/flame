@@ -290,6 +290,79 @@ describe("ModalDialog over a hidden owner", () => {
   });
 });
 
+function StyleHiddenScene({
+  visibility,
+  returnTo,
+}: {
+  visibility: "visible" | "hidden" | "collapse";
+  returnTo: "ref" | "resolver";
+}) {
+  const fallback = useRef<HTMLButtonElement>(null);
+  const opener = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button ref={fallback}>Conversation</button>
+      <div style={{ visibility }}>
+        <ContentVisibility
+          visible={visibility === "visible"}
+          fallbackFocus={fallback}
+        >
+          <button ref={opener} onClick={() => setOpen(true)}>
+            Remove report
+          </button>
+          <ModalDialog
+            open={open}
+            onOpenChange={setOpen}
+            title="Remove report"
+            finalFocus={returnTo === "ref" ? opener : () => opener.current}
+            footer={<button onClick={() => setOpen(false)}>Cancel</button>}
+          />
+        </ContentVisibility>
+      </div>
+    </>
+  );
+}
+
+describe("ModalDialog over a style-hidden owner", () => {
+  it.each([
+    ["hidden", "ref"],
+    ["hidden", "resolver"],
+    ["collapse", "ref"],
+    ["collapse", "resolver"],
+  ] as const)(
+    "rejects a visibility:%s %s target that keeps its layout boxes",
+    async (visibility, returnTo) => {
+      const view = render(
+        <StyleHiddenScene visibility="visible" returnTo={returnTo} />,
+      );
+      const conversation = screen.getByRole("button", {
+        name: "Conversation",
+      });
+      const opener = screen.getByRole("button", { name: "Remove report" });
+      act(() => opener.focus());
+      fireEvent.click(opener);
+      await screen.findByRole("dialog");
+
+      view.rerender(
+        <StyleHiddenScene visibility={visibility} returnTo={returnTo} />,
+      );
+
+      expect(getComputedStyle(opener).visibility).toBe(visibility);
+      expect(opener.getClientRects().length).toBeGreaterThan(0);
+      expect(opener.getBoundingClientRect().width).toBeGreaterThan(0);
+      expect(getComputedStyle(conversation).visibility).not.toMatch(
+        /^(hidden|collapse)$/,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      await vi.waitFor(() => expect(document.activeElement).toBe(conversation));
+      expect(document.activeElement).not.toBe(opener);
+    },
+  );
+});
+
 function ModelEditor({ result }: { result: string | null }) {
   const [title, setTitle] = useState("");
   return (

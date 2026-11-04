@@ -288,7 +288,9 @@ any focus the user moved elsewhere survive the reveal unchanged. A host may supp
 task above its owner: its content stays visible while the owner hides, so nested
 popups keep working. Closing it over a hidden owner keeps an explicit `false`, a
 do-nothing callback, or a visible target, and otherwise focuses the host's
-`fallbackFocus` rather than the hidden opener, or nothing without one.
+`fallbackFocus` rather than the hidden opener, or nothing without one. A target
+whose computed `visibility` is `hidden` or `collapse` keeps its layout box but is
+not a visible final-focus target.
 `Facts` keeps labels with their values in equal, container-responsive columns.
 Column edges remain shared across rows; narrow containers reduce the column count.
 Long identities and paths wrap completely inside each pair, and visual reading

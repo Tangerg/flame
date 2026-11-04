@@ -17,14 +17,19 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Modal cancellation after responsive Dock hiding now returns to the existing
+visible workspace target. The next native Tab stays in the conversation;
+restoring the Dock retains ordinary opener return. See **Visible modal return
+after Dock retreat (2026-11-05)** for the reproduced baseline, four regressions,
+three final native tasks and bounded acceptance. Continue inspecting actual
+remaining forms and their reading/return paths before choosing another change.
+
 Display text now uses natural tracking. GenUI digit-only metrics retain exact
 text while wrapping into balanced lines, including the native 16-digit receipt
 at 200% zoom. Three original, six exploratory and eight final native processes
 qualify the inspected heading/value families; see **Natural display spacing and
-literal numeric reflow (2026-11-04)**. A cancellation after responsive Dock
-hiding loses its original focus target. Reproduce that observed return path on
-the baseline and repair its actual focus owner next. Whole-product acceptance
-remains unproven.
+literal numeric reflow (2026-11-04)**. The cancellation follow-up is resolved
+above. Whole-product acceptance remains unproven.
 
 Expanded resource rows now separate their summary and body with existing
 whitespace. Six original and six candidate native processes qualify the six
@@ -9223,6 +9228,121 @@ report when its initiating focus remains unclaimed; otherwise it names the saved
 copy in archive feedback. The published ESM was rebuilt. Existing Runtime
 installations require explicit reinstallation and selection of the new package
 digest; a source/resource rebuild does not update an admitted installation.
+
+### Visible modal return after Dock retreat (2026-11-05)
+
+Continued from synchronized main `876419fc0`. Actual unchanged Wails reproduces
+the preceding typography batch's incomplete return: open the saved weekly
+report's removal decision, zoom to 200% so the Dock retreats, then Escape.
+Focus lands on HTML content and the next native Tab restarts the fixture
+sidebar, interrupting continued work in the conversation.
+
+| Severity | Location                                                             | Before                                           | After                                                                                  | Why                                                                                                                                                  |
+| -------- | -------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MEDIUM   | `packages/ui/src/modal-dialog.tsx:292`, hidden-owner explicit return | A CSS-hidden target passes the layout-box check. | Reject computed `visibility: hidden` and `collapse`, using the existing host fallback. | [WCAG 2.4.3 focus order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html): dismissal should retain a meaningful next keyboard position. |
+
+The shared modal already owns this return policy and the workspace supplies its
+current `fallbackFocus`. The defect is its visibility predicate: CSS-hidden
+buttons retain nonempty layout rectangles. The same predicate now checks their
+computed visibility, preserving the connected-element and layout-box checks.
+No global fallback, new state, event handler, observer, timer, dependency,
+styling change or consumer-specific patch is added. The installed Base UI 1.9
+focus lifecycle remains the mechanism. Visible-owner pass-through, an explicit
+`false`, a do-nothing resolver, a visible explicit target, portal visibility,
+nested popup behavior, IME Escape and current host fallback ownership remain.
+All 22 normally generated installed resources stay byte-identical; this batch
+introduces no installed-resource migration.
+
+The bounded Read/Edit-only Claude Code CLI adds regression coverage and repairs
+only the shared implementation/README. Root reviews the actual diffs and
+performs the checks and native tasks. The four regressions retain CSS-hidden
+layout boxes and exercise ref/resolver targets under `hidden`/`collapse`.
+Against unchanged production code, all four fail at the wrong return target;
+all four pass after repair. The original 14 modal tests also pass.
+
+The first new test run stops earlier at an incorrect Happy DOM assumption that
+default computed visibility is the literal `visible`; that environment returns
+an empty string. The fixture assertion now rejects the two explicit hidden
+states. This initial failure is retained separately and is not product-defect
+evidence. The subsequent four failures at the actual focus outcome establish
+the regression without changing any production assertion or mock geometry.
+
+Passed on final source: **233** shared UI tests in 13 files, including all
+**18** modal-visibility cases, and the independent offline packed consumer;
+**134** Web task tests in four actual files; normal component generation,
+owned formatting and `git diff --check`. The original baseline has 14 modal
+tests and 118 tests across the workspace/report pair. All **4,547** frontend
+tests in 424 files pass in **228.346 seconds** and all **27** serial Web/native
+gates pass; `make check-native` takes **40.127 seconds**. Final private assets
+build in **2.465 seconds**. Timings are receipts, not performance measurements.
+
+An initial related-test command includes two nonexistent wrapper-test filters;
+only its three real matches run. Its receipt remains separate. The final exact
+four-file command uses the actual text-editor-dialog test and passes all 134
+tests. No absent filter is claimed as coverage. No browser suite, performance
+benchmark, Runtime/CLI/plugin backend suite, full plugin formatting or VoiceOver
+speech test runs. The previously recorded unchanged Feedback formatting failures
+are not cleared by this batch.
+
+One original and three final actual native processes all quit normally with
+exit 0. Final inspected tasks:
+
+- **German/light/18 px/purple/no motion:** weekly report removal initially
+  focuses Cancel. At native 200% and settled 3024 to 2244 px resizing, Escape
+  returns to the visible conversation's More actions entry. The next native
+  Tab reaches Copy message. Actual Size reveals the same weekly report;
+  reopening/canceling with its opener visible restores Remove. The exact
+  Composer draft continues as `Nach der Entscheidung hier fortsetzen. Bereit.`
+- **Chinese/dark/18 px/blue/no motion:** pointer Cancel at 200% returns to the
+  visible conversation entry; the next native Tab reaches Copy message.
+  Reopening, 200% native wide/narrow reading and the close button use the same
+  visible return. Actual Size retains the weekly report and exact drafting
+  continues as `取消后继续核对同一份报告。继续。`. Two transient 650 px captures
+  do not qualify settled geometry; fresh 2878 px return and 2244 px dialog
+  captures do.
+- **English/light/14 px/orange/full motion:** actual two-record Schedules list,
+  Add, initial Title focus, keyboard Instructions editing, native 200% Model
+  entry and its visible popup. First Escape returns to Model with the exact
+  title/instructions retained; native wheel reading reveals them again.
+  Second Escape returns to the visible conversation entry and the next Tab
+  reaches Copy message. Actual Size keeps one enabled/one disabled record;
+  a fresh visible Add/cancel returns to Add. The exact conversation draft
+  continues as `Continue after canceling the schedule draft. Ready.`
+
+Sky's user-change guard interrupts the initial Schedule Model Tab probe; it is
+unqualified. Fresh actual state retains the owned title/instructions and shows
+the user's current model/effort choices. Those choices are left intact while
+the fresh keyboard popup/Escape path is qualified. The dedicated test-restart
+authorization remains in effect; no save or command admission occurs. Modal
+cancellation intentionally discards its local editing task; the conversation
+draft and existing records remain intact.
+
+The shared predicate repair changes no layout, type, palette or motion roles.
+Native images check complete inspected title/control alignment and bounded
+reading alongside focus. Accessibility names, roles and states are read through
+native AX; this does not qualify screen-reader speech. Read-only transport
+supplies deterministic data to the actual components with the same 12 frozen
+private inputs and current Wails host. No production UI override, live
+Runtime/provider, Send, Save, Delete, trust/policy/config change or real backend
+execution is used. Other modal consumers, RTL and every page/state permutation
+are not newly qualified.
+
+Final review checks **6,804** source inputs with only the modal implementation
+and regression-test deltas, all **22** unchanged resources, **333** built web
+files, four unchanged app files, 24 unchanged copied host files, 12 frozen
+private inputs, two unchanged references and **57** capture hashes. The private
+bundle passes strict signature verification. Ownership-checked retirement
+removes **11** created output/UID-specific Library targets, unregisters the
+bundle and deletes `/private/tmp/flame-modal-return-SPTZAJ`. All **17** expected
+absences, both original UI cache hashes and the protected **123-byte** draft are
+verified; the primary checkout's existing `.task` is preserved. The round-tripped
+in-memory archive retains **219** UTF-8 records and metadata/hashes for **57**
+captures; gzip SHA-256 is
+`d84c4797fa5fba89b14c3ada438871ea8c284b53283b2714dcf7ef69faf3aec6`.
+
+Approve this inspected modal return repair. Continue actual remaining form
+reading and return review; whole-product and award-level acceptance remain
+unproven and the goal stays active.
 
 ### Natural display spacing and literal numeric reflow (2026-11-04)
 

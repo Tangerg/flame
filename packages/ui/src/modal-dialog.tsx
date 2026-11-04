@@ -290,5 +290,9 @@ function hiddenOwnerFinalFocus(
 }
 
 function isShown(element: HTMLElement): boolean {
-  return element.isConnected && element.getClientRects().length > 0;
+  if (!element.isConnected || element.getClientRects().length === 0)
+    return false;
+  // CSS-hidden boxes keep their layout rectangles but cannot hold focus.
+  const { visibility } = getComputedStyle(element);
+  return visibility !== "hidden" && visibility !== "collapse";
 }
