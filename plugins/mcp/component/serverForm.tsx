@@ -164,6 +164,7 @@ export function ServerForm({
               <TextArea
                 font="mono"
                 rows={3}
+                autosize
                 aria-label={t("mcp.form.args")}
                 autoCapitalize="none"
                 autoCorrect="off"
@@ -191,6 +192,7 @@ export function ServerForm({
               <TextArea
                 font="mono"
                 rows={3}
+                autosize
                 aria-label={t("mcp.form.env")}
                 autoCapitalize="none"
                 autoCorrect="off"
@@ -325,6 +327,7 @@ export function ServerForm({
             <TextArea
               font="mono"
               rows={3}
+              autosize
               aria-label={t("mcp.form.headers")}
               autoCapitalize="none"
               autoCorrect="off"

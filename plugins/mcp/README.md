@@ -25,6 +25,12 @@ policy write never closes the editor or reports its draft as saved. The editor
 shows Saving… only for its own submission; other work on the server makes it
 read-only.
 
+The editor's inline JSON fields, Arguments and Environment for stdio and Headers
+for HTTP, keep a three-row minimum and grow or shrink with their wrapped content
+in normal page flow through the shared `TextArea autosize` owner, rather than
+scrolling inside a fixed three-row box. The JSON import dialog keeps its own
+bounded editor.
+
 While it holds focus, Reconcile original command stays the same button through
 the pending original retry. A known outcome, accepted or refused, leaves it disabled
 as Original outcome confirmed beside any literal refusal; a repeated unknown keeps

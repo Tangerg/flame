@@ -17,6 +17,15 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+MCP's inline JSON fields now grow with their wrapped values through the existing
+shared TextArea sizing owner. The original long-argument clipping case passes
+at native 200% and a settled 2244 × 1898 window, with aligned field tops and
+complete value/end visibility. Three original and three final native processes
+cover the connection-form review, edited HTTP/stdio fields, Add cancellation and
+continued conversation. See **MCP inline JSON sizing and connection-form native
+review (2026-11-05)**. Continue inspecting actual remaining pages and their
+reading/return paths; whole-product acceptance remains unproven.
+
 Modal cancellation after responsive Dock hiding now returns to the existing
 visible workspace target. The next native Tab stays in the conversation;
 restoring the Dock retains ordinary opener return. See **Visible modal return
@@ -10984,6 +10993,145 @@ retains **152 text records / 33 capture digests**, gzip SHA-256
 `f4d043b62b69c8f6fd330559cf0c97692f9146afb27fb911375b0659f3cc9785`.
 Normal hooks, main integration and independent remote verification remain
 required publication steps. There is no protocol, resource or data migration.
+
+### MCP inline JSON sizing and connection-form native review (2026-11-05)
+
+Qualified from published main `76273ec7d`. The native connection-form review
+retains the existing Provider endpoint error, masked stored-key decision, MCP
+failure explanation, inline editor and bounded JSON-import interactions. It
+reproduces a new reading failure in the actual Chinese dark stdio editor: the
+literal argument draft
+`["--workspace", "/Users/visual/a-long-workspace-name/connection-review"]`
+outgrows its fixed three-row TextArea after native 200% zoom. Narrowing the
+window leaves its retained end/caret outside the internal scrollport; a real
+Left movement reveals it. Shared label and input-top alignment already passes.
+
+`plugins/mcp/component/serverForm.tsx` opts its three inline JSON TextAreas,
+Arguments, Environment and Headers, into the existing shared `autosize` owner.
+Their three-row minimum remains; longer values occupy their natural height in
+the page and shrink when content or wrapping contracts. Shared UI still owns
+content, width and font measurement. No local measurement, observer, effect,
+state or focus handler is added. Names, validation IDs, pending behavior, secret
+disposition, draft retention and command lifecycles remain with their existing
+owners. The separate JSON-import dialog keeps its bounded editor.
+
+Better-layout grounds growth without clipped editing content and shared edges.
+Better-typography and accessibility guide literal value reading, visible focus,
+keyboard order and cancellation. Read-only HeroUI's actual `textarea.css`, rows
+demo and controlled-value demo supply native rows/labels/value evidence; they
+do not supply an autosizing implementation. Flame's existing TextArea and Memory
+consumer establish the implementation boundary. Approved Orange, custom accents,
+theme surfaces and motion policy remain unchanged.
+
+| Severity        | Location                                                  | Before                                                                                                           | After                                                                                                | Why                                                                 |
+| --------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| HIGH · resolved | `plugins/mcp/component/serverForm.tsx` inline JSON fields | Arguments reproduces retained-end/caret clipping at 200%; Environment and Headers share its fixed editing family | Existing shared content sizing exposes the complete inspected values and preserves common input tops | Plan for growth and clipping while retaining readable configuration |
+
+The first path-filtered Read/Edit-only Claude CLI attempt makes no edits after
+four Edit refusals. With Read/Edit enabled for the same explicit two-file task,
+the next attempt finishes in **24.159 s / 11 turns**, with no permission denials.
+Root reviews the actual three added props and README paragraph. Rebuilt MCP ESM
+differs from its original bytes only by those same three `autosize` properties;
+the other **21 installed resources** are byte-identical. There is no Runtime,
+protocol, persisted-data or dependency change. An existing Runtime installation
+is not updated by a checkout resource build.
+
+Final serial verification passes:
+
+| Check                 | Actual result                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------------ |
+| Focused MCP baseline  | **5 files / 117 tests**, 3.622 s                                                                       |
+| Focused MCP candidate | **5 files / 117 tests**, 3.418 s                                                                       |
+| Web view unit checks  | **30 files / 660 tests**, 20.182 s; no browser suite                                                   |
+| Plugin checks         | ESM generation, typecheck, lint, eight-locale closure and owned formatting                             |
+| Web checks            | Typecheck, design-system boundary, generated resources, installed module linkage and production bundle |
+| Native gate           | `make check-native`, including Desktop Go checks and Wails build, **18.235 s**                         |
+| Final native assets   | Unmodified repository fixture entry and current installed ESM, **2.509 s**                             |
+
+All **13 final serial gates** and `git diff --check` pass. No test asserts a CSS
+prop or simulated geometry in place of native acceptance. Shared UI and other
+frontend sources remain frozen at the previously verified main; their complete
+suites are not rerun for this consumer-only prop change. Full frontend, Runtime,
+CLI, plugin backend and plugin-wide formatting suites, browser suites and
+performance benchmarks are not newly run. The previously recorded unrelated
+Feedback formatting issues are not claimed cleared.
+
+Actual native tasks use Sky screenshots and AX, without DOM access or injected
+observers:
+
+- **Original Providers, English/light/14px/Orange/full motion:** local invalid
+  endpoint feedback and disabled Save/Test remain legible at normal size,
+  native 200% and actual narrower width. The stored-key decision is cancelled;
+  category changes and real Mod+, reopening retain the endpoint draft. Settings
+  closes to the current Workspace diff region, and pointer return continues the
+  original conversation draft. No original-Composer focus restoration is claimed.
+- **Original MCP HTTP, German/light/18px/purple/motion off:** long failure
+  identity, complete failure explanation, editor, wrapped Timeout/Description
+  control tops and bottom actions remain readable. Deliberately invalid JSON
+  import exercises local parsing before command admission. Escape and pointer
+  cancellation return to Import; reopening retains the exact invalid draft.
+- **Original MCP stdio, Chinese/dark/18px/blue/motion off:** ordinary form and
+  field tops pass. The long-argument zoom/resize failure above is retained as
+  baseline evidence, not accepted long-draft readability.
+- **Final stdio, same Chinese scene:** the exact original argument text and end
+  are complete after native 200% and settled **2244 × 1898** resizing. Adjacent
+  Environment grows with its long value and shrinks to three rows. `{}` shows
+  its real local nonempty-object error without disturbing control tops; a valid
+  shorter object clears it. Pointer Cancel returns to Edit. Reopening retains
+  exact Arguments and Environment, and the original conversation continues.
+- **Final HTTP, same German scene:** long Headers grow above three rows with
+  their final literal marker and caret visible. Native resize retains complete
+  content, and two-line Timeout beside one-line Description retains common input
+  tops. Native Tab reaches the visible Cancel; Return restores Edit. Reopening
+  retains exact Headers, followed by continued original conversation.
+- **Final Add, English/light/14px/Orange/full motion:** initial focus enters
+  Server name. A five-line authored argument array grows naturally beside the
+  three-row Environment with common tops. Keyboard Cancel returns to Add;
+  reopening retains name, command and literal multiline JSON. Pointer Cancel and
+  continued conversation also pass. Test/Add are never activated.
+
+All **six** processes exit **0**. In original Providers, original German HTTP,
+original Chinese stdio, final Chinese stdio, final German HTTP and final English
+Add order, their durations are **334.160 / 475.712 / 297.377 / 373.950 /
+176.995 / 139.482 s**. External interaction interrupts the first final Chinese
+zoom sequence and a later corrected-draft Tab sequence; fresh state is read before
+continuing. Those interrupted probes, unfocused frames and transient thumbnail
+geometry are excluded. The accepted narrow image is the settled full-size frame.
+An initial freeze assertion omits the generated ESM from the tracked input map;
+the corrected freeze admits exactly the hand-authored file and its generated
+projection, with no unexpected source change.
+
+The observed Settings close target is traced through `useInspectionFocus` and
+the existing workspace regressions. Generic presentation focus intentionally
+enters the visible Dock or Conversation region; it does not own a Settings
+opener lease. That behavior is retained, with no Settings-specific state or
+fallback. The dedicated test-window restart authorization remains in force.
+
+Typography, whitespace, hierarchy, color, motion, micro-interaction, responsive
+behavior and originality are reviewed at this field/task scope. Existing tokens
+and motion behavior are retained; actual value reflow, themes and cancellation
+receive the checks above. **Approve** the inspected inline JSON repair. VoiceOver
+speech, OS IME, RTL, native 320 CSS px, other platforms, new contrast/timing
+measurements, arbitrarily large configuration, live Runtime/MCP execution,
+credential writes, valid import, Save and Test remain unverified. No whole-product
+or award-tier acceptance is claimed. Continue inspecting actual remaining page
+headers and reading/return flows before selecting the next change.
+
+Cleanup is complete. The exact bundle is unregistered, all native processes have
+exited and its private endpoint is inactive. **12** newly created checkout/UID
+Library targets are retired, and the exact private qualification root is removed:
+all **17** output/Library/root absence checks pass. Two pre-existing UI cache
+files and the protected **123-byte** draft remain byte-exact. The freeze verifies
+**6,804 tracked non-Markdown inputs**, **22 resources**, **five read-only
+references**, **13 private inputs**, **333 Web assets**, **four app files** and
+**24 private host-source files**. Only the hand-authored MCP file and its generated
+ESM change among the tracked inputs.
+
+The verified in-memory gzip retains **208 flat UTF-8 records**, **103 capture
+metadata entries**, original/final maps, task observations, check receipts and
+retirement evidence. It is **773,879 bytes**, SHA-256:
+`b9aabb49dd7ea0fdca62ba1d76f87c6f018b3ed276f0a58a22cac57940ba5011`.
+Normal hooks, main integration and remote verification remain publication steps.
 
 ### Shared form label tracks and control-top alignment (2026-11-04)
 
