@@ -17,6 +17,16 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+The renewed Schedules native review on `58d095069` finds no new alignment or
+task-return defect in the inspected English light/14 px and Chinese dark/18 px
+paths. Both cover a real 320 px Dock, 200% editor reading, model refresh,
+cancellation, retained filtering and continued conversation drafts; Chinese
+also covers native window resizing. Fresh main fetch and merge report already
+up to date. See **Schedules native editing and retained reading after main
+(2026-11-05)**. Product inputs remain unchanged and owned qualification
+resources are retired. Continue with actual remaining paths; whole-product
+acceptance remains open.
+
 The renewed Usage native review on `c78cd50f3` finds no new alignment or
 reading-return defect in the inspected English light/14 px and Chinese dark/18 px
 tasks. Both cover a real 320 px Dock, 200% main-area reading, refresh and continued
@@ -10964,6 +10974,93 @@ and section numbering. Use content, spacing and plain typography for hierarchy;
 preserve exact authored material and required object/status facts while reducing
 presentation chrome. Start with the observed repeated labels and container
 boundaries in the content/Dock surfaces. The goal remains active.
+
+### Schedules native editing and retained reading after main (2026-11-05)
+
+Continued from published main `58d095069`. The user's requested fresh main
+fetch and merge return already up to date at that same commit, with zero
+ahead/behind. Local main `00c172c73` is already an ancestor; its clean primary
+checkout remains untouched. This batch changes only this handoff record.
+
+The actual Schedules component keeps schedule identity, captured revision and
+the local editor together. Its shared FormRow, ModalDialog, Select and Panel
+owners continue to govern alignment, reading and focus. Read-only ZCode evidence
+from `AutomationEditView.tsx` covers the real task form and bounded Cancel/Confirm
+footer; it informs task boundaries without importing its cron or model layers.
+The existing better-layout and accessibility guidance informs translated-field
+reading and the meaningful next keyboard position after dismissal.
+
+Two actual Wails 3.1.0 processes qualify these inspected tasks:
+
+- **English/light/14 px/Orange:** native keyboard resizing confirms a 320 px
+  Dock. Filtering `nightly` retains the enabled `sch_nightly` record and its
+  expanded nine-fact details. Edit initially focuses Title with captured revision 1.
+  Local title/instruction changes remain present at native 200%; Cron and
+  Time zone share their field edge/height, Workspace follows the leading edge,
+  and the persistent footer remains available. The Model popup, reasoning
+  options and a local `high` selection are readable. Refresh retains the draft,
+  selection and focus. Keyboard Cancel closes the task; full-width reading keeps
+  the query, expansion and original title/instructions/model/`medium` effort.
+  Actual Size and a fresh Edit confirm the canonical fields. Escape with a
+  visible owner returns to that schedule's More actions. Returning to the
+  conversation continues the exact unsent draft as
+  `Keep the schedule editor draft. Ready.`
+- **Chinese/dark/18 px/blue:** the actual Dock is also 320 px. An unmatched
+  Chinese query shows the local filtered-empty result; keyboard clear restores
+  both records and search focus. Filtering `weekly` retains disabled
+  `sch_weekly`, revision 3, and its expanded eight-fact details. Editing local
+  Chinese title/two-line instructions at native 200% preserves timing, workspace,
+  the Runtime default model and correctly disabled reasoning choice. The nested
+  Model popup and Escape work; refresh retains the draft and its focus. Native
+  Window > Move & Resize > Top Left settles at **2240 × 1456 px**. Wheel reading
+  reaches the aligned Execution fields/refresh while the footer stays available.
+  Pointer Cancel retains the query, expansion and canonical record. Full-width
+  200% reading exposes the literal workspace/model and final date facts without
+  horizontal clipping. Actual Size and a fresh Edit restore the original fields;
+  its Close button returns to the visible schedule action. The conversation
+  draft continues as `核对定时任务后继续。继续。`.
+
+Cancellation while zoom has hidden the Dock returns to the visible conversation
+More actions entry, and the next native Tab reaches Copy message in both
+locales. Source tracing and the existing **Visible modal return after Dock
+retreat** qualification confirm this is the established host fallback. An initial
+interpretation that it should return to the hidden schedule entry was incorrect;
+no competing focus owner or new fallback is added. Cancellation intentionally
+discards only the editor task. A visible opener still receives ordinary return.
+
+The fixture sidebar reflows above the workspace at zoom; its actual collapse
+control restores reading room for the full-width task inspection. That fixture
+chrome is not treated as product misalignment. Two native input guards require
+fresh state before continuing; interrupted inputs are not claimed as coverage.
+The **572 × 440 px** initial Chinese editor capture is not settled geometry
+evidence. Subsequent normal/200% captures and the resized task provide it.
+
+All **nine serial preparation gates** pass: normal Icons/UI/installed-resource
+builds, private native formatting/assets/host build, signing, strict signature
+verification and app registration. The two native processes quit normally with
+exit 0 after **1029.989** and **405.324 seconds**. These are receipts, not
+performance measurements. All **6,630 tracked non-Markdown inputs**, **331**
+private web files, **24** private host files and **four** signed app files remain
+byte-identical across native qualification. No implementation or new automated
+test is needed for this unchanged-source review.
+
+The standard deterministic fixture imports the actual Schedules source through
+InstalledComponent and the existing SDK Runtime client. No live Runtime,
+provider, Save, Run, Delete, enable/disable command or Send is invoked. The fast
+read refresh does not qualify pending latency, provider failure or durable command
+reconciliation. Browser visual suites, performance benchmarks, backend suites,
+RTL and screen-reader speech are not run or newly qualified.
+
+Owned retirement unregisters the private app, confirms its exact process and
+port **50971** inactive, removes its two created UID-specific Library stores,
+verifies all six store paths absent and deletes
+`/private/tmp/flame-schedule-review-oAmoaZ`. Six existing output trees regain their
+baseline hashes, including the two changed UI output files; five initially absent
+output roots stay absent. Both original UI cache hashes, the 58 nested dependency
+files and the primary checkout are preserved. The round-tripped in-memory archive
+retains **100 UTF-8 records** and metadata/hashes for **37 captures**; gzip SHA-256
+is `a834557b097498b9c6d649fe560d5bb7311e18f831b5ab871a0a44edd4a01c19`.
+Continue inspecting actual remaining tasks; whole-product acceptance stays open.
 
 ### Schedules page reading and shared alignment (2026-11-03)
 
