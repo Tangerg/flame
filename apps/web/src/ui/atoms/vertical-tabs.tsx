@@ -97,6 +97,10 @@ const styles = stylex.create({
     gridRow: { default: 1, "@container (max-width: 40rem)": 2 },
     minHeight: 0,
     minWidth: 0,
+    // Clip scrolling content before the reserved inset focus perimeter.
+    borderWidth: "2px",
+    borderStyle: "solid",
+    borderColor: "transparent",
     overflowY: "auto",
     overscrollBehavior: "contain",
     scrollPaddingBlock: space.s4,

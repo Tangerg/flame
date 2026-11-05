@@ -305,6 +305,8 @@ remain settings search terms through their existing catalog keys.
 Personalization uses the same direct label/control row for Streaming style and
 retains both its smooth and typewriter choices.
 Each active settings tab panel owns its scroll viewport and keyboard focus.
+A 2 px transparent border clips its child canvas inside the shared inset keyboard
+perimeter, including during native page zoom.
 Shared Select closes when Base UI reports its trigger fully clipped; dismissal
 keeps the current value and viewport position, then returns focus to that panel.
 

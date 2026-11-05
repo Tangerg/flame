@@ -17,6 +17,14 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Settings keyboard reading now keeps its existing focus perimeter visible at
+native 200% zoom. The shared category viewport reserves the same transparent
+boundary as workspace readers. The matched English original/candidate comparison,
+Chinese dark/18 px/native resize reading, category/search return and both 320 px
+Files/conversation returns pass. All 70 related tests and 13 final serial gates
+pass. See **Settings reading focus at native zoom (2026-11-06)**. Owned
+qualification resources are retired; whole-product acceptance remains open.
+
 The renewed Plugins native review on `22ea24fd6` finds no new alignment or
 return defect in the inspected English light/14 px and Chinese dark/18 px tasks.
 Both cover 200% configuration reading, local correction, cancellation, retained
@@ -32534,6 +32542,118 @@ optimistic revert, ServerForm immutable-name + no-echo, provider draft stores,
 theme single-owner, plugins operations-generation ownership. The index-containing
 keys in `HooksPane`/`PackageManager` combine the index with stable ids on
 stateless rows — no reachable corruption.
+
+### Settings reading focus at native zoom (2026-11-06)
+
+Scope: retain a conversation draft → enter Hooks through installed Settings →
+read the captured trust scope and three rules by keyboard → visit another
+category or clear navigation search → return through Files → continue the draft.
+Fresh origin/main fetch and merge report already up to date at `a65255a75`.
+The independent primary main checkout stays clean at `00c172c73` and is untouched.
+
+Actual original Wails at 200% exposes a shared Settings defect: Shift+Tab from
+the trust switch through Refresh reaches the named Hooks tabpanel, and Page Down
+scrolls its content, but that reading target has no visible focus perimeter.
+At Actual Size the original perimeter is visible. The category's scrollport
+allows its child's full canvas to reach the clipping edge where the existing
+inset outline paints. The native comparison, not a DOM geometry assertion,
+establishes the zoom-dependent painting failure.
+
+`src/ui/atoms/vertical-tabs.tsx` now reserves a 2 px transparent solid border in
+`styles.page`, matching the existing `WorkspaceViewBody` boundary. Its child
+canvas clips before the shared perimeter. The content box loses 2 px per side;
+the current focus color, inset policy, Tab stops, scroll owner, retained category
+layout, visibility and commands remain unchanged. Every category uses this frame;
+this batch individually inspects Hooks and Appearance, rather than claiming a
+fresh native pass for every settings body.
+
+The six better-interface domains guide review. Better-accessibility's visible
+keyboard focus requirement and better-layout's clipped reading frame ground the
+repair. Read-only ZCode's actual HooksList and WorkspaceHookTrustNotice retain
+source/scope and accepted-workspace identity; they supply no competing trust or
+focus owner. Flame keeps React, Base UI, StyleX and its semantic tokens. Bounded
+Read/Edit-only Claude Code CLI supplies the four-line source change in 14.752 s
+and four turns, with no permission denial or subagent. Root reviews the actual
+diff and performs the native comparison and all checks.
+
+| Domain        | Evidence inspected                                                                                   | Result and boundary                                                                                           |
+| ------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Named category reader, forward/reverse Tab, Page Down, control focus and return                      | One HIGH finding repaired; VoiceOver speech and OS IME are not newly verified.                                |
+| Layout        | RetainedPanel clipping boundary, 200% Hooks/Appearance, resized Chinese body and 320 px Files return | Clear after repair for inspected paths; native 320 CSS px Settings is not newly verified.                     |
+| Writing       | Actual EN/ZH trust, scope, inactive state, literal commands and source identity                      | Existing copy retains its owner; fixed fixture navigation titles are not a localization qualification.        |
+| Typography    | 14/18 px reading, multiline injection, full mixed-language paths and exact `9007199254740993`        | Complete keyboard reading and literal values pass; no font or tracking change.                                |
+| Colors        | Existing Orange/light and custom-blue/dark keyboard perimeter and independent control states         | No color change or new numeric contrast-ratio claim.                                                          |
+| UI            | Refresh, Theme menu/Escape, category and search return, file return and continued drafting           | Existing owners retained; EN full motion and ZH configured motion off, without a new OS reduced-motion claim. |
+
+| Severity       | Domain        | Location                            | Before                                                                             | After                                                                            | Why                                                                  |
+| -------------- | ------------- | ----------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| HIGH, repaired | Accessibility | `src/ui/atoms/vertical-tabs.tsx:94` | Native 200% keyboard reading scrolls a named tabpanel without a visible perimeter. | The scrollport reserves its existing inset focus boundary before child painting. | WCAG 2.4.7: the current keyboard reading target must remain visible. |
+
+Passed verification:
+
+- The unchanged SettingsPage and PackageManager Settings baseline passes
+  20 tests in two files. The same frontend-project command passes all 20 after
+  the repair; `npm run test --workspace @flame/ui -- test/panel-focus.test.tsx`
+  passes all 50 existing shared Panel cases: 70 final tests in three files.
+  No style- or attribute-mirroring test is added for this native painting defect.
+- All 13 final serial gates exit 0: those two test commands, Web typecheck,
+  lint, design-system, tokens, chrome, dead styles, exact plugin resources,
+  production bundle, installed module linkage, scoped formatting and
+  `make check-native`. The native gate emits deployment-target linker warnings
+  but exits 0. Private bundle preparation and both accepted asset builds pass.
+  Browser visual suites, benchmarks and full Web/Runtime suites are not run.
+- Original and candidate English/light/14 px/Orange use the same Wails 3.1.0
+  binary, 24 host files, four signed bundle files, public read and 1120 × 861
+  point initial geometry. Both matched screenshots are 2238 × 1720. Actual Size
+  plus twenty native Zoom In actions gives 200%; the same reverse-Tab and
+  Page Down path now paints the complete reader perimeter through all rules.
+  Each accepted served asset tree contains 331 files.
+- English Home/End category navigation visits Appearance and returns to the
+  retained final Hook source. Its reader perimeter remains visible. The Theme
+  menu opens normally; Escape and Tab retain normal control focus and the
+  original accent. Refresh keeps its action focus, and Tab still reveals the
+  fitting trust title, execution consequence, exact root and off switch.
+- Chinese/dark/18 px/custom #6C9EFF/configured motion off passes normal reading
+  and native Top Left placement at 2240 × 1456. At native 200%, the fitting trust
+  context is complete; the reader perimeter stays visible through six Page Down
+  steps reaching every command, injection and full final source. A no-match
+  Settings navigation query leaves the active body mounted; Escape clears the
+  query and Tab returns to that retained reading position and named reader.
+- Both candidates restore Actual Size and close Settings through its task
+  action. Shift+Tab from Files reaches the Dock separator; Home changes its
+  value from 363 to 320. The related eight-line file and complete path are
+  readable. Reopening Settings retains the Hooks selection while creating a
+  fresh category task. English returns to its retained file; Chinese Back to
+  files restores the selected source row. Chinese restores its native window
+  size before continuing. The final drafts are exactly
+  `Continue after reviewing Hooks. Ready.` and `核对钩子来源后继续。继续。`.
+- Original English, candidate English and candidate Chinese exit 0 after
+  363.800, 340.892 and 481.823 s and are reaped. Among all 6,630 tracked
+  non-Markdown inputs, only the intended category source changes. Candidate
+  source and Web/host/bundle hashes stay fixed through acceptance. The actual
+  generated Hooks ESM is used through the installed component boundary; only
+  the private read snapshot is populated with one global and two project rules.
+  Its root agrees with the fixture workspace. No trust write, shell execution,
+  lifecycle event, live Runtime/provider call or Send is submitted.
+
+The exact app is unregistered and its process/endpoint are inactive. Guarded
+cleanup removes the private app/data/assets/logs/evidence root, four newly created
+output roots including 1,684 Vitest module-cache files, and two UID Cache/WebKit
+stores containing 17 files. All five initially absent output roots and all six
+UID paths are absent. Six pre-existing output trees match their baseline hashes;
+the 58 real nested Web dependency files and both prior UI result-cache files
+remain intact. Toolchains, dependencies, references and user data are preserved.
+The retained in-memory evidence has 157 UTF-8 records and 35 native capture
+digests, including the original counterexample. Its 2,078,370-byte gzip round trip
+passes with SHA-256
+`6ece93458d55260e83360ec32ef91209dcb2e9f9da1123438480ac2493f8e565`.
+
+Not newly verified: every other Settings category body, every loading/error or
+trust-command outcome, native 320 CSS px Settings, VoiceOver audio, OS IME, RTL,
+other-platform GUIs and OS reduced-motion preference. No protocol, persisted-data,
+dependency or external-consumer migration is needed. Verdict: **Approve** for
+the inspected domains and paths. Whole-product and award-level acceptance remain
+open; continue with fresh evidence from remaining tasks.
 
 ### Provider role controls on the shared reading axis (2026-11-05)
 
