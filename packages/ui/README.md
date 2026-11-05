@@ -298,6 +298,10 @@ order follows the source order.
 `TileGrid` reserves text space at the tile's font scale plus the shared card
 inset. Filtering retains the column geometry, so a lone result keeps the
 catalog's card width; narrow containers retain complete, wrapping identities.
+`Tile` keeps its `visual` outside the declared focus unit around its text and
+actions, so a focused action reveals with its title and description even when a
+large preview cannot fit beside them. A text body taller than the frame keeps
+the Panel's focused-control fallback.
 `Stats` groups metrics in one shared card with a single inset and compact,
 content-driven columns that wrap with the available width;
 `MetricValue` and `ShareBar` render existing values without calculating business totals. `Segmented` owns controlled single-value selection in

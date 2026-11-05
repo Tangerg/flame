@@ -7,13 +7,16 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
+  Button,
   ContentVisibility,
   CodeBlock,
   Checkbox,
   FormActions,
   FormGroup,
   Panel,
+  RecordBody,
   RecordForm,
+  Tile,
 } from "../dist/index.js";
 
 let rectangles: Map<Element, DOMRect>;
@@ -827,4 +830,49 @@ it("does not choose a fitting declared unit outside the panel body", () => {
   rectangles.set(cancel, new DOMRect(0, 310, 100, 32));
   act(() => cancel.focus());
   expect(revealed).toEqual([form]);
+});
+
+it("reveals a tile's text and action without its oversized visual", () => {
+  const download = vi.fn();
+  render(
+    <div data-testid="viewport" style={{ overflowY: "auto", height: 300 }}>
+      <Panel label="Brand">
+        <Tile
+          data-testid="tile"
+          visual={<img alt="Primary logo preview" src="data:," />}
+        >
+          <strong>Primary logo</strong>
+          <RecordBody>For light surfaces.</RecordBody>
+          <Button onClick={download}>Download primary logo</Button>
+        </Tile>
+      </Panel>
+    </div>,
+  );
+  const image = screen.getByRole("img", { name: "Primary logo preview" });
+  const title = screen.getByText("Primary logo");
+  const body = title.parentElement!;
+  const button = screen.getByRole("button", { name: "Download primary logo" });
+  rectangles.set(screen.getByTestId("viewport"), new DOMRect(0, 200, 800, 300));
+  rectangles.set(screen.getByTestId("tile"), new DOMRect(0, -320, 300, 680));
+  rectangles.set(image, new DOMRect(0, -300, 300, 460));
+  rectangles.set(body, new DOMRect(0, 180, 300, 160));
+  rectangles.set(button, new DOMRect(0, 300, 200, 32));
+  act(() => button.focus());
+  expect(revealed).toEqual([body]);
+  expect(document.activeElement).toBe(button);
+  expect(body.contains(screen.getByText("For light surfaces."))).toBe(true);
+  expect(body.contains(button)).toBe(true);
+  expect(body.contains(image)).toBe(false);
+
+  act(() => button.blur());
+  revealed.length = 0;
+  rectangles.set(body, new DOMRect(0, 100, 300, 400));
+  act(() => button.focus());
+  expect(revealed).toEqual([]);
+  act(() => button.blur());
+  rectangles.set(button, new DOMRect(0, 160, 200, 32));
+  act(() => button.focus());
+  expect(revealed).toEqual([button]);
+  expect(document.activeElement).toBe(button);
+  expect(download).not.toHaveBeenCalled();
 });
