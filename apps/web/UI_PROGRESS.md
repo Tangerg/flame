@@ -17,6 +17,13 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+The renewed native review of Appearance, Personalization and Connection finds no
+new alignment defect in the inspected English normal/200% and Chinese dark
+18 px/200%/resized paths. It changes only this handoff record. See **Basic
+settings native alignment review (2026-11-05)** for the actual controls, return
+tasks and coverage limits. Owned qualification resources are retired; continue
+inspecting actual remaining pages before selecting another repair.
+
 Shortcut filters now find the same platform key symbols displayed in their rows,
 including compact and spaced combinations, while retaining name/raw search and
 existing recording owners. All 57 related tests and 12 serial gates pass;
@@ -4424,6 +4431,73 @@ references remain unchanged. See Current position for the milestone integration 
 Verdict: **Approve for the inspected command-focus, pane-perimeter and return
 paths**. Pause after the requested main delivery; do not start another polishing
 batch. Remaining whole-product qualifications retain their existing bounds.
+
+### Basic settings native alignment review (2026-11-05)
+
+On published main `a6a26524e04d49bc75516cbddad90b61e5db03c4`, actual
+Wails v3.0.0 review finds no new alignment defect in the inspected Appearance,
+Personalization and Connection paths. No product source, style, token, locale,
+fixture DTO or handler changes. Shared SettingRow, Panel, field, popup and
+segmented-control owners remain authoritative. The earlier direct-label,
+font-popup, focus-reveal and token-intent repairs are retained.
+
+This is a bounded continuation of the user's all-page desktop review after the
+recent shared surface and typography work. The relevant earlier chapters,
+current consumers and shared controls supply the implementation context;
+better-layout's grouping, alignment and translated-text guidance applies.
+Earlier reference studies retain their recorded limits. No new reference-app,
+motion-timing, contrast-ratio or whole-product design claim is made.
+
+- **EN/light/14 px/Flame Orange/full motion, 2238 × 1720:** Appearance labels
+  and controls align at normal size. Actual Size followed by twenty native
+  Zoom In actions reaches 200%; rows stack without overlap. Theme opens its
+  complete four-choice popup and Escape restores its trigger. Tab reveals the
+  accent, font, size, density, corners, motion and language controls. The native
+  Contrast range uses this Mac's existing Option+Tab entry; Right/Left changes
+  25 → 26 → 25 without replacing its owner.
+- Personalization retains one Streaming style row. Both choices remain visible
+  at 200%; at normal size Tab through the pane to Smooth, Right to Typewriter
+  and Left to Smooth retain the expected selection and focus. Connection's
+  normal-size fields, action group and Ready facts align. At 200%, URL → token
+  → Refresh focus reveals their labels, relevant token descriptions and status
+  record. Disabled configuration actions are skipped; none is activated.
+- **ZH/dark/18 px/custom #5B8DEF/full motion:** native Fill reaches
+  **3024 × 1898**; Move & Resize → Top Left settles at **2240 × 1456**.
+  At 200%, Connection's focused URL, token and Refresh paths retain readable
+  field context and the complete short server/protocol record. Appearance's
+  font and size controls and selected density row retain their labels and
+  controls. The font menu opens and Escape returns to its trigger; this does
+  not qualify arbitrary installed font lists. Personalization's arrow-key
+  selection and restoration pass with both choices visible. Actual Size and
+  wheel reading expose Appearance's normal-size top and lower rows.
+- Both languages create a draft, reopen Settings with the registered Cmd+Comma
+  command, close it and explicitly refocus the original Composer. Native paste
+  continues exactly **Keep the basics review draft. Continue.** and
+  **基础设置检查草稿。 继续编辑。** before normal Quit. No Send, connection Apply,
+  Reset, token change, trust or policy command is admitted.
+
+The four serial private build steps pass in **10.004 s**; signature creation,
+strict verification and exact registration/unregistration pass. All **6,804**
+non-Markdown inputs and **25** installed resources remain exact, as do the
+**333** served files, **24** private host files and **3** signed bundle files.
+No implementation changes require new regression tests or repetition of the
+preceding accepted suites. Browser visual suites, performance benchmarks and
+unrelated suites do not run. Long server identities, configuration submission,
+physical OS IME, VoiceOver speech, RTL and other-platform GUIs are not newly
+qualified. Whole-product and award-level acceptance remain open.
+
+The first launch used an incorrect HTTP entry and showed a blank window; it is
+excluded from acceptance. All three native processes exit **0**. Of **37**
+captures, the blank capture and four captures at other raster sizes are excluded
+from stable-window geometry claims; **32** captures use the three native sizes
+above. The verified in-memory archive retains **192** UTF-8 records and all
+capture digests; gzip SHA-256 is
+12ba7489830940b6683a6507f5b73822ec3d014ca5570604b0f67ddbb4d7c394.
+The exact private registration, app, home, assets, caches, scripts, logs and
+captures are retired. Two created UID Library stores are removed; all six UID
+paths are absent. Five original output trees and two original cache files remain
+byte-exact, and five initially absent checkout outputs remain absent. The
+parallel primary checkout is read only and retains its independent branch.
 
 ### Appearance labels and search
 
@@ -31690,8 +31764,11 @@ output roots are removed; all six UID paths are absent, five original output
 trees remain byte-exact and two original cache files are restored. The in-memory
 archive retains **160** UTF-8 records and **20** capture digests; gzip SHA-256 is
 3a4d38d60e6f601cb7b46911bb67619b77c5ed3dbb5d292386646b6452ecccd1.
-Publish this bounded batch through normal hooks and main, preserving the parallel
-primary checkout; continue actual page and return-path inspection afterward.
+Published through normal hooks, a fast-forward main integration and HTTPS push
+as `a6a26524e04d49bc75516cbddad90b61e5db03c4`; independent remote and local
+main refs agree. The integration worktree and owned hook cache are retired,
+the active worktree is clean, and the parallel primary checkout remains exact.
+Continue actual page and return-path inspection afterward.
 
 ### Shortcut capture visibility and source lifetime (2026-11-02)
 
