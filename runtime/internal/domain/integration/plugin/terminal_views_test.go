@@ -18,7 +18,25 @@ func terminalViewRelease(t *testing.T, views ...TerminalView) (Release, error) {
 	t.Helper()
 	listInput := `{"type":"object","required":["Scope","CWD"],"properties":{"Scope":{"allOf":[{"enum":["project","user"]}],"type":"string"},"CWD":{"type":"string"},"Cursor":{"type":"string"}}}`
 	listOutput := `{"type":"object","properties":{"Rows":{"type":"array","items":{"$ref":"#/$defs/memory.Item"}},"NextCursor":{"type":"string"}},"$defs":{"memory.Item":{"type":"object","properties":{"ID":{"type":"string"},"Content":{"type":"string"},"Revision":{"type":"integer"},"Pinned":{"type":"boolean"}}}}}`
-	updateInput := `{"type":"object","required":["ID","ExpectedRevision","Content","Pinned"],"properties":{"ID":{"type":"string"},"ExpectedRevision":{"type":"integer"},"Content":{"type":"string"},"Pinned":{"type":"boolean"},"Model":{"type":"object","required":["Provider"],"properties":{"Provider":{"type":"string"},"Model":{"type":"string"}}}}}`
+	updateInput := `{
+		"type":"object",
+		"required":["ID","ExpectedRevision","Content","Pinned"],
+		"properties":{
+			"ID":{"type":"string"},
+			"ExpectedRevision":{"type":"integer"},
+			"Content":{"type":"string"},
+			"Pinned":{"type":"boolean"},
+			"Model":{"$ref":"#/$defs/model.Selection"}
+		},
+		"$defs":{
+			"model.Selection":{"$ref":"#/$defs/model.selectionJSON%5Bstring%5D"},
+			"model.selectionJSON[string]":{
+				"type":"object",
+				"required":["Provider"],
+				"properties":{"Provider":{"type":"string"},"Model":{"type":"string"}}
+			}
+		}
+	}`
 	contract, err := plugincontract.NewCapability(
 		plugincontract.CapabilityConfig{Reference: "memory", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation},
 		portable.MethodDescriptor{Name: "memory/list", Kind: portable.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(listInput), Output: jsontext.Value(listOutput)},
@@ -85,6 +103,10 @@ func TestTerminalViewsResolveFormKindsFromTheContract(t *testing.T) {
 	content := views[0].Actions[0].Input[2].Value.Form
 	if content.Kind != extension.TerminalFormText {
 		t.Fatalf("content form = %+v, want text", content)
+	}
+	model := views[0].Actions[0].Input[4].Value.Form
+	if model.Kind != extension.TerminalFormText {
+		t.Fatalf("model form = %+v, want text", model)
 	}
 }
 
