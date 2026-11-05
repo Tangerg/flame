@@ -99,14 +99,14 @@ export function ToolControls({
                     <>
                       {tool.description}
                       {tool.nameConflicts.length > 0 && (
-                        <p>
+                        <span style={{ display: "block" }}>
                           {t("mcp.tools.nameConflict", {
                             name: tool.modelName,
                             sources: tool.nameConflicts
                               .map(toolSource)
                               .join(", "),
                           })}
-                        </p>
+                        </span>
                       )}
                     </>
                   }

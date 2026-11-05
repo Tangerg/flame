@@ -17,6 +17,14 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+MCP tool descriptions and same-name source notices now share one valid
+paragraph, retaining their existing line break and literal source identities.
+All 203 related tests and 18 serial gates pass. Resumed actual Wails English
+200% and Chinese dark large-text/resize reading and both continued-work flows
+are qualified below under **MCP name-conflict paragraph validity and retained
+reading (2026-11-05)**. Owned qualification resources are retired. Continue
+inspecting actual remaining pages; whole-product acceptance remains unproven.
+
 Hooks project-trust focus now reveals the complete fitting execution explanation
 and captured project root. A matched native German comparison passes at
 2238 × 1720, with Chinese dark large-text and English default-theme reading and
@@ -11014,6 +11022,108 @@ retains **152 text records / 33 capture digests**, gzip SHA-256
 `f4d043b62b69c8f6fd330559cf0c97692f9146afb27fb911375b0659f3cc9785`.
 Normal hooks, main integration and independent remote verification remain
 required publication steps. There is no protocol, resource or data migration.
+
+### MCP name-conflict paragraph validity and retained reading (2026-11-05)
+
+Qualified from main `9d049deb5`. Original actual Wails EN/light/14px/Orange/
+full-motion reading at **2238 × 1720** shows no new alignment gap. At native
+200%, keyboard focus reveals the complete fitting same-name tool: identity,
+both switches, description and literal conflicting sources. Wheel reading
+reaches the end of the separate oversized description. This follow-up repairs
+invalid paragraph composition and preserves that existing reading geometry.
+
+`plugins/mcp/component/toolControls.tsx` replaces only the inner paragraph
+around the name-conflict notice with a block-displayed span. RecordHeading's
+description remains one paragraph, with the notice starting on its own line.
+Shared heading, Panel reading, labels, translations, actions and Runtime command
+owners remain. Other production RecordHeading callers are inspected without
+finding the same construction. Normal generation changes only MCP ESM by
+**27 bytes**; the other **24 installed resources** remain byte-exact.
+
+A populated regression against the original fails **1 / 30 cases**, with
+**29 passes**, specifically on both React invalid-nesting diagnostics. It checks
+literal description text, built-in/user/installation source identities,
+unchanged enabled/auto-approve values, zero writes and zero React diagnostics.
+It uses the existing public typed read and does not assert a replacement tag or
+CSS. Read-only HeroUI Switch/Description composition supports keeping supporting
+text in its owning slot; Flame retains its own components and geometry.
+Better-layout and better-accessibility guide this scope.
+
+| Severity       | Location                      | Before                                                           | After                                                                           | Why                                                                  |
+| -------------- | ----------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| LOW · resolved | MCP tool name-conflict notice | A paragraph is rendered inside the heading description paragraph | The same literal notice has valid paragraph content and its existing line break | Preserve a sound text structure without changing permission behavior |
+
+Two bounded Read/Edit-only Claude CLI calls complete test and source/README
+changes in **59.011 s / 12 turns** and **11.807 s / 5 turns**, with no denials.
+Root reviews the actual diff, formats the new test and owns verification.
+MCP passes **5 files / 118 tests**, shared Panel **1 file / 49 tests**, and
+Settings/shortcuts/SettingRow **4 files / 36 tests**: **203 unique tests / 10 files**.
+All **18 serial gates** pass, including plugin typecheck/lint/i18n, generation,
+Web typecheck/lint/design-system/tokens/chrome, exact resources, installed module
+linkage, production bundle, `make check-native` (**16.296 s**) and private
+candidate assets (**1.993 s**). The first owned-format check fails on the new
+test's wrapping; root's Prettier correction passes without changing assertions.
+The repeated format log replaces its same-label initial raw log; the observed
+initial failure is retained as an explicit note. Final document formatting and
+`git diff --check` pass.
+
+An initial candidate native attempt is interrupted by a Mac lock. The missing
+zoom capture is excluded; the same confirmed-live process is retired explicitly,
+without inferring a restart from an observation timeout. Its blocked checkpoint
+archive retains **169 text records / 5 capture digests**, gzip SHA-256
+`6d04e1fb95e61a2421ec56594ac92c6ab06ed02a8169de31caba9be5804fdda6`.
+
+After the user's unlock acknowledgement, a fresh isolated native identity
+reconstructs the same 1120 × 861-point initial profile. Private assets build in
+**2.400 s**, the host in **3.556 s**, and signature checks pass. All **333 served
+files** are byte-exact to the previously checked candidate, and **6,804 source/
+test/config inputs** and **25 installed resources** retain their accepted hashes.
+A mistaken temporary script path first exits 2 before any build; the corrected
+path supplies those successful receipts.
+
+- **English light/14px/Orange/full motion:** normal and native 200% reading at
+  **2238 × 1720** preserves the complete fitting same-name tool, both focused
+  switches, reverse Tab and the long-description ending.
+- **Chinese dark/18px/custom blue/full motion:** normal and native 200% context
+  pass at **2238 × 1720**. Actual Window Zoom reaches **3024 × 1898**; native
+  Top Right arrangement settles at **2240 × 1456** after a **2242 × 1458**
+  transitional capture. This shorter frame retains reachable switch focus and
+  separate complete source-notice and long-description-end wheel reading.
+  Whole-row simultaneous visibility is not claimed for its oversized context.
+- **Return and continued work:** explicit Composer entry, an authored draft,
+  Mod+, Settings reopening with the same MCP source and three-tool count,
+  Settings close and verified cursor placement preserve and continue exactly
+  `Continue after reading the tool sources. Ready.` and
+  `核对工具来源后继续。 继续。`. The corrected English return uses the retained
+  custom-blue accent. It is separate from the Orange reading process.
+
+An earlier English `super+End` probe inserts at its clicked caret and is excluded
+as the intended append task. Initial Chinese `typeText` produces no authored
+text; that empty reopen probe does not qualify draft retention. Corrected plain
+text paste and documented CUA `cursor_after` placement supply the exact accepted
+texts above. No OS IME or native End-key contract is inferred. All **three resumed
+native processes exit 0** after observed Quit. No automatic Composer focus
+restoration, retained expanded Tools state, switch activation, permission/trust
+write, live Runtime/provider operation or Send is claimed.
+
+Typography, whitespace, hierarchy, color, motion, micro-interaction, responsive
+behavior and originality are reviewed at this task scope. **Approve** the valid
+paragraph repair and retained reading. Full frontend/shared suites, live Runtime
+operations, VoiceOver, OS IME, RTL, other platforms, new numeric contrast/timing
+measurements, browser visual suites and performance benchmarks are not rerun.
+Whole-product and award-tier acceptance remain unproven.
+
+Cleanup is complete for both qualification identities: the apps are unregistered,
+all five native processes have exited, both private endpoints have no listener,
+five new checkout output roots and four created UID stores are removed, and
+both guarded private roots and twelve UID Library paths are absent. Five
+pre-existing output trees and both original UI cache files remain byte-exact.
+The independent primary checkout is untouched; the managed npm toolchain remains
+for continuation. Resumed evidence retains **123 text records / 21 capture
+digests**, **3 app files** and **24 host-source files**, gzip SHA-256
+`c31d9f473068d8b8ecf0a3098ea970eaf1930473fc4e66676f8100888ea401d9`.
+Normal hooks, main integration and independent remote equality are the
+publication checks. Continue inspecting actual remaining populated pages.
 
 ### MCP tool context during keyboard reading (2026-11-05)
 

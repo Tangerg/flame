@@ -30,6 +30,10 @@ description and any name-conflict sources. When a switch takes focus, the shared
 Panel reveals the whole row if it fits the viewport; an oversized row falls back to
 revealing the focused control.
 
+A tool's description and its name-conflict notice share the row's one valid
+paragraph; the notice is a block-level phrasing element on its own line rather
+than a nested paragraph.
+
 The editor's inline JSON fields, Arguments and Environment for stdio and Headers
 for HTTP, keep a three-row minimum and grow or shrink with their wrapped content
 in normal page flow through the shared `TextArea autosize` owner, rather than

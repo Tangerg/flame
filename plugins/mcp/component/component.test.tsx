@@ -121,6 +121,60 @@ it("reads the canonical server and exposes tools without opening its configurati
     }),
   );
 });
+it("renders a tool's literal description and name-conflict sources without React diagnostics", async () => {
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  const f = create();
+  const description = "Read <docs> as {{name}}";
+  vi.spyOn(f.context.runtime.mcp, "listTools").mockResolvedValue({
+    data: [
+      {
+        server: server.id,
+        name: "read",
+        description,
+        modelName: "mcp__docs__read",
+        nameConflicts: [
+          { type: "builtIn", name: "read" },
+          {
+            type: "mcp",
+            server: { origin: { type: "user" }, name: "notes" },
+            name: "read",
+          },
+          {
+            type: "mcp",
+            server: {
+              origin: { type: "installation", installationId: "workspace" },
+              name: "archive",
+            },
+            name: "read",
+          },
+        ],
+      },
+    ],
+  });
+  await mount(f);
+  fireEvent.click(screen.getByRole("button", { name: "Tools for docs" }));
+  const enable = await screen.findByRole("switch", { name: "Enable read" });
+  const approve = screen.getByRole("switch", { name: "Auto-approve read" });
+  for (const action of [enable, approve])
+    await waitFor(() =>
+      expect(action.getAttribute("aria-disabled")).not.toBe("true"),
+    );
+  const row = enable.closest("[data-focus-unit]")!;
+  expect(row.textContent).toContain(description);
+  expect(row.textContent).toContain(
+    en["mcp.tools.nameConflict"]!.replace(
+      "{{name}}",
+      "mcp__docs__read",
+    ).replace(
+      "{{sources}}",
+      "builtIn/read, mcp/notes/read, mcp/workspace/archive/read",
+    ),
+  );
+  expect(enable.getAttribute("aria-checked")).toBe("true");
+  expect(approve.getAttribute("aria-checked")).toBe("false");
+  expectNoWrites(f);
+  expect(errors).not.toHaveBeenCalled();
+});
 it("keeps initial loading separate from an accepted empty server list", async () => {
   const f = create([]);
   const result = Promise.withResolvers<{ data: (typeof server)[] }>();
