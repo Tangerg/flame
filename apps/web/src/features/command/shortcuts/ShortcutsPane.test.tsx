@@ -13,6 +13,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { COMMAND, SHORTCUT } from "@/features/command/public/extensionPoints";
 import { definePlugin } from "@/extensions/definePlugin";
 import { useShortcutOverrides } from "@/features/command/public/shortcutOverrides";
+import { comboGlyph, splitCombo } from "@/lib/combo";
 import { contributeForTest, loadPluginsForTest } from "@/test/kernel";
 import { ShortcutsPane } from "@/features/command/shortcuts/ShortcutsPane";
 import { ShortcutsProvider } from "@/features/command/ShortcutsProvider";
@@ -282,6 +283,65 @@ describe("ShortcutsPane", () => {
     ).toBe(false);
     expect(document.activeElement).toBe(outside);
     view.unmount();
+  });
+
+  it("filters by labels, stored combos and the displayed keys", async () => {
+    await contributeForTest((ctx) => {
+      ctx.contribute(SHORTCUT, {
+        key: "ArrowUp",
+        description: "Previous item",
+        handler: () => undefined,
+      });
+    });
+    testClient.render(<ShortcutsPane />);
+    const labels = ["New session", "Open thing", "Previous item", "Search thing"];
+    const shown = () => labels.filter((label) => screen.queryByText(label) !== null);
+    const filter = screen.getByRole<HTMLInputElement>("searchbox");
+    const cases: [string, string[]][] = [
+      [comboGlyph("Mod"), ["New session", "Open thing", "Search thing"]],
+      [`  ${comboGlyph("Mod+K").toUpperCase()}  `, ["Search thing"]],
+      [splitCombo("Mod+K").join(" ").toLowerCase(), ["Search thing"]],
+      ["↑", ["Previous item"]],
+      ["search", ["Search thing"]],
+      ["mod+n", ["New session"]],
+    ];
+    for (const [query, expected] of cases) {
+      fireEvent.change(filter, { target: { value: query } });
+      expect(shown()).toEqual(expected);
+    }
+
+    fireEvent.change(filter, { target: { value: "zzz" } });
+    expect(shown()).toEqual([]);
+    expect(screen.getByText("No shortcuts match")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /clear/i }));
+    expect(filter.value).toBe("");
+    expect(shown()).toEqual(labels);
+  });
+
+  it("filters displayed keys by the effective combo through rebind and reset", () => {
+    testClient.render(<ShortcutsPane />);
+    const filter = screen.getByRole<HTMLInputElement>("searchbox");
+    const defaultKeys = splitCombo("Mod+O").join(" ");
+    fireEvent.change(filter, { target: { value: defaultKeys } });
+    fireEvent.click(screen.getByRole("button", { name: /change the shortcut for open thing/i }));
+    press({ key: "j", code: "KeyJ", ctrlKey: true, metaKey: true });
+
+    const rebound = useShortcutOverrides.getState().overrides.open ?? "";
+    expect(rebound).toMatch(/j$/);
+    expect(screen.queryByText("Open thing")).toBeNull();
+    expect(filter.value).toBe(defaultKeys);
+    expect(document.activeElement).toBe(filter);
+
+    fireEvent.change(filter, { target: { value: comboGlyph(rebound) } });
+    expect(screen.getByText("Open thing")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+    expect(useShortcutOverrides.getState().overrides).toEqual({});
+    expect(screen.queryByText("Open thing")).toBeNull();
+    expect(filter.value).toBe(comboGlyph(rebound));
+    expect(document.activeElement).toBe(filter);
+
+    fireEvent.change(filter, { target: { value: defaultKeys } });
+    expect(screen.getByText("Open thing")).toBeTruthy();
   });
 
   it("keeps a capture through row updates and retires it with its command source", async () => {

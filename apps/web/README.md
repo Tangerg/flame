@@ -405,6 +405,8 @@ A key a local owner has already cancelled, such as a focused reader's Select All
 belongs to that owner; neither command nor direct shortcut bindings dispatch it.
 Shortcut settings start with their filter and action rows; the catalog description
 remains searchable without repeating an introduction above the controls.
+The filter matches labels, stored combos and each row's current platform key
+display, ignoring case and spacing between displayed keys.
 
 Deterministic workspace fixtures install the production `workspaceKeymap` for
 view closure, so native Escape exercises the same navigation command as the
@@ -427,8 +429,10 @@ programmatic focus retain the complete reading context.
 Remembered approval rules retain local keyboard position when an accepted update
 removes the focused action. The next remaining rule, preceding last rule or empty
 rules context receives that focus; later user focus and hidden panes retain their
-own destination. Rule commands, admission and canonical query updates stay with
-the Agent owner.
+own destination. Each existing rule declares its complete context for shared
+keyboard reveal when it fits; an oversized record retains the focused-control
+fallback. Rule commands, admission and canonical query updates stay with the
+Agent owner.
 
 The existing appearance preference owns optional Xuan paper, cotton paper and
 fine-grain backgrounds with a retained strength from 1 to 5. The document painter

@@ -162,7 +162,7 @@ export function RulesRow() {
               {rows.map((rule, index) => {
                 const descriptionId = `${descriptionPrefix}-${index}`;
                 return (
-                  <div key={rule.id} {...stylex.props(r.rule)}>
+                  <div key={rule.id} data-focus-unit="" {...stylex.props(r.rule)}>
                     <div id={descriptionId} {...stylex.props(r.copy)}>
                       <div {...stylex.props(r.identity)}>
                         <Badge tone={SCOPE_TONE[rule.scope]} face="mono">
