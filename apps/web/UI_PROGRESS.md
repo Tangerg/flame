@@ -17,15 +17,16 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-Brand card actions now reveal their fitting title, description and action through
-the existing Panel reading owner, even when the preview is taller than the frame.
-Matched English native 200% comparison, Chinese dark/18 px/200%/resize reading,
-Icon gallery regression observations and both continued drafts pass. See **Tile
-text and action reading (2026-11-05)**. All 261 related tests and the recorded
-serial checks pass after resolving a private cold-cache consumer-install failure.
-Owned qualification resources are retired. Next repair the observed unequal Brand
-download-button baselines for descriptions with different line counts; the
-whole-product goal remains open.
+Latest origin/main `00c172c73` is integrated in merge `31210fbc9` without
+conflicts. Brand download actions now share a baseline across equal-height cards
+with different description lengths. English and Chinese native reading, 200%
+zoom, Chinese window resizing, both continued drafts and both Icon gallery
+returns pass on Wails 3.1.0. See **Brand card action alignment and main integration
+(2026-11-05)**. The UI/Brand checks, all 4,550 Web frontend tests, remaining Web
+checks, generated drift and native checks pass. The Runtime integration fixture
+times out during setup; its 52 tests are unqualified and the full Web check does
+not pass. Owned qualification resources are retired. Continue with observed
+remaining defects; whole-product acceptance remains open.
 
 The renewed native review of Appearance, Personalization and Connection finds no
 new alignment defect in the inspected English normal/200% and Chinese dark
@@ -969,8 +970,8 @@ inputs. Signature creation, strict verification and exact registration pass.
   responsive navigation change; the focused third card and reverse-Tab second
   card retain complete text/actions. Normal-size review reveals a separate
   existing layout limitation: cards with different description line counts
-  have unequal download-button baselines. It remains the next repair rather
-  than being counted as accepted visual alignment.
+  have unequal download-button baselines. That separate defect is resolved
+  under **Brand card action alignment and main integration (2026-11-05)**.
 - Both languages create a draft before reopening Settings through Cmd+Comma.
   After Close and explicit Composer refocus, native paste continues exactly
   **Keep the asset reading draft. Continue.** and
@@ -1010,6 +1011,132 @@ are removed and all six paths are absent; the endpoint is inactive and no owned
 native process remains. Five original output trees and two original UI cache
 files are restored byte-exact; five initially absent checkout outputs are absent.
 The parallel primary checkout remains read only and advances independently.
+
+### Brand card action alignment and main integration (2026-11-05)
+
+Published Tile reading batch `2dc864f5e57b9526b55b538f1d0894d392077f08`
+retains complete text/action context, but actual Chinese dark/18 px review at
+**2238 × 1720** shows unequal Brand download-button baselines: the first two
+descriptions wrap to three lines and the third to two. Its original capture has
+SHA-256 `5bdfc8f32f6e428e9b14a29feaa8010d21c17aa64d1403cc055d03117620df8c`.
+That earlier reading batch was pushed to main with normal hooks and an independent
+remote-head confirmation. Its evidence and retirement remain in the preceding
+chapter.
+
+Tile now allocates an intrinsic visual row and the remaining height to its text
+body. The existing body becomes a vertical flex flow. Brand's existing Button
+uses an auto block-start margin, aligning trailing actions without fixed text
+heights, line-count assumptions or a new component API. Tiles without an action
+retain natural text placement. Visuals, text order, spacing, semantic tokens,
+Button sizing and the existing Panel reading owner stay intact. Only Brand and
+Icon gallery consume Tile in production; both receive native inspection. The UI
+README documents the flow. The generated Brand ESM changes only the action's
+style; embedded image bytes remain unchanged.
+
+Better-layout informs grouping/alignment and translated-text space;
+better-accessibility informs keyboard and zoom review. Read-only HeroUI Card
+source and its WithImages demo support a flexible content body and a trailing
+action pushed by ordinary layout. Their component architecture is not copied. A
+strict Read/Edit-only Claude Code CLI call changes the three allowed authored
+files in **17 turns / 53.326 s**, with no permission denial. Root reviews the
+actual diff and regenerates installed ESM through the repository build. Existing
+focus and download-lifetime tests cover the preserved behavior; no CSS-surrogate
+DOM test is added for native geometry.
+
+The pre-merge candidate passes **21 serial gates / 89.674 s**, including all
+**234 UI tests**, the packed consumer, **2 Brand tests**, **25 related Web tests**,
+bundle/resource checks and the native gate. Four Wails **3.0.0** processes exit 0. Matched Chinese normal-size review shows aligned actions; English/Chinese
+200% reading, Chinese resize and continued drafts pass. The pre-merge English
+Icon gallery return probe remains excluded because its extra reverse Tab reaches
+the fixture splitter. Its **181-record / 21-capture** evidence archive has gzip
+SHA-256 `738c942d5ed3e5ba13e0d38663c1a6d50e7f02e6f94e58541ce8f0ebca5d3f3a`;
+its private resources are retired. These results qualify that earlier state.
+
+The user then requests latest-main integration. The four-file alignment change
+is checkpointed as `f675742d214279e345d42b8d41d824a617d224c5`. Normal
+`git merge origin/main` integrates
+`00c172c73a8650c499629149a398ae8fadf46cd3` in
+`31210fbc90588eba3afc074e603e604b5ac5a944` without conflicts. A final fresh
+fetch confirms the same main and its ancestry. The primary checkout remains on
+that main commit, clean and read only. Its checked-out main ref is not moved
+behind its index.
+
+Merged-state verification uses the repository's checksum-verified Node
+**24.22.1**, npm **11.21.1**, Go **1.27.3** and exact Wails **3.1.0**. Root
+`make setup` installs the latest locked graph, including released Frame SDK
+**0.1.1**. No local replacement, compatibility bridge or global configuration
+change is introduced. The accepted tool versions are retained in the existing
+owned tooling directory for subsequent work.
+
+- The full UI build/type/lint/format check passes, with **13 files / 234 tests**
+  and the independent packed UI/icons consumer. Both Brand tests pass.
+- Web typecheck, lint and formatting pass. The frontend project passes
+  **424 files / 4,550 tests**. The full Web check then fails in Runtime fixture
+  setup: **52 tests do not run** after the 60-second beforeAll deadline. A
+  diagnostic run of only that failed project also times out. Its **105 process
+  observations over 62.599 s** show compilation still active and no fixture
+  Runtime/runner executable admitted during that run. The Runtime/test source
+  matches main. No production Runtime code, assertion or deadline is changed.
+  This is an unresolved integration-verification limit, not a passing full check.
+- All **22 remaining Web stages** run explicitly and pass, including dependency
+  and ownership guards, styles/tokens/chrome/locales, installed resources, module
+  checks and the production bundle with its **9 script tests**. Tooling tests
+  pass **19**, with the repository's one unsupported-host qualification test
+  automatically skipped on supported macOS.
+- `make check-generated` passes in **99.686 s** using its disposable source
+  copy; `make check-native` passes in **86.315 s**, including the Wails build
+  and independent Desktop Go test/vet/build. All **6,629 non-Markdown tracked
+  inputs** remain byte-exact throughout the merged checks.
+
+Separate post-merge native qualification freezes **331 served files**,
+**24 private host files** and **4 signed bundle files**. The private host uses
+the current Desktop source, native chrome, zoom and resize owners, with only
+its fixture assets/URL, isolated identity/title and bounded initial geometry
+adapted. Its build metadata selects Wails 3.1.0; strict signing verification
+and exact registration pass.
+
+- **ZH/dark/18 px/custom #5B8DEF/full motion:** three normal-size download
+  buttons share one baseline despite different description lengths. The merged
+  capture at **2238 × 1720** has SHA-256
+  `48bb604c490dd04583a29de1fa15a6bd702548b4a84a6506cb314581ec3a2ea2`.
+  Actual Size plus twenty native Zoom In actions reaches 200%; all three
+  actions expose complete fitting titles and descriptions. Native Fill reaches
+  **3024 × 1898**; Top Left settles at **2240 × 1456**, and reverse Tab to
+  the second action retains complete text and aligned neighboring actions.
+- **EN/light/14 px/Flame Orange/full motion:** normal card geometry, all three
+  200% text/action reveals and reverse Tab pass. Both languages create a draft
+  before reopening Settings. Close and explicit Composer refocus allow exactly
+  **Keep the merged draft. Continue.** and **合并验收草稿。 继续编辑。**. No automatic
+  Composer-focus restoration, Send or physical OS IME behavior is claimed.
+- Icon gallery retains natural no-action card layout in both normal profiles.
+  Filtering `brain-off` retains Thinking off / BrainOff / brain-off; the
+  Chinese 200% body-wheel observation exposes all three literal identities.
+  Keyboard Clear restores all **601** icons and search focus. Each reverse-Tab
+  step is inspected before Return on Close; both new profiles reach the actual
+  conversation. English still has the separately observed **1 icons** copy
+  defect; repair its translation owner in a later batch.
+
+All **four merged native processes exit 0**. The **23 captures** include two
+rescaled raster frames, **638 × 490** and **608 × 468**, excluded from stable
+geometry claims; the latter's full AX still verifies Clear's functional result.
+The merged in-memory archive retains **163 UTF-8 records**, capture digests and
+verified retirement, with gzip SHA-256
+`2ddb696d822ed9455975dd6e95383217dcd46f51374562f9bcf847591e909a22`.
+The exact registration, private app/home/assets, scripts, logs, captures, Node
+staging and npm cache are removed. Both created UID Library stores are removed
+and all six paths are absent; the endpoint is inactive and no owned native
+process remains. Five original output trees and two UI cache files are restored
+byte-exact. Four initially absent output roots and four new cache roots are
+removed. The three nested Web Vitest dependencies selected by the new root lock
+remain installed, alongside the updated root dependency graph.
+
+Brand's visual workspace uses the browser save host; Download is not activated
+in this batch, and native Save/destination writes are unqualified. Browser visual
+suites, performance benchmarks, live provider/Runtime operations, VoiceOver
+speech, physical IME, RTL and other-platform GUIs do not run. The unresolved
+Runtime fixture setup bounds integration confidence and should be revisited
+with the fixture's build/startup lifecycle owner. Whole-product and award-level
+acceptance remain open.
 
 ### New-conversation brand identity
 
