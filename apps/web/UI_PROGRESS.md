@@ -17,6 +17,16 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Brand card actions now reveal their fitting title, description and action through
+the existing Panel reading owner, even when the preview is taller than the frame.
+Matched English native 200% comparison, Chinese dark/18 px/200%/resize reading,
+Icon gallery regression observations and both continued drafts pass. See **Tile
+text and action reading (2026-11-05)**. All 261 related tests and the recorded
+serial checks pass after resolving a private cold-cache consumer-install failure.
+Owned qualification resources are retired. Next repair the observed unequal Brand
+download-button baselines for descriptions with different line counts; the
+whole-product goal remains open.
+
 The renewed native review of Appearance, Personalization and Connection finds no
 new alignment defect in the inspected English normal/200% and Chinese dark
 18 px/200%/resized paths. It changes only this handoff record. See **Basic
@@ -883,6 +893,123 @@ The implementation lives under `/Users/tangerg/Desktop/flame/apps/web/src/featur
 CLI slash commands preserve the editor, attachments and cursor when command lookup, availability or arguments are rejected. Contributed commands accept only after their cancellable Session operation starts. Approval normalization retains an allow or deny decision when remembered scope becomes unavailable; unknown choices cannot create an answerable form.
 
 Start each new task with the actual status and relevant diffs. Preserve any newer unrelated edits, avoid bulk formatting or staging, and do not treat the old unfinished-file inventory as current work.
+
+### Tile text and action reading (2026-11-05)
+
+Actual Wails review of published main `4b51b9d001b0ecc5909fc40616dc2a6e17712881`
+reproduces a Brand reading defect. At **2238 × 1720, EN/light/14 px/Flame
+Orange/full motion, native 200%**, Tab to Download Primary logo shows the button
+while clipping its title and most of its description above the Settings body.
+A subsequent body wheel shows that title, complete description and action fit
+in that same frame; the oversized preview is the reason the entire Tile does
+not fit. The settled original, manual-fit and candidate captures have SHA-256
+`a4bded8a22e685c37ecf01554db61e5449c2e4dbaecbda22042fe7705259499c`,
+`f4ec3379db03f6ad9fdc9338663b6d0bdddda65390c35da39db7339a14b65967` and
+`980119070dc97a299ec07139cec769361305dac80c369daeafbbb09a5abb4d70`.
+The first exploratory wheel hits navigation and is excluded from the fitting
+proof; the later wheel targets the actual content body.
+
+`packages/ui/src/records.tsx` now groups Tile children in a minimal grid declared
+as the text/action focus unit, keeping the visual outside it. Existing spacing,
+text alignment, card surface, insets, public props and source order remain.
+Panel and `readingUnitFor` continue to own reveal and reflow. If the text body
+also exceeds the available frame, the existing focused-control fallback still
+applies. No new state, effects, event listener or scrolling algorithm is added.
+Only Brand and Icon gallery consume Tile in production; both receive actual
+native review. No caller, asset, command, locale, Runtime or persisted contract
+changes. The UI README records the fitting-body contract.
+
+Better-layout's grouping and translated-text guidance and better-accessibility's
+keyboard/zoom guidance apply to the reproduced task. The React best-practices
+skill informs the static composition boundary; this is not a performance change.
+Earlier reference research retains its recorded limits. A strict Read/Edit-only
+Claude Code CLI call implements the three allowed UI source/test/README files
+in **13 turns / 58.804 s**, with no permission denial. Root reviews its actual
+diff and moves the regression's structure assertions after the observable reveal
+assertion; CLI output is not acceptance evidence.
+
+- The focused baseline has **49 passing tests**. The candidate has **50**.
+  With the new test and frozen original production source, exactly the new
+  observable-reveal assertion fails while the other **49 pass**. The original
+  source and candidate restoration builds pass, and the candidate bytes are
+  restored in the counterexample script's finally block. The regression uses
+  the real Tile under Panel: it verifies title/description/action reveal without
+  the image, retained focus, no activation, and oversized-body fallback.
+- The UI check's build, typecheck, lint, formatting and **13 files / 234 tests**
+  pass. Its final packed-consumer stage initially fails **ENOTCACHED** because
+  the new private npm cache lacks `use-sync-external-store@1.7.0`. The exact
+  existing consumer lock plus own packed UI/icons packages populate that cache
+  in a private directory with install scripts disabled. Only the failed packed
+  consumer is retried; it passes. No assertion, gate or dependency is weakened.
+- The resumed **14 serial gates** pass in **68.711 s**: the packed consumer,
+  installed-resource build, **2 Brand tests**, **25 Web tests** across installed
+  continuity, SettingsPage and SettingRow, Web typecheck/lint, design-system,
+  tokens, chrome, plugin-resource and module checks, bundle and native gates,
+  and final private native assets. The bundle gate includes **9 script tests**;
+  `make check-native` passes in **32.843 s**. The related UI/Brand/Web total is
+  **261 tests**, excluding the already counted focused subset and bundle tests.
+  All **25 installed resources** rebuild byte-exact. The owned-file formatter
+  and diff checks pass.
+
+Final native acceptance uses Wails **v3.0.0**, Go **1.27.3**, the real native
+chrome/zoom/resize owners and isolated deterministic production presentation.
+The final **333 served files**, **24 private host files** and **4 signed bundle
+files** are frozen. Host/bundle files remain identical to the original comparison;
+only the expected **2 source/test inputs** change among **6,804** non-Markdown
+inputs. Signature creation, strict verification and exact registration pass.
+
+- **EN/light/14 px/Orange:** the normal three-card geometry is retained. Native
+  Actual Size plus twenty Zoom In actions reaches 200%. Tab from the selected
+  Brand tab through its pane to each of the three download buttons now exposes
+  its complete fitting title, description and action. Reverse Tab restores the
+  preceding card's complete text/action context without activation.
+- **ZH/dark/18 px/custom #5B8DEF/full motion:** all three focused download
+  actions reveal complete Chinese metadata at 200%. Native Fill reaches
+  **3024 × 1898**; Top Left settles at **2240 × 1456**. Reading survives the
+  responsive navigation change; the focused third card and reverse-Tab second
+  card retain complete text/actions. Normal-size review reveals a separate
+  existing layout limitation: cards with different description line counts
+  have unequal download-button baselines. It remains the next repair rather
+  than being counted as accepted visual alignment.
+- Both languages create a draft before reopening Settings through Cmd+Comma.
+  After Close and explicit Composer refocus, native paste continues exactly
+  **Keep the asset reading draft. Continue.** and
+  **品牌资源检查草稿。 继续编辑。** before normal Quit. This does not claim automatic
+  Composer focus restoration or physical OS IME behavior.
+- Icon gallery's normal EN and ZH layouts retain the icon, title, export name
+  and literal key. Filtering `brain-off` gives the same single Thinking off /
+  BrainOff / brain-off card as the original. Chinese 200% wheel reading exposes
+  all literal metadata. Keyboard Clear restores all **601** icons and the search
+  field focus, then reverse Tab to Close returns to the conversation. Repeated
+  pointer stale-window responses are excluded; keyboard Tab/paste succeeds.
+  English still renders the separate pre-existing group-copy defect **1 icons**;
+  its pluralization owner must be traced before a later repair.
+
+The visual workspace explicitly uses the browser save host for Brand. English
+Return and pointer activation therefore do not produce a native Save dialog;
+no destination write or Save/Cancel workflow is qualified here. The two Brand
+unit tests separately verify exact embedded bytes, captured host lifetime and
+retirement behavior. Provider normal rows and role controls, Plugins normal rows
+and the Configure Inputs modal's Escape/opener return receive bounded original
+observations only. No provider Test/Save/Clear, plugin Install/Apply/Save,
+connection mutation, trust/policy command, Runtime operation or Send is admitted.
+Browser visual suites, performance benchmarks, unrelated full suites, live
+business writes, arbitrary font lists, VoiceOver speech, RTL and other-platform
+GUIs do not run. Whole-product and award-level acceptance remain open.
+
+All **7 native processes exit 0**: two original, four accepted candidate profiles
+and one excluded invalid-locale launch. The latter uses unsupported `zh-CN`
+and shows a blank window; the corrected `zh` profile is the accepted Chinese
+run. Among **42 captures**, two blank and four non-native or transitional raster
+captures are excluded from stable geometry claims. The in-memory archive retains
+**253 UTF-8 records** and all capture digests; its verified gzip SHA-256 is
+9bb34be985640a448f2075dd894d69fda8fc11bab6119863935ac9c3f52f2514.
+The exact private registration, app, home, web assets, scripts, logs, captures,
+cache preparation and npm cache are retired. Both created UID Library stores
+are removed and all six paths are absent; the endpoint is inactive and no owned
+native process remains. Five original output trees and two original UI cache
+files are restored byte-exact; five initially absent checkout outputs are absent.
+The parallel primary checkout remains read only and advances independently.
 
 ### New-conversation brand identity
 
@@ -4498,6 +4625,15 @@ captures are retired. Two created UID Library stores are removed; all six UID
 paths are absent. Five original output trees and two original cache files remain
 byte-exact, and five initially absent checkout outputs remain absent. The
 parallel primary checkout is read only and retains its independent branch.
+
+The basic-settings review is published as
+`4b51b9d001b0ecc5909fc40616dc2a6e17712881` after normal formatter, workspace
+lint and commit-message hooks. A fresh main fetch remains at the accepted
+shortcut baseline; an owned temporary main worktree fast-forwards and pushes
+over HTTPS. Independent remote and local HEAD/main/origin-main checks agree.
+The integration worktree and its owned hook cache are removed. The primary
+checkout retains its recorded `2655b4a18ff6734cbcf1b65bd2cc31c44dcb194d`
+snapshot and clean independent branch through that publication.
 
 ### Appearance labels and search
 

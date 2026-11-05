@@ -196,6 +196,12 @@ const styles = stylex.create({
     color: color.fg,
     marginBlockEnd: space.s2,
   },
+  tileBody: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0,1fr)",
+    minWidth: 0,
+    gap: space.s2,
+  },
   share: {
     display: "block",
     width: "100%",
@@ -434,7 +440,10 @@ export function Tile({
       className={clsx(styled.className, className)}
     >
       <div {...stylex.props(styles.visual)}>{visual}</div>
-      {children}
+      {/* A tall visual must not make the text and action too tall to reveal. */}
+      <div data-focus-unit="" {...stylex.props(styles.tileBody)}>
+        {children}
+      </div>
     </article>
   );
 }
