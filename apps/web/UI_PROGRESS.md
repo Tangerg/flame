@@ -17,6 +17,15 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+The renewed Usage native review on `c78cd50f3` finds no new alignment or
+reading-return defect in the inspected English light/14 px and Chinese dark/18 px
+tasks. Both cover a real 320 px Dock, 200% main-area reading, refresh and continued
+drafts; English covers filtered model details and Files return, Chinese covers
+keyboard empty-filter recovery, accounting facts and native window resizing.
+See **Usage native report reading after main (2026-11-05)**. Product inputs remain
+unchanged and owned qualification resources are retired. Continue with actual
+remaining task paths; whole-product acceptance remains open.
+
 The requested fresh main fetch and merge report already up to date at
 `2f7669a09`; local main `00c172c73` is already an ancestor and its checkout
 remains untouched. Provider Utility and Embedding controls now fill their grid
@@ -7036,6 +7045,83 @@ processes and the primary parallel checkout remain untouched. This documentation
 receipt changes no accepted product input; its publication is followed by fresh
 remote, cleanliness and preservation checks. Continue from a fresh task observation,
 preserving Memory's local recovery and nonmodal command/draft ownership.
+
+### Usage native report reading after main (2026-11-05)
+
+This follow-up starts from published `c78cd50f3` after a fresh main fetch confirms
+zero divergence. It checks the current report's complete reading task rather than
+reopening the already repaired scope, price-precision or count-grammar contracts.
+No new defect is demonstrated in the inspected native paths, so this batch changes
+only this maintained handoff record.
+
+The current production `plugins/usage/component/component.tsx`, shared Panel,
+FilterBar, Facts and record components run in the actual Wails 3.1.0 host through
+the existing InstalledComponent fixture. That fixture imports the production
+Usage source directly and supplies the standard deterministic UsageSummary through
+the public Runtime client. No private product handler, state transition, styling
+override, query response or focus/scroll observer is added. This qualifies the
+current compiled component and workbench integration; it does not prove an
+installed-release upgrade or real accounting aggregation. Normal generation also
+leaves all tracked component resources unchanged.
+
+The scoped read-only ZCode AppUsagePanel inspection retains its useful distinction
+between report scope and its related material. Its separate queries, charts and
+truncation remain outside Flame's design. Existing HeroUI, Radix and Ace research
+and better-layout, better-ui and better-accessibility guide grouping, shared
+leading edges, progressive detail and native return. Theme and content owners
+remain unchanged.
+
+- English light/14 px/Orange/full motion: ordinary Tab reaches the actual Dock
+  resizer; Home sets 320 px. Provider totals, amounts and controls remain readable.
+  The Group by menu selects Model with the keyboard; filtering `gpt-5.6` retains
+  overview totals while revealing only `openai/gpt-5.6-sol`. Its eight token and
+  coverage facts remain readable in the Dock and main area. After collapsing the
+  fixture sidebar, Actual Size plus twenty native Zoom In actions establishes
+  200%. Wheel reading reaches the complete facts, including recorded zeros.
+  Refresh retains filter, group and disclosure and keeps its own focus. A native
+  Period selection accepts Last 7 days with the same local reading state. The
+  fixture deliberately supplies the same report for every range, so this is UI
+  range-identity evidence, not server date-filtering evidence. Main Close and
+  Actual Size return to the 320 px Dock; Files and Usage return retain the same
+  range, query, model grouping and expanded facts.
+- Chinese dark/18 px/custom blue/full motion: the actual 320 px Dock retains
+  readable labels and values. An unmatched source filter affects only the
+  breakdown; Tab/Return on Clear filter restores both sources and returns focus
+  to the input. The translated Group by menu opens; Escape returns to its trigger.
+  Accounting details expand in the main area. Twenty native Zoom In actions after
+  Actual Size establish 200%; ordinary Tab and wheel reading reach all fourteen
+  fact pairs, including 24/24 coverage, seven Sessions, 24 Runs and recorded zeros.
+  The complete accounting explanation remains readable. Native Window → Top Left
+  settles at 2240 × 1456; wheel reading reaches the same explanation's final line.
+  Refresh keeps its own focus and the expanded accounting section. Main Close and
+  Actual Size return to the original 320 px Dock with the section still expanded.
+- Both profiles retain a captured pre-reading Composer draft. After closing the
+  main view and collapsing the Dock, explicit Composer refocus appends the next
+  sentence to that exact draft. Neither Send nor a live provider call is invoked.
+  Native paste supplies the Chinese text; OS IME composition is not qualified.
+
+All nine serial preparation steps pass: icons, UI, plugin resources, private host
+formatting, private Web assets, native Go build, signing, strict signature check
+and exact-app registration. English and Chinese native processes exit 0 and are
+reaped after 314.752 and 415.379 seconds. The 6,630 tracked non-Markdown inputs,
+331 served files, 24 private host inputs and four signed-bundle files match their
+frozen hashes after both runs. No source edit or implementation CLI invocation is
+needed. Unchanged automated suites, live accounting, failed/pending report reads,
+VoiceOver, other locales/platforms and fresh numeric contrast are not rerun. No
+browser visual suite or benchmark is started.
+
+Cleanup unregisters the exact app, confirms its process and port inactive, removes
+the two UID-specific stores that were created and verifies all six identity paths
+absent. All six pre-existing generated/dependency trees match their baseline
+hashes after restoring two UI output files. The 58 real nested Web dependency files
+and both UI test-cache files remain unchanged; all five initially absent output
+roots remain absent. Before deleting the private app/assets/scripts/captures/logs
+and cache, 83 UTF-8 records and 21 native capture digests are retained in RAM with
+source/artifact maps and cleanup receipts. The 855,107-byte gzip round trip passes;
+SHA-256 is `026a8aadc7812140847ac7a9ccb34075fa37319a336ac5f028ed4aca9b594abc`.
+The primary main checkout stays clean at `00c172c73`. No migration is required.
+Continue inspecting remaining actual pages; whole-product and award-level
+acceptance remain unproven.
 
 ### Usage report and source scope
 
