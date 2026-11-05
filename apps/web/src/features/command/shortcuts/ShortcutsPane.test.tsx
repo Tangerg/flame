@@ -287,7 +287,7 @@ describe("ShortcutsPane", () => {
 
   it("filters by labels, stored combos and the displayed keys", async () => {
     await contributeForTest((ctx) => {
-      ctx.contribute(SHORTCUT, {
+      ctx.contributions.add(SHORTCUT, {
         key: "ArrowUp",
         description: "Previous item",
         handler: () => undefined,
