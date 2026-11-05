@@ -214,7 +214,10 @@ export function Hooks({ context }: { context: ComponentContext }) {
       {snapshot?.projectRoot &&
         snapshot.hooks.some((value) => value.scope === "project") && (
           <RecordGroup variant="list" aria-busy={command?.phase === "running"}>
-            <ListRow style={{ display: "flex", alignItems: "flex-start" }}>
+            <ListRow
+              data-focus-unit=""
+              style={{ display: "flex", alignItems: "flex-start" }}
+            >
               <div style={{ minWidth: 0, flex: 1 }}>
                 <strong>{t("trust")}</strong>
                 <RecordBody>{t("trust.sub")}</RecordBody>

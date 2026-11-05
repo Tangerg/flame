@@ -17,6 +17,13 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Hooks project-trust focus now reveals the complete fitting execution explanation
+and captured project root. A matched native German comparison passes at
+2238 × 1720, with Chinese dark large-text and English default-theme reading and
+continued-work tasks. See **Project trust context during keyboard reading
+(2026-11-05)**, including the explicitly bounded shorter German case. Continue
+inspecting actual remaining pages; whole-product acceptance remains unproven.
+
 MCP tool permissions now reveal the complete fitting tool record when either
 switch takes keyboard focus. The original German minimum-window case passes,
 alongside Chinese dark large-text and English default-theme tasks using the
@@ -28262,6 +28269,114 @@ Verification for this surface (2026-10-21):
 - Complete `npm run check --workspace @flame/web` passed **386 files / 3,042 tests** and every subsequent owner check in 158.17 seconds under CI Node 22.22.1. `make check-native` passed in 38.05 seconds. Latest main updates `d2d8110ca`, `bcf43bb21` and `cefd9b98c` were incorporated without file overlap; they change Go package/public-constant names and a generator target, retaining the same wire-version literal. Native checks passed again in 20.83 and 28.99 seconds. All 13 reviewed source hashes remained stable. The full Web suite and independent shared UI/portable suites were not repeated after these Go-only updates; Web's plugin-resource and module checks passed within its complete check. The final integration also retains the two directory-map documentation additions from `fcc70f424`; no behavior changed and the same 13 reviewed hashes remain stable.
 - Cleanup completed: all three owned native processes and the CLI exited, the exact app bundle was unregistered, and its bundle, disposable data, captures, overlays, prompts/reports, logs and pointer were removed. Ten newly created worktree output/cache paths and the unique bundle's Caches/WebKit paths passed preexistence, UID and birth-time guards before removal. Pre-existing shared UI Vite caches, installed dependencies, shared compiler/package caches, read-only references, user data and unrelated main work remain.
 - This uses production components and the Wails host with private data-only `hooks.list` capture. No live hooks, shell command, trust change, provider execution or Run was invoked. VoiceOver, measured pixel contrast, other-platform GUIs, browser/visual suites, performance benchmarks and unrelated root/CLI/SDK suites are not newly qualified. No protocol, persisted data, dependency or installed-resource migration is required.
+
+### Project trust context during keyboard reading (2026-11-05)
+
+Qualified from main `a87237bf6`. Actual Wails Hooks, using generated component
+ESM and a public populated workspace read, reproduces incomplete project-scope
+reveal in German light/18px/purple/reduced motion. At native 200%, Refresh → Tab
+focuses the off trust switch while the captured project root remains below the
+reading area. Native wheel reading shows that the complete trust context fits.
+The initial captured window is **2240 × 1720**.
+
+`plugins/hooks/component/component.tsx` adds `data-focus-unit` to the existing
+project-trust `ListRow` only. Shared Panel keeps a fitting row's title,
+shell-execution consequence, literal project root and focused switch together;
+its existing control fallback handles an oversized unit. The original flex/top
+alignment, literal whitespace, labels, checked value, callbacks, accepted
+workspace read, subscription, trust command and original-command recovery are
+unchanged. No wrapper, style, ARIA, handler, state or dependency is added. Normal
+generation changes Hooks ESM only by the same **21-byte attribute**; the other
+**24 installed resources** remain byte-exact. Checkout generation does not replace
+an already admitted Runtime installation.
+
+Better-layout grounds cohesive object/action reading, and better-accessibility
+grounds reachable keyboard focus and zoom. Read-only ZCode's actual
+`WorkspaceHookTrustNotice.tsx` binds its trust explanation to the current
+accepted workspace; HeroUI's actual Switch composition distinguishes label and
+description. Flame retains its existing accepted workspace and Panel owners,
+without importing reference UI or trust policy.
+
+| Severity          | Location                | Before                                                                   | After                                            | Why                                               |
+| ----------------- | ----------------------- | ------------------------------------------------------------------------ | ------------------------------------------------ | ------------------------------------------------- |
+| MEDIUM · resolved | Hooks project-trust row | Focus can leave a fitting row's captured project root below the viewport | Panel reveals the complete fitting trust context | Keep the trust decision with its concrete project |
+
+The bounded Read/Edit-only Claude CLI completes the two-file implementation in
+**11.403 s / 5 turns**, with no permission denials, subagents or commands. Root
+reviews the exact source, README and generated delta. No attribute-mirroring
+test is added; existing behavioral regressions and the native counterfactual
+provide verification.
+
+All **18 serial verification steps** pass, including ESM generation and private
+native assets. Hooks baseline and final checks pass **1 file / 6 tests** in
+**1.907 / 1.813 s**. Shared Panel passes **1 file / 49 tests** in **1.541 s**;
+Web Settings, shortcuts and setting-row checks pass **4 files / 36 tests** in
+**4.134 s**: **91 unique tests / 6 files**. Plugin typecheck, scoped lint,
+eight-locale closure and owned formatting pass, as do Web typecheck, lint,
+design-system, tokens, chrome, exact resources, installed module linkage and
+production bundle. `make check-native` passes in **35.458 s**, retaining existing
+nonfatal deployment-target linker warnings. Candidate private assets build in
+**3.609 s**. Final documentation formatting and `git diff --check` also pass.
+
+Native CUA screenshots and AX qualify these actual task paths:
+
+- **Matched German comparison:** a private native initial geometry of
+  1120 × 861 points produces **2238 × 1720** captures for both versions. The
+  unchanged host binary and public read are shared. One build loads frozen
+  pre-edit generated Hooks ESM, the other the current generated ESM. Original
+  Refresh → Tab leaves the root incomplete; candidate Refresh → Tab shows the
+  title, complete execution explanation, exact root and off switch together.
+- **German reading and return:** normal, native 200% wide and narrow reading,
+  reverse Tab, all three rule sources, literal injection and command reading,
+  Settings close/reopen and continued conversation pass. Its initial candidate
+  frame is **2240 × 1898**, so it is not used as an equal-height counterfactual.
+- **Chinese dark/18px/blue/full motion:** normal, 200% wide and native quarter
+  arrangement pass. At settled **2240 × 1456**, the shorter Chinese trust context
+  fits completely with its off switch and root. Wheel reading reaches the exact
+  `9007199254740993` command receipt and complete final configuration source.
+- **English light/14px/Orange/full motion:** the whole populated page, Refresh,
+  forward/reverse Tab and ordinary trust context pass at **2238 × 1720**.
+
+The German **2240 × 1456** quarter-window probe retains reachable off-switch
+focus but does not show the whole trust context together; complete-row reveal
+is not accepted for that frame. Its normal-size page reading remains available.
+An attempted bottom-edge drag does not resize the window and is excluded as a
+matching attempt. The explicit native-size profile above resolves the original
+height mismatch without a CSS viewport override. Its private build/signature
+checks pass; the product host and source inputs remain unchanged.
+
+One initial matched-original action is interrupted by an external window change
+before action. Fresh AX retains Hooks and trust off; the same live process
+continues. Accepted tasks do not toggle trust, execute hooks, admit a lifecycle
+event, submit a permission command or Send, or call a live Runtime/provider.
+Three locale task flows explicitly return to Composer, author a draft, reopen
+Settings with Mod+, retain Hooks and trust off, and close to continue exactly:
+`Nach der Hook-Prüfung weiterarbeiten. Weiter.`,
+`核对项目 Hook 来源后继续。 继续。` and
+`Continue after reviewing the hook source. Ready.`. No automatic Composer opener
+restoration is claimed. All **six native processes exit 0**.
+
+Typography, whitespace, hierarchy, color, motion, micro-interaction, responsive
+behavior and originality are reviewed at this task scope. **Approve** the fitting
+trust-row repair. Full frontend/shared suites, Runtime, CLI and plugin backend
+suites, browser visual suites and performance benchmarks are not rerun.
+VoiceOver speech, OS IME, RTL, native 320 CSS px Settings, other platforms, new
+numeric contrast/timing measurements, live trust and every failure state remain
+unverified. Whole-product and award-tier acceptance remain unproven.
+
+Cleanup is complete: the app is unregistered, all processes have exited and the
+private endpoint has no listener. Five newly created checkout output roots and
+two created UID stores are removed. Six UID Library paths and the guarded
+private root are absent; five pre-existing output trees and both original UI
+cache files remain byte-exact. The independent primary checkout is untouched;
+the managed npm 11.21.1 toolchain remains for the active goal. Frozen checks cover
+**6,804 source/test/config inputs**, **25 installed resources**, **333 files per
+served build**, **4 app files per native profile** and **24 host-source files per
+profile**. The in-memory archive retains **305 text records / 47 capture digests**,
+gzip SHA-256
+`b8c300232e6e7123d74ee53eda137afe378f44baef99f794ba0d88e95491245a`.
+Normal hooks, main integration and independent remote equality remain required
+publication checks. Continue inspecting actual populated reading/return tasks.
 
 ### Populated Hooks native reading (2026-11-03)
 
