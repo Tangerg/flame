@@ -240,8 +240,13 @@ export function ShortcutsPane() {
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rows;
+    // Displayed keys render as separate caps, so spaced and compact spellings both match.
+    const keys = q.replace(/\s+/g, "");
     return rows.filter(
-      (row) => row.label.toLowerCase().includes(q) || (row.combo ?? "").toLowerCase().includes(q),
+      (row) =>
+        row.label.toLowerCase().includes(q) ||
+        (row.combo ?? "").toLowerCase().includes(q) ||
+        (row.combo !== undefined && comboGlyph(row.combo).toLowerCase().includes(keys)),
     );
   }, [rows, query]);
 

@@ -405,6 +405,8 @@ A key a local owner has already cancelled, such as a focused reader's Select All
 belongs to that owner; neither command nor direct shortcut bindings dispatch it.
 Shortcut settings start with their filter and action rows; the catalog description
 remains searchable without repeating an introduction above the controls.
+The filter matches labels, stored combos and each row's current platform key
+display, ignoring case and spacing between displayed keys.
 
 Deterministic workspace fixtures install the production `workspaceKeymap` for
 view closure, so native Escape exercises the same navigation command as the
