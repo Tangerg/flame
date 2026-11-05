@@ -181,11 +181,11 @@ const styles = stylex.create({
   tile: {
     display: "grid",
     gridTemplateColumns: "minmax(0,1fr)",
+    gridTemplateRows: "auto 1fr",
     minWidth: 0,
     gap: space.s2,
     paddingBlock: layout.cardPadding,
     paddingInline: layout.cardPadding,
-    alignContent: "start",
     overflowWrap: "anywhere",
     textAlign: "center",
   },
@@ -197,8 +197,8 @@ const styles = stylex.create({
     marginBlockEnd: space.s2,
   },
   tileBody: {
-    display: "grid",
-    gridTemplateColumns: "minmax(0,1fr)",
+    display: "flex",
+    flexDirection: "column",
     minWidth: 0,
     gap: space.s2,
   },
