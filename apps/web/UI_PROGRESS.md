@@ -17,6 +17,16 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Icon gallery group counts now use the existing SDK plural owner across all eight
+locales; filtered single results read correctly while the fixed catalog total
+remains stable. Source `7df17103b` is published to main with normal hooks and
+independent remote-head confirmation. All 33 related regressions and 23 serial
+check/build steps pass. Actual Wails EN/light, FR/dark/18 px and ZH/dark/18 px
+filter/clear/close/continued-edit flows pass, with EN/FR 200% and FR native resize
+coverage. See **Icon gallery localized group counts (2026-11-05)**. Owned
+qualification resources are retired. The earlier Runtime setup timeout still
+leaves 52 integration tests unqualified; whole-product acceptance remains open.
+
 Latest origin/main `00c172c73` is integrated in merge `31210fbc9` without
 conflicts. Brand download actions now share a baseline across equal-height cards
 with different description lengths. English and Chinese native reading, 200%
@@ -984,7 +994,7 @@ inputs. Signature creation, strict verification and exact registration pass.
   field focus, then reverse Tab to Close returns to the conversation. Repeated
   pointer stale-window responses are excluded; keyboard Tab/paste succeeds.
   English still renders the separate pre-existing group-copy defect **1 icons**;
-  its pluralization owner must be traced before a later repair.
+  this later resolves under **Icon gallery localized group counts (2026-11-05)**.
 
 The visual workspace explicitly uses the browser save host for Brand. English
 Return and pointer activation therefore do not produce a native Save dialog;
@@ -1113,8 +1123,8 @@ and exact registration pass.
   Chinese 200% body-wheel observation exposes all three literal identities.
   Keyboard Clear restores all **601** icons and search focus. Each reverse-Tab
   step is inspected before Return on Close; both new profiles reach the actual
-  conversation. English still has the separately observed **1 icons** copy
-  defect; repair its translation owner in a later batch.
+  conversation. The separately observed English **1 icons** copy defect later
+  resolves under **Icon gallery localized group counts (2026-11-05)**.
 
 All **four merged native processes exit 0**. The **23 captures** include two
 rescaled raster frames, **638 × 490** and **608 × 468**, excluded from stable
@@ -1137,6 +1147,103 @@ speech, physical IME, RTL and other-platform GUIs do not run. The unresolved
 Runtime fixture setup bounds integration confidence and should be revisited
 with the fixture's build/startup lifecycle owner. Whole-product and award-level
 acceptance remain open.
+
+### Icon gallery localized group counts (2026-11-05)
+
+The post-merge native review at published main `5553ffeae` shows **1 icons**
+under Development after filtering `brain-off`. The original EN capture is
+`ed43cc9e2af7bc0f6f5b6b8811b9ac1c947bbae8f3131e002b2b00d1d0efc3d3`.
+The gallery passed `n` although `createTranslator` already owns locale plural
+selection through numeric `count`. The component now supplies that existing
+parameter. All eight locale catalogs use their required plural families and
+`{{count}}`; the obsolete unsuffixed key is removed. French's total summary
+reads **1 sur 601 icônes**, keeping the noun with the fixed total. The catalog,
+filter state, total-summary API, shared UI, layout, theme, Runtime and command
+owners do not change. The generated installation ESM is rebuilt normally; its
+word diff contains only these locale/count changes. No migration is needed.
+
+Better-writing informs grammatical, localizable counts. Existing Skills plural
+families, the SDK translator and the repository i18n checker provide the concrete
+contract. A strict Read/Edit-only Claude Code CLI call implements the eleven
+allowed authored paths in **36 turns / 106.403 s**, without permission denial.
+Root reviews the actual diff, verifies canonical catalog tags and adds the literal
+`brain-off` assertion. The CLI report is not acceptance evidence.
+
+- The ten new component tests use the real Gallery, shared UI, SDK translator
+  and icon drawings with three immutable catalog records. They cover all eight
+  locales' group singular/plural rendering, literal identity, Clear/search-focus
+  recovery, zero results and stable catalog totals. The candidate passes **10**.
+  With the original production component/locales restored temporarily, exactly
+  **5 fail / 5 pass**; the script's finally block restores the candidate byte-exact.
+- Final portable regressions pass **2 files / 12 tests** (Gallery 10, Brand 2);
+  affected Web installed-continuity and locale tests pass **3 files / 21 tests**.
+  The related total is **33**, excluding the overlapping initial ten.
+- All **23 serial check/build steps** pass across the initial and resumed
+  sequences: immutable module artifacts, installed-resource build, plugin
+  type/lint/format/i18n checks, those regressions, Web type/lint/design-system/
+  token/chrome/resource/module/bundle checks, native verification and private
+  asset/host/sign/registration steps. The bundle includes **9 script tests**;
+  `make check-native` passes in **19.102 s**, including independent Desktop
+  Go test/vet/build and the exact Wails **3.1.0** build.
+- The first module-link attempt reads restored pre-main Web output because the
+  qualification script puts it before bundle staging. Its stale Qimu/absent
+  Frame JSON imports fail correctly. Following the repository's existing order,
+  the fresh production bundle and the same unchanged module check pass. Only
+  that failed gate and the remaining steps are resumed; no product workaround
+  or weakened assertion is introduced. The prior Runtime setup timeout and its
+  **52 unrun tests** are not retried or relabeled as passing in this copy batch.
+
+Final native qualification freezes **331 served files**, **24 private host
+files** and **4 signed bundle files** on Node **24.22.1**, npm **11.21.1**,
+Go **1.27.3** and Wails **3.1.0**. All match after acceptance. Among **6,629**
+existing non-Markdown tracked inputs, only the expected **10** component/locale/
+ESM files change; the new test is tracked separately. The other **6,619** inputs
+remain identical. The private host retains native chrome, zoom and resizing.
+
+- **EN/light/14 px/Flame Orange/full motion:** `brain` gives **2 icons**, then
+  `brain-off` gives **1 icon**, with **2/1 of 601 icons** above. Normal card
+  identity and alignment remain stable. Actual Size plus twenty Zoom In actions
+  reaches 200%; body-wheel reading exposes Thinking off, BrainOff and brain-off.
+- **FR/dark/18 px/custom #6C9EFF/full motion:** **2 icônes** becomes **1 icône**,
+  and **1 sur 601 icônes** retains its fixed denominator. Native Top Left
+  resizing and 200% review settle at **2240 × 1456**. Filters wrap without
+  overlap, and wheel reading reaches the singular group and result; AX retains
+  its literal metadata. The first resized frame is **2240 × 1458** and is
+  excluded from settled geometry claims.
+- **ZH/dark/18 px/custom #6C9EFF/full motion:** **2 个图标** becomes **1 个图标**
+  with the unchanged total of **601**. Normal-size labels, controls and cards
+  remain aligned. ZH 200%/resize is not rerun for this copy-only change.
+- All three accepted profiles reach zero results, then Clear restores **601**
+  and search focus. EN/ZH exercise keyboard Clear; FR exercises pointer Clear.
+  Actual Close reaches the conversation. Explicit Composer refocus accepts new
+  continuation text in each language without Send; all processes quit normally.
+
+The initial exploratory EN process closes the gallery before drafting. Fixture
+state-sidebar rows have no navigation handler and Browse panels does not expose
+Icon gallery, so that process does not qualify reopening or before-draft
+preservation. A separate initial-gallery profile supplies final EN acceptance.
+One stale Window index is rejected without action; fresh AX supplies the actual
+menu before successful resizing. Automatic Composer focus, physical IME, native
+Save, live Runtime/provider writes, VoiceOver speech, RTL, other-platform GUIs,
+browser visual suites and performance benchmarks are not qualified.
+
+All **four native processes exit 0**. The round-trip-verified in-memory gzip
+retains **153 UTF-8 records** and **27 capture digests**, **643,653 bytes**, SHA-256
+`42c4285f2a6d335c8830bc6a020a49905045c45c58d8b8cb32638becb4cfaf1d`.
+The exact app registration, private app/home/assets, scripts, logs, captures and
+npm cache are retired. Both created UID Library stores are removed; all six
+paths are absent, the endpoint is inactive and no owned native process remains.
+Six original output trees and two UI cache files are restored byte-exact; five
+initially absent output/cache roots are absent. The three nested Web Vitest
+dependencies and current root dependency graph remain installed.
+
+Source `7df17103bf05ae2279f068711ee336c5e3493ecf` passes normal formatter,
+all-workspace lint and commit-message hooks and is pushed normally to main; an
+independent remote-head read matches it. The final fetch finds zero incoming
+main commits. The primary checkout stays clean at `00c172c73`, read only.
+Continue inspecting actual remaining page tasks; whole-product acceptance remains
+open. Revisit the separate Runtime fixture's compile/startup lifecycle at its
+next integration touch.
 
 ### New-conversation brand identity
 
