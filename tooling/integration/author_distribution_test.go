@@ -128,9 +128,8 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		exported, err := plugincontract.ParseCapability([]byte(contract))
-		if err != nil || exported.Identity() != published.Identity() {
-			t.Fatalf("module relocation changed the host's Memory contract: %v", err)
+		if contract != published.Identity().String() {
+			t.Fatal("module relocation changed the host's Memory contract")
 		}
 		if len(installed.Selected.Components) == 0 {
 			t.Fatal("author release lost its component")
@@ -139,7 +138,6 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 		if err != nil || selected.InstallationID != installed.ID {
 			t.Fatalf("select independent Memory: %+v, %v", selected, err)
 		}
-		request.Contract = memorycontract.CapabilityJSON
 		request.Contribution = "memory-provider"
 		request.Method = memorycontract.AddV2Method
 		request.Input = `{"Scope":"user","CWD":"","Content":"independent author fact"}`
@@ -202,7 +200,7 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 		if err := json.Unmarshal([]byte(original.Output), &added, json.RejectUnknownMembers(true)); err != nil {
 			t.Fatal(err)
 		}
-		if page.Rows[0].ID != added.Item.ID {
+		if added.Item == nil || string(page.Rows[0].ID) != string(added.Item.ID) {
 			t.Fatal("original command created another item")
 		}
 	}
