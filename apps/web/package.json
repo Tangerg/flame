@@ -101,7 +101,7 @@
     "use-stick-to-bottom": "^1.1.6",
     "zod": "^4.6.7",
     "zustand": "^5.0.16",
-    "@frame/sdk": "https://github.com/Tangerg/frame/releases/download/v0.1.0/frame-sdk-0.1.0.tgz"
+    "@frame/sdk": "https://github.com/Tangerg/frame/releases/download/v0.1.1/frame-sdk-0.1.1.tgz"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",

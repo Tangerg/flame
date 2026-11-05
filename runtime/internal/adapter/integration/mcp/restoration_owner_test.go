@@ -29,7 +29,7 @@ func TestRetainedRestorationReadsOriginalOwnerThroughFrame(t *testing.T) {
 		{name: "original connection closed", definite: true, cause: sdk.ErrConnectionClosed},
 		{name: "original source disabled", disabled: true, definite: true, cause: plugin.ErrUnavailable},
 		{name: "original owner unavailable", ownerFailure: storageFailure, cause: storageFailure},
-		{name: "original record removed", missing: true, cause: plugin.ErrUnavailable},
+		{name: "original record settled", missing: true},
 		{name: "caller stopped waiting", canceled: true, cause: context.Canceled},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -103,6 +103,18 @@ func TestRetainedRestorationReadsOriginalOwnerThroughFrame(t *testing.T) {
 			defer cancel()
 			if test.canceled {
 				cancel()
+			}
+			if test.missing {
+				if err := installed.restoreRetained(ctx, original, grant); err != nil {
+					t.Fatalf("settled original work blocked the catalog: %v", err)
+				}
+				if _, err := host.AcquireRecord(ctx, original.Identity.String(), frame.UseConfig{Owner: owner, Scope: grant}); !errors.Is(err, frame.ErrUnavailable) {
+					t.Fatalf("settled original record authorized execution: %v", err)
+				}
+				if _, err := host.Acquire(ctx, plan, frame.UseConfig{Owner: owner, Scope: grant}); !errors.Is(err, sdk.ErrConnectionClosed) {
+					t.Fatalf("fresh catalog did not reach its current source: %v", err)
+				}
+				return
 			}
 			name := testsupport.InstallationMCPServer(installation, "contributor")
 			connections := &connections{lifetime: t.Context()}

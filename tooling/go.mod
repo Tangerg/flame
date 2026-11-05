@@ -64,10 +64,10 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.4-dev.20261104.tfadb0bc7e886
+	github.com/Tangerg/flame/packages/go-sdk v0.1.5-dev.20261105.t4e2015415530
 	github.com/Tangerg/flame/packages/local-runtime v0.1.2-dev.20261104.t47cf6bbc2f11
-	github.com/Tangerg/flame/runtime v0.1.5-dev.20261105.tcabb39620fd8
-	github.com/Tangerg/frame v0.1.0
+	github.com/Tangerg/flame/runtime v0.1.7-dev.20261105.t6d900525472a
+	github.com/Tangerg/frame v0.1.1
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	golang.org/x/mod v0.42.0
 	golang.org/x/tools v0.52.0

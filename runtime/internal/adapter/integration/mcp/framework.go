@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -12,6 +13,8 @@ import (
 	"github.com/Tangerg/frame"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
+
+var errBindingNotRetained = fmt.Errorf("mcp: original binding is no longer retained: %w", frame.ErrUnavailable)
 
 // CatalogPermission authorizes reconstruction only from Flame's original
 // unsettled business owners. A serialized graph cannot grant itself permission.
@@ -70,7 +73,7 @@ func (p *CatalogPermission) Read(ctx context.Context, recordID string, grant fra
 			return accepted, err
 		}
 	}
-	return frame.BindingSnapshot{}, frame.ErrUnavailable
+	return frame.BindingSnapshot{}, errBindingNotRetained
 }
 
 // Installed projects Frame instances into Flame's MCP catalog. Observations

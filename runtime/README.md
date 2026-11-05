@@ -59,6 +59,19 @@ second outcome. Accepted human answers use Scope's public Signal constructor
 for exact receipt reconciliation and the current wait's `ResponseSignal` for
 fresh admission.
 
+Canceling a dispatched model stream does not prove its remote outcome. If its
+original final response is unavailable, the Run finishes as lost with its
+unresolved Effect evidence. After clean terminal settlement, cancellation reports
+`run_finished` instead of claiming a confirmed canceled Run. Goal stop still
+pauses its own drive and preserves that Run's unknown consumption for an explicit
+resume.
+
+MCP catalog restoration rechecks each original binding through its current
+business owner under Frame admission. If that owner has already settled, its
+earlier catalog snapshot requires no restoration and cannot authorize original
+execution. Current catalog acquisition proceeds through its ordinary plan;
+storage failures and unavailable original sources remain explicit failures.
+
 Unknown catalog pricing preserves unknown cost, including an empty rate schedule
 with reported zero usage. Model listings expose effective base-band cache rates:
 an omitted catalog cache rate uses the input rate, while an explicit zero is free.

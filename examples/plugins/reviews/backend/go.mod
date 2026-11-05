@@ -3,8 +3,8 @@ module github.com/Tangerg/flame/examples/plugins/reviews/backend
 go 1.27.3
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.4-dev.20261104.tfadb0bc7e886
-	github.com/Tangerg/frame v0.1.0
+	github.com/Tangerg/flame/packages/go-sdk v0.1.5-dev.20261105.t4e2015415530
+	github.com/Tangerg/frame v0.1.1
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/scope/core v0.60.0
 	modernc.org/sqlite v1.61.1

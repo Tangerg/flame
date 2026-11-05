@@ -1,5 +1,5 @@
-github.com/Tangerg/frame v0.1.0 h1:7nEbpAvI0HLrkLOIM/1a9s6sE8oe6mlnLib9iMYV68A=
-github.com/Tangerg/frame v0.1.0/go.mod h1:RHkJbvQsVX4qXlS8Y6LcLcnhefhaQ/6Oi5iLhaQexBc=
+github.com/Tangerg/frame v0.1.1 h1:MiRPKLTOh2Rp9JaO8BWsbbggloqZaqs8eAYk7p3QtQc=
+github.com/Tangerg/frame v0.1.1/go.mod h1:RHkJbvQsVX4qXlS8Y6LcLcnhefhaQ/6Oi5iLhaQexBc=
 github.com/Tangerg/go-sdk v1.8.1-scope.3 h1:hMC4qrvwu38L4/bLwnPiCYi9BTRFQxGb6Cs97pa/CzQ=
 github.com/Tangerg/go-sdk v1.8.1-scope.3/go.mod h1:9ZBcxdycY3/8/I1dCH3Uo5rCY3Run9Y4ZmEmiQIulUw=
 github.com/Tangerg/scope/core v0.60.0 h1:InGaTjSyC11jLkYu6ycjwdtgvcotFMluBL0sAk+WWpk=

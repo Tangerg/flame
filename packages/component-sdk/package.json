@@ -36,6 +36,6 @@
     "format:check": "prettier --check src build.mjs build.test.mjs package.json tsconfig.json"
   },
   "dependencies": {
-    "@frame/sdk": "https://github.com/Tangerg/frame/releases/download/v0.1.0/frame-sdk-0.1.0.tgz"
+    "@frame/sdk": "https://github.com/Tangerg/frame/releases/download/v0.1.1/frame-sdk-0.1.1.tgz"
   }
 }

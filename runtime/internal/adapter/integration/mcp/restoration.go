@@ -45,6 +45,11 @@ func (s *Installed) restoreRetained(ctx context.Context, original plugin.Activat
 	evidence := &restorationEvidence{recordID: original.Identity.String()}
 	attempt := context.WithValue(ctx, restorationEvidenceKey{}, evidence)
 	use, err := s.host.AcquireRecord(attempt, evidence.recordID, frame.UseConfig{Owner: s.owner, Scope: grant})
+	if err == errBindingNotRetained {
+		// The admitted owner settled after the catalog listed its work; that
+		// earlier observation cannot require restoration or authorize execution.
+		return nil
+	}
 	if err != nil {
 		return failedRestoration(ctx, original, evidence.snapshot(), errors.Join(err, s.host.Admission().RecoveryError()))
 	}
