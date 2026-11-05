@@ -100,7 +100,10 @@ export function NotificationSettings({
         </div>
       )}
       <RecordGroup variant="list">
-        <ListRow style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+        <ListRow
+          data-focus-unit=""
+          style={{ display: "flex", alignItems: "center", gap: "1rem" }}
+        >
           <div style={{ flex: 1 }}>
             <strong>{t("settings.notifications")}</strong>
             <RecordBody>
@@ -116,7 +119,10 @@ export function NotificationSettings({
             }}
           />
         </ListRow>
-        <ListRow style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+        <ListRow
+          data-focus-unit=""
+          style={{ display: "flex", alignItems: "center", gap: "1rem" }}
+        >
           <div style={{ flex: 1 }}>
             <strong>{t("settings.completionSound")}</strong>
             <RecordBody>{t("settings.completionSound.sub")}</RecordBody>

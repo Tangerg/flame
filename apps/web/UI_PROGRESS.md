@@ -17,6 +17,13 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Notification settings now keep a fitting row's label, explanation and focused
+switch together through the existing Panel reading owner. The reproduced German
+200% minimum-window case passes, as do Chinese dark large-text reading and an
+English normal-size task using the generated plugin ESM. See **Notification
+setting context during keyboard reading (2026-11-05)**. Continue inspecting
+remaining actual task paths; whole-product acceptance remains unproven.
+
 MCP's inline JSON fields now grow with their wrapped values through the existing
 shared TextArea sizing owner. The original long-argument clipping case passes
 at native 200% and a settled 2244 × 1898 window, with aligned field tops and
@@ -33437,6 +33444,108 @@ popover. The bell's accessible name now carries the full unread count, while
 its visual badge retains the existing capped presentation. Those contracts
 remain. The following current review qualifies retained history interaction;
 timed toast and system-notification behavior are outside this native batch.
+
+### Notification setting context during keyboard reading (2026-11-05)
+
+Continued from synchronized main `69952d7c5`. Actual Wails reproduces a reading
+gap in the installed Notifications settings composition: with German 18 px at
+native 200% and a settled **2242 × 1898** minimum window, Tab reaches Completion
+sound while the last line of its explanation remains below the body. Native
+wheel reading reveals that the complete row fits comfortably in the same frame.
+The control itself remains reachable; this is a context-reveal defect.
+
+| Severity | Location                                            | Before                                                                                | After                                               | Why                                                                      |
+| -------- | --------------------------------------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------ |
+| MEDIUM   | `plugins/notifications/component/component.tsx:103` | Focusing either switch reveals only the control, even when its complete setting fits. | Both existing rows declare the shared reading unit. | Keep the label, explanation and choice together during keyboard reading. |
+
+Both `ListRow` articles now pass `data-focus-unit=""` to their existing DOM
+owner. `Panel` and `readingUnitFor` still choose and reveal the fitting context;
+an oversized row retains the existing focused-control fallback. This follows
+the existing desktop `SettingRow` contract and the better-layout guidance on
+grouping and constrained reading. Standing read-only reference studies remain
+applicable; no reference source or additional component system changes.
+
+The Read/Edit-only Claude Code CLI changes only the Notifications component and
+README in **24.480 seconds / 8 turns**, with no permission denials or subagents.
+Root reviews the exact diff. No style, copy, ARIA, callback, preference encoding,
+permission admission, pending state or shared UI implementation changes. Normal
+component generation changes only the Notifications ESM among **25** captured
+installed JavaScript resources. Removing its two generated marker properties
+produces the original module byte for byte. Existing installations still select
+new package bytes through their ordinary installation lifecycle.
+
+Passed: baseline and final Notifications checks, **4 files / 19 tests**; existing
+shared Panel focus contracts, **1 file / 49 tests**; and related Settings,
+shortcut and setting-row checks, **4 files / 36 tests**. The final **104 tests**
+cover preference independence, failed storage, retired lifetimes, fitting and
+oversized context, pointer activation and retained focus without adding an
+attribute-only test. All **17 serial gates** pass: plugin typecheck, scoped lint,
+i18n and formatting; the three test groups; Web typecheck, lint, design system,
+tokens, chrome, exact plugin resources, plugin modules and bundle; native; and
+diff checking. `make check-native` passes in **17.378 seconds**. Its existing
+SDK deployment-target linker warnings remain nonfatal. Timings are receipts,
+not performance measurements.
+
+One original and three final native processes quit normally with exit 0:
+
+- **German/light/18 px/purple/motion off:** the original focus-versus-wheel
+  comparison establishes the defect. The final task repeats 200% wide and the
+  same 2242 × 1898 minimum frame. Tab reveals the entire sound row, including
+  its last explanation line; Shift+Tab reveals the complete system-notification
+  row. Both values stay unchanged. Keyboard Settings navigation then filters
+  `Editor`, opens a real Cmd+comma conflict, reaches Replace and Cancel with
+  plain Tab, and cancels with Return. The original Cmd+L and query survive.
+  Actual Size, Close, continued drafting and a Settings reopen/close retain
+  `Nach der Einstellungsprüfung weiterarbeiten. Weiter.`.
+- **Chinese/dark/18 px/blue/full motion:** normal and 200% reading, native window
+  arrangement and the settled **2240 × 1898** minimum frame retain complete
+  labels, explanations, focus rings and switch values. Reverse and forward Tab,
+  Close, production Mod+comma reopening and continued drafting retain
+  `核对通知设置后继续原任务。 继续。`.
+- **English/light/14 px/Flame Orange/full motion:** a separate private build
+  imports the actual generated Notifications ESM through the same host
+  composition. Pointer entry, both switch targets, reverse Tab, Close and
+  Mod+comma reopening pass, followed by the exact continued draft
+  `Continue after reading notification settings. Ready.`.
+
+The native host uses current production Desktop sources with private identity,
+home, inactive endpoint and fixture asset hosting. The private composition adds
+only the actual Notifications contribution; it replaces no data, handler, focus
+or geometry owner. German and Chinese use the source component; English uses
+its generated ESM. No accepted native task activates a switch, requests OS
+permission, plays sound, delivers a notification, saves a shortcut, sends a
+message or issues a live Runtime/provider/business command. Mocked preference
+and permission cases retain their separate unit-test scope.
+
+An earlier Option+Tab probe captured a synthetic shortcut override instead of
+navigating. Its isolated state was retired; subsequent accepted tasks use plain
+Tab. A tool/environment restart removed that earlier root and its raw receipts,
+so those probes do not establish final qualification. The fresh native baseline
+and all three final tasks above retain their own evidence. Transient Chinese
+thumbnail/returned-wide frames do not qualify minimum geometry; the settled
+Right-arranged capture does. An initial English entry probe stays in Shortcuts;
+the subsequent explicit Notifications click establishes the accepted ESM page.
+
+Full frontend, full shared UI, Runtime/CLI/plugin backend suites, browser visual
+suites and benchmarks are not rerun. Live OS authorization/delivery/chime,
+VoiceOver speech, OS IME, RTL, other-platform GUI, 320 px native Settings and
+fresh numeric contrast are not qualified. Approval covers this inspected
+reading integration; whole-product and award-level acceptance remain open.
+
+Final review verifies **6804** non-Markdown source inputs, the expected two
+source/resource changes, **333** source-variant assets, **333** installed-variant
+assets, **4** app files, **24** private host inputs and **56** capture digests.
+Ownership-checked cleanup removes five new checkout output roots, both current
+UID stores and two orphaned stores from the earlier interrupted identity. Five
+pre-existing output trees and both original UI cache files retain their exact
+bytes. The current bundle is unregistered and
+`/private/tmp/flame-settings-reading-zdntbjr8` is removed. The earlier missing
+bundle returns Launch Services application-not-found during unregister; its
+metadata probe is removed too, and registration absence is not claimed for it.
+The round-trip-verified in-memory archive retains **245** UTF-8 records and
+metadata for **56** captures, gzip SHA-256
+`6e17cc2bc3b41a1f826b2ac35df3cf71be69d464c7a45aedba06f348d8e2d563`.
+Only the npm 11.21.1 toolchain is retained for continued batches.
 
 ### Transient notifications and Composer clearance
 
