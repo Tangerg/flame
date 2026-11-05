@@ -40,7 +40,7 @@
 21 plugins/computer/backend/engineProcess.ts:environment
 22 plugins/computer/backend/installation.ts:Installation.inspect
 21 plugins/computer/backend/installation.ts:appMetadata
-33 plugins/computer/backend/tool-result.ts:projectContent
+32 plugins/computer/backend/tool-result.ts:projectContent
 65 plugins/computer/component/component.tsx:Computer
 25 plugins/computer/component/result.tsx:Content
 21 plugins/computer/component/useComputer.ts:useComputer

@@ -108,20 +108,9 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	ctx = o.session.modelCallContext(ctx, member, callID)
 	ctx = operation.Adopt(ctx, callID, extension.Model, member.MemberID)
 	ctx = runinput.WithCapabilities(ctx, o.start.InterruptTypes)
-	continued, resumed, err := runinput.Restore(bound)
+	preparedInput, continuation, err := restoreToolInput(bound)
 	if err != nil {
 		return toolcontract.Result{}, err
-	}
-	var preparedInput *runinput.Continuation
-	var continuation *toolcontract.Continuation
-	if resumed {
-		preparedInput = &continued
-		// Flame consumes its approval; a question's answer still belongs to
-		// the underlying Tool that requested it.
-		if _, question := continued.Interrupt.(runs.QuestionPrompt); question {
-			restored, _ := bound.Continuation()
-			continuation = &restored
-		}
 	}
 	effectiveArguments, denied, denialReason, inputRequest, prepareErr := o.prepare(ctx, bound, callID, call.Name, arguments, preparedInput)
 	if inputRequest != nil {
@@ -208,6 +197,21 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		o.runAfterToolUseHook(ctx, callID, call.Name, arguments, modelOutput, callErr)
 	}
 	return toolcontract.Result{Output: modelOutput}, callErr
+}
+
+func restoreToolInput(bound toolcontract.Invocation) (*runinput.Continuation, *toolcontract.Continuation, error) {
+	continued, resumed, err := runinput.Restore(bound)
+	if err != nil || !resumed {
+		return nil, nil, err
+	}
+	var continuation *toolcontract.Continuation
+	// Flame consumes its approval; a question's answer still belongs to
+	// the underlying Tool that requested it.
+	if _, question := continued.Interrupt.(runs.QuestionPrompt); question {
+		restored, _ := bound.Continuation()
+		continuation = &restored
+	}
+	return &continued, continuation, nil
 }
 
 func (o *observedInteractionTool) capturePreparedTool(ctx context.Context, invocation interaction.ToolInvocation, member runs.ExecutorMember, start runs.ToolCallStarted) (runs.ToolCallPrepared, error) {
