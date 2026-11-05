@@ -17,6 +17,15 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+The renewed Run/Trajectory native review on `88e1900a2` finds no new alignment
+defect in the inspected English light/14 px and Chinese dark/18 px paths. Both
+include a 320 px Dock, 200% main-area reading, recorded-evidence navigation and
+continued drafts; Chinese also includes native window resizing. A fresh main
+fetch and merge report the branch already up to date. See **Run and Trajectory
+native reading review after main (2026-11-05)**. Product files remain unchanged,
+and owned qualification resources are retired. Whole-product acceptance remains
+open.
+
 The renewed File/Diff native reading review on `0bf3b198d` finds no new
 alignment defect in the inspected English light/14 px and Chinese dark/18 px
 paths. Both include 200% reading and continued drafts; Chinese also includes
@@ -17068,6 +17077,87 @@ Flame Orange/custom blue and persistent controls. Earlier Radix focus principles
 and Ace composition references remain applicable; static artwork supplies no
 keyboard evidence. Runtime trajectory generation, evidence, status, Session
 renaming and all command lifecycles retain their existing owners.
+
+### Run and Trajectory native reading review after main (2026-11-05)
+
+The task is an existing conversation draft → page-local recorded observations →
+Run or response detail → optional raw evidence → original conversation →
+continued draft. This reviews the product bytes published as `88e1900a2` and
+selects no product-source repair. A fresh origin/main fetch and merge report
+`Already up to date`; both heads are identical. The fixture's `dock-runs`
+state selects delegated-agent data for the same published Trajectory component,
+not a separate Run-tree UI. Accepted page identity, local filters, disclosure,
+Panel reading and command lifecycles retain their existing owners.
+
+Read-only ZCode `ModelTrajectoryTimeline.tsx` and `ToolSummaryRow.tsx` inform
+identity, controlled filtering and progressive details. ChatGPT's actual
+`details-73eaf369a9c5.js` supplies interface disclosure/dialog evidence rather
+than exporter behavior. Earlier HeroUI, Radix and Ace reference work remains
+applicable. Better-layout and better-accessibility guide the wrapping, reading
+order and visible keyboard-focus review. Existing whitespace, typography,
+semantic tokens, Orange and custom themes remain unchanged.
+
+Actual Wails 3.1.0 acceptance uses deterministic fixture providers and a private
+signed host. A private Vite import substitution loads the current published
+Trajectory ESM instead of its fixture source import; product files are untouched.
+The same **330 served Web files, 24 host files and four signed bundle files**
+retain their exact hashes throughout both tasks. All nine serial preparation,
+build, signing and registration steps pass using the existing owned Node
+24.22.1, npm 11.21.1 and Go 1.27.3 toolchain.
+
+- **English / light / 14 px / Orange #FB6E30 / full motion:** verified keyboard
+  splitter focus and Home reduce the Dock from 363 to **320 px**. Observation
+  type Runs shows **7 of 19**; selecting `run_child` shows **1 of 19**. Keyboard
+  expansion reveals Run, root, parent and delegating-item identities. Refresh
+  retains those filters and the expanded record while keeping its own focus.
+  Main-area entry retains the same scope. Actual Size plus twenty native Zoom
+  In actions reaches **200%** at **2238 × 1720**. Wrap, explicit evidence-reader
+  focus and End reveal the final spawner identity and closing JSON braces.
+  A nonmatching query gives **0 of 19**; Clear filters resets all three filters,
+  restores 19 records and focuses search. Searching `run_child` gives **4 of
+  19**. Actual Close and Actual Size restore the 320 px Dock with that query;
+  Dock collapse and explicit Composer caret placement continue the retained
+  draft to `Keep the Run record draft. Continue after reading the child Run.`.
+- **Chinese / dark / 18 px / #6C9EFF / full motion:** verified keyboard splitter
+  focus and Home reach **320 px**. Search `Reading notes` shows **1 of 5**;
+  the response expands with the original literal Markdown, as required by the
+  recorded-prose contract. Main-area entry retains the query and disclosure.
+  Actual Size plus twenty native Zoom In actions reaches **200%**. Native
+  Window → Move & Resize → Top Left settles at **2240 × 1456**. The search and
+  filter controls wrap into stable rows without overlap. Keyboard navigation
+  reaches Recorded evidence after the long body; opening it, enabling Wrap,
+  focusing its named reader and End reveal the complete final source and
+  closing JSON braces. Returning to the disclosure and closing it keeps visible
+  focus. Coordinate wheel reveals the literal prose ending and aligned record
+  and Run identity columns. Actual Close and Actual Size restore the Dock with
+  the query and expanded response retained. Dock collapse and explicit Composer
+  caret placement continue `轨迹阅读草稿。记录和证据已核对，继续编辑。`.
+
+Guarded action batches following a reported user change are not treated as
+executed. The first English six-Tab attempt reaches Stop rather than the
+splitter; only the later confirmed seven-Tab path establishes its width. Early
+200% tab sequences do not qualify evidence focus; the later explicit reader
+captures do. Initial Chinese expanded records with an empty Composer do not
+establish draft continuity; the later explicit draft does. Native resize
+transitions and rescaled captures are excluded from geometry claims. Static
+fixture sidebar labels are readouts, not navigation. No Send, live provider,
+Runtime write, installed-package upgrade, automatic Composer focus, physical
+IME, VoiceOver, RTL, other native locale or whole-product acceptance is claimed.
+No browser visual suite, performance benchmark or new test run is added; prior
+unchanged-source checks retain their original scope.
+
+Both native processes are reaped with exit **0**, after **567.253 s** and
+**744.341 s**. All **6,630 tracked non-Markdown files** remain byte-identical.
+The evidence retains **98 UTF-8 records and 38 capture digests**, with a verified
+gzip round trip of **847,836 bytes**, SHA-256
+`eb71906476901c6e9622608c501eab82baff8e3a0e8f4ee37fa080f73af74138`.
+The exact registration, two created UID stores and private root are retired;
+all six UID locations are absent, and port **50967** and the exact executable
+are inactive. Six original output trees and two UI cache files match baseline;
+only two generated UI files require restoration. All five originally absent
+output roots remain absent, preserving the 58 real nested Web dependency files.
+The user-owned primary checkout remains clean on `00c172c73`. Continue with
+actual remaining task paths before selecting another repair.
 
 ### Trajectory recorded state and approval wording (2026-11-02)
 
