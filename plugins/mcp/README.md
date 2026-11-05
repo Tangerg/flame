@@ -25,6 +25,11 @@ policy write never closes the editor or reports its draft as saved. The editor
 shows Saving… only for its own submission; other work on the server makes it
 read-only.
 
+Each tool row is one focus reading unit: its identity, both permission switches,
+description and any name-conflict sources. When a switch takes focus, the shared
+Panel reveals the whole row if it fits the viewport; an oversized row falls back to
+revealing the focused control.
+
 The editor's inline JSON fields, Arguments and Environment for stdio and Headers
 for HTTP, keep a three-row minimum and grow or shrink with their wrapped content
 in normal page flow through the shared `TextArea autosize` owner, rather than

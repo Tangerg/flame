@@ -32,3 +32,7 @@ changes project trust through Runtime. It retains the last accepted catalog duri
 read failures, and an uncertain trust command must be reconciled using its original
 mutation before another intent is admitted. Source retirement cancels observation;
 it does not infer a command's outcome.
+
+Keyboard focus on a fitting project-trust row reveals its shell-execution
+consequence and captured project root through the shared Panel owner; an
+oversized row falls back to revealing the focused control.
