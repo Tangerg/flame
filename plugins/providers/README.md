@@ -19,7 +19,8 @@ cannot turn that command into a failure. An unconfirmed command blocks another
 write to the same resource and retains its original promise for reconciliation.
 Later edits survive settlement and cannot receive feedback from an older probe.
 No plugin-owned credential registry, role state machine or module-global presenter
-is introduced.
+is introduced. Role controls fill their grid track, so they share the description's
+reading axis when the row stacks.
 
 Runtime supplies an immutable credential snapshot when opening a model. One
 private handle retains the actual client and its supported capabilities. A

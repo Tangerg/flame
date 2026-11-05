@@ -17,6 +17,16 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+The requested fresh main fetch and merge report already up to date at
+`2f7669a09`; local main `00c172c73` is already an ancestor and its checkout
+remains untouched. Provider Utility and Embedding controls now fill their grid
+track, preserving the shared leading edge when their rows stack. The matched
+English native original/candidate comparison and Chinese dark/18 px/200%/native
+resize checks pass, along with all 43 existing Provider tests and the affected
+build/module checks. See **Provider role controls on the shared reading axis
+(2026-11-05)**. Owned qualification resources are retired; whole-product UI
+acceptance remains open.
+
 The renewed Subagents native review on `3380187b5` finds no new alignment
 or reading-return defect in the inspected English light/14 px and Chinese
 dark/18 px tasks. Both include a 320 px Dock, 200% main reading and continued
@@ -32053,6 +32063,89 @@ optimistic revert, ServerForm immutable-name + no-echo, provider draft stores,
 theme single-owner, plugins operations-generation ownership. The index-containing
 keys in `HooksPane`/`PackageManager` combine the index with stable ids on
 stateless rows — no reachable corruption.
+
+### Provider role controls on the shared reading axis (2026-11-05)
+
+This batch starts from published `2f7669a09` and inspects Providers settings,
+role selection, readable failure feedback and return to the original draft. The
+user-requested fresh main fetch returns the same commit; a normal merge reports
+already up to date. Local main `00c172c73` is already included, and its clean
+primary checkout remains read-only.
+
+The original native English light/14 px/Orange view reproduces a shared layout
+defect at 200%: Utility and Embedding descriptions begin at screenshot x=188,
+while the stacked control column remains aligned to the far right at x=932.
+The existing auto-fit grid owns the transition to one column, but the control
+child imposes both a 20em maximum width and trailing justification. The two
+independent width decisions disconnect the control from its explanation.
+
+`plugins/providers/component/roles.tsx` now lets the existing column fill its
+grid track. The grid remains the only owner of column width and stacking; no
+breakpoint, wrapper, state, theme value or public API is added. Both roles inherit
+the repair. The generated installed component ESM is rebuilt through the normal
+plugin generator; it is the only changed resource among 25 component resources.
+The module README records the resulting layout contract. A bounded Claude Code
+CLI edit takes five turns, exits 0 in 13.845 seconds and has no permission denial;
+its actual two-source-file diff is reviewed independently.
+
+The scoped read-only references are ZCode's actual ModelProviderSection and
+SectionLayout, which show a stable leading edge for provider detail and controls,
+and HeroUI's basic form example, which keeps labels and fields on one reading
+axis. They supply layout evidence, not asynchronous mutation authority. Flame
+retains its shared controls, focus unit, literal model identity and existing
+Runtime command, pending, reconciliation and failure owners.
+
+Verification:
+
+- Original and candidate Provider suites each pass all 43 tests in three files.
+  The selected source-test command follows the repository's plugin test runner.
+- Plugin typecheck, lint, scoped formatting, component build and exact resource
+  check pass. Web typecheck, lint and design-system boundary checks pass.
+- The first Web module check fails against the pre-existing Web dist because its
+  import map lacks the current SDK JSON export. A normal production Web rebuild
+  passes, then the unchanged module check passes React/JSX linking and Runtime
+  error/exact-JSON Host identity. Candidate native assets are built afterward.
+  The 12 final candidate checks/builds pass after this prerequisite repair; the
+  earlier failure remains recorded. Native preparation's nine serial steps pass.
+- Native English light/14 px/Orange original and candidate use the same Wails
+  3.1.0 host and fixture. The final wide grid fills its two tracks; at 200%, both
+  stacked controls share x=188 with their description. Keyboard entry, role-menu
+  Escape and model refresh retain the current identity and focus. Attempting
+  Runtime Default invokes the existing role command path; the visual fixture's
+  pre-dispatch refusal remains readable and leaves the accepted GPT-5.6 Sol
+  choice intact. This is fixture refusal evidence, not a live Runtime rejection.
+- Native Chinese dark/18 px/custom blue passes wide and 200% reading. Utility
+  and Embedding retain the same leading edge; Embedding's menu opens and Escape
+  returns focus without selecting another model. Native Window → Top Left settles
+  at 2240 × 1456. Scrolling preserves readable descriptions and reachable controls.
+- Both native candidates close Settings, retain the captured pre-settings draft,
+  collapse the Dock and explicitly refocus Composer to continue that same draft.
+  This verifies continuity; it does not claim automatic Composer focus restoration.
+  The Chinese draft is entered through native paste, not an IME composition test.
+
+The original English, candidate English and candidate Chinese processes exit 0
+in 237.801, 518.434 and 302.402 seconds respectively and are reaped. The unique
+app is unregistered; its process and port are inactive and all six UID-specific
+stores are absent. The six pre-existing generated/dependency trees match their
+baseline hashes, including the 58 real nested Web dependency files. The normal
+Web rebuild's 143 added files are removed and its 147 missing/changed baseline
+files restored; two UI output files are restored. Both existing UI test-cache
+files remain byte-identical. The two newly created test-cache roots are retired,
+and all five initially absent output roots are absent again.
+
+Original and final native assets each retain 331 verified files, with 24 private
+host inputs and four signed bundle files unchanged between candidates. Of 6,630
+tracked non-Markdown inputs, only the role source and generated Provider ESM
+intentionally differ. Before deleting the owned qualification root, 132 UTF-8
+records and 26 native capture digests are retained in RAM with source/artifact
+maps and cleanup receipts. The 1,500,879-byte gzip round trip passes; its SHA-256 is
+`29f3ce539bd5bf43894c556968ad8761a737ceacfd8bf99892ca7cf7f2eb12f3`.
+
+No schema or data migration is needed. Real credential writes, accepted live
+role changes, VoiceOver speech, IME composition, the full Web/Runtime suites and
+other settings pages are not rerun in this layout-only batch. No browser visual
+suite or benchmark is launched. Continue with observed remaining task paths;
+whole-product and award-level acceptance remain unproven.
 
 ### Unfinished settings tasks and native return continuity
 

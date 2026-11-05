@@ -133,9 +133,7 @@ export function RoleSection({
             </Metadata>
           )}
         </div>
-        <div
-          style={{ ...column, width: "min(100%, 20em)", justifySelf: "end" }}
-        >
+        <div style={column}>
           {!known ? (
             unknownFailure ? (
               <>
