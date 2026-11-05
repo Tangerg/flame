@@ -83,6 +83,44 @@ test("author production imports select their locked packages and JSX runtime", (
     },
   ));
 
+test("author imports retain declared locked type packages as development dependencies", () =>
+  project(
+    {
+      "backend/start.ts": 'import { PNG } from "pngjs"; void PNG;',
+      "backend/image.test.ts": 'import "@vendor/legacy";',
+    },
+    async (source) => {
+      const result = await authorDependencies({
+        source,
+        manifest: {
+          dependencies: { pngjs: "7.0.0" },
+          devDependencies: {
+            "@types/pngjs": "6.0.5",
+            "@vendor/legacy": "1.0.0",
+            "@types/vendor__legacy": "2.0.0",
+            "@types/unrelated": "3.0.0",
+          },
+        },
+        lock: {
+          packages: {
+            "node_modules/pngjs": { version: "7.0.0" },
+            "node_modules/@types/pngjs": { version: "6.0.5" },
+            "node_modules/@vendor/legacy": { version: "1.0.0" },
+            "node_modules/@types/vendor__legacy": { version: "2.0.0" },
+          },
+        },
+        packages: [],
+        required: [],
+      });
+      assert.deepEqual(result.dependencies, { pngjs: "7.0.0" });
+      assert.deepEqual(result.devDependencies, {
+        "@types/pngjs": "6.0.5",
+        "@vendor/legacy": "1.0.0",
+        "@types/vendor__legacy": "2.0.0",
+      });
+    },
+  ));
+
 test("author SDK subpath imports include packed dependency and peer closure", () =>
   project(
     {
