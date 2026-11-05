@@ -79,7 +79,8 @@ place; otherwise Escape in the catalog belongs to the host.
 
 Proposal confirmation captures the full inspected instructions and revision.
 Escape cancels that local review and returns focus to its action before the host
-handles page navigation.
+handles page navigation. Focusing its actions reveals the complete review when it fits
+the reading frame and otherwise retains the existing action-group fallback.
 Archive/restore and approve/reject use the ordinary public commands. No optimistic
 business result is created. Unknown acknowledgement retains the original mutation
 key and retry closure and blocks another command or catalog change until reconciled.

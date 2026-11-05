@@ -17,6 +17,16 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Skills proposal review now reveals the complete inspected decision when it fits
+the reading frame. The real English 150% counterexample previously left the
+proposal title above the sticky controls; oversized reviews retain the existing
+action-group fallback. All 30 Skills tests and affected module/build checks pass,
+as do matched English native original/candidate checks and Chinese dark/18 px
+review, resize and return tasks. See **Skills proposal review context in the
+reading frame (2026-11-05)**. Fresh remote/local main merges are already up to
+date, owned qualification resources are retired and whole-product acceptance
+remains open.
+
 The renewed Memory native review on `6401c5e0c` finds no new alignment or
 return defect in the inspected English light/14 px and Chinese dark/18 px tasks.
 Both cover a real 320 px Dock, 200% reading, retained drafts and Files/conversation
@@ -22489,6 +22499,90 @@ Verification for this contract:
 - Native 200% zoom with a collapsed fixture sidebar produced a 720 × 450 CSS viewport and reachable main controls. Focus entered the named main region; Shift-Tab/Return reached Close and returned to the conversation with its unsent Composer text intact. System Move & Resize produced an approximately 1,122-point narrow window. Real pointer drags changed a 660 px Dock to 620 px and reached 320 px in the light scene, retaining the query/draft and seam. Editor Tab reached Cancel after scrolling, and Escape returned to Edit. Native keyboard resizing was not freshly qualified: the recorded tab-to-handle focus route needs investigation below.
 - These scenes use the production components and shared React graph through actual Wails asset/IPC hosting, canonical in-memory reads and bounded synthetic command observations. They qualify UI continuity and the SDK's original-handle mapping, not a live Runtime installation, durable receipt journal or provider restart. No live package selection or Runtime write was performed. No browser visual suite or performance baseline ran. VoiceOver, real OS IME composition and rendered contrast measurements remain outside this qualification.
 - Cleanup completed: all owned native/CLI/check/build processes exited. The app was unregistered; its bundle, fixture/data, overlays, production binary, logs, all four completed CLI reports and the acceptance root were removed. Newly created bundle-specific WebKit/cache paths were removed with preexistence/birth-time guards. No preview server was started. Existing shared outputs/compiler caches, read-only Ace references and unrelated worktrees/processes were retained. The primary agent owned research, boundaries, review and native acceptance; Claude Code CLI supplied the bounded implementation and regression work.
+
+### Skills proposal review context in the reading frame (2026-11-05)
+
+The renewed review starts from `b5c96627e`. Fresh origin/main fetches and both
+remote/local main merges report already up to date. Local main `00c172c73`
+remains an ancestor, and its separate primary checkout remains clean and
+untouched.
+
+The actual English Wails baseline exposes a fitting-review defect at 150%:
+expand the first proposal, then reject the second `release-notes` proposal.
+Cancel receives focus and its action group is visible, but the review title is
+above the sticky controls. Ordinary wheel scrolling reveals the entire
+unchanged review at once, proving that the complete decision fits the available
+reading frame. The first expanded review at 200% genuinely exceeds that frame;
+its action-group fallback is correct and is retained.
+
+`plugins/skills/component/component.tsx` now opts the existing review
+`RecordForm` into the shared `data-focus-unit` contract. `Panel` already chooses
+the outermost fitting reading unit and falls back to a fitting inner group.
+The review continues to own its captured proposal/revision and opener; shared
+form cancellation and command acknowledgement ownership remain intact. The
+component README documents the behavior, and the normal plugin build regenerates
+the declared Skills ESM. No shared implementation or business transition changes.
+
+The better-layout, better-ui and better-accessibility review follows one task:
+identify the proposal, inspect its instructions and target, cancel the decision,
+return to the same action and continue the conversation. The read-only ZCode
+`settings/PluginStorePage.tsx` catalog/detail return remains the navigation
+reference. Flame retains its own Base UI/StyleX controls, typography, semantic
+colors and restrained hierarchy. Claude Code CLI supplied the bounded component,
+README and regression edit in 13 turns / 77.655 s; the actual diff was reviewed.
+
+Verification:
+
+- The original Skills baseline passes 26 tests. Four new observable focus/scroll
+  cases cover Approve/Reject with fitting and oversized reviews. Against the
+  original component, both fitting cases fail and both oversized cases pass;
+  restoring the candidate yields all 30 passing tests. Assertions retain the
+  focused Cancel control and check the chosen scroll target through the real
+  Skills/Panel path. No valid assertion or deadline is weakened.
+- Plugin typecheck, lint, i18n, normal resource build and exact resource checks
+  pass. Web typecheck, lint and context guards pass. Formatting, private candidate
+  Web bundling and strict native signature verification pass. Serial preparation
+  builds current icons, UI, installed resources and the private Wails 3.1.0 host.
+- Matched English light/14 px native original/candidate tasks use a real 320 px
+  Dock, main promotion and actual 150%/200% zoom. The repaired second review
+  automatically shows its title, instructions, target disclosure and actions at
+  150%. An expanded first review retains complete actions at 200%. Escape and
+  pointer Cancel return to the original proposal action; Files round trips retain
+  the open review, and continued Composer input preserves the unsent draft.
+- Chinese dark/18 px/custom blue native tasks cover empty-query recovery,
+  filtered document reading, complete source path/revision at 200%, native window
+  resizing, active/archived library rows and filtered proposal review. The short
+  320 px review survives Files return. Expanded target facts fit at Actual Size;
+  at 200%, its oversized form retains reachable actions. Escape restores the same
+  Approve action and `release` filter; returning to the Dock preserves continued
+  Chinese draft input. Complete source facts were inspected before resizing;
+  the shorter resized viewport requires ordinary scrolling for their final line.
+- All three native processes quit normally with exit 0 in 752.061 s, 353.004 s
+  and 679.275 s. These use unchanged canonical in-memory reads and the actual
+  installed Skills component through the Wails asset/IPC host. No native Approve,
+  Reject, Archive, Restore or Send command was confirmed. Live Runtime/provider
+  execution and acknowledgement recovery are outside this native qualification.
+
+The 6,630 tracked non-Markdown inputs match the accepted candidate; only the
+component, regression file and generated Skills ESM differ from the baseline.
+Candidate artifacts contain 331 Web files, 24 private host files and four bundle
+files; the host/bundle remain identical across the original/candidate comparison.
+Frozen session evidence retains 148 UTF-8 records and metadata for 37 native JPEGs
+at 2238 × 1720 or 2240 × 1456. Its gzip round trip passes at 1,551,350 bytes,
+SHA-256 `4e6a3cd45f1812ff12c7e0d08bdc7c8b1f3d3da06567206016068520cbf78131`.
+
+Cleanup is complete: the private app is unregistered, all owned processes and its
+listener are absent, and the acceptance root and two new UID stores are retired.
+All six existing output/dependency trees match their original file hashes,
+including the 58 nested Web dependency files. Two existing UI cache files retain
+their original hashes.
+Two new Web result-cache files and the initially absent 1,041-file Vitest module
+cache are removed with identity/hash guards; installed Vitest source and creation
+times establish the latter's ownership. Existing toolchains, user data, references
+and the primary checkout are preserved. No browser visual suite, performance
+benchmark, full backend suite, VoiceOver speech, OS IME, RTL or quantitative
+contrast measurement ran for this local opt-in change. Continue with actual
+remaining task paths; whole-product acceptance remains open.
 
 ### Skills catalog query and reading return
 

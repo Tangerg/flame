@@ -232,7 +232,11 @@ export function Skills({ context }: { context: ComponentContext }) {
         </section>
       )}
       {review && (
-        <RecordForm aria-label={t("review.label")} opener={review.opener}>
+        <RecordForm
+          aria-label={t("review.label")}
+          opener={review.opener}
+          data-focus-unit=""
+        >
           <RecordTitle>
             {t(`review.title.${review.decision}`, {
               name: review.proposal.name,
