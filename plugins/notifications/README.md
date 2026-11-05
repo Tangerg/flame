@@ -14,6 +14,11 @@ write only the chosen preference, and settlement handling reads the current
 records. No second in-memory preference store, synchronization or alternative
 storage decoder is installed.
 
+Each settings row is a focus unit. When keyboard focus reaches a switch, the
+shared Panel reveals the row's label, explanation and switch together if the row
+fits the visible body. An oversized row falls back to revealing only the focused
+switch.
+
 The effect observes only the Host's root settlement projection. It stays quiet
 while the document has focus, honors each channel's preference, requests OS
 authorization through the public capability and preserves the captured Session.
