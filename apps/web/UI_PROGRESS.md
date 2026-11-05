@@ -17,6 +17,13 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+MCP tool permissions now reveal the complete fitting tool record when either
+switch takes keyboard focus. The original German minimum-window case passes,
+alongside Chinese dark large-text and English default-theme tasks using the
+generated plugin ESM. See **MCP tool context during keyboard reading
+(2026-11-05)**. Continue reviewing actual remaining page and return paths;
+whole-product acceptance remains unproven.
+
 Notification settings now keep a fitting row's label, explanation and focused
 switch together through the existing Panel reading owner. The reproduced German
 200% minimum-window case passes, as do Chinese dark large-text reading and an
@@ -11000,6 +11007,119 @@ retains **152 text records / 33 capture digests**, gzip SHA-256
 `f4d043b62b69c8f6fd330559cf0c97692f9146afb27fb911375b0659f3cc9785`.
 Normal hooks, main integration and independent remote verification remain
 required publication steps. There is no protocol, resource or data migration.
+
+### MCP tool context during keyboard reading (2026-11-05)
+
+Qualified from published main `aed644c8c`. Actual Wails Settings → MCP servers →
+Tools reproduces incomplete context reveal in German light/18px/purple/motion
+off at native 200% and a settled **2240 × 1898** captured window. Tab into the
+first tool leaves its explanation below the reading area; moving onward to a
+tool with name conflicts places its identity behind the Settings navigation.
+The controls remain visible, and native wheel reading proves the complete
+conflict row fits. This is a context-reveal failure, not loss of the stored text.
+
+`plugins/mcp/component/toolControls.tsx` declares the existing mapped `ListRow`
+as one `data-focus-unit`. Its identity, both permission switches, description
+and optional conflict sources belong to that tool. Shared Panel and
+`readingUnitFor` retain fit measurement, scrolling, pointer protection and the
+focused-control fallback for oversized rows. No server-wide unit, wrapper,
+style, label, ARIA, event handler, effect or state is added. Read projections,
+permission callbacks and command ownership retain their original bytes.
+Normal generation adds exactly **21 bytes**, one identical attribute, to MCP's
+installed ESM; the other **24 installed resources** remain byte-exact. There is
+no Runtime, protocol, dependency or persisted-data migration. Building checkout
+resources does not update an existing Runtime installation.
+
+Better-layout grounds object/action grouping and reading order;
+better-accessibility grounds reachable controls, visible keyboard focus and
+200% reading. Read-only HeroUI `switch.tsx` distinguishes the switch label from
+its description, while ZCode's actual `McpServerList.tsx` keeps server identity
+beside its operations. These are task/composition references. Flame's existing
+Panel owns the implementation; no reference component or styling is imported.
+
+| Severity          | Location                           | Before                                                                                  | After                                                   | Why                                                     |
+| ----------------- | ---------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------- |
+| MEDIUM · resolved | MCP `ToolControls` mapped tool row | Keyboard reveal can separate a fitting tool's identity or explanation from its switches | Existing Panel reveals the complete fitting tool record | Keep the decision and its object in one reading context |
+
+The first path-filtered Read/Edit-only Claude CLI attempt makes no changes after
+two Edit refusals. With Read/Edit enabled for the same explicit two-file task,
+the implementation finishes in **12.199 s / 5 turns**, with no permission
+denials, subagents or command execution. Root reviews the one source attribute,
+README paragraph and exact generated delta. No implementation-mirroring test is
+added; existing Panel behavior tests and actual native comparison cover the
+mechanism.
+
+Final serial verification passes **18 steps**, including generation and private
+native assets: MCP **5 files / 117 tests** (baseline **3.357 s**, candidate
+**3.245 s**), shared Panel **1 file / 49 tests** (**1.178 s**), Web Settings and
+shortcut/setting-row checks **4 files / 36 tests** (**2.264 s**), plugin
+typecheck, scoped lint, locale closure and owned formatting, Web typecheck,
+lint, design-system, tokens, chrome, exact resources, installed module linkage
+and production bundle. The **202 unique tests / 10 files** pass.
+`make check-native` passes in **15.694 s**, retaining existing nonfatal macOS SDK
+deployment-target linker warnings. Private final assets build in **2.048 s**.
+The final documentation format and `git diff --check` checks also pass.
+
+Native acceptance uses CUA screenshots and AX with the actual generated MCP ESM
+and frozen public read DTOs, without DOM inspection or injected observers:
+
+- **Original German:** ordinary populated reading, native 200%, minimum-window
+  Tab and manual whole-row reading establish the failure above.
+- **Final German, same scene:** complete ordinary and conflict rows appear for
+  either focused switch at the settled minimum window. The twelve-section
+  oversized description retains reachable controls and native wheel reading
+  through its final sentence; Shift+Tab returns to the complete conflict row.
+- **Final Chinese dark/18px/blue/full motion:** normal, 200% wide and settled
+  minimum-window reading retain names, literal descriptions, conflict sources,
+  both switch states and visible rings. Oversized-control focus and reverse
+  return also pass.
+- **Final English light/14px/Orange/full motion:** all six tool switches follow
+  their natural Tab order. Reverse Tab, pointer collapse and Return reopening
+  preserve the actual tool records and values.
+
+Each final process closes Settings to the existing Workspace diff focus target,
+explicitly returns to Composer, authors a draft, reopens Settings with Mod+,
+retains the selected MCP category and permission values, and closes to continue
+that exact draft. Final continuations are
+`Nach der Werkzeugprüfung weiterarbeiten. Weiter.`,
+`核对工具权限后继续当前任务。 继续。` and
+`Continue after reviewing tool permissions. Ready.`. No automatic Composer
+opener restoration is claimed. Accepted tasks do not activate permission writes,
+Reconnect, Save, Test, tool execution or Send.
+
+Two additional probes are excluded: the initial private DTO is rejected by the
+production wire validator before correction, and an externally interrupted
+English process retains a refused synthetic `mcp.tools.setExposure` command.
+Its transport has no live Runtime or accepted policy write. A clean restart
+repeats the English task above. A private Vite escaping error and one undefined
+cross-call AX variable are corrected before their dependent actions; neither
+changes product source. All **six processes exit 0**. In setup, original German,
+final German, final Chinese, interrupted English and clean English order, their
+durations are **61.405 / 152.100 / 112.392 / 98.791 / 50.494 / 61.936 s**.
+Final JPEG dimensions qualify the settled **2240 × 1898** focus frames; initial
+arrangement frames can be 2242px wide.
+
+Typography, whitespace, hierarchy, color, motion, micro-interaction, responsive
+behavior and originality are reviewed at this record/task scope. **Approve** the
+inspected context reveal. Full frontend/shared suites, Runtime, CLI and plugin
+backend suites, browser visual suites and performance benchmarks are not rerun.
+VoiceOver speech, OS IME, RTL, native 320 CSS px Settings, other platforms, new
+numeric contrast/timing measurements and live permission writes remain
+unverified. No whole-product or award-tier acceptance is claimed. Continue
+inspecting populated page reading and return paths before choosing another fix.
+
+Cleanup is complete. The exact app is unregistered; its processes and endpoint
+are inactive. Five newly created checkout output roots and two created UID
+stores are removed. All six UID Library paths and the guarded private root are
+absent. Five pre-existing output trees and two original UI cache files remain
+byte-exact. The independent primary upgrade checkout is untouched. The managed
+npm 11.21.1 toolchain remains for the active goal. Frozen checks cover **6,804
+non-Markdown source/test/config inputs**, **25 installed resources**, **333 served
+files**, **4 app files** and **24 private host-source files**. The in-memory
+evidence archive retains **248 text records / 56 capture digests**, gzip SHA-256
+`d2dcdae65d9e56fb52793feb96d5b52dbcbb54ea39b9bc2f9e51463b8381c8e1`.
+Normal hooks, main integration and independent remote equality are required
+publication checks.
 
 ### MCP inline JSON sizing and connection-form native review (2026-11-05)
 

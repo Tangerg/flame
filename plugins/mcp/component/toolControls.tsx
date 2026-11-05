@@ -92,7 +92,7 @@ export function ToolControls({
         (tools.data.length ? (
           <RecordGroup variant="list">
             {tools.data.map((tool) => (
-              <ListRow key={tool.name}>
+              <ListRow key={tool.name} data-focus-unit="">
                 <RecordHeading
                   title={tool.name}
                   description={
