@@ -131,8 +131,8 @@ func requireGoalMutationLifecycle(t *testing.T, runtime *Connection, sessionID s
 		SessionID: sessionID, Objective: "verify embedded goal lifecycle",
 		Provider: "missing", Model: "missing",
 	}
-	if _, err := runtime.StartGoal(t.Context(), start); !errors.Is(err, protocol.ErrInvalidParams) {
-		t.Fatalf("StartGoal with an uninstalled provider = %v, want selection refusal", err)
+	if _, err := runtime.StartGoal(t.Context(), start); !errors.Is(err, protocol.ErrPluginUnavailable) {
+		t.Fatalf("StartGoal with an uninstalled provider = %v, want plugin unavailable", err)
 	}
 	if _, exists, err := runtime.GetGoal(t.Context(), sessionID); err != nil || exists {
 		t.Fatalf("refused selection created a Goal: exists=%t, err=%v", exists, err)
