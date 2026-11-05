@@ -17,6 +17,14 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+The renewed File/Diff native reading review on `0bf3b198d` finds no new
+alignment defect in the inspected English light/14 px and Chinese dark/18 px
+paths. Both include 200% reading and continued drafts; Chinese also includes
+native window resizing and a long canonical path. See **File and Diff native
+reading review after main (2026-11-05)**. All 6,630 tracked non-Markdown files
+remain byte-identical. Owned qualification resources are retired; continue
+inspecting actual remaining pages before selecting another repair.
+
 The previously unrun Runtime integration project now passes **all 52 tests**
 without source, assertion or deadline changes. Normal serial build preparation
 precedes the unchanged project run; its receipt and cleanup are recorded under
@@ -19088,6 +19096,92 @@ artwork supplies no keyboard evidence. The six better-series domains apply to
 this file-browse/read/return flow; unchanged colors, typography and control
 surfaces retain their existing owners.
 
+### File and Diff native reading review after main (2026-11-05)
+
+The task is existing conversation draft → file or comparison → source, list and
+reading controls → original conversation → continued draft. This follow-up
+reviews the product bytes published as `0bf3b198d`; a fresh origin/main fetch
+confirms the same head. It selects no product-source change. The bounded
+filename, full canonical path in ordinary scrolling content and existing return
+owners remain intact. A root-level README still needs its complete path even
+when its short header appears similar; hiding that path would damage the
+full-path identity contract for filenames without a directory component. The Diff table's second AX path is its
+existing screen-reader-only caption, not another visible breadcrumb.
+
+Actual Wails 3.1.0 acceptance uses current production components and generated
+plugin modules, deterministic fixture providers and a private signed host. Its
+served files, host and bundle retain exact hashes across the tasks: **331 Web
+files, 24 host files and four signed bundle files**. Node 24.22.1, npm 11.21.1
+and Go 1.27.3 use the existing owned toolchain. The nine serial preparation,
+build, signing and registration steps pass. No browser visual suite, performance
+benchmark or new test runs; the unchanged-source checks above retain their
+original scope. Better-layout informs the alignment and wrapping review. No
+spacing, type, color, theme, motion, Runtime or interaction owner changes.
+
+- **English / light / 14 px / Orange #FB6E30 / full motion:** the actual file
+  Dock starts at 363 px. Keyboard focus on its splitter followed by Home reaches
+  **320 px**, with separate readable filename, actions and full wrapped path.
+  Go to line selects line 3. Opening the main area and using Actual Size plus
+  twenty native Zoom In actions reaches **200%** at **2238 × 1720**. The full
+  path and all eight source rows remain readable. Back to files, opening README,
+  Preview/Source switching and keyboard End reveal its final line 24 with the
+  filename and actions retained. Copy path then actual Close returns the exact
+  draft; native paste produces `Keep the file review draft. README.md`. Explicit
+  continued input, switching the actual Diff tab and collapsing the Dock retain
+  `Keep the file review draft. README.md Continue. Diff reviewed.`.
+- **Chinese / dark / 18 px / #5B8DEF / full motion:** actual Files navigation
+  opens the three-file comparison before selecting the supported **146-character
+  canonical path / 113-character filename**. The 351 px Dock bounds the filename
+  beside Unified and wraps the complete path through its extension. Main-area
+  entry, sidebar collapse and twenty native Zoom In actions from Actual Size
+  reach **200%** at **2238 × 1720**. Next selects `module-001.ts` with truthful
+  `2 / 3`; Previous returns to the long filename. Native Window → Move & Resize →
+  Top Left settles at **2240 × 1456**. The filename, layout and file controls
+  retain their separate reading edges. At this shorter, enlarged geometry the
+  canonical path is read in successive scroll positions; captures verify its
+  prefix, continuation and final `.tsx`. Tab reaches the named diff reader,
+  Page keys and coordinate wheel reveal the source, and scrolling back from End
+  reveals both final line-24 changes. Focused Right navigation reaches the long
+  code's `// before` and `// after` suffixes without moving the header controls.
+  Back to files restores the current long-file row. Actual Close, Actual Size,
+  Dock collapse and explicit Composer caret placement preserve and continue
+  `文件比较草稿。已核对文件末尾并返回对话。`.
+
+Evidence limits remain explicit. The first private preparation omitted the
+visual entry-to-root index mapping and showed a blank test page; that process
+exits 0 and is excluded. Adding the existing private mapping leaves the other
+330 served files unchanged before the two accepted profiles. A pointer click
+on the English splitter does not focus it: the misleadingly named
+`en-dock-minimum` capture still reports 363 px and proves no minimum-width
+claim. The later keyboard-focused capture proves 320 px. The initial Chinese
+fixture focus retains a previous file constant; actual Files navigation supplies
+the coherent overview and long-path selection. Static fixture sidebar labels
+are readouts, not navigation. Rescaled captures and the 1458 px native resize
+transition are excluded from geometry claims. Whole-region AX scroll attempts
+do not prove movement; the observed coordinate wheel, Page keys and focused
+Right tasks above do. There is no claim for Send, live provider or Git/filesystem
+writes, automatic Composer focus, physical IME, VoiceOver, RTL, other native
+locales or whole-product acceptance.
+
+The blank initial profile and both accepted launch receipts are reaped with
+exit **0**; the accepted English and Chinese lifetimes are **448.534 s** and
+**809.019 s**. A post-Quit AX request reopens an environment-free shell; its
+empty-root page is excluded, and native Quit plus an exact executable process
+check confirms retirement. No product change masks this harness behavior.
+
+All **6,630 tracked non-Markdown files** remain byte-identical to the accepted
+source. The evidence retains **109 UTF-8 records and 44 capture digests**, with
+a verified gzip round trip of **1,019,225 bytes**, SHA-256
+`03ef95f971771bb8c8ad0f5779e37aacec7a5621ba0cab7b5608bf71063bf051`.
+The exact app registration, two created UID stores and private root are retired;
+all six UID locations are absent, and port **50966** and the exact executable
+are inactive. Six original output trees and two UI cache files match their
+baselines; only two generated UI files require restoration. All five originally
+absent output roots remain absent, and the 58 real nested Web dependency files
+are preserved. The user-owned primary checkout remains clean on
+`00c172c73`. Continue with observed remaining defects; this is a scoped native
+review, not certification that every page is complete.
+
 ### Bounded file-preview identity
 
 The task is reply reference → long-path file → line navigation/reading → related
@@ -21375,6 +21469,9 @@ This repair stays on the owned local branch, with no remote push or primary
 checkout modification.
 
 ## Diff reading identity and native list sizing
+
+The latest unchanged-source File/Diff task qualification is recorded under
+**File and Diff native reading review after main (2026-11-05)** above.
 
 ### Diff filename and reader-action alignment (2026-11-03)
 
