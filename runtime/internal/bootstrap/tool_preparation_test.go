@@ -18,7 +18,7 @@ import (
 )
 
 func TestPlanWorkflowAuthoringAndWithdrawal(t *testing.T) {
-	home := t.TempDir()
+	home := testsupport.TempDirectory(t)
 	t.Setenv("FLAME_HOME", home)
 	var phase atomic.Int32
 	model := chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
@@ -82,7 +82,7 @@ func TestPlanWorkflowAuthoringAndWithdrawal(t *testing.T) {
 }
 
 func TestPlanToolAcceptsScopeNormalizedArguments(t *testing.T) {
-	home := t.TempDir()
+	home := testsupport.TempDirectory(t)
 	t.Setenv("FLAME_HOME", home)
 	var calls atomic.Int32
 	model := chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {

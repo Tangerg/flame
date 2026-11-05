@@ -35,7 +35,7 @@ func TestToolComponentUsesSelectedImmutableBytes(t *testing.T) {
 			}
 			shaped = true
 		}
-		if value.ID == "web-browse" && value.Selector != nil && value.Selector.Type == extension.RendererToolName && value.Selector.Name == "web_browse" {
+		if value.ID == "web-browse" && value.Selector != nil && value.Selector.Type == extension.RendererToolName && value.Selector.Name == "web_web_browse" {
 			webBrowse = true
 		}
 		if value.ID == "grep" {

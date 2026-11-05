@@ -100,7 +100,7 @@ func (p *ModelProviders) acquireSelected(ctx context.Context, provider string) (
 		}
 		switch state {
 		case plugins.SelectionAbsent:
-			return modelapp.ErrProviderUnsupported
+			return errors.Join(plugin.ErrUnavailable, modelapp.ErrProviderUnsupported)
 		case plugins.SelectionActive:
 			return nil
 		default:

@@ -19,6 +19,7 @@ import (
 
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"go.opentelemetry.io/otel"
@@ -188,6 +189,9 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 		chat.NewUserMessage(chat.NewTextPart(prompt.UserPrompt)),
 	}, Options: chat.Options{MaxOutputTokens: &prompt.MaxOutputTokens}}, chatclient.Text())
 	if err != nil {
+		if _, complete := err.(*chatclient.OutputCompletionError); complete {
+			err = &coreinvocation.Failure{Kind: coreinvocation.FailureFailed, Cause: err}
+		}
 		return "", err
 	}
 	if strings.TrimSpace(text) == "" {

@@ -3,6 +3,7 @@ package bootstrap
 import (
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"context"
@@ -31,7 +32,7 @@ func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *test
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build managed fixture: %s: %v", output, err)
 	}
-	method, err := pluginmcp.NewMethod[protocol.UsageSummaryRequest, protocol.UsageSummary](portable.MethodConfig{Name: "fixture.usage", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read core accounting through the calling host."})
+	method, err := pluginmcp.NewMethod[protocol.UsageSummaryRequest, framevalue.JSON](portable.MethodConfig{Name: "fixture.usage", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read core accounting through the calling host."})
 	if err != nil {
 		t.Fatal(err)
 	}

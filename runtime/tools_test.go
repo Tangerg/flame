@@ -32,7 +32,7 @@ func TestDirectToolBindingPreservesScopeInputRejection(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		if err := rt.Close(); err != nil {
-			t.Error(err)
+			t.Errorf("close Runtime: %v", err)
 		}
 	})
 	for _, arguments := range []map[string]any{

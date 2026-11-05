@@ -87,15 +87,15 @@ func TestCancelAndNaturalCompletionPreserveTerminalAcrossRestart(t *testing.T) {
 			case <-time.After(lifecycleWaitBudget(t)):
 				t.Fatal("cancel did not settle")
 			}
-			outcome := protocol.OutcomeCanceled
+			outcome := protocol.OutcomeLost
 			if naturalWins {
 				outcome = protocol.OutcomeCompleted
 				if cancellation.response != nil || !errors.Is(cancellation.err, protocol.ErrRunFinished) {
 					t.Fatalf("natural winner became cancellation: %+v,%v", cancellation.response, cancellation.err)
 				}
 			} else {
-				if cancellation.err != nil || cancellation.response == nil || cancellation.response.Run.Outcome.Type != outcome {
-					t.Fatalf("cancel winner=%+v,%v", cancellation.response, cancellation.err)
+				if cancellation.response != nil || !errors.Is(cancellation.err, protocol.ErrRunFinished) {
+					t.Fatalf("unconfirmed model outcome became a confirmed cancellation: %+v,%v", cancellation.response, cancellation.err)
 				}
 				waitForRunEvents(t, events, "canceled terminal")
 			}
@@ -106,8 +106,8 @@ func TestCancelAndNaturalCompletionPreserveTerminalAcrossRestart(t *testing.T) {
 			if naturalWins && before.Outcome.Detail != "" {
 				t.Fatalf("cancel reason contaminated natural completion: %+v", before.Outcome)
 			}
-			if !naturalWins && before.Outcome.Detail != "operator stopped" {
-				t.Fatalf("cancel reason lost: %+v", before.Outcome)
+			if !naturalWins && (before.Outcome.Loss == nil || before.Outcome.Loss.Reason != protocol.LossUnresolvedEffects || len(before.Outcome.UnresolvedEffects) != 1) {
+				t.Fatalf("unconfirmed cancellation lost its original evidence: %+v", before.Outcome)
 			}
 			if err := host.Close(); err != nil {
 				t.Fatal(err)

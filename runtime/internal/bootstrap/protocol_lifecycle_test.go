@@ -576,16 +576,16 @@ func startTestRuntime(t *testing.T, host *Instance, api *delivery.Handler, store
 	t.Helper()
 	info, err := api.Discover(t.Context())
 	if err != nil {
-		t.Fatal(errors.Join(err, host.Close()))
+		t.Fatalf("discover Runtime: %v; close: %v", err, host.Close())
 	}
 	endpoint, err := host.application.newDeliveryEndpoint(t.Context(), info.ServerInfo, info.Capabilities.Limits.Idempotency.Namespace, stores.ValidateDirectory)
 	if err != nil {
-		t.Fatal(errors.Join(err, host.Close()))
+		t.Fatalf("construct Runtime endpoint: %v; close: %v", err, host.Close())
 	}
 	host.lifetime.delivery = endpoint
 	// Accepted work can resume only after its original callback RPC is available.
 	if err := host.application.recoverUncertainExecutions(t.Context()); err != nil {
-		t.Fatal(errors.Join(err, host.Close()))
+		t.Fatalf("recover uncertain executions: %v; close: %v", err, host.Close())
 	}
 }
 

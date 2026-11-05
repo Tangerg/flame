@@ -18,7 +18,7 @@ const contract = new Capability(
 );
 const backend = new Backend({ name: "managed-conformance", version: "1" });
 backend.implement(
-  contract.method("fixture.usage"),
+  contract.portable.method("fixture.usage"),
   (value) => value as { sinceDays: number },
   async (context, input) => {
     const host = await runtime(context);

@@ -407,6 +407,9 @@ func (i *interactionModelContextReducer) prepareInput(calling context.Context, i
 	}
 	transformed, err := i.session.callComposition.PrepareInput(calling, i.session.modelInputs, i.start.ModelSelection, request)
 	if err != nil {
+		if _, definite := err.(*framemcp.Refusal); definite {
+			return nil, &interaction.ContextFailure{Cause: err}
+		}
 		return nil, err
 	}
 	if err := pluginsdk.ValidateModelInput(request, transformed); err != nil {

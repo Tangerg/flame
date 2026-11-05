@@ -404,7 +404,7 @@ func runtimeConfigWithRequiredDeps(t *testing.T) assemblyConfig {
 	}
 
 	workspace := t.TempDir()
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: t.TempDir()})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: testsupport.TempDirectory(t)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -522,7 +522,7 @@ func testProcessRunner(t *testing.T) *runner.Daemon {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := value.Close(ctx); err != nil {
-			t.Error(err)
+			t.Errorf("close test process runner: %v", err)
 		}
 	})
 	return value

@@ -40,8 +40,8 @@ func TestReviewTypedInputRefusalPreservesIdentityAcrossExecutableCLI(t *testing.
 		return invoke("plugins", "call", "--request", string(encoded), "--command-id", key)
 	}
 	request.Method = "io.github.tangerg.flame.examples/reviews.update"
-	for _, number := range []string{"0.0", "1e0"} {
-		request.Input = `{"id":"example-review","expectedRevision":` + number + `,"status":"resolved"}`
+	for _, invalid := range []string{`"0"`, `null`} {
+		request.Input = `{"id":"example-review","expectedRevision":` + invalid + `,"status":"resolved"}`
 		for range 2 {
 			output, stderr, err := call()
 			if err == nil || len(output) != 0 || !strings.Contains(string(stderr), protocol.ErrInvalidParams.Error()) {

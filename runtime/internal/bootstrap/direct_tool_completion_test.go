@@ -166,6 +166,10 @@ type directAnswerTool struct{ toolcontract.Tool }
 func (directAnswerTool) ReturnsDirectResult() bool         { return true }
 func (directAnswerTool) MCPToolIdentity() (string, string) { return "fixture", "answer" }
 
+func (t directAnswerTool) MCPSource() (mcp.CapturedSource, bool) {
+	return mcp.CapturedSource{Config: t.SourceConfig(), RemoteName: "answer"}, true
+}
+
 func (directAnswerTool) SourceFingerprint() framevalue.Digest {
 	return testsupport.Digest("fixture authority")
 }

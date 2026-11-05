@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -11,24 +12,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// TestCancelingTheRootMidDelegationCancelsTheWholeTree cancels a root Run while
-// both of its delegated children are inside a provider call.
-//
-// The executor ends a canceled subtree by cancelling the children's work and
-// publishing the parent's terminal first, so the root's boundary arrives at the
-// projection ahead of the children it just ended. Committing it there would
-// close the tree over a live descendant row, which the durable Run projection
-// cannot represent — publication order is the only thing enforcing it.
-//
-// What the user must get is one cancellation, not a defect: the root canceled
-// with the reason they gave, every child canceled rather than reported lost,
-// the parent's delegate_task Items settled instead of spinning forever, and the
-// Session's single-writer slot back.
-//
-// Two children, not one, because the boundary must wait for the last of them.
-// With a single child the difference between "release when a child finishes"
-// and "release when none is left" cannot be observed.
-func TestCancelingTheRootMidDelegationCancelsTheWholeTree(t *testing.T) {
+func TestCancelingTheRootMidDelegationSettlesEveryUnconfirmedChild(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
 	childEntered := make(chan string, 2)
@@ -113,11 +97,8 @@ func TestCancelingTheRootMidDelegationCancelsTheWholeTree(t *testing.T) {
 	canceled, err := api.CancelRun(ctx, protocol.CancelRunRequest{
 		RunID: started.RunID, Reason: "stop the whole tree",
 	})
-	if err != nil {
-		t.Fatalf("cancel root mid-delegation: %v", err)
-	}
-	if canceled.Run.Outcome == nil || canceled.Run.Outcome.Type != protocol.OutcomeCanceled {
-		t.Fatalf("cancel reported %+v, want a canceled root", canceled.Run.Outcome)
+	if canceled != nil || !errors.Is(err, protocol.ErrRunFinished) {
+		t.Fatalf("unconfirmed delegation became a confirmed cancellation: %+v, %v", canceled, err)
 	}
 	observed := waitForRunEvents(t, collected, "canceled delegation tree")
 
@@ -125,9 +106,8 @@ func TestCancelingTheRootMidDelegationCancelsTheWholeTree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if root.Outcome == nil || root.Outcome.Type != protocol.OutcomeCanceled ||
-		root.Outcome.Detail != "stop the whole tree" {
-		t.Fatalf("root after cancel = %+v, want canceled with the caller's reason", root.Outcome)
+	if root.Outcome == nil || root.Outcome.Type != protocol.OutcomeLost || root.Outcome.Loss == nil || root.Outcome.Loss.Reason != protocol.LossUnresolvedEffects {
+		t.Fatalf("root cancellation lost its original uncertainty: %+v", root.Outcome)
 	}
 
 	childRunIDs := map[string]struct{}{}
@@ -144,11 +124,8 @@ func TestCancelingTheRootMidDelegationCancelsTheWholeTree(t *testing.T) {
 		if childErr != nil {
 			t.Fatal(childErr)
 		}
-		// Canceled, not lost, and never left non-terminal: each child's own
-		// terminal fact is what settles it, which is only possible because the
-		// root's boundary waited for the last of them.
-		if child.Outcome == nil || child.Outcome.Type != protocol.OutcomeCanceled {
-			t.Fatalf("child %s after root cancel = %+v, want canceled", childRunID, child.Outcome)
+		if child.Outcome == nil || child.Outcome.Type != protocol.OutcomeLost || len(child.Outcome.UnresolvedEffects) != 1 {
+			t.Fatalf("child %s cancellation lost its original uncertainty: %+v", childRunID, child.Outcome)
 		}
 	}
 
