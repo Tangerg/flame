@@ -17,6 +17,13 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+The previously unrun Runtime integration project now passes **all 52 tests**
+without source, assertion or deadline changes. Normal serial build preparation
+precedes the unchanged project run; its receipt and cleanup are recorded under
+**Runtime integration qualification after main (2026-11-05)**. Only this handoff
+record changes. Previous full-command failures remain historical; whole-product
+UI acceptance remains open.
+
 Icon gallery group counts now use the existing SDK plural owner across all eight
 locales; filtered single results read correctly while the fixed catalog total
 remains stable. Source `7df17103b` is published to main with normal hooks and
@@ -24,8 +31,9 @@ independent remote-head confirmation. All 33 related regressions and 23 serial
 check/build steps pass. Actual Wails EN/light, FR/dark/18 px and ZH/dark/18 px
 filter/clear/close/continued-edit flows pass, with EN/FR 200% and FR native resize
 coverage. See **Icon gallery localized group counts (2026-11-05)**. Owned
-qualification resources are retired. The earlier Runtime setup timeout still
-leaves 52 integration tests unqualified; whole-product acceptance remains open.
+qualification resources are retired. The earlier Runtime project subsequently
+passes all 52 tests under the follow-up below; whole-product acceptance remains
+open.
 
 Latest origin/main `00c172c73` is integrated in merge `31210fbc9` without
 conflicts. Brand download actions now share a baseline across equal-height cards
@@ -33,10 +41,10 @@ with different description lengths. English and Chinese native reading, 200%
 zoom, Chinese window resizing, both continued drafts and both Icon gallery
 returns pass on Wails 3.1.0. See **Brand card action alignment and main integration
 (2026-11-05)**. The UI/Brand checks, all 4,550 Web frontend tests, remaining Web
-checks, generated drift and native checks pass. The Runtime integration fixture
-times out during setup; its 52 tests are unqualified and the full Web check does
-not pass. Owned qualification resources are retired. Continue with observed
-remaining defects; whole-product acceptance remains open.
+checks, generated drift and native checks pass. The initial full Web command
+fails during Runtime setup; the unchanged Runtime project later passes all 52
+tests under the follow-up below. Owned qualification resources are retired.
+Continue with observed remaining defects; whole-product acceptance remains open.
 
 The renewed native review of Appearance, Personalization and Connection finds no
 new alignment defect in the inspected English normal/200% and Chinese dark
@@ -1143,10 +1151,61 @@ remain installed, alongside the updated root dependency graph.
 Brand's visual workspace uses the browser save host; Download is not activated
 in this batch, and native Save/destination writes are unqualified. Browser visual
 suites, performance benchmarks, live provider/Runtime operations, VoiceOver
-speech, physical IME, RTL and other-platform GUIs do not run. The unresolved
-Runtime fixture setup bounds integration confidence and should be revisited
-with the fixture's build/startup lifecycle owner. Whole-product and award-level
-acceptance remain open.
+speech, physical IME, RTL and other-platform GUIs do not run. The Runtime setup
+limit recorded here later receives a passing unchanged-project recheck under
+**Runtime integration qualification after main (2026-11-05)**. Whole-product
+and award-level acceptance remain open.
+
+### Runtime integration qualification after main (2026-11-05)
+
+At published main `764b541d0`, the earlier full Web command and its focused
+diagnostic still record a 60-second Runtime setup timeout with **52 tests unrun**.
+Those failures remain valid historical results. The fixture starts its shared
+deadline before building Runtime, the Frame runner, CLI, the Node companion and
+all first-party plugin packages. Earlier process evidence shows Go compilation
+still active at that deadline, before a fixture Runtime or runner starts.
+
+Following the repository's preparation workflow, the same build targets run
+serially in an owned private directory. Checksummed Node **24.22.1** staging
+takes **9.702 s**, Runtime **3.414 s**, runner **0.198 s**, CLI **1.763 s** and
+all plugin packages **46.565 s**. These are ordinary verification builds, not a
+performance benchmark. No product optimization or fixture refactor is justified
+by this evidence; the existing test and all deadlines remain unchanged.
+
+The exact original command then passes:
+
+`npm run test --workspace @flame/web -- --project runtime`
+
+It completes **1 file / 52 tests**, exit **0**, in **152.602 s** wall time
+(Vitest **151.65 s**). The observer records **277** process snapshots: the runner
+first appears at **29.404 s**, Runtime at **29.954 s**, then three CLI processes
+and six Runtime incarnations exercise the original lifecycle cases. Loopback
+connection-refused stderr remains in the successful log; no failure is hidden.
+This closes the outstanding project qualification in the prepared environment.
+It does not prove cold-cache performance or recast the earlier full Web command
+as an uninterrupted passing run. Other already qualified checks are not repeated.
+
+All **6,630 non-Markdown tracked inputs** remain byte-exact, including the test
+source, assertions and generated resources. Only this handoff record changes,
+so the published UI's prior native acceptance remains applicable; no fresh GUI,
+browser suite, benchmark, live provider call or production mutation runs here.
+The original fake-provider and private Runtime fixture owns its complete data
+and process lifecycle. No Claude implementation call is needed without a source
+repair. The `rob-pike` skill informs measurement before any proposed tuning.
+
+The test retires its fixture directory and native children normally. The listener
+is inactive. The private preparation directory, three preparation executables,
+plugin packages, Node deployment, downloaded archive, logs and npm cache are
+removed. The initially absent checkout `out` and new **62-file** Vitest transform
+cache are removed; the original **58-file** nested Web dependency tree is restored
+byte-exact. Existing root dependencies and the user's Go cache remain intact.
+The primary checkout stays clean at `00c172c73`, read only.
+
+The round-trip-verified in-memory gzip retains **20 UTF-8 records**, the source
+hash map, process observations and retirement receipt: **340,364 bytes**, SHA-256
+`47d12b16d78c1e9624a6dcf38c16a66667d61be5f629c95a6aa0328e2a32f506`.
+Continue actual page and return-flow inspection before selecting the next UI
+repair; whole-product and award-level acceptance remain open.
 
 ### Icon gallery localized group counts (2026-11-05)
 
@@ -1242,8 +1301,8 @@ all-workspace lint and commit-message hooks and is pushed normally to main; an
 independent remote-head read matches it. The final fetch finds zero incoming
 main commits. The primary checkout stays clean at `00c172c73`, read only.
 Continue inspecting actual remaining page tasks; whole-product acceptance remains
-open. Revisit the separate Runtime fixture's compile/startup lifecycle at its
-next integration touch.
+open. The separate Runtime setup qualification is completed under
+**Runtime integration qualification after main (2026-11-05)**.
 
 ### New-conversation brand identity
 
