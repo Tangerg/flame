@@ -17,6 +17,15 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+The renewed Plugins native review on `22ea24fd6` finds no new alignment or
+return defect in the inspected English light/14 px and Chinese dark/18 px tasks.
+Both cover 200% configuration reading, local correction, cancellation, retained
+conversation drafts and Files return; Chinese also covers native window resizing,
+a 40-line JSON draft and keyboard Home to a 320 px Dock. See **Plugins native
+configuration reading after main (2026-11-06)**. Fresh main fetch and merge are
+already up to date. Product inputs remain unchanged and owned qualification
+resources are retired; whole-product acceptance remains open.
+
 Skills proposal review now reveals the complete inspected decision when it fits
 the reading frame. The real English 150% counterexample previously left the
 proposal title above the sticky controls; oversized reviews retain the existing
@@ -24262,6 +24271,110 @@ confirmation. The retained archive contains 153 UTF-8 evidence files and six
 capture hashes (gzip SHA-256
 `1a095356a15290e62b4b2d8dd36d58b9e870aa66f21c5b649b0fa4c23bcdf241`).
 Continue only with fresh task evidence.
+
+### Plugins native configuration reading after main (2026-11-06)
+
+Scope: retain a conversation draft → open installed Settings with Cmd+, → read
+Plugins and the captured release → inspect configuration and local corrections →
+cancel back to the original control → read related Files → continue the draft.
+This reviews unchanged `22ea24fd69434efaac50b9b3c1f639e9490dfa10`, after a fresh
+origin/main fetch and merge report already up to date. The primary main checkout
+remains clean at `00c172c73`; it is already an ancestor and is not modified.
+
+Production `PackageManager`, `PluginsPane`, `ProviderSelections` and
+`src/ui/atoms/text-editor-dialog.tsx` retain their React, Base UI, StyleX and
+semantic-token owners. PackageEdit owns its draft and local validation; the
+dialog reveals newly changed feedback through its existing error effect.
+Closing Settings retires the category task, while its selected pane and the
+workspace draft remain with their current owners. This does not promise retained
+category disclosure or editor state after an actual Settings close.
+
+AGENTS, PROJECT_RULES, DEVELOPMENT and the Web/Desktop qualification instructions
+bound the review. The six better-interface domains and the actual ZCode plugin
+catalog/detail implementation guide grouping, literal identity and return review.
+Flame keeps its own installed components and command boundaries. No actionable
+interface findings. Only this maintained handoff record changes.
+
+| Domain        | Evidence inspected                                                                                            | Result and boundary                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Accessibility | Native Tab/Shift+Tab, menu arrows, Return/Escape, named configuration fields, opener focus and Dock separator | Clear for the inspected keyboard paths; VoiceOver speech and OS IME are not newly verified.              |
+| Layout        | Catalog, release facts, modal header/body/footer, provider rows, 200% reading and resized Chinese window      | Clear for inspected states; complete long source/digest reading and fixed actions remain reachable.      |
+| Writing       | Actual EN/ZH correction instructions, package/version identity, Stage context and literal source paths        | Clear; concrete SDK field reasons retain their existing owner. Other locale GUIs are not newly verified. |
+| Typography    | Existing 14/18 px reading, 64-character digest, mixed-language path and 40-line JSON editor                   | Clear for inspected wrapping and internal reading; no font or type-scale change.                         |
+| Colors        | Light/Orange #FB6E30 and dark/custom #6C9EFF, invalid field and independent keyboard focus                    | Clear for inspected state distinction; no new measured contrast-ratio claim.                             |
+| UI            | Configure correction/cancel, Stage review/cancel, provider popup/Escape, search clearing and continued work   | Clear for these paths; reduced motion and live mutation outcomes are not newly verified.                 |
+
+Passed verification:
+
+- All nine preparation gates run serially and exit 0: `npm run build` for
+  `@flame/icons`, `@flame/ui` and `@flame/plugins`; formatting the two private
+  host overlays; the private Vite asset build; the Wails 3.1.0 production Go
+  arm64 host build; ad-hoc signing; deep/strict signature verification; and
+  exact-bundle registration. There is no browser visual suite or benchmark.
+- Actual Wails English/light/14 px/Orange: Cmd+, enters installed Settings;
+  Plugins shows the two canonical reviewed packages and loaded client list.
+  The first release's full digest/source and manifest are readable. Configure
+  `flame.memory` with `[]`, Tab to Save and Return produces the local object
+  correction. Actual Size plus twenty native Zoom In actions gives 200%; title,
+  field, feedback and Cancel/Save remain reachable. Escape returns focus to its
+  Configure trigger and retires local validation.
+- Keyboard Package actions → Stage update opens the same captured release.
+  Native paste supplies the complete mixed-language path
+  `/visual/review/团队发布/with spaces/artifacts/flame.memory-reviewed-release-with-a-long-package-name-2026-11-06.zip`.
+  It wraps fully at 200%; Cancel returns to the original menu trigger. Refreshing
+  provider reads and opening Memory's candidate preserve the role/binding
+  context; Escape returns to the same chooser without applying a selection.
+- Actual Wails Chinese/dark/18 px/custom blue, with native Top Left placement:
+  the second package's malformed JSON shows its syntax correction. After 200%
+  zoom, a newly submitted three-field shape error reveals all three corrections
+  while retaining Save focus and reachable actions. The earlier syntax message
+  is not claimed fully visible merely because zoom changed. Editing clears
+  local feedback; a 40-line mixed-language JSON draft retains its exact AX value
+  while native Cmd+Up/Cmd+Down read its beginning/end. Cancel returns to the
+  second Configure trigger. The full second-release digest and source are
+  inspected by scrolling the actual body at 200%.
+- Chinese provider keyboard entry names the exact Schedules candidate; Escape
+  restores its chooser. This newly verifies the name/focus path, not fresh
+  open-popup screenshot geometry. A Settings navigation search with no match
+  retains the active Plugins body and expanded release; Escape clears that
+  query. Actual Size, Shift+Tab to header Close and Return restore Files focus.
+  Shift+Tab reaches the named Dock separator; Home changes its value from
+  363 to 320. The actual 320 px Files reader retains its complete eight-line
+  file and wrapped path. Reopening Settings retains Plugins as the selected
+  pane; its disclosure resets according to category retirement.
+- Both paths return through Files and continue their original conversation
+  drafts without Send. English ends with
+  `Continue after reviewing Plugins. Ready.`; Chinese ends with
+  `核对插件配置后继续。继续。`. Chinese restores the
+  previous native window size before quit. Both exact native processes exit 0,
+  after 790.311 s and 1060.179 s respectively; no scoped listener remains.
+- All 6,630 tracked non-Markdown inputs remain byte-identical. The 331 Web,
+  24 private host and four bundle artifacts remain unchanged during acceptance.
+  Evidence retains 105 UTF-8 records and metadata for 39 JPEG captures, including
+  four explicitly excluded setup probes: two inert fixture-sidebar attempts,
+  native typing that omitted CJK, and a wheel target in navigation. Installed
+  Settings entry, exact native paste and later body reading supply the accepted
+  evidence.
+  The verified 873,252-byte gzip archive has SHA-256
+  `5ef76c6e3febc4561010c5814051c3d97da2a6910dc17f8a4e9ec69e57c4485f`.
+
+Not verified in this review-only batch: accepted configuration, install, Stage,
+uninstall, enablement or provider-selection commands; pending/unknown outcomes;
+live Runtime/provider data; restart recovery; VoiceOver audio; OS IME; other
+platform GUIs; reduced motion; unit/full-backend suites. Existing tests and
+earlier command-lifecycle qualifications are not presented as rerun results.
+The canonical in-memory transport supplies reads, and invalid local submissions
+never enter a mutation command. No product contract or migration changes.
+
+Both processes are reaped and the exact bundle unregistered. Identity-guarded
+cleanup removes the private app, data, assets, logs, caches and evidence root,
+plus the two new UID Cache/WebKit stores containing 17 files. All six UID paths
+are absent. Six existing output trees match their original file hashes, including
+all 58 real nested Web dependency files; five initially absent output roots
+remain absent and both unrelated UI cache files are preserved. Toolchains,
+dependencies, user data and references remain intact. Verdict: **Approve** for
+the inspected domains and paths only; whole-product acceptance remains open.
+Continue with fresh evidence from actual remaining tasks.
 
 ### Plugin installation and edit recovery
 
