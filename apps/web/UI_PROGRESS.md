@@ -17,6 +17,15 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+MCP import completion now retains its action focus and shows one confirmation.
+The shared dialog body provides keyboard reading at native 200% zoom; the existing
+read-only Goal reader uses that same owner. English and Chinese dark/18 px/native
+resize/320 px Dock tasks pass, including retained drafts and reading return. All
+238 UI tests, 119 MCP tests, 4,557 frontend tests and 18 final serial checks pass.
+See **MCP import completion and keyboard result reading (2026-11-06)**. Fresh main
+merges are already up to date and owned resources are retired; whole-product
+acceptance remains open.
+
 Connection Apply, Reset and Clear now retain keyboard focus when their own
 completion disables the action. Native English original/candidate comparison and
 Chinese dark/18 px/200%/native resize pass, including token-only discard, retained
@@ -26118,6 +26127,154 @@ the original native binary retains its preservation hash. Installed dependencies
 global caches, user data, the primary parallel checkout and reference repositories
 remain intact. This Markdown receipt changes no qualified product source; fresh
 remote, cleanliness and preservation checks follow its publication.
+
+### MCP import completion and keyboard result reading (2026-11-06)
+
+Qualified from main `75ca7dcbe`. A fresh authenticated fetch, remote-main merge
+and local-main merge report already up to date. The parallel primary checkout
+remains clean on `00c172c73`; it is inspected read-only.
+
+Scope and evidence: the actual installed MCP component in Wails loses its focused
+Import action when accepted completion changes it to native disabled. A preliminary
+focus-only candidate also exposes a shared reading problem at native 200% zoom:
+Tab has no body entry, and page/boundary keys on the footer cannot reach the result
+below a body-filling JSON editor. Pointer scrolling can reach it. Completion also
+repeats the same accepted count in progress and final feedback.
+
+Resolved findings:
+
+- **HIGH · Accessibility / Layout · `packages/ui/src/modal-dialog.tsx`:** the
+  existing scrolling body is now a keyboard region named by the current dialog
+  title. Tab enters it; native page and boundary keys reach later content. It uses
+  the existing inset focus treatment and retains the header/footer geometry,
+  reading-frame owner, explicit initial focus, return focus, hidden-owner behavior,
+  IME dismissal and nested-popup boundaries. No local scrolling key handler,
+  overflow observer, extra wrapper, state or theme token was added.
+- **MEDIUM · Accessibility · `plugins/mcp/component/jsonImport.tsx`:** the shared
+  Button's focusable-disabled contract applies when the source batch has completed.
+  The focused Import remains the same unavailable action without stealing focus
+  from a later control. Empty source retains native disabled behavior. Existing
+  pending/completed submission guards, source retirement, partial progress and
+  original-command reconciliation remain authoritative.
+- **LOW · Writing · the same import owner:** a completed batch shows its final
+  confirmation once. Partial and unresolved batches retain their progress.
+
+The shared body initially made the existing read-only Goal dialog contain two
+same-name reading regions. Two valid existing frontend assertions exposed this;
+they were not weakened. `GoalStatusSurface.tsx` now renders the literal objective
+in the shared body, projects its existing reader ref for initial focus, and keeps
+its 40dvh cap, whitespace, wrapping and body line-height. The shared gutter also
+aligns the objective with the title. Its separate inline stop-reason reader,
+workflow author availability, editor and lifecycle commands remain unchanged.
+`bodyRef` and `bodyStyles` serve this demonstrated consumer rather than creating
+another scroll owner. The normal resource builder regenerates the installed MCP
+ESM; its only character changes are the completed-action prop and progress guard.
+
+Review used the root instructions, DEVELOPMENT, CLAUDE and affected UI, Web, MCP,
+Desktop and visual-fixture READMEs. The implementation follows the installed
+React 19 / Base UI 1.9 / StyleX system and actual Wails 3.1.0 / Go 1.27.3 host.
+Read-only ZCode import completion/source-selection and MCP form implementations,
+and HeroUI's pending Button example, inform task boundaries and state expression.
+Prior documented ChatGPT, Arc, Radix and Ace research remains the reference for
+reading, modal focus, quiet surfaces and spacing; those references are not new
+native evidence. Three bounded Read/Edit-only Claude Code CLI calls complete with
+exit 0 and no denied tools or subagents. Root review narrows the disabled prop,
+keeps fixture registry responses canonical, resolves the real Goal integration
+failure, and owns all checks, compiled counterfactuals and native acceptance.
+
+Six-domain coverage:
+
+- Accessibility: real pending/completed and later-control focus, body entry,
+  native keyboard reading, modal background boundary, Escape and opener return;
+  shared UI, installed MCP and unchanged Goal regression coverage.
+- Layout: original/candidate native comparison, fixed header/footer, native 200%,
+  smaller native window, long literal objective and actual 320 px Files Dock.
+- Writing: one completed count, existing literal validation/refusal text and
+  unchanged source/command recovery semantics.
+- Typography: English 14 px and Chinese 18 px, literal JSON, preserved objective
+  line breaks and wrapping of a long source identity.
+- Colors: existing Orange/light and custom `#6C9EFF`/dark roles and visible focus
+  perimeter; no new numerical rendered-contrast measurement is claimed.
+- UI: existing shared controls and modal surfaces, default full motion and
+  Chinese motion-off profiles; no added decoration or motion.
+
+Verification passed:
+
+- Shared UI check: 13 files / **238 tests**, build, types, lint, formatting and
+  an independent packed UI/icons consumer installed offline (**1 test**).
+- Installed MCP: five files / **119 tests**, including one new deferred completion
+  regression for empty/pending/completed activation guards, same-element focus,
+  source editing, later Cancel focus and opener return.
+- Web frontend: **424 files / 4,557 tests**, including all **31 unchanged Goal
+  tests**, after the shared-body and Goal migration. The later MCP-only removal
+  of the redundant progress line is then covered by the final 119 MCP tests,
+  resource/module verification, builds and native runs.
+- Plugin typecheck, lint, formatting, i18n, normal build and resource verification;
+  Web typecheck, lint, design-system, tokens, production bundle and public plugin
+  module checks; `make check-native`; final private native assets. All 18 final
+  serial command receipts exit 0. Bundle verification precedes the module check
+  that consumes its generated import map.
+- Original MCP code fails the new completion regression as expected. Since UI
+  tests import the built package, the qualifying UI counterfactual compiles the
+  original shared owner: three new reading assertions fail, one explicit field
+  focus assertion passes, and 18 existing cases are filtered. Candidate source
+  and compiled package restore byte-exactly. Earlier source-only UI swaps are
+  excluded from counterfactual evidence.
+
+Actual native acceptance uses the production Wails host, installed MCP ESM and
+shared React components. The private transport accepts only one exact synthetic
+`review-server` stdio configuration through the same fixture registry owner,
+with a delayed canonical acknowledgement; all other fixture mutations remain
+fail-closed. It neither launches MCP nor contacts an external service. The Goal
+profile changes only deterministic fixture facts for a long literal objective
+and unavailable original author; no product lifecycle owner or UI is replaced.
+All 6,630 candidate non-Markdown inputs and the frozen 331 private Web, 24 host
+and four signed-bundle files remain unchanged throughout final native inspection.
+
+English light/14 px/Orange covers source entry, pending/completed focus, blocked
+repeated activation, Tab/body reading and local name correction at 200%, accepted
+server values, Delete confirmation cancellation, editor cancellation and opener
+return. Files and the continued draft `Continue after importing MCP. Ready.`
+remain intact, with keyboard Home confirming a 320 px Dock. No Delete, Test, Save
+or Send action executes.
+
+Chinese dark/18 px/custom Blue/motion-off covers completion retaining later Cancel
+focus, native Top Left resizing, 200% body reading, read-only Goal initial body
+focus, keyboard end/top reading of the literal final marker and Escape back to
+the summary. Files and `导入 MCP 后继续。继续。` remain intact at a confirmed 320 px
+Dock. A fresh native repeat verifies the full translated import confirmation with
+End at 200%, both before and after native resizing, and the exact Chinese draft
+from before import through its continued edit. An initial native typeText attempt
+that omitted CJK input is excluded; the qualifying tasks use native paste and
+verify the exact source. A pointer-only Dock focus attempt that retained 363 px
+is also excluded; successful keyboard Tab/Home captures establish 320 px.
+
+Scope limits: deterministic fixture acknowledgements qualify UI command-state
+projection, not a live MCP process, OAuth/network flow or external write. No new
+VoiceOver, full OS IME, RTL, forced-colors, other-platform or arbitrary-theme
+qualification, browser visual suite, performance benchmark or Runtime integration
+suite runs. Previous Runtime qualification is reused. Scoped decision: **Approve**
+for the exercised completion, reading and return contracts; whole-product UI
+acceptance remains open. Continue from actual remaining task paths rather than
+repeating already qualified pages without new evidence.
+
+Cleanup is complete. All five native runs exit 0, the exact bundle is unregistered,
+and no owned process or qualification endpoint remains. Six existing output trees
+restore to their baseline hashes, preserving the 58 real nested Web dependency
+files; five initially absent output/cache roots are absent again. Both existing
+UI Vitest cache files restore to their exact original bytes. Seventeen owned
+Library files are removed, and all six UID paths are absent. The private root,
+app, 31-entry private offline cache, build artifacts, captures and logs are retired
+under identity and content guards. Installed dependencies, pinned toolchain,
+read-only references, user data and the parallel primary checkout are preserved.
+
+The round-trip-verified in-memory archive retains **262 UTF-8 records** and **33
+capture metadata records** (no raw screenshots), compressed to **2,138,445 bytes**,
+SHA-256 `9f0daffdc49fab1b85cedece6b37903eaf35dad8038ebed5fc303609ca8a3a2a`.
+It includes command/native receipts, source/artifact hashes, excluded attempts and
+independent post-retirement preservation checks. This Markdown record changes no
+qualified product input; normal hooks and a non-force main push are independently
+checked at publication.
 
 ### Installed MCP read identity and recovery groups (2026-11-04)
 

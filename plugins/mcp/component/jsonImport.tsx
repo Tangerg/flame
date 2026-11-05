@@ -113,6 +113,7 @@ export function JsonImport({
               type="submit"
               variant="primary"
               disabled={!state.importText.trim() || busy || completed}
+              focusableWhenDisabled={completed}
               pending={command?.phase === "running"}
             >
               {t(
@@ -143,7 +144,7 @@ export function JsonImport({
             placeholder={EXAMPLE}
           />
         </FormField>
-        {state.importProgress && (
+        {state.importProgress && !completed && (
           <RecordBody>
             {t("mcp.import.partial", {
               count: state.importProgress.completed,

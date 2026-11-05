@@ -94,7 +94,6 @@ const gs = stylex.create({
   },
   objectiveReader: {
     maxHeight: "40dvh",
-    paddingInline: space.s1,
     whiteSpace: "pre-wrap",
     overflowWrap: "anywhere",
     lineHeight: leading.body,
@@ -275,15 +274,10 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
         title={t("goal.edit.label")}
         closeLabel={t("common.close")}
         initialFocus={readerRef}
+        bodyRef={readerRef}
+        bodyStyles={gs.objectiveReader}
       >
-        <ScrollRegion
-          ref={readerRef}
-          label={t("goal.edit.label")}
-          styles={gs.objectiveReader}
-          data-focus-inset=""
-        >
-          {goal.objective}
-        </ScrollRegion>
+        {goal.objective}
       </ModalDialog>
       <TextEditorDialog
         open={dialogOpen && canEdit}

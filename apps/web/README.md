@@ -515,6 +515,8 @@ When the Goal's original author release is unavailable, its truncated summary
 remains a keyboard button that opens a view-only Goal dialog. The focused named
 reader shows the current objective with its line breaks and long tokens, offers
 no edit, lifecycle or clear command, and returns focus to the summary on close.
+The shared dialog body is that reader, with the same 40dvh cap and initial focus;
+it does not nest another same-name scrolling region.
 Author availability changes or a replacement Goal retire an open editor or reader.
 
 Plan checklists name each captured step state in the current locale beside its

@@ -3,6 +3,8 @@ import { Dialog } from "@base-ui/react/dialog";
 import { X } from "@flame/icons/react";
 import {
   use,
+  useCallback,
+  useId,
   useMemo,
   useRef,
   type ComponentProps,
@@ -101,6 +103,8 @@ export function ModalDialog({
   role = "dialog",
   slot,
   backdropSlot,
+  bodyRef: callerBodyRef,
+  bodyStyles,
 }: {
   open: boolean;
   onOpenChange(open: boolean): void;
@@ -119,13 +123,23 @@ export function ModalDialog({
   role?: "dialog" | "alertdialog";
   slot?: string;
   backdropSlot?: string;
+  bodyRef?: RefObject<HTMLDivElement | null>;
+  bodyStyles?: stylex.StyleXArray<stylex.StyleXStyles | null | false>;
 }) {
   const owner = use(ContentVisibilityContext);
   const portalVisibility = useMemo(
     () => ({ visible: open, fallbackFocus: owner.fallbackFocus }),
     [open, owner.fallbackFocus],
   );
+  const titleId = useId();
   const bodyRef = useRef<HTMLDivElement>(null);
+  const attachBody = useCallback(
+    (body: HTMLDivElement | null) => {
+      bodyRef.current = body;
+      if (callerBodyRef) callerBodyRef.current = body;
+    },
+    [callerBodyRef],
+  );
   // The portal's React parent may be a page Panel whose viewport does not
   // contain this body, so the dialog answers for its own scroll frame.
   const bodyLayout = useMemo(
@@ -212,7 +226,10 @@ export function ModalDialog({
             <header {...stylex.props(styles.header)}>
               {icon && <IconMark>{icon}</IconMark>}
               <div {...stylex.props(styles.heading)}>
-                <Dialog.Title {...stylex.props(styles.title, type.displaySm)}>
+                <Dialog.Title
+                  id={titleId}
+                  {...stylex.props(styles.title, type.displaySm)}
+                >
                   {title}
                 </Dialog.Title>
               </div>
@@ -231,10 +248,15 @@ export function ModalDialog({
               )}
             </header>
             {(description || children) && (
+              // A body-filling field leaves later content reachable only by native page scrolling.
               <div
-                ref={bodyRef}
+                ref={attachBody}
+                role="region"
+                aria-labelledby={titleId}
+                tabIndex={0}
                 data-slot="dialog-body"
-                {...stylex.props(styles.body)}
+                data-focus-inset=""
+                {...stylex.props(styles.body, bodyStyles)}
               >
                 {description && (
                   <Dialog.Description

@@ -5,7 +5,14 @@ import {
   render,
   screen,
 } from "@testing-library/react";
-import { useRef, useState, type ComponentProps } from "react";
+import {
+  createRef,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ContentVisibility,
@@ -361,6 +368,104 @@ describe("ModalDialog over a style-hidden owner", () => {
       expect(document.activeElement).not.toBe(opener);
     },
   );
+});
+
+function ReadingScene({
+  title,
+  focusSource = false,
+  body,
+}: {
+  title: ReactNode;
+  focusSource?: boolean;
+  body?: RefObject<HTMLDivElement | null>;
+}) {
+  const source = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button onClick={() => setOpen(true)}>Import servers</button>
+      <ModalDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={title}
+        initialFocus={focusSource ? source : body}
+        bodyRef={body}
+        footer={<button onClick={() => setOpen(false)}>Cancel</button>}
+      >
+        <input ref={source} aria-label="Source" />
+        <p>Imported 2 servers.</p>
+      </ModalDialog>
+    </>
+  );
+}
+
+async function openReading(props: ComponentProps<typeof ReadingScene>) {
+  const view = render(<ReadingScene {...props} />);
+  const opener = screen.getByRole("button", { name: "Import servers" });
+  act(() => opener.focus());
+  fireEvent.click(opener);
+  const dialog = await screen.findByRole("dialog");
+  await vi.waitFor(() =>
+    expect(dialog.contains(document.activeElement)).toBe(true),
+  );
+  return { view, dialog, opener };
+}
+
+describe("ModalDialog body reading", () => {
+  it("names its focusable body after the current title", async () => {
+    const { view, dialog } = await openReading({
+      title: (
+        <>
+          <em>Import</em> servers
+        </>
+      ),
+    });
+    const body = screen.getByRole("region", { name: "Import servers" });
+    expect(body.dataset.slot).toBe("dialog-body");
+    expect(body.tabIndex).toBe(0);
+    expect(dialog.contains(body)).toBe(true);
+
+    view.rerender(<ReadingScene title="Review servers" />);
+
+    expect(screen.getByRole("region", { name: "Review servers" })).toBe(body);
+  });
+
+  it("keeps an explicit initial focus on its field", async () => {
+    await openReading({ title: "Import servers", focusSource: true });
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("textbox", { name: "Source" }),
+      ),
+    );
+  });
+
+  it("lets the body hold focus and Escape return to the opener", async () => {
+    const { opener } = await openReading({ title: "Import servers" });
+    const body = screen.getByRole("region", { name: "Import servers" });
+
+    act(() => body.focus());
+    expect(document.activeElement).toBe(body);
+
+    pressEscape();
+
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await vi.waitFor(() => expect(document.activeElement).toBe(opener));
+  });
+
+  it("projects its body ref as the initial focus and clears it on close", async () => {
+    const body = createRef<HTMLDivElement>();
+    const { opener } = await openReading({ title: "Import servers", body });
+    const region = screen.getByRole("region", { name: "Import servers" });
+
+    expect(body.current).toBe(region);
+    await vi.waitFor(() => expect(document.activeElement).toBe(region));
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(body.current).toBeNull();
+    await vi.waitFor(() => expect(document.activeElement).toBe(opener));
+  });
 });
 
 function ModelEditor({ result }: { result: string | null }) {

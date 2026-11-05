@@ -358,6 +358,70 @@ it("keeps a partially failed import's progress and valid JSON without marking it
     "second",
   ]);
 });
+it("keeps a focused Import through accepted completion and leaves later focus in place", async () => {
+  const { f } = await mount();
+  const opener = screen.getByRole("button", { name: "Import from JSON" });
+  act(() => opener.focus());
+  fireEvent.click(opener);
+  const dialog = screen.getByRole("dialog");
+  const field = within(dialog).getByLabelText("JSON configuration");
+  await waitFor(() => expect(document.activeElement).toBe(field));
+  const action = within(dialog).getByRole<HTMLButtonElement>("button", {
+    name: "Import",
+  });
+  expect(action.disabled).toBe(true);
+  fireEvent.submit(action.form!);
+  expect(f.create).not.toHaveBeenCalled();
+  const acceptCreate = f.create.getMockImplementation()!;
+  const source = (name: string) =>
+    JSON.stringify({ mcpServers: { [name]: { command: name } } });
+
+  const first = Promise.withResolvers<void>();
+  f.create.mockImplementationOnce((input) =>
+    mutation(first.promise.then(() => acceptCreate(input))),
+  );
+  fireEvent.change(field, { target: { value: source("alpha") } });
+  act(() => action.focus());
+  fireEvent.click(action);
+  expect(f.create).toHaveBeenCalledTimes(1);
+  expect(within(dialog).getByRole("button", { name: "Importing…" })).toBe(
+    action,
+  );
+  expect(document.activeElement).toBe(action);
+  activateAgain(action);
+  fireEvent.submit(action.form!);
+  expect(f.create).toHaveBeenCalledTimes(1);
+  await act(async () => first.resolve());
+  expect(within(dialog).getByText("Imported 1 server")).toBeTruthy();
+  expect(within(dialog).getByRole("button", { name: "Import" })).toBe(action);
+  expect(action.getAttribute("aria-disabled")).toBe("true");
+  expect(action.disabled).toBe(false);
+  expect(action.tabIndex).toBe(0);
+  expect(document.activeElement).toBe(action);
+  expect(within(dialog).queryByText("Imported 1 of 1 servers.")).toBeNull();
+  activateAgain(action);
+  fireEvent.submit(action.form!);
+  expect(f.create).toHaveBeenCalledTimes(1);
+
+  fireEvent.change(field, { target: { value: source("beta") } });
+  expect(action.getAttribute("aria-disabled")).not.toBe("true");
+  expect(f.create).toHaveBeenCalledTimes(1);
+  const second = Promise.withResolvers<void>();
+  f.create.mockImplementationOnce((input) =>
+    mutation(second.promise.then(() => acceptCreate(input))),
+  );
+  act(() => action.focus());
+  fireEvent.click(action);
+  expect(f.create).toHaveBeenCalledTimes(2);
+  const cancel = within(dialog).getByRole("button", { name: "Cancel" });
+  act(() => cancel.focus());
+  await act(async () => second.resolve());
+  expect(action.getAttribute("aria-disabled")).toBe("true");
+  expect(document.activeElement).toBe(cancel);
+  fireEvent.click(cancel);
+  await waitFor(() => expect(document.activeElement).toBe(opener));
+  expect(f.create).toHaveBeenCalledTimes(2);
+});
 it("names identical tool policy read failures and recovers each through its own Retry without disturbing the editor", async () => {
   const f = create();
   f.exposure.mockRejectedValue(new Error(reason));

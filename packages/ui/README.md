@@ -544,10 +544,15 @@ label from the product owner's state.
 
 `ModalDialog` owns bounded modal geometry, accessible titles and descriptions,
 header and footer alignment, and internal body scrolling. Its body supplies the
-reading frame for its children: a changed
+keyboard reading region named by its current title. Tab reaches that region so
+native page and boundary keys can read content beyond a field, with the existing
+inset focus perimeter. Explicit field entry still uses `initialFocus`.
+The body supplies the reading frame for its children: a changed
 `FormActions.feedback` whose group still owns focus reveals its fitting unit, or
 the focused control when the unit is taller, with the nearest native scroll and
 without moving focus or editing state. Header and footer stay outside that frame.
+Readers use `bodyRef` for their initial focus and `bodyStyles` for their existing
+measure and text treatment, rather than nesting another scrolling region.
 Its portal establishes the modal stacking context; nested shared menus and
 selects sit above its local
 panel and scrim without raising unrelated page popups. Its optional submit
