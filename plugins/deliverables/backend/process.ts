@@ -1,7 +1,7 @@
 import { execFile, spawn } from "node:child_process";
 import { performance } from "node:perf_hooks";
 import { setTimeout as delay } from "node:timers/promises";
-import { Refusal } from "@qimu/node";
+import { Refusal } from "@flame/backend-sdk/mcp";
 import { LIMITS } from "../contracts/limits";
 import type { ProcessPlan } from "./confinement";
 

@@ -15,7 +15,7 @@ import (
 
 func seedWorkspaceMutationSession(t *testing.T, db *sql.DB, sessionID, cwd string) {
 	t.Helper()
-	if err := newSessionStore(db).Insert(t.Context(), testsupport.MustRestoreSession(session.Snapshot{
+	if err := newSessionStore(databaseFor(db)).Insert(t.Context(), testsupport.MustRestoreSession(session.Snapshot{
 		ID: sessionID, Workspace: testsupport.MustWorkspace(cwd),
 		CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0), Revision: 1,
 	})); err != nil {
@@ -25,7 +25,7 @@ func seedWorkspaceMutationSession(t *testing.T, db *sql.DB, sessionID, cwd strin
 
 func seedWorkspaceMutationRun(t *testing.T, db *sql.DB, sessionID, runID string) {
 	t.Helper()
-	if err := newRunStore(db).Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{
+	if err := newRunStore(databaseFor(db)).Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: sessionID, ID: runID, State: run.Finished,
 		CreatedAt: time.Unix(1, 0), FinishedAt: time.Unix(2, 0), UpdatedAt: time.Unix(2, 0),
 	})); err != nil {
@@ -41,7 +41,7 @@ func TestWorkspaceMutationLogRoundTrip(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newWorkspaceMutationStore(db)
+	store := newWorkspaceMutationStore(databaseFor(db))
 	ctx := context.Background()
 	seedWorkspaceMutationSession(t, db, "ses_1", "/repo")
 	seedWorkspaceMutationRun(t, db, "ses_1", "run_1")
@@ -96,7 +96,7 @@ func TestUnfinishedWorkspaceMutationKeepsRecoveryOwnership(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newWorkspaceMutationStore(db)
+	store := newWorkspaceMutationStore(databaseFor(db))
 	ctx := context.Background()
 	seedWorkspaceMutationSession(t, db, "ses_1", "/a")
 	seedWorkspaceMutationRun(t, db, "ses_1", "run_1")
@@ -150,14 +150,14 @@ func TestPendingWorkspaceMutationFencesItsRecoveryInputs(t *testing.T) {
 	seedWorkspaceMutationSession(t, db, "ses_owner", "/repo")
 	seedWorkspaceMutationRun(t, db, "ses_owner", "run_target")
 	seedWorkspaceMutationSession(t, db, "ses_sibling", "/repo")
-	mutations := newWorkspaceMutationStore(db)
+	mutations := newWorkspaceMutationStore(databaseFor(db))
 	if _, err := mutations.recordMutation(ctx, workspaceMutationRecord{
 		SessionID: "ses_owner", CWD: "/repo", ToRunID: "run_target", RestoreHistory: true,
 	}); err != nil {
 		t.Fatalf("record mutation: %v", err)
 	}
 
-	runs := newRunStore(db)
+	runs := newRunStore(databaseFor(db))
 	for _, draft := range []run.Draft{
 		{RunID: "run_owner_next", SessionID: "ses_owner", SegmentID: "seg_open", CreatedAt: time.Unix(3, 0)},
 		{RunID: "run_sibling_next", SessionID: "ses_sibling", SegmentID: "seg_open", CreatedAt: time.Unix(3, 0)},
@@ -170,7 +170,7 @@ func TestPendingWorkspaceMutationFencesItsRecoveryInputs(t *testing.T) {
 	if err := runs.Delete(ctx, "ses_owner", "run_target"); err == nil {
 		t.Fatal("deleted rollback target while mutation was pending")
 	}
-	if err := newSessionStore(db).Delete(ctx, "ses_owner"); err == nil {
+	if err := newSessionStore(databaseFor(db)).Delete(ctx, "ses_owner"); err == nil {
 		t.Fatal("deleted Session while its workspace mutation was pending")
 	}
 
@@ -200,7 +200,7 @@ func TestRetainedWorkspaceMutationFencesOverlappingTreesAfterReopen(t *testing.T
 			seedWorkspaceMutationSession(t, db, "ses_other", pair[1])
 			seedWorkspaceMutationRun(t, db, "ses_other", "run_other_boundary")
 			intent := workspaceMutationRecord{SessionID: "ses_owner", CWD: pair[0], ToRunID: "run_boundary"}
-			if _, err := newWorkspaceMutationStore(db).recordMutation(t.Context(), intent); err != nil {
+			if _, err := newWorkspaceMutationStore(databaseFor(db)).recordMutation(t.Context(), intent); err != nil {
 				t.Fatal(err)
 			}
 			if err := db.Close(); err != nil {
@@ -211,7 +211,7 @@ func TestRetainedWorkspaceMutationFencesOverlappingTreesAfterReopen(t *testing.T
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = reopened.Close() })
-			store := newWorkspaceMutationStore(reopened)
+			store := newWorkspaceMutationStore(databaseFor(reopened))
 			_, err = store.recordMutation(t.Context(), workspaceMutationRecord{SessionID: "ses_other", CWD: pair[1], ToRunID: "run_other_boundary"})
 			disjoint := pair[1] == "/repo/ab"
 			if disjoint {
@@ -225,7 +225,7 @@ func TestRetainedWorkspaceMutationFencesOverlappingTreesAfterReopen(t *testing.T
 				t.Fatalf("overlapping mutation = %v, want retained ownership refusal", err)
 			}
 			draft := testsupport.RunDraft(run.Draft{RunID: "run_next", SessionID: "ses_other", SegmentID: "seg_next", CreatedAt: time.Unix(3, 0)})
-			err = newRunStore(reopened).Admit(t.Context(), draft)
+			err = newRunStore(databaseFor(reopened)).Admit(t.Context(), draft)
 			if disjoint {
 				if err != nil {
 					t.Fatalf("disjoint Run admission = %v", err)
@@ -237,7 +237,7 @@ func TestRetainedWorkspaceMutationFencesOverlappingTreesAfterReopen(t *testing.T
 				if err := store.completeMutation(t.Context(), intent); err != nil {
 					t.Fatal(err)
 				}
-				if err := newRunStore(reopened).Admit(t.Context(), draft); err != nil {
+				if err := newRunStore(databaseFor(reopened)).Admit(t.Context(), draft); err != nil {
 					t.Fatalf("admission after completion = %v", err)
 				}
 			}
@@ -249,9 +249,9 @@ func TestPendingWorkspaceMutationAlsoFencesResume(t *testing.T) {
 	for _, pair := range [][2]string{{"/repo", "/repo/a"}, {"/repo/a", "/repo"}} {
 		t.Run(pair[0]+"/"+pair[1], func(t *testing.T) {
 			runs, _ := newRunStores(t)
-			seedWorkspaceMutationSession(t, runs.db, "ses_owner", pair[0])
-			seedWorkspaceMutationRun(t, runs.db, "ses_owner", "run_boundary")
-			seedWorkspaceMutationSession(t, runs.db, "ses_waiting", pair[1])
+			seedWorkspaceMutationSession(t, rawFixtureDatabase(runs.db), "ses_owner", pair[0])
+			seedWorkspaceMutationRun(t, rawFixtureDatabase(runs.db), "ses_owner", "run_boundary")
+			seedWorkspaceMutationSession(t, rawFixtureDatabase(runs.db), "ses_waiting", pair[1])
 			draft := testsupport.RunDraft(run.Draft{RunID: "run_waiting", SessionID: "ses_waiting", SegmentID: "seg_initial", CreatedAt: time.Unix(3, 0)})
 			if err := runs.Admit(t.Context(), draft); err != nil {
 				t.Fatal(err)
@@ -261,7 +261,7 @@ func TestPendingWorkspaceMutationAlsoFencesResume(t *testing.T) {
 				t.Fatal(err)
 			}
 			intent := workspaceMutationRecord{SessionID: "ses_owner", CWD: pair[0], ToRunID: "run_boundary"}
-			mutations := newWorkspaceMutationStore(runs.db)
+			mutations := newWorkspaceMutationStore(databaseFor(runs.db))
 			if _, err := mutations.recordMutation(t.Context(), intent); err != nil {
 				t.Fatal(err)
 			}
@@ -282,17 +282,17 @@ func TestPendingWorkspaceMutationAlsoFencesResume(t *testing.T) {
 func TestRecoveryRefusesOverlappingRetainedMutationOwnership(t *testing.T) {
 	runs, _ := newRunStores(t)
 	for _, scope := range []struct{ session, run, cwd string }{{"ses_parent", "run_parent", "/repo"}, {"ses_child", "run_child", "/repo/a"}} {
-		seedWorkspaceMutationSession(t, runs.db, scope.session, scope.cwd)
-		seedWorkspaceMutationRun(t, runs.db, scope.session, scope.run)
+		seedWorkspaceMutationSession(t, rawFixtureDatabase(runs.db), scope.session, scope.cwd)
+		seedWorkspaceMutationRun(t, rawFixtureDatabase(runs.db), scope.session, scope.run)
 	}
-	store := newWorkspaceMutationStore(runs.db)
+	store := newWorkspaceMutationStore(databaseFor(runs.db))
 	if _, err := store.recordMutation(t.Context(), workspaceMutationRecord{SessionID: "ses_parent", CWD: "/repo", ToRunID: "run_parent"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.pendingMutations(t.Context()); err != nil {
 		t.Fatalf("valid retained ownership refused: %v", err)
 	}
-	if _, err := runs.db.ExecContext(t.Context(), `INSERT INTO pending_workspace_mutations(session_id, cwd, to_run_id, restore_history) VALUES ('ses_child', '/repo/a', 'run_child', 0)`); err != nil {
+	if _, err := rawFixtureDatabase(runs.db).ExecContext(t.Context(), `INSERT INTO pending_workspace_mutations(session_id, cwd, to_run_id, restore_history) VALUES ('ses_child', '/repo/a', 'run_child', 0)`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.pendingMutations(t.Context()); err == nil {

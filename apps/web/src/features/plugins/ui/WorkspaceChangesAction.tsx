@@ -27,7 +27,7 @@ export function WorkspaceChangesAction({
       changes: Object.freeze((changes ?? []).map((change) => Object.freeze({ ...change }))),
       openView(origin) {
         props.resources.throwIfAborted();
-        props.lifetime.signal.throwIfAborted();
+        props.lifetime.lifetime.signal.throwIfAborted();
         if (active.current !== target) return;
         openWorkspaceViewAtPath(workspace, targetView, "", origin);
       },

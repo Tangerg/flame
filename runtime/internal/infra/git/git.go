@@ -14,7 +14,6 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
-	"github.com/Tangerg/frame/cancellation"
 )
 
 // ErrUnavailable means the git binary isn't on PATH. ErrNotRepo means the
@@ -67,7 +66,7 @@ func Available() bool {
 // and request cancellation remain errors so callers can deliberately choose
 // fallback or termination instead of conflating both with a non-repository.
 func IsRepo(ctx context.Context, dir string) (bool, error) {
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return false, fmt.Errorf("git rev-parse --is-inside-work-tree: %w", err)
 	}
 	if !Available() {

@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/completion"
-	"github.com/Tangerg/frame/cancellation"
 )
 
 // shutdownSequence owns terminal resource steps in creation order. Shutdown starts one
@@ -44,7 +43,7 @@ func (s *shutdownSequence) shutdown(ctx context.Context) (settled bool, err erro
 	s.mu.Lock()
 	attempt := s.attempt
 	if attempt == nil {
-		if err := cancellation.Err(ctx); err != nil {
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			s.mu.Unlock()
 			return false, err
 		}

@@ -32,7 +32,7 @@ func (r review) snapshot() reviews.Snapshot {
 }
 
 func (r review) change(expectedRevision int64, status reviews.Status) (review, error) {
-	if err := (reviews.Update{ID: r.id, ExpectedRevision: expectedRevision, Status: status}).Validate(); err != nil {
+	if err := (reviews.Update{ID: r.id, ExpectedRevision: expectedRevision, Status: status}).ValidateChange(); err != nil {
 		return review{}, err
 	}
 	if expectedRevision != r.revision {

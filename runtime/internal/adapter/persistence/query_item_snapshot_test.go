@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 )
 
 type interleavedItemPage struct {
@@ -64,36 +64,36 @@ func TestItemPageKeepsOneSnapshotAcrossHistoryReplacement(t *testing.T) {
 				t.Cleanup(func() { _ = writer.Close() })
 				created := time.Unix(1, 0).UTC()
 				sess := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_snapshot", Workspace: testsupport.MustWorkspace("/work"), CreatedAt: created, UpdatedAt: created})
-				if err := newSessionStore(writer).Insert(t.Context(), sess); err != nil {
+				if err := newSessionStore(databaseFor(writer)).Insert(t.Context(), sess); err != nil {
 					t.Fatal(err)
 				}
 				root := testsupport.MustRestoreRun(run.Snapshot{ID: "run_snapshot", SessionID: sess.ID(), State: run.Finished, CreatedAt: created})
-				if err := newRunStore(writer).Restore(t.Context(), root); err != nil {
+				if err := newRunStore(databaseFor(writer)).Restore(t.Context(), root); err != nil {
 					t.Fatal(err)
 				}
 				item := testsupport.MustRestoreItem(testsupport.ItemInput{ID: "item_original", SessionID: sess.ID(), RunID: root.ID(), OccurredAt: created})
-				if err := newTranscriptStore(writer).AppendItem(t.Context(), item); err != nil {
+				if err := newTranscriptStore(databaseFor(writer)).AppendItem(t.Context(), item); err != nil {
 					t.Fatal(err)
 				}
-				pages := &interleavedItemPage{TranscriptStore: newTranscriptStore(reader), afterRead: func() error {
+				pages := &interleavedItemPage{TranscriptStore: newTranscriptStore(databaseFor(reader)), afterRead: func() error {
 					return sqlite.RunInTx(t.Context(), writer, func(ctx context.Context) error {
-						if err := newTranscriptStore(writer).DeleteRun(ctx, sess.ID(), root.ID()); err != nil {
+						if err := newTranscriptStore(databaseFor(writer)).DeleteRun(ctx, sess.ID(), root.ID()); err != nil {
 							return err
 						}
-						if err := newRunStore(writer).Delete(ctx, sess.ID(), root.ID()); err != nil || mutation == "rollback" {
+						if err := newRunStore(databaseFor(writer)).Delete(ctx, sess.ID(), root.ID()); err != nil || mutation == "rollback" {
 							return err
 						}
 						snapshot := root.Snapshot()
 						snapshot.State = run.Finished
 						snapshot.Ending = run.Canceled{}
-						if err := newRunStore(writer).Restore(ctx, testsupport.MustRestoreRun(snapshot)); err != nil {
+						if err := newRunStore(databaseFor(writer)).Restore(ctx, testsupport.MustRestoreRun(snapshot)); err != nil {
 							return err
 						}
 						replacement := testsupport.MustRestoreItem(testsupport.ItemInput{ID: "item_replacement", SessionID: sess.ID(), RunID: root.ID(), OccurredAt: created})
-						return newTranscriptStore(writer).AppendItem(ctx, replacement)
+						return newTranscriptStore(databaseFor(writer)).AppendItem(ctx, replacement)
 					})
 				}}
-				models, err := NewModelInvocationReader(newModelInvocationStore(reader))
+				models, err := NewModelInvocationReader(newModelInvocationStore(databaseFor(reader)))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -101,9 +101,9 @@ func TestItemPageKeepsOneSnapshotAcrossHistoryReplacement(t *testing.T) {
 					ReadSnapshot: func(ctx context.Context, read func(context.Context) error) error {
 						return sqlite.RunReadSnapshot(ctx, reader, read)
 					},
-					Transcript: pages, Interrupts: newInterruptStore(reader), Runs: newRunStore(reader),
-					Sessions: newSessionStore(reader), Plan: newPlanStore(reader),
-					Trajectory: &trajectoryReader{store: newTrajectoryStore(reader)}, ModelInvocations: models,
+					Transcript: pages, Interrupts: newInterruptStore(databaseFor(reader)), Runs: newRunStore(databaseFor(reader)),
+					Sessions: newSessionStore(databaseFor(reader)), Plan: newPlanStore(databaseFor(reader)),
+					Trajectory: &trajectoryReader{store: newTrajectoryStore(databaseFor(reader))}, ModelInvocations: models,
 				})
 				if err != nil {
 					t.Fatal(err)

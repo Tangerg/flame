@@ -23,8 +23,8 @@ import {
   type LocalPlan,
   type ReadyReport,
   type UseGrant,
-} from "@qimu/sdk/protocol";
-import { definePlugin, type ContributionLifetime } from "@/extensions/definePlugin";
+} from "@frame/sdk/protocol";
+import { definePlugin, type ContributionScope } from "@/extensions/definePlugin";
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { captureClientTelemetry } from "@/lib/observability/clientTelemetry";
 import { ComponentModules } from "@/features/plugins/adapters/componentModules";
@@ -67,7 +67,7 @@ const installation: PluginInstallation = {
   },
 };
 let kernel: Host;
-let scope: ContributionLifetime;
+let scope: ContributionScope;
 const owners: ComponentModules[] = [];
 
 function mutation<T>(
@@ -86,7 +86,7 @@ beforeEach(async () => {
     definePlugin({
       name: "test.component-modules",
       setup(ctx) {
-        scope = ctx.lifetime("presentation");
+        scope = ctx.contributions.child("presentation");
       },
     }),
   ]);
@@ -107,7 +107,7 @@ function fixture(
 ) {
   const modules = new ComponentModules();
   owners.push(modules);
-  const globalName = `qimuModule${crypto.randomUUID().replaceAll("-", "")}`;
+  const globalName = `frameModule${crypto.randomUUID().replaceAll("-", "")}`;
   const source = { evaluations: 0, render: renderComponent };
   vi.stubGlobal(globalName, source);
   const endpoint = `data:text/javascript,${encodeURIComponent(`globalThis["${globalName}"].evaluations++; export const Panel = globalThis["${globalName}"].render;`)}#`;
@@ -115,10 +115,11 @@ function fixture(
     authority: { id: "authority", epoch: "1" },
     realm: { id: "window", epoch: "1" },
     credential: "private-session",
-    controlEndpoint: "https://runtime.test/v2/qimu",
+    controlEndpoint: "https://runtime.test/v2/frame",
     maximumMessageBytes: 1 << 20,
     proofCapacity: 64,
     pollIntervalMilliseconds: 1,
+    preparationCapacity: 64,
     componentContract: {
       name: "io.github.tangerg.flame/component",
       version: "1",
@@ -196,6 +197,8 @@ function fixture(
       const report = await prepared.promise;
       const grant: UseGrant = {
         id: request.operationId,
+        operationId: request.operationId,
+        ...(request.parentUseId ? { parentUseId: request.parentUseId } : {}),
         approvalToken: `use:${request.operationId}`,
         authority: plan.authority,
         realm: plan.realm,
@@ -205,9 +208,7 @@ function fixture(
         objects: report.objects,
       };
       grants.set(grant.id, grant);
-      return structuredClone(grant) as Awaited<
-        ReturnType<FlameClient["plugins"]["acquireComponent"]>
-      >;
+      return { ...structuredClone(grant), objects: [...grant.objects] };
     }, request.operationId),
   );
   const closeBrowserRealm = vi.fn<FlameClient["plugins"]["closeBrowserRealm"]>(() =>
@@ -231,13 +232,18 @@ function fixture(
         response = {
           authority: session.authority,
           realm: session.realm,
-          revision: "1",
           plans: requested && !ready && !sealed ? [plan] : [],
           fences: sealed ? [{ scopeId: plan.scopeId, scopeGeneration: plan.scopeGeneration }] : [],
         };
         break;
-      case "validatePlan":
+      case "admitPlan":
         validatePlan(message.input);
+        response = {
+          authority: plan.authority,
+          realm: plan.realm,
+          execution: plan.execution,
+          decision: "admitted",
+        };
         break;
       case "ready":
         ready = message.input as ReadyReport;
@@ -274,7 +280,6 @@ function fixture(
           authority: session.authority,
           realm: session.realm,
           mode: cleanupOnly ? "cleanupOnly" : "revalidated",
-          acceptedProofs: [],
           executions: cleanupOnly
             ? []
             : [
@@ -301,10 +306,10 @@ function fixture(
       componentId: component.id,
     },
     runtime: client,
-    telemetry: captureClientTelemetry(scope.signal),
+    telemetry: captureClientTelemetry(scope.lifetime.signal),
     locale: "en",
-    signal: scope.signal,
-    track: (operation) => operation(scope.signal),
+    signal: scope.lifetime.signal,
+    track: (operation) => operation(scope.lifetime.signal),
     saveFile: async () => "requested",
     notifications: unavailableComponentNotifications,
     subscribeRootRunSettlements() {
@@ -362,7 +367,7 @@ it("uses one approved execution and evaluation for two independently owned compo
   expect(f.closeResources).not.toHaveBeenCalled();
   await f.modules.close();
   expect(f.closeResources).toHaveBeenCalledOnce();
-  expect(f.proofs.some((proof) => proof.scopeKind === "execution")).toBe(true);
+  await waitFor(() => expect(f.proofs.some((proof) => proof.scopeKind === "execution")).toBe(true));
 });
 
 it("constructs one explicit source owner across view closes and clears it when its resources close", async () => {
@@ -414,7 +419,7 @@ it("constructs one explicit source owner across view closes and clears it when i
   reopened.unmount();
   await f.closeResources();
   await waitFor(() => expect(source.signal.aborted).toBe(true));
-  expect(scope.signal.aborted).toBe(false);
+  expect(scope.lifetime.signal.aborted).toBe(false);
   expect(retained).toBe("");
 });
 
@@ -445,7 +450,7 @@ it("retains the current reader when its independently mounted component fails", 
     reader.focus();
     expect(document.activeElement).toBe(reader);
 
-    // act queues root errors instead of delivering Qimu's onUncaughtError callback.
+    // act queues root errors instead of delivering Frame's onUncaughtError callback.
     reader.click();
 
     await screen.findByRole("alert");
@@ -821,7 +826,9 @@ it("retains the original exit proof after lost acknowledgement and does not seal
   scene.unmount();
   await waitFor(() => expect(f.proofs.some((proof) => proof.scopeKind === "use")).toBe(true));
   f.loseProof();
-  await expect(f.modules.close()).rejects.toMatchObject({ code: "outcome_unknown" });
+  await expect(f.modules.close()).rejects.toMatchObject({
+    errors: [expect.objectContaining({ code: "outcome_unknown" })],
+  });
   const original = f.proofs.at(-1)!;
   await f.modules.close();
   expect(f.proofs.filter((proof) => proof.proofId === original.proofId)).toEqual([
@@ -867,5 +874,5 @@ it("retains the artifact origin captured before a pending lease crosses reconnec
   await replacement;
   expect(f.source.evaluations).toBe(1);
   expect(f.closeResources).toHaveBeenCalledOnce();
-  expect(f.proofs.some((proof) => proof.scopeKind === "execution")).toBe(true);
+  await waitFor(() => expect(f.proofs.some((proof) => proof.scopeKind === "execution")).toBe(true));
 });

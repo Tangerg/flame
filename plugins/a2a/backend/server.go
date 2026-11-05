@@ -5,15 +5,18 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/a2a/internal/contract"
 	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/scope/core/chat"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/tool"
 )
 
@@ -26,7 +29,7 @@ func newServer(connector *connector) (*sdk.Server, error) {
 		return nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.a2a", Version: "1.0.0"}, nil)
-	backend, err := qimumcp.NewBackend(server)
+	backend, err := pluginmcp.NewBackend(server)
 	if err != nil {
 		return nil, err
 	}
@@ -43,10 +46,10 @@ func newServer(connector *connector) (*sdk.Server, error) {
 			return result, errors.Join(err, ctx.Err(), context.Cause(ctx))
 		}
 		kind := tool.FailureKindFailed
-		if _, refused := errors.AsType[*portable.Refusal](err); refused {
+		if _, refused := errors.AsType[*framemcp.Refusal](err); refused {
 			kind = tool.FailureKindRejected
 		}
-		failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: kind, Output: chat.NewTextToolOutput(err.Error()), Cause: err})
+		failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: kind, Output: tool.NewTextOutput(err.Error()), Cause: err})
 		return result, errors.Join(failure, failureErr)
 	})
 	if err != nil {
@@ -69,27 +72,27 @@ func newServer(connector *connector) (*sdk.Server, error) {
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, connector.db),
-		contracts.Agents.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[struct{}]) (wire.Agents, error) {
+		contracts.Agents.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[struct{}]) (wire.Agents, error) {
 			return connector.list(ctx, command.Input)
 		}),
-		contracts.Send.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.SendRequest]) (wire.Result, error) {
+		contracts.Send.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.SendRequest]) (wire.Result, error) {
 			input, err := command.RequestInput()
 			if err != nil {
 				return wire.Result{}, err
 			}
 			return connector.send(ctx, contracts.Send.Name(), string(command.ID), input)
 		}),
-		contracts.Status.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.TaskRequest]) (wire.Result, error) {
+		contracts.Status.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.TaskRequest]) (wire.Result, error) {
 			return connector.status(ctx, command.Input)
 		}),
-		contracts.Cancel.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.TaskRequest]) (wire.Result, error) {
+		contracts.Cancel.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.TaskRequest]) (wire.Result, error) {
 			input, err := command.RequestInput()
 			if err != nil {
 				return wire.Result{}, err
 			}
 			return connector.cancel(ctx, contracts.Cancel.Name(), string(command.ID), input)
 		}),
-		receipts.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
+		receipts.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginmcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
 			input := command.Input
 			switch input.Method {
 			case "a2a_send":
@@ -111,13 +114,13 @@ func newServer(connector *connector) (*sdk.Server, error) {
 	return server, nil
 }
 
-func commandTool[P any](name string, method portable.MethodDescriptor, execute func(context.Context, string, string, jsonvalue.Value) (wire.Result, error)) (tool.Tool, error) {
+func commandTool[P any](name string, method portable.MethodDescriptor, execute func(context.Context, string, string, framevalue.JSON) (wire.Result, error)) (tool.Tool, error) {
 	return tool.NewFunc(tool.FuncConfig{Name: name, Description: method.Description}, func(ctx context.Context, _ P) (wire.Result, error) {
 		id, err := pluginsdk.ToolCommandID(ctx)
 		if err != nil {
 			return wire.Result{}, err
 		}
-		input, err := qimumcp.RequestInput(ctx)
+		input, err := pluginmcp.RequestInput(ctx)
 		if err != nil {
 			return wire.Result{}, err
 		}
@@ -127,20 +130,20 @@ func commandTool[P any](name string, method portable.MethodDescriptor, execute f
 }
 
 func commandFailure(err error) error {
-	refusal, known := errors.AsType[*portable.Refusal](err)
+	refusal, known := errors.AsType[*framemcp.Refusal](err)
 	if !known {
 		return err
 	}
-	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: chat.NewTextToolOutput(refusal.Message), Cause: err})
+	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: tool.NewTextOutput(refusal.Message), Cause: err})
 	return errors.Join(failure, failureErr)
 }
 
-func (c *connector) receipt(ctx context.Context, input qimumcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
+func (c *connector) receipt(ctx context.Context, input pluginmcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
 	receipt, err := pluginstorage.ReadReceipt(ctx, c.db, input)
 	if err != nil || !receipt.Found {
 		return pluginsdk.ToolReceipt{}, err
 	}
-	result, err := qimumcp.DecodeReply[wire.Result](receipt.Reply)
+	result, err := pluginmcp.DecodeReply[wire.Result](receipt.Reply)
 	if err != nil {
 		failure, known := tool.ClassifyFailure(commandFailure(err))
 		if !known {
@@ -152,7 +155,7 @@ func (c *connector) receipt(ctx context.Context, input qimumcp.ReceiptRequest) (
 	if err != nil {
 		return pluginsdk.ToolReceipt{}, err
 	}
-	output, err := chat.NewJSONToolOutput(data)
+	output, err := tool.NewJSONOutput(data)
 	if err != nil {
 		return pluginsdk.ToolReceipt{}, err
 	}

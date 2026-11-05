@@ -6,7 +6,7 @@ export function createProviderCatalogPlugin(runtimeClient: () => FlameClient) {
   return definePlugin({
     name: "flame.builtin.provider-catalog",
     setup(ctx) {
-      registerProviderDataProviders(ctx, runtimeClient);
+      registerProviderDataProviders(ctx.contributions, runtimeClient);
     },
   });
 }

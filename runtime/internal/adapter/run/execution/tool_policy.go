@@ -175,10 +175,7 @@ func fileMutationScope(
 	arguments tool.Arguments,
 	cwd string,
 ) tool.FileMutationScope {
-	reporter, found, err := toolcontract.Capability[toolset.FileMutationReporter](executable)
-	if err != nil {
-		return tool.FileMutationUnknown
-	}
+	reporter, found := executable.(toolset.FileMutationReporter)
 	if !found {
 		return tool.FileMutationNone
 	}

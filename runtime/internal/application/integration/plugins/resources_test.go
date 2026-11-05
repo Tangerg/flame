@@ -5,9 +5,10 @@ import (
 	"errors"
 	"testing"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 type localePackages struct {
@@ -19,7 +20,7 @@ type localePackages struct {
 
 func (p *localePackages) ReadLocale(ctx context.Context, installation plugin.Installation, locale plugin.Locale) (map[string]string, error) {
 	p.reads++
-	if locale != p.expected || installation.Selected() == (integrity.Digest{}) {
+	if locale != p.expected || installation.Selected() == (framevalue.Digest{}) {
 		return nil, errors.New("wrong locale release")
 	}
 	if err := ctx.Err(); err != nil {
@@ -41,7 +42,7 @@ func TestLocaleReadAdmitsExactEnabledDeclarationBeforeContentAccess(t *testing.T
 		t.Fatal(err)
 	}
 	content := &localePackages{expected: locale}
-	coordinator, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, content, installationConnections{}, nil)
+	coordinator, err := newTestCoordinator(t.Context(), testFramework(t, store, dependencies), store, catalog, content, installationConnections{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +56,7 @@ func TestLocaleReadAdmitsExactEnabledDeclarationBeforeContentAccess(t *testing.T
 		t.Fatal(err)
 	}
 	for _, test := range []struct {
-		digest integrity.Digest
+		digest framevalue.Digest
 		tag    string
 		want   error
 	}{

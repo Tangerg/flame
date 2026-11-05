@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"

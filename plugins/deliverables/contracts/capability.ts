@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PROTOCOL, type CapabilityDescriptor } from "@qimu/node";
+import { PROTOCOL, type CapabilityDescriptor } from "@flame/backend-sdk/mcp";
 import { FIELD_LIMITS, LIMITS } from "./limits";
 import { formatSchema } from "./content";
 

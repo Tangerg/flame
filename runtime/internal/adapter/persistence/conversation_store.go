@@ -3,24 +3,27 @@ package persistence
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/history"
 	"github.com/samber/lo"
 )
 
-// conversationMessages is Scope's conversation history plus the retention
-// capabilities Runtime's compaction and rollback need beyond it.
+// conversationMessages is Flame's mutable, per-session history. Compaction
+// and rollback replace its contents; Scope's append-only batch store owns a
+// different contract and is not implemented by this adapter.
 type conversationMessages interface {
-	history.Store
+	Read(context.Context, history.ConversationID) ([]chat.Message, error)
+	Write(context.Context, history.ConversationID, ...chat.Message) error
+	Clear(context.Context, history.ConversationID) error
 	Count(ctx context.Context, conversationID history.ConversationID) (int, error)
 	Replace(ctx context.Context, conversationID history.ConversationID, messages ...chat.Message) error
 	Truncate(ctx context.Context, conversationID history.ConversationID, keepN int) error
 }
 
-// ConversationStore adapts Scope's conversation history to the Session-keyed
+// ConversationStore adapts durable conversation history to the Session-keyed
 // port the Run use cases consume. It owns the two translations that boundary
 // needs: a Session names exactly one conversation, and a batch whose durable
 // effect the store could not observe is reported as uncertain rather than as a
@@ -42,14 +45,8 @@ func (c *ConversationStore) Read(ctx context.Context, sessionID string) ([]chat.
 }
 
 func (c *ConversationStore) Write(ctx context.Context, sessionID string, messages ...chat.Message) error {
-	outcome, err := c.messages.Write(ctx, history.ConversationID(sessionID), messages...)
-	if validateErr := outcome.ValidateFor(len(messages), err); validateErr != nil {
-		return errors.Join(err, fmt.Errorf("persistence: conversation write outcome: %w", validateErr))
-	}
-	if err == nil {
-		return nil
-	}
-	if outcome.Uncertain {
+	err := c.messages.Write(ctx, history.ConversationID(sessionID), messages...)
+	if errors.Is(err, sqlite.ErrIndeterminate) {
 		return errors.Join(runsapp.ErrConversationWriteUncertain, err)
 	}
 	return err

@@ -18,8 +18,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+
+	"github.com/Tangerg/scope/agent/interaction"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	corechat "github.com/Tangerg/scope/core/chat"
 	otelagent "github.com/Tangerg/scope/otel/agent"
 	"go.opentelemetry.io/otel/attribute"
@@ -31,9 +32,12 @@ type interactionSession struct {
 	toolResults    originalToolResults
 	ref            runs.ExecutorRef
 	scope          runs.ExecutionScope
-	deployment     agent.Deployment
-	input          agent.Payload
-	engine         *agent.Engine
+	deployment     scoperun.Program[scoperun.Payload, scoperun.Payload]
+	input          scoperun.Payload
+	engine         *scoperun.Runtime
+	deltas         chan scoperun.Delta
+	deltaFlush     chan chan struct{}
+	logCache       executionLogCache
 
 	lifetime               interactionLifetime
 	state                  interactionState
@@ -69,13 +73,13 @@ type interactionSession struct {
 // and Delegate topology. Accounting and Segment timing have independent
 // invariants and do not belong under this lock.
 type interactionState struct {
-	restoreTree                agent.TreeSnapshot
+	restoreTree                scoperun.Log
 	toolMetadata               map[string]toolResultMetadata
 	mu                         sync.Mutex
-	pendingSteers              map[agent.SignalID]runs.PreparedSteer
+	pendingSteers              map[scoperun.SignalID]runs.PreparedSteer
 	pendingContinuation        *pendingInteractionContinuation
-	process                    *agent.Process
-	admittedProcessID          agent.ProcessID
+	process                    *scoperun.Handle[scoperun.Payload]
+	admittedProcessID          scoperun.ProcessID
 	observer                   context.Context
 	phase                      interactionPhase
 	workersStarted             bool
@@ -87,7 +91,7 @@ type interactionState struct {
 	unknownReported            bool
 	deployments                *interactionDeploymentSet
 	delegateCalls              map[delegateCallIdentity]*managedDelegateCall
-	delegateChildren           map[agent.ProcessID]*managedDelegateCall
+	delegateChildren           map[scoperun.ProcessID]*managedDelegateCall
 	durableContextWasCompacted bool
 }
 
@@ -96,7 +100,7 @@ type interactionState struct {
 // Signal. The model-context boundary applies it exactly once to the root
 // conversation after the answered Tool result.
 type pendingInteractionContinuation struct {
-	processID agent.ProcessID
+	processID scoperun.ProcessID
 	itemID    string
 	content   []transcript.ContentBlock
 }
@@ -125,12 +129,11 @@ const (
 	interactionBoundarySubtreeRecovery
 )
 
-// Scope's Interaction strategy reports these external failures only by code
+// Scope's Interaction reports these external failures only by code
 // string; Scope does not export them, so this is Flame's single copy.
 const (
-	failureInvalidModelResponse      = "interaction.model.invalid_response"
-	failureToolCallsNotCompleted     = "interaction.model.tool_calls_not_completed"
-	failureUnresolvedDelegateEffects = "interaction.delegate.unresolved_effects"
+	failureInvalidModelResponse  = "interaction.model.invalid_response"
+	failureToolCallsNotCompleted = "interaction.model.tool_calls_not_completed"
 )
 
 func newInteractionSession(
@@ -144,14 +147,15 @@ func newInteractionSession(
 ) *interactionSession {
 	return &interactionSession{
 		telemetry:       telemetry,
+		deltaFlush:      make(chan chan struct{}),
 		steerAdmissions: keylock.NewSet(),
 		executionTrees:  config.ExecutionTrees,
 		toolResults:     config.OriginalToolResults,
 		ref:             ref, scope: rootExecutionScope(start), lifetime: newInteractionLifetime(lifetime),
 		state: interactionState{
-			pendingSteers:    make(map[agent.SignalID]runs.PreparedSteer),
+			pendingSteers:    make(map[scoperun.SignalID]runs.PreparedSteer),
 			delegateCalls:    make(map[delegateCallIdentity]*managedDelegateCall),
-			delegateChildren: make(map[agent.ProcessID]*managedDelegateCall),
+			delegateChildren: make(map[scoperun.ProcessID]*managedDelegateCall),
 		},
 		modelFailures:       newInteractionModelFailures(),
 		modelEvidence:       config.ModelEvidence,
@@ -234,13 +238,13 @@ func (i *interactionState) begin() bool {
 	return true
 }
 
-func (i *interactionState) setProcess(process *agent.Process) {
+func (i *interactionState) setProcess(process *scoperun.Handle[scoperun.Payload]) {
 	i.mu.Lock()
 	i.process = process
 	i.mu.Unlock()
 }
 
-func (i *interactionState) processHandle() *agent.Process {
+func (i *interactionState) processHandle() *scoperun.Handle[scoperun.Payload] {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	return i.process
@@ -255,7 +259,22 @@ func (i *interactionSession) startWorkers() {
 	default:
 	}
 	i.state.workersStarted = true
-	i.lifetime.start(i.awaitGuarded, i.reconcileUnknownEffectsGuarded, i.reconcileExecutionStateGuarded)
+	i.lifetime.start(i.awaitGuarded, i.reconcileUnknownEffectsGuarded, i.reconcileExecutionStateGuarded, i.consumeDeltas, i.consumeTelemetry, i.followOwnerLifetime)
+}
+
+// Scope detaches admitted work from the Start caller. The session's process
+// owner therefore stops the writer explicitly, and Close joins its callbacks.
+func (i *interactionSession) followOwnerLifetime() {
+	select {
+	case <-i.lifetime.done:
+		return
+	case <-i.lifetime.execution.Done():
+	}
+	ctx, cancel := i.lifetime.publicationContext(context.Background())
+	defer cancel()
+	if err := i.engine.Close(ctx); err != nil && !releasedDuringProjection(err) {
+		slog.ErrorContext(ctx, "execution: close Runtime after owner stopped", "error", err)
+	}
 }
 
 // The session already owns "this projection cannot continue", so a defect in one
@@ -328,7 +347,7 @@ func (i *interactionSession) finish() {
 // Item exists. Every reason a delta cannot be forwarded leaves the same hole in
 // that preview, so every reason reports it: a payload this Runtime cannot parse
 // is a framework boundary defect, not a quiet no-op.
-func (i *interactionSession) projectDelta(ctx context.Context, delta agent.Delta) {
+func (i *interactionSession) projectDelta(ctx context.Context, delta scoperun.Delta) {
 	parsed, err := interaction.ParseModelResponseDelta(delta.Payload())
 	if err != nil {
 		i.reportDroppedDelta(ctx, delta, err)
@@ -357,7 +376,7 @@ func (i *interactionSession) projectDelta(ctx context.Context, delta agent.Delta
 // installed executor route, or the run tree stopped accepting events.
 var errUnroutableDelta = errors.New("execution: delta has no accepting executor route")
 
-func (i *interactionSession) reportDroppedDelta(ctx context.Context, delta agent.Delta, cause error) {
+func (i *interactionSession) reportDroppedDelta(ctx context.Context, delta scoperun.Delta, cause error) {
 	span := trace.SpanFromContext(ctx)
 	span.AddEvent(
 		"execution.delta.dropped",
@@ -373,30 +392,67 @@ func (i *interactionSession) reportDroppedDelta(ctx context.Context, delta agent
 	}
 }
 
+// Delta delivery is a host-owned preview channel. Flush asks its sole reader to
+// finish every already-emitted preview before the durable result is published.
 func (i *interactionSession) flushDeltas(ctx context.Context) error {
-	if i.engine == nil {
-		return errors.New("execution: Interaction engine is unavailable")
+	done := make(chan struct{})
+	select {
+	case i.deltaFlush <- done:
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-i.lifetime.releasing.Done():
+		return errInteractionReleased
 	}
-	if err := i.engine.FlushDeltas(ctx); err != nil {
-		return fmt.Errorf("execution: flush model deltas: %w", err)
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-i.lifetime.releasing.Done():
+		return errInteractionReleased
 	}
-	return nil
 }
 
-func (i *interactionSession) observeFrameworkEvent(_ context.Context, event agent.Event) {
-	if event.Relation().RootID() != i.processRootID() {
+func (i *interactionSession) consumeDeltas() {
+	ctx := i.lifetime.releasing
+	for {
+		select {
+		case delta := <-i.deltas:
+			i.projectDelta(ctx, delta)
+		case done := <-i.deltaFlush:
+			draining := true
+			for draining {
+				select {
+				case delta := <-i.deltas:
+					i.projectDelta(ctx, delta)
+				default:
+					draining = false
+				}
+			}
+			close(done)
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (i *interactionSession) consumeTelemetry() {
+	process := i.state.processHandle()
+	if process == nil {
 		return
 	}
-	i.lifetime.wakeState()
+	if _, err := i.telemetry.Consume(i.lifetime.releasing, process, 0); err != nil && i.lifetime.releasing.Err() == nil {
+		slog.ErrorContext(i.lifetime.releasing, "execution: observe Interaction log", "error", err)
+	}
 }
 
-func (i *interactionSession) processRootID() agent.ProcessID {
+func (i *interactionSession) processRootID() scoperun.ProcessID {
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
 	if i.state.process == nil {
-		return agent.ProcessID{}
+		return i.state.admittedProcessID
 	}
-	return i.state.process.Relation().RootID()
+	return i.state.process.ID().Root()
 }
 
 func (i *interactionSession) commitFact(
@@ -539,7 +595,7 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 	i.state.waitingCheckpoint = checkpoint.Clone()
 	i.state.mu.Unlock()
 	published := i.lifetime.send(runs.ExecutorEvent{
-		Member:  i.executorMember(process.Relation()),
+		Member:  i.executorMember(process.ID()),
 		Payload: barrier,
 	})
 	if published && i.lifecycleHooks != nil {
@@ -585,8 +641,8 @@ func (i *interactionSession) beginContinuation() error {
 	return nil
 }
 
-func isInteractionWaitingBoundary(status agent.Status) bool {
-	return status == agent.StatusWaiting || status == agent.StatusPaused
+func isInteractionWaitingBoundary(status scoperun.Status) bool {
+	return status == scoperun.StatusWaiting || status == scoperun.StatusPaused
 }
 
 func (i *interactionSession) continuationAccepted() {
@@ -619,27 +675,11 @@ func (i *interactionSession) reportUnknownEffects() bool {
 	if err != nil || len(ids) == 0 {
 		return false
 	}
-	i.state.mu.Lock()
-	if i.state.unknownReported {
-		i.state.mu.Unlock()
+	resumeDispatch := i.state.holdReceiptInvestigation()
+	if resumeDispatch == nil {
 		return true
 	}
-	var gate chan struct{}
-	if i.state.dispatchReady == nil {
-		gate = make(chan struct{})
-		i.state.dispatchReady = gate
-	}
-	i.state.mu.Unlock()
-	defer func() {
-		if gate != nil {
-			i.state.mu.Lock()
-			if i.state.dispatchReady == gate {
-				close(gate)
-				i.state.dispatchReady = nil
-			}
-			i.state.mu.Unlock()
-		}
-	}()
+	defer resumeDispatch()
 	if _, err := i.investigateToolReceipts(ctx); err != nil {
 		if ctx.Err() != nil || releasedDuringProjection(err) {
 			return true
@@ -669,19 +709,52 @@ func (i *interactionSession) reportUnknownEffects() bool {
 	// Unknown effects need execution to stop, but cannot override cancellation
 	// already accepted by Scope. Both causes enter its ordered control queue;
 	// the immutable result decides which cause became authoritative.
-	if err := process.RequestCancellation(ctx, unresolvedEffectsStopReason); err != nil &&
-		!errors.Is(err, agent.ErrProcessFinished) && !releasedDuringProjection(err) {
+	if err := process.Cancel(ctx, unresolvedEffectsStopReason); err != nil &&
+		!errors.Is(err, scoperun.ErrProcessFinished) && !releasedDuringProjection(err) {
+		i.publishProjectionFailure(err)
+	}
+	// A control request cannot resolve uncertainty. Stop the writer and let
+	// Await report its retained effects; the product owner decides loss.
+	if err := i.engine.Close(ctx); err != nil && !releasedDuringProjection(err) {
 		i.publishProjectionFailure(err)
 	}
 	return true
+}
+
+// A receipt may resolve an Effect before its result projection is complete.
+// Only the investigation that installed this gate can release model dispatch.
+func (i *interactionState) holdReceiptInvestigation() func() {
+	i.mu.Lock()
+	if i.unknownReported {
+		i.mu.Unlock()
+		return nil
+	}
+	var gate chan struct{}
+	if i.dispatchReady == nil {
+		gate = make(chan struct{})
+		i.dispatchReady = gate
+	}
+	i.mu.Unlock()
+	return func() {
+		if gate != nil {
+			i.mu.Lock()
+			if i.dispatchReady == gate {
+				close(gate)
+				i.dispatchReady = nil
+			}
+			i.mu.Unlock()
+		}
+	}
 }
 
 func (i *interactionSession) await() {
 	joinCtx, cancelJoin := i.lifetime.publicationContext(i.lifetime.execution)
 	defer cancelJoin()
 	result, err := i.state.process.Await(joinCtx)
-	if joinErr := i.state.process.Join(joinCtx); joinErr != nil {
-		err = errors.Join(err, joinErr)
+	// Await owns the committed Exit. Close joins all local dispatch work when
+	// the writer instead stopped with unresolved effects or a durability error.
+	if err != nil {
+		err = errors.Join(err, i.engine.Close(joinCtx))
 	}
 	i.stopReconciliation()
 	if err == nil {
@@ -699,9 +772,9 @@ func (i *interactionSession) await() {
 	i.finish()
 }
 
-func (i *interactionSession) publishResult(result agent.Result) error {
+func (i *interactionSession) publishResult(result scoperun.Result[scoperun.Payload]) error {
 	member := runs.ExecutorMember{MemberID: result.ProcessID().String()}
-	if result.Termination().Status() == agent.StatusCompleted {
+	if result.Termination().Status() == scoperun.StatusCompleted {
 		i.maintainCompletedRoot()
 	}
 	end, err := i.segmentEnd(result)
@@ -728,7 +801,7 @@ func (i *interactionSession) publishResult(result agent.Result) error {
 }
 
 func (i *interactionSession) publishProjectionFailure(cause error) {
-	var stopped *agent.RuntimeError
+	var stopped *scoperun.RuntimeError
 	if errors.As(cause, &stopped) {
 		if err := i.publishRuntimeFailure(cause); err == nil {
 			return
@@ -761,13 +834,11 @@ func (i *interactionSession) release(ctx context.Context) error {
 		return fmt.Errorf("execution: discard prepared waiting subtree before release: %w", err)
 	}
 	i.state.mu.Lock()
-	process := i.state.process
 	workersStarted := i.state.workersStarted
 	i.state.mu.Unlock()
-	if process != nil {
-		var stopped *agent.RuntimeError
-		if err := process.Kill(ctx, interactionReleaseReason); err != nil && !errors.Is(err, agent.ErrProcessFinished) && !errors.As(err, &stopped) {
-			return fmt.Errorf("execution: kill Interaction execution: %w", err)
+	if i.engine != nil {
+		if err := i.engine.Close(ctx); err != nil {
+			return fmt.Errorf("execution: close Interaction Runtime: %w", err)
 		}
 	}
 	if workersStarted {
@@ -776,14 +847,6 @@ func (i *interactionSession) release(ctx context.Context) error {
 			i.lifetime.workers.Wait()
 		case <-ctx.Done():
 			return ctx.Err()
-		}
-	}
-	// Projection may have failed before await joined the tree. Its completion
-	// cannot stand in for Scope's proof that descendants have stopped.
-	if process != nil {
-		var stopped *agent.RuntimeError
-		if err := process.Join(ctx); err != nil && !errors.As(err, &stopped) {
-			return fmt.Errorf("execution: join Interaction execution: %w", err)
 		}
 	}
 	if !workersStarted {
@@ -800,7 +863,9 @@ func (i *interactionSession) closeExecution(ctx context.Context) error {
 			return err
 		}
 	}
-	i.closeTelemetry()
+	if err := i.closeTelemetry(ctx); err != nil {
+		return err
+	}
 	i.state.mu.Lock()
 	deployments := i.state.deployments
 	i.state.mu.Unlock()
@@ -809,22 +874,17 @@ func (i *interactionSession) closeExecution(ctx context.Context) error {
 
 // closeTelemetry ends any span the Engine left open. It is idempotent so the
 // discard path can release an assembly that never reached closeExecution.
-func (i *interactionSession) closeTelemetry() {
+func (i *interactionSession) closeTelemetry(ctx context.Context) error {
 	if i.telemetry != nil {
-		i.telemetry.Close()
+		return i.telemetry.Close(ctx)
 	}
+	return nil
 }
 
-func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded, error) {
+func (i *interactionSession) segmentEnd(result scoperun.Result[scoperun.Payload]) (runs.SegmentEnded, error) {
 	termination := result.Termination()
 	duration := i.segmentClock.duration(result.StartedAt(), result.FinishedAt())
-	end := segmentEndFromTermination(termination, duration)
-	if termination.Cause() == agent.TerminationCauseExternalFailure ||
-		termination.Cause() == agent.TerminationCauseHostCancellation && termination.Reason() == modelProcessStopReason {
-		if classified, found := i.modelFailures.lookup(result.ProcessID()); found {
-			end.ending = run.Failed{Failure: classified}
-		}
-	}
+	end := i.segmentEndForOwner(result.ProcessID(), termination, duration)
 	ctx, cancel := i.lifetime.publicationContext(i.lifetime.execution)
 	defer cancel()
 	effects, err := i.terminalEffects(ctx, result.ProcessID())
@@ -834,46 +894,55 @@ func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded,
 	return runs.NewSegmentEnded(end.ending, end.duration).WithUnresolvedEffects(effects), nil
 }
 
+func (i *interactionSession) segmentEndForOwner(owner scoperun.ProcessID, termination scoperun.Termination, duration time.Duration) segmentEndDraft {
+	end := segmentEndFromTermination(termination, duration)
+	if termination.Status() == scoperun.StatusFailed ||
+		termination.Cause() == scoperun.TerminationCauseHostCancellation && termination.Reason() == modelProcessStopReason {
+		if classified, found := i.modelFailures.lookup(owner); found {
+			end.ending = run.Failed{Failure: classified}
+		}
+	}
+	return end
+}
+
 type segmentEndDraft struct {
 	ending   run.Ending
 	duration time.Duration
 }
 
-func segmentEndFromTermination(termination agent.Termination, duration time.Duration) segmentEndDraft {
+func segmentEndFromTermination(termination scoperun.Termination, duration time.Duration) segmentEndDraft {
 	return segmentEndDraft{ending: terminationEnding(termination), duration: duration}
 }
 
-func terminationEnding(termination agent.Termination) run.Ending {
+func terminationEnding(termination scoperun.Termination) run.Ending {
 	failed := func(kind run.FailureKind, detail string) run.Ending {
 		return run.Failed{Failure: run.Failure{Kind: kind, Detail: detail}}
 	}
 	switch termination.Cause() {
-	case agent.TerminationCauseCompletion:
+	case scoperun.TerminationCauseCompletion:
 		return run.Completed{}
-	case agent.TerminationCauseParentDeadline, agent.TerminationCauseHostDeadline:
+	case scoperun.TerminationCauseParentDeadline, scoperun.TerminationCauseHostDeadline:
 		return run.TimedOut{Detail: "executor deadline reached"}
-	case agent.TerminationCauseParentCancellation, agent.TerminationCauseHostCancellation:
-		if termination.Cause() == agent.TerminationCauseHostCancellation && termination.Reason() == unresolvedEffectsStopReason {
+	case scoperun.TerminationCauseParentCancellation, scoperun.TerminationCauseHostCancellation:
+		if termination.Cause() == scoperun.TerminationCauseHostCancellation && termination.Reason() == unresolvedEffectsStopReason {
 			return run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedEffects}}
 		}
 		return run.Canceled{}
-	case agent.TerminationCauseExecutionFailure:
+	case scoperun.TerminationCauseExecutionFailure:
 		failure, _ := termination.Failure()
 		return failed(run.FailureAgentStuck, run.Diagnostic(errors.New(failure.Message())))
-	case agent.TerminationCauseExternalFailure:
+	case scoperun.TerminationCauseExternalFailure:
 		failure, _ := termination.Failure()
 		detail := run.Diagnostic(errors.New(failure.Message()))
 		switch failure.Code() {
 		case failureInvalidModelResponse, failureToolCallsNotCompleted:
 			return failed(run.FailureProviderRejected, detail)
-		case failureUnresolvedDelegateEffects:
-			return run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedEffects, Detail: detail}}
 		}
 		return failed(run.FailureInternal, detail)
-	case agent.TerminationCauseContractFailure, agent.TerminationCausePanic:
+	case scoperun.TerminationCauseContractFailure, scoperun.TerminationCausePanic:
 		failure, _ := termination.Failure()
 		return failed(run.FailureInternal, run.Diagnostic(errors.New(failure.Message())))
-	case agent.TerminationCauseEngineKill:
+	case scoperun.TerminationCauseRuntimeKill:
 		return failed(run.FailureInternal, termination.Reason())
 	default:
 		return failed(run.FailureInternal, "executor returned an unknown terminal cause")

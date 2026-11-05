@@ -18,7 +18,7 @@ export const workspaceKeymap = (workspaceAccess: WorkspaceAccess) =>
   definePlugin({
     name: "flame.builtin.workspace.keymap",
     setup(ctx) {
-      ctx.contribute(
+      ctx.contributions.add(
         SHORTCUT,
         workspaceEscapeShortcut(closeActiveWorkspaceView.bind(null, workspaceAccess)),
       );

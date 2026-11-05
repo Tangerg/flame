@@ -397,7 +397,7 @@ func TestFailedStreamRetainsPrefixWhenPreviewQueueIsFull(t *testing.T) {
 	}
 	commit.Complete(nil)
 	<-emitted
-	if err := session.engine.FlushDeltas(t.Context()); err != nil {
+	if err := session.flushDeltas(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	var failed []runs.ModelCallFailed

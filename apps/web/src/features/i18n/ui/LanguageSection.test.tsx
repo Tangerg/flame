@@ -32,7 +32,11 @@ it("retries an initially failed saved language by choosing its current entry", a
     definePlugin({
       name: "test.saved-language",
       setup(scope) {
-        contributeLocale(scope, { id: "retry-locale", label: "Saved language", load });
+        contributeLocale(scope.contributions, {
+          id: "retry-locale",
+          label: "Saved language",
+          load,
+        });
       },
     }),
   );
@@ -49,7 +53,11 @@ it("does not label an unavailable preference as another registered locale", asyn
     definePlugin({
       name: "test.locale-catalog",
       setup(ctx) {
-        ctx.contribute(LOCALE, { id: "en", label: "English", activate: async () => undefined });
+        ctx.contributions.add(LOCALE, {
+          id: "en",
+          label: "English",
+          activate: async () => undefined,
+        });
       },
     }),
   );
@@ -63,8 +71,12 @@ it("shows a failed dictionary activation without discarding the selected prefere
     definePlugin({
       name: "test.locale-selection",
       setup(ctx) {
-        ctx.contribute(LOCALE, { id: "en", label: "English", activate: async () => undefined });
-        ctx.contribute(LOCALE, {
+        ctx.contributions.add(LOCALE, {
+          id: "en",
+          label: "English",
+          activate: async () => undefined,
+        });
+        ctx.contributions.add(LOCALE, {
           id: "ja",
           label: "Japanese",
           activate: async () => {
@@ -99,7 +111,11 @@ async function failDictionary(load: () => Promise<Record<string, string>>) {
     definePlugin({
       name: "test.locale-recovery",
       setup(scope) {
-        contributeLocale(scope, { id: recoveryLocale, label: "Recovery language", load });
+        contributeLocale(scope.contributions, {
+          id: recoveryLocale,
+          label: "Recovery language",
+          load,
+        });
       },
     }),
   );

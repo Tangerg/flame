@@ -209,6 +209,7 @@ describe("DesktopHostClient", () => {
     const input = new Uint8Array(MAXIMUM_EXPORT_CHUNK_BYTES + 1);
     input[input.length - 1] = 7;
     const chunks: number[] = [];
+    const firstBytes: number[] = [];
     let cancelled = false;
     const binding: DesktopHostBinding = {
       ...hostBinding(),
@@ -217,8 +218,8 @@ describe("DesktopHostClient", () => {
         if (method === DesktopMethods.AppendFileSave.name) {
           const bytes = Buffer.from(args[2] as string, "base64");
           chunks.push(bytes.length);
+          firstBytes.push(bytes[0]!);
           if (chunks.length === 2) {
-            expect(bytes[0]).toBe(7);
             throw new Error("disk full");
           }
           return;
@@ -237,6 +238,7 @@ describe("DesktopHostClient", () => {
     });
     input.fill(0);
     await expect(saving).rejects.toThrow("disk full");
+    expect(firstBytes).toEqual([0, 7]);
     expect(chunks).toEqual([MAXIMUM_EXPORT_CHUNK_BYTES, 1]);
     expect(cancelled).toBe(true);
   });

@@ -13,13 +13,15 @@ import (
 	"runtime"
 	"slices"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/distribution"
-	"github.com/Tangerg/qimu/integrity"
-	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/frame"
+	"github.com/Tangerg/frame/distribution"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 type BuildTarget struct {
@@ -47,7 +49,7 @@ func BuildRelease(ctx context.Context, source string, target BuildTarget, archiv
 	if err != nil {
 		return distribution.Release{}, err
 	}
-	projection, err := plugins.ProjectFrameworkDeclaration(declaration, qimumcp.ProcessProfile)
+	projection, err := plugins.ProjectFrameworkDeclaration(declaration, pluginmcp.ProcessProfile)
 	if err != nil {
 		return distribution.Release{}, err
 	}
@@ -128,7 +130,7 @@ func authorManifest(ctx context.Context, root *os.Root, declaration plugin.Decla
 			unit.Imports = append(unit.Imports, distribution.Import{Slot: imported.Slot, Contract: imported.Contract, Optional: imported.Optional})
 		}
 		switch unit.Profile {
-		case qimumcp.ProcessProfile:
+		case pluginmcp.ProcessProfile:
 			name, err := plugins.BackendServer(unit.ID)
 			if err != nil {
 				return manifest, err
@@ -144,7 +146,7 @@ func authorManifest(ctx context.Context, root *os.Root, declaration plugin.Decla
 					return manifest, err
 				}
 				for _, selected := range targets {
-					executable, err := integrity.ParseDigest(selected.ExecutableDigest)
+					executable, err := framevalue.ParseDigest(selected.ExecutableDigest)
 					if err != nil {
 						return manifest, fmt.Errorf("node %s/%s executable: %w", selected.OS, selected.Arch, err)
 					}
@@ -160,7 +162,7 @@ func authorManifest(ctx context.Context, root *os.Root, declaration plugin.Decla
 				}
 				unit.Variants = []distribution.Variant{{OS: target.OS, Arch: target.Arch, Path: path}}
 			}
-		case qimu.BrowserJS:
+		case frame.BrowserJS:
 			index := slices.IndexFunc(declaration.Components, func(component plugin.ClientComponent) bool { return plugins.ComponentUnit(component.ID) == unit.ID })
 			if index < 0 {
 				return manifest, plugin.ErrInvalid
@@ -170,20 +172,20 @@ func authorManifest(ctx context.Context, root *os.Root, declaration plugin.Decla
 				return manifest, err
 			}
 			unit.Module = module
-		case qimu.NativeGo:
+		case frame.NativeGo:
 		default:
 			return manifest, fmt.Errorf("%w: unsupported Flame profile %s", plugin.ErrInvalid, unit.Profile)
 		}
 		manifest.Units = append(manifest.Units, unit)
 		for _, exported := range unit.Exports {
-			if exported.Contract.Kind != qimu.PointKind {
+			if exported.Contract.Kind != frame.PointKind {
 				continue
 			}
 			metadata := []byte("null")
 			if unit.ID == plugins.PointValuesUnit {
 				for _, value := range declaration.PointValues {
 					if value.ID.String() == exported.Name {
-						metadata = value.Value.JSON()
+						metadata = value.Value.Bytes()
 						break
 					}
 				}
@@ -197,7 +199,7 @@ func authorManifest(ctx context.Context, root *os.Root, declaration plugin.Decla
 // validateProjection prevents consumer metadata from declaring a second set of
 // executable units. Runtime may apply Flame policy only to this original graph.
 func validateProjection(ctx context.Context, root *os.Root, release plugin.Release, manifest distribution.Manifest) error {
-	projection, err := plugins.ProjectFrameworkDeclaration(release.Declaration(), qimumcp.ProcessProfile)
+	projection, err := plugins.ProjectFrameworkDeclaration(release.Declaration(), pluginmcp.ProcessProfile)
 	if err != nil {
 		return err
 	}
@@ -205,7 +207,7 @@ func validateProjection(ctx context.Context, root *os.Root, release plugin.Relea
 	// the sole author projection, not a second interpretation of unit entries.
 	var target BuildTarget
 	for _, unit := range manifest.Units {
-		if unit.Profile != qimumcp.ProcessProfile {
+		if unit.Profile != pluginmcp.ProcessProfile {
 			continue
 		}
 		for _, variant := range unit.Variants {
@@ -226,9 +228,9 @@ func validateProjection(ctx context.Context, root *os.Root, release plugin.Relea
 	if err != nil {
 		return err
 	}
-	// Qimu has already verified the original artifact inventory. Reuse those
+	// Frame has already verified the original artifact inventory. Reuse those
 	// exact facts while comparing every declaration, entry, pin and contribution
-	// through Qimu's canonical identity, including extension metadata.
+	// through Frame's canonical identity, including extension metadata.
 	expected.Artifacts = manifest.Artifacts
 	identity, err := expected.Identity()
 	if err != nil {
@@ -245,5 +247,5 @@ func validateProjection(ctx context.Context, root *os.Root, release plugin.Relea
 }
 
 func (*Releases) Project(release plugin.Release) (plugins.FrameworkRelease, error) {
-	return plugins.ProjectFrameworkRelease(release, qimumcp.ProcessProfile)
+	return plugins.ProjectFrameworkRelease(release, pluginmcp.ProcessProfile)
 }

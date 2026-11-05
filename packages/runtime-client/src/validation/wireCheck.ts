@@ -11,7 +11,7 @@ import {
   isJSONNumber,
   projectNumber,
   type JSONNumber,
-} from "@qimu/sdk/json";
+} from "@frame/sdk/json";
 
 export interface WireViolation {
   path: string;

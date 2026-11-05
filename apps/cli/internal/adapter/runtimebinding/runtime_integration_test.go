@@ -15,9 +15,10 @@ import (
 	"testing"
 	"time"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/portable"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
@@ -68,7 +69,7 @@ func TestRuntimeConnectionResourceFailures(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, err = runtime.CallPlugin(t.Context(), request, mutation.NewCommandID())
-		var refusal *portable.Refusal
+		var refusal *framemcp.Refusal
 		if !errors.As(err, &refusal) || refusal.Code != "not_found" {
 			t.Fatalf("missing installed schedule: %v", err)
 		}
@@ -130,8 +131,8 @@ func requireGoalMutationLifecycle(t *testing.T, runtime *Connection, sessionID s
 		SessionID: sessionID, Objective: "verify embedded goal lifecycle",
 		Provider: "missing", Model: "missing",
 	}
-	if _, err := runtime.StartGoal(t.Context(), start); !errors.Is(err, protocol.ErrInvalidParams) {
-		t.Fatalf("StartGoal with an uninstalled provider = %v, want selection refusal", err)
+	if _, err := runtime.StartGoal(t.Context(), start); !errors.Is(err, protocol.ErrPluginUnavailable) {
+		t.Fatalf("StartGoal with an uninstalled provider = %v, want plugin unavailable", err)
 	}
 	if _, exists, err := runtime.GetGoal(t.Context(), sessionID); err != nil || exists {
 		t.Fatalf("refused selection created a Goal: exists=%t, err=%v", exists, err)

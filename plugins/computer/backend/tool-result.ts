@@ -1,5 +1,5 @@
 import { MIMEType } from "node:util";
-import { canonicalJSON, parseJSON } from "@qimu/node";
+import { canonicalJSON, parseJSON } from "@flame/backend-sdk/mcp";
 import {
   CallToolResultSchema,
   type CallToolResult,
@@ -8,7 +8,7 @@ import {
 
 type JSONRecord = Record<string, unknown>;
 interface ToolMedia {
-  mime: string;
+  mime?: string;
   source: { kind: "bytes"; bytes: string } | { kind: "uri"; uri: string };
   id?: string;
   name?: string;
@@ -68,39 +68,7 @@ function absoluteURI(value: string): URL {
   return uri;
 }
 
-function inferredMime(declared: string | undefined, uri: string): string {
-  if (declared) return mime(declared);
-  let path = "";
-  try {
-    path = decodeURIComponent(new URL(uri).pathname).toLowerCase();
-  } catch {
-    return "application/octet-stream";
-  }
-  const extension = path.slice(path.lastIndexOf("."));
-  switch (extension) {
-    case ".png":
-      return "image/png";
-    case ".jpg":
-    case ".jpeg":
-      return "image/jpeg";
-    case ".gif":
-      return "image/gif";
-    case ".webp":
-      return "image/webp";
-    case ".mp3":
-      return "audio/mpeg";
-    case ".wav":
-      return "audio/wav";
-    case ".pdf":
-      return "application/pdf";
-    case ".txt":
-      return "text/plain";
-    default:
-      return "application/octet-stream";
-  }
-}
-
-function bytes(value: string, mimeType: string): ToolMedia {
+function bytes(value: string, mimeType?: string): ToolMedia {
   const encoded = value.replace(/[\r\n]/g, "");
   const padding = encoded.indexOf("=");
   if (
@@ -111,7 +79,7 @@ function bytes(value: string, mimeType: string): ToolMedia {
   )
     throw new Error("computer: tool media requires nonempty standard base64");
   return {
-    mime: mime(mimeType),
+    ...(mimeType ? { mime: mime(mimeType) } : {}),
     source: {
       kind: "bytes",
       bytes: Buffer.from(encoded, "base64").toString("base64"),
@@ -216,14 +184,17 @@ function projectContent(content: ContentBlock): ToolContent | undefined {
       break;
     case "image":
     case "audio":
-      part = { kind: "media", media: bytes(content.data, content.mimeType) };
+      part = {
+        kind: "media",
+        media: bytes(content.data, mime(content.mimeType)),
+      };
       break;
     case "resource_link": {
       absoluteURI(content.uri);
       part = {
         kind: "media",
         media: {
-          mime: inferredMime(content.mimeType, content.uri),
+          ...(content.mimeType ? { mime: mime(content.mimeType) } : {}),
           source: { kind: "uri", uri: content.uri },
           ...(content.name ? { name: content.name } : {}),
         },
@@ -238,7 +209,6 @@ function projectContent(content: ContentBlock): ToolContent | undefined {
           ...(icon.sizes?.length ? { sizes: icon.sizes } : {}),
           ...(icon.theme ? { theme: icon.theme } : {}),
         }));
-      if (!content.mimeType) envelope.mimeTypeInferred = true;
       break;
     }
     case "resource": {
@@ -260,12 +230,8 @@ function projectContent(content: ContentBlock): ToolContent | undefined {
       } else {
         part = {
           kind: "media",
-          media: bytes(
-            string(record(resource).blob),
-            inferredMime(resource.mimeType, resource.uri),
-          ),
+          media: bytes(string(record(resource).blob), resource.mimeType),
         };
-        if (!resource.mimeType) envelope.mimeTypeInferred = true;
       }
       envelope.resource = origin;
       break;

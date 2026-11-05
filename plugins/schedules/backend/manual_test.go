@@ -8,6 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 
@@ -16,9 +20,8 @@ import (
 	"github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
@@ -39,7 +42,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	host := &observedRunHost{db: db, namespace: "original-runtime"}
 	host.lost.Store(true)
 	server := sdk.NewServer(&sdk.Implementation{Name: "schedules-test"}, nil)
-	registered, err := registerServer(server, db, store, filesystem.DirectoryResolver{}, func(context.Context, qimumcp.CallbackRef) (runHost, func() error, error) {
+	registered, err := registerServer(server, db, store, filesystem.DirectoryResolver{}, func(context.Context, pluginmcp.CallbackRef) (runHost, func() error, error) {
 		return host, func() error { return nil }, nil
 	})
 	if err != nil {
@@ -51,7 +54,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 		}
 	})
 	client := sdk.NewClient(&sdk.Implementation{Name: "public-author"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	left, right := sdk.NewInMemoryTransports()
@@ -69,7 +72,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	exported, err := qimumcp.ResolveCapability(ctx, session, "schedules", contracts.Capability)
+	exported, err := pluginmcp.ResolveCapability(ctx, session, "schedules", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,20 +80,20 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation := portable.Invocation{ID: "original-manual", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "captured-installation"}}
-	ctx, err = qimumcp.WithInvocation(ctx, invocation)
+	invocation := framemcp.Invocation{ID: "original-manual", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "captured-installation"}}
+	ctx, err = pluginmcp.WithInvocation(ctx, invocation)
 	if err != nil {
 		t.Fatal(err)
 	}
-	metadata, err := qimumcp.CallbackMetadata(qimumcp.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: strings.Repeat("a", 64), Call: strings.Repeat("b", 64), MaxResponseBytes: 4096})
+	metadata, err := pluginmcp.CallbackMetadata(pluginmcp.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: strings.Repeat("a", 64), Call: strings.Repeat("b", 64), MaxResponseBytes: 4096})
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsonvalue.Encode(wire.ItemInput{ID: definition.ID()})
+	input, err := framevalue.EncodeJSON(wire.ItemInput{ID: definition.ID()})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := method.InvokeWithMetadata(ctx, qimumcp.CommandID(invocation.ID), input, metadata); err == nil {
+	if _, err := method.InvokeWithMetadata(ctx, pluginmcp.CommandID(invocation.ID), input, metadata); err == nil {
 		t.Fatal("lost acceptance was reported as success")
 	}
 	pending, err := store.PendingManual(ctx, "", 10)
@@ -101,7 +104,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if captured.Invocation() != invocation || captured.Snapshot().Execution.Instructions != definition.Instructions() {
 		t.Fatal("manual capture lost its original caller or input")
 	}
-	if _, found, err := method.ReadReceipt(ctx, qimumcp.CommandID(invocation.ID), input); err != nil || found {
+	if _, found, err := method.ReadReceipt(ctx, pluginmcp.CommandID(invocation.ID), input); err != nil || found {
 		t.Fatalf("unknown receipt: %t, %v", found, err)
 	}
 	if _, err := store.Delete(ctx, definition.ID()); err != nil {
@@ -111,14 +114,14 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if _, err := db.ExecContext(ctx, `CREATE TRIGGER refuse_manual_reply BEFORE UPDATE OF reply ON commands BEGIN SELECT RAISE(ABORT,'receipt failed'); END`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := method.InvokeWithMetadata(ctx, qimumcp.CommandID(invocation.ID), input, metadata); err == nil {
+	if _, err := method.InvokeWithMetadata(ctx, pluginmcp.CommandID(invocation.ID), input, metadata); err == nil {
 		t.Fatal("failed private receipt commit became success")
 	}
 	pending, err = store.PendingManual(ctx, "", 10)
 	if err != nil || len(pending) != 1 || pending[0].Snapshot() != captured.Snapshot() {
 		t.Fatalf("receipt failure changed original pending work: %v", err)
 	}
-	if _, found, err := method.ReadReceipt(ctx, qimumcp.CommandID(invocation.ID), input); err != nil || found {
+	if _, found, err := method.ReadReceipt(ctx, pluginmcp.CommandID(invocation.ID), input); err != nil || found {
 		t.Fatalf("failed receipt fabricated completion: %t, %v", found, err)
 	}
 	if _, err := db.ExecContext(ctx, `DROP TRIGGER refuse_manual_reply`); err != nil {
@@ -130,7 +133,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	}
 	callsAfterRecovery := host.calls.Load()
 
-	value, err := method.InvokeWithMetadata(ctx, qimumcp.CommandID(invocation.ID), input, metadata)
+	value, err := method.InvokeWithMetadata(ctx, pluginmcp.CommandID(invocation.ID), input, metadata)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,10 +141,10 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 		t.Fatal("public replay repeated a recovered Run admission")
 	}
 	calls := host.calls.Load()
-	if receipt, found, err := method.ReadReceipt(ctx, qimumcp.CommandID(invocation.ID), input); err != nil || !found || receipt != value {
+	if receipt, found, err := method.ReadReceipt(ctx, pluginmcp.CommandID(invocation.ID), input); err != nil || !found || receipt != value {
 		t.Fatalf("original receipt: %t, %v", found, err)
 	}
-	if replay, err := method.Invoke(ctx, qimumcp.CommandID(invocation.ID), input); err != nil || replay != value || host.calls.Load() != calls {
+	if replay, err := method.Invoke(ctx, pluginmcp.CommandID(invocation.ID), input); err != nil || replay != value || host.calls.Load() != calls {
 		t.Fatalf("completed replay reacquired collaborators: %v", err)
 	}
 	pending, err = store.PendingManual(ctx, "", 10)
@@ -152,23 +155,23 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if err != nil || retained.Snapshot() != captured.Snapshot() {
 		t.Fatalf("deleted definition changed captured work: %v", err)
 	}
-	changed, err := jsonvalue.Encode(wire.ItemInput{ID: "sch_other"})
+	changed, err := framevalue.EncodeJSON(wire.ItemInput{ID: "sch_other"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := method.Invoke(ctx, qimumcp.CommandID(invocation.ID), changed); !errors.Is(decodeError(err), portable.ErrInvocationConflict) {
+	if _, err := method.Invoke(ctx, pluginmcp.CommandID(invocation.ID), changed); !errors.Is(decodeError(err), framemcp.ErrInvocationConflict) {
 		t.Fatalf("changed input did not conflict: %v", err)
 	}
 	refused := invocation
 	refused.ID = "missing-schedule"
-	refusalContext, err := qimumcp.WithInvocation(t.Context(), refused)
+	refusalContext, err := pluginmcp.WithInvocation(t.Context(), refused)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := method.InvokeWithMetadata(refusalContext, qimumcp.CommandID(refused.ID), changed, metadata); !errors.Is(decodeError(err), schedule.ErrNotFound) {
+	if _, err := method.InvokeWithMetadata(refusalContext, pluginmcp.CommandID(refused.ID), changed, metadata); !errors.Is(decodeError(err), schedule.ErrNotFound) {
 		t.Fatalf("business refusal: %v", err)
 	}
-	if _, found, err := method.ReadReceipt(refusalContext, qimumcp.CommandID(refused.ID), changed); !found || !errors.Is(decodeError(err), schedule.ErrNotFound) {
+	if _, found, err := method.ReadReceipt(refusalContext, pluginmcp.CommandID(refused.ID), changed); !found || !errors.Is(decodeError(err), schedule.ErrNotFound) {
 		t.Fatalf("business refusal was not retained: %t, %v", found, err)
 	}
 	var rows int

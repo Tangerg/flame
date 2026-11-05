@@ -8,12 +8,14 @@ import (
 	"strings"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type requirementInstallations struct {
@@ -43,16 +45,16 @@ func (s requirementSelections) List(context.Context) ([]plugin.ProviderSelection
 	return s.values, nil
 }
 
-func requirementContract(t *testing.T, reference string, composition portable.Composition) *portable.Capability {
+func requirementContract(t *testing.T, reference string, composition plugincontract.Composition) *plugincontract.Capability {
 	t.Helper()
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: reference, Composition: composition, Scope: extension.ScopeInstallation}, portable.MethodDescriptor{Name: reference + ".read", Kind: portable.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: reference, Composition: composition, Scope: extension.ScopeInstallation}, portable.MethodDescriptor{Name: reference + ".read", Kind: portable.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return contract
 }
 
-func requirementSnapshot(t *testing.T, id identity.InstallationID, name string, contract *portable.Capability, requires ...plugin.Requirement) plugin.Snapshot {
+func requirementSnapshot(t *testing.T, id identity.InstallationID, name string, contract *plugincontract.Capability, requires ...plugin.Requirement) plugin.Snapshot {
 	t.Helper()
 	server := testsupport.ServerName("backend")
 	release, err := plugin.NewRelease(testsupport.Digest(name+contract.Identity().String()+fmt.Sprint(requires)), plugin.Declaration{Name: name, Servers: []plugin.Server{{Name: server, Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "backend"}}}}, Contributions: []plugin.Contribution{{ID: "operations", Server: server, Export: "operations", Contract: contract.Identity(), Requires: requires}}})
@@ -70,9 +72,9 @@ func requirementSnapshot(t *testing.T, id identity.InstallationID, name string, 
 }
 
 func TestNamedRequirementsUseSelectedBindingsAndExplicitOptionalAbsence(t *testing.T) {
-	rootContract := requirementContract(t, "reviews", portable.Collection)
-	selected := requirementContract(t, "model", portable.Selection)
-	optional := requirementContract(t, "analyzers", portable.Collection)
+	rootContract := requirementContract(t, "reviews", plugincontract.Collection)
+	selected := requirementContract(t, "model", plugincontract.Selection)
+	optional := requirementContract(t, "analyzers", plugincontract.Collection)
 	root := requirementSnapshot(t, testsupport.InstallationID(t), "reviews", rootContract, plugin.Requirement{ID: "model", Contract: selected.Identity()}, plugin.Requirement{ID: "analyzers", Contract: optional.Identity(), Optional: true})
 	first := requirementSnapshot(t, testsupport.InstallationID(t), "model-one", selected)
 	second := requirementSnapshot(t, testsupport.InstallationID(t), "model-two", selected)
@@ -94,8 +96,8 @@ func TestNamedRequirementsUseSelectedBindingsAndExplicitOptionalAbsence(t *testi
 }
 
 func TestRequiredAndOptionalPresentEdgesReportTheirCompleteCycle(t *testing.T) {
-	a := requirementContract(t, "a", portable.Collection)
-	b := requirementContract(t, "b", portable.Collection)
+	a := requirementContract(t, "a", plugincontract.Collection)
+	b := requirementContract(t, "b", plugincontract.Collection)
 	idA, idB := testsupport.InstallationID(t), testsupport.InstallationID(t)
 	first := requirementSnapshot(t, idA, "first", a, plugin.Requirement{ID: "b", Contract: b.Identity()})
 	second := requirementSnapshot(t, idB, "second", b, plugin.Requirement{ID: "a", Contract: a.Identity()})
@@ -118,8 +120,8 @@ func TestRequiredAndOptionalPresentEdgesReportTheirCompleteCycle(t *testing.T) {
 }
 
 func TestRequirementsValidateOtherContributionsSharingTheEntry(t *testing.T) {
-	contract := requirementContract(t, "root", portable.Collection)
-	missing := requirementContract(t, "missing", portable.Selection)
+	contract := requirementContract(t, "root", plugincontract.Collection)
+	missing := requirementContract(t, "missing", plugincontract.Selection)
 	root := requirementSnapshot(t, testsupport.InstallationID(t), "root", contract)
 	declaration := root.Selected.Declaration()
 	declaration.Contributions = append(declaration.Contributions, plugin.Contribution{ID: "sibling", Server: testsupport.ServerName("backend"), Export: "sibling", Contract: contract.Identity(), Requires: []plugin.Requirement{{ID: "missing", Contract: missing.Identity()}}})
@@ -136,9 +138,9 @@ func TestRequirementsValidateOtherContributionsSharingTheEntry(t *testing.T) {
 }
 
 func TestTransitiveRequirementFailureExplainsItsConsumerPath(t *testing.T) {
-	rootContract := requirementContract(t, "root", portable.Collection)
-	providerContract := requirementContract(t, "provider", portable.Collection)
-	missing := requirementContract(t, "missing", portable.Selection)
+	rootContract := requirementContract(t, "root", plugincontract.Collection)
+	providerContract := requirementContract(t, "provider", plugincontract.Collection)
+	missing := requirementContract(t, "missing", plugincontract.Selection)
 	root := requirementSnapshot(t, testsupport.InstallationID(t), "root", rootContract, plugin.Requirement{ID: "provider", Contract: providerContract.Identity()})
 	provider := requirementSnapshot(t, testsupport.InstallationID(t), "provider", providerContract, plugin.Requirement{ID: "missing", Contract: missing.Identity()})
 	store := requirementInstallations{snapshots: []plugin.Snapshot{root, provider}}
@@ -154,8 +156,8 @@ func TestTransitiveRequirementFailureExplainsItsConsumerPath(t *testing.T) {
 }
 
 func TestEntryRequirementsFreezeTheSelectedProviderForTheUseInterval(t *testing.T) {
-	contract := requirementContract(t, "consumer", portable.Collection)
-	model := requirementContract(t, "model", portable.Selection)
+	contract := requirementContract(t, "consumer", plugincontract.Collection)
+	model := requirementContract(t, "model", plugincontract.Selection)
 	root := requirementSnapshot(t, testsupport.InstallationID(t), "consumer", contract, plugin.Requirement{ID: "model", Contract: model.Identity()})
 	first := requirementSnapshot(t, testsupport.InstallationID(t), "first", model)
 	second := requirementSnapshot(t, testsupport.InstallationID(t), "second", model)

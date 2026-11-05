@@ -1,3 +1,4 @@
+import { canonicalJSON } from "@frame/sdk/json";
 import {
   errorMessage,
   RpcError,
@@ -7,7 +8,6 @@ import {
   RpcConnectionError,
 } from "./errors";
 import { checkRequest, requestRequiresIdempotency } from "./request";
-import { stringifyJSON } from "@qimu/sdk/json";
 import {
   MAXIMUM_RUN_EVENT_ID_CHARACTERS,
   PROBLEM_CODES,
@@ -254,7 +254,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
         try {
           entry.resolve(
             entry.exactJSON
-              ? stringifyJSON(result, true)
+              ? canonicalJSON(result)
               : wireMethodReturnsValue(entry.method)
                 ? projectMethodResult(entry.method, result)
                 : undefined,

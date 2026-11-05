@@ -17,8 +17,8 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/programtest"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/uitest"
 )
 
 type usageServiceStub struct{}
@@ -334,7 +334,7 @@ func TestProviderConfigurationMasksSecretsAndPreservesExplicitChanges(t *testing
 	host.Press(input.Tab)
 	secret := "SECRET_PROVIDER_KEY_42"
 	host.Type(secret)
-	if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
+	if !host.Resize(1, 1) || !repaint(t, host) || !host.Resize(96, 28) {
 		t.Fatal("provider configuration did not survive a minimal viewport")
 	}
 	host.Shows(t, "Configure provider · deepseek")
@@ -920,12 +920,12 @@ func TestGoalMutationDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) {
 	stop()
 }
 
-func runUIWithRuntimeServices(t *testing.T, config Config) (*programtest.Host, func()) {
+func runUIWithRuntimeServices(t *testing.T, config Config) (*uitest.Host, func()) {
 	t.Helper()
 	if config.SessionID == "" && config.Workspace == "" {
 		config.SessionID = "ses_demo_1"
 	}
-	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
+	host := uitest.New(t, uitest.Config{Width: 96, Height: 28})
 	config.Host = host
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
@@ -941,17 +941,6 @@ func runUIWithRuntimeServices(t *testing.T, config Config) (*programtest.Host, f
 	}
 	t.Cleanup(stop)
 	return host, stop
-}
-
-func awaitValue[T any](t *testing.T, values <-chan T, what string) T {
-	t.Helper()
-	select {
-	case value := <-values:
-		return value
-	case <-time.After(3 * time.Second):
-		t.Fatal("timed out waiting for " + what)
-		return *new(T)
-	}
 }
 
 func featuredTerminalProfile(t testing.TB) *runtimefixture.Profile {

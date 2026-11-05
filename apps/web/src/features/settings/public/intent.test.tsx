@@ -3,7 +3,7 @@ import { act, cleanup } from "@testing-library/react";
 import { asyncDisposeSymbol } from "dougong";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 import { contributeForTest, resetKernelForTest } from "@/test/kernel";
-import { type ContributionLifetime } from "@/extensions/definePlugin";
+import { type ContributionScope } from "@/extensions/definePlugin";
 import { SETTINGS_PANE } from "@/features/settings/public/panes";
 import { useSettingsPaneForIntent } from "./intent";
 
@@ -22,11 +22,11 @@ it.each(["model-providers", "mcp-servers", "vendor.settings"] as const)(
   async (intent) => {
     const hook = client.renderHook(() => useSettingsPaneForIntent(intent));
     expect(hook.result.current).toBe("plugins");
-    let lifetime!: ContributionLifetime;
+    let lifetime!: ContributionScope;
     await act(async () =>
       contributeForTest((context) => {
-        lifetime = context.lifetime("model-settings");
-        lifetime.contribute(SETTINGS_PANE, {
+        lifetime = context.contributions.child("model-settings");
+        lifetime.add(SETTINGS_PANE, {
           id: "package:chosen:configuration",
           label: "Model settings",
           intent,
@@ -44,14 +44,14 @@ it.each(["model-providers", "mcp-servers", "vendor.settings"] as const)(
   "requires an unambiguous declared intent instead of inferring from titles or artwork for %s",
   async (intent) => {
     await contributeForTest((context) => {
-      context.contribute(SETTINGS_PANE, {
+      context.contributions.add(SETTINGS_PANE, {
         id: "unrelated",
         label: "Providers",
         material: "providers",
         component: () => null,
       });
       for (const id of ["one", "two"])
-        context.contribute(SETTINGS_PANE, {
+        context.contributions.add(SETTINGS_PANE, {
           id,
           label: id,
           intent,

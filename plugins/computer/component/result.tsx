@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import { type Translate } from "@flame/component-sdk";
 import {
   Callout,

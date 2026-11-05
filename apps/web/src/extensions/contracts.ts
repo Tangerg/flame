@@ -1,9 +1,15 @@
-import { extensionPoint, normalizePlainRecord } from "dougong";
+import { extensionPoint } from "dougong";
+import { normalizePlainRecord } from "dougong/advanced";
+import { type ContributionLease } from "@/extensions/contributionScope";
 import { type ExtensionKeying, type ExtensionPoint } from "@/extensions/types/extensionPoint";
 export interface Contribution<T> {
   readonly key: string;
   readonly plugin: string;
   readonly item: T;
+}
+
+export interface PublishedContribution<T> extends Contribution<T> {
+  retain(): ContributionLease;
 }
 
 const taken = new Set<string>();
@@ -30,7 +36,7 @@ export function defineExtensionPoint<T>(spec: ExtensionPointSpec<T>): ExtensionP
   }
   const point = Object.freeze({
     ...declaration,
-    token: extensionPoint<Contribution<T>>(declaration.id),
+    token: extensionPoint<PublishedContribution<T>>(declaration.id),
   });
   taken.add(point.id);
   return point;

@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"time"
 
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+
 	agentmemory "github.com/Tangerg/flame/plugins/memory/internal/domain"
-	"github.com/Tangerg/frame/sqlite"
 )
 
 func (a *AgentMemoryStore) AppendLedger(ctx context.Context, batch agentmemory.FactBatch) ([]agentmemory.LedgerFact, error) {
@@ -20,9 +21,9 @@ func (a *AgentMemoryStore) AppendLedger(ctx context.Context, batch agentmemory.F
 		return nil, nil
 	}
 	var inserted []agentmemory.LedgerFact
-	err = sqlite.RunInTx(ctx, a.db, func(ctx context.Context) error {
+	err = pluginstorage.WithinTransaction(ctx, a.db, func(ctx context.Context) error {
 		for _, fact := range normalized.Facts {
-			result, execContextErr := sqlite.Connection(ctx, a.db).ExecContext(ctx,
+			result, execContextErr := pluginstorage.Connection(ctx, a.db).ExecContext(ctx,
 				`INSERT OR IGNORE INTO agent_memory_ledger(
 					project, day, session_id, fact, digest, captured_at
 				) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -75,7 +76,7 @@ func (a *AgentMemoryStore) PendingLedger(ctx context.Context, project string, wa
 			agentmemory.MaxLedgerFoldFacts,
 		)
 	}
-	rows, err := sqlite.Connection(ctx, a.db).QueryContext(ctx,
+	rows, err := pluginstorage.Connection(ctx, a.db).QueryContext(ctx,
 		`SELECT seq, day, fact, captured_at
 		 FROM agent_memory_ledger
 		 WHERE project = ? AND seq > ?
@@ -110,7 +111,7 @@ func (a *AgentMemoryStore) State(ctx context.Context, project string) (agentmemo
 	}
 	var st agentmemory.State
 	var updatedAt int64
-	err := sqlite.Connection(ctx, a.db).QueryRowContext(ctx,
+	err := pluginstorage.Connection(ctx, a.db).QueryRowContext(ctx,
 		`SELECT watermark, updated_at FROM agent_memory_state WHERE project = ?`, project).
 		Scan(&st.Watermark, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -140,9 +141,9 @@ func (a *AgentMemoryStore) Reconcile(
 	expectedWatermark := publication.ExpectedState().Watermark
 	state := publication.State()
 	through := state.Watermark
-	err = sqlite.RunInTx(ctx, a.db, func(ctx context.Context) error {
+	err = pluginstorage.WithinTransaction(ctx, a.db, func(ctx context.Context) error {
 		var one int
-		if scanErr := sqlite.Connection(ctx, a.db).QueryRowContext(ctx,
+		if scanErr := pluginstorage.Connection(ctx, a.db).QueryRowContext(ctx,
 			`SELECT 1 FROM agent_memory_ledger WHERE project = ? AND seq = ?`,
 			project, through).Scan(&one); scanErr != nil {
 			if errors.Is(scanErr, sql.ErrNoRows) {
@@ -150,12 +151,12 @@ func (a *AgentMemoryStore) Reconcile(
 			}
 			return fmt.Errorf("sqlite: verify agent memory watermark: %w", scanErr)
 		}
-		if _, execContextErr := sqlite.Connection(ctx, a.db).ExecContext(ctx,
+		if _, execContextErr := pluginstorage.Connection(ctx, a.db).ExecContext(ctx,
 			`INSERT OR IGNORE INTO agent_memory_state(project, watermark, updated_at) VALUES (?, 0, 0)`,
 			project); execContextErr != nil {
 			return fmt.Errorf("sqlite: initialize agent memory state: %w", execContextErr)
 		}
-		result, execContextErr := sqlite.Connection(ctx, a.db).ExecContext(ctx,
+		result, execContextErr := pluginstorage.Connection(ctx, a.db).ExecContext(ctx,
 			`UPDATE agent_memory_state SET watermark = ?, updated_at = ?
 			 WHERE project = ? AND watermark = ?`,
 			through, state.UpdatedAt.UnixNano(), project, expectedWatermark)

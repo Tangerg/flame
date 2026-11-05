@@ -2,9 +2,10 @@ package goals_test
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"

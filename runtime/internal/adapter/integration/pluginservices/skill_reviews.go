@@ -6,9 +6,14 @@ import (
 	"encoding/hex"
 	json "encoding/json/v2"
 	"errors"
+
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/skill"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -16,8 +21,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type skillPublisher interface {
@@ -28,7 +31,7 @@ type skillPublisher interface {
 type SkillGovernance struct {
 	calls    *CommandCalls
 	files    skillPublisher
-	contract *portable.Capability
+	contract *plugincontract.Capability
 }
 
 func NewSkillGovernance(calls *CommandCalls, files skillPublisher) (*SkillGovernance, error) {
@@ -78,7 +81,7 @@ func (s *SkillGovernance) SubmitProposal(ctx context.Context, root string, p ski
 	switch {
 	case err == nil:
 		var retained skilllearning.Draft
-		if err := json.Unmarshal(record.Snapshot().Input.JSON(), &retained); err != nil {
+		if err := json.Unmarshal(record.Snapshot().Input.Bytes(), &retained); err != nil {
 			return zero, err
 		}
 		draft.Previous = retained.Previous
@@ -166,11 +169,11 @@ func (s *SkillGovernance) retainedDraft(ctx context.Context, record plugin.Comma
 	}
 	switch record.Method {
 	case propose.Name():
-		err := json.Unmarshal(record.Input.JSON(), &draft, json.RejectUnknownMembers(true))
+		err := json.Unmarshal(record.Input.Bytes(), &draft, json.RejectUnknownMembers(true))
 		return draft, err
 	case mine.Name():
 		var run skilllearning.Run
-		if err := json.Unmarshal(record.Input.JSON(), &run, json.RejectUnknownMembers(true)); err != nil {
+		if err := json.Unmarshal(record.Input.Bytes(), &run, json.RejectUnknownMembers(true)); err != nil {
 			return draft, err
 		}
 		result, err := originalSkillReceipt[skilllearning.MineResult](ctx, s.calls, record)
@@ -279,7 +282,7 @@ func (s *SkillGovernance) admitted(ctx context.Context, root string, ref skills.
 	return doc, nil
 }
 
-func reviewMutation[P, R any](ctx context.Context, s *SkillGovernance, doc reviewDocument, method *qimumcp.Method[P, R], input P) (R, error) {
+func reviewMutation[P, R any](ctx context.Context, s *SkillGovernance, doc reviewDocument, method *pluginmcp.Method[P, R], input P) (R, error) {
 	child := operation.Bind(ctx, method.Name(), operation.Identity(ctx))
 	reply, err := invokeResolvedCommand[P, R](child, s.calls, method.Name(), input, nil, func(ctx context.Context) (plugins.ContributionBinding, error) { return doc.source, nil }, nil)
 	return reply.value, reviewError(err)
@@ -319,7 +322,7 @@ func (s *SkillGovernance) ApproveProposal(ctx context.Context, root string, ref 
 	}
 	record := approval.Snapshot()
 	var original skilllearning.ReviewRef
-	if err := json.Unmarshal(record.Input.JSON(), &original); err != nil {
+	if err := json.Unmarshal(record.Input.Bytes(), &original); err != nil {
 		return nil, err
 	}
 	if record.Method != method.Name() || record.Provider != doc.record.Provider || record.Contract != doc.record.Contract || record.Contribution != doc.record.Contribution || record.Invocation.Origin != extension.Human || original != reference {
@@ -354,7 +357,7 @@ func (s *SkillGovernance) changed() {
 	s.calls.publish.Notify(invalidation.Notice{Resource: invalidation.Skills})
 }
 func reviewError(err error) error {
-	if refusal, ok := errors.AsType[*portable.Refusal](err); ok && refusal.Code == skilllearning.StaleReview {
+	if refusal, ok := errors.AsType[*framemcp.Refusal](err); ok && refusal.Code == skilllearning.StaleReview {
 		return errors.Join(skills.ErrProposalChanged, err)
 	}
 	return err

@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"strings"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 const Reference = "flame.plan-workflow.v1"
@@ -42,7 +43,7 @@ type Proposal struct {
 // Local revision numbers order the references made by one Session.
 type Document struct {
 	Proposal
-	Digest integrity.Digest `json:"digest"`
+	Digest framevalue.Digest `json:"digest"`
 }
 
 func Seal(proposal Proposal) (Document, error) {
@@ -53,7 +54,7 @@ func Seal(proposal Proposal) (Document, error) {
 	if err != nil {
 		return Document{}, err
 	}
-	return Document{Proposal: proposal, Digest: integrity.Hash(body)}, nil
+	return Document{Proposal: proposal, Digest: framevalue.Hash(body)}, nil
 }
 
 func (d Document) Verify() error {

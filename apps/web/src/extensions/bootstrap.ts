@@ -8,8 +8,8 @@ export function createKernel(plugins: ReadonlyArray<AnyPlugin>): Host {
     name: "flame",
     logger: kernelLogger,
     onError: (error) => reportPluginError("kernel", "setup", error),
+    installations: plugins.map((plugin) => ({ id: plugin.name, plugin })),
   });
-  for (const plugin of plugins) host.install(plugin);
   return host;
 }
 
@@ -36,7 +36,7 @@ export async function startKernel(
 }
 
 export async function stopKernel(host: Host): Promise<void> {
-  retractKernel(host);
+  await retractKernel(host);
   await host.stop();
 }
 

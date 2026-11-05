@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.qimu/portable/1",
+  "protocol": "io.github.tangerg.flame/plugin/1",
   "reference": "flame.github.v1",
   "composition": "collection",
   "scope": "installation",
@@ -13,9 +13,17 @@
         "$defs": {
           "wire.CreateCommentInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "body": {
+                    "maxLength": 65536
+                  }
+                }
+              }
+            ],
             "properties": {
               "body": {
-                "maxLength": 65536,
                 "minLength": 1,
                 "type": "string"
               },
@@ -45,9 +53,17 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "body": {
+                "maxLength": 65536
+              }
+            }
+          }
+        ],
         "properties": {
           "body": {
-            "maxLength": 65536,
             "minLength": 1,
             "type": "string"
           },
@@ -76,6 +92,9 @@
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "wire.Comment": {
             "additionalProperties": false,
             "properties": {
@@ -86,8 +105,7 @@
                 "type": "string"
               },
               "createdAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "id": {
                 "allOf": [
@@ -99,8 +117,7 @@
                 "type": "integer"
               },
               "updatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "url": {
                 "type": "string"
@@ -127,8 +144,7 @@
             "type": "string"
           },
           "createdAt": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/$defs/instant.Timestamp"
           },
           "id": {
             "allOf": [
@@ -140,8 +156,7 @@
             "type": "integer"
           },
           "updatedAt": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/$defs/instant.Timestamp"
           },
           "url": {
             "type": "string"
@@ -167,6 +182,18 @@
         "$defs": {
           "wire.CreateIssueInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "body": {
+                    "maxLength": 65536
+                  },
+                  "title": {
+                    "maxLength": 256
+                  }
+                }
+              }
+            ],
             "properties": {
               "assignees": {
                 "items": {
@@ -175,7 +202,6 @@
                 "type": "array"
               },
               "body": {
-                "maxLength": 65536,
                 "type": "string"
               },
               "labels": {
@@ -190,7 +216,6 @@
                 "type": "string"
               },
               "title": {
-                "maxLength": 256,
                 "minLength": 1,
                 "type": "string"
               }
@@ -204,6 +229,18 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "body": {
+                "maxLength": 65536
+              },
+              "title": {
+                "maxLength": 256
+              }
+            }
+          }
+        ],
         "properties": {
           "assignees": {
             "items": {
@@ -212,7 +249,6 @@
             "type": "array"
           },
           "body": {
-            "maxLength": 65536,
             "type": "string"
           },
           "labels": {
@@ -227,7 +263,6 @@
             "type": "string"
           },
           "title": {
-            "maxLength": 256,
             "minLength": 1,
             "type": "string"
           }
@@ -240,6 +275,9 @@
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "wire.Issue": {
             "additionalProperties": false,
             "properties": {
@@ -305,8 +343,7 @@
                 "type": "string"
               },
               "updatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "url": {
                 "type": "string"
@@ -394,8 +431,7 @@
             "type": "string"
           },
           "updatedAt": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/$defs/instant.Timestamp"
           },
           "url": {
             "type": "string"
@@ -427,15 +463,27 @@
         "$defs": {
           "wire.CreateReviewCommentInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "body": {
+                    "maxLength": 65536
+                  }
+                }
+              }
+            ],
             "properties": {
               "body": {
-                "maxLength": 65536,
                 "minLength": 1,
                 "type": "string"
               },
               "commitId": {
+                "allOf": [
+                  {
+                    "pattern": "^[0-9a-fA-F]{40}$"
+                  }
+                ],
                 "minLength": 1,
-                "pattern": "^[0-9a-fA-F]{40}$",
                 "type": "string"
               },
               "line": {
@@ -515,15 +563,27 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "body": {
+                "maxLength": 65536
+              }
+            }
+          }
+        ],
         "properties": {
           "body": {
-            "maxLength": 65536,
             "minLength": 1,
             "type": "string"
           },
           "commitId": {
+            "allOf": [
+              {
+                "pattern": "^[0-9a-fA-F]{40}$"
+              }
+            ],
             "minLength": 1,
-            "pattern": "^[0-9a-fA-F]{40}$",
             "type": "string"
           },
           "line": {
@@ -602,6 +662,9 @@
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "wire.ReviewComment": {
             "additionalProperties": false,
             "properties": {
@@ -615,8 +678,7 @@
                 "type": "string"
               },
               "createdAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "diffHunk": {
                 "type": "string"
@@ -688,8 +750,7 @@
                 "type": "string"
               },
               "updatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "url": {
                 "type": "string"
@@ -725,8 +786,7 @@
             "type": "string"
           },
           "createdAt": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/$defs/instant.Timestamp"
           },
           "diffHunk": {
             "type": "string"
@@ -798,8 +858,7 @@
             "type": "string"
           },
           "updatedAt": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/$defs/instant.Timestamp"
           },
           "url": {
             "type": "string"
@@ -831,6 +890,18 @@
         "$defs": {
           "wire.CreatePullInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "body": {
+                    "maxLength": 65536
+                  },
+                  "title": {
+                    "maxLength": 256
+                  }
+                }
+              }
+            ],
             "properties": {
               "base": {
                 "maxLength": 1024,
@@ -838,7 +909,6 @@
                 "type": "string"
               },
               "body": {
-                "maxLength": 65536,
                 "type": "string"
               },
               "draft": {
@@ -863,7 +933,6 @@
                 "type": "string"
               },
               "title": {
-                "maxLength": 256,
                 "minLength": 1,
                 "type": "string"
               }
@@ -879,6 +948,18 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "body": {
+                "maxLength": 65536
+              },
+              "title": {
+                "maxLength": 256
+              }
+            }
+          }
+        ],
         "properties": {
           "base": {
             "maxLength": 1024,
@@ -886,7 +967,6 @@
             "type": "string"
           },
           "body": {
-            "maxLength": 65536,
             "type": "string"
           },
           "draft": {
@@ -911,7 +991,6 @@
             "type": "string"
           },
           "title": {
-            "maxLength": 256,
             "minLength": 1,
             "type": "string"
           }
@@ -926,6 +1005,9 @@
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "wire.Branch": {
             "additionalProperties": false,
             "properties": {
@@ -1004,8 +1086,7 @@
                 "type": "string"
               },
               "mergedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "number": {
                 "allOf": [
@@ -1034,8 +1115,7 @@
                 "type": "string"
               },
               "updatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "url": {
                 "type": "string"
@@ -1112,8 +1192,7 @@
             "type": "string"
           },
           "mergedAt": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/$defs/instant.Timestamp"
           },
           "number": {
             "allOf": [
@@ -1142,8 +1221,7 @@
             "type": "string"
           },
           "updatedAt": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/$defs/instant.Timestamp"
           },
           "url": {
             "type": "string"
@@ -1445,6 +1523,9 @@
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "wire.Issue": {
             "additionalProperties": false,
             "properties": {
@@ -1510,8 +1591,7 @@
                 "type": "string"
               },
               "updatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "url": {
                 "type": "string"
@@ -1599,8 +1679,7 @@
             "type": "string"
           },
           "updatedAt": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/$defs/instant.Timestamp"
           },
           "url": {
             "type": "string"
@@ -1683,6 +1762,9 @@
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "wire.Branch": {
             "additionalProperties": false,
             "properties": {
@@ -1761,8 +1843,7 @@
                 "type": "string"
               },
               "mergedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "number": {
                 "allOf": [
@@ -1791,8 +1872,7 @@
                 "type": "string"
               },
               "updatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "url": {
                 "type": "string"
@@ -1869,8 +1949,7 @@
             "type": "string"
           },
           "mergedAt": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/$defs/instant.Timestamp"
           },
           "number": {
             "allOf": [
@@ -1899,8 +1978,7 @@
             "type": "string"
           },
           "updatedAt": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/$defs/instant.Timestamp"
           },
           "url": {
             "type": "string"
@@ -2240,6 +2318,9 @@
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "wire.CheckPage": {
             "additionalProperties": false,
             "properties": {
@@ -2277,8 +2358,7 @@
                 "type": "integer"
               },
               "completedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "conclusion": {
                 "type": "string"
@@ -2299,8 +2379,7 @@
                 "type": "string"
               },
               "startedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "status": {
                 "type": "string"
@@ -2455,6 +2534,9 @@
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "wire.CommitStatus": {
             "additionalProperties": false,
             "properties": {
@@ -2462,8 +2544,7 @@
                 "type": "string"
               },
               "createdAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "description": {
                 "type": "string"
@@ -2481,8 +2562,7 @@
                 "type": "string"
               },
               "updatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "url": {
                 "type": "string"
@@ -2653,6 +2733,9 @@
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "wire.Comment": {
             "additionalProperties": false,
             "properties": {
@@ -2663,8 +2746,7 @@
                 "type": "string"
               },
               "createdAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "id": {
                 "allOf": [
@@ -2676,8 +2758,7 @@
                 "type": "integer"
               },
               "updatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "url": {
                 "type": "string"
@@ -2853,6 +2934,9 @@
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "wire.Issue": {
             "additionalProperties": false,
             "properties": {
@@ -2918,8 +3002,7 @@
                 "type": "string"
               },
               "updatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "url": {
                 "type": "string"
@@ -3097,6 +3180,9 @@
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "wire.ReviewComment": {
             "additionalProperties": false,
             "properties": {
@@ -3110,8 +3196,7 @@
                 "type": "string"
               },
               "createdAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "diffHunk": {
                 "type": "string"
@@ -3183,8 +3268,7 @@
                 "type": "string"
               },
               "updatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "url": {
                 "type": "string"
@@ -3582,6 +3666,9 @@
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "wire.Review": {
             "additionalProperties": false,
             "properties": {
@@ -3607,8 +3694,7 @@
                 "type": "string"
               },
               "submittedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "url": {
                 "type": "string"
@@ -3803,6 +3889,9 @@
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "wire.Branch": {
             "additionalProperties": false,
             "properties": {
@@ -3905,8 +3994,7 @@
                 "type": "string"
               },
               "mergedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "number": {
                 "allOf": [
@@ -3935,8 +4023,7 @@
                 "type": "string"
               },
               "updatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "url": {
                 "type": "string"
@@ -3992,19 +4079,33 @@
         "$defs": {
           "wire.MergePullInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "commitMessage": {
+                    "maxLength": 65536
+                  },
+                  "commitTitle": {
+                    "maxLength": 256
+                  }
+                }
+              }
+            ],
             "properties": {
               "commitMessage": {
-                "maxLength": 65536,
                 "type": "string"
               },
               "commitTitle": {
-                "maxLength": 256,
                 "type": "string"
               },
               "headSha": {
+                "allOf": [
+                  {
+                    "pattern": "^[0-9a-fA-F]{40}$"
+                  }
+                ],
                 "description": "Exact inspected head SHA. GitHub atomically refuses a different current head.",
                 "minLength": 1,
-                "pattern": "^[0-9a-fA-F]{40}$",
                 "type": "string"
               },
               "mergeMethod": {
@@ -4046,19 +4147,33 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "commitMessage": {
+                "maxLength": 65536
+              },
+              "commitTitle": {
+                "maxLength": 256
+              }
+            }
+          }
+        ],
         "properties": {
           "commitMessage": {
-            "maxLength": 65536,
             "type": "string"
           },
           "commitTitle": {
-            "maxLength": 256,
             "type": "string"
           },
           "headSha": {
+            "allOf": [
+              {
+                "pattern": "^[0-9a-fA-F]{40}$"
+              }
+            ],
             "description": "Exact inspected head SHA. GitHub atomically refuses a different current head.",
             "minLength": 1,
-            "pattern": "^[0-9a-fA-F]{40}$",
             "type": "string"
           },
           "mergeMethod": {
@@ -4272,9 +4387,17 @@
         "$defs": {
           "wire.ReplyReviewCommentInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "body": {
+                    "maxLength": 65536
+                  }
+                }
+              }
+            ],
             "properties": {
               "body": {
-                "maxLength": 65536,
                 "minLength": 1,
                 "type": "string"
               },
@@ -4315,9 +4438,17 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "body": {
+                "maxLength": 65536
+              }
+            }
+          }
+        ],
         "properties": {
           "body": {
-            "maxLength": 65536,
             "minLength": 1,
             "type": "string"
           },
@@ -4357,6 +4488,9 @@
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "wire.ReviewComment": {
             "additionalProperties": false,
             "properties": {
@@ -4370,8 +4504,7 @@
                 "type": "string"
               },
               "createdAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "diffHunk": {
                 "type": "string"
@@ -4443,8 +4576,7 @@
                 "type": "string"
               },
               "updatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "url": {
                 "type": "string"
@@ -4480,8 +4612,7 @@
             "type": "string"
           },
           "createdAt": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/$defs/instant.Timestamp"
           },
           "diffHunk": {
             "type": "string"
@@ -4553,8 +4684,7 @@
             "type": "string"
           },
           "updatedAt": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/$defs/instant.Timestamp"
           },
           "url": {
             "type": "string"
@@ -4586,9 +4716,17 @@
         "$defs": {
           "wire.InlineComment": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "body": {
+                    "maxLength": 65536
+                  }
+                }
+              }
+            ],
             "properties": {
               "body": {
-                "maxLength": 65536,
                 "minLength": 1,
                 "type": "string"
               },
@@ -4650,9 +4788,17 @@
           },
           "wire.SubmitReviewInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "body": {
+                    "maxLength": 65536
+                  }
+                }
+              }
+            ],
             "properties": {
               "body": {
-                "maxLength": 65536,
                 "type": "string"
               },
               "comments": {
@@ -4662,9 +4808,13 @@
                 "type": "array"
               },
               "commitId": {
+                "allOf": [
+                  {
+                    "pattern": "^[0-9a-fA-F]{40}$"
+                  }
+                ],
                 "description": "Exact inspected commit SHA to review; never defaults to a newer head.",
                 "minLength": 1,
-                "pattern": "^[0-9a-fA-F]{40}$",
                 "type": "string"
               },
               "event": {
@@ -4706,9 +4856,17 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "body": {
+                "maxLength": 65536
+              }
+            }
+          }
+        ],
         "properties": {
           "body": {
-            "maxLength": 65536,
             "type": "string"
           },
           "comments": {
@@ -4718,9 +4876,13 @@
             "type": "array"
           },
           "commitId": {
+            "allOf": [
+              {
+                "pattern": "^[0-9a-fA-F]{40}$"
+              }
+            ],
             "description": "Exact inspected commit SHA to review; never defaults to a newer head.",
             "minLength": 1,
-            "pattern": "^[0-9a-fA-F]{40}$",
             "type": "string"
           },
           "event": {
@@ -4761,6 +4923,9 @@
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "wire.Review": {
             "additionalProperties": false,
             "properties": {
@@ -4786,8 +4951,7 @@
                 "type": "string"
               },
               "submittedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "url": {
                 "type": "string"
@@ -4828,8 +4992,7 @@
             "type": "string"
           },
           "submittedAt": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/$defs/instant.Timestamp"
           },
           "url": {
             "type": "string"
@@ -4854,9 +5017,17 @@
         "$defs": {
           "wire.UpdateCommentInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "body": {
+                    "maxLength": 65536
+                  }
+                }
+              }
+            ],
             "properties": {
               "body": {
-                "maxLength": 65536,
                 "minLength": 1,
                 "type": "string"
               },
@@ -4886,9 +5057,17 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "body": {
+                "maxLength": 65536
+              }
+            }
+          }
+        ],
         "properties": {
           "body": {
-            "maxLength": 65536,
             "minLength": 1,
             "type": "string"
           },
@@ -4917,6 +5096,9 @@
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "wire.Comment": {
             "additionalProperties": false,
             "properties": {
@@ -4927,8 +5109,7 @@
                 "type": "string"
               },
               "createdAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "id": {
                 "allOf": [
@@ -4940,8 +5121,7 @@
                 "type": "integer"
               },
               "updatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "url": {
                 "type": "string"
@@ -4968,8 +5148,7 @@
             "type": "string"
           },
           "createdAt": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/$defs/instant.Timestamp"
           },
           "id": {
             "allOf": [
@@ -4981,8 +5160,7 @@
             "type": "integer"
           },
           "updatedAt": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/$defs/instant.Timestamp"
           },
           "url": {
             "type": "string"
@@ -5008,6 +5186,18 @@
         "$defs": {
           "wire.UpdateIssueInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "body": {
+                    "maxLength": 65536
+                  },
+                  "title": {
+                    "maxLength": 256
+                  }
+                }
+              }
+            ],
             "properties": {
               "assignees": {
                 "description": "Replaces the assignee set; [] clears it. Omit to preserve it.",
@@ -5017,7 +5207,6 @@
                 "type": "array"
               },
               "body": {
-                "maxLength": 65536,
                 "type": "string"
               },
               "duplicateIssueId": {
@@ -5078,7 +5267,6 @@
                 "type": "string"
               },
               "title": {
-                "maxLength": 256,
                 "minLength": 1,
                 "type": "string"
               }
@@ -5092,6 +5280,18 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "body": {
+                "maxLength": 65536
+              },
+              "title": {
+                "maxLength": 256
+              }
+            }
+          }
+        ],
         "properties": {
           "assignees": {
             "description": "Replaces the assignee set; [] clears it. Omit to preserve it.",
@@ -5101,7 +5301,6 @@
             "type": "array"
           },
           "body": {
-            "maxLength": 65536,
             "type": "string"
           },
           "duplicateIssueId": {
@@ -5162,7 +5361,6 @@
             "type": "string"
           },
           "title": {
-            "maxLength": 256,
             "minLength": 1,
             "type": "string"
           }
@@ -5175,6 +5373,9 @@
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "wire.Issue": {
             "additionalProperties": false,
             "properties": {
@@ -5240,8 +5441,7 @@
                 "type": "string"
               },
               "updatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "url": {
                 "type": "string"
@@ -5329,8 +5529,7 @@
             "type": "string"
           },
           "updatedAt": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/$defs/instant.Timestamp"
           },
           "url": {
             "type": "string"
@@ -5362,9 +5561,17 @@
         "$defs": {
           "wire.UpdateCommentInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "body": {
+                    "maxLength": 65536
+                  }
+                }
+              }
+            ],
             "properties": {
               "body": {
-                "maxLength": 65536,
                 "minLength": 1,
                 "type": "string"
               },
@@ -5394,9 +5601,17 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "body": {
+                "maxLength": 65536
+              }
+            }
+          }
+        ],
         "properties": {
           "body": {
-            "maxLength": 65536,
             "minLength": 1,
             "type": "string"
           },
@@ -5425,6 +5640,9 @@
       },
       "output": {
         "$defs": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "wire.ReviewComment": {
             "additionalProperties": false,
             "properties": {
@@ -5438,8 +5656,7 @@
                 "type": "string"
               },
               "createdAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "diffHunk": {
                 "type": "string"
@@ -5511,8 +5728,7 @@
                 "type": "string"
               },
               "updatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "url": {
                 "type": "string"
@@ -5548,8 +5764,7 @@
             "type": "string"
           },
           "createdAt": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/$defs/instant.Timestamp"
           },
           "diffHunk": {
             "type": "string"
@@ -5621,8 +5836,7 @@
             "type": "string"
           },
           "updatedAt": {
-            "format": "date-time",
-            "type": "string"
+            "$ref": "#/$defs/instant.Timestamp"
           },
           "url": {
             "type": "string"

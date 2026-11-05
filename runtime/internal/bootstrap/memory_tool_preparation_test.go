@@ -53,7 +53,7 @@ func TestManagedMemoryToolUsesCapturedWorkspaceWithoutAnEmbeddingRole(t *testing
 				message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 				return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
 			})}
-			client, err := chatclient.New(model, chatclient.Config{})
+			client, err := chatclient.New(model)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -67,7 +67,7 @@ func TestManagedMemoryToolUsesCapturedWorkspaceWithoutAnEmbeddingRole(t *testing
 			r.poMCPTools(server, memoryToolsReady)
 			if operation == memorycontract.SearchToolName {
 				item := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddInput{Scope: memorycontract.AddInputScopeProject, CWD: cfg.defaultWorkspacePath, Content: fact}), "prepare-fact")
-				if item.Status != memorycontract.ItemSnapshotStatusActive {
+				if item.Status != memorycontract.AddV2OutputDomainItemSnapshotStatusActive {
 					t.Fatal("human-created fact was not active")
 				}
 			}

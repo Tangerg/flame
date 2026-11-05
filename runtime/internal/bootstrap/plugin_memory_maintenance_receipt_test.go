@@ -10,13 +10,17 @@ import (
 	"testing"
 	"time"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -40,7 +44,7 @@ func TestMemoryMaintenanceCommittedReplyLossRecoversWithoutAnotherModelCall(t *t
 		}
 		command.Env = append(os.Environ(), "PLUGIN_ROOT="+source, "PLUGIN_DATA="+data)
 		client := sdk.NewClient(&sdk.Implementation{Name: "maintenance-receipt"}, nil)
-		if err := qimumcp.RegisterClient(client); err != nil {
+		if err := pluginmcp.RegisterClient(client); err != nil {
 			t.Fatal(err)
 		}
 		session, err := client.Connect(ctx, &sdk.CommandTransport{Command: command}, nil)
@@ -51,7 +55,7 @@ func TestMemoryMaintenanceCommittedReplyLossRecoversWithoutAnotherModelCall(t *t
 		return session
 	}
 	session := connect(true)
-	broker := qimumcp.NewCallbacks()
+	broker := pluginmcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
@@ -69,17 +73,16 @@ func TestMemoryMaintenanceCommittedReplyLossRecoversWithoutAnotherModelCall(t *t
 		t.Fatal(err)
 	}
 	input := memorycontract.MaintenanceInput{SessionID: "ses_maintenance_receipt", Project: project, Compacted: true}
-	input.Conversation.MessageCount = 4
-	input.Conversation.Transcript = "captured conversation"
-	metadata, err := qimumcp.CallbackMetadata(grant)
+	input.Conversation = &memorycontract.Conversation{MessageCount: generatedNumber(t, "4"), Transcript: "captured conversation"}
+	metadata, err := pluginmcp.CallbackMetadata(grant)
 	if err != nil {
 		t.Fatal(err)
 	}
-	contracts, err := portable.ParseCapability([]byte(memorycontract.CapabilityJSON))
+	contracts, err := plugincontract.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	exported, err := qimumcp.NewCapabilityBinding(session, "memory", contracts)
+	exported, err := pluginmcp.NewCapabilityBinding(session, "memory", contracts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +90,7 @@ func TestMemoryMaintenanceCommittedReplyLossRecoversWithoutAnotherModelCall(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	admitted, err := jsonvalue.Encode(input)
+	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +98,7 @@ func TestMemoryMaintenanceCommittedReplyLossRecoversWithoutAnotherModelCall(t *t
 	if err == nil {
 		t.Fatal("withheld maintenance response became observed success")
 	}
-	if _, known := errors.AsType[*portable.Refusal](err); known {
+	if _, known := errors.AsType[*framemcp.Refusal](err); known {
 		t.Fatalf("transport loss became known refusal: %v", err)
 	}
 	if _, err := os.Stat(evidence); err != nil {
@@ -126,9 +129,9 @@ func TestMemoryMaintenanceCommittedReplyLossRecoversWithoutAnotherModelCall(t *t
 	}
 }
 
-func memoryContract(t *testing.T) *portable.Capability {
+func memoryContract(t *testing.T) *plugincontract.Capability {
 	t.Helper()
-	contracts, err := portable.ParseCapability([]byte(memorycontract.CapabilityJSON))
+	contracts, err := plugincontract.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}

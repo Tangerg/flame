@@ -340,13 +340,31 @@
     },
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/capture",
+      "imports": [
+        "context",
+        "io"
+      ],
       "functions": [
+        {
+          "name": "NewReader",
+          "signature": "func(ctx context.Context, source io.Reader) (*Reader, error)"
+        },
         {
           "name": "NewWriter",
           "signature": "func(limit int) *Writer"
         }
       ],
       "types": [
+        {
+          "name": "Reader",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Read",
+              "signature": "func(buffer []byte) (int, error)"
+            }
+          ]
+        },
         {
           "name": "Writer",
           "kind": "struct",
@@ -383,9 +401,10 @@
       "path": "github.com/Tangerg/flame/packages/go-sdk/client",
       "imports": [
         "context",
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/contract",
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp",
         "github.com/Tangerg/flame/packages/go-sdk/protocol",
-        "github.com/Tangerg/qimu/mcp",
-        "github.com/Tangerg/qimu/portable",
+        "github.com/Tangerg/frame/portable",
         "iter"
       ],
       "variables": [
@@ -425,7 +444,7 @@
         },
         {
           "name": "ResolvePointValues",
-          "signature": "func[T any](ctx context.Context, caller PointResolver, contract *portable.Point, target portable.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error)"
+          "signature": "func[T any](ctx context.Context, caller PointResolver, contract *contract.Point, target portable.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error)"
         }
       ],
       "types": [
@@ -877,7 +896,7 @@
             },
             {
               "name": "Contract",
-              "type": "*portable.Capability"
+              "type": "*contract.Capability"
             },
             {
               "name": "Target",
@@ -1076,12 +1095,12 @@
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/extension",
       "imports": [
-        "github.com/Tangerg/qimu/portable"
+        "github.com/Tangerg/frame/process/mcp"
       ],
       "constants": [
         {
           "name": "Automatic",
-          "type": "portable.Origin",
+          "type": "mcp.Origin",
           "value": "\"automatic\""
         },
         {
@@ -1171,12 +1190,12 @@
         },
         {
           "name": "Human",
-          "type": "portable.Origin",
+          "type": "mcp.Origin",
           "value": "\"human\""
         },
         {
           "name": "Model",
-          "type": "portable.Origin",
+          "type": "mcp.Origin",
           "value": "\"model\""
         },
         {
@@ -1301,7 +1320,7 @@
         },
         {
           "name": "ValidateInvocation",
-          "signature": "func(invocation portable.Invocation) error"
+          "signature": "func(invocation mcp.Invocation) error"
         }
       ],
       "types": [
@@ -2390,8 +2409,8 @@
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/identity",
       "imports": [
-        "github.com/Tangerg/qimu",
-        "github.com/Tangerg/qimu/integrity"
+        "github.com/Tangerg/frame",
+        "github.com/Tangerg/frame/value"
       ],
       "constants": [
         {
@@ -2453,7 +2472,7 @@
       "functions": [
         {
           "name": "DigestStrings",
-          "signature": "func(fields ...string) integrity.Digest"
+          "signature": "func(fields ...string) value.Digest"
         },
         {
           "name": "InstallationIDPattern",
@@ -2461,7 +2480,7 @@
         },
         {
           "name": "ParseHostInstallation",
-          "signature": "func(id qimu.InstallationID) (InstallationID, error)"
+          "signature": "func(id frame.InstallationID) (InstallationID, error)"
         },
         {
           "name": "ParseInstallation",
@@ -2523,7 +2542,7 @@
           "methods": [
             {
               "name": "Host",
-              "signature": "func() qimu.InstallationID"
+              "signature": "func() frame.InstallationID"
             },
             {
               "name": "String",
@@ -2566,6 +2585,212 @@
         {
           "name": "Validate",
           "signature": "func(values ...time.Time) error"
+        }
+      ],
+      "types": [
+        {
+          "name": "Timestamp",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Time",
+              "type": "time.Time"
+            }
+          ],
+          "methods": [
+            {
+              "name": "Add",
+              "signature": "func(d time.Duration) time.Time"
+            },
+            {
+              "name": "AddDate",
+              "signature": "func(years int, months int, days int) time.Time"
+            },
+            {
+              "name": "After",
+              "signature": "func(u time.Time) bool"
+            },
+            {
+              "name": "AppendBinary",
+              "signature": "func(b []byte) ([]byte, error)"
+            },
+            {
+              "name": "AppendFormat",
+              "signature": "func(b []byte, layout string) []byte"
+            },
+            {
+              "name": "AppendText",
+              "signature": "func(b []byte) ([]byte, error)"
+            },
+            {
+              "name": "Before",
+              "signature": "func(u time.Time) bool"
+            },
+            {
+              "name": "Clock",
+              "signature": "func() (hour int, min int, sec int)"
+            },
+            {
+              "name": "Compare",
+              "signature": "func(u time.Time) int"
+            },
+            {
+              "name": "Date",
+              "signature": "func() (year int, month time.Month, day int)"
+            },
+            {
+              "name": "Day",
+              "signature": "func() int"
+            },
+            {
+              "name": "Equal",
+              "signature": "func(u time.Time) bool"
+            },
+            {
+              "name": "Format",
+              "signature": "func(layout string) string"
+            },
+            {
+              "name": "GoString",
+              "signature": "func() string"
+            },
+            {
+              "name": "GobDecode",
+              "signature": "func(data []byte) error"
+            },
+            {
+              "name": "GobEncode",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "Hour",
+              "signature": "func() int"
+            },
+            {
+              "name": "ISOWeek",
+              "signature": "func() (year int, week int)"
+            },
+            {
+              "name": "In",
+              "signature": "func(loc *time.Location) time.Time"
+            },
+            {
+              "name": "IsDST",
+              "signature": "func() bool"
+            },
+            {
+              "name": "IsZero",
+              "signature": "func() bool"
+            },
+            {
+              "name": "JSONSchemaModel",
+              "signature": "func() any"
+            },
+            {
+              "name": "Local",
+              "signature": "func() time.Time"
+            },
+            {
+              "name": "Location",
+              "signature": "func() *time.Location"
+            },
+            {
+              "name": "MarshalBinary",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "MarshalJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "MarshalText",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "Minute",
+              "signature": "func() int"
+            },
+            {
+              "name": "Month",
+              "signature": "func() time.Month"
+            },
+            {
+              "name": "Nanosecond",
+              "signature": "func() int"
+            },
+            {
+              "name": "Round",
+              "signature": "func(d time.Duration) time.Time"
+            },
+            {
+              "name": "Second",
+              "signature": "func() int"
+            },
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "Sub",
+              "signature": "func(u time.Time) time.Duration"
+            },
+            {
+              "name": "Truncate",
+              "signature": "func(d time.Duration) time.Time"
+            },
+            {
+              "name": "UTC",
+              "signature": "func() time.Time"
+            },
+            {
+              "name": "Unix",
+              "signature": "func() int64"
+            },
+            {
+              "name": "UnixMicro",
+              "signature": "func() int64"
+            },
+            {
+              "name": "UnixMilli",
+              "signature": "func() int64"
+            },
+            {
+              "name": "UnixNano",
+              "signature": "func() int64"
+            },
+            {
+              "name": "UnmarshalBinary",
+              "signature": "func(data []byte) error"
+            },
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
+            },
+            {
+              "name": "UnmarshalText",
+              "signature": "func(data []byte) error"
+            },
+            {
+              "name": "Weekday",
+              "signature": "func() time.Weekday"
+            },
+            {
+              "name": "Year",
+              "signature": "func() int"
+            },
+            {
+              "name": "YearDay",
+              "signature": "func() int"
+            },
+            {
+              "name": "Zone",
+              "signature": "func() (name string, offset int)"
+            },
+            {
+              "name": "ZoneBounds",
+              "signature": "func() (start time.Time, end time.Time)"
+            }
+          ]
         }
       ]
     },
@@ -3305,7 +3530,7 @@
       "path": "github.com/Tangerg/flame/packages/go-sdk/planworkflow",
       "imports": [
         "github.com/Tangerg/flame/packages/go-sdk/extension",
-        "github.com/Tangerg/qimu/integrity"
+        "github.com/Tangerg/frame/value"
       ],
       "constants": [
         {
@@ -3394,7 +3619,7 @@
             },
             {
               "name": "Digest",
-              "type": "integrity.Digest",
+              "type": "value.Digest",
               "tag": "json:\"digest\""
             }
           ],
@@ -3451,14 +3676,13 @@
         "context",
         "github.com/Tangerg/flame/packages/go-sdk/extension",
         "github.com/Tangerg/flame/packages/go-sdk/model",
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/contract",
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp",
         "github.com/Tangerg/flame/packages/go-sdk/protocol",
+        "github.com/Tangerg/frame/value",
         "github.com/Tangerg/go-sdk/mcp",
-        "github.com/Tangerg/qimu/jsonvalue",
-        "github.com/Tangerg/qimu/mcp",
-        "github.com/Tangerg/qimu/portable",
         "github.com/Tangerg/scope/core/chat",
         "github.com/Tangerg/scope/core/tool",
-        "github.com/invopop/jsonschema",
         "iter"
       ],
       "constants": [
@@ -3532,7 +3756,7 @@
         },
         {
           "name": "FeedbackContract",
-          "signature": "func() (*portable.Capability, error)"
+          "signature": "func() (*contract.Capability, error)"
         },
         {
           "name": "IdentifyDocument",
@@ -3544,7 +3768,7 @@
         },
         {
           "name": "ModelContextContract",
-          "signature": "func() (*portable.Capability, error)"
+          "signature": "func() (*contract.Capability, error)"
         },
         {
           "name": "ModelContextMethod",
@@ -3552,7 +3776,7 @@
         },
         {
           "name": "ModelInputContract",
-          "signature": "func() (*portable.Capability, error)"
+          "signature": "func() (*contract.Capability, error)"
         },
         {
           "name": "ModelInputMethod",
@@ -3564,11 +3788,11 @@
         },
         {
           "name": "ModelObserverContract",
-          "signature": "func() (*portable.Capability, error)"
+          "signature": "func() (*contract.Capability, error)"
         },
         {
           "name": "ModelSelectionContract",
-          "signature": "func() (*portable.Capability, error)"
+          "signature": "func() (*contract.Capability, error)"
         },
         {
           "name": "ModelSelectionMethod",
@@ -3600,7 +3824,7 @@
         },
         {
           "name": "NewToolReceipt",
-          "signature": "func(output chat.ToolOutput, failed bool) (ToolReceipt, error)"
+          "signature": "func(output tool.Output, failed bool) (ToolReceipt, error)"
         },
         {
           "name": "PrepareFeedbackMethod",
@@ -3612,7 +3836,7 @@
         },
         {
           "name": "ReadToolReceipt",
-          "signature": "func(ctx context.Context, session *mcp.ClientSession, callID string, remote string, admitted jsonvalue.Value) (*chat.ToolOutput, error)"
+          "signature": "func(ctx context.Context, session *mcp.ClientSession, callID string, remote string, admitted value.JSON) (*tool.Output, error)"
         },
         {
           "name": "RegisterTools",
@@ -3632,7 +3856,7 @@
         },
         {
           "name": "SessionMarkdownContract",
-          "signature": "func() (*portable.Capability, error)"
+          "signature": "func() (*contract.Capability, error)"
         },
         {
           "name": "StreamModel",
@@ -3655,8 +3879,12 @@
           "signature": "func(ctx context.Context) (ToolContext, error)"
         },
         {
+          "name": "ToolContextFromMetadata",
+          "signature": "func(metadata mcp.Meta) (ToolContext, error)"
+        },
+        {
           "name": "ToolProposalContract",
-          "signature": "func() (*portable.Capability, error)"
+          "signature": "func() (*contract.Capability, error)"
         },
         {
           "name": "ToolProposalMethod",
@@ -3906,18 +4134,12 @@
             {
               "name": "Response",
               "type": "*chat.Response",
-              "tag": "json:\"response,omitzero\""
+              "tag": "json:\"response,omitzero\" jsonschema:\"anyof_required=response\""
             },
             {
               "name": "Failure",
               "type": "*ModelFailure",
-              "tag": "json:\"failure,omitzero\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "JSONSchemaExtend",
-              "signature": "func(schema *jsonschema.Schema)"
+              "tag": "json:\"failure,omitzero\" jsonschema:\"anyof_required=failure\""
             }
           ]
         },
@@ -3989,6 +4211,20 @@
               "type": "[][]float32",
               "tag": "json:\"vectors\""
             }
+          ],
+          "methods": [
+            {
+              "name": "JSONSchemaModel",
+              "signature": "func() any"
+            },
+            {
+              "name": "MarshalJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
+            }
           ]
         },
         {
@@ -4030,7 +4266,7 @@
           "fields": [
             {
               "name": "Output",
-              "type": "chat.ToolOutput",
+              "type": "tool.Output",
               "tag": "json:\"output\""
             },
             {
@@ -4057,9 +4293,9 @@
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/codeintel",
       "imports": [
-        "github.com/Tangerg/qimu/integrity",
-        "github.com/Tangerg/qimu/mcp",
-        "github.com/Tangerg/qimu/portable"
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/contract",
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp",
+        "github.com/Tangerg/frame/value"
       ],
       "constants": [
         {
@@ -4081,7 +4317,7 @@
       "functions": [
         {
           "name": "Contract",
-          "signature": "func() (*portable.Capability, error)"
+          "signature": "func() (*contract.Capability, error)"
         },
         {
           "name": "FormatMethod",
@@ -4113,7 +4349,7 @@
             },
             {
               "name": "Version",
-              "type": "integrity.Digest",
+              "type": "value.Digest",
               "tag": "json:\"version\""
             },
             {
@@ -4157,7 +4393,7 @@
           "fields": [
             {
               "name": "Version",
-              "type": "integrity.Digest",
+              "type": "value.Digest",
               "tag": "json:\"version\""
             },
             {
@@ -4184,7 +4420,7 @@
           "fields": [
             {
               "name": "Version",
-              "type": "integrity.Digest",
+              "type": "value.Digest",
               "tag": "json:\"version\""
             },
             {
@@ -4203,16 +4439,283 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/contract",
+      "imports": [
+        "encoding/json/jsontext",
+        "github.com/Tangerg/frame/portable",
+        "github.com/Tangerg/frame/value"
+      ],
+      "constants": [
+        {
+          "name": "CanonicalKeys",
+          "type": "PointOrdering",
+          "value": "\"canonicalKeys\""
+        },
+        {
+          "name": "Collection",
+          "type": "Composition",
+          "value": "\"collection\""
+        },
+        {
+          "name": "Decoration",
+          "type": "Composition",
+          "value": "\"decoration\""
+        },
+        {
+          "name": "ExplicitList",
+          "type": "PointOrdering",
+          "value": "\"explicitList\""
+        },
+        {
+          "name": "Protocol",
+          "type": "untyped string",
+          "value": "\"io.github.tangerg.flame/plugin/1\""
+        },
+        {
+          "name": "Selection",
+          "type": "Composition",
+          "value": "\"selection\""
+        }
+      ],
+      "functions": [
+        {
+          "name": "AdmitCapability",
+          "signature": "func(descriptor CapabilityDescriptor) (*Capability, error)"
+        },
+        {
+          "name": "AdmitPoint",
+          "signature": "func(descriptor PointDescriptor) (*Point, error)"
+        },
+        {
+          "name": "MethodKindFor",
+          "signature": "func(encoded []byte, name string) (portable.MethodKind, error)"
+        },
+        {
+          "name": "NewCapability",
+          "signature": "func(config CapabilityConfig, methods ...portable.MethodDescriptor) (*Capability, error)"
+        },
+        {
+          "name": "ParseCapability",
+          "signature": "func(data []byte) (*Capability, error)"
+        },
+        {
+          "name": "ParsePoint",
+          "signature": "func(data []byte) (*Point, error)"
+        },
+        {
+          "name": "ValidExportName",
+          "signature": "func(name string) bool"
+        }
+      ],
+      "types": [
+        {
+          "name": "Capability",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Descriptor",
+              "signature": "func() CapabilityDescriptor"
+            },
+            {
+              "name": "Identity",
+              "signature": "func() value.JSON"
+            },
+            {
+              "name": "Method",
+              "signature": "func(name string) (*portable.Method, bool)"
+            },
+            {
+              "name": "Service",
+              "signature": "func() *portable.Capability"
+            }
+          ]
+        },
+        {
+          "name": "CapabilityConfig",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Reference",
+              "type": "string"
+            },
+            {
+              "name": "Composition",
+              "type": "Composition"
+            },
+            {
+              "name": "Scope",
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "name": "CapabilityDescriptor",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Protocol",
+              "type": "string",
+              "tag": "json:\"protocol\""
+            },
+            {
+              "name": "Reference",
+              "type": "string",
+              "tag": "json:\"reference\""
+            },
+            {
+              "name": "Composition",
+              "type": "Composition",
+              "tag": "json:\"composition\""
+            },
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"scope\""
+            },
+            {
+              "name": "Methods",
+              "type": "[]portable.MethodDescriptor",
+              "tag": "json:\"methods\""
+            }
+          ]
+        },
+        {
+          "name": "Composition",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Point",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Applicable",
+              "signature": "func(context PointContext) (bool, error)"
+            },
+            {
+              "name": "Compose",
+              "signature": "func(values []PointValue, order []string) ([]PointValue, error)"
+            },
+            {
+              "name": "Definition",
+              "signature": "func() PointDescriptor"
+            },
+            {
+              "name": "Identity",
+              "signature": "func() value.JSON"
+            },
+            {
+              "name": "ValidateValue",
+              "signature": "func(value value.JSON) error"
+            }
+          ]
+        },
+        {
+          "name": "PointContext",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Target",
+              "type": "portable.Target",
+              "tag": "json:\"target\""
+            },
+            {
+              "name": "Attributes",
+              "type": "jsontext.Value",
+              "tag": "json:\"attributes\""
+            }
+          ]
+        },
+        {
+          "name": "PointDescriptor",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Protocol",
+              "type": "string",
+              "tag": "json:\"protocol\""
+            },
+            {
+              "name": "Reference",
+              "type": "string",
+              "tag": "json:\"reference\""
+            },
+            {
+              "name": "Composition",
+              "type": "Composition",
+              "tag": "json:\"composition\""
+            },
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"scope\""
+            },
+            {
+              "name": "Optional",
+              "type": "bool",
+              "tag": "json:\"optional\""
+            },
+            {
+              "name": "Ordering",
+              "type": "PointOrdering",
+              "tag": "json:\"ordering\""
+            },
+            {
+              "name": "Value",
+              "type": "jsontext.Value",
+              "tag": "json:\"value\""
+            },
+            {
+              "name": "Applicability",
+              "type": "jsontext.Value",
+              "tag": "json:\"applicability\""
+            }
+          ]
+        },
+        {
+          "name": "PointOrdering",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "PointValue",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Key",
+              "type": "string"
+            },
+            {
+              "name": "Data",
+              "type": "value.JSON"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/goalworkflow/mcp",
       "imports": [
         "github.com/Tangerg/flame/packages/go-sdk/goalworkflow",
-        "github.com/Tangerg/qimu/mcp",
-        "github.com/Tangerg/qimu/portable"
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/contract",
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
       ],
       "functions": [
         {
           "name": "Contract",
-          "signature": "func() (*portable.Capability, error)"
+          "signature": "func() (*contract.Capability, error)"
         },
         {
           "name": "DecideMethod",
@@ -4452,14 +4955,14 @@
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp",
       "imports": [
         "github.com/Tangerg/flame/packages/go-sdk/hook",
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/contract",
         "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider",
-        "github.com/Tangerg/qimu/mcp",
-        "github.com/Tangerg/qimu/portable"
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
       ],
       "functions": [
         {
           "name": "Contract",
-          "signature": "func() (*portable.Capability, error)"
+          "signature": "func() (*contract.Capability, error)"
         },
         {
           "name": "DiscoverMethod",
@@ -4472,11 +4975,827 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp",
+      "imports": [
+        "context",
+        "encoding/json/jsontext",
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/contract",
+        "github.com/Tangerg/frame",
+        "github.com/Tangerg/frame/portable",
+        "github.com/Tangerg/frame/process/mcp",
+        "github.com/Tangerg/frame/value",
+        "github.com/Tangerg/go-sdk/mcp",
+        "github.com/Tangerg/scope/core/jsonschema",
+        "io",
+        "iter",
+        "net/http"
+      ],
+      "constants": [
+        {
+          "name": "ActivateMethod",
+          "type": "untyped string",
+          "value": "\"io.github.tangerg.flame/operations.activate\""
+        },
+        {
+          "name": "CallHeader",
+          "type": "untyped string",
+          "value": "\"Flame-Call\""
+        },
+        {
+          "name": "CallbackMetadataKey",
+          "type": "untyped string",
+          "value": "\"io.github.tangerg.flame/callback.v1\""
+        },
+        {
+          "name": "DescribeMethod",
+          "type": "untyped string",
+          "value": "\"io.github.tangerg.flame/operations.describe\""
+        },
+        {
+          "name": "InvocationHeader",
+          "type": "untyped string",
+          "value": "\"Flame-Invocation\""
+        },
+        {
+          "name": "InvocationMetadataKey",
+          "type": "untyped string",
+          "value": "\"io.github.tangerg.flame/invocation\""
+        },
+        {
+          "name": "InvokeMethod",
+          "type": "untyped string",
+          "value": "\"io.github.tangerg.flame/operations.invoke\""
+        },
+        {
+          "name": "MaxCommandIDCharacters",
+          "type": "untyped int",
+          "value": "256"
+        },
+        {
+          "name": "ProcessProfile",
+          "type": "frame.Profile",
+          "value": "\"flame-mcp\""
+        },
+        {
+          "name": "ReceiptMethod",
+          "type": "untyped string",
+          "value": "\"io.github.tangerg.flame/commands.get\""
+        },
+        {
+          "name": "SetupMethod",
+          "type": "untyped string",
+          "value": "\"io.github.tangerg.flame/operations.setup\""
+        },
+        {
+          "name": "StreamMetadataKey",
+          "type": "untyped string",
+          "value": "\"io.github.tangerg.flame/stream.v1\""
+        },
+        {
+          "name": "ValidateMethod",
+          "type": "untyped string",
+          "value": "\"io.github.tangerg.flame/operations.validate\""
+        }
+      ],
+      "variables": [
+        {
+          "name": "ErrCallbackCapacity",
+          "type": "error"
+        },
+        {
+          "name": "ErrInvalidInput",
+          "type": "error"
+        },
+        {
+          "name": "ErrStaleCall",
+          "type": "error"
+        },
+        {
+          "name": "ErrStreamUnconfirmed",
+          "type": "error"
+        }
+      ],
+      "functions": [
+        {
+          "name": "Activate",
+          "signature": "func(ctx context.Context, session *mcp.ClientSession) error"
+        },
+        {
+          "name": "AdmitRequest",
+          "signature": "func(ctx context.Context, input value.JSON, metadata mcp.Meta) (context.Context, error)"
+        },
+        {
+          "name": "CallHost",
+          "signature": "func[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, R], id CommandID, input P) (R, error)"
+        },
+        {
+          "name": "CallbackFromContext",
+          "signature": "func(ctx context.Context) (CallbackRef, error)"
+        },
+        {
+          "name": "CallbackMetadata",
+          "signature": "func(ref CallbackRef) (mcp.ParamsBase, error)"
+        },
+        {
+          "name": "DecodeReply",
+          "signature": "func[T any](data []byte) (T, error)"
+        },
+        {
+          "name": "Describe",
+          "signature": "func(ctx context.Context, session *mcp.ClientSession) (Description, error)"
+        },
+        {
+          "name": "EncodeReply",
+          "signature": "func[T any](value T, err error, classify Classifier) (value.JSON, error)"
+        },
+        {
+          "name": "ImplementMethod",
+          "signature": "func[P, R any](owner *contract.Capability, name string) (*Method[P, R], error)"
+        },
+        {
+          "name": "ImplementStreamingMethod",
+          "signature": "func[P, C, R any](owner *contract.Capability, name string) (*StreamingMethod[P, C, R], error)"
+        },
+        {
+          "name": "InvocationFromContext",
+          "signature": "func(ctx context.Context) (mcp.Invocation, error)"
+        },
+        {
+          "name": "NewBackend",
+          "signature": "func(server *mcp.Server) (*Backend, error)"
+        },
+        {
+          "name": "NewBinding",
+          "signature": "func(session *mcp.ClientSession, descriptor portable.MethodDescriptor) (*Binding, error)"
+        },
+        {
+          "name": "NewCallback",
+          "signature": "func[P, R any](method *Method[P, R], classify Classifier, handler func(context.Context, Command[P]) (R, error)) (Callback, error)"
+        },
+        {
+          "name": "NewCallbacks",
+          "signature": "func() *Callbacks"
+        },
+        {
+          "name": "NewCallbacksWithLimits",
+          "signature": "func(limits CallbacksLimits) (*Callbacks, error)"
+        },
+        {
+          "name": "NewCapabilityBinding",
+          "signature": "func(session *mcp.ClientSession, name string, contract *contract.Capability) (*CapabilityBinding, error)"
+        },
+        {
+          "name": "NewCommandID",
+          "signature": "func() CommandID"
+        },
+        {
+          "name": "NewMethod",
+          "signature": "func[P, R any](config portable.MethodConfig) (*Method[P, R], error)"
+        },
+        {
+          "name": "NewProcessClient",
+          "signature": "func() (*mcp.Client, error)"
+        },
+        {
+          "name": "NewStreamingCallback",
+          "signature": "func[P, C, R any](method *StreamingMethod[P, C, R], handler func(context.Context, Command[P]) iter.Seq2[StreamValue[C, R], error]) (Callback, error)"
+        },
+        {
+          "name": "NewStreamingMethod",
+          "signature": "func[P, C, R any](config portable.MethodConfig) (*StreamingMethod[P, C, R], error)"
+        },
+        {
+          "name": "ProcessRequestFrameBytes",
+          "signature": "func(ctx context.Context, contract *contract.Capability, export string, method string, id CommandID, input value.JSON, metadata mcp.ParamsBase) (int, error)"
+        },
+        {
+          "name": "ProtocolJSON",
+          "signature": "func() ([]byte, error)"
+        },
+        {
+          "name": "ReadReceipt",
+          "signature": "func[P, R any](ctx context.Context, session *mcp.ClientSession, id CommandID, method string, input P) (R, bool, error)"
+        },
+        {
+          "name": "ReceiptQuery",
+          "signature": "func() (*Method[ReceiptRequest, Receipt], error)"
+        },
+        {
+          "name": "RegisterClient",
+          "signature": "func(client *mcp.Client) error"
+        },
+        {
+          "name": "RequestInput",
+          "signature": "func(ctx context.Context) (value.JSON, error)"
+        },
+        {
+          "name": "Resolve",
+          "signature": "func(ctx context.Context, session *mcp.ClientSession, name string) (*Binding, error)"
+        },
+        {
+          "name": "ResolveCapability",
+          "signature": "func(ctx context.Context, session *mcp.ClientSession, name string, required *contract.Capability) (*CapabilityBinding, error)"
+        },
+        {
+          "name": "SetUp",
+          "signature": "func(ctx context.Context, session *mcp.ClientSession, contributions []SetupContribution, metadata mcp.ParamsBase) error"
+        },
+        {
+          "name": "StreamCapacity",
+          "signature": "func(ctx context.Context) (int64, bool)"
+        },
+        {
+          "name": "StreamDeliveryContract",
+          "signature": "func() (portable.MethodDescriptor, error)"
+        },
+        {
+          "name": "StreamHost",
+          "signature": "func[P, C, R any](ctx context.Context, ref CallbackRef, method *StreamingMethod[P, C, R], id CommandID, input P) iter.Seq2[StreamValue[C, R], error]"
+        },
+        {
+          "name": "VerifyCapabilities",
+          "signature": "func(ctx context.Context, session *mcp.ClientSession, required []CapabilityExport) error"
+        },
+        {
+          "name": "WithInvocation",
+          "signature": "func(ctx context.Context, invocation mcp.Invocation) (context.Context, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "ActivationResource",
+          "kind": "interface",
+          "methods": [
+            {
+              "name": "Close",
+              "signature": "func() error"
+            },
+            {
+              "name": "Start",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Backend",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "BindCapability",
+              "signature": "func(name string, contract *contract.Capability) error"
+            },
+            {
+              "name": "Close",
+              "signature": "func() error"
+            },
+            {
+              "name": "OnSetup",
+              "signature": "func(handler func(context.Context, Setup) (io.Closer, error)) error"
+            },
+            {
+              "name": "Publish",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Binding",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Contract",
+              "signature": "func() value.JSON"
+            },
+            {
+              "name": "Descriptor",
+              "signature": "func() portable.MethodDescriptor"
+            },
+            {
+              "name": "Invoke",
+              "signature": "func(ctx context.Context, id CommandID, input value.JSON) (value.JSON, error)"
+            },
+            {
+              "name": "InvokeWithMetadata",
+              "signature": "func(ctx context.Context, id CommandID, input value.JSON, metadata mcp.ParamsBase) (value.JSON, error)"
+            },
+            {
+              "name": "ReadReceipt",
+              "signature": "func(ctx context.Context, id CommandID, input value.JSON) (value.JSON, bool, error)"
+            },
+            {
+              "name": "StreamWithMetadata",
+              "signature": "func(ctx context.Context, callbacks *Callbacks, limits CallbackLimits, id CommandID, input value.JSON, metadata mcp.ParamsBase) iter.Seq2[StreamValue[jsontext.Value, jsontext.Value], error]"
+            },
+            {
+              "name": "ValidateInput",
+              "signature": "func(ctx context.Context, input value.JSON) error"
+            }
+          ]
+        },
+        {
+          "name": "BoundMethod",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Call",
+              "signature": "func(ctx context.Context, input P) (R, error)"
+            },
+            {
+              "name": "CallCommand",
+              "signature": "func(ctx context.Context, id CommandID, input P) (R, error)"
+            },
+            {
+              "name": "CallWithMetadata",
+              "signature": "func(ctx context.Context, input P, metadata mcp.ParamsBase) (R, error)"
+            },
+            {
+              "name": "ReadReceipt",
+              "signature": "func(ctx context.Context, id CommandID, input P) (R, bool, error)"
+            }
+          ]
+        },
+        {
+          "name": "Callback",
+          "kind": "struct"
+        },
+        {
+          "name": "CallbackLimits",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "MaxRequestBytes",
+              "type": "int64"
+            },
+            {
+              "name": "MaxResponseBytes",
+              "type": "int64"
+            }
+          ]
+        },
+        {
+          "name": "CallbackRef",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Endpoint",
+              "type": "string",
+              "tag": "json:\"endpoint\""
+            },
+            {
+              "name": "Credential",
+              "type": "string",
+              "tag": "json:\"credential\""
+            },
+            {
+              "name": "Call",
+              "type": "string",
+              "tag": "json:\"call\""
+            },
+            {
+              "name": "MaxResponseBytes",
+              "type": "int64",
+              "tag": "json:\"maxResponseBytes\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Callbacks",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "AdmitSession",
+              "signature": "func(session *mcp.ClientSession) error"
+            },
+            {
+              "name": "Close",
+              "signature": "func() error"
+            },
+            {
+              "name": "Open",
+              "signature": "func(ctx context.Context, session *mcp.ClientSession, limits CallbackLimits, callbacks ...Callback) (CallbackRef, func(), error)"
+            },
+            {
+              "name": "OpenRPC",
+              "signature": "func(ctx context.Context, session *mcp.ClientSession, limits CallbackLimits, callbacks ...Callback) (CallbackRef, func(), error)"
+            },
+            {
+              "name": "OpenRPCWithInvocation",
+              "signature": "func(ctx context.Context, session *mcp.ClientSession, limits CallbackLimits, project func(context.Context, mcp.Invocation) (context.Context, error)) (CallbackRef, func(), error)"
+            },
+            {
+              "name": "PublishRPC",
+              "signature": "func(handler http.Handler, callbacks ...Callback) error"
+            },
+            {
+              "name": "RevokeSession",
+              "signature": "func(session *mcp.ClientSession)"
+            },
+            {
+              "name": "WaitRPC",
+              "signature": "func(ctx context.Context) error"
+            }
+          ]
+        },
+        {
+          "name": "CallbacksLimits",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "MaxSessions",
+              "type": "int"
+            },
+            {
+              "name": "MaxCalls",
+              "type": "int"
+            },
+            {
+              "name": "MaxPendingRequests",
+              "type": "int"
+            }
+          ]
+        },
+        {
+          "name": "CapabilityBinding",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Method",
+              "signature": "func(name string) (*Binding, error)"
+            }
+          ]
+        },
+        {
+          "name": "CapabilityExport",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Contract",
+              "type": "contract.CapabilityDescriptor",
+              "tag": "json:\"contract\""
+            }
+          ]
+        },
+        {
+          "name": "Classifier",
+          "kind": "defined",
+          "underlying": "func(err error) (code string, refused bool)"
+        },
+        {
+          "name": "Command",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "CommandID"
+            },
+            {
+              "name": "Input",
+              "type": "T"
+            }
+          ],
+          "methods": [
+            {
+              "name": "RequestInput",
+              "signature": "func() (value.JSON, error)"
+            }
+          ]
+        },
+        {
+          "name": "CommandID",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaConstraints",
+              "signature": "func() jsonschema.Constraints"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Description",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Protocol",
+              "type": "string",
+              "tag": "json:\"protocol\""
+            },
+            {
+              "name": "Methods",
+              "type": "[]portable.MethodDescriptor",
+              "tag": "json:\"methods\""
+            },
+            {
+              "name": "Capabilities",
+              "type": "[]CapabilityExport",
+              "tag": "json:\"capabilities\""
+            }
+          ]
+        },
+        {
+          "name": "Method",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Bind",
+              "signature": "func(capability *CapabilityBinding) (*BoundMethod[P, R], error)"
+            },
+            {
+              "name": "Call",
+              "signature": "func(ctx context.Context, session *mcp.ClientSession, input P) (R, error)"
+            },
+            {
+              "name": "CallCommand",
+              "signature": "func(ctx context.Context, session *mcp.ClientSession, id CommandID, input P) (R, error)"
+            },
+            {
+              "name": "Descriptor",
+              "signature": "func() portable.MethodDescriptor"
+            },
+            {
+              "name": "Name",
+              "signature": "func() string"
+            },
+            {
+              "name": "RegisterServer",
+              "signature": "func(backend *Backend, classify Classifier, handler func(context.Context, *mcp.ServerSession, Command[P]) (R, error)) error"
+            }
+          ]
+        },
+        {
+          "name": "ProtocolConstants",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Protocol",
+              "type": "string",
+              "tag": "json:\"protocol\""
+            },
+            {
+              "name": "PortableProtocol",
+              "type": "string",
+              "tag": "json:\"portableProtocol\""
+            },
+            {
+              "name": "InvokeMethod",
+              "type": "string",
+              "tag": "json:\"invokeMethod\""
+            },
+            {
+              "name": "DescribeMethod",
+              "type": "string",
+              "tag": "json:\"describeMethod\""
+            },
+            {
+              "name": "ValidateMethod",
+              "type": "string",
+              "tag": "json:\"validateMethod\""
+            },
+            {
+              "name": "SetupMethod",
+              "type": "string",
+              "tag": "json:\"setupMethod\""
+            },
+            {
+              "name": "ActivateMethod",
+              "type": "string",
+              "tag": "json:\"activateMethod\""
+            },
+            {
+              "name": "CallbackMetadataKey",
+              "type": "string",
+              "tag": "json:\"callbackMetadataKey\""
+            },
+            {
+              "name": "StreamMetadataKey",
+              "type": "string",
+              "tag": "json:\"streamMetadataKey\""
+            },
+            {
+              "name": "CallHeader",
+              "type": "string",
+              "tag": "json:\"CallHeader\""
+            },
+            {
+              "name": "InvocationHeader",
+              "type": "string",
+              "tag": "json:\"InvocationHeader\""
+            },
+            {
+              "name": "InvocationMetadataKey",
+              "type": "string",
+              "tag": "json:\"InvocationMetadataKey\""
+            },
+            {
+              "name": "ReceiptMethod",
+              "type": "string",
+              "tag": "json:\"ReceiptMethod\""
+            },
+            {
+              "name": "MaxCommandIDCharacters",
+              "type": "int",
+              "tag": "json:\"maxCommandIDCharacters\""
+            }
+          ]
+        },
+        {
+          "name": "Receipt",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Found",
+              "type": "bool",
+              "tag": "json:\"found\""
+            },
+            {
+              "name": "Reply",
+              "type": "jsontext.Value",
+              "tag": "json:\"reply,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "ReceiptRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "CommandID",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Method",
+              "type": "string",
+              "tag": "json:\"method\""
+            },
+            {
+              "name": "InputDigest",
+              "type": "value.Digest",
+              "tag": "json:\"inputDigest\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "JSONSchemaModel",
+              "signature": "func() any"
+            },
+            {
+              "name": "MarshalJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Setup",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Contributions",
+              "signature": "func() ([]SetupContribution, error)"
+            }
+          ]
+        },
+        {
+          "name": "SetupBinding",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            },
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
+            },
+            {
+              "name": "Contribution",
+              "type": "string",
+              "tag": "json:\"contribution\""
+            },
+            {
+              "name": "Contract",
+              "type": "contract.CapabilityDescriptor",
+              "tag": "json:\"contract\""
+            }
+          ]
+        },
+        {
+          "name": "SetupContribution",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Background",
+              "type": "*portable.Target",
+              "tag": "json:\"background,omitzero\""
+            },
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Export",
+              "type": "string",
+              "tag": "json:\"export\""
+            },
+            {
+              "name": "Requires",
+              "type": "[]SetupDependency",
+              "tag": "json:\"requires\""
+            }
+          ]
+        },
+        {
+          "name": "SetupDependency",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Contract",
+              "type": "contract.CapabilityDescriptor",
+              "tag": "json:\"contract\""
+            },
+            {
+              "name": "Optional",
+              "type": "bool",
+              "tag": "json:\"optional\""
+            },
+            {
+              "name": "Bindings",
+              "type": "[]SetupBinding",
+              "tag": "json:\"bindings\""
+            }
+          ]
+        },
+        {
+          "name": "StreamValue",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Chunk",
+              "type": "*C"
+            },
+            {
+              "name": "Result",
+              "type": "*R"
+            }
+          ]
+        },
+        {
+          "name": "StreamingMethod",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Descriptor",
+              "signature": "func() portable.MethodDescriptor"
+            },
+            {
+              "name": "RegisterServer",
+              "signature": "func(backend *Backend, handler func(context.Context, *mcp.ServerSession, Command[P]) iter.Seq2[StreamValue[C, R], error]) error"
+            },
+            {
+              "name": "StreamWithMetadata",
+              "signature": "func(ctx context.Context, binding *Binding, callbacks *Callbacks, limits CallbackLimits, id CommandID, input P, metadata mcp.ParamsBase) iter.Seq2[StreamValue[C, R], error]"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/mcpconnector/mcp",
       "imports": [
         "github.com/Tangerg/flame/packages/go-sdk/mcpconnector",
-        "github.com/Tangerg/qimu/mcp",
-        "github.com/Tangerg/qimu/portable"
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/contract",
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
       ],
       "functions": [
         {
@@ -4515,7 +5834,7 @@
             },
             {
               "name": "Contract",
-              "type": "*portable.Capability"
+              "type": "*contract.Capability"
             }
           ]
         }
@@ -4524,7 +5843,7 @@
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/memory",
       "imports": [
-        "time"
+        "github.com/Tangerg/frame/value"
       ],
       "constants": [
         {
@@ -4543,49 +5862,49 @@
           "value": "\"flame.memory/add.v2\""
         },
         {
+          "name": "AddV2OutputDomainItemSnapshotOriginAuto",
+          "type": "AddV2OutputDomainItemSnapshotOrigin",
+          "value": "\"auto\""
+        },
+        {
+          "name": "AddV2OutputDomainItemSnapshotOriginUser",
+          "type": "AddV2OutputDomainItemSnapshotOrigin",
+          "value": "\"user\""
+        },
+        {
+          "name": "AddV2OutputDomainItemSnapshotScopeProject",
+          "type": "AddV2OutputDomainItemSnapshotScope",
+          "value": "\"project\""
+        },
+        {
+          "name": "AddV2OutputDomainItemSnapshotScopeUser",
+          "type": "AddV2OutputDomainItemSnapshotScope",
+          "value": "\"user\""
+        },
+        {
+          "name": "AddV2OutputDomainItemSnapshotStatusActive",
+          "type": "AddV2OutputDomainItemSnapshotStatus",
+          "value": "\"active\""
+        },
+        {
+          "name": "AddV2OutputDomainItemSnapshotStatusPending",
+          "type": "AddV2OutputDomainItemSnapshotStatus",
+          "value": "\"pending\""
+        },
+        {
+          "name": "AddV2OutputDomainItemSnapshotStatusRejected",
+          "type": "AddV2OutputDomainItemSnapshotStatus",
+          "value": "\"rejected\""
+        },
+        {
           "name": "CapabilityJSON",
           "type": "untyped string",
-          "value": "\"{\\\"protocol\\\":\\\"io.github.tangerg.qimu/portable/1\\\",\\\"reference\\\":\\\"memory\\\",\\\"composition\\\":\\\"selection\\\",\\\"scope\\\":\\\"installation\\\",\\\"methods\\\":[{\\\"name\\\":\\\"flame.memory/add.v2\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Add a human-authored memory item in the requested scope.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"contract.AddInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Content\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Content\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"contract.AddResult\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Changed\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Item\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemSnapshot\\\"}},\\\"required\\\":[\\\"Item\\\",\\\"Changed\\\"],\\\"type\\\":\\\"object\\\"},\\\"domain.ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"domain.ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Changed\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Item\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemSnapshot\\\"}},\\\"required\\\":[\\\"Item\\\",\\\"Changed\\\"],\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/delete.v2\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Delete one memory item through its private owner.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"contract.ItemInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"contract.Ack\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/items.v2\\\",\\\"kind\\\":\\\"query\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Read active memory items that can inform a Run.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"contract.ItemsInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"Project\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"Project\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"domain.ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"domain.ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemSnapshot\\\"},\\\"type\\\":\\\"array\\\"}},{\\\"name\\\":\\\"flame.memory/list.v2\\\",\\\"kind\\\":\\\"query\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"List memory items visible in the requested scope.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"contract.ListInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Cursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Limit\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"maximum\\\":100,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Cursor\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Cursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Limit\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"maximum\\\":100,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Cursor\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"contract.Page\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Capacity\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"const\\\":512,\\\"type\\\":\\\"integer\\\"},\\\"NextCursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Rows\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemSnapshot\\\"},\\\"maxItems\\\":100,\\\"type\\\":\\\"array\\\"}},\\\"required\\\":[\\\"Rows\\\",\\\"NextCursor\\\",\\\"Capacity\\\"],\\\"type\\\":\\\"object\\\"},\\\"domain.ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"domain.ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Capacity\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"const\\\":512,\\\"type\\\":\\\"integer\\\"},\\\"NextCursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Rows\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemSnapshot\\\"},\\\"maxItems\\\":100,\\\"type\\\":\\\"array\\\"}},\\\"required\\\":[\\\"Rows\\\",\\\"NextCursor\\\",\\\"Capacity\\\"],\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/maintain.v1\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Extract and curate captured conversation under the private ledger and watermark.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"contract.Conversation\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"MessageCount\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"Transcript\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"MessageCount\\\",\\\"Transcript\\\"],\\\"type\\\":\\\"object\\\"},\\\"contract.MaintenanceInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Compacted\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Conversation\\\":{\\\"$ref\\\":\\\"#/$defs/contract.Conversation\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"SessionID\\\",\\\"Project\\\",\\\"Compacted\\\",\\\"Conversation\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Compacted\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Conversation\\\":{\\\"$ref\\\":\\\"#/$defs/contract.Conversation\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"SessionID\\\",\\\"Project\\\",\\\"Compacted\\\",\\\"Conversation\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"contract.MaintenanceResult\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Published\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"Published\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Published\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"Published\\\"],\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/review.v2\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Apply a human review decision to a pending memory item.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"contract.ReviewInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Decision\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"approve\\\",\\\"reject\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\",\\\"Decision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Decision\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"approve\\\",\\\"reject\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\",\\\"Decision\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"contract.Ack\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/search.v2\\\",\\\"kind\\\":\\\"query\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Rank active memories for the supplied project and query.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"contract.SearchInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Query\\\":{\\\"type\\\":\\\"string\\\"},\\\"TopK\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"}},\\\"required\\\":[\\\"Project\\\",\\\"Query\\\",\\\"TopK\\\",\\\"EmbeddingSpace\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Query\\\":{\\\"type\\\":\\\"string\\\"},\\\"TopK\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"}},\\\"required\\\":[\\\"Project\\\",\\\"Query\\\",\\\"TopK\\\",\\\"EmbeddingSpace\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"domain.ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"domain.ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemSnapshot\\\"},\\\"type\\\":\\\"array\\\"}},{\\\"name\\\":\\\"flame.memory/update.v2\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Edit the current content or pin state of a memory item.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"contract.UpdateInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"domain.ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"domain.ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}}]}\""
+          "value": "\"{\\\"composition\\\":\\\"selection\\\",\\\"methods\\\":[{\\\"description\\\":\\\"Add a human-authored memory item in the requested scope.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"contract.AddInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Content\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Content\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/add.v2\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"contract.AddResult\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Changed\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Item\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemSnapshot\\\"}},\\\"required\\\":[\\\"Item\\\",\\\"Changed\\\"],\\\"type\\\":\\\"object\\\"},\\\"domain.ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"domain.ItemSnapshot\\\":{\\\"$ref\\\":\\\"#/$defs/domain.itemProjection\\\"},\\\"domain.itemProjection\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096},\\\"Revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/instant.Timestamp\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/value.Number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/instant.Timestamp\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"},\\\"instant.Timestamp\\\":{\\\"type\\\":\\\"string\\\"},\\\"value.Number\\\":{\\\"type\\\":\\\"number\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Changed\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Item\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemSnapshot\\\"}},\\\"required\\\":[\\\"Item\\\",\\\"Changed\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Delete one memory item through its private owner.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"contract.ItemInput\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/delete.v2\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"contract.Ack\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Read active memory items that can inform a Run.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"contract.ItemsInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"Project\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"Project\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"query\\\",\\\"name\\\":\\\"flame.memory/items.v2\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"domain.ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"domain.ItemSnapshot\\\":{\\\"$ref\\\":\\\"#/$defs/domain.itemProjection\\\"},\\\"domain.itemProjection\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096},\\\"Revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/instant.Timestamp\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/value.Number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/instant.Timestamp\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"},\\\"instant.Timestamp\\\":{\\\"type\\\":\\\"string\\\"},\\\"value.Number\\\":{\\\"type\\\":\\\"number\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemSnapshot\\\"},\\\"type\\\":\\\"array\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"List memory items visible in the requested scope.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"contract.ListInput\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Limit\\\":{\\\"maximum\\\":100,\\\"minimum\\\":1}}}],\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Cursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Limit\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Cursor\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Limit\\\":{\\\"maximum\\\":100,\\\"minimum\\\":1}}}],\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Cursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Limit\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Cursor\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"query\\\",\\\"name\\\":\\\"flame.memory/list.v2\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"contract.Page\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Capacity\\\":{\\\"maximum\\\":512,\\\"minimum\\\":512},\\\"Rows\\\":{\\\"maxItems\\\":100}}}],\\\"properties\\\":{\\\"Capacity\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"NextCursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Rows\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemSnapshot\\\"},\\\"type\\\":\\\"array\\\"}},\\\"required\\\":[\\\"Rows\\\",\\\"NextCursor\\\",\\\"Capacity\\\"],\\\"type\\\":\\\"object\\\"},\\\"domain.ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"domain.ItemSnapshot\\\":{\\\"$ref\\\":\\\"#/$defs/domain.itemProjection\\\"},\\\"domain.itemProjection\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096},\\\"Revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/instant.Timestamp\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/value.Number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/instant.Timestamp\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"},\\\"instant.Timestamp\\\":{\\\"type\\\":\\\"string\\\"},\\\"value.Number\\\":{\\\"type\\\":\\\"number\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Capacity\\\":{\\\"maximum\\\":512,\\\"minimum\\\":512},\\\"Rows\\\":{\\\"maxItems\\\":100}}}],\\\"properties\\\":{\\\"Capacity\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"NextCursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Rows\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemSnapshot\\\"},\\\"type\\\":\\\"array\\\"}},\\\"required\\\":[\\\"Rows\\\",\\\"NextCursor\\\",\\\"Capacity\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Extract and curate captured conversation under the private ledger and watermark.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"contract.Conversation\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"MessageCount\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"Transcript\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"MessageCount\\\",\\\"Transcript\\\"],\\\"type\\\":\\\"object\\\"},\\\"contract.MaintenanceInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Compacted\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Conversation\\\":{\\\"$ref\\\":\\\"#/$defs/contract.Conversation\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"SessionID\\\",\\\"Project\\\",\\\"Compacted\\\",\\\"Conversation\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Compacted\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Conversation\\\":{\\\"$ref\\\":\\\"#/$defs/contract.Conversation\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"SessionID\\\",\\\"Project\\\",\\\"Compacted\\\",\\\"Conversation\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/maintain.v1\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"contract.MaintenanceResult\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Published\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"Published\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Published\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"Published\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Apply a human review decision to a pending memory item.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"contract.ReviewInput\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Decision\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"approve\\\",\\\"reject\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\",\\\"Decision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Decision\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"approve\\\",\\\"reject\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\",\\\"Decision\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/review.v2\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"contract.Ack\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Rank active memories for the supplied project and query.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"contract.SearchInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Query\\\":{\\\"type\\\":\\\"string\\\"},\\\"TopK\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"}},\\\"required\\\":[\\\"Project\\\",\\\"Query\\\",\\\"TopK\\\",\\\"EmbeddingSpace\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Query\\\":{\\\"type\\\":\\\"string\\\"},\\\"TopK\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"}},\\\"required\\\":[\\\"Project\\\",\\\"Query\\\",\\\"TopK\\\",\\\"EmbeddingSpace\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"query\\\",\\\"name\\\":\\\"flame.memory/search.v2\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"domain.ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"domain.ItemSnapshot\\\":{\\\"$ref\\\":\\\"#/$defs/domain.itemProjection\\\"},\\\"domain.itemProjection\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096},\\\"Revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/instant.Timestamp\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/value.Number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/instant.Timestamp\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"},\\\"instant.Timestamp\\\":{\\\"type\\\":\\\"string\\\"},\\\"value.Number\\\":{\\\"type\\\":\\\"number\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemSnapshot\\\"},\\\"type\\\":\\\"array\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Edit the current content or pin state of a memory item.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"contract.UpdateInput\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/update.v2\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"domain.ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"domain.ItemSnapshot\\\":{\\\"$ref\\\":\\\"#/$defs/domain.itemProjection\\\"},\\\"domain.itemProjection\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096},\\\"Revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/instant.Timestamp\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/value.Number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/domain.ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/instant.Timestamp\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"},\\\"instant.Timestamp\\\":{\\\"type\\\":\\\"string\\\"},\\\"value.Number\\\":{\\\"type\\\":\\\"number\\\"}},\\\"$ref\\\":\\\"#/$defs/domain.itemProjection\\\",\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\"},\\\"target\\\":\\\"installation\\\"}],\\\"protocol\\\":\\\"io.github.tangerg.flame/plugin/1\\\",\\\"reference\\\":\\\"memory\\\",\\\"scope\\\":\\\"installation\\\"}\""
         },
         {
           "name": "DeleteV2Method",
           "type": "untyped string",
           "value": "\"flame.memory/delete.v2\""
-        },
-        {
-          "name": "ItemSnapshotOriginAuto",
-          "type": "ItemSnapshotOrigin",
-          "value": "\"auto\""
-        },
-        {
-          "name": "ItemSnapshotOriginUser",
-          "type": "ItemSnapshotOrigin",
-          "value": "\"user\""
-        },
-        {
-          "name": "ItemSnapshotScopeProject",
-          "type": "ItemSnapshotScope",
-          "value": "\"project\""
-        },
-        {
-          "name": "ItemSnapshotScopeUser",
-          "type": "ItemSnapshotScope",
-          "value": "\"user\""
-        },
-        {
-          "name": "ItemSnapshotStatusActive",
-          "type": "ItemSnapshotStatus",
-          "value": "\"active\""
-        },
-        {
-          "name": "ItemSnapshotStatusPending",
-          "type": "ItemSnapshotStatus",
-          "value": "\"pending\""
-        },
-        {
-          "name": "ItemSnapshotStatusRejected",
-          "type": "ItemSnapshotStatus",
-          "value": "\"rejected\""
         },
         {
           "name": "ItemsInputScopeProject",
@@ -4603,6 +5922,41 @@
           "value": "\"flame.memory/items.v2\""
         },
         {
+          "name": "ItemsV2OutputDomainItemSnapshotOriginAuto",
+          "type": "ItemsV2OutputDomainItemSnapshotOrigin",
+          "value": "\"auto\""
+        },
+        {
+          "name": "ItemsV2OutputDomainItemSnapshotOriginUser",
+          "type": "ItemsV2OutputDomainItemSnapshotOrigin",
+          "value": "\"user\""
+        },
+        {
+          "name": "ItemsV2OutputDomainItemSnapshotScopeProject",
+          "type": "ItemsV2OutputDomainItemSnapshotScope",
+          "value": "\"project\""
+        },
+        {
+          "name": "ItemsV2OutputDomainItemSnapshotScopeUser",
+          "type": "ItemsV2OutputDomainItemSnapshotScope",
+          "value": "\"user\""
+        },
+        {
+          "name": "ItemsV2OutputDomainItemSnapshotStatusActive",
+          "type": "ItemsV2OutputDomainItemSnapshotStatus",
+          "value": "\"active\""
+        },
+        {
+          "name": "ItemsV2OutputDomainItemSnapshotStatusPending",
+          "type": "ItemsV2OutputDomainItemSnapshotStatus",
+          "value": "\"pending\""
+        },
+        {
+          "name": "ItemsV2OutputDomainItemSnapshotStatusRejected",
+          "type": "ItemsV2OutputDomainItemSnapshotStatus",
+          "value": "\"rejected\""
+        },
+        {
           "name": "ListInputScopeProject",
           "type": "ListInputScope",
           "value": "\"project\""
@@ -4616,6 +5970,41 @@
           "name": "ListV2Method",
           "type": "untyped string",
           "value": "\"flame.memory/list.v2\""
+        },
+        {
+          "name": "ListV2OutputDomainItemSnapshotOriginAuto",
+          "type": "ListV2OutputDomainItemSnapshotOrigin",
+          "value": "\"auto\""
+        },
+        {
+          "name": "ListV2OutputDomainItemSnapshotOriginUser",
+          "type": "ListV2OutputDomainItemSnapshotOrigin",
+          "value": "\"user\""
+        },
+        {
+          "name": "ListV2OutputDomainItemSnapshotScopeProject",
+          "type": "ListV2OutputDomainItemSnapshotScope",
+          "value": "\"project\""
+        },
+        {
+          "name": "ListV2OutputDomainItemSnapshotScopeUser",
+          "type": "ListV2OutputDomainItemSnapshotScope",
+          "value": "\"user\""
+        },
+        {
+          "name": "ListV2OutputDomainItemSnapshotStatusActive",
+          "type": "ListV2OutputDomainItemSnapshotStatus",
+          "value": "\"active\""
+        },
+        {
+          "name": "ListV2OutputDomainItemSnapshotStatusPending",
+          "type": "ListV2OutputDomainItemSnapshotStatus",
+          "value": "\"pending\""
+        },
+        {
+          "name": "ListV2OutputDomainItemSnapshotStatusRejected",
+          "type": "ListV2OutputDomainItemSnapshotStatus",
+          "value": "\"rejected\""
         },
         {
           "name": "MaintainV1Method",
@@ -4683,16 +6072,82 @@
           "value": "\"flame.memory/search.v2\""
         },
         {
+          "name": "SearchV2OutputDomainItemSnapshotOriginAuto",
+          "type": "SearchV2OutputDomainItemSnapshotOrigin",
+          "value": "\"auto\""
+        },
+        {
+          "name": "SearchV2OutputDomainItemSnapshotOriginUser",
+          "type": "SearchV2OutputDomainItemSnapshotOrigin",
+          "value": "\"user\""
+        },
+        {
+          "name": "SearchV2OutputDomainItemSnapshotScopeProject",
+          "type": "SearchV2OutputDomainItemSnapshotScope",
+          "value": "\"project\""
+        },
+        {
+          "name": "SearchV2OutputDomainItemSnapshotScopeUser",
+          "type": "SearchV2OutputDomainItemSnapshotScope",
+          "value": "\"user\""
+        },
+        {
+          "name": "SearchV2OutputDomainItemSnapshotStatusActive",
+          "type": "SearchV2OutputDomainItemSnapshotStatus",
+          "value": "\"active\""
+        },
+        {
+          "name": "SearchV2OutputDomainItemSnapshotStatusPending",
+          "type": "SearchV2OutputDomainItemSnapshotStatus",
+          "value": "\"pending\""
+        },
+        {
+          "name": "SearchV2OutputDomainItemSnapshotStatusRejected",
+          "type": "SearchV2OutputDomainItemSnapshotStatus",
+          "value": "\"rejected\""
+        },
+        {
           "name": "UpdateV2Method",
           "type": "untyped string",
           "value": "\"flame.memory/update.v2\""
+        },
+        {
+          "name": "UpdateV2OutputDomainItemSnapshotOriginAuto",
+          "type": "UpdateV2OutputDomainItemSnapshotOrigin",
+          "value": "\"auto\""
+        },
+        {
+          "name": "UpdateV2OutputDomainItemSnapshotOriginUser",
+          "type": "UpdateV2OutputDomainItemSnapshotOrigin",
+          "value": "\"user\""
+        },
+        {
+          "name": "UpdateV2OutputDomainItemSnapshotScopeProject",
+          "type": "UpdateV2OutputDomainItemSnapshotScope",
+          "value": "\"project\""
+        },
+        {
+          "name": "UpdateV2OutputDomainItemSnapshotScopeUser",
+          "type": "UpdateV2OutputDomainItemSnapshotScope",
+          "value": "\"user\""
+        },
+        {
+          "name": "UpdateV2OutputDomainItemSnapshotStatusActive",
+          "type": "UpdateV2OutputDomainItemSnapshotStatus",
+          "value": "\"active\""
+        },
+        {
+          "name": "UpdateV2OutputDomainItemSnapshotStatusPending",
+          "type": "UpdateV2OutputDomainItemSnapshotStatus",
+          "value": "\"pending\""
+        },
+        {
+          "name": "UpdateV2OutputDomainItemSnapshotStatusRejected",
+          "type": "UpdateV2OutputDomainItemSnapshotStatus",
+          "value": "\"rejected\""
         }
       ],
       "types": [
-        {
-          "name": "Ack",
-          "kind": "struct"
-        },
         {
           "name": "AddInput",
           "kind": "struct",
@@ -4730,50 +6185,18 @@
             },
             {
               "name": "Item",
-              "type": "ItemSnapshot",
+              "type": "*AddV2OutputDomainItemSnapshot",
               "tag": "json:\"Item\""
             }
           ]
         },
         {
-          "name": "Conversation",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "MessageCount",
-              "type": "int64",
-              "tag": "json:\"MessageCount\""
-            },
-            {
-              "name": "Transcript",
-              "type": "string",
-              "tag": "json:\"Transcript\""
-            }
-          ]
-        },
-        {
-          "name": "ItemID",
+          "name": "AddV2OutputDomainItemID",
           "kind": "defined",
           "underlying": "string"
         },
         {
-          "name": "ItemInput",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ExpectedRevision",
-              "type": "uint64",
-              "tag": "json:\"ExpectedRevision\""
-            },
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"ID\""
-            }
-          ]
-        },
-        {
-          "name": "ItemSnapshot",
+          "name": "AddV2OutputDomainItemSnapshot",
           "kind": "struct",
           "fields": [
             {
@@ -4783,7 +6206,7 @@
             },
             {
               "name": "CreatedAt",
-              "type": "time.Time",
+              "type": "AddV2OutputInstantTimestamp",
               "tag": "json:\"CreatedAt\""
             },
             {
@@ -4793,7 +6216,7 @@
             },
             {
               "name": "Embedding",
-              "type": "[]float64",
+              "type": "[]AddV2OutputValueNumber",
               "tag": "json:\"Embedding\""
             },
             {
@@ -4803,12 +6226,12 @@
             },
             {
               "name": "ID",
-              "type": "ItemID",
+              "type": "AddV2OutputDomainItemID",
               "tag": "json:\"ID\""
             },
             {
               "name": "Origin",
-              "type": "ItemSnapshotOrigin",
+              "type": "AddV2OutputDomainItemSnapshotOrigin",
               "tag": "json:\"Origin\""
             },
             {
@@ -4823,12 +6246,12 @@
             },
             {
               "name": "Revision",
-              "type": "uint64",
+              "type": "value.Number",
               "tag": "json:\"Revision\""
             },
             {
               "name": "Scope",
-              "type": "ItemSnapshotScope",
+              "type": "AddV2OutputDomainItemSnapshotScope",
               "tag": "json:\"Scope\""
             },
             {
@@ -4838,30 +6261,99 @@
             },
             {
               "name": "Status",
-              "type": "ItemSnapshotStatus",
+              "type": "AddV2OutputDomainItemSnapshotStatus",
               "tag": "json:\"Status\""
             },
             {
               "name": "UpdatedAt",
-              "type": "time.Time",
+              "type": "AddV2OutputInstantTimestamp",
               "tag": "json:\"UpdatedAt\""
             }
           ]
         },
         {
-          "name": "ItemSnapshotOrigin",
+          "name": "AddV2OutputDomainItemSnapshotOrigin",
           "kind": "defined",
           "underlying": "string"
         },
         {
-          "name": "ItemSnapshotScope",
+          "name": "AddV2OutputDomainItemSnapshotScope",
           "kind": "defined",
           "underlying": "string"
         },
         {
-          "name": "ItemSnapshotStatus",
+          "name": "AddV2OutputDomainItemSnapshotStatus",
           "kind": "defined",
           "underlying": "string"
+        },
+        {
+          "name": "AddV2OutputInstantTimestamp",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "AddV2OutputValueNumber",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Number",
+              "type": "value.Number"
+            }
+          ],
+          "methods": [
+            {
+              "name": "JSONSchemaModel",
+              "signature": "func() any"
+            },
+            {
+              "name": "MarshalJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
+            }
+          ]
+        },
+        {
+          "name": "Conversation",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "MessageCount",
+              "type": "value.Number",
+              "tag": "json:\"MessageCount\""
+            },
+            {
+              "name": "Transcript",
+              "type": "string",
+              "tag": "json:\"Transcript\""
+            }
+          ]
+        },
+        {
+          "name": "DeleteV2OutputContractAck",
+          "kind": "struct"
+        },
+        {
+          "name": "ItemInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ExpectedRevision",
+              "type": "value.Number",
+              "tag": "json:\"ExpectedRevision\""
+            },
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"ID\""
+            }
+          ]
         },
         {
           "name": "ItemsInput",
@@ -4887,7 +6379,136 @@
         {
           "name": "ItemsV2Output",
           "kind": "defined",
-          "underlying": "[]ItemSnapshot"
+          "underlying": "[]*ItemsV2OutputDomainItemSnapshot"
+        },
+        {
+          "name": "ItemsV2OutputDomainItemID",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "ItemsV2OutputDomainItemSnapshot",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Content",
+              "type": "string",
+              "tag": "json:\"Content\""
+            },
+            {
+              "name": "CreatedAt",
+              "type": "ItemsV2OutputInstantTimestamp",
+              "tag": "json:\"CreatedAt\""
+            },
+            {
+              "name": "Day",
+              "type": "string",
+              "tag": "json:\"Day\""
+            },
+            {
+              "name": "Embedding",
+              "type": "[]ItemsV2OutputValueNumber",
+              "tag": "json:\"Embedding\""
+            },
+            {
+              "name": "EmbeddingSpace",
+              "type": "string",
+              "tag": "json:\"EmbeddingSpace\""
+            },
+            {
+              "name": "ID",
+              "type": "ItemsV2OutputDomainItemID",
+              "tag": "json:\"ID\""
+            },
+            {
+              "name": "Origin",
+              "type": "ItemsV2OutputDomainItemSnapshotOrigin",
+              "tag": "json:\"Origin\""
+            },
+            {
+              "name": "Pinned",
+              "type": "bool",
+              "tag": "json:\"Pinned\""
+            },
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "Revision",
+              "type": "value.Number",
+              "tag": "json:\"Revision\""
+            },
+            {
+              "name": "Scope",
+              "type": "ItemsV2OutputDomainItemSnapshotScope",
+              "tag": "json:\"Scope\""
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"SessionID\""
+            },
+            {
+              "name": "Status",
+              "type": "ItemsV2OutputDomainItemSnapshotStatus",
+              "tag": "json:\"Status\""
+            },
+            {
+              "name": "UpdatedAt",
+              "type": "ItemsV2OutputInstantTimestamp",
+              "tag": "json:\"UpdatedAt\""
+            }
+          ]
+        },
+        {
+          "name": "ItemsV2OutputDomainItemSnapshotOrigin",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "ItemsV2OutputDomainItemSnapshotScope",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "ItemsV2OutputDomainItemSnapshotStatus",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "ItemsV2OutputInstantTimestamp",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "ItemsV2OutputValueNumber",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Number",
+              "type": "value.Number"
+            }
+          ],
+          "methods": [
+            {
+              "name": "JSONSchemaModel",
+              "signature": "func() any"
+            },
+            {
+              "name": "MarshalJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
+            }
+          ]
         },
         {
           "name": "ListInput",
@@ -4905,7 +6526,7 @@
             },
             {
               "name": "Limit",
-              "type": "*uint64",
+              "type": "value.Number",
               "tag": "json:\"Limit,omitzero\""
             },
             {
@@ -4921,6 +6542,135 @@
           "underlying": "string"
         },
         {
+          "name": "ListV2OutputDomainItemID",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "ListV2OutputDomainItemSnapshot",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Content",
+              "type": "string",
+              "tag": "json:\"Content\""
+            },
+            {
+              "name": "CreatedAt",
+              "type": "ListV2OutputInstantTimestamp",
+              "tag": "json:\"CreatedAt\""
+            },
+            {
+              "name": "Day",
+              "type": "string",
+              "tag": "json:\"Day\""
+            },
+            {
+              "name": "Embedding",
+              "type": "[]ListV2OutputValueNumber",
+              "tag": "json:\"Embedding\""
+            },
+            {
+              "name": "EmbeddingSpace",
+              "type": "string",
+              "tag": "json:\"EmbeddingSpace\""
+            },
+            {
+              "name": "ID",
+              "type": "ListV2OutputDomainItemID",
+              "tag": "json:\"ID\""
+            },
+            {
+              "name": "Origin",
+              "type": "ListV2OutputDomainItemSnapshotOrigin",
+              "tag": "json:\"Origin\""
+            },
+            {
+              "name": "Pinned",
+              "type": "bool",
+              "tag": "json:\"Pinned\""
+            },
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "Revision",
+              "type": "value.Number",
+              "tag": "json:\"Revision\""
+            },
+            {
+              "name": "Scope",
+              "type": "ListV2OutputDomainItemSnapshotScope",
+              "tag": "json:\"Scope\""
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"SessionID\""
+            },
+            {
+              "name": "Status",
+              "type": "ListV2OutputDomainItemSnapshotStatus",
+              "tag": "json:\"Status\""
+            },
+            {
+              "name": "UpdatedAt",
+              "type": "ListV2OutputInstantTimestamp",
+              "tag": "json:\"UpdatedAt\""
+            }
+          ]
+        },
+        {
+          "name": "ListV2OutputDomainItemSnapshotOrigin",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "ListV2OutputDomainItemSnapshotScope",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "ListV2OutputDomainItemSnapshotStatus",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "ListV2OutputInstantTimestamp",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "ListV2OutputValueNumber",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Number",
+              "type": "value.Number"
+            }
+          ],
+          "methods": [
+            {
+              "name": "JSONSchemaModel",
+              "signature": "func() any"
+            },
+            {
+              "name": "MarshalJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
+            }
+          ]
+        },
+        {
           "name": "MaintenanceInput",
           "kind": "struct",
           "fields": [
@@ -4931,7 +6681,7 @@
             },
             {
               "name": "Conversation",
-              "type": "Conversation",
+              "type": "*Conversation",
               "tag": "json:\"Conversation\""
             },
             {
@@ -4963,7 +6713,7 @@
           "fields": [
             {
               "name": "Capacity",
-              "type": "int64",
+              "type": "value.Number",
               "tag": "json:\"Capacity\""
             },
             {
@@ -4973,7 +6723,7 @@
             },
             {
               "name": "Rows",
-              "type": "[]ItemSnapshot",
+              "type": "[]*ListV2OutputDomainItemSnapshot",
               "tag": "json:\"Rows\""
             }
           ]
@@ -4989,7 +6739,7 @@
             },
             {
               "name": "ExpectedRevision",
-              "type": "uint64",
+              "type": "value.Number",
               "tag": "json:\"ExpectedRevision\""
             },
             {
@@ -5003,6 +6753,10 @@
           "name": "ReviewInputDecision",
           "kind": "defined",
           "underlying": "string"
+        },
+        {
+          "name": "ReviewV2OutputContractAck",
+          "kind": "struct"
         },
         {
           "name": "SearchInput",
@@ -5025,7 +6779,7 @@
             },
             {
               "name": "TopK",
-              "type": "int64",
+              "type": "value.Number",
               "tag": "json:\"TopK\""
             }
           ]
@@ -5033,7 +6787,136 @@
         {
           "name": "SearchV2Output",
           "kind": "defined",
-          "underlying": "[]ItemSnapshot"
+          "underlying": "[]*SearchV2OutputDomainItemSnapshot"
+        },
+        {
+          "name": "SearchV2OutputDomainItemID",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "SearchV2OutputDomainItemSnapshot",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Content",
+              "type": "string",
+              "tag": "json:\"Content\""
+            },
+            {
+              "name": "CreatedAt",
+              "type": "SearchV2OutputInstantTimestamp",
+              "tag": "json:\"CreatedAt\""
+            },
+            {
+              "name": "Day",
+              "type": "string",
+              "tag": "json:\"Day\""
+            },
+            {
+              "name": "Embedding",
+              "type": "[]SearchV2OutputValueNumber",
+              "tag": "json:\"Embedding\""
+            },
+            {
+              "name": "EmbeddingSpace",
+              "type": "string",
+              "tag": "json:\"EmbeddingSpace\""
+            },
+            {
+              "name": "ID",
+              "type": "SearchV2OutputDomainItemID",
+              "tag": "json:\"ID\""
+            },
+            {
+              "name": "Origin",
+              "type": "SearchV2OutputDomainItemSnapshotOrigin",
+              "tag": "json:\"Origin\""
+            },
+            {
+              "name": "Pinned",
+              "type": "bool",
+              "tag": "json:\"Pinned\""
+            },
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "Revision",
+              "type": "value.Number",
+              "tag": "json:\"Revision\""
+            },
+            {
+              "name": "Scope",
+              "type": "SearchV2OutputDomainItemSnapshotScope",
+              "tag": "json:\"Scope\""
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"SessionID\""
+            },
+            {
+              "name": "Status",
+              "type": "SearchV2OutputDomainItemSnapshotStatus",
+              "tag": "json:\"Status\""
+            },
+            {
+              "name": "UpdatedAt",
+              "type": "SearchV2OutputInstantTimestamp",
+              "tag": "json:\"UpdatedAt\""
+            }
+          ]
+        },
+        {
+          "name": "SearchV2OutputDomainItemSnapshotOrigin",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "SearchV2OutputDomainItemSnapshotScope",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "SearchV2OutputDomainItemSnapshotStatus",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "SearchV2OutputInstantTimestamp",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "SearchV2OutputValueNumber",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Number",
+              "type": "value.Number"
+            }
+          ],
+          "methods": [
+            {
+              "name": "JSONSchemaModel",
+              "signature": "func() any"
+            },
+            {
+              "name": "MarshalJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
+            }
+          ]
         },
         {
           "name": "UpdateInput",
@@ -5046,7 +6929,7 @@
             },
             {
               "name": "ExpectedRevision",
-              "type": "uint64",
+              "type": "value.Number",
               "tag": "json:\"ExpectedRevision\""
             },
             {
@@ -5060,6 +6943,135 @@
               "tag": "json:\"Pinned,omitzero\""
             }
           ]
+        },
+        {
+          "name": "UpdateV2OutputDomainItemID",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "UpdateV2OutputDomainItemSnapshot",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Content",
+              "type": "string",
+              "tag": "json:\"Content\""
+            },
+            {
+              "name": "CreatedAt",
+              "type": "UpdateV2OutputInstantTimestamp",
+              "tag": "json:\"CreatedAt\""
+            },
+            {
+              "name": "Day",
+              "type": "string",
+              "tag": "json:\"Day\""
+            },
+            {
+              "name": "Embedding",
+              "type": "[]UpdateV2OutputValueNumber",
+              "tag": "json:\"Embedding\""
+            },
+            {
+              "name": "EmbeddingSpace",
+              "type": "string",
+              "tag": "json:\"EmbeddingSpace\""
+            },
+            {
+              "name": "ID",
+              "type": "UpdateV2OutputDomainItemID",
+              "tag": "json:\"ID\""
+            },
+            {
+              "name": "Origin",
+              "type": "UpdateV2OutputDomainItemSnapshotOrigin",
+              "tag": "json:\"Origin\""
+            },
+            {
+              "name": "Pinned",
+              "type": "bool",
+              "tag": "json:\"Pinned\""
+            },
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "Revision",
+              "type": "value.Number",
+              "tag": "json:\"Revision\""
+            },
+            {
+              "name": "Scope",
+              "type": "UpdateV2OutputDomainItemSnapshotScope",
+              "tag": "json:\"Scope\""
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"SessionID\""
+            },
+            {
+              "name": "Status",
+              "type": "UpdateV2OutputDomainItemSnapshotStatus",
+              "tag": "json:\"Status\""
+            },
+            {
+              "name": "UpdatedAt",
+              "type": "UpdateV2OutputInstantTimestamp",
+              "tag": "json:\"UpdatedAt\""
+            }
+          ]
+        },
+        {
+          "name": "UpdateV2OutputDomainItemSnapshotOrigin",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "UpdateV2OutputDomainItemSnapshotScope",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "UpdateV2OutputDomainItemSnapshotStatus",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "UpdateV2OutputInstantTimestamp",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "UpdateV2OutputValueNumber",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Number",
+              "type": "value.Number"
+            }
+          ],
+          "methods": [
+            {
+              "name": "JSONSchemaModel",
+              "signature": "func() any"
+            },
+            {
+              "name": "MarshalJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
+            }
+          ]
         }
       ]
     },
@@ -5069,11 +7081,12 @@
         "encoding/json/jsontext",
         "fmt",
         "github.com/Tangerg/flame/packages/go-sdk/model",
-        "github.com/Tangerg/qimu/jsonvalue",
-        "github.com/Tangerg/qimu/mcp",
-        "github.com/Tangerg/qimu/portable",
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/contract",
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp",
+        "github.com/Tangerg/frame/value",
         "github.com/Tangerg/scope/core/chat",
         "github.com/Tangerg/scope/core/embedding",
+        "github.com/Tangerg/scope/core/invocation",
         "github.com/Tangerg/scope/models/catalog"
       ],
       "constants": [
@@ -5149,11 +7162,11 @@
         },
         {
           "name": "Contract",
-          "signature": "func() (*portable.Capability, error)"
+          "signature": "func() (*contract.Capability, error)"
         },
         {
           "name": "ContractIdentity",
-          "signature": "func() (jsonvalue.Value, error)"
+          "signature": "func() (value.JSON, error)"
         },
         {
           "name": "CountMethod",
@@ -5248,6 +7261,18 @@
             }
           ],
           "methods": [
+            {
+              "name": "JSONSchemaModel",
+              "signature": "func() any"
+            },
+            {
+              "name": "MarshalJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
+            },
             {
               "name": "Validate",
               "signature": "func() error"
@@ -5430,7 +7455,7 @@
             },
             {
               "name": "Execution",
-              "type": "chat.CallFailureKind",
+              "type": "invocation.FailureKind",
               "tag": "json:\"execution\""
             },
             {
@@ -5569,6 +7594,18 @@
           ],
           "methods": [
             {
+              "name": "JSONSchemaModel",
+              "signature": "func() any"
+            },
+            {
+              "name": "MarshalJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
+            },
+            {
               "name": "Validate",
               "signature": "func() error"
             }
@@ -5619,8 +7656,8 @@
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/planworkflow/mcp",
       "imports": [
         "github.com/Tangerg/flame/packages/go-sdk/planworkflow",
-        "github.com/Tangerg/qimu/mcp",
-        "github.com/Tangerg/qimu/portable"
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/contract",
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
       ],
       "functions": [
         {
@@ -5629,7 +7666,7 @@
         },
         {
           "name": "Contract",
-          "signature": "func() (*portable.Capability, error)"
+          "signature": "func() (*contract.Capability, error)"
         },
         {
           "name": "ReviewMethod",
@@ -5655,9 +7692,9 @@
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning",
       "imports": [
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/contract",
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp",
         "github.com/Tangerg/flame/packages/go-sdk/skill",
-        "github.com/Tangerg/qimu/mcp",
-        "github.com/Tangerg/qimu/portable",
         "time"
       ],
       "constants": [
@@ -5720,7 +7757,7 @@
         },
         {
           "name": "Contract",
-          "signature": "func() (*portable.Capability, error)"
+          "signature": "func() (*contract.Capability, error)"
         },
         {
           "name": "ConversationMethod",
@@ -5775,6 +7812,18 @@
           ],
           "methods": [
             {
+              "name": "JSONSchemaModel",
+              "signature": "func() any"
+            },
+            {
+              "name": "MarshalJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
+            },
+            {
               "name": "Validate",
               "signature": "func(observedAt time.Time) error"
             }
@@ -5788,6 +7837,20 @@
               "name": "Now",
               "type": "time.Time",
               "tag": "json:\"now\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "JSONSchemaModel",
+              "signature": "func() any"
+            },
+            {
+              "name": "MarshalJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
             }
           ]
         },
@@ -6102,9 +8165,9 @@
       "imports": [
         "context",
         "database/sql",
-        "github.com/Tangerg/go-sdk/mcp",
-        "github.com/Tangerg/qimu/jsonvalue",
-        "github.com/Tangerg/qimu/mcp"
+        "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp",
+        "github.com/Tangerg/frame/value",
+        "github.com/Tangerg/go-sdk/mcp"
       ],
       "constants": [
         {
@@ -6131,7 +8194,7 @@
       "functions": [
         {
           "name": "AdmitCommand",
-          "signature": "func(ctx context.Context, db *sql.DB, method string, id string, input jsonvalue.Value, validateNew func(context.Context) error) (*PreparedCommand, []byte, error)"
+          "signature": "func(ctx context.Context, db *sql.DB, method string, id string, input value.JSON, validateNew func(context.Context) error) (*PreparedCommand, []byte, error)"
         },
         {
           "name": "BindRuntimeTarget",
@@ -6143,7 +8206,11 @@
         },
         {
           "name": "Command",
-          "signature": "func[P, R any](ctx context.Context, db *sql.DB, method string, id string, admitted jsonvalue.Value, classify mcp.Classifier, handler func(context.Context, P) (R, error)) (R, error)"
+          "signature": "func[P, R any](ctx context.Context, db *sql.DB, method string, id string, admitted value.JSON, classify mcp.Classifier, handler func(context.Context, P) (R, error)) (R, error)"
+        },
+        {
+          "name": "Connection",
+          "signature": "func(ctx context.Context, db *sql.DB) commandConnection"
         },
         {
           "name": "ReadReceipt",
@@ -6159,7 +8226,11 @@
         },
         {
           "name": "ResumeCommand",
-          "signature": "func(ctx context.Context, db *sql.DB, method string, id string) (*PreparedCommand, jsonvalue.Value, []byte, error)"
+          "signature": "func(ctx context.Context, db *sql.DB, method string, id string) (*PreparedCommand, value.JSON, []byte, error)"
+        },
+        {
+          "name": "WithinTransaction",
+          "signature": "func(ctx context.Context, db *sql.DB, apply func(context.Context) error) error"
         }
       ],
       "types": [
@@ -6206,8 +8277,10 @@
         "github.com/Tangerg/flame/packages/go-sdk/builtin",
         "github.com/Tangerg/flame/packages/go-sdk/extension",
         "github.com/Tangerg/flame/packages/go-sdk/model",
+        "github.com/Tangerg/frame/portable",
+        "github.com/Tangerg/frame/process/mcp",
         "github.com/Tangerg/go-sdk/jsonrpc",
-        "github.com/Tangerg/qimu/portable",
+        "reflect",
         "time"
       ],
       "constants": [
@@ -8176,6 +10249,10 @@
           "signature": "func(encoded []byte, target any) error"
         },
         {
+          "name": "DecodeWire",
+          "signature": "func(encoded []byte, target any) error"
+        },
+        {
           "name": "FeatureKeys",
           "signature": "func() []string"
         },
@@ -8268,8 +10345,44 @@
           "signature": "func(value string) error"
         },
         {
+          "name": "ValidateWirePath",
+          "signature": "func(owner reflect.Type, path string) error"
+        },
+        {
           "name": "ValidateWireTree",
           "signature": "func(value any) error"
+        },
+        {
+          "name": "ValidateWireType",
+          "signature": "func(owner reflect.Type) error"
+        },
+        {
+          "name": "WireBaseType",
+          "signature": "func(t reflect.Type) reflect.Type"
+        },
+        {
+          "name": "WireEmbeds",
+          "signature": "func(owner reflect.Type) []reflect.Type"
+        },
+        {
+          "name": "WireFieldNamed",
+          "signature": "func(owner reflect.Type, name string) (WireField, bool)"
+        },
+        {
+          "name": "WireFieldNames",
+          "signature": "func(owner reflect.Type) []string"
+        },
+        {
+          "name": "WireFields",
+          "signature": "func(owner reflect.Type) []WireField"
+        },
+        {
+          "name": "WireGoPath",
+          "signature": "func(owner reflect.Type, path string) (string, WireField, bool)"
+        },
+        {
+          "name": "WirePathFields",
+          "signature": "func(owner reflect.Type, path string) ([]WireField, bool)"
         }
       ],
       "types": [
@@ -11278,7 +13391,7 @@
             },
             {
               "name": "Caller",
-              "type": "portable.Invocation",
+              "type": "mcp.Invocation",
               "tag": "json:\"caller\""
             },
             {
@@ -11818,6 +13931,11 @@
           "kind": "struct",
           "fields": [
             {
+              "name": "PreparationCapacity",
+              "type": "int",
+              "tag": "json:\"preparationCapacity\""
+            },
+            {
               "name": "Authority",
               "type": "PluginBrowserAuthority",
               "tag": "json:\"authority\""
@@ -11863,6 +13981,16 @@
           "name": "PluginBrowserUseGrant",
           "kind": "struct",
           "fields": [
+            {
+              "name": "OperationID",
+              "type": "string",
+              "tag": "json:\"operationId\""
+            },
+            {
+              "name": "ParentUseID",
+              "type": "string",
+              "tag": "json:\"parentUseId,omitempty\""
+            },
             {
               "name": "ID",
               "type": "string",
@@ -15691,6 +17819,28 @@
           ]
         },
         {
+          "name": "WireField",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string"
+            },
+            {
+              "name": "Type",
+              "type": "reflect.Type"
+            },
+            {
+              "name": "GoName",
+              "type": "string"
+            },
+            {
+              "name": "Optional",
+              "type": "bool"
+            }
+          ]
+        },
+        {
           "name": "WorkspaceAvailability",
           "kind": "defined",
           "underlying": "string"
@@ -16119,6 +18269,250 @@
         {
           "name": "Host",
           "signature": "func() (string, error)"
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/wiregen",
+      "constants": [
+        {
+          "name": "RefPrefix",
+          "type": "untyped string",
+          "value": "\"#/$defs/\""
+        },
+        {
+          "name": "SchemaDialect",
+          "type": "untyped string",
+          "value": "\"https://json-schema.org/draft/2020-12/schema\""
+        },
+        {
+          "name": "SchemaTypeArray",
+          "type": "SchemaType",
+          "value": "\"array\""
+        },
+        {
+          "name": "SchemaTypeBoolean",
+          "type": "SchemaType",
+          "value": "\"boolean\""
+        },
+        {
+          "name": "SchemaTypeInteger",
+          "type": "SchemaType",
+          "value": "\"integer\""
+        },
+        {
+          "name": "SchemaTypeNull",
+          "type": "SchemaType",
+          "value": "\"null\""
+        },
+        {
+          "name": "SchemaTypeNumber",
+          "type": "SchemaType",
+          "value": "\"number\""
+        },
+        {
+          "name": "SchemaTypeObject",
+          "type": "SchemaType",
+          "value": "\"object\""
+        },
+        {
+          "name": "SchemaTypeString",
+          "type": "SchemaType",
+          "value": "\"string\""
+        }
+      ],
+      "functions": [
+        {
+          "name": "NewTypeScript",
+          "signature": "func(definitions Definitions) *TypeScript"
+        },
+        {
+          "name": "PropertyKey",
+          "signature": "func(name string) string"
+        },
+        {
+          "name": "QuoteAll",
+          "signature": "func(values []string) []string"
+        },
+        {
+          "name": "StringLiteral",
+          "signature": "func(value string) string"
+        }
+      ],
+      "types": [
+        {
+          "name": "Definitions",
+          "kind": "defined",
+          "underlying": "map[string]*Schema"
+        },
+        {
+          "name": "Schema",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Ref",
+              "type": "string",
+              "tag": "json:\"$ref,omitempty\""
+            },
+            {
+              "name": "Type",
+              "type": "SchemaType",
+              "tag": "json:\"type,omitempty\""
+            },
+            {
+              "name": "Format",
+              "type": "string",
+              "tag": "json:\"format,omitempty\""
+            },
+            {
+              "name": "ContentEncoding",
+              "type": "string",
+              "tag": "json:\"contentEncoding,omitempty\""
+            },
+            {
+              "name": "Enum",
+              "type": "[]string",
+              "tag": "json:\"enum,omitempty\""
+            },
+            {
+              "name": "MinLength",
+              "type": "*int",
+              "tag": "json:\"minLength,omitzero\""
+            },
+            {
+              "name": "MaxLength",
+              "type": "*int",
+              "tag": "json:\"maxLength,omitzero\""
+            },
+            {
+              "name": "Const",
+              "type": "string",
+              "tag": "json:\"const,omitempty\""
+            },
+            {
+              "name": "Pattern",
+              "type": "string",
+              "tag": "json:\"pattern,omitempty\""
+            },
+            {
+              "name": "TypeScriptType",
+              "type": "string",
+              "tag": "json:\"-\""
+            },
+            {
+              "name": "Minimum",
+              "type": "*int64",
+              "tag": "json:\"minimum,omitzero\""
+            },
+            {
+              "name": "ExclusiveMinimum",
+              "type": "*int64",
+              "tag": "json:\"exclusiveMinimum,omitzero\""
+            },
+            {
+              "name": "Maximum",
+              "type": "*int64",
+              "tag": "json:\"maximum,omitzero\""
+            },
+            {
+              "name": "MinItems",
+              "type": "*int",
+              "tag": "json:\"minItems,omitzero\""
+            },
+            {
+              "name": "MaxItems",
+              "type": "*int",
+              "tag": "json:\"maxItems,omitzero\""
+            },
+            {
+              "name": "MinProperties",
+              "type": "*int",
+              "tag": "json:\"minProperties,omitzero\""
+            },
+            {
+              "name": "UniqueItems",
+              "type": "bool",
+              "tag": "json:\"uniqueItems,omitzero\""
+            },
+            {
+              "name": "Items",
+              "type": "*Schema",
+              "tag": "json:\"items,omitzero\""
+            },
+            {
+              "name": "Properties",
+              "type": "map[string]any",
+              "tag": "json:\"properties,omitempty\""
+            },
+            {
+              "name": "AdditionalProps",
+              "type": "any",
+              "tag": "json:\"additionalProperties,omitzero\""
+            },
+            {
+              "name": "PropertyNames",
+              "type": "*Schema",
+              "tag": "json:\"propertyNames,omitzero\""
+            },
+            {
+              "name": "UnevaluatedProps",
+              "type": "*bool",
+              "tag": "json:\"unevaluatedProperties,omitzero\""
+            },
+            {
+              "name": "Required",
+              "type": "[]string",
+              "tag": "json:\"required,omitempty\""
+            },
+            {
+              "name": "OneOf",
+              "type": "[]*Schema",
+              "tag": "json:\"oneOf,omitempty\""
+            },
+            {
+              "name": "AnyOf",
+              "type": "[]*Schema",
+              "tag": "json:\"anyOf,omitempty\""
+            },
+            {
+              "name": "AllOf",
+              "type": "[]*Schema",
+              "tag": "json:\"allOf,omitempty\""
+            },
+            {
+              "name": "If",
+              "type": "*Schema",
+              "tag": "json:\"if,omitzero\""
+            },
+            {
+              "name": "Then",
+              "type": "*Schema",
+              "tag": "json:\"then,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "SchemaType",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "TypeScript",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Definition",
+              "signature": "func(name string, node *Schema) string"
+            },
+            {
+              "name": "ObjectBody",
+              "signature": "func(node *Schema, substitute string) string"
+            },
+            {
+              "name": "TypeOf",
+              "signature": "func(node *Schema) string"
+            }
+          ]
         }
       ]
     },

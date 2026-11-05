@@ -1,4 +1,5 @@
-import { stringifyJSON, parseJSON } from "@qimu/sdk/json";
+import { canonicalJSON } from "@frame/sdk/json";
+import { stringifyJSON, parseJSON } from "@frame/sdk/json";
 import { readFileSync } from "node:fs";
 import { afterEach, expect, it, vi } from "vitest";
 import type {
@@ -267,8 +268,8 @@ it("recovers an unresolved unary call through its Runtime-owned request after cl
   expect(JSON.stringify([...storage.values.values()])).not.toContain(id);
   const admittedRequest = {
     ...request,
-    contract: stringifyJSON(parseJSON(request.contract), true),
-    input: stringifyJSON(parseJSON(request.input), true),
+    contract: canonicalJSON(parseJSON(request.contract)),
+    input: canonicalJSON(parseJSON(request.input)),
   };
   successor.dispatch.mockResolvedValueOnce(admittedRequest as unknown as CallPluginResponse);
   successor.dispatch.mockResolvedValueOnce({ output: stringifyJSON({ known: true }) });

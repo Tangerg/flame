@@ -6,12 +6,14 @@ import (
 	"log"
 	"os"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func main() {
@@ -28,42 +30,42 @@ func main() {
 	}
 }
 
-func define() (*portable.Capability, error) {
+func define() (*plugincontract.Capability, error) {
 	var contracts rpc.Contracts
 	var err error
-	contracts.List, err = qimumcp.NewMethod[rpc.ListInput, rpc.Page](qimumcp.MethodConfig{Name: rpc.List, Kind: portable.Query, Target: extension.ScopeInstallation, Description: "List memory items visible in the requested scope."})
+	contracts.List, err = pluginmcp.NewMethod[rpc.ListInput, rpc.Page](portable.MethodConfig{Name: rpc.List, Kind: portable.Query, Target: extension.ScopeInstallation, Description: "List memory items visible in the requested scope."})
 	if err != nil {
 		return nil, err
 	}
-	contracts.Add, err = qimumcp.NewMethod[rpc.AddInput, rpc.AddResult](qimumcp.MethodConfig{Name: rpc.Add, Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Add a human-authored memory item in the requested scope."})
+	contracts.Add, err = pluginmcp.NewMethod[rpc.AddInput, rpc.AddResult](portable.MethodConfig{Name: rpc.Add, Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Add a human-authored memory item in the requested scope."})
 	if err != nil {
 		return nil, err
 	}
-	contracts.Update, err = qimumcp.NewMethod[rpc.UpdateInput, memory.ItemSnapshot](qimumcp.MethodConfig{Name: rpc.Update, Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Edit the current content or pin state of a memory item."})
+	contracts.Update, err = pluginmcp.NewMethod[rpc.UpdateInput, memory.ItemSnapshot](portable.MethodConfig{Name: rpc.Update, Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Edit the current content or pin state of a memory item."})
 	if err != nil {
 		return nil, err
 	}
-	contracts.Delete, err = qimumcp.NewMethod[rpc.ItemInput, rpc.Ack](qimumcp.MethodConfig{Name: rpc.Delete, Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Delete one memory item through its private owner."})
+	contracts.Delete, err = pluginmcp.NewMethod[rpc.ItemInput, rpc.Ack](portable.MethodConfig{Name: rpc.Delete, Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Delete one memory item through its private owner."})
 	if err != nil {
 		return nil, err
 	}
-	contracts.Review, err = qimumcp.NewMethod[rpc.ReviewInput, rpc.Ack](qimumcp.MethodConfig{Name: rpc.Review, Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Apply a human review decision to a pending memory item."})
+	contracts.Review, err = pluginmcp.NewMethod[rpc.ReviewInput, rpc.Ack](portable.MethodConfig{Name: rpc.Review, Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Apply a human review decision to a pending memory item."})
 	if err != nil {
 		return nil, err
 	}
-	contracts.Items, err = qimumcp.NewMethod[rpc.ItemsInput, []memory.ItemSnapshot](qimumcp.MethodConfig{Name: rpc.Items, Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read active memory items that can inform a Run."})
+	contracts.Items, err = pluginmcp.NewMethod[rpc.ItemsInput, []memory.ItemSnapshot](portable.MethodConfig{Name: rpc.Items, Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read active memory items that can inform a Run."})
 	if err != nil {
 		return nil, err
 	}
-	contracts.Search, err = qimumcp.NewMethod[rpc.SearchInput, []memory.ItemSnapshot](qimumcp.MethodConfig{Name: rpc.Search, Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Rank active memories for the supplied project and query."})
+	contracts.Search, err = pluginmcp.NewMethod[rpc.SearchInput, []memory.ItemSnapshot](portable.MethodConfig{Name: rpc.Search, Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Rank active memories for the supplied project and query."})
 	if err != nil {
 		return nil, err
 	}
-	contracts.Maintain, err = qimumcp.NewMethod[rpc.MaintenanceInput, rpc.MaintenanceResult](qimumcp.MethodConfig{Name: rpc.Maintain, Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Extract and curate captured conversation under the private ledger and watermark."})
+	contracts.Maintain, err = pluginmcp.NewMethod[rpc.MaintenanceInput, rpc.MaintenanceResult](portable.MethodConfig{Name: rpc.Maintain, Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Extract and curate captured conversation under the private ledger and watermark."})
 	if err != nil {
 		return nil, err
 	}
-	contracts.Capability, err = portable.NewCapability(portable.CapabilityConfig{Reference: "memory", Composition: portable.Selection, Scope: extension.ScopeInstallation}, contracts.List.Descriptor(), contracts.Add.Descriptor(), contracts.Update.Descriptor(), contracts.Delete.Descriptor(), contracts.Review.Descriptor(), contracts.Items.Descriptor(), contracts.Search.Descriptor(), contracts.Maintain.Descriptor())
+	contracts.Capability, err = plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "memory", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, contracts.List.Descriptor(), contracts.Add.Descriptor(), contracts.Update.Descriptor(), contracts.Delete.Descriptor(), contracts.Review.Descriptor(), contracts.Items.Descriptor(), contracts.Search.Descriptor(), contracts.Maintain.Descriptor())
 	if err != nil {
 		return nil, err
 	}

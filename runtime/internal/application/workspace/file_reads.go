@@ -14,7 +14,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
-	"github.com/Tangerg/frame/cancellation"
 	"github.com/samber/lo"
 )
 
@@ -256,7 +255,7 @@ func (f *Files) readFile(ctx context.Context, root string, input FileReadPlan) (
 // Grep searches a workspace root or an existing subdirectory. A truncated
 // search returns an honest total rather than silently under-reporting hits.
 func (f *Files) Grep(ctx context.Context, cwd string, input GrepInput) (GrepResult, error) {
-	if cause := cancellation.Err(ctx); cause != nil {
+	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		return GrepResult{}, cause
 	}
 	if input.Query == "" {

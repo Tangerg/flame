@@ -9,48 +9,46 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/program"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/program"
+	"github.com/Tangerg/oolong/ui/core/scene"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
-func TestApprovalPaneRoutesInputToTheLastPresentedForm(t *testing.T) {
+func TestApprovalPaneRoutesInputOnlyToItsMountedForm(t *testing.T) {
 	transcript := testTranscriptView(t)
-	pane := approvalPane{
-		theme: transcript.theme, glyphs: transcript.glyphs,
-		detail: kit.NewParagraph("", transcript.theme.Text),
-	}
-	pane.view = kit.Transcript{
-		Content: &pane.preview, Scroll: &pane.scroll,
-		Theme: transcript.theme, Glyphs: transcript.glyphs,
-	}
+	pane := approvalPane{theme: transcript.theme, glyphs: transcript.glyphs, detail: kit.NewParagraph("", transcript.theme.Text)}
+	pane.initialize(input.Wheel{})
 	form := func(done func()) *kit.Form {
-		choice := "only"
-		selectField := headless.NewSelect(headless.SelectConfig[string]{Same: headless.Equal[string], Value: headless.Bind(&choice), Rows: 1})
-		selectField.SetOptions([]headless.Option[string]{{Label: "Only", Value: "only"}})
-		controller := headless.NewForm(selectField)
-		controller.Done = done
-		return kit.NewForm(kit.FormConfig{Theme: transcript.theme, Glyphs: transcript.glyphs, Controller: controller})
+		field := base.NewSelect(base.SelectConfig[string]{Same: base.Equal[string], Initial: "only", Rows: 1, Options: []base.Option[string]{{Label: "Only", Value: "only"}}})
+		return kit.NewForm(kit.FormConfig{Theme: transcript.theme, Glyphs: transcript.glyphs, Fields: []base.Field{field}, Submit: func(base.SubmissionID) (scene.ActionState, error) { done(); return scene.Applied, nil }})
 	}
 	oldCalls, currentCalls := 0, 0
-	pane.form = form(func() { oldCalls++ })
-	pane.Focus(true)
-	root := headless.NewRoot(&pane)
+	pane.setForm(form(func() { oldCalls++ }), func() { t.Fatal("unexpected old form navigation") })
+	root := newSceneTestRoot(t, pane.Element())
+	if err := pane.form.Element().RequestFocusFirst(); err != nil {
+		t.Fatal(err)
+	}
 	surface := grid.NewSurface(80, 20)
 	root.Draw(surface.View())
-
-	pane.form = form(func() { currentCalls++ })
-	root.Handle(input.Key{Code: input.Enter})
-	if oldCalls != 1 || currentCalls != 0 {
-		t.Fatalf("stale frame routed to old=%d current=%d forms", oldCalls, currentCalls)
+	retired := pane.form.Element().Target()
+	pane.setForm(form(func() { currentCalls++ }), func() { t.Fatal("unexpected current form navigation") })
+	if retired.Valid() {
+		t.Fatal("replaced approval form kept an input attachment")
 	}
-
+	if err := pane.form.Element().RequestFocusFirst(); err != nil {
+		t.Fatal(err)
+	}
+	root.Handle(input.Key{Code: input.Enter})
+	if oldCalls != 0 || currentCalls != 1 {
+		t.Fatalf("input routed to retired=%d current=%d forms", oldCalls, currentCalls)
+	}
 	root.Draw(surface.View())
 	root.Handle(input.Key{Code: input.Enter})
-	if oldCalls != 1 || currentCalls != 1 {
-		t.Fatalf("current frame routed to old=%d current=%d forms", oldCalls, currentCalls)
+	if oldCalls != 0 || currentCalls != 2 {
+		t.Fatalf("current frame routed to retired=%d current=%d forms", oldCalls, currentCalls)
 	}
 }
 
@@ -60,8 +58,11 @@ func TestReplacedApprovalFormCannotMutateTheCurrentDraft(t *testing.T) {
 	prompts.approval = &conversation.Approval{}
 	prompts.setApprovalForm(approvalAllowOnce)
 	retired := prompts.approvalDraft
-	prompts.approvalPane.Focus(true)
-	root := headless.NewRoot(&prompts.approvalPane)
+	prompts.approvalDialog.Show()
+	root := newSceneTestRoot(t, prompts.stack.Element())
+	if err := prompts.approvalPane.form.Element().RequestFocusFirst(); err != nil {
+		t.Fatal(err)
+	}
 	surface := grid.NewSurface(80, 20)
 	root.Draw(surface.View())
 
@@ -70,8 +71,8 @@ func TestReplacedApprovalFormCannotMutateTheCurrentDraft(t *testing.T) {
 	prompts.approvalDraft = &approvalDecisionDraft{}
 	prompts.setApprovalForm(approvalAllowOnce)
 	root.Handle(input.Key{Code: input.Down})
-	if retired.choice != approvalDenyOnce {
-		t.Fatalf("retired draft choice = %q, want deny once", retired.choice)
+	if retired.choice != approvalAllowOnce {
+		t.Fatalf("retired draft choice = %q, want unchanged allow once", retired.choice)
 	}
 	if current := prompts.approvalDraft.choice; current != approvalAllowOnce {
 		t.Fatalf("current draft choice = %q after stale input, want allow once", current)
@@ -115,7 +116,7 @@ func TestApprovalChoiceMapsEveryDecisionAndRememberScope(t *testing.T) {
 
 func TestApprovalOptionsKeepOneShotActionsStableAndExposeRememberedDenials(t *testing.T) {
 	t.Parallel()
-	values := func(options []headless.Option[approvalAction]) []approvalAction {
+	values := func(options []base.Option[approvalAction]) []approvalAction {
 		return slices.Collect(func(yield func(approvalAction) bool) {
 			for _, option := range options {
 				if !yield(option.Value) {
@@ -195,7 +196,9 @@ func TestApprovalFormPreservesDenialWhenRememberingBecomesUnavailable(t *testing
 	}
 	previous := prompts.approvalForm
 	prompts.setApprovalForm(approvalAction("invalid"))
-	previous.Done()
+	if _, err := previous.Submit(); err != nil {
+		t.Fatal(err)
+	}
 	if prompts.approvalForm != nil || prompts.approvalPane.form != nil {
 		t.Fatal("unknown action left an answerable approval form")
 	}
@@ -230,8 +233,8 @@ func (p *promptRunProbe) message(label string)   { p.messages = append(p.message
 func testInterruptPrompts(t *testing.T) *interruptPrompts {
 	t.Helper()
 	transcript := testTranscriptView(t)
-	stack := &headless.Stack{}
-	stack.SetBase(transcript)
+	stack := &workspaceScene{}
+	stack.setWorkbench(transcript.Element())
 	return newInterruptPrompts(interruptPromptsConfig{
 		run: &promptRunProbe{}, remember: func() settings.RememberPreference { return settings.RememberNone },
 		stack: stack, theme: transcript.theme, glyphs: transcript.glyphs, syntax: transcript.syntax,

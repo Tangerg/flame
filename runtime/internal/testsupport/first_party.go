@@ -54,7 +54,7 @@ func RunWithFirstPartyPackages(tests *testing.M) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	if err := os.Remove(filepath.Join(filepath.Dir(executable), "qimu-runner")); err != nil {
+	if err := os.Remove(filepath.Join(filepath.Dir(executable), "frame-runner")); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
@@ -137,7 +137,7 @@ func prepareRunner(executable string) error {
 	if err != nil {
 		return err
 	}
-	command := exec.Command(filepath.Join(goruntime.GOROOT(), "bin", "go"), "build", "-mod=readonly", "-o", runner, "github.com/Tangerg/qimu/runner/cmd/qimu-runner")
+	command := exec.Command(filepath.Join(goruntime.GOROOT(), "bin", "go"), "build", "-mod=readonly", "-o", runner, "github.com/Tangerg/frame/cmd/frame-runner")
 	command.Dir = filepath.Join(filepath.Dir(file), "../..")
 	command.Stdout, command.Stderr = os.Stdout, os.Stderr
 	return command.Run()

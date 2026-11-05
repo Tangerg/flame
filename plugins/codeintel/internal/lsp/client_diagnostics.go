@@ -7,7 +7,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/frame/cancellation"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
@@ -29,7 +28,7 @@ func (e *DiagnosticsPendingError) Error() string {
 func (c *client) diagnostics(ctx context.Context, abs string, settle time.Duration) ([]Diagnostic, error) {
 	content, err := readDocument(ctx, c.workspace, abs)
 	if err != nil {
-		return nil, errors.Join(err, cancellation.Err(ctx))
+		return nil, errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx)))
 	}
 	return c.diagnosticsContent(ctx, abs, content, settle)
 }
@@ -66,7 +65,7 @@ func (c *client) diagnosticsVersion(ctx context.Context, abs string, version int
 	defer deadline.Stop()
 	expired := false
 	for {
-		if err := cancellation.Err(ctx); err != nil {
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			return nil, err
 		}
 		select {

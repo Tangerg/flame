@@ -34,7 +34,7 @@ go run ./runtime/cmd/pluginpack --source "$PWD/out/plugins/composition/provider"
 ```
 
 Use new output directories for each release. The original `pluginpack` builder
-projects the source metadata into Qimu's `manifest.json` and `plugin.lock.json`;
+projects the source metadata into Frame's `manifest.json` and `plugin.lock.json`;
 the source directories are not installable releases. These packages contain only
 portable component resources, so no native build target is required.
 

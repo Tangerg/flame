@@ -4,7 +4,10 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"fmt"
-	"github.com/Tangerg/qimu/portable"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,8 +19,8 @@ import (
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 func TestInvocationConflictRuntimeFixture(t *testing.T) {
@@ -31,7 +34,7 @@ func TestInvocationConflictRuntimeFixture(t *testing.T) {
 		t.Fatalf("read initial review: %+v, %v", initial, err)
 	}
 	prior := reviews.Update{ID: "prior-private-call", ExpectedRevision: 1, Status: reviews.Open}
-	admitted, err := jsonvalue.Encode(prior)
+	admitted, err := framevalue.EncodeJSON(prior)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,8 +68,8 @@ func TestInvocationConflictRuntimeFixture(t *testing.T) {
 		return func(ctx context.Context, method string, request sdk.Request) (sdk.Result, error) {
 			if call, ok := request.(*sdk.CallToolRequest); ok && call.Params != nil && call.Params.Name == "update_review" {
 				if toolUpdates.Add(1) == 1 {
-					var invocation portable.Invocation
-					if err := json.Unmarshal(call.Params.Meta[qimumcp.InvocationMetadataKey], &invocation, json.RejectUnknownMembers(true)); err != nil {
+					var invocation framemcp.Invocation
+					if err := json.Unmarshal(call.Params.Meta[pluginmcp.InvocationMetadataKey], &invocation, json.RejectUnknownMembers(true)); err != nil {
 						return nil, err
 					}
 					if err := invocation.Validate(); err != nil {
@@ -99,7 +102,7 @@ func TestInvocationConflictRuntimeFixture(t *testing.T) {
 						return nil, err
 					}
 				}
-			case qimumcp.ReceiptMethod:
+			case pluginmcp.ReceiptMethod:
 				receiptReads.Add(1)
 			}
 			return next(ctx, method, request)
@@ -128,11 +131,11 @@ func TestInvocationConflictRuntimeFixture(t *testing.T) {
 		t.Fatalf("expected distinct prior Tool and typed identities: %v", priorIDs)
 	}
 	for _, id := range priorIDs {
-		receipt, err := store.receipt(t.Context(), qimumcp.ReceiptRequest{ID: qimumcp.CommandID(id), Method: contracts.Update.Name(), InputDigest: admitted.Digest()}, contracts.Update.Name())
+		receipt, err := store.receipt(t.Context(), pluginmcp.ReceiptRequest{ID: pluginmcp.CommandID(id), Method: contracts.Update.Name(), InputDigest: admitted.Digest()}, contracts.Update.Name())
 		if err != nil || !receipt.Found {
 			t.Fatalf("original private receipt lost: %+v, %v", receipt, err)
 		}
-		result, err := qimumcp.DecodeReply[reviews.UpdateResult](receipt.Reply)
+		result, err := pluginmcp.DecodeReply[reviews.UpdateResult](receipt.Reply)
 		if err != nil || result != (reviews.UpdateResult{Type: reviews.NotFound}) {
 			t.Fatalf("conflict overwrote original private outcome: %+v, %v", result, err)
 		}

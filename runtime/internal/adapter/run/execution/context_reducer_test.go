@@ -1,6 +1,8 @@
 package execution
 
 import (
+	corecontent "github.com/Tangerg/scope/core/content"
+
 	"encoding/json/jsontext"
 	"testing"
 
@@ -40,8 +42,8 @@ func TestFrozenInstructionsPreserveExactMetadataNumbers(t *testing.T) {
 
 func TestFrozenInstructionsPreserveCitations(t *testing.T) {
 	frozen := chat.NewSystemMessage("Follow the cited workspace policy.")
-	frozen.Parts[0].Citations = []chat.Citation{{
-		Source: chat.CitationSource{Kind: chat.CitationSourceReference, Value: "workspace-policy"},
+	frozen.Parts[0].Citations = []corecontent.Citation{{
+		Source: corecontent.CitationSource{Kind: corecontent.CitationSourceReference, Value: "workspace-policy"},
 		Title:  "Policy", Quote: "Require approval before publishing.",
 	}}
 	for name, mutate := range map[string]func(*chat.Message){

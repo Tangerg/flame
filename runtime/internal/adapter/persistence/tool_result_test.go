@@ -17,7 +17,7 @@ func toolResultStoreFixture(t *testing.T) *ToolResultStore {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return newToolResultStore(db)
+	return newToolResultStore(databaseFor(db))
 }
 
 func stageShellResult(t *testing.T, store *ToolResultStore, sessionID, body string) transcript.ToolResultID {

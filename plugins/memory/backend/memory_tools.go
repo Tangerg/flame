@@ -6,8 +6,9 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
@@ -16,12 +17,11 @@ import (
 	app "github.com/Tangerg/flame/plugins/memory/internal/application"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/scope/core/chat"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
+	"github.com/Tangerg/scope/core/jsonschema"
 	tool "github.com/Tangerg/scope/core/tool"
-	"github.com/invopop/jsonschema"
 )
 
 const (
@@ -68,10 +68,8 @@ type listMemoryArgs struct {
 	Limit  *int         `json:"limit,omitzero" jsonschema:"minimum=1"`
 }
 
-func (listMemoryArgs) JSONSchemaExtend(schema *jsonschema.Schema) {
-	if limit, ok := schema.Properties.Get("limit"); ok {
-		limit.Maximum = jsonvalue.Number(strconv.Itoa(memory.MaxManagementPageItems))
-	}
+func (listMemoryArgs) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{"limit": {Maximum: new(float64(memory.MaxManagementPageItems))}}}
 }
 
 type memoryPage struct {
@@ -91,10 +89,8 @@ type memoryItemArgs struct {
 	ExpectedRevision uint64       `json:"expected_revision" jsonschema:"minimum=1" jsonschema_description:"Exact revision returned by search_memory or list_memories. Reread after a revision conflict; never guess the current revision."`
 }
 
-func (memoryItemArgs) JSONSchemaExtend(schema *jsonschema.Schema) {
-	if revision, ok := schema.Properties.Get("expected_revision"); ok {
-		revision.Maximum = jsonvalue.Number(strconv.FormatUint(exactint.Maximum, 10))
-	}
+func (memoryItemArgs) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{"expected_revision": {Maximum: new(float64(exactint.Maximum))}}}
 }
 
 type updateMemoryArgs struct {
@@ -222,7 +218,7 @@ func memoryToolCommand[P, R any](ctx context.Context, db *sql.DB, name string, a
 	if err != nil {
 		return zero, pluginsdk.DefiniteToolFailure(err)
 	}
-	admitted, err := qimumcp.RequestInput(ctx)
+	admitted, err := pluginmcp.RequestInput(ctx)
 	if err != nil {
 		return zero, pluginsdk.DefiniteToolFailure(err)
 	}
@@ -235,13 +231,13 @@ func memoryToolFailure(name string, err error) error {
 		return nil
 	}
 	wrapped := fmt.Errorf("%s: %w", name, err)
-	if _, known := errors.AsType[*portable.Refusal](err); known {
+	if _, known := errors.AsType[*framemcp.Refusal](err); known {
 		return pluginsdk.DefiniteToolFailure(wrapped)
 	}
 	return wrapped
 }
 
-func memoryToolReceipt(ctx context.Context, db *sql.DB, input qimumcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
+func memoryToolReceipt(ctx context.Context, db *sql.DB, input pluginmcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
 	switch input.Method {
 	case addMemoryTool, updateMemoryTool, deleteMemoryTool, reviewMemoryTool:
 	default:
@@ -251,7 +247,7 @@ func memoryToolReceipt(ctx context.Context, db *sql.DB, input qimumcp.ReceiptReq
 	if err != nil || !receipt.Found {
 		return pluginsdk.ToolReceipt{}, err
 	}
-	value, err := qimumcp.DecodeReply[jsontext.Value](receipt.Reply)
+	value, err := pluginmcp.DecodeReply[jsontext.Value](receipt.Reply)
 	if err != nil {
 		failure, known := tool.ClassifyFailure(memoryToolFailure(input.Method, err))
 		if !known {
@@ -259,7 +255,7 @@ func memoryToolReceipt(ctx context.Context, db *sql.DB, input qimumcp.ReceiptReq
 		}
 		return pluginsdk.NewToolReceipt(failure.Output(), true)
 	}
-	output, err := chat.NewJSONToolOutput(value)
+	output, err := tool.NewJSONOutput(value)
 	if err != nil {
 		return pluginsdk.ToolReceipt{}, err
 	}

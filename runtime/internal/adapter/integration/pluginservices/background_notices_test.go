@@ -5,18 +5,20 @@ import (
 	"errors"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestBackgroundNoticesRequireTheirOwnEnabledContribution(t *testing.T) {
 	name := testsupport.ServerName("records")
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "records", Scope: extension.ScopeInstallation, Composition: portable.Selection}, portable.MethodDescriptor{Name: "records.read", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read records.", Input: []byte(`{"type":"object","additionalProperties":false}`), Output: []byte(`{"type":"string"}`)})
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "records", Scope: extension.ScopeInstallation, Composition: plugincontract.Selection}, portable.MethodDescriptor{Name: "records.read", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read records.", Input: []byte(`{"type":"object","additionalProperties":false}`), Output: []byte(`{"type":"string"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}

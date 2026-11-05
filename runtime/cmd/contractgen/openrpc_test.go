@@ -5,10 +5,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/wiregen"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/qimu/contractgen"
 )
 
 func TestTrajectoryCapabilityPublicationsFollowRegistry(t *testing.T) {
@@ -41,7 +42,7 @@ func TestOpenRPCPublishesAckNullableAndNotificationResults(t *testing.T) {
 	document := newOpenRPC(registry, shapes, testWalkWireTypes(t, registry, shapes))
 
 	ack := openRPCMethod(t, document, "sessions.delete")
-	if ack.Result == nil || ack.Result.Schema == nil || ack.Result.Schema.Type != contractgen.SchemaTypeObject {
+	if ack.Result == nil || ack.Result.Schema == nil || ack.Result.Schema.Type != wiregen.SchemaTypeObject {
 		t.Fatalf("sessions.delete result = %#v, want an explicit object acknowledgement", ack.Result)
 	}
 
@@ -51,7 +52,7 @@ func TestOpenRPCPublishesAckNullableAndNotificationResults(t *testing.T) {
 	}
 	foundNull := false
 	for _, option := range nullable.Result.Schema.AnyOf {
-		foundNull = foundNull || option.Type == contractgen.SchemaTypeNull
+		foundNull = foundNull || option.Type == wiregen.SchemaTypeNull
 	}
 	if !foundNull {
 		t.Fatalf("goals.get result anyOf = %#v, want a null option", nullable.Result.Schema.AnyOf)

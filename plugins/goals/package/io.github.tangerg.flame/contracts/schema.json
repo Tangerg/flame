@@ -4,8 +4,58 @@
     "DecideV1Input": {
       "$ref": "#/$defs/Request"
     },
+    "DecideV1InputGoalworkflowValue": {
+      "additionalProperties": false,
+      "properties": {
+        "explanation": {
+          "type": "string"
+        },
+        "objective": {
+          "type": "string"
+        },
+        "outcome": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "objective",
+        "status"
+      ],
+      "type": "object"
+    },
     "DecideV1Output": {
       "$ref": "#/$defs/Decision"
+    },
+    "DecideV1OutputGoalworkflowValue": {
+      "additionalProperties": false,
+      "properties": {
+        "explanation": {
+          "type": "string"
+        },
+        "objective": {
+          "type": "string"
+        },
+        "outcome": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "objective",
+        "status"
+      ],
+      "type": "object"
     },
     "Decision": {
       "additionalProperties": false,
@@ -14,7 +64,7 @@
           "type": "string"
         },
         "next": {
-          "$ref": "#/$defs/Value"
+          "$ref": "#/$defs/DecideV1OutputGoalworkflowValue"
         },
         "refusal": {
           "type": "string"
@@ -26,7 +76,7 @@
       "additionalProperties": false,
       "properties": {
         "current": {
-          "$ref": "#/$defs/Value"
+          "$ref": "#/$defs/DecideV1InputGoalworkflowValue"
         },
         "explanation": {
           "type": "string"
@@ -55,31 +105,6 @@
       },
       "required": [
         "signal"
-      ],
-      "type": "object"
-    },
-    "Value": {
-      "additionalProperties": false,
-      "properties": {
-        "explanation": {
-          "type": "string"
-        },
-        "objective": {
-          "type": "string"
-        },
-        "outcome": {
-          "type": "string"
-        },
-        "reason": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "objective",
-        "status"
       ],
       "type": "object"
     }

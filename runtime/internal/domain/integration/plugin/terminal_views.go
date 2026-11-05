@@ -6,11 +6,13 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 // TerminalView is a management surface a package contributes to terminal
@@ -71,7 +73,7 @@ type InputBinding struct {
 // the member Source names is set.
 type Binding struct {
 	Source  extension.TerminalBindingSource
-	Literal jsonvalue.Value
+	Literal framevalue.JSON
 	Field   string
 	Context extension.TerminalContext
 	Form    *FormField
@@ -137,7 +139,7 @@ func (b *Builder) AdmitTerminalView(value TerminalView) error {
 	if !found {
 		return refuse(DiagnosticInvalidDependencies, "terminal view %q has no declared callable contribution", value.ID)
 	}
-	contract, err := portable.ParseCapability(contribution.Contract.JSON())
+	contract, err := plugincontract.ParseCapability(contribution.Contract.Bytes())
 	if err != nil {
 		return refuse(DiagnosticInvalidDependencies, "terminal view %q contract: %v", value.ID, err)
 	}
@@ -166,7 +168,7 @@ func validTerminalTitle(title string) bool {
 	return title != "" && len(title) <= MaxPresentationTitleBytes && utf8.ValidString(title)
 }
 
-func admitTerminalList(contract *portable.Capability, list TerminalList) error {
+func admitTerminalList(contract *plugincontract.Capability, list TerminalList) error {
 	method, err := terminalMethod(contract, list.Method)
 	if err != nil {
 		return err
@@ -202,7 +204,7 @@ func admitTerminalList(contract *portable.Capability, list TerminalList) error {
 
 // listRowSchema resolves the schema of one row, which row bindings, the key and
 // the columns read.
-func listRowSchema(contract *portable.Capability, list TerminalList) (schemaNode, error) {
+func listRowSchema(contract *plugincontract.Capability, list TerminalList) (schemaNode, error) {
 	method, _ := contract.Method(list.Method)
 	output, err := newSchemaNode(method.Descriptor().Output)
 	if err != nil {
@@ -233,7 +235,7 @@ func listRowSchema(contract *portable.Capability, list TerminalList) (schemaNode
 	return row, nil
 }
 
-func admitTerminalAction(contract *portable.Capability, row schemaNode, action TerminalAction) error {
+func admitTerminalAction(contract *plugincontract.Capability, row schemaNode, action TerminalAction) error {
 	if !identity.ValidDeclarationID(action.ID) {
 		return fmt.Errorf("invalid action identity")
 	}
@@ -258,7 +260,7 @@ func admitTerminalAction(contract *portable.Capability, row schemaNode, action T
 	return admitBindings(input, action.Input, rows, nil)
 }
 
-func terminalMethod(contract *portable.Capability, name string) (*portable.Method, error) {
+func terminalMethod(contract *plugincontract.Capability, name string) (*portable.Method, error) {
 	method, found := contract.Method(name)
 	if !found {
 		return nil, fmt.Errorf("method %q is not in the contribution contract", name)
@@ -296,7 +298,7 @@ func admitBindings(input schemaNode, bindings []InputBinding, row *schemaNode, a
 func admitBinding(value Binding, property schemaNode, row *schemaNode, formAllowed bool) error {
 	switch value.Source {
 	case extension.TerminalBindingValue:
-		if len(value.Literal.JSON()) == 0 {
+		if len(value.Literal.Bytes()) == 0 {
 			return fmt.Errorf("value binding has no value")
 		}
 	case extension.TerminalBindingRow:

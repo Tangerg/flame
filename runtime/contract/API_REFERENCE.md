@@ -121,7 +121,7 @@ Protocol `2026-10-30.2` · 105 methods
 
 | name | kind | method | path | authentication | response statuses | response | projects |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `pluginControl` | pluginControl | `POST` | `/v2/qimu` | pluginRealm | 200, 401, 409, 503 | — | — |
+| `pluginControl` | pluginControl | `POST` | `/v2/frame` | pluginRealm | 200, 401, 409, 503 | — | — |
 | `pluginResources` | resource | `GET` | `/v2/plugin-resources/{lease}/*` | resourceLease | 200, 410, 500 | — | `plugins.readResource` |
 | `rpc` | rpc | `POST` | `/v2/rpc` | localToken | 200, 202, 204 | — | — |
 | `info` | sidecar | `GET` | `/v2/info` | none | 200 | `schema.json#/$defs/RuntimeInfo` | — |
@@ -1008,6 +1008,7 @@ TypeScript validator from this single registry projection.
 | `PluginBrowserSession` | `controlEndpoint` | `nonEmpty` |
 | `PluginBrowserSession` | `maximumMessageBytes` | `positive` |
 | `PluginBrowserSession` | `proofCapacity` | `positive` |
+| `PluginBrowserSession` | `preparationCapacity` | `positive` |
 | `PluginBrowserSession` | `pollIntervalMilliseconds` | `positive` |
 | `PluginClientComponent` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginClientComponent` | `contribution` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |

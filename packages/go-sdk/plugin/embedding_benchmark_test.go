@@ -3,21 +3,23 @@ package plugin
 import (
 	"context"
 	"fmt"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"net/http"
 	"strings"
 	"testing"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func BenchmarkTextEmbeddingCallback(b *testing.B) {
 	for _, size := range []int{1, 16} {
 		b.Run(fmt.Sprintf("texts=%d", size), func(b *testing.B) {
-			callbacks := qimumcp.NewCallbacks()
+			callbacks := pluginmcp.NewCallbacks()
 			b.Cleanup(func() { _ = callbacks.Close() })
 			session := new(sdk.ClientSession)
 			if err := callbacks.AdmitSession(session); err != nil {
@@ -32,7 +34,7 @@ func BenchmarkTextEmbeddingCallback(b *testing.B) {
 					vectors[i][j] = 0.125
 				}
 			}
-			callback, err := NewTextEmbeddingCallback(func(context.Context, qimumcp.Command[[]string]) (TextEmbeddings, error) {
+			callback, err := NewTextEmbeddingCallback(func(context.Context, pluginmcp.Command[[]string]) (TextEmbeddings, error) {
 				return TextEmbeddings{Space: "captured-space", Vectors: vectors}, nil
 			})
 			if err != nil {
@@ -41,13 +43,13 @@ func BenchmarkTextEmbeddingCallback(b *testing.B) {
 			if err := callbacks.PublishRPC(http.NotFoundHandler(), callback); err != nil {
 				b.Fatal(err)
 			}
-			ctx, err := qimumcp.WithInvocation(b.Context(), portable.Invocation{ID: "knowledge-operation", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "knowledge"}})
+			ctx, err := pluginmcp.WithInvocation(b.Context(), framemcp.Invocation{ID: "knowledge-operation", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "knowledge"}})
 			if err != nil {
 				b.Fatal(err)
 			}
 			b.ReportAllocs()
 			for b.Loop() {
-				ref, release, err := callbacks.OpenRPC(ctx, session, qimumcp.CallbackLimits{MaxRequestBytes: 1 << 20, MaxResponseBytes: 1 << 20})
+				ref, release, err := callbacks.OpenRPC(ctx, session, pluginmcp.CallbackLimits{MaxRequestBytes: 1 << 20, MaxResponseBytes: 1 << 20})
 				if err != nil {
 					b.Fatal(err)
 				}

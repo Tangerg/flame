@@ -7,7 +7,7 @@ export const composerRunOptions = (composerAccess: ComposerAccess) =>
   definePlugin({
     name: "flame.builtin.composer-run-options",
     setup(ctx) {
-      ctx.contribute(AGENT_RUN_OPTIONS, {
+      ctx.contributions.add(AGENT_RUN_OPTIONS, {
         id: "composer.model",
         priority: 0,
         resolve: () => resolveComposerRunOptions(selectedComposerModelPreference(composerAccess)),

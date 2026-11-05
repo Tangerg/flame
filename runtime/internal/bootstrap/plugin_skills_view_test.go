@@ -4,16 +4,17 @@ import (
 	"encoding/base64"
 	json "encoding/json/v2"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/scope/core/chat"
-	toolcontract "github.com/Tangerg/scope/core/tool"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/scope/core/chat"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
@@ -63,7 +64,7 @@ func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *tes
 		if err != nil {
 			t.Fatal(err)
 		}
-		invocation, err := bound.Contract().Prepare(chat.ToolCall{ID: key, Name: bound.Contract().Definition().Name, Arguments: string(args)}, nil)
+		invocation, err := bound.Contract().Prepare((chat.ToolCall{ID: key, Name: bound.Contract().Definition().Name, Arguments: string(args)}).Request(), toolcontract.Admission{})
 		if err != nil {
 			t.Fatal(err)
 		}

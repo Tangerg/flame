@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/frame"
 )
 
 func sampleAcceptance() runs.CommandAcceptance {
@@ -18,6 +20,38 @@ func sampleAcceptance() runs.CommandAcceptance {
 		Operation:   runs.CommandStartOpening,
 		SessionID:   "session_accept", RunID: "run_accept",
 		SegmentID: "segment_accept", UserItemID: "item_accept",
+	}
+}
+
+func TestCommandAcceptanceLookupRemainsReadOnlyDuringRecovery(t *testing.T) {
+	ctx := t.Context()
+	stores, err := Open(ctx, Config{DataDirectory: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = stores.Close() })
+	acceptance := sampleAcceptance()
+	draft := run.Draft{
+		RunID: acceptance.RunID, SessionID: acceptance.SessionID, SegmentID: acceptance.SegmentID,
+		ModelSelection: testsupport.MustModelSelection("test", "test-model"), CreatedAt: time.Unix(100, 0).UTC(),
+	}
+	if err := stores.Runs.Admit(ctx, draft); err != nil {
+		t.Fatal(err)
+	}
+	if err := stores.CommandAcceptances.Save(ctx, acceptance); err != nil {
+		t.Fatal(err)
+	}
+	cause := errors.New("original submission requires recovery")
+	stores.Admission.RequireRecovery(cause)
+	record, err := stores.CommandAcceptances.Lookup(ctx, acceptance.Key)
+	if err != nil || !record.Found || record.CurrentRun == nil || !record.Acceptance.Equal(acceptance) {
+		t.Fatalf("recovery blocked the original acceptance read: %+v, %v", record, err)
+	}
+	if err := stores.Admission.RecoveryError(); !errors.Is(err, cause) {
+		t.Fatalf("lookup cleared the original recovery barrier: %v", err)
+	}
+	if err := stores.CommandAcceptances.Save(ctx, acceptance); !errors.Is(err, frame.ErrRecoveryRequired) || !errors.Is(err, cause) {
+		t.Fatalf("lookup reopened write admission: %v", err)
 	}
 }
 
@@ -39,15 +73,15 @@ func TestCommandAcceptanceSurvivesReopenAndRetiresWithItsRun(t *testing.T) {
 		RunID: acceptance.RunID, SessionID: acceptance.SessionID, SegmentID: acceptance.SegmentID,
 		ModelSelection: testsupport.MustModelSelection("test", "test-model"), CreatedAt: time.Unix(100, 0).UTC(),
 	}
-	if err := newRunStore(db).Admit(ctx, admit); err != nil {
+	if err := newRunStore(databaseFor(db)).Admit(ctx, admit); err != nil {
 		t.Fatalf("admit run: %v", err)
 	}
-	if err := newCommandAcceptanceStore(db).Save(ctx, acceptance); err != nil {
+	if err := newCommandAcceptanceStore(databaseFor(db)).Save(ctx, acceptance); err != nil {
 		t.Fatalf("save acceptance: %v", err)
 	}
 	// A second write under the same key is the global-key refusal that keeps a
 	// retried opening from admitting a second Run.
-	if err := newCommandAcceptanceStore(db).Save(ctx, acceptance); err == nil {
+	if err := newCommandAcceptanceStore(databaseFor(db)).Save(ctx, acceptance); err == nil {
 		t.Fatal("re-saving the same key must violate the global command key")
 	}
 	if err := db.Close(); err != nil {
@@ -59,7 +93,7 @@ func TestCommandAcceptanceSurvivesReopenAndRetiresWithItsRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = reopened.Close() })
-	store := newCommandAcceptanceStore(reopened)
+	store := newCommandAcceptanceStore(databaseFor(reopened))
 
 	record, err := store.Lookup(ctx, acceptance.Key)
 	if err != nil {
@@ -84,7 +118,7 @@ func TestCommandAcceptanceSurvivesReopenAndRetiresWithItsRun(t *testing.T) {
 	}
 
 	// Importing the same RunID must not refill the retired material reference.
-	if err := newRunStore(reopened).Admit(ctx, admit); err != nil {
+	if err := newRunStore(databaseFor(reopened)).Admit(ctx, admit); err != nil {
 		t.Fatalf("re-admit run: %v", err)
 	}
 	refilled, err := store.Lookup(ctx, acceptance.Key)
@@ -112,7 +146,7 @@ func TestCommandAcceptanceLookupReportsForeignOperation(t *testing.T) {
 	); err != nil {
 		t.Fatalf("seed generic response: %v", err)
 	}
-	record, err := newCommandAcceptanceStore(db).Lookup(ctx, "cancel-once")
+	record, err := newCommandAcceptanceStore(databaseFor(db)).Lookup(ctx, "cancel-once")
 	if err != nil {
 		t.Fatalf("lookup foreign key: %v", err)
 	}

@@ -1,17 +1,21 @@
 package pluginservices
 
 import (
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
+
 	"errors"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -29,7 +33,7 @@ func TestModelProviderRejectsOversizedCompleteFrameBeforeDispatch(t *testing.T) 
 		t.Fatal(err)
 	}
 	use := &providerUse{owner: &ModelProviders{contract: contract}, binding: plugins.ContributionBinding{InstallationID: installation, Export: "model-provider"}, handle: modelprovider.Handle{ID: modelprovider.HandleID(strings.Repeat("a", 64))}, requestMethods: []string{method.Name()}}
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-call", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-call"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-call", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-call"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,8 +46,8 @@ func TestModelProviderRejectsOversizedCompleteFrameBeforeDispatch(t *testing.T) 
 		t.Fatalf("oversized complete request: fits=%t %v", fits, err)
 	}
 	response, err := (&providerChat{use: use}).Call(ctx, request)
-	failure, found := errors.AsType[*chat.CallFailure](err)
-	if response != nil || !found || failure.Kind != chat.CallFailureNotExecuted {
+	failure, found := errors.AsType[*coreinvocation.Failure](err)
+	if response != nil || !found || failure.Kind != coreinvocation.FailureNotExecuted {
 		t.Fatalf("local frame refusal lost execution evidence: %+v %v", response, err)
 	}
 }

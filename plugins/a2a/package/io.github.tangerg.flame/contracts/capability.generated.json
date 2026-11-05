@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.qimu/portable/1",
+  "protocol": "io.github.tangerg.flame/plugin/1",
   "reference": "flame.a2a.v1",
   "composition": "collection",
   "scope": "installation",

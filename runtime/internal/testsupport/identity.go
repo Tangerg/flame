@@ -4,12 +4,14 @@ import (
 	"context"
 	"testing"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/qimu/integrity"
+
 	"github.com/google/uuid"
 )
 
@@ -22,15 +24,15 @@ func BuiltInTool(t testing.TB, name builtincontract.Name) tool.Ref {
 	return ref
 }
 
-func ToolFingerprint(ref tool.Ref) integrity.Digest {
+func ToolFingerprint(ref tool.Ref) framevalue.Digest {
 	if ref.Kind() == tool.BuiltInKind {
-		return integrity.Digest{}
+		return framevalue.Digest{}
 	}
 	return Digest("source authority")
 }
 
 // Digest derives a distinct valid digest from seed.
-func Digest(seed string) integrity.Digest { return identity.DigestStrings(seed) }
+func Digest(seed string) framevalue.Digest { return identity.DigestStrings(seed) }
 
 // Release admits declaration as the release whose digest derives from seed.
 func Release(t testing.TB, seed string, declaration plugin.Declaration) plugin.Release {
@@ -83,15 +85,15 @@ func must[T any](value T, err error) T {
 
 type ToolAuthorities struct{}
 
-func (ToolAuthorities) Fingerprint(_ context.Context, ref tool.Ref) (integrity.Digest, bool, error) {
+func (ToolAuthorities) Fingerprint(_ context.Context, ref tool.Ref) (framevalue.Digest, bool, error) {
 	if err := ref.Validate(); err != nil {
-		return integrity.Digest{}, false, err
+		return framevalue.Digest{}, false, err
 	}
 	return ToolFingerprint(ref), true, nil
 }
 
-func (a ToolAuthorities) Fingerprints(ctx context.Context, refs []tool.Ref) (map[tool.Ref]integrity.Digest, error) {
-	result := make(map[tool.Ref]integrity.Digest, len(refs))
+func (a ToolAuthorities) Fingerprints(ctx context.Context, refs []tool.Ref) (map[tool.Ref]framevalue.Digest, error) {
+	result := make(map[tool.Ref]framevalue.Digest, len(refs))
 	for _, ref := range refs {
 		fingerprint, found, err := a.Fingerprint(ctx, ref)
 		if err != nil {

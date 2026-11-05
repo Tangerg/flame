@@ -78,7 +78,7 @@ type getter struct{ goals GoalReader }
 type outcomeReporter struct{ goals GoalOutcomeReporter }
 
 type goalResult struct {
-	Goal    *goalView `json:"goal"`
+	Goal    *goalView `json:"goal" jsonschema:"nullable"`
 	Message string    `json:"message,omitempty"`
 }
 

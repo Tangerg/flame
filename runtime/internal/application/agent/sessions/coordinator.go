@@ -12,8 +12,9 @@ package sessions
 import (
 	"context"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"

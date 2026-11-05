@@ -16,11 +16,10 @@ import (
 	"testing"
 	"time"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"
 	"golang.org/x/oauth2"
@@ -109,8 +108,8 @@ func TestReusableOAuthIsBoundToCredentialConfiguration(t *testing.T) {
 	}
 }
 
-func (c catalogTool) Definition() chat.ToolDefinition {
-	return chat.ToolDefinition{Name: string(c), InputSchema: jsontext.Value(`{"type":"object"}`)}
+func (c catalogTool) Definition() toolcontract.Definition {
+	return toolcontract.Definition{Name: string(c), InputSchema: jsontext.Value(`{"type":"object"}`)}
 }
 
 func (catalogTool) Call(context.Context, toolcontract.Invocation) (toolcontract.Result, error) {
@@ -974,7 +973,7 @@ func addRemoteTool(t *testing.T, server *sdkmcp.Server, name string) {
 	if err != nil {
 		t.Fatalf("build remote tool %q: %v", name, err)
 	}
-	if err := scopemcp.Register(server, tool); err != nil {
+	if err := scopemcp.Register(server, bindRegisteredTool(t, tool)); err != nil {
 		t.Fatalf("register remote tool %q: %v", name, err)
 	}
 }
@@ -1189,7 +1188,7 @@ func mustLaunch(t testing.TB, config ServerConfig) *launchPermit {
 
 // Transport invariants use the same validated ledger and startup ordering as Pool.
 func openConnections(ctx, lifetime context.Context, servers []ServerConfig, oauthSessions oauthSessionStore,
-	configuration func(context.Context, mcpserver.ID) (*launchPermit, error), callbacks *qimumcp.Callbacks,
+	configuration func(context.Context, mcpserver.ID) (*launchPermit, error), callbacks *pluginmcp.Callbacks,
 ) (*connections, error) {
 	c, err := newConnections(ctx, lifetime, servers, oauthSessions, callbacks)
 	if err != nil {

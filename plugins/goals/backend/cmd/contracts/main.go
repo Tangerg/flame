@@ -2,9 +2,10 @@ package main
 
 import (
 	json "encoding/json/v2"
-	goalmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/goalworkflow/mcp"
 	"log"
 	"os"
+
+	goalmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/goalworkflow/mcp"
 )
 
 func main() {

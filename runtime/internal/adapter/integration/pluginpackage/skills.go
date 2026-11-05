@@ -14,7 +14,6 @@ import (
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/frame/cancellation"
 	sdk "github.com/Tangerg/scope/skills"
 	"github.com/samber/lo"
 )
@@ -118,7 +117,7 @@ func (s *Skills) ReadSkillResource(ctx context.Context, dependency plugin.Depend
 		limit = domainskills.MaxAuthoredSkillDocumentBytes
 	}
 	content, err := s.releases.readResource(ctx, installation, "skills/"+name+"/"+resource, limit)
-	if cause := cancellation.Err(ctx); cause != nil {
+	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		return nil, errors.Join(cause, err)
 	}
 	if errors.Is(err, errResourceLimit) {

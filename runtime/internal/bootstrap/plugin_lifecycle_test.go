@@ -34,7 +34,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = scopemcp.Register(remote, executable); err != nil {
+	if err = scopemcp.Register(remote, bindRegisteredTool(t, executable)); err != nil {
 		t.Fatal(err)
 	}
 	server := httptest.NewServer(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil))
@@ -55,18 +55,21 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: "park", Name: "ask_user", Arguments: `{"questions":[{"question":"Review the pending work?"}]}`}))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
 	})}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}
 	cfg.modelProviders = testChatResolver(client)
 
 	host, api := buildPluginProtocolRuntime(t, cfg)
-	t.Cleanup(func() {
-		if err := host.Close(); err != nil {
-			t.Error(err)
-		}
-	})
+	cleanup := func(host *Instance) {
+		t.Cleanup(func() {
+			if err := host.Close(); err != nil {
+				t.Errorf("close plugin Runtime: %v", err)
+			}
+		})
+	}
+	cleanup(host)
 	endpoint := host.Endpoint()
 	options := delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
 	invoke := func(method delivery.Name, input any, key string) delivery.Result {
@@ -152,6 +155,9 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	if refused.Failure == nil || !errors.Is(refused.Failure, protocol.ErrMCPOwnedByInstallation) {
 		t.Fatalf("installation server CRUD: %v", refused.Failure)
 	}
+	fixture := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
+	skills := poMCPActivate(fixture, filepath.Join(firstPartyPackages, "skills"))
+	waitCallContributorState(t, fixture, skills.ID, protocol.MCPServerConnected)
 	discovered := must(delivery.SkillsDiscoveredList, protocol.WorkspaceQuery{Workspace: protocol.WorkspaceRef{Path: cfg.defaultWorkspacePath}}, "").(*protocol.SkillDiscovery)
 	if len(discovered.Skills) != 1 || discovered.Skills[0].Scope != protocol.SkillScopeInstallation || discovered.Skills[0].Installation == nil || discovered.Skills[0].Installation.InstallationID != installed.ID {
 		t.Fatalf("package skill provenance: %+v", discovered)
@@ -184,6 +190,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	}
 	reopenPluginStores(t, &cfg)
 	host, api = buildPluginProtocolRuntime(t, cfg)
+	cleanup(host)
 	endpoint = host.Endpoint()
 	replayed = must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-release").(*protocol.PluginInstallation)
 	if replayed.ID != installed.ID {

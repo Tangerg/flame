@@ -6,12 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestInstalledCallerCommitsWithDispatchAndOutlivesRunDeletion(t *testing.T) {
@@ -22,16 +24,16 @@ func TestInstalledCallerCommitsWithDispatchAndOutlivesRunDeletion(t *testing.T) 
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	draft := testsupport.RunDraft(run.Draft{RunID: "run_caller", SessionID: "ses_caller", SegmentID: "seg_caller", CreatedAt: time.Unix(100, 0)})
-	if err := newRunStore(db).Admit(t.Context(), draft); err != nil {
+	if err := newRunStore(databaseFor(db)).Admit(t.Context(), draft); err != nil {
 		t.Fatal(err)
 	}
 	id := testsupport.InstallationID(t)
-	source := plugin.ToolCallerSnapshot{Invocation: portable.Invocation{ID: "logical-tool", Parent: "process:original", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: id.String()}}, Tool: testsupport.MCPTool(testsupport.InstallationMCPServer(id, "schedules"), "run_schedule"), Release: testsupport.Digest("release"), Authority: testsupport.Digest("authority")}
+	source := plugin.ToolCallerSnapshot{Invocation: framemcp.Invocation{ID: "logical-tool", Parent: "process:original", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: id.String()}}, Tool: testsupport.MCPTool(testsupport.InstallationMCPServer(id, "schedules"), "run_schedule"), Release: testsupport.Digest("release"), Authority: testsupport.Digest("authority")}
 	caller, err := plugin.NewToolCaller(source)
 	if err != nil {
 		t.Fatal(err)
 	}
-	store := newToolInvocationStore(db)
+	store := newToolInvocationStore(databaseFor(db))
 	if err := store.StartToolInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, source.Invocation.ID, "item_caller", draft.CreatedAt, &caller); err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +71,7 @@ func TestInstalledCallerCommitsWithDispatchAndOutlivesRunDeletion(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	retained, found, err := newToolInvocationStore(db).ToolCaller(t.Context(), source.Invocation.ID)
+	retained, found, err := newToolInvocationStore(databaseFor(db)).ToolCaller(t.Context(), source.Invocation.ID)
 	if err != nil || !found || retained.Snapshot() != source {
 		t.Fatalf("deleted Run or restart changed original calling evidence: %t, %+v, %v", found, retained.Snapshot(), err)
 	}

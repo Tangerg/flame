@@ -65,7 +65,7 @@ contributions may share one backend; selection never equates their IDs with the
 server name. Installation reads these files without executing package code.
 The declaration uses the public `plugin.DeclarationProtocol`, currently
 `io.github.tangerg.flame/plugin/1`. This Flame metadata version is independent of
-the Qimu portable descriptor and transport versions.
+the Frame portable descriptor and transport versions.
 
 A callable contribution may declare named `requires` entries with `id`, a local
 `contract` resource path and `optional`. Resolution uses exact admitted contracts:
@@ -77,20 +77,20 @@ edges are checked across all contributions sharing an executable entry; optional
 collection members do not introduce startup edges. Managed admission captures
 one immutable dependency set, waits for required providers' already owned connection
 attempts, verifies the exact backend exports and methods, and sends the named set
-through `qimumcp.SetUp` and its compiled `qimumcp.SetupMethod` before publishing
+through `pluginmcp.SetUp` and its compiled `pluginmcp.SetupMethod` before publishing
 the session or Tools. Fresh cross-plugin
 installed calls check this captured set; a later selection changes a future
 activation without changing an existing binding. Failed setup retires callbacks,
 session and leased executable without changing desired enablement. The inspection
 query resolves current metadata and does not activate code.
 
-Go backend authors import `github.com/Tangerg/qimu/mcp` as `qimumcp` and
-register `qimumcp.Backend.OnSetup` before `Publish`. `qimumcp.Setup.Contributions`
+Go backend authors import `github.com/Tangerg/flame/packages/go-sdk/plugin/mcp` as `pluginmcp` and
+register `pluginmcp.Backend.OnSetup` before `Publish`. `pluginmcp.Setup.Contributions`
 returns detached named bindings; an optional absence has an empty list. Return a
 closer for acquired resources and honor the setup lifetime's cancellation. It is
 closed once after failure or session retirement; `Backend.Close` cancels and joins
 all setup lifetimes. TypeScript authors use the same generic setup contract
-through `@qimu/node`. Setup prepares registrations and collaborators; irreversible
+through `@flame/backend-sdk/mcp`. Setup prepares registrations and collaborators; irreversible
 business effects belong to explicit operations with their command/receipt contract.
 Point values and applicability are validated by the consumer-owned contract.
 Requirement inspection and the existing MCP connection status explain selected
@@ -114,7 +114,7 @@ including all workspace pages, renderers, native executables and the complete
 managed JavaScript graph.
 The same build copies each backend's generated contracts and declared resources.
 It invokes the prebuilt `pluginpack` author command to write the neutral
-`manifest.json` and `plugin.lock.json`, using the same Flame-to-Qimu projection as
+`manifest.json` and `plugin.lock.json`, using the same Flame-to-Frame projection as
 Runtime. Raw source directories without these files are not installable releases.
 GitHub uses the same package path with a declared optional secret token input;
 its unset configuration supports public reads without blocking catalog initialization.
@@ -183,9 +183,10 @@ production imports of test fixtures. Host integration tests exercise published
 contracts and installed executables. Author export carries a selected plugin's
 backend, required internal sources, component and release resources as one
 independent module; it does not grant Memory's canonical publisher authority.
-Generic method, setup, callback and receipt transport mechanisms have one Qimu
-implementation. Flame's public SDK retains its model roles, Tool adapters and
-product-specific contracts.
+Frame owns methods, schemas, invocations, exact JSON, instances and lifetimes.
+Flame's public MCP binding owns its setup, callback, stream and receipt vocabulary;
+Go and TypeScript consume one generated transport definition. Its model roles,
+Tool adapters and product contracts remain in their original public SDK.
 
 ## Independent author projects and release packages
 
@@ -197,8 +198,8 @@ node plugins/scripts/build-author-kit.mjs --plugin usagereports --output /absolu
 ```
 
 Go authors own their explicit module namespace. TypeScript authors need no Go
-module, DTO source or compiler. Their kit carries packed `@qimu/sdk`,
-`@qimu/node`, `@flame/backend-sdk`, the public UI/client packages, its own npm
+module, DTO source or compiler. Their kit carries packed `@frame/sdk`,
+`@flame/backend-sdk` (including its `/mcp` subpath), the public UI/client packages, its own npm
 lock and prebuilt development-only
 contract generators and `pluginpack` release builder. Backend and component sources use separate TypeScript programs
 projected from this repository's respective compiler configurations.
@@ -262,7 +263,7 @@ flame --runtime-url http://127.0.0.1:17171 plugins install --request '{"source":
 
 Native ZIPs contain the platform's executable and declared resources, with
 executable permissions preserved. Portable managed ZIPs have no platform suffix
-or bundled interpreter. Both contain Qimu's neutral manifest, lock and complete
+or bundled interpreter. Both contain Frame's neutral manifest, lock and complete
 artifact inventory. That manifest supplies the sole immutable release digest;
 Runtime verifies it and admits the matching Flame metadata interpretation.
 Installation needs no Go, system Node, compiler, source checkout or dependency installation.

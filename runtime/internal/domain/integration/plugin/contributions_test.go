@@ -6,13 +6,15 @@ import (
 	"reflect"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestContributionsHaveIndependentIDsAndCanShareOneBackend(t *testing.T) {
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "consumer.role", Composition: portable.Selection, Scope: extension.ScopeInstallation}, portable.MethodDescriptor{Name: "owner.read", Kind: portable.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "consumer.role", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, portable.MethodDescriptor{Name: "owner.read", Kind: portable.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}

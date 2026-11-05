@@ -8,6 +8,11 @@ import (
 	"slices"
 	"sync"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
@@ -17,10 +22,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/frame"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
@@ -28,19 +33,19 @@ import (
 
 type ModelProvidersConfig struct {
 	Lifetime      context.Context
-	Framework     *qimu.Host
-	Admission     *qimu.Admission
+	Framework     *frame.Host
+	Admission     *frame.Admission
 	Installations plugins.Store
 	Selections    plugins.SelectionStore
 	Connections   *mcp.Pool
-	Callbacks     *qimumcp.Callbacks
+	Callbacks     *pluginmcp.Callbacks
 }
 
 // ModelProviders retains admitted model constructions. The private construction
 // inputs never enter the public plugin-command projection or a Run checkpoint.
 type ModelProviders struct {
 	config   ModelProvidersConfig
-	contract *portable.Capability
+	contract *plugincontract.Capability
 	mu       sync.Mutex
 	uses     map[*providerUse]struct{}
 	closed   bool
@@ -63,14 +68,14 @@ func NewModelProviders(config ModelProvidersConfig) (*ModelProviders, error) {
 
 func (*ModelProviders) ID() string { return "flame.model-provider-captures" }
 
-func (p *ModelProviders) Held(_ context.Context, installation qimu.InstallationID) ([]qimu.Dependency, error) {
+func (p *ModelProviders) Held(_ context.Context, installation frame.InstallationID) ([]frame.Dependency, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	var result []qimu.Dependency
+	var result []frame.Dependency
 	for use := range p.uses {
 		for _, dependency := range use.binding.Activation.Dependencies {
 			if dependency.InstallationID.String() == installation.String() {
-				value := qimu.Dependency{InstallationID: installation, Release: dependency.Digest}
+				value := frame.Dependency{InstallationID: installation, Release: dependency.Digest}
 				if !slices.Contains(result, value) {
 					result = append(result, value)
 				}
@@ -95,7 +100,7 @@ func (p *ModelProviders) acquireSelected(ctx context.Context, provider string) (
 		}
 		switch state {
 		case plugins.SelectionAbsent:
-			return modelapp.ErrProviderUnsupported
+			return errors.Join(plugin.ErrUnavailable, modelapp.ErrProviderUnsupported)
 		case plugins.SelectionActive:
 			return nil
 		default:
@@ -140,8 +145,8 @@ func (p *ModelProviders) acquire(ctx context.Context, binding plugins.Contributi
 		p.mu.Lock()
 		if p.closed || p.config.Lifetime.Err() != nil {
 			p.mu.Unlock()
-			cancel(qimumcp.ErrStaleCall)
-			return qimumcp.ErrStaleCall
+			cancel(pluginmcp.ErrStaleCall)
+			return pluginmcp.ErrStaleCall
 		}
 		p.uses[use] = struct{}{}
 		p.mu.Unlock()
@@ -309,7 +314,7 @@ func (p *ModelProviders) OpenChat(ctx context.Context, selection modelchoice.Sel
 		return models.ResolvedChat{}, err
 	}
 	use.handle = opened.Handle
-	if opened.Original != qimumcp.CommandID(id) {
+	if opened.Original != pluginmcp.CommandID(id) {
 		return models.ResolvedChat{}, errors.New("model providers: original construction identity changed")
 	}
 	return use.chat(selection, profile, opened)
@@ -351,11 +356,11 @@ func (p *ModelProviders) RestoreChat(ctx context.Context, selection modelchoice.
 	}
 	expected := capture.Chat
 	expected.Handle = opened.Handle
-	originalFacts, err := jsonvalue.Encode(expected)
+	originalFacts, err := framevalue.EncodeJSON(expected)
 	if err != nil {
 		return models.ResolvedChat{}, err
 	}
-	restoredFacts, err := jsonvalue.Encode(opened)
+	restoredFacts, err := framevalue.EncodeJSON(opened)
 	if err != nil {
 		return models.ResolvedChat{}, err
 	}
@@ -430,7 +435,7 @@ func (u *providerUse) enter(ctx context.Context) (context.Context, func(), error
 	u.mu.Lock()
 	if u.closed || u.lifetime.Err() != nil {
 		u.mu.Unlock()
-		return nil, nil, qimumcp.ErrStaleCall
+		return nil, nil, pluginmcp.ErrStaleCall
 	}
 	u.active.Add(1)
 	u.mu.Unlock()
@@ -448,7 +453,7 @@ func (u *providerUse) Close(ctx context.Context) error {
 	}
 	u.closed = true
 	u.mu.Unlock()
-	u.cancel(qimumcp.ErrStaleCall)
+	u.cancel(pluginmcp.ErrStaleCall)
 	u.active.Wait()
 	if u.handle.ID != "" {
 		method, err := modelprovider.CloseMethod()
@@ -464,7 +469,7 @@ func (u *providerUse) Close(ctx context.Context) error {
 	return u.err
 }
 
-func providerMethod[P, R any](ctx context.Context, use *providerUse, method *qimumcp.Method[P, R], id string, input P) (R, error) {
+func providerMethod[P, R any](ctx context.Context, use *providerUse, method *pluginmcp.Method[P, R], id string, input P) (R, error) {
 	var zero R
 	ctx, leave, err := use.enter(ctx)
 	if err != nil {
@@ -474,7 +479,7 @@ func providerMethod[P, R any](ctx context.Context, use *providerUse, method *qim
 	return invokeProvider(ctx, use, method, id, input)
 }
 
-func invokeProvider[P, R any](ctx context.Context, use *providerUse, method *qimumcp.Method[P, R], id string, input P) (_ R, returned error) {
+func invokeProvider[P, R any](ctx context.Context, use *providerUse, method *pluginmcp.Method[P, R], id string, input P) (_ R, returned error) {
 	var zero R
 	ctx, err := providerContext(ctx, use.binding, id)
 	if err != nil {
@@ -485,7 +490,7 @@ func invokeProvider[P, R any](ctx context.Context, use *providerUse, method *qim
 		return zero, err
 	}
 	defer func() { returned = errors.Join(returned, borrowed.Close()) }()
-	exported, err := qimumcp.NewCapabilityBinding(borrowed.Session(), use.binding.Export, use.owner.contract)
+	exported, err := pluginmcp.NewCapabilityBinding(borrowed.Session(), use.binding.Export, use.owner.contract)
 	if err != nil {
 		return zero, err
 	}
@@ -496,11 +501,11 @@ func invokeProvider[P, R any](ctx context.Context, use *providerUse, method *qim
 	if id == "" {
 		return bound.Call(borrowed.Context(), input)
 	}
-	value, err := bound.CallCommand(borrowed.Context(), qimumcp.CommandID(id), input)
+	value, err := bound.CallCommand(borrowed.Context(), pluginmcp.CommandID(id), input)
 	if err == nil {
 		return value, nil
 	}
-	original, found, receiptErr := bound.ReadReceipt(borrowed.Context(), qimumcp.CommandID(id), input)
+	original, found, receiptErr := bound.ReadReceipt(borrowed.Context(), pluginmcp.CommandID(id), input)
 	if found {
 		return original, receiptErr
 	}
@@ -508,7 +513,7 @@ func invokeProvider[P, R any](ctx context.Context, use *providerUse, method *qim
 }
 
 func providerContext(ctx context.Context, binding plugins.ContributionBinding, id string) (context.Context, error) {
-	caller, err := qimumcp.InvocationFromContext(ctx)
+	caller, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		if operation.Identity(ctx) == "" {
 			ctx = operation.Bind(ctx, "models.provider", "")
@@ -525,5 +530,5 @@ func providerContext(ctx context.Context, binding plugins.ContributionBinding, i
 	if parent == id {
 		parent = caller.Parent
 	}
-	return qimumcp.WithInvocation(ctx, portable.Invocation{ID: id, Origin: caller.Origin, Parent: parent, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}})
+	return pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: id, Origin: caller.Origin, Parent: parent, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}})
 }

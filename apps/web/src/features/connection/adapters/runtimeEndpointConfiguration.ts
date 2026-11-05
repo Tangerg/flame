@@ -1,5 +1,5 @@
 import { type KeyValueStore } from "@/extensions/storage";
-import { type LifetimeOperations } from "dougong";
+import { type LifetimeContext } from "dougong";
 import {
   type RuntimeEndpointConfiguration,
   type RuntimeEndpointTarget,
@@ -8,7 +8,8 @@ import { normalizeRuntimeEndpoint } from "@flame/runtime-client";
 
 const STORAGE_KEY = "endpoint";
 
-interface EndpointBindings extends Pick<LifetimeOperations, "cleanup"> {
+interface EndpointBindings {
+  lifetime: Pick<LifetimeContext, "defer">;
   storage: KeyValueStore;
 }
 
@@ -31,7 +32,7 @@ export function bindRuntimeEndpointConfiguration(
     | { kind: "host" | "retired"; endpoint: string }
     | ({ kind: "configured" } & RuntimeEndpointTarget);
   let target: Target = { kind: "host", endpoint: restored ?? defaultTarget().endpoint };
-  ctx.cleanup(() => {
+  ctx.lifetime.defer(() => {
     target = { kind: "retired", endpoint: target.endpoint };
   });
 

@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -16,8 +17,7 @@ import (
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/pluginhost"
-	"github.com/Tangerg/qimu"
-	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/frame"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -99,7 +99,7 @@ func withdrawalStore(t *testing.T, release plugin.Release, installation plugin.I
 type preparedPackages struct{}
 
 func (preparedPackages) Project(release plugin.Release) (plugins.FrameworkRelease, error) {
-	return plugins.ProjectFrameworkRelease(release, qimumcp.ProcessProfile)
+	return plugins.ProjectFrameworkRelease(release, pluginmcp.ProcessProfile)
 }
 
 func (preparedPackages) ReadLocale(context.Context, plugin.Installation, plugin.Locale) (map[string]string, error) {
@@ -140,15 +140,16 @@ func TestRunAssembledAfterUninstallCommitCannotDependOnTheRemovedRelease(t *test
 	executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		return nil, errors.New("installation admission invoked the model")
 	}), InteractionExecutorConfig{
-		Admission:       stores.Admission,
-		ToolResolver:    catalog,
-		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
+		Admission:             stores.Admission,
+		ValidatePluginSources: resourceSourceValidator(framework.Host),
+		ToolResolver:          catalog,
+		ToolInterpreter:       testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
 	connections := realizingConnections{catalog: catalog, entered: make(chan struct{}), release: make(chan struct{})}
 	if err := stores.Admission.RegisterUseOwner(executor); err != nil {
 		t.Fatal(err)
 	}
-	coordinator, err := plugins.New(t.Context(), framework.Host, stores.Installations, stores.PluginReleases, preparedPackages{}, connections, nil)
+	coordinator, err := plugins.New(t.Context(), framework.Host, stores.Installations, stores.PluginReleases, preparedPackages{}, connections, stores.Transactor, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,16 +198,17 @@ func TestWithdrawalRefusesAnUnpublishedRunWithTheFormerAuthority(t *testing.T) {
 	executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		return nil, errors.New("installation admission invoked the model")
 	}), InteractionExecutorConfig{
-		Admission:       stores.Admission,
-		ToolResolver:    assemblingCatalogTools{catalog: catalog, entered: entered, proceed: proceed},
-		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
+		Admission:             stores.Admission,
+		ValidatePluginSources: resourceSourceValidator(framework.Host),
+		ToolResolver:          assemblingCatalogTools{catalog: catalog, entered: entered, proceed: proceed},
+		ToolInterpreter:       testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
 	connections := realizingConnections{catalog: catalog, entered: make(chan struct{}), release: make(chan struct{})}
 	close(connections.release)
 	if err := stores.Admission.RegisterUseOwner(executor); err != nil {
 		t.Fatal(err)
 	}
-	coordinator, err := plugins.New(t.Context(), framework.Host, stores.Installations, stores.PluginReleases, preparedPackages{}, connections, nil)
+	coordinator, err := plugins.New(t.Context(), framework.Host, stores.Installations, stores.PluginReleases, preparedPackages{}, connections, stores.Transactor, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,11 +226,19 @@ func TestWithdrawalRefusesAnUnpublishedRunWithTheFormerAuthority(t *testing.T) {
 		t.Fatalf("withdrawal = %+v, %v", result, err)
 	}
 	finishAssembly()
-	if err := <-assembled; !errors.Is(err, qimu.ErrStaleBinding) {
+	if err := <-assembled; !errors.Is(err, frame.ErrStaleBinding) {
 		t.Fatalf("assembly admitted after disablement = %v, want installation-changed refusal", err)
 	}
 	if live := executor.sessions.snapshot(); len(live) != 0 {
 		t.Fatalf("refused assembly retained %d owned sessions", len(live))
+	}
+}
+
+func resourceSourceValidator(host *frame.Host) func(context.Context, []plugin.Activation, []plugin.Dependency) error {
+	return func(ctx context.Context, bindings []plugin.Activation, resources []plugin.Dependency) error {
+		return plugins.ValidateExecutionSourcesUnder(ctx, host, func(context.Context, plugin.Activation) error {
+			return errors.New("resource fixture unexpectedly captured a backend binding")
+		}, bindings, resources)
 	}
 }
 
@@ -244,24 +254,38 @@ func TestAssemblyPublicationFollowsCommittedExecutionChanges(t *testing.T) {
 		{"unchanged", false, nil},
 	} {
 		t.Run(outcome.name, func(t *testing.T) {
-			executor := newInstallationTestExecutor(t)
-			assembly, abandon, err := executor.installations.Begin()
+			release := testsupport.Release(t, "1", plugin.Declaration{Name: "package"})
+			installation, err := plugin.New(dependedInstallation, "/package", release)
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer abandon()
-			if err := executor.installations.Change(t.Context(), dependedInstallation.Host(), func() (bool, error) {
-				return outcome.changed, outcome.err
-			}); !errors.Is(err, outcome.err) {
+			installation, err = installation.Enable(release)
+			if err != nil {
+				t.Fatal(err)
+			}
+			stores, framework := withdrawalStore(t, release, installation)
+			captured := []plugin.Dependency{{InstallationID: dependedInstallation, Digest: release.Digest()}}
+			change := func() error {
+				if outcome.changed {
+					if err := framework.Host.SetEnabled(t.Context(), dependedInstallation.Host(), false); err != nil {
+						return err
+					}
+				}
+				return outcome.err
+			}
+			if err := change(); !errors.Is(err, outcome.err) {
 				t.Fatalf("change = %v, want %v", err, outcome.err)
 			}
 			published := false
-			err = executor.installations.Publish(t.Context(), assembly, dependencyInstallations(dependedRelease()), func() error {
+			err = stores.Admission.Admit(t.Context(), func(admitted context.Context) error {
+				if err := resourceSourceValidator(framework.Host)(admitted, nil, captured); err != nil {
+					return err
+				}
 				published = true
 				return nil
 			})
 			if outcome.changed {
-				if !errors.Is(err, qimu.ErrStaleBinding) || published {
+				if !errors.Is(err, frame.ErrStaleBinding) || published {
 					t.Fatalf("raced assembly = %v, published=%t; want installation-changed refusal", err, published)
 				}
 			} else if err != nil || !published {

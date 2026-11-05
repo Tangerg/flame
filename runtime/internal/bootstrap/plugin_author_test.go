@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 const fixturePluginCommand = "./bin/mcp-fixture"
@@ -38,11 +38,11 @@ func testMCPServerJSON(t *testing.T, endpoint string) string {
 	return string(data)
 }
 
-// Test remotes own their real Qimu lifecycle. The packaged fixture only
+// Test remotes own their real Frame lifecycle. The packaged fixture only
 // transports bytes; it cannot manufacture setup or activation acknowledgments.
 func publishTestBackend(t *testing.T, server *sdk.Server) {
 	t.Helper()
-	backend, err := qimumcp.NewBackend(server)
+	backend, err := pluginmcp.NewBackend(server)
 	if err != nil {
 		t.Fatal(err)
 	}

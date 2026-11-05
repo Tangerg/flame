@@ -48,7 +48,7 @@ func (c *Coordinator) ReconcileInstallation(ctx context.Context, servers []mcpse
 	return c.reconcileSources(ctx, servers)
 }
 
-// External directory I/O cannot block recovery of the Qimu instances required to read it.
+// External directory I/O cannot block recovery of the Frame instances required to read it.
 func (c *Coordinator) RestoreExternal(ctx context.Context, ready <-chan struct{}) {
 	c.tasks.StartLinked(ctx, func(ctx context.Context) {
 		select {

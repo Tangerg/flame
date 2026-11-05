@@ -7,10 +7,12 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"os"
 	"os/exec"
 	"os/signal"
@@ -72,10 +74,11 @@ func run() (err error) {
 				return
 			}
 			semantic := request.Method
-			if semantic == qimumcp.InvokeMethod {
+			if semantic == pluginmcp.InvokeMethod {
 				semantic = request.Params.Method
 			}
 			matched := semantic == os.Args[3] && (os.Args[4] == "" || request.Params.Name == os.Args[4])
+			stage := ""
 			if os.Args[5] == "durable" {
 				phase, err := os.ReadFile(os.Args[1] + ".phase")
 				if err != nil {
@@ -83,7 +86,7 @@ func run() (err error) {
 					cancel()
 					return
 				}
-				stage := strings.TrimSpace(string(phase))
+				stage = strings.TrimSpace(string(phase))
 				matched = (stage == "commit" || stage == "edited") && request.Method == "tools/call" && request.Params.Name == "create_schedule" || stage == "query" && semantic == pluginsdk.ToolReceiptMethod
 			}
 			if matched {
@@ -98,7 +101,7 @@ func run() (err error) {
 					updates.Store(string(request.ID), jsontext.Value(line))
 				}
 			}
-			if os.Args[5] == "durable" && semantic == pluginsdk.ToolReceiptMethod {
+			if os.Args[5] == "durable" && semantic == pluginsdk.ToolReceiptMethod && stage != "commit" && stage != "edited" {
 				updates.Store(string(request.ID), jsontext.Value(line))
 			}
 			if _, err := fmt.Fprintln(input, string(line)); err != nil {
@@ -210,17 +213,17 @@ func receiptFault(stage string, response []byte) ([]byte, error) {
 	var result jsontext.Value
 	switch stage {
 	case "absent":
-		encoded, err := qimumcp.EncodeReply(pluginsdk.ToolReceipt{}, nil, nil)
+		encoded, err := pluginmcp.EncodeReply(pluginsdk.ToolReceipt{}, nil, nil)
 		if err != nil {
 			return nil, err
 		}
-		result = encoded.JSON()
+		result = encoded.Bytes()
 	case "conflict":
-		encoded, err := qimumcp.EncodeReply(pluginsdk.ToolReceipt{}, portable.ErrInvocationConflict, nil)
+		encoded, err := pluginmcp.EncodeReply(pluginsdk.ToolReceipt{}, framemcp.ErrInvocationConflict, nil)
 		if err != nil {
 			return nil, err
 		}
-		result = encoded.JSON()
+		result = encoded.Bytes()
 	case "malformed":
 		result = jsontext.Value(`{"unexpected":"result"}`)
 	default:

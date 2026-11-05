@@ -5,10 +5,11 @@ import (
 	"maps"
 	"slices"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 type wireTerminalView struct {
@@ -101,7 +102,7 @@ func (w wireBinding) domain() (plugin.Binding, error) {
 	sources := 0
 	var binding plugin.Binding
 	if len(w.Value) != 0 {
-		literal, err := jsonvalue.Parse(w.Value)
+		literal, err := framevalue.ParseJSON(w.Value)
 		if err != nil {
 			return plugin.Binding{}, err
 		}

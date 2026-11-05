@@ -74,7 +74,6 @@ func (r *runs) restorePendingResume() {
 
 func (r *runs) reconcilePendingResume(pending workbench.PendingResume) {
 	command := pending.Command
-	dispatcher := r.tasks.dispatch
 	r.tasks.operations.GoSession(resumeRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
 		_, err := mutation.ConfirmAdmitted(ctx, runtimeRecoveryBackoff, nil, func(ctx context.Context) (conversation.SegmentStream, error) {
 			return runworkflow.OpenPendingResume(ctx, r.runtime, r.workbench, pending, r.replayPolicy)
@@ -82,7 +81,7 @@ func (r *runs) reconcilePendingResume(pending workbench.PendingResume) {
 		if context.Cause(ctx) != nil {
 			return
 		}
-		_ = post(ctx, dispatcher, func() {
+		_ = r.tasks.deliver(ctx, func() {
 			if !r.tasks.operations.Current(lease) || !r.tasks.operations.Release(lease) {
 				return
 			}
@@ -141,7 +140,6 @@ func (r *runs) replayPendingRun(pending workbench.PendingRun) {
 
 func (r *runs) reconcilePendingRun(pending workbench.PendingRun) {
 	command := pending.Command
-	dispatcher := r.tasks.dispatch
 	r.tasks.operations.GoSession(pendingRunRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
 		opened, err := openStartRunWithBackoff(
 			ctx, r.runtime, r.workbench, pending, r.replayPolicy, runtimeRecoveryBackoff,
@@ -149,7 +147,7 @@ func (r *runs) reconcilePendingRun(pending workbench.PendingRun) {
 		if context.Cause(ctx) != nil {
 			return
 		}
-		_ = post(ctx, dispatcher, func() {
+		_ = r.tasks.deliver(ctx, func() {
 			if !r.tasks.operations.Current(lease) || r.link.terminalClosed() || r.session.current.ID != command.SessionID ||
 				!r.tasks.operations.Release(lease) {
 				return

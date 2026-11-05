@@ -16,6 +16,6 @@ Generated from the feature's Go-owned method contracts.
 | `flame.model-provider/stream.v1` | command | installation | Stream the original provider deltas and retain the final outcome without replaying an unconfirmed exchange. Stream chunks: schema.json#/$defs/StreamV1Chunk; final result: schema.json#/$defs/StreamV1Output. |
 | `flame.model-provider/verify.v1` | query | installation | Prove the exact configured connection authenticates with its provider. |
 
-Capability `flame.model-provider.v1` uses `selection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.qimu/portable/1`.
+Capability `flame.model-provider.v1` exposes the declared methods. Required backend protocol: `io.github.tangerg.frame/portable/1`.
 
 `capability.generated.json` preserves the canonical callable contract; `schema.json` and the method references are presentation projections.

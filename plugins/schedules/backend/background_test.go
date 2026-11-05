@@ -7,13 +7,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/google/uuid"
 )
 

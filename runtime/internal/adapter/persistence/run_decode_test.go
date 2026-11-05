@@ -26,7 +26,7 @@ func TestRunReadsRefuseOpenRowsWithTerminalFacts(t *testing.T) {
 					t.Fatal(err)
 				}
 				t.Cleanup(func() { _ = db.Close() })
-				store := newRunStore(db)
+				store := newRunStore(databaseFor(db))
 				draft := runDraft("run_decode", "ses_decode")
 				if err := store.Admit(t.Context(), draft); err != nil {
 					t.Fatal(err)

@@ -12,10 +12,12 @@ import (
 	"strconv"
 	"strings"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 // View is one declared terminal view bound to the installation that serves it.
@@ -24,7 +26,7 @@ type View struct {
 	InstallationID string
 	Digest         string
 	contract       string
-	capability     *portable.Capability
+	capability     *plugincontract.Capability
 }
 
 // Presentation admission includes the availability of the selected release.
@@ -43,7 +45,7 @@ func Views(installations []protocol.PluginInstallation) ([]View, []error) {
 				continue
 			}
 			contract := release.Contributions[index].Contract
-			capability, err := portable.ParseCapability([]byte(contract))
+			capability, err := plugincontract.ParseCapability([]byte(contract))
 			if err != nil {
 				problems = append(problems, fmt.Errorf("plugin %s view %s contract: %w", release.Name, declared.ID, err))
 				continue
@@ -129,7 +131,7 @@ func (v View) Action(id string) (protocol.PluginTerminalAction, bool) {
 // be staged durably.
 func (v View) Mutates(action protocol.PluginTerminalAction) bool {
 	method, found := v.capability.Method(action.Method)
-	return found && method.Kind() == portable.Mutation
+	return found && method.Kind() == portable.Command
 }
 
 // ListRequest reads one page; cursor is empty for the first.
@@ -170,7 +172,7 @@ func (v View) request(method string, bindings []protocol.PluginTerminalInput, co
 	if !found {
 		return protocol.CallPluginRequest{}, fmt.Errorf("method %s is not in the contract", method)
 	}
-	parsed, err := jsonvalue.Parse(encoded)
+	parsed, err := framevalue.ParseJSON(encoded)
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}

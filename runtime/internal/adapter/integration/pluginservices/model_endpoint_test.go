@@ -7,6 +7,10 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -14,9 +18,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -50,7 +54,7 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 		t.Fatal(err)
 	}
 	bound, _ := observers.Bind(resolved.Model(), nil, bindings)
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-endpoint-parent", Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-endpoint-parent"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-endpoint-parent", Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-endpoint-parent"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,19 +84,19 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 		t.Fatalf("persisted inner evidence: %+v, %v", rows, err)
 	}
 	row := rows[0]
-	storedResponse, err := jsonvalue.Encode(row.Response())
+	storedResponse, err := framevalue.EncodeJSON(row.Response())
 	if err != nil {
 		t.Fatal(err)
 	}
-	expectedResponse, err := jsonvalue.Encode(response)
+	expectedResponse, err := framevalue.EncodeJSON(response)
 	if err != nil {
 		t.Fatal(err)
 	}
-	storedRequest, err := jsonvalue.Encode(row.Snapshot().Invocation.Request.(modelref.ChatEndpointRequest).Chat)
+	storedRequest, err := framevalue.EncodeJSON(row.Snapshot().Invocation.Request.(modelref.ChatEndpointRequest).Chat)
 	if err != nil {
 		t.Fatal(err)
 	}
-	expectedRequest, err := jsonvalue.Encode(request)
+	expectedRequest, err := framevalue.EncodeJSON(request)
 	if err != nil {
 		t.Fatal(err)
 	}

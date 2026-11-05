@@ -12,6 +12,7 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -102,6 +103,9 @@ func newTestConfiguredInteractionExecutor(t *testing.T, config InteractionExecut
 	}
 	if config.ExecutionTrees == nil {
 		config.ExecutionTrees = testTrees(t)
+	}
+	if config.ValidatePluginSources == nil {
+		config.ValidatePluginSources = func(context.Context, []plugin.Activation, []plugin.Dependency) error { return nil }
 	}
 	executor, err := NewInteractionExecutor(config)
 	if err == nil {

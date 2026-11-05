@@ -121,29 +121,7 @@ export async function generate(repository = root) {
     run("go", args, join(repository, member), env);
   const temporary = await mkdtemp(join(tmpdir(), "flame-contract-source-"));
   try {
-    go(["generate", "./mcp"], "qimu");
-    go(
-      ["run", "./cmd/controlgen", "--out", "sdk/src/protocol.generated.ts"],
-      "qimu",
-    );
-    go(
-      [
-        "run",
-        "./examples/document/cmd/webgen",
-        "--out",
-        "examples/document/web/src/api.generated.ts",
-      ],
-      "qimu",
-    );
-    go(
-      [
-        "run",
-        "./examples/authoring/cmd/authorhost",
-        "-generate",
-        "examples/authoring/browser/src/contracts.generated.ts",
-      ],
-      "qimu",
-    );
+    go(["generate", "./plugin/mcp"], "packages/go-sdk");
     go(
       [
         "run",
@@ -170,8 +148,8 @@ export async function generate(repository = root) {
     go(
       [
         "run",
-        "github.com/Tangerg/qimu/cmd/qimu",
-        "contract",
+        "github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk",
+        "feature",
         "--feature",
         memory,
         "--out",
@@ -219,8 +197,8 @@ export async function generate(repository = root) {
       go(
         [
           "run",
-          "github.com/Tangerg/qimu/cmd/qimu",
-          "contract",
+          "github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk",
+          "feature",
           "--feature",
           descriptor,
           "--out",
@@ -281,8 +259,8 @@ export async function generate(repository = root) {
     go(
       [
         "run",
-        "github.com/Tangerg/qimu/cmd/qimu",
-        "contract",
+        "github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk",
+        "feature",
         "--feature",
         "usagereports/contracts/capability.json",
         "--out",
@@ -326,14 +304,22 @@ export async function generate(repository = root) {
     for (const p of ordered(await workspaces(repository)))
       if (p.scripts?.generate)
         run("npm", ["run", "generate"], p.directory, env);
+    const frameDirectory = run(
+      "go",
+      ["list", "-m", "-f", "{{.Dir}}", "github.com/Tangerg/frame"],
+      join(repository, "packages/go-sdk"),
+      env,
+      true,
+    )
+      .toString()
+      .trim();
     for (const destination of [
-      "qimu/sdk/testing/generated/plugin-values.json",
       "runtime/testdata/plugin-values.json",
       "packages/runtime-client/testing/generated/plugin-values.json",
     ]) {
       await mkdir(dirname(join(repository, destination)), { recursive: true });
       await cp(
-        join(repository, "qimu/jsonvalue/testdata/values.json"),
+        join(frameDirectory, "value/testdata/values.json"),
         join(repository, destination),
       );
     }
@@ -563,7 +549,7 @@ export async function moduleArtifacts({
         path,
         version,
         revision: source,
-        directory: member.directory,
+        directory,
         go: manifest.Go,
       };
       visiting.delete(key);
@@ -595,7 +581,7 @@ export function proxyEnvironment(proxy, { offline = false } = {}) {
     ...process.env,
     GOTOOLCHAIN: "local",
     GONOPROXY: "none",
-    GONOSUMDB: "github.com/Tangerg/flame,github.com/Tangerg/qimu",
+    GONOSUMDB: "github.com/Tangerg/flame",
     GOPROXY:
       pathToFileURL(proxy).href +
       (offline ? ",off" : ",https://proxy.golang.org"),
@@ -731,40 +717,6 @@ async function goMembers(native) {
     }
   }
 }
-async function checkQimuAuthors() {
-  const temporary = await mkdtemp(join(tmpdir(), "qimu-authors-"));
-  const binary = join(
-    temporary,
-    process.platform === "win32" ? "authorhost.exe" : "authorhost",
-  );
-  const env = {
-    ...proxyEnvironment(join(root, "out/module-proxy")),
-    GOWORK: "off",
-    QIMU_AUTHOR_HOST_BINARY: binary,
-  };
-  try {
-    run(
-      "go",
-      [
-        "build",
-        "-mod=readonly",
-        "-o",
-        binary,
-        "./examples/authoring/cmd/authorhost",
-      ],
-      join(root, "qimu"),
-      env,
-    );
-    run(
-      "npm",
-      ["run", "test:workflow"],
-      join(root, "qimu/examples/authoring/browser"),
-      env,
-    );
-  } finally {
-    await rm(temporary, { recursive: true, force: true });
-  }
-}
 async function main(command) {
   switch (command) {
     case "setup": {
@@ -819,7 +771,6 @@ async function main(command) {
             : null;
         if (script) run("npm", ["run", script], p.directory);
       }
-      await checkQimuAuthors();
       run("node", ["tooling/qualify-node.mjs"]);
       run("git", ["diff", "--check"]);
       return;
@@ -879,10 +830,10 @@ async function main(command) {
           "build",
           "-trimpath",
           "-o",
-          join(directory, "qimu-runner"),
-          "./runner/cmd/qimu-runner",
+          join(directory, "frame-runner"),
+          "github.com/Tangerg/frame/cmd/frame-runner",
         ],
-        join(root, "qimu"),
+        join(root, "runtime"),
         env,
       );
       return run(

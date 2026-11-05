@@ -21,6 +21,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -87,11 +88,11 @@ func TestUnadmittedSteerSurvivesUncertainExecutionRecovery(t *testing.T) {
 		probeEntered, probeRelease := make(chan struct{}), make(chan struct{})
 		releaseProbe := sync.OnceFunc(func() { close(probeRelease) })
 		defer releaseProbe()
-		probe := &scheduleReceiptProbe{owned: true, query: func(ctx context.Context) (*chat.ToolOutput, error) {
+		probe := &scheduleReceiptProbe{owned: true, query: func(ctx context.Context) (*toolcontract.Output, error) {
 			close(probeEntered)
 			select {
 			case <-probeRelease:
-				output := chat.NewTextToolOutput("original record")
+				output := toolcontract.NewTextOutput("original record")
 				return &output, nil
 			case <-ctx.Done():
 				return nil, ctx.Err()
@@ -160,11 +161,11 @@ func TestUnadmittedSteerSurvivesUncertainExecutionRecovery(t *testing.T) {
 		if err != nil || len(ids) != 1 {
 			t.Fatalf("unknown Tool effects: %v, %v", ids, err)
 		}
-		tree, err := live.committedTree(t.Context(), live.state.processHandle().Relation().RootID())
+		tree, err := live.committedTree(t.Context(), live.state.processHandle().ID().Root())
 		if err != nil {
 			t.Fatal(err)
 		}
-		accepted, err := live.admittedSteers(tree)
+		accepted, err := capturedSteerAcceptances(live, tree)
 		if err != nil || len(accepted) != 0 {
 			t.Fatalf("canceled caller created an acceptance: %+v, %v", accepted, err)
 		}
@@ -223,11 +224,11 @@ func TestUnadmittedSteerSurvivesUncertainExecutionRecovery(t *testing.T) {
 		case err := <-begun:
 			t.Fatalf("recovery did not query the original Tool: %v", err)
 		}
-		tree, err = restored.committedTree(t.Context(), restored.state.processHandle().Relation().RootID())
+		tree, err = restored.committedTree(t.Context(), restored.state.processHandle().ID().Root())
 		if err != nil {
 			t.Fatal(err)
 		}
-		accepted, err = restored.admittedSteers(tree)
+		accepted, err = capturedSteerAcceptances(restored, tree)
 		if err != nil || len(accepted) != 0 {
 			t.Fatalf("checkpoint restoration accepted the pending command: %+v, %v", accepted, err)
 		}
@@ -242,11 +243,11 @@ func TestUnadmittedSteerSurvivesUncertainExecutionRecovery(t *testing.T) {
 		if _, err := restarted.SubmitSteer(t.Context(), restoredRef, conflicting); !errors.Is(err, runs.ErrCommandKeyConflict) {
 			t.Fatalf("changed input reused the original key: %v", err)
 		}
-		tree, err = restored.committedTree(t.Context(), restored.state.processHandle().Relation().RootID())
+		tree, err = restored.committedTree(t.Context(), restored.state.processHandle().ID().Root())
 		if err != nil {
 			t.Fatal(err)
 		}
-		accepted, err = restored.admittedSteers(tree)
+		accepted, err = capturedSteerAcceptances(restored, tree)
 		if err != nil || len(accepted) != 1 || !accepted[0].Equal(*original.Acceptance) {
 			t.Fatalf("retried admission changed its original identity: %+v, %v", accepted, err)
 		}
@@ -265,4 +266,12 @@ func TestUnadmittedSteerSurvivesUncertainExecutionRecovery(t *testing.T) {
 			t.Fatalf("recovery redispatched or failed: ends=%+v, Tool calls=%d, model calls=%d", ends, toolCalls.Load(), modelCalls.Load())
 		}
 	})
+}
+
+func capturedSteerAcceptances(session *interactionSession, history scoperun.Log) ([]runs.CommandAcceptance, error) {
+	records := make([]scoperun.Record, len(history.Entries))
+	for index, entry := range history.Entries {
+		records[index] = entry.Record
+	}
+	return session.admittedSteers(history.Root, records)
 }

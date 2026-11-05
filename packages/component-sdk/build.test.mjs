@@ -1,10 +1,9 @@
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { rolldown } from "rolldown";
 import { buildComponent } from "./build.mjs";
 import profile from "./runtime-profile.generated.json" with { type: "json" };
@@ -13,13 +12,13 @@ test("published components preserve the Host's Runtime error and exact JSON inst
   const directory = await mkdtemp(join(tmpdir(), "flame-component-runtime-"));
   try {
     await writeFile(join(directory, "package.json"), '{"type":"module"}');
-    const runtimeEntry = createRequire(import.meta.url).resolve(
-      "@flame/runtime-client",
+    const runtimeEntry = fileURLToPath(
+      import.meta.resolve("@flame/runtime-client"),
     );
-    const jsonDirectory = join(directory, "node_modules/@qimu/sdk");
+    const jsonDirectory = join(directory, "node_modules/@frame/sdk");
     await mkdir(jsonDirectory, { recursive: true });
     await buildComponent({
-      input: createRequire(import.meta.url).resolve("@qimu/sdk/json"),
+      input: fileURLToPath(import.meta.resolve("@frame/sdk/json")),
       directory: jsonDirectory,
       compiler: rolldown,
     });
@@ -54,7 +53,7 @@ test("published components preserve the Host's Runtime error and exact JSON inst
       input,
       `
         import { mutationSettlementIsUnknown, OperationFailure } from "@flame/runtime-client";
-        import { isJSONNumber, parseJSON, stringifyJSON } from "@qimu/sdk/json";
+        import { isJSONNumber, parseJSON, stringifyJSON } from "@frame/sdk/json";
         export function inspect(unknown, failure, value) {
           const source = stringifyJSON({ value });
           return {

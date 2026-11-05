@@ -7,13 +7,14 @@ import (
 	"io"
 	"os"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capture"
+
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/frame/cancellation"
 )
 
 func readAuthoredPromptFile(ctx context.Context, root *os.Root, path string) ([]byte, error) {
-	if cause := cancellation.Err(ctx); cause != nil {
+	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		return nil, cause
 	}
 	file, opened, err := filesystem.OpenFileAt(root, path, workspaceapp.MaxAuthoredPromptDocumentBytes)
@@ -26,8 +27,12 @@ func readAuthoredPromptFile(ctx context.Context, root *os.Root, path string) ([]
 		}
 		return nil, fmt.Errorf("open %q: %w", path, err)
 	}
+	contextReader, err := capture.NewReader(ctx, file)
+	if err != nil {
+		return nil, errors.Join(err, file.Close())
+	}
 	document, readErr := io.ReadAll(io.LimitReader(
-		cancellation.Reader(ctx, file),
+		contextReader,
 		workspaceapp.MaxAuthoredPromptDocumentBytes+1,
 	))
 	verifyErr := filesystem.VerifyAtVersion(file, opened, root, path)
@@ -42,7 +47,7 @@ func readAuthoredPromptFile(ctx context.Context, root *os.Root, path string) ([]
 		// A failed read establishes size, but cannot establish text validity.
 		admissionErr = workspaceapp.ValidateAuthoredPromptDocumentSize(int64(len(document)))
 	}
-	if err := errors.Join(readErr, admissionErr, verifyErr, closeErr, cancellation.Err(ctx)); err != nil {
+	if err := errors.Join(readErr, admissionErr, verifyErr, closeErr, errors.Join(ctx.Err(), context.Cause(ctx))); err != nil {
 		return nil, fmt.Errorf("read %q: %w", path, err)
 	}
 	return document, nil

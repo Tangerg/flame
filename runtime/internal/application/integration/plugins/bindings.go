@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/qimu"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	framevalue "github.com/Tangerg/frame/value"
+
+	"github.com/Tangerg/frame"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 // ContributionBinding captures one concrete implementation of a consumer contract.
@@ -21,11 +21,11 @@ import (
 type ContributionBinding struct {
 	InstallationID identity.InstallationID
 	ContributionID plugin.ContributionID
-	Digest         integrity.Digest
+	Digest         framevalue.Digest
 	ServerID       mcpserver.ID
 	ServerName     mcpserver.ServerName
 	Export         string
-	Contract       jsonvalue.Value
+	Contract       framevalue.JSON
 	Activation     *plugin.Activation
 }
 
@@ -37,7 +37,7 @@ func (b ContributionBinding) SameContribution(other ContributionBinding) bool {
 	return b == other
 }
 
-func SelectedContribution(ctx context.Context, host *qimu.Host, store Store, selections SelectionStore, required *portable.Capability) (ContributionBinding, bool, error) {
+func SelectedContribution(ctx context.Context, host *frame.Host, store Store, selections SelectionStore, required *plugincontract.Capability) (ContributionBinding, bool, error) {
 	if required == nil {
 		return ContributionBinding{}, false, plugin.ErrInvalid
 	}
@@ -53,22 +53,22 @@ const (
 	SelectionActive
 )
 
-func SelectedContributionForRole(ctx context.Context, host *qimu.Host, store Store, selections SelectionStore, required *portable.Capability, role string) (ContributionBinding, SelectionState, error) {
-	if host == nil || required == nil || required.Descriptor().Composition != portable.Selection {
+func SelectedContributionForRole(ctx context.Context, host *frame.Host, store Store, selections SelectionStore, required *plugincontract.Capability, role string) (ContributionBinding, SelectionState, error) {
+	if host == nil || required == nil || required.Descriptor().Composition != plugincontract.Selection {
 		return ContributionBinding{}, SelectionAbsent, plugin.ErrInvalid
 	}
 	choice, found, err := selections.Get(ctx, role)
 	if err != nil || !found {
 		return ContributionBinding{}, SelectionAbsent, err
 	}
-	binding, available, err := resolveContribution(ctx, host, store, required, choice.Snapshot(), integrity.Digest{})
+	binding, available, err := resolveContribution(ctx, host, store, required, choice.Snapshot(), framevalue.Digest{})
 	if !available {
 		return binding, SelectionInactive, err
 	}
 	return binding, SelectionActive, err
 }
 
-func CapturedContribution(ctx context.Context, host *qimu.Host, store Store, required *portable.Capability, source extension.ContributionSource) (ContributionBinding, bool, error) {
+func CapturedContribution(ctx context.Context, host *frame.Host, store Store, required *plugincontract.Capability, source extension.ContributionSource) (ContributionBinding, bool, error) {
 	if err := source.Validate(); err != nil {
 		return ContributionBinding{}, false, err
 	}
@@ -76,7 +76,7 @@ func CapturedContribution(ctx context.Context, host *qimu.Host, store Store, req
 	if err != nil {
 		return ContributionBinding{}, false, err
 	}
-	release, err := integrity.ParseDigest(source.Release)
+	release, err := framevalue.ParseDigest(source.Release)
 	if err != nil {
 		return ContributionBinding{}, false, err
 	}
@@ -88,7 +88,7 @@ func (b ContributionBinding) ContributionSource() extension.ContributionSource {
 	return extension.ContributionSource{InstallationID: b.InstallationID.String(), Release: b.Digest.String(), Contribution: b.ContributionID.String()}
 }
 
-func resolveContribution(ctx context.Context, host *qimu.Host, store Store, required *portable.Capability, record plugin.SelectionRecord, release integrity.Digest) (ContributionBinding, bool, error) {
+func resolveContribution(ctx context.Context, host *frame.Host, store Store, required *plugincontract.Capability, record plugin.SelectionRecord, release framevalue.Digest) (ContributionBinding, bool, error) {
 	snapshot, found, err := store.Get(ctx, record.Installation)
 	if err != nil || !found {
 		return ContributionBinding{}, false, err
@@ -112,8 +112,9 @@ func resolveContribution(ctx context.Context, host *qimu.Host, store Store, requ
 	if err != nil {
 		return ContributionBinding{}, false, err
 	}
-	if err := host.CheckSource(ctx, source); err != nil {
-		return ContributionBinding{}, false, FrameworkError(err)
+	installed, found := host.Installation(source.InstallationID)
+	if !found || !installed.Enabled || installed.Release != source.Release {
+		return ContributionBinding{}, false, plugin.ErrUnavailable
 	}
 	return binding, true, nil
 }

@@ -3,6 +3,7 @@ package goals
 import (
 	"context"
 	"errors"
+
 	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 

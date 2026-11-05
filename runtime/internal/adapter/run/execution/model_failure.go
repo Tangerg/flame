@@ -2,11 +2,26 @@ package execution
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 )
+
+func (i *interactionSession) rememberModelFailure(source scoperun.ProcessID, cause error) error {
+	member, found := i.executorMemberByProcessID(source)
+	if !found {
+		return fmt.Errorf("execution: failed model process %s has no product owner", source)
+	}
+	owner, err := scoperun.ParseProcessID(member.MemberID)
+	if err != nil {
+		return err
+	}
+	i.modelFailures.record(owner, cause)
+	return nil
+}
 
 // interactionModelFailures owns the product classification of failed model
 // calls. Scope owns their definite failure or requested cancellation; Runtime
@@ -14,14 +29,14 @@ import (
 // Terminal delivery retires the classification even when another cause wins.
 type interactionModelFailures struct {
 	mu        sync.Mutex
-	byProcess map[agent.ProcessID]run.Failure
+	byProcess map[scoperun.ProcessID]run.Failure
 }
 
 func newInteractionModelFailures() interactionModelFailures {
-	return interactionModelFailures{byProcess: make(map[agent.ProcessID]run.Failure)}
+	return interactionModelFailures{byProcess: make(map[scoperun.ProcessID]run.Failure)}
 }
 
-func (i *interactionModelFailures) record(processID agent.ProcessID, cause error) {
+func (i *interactionModelFailures) record(processID scoperun.ProcessID, cause error) {
 	if i == nil || !processID.Valid() || cause == nil {
 		return
 	}
@@ -51,7 +66,7 @@ func (i *interactionModelFailures) record(processID agent.ProcessID, cause error
 	i.mu.Unlock()
 }
 
-func (i *interactionModelFailures) lookup(processID agent.ProcessID) (run.Failure, bool) {
+func (i *interactionModelFailures) lookup(processID scoperun.ProcessID) (run.Failure, bool) {
 	if i == nil || !processID.Valid() {
 		return run.Failure{}, false
 	}
@@ -61,13 +76,13 @@ func (i *interactionModelFailures) lookup(processID agent.ProcessID) (run.Failur
 	return failure, found
 }
 
-func (i *interactionModelFailures) forget(processID agent.ProcessID) {
+func (i *interactionModelFailures) forget(processID scoperun.ProcessID) {
 	i.mu.Lock()
 	delete(i.byProcess, processID)
 	i.mu.Unlock()
 }
 
-func (i *interactionModelFailures) has(processID agent.ProcessID) bool {
+func (i *interactionModelFailures) has(processID scoperun.ProcessID) bool {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	_, found := i.byProcess[processID]

@@ -3,16 +3,20 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"encoding/json/jsontext"
 	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/frame/sqlite"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
@@ -26,7 +30,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 	known := errors.New("business conflict")
 	classify := func(err error) (string, bool) { return "conflict", errors.Is(err, known) }
 	handler := func(ctx context.Context, input string) (string, error) {
-		if _, err := sqlite.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`); err != nil {
+		if _, err := Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`); err != nil {
 			return "", err
 		}
 		switch input {
@@ -39,7 +43,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 		}
 	}
 	_, err = Command(t.Context(), db, "update", "refused", receiptInput(t, "known"), classify, handler)
-	failure, ok := errors.AsType[*portable.Refusal](err)
+	failure, ok := errors.AsType[*framemcp.Refusal](err)
 	if !ok || failure.Code != "conflict" {
 		t.Fatalf("known refusal=%v", err)
 	}
@@ -51,7 +55,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 	if err == nil {
 		t.Fatal("unknown mutation succeeded")
 	}
-	if _, ok := errors.AsType[*portable.Refusal](err); ok {
+	if _, ok := errors.AsType[*framemcp.Refusal](err); ok {
 		t.Fatalf("unknown became known=%v", err)
 	}
 	var count, total int
@@ -67,7 +71,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 			return "", nil
 		})
 		if key.id == "refused" {
-			if _, ok := errors.AsType[*portable.Refusal](err); !ok {
+			if _, ok := errors.AsType[*framemcp.Refusal](err); !ok {
 				t.Fatalf("refusal replay=%v", err)
 			}
 		} else if err != nil {
@@ -112,9 +116,9 @@ func TestFormerDigestReceiptSchemasAreRefusedWithoutMutation(t *testing.T) {
 	}
 }
 
-func receiptInput[T any](t *testing.T, value T) jsonvalue.Value {
+func receiptInput[T any](t *testing.T, value T) framevalue.JSON {
 	t.Helper()
-	input, err := jsonvalue.Encode(value)
+	input, err := framevalue.EncodeJSON(value)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +162,7 @@ func TestCommandDerivesTypedMutationInputFromOriginalReceiptInput(t *testing.T) 
 	type input struct {
 		N int64 `json:"n"`
 	}
-	original, err := jsonvalue.Parse([]byte(`{"n":9007199254740993}`))
+	original, err := framevalue.ParseJSON([]byte(`{"n":9007199254740993}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,11 +227,11 @@ func TestCommandAdmissionRefusesMethodsWithoutReceiptIdentity(t *testing.T) {
 
 func TestCommandPreservesPublishedNullableInputAndExactNumbers(t *testing.T) {
 	type input struct {
-		Name  *string `json:"name" jsonschema:"nullable"`
-		Value any     `json:"value"`
+		Name  jsontext.Value `json:"name"`
+		Value any            `json:"value"`
 	}
-	method, err := qimumcp.NewMethod[input, bool](qimumcp.MethodConfig{
-		Name: "numbers.save", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Save an optional name and original number.",
+	method, err := pluginmcp.NewMethod[input, bool](portable.MethodConfig{
+		Name: "numbers.save", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Save an optional name and original number.",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -241,7 +245,7 @@ func TestCommandPreservesPublishedNullableInputAndExactNumbers(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	admitted, err := jsonvalue.Parse([]byte(`{"name":null,"value":9007199254740993}`))
+	admitted, err := framevalue.ParseJSON([]byte(`{"name":null,"value":9007199254740993}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,8 +255,8 @@ func TestCommandPreservesPublishedNullableInputAndExactNumbers(t *testing.T) {
 	calls := 0
 	handler := func(_ context.Context, value input) (bool, error) {
 		calls++
-		encoded, err := jsonvalue.Encode(value)
-		if err != nil || value.Name != nil || encoded != admitted {
+		encoded, err := framevalue.EncodeJSON(value)
+		if err != nil || string(value.Name) != "null" || encoded != admitted {
 			t.Fatalf("admitted nullable input or number changed: %s, %v", encoded.String(), err)
 		}
 		return true, nil
@@ -261,7 +265,7 @@ func TestCommandPreservesPublishedNullableInputAndExactNumbers(t *testing.T) {
 	if err != nil || !value || calls != 1 {
 		t.Fatalf("published input narrowed by receipt adapter: value=%t, calls=%d, err=%v", value, calls, err)
 	}
-	unknown, err := jsonvalue.Parse([]byte(`{"name":null,"value":9007199254740993,"unknown":true}`))
+	unknown, err := framevalue.ParseJSON([]byte(`{"name":null,"value":9007199254740993,"unknown":true}`))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -3,12 +3,13 @@ package persistence
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/application/goals"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"path/filepath"
 	"slices"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/application/goals"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -32,7 +33,7 @@ func newGoalRunStores(t *testing.T) (*GoalStore, *SessionStore, *RunStore) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return newGoalStore(db), newSessionStore(db), newRunStore(db)
+	return newGoalStore(databaseFor(db)), newSessionStore(databaseFor(db)), newRunStore(databaseFor(db))
 }
 
 func readGoal(ctx context.Context, store *GoalStore, sessionID string) (goal.Goal, bool, error) {
@@ -146,9 +147,9 @@ func TestGoalUsageIncludesDelegatedSpendingAfterRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	goals, runs := newGoalStore(db), newRunStore(db)
+	goals, runs := newGoalStore(databaseFor(db)), newRunStore(databaseFor(db))
 	const sessionID = "ses_delegated_goal"
-	seedSession(t, newSessionStore(db), sessionID)
+	seedSession(t, newSessionStore(databaseFor(db)), sessionID)
 	now := time.Unix(10, 0).UTC()
 	active, err := goaltest.New(sessionID, "delegate", testReasoningSelection(t, "provider", "model", ""), run.Capabilities{}, "inc_delegated", now)
 	if err != nil {
@@ -186,7 +187,7 @@ func TestGoalUsageIncludesDelegatedSpendingAfterRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	current, found, err := readGoal(t.Context(), newGoalStore(db), sessionID)
+	current, found, err := readGoal(t.Context(), newGoalStore(databaseFor(db)), sessionID)
 	if err != nil || !found || current.Used() != (goal.Usage{Runs: 1, Cost: goalRunCost(t, 0.875), Steps: 7}) {
 		t.Fatalf("delegated Goal after restart = %+v, %t, %v", current.Snapshot(), found, err)
 	}
@@ -579,7 +580,7 @@ func TestGoalReceiptRecoveryIsAtomicAndScopedToItsIncarnation(t *testing.T) {
 					t.Fatalf("replace: %t, %v", applied, err)
 				}
 			} else {
-				if _, err := store.db.ExecContext(ctx, `CREATE TRIGGER fail_goal_write BEFORE UPDATE ON goals BEGIN SELECT RAISE(ABORT,'injected'); END`); err != nil {
+				if _, err := rawFixtureDatabase(store.db).ExecContext(ctx, `CREATE TRIGGER fail_goal_write BEFORE UPDATE ON goals BEGIN SELECT RAISE(ABORT,'injected'); END`); err != nil {
 					t.Fatal(err)
 				}
 				if err := recorder.Drain(ctx, store, goaltest.Workflow{}, sessionID, nil); err == nil {
@@ -588,15 +589,15 @@ func TestGoalReceiptRecoveryIsAtomicAndScopedToItsIncarnation(t *testing.T) {
 				if _, found, err := store.PendingGoalRun(ctx, sessionID); err != nil || !found {
 					t.Fatalf("pending receipt: %t, %v", found, err)
 				}
-				if _, err := store.db.ExecContext(ctx, `DROP TRIGGER fail_goal_write`); err != nil {
+				if _, err := rawFixtureDatabase(store.db).ExecContext(ctx, `DROP TRIGGER fail_goal_write`); err != nil {
 					t.Fatal(err)
 				}
 			}
 			var file string
-			if err := store.db.QueryRowContext(ctx, `SELECT file FROM pragma_database_list WHERE name='main'`).Scan(&file); err != nil {
+			if err := rawFixtureDatabase(store.db).QueryRowContext(ctx, `SELECT file FROM pragma_database_list WHERE name='main'`).Scan(&file); err != nil {
 				t.Fatal(err)
 			}
-			if err := store.db.Close(); err != nil {
+			if err := rawFixtureDatabase(store.db).Close(); err != nil {
 				t.Fatal(err)
 			}
 			reopened, err := openDatabase(ctx, file)
@@ -604,7 +605,7 @@ func TestGoalReceiptRecoveryIsAtomicAndScopedToItsIncarnation(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = reopened.Close() })
-			store = newGoalStore(reopened)
+			store = newGoalStore(databaseFor(reopened))
 			recorder, err = goals.NewRunRecorder(store)
 			if err != nil {
 				t.Fatal(err)

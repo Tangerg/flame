@@ -1,6 +1,8 @@
 package execution
 
 import (
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
+
 	"context"
 	"errors"
 	"fmt"
@@ -13,9 +15,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/chatclient/safeguard"
+	"github.com/Tangerg/scope/core/safeguard"
 )
 
 type safeguardedTestModel struct {
@@ -50,11 +53,11 @@ func TestScopeDefiniteModelFailureSettlesWithoutHostCancellation(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				matcher, err := safeguard.NewSubstringMatcher([]string{"blocked"}, safeguard.SubstringConfig{})
+				matcher, err := safeguard.NewSubstringMatcher(safeguard.SubstringMatcherConfig{Terms: []string{"blocked"}})
 				if err != nil {
 					t.Fatal(err)
 				}
-				guard, err := safeguard.NewMiddleware(matcher, safeguard.MiddlewareConfig{Scope: scope})
+				guard, err := safeguard.NewMiddleware(safeguard.MiddlewareConfig{Matcher: matcher, Scope: scope})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -94,7 +97,7 @@ func TestScopeDefiniteModelFailureSettlesWithoutHostCancellation(t *testing.T) {
 				}
 				for _, session := range executor.sessions.snapshot() {
 					result, err := session.state.process.Await(t.Context())
-					if err != nil || result.Termination().Cause() != agent.TerminationCauseExternalFailure {
+					if err != nil || result.Termination().Cause() != scoperun.TerminationCauseExternalFailure {
 						t.Fatalf("Scope definite failure was replaced: %s, %v", result.Termination().Cause(), err)
 					}
 				}
@@ -104,12 +107,12 @@ func TestScopeDefiniteModelFailureSettlesWithoutHostCancellation(t *testing.T) {
 }
 
 func TestScopeInvocationFailureDoesNotInheritNestedNonExecution(t *testing.T) {
-	for _, kind := range []chat.CallFailureKind{chat.CallFailureFailed, chat.CallFailureUnknown} {
+	for _, kind := range []coreinvocation.FailureKind{coreinvocation.FailureFailed, coreinvocation.FailureUnknown} {
 		for _, streaming := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/streaming=%t", kind, streaming), func(t *testing.T) {
 				calls := 0
-				failure := &chat.CallFailure{Kind: kind, Cause: &chat.CallFailure{
-					Kind: chat.CallFailureNotExecuted, Cause: errors.New("later operation rejected"),
+				failure := &coreinvocation.Failure{Kind: kind, Cause: &coreinvocation.Failure{
+					Kind: coreinvocation.FailureNotExecuted, Cause: errors.New("later operation rejected"),
 				}}
 				model := safeguardedTestModel{
 					Model: chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
@@ -133,7 +136,7 @@ func TestScopeInvocationFailureDoesNotInheritNestedNonExecution(t *testing.T) {
 				if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeFailed {
 					t.Fatalf("invocation failure became success: %+v", ends)
 				}
-				if unresolved := len(ends[0].UnresolvedEffects()); (unresolved > 0) != (kind == chat.CallFailureUnknown) {
+				if unresolved := len(ends[0].UnresolvedEffects()); (unresolved > 0) != (kind == coreinvocation.FailureUnknown) {
 					t.Fatalf("nested evidence changed invocation %s: unresolved=%d", kind, unresolved)
 				}
 			})

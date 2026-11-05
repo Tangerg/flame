@@ -18,8 +18,8 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/programtest"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/uitest"
 )
 
 type runtimeChangeSourceStub struct {
@@ -316,7 +316,7 @@ func TestApprovalRuleDeletionResolvesAUniquePrefixAndSurvivesResize(t *testing.T
 	host.Type("/rule-delete rule_ext")
 	host.Press(input.Enter)
 	host.Shows(t, "Forget approval rule")
-	if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
+	if !host.Resize(1, 1) || !repaint(t, host) || !host.Resize(96, 28) {
 		t.Fatal("approval-rule deletion confirmation did not survive a minimal viewport")
 	}
 	host.Shows(t, "rule_external_123")
@@ -1294,13 +1294,13 @@ func (s *snapshotCountingRuntime) GetSession(ctx context.Context, id string) (co
 	return s.Runtime.GetSession(ctx, id)
 }
 
-func runUIWithRuntimeChanges(t *testing.T, runtime Runtime, source changefeed.Source, sessionID string) (*programtest.Host, func()) {
+func runUIWithRuntimeChanges(t *testing.T, runtime Runtime, source changefeed.Source, sessionID string) (*uitest.Host, func()) {
 	return runUIWithRuntimeChangeServices(t, runtime, nil, source, sessionID)
 }
 
-func runUIWithRuntimeChangeServices(t *testing.T, runtime Runtime, workspaces Workspaces, source changefeed.Source, sessionID string) (*programtest.Host, func()) {
+func runUIWithRuntimeChangeServices(t *testing.T, runtime Runtime, workspaces Workspaces, source changefeed.Source, sessionID string) (*uitest.Host, func()) {
 	t.Helper()
-	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
+	host := uitest.New(t, uitest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {

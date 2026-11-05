@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
-	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/ui/core/input"
 )
 
 type Binding struct {

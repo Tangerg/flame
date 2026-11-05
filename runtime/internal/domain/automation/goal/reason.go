@@ -2,8 +2,9 @@ package goal
 
 import (
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	"strings"
+
+	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )

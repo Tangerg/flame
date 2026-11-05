@@ -36,8 +36,8 @@ function pauseQueries() {
 const example = definePlugin({
   name: "flame.builtin.example",
   setup(ctx) {
-    ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
-    ctx.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => [] });
+    ctx.contributions.add(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
+    ctx.contributions.add(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => [] });
   },
 });
 
@@ -174,14 +174,14 @@ describe("PluginsPane installation facts", () => {
       definePlugin({
         name: "test.package-feedback",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
-          ctx.contribute(DATA_PROVIDER, {
+          ctx.contributions.add(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
+          ctx.contributions.add(DATA_PROVIDER, {
             key: PACKAGES_KEY,
             fetcher: read,
           });
-          ctx.cleanup(
+          ctx.lifetime.defer(
             testClient.installedPlugins.access.publishOperations({
-              signal: ctx.signal,
+              signal: ctx.lifetime.signal,
               pendingCommands: () => [],
               ...operations,
             } as unknown as PackageOperations),
@@ -552,14 +552,14 @@ describe("PluginsPane installation facts", () => {
       definePlugin({
         name: "test.package-review",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
-          ctx.contribute(DATA_PROVIDER, {
+          ctx.contributions.add(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
+          ctx.contributions.add(DATA_PROVIDER, {
             key: PACKAGES_KEY,
             fetcher: async () => [installation],
           });
-          ctx.cleanup(
+          ctx.lifetime.defer(
             testClient.installedPlugins.access.publishOperations({
-              signal: ctx.signal,
+              signal: ctx.lifetime.signal,
               pendingCommands: () => [],
               configure: submit,
             } as unknown as PackageOperations),
@@ -635,11 +635,14 @@ describe("PluginsPane installation facts", () => {
       definePlugin({
         name: "test.package-input",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
-          ctx.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => [installation] });
-          ctx.cleanup(
+          ctx.contributions.add(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
+          ctx.contributions.add(DATA_PROVIDER, {
+            key: PACKAGES_KEY,
+            fetcher: async () => [installation],
+          });
+          ctx.lifetime.defer(
             testClient.installedPlugins.access.publishOperations({
-              signal: ctx.signal,
+              signal: ctx.lifetime.signal,
               pendingCommands: () => [],
               configure: submit,
             } as unknown as PackageOperations),
@@ -682,14 +685,14 @@ describe("PluginsPane installation facts", () => {
       definePlugin({
         name: "test.package-stage",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
-          ctx.contribute(DATA_PROVIDER, {
+          ctx.contributions.add(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
+          ctx.contributions.add(DATA_PROVIDER, {
             key: PACKAGES_KEY,
             fetcher: async () => [installation],
           });
-          ctx.cleanup(
+          ctx.lifetime.defer(
             testClient.installedPlugins.access.publishOperations({
-              signal: ctx.signal,
+              signal: ctx.lifetime.signal,
               pendingCommands: () => [],
               stage,
             } as unknown as PackageOperations),
@@ -779,14 +782,14 @@ describe("PluginsPane installation facts", () => {
       definePlugin({
         name: "test.package-cancel",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
-          ctx.contribute(DATA_PROVIDER, {
+          ctx.contributions.add(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
+          ctx.contributions.add(DATA_PROVIDER, {
             key: PACKAGES_KEY,
             fetcher: async () => [reviewedInstallation()],
           });
-          ctx.cleanup(
+          ctx.lifetime.defer(
             testClient.installedPlugins.access.publishOperations({
-              signal: ctx.signal,
+              signal: ctx.lifetime.signal,
               pendingCommands: () => [],
               configure: submit,
             } as unknown as PackageOperations),
@@ -864,11 +867,14 @@ describe("PluginsPane installation facts", () => {
       definePlugin({
         name: "test.package-realization",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
-          ctx.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => [installation] });
-          ctx.cleanup(
+          ctx.contributions.add(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
+          ctx.contributions.add(DATA_PROVIDER, {
+            key: PACKAGES_KEY,
+            fetcher: async () => [installation],
+          });
+          ctx.lifetime.defer(
             testClient.installedPlugins.access.publishOperations({
-              signal: ctx.signal,
+              signal: ctx.lifetime.signal,
               pendingCommands: () => [],
             } as unknown as PackageOperations),
           );
@@ -901,11 +907,14 @@ describe("PluginsPane installation facts", () => {
       definePlugin({
         name: "test.package-release",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
-          ctx.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => [installation] });
-          ctx.cleanup(
+          ctx.contributions.add(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
+          ctx.contributions.add(DATA_PROVIDER, {
+            key: PACKAGES_KEY,
+            fetcher: async () => [installation],
+          });
+          ctx.lifetime.defer(
             testClient.installedPlugins.access.publishOperations({
-              signal: ctx.signal,
+              signal: ctx.lifetime.signal,
               pendingCommands: () => [],
             } as unknown as PackageOperations),
           );

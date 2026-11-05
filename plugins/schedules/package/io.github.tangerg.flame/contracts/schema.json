@@ -9,11 +9,122 @@
     "CreateV1Input": {
       "$ref": "#/$defs/Draft"
     },
+    "CreateV1InputModelSelection": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reasoningEffort": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "model",
+        "provider",
+        "reasoningEffort"
+      ],
+      "type": "object"
+    },
     "CreateV1Output": {
-      "$ref": "#/$defs/Snapshot"
+      "$ref": "#/$defs/CreateV1OutputDomainSnapshot"
+    },
+    "CreateV1OutputDomainSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "CWD": {
+          "type": "string"
+        },
+        "CreatedAt": {
+          "$ref": "#/$defs/CreateV1OutputInstantTimestamp"
+        },
+        "Cron": {
+          "type": "string"
+        },
+        "ID": {
+          "type": "string"
+        },
+        "Instructions": {
+          "type": "string"
+        },
+        "LastRunAt": {
+          "$ref": "#/$defs/CreateV1OutputInstantTimestamp"
+        },
+        "ModelSelection": {
+          "$ref": "#/$defs/CreateV1OutputModelSelection"
+        },
+        "NextRunAt": {
+          "$ref": "#/$defs/CreateV1OutputInstantTimestamp"
+        },
+        "Revision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "type": "integer"
+        },
+        "TimeZone": {
+          "type": "string"
+        },
+        "Title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ID",
+        "Title",
+        "Instructions",
+        "CWD",
+        "ModelSelection",
+        "Cron",
+        "TimeZone",
+        "CreatedAt",
+        "Revision"
+      ],
+      "type": "object"
+    },
+    "CreateV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "CreateV1OutputModelSelection": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reasoningEffort": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "model",
+        "provider",
+        "reasoningEffort"
+      ],
+      "type": "object"
     },
     "DeleteV1Input": {
-      "$ref": "#/$defs/ItemInput"
+      "$ref": "#/$defs/DeleteV1InputWireItemInput"
+    },
+    "DeleteV1InputWireItemInput": {
+      "additionalProperties": false,
+      "properties": {
+        "ID": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ID"
+      ],
+      "type": "object"
     },
     "DeleteV1Output": {
       "$ref": "#/$defs/Ack"
@@ -34,7 +145,7 @@
           "type": "string"
         },
         "ModelSelection": {
-          "$ref": "#/$defs/Selection"
+          "$ref": "#/$defs/CreateV1InputModelSelection"
         },
         "TimeZone": {
           "type": "string"
@@ -51,18 +162,6 @@
         "Cron",
         "TimeZone",
         "Enabled"
-      ],
-      "type": "object"
-    },
-    "ItemInput": {
-      "additionalProperties": false,
-      "properties": {
-        "ID": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "ID"
       ],
       "type": "object"
     },
@@ -93,91 +192,14 @@
     "ListV1Output": {
       "$ref": "#/$defs/Page"
     },
-    "ModelPatch": {
-      "additionalProperties": false,
-      "properties": {
-        "Model": {
-          "type": "string"
-        },
-        "Provider": {
-          "type": "string"
-        },
-        "ReasoningEffort": {
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
-    "Page": {
-      "additionalProperties": false,
-      "properties": {
-        "NextCursor": {
-          "type": "string"
-        },
-        "Rows": {
-          "items": {
-            "$ref": "#/$defs/Snapshot"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "Rows",
-        "NextCursor"
-      ],
-      "type": "object"
-    },
-    "RunNowV1Input": {
-      "$ref": "#/$defs/ItemInput"
-    },
-    "RunNowV1Output": {
-      "$ref": "#/$defs/RunReference"
-    },
-    "RunReference": {
-      "additionalProperties": false,
-      "properties": {
-        "RunID": {
-          "type": "string"
-        },
-        "SessionID": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "SessionID",
-        "RunID"
-      ],
-      "type": "object"
-    },
-    "Selection": {
-      "additionalProperties": false,
-      "properties": {
-        "model": {
-          "type": "string"
-        },
-        "provider": {
-          "type": "string"
-        },
-        "reasoningEffort": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "model",
-        "provider",
-        "reasoningEffort"
-      ],
-      "type": "object"
-    },
-    "Snapshot": {
+    "ListV1OutputDomainSnapshot": {
       "additionalProperties": false,
       "properties": {
         "CWD": {
           "type": "string"
         },
         "CreatedAt": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/$defs/ListV1OutputInstantTimestamp"
         },
         "Cron": {
           "type": "string"
@@ -189,15 +211,13 @@
           "type": "string"
         },
         "LastRunAt": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/$defs/ListV1OutputInstantTimestamp"
         },
         "ModelSelection": {
-          "$ref": "#/$defs/Selection"
+          "$ref": "#/$defs/ListV1OutputModelSelection"
         },
         "NextRunAt": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/$defs/ListV1OutputInstantTimestamp"
         },
         "Revision": {
           "allOf": [
@@ -225,6 +245,97 @@
         "TimeZone",
         "CreatedAt",
         "Revision"
+      ],
+      "type": "object"
+    },
+    "ListV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "ListV1OutputModelSelection": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reasoningEffort": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "model",
+        "provider",
+        "reasoningEffort"
+      ],
+      "type": "object"
+    },
+    "ModelPatch": {
+      "additionalProperties": false,
+      "properties": {
+        "Model": {
+          "type": "string"
+        },
+        "Provider": {
+          "type": "string"
+        },
+        "ReasoningEffort": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Page": {
+      "additionalProperties": false,
+      "properties": {
+        "NextCursor": {
+          "type": "string"
+        },
+        "Rows": {
+          "items": {
+            "$ref": "#/$defs/ListV1OutputDomainSnapshot"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "Rows",
+        "NextCursor"
+      ],
+      "type": "object"
+    },
+    "RunNowV1Input": {
+      "$ref": "#/$defs/RunNowV1InputWireItemInput"
+    },
+    "RunNowV1InputWireItemInput": {
+      "additionalProperties": false,
+      "properties": {
+        "ID": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ID"
+      ],
+      "type": "object"
+    },
+    "RunNowV1Output": {
+      "$ref": "#/$defs/RunReference"
+    },
+    "RunReference": {
+      "additionalProperties": false,
+      "properties": {
+        "RunID": {
+          "type": "string"
+        },
+        "SessionID": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "SessionID",
+        "RunID"
       ],
       "type": "object"
     },
@@ -276,7 +387,86 @@
       "$ref": "#/$defs/UpdateInput"
     },
     "UpdateV1Output": {
-      "$ref": "#/$defs/Snapshot"
+      "$ref": "#/$defs/UpdateV1OutputDomainSnapshot"
+    },
+    "UpdateV1OutputDomainSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "CWD": {
+          "type": "string"
+        },
+        "CreatedAt": {
+          "$ref": "#/$defs/UpdateV1OutputInstantTimestamp"
+        },
+        "Cron": {
+          "type": "string"
+        },
+        "ID": {
+          "type": "string"
+        },
+        "Instructions": {
+          "type": "string"
+        },
+        "LastRunAt": {
+          "$ref": "#/$defs/UpdateV1OutputInstantTimestamp"
+        },
+        "ModelSelection": {
+          "$ref": "#/$defs/UpdateV1OutputModelSelection"
+        },
+        "NextRunAt": {
+          "$ref": "#/$defs/UpdateV1OutputInstantTimestamp"
+        },
+        "Revision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "type": "integer"
+        },
+        "TimeZone": {
+          "type": "string"
+        },
+        "Title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ID",
+        "Title",
+        "Instructions",
+        "CWD",
+        "ModelSelection",
+        "Cron",
+        "TimeZone",
+        "CreatedAt",
+        "Revision"
+      ],
+      "type": "object"
+    },
+    "UpdateV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "UpdateV1OutputModelSelection": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reasoningEffort": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "model",
+        "provider",
+        "reasoningEffort"
+      ],
+      "type": "object"
     }
   }
 }

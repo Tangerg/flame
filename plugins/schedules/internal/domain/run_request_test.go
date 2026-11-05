@@ -4,9 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
 
-	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 )
 
 func TestCapturedRunRequestRestoresOneExecutionOwner(t *testing.T) {
@@ -33,7 +34,7 @@ func TestCapturedRunRequestRestoresOneExecutionOwner(t *testing.T) {
 			name string
 			edit func(*RunRequestSnapshot)
 		}{
-			{"missing caller", func(v *RunRequestSnapshot) { v.Invocation = portable.Invocation{} }},
+			{"missing caller", func(v *RunRequestSnapshot) { v.Invocation = framemcp.Invocation{} }},
 			{"missing Session", func(v *RunRequestSnapshot) { v.SessionID = "" }},
 			{"missing Run", func(v *RunRequestSnapshot) { v.RunID = "" }},
 			{"invalid Session", func(v *RunRequestSnapshot) { v.SessionID = "ses_bad id" }},
@@ -63,6 +64,6 @@ func TestCapturedRunRequestRestoresOneExecutionOwner(t *testing.T) {
 	}
 }
 
-func testInvocation() portable.Invocation {
-	return portable.Invocation{ID: "schedule-trigger", Origin: extension.Automatic, Parent: "parent-trigger", Target: portable.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}}
+func testInvocation() framemcp.Invocation {
+	return framemcp.Invocation{ID: "schedule-trigger", Origin: extension.Automatic, Parent: "parent-trigger", Target: portable.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}}
 }

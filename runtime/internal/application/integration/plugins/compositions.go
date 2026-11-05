@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/qimu"
+
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/samber/lo"
 )
 
@@ -22,24 +23,24 @@ type CompositionStore interface {
 type Compositions struct {
 	store         CompositionStore
 	installations Store
-	admission     *qimu.Admission
+	transact      func(context.Context, func(context.Context) error) error
 	publish       invalidation.Publish
 }
 
-func NewCompositions(store CompositionStore, installations Store, admission *qimu.Admission, publish invalidation.Publish) (*Compositions, error) {
-	if lo.IsNil(store) || lo.IsNil(installations) || admission == nil {
+func NewCompositions(store CompositionStore, installations Store, transact func(context.Context, func(context.Context) error) error, publish invalidation.Publish) (*Compositions, error) {
+	if lo.IsNil(store) || lo.IsNil(installations) || transact == nil {
 		return nil, errors.New("plugins: compositions, installations and admission are required")
 	}
-	return &Compositions{store: store, installations: installations, admission: admission, publish: publish}, nil
+	return &Compositions{store: store, installations: installations, transact: transact, publish: publish}, nil
 }
 
 func (c *Compositions) List(ctx context.Context) ([]plugin.OrderedComposition, error) {
 	return c.store.List(ctx)
 }
 
-func (c *Compositions) Resolve(ctx context.Context, required *portable.Capability) ([]ContributionBinding, error) {
+func (c *Compositions) Resolve(ctx context.Context, required *plugincontract.Capability) ([]ContributionBinding, error) {
 	var bindings []ContributionBinding
-	err := c.admission.Under(ctx, func() error {
+	err := c.transact(ctx, func(ctx context.Context) error {
 		var err error
 		bindings, err = ResolveComposition(ctx, c.installations, c.store, required)
 		return err
@@ -52,7 +53,7 @@ func (c *Compositions) Set(ctx context.Context, record plugin.CompositionRecord)
 	if err != nil {
 		return plugin.OrderedComposition{}, err
 	}
-	err = c.admission.Under(ctx, func() error {
+	err = c.transact(ctx, func(ctx context.Context) error {
 		if _, err := bindComposition(ctx, c.installations, value); err != nil {
 			return err
 		}
@@ -66,8 +67,8 @@ func (c *Compositions) Set(ctx context.Context, record plugin.CompositionRecord)
 
 // ResolveComposition freezes the exact selected releases in stored order. A
 // missing or withdrawn member refuses the chain rather than silently shortening it.
-func ResolveComposition(ctx context.Context, installations Store, compositions CompositionStore, required *portable.Capability) ([]ContributionBinding, error) {
-	if required == nil || required.Descriptor().Composition != portable.Decoration {
+func ResolveComposition(ctx context.Context, installations Store, compositions CompositionStore, required *plugincontract.Capability) ([]ContributionBinding, error) {
+	if required == nil || required.Descriptor().Composition != plugincontract.Decoration {
 		return nil, plugin.ErrInvalid
 	}
 	value, found, err := compositions.Get(ctx, required.Descriptor().Reference)

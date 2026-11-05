@@ -11,7 +11,7 @@ const AppearancePane = lazy(() =>
 export default definePlugin({
   name: "flame.builtin.appearance",
   setup(ctx) {
-    registerSettingsPane(ctx, {
+    registerSettingsPane(ctx.contributions, {
       id: APPEARANCE_PANE,
       label: "settings.pane.appearance",
       keywords: [

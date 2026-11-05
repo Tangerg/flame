@@ -14,8 +14,9 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capture"
+
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/frame/cancellation"
 )
 
 const maxDocumentBytes int64 = 8 << 20
@@ -61,7 +62,7 @@ func (c *client) ensureContent(ctx context.Context, abs string, text []byte) (in
 	if !utf8.Valid(text) || bytes.IndexByte(text, 0) >= 0 {
 		return 0, errUnsupportedDocument
 	}
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return 0, err
 	}
 	var err error
@@ -181,7 +182,11 @@ func readDocument(ctx context.Context, root *os.Root, path string) (_ []byte, er
 	defer func() {
 		err = errors.Join(err, file.Close())
 	}()
-	content, err := io.ReadAll(io.LimitReader(cancellation.Reader(ctx, file), maxDocumentBytes+1))
+	contextReader, err := capture.NewReader(ctx, file)
+	if err != nil {
+		return nil, err
+	}
+	content, err := io.ReadAll(io.LimitReader(contextReader, maxDocumentBytes+1))
 	if err != nil {
 		return nil, err
 	}

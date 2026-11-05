@@ -1,7 +1,7 @@
 import { attribute, namespaces, type XmlNode } from "./xml";
 import { OfficePackage, relationshipTarget } from "./archive";
 import type { CellValue } from "../../contracts/content";
-import { parseJSON, projectNumber } from "@qimu/sdk/json";
+import { parseJSON, projectNumber } from "@frame/sdk/json";
 
 export interface CellAddress {
   column: number;

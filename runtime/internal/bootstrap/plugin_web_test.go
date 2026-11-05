@@ -6,13 +6,16 @@ import (
 	"sync/atomic"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	"github.com/Tangerg/scope/tools/web"
@@ -46,7 +49,7 @@ func TestWebInstalledSecretsBelongToInstallationAndModelReadsHaveDefiniteRefusal
 		}
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
-	})}, chatclient.Config{})
+	})})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,11 +76,11 @@ func TestWebInstalledSecretsBelongToInstallationAndModelReadsHaveDefiniteRefusal
 	if name.Load().(string) == "" {
 		t.Fatal("installed search tool is missing")
 	}
-	contracts, err := portable.ParseCapability([]byte(testsupport.WebCapabilityJSON))
+	contracts, err := plugincontract.ParseCapability([]byte(testsupport.WebCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsonvalue.Encode(web.SearchRequest{Query: "fixture query", MaxResults: 1})
+	input, err := framevalue.EncodeJSON(web.SearchRequest{Query: "fixture query", MaxResults: 1})
 	if err != nil {
 		t.Fatal(err)
 	}

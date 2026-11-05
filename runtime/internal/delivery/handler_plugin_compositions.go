@@ -3,24 +3,25 @@ package delivery
 import (
 	"context"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type compositionUseCases interface {
 	List(context.Context) ([]plugin.OrderedComposition, error)
 	Set(context.Context, plugin.CompositionRecord) (plugin.OrderedComposition, error)
-	Resolve(context.Context, *portable.Capability) ([]plugins.ContributionBinding, error)
+	Resolve(context.Context, *plugincontract.Capability) ([]plugins.ContributionBinding, error)
 }
 
 func (s *Handler) ResolvePluginComposition(ctx context.Context, in protocol.ResolvePluginCompositionRequest) (*protocol.Page[protocol.PluginOperationBinding], error) {
 	if s.pluginCompositions == nil {
 		return nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin composition is unavailable")
 	}
-	contract, err := portable.ParseCapability([]byte(in.Contract))
+	contract, err := plugincontract.ParseCapability([]byte(in.Contract))
 	if err != nil {
 		return nil, protocol.InvalidParameters(err)
 	}
@@ -30,7 +31,7 @@ func (s *Handler) ResolvePluginComposition(ctx context.Context, in protocol.Reso
 	}
 	rows := make([]protocol.PluginOperationBinding, len(bindings))
 	for index, binding := range bindings {
-		rows[index] = protocol.PluginOperationBinding{InstallationID: binding.InstallationID.String(), Digest: binding.Digest.String(), Contribution: binding.ContributionID.String(), Contract: string(binding.Contract.JSON())}
+		rows[index] = protocol.PluginOperationBinding{InstallationID: binding.InstallationID.String(), Digest: binding.Digest.String(), Contribution: binding.ContributionID.String(), Contract: string(binding.Contract.Bytes())}
 	}
 	return protocol.NewPage(rows), nil
 }
@@ -63,7 +64,7 @@ func (s *Handler) SetPluginComposition(ctx context.Context, in protocol.SetPlugi
 	if s.pluginCompositions == nil {
 		return nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin composition is unavailable")
 	}
-	contract, err := jsonvalue.Parse([]byte(in.Contract))
+	contract, err := framevalue.ParseJSON([]byte(in.Contract))
 	if err != nil {
 		return nil, protocol.InvalidParameters(err)
 	}

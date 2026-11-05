@@ -1,4 +1,4 @@
-import { Refusal } from "@qimu/node";
+import { Refusal } from "@flame/backend-sdk/mcp";
 import type { ControlSession, ExecuteInput } from "../contracts/capability";
 
 type Reason = NonNullable<ControlSession["reason"]>;

@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/retry"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/core/program"
 )
 
 // followRecoveredSession closes the read-then-subscribe gap when the terminal
@@ -18,11 +17,10 @@ import (
 // snapshot subscription, installs its material and opaque head on the UI thread,
 // and only then starts consuming the successor tail.
 func (r *runs) followRecoveredSession() {
-	dispatcher := r.tasks.dispatch
 	sessionID := r.session.current.ID
 	r.startFollowing(func(ctx context.Context, lease operationLease) {
 		follower := streamFollower{
-			runs: r, ctx: ctx, dispatcher: dispatcher, lease: lease, sessionID: sessionID,
+			runs: r, ctx: ctx, lease: lease, sessionID: sessionID,
 			applyEvent: r.apply,
 		}
 		follower.followAttachedSession()
@@ -36,7 +34,7 @@ func (s *streamFollower) followAttachedSession() {
 	}
 	active := true
 	var reconcileErr error
-	postErr := post(s.ctx, s.dispatcher, func() {
+	postErr := s.runs.tasks.deliver(s.ctx, func() {
 		if !s.current() {
 			active = false
 			return
@@ -57,7 +55,6 @@ func (s *streamFollower) followAttachedSession() {
 type streamFollower struct {
 	runs       *runs
 	ctx        context.Context
-	dispatcher program.Dispatcher
 	lease      operationLease
 	sessionID  string
 	open       func(context.Context) (conversation.SegmentStream, error)
@@ -123,7 +120,7 @@ func (s *streamFollower) postOpenAccepted(opened conversation.SegmentStream) str
 		return followOpenedStream
 	}
 	disposition := rejectOpenedStream
-	err := post(s.ctx, s.dispatcher, func() {
+	err := s.runs.tasks.deliver(s.ctx, func() {
 		if !s.current() {
 			return
 		}
@@ -221,7 +218,7 @@ func (s *streamFollower) consume(stream conversation.EventStream) (bool, int, er
 func (s *streamFollower) apply(event conversation.RunEvent) (bool, error) {
 	active := true
 	var applyErr error
-	err := post(s.ctx, s.dispatcher, func() {
+	err := s.runs.tasks.deliver(s.ctx, func() {
 		if !s.current() {
 			active = false
 			return
@@ -257,7 +254,7 @@ type recoveryAttempt struct {
 
 func (s *streamFollower) snapshot() (followSnapshot, error) {
 	snapshot := followSnapshot{active: true}
-	err := post(s.ctx, s.dispatcher, func() {
+	err := s.runs.tasks.deliver(s.ctx, func() {
 		if !s.current() {
 			snapshot.active = false
 			return
@@ -317,7 +314,7 @@ func (s *streamFollower) waitBeforeRetry(cause error) bool {
 }
 
 func (s *streamFollower) postRetryStatus(persistent bool) bool {
-	err := post(s.ctx, s.dispatcher, func() {
+	err := s.runs.tasks.deliver(s.ctx, func() {
 		if s.current() {
 			label := fmt.Sprintf("reconnecting · attempt %d", s.failures)
 			if persistent {
@@ -352,7 +349,7 @@ func (s *streamFollower) recover(runID string, cause error) recoveryAttempt {
 	}
 	active := true
 	var reconcileErr error
-	postErr := post(s.ctx, s.dispatcher, func() {
+	postErr := s.runs.tasks.deliver(s.ctx, func() {
 		if !s.current() {
 			active = false
 			return
@@ -371,7 +368,7 @@ func (s *streamFollower) recover(runID string, cause error) recoveryAttempt {
 }
 
 func (s *streamFollower) finish() {
-	_ = post(s.ctx, s.dispatcher, func() {
+	_ = s.runs.tasks.deliver(s.ctx, func() {
 		if s.current() {
 			s.runs.finishFollowing()
 		}
@@ -382,7 +379,7 @@ func (s *streamFollower) postFailure(err error) {
 	if errors.Is(err, context.Canceled) || s.ctx.Err() != nil {
 		return
 	}
-	_ = post(s.ctx, s.dispatcher, func() {
+	_ = s.runs.tasks.deliver(s.ctx, func() {
 		if !s.current() {
 			return
 		}
@@ -394,7 +391,7 @@ func (s *streamFollower) postOpenFailure(err error) {
 	if errors.Is(err, context.Canceled) || s.ctx.Err() != nil {
 		return
 	}
-	_ = post(s.ctx, s.dispatcher, func() {
+	_ = s.runs.tasks.deliver(s.ctx, func() {
 		if !s.current() {
 			return
 		}

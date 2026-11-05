@@ -6,7 +6,7 @@ export { createSystemNotificationsPlugin } from "@/features/notifications/system
 export const statusNotifications = definePlugin({
   name: "flame.builtin.status-notifications",
   setup(ctx) {
-    contributeLayout(ctx, "sidebar.footer.status", {
+    contributeLayout(ctx.contributions, "sidebar.footer.status", {
       id: "notifications",
       order: 10,
       component: NotificationsBadge,

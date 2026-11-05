@@ -108,7 +108,7 @@ func TestPreparedToolRechecksAuthorityAndReleasesBeforeRefusedDispatch(t *testin
 			if err != nil {
 				t.Fatal(err)
 			}
-			invocation, err := bound.Contract().Prepare(chat.ToolCall{ID: "write", Name: bound.Contract().Definition().Name, Arguments: `{}`}, nil)
+			invocation, err := bound.Contract().Prepare((chat.ToolCall{ID: "write", Name: bound.Contract().Definition().Name, Arguments: `{}`}).Request(), toolcontract.Admission{})
 			if err != nil {
 				t.Fatal(err)
 			}

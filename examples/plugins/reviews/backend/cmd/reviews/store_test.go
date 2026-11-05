@@ -8,11 +8,13 @@ import (
 	"sync"
 	"testing"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 func openTestStore(t *testing.T, directory string) *store {
@@ -148,15 +150,15 @@ func TestReceiptHistoryDoesNotExhaustMutationAdmission(t *testing.T) {
 		input reviews.Update
 		want  reviews.UpdateResult
 	}{{"original", input, accepted}, {"after-history", changed, advanced}, {"refused-after-history", changed, refused}} {
-		admitted, err := jsonvalue.Encode(original.input)
+		admitted, err := framevalue.EncodeJSON(original.input)
 		if err != nil {
 			t.Fatal(err)
 		}
-		receipt, err := store.receipt(t.Context(), qimumcp.ReceiptRequest{ID: qimumcp.CommandID(original.id), Method: contracts.Update.Name(), InputDigest: admitted.Digest()}, contracts.Update.Name())
+		receipt, err := store.receipt(t.Context(), pluginmcp.ReceiptRequest{ID: pluginmcp.CommandID(original.id), Method: contracts.Update.Name(), InputDigest: admitted.Digest()}, contracts.Update.Name())
 		if err != nil || !receipt.Found {
 			t.Fatalf("missing original receipt %s: %+v, %v", original.id, receipt, err)
 		}
-		recovered, err := qimumcp.DecodeReply[reviews.UpdateResult](receipt.Reply)
+		recovered, err := pluginmcp.DecodeReply[reviews.UpdateResult](receipt.Reply)
 		if err != nil || !reflect.DeepEqual(recovered, original.want) {
 			t.Fatalf("changed original receipt %s: %+v, %v", original.id, recovered, err)
 		}
@@ -229,15 +231,15 @@ func TestInvalidBusinessInputRetainsItsOriginalReceiptAcrossRestart(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			admitted, err := jsonvalue.Encode(invalid)
+			admitted, err := framevalue.EncodeJSON(invalid)
 			if err != nil {
 				t.Fatal(err)
 			}
-			receipt, err := store.receipt(t.Context(), qimumcp.ReceiptRequest{ID: "refused", Method: contracts.Update.Name(), InputDigest: admitted.Digest()}, contracts.Update.Name())
+			receipt, err := store.receipt(t.Context(), pluginmcp.ReceiptRequest{ID: "refused", Method: contracts.Update.Name(), InputDigest: admitted.Digest()}, contracts.Update.Name())
 			if err != nil || !receipt.Found {
 				t.Fatalf("lost original invalid-input receipt: %+v, %v", receipt, err)
 			}
-			result, err := qimumcp.DecodeReply[reviews.UpdateResult](receipt.Reply)
+			result, err := pluginmcp.DecodeReply[reviews.UpdateResult](receipt.Reply)
 			if err != nil || result.Type != reviews.Invalid || result.Review != nil {
 				t.Fatalf("invalid-input receipt changed: %+v, %v", result, err)
 			}
@@ -269,7 +271,7 @@ func TestRevisionExhaustionIsAKnownRefusal(t *testing.T) {
 }
 
 func testUpdate(ctx context.Context, store *store, id string, input reviews.Update) (reviews.UpdateResult, error) {
-	admitted, err := jsonvalue.Encode(input)
+	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {
 		return reviews.UpdateResult{}, err
 	}

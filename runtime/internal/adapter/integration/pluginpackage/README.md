@@ -1,20 +1,20 @@
 # Flame release interpretation
 
-This adapter interprets Flame metadata inside a neutral Qimu release. It does not
+This adapter interprets Flame metadata inside a neutral Frame release. It does not
 own a second archive format, content cache, release digest, integrity stamp or
-execution tree. `qimu/distribution` owns those bytes and their original leases.
+execution tree. `frame/distribution` owns those bytes and their original leases.
 The composition root supplies one content Store and its shared Admission.
 
 Every installed directory or ZIP contains `manifest.json`, `plugin.lock.json` and
 exactly the listed artifacts. `plugin.json` remains Flame's product metadata. Its
 namespace references a document with the public `plugin.DeclarationProtocol`;
-that version is independent of Qimu's portable contract and transport versions.
+that version is independent of Frame's portable contract and transport versions.
 Legacy directories without the neutral manifest and lock are refused.
 
 `plugins.ProjectFrameworkDeclaration` is the only mapping from admitted Flame
-metadata to Qimu Units, contracts and import slots. Both Runtime and the author
+metadata to Frame Units, contracts and import slots. Both Runtime and the author
 command use it. `BuildRelease` adds the actual compiled module graph or target
-executable and invokes Qimu's deterministic package builder. Admission recomputes
+executable and invokes Frame's deterministic package builder. Admission recomputes
 that same complete declaration and compares its canonical identity to the neutral
 manifest. A package cannot add a hidden Unit, change an import, relabel a contract,
 substitute a managed runtime or change a Point contribution through metadata.
@@ -78,5 +78,5 @@ specifier list before loading a component. Loading trusted native JavaScript doe
 not establish a security sandbox.
 
 Product metadata, diagnostics, inputs, skill parsing and presentation policy remain
-Flame responsibilities. Qimu owns provider admission, exact bindings, execution
+Flame responsibilities. Frame owns provider admission, exact bindings, execution
 protection and release-byte integrity.

@@ -53,8 +53,8 @@ beforeEach(() => {
 
 async function registerSchemePair(): Promise<void> {
   await contributeForTest((ctx) => {
-    ctx.contribute(COLOR_THEME, { id: "dark", label: "Dark", scheme: "dark" });
-    ctx.contribute(COLOR_THEME, { id: "light", label: "Light", scheme: "light" });
+    ctx.contributions.add(COLOR_THEME, { id: "dark", label: "Dark", scheme: "dark" });
+    ctx.contributions.add(COLOR_THEME, { id: "light", label: "Light", scheme: "light" });
   }, "test.schemes");
 }
 
@@ -138,7 +138,7 @@ describe("a theme's own neutrals are what paints", () => {
   const painted = (name: string) => document.documentElement.style.getPropertyValue(`--${name}`);
 
   function tinted(ctx: PluginContext) {
-    ctx.contribute(COLOR_THEME, {
+    ctx.contributions.add(COLOR_THEME, {
       id: "tinted",
       label: "Tinted",
       scheme: "dark",
@@ -211,7 +211,7 @@ describe("a theme's own neutrals are what paints", () => {
 
   it("does not touch a palette theme that never opted in", async () => {
     await contributeForTest((ctx) => {
-      ctx.contribute(COLOR_THEME, {
+      ctx.contributions.add(COLOR_THEME, {
         id: "palette",
         label: "Palette",
         scheme: "light",
@@ -267,7 +267,7 @@ describe("accent ownership", () => {
 
   it("paints the accent its theme derived, never a second one of its own", async () => {
     await contributeForTest((ctx) => {
-      ctx.contribute(COLOR_THEME, {
+      ctx.contributions.add(COLOR_THEME, {
         id: "declared",
         label: "Declared",
         scheme: "light",
@@ -285,7 +285,7 @@ describe("accent ownership", () => {
 describe("applyTheme — theme-as-plugin contract", () => {
   it("writes spec.tokens to :root.style when the active theme is registered", async () => {
     await contributeForTest((ctx) => {
-      ctx.contribute(COLOR_THEME, {
+      ctx.contributions.add(COLOR_THEME, {
         id: "dark",
         label: "Dark",
         scheme: "dark",
@@ -303,7 +303,7 @@ describe("applyTheme — theme-as-plugin contract", () => {
 
   it("toggles theme-{scheme} class — drives structural CSS overrides", async () => {
     await contributeForTest((ctx) => {
-      ctx.contribute(COLOR_THEME, {
+      ctx.contributions.add(COLOR_THEME, {
         id: "palette-light",
         label: "Palette Light",
         scheme: "light",
@@ -321,13 +321,13 @@ describe("applyTheme — theme-as-plugin contract", () => {
 
   it("switching themes replaces token values", async () => {
     await contributeForTest((ctx) => {
-      ctx.contribute(COLOR_THEME, {
+      ctx.contributions.add(COLOR_THEME, {
         id: "dark",
         label: "Dark",
         scheme: "dark",
         tokens: { "color-bg": "#010102", "color-text": "#f7f8f8" },
       });
-      ctx.contribute(COLOR_THEME, {
+      ctx.contributions.add(COLOR_THEME, {
         id: "light",
         label: "Light",
         scheme: "light",
@@ -348,13 +348,13 @@ describe("applyTheme — theme-as-plugin contract", () => {
 
   it("removes tokens omitted by the next theme", async () => {
     await contributeForTest((ctx) => {
-      ctx.contribute(COLOR_THEME, {
+      ctx.contributions.add(COLOR_THEME, {
         id: "dark",
         label: "Dark",
         scheme: "dark",
         tokens: { "color-bg": "#010102", "color-warning": "#f0c000" },
       });
-      ctx.contribute(COLOR_THEME, {
+      ctx.contributions.add(COLOR_THEME, {
         id: "light",
         label: "Light",
         scheme: "light",
@@ -371,14 +371,14 @@ describe("applyTheme — theme-as-plugin contract", () => {
 
   it("toggleTheme flips to the first registered theme of the opposite scheme", async () => {
     await contributeForTest((ctx) => {
-      ctx.contribute(COLOR_THEME, {
+      ctx.contributions.add(COLOR_THEME, {
         id: "dark",
         label: "Dark",
         scheme: "dark",
         order: 0,
         tokens: {},
       });
-      ctx.contribute(COLOR_THEME, {
+      ctx.contributions.add(COLOR_THEME, {
         id: "palette-light",
         label: "Palette Light",
         scheme: "light",
@@ -399,7 +399,7 @@ describe("applyTheme — theme-as-plugin contract", () => {
 describe("visual-style contract", () => {
   it("applies component tokens independently from colour", async () => {
     await contributeForTest((ctx) => {
-      ctx.contribute(VISUAL_STYLE, {
+      ctx.contributions.add(VISUAL_STYLE, {
         id: "test-style",
         motion: TEST_MOTION,
         tokens: { "style-shape-md": "5px", "app-content-shadow": "none" },
@@ -419,12 +419,12 @@ describe("visual-style contract", () => {
 
   it("removes tokens omitted by the next visual style", async () => {
     await contributeForTest((ctx) => {
-      ctx.contribute(VISUAL_STYLE, {
+      ctx.contributions.add(VISUAL_STYLE, {
         id: "first",
         motion: TEST_MOTION,
         tokens: { "shadow-surface-card": "0 8px 20px black" },
       });
-      ctx.contribute(VISUAL_STYLE, {
+      ctx.contributions.add(VISUAL_STYLE, {
         id: "second",
         motion: TEST_MOTION,
         tokens: {},
@@ -523,13 +523,13 @@ describe("the first-paint record mirrors what renders", () => {
   it("is written for a registered theme and cleared once that theme stops rendering", async () => {
     let unregister: (() => void) | undefined;
     await contributeForTest((ctx) => {
-      const theme = ctx.contribute(COLOR_THEME, {
+      const theme = ctx.contributions.add(COLOR_THEME, {
         id: "package:a:sea",
         label: "Sea",
         scheme: "light",
         tokens: { "color-bg": "#f4f8fb" },
       });
-      unregister = () => theme.dispose();
+      unregister = () => theme[Symbol.dispose]();
     }, "test.package-theme");
     owner.store.setState({ theme: "package:a:sea" });
     expect(localStorage.getItem("flame.theme-paint")).toContain("package:a:sea");

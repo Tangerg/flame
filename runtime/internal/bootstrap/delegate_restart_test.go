@@ -27,7 +27,7 @@ func TestProtocolContinuesWaitingTreeBesideCompletedSiblingAfterRestart(t *testi
 	}
 	waiting := chat.ToolCall{ID: "delegate_a", Name: "delegate_task", Arguments: string(waitingArguments)}
 	completed := chat.ToolCall{ID: "delegate_b", Name: "delegate_task", Arguments: `{"summary":"B","instructions":"completed sibling B"}`}
-	separator := chat.ToolCall{ID: "rejected_between_batches", Name: "unavailable", Arguments: `{}`}
+	separator := chat.ToolCall{ID: "read_between_batches", Name: "get_goal", Arguments: `{}`}
 	for _, test := range []struct {
 		name          string
 		calls         []chat.ToolCall
@@ -140,7 +140,12 @@ func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall, can
 	select {
 	case bRunID = <-bCompleted:
 	case observed := <-initialDone:
-		t.Fatalf("tree stopped before sibling B completed after %d model calls: events=%+v, stream error=%v", calls.Load(), observed.events, observed.err)
+		snapshot, readErr := api.GetSessionSnapshot(ctx, protocol.GetSessionSnapshotRequest{SessionID: session.ID})
+		var state []byte
+		if snapshot != nil {
+			state, _ = json.Marshal(snapshot.Runs)
+		}
+		t.Fatalf("tree stopped before sibling B completed after %d model calls: runs=%s, stream error=%v, snapshot error=%v", calls.Load(), state, observed.err, readErr)
 	case <-time.After(lifecycleWaitBudget(t)):
 		t.Fatal("completed sibling B was held behind running sibling A")
 	}

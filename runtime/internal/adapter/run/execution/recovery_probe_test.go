@@ -18,8 +18,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu"
-	agent "github.com/Tangerg/scope/agent"
+	"github.com/Tangerg/frame"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -46,7 +47,7 @@ func (c *failedRestorationComposition) RestorationFailure([]plugins.Contribution
 
 func TestWaitingContributionProbeUsesTheOriginalRestorationConclusion(t *testing.T) {
 	for _, definite := range []bool{false, true} {
-		name, cause := "inconclusive", errors.Join(plugin.ErrUnavailable, qimu.ErrRecoveryRequired)
+		name, cause := "inconclusive", errors.Join(plugin.ErrUnavailable, frame.ErrRecoveryRequired)
 		if definite {
 			name, cause = "failed", errors.New("original MCP initialization closed")
 		}
@@ -102,7 +103,7 @@ func TestFailedCompositionAssemblyReleasesResourcesBeforeEngineConstruction(t *t
 		t.Fatal("failed staging called the provider")
 		return nil, nil
 	}), InteractionExecutorConfig{CallComposition: &unavailableCallComposition{cause: failure}})
-	if _, err := executor.StageRoot(t.Context(), interactionTestStart()); !errors.Is(err, failure) || errors.Is(err, agent.ErrInvalidEngineConfig) {
+	if _, err := executor.StageRoot(t.Context(), interactionTestStart()); !errors.Is(err, failure) || errors.Is(err, scoperun.ErrInvalidConfig) {
 		t.Fatalf("failed pre-engine assembly did not preserve its cause and release resources: %v", err)
 	}
 	if err := executor.AwaitShutdown(t.Context()); err != nil {

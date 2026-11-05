@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { failureText, type Translate } from "@flame/component-sdk";
-import { parseJSON, projectNumber } from "@qimu/sdk/json";
+import { parseJSON, projectNumber } from "@frame/sdk/json";
 import {
   Button,
   Callout,

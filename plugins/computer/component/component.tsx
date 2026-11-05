@@ -14,7 +14,7 @@ import {
   type Translate,
   useTranslator,
 } from "@flame/component-sdk";
-import { parseJSON } from "@qimu/sdk/json";
+import { parseJSON } from "@frame/sdk/json";
 import {
   Badge,
   Button,

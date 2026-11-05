@@ -1,4 +1,4 @@
-import { cloneJSON } from "@qimu/sdk/json";
+import { cloneJSON } from "@frame/sdk/json";
 import {
   callPluginCommand,
   pendingPluginCommand,

@@ -50,7 +50,7 @@ func admitCatalogPart(allowed catalog.Modalities, part chat.Part) error {
 			return errors.New("tool result content is absent")
 		}
 		for index, content := range part.ToolResult.Output.Content {
-			if err := admitCatalogPart(allowed, chat.Part{Kind: content.Kind, Media: content.Media}); err != nil {
+			if err := admitCatalogPart(allowed, chat.NewContentPart(content)); err != nil {
 				return fmt.Errorf("tool result content %d: %w", index, err)
 			}
 		}

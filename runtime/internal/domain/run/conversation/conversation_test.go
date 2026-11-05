@@ -1,6 +1,8 @@
 package conversation
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"errors"
 	"reflect"
 	"strings"
@@ -13,7 +15,7 @@ func TestConversationPreservesScopeToolCallIDs(t *testing.T) {
 	for _, id := range []string{" call\u200b1\n", strings.Repeat("界", 513)} {
 		messages := []chat.Message{
 			chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: id, Name: "inspect", Arguments: `{}`})),
-			chat.NewToolMessage(chat.ToolResult{ID: id, Name: "inspect", Output: chat.NewTextToolOutput("contents")}),
+			chat.NewToolMessage(chat.ToolResult{ID: id, Name: "inspect", Output: toolcontract.NewTextOutput("contents")}),
 		}
 		for _, message := range messages {
 			if err := message.Validate(); err != nil {
@@ -37,7 +39,7 @@ func TestConversationRejectsMissingScopeToolCallIDs(t *testing.T) {
 		want    error
 	}{
 		{"call", chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{Name: "inspect", Arguments: `{}`})), chat.ErrInvalidToolCall},
-		{"result", chat.NewToolMessage(chat.ToolResult{Name: "inspect", Output: chat.NewTextToolOutput("contents")}), chat.ErrInvalidToolResult},
+		{"result", chat.NewToolMessage(chat.ToolResult{Name: "inspect", Output: toolcontract.NewTextOutput("contents")}), chat.ErrInvalidToolResult},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if _, err := New([]chat.Message{test.message}); !errors.Is(err, test.want) {
@@ -79,7 +81,7 @@ func TestCloseOpenToolCallsClosesOnlyLatestUnresolvedGenerations(t *testing.T) {
 			chat.NewToolCallPart(chat.ToolCall{ID: "call_reused", Name: "first"}),
 			chat.NewToolCallPart(chat.ToolCall{ID: "call_parallel", Name: "parallel"}),
 		),
-		chat.NewToolMessage(chat.ToolResult{ID: "call_reused", Name: "first", Output: chat.NewTextToolOutput("done")}),
+		chat.NewToolMessage(chat.ToolResult{ID: "call_reused", Name: "first", Output: toolcontract.NewTextOutput("done")}),
 		chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: "call_reused", Name: "second"})),
 	})
 	if err != nil {
@@ -93,8 +95,8 @@ func TestCloseOpenToolCallsClosesOnlyLatestUnresolvedGenerations(t *testing.T) {
 		t.Fatalf("counts/appended = %d/%d/%d, want 3/4/1", history.Count(), closed.Count(), len(appended))
 	}
 	want := chat.NewToolMessage(
-		chat.ToolResult{ID: "call_parallel", Name: "parallel", Output: chat.NewTextToolOutput("execution was lost"), IsError: true},
-		chat.ToolResult{ID: "call_reused", Name: "second", Output: chat.NewTextToolOutput("execution was lost"), IsError: true},
+		chat.ToolResult{ID: "call_parallel", Name: "parallel", Output: toolcontract.NewTextOutput("execution was lost"), IsError: true},
+		chat.ToolResult{ID: "call_reused", Name: "second", Output: toolcontract.NewTextOutput("execution was lost"), IsError: true},
 	)
 	if !reflect.DeepEqual(appended[0], want) || !reflect.DeepEqual(closed.Messages()[3], want) {
 		t.Fatalf("closure = %#v, want %#v", appended, want)
@@ -108,7 +110,7 @@ func TestCloseOpenToolCallsClosesOnlyLatestUnresolvedGenerations(t *testing.T) {
 func TestCloseOpenToolCallsIsNoOpWhenConversationIsClosed(t *testing.T) {
 	history, err := New([]chat.Message{
 		chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: "call", Name: "read"})),
-		chat.NewToolMessage(chat.ToolResult{ID: "call", Name: "read", Output: chat.NewTextToolOutput("done")}),
+		chat.NewToolMessage(chat.ToolResult{ID: "call", Name: "read", Output: toolcontract.NewTextOutput("done")}),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -129,7 +131,7 @@ func TestCloseOpenToolCallsWithResultsPreservesProviderOrder(t *testing.T) {
 	}
 	closed, appended, err := history.CloseOpenToolCallsWithResults(
 		"canceled",
-		[]chat.ToolResult{{ID: "second", Name: "glob", Output: chat.NewTextToolOutput("known")}},
+		[]chat.ToolResult{{ID: "second", Name: "glob", Output: toolcontract.NewTextOutput("known")}},
 	)
 	if err != nil {
 		t.Fatal(err)

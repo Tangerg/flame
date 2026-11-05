@@ -10,11 +10,13 @@ import (
 	"testing"
 	"time"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
-	"github.com/Tangerg/qimu/distribution"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/runner"
+	"github.com/Tangerg/frame/distribution"
+
+	"github.com/Tangerg/frame/process/runner"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -254,9 +256,9 @@ func TestAssemblyRetainsUnreferencedPluginReleaseUntilConstructionSucceeds(t *te
 		t.Fatal(err)
 	}
 	content, err := distribution.Open(distribution.Config{
-		Directory: filepath.Join(cfg.stores.DataDirectory, "plugins", "qimu"), Admission: cfg.stores.Admission,
+		Directory: filepath.Join(cfg.stores.DataDirectory, "plugins", "frame"), Admission: cfg.stores.Admission,
 		Trust: func(context.Context, distribution.Source, distribution.Manifest, distribution.Lock) error { return nil },
-		Retained: func(ctx context.Context, digest integrity.Digest) (bool, error) {
+		Retained: func(ctx context.Context, digest framevalue.Digest) (bool, error) {
 			return retainedPluginContent(ctx, cfg.stores, digest)
 		},
 	})
@@ -396,13 +398,13 @@ func TestAssemblyRejectsMissingToolResolverAndReclaimsResources(t *testing.T) {
 func runtimeConfigWithRequiredDeps(t *testing.T) assemblyConfig {
 	t.Helper()
 
-	client, err := chatclient.New(newReplyStub("ok"), chatclient.Config{})
+	client, err := chatclient.New(newReplyStub("ok"))
 	if err != nil {
 		t.Fatalf("chat client: %v", err)
 	}
 
 	workspace := t.TempDir()
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: t.TempDir()})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: testsupport.TempDirectory(t)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -520,7 +522,7 @@ func testProcessRunner(t *testing.T) *runner.Daemon {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := value.Close(ctx); err != nil {
-			t.Error(err)
+			t.Errorf("close test process runner: %v", err)
 		}
 	})
 	return value

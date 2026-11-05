@@ -10,59 +10,58 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // ReleaseStore is the admitted release catalog: the only owner of release
 // content. Rows are insert-only by digest, so an installation names a release
 // and can never replace its declaration.
 type ReleaseStore struct {
-	db          *sql.DB
+	db          *database
 	mu          sync.Mutex
-	projections map[integrity.Digest]releaseProjection
+	projections map[framevalue.Digest]releaseProjection
 }
-
 type releaseProjection struct {
 	declaration string
 	release     plugin.Release
 }
 
-func newReleaseStore(db *sql.DB) *ReleaseStore {
-	return &ReleaseStore{db: db, projections: make(map[integrity.Digest]releaseProjection)}
+func newReleaseStore(db *database) *ReleaseStore {
+	return &ReleaseStore{db: db, projections: make(map[framevalue.Digest]releaseProjection)}
 }
 
-func (s *ReleaseStore) Get(ctx context.Context, digest integrity.Digest) (plugin.Release, error) {
-	var body string
-	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT declaration FROM plugin_releases WHERE digest=?`, digest.String()).Scan(&body)
-	if errors.Is(err, sql.ErrNoRows) {
-		return plugin.Release{}, plugin.ErrNotFound
-	}
-	if err != nil {
-		return plugin.Release{}, err
-	}
-	// The current SQL read owns existence and transaction visibility. Only
-	// admission of its complete declaration may be reused across snapshots.
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if projection, ok := s.projections[digest]; ok && projection.declaration == body {
-		return projection.release, nil
-	}
-	var stored storedDeclaration
-	if err := decodeStoredJSON([]byte(body), &stored); err != nil {
-		return plugin.Release{}, fmt.Errorf("sqlite: decode release %s: %w", digest, err)
-	}
-	declaration, err := stored.declaration()
-	if err != nil {
-		return plugin.Release{}, fmt.Errorf("sqlite: decode release %s: %w", digest, err)
-	}
-	release, err := plugin.NewRelease(digest, declaration)
-	if err != nil {
-		return plugin.Release{}, err
-	}
-	s.projections[digest] = releaseProjection{declaration: body, release: release}
-	return release, nil
+// The current SQL read owns existence and transaction visibility. Only
+// admission of its complete declaration may be reused across snapshots.
+func (s *ReleaseStore) Get(ctx context.Context, digest framevalue.Digest) (plugin.Release, error) {
+	return scopedValue(ctx, s.db.read, func(ctx context.Context) (plugin.Release, error) {
+		var body string
+		err := s.db.connection(ctx).QueryRowContext(ctx, `SELECT declaration FROM plugin_releases WHERE digest=?`, digest.String()).Scan(&body)
+		if errors.Is(err, sql.ErrNoRows) {
+			return plugin.Release{}, plugin.ErrNotFound
+		}
+		if err != nil {
+			return plugin.Release{}, err
+		}
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		if projection, ok := s.projections[digest]; ok && projection.declaration == body {
+			return projection.release, nil
+		}
+		var stored storedDeclaration
+		if err := decodeStoredJSON([]byte(body), &stored); err != nil {
+			return plugin.Release{}, fmt.Errorf("sqlite: decode release %s: %w", digest, err)
+		}
+		declaration, err := stored.declaration()
+		if err != nil {
+			return plugin.Release{}, fmt.Errorf("sqlite: decode release %s: %w", digest, err)
+		}
+		release, err := plugin.NewRelease(digest, declaration)
+		if err != nil {
+			return plugin.Release{}, err
+		}
+		s.projections[digest] = releaseProjection{declaration: body, release: release}
+		return release, nil
+	})
 }
 
 // Admit records a release and, in the same transaction, the names of the
@@ -75,8 +74,8 @@ func (s *ReleaseStore) Admit(ctx context.Context, release plugin.Release) error 
 		return err
 	}
 	digest := release.Digest().String()
-	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
-		db := sqlite.Connection(ctx, s.db)
+	return s.db.write(ctx, func(ctx context.Context) error {
+		db := s.db.connection(ctx)
 		result, err := db.ExecContext(ctx, `INSERT INTO plugin_releases(digest,declaration) VALUES(?,?) ON CONFLICT(digest) DO NOTHING`, digest, string(body))
 		if err != nil {
 			return err
@@ -95,39 +94,43 @@ func (s *ReleaseStore) Admit(ctx context.Context, release plugin.Release) error 
 }
 
 // Digests lists every admitted release.
-func (s *ReleaseStore) Digests(ctx context.Context) ([]integrity.Digest, error) {
-	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT digest FROM plugin_releases ORDER BY digest`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var result []integrity.Digest
-	for rows.Next() {
-		var text string
-		if err := rows.Scan(&text); err != nil {
+func (s *ReleaseStore) Digests(ctx context.Context) ([]framevalue.Digest, error) {
+	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]framevalue.Digest, error) {
+		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT digest FROM plugin_releases ORDER BY digest`)
+		if err != nil {
 			return nil, err
 		}
-		digest, err := integrity.ParseDigest(text)
-		if err != nil {
-			return nil, fmt.Errorf("sqlite: decode release digest: %w", err)
+		defer rows.Close()
+		var result []framevalue.Digest
+		for rows.Next() {
+			var text string
+			if err := rows.Scan(&text); err != nil {
+				return nil, err
+			}
+			digest, err := framevalue.ParseDigest(text)
+			if err != nil {
+				return nil, fmt.Errorf("sqlite: decode release digest: %w", err)
+			}
+			result = append(result, digest)
 		}
-		result = append(result, digest)
-	}
-	return result, rows.Err()
+		return result, rows.Err()
+	})
 }
 
 // Remove deletes an unreferenced release with its server membership. An
 // installation still naming it makes the delete fail, so a referenced release
 // cannot be removed whatever its caller believes.
-func (s *ReleaseStore) Remove(ctx context.Context, digest integrity.Digest) error {
-	_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM plugin_releases WHERE digest=?`, digest.String())
-	if err != nil {
-		return err
-	}
-	s.mu.Lock()
-	delete(s.projections, digest)
-	s.mu.Unlock()
-	return nil
+func (s *ReleaseStore) Remove(ctx context.Context, digest framevalue.Digest) error {
+	return s.db.write(ctx, func(ctx context.Context) error {
+		_, err := s.db.connection(ctx).ExecContext(ctx, `DELETE FROM plugin_releases WHERE digest=?`, digest.String())
+		if err != nil {
+			return err
+		}
+		s.mu.Lock()
+		delete(s.projections, digest)
+		s.mu.Unlock()
+		return nil
+	})
 }
 
 // storedDeclaration is the release record. Its servers are stored flat and its
@@ -138,7 +141,6 @@ type storedDeclaration struct {
 	Servers       []storedServer
 	TerminalViews []storedTerminalView
 }
-
 type storedTerminalView struct {
 	ID           string
 	Title        string
@@ -146,7 +148,6 @@ type storedTerminalView struct {
 	List         storedTerminalList
 	Actions      []storedTerminalAction
 }
-
 type storedTerminalList struct {
 	Method  string
 	Input   []storedInputBinding
@@ -155,7 +156,6 @@ type storedTerminalList struct {
 	Paging  *plugin.TerminalPaging `json:",omitzero"`
 	Columns []plugin.TerminalColumn
 }
-
 type storedTerminalAction struct {
 	ID      string
 	Title   string
@@ -164,20 +164,17 @@ type storedTerminalAction struct {
 	Confirm bool
 	Input   []storedInputBinding
 }
-
 type storedInputBinding struct {
 	Path  string
 	Value storedBinding
 }
-
 type storedBinding struct {
 	Source  extension.TerminalBindingSource
-	Literal *jsonvalue.Value `json:",omitzero"`
+	Literal *framevalue.JSON `json:",omitzero"`
 	Field   string
 	Context extension.TerminalContext
 	Form    *storedFormField `json:",omitzero"`
 }
-
 type storedFormField struct {
 	Title   string
 	Default *storedBinding `json:",omitzero"`
@@ -192,14 +189,10 @@ func storeTerminalViews(views []plugin.TerminalView) []storedTerminalView {
 		for at, action := range view.Actions {
 			actions[at] = storedTerminalAction{ID: action.ID, Title: action.Title, Method: action.Method, Target: action.Target, Confirm: action.Confirm, Input: storeInputBindings(action.Input)}
 		}
-		stored[index] = storedTerminalView{
-			ID: view.ID, Title: view.Title, Contribution: view.Contribution, Actions: actions,
-			List: storedTerminalList{Method: view.List.Method, Input: storeInputBindings(view.List.Input), Rows: view.List.Rows, Key: view.List.Key, Paging: view.List.Paging, Columns: view.List.Columns},
-		}
+		stored[index] = storedTerminalView{ID: view.ID, Title: view.Title, Contribution: view.Contribution, Actions: actions, List: storedTerminalList{Method: view.List.Method, Input: storeInputBindings(view.List.Input), Rows: view.List.Rows, Key: view.List.Key, Paging: view.List.Paging, Columns: view.List.Columns}}
 	}
 	return stored
 }
-
 func storeInputBindings(bindings []plugin.InputBinding) []storedInputBinding {
 	stored := make([]storedInputBinding, len(bindings))
 	for index, binding := range bindings {
@@ -207,10 +200,9 @@ func storeInputBindings(bindings []plugin.InputBinding) []storedInputBinding {
 	}
 	return stored
 }
-
 func storeBinding(binding plugin.Binding) storedBinding {
 	stored := storedBinding{Source: binding.Source, Field: binding.Field, Context: binding.Context}
-	if len(binding.Literal.JSON()) != 0 {
+	if len(binding.Literal.Bytes()) != 0 {
 		stored.Literal = &binding.Literal
 	}
 	if binding.Form != nil {
@@ -223,18 +215,13 @@ func storeBinding(binding plugin.Binding) storedBinding {
 	}
 	return stored
 }
-
 func (s storedTerminalView) view() plugin.TerminalView {
 	actions := make([]plugin.TerminalAction, len(s.Actions))
 	for index, action := range s.Actions {
 		actions[index] = plugin.TerminalAction{ID: action.ID, Title: action.Title, Method: action.Method, Target: action.Target, Confirm: action.Confirm, Input: inputBindings(action.Input)}
 	}
-	return plugin.TerminalView{
-		ID: s.ID, Title: s.Title, Contribution: s.Contribution, Actions: actions,
-		List: plugin.TerminalList{Method: s.List.Method, Input: inputBindings(s.List.Input), Rows: s.List.Rows, Key: s.List.Key, Paging: s.List.Paging, Columns: s.List.Columns},
-	}
+	return plugin.TerminalView{ID: s.ID, Title: s.Title, Contribution: s.Contribution, Actions: actions, List: plugin.TerminalList{Method: s.List.Method, Input: inputBindings(s.List.Input), Rows: s.List.Rows, Key: s.List.Key, Paging: s.List.Paging, Columns: s.List.Columns}}
 }
-
 func inputBindings(stored []storedInputBinding) []plugin.InputBinding {
 	bindings := make([]plugin.InputBinding, len(stored))
 	for index, binding := range stored {
@@ -242,7 +229,6 @@ func inputBindings(stored []storedInputBinding) []plugin.InputBinding {
 	}
 	return bindings
 }
-
 func (s storedBinding) binding() plugin.Binding {
 	binding := plugin.Binding{Source: s.Source, Field: s.Field, Context: s.Context}
 	if s.Literal != nil {
@@ -292,7 +278,6 @@ func storeDeclaration(declaration plugin.Declaration) storedDeclaration {
 	}
 	return stored
 }
-
 func (s storedDeclaration) declaration() (plugin.Declaration, error) {
 	declaration := s.Declaration
 	declaration.TerminalViews = make([]plugin.TerminalView, len(s.TerminalViews))

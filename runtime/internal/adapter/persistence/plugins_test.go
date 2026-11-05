@@ -18,8 +18,8 @@ func TestInstallationTransitionsPreserveStandingRulesUntilSourceRemoval(t *testi
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	catalog := newReleaseStore(db)
-	store, rules := newInstallationStore(catalog), newApprovalRuleStore(db)
+	catalog := newReleaseStore(databaseFor(db))
+	store, rules := newInstallationStore(catalog), newApprovalRuleStore(databaseFor(db))
 	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "server"}}}}})
 	if err := catalog.Admit(t.Context(), release); err != nil {
 		t.Fatal(err)
@@ -39,7 +39,7 @@ func TestInstallationTransitionsPreserveStandingRulesUntilSourceRemoval(t *testi
 		t.Fatal(err)
 	}
 	ref := testsupport.MCPTool(name, "write")
-	if err := newMCPServerStore(db).SetToolExposure(t.Context(), ref, true); err != nil {
+	if err := newMCPServerStore(databaseFor(db)).SetToolExposure(t.Context(), ref, true); err != nil {
 		t.Fatal(err)
 	}
 	rule, err := approval.NewRule(approval.GlobalScope(), ref, i.ServerAuthority(testsupport.ServerName("server")), approval.Subject{Type: approval.SubjectAll}, approval.Deny)
@@ -93,8 +93,8 @@ func TestInstallationCredentialsFollowTheirRecipient(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	catalog := newReleaseStore(db)
-	store, authorization := newInstallationStore(catalog), newMCPAuthorizationStore(db)
+	catalog := newReleaseStore(databaseFor(db))
+	store, authorization := newInstallationStore(catalog), newMCPAuthorizationStore(databaseFor(db))
 	server := testsupport.ServerName("server")
 	declare := func(seed, url string) plugin.Release {
 		release := testsupport.Release(t, seed, plugin.Declaration{Name: "package", Version: seed, Servers: []plugin.Server{{Name: server, Startup: plugin.DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: url}}}}, Inputs: []plugin.Input{{ID: "tenant", Server: server, Target: plugin.Header, Key: "X-Tenant", Secret: true}}})
@@ -170,7 +170,7 @@ func TestInstallationStateRoundTripsRelationally(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	catalog := newReleaseStore(db)
+	catalog := newReleaseStore(databaseFor(db))
 	store := newInstallationStore(catalog)
 	declaration := plugin.Declaration{
 		Name:    "package",
@@ -261,7 +261,7 @@ func TestInstallationReadsRejectStateOutsideItsAdmittedReleases(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = db.Close() })
-			catalog := newReleaseStore(db)
+			catalog := newReleaseStore(databaseFor(db))
 			store := newInstallationStore(catalog)
 			for _, admitted := range []plugin.Release{release, other} {
 				if err := catalog.Admit(t.Context(), admitted); err != nil {
@@ -303,7 +303,7 @@ func TestInstallationNeverStoresAReleaseCopy(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	catalog := newReleaseStore(db)
+	catalog := newReleaseStore(databaseFor(db))
 	store := newInstallationStore(catalog)
 	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "original"}}}}})
 	if err := catalog.Admit(t.Context(), release); err != nil {

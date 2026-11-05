@@ -28,7 +28,6 @@ func (a *app) followRuntimeChanges() {
 	if repository == nil && a.changes == nil {
 		return
 	}
-	dispatcher := a.loop.Dispatcher()
 	a.operations.Go(runtimeChangesOperation, true, func(ctx context.Context, lease operationLease) {
 		monitor := runtimeChangeMonitor{
 			workspace: workspacePath, repository: repository, source: a.changes,
@@ -37,7 +36,7 @@ func (a *app) followRuntimeChanges() {
 			watchFiles:         a.runtimeSupports(protocol.FeatureFileWatch),
 			resources:          a.observedRuntimeResources(),
 			applyFiles: func(changes []workspace.Change) error {
-				return post(ctx, dispatcher, func() {
+				return a.tasks.deliver(ctx, func() {
 					if !a.operations.Current(lease) || a.closed || a.lifecycle.state.current.Workspace.Path != workspacePath {
 						return
 					}
@@ -45,7 +44,7 @@ func (a *app) followRuntimeChanges() {
 				})
 			},
 			applyEvent: func(event changefeed.Event) error {
-				return post(ctx, dispatcher, func() {
+				return a.tasks.deliver(ctx, func() {
 					if !a.operations.Current(lease) || a.closed || a.lifecycle.state.current.Workspace.Path != workspacePath {
 						return
 					}
@@ -53,7 +52,7 @@ func (a *app) followRuntimeChanges() {
 				})
 			},
 			applyResync: func(topics []protocol.RuntimeTopic) error {
-				return post(ctx, dispatcher, func() {
+				return a.tasks.deliver(ctx, func() {
 					if !a.operations.Current(lease) || a.closed || a.lifecycle.state.current.Workspace.Path != workspacePath {
 						return
 					}
@@ -62,7 +61,7 @@ func (a *app) followRuntimeChanges() {
 			},
 		}
 		if err := monitor.run(ctx); err != nil && context.Cause(ctx) == nil {
-			_ = post(ctx, dispatcher, func() {
+			_ = a.tasks.deliver(ctx, func() {
 				if !a.operations.Current(lease) || a.closed || a.lifecycle.state.current.Workspace.Path != workspacePath {
 					return
 				}

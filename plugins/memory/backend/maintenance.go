@@ -8,8 +8,8 @@ import (
 	app "github.com/Tangerg/flame/plugins/memory/internal/application"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
-	"github.com/Tangerg/frame/sqlite"
-	qimumcp "github.com/Tangerg/qimu/mcp"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 // Only publication is transactional here. Ledger facts survive failed model
@@ -22,7 +22,7 @@ type maintenancePublication struct {
 
 func (s maintenancePublication) Reconcile(ctx context.Context, publication memory.Publication) (bool, error) {
 	var published bool
-	err := sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	err := pluginstorage.WithinTransaction(ctx, s.db, func(ctx context.Context) error {
 		var err error
 		published, err = s.CurationStore.Reconcile(ctx, publication)
 		if err != nil {
@@ -38,9 +38,9 @@ func (s maintenancePublication) Reconcile(ctx context.Context, publication memor
 }
 
 func maintenanceReply(published bool) ([]byte, error) {
-	result, err := qimumcp.EncodeReply(rpc.MaintenanceResult{Published: published}, nil, nil)
+	result, err := pluginmcp.EncodeReply(rpc.MaintenanceResult{Published: published}, nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	return result.JSON(), nil
+	return result.Bytes(), nil
 }

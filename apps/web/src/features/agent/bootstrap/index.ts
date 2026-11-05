@@ -12,14 +12,14 @@ export function createAgentBootstrapPlugin(agent: AgentOwner, runtimeClient: () 
     requires: { runtime: RUNTIME_STREAM, scope: RUNTIME_SERVER_SCOPE },
     provides: { sessions: AGENT_SESSIONS },
     setup(ctx) {
-      contributeLayout(ctx, "chat.banner.top", {
+      contributeLayout(ctx.contributions, "chat.banner.top", {
         id: "pending-run-openings",
         order: 0,
         component: PendingRunOpenings,
       });
-      registerAgentDataProviders(ctx, runtimeClient);
+      registerAgentDataProviders(ctx.contributions, runtimeClient);
       agent.start();
-      ctx.cleanup(agent.dispose);
+      ctx.lifetime.defer(agent.dispose);
       return {
         sessions: {
           getActiveSessionId: agent.access.getActiveSessionId,

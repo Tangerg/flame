@@ -1,15 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Digest": {
-      "allOf": [
-        {
-          "pattern": "^[0-9a-f]{64}$"
-        }
-      ],
-      "type": "string"
+    "FormatV1Input": {
+      "$ref": "#/$defs/FormatV1InputCodeintelDocument"
     },
-    "Document": {
+    "FormatV1InputCodeintelDocument": {
       "additionalProperties": false,
       "properties": {
         "content": {
@@ -19,7 +14,7 @@
           "type": "string"
         },
         "version": {
-          "$ref": "#/$defs/Digest"
+          "$ref": "#/$defs/FormatV1InputValueDigest"
         },
         "workspace": {
           "type": "string"
@@ -33,17 +28,70 @@
       ],
       "type": "object"
     },
-    "FormatV1Input": {
-      "$ref": "#/$defs/Document"
+    "FormatV1InputValueDigest": {
+      "allOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      ],
+      "type": "string"
     },
     "FormatV1Output": {
       "$ref": "#/$defs/Transformation"
     },
+    "FormatV1OutputValueDigest": {
+      "allOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      ],
+      "type": "string"
+    },
     "InspectV1Input": {
       "$ref": "#/$defs/Inspection"
     },
+    "InspectV1InputCodeintelDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "#/$defs/InspectV1InputValueDigest"
+        },
+        "workspace": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "workspace",
+        "path",
+        "version",
+        "content"
+      ],
+      "type": "object"
+    },
+    "InspectV1InputValueDigest": {
+      "allOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      ],
+      "type": "string"
+    },
     "InspectV1Output": {
       "$ref": "#/$defs/Report"
+    },
+    "InspectV1OutputValueDigest": {
+      "allOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      ],
+      "type": "string"
     },
     "Inspection": {
       "additionalProperties": false,
@@ -55,7 +103,7 @@
           "type": "array"
         },
         "document": {
-          "$ref": "#/$defs/Document"
+          "$ref": "#/$defs/InspectV1InputCodeintelDocument"
         }
       },
       "required": [
@@ -77,7 +125,7 @@
           "type": "string"
         },
         "version": {
-          "$ref": "#/$defs/Digest"
+          "$ref": "#/$defs/InspectV1OutputValueDigest"
         }
       },
       "required": [
@@ -94,7 +142,7 @@
           "type": "string"
         },
         "version": {
-          "$ref": "#/$defs/Digest"
+          "$ref": "#/$defs/FormatV1OutputValueDigest"
         }
       },
       "required": [

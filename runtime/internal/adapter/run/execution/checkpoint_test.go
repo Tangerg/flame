@@ -11,19 +11,20 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
 func TestInteractionPendingSteersRoundTripCanonicalContent(t *testing.T) {
-	firstID, err := agent.ParseSignalID("steer:02")
+	firstID, err := scoperun.ParseSignalID("steer:02")
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondID, err := agent.ParseSignalID("steer:01")
+	secondID, err := scoperun.ParseSignalID("steer:01")
 	if err != nil {
 		t.Fatal(err)
 	}
-	pending := map[agent.SignalID]runs.PreparedSteer{
+	pending := map[scoperun.SignalID]runs.PreparedSteer{
 		firstID: {ItemID: "item_first", Input: []transcript.ContentBlock{{
 			Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte{0, 1, 2},
 		}}},
@@ -48,7 +49,7 @@ func TestInteractionPendingSteersRoundTripCanonicalContent(t *testing.T) {
 }
 
 func TestInteractionPendingContinuationRoundTripsCanonicalContent(t *testing.T) {
-	rootID, err := agent.ParseProcessID("process:root")
+	rootID, err := scoperun.ParseProcessID("process:root")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +71,7 @@ func TestInteractionPendingContinuationRoundTripsCanonicalContent(t *testing.T) 
 	if !reflect.DeepEqual(decoded, pending) {
 		t.Fatalf("decoded pending continuation = %#v, want %#v", decoded, pending)
 	}
-	foreignID, err := agent.ParseProcessID("process:foreign")
+	foreignID, err := scoperun.ParseProcessID("process:foreign")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,11 +165,11 @@ func TestDecodeInteractionCheckpointRejectsDuplicateJSONMembers(t *testing.T) {
 }
 
 func TestInteractionModelContextsRoundTripCanonicalCalibration(t *testing.T) {
-	first, err := agent.ParseProcessID("process:context-02")
+	first, err := scoperun.ParseProcessID("process:context-02")
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := agent.ParseProcessID("process:context-01")
+	second, err := scoperun.ParseProcessID("process:context-01")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,11 +181,11 @@ func TestInteractionModelContextsRoundTripCanonicalCalibration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	contexts := map[agent.ProcessID]ModelContextTokenCalibration{
+	contexts := map[scoperun.ProcessID]ModelContextTokenCalibration{
 		first: firstCalibration, second: secondCalibration,
 	}
 
-	accounted := map[agent.ProcessID]struct{}{first: {}, second: {}}
+	accounted := map[scoperun.ProcessID]struct{}{first: {}, second: {}}
 	wire, err := encodeInteractionModelContexts(contexts, accounted)
 	if err != nil {
 		t.Fatal(err)
@@ -194,15 +195,15 @@ func TestInteractionModelContextsRoundTripCanonicalCalibration(t *testing.T) {
 	}
 	// A calibration is only carried for a member this checkpoint accounts calls
 	// for, so dropping that member's accounting drops its calibration with it.
-	unaccounted, err := encodeInteractionModelContexts(contexts, map[agent.ProcessID]struct{}{first: {}})
+	unaccounted, err := encodeInteractionModelContexts(contexts, map[scoperun.ProcessID]struct{}{first: {}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(unaccounted) != 1 || unaccounted[0].MemberID != first.String() {
 		t.Fatalf("unaccounted model contexts = %#v", unaccounted)
 	}
-	processes := map[agent.ProcessID]struct{}{first: {}, second: {}}
-	calls := map[agent.ProcessID]map[string]int{
+	processes := map[scoperun.ProcessID]struct{}{first: {}, second: {}}
+	calls := map[scoperun.ProcessID]map[string]int{
 		first: {"model": 1}, second: {"model": 1},
 	}
 	decoded, err := decodeInteractionModelContexts(wire, processes, calls)
@@ -228,15 +229,15 @@ func TestModelContextTokenCalibrationKeepsExactMaxIntDelta(t *testing.T) {
 // lives. Through either decoder a rejected row is also rejected by the check
 // after it, so neither list can show which one refused.
 func TestAdmitCheckpointMemberOwnsBothMemberListRules(t *testing.T) {
-	first, err := agent.ParseProcessID("process:a")
+	first, err := scoperun.ParseProcessID("process:a")
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := agent.ParseProcessID("process:b")
+	second, err := scoperun.ParseProcessID("process:b")
 	if err != nil {
 		t.Fatal(err)
 	}
-	known := map[agent.ProcessID]struct{}{first: {}, second: {}}
+	known := map[scoperun.ProcessID]struct{}{first: {}, second: {}}
 
 	if _, err := admitCheckpointMember(first.String(), "", 0, known); err != nil {
 		t.Fatalf("the first row of a known member list was refused: %v", err)
@@ -250,13 +251,13 @@ func TestAdmitCheckpointMemberOwnsBothMemberListRules(t *testing.T) {
 	if _, err := admitCheckpointMember(first.String(), first.String(), 1, known); err == nil {
 		t.Fatal("a repeated member was admitted")
 	}
-	if _, err := admitCheckpointMember(second.String(), "", 0, map[agent.ProcessID]struct{}{first: {}}); err == nil {
+	if _, err := admitCheckpointMember(second.String(), "", 0, map[scoperun.ProcessID]struct{}{first: {}}); err == nil {
 		t.Fatal("a member outside the checkpoint was admitted")
 	}
 }
 
 func TestDecodeInteractionModelContextsRejectsForeignOrUnaccountedMember(t *testing.T) {
-	processID, err := agent.ParseProcessID("process:context")
+	processID, err := scoperun.ParseProcessID("process:context")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -268,7 +269,7 @@ func TestDecodeInteractionModelContextsRejectsForeignOrUnaccountedMember(t *test
 	}
 	if _, err := decodeInteractionModelContexts(
 		wire,
-		map[agent.ProcessID]struct{}{processID: {}},
+		map[scoperun.ProcessID]struct{}{processID: {}},
 		nil,
 	); err == nil {
 		t.Fatal("unaccounted model context decoded")

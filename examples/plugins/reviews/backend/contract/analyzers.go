@@ -3,11 +3,13 @@ package reviews
 import (
 	"errors"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"unicode/utf8"
 
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 type Analysis struct {
@@ -41,31 +43,31 @@ type Findings struct {
 }
 
 type AnalyzerContracts struct {
-	Capability *portable.Capability
-	Analyze    *qimumcp.Method[Snapshot, Findings]
+	Capability *plugincontract.Capability
+	Analyze    *pluginmcp.Method[Snapshot, Findings]
 }
 
 func NewAnalyzerContracts() (AnalyzerContracts, error) {
-	method, err := qimumcp.NewMethod[Snapshot, Findings](qimumcp.MethodConfig{
+	method, err := pluginmcp.NewMethod[Snapshot, Findings](portable.MethodConfig{
 		Name: "io.github.tangerg.flame.examples/reviews.analyze", Kind: portable.Query, Target: "installation",
 		Description: "Analyze an inspected review snapshot and return findings without changing its records.",
 	})
 	if err != nil {
 		return AnalyzerContracts{}, err
 	}
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "io.github.tangerg.flame.examples/reviews.analyzer", Composition: portable.Collection, Scope: "installation"}, method.Descriptor())
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "io.github.tangerg.flame.examples/reviews.analyzer", Composition: plugincontract.Collection, Scope: "installation"}, method.Descriptor())
 	if err != nil {
 		return AnalyzerContracts{}, err
 	}
 	return AnalyzerContracts{Capability: contract, Analyze: method}, nil
 }
 
-func NewAnalyzerPoint() (*portable.Point, error) {
+func NewAnalyzerPoint() (*plugincontract.Point, error) {
 	schema, err := portable.SchemaFor[Analyzer]()
 	if err != nil {
 		return nil, err
 	}
-	applicability, err := jsonvalue.Encode(map[string]any{
+	applicability, err := framevalue.EncodeJSON(map[string]any{
 		"type": "object", "required": []string{"attributes"},
 		"properties": map[string]any{"attributes": map[string]any{
 			"type": "object", "required": []string{"reviewStatus"},
@@ -75,5 +77,5 @@ func NewAnalyzerPoint() (*portable.Point, error) {
 	if err != nil {
 		return nil, err
 	}
-	return portable.AdmitPoint(portable.PointDescriptor{Protocol: portable.Protocol, Reference: "io.github.tangerg.flame.examples/reviews.analyzers", Composition: portable.Collection, Scope: "installation", Optional: true, Ordering: portable.CanonicalKeys, Value: schema.JSON(), Applicability: applicability.JSON()})
+	return plugincontract.AdmitPoint(plugincontract.PointDescriptor{Protocol: plugincontract.Protocol, Reference: "io.github.tangerg.flame.examples/reviews.analyzers", Composition: plugincontract.Collection, Scope: "installation", Optional: true, Ordering: plugincontract.CanonicalKeys, Value: schema, Applicability: applicability.Bytes()})
 }

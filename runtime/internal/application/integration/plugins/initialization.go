@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/frame"
+
 	"github.com/google/uuid"
 )
 
@@ -24,7 +26,7 @@ type DefaultProvider struct {
 
 // Initialize commits the distribution catalog and configured provider choices
 // once. Installation and composition owners advance their own facts thereafter.
-func Initialize(ctx context.Context, host *qimu.Host, store initializationStore, packages packages, sources func() ([]string, error), selections SelectionStore, defaults []DefaultProvider) error {
+func Initialize(ctx context.Context, host *frame.Host, store initializationStore, packages packages, sources func() ([]string, error), selections SelectionStore, defaults []DefaultProvider) error {
 	if host == nil {
 		return plugin.ErrInvalid
 	}
@@ -45,12 +47,12 @@ func Initialize(ctx context.Context, host *qimu.Host, store initializationStore,
 	if err := selectInitialProviders(ctx, store, selections, defaults); err != nil {
 		return err
 	}
-	return host.Admission().Admit(ctx, func(admitted context.Context) error { return store.MarkInitialized(admitted) })
+	return store.MarkInitialized(ctx)
 }
 
 // Preflight holds the same immutable candidates through publication. Failure to
 // identify any source leaves existing installation decisions untouched.
-func installDistribution(ctx context.Context, host *qimu.Host, store Store, packages packages, paths []string) (err error) {
+func installDistribution(ctx context.Context, host *frame.Host, store Store, packages packages, paths []string) (err error) {
 	distribution := make([]distributionCandidate, 0, len(paths))
 	defer func() {
 		for _, source := range distribution {
@@ -83,7 +85,7 @@ type distributionCandidate struct {
 	candidate Candidate
 }
 
-func (entry distributionCandidate) install(ctx context.Context, host *qimu.Host, store Store, packages packages) error {
+func (entry distributionCandidate) install(ctx context.Context, host *frame.Host, store Store, packages packages) error {
 	release := entry.candidate.Release()
 	source := entry.source
 	id, err := firstPartyID(release.Declaration().Name)
@@ -124,7 +126,7 @@ func (entry distributionCandidate) install(ctx context.Context, host *qimu.Host,
 	if err != nil {
 		return err
 	}
-	if _, err := host.Install(ctx, qimu.InstallationConfig{ID: id.Host(), Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()}); err != nil {
+	if _, err := host.Install(ctx, frame.InstallationConfig{ID: id.Host(), Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()}); err != nil {
 		return err
 	}
 	return packages.Prepare(ctx, installation, release)
@@ -164,12 +166,12 @@ func selectInitialProviders(ctx context.Context, store Store, selections Selecti
 		if !found {
 			return errors.New("plugins: distribution contribution is not declared")
 		}
-		contract, err := portable.ParseCapability(declared.Contract.JSON())
+		contract, err := plugincontract.ParseCapability(declared.Contract.Bytes())
 		if err != nil {
 			return err
 		}
 		descriptor := contract.Descriptor()
-		if descriptor.Reference != initial.Role || descriptor.Composition != portable.Selection {
+		if descriptor.Reference != initial.Role || descriptor.Composition != plugincontract.Selection {
 			return errors.New("plugins: distribution provider does not declare its selected role")
 		}
 		for _, role := range declared.SelectionRoles() {

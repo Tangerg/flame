@@ -6,12 +6,14 @@ import (
 	"reflect"
 	"testing"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	modelsapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/models/catalog"
 )
 
@@ -97,7 +99,7 @@ func TestProbeVerifiesThroughTheProviderAdapter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rejected := &portable.Refusal{Code: string(modelprovider.InvalidCredentials), Message: "model provider: connection verification failed"}
+	rejected := &framemcp.Refusal{Code: string(modelprovider.InvalidCredentials), Message: "model provider: connection verification failed"}
 	for name, test := range map[string]struct {
 		adapters capabilityAdapters
 		entry    string

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
@@ -110,7 +109,7 @@ func TestObservedCommandNeverRetargetsToReplacementProvider(t *testing.T) {
 	}
 	created := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddInput{Scope: memorycontract.AddInputScopeUser, Content: "original provider's fact"}), "new-command")
 	page = readMemoryPage(r, memorycontract.ListInput{Scope: memorycontract.ListInputScopeUser})
-	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *created) {
+	if len(page.Data) != 1 || generatedJSON(t, page.Data[0]) != generatedJSON(t, created) {
 		t.Fatalf("new command did not use replacement owner: %+v", page.Data)
 	}
 }

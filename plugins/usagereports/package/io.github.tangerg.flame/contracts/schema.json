@@ -21,21 +21,9 @@
       "$ref": "#/$defs/CaptureInput"
     },
     "CaptureV1Output": {
-      "$ref": "#/$defs/Header"
+      "$ref": "#/$defs/CaptureV1OutputRpcHeader"
     },
-    "DeleteV1Input": {
-      "$ref": "#/$defs/ReportInput"
-    },
-    "DeleteV1Output": {
-      "type": "boolean"
-    },
-    "GetV1Input": {
-      "$ref": "#/$defs/ReportInput"
-    },
-    "GetV1Output": {
-      "$ref": "#/$defs/ReportGithubComTangergFlameRuntimeProtocolUsageSummary"
-    },
-    "Header": {
+    "CaptureV1OutputRpcHeader": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -64,6 +52,46 @@
       ],
       "type": "object"
     },
+    "DeleteV1Input": {
+      "$ref": "#/$defs/DeleteV1InputRpcReportInput"
+    },
+    "DeleteV1InputRpcReportInput": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 64,
+          "minLength": 64,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "DeleteV1Output": {
+      "type": "boolean"
+    },
+    "GetV1Input": {
+      "$ref": "#/$defs/GetV1InputRpcReportInput"
+    },
+    "GetV1InputRpcReportInput": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 64,
+          "minLength": 64,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "GetV1Output": {
+      "$ref": "#/$defs/ReportGithubComTangergFlameRuntimeProtocolUsageSummary"
+    },
     "ListV2Input": {
       "additionalProperties": false,
       "properties": {},
@@ -74,13 +102,42 @@
       "properties": {
         "reports": {
           "items": {
-            "$ref": "#/$defs/Header"
+            "$ref": "#/$defs/ListV2OutputRpcHeader"
           },
           "type": "array"
         }
       },
       "required": [
         "reports"
+      ],
+      "type": "object"
+    },
+    "ListV2OutputRpcHeader": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "observedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "period": {
+          "enum": [
+            "daily",
+            "weekly"
+          ],
+          "type": "string"
+        },
+        "since": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "period",
+        "observedAt"
       ],
       "type": "object"
     },
@@ -168,20 +225,6 @@
         "period",
         "observedAt",
         "summary"
-      ],
-      "type": "object"
-    },
-    "ReportInput": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "maxLength": 64,
-          "minLength": 64,
-          "type": "string"
-        }
-      },
-      "required": [
-        "id"
       ],
       "type": "object"
     },

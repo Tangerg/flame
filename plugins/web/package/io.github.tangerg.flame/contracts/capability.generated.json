@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.qimu/portable/1",
+  "protocol": "io.github.tangerg.flame/plugin/1",
   "reference": "flame.web.v1",
   "composition": "collection",
   "scope": "installation",
@@ -13,6 +13,15 @@
         "$defs": {
           "wire.BrowseInput": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "limit": {
+                    "maximum": 8192
+                  }
+                }
+              }
+            ],
             "properties": {
               "limit": {
                 "allOf": [
@@ -21,7 +30,6 @@
                     "minimum": -9223372036854775808
                   }
                 ],
-                "maximum": 8192,
                 "minimum": 1,
                 "type": "integer"
               },
@@ -51,6 +59,15 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "limit": {
+                "maximum": 8192
+              }
+            }
+          }
+        ],
         "properties": {
           "limit": {
             "allOf": [
@@ -59,7 +76,6 @@
                 "minimum": -9223372036854775808
               }
             ],
-            "maximum": 8192,
             "minimum": 1,
             "type": "integer"
           },
@@ -796,7 +812,10 @@
       },
       "output": {
         "$defs": {
-          "web.SearchResponse": {
+          "instant.Timestamp": {
+            "type": "string"
+          },
+          "wire.SearchResponse": {
             "additionalProperties": false,
             "properties": {
               "query": {
@@ -804,7 +823,7 @@
               },
               "results": {
                 "items": {
-                  "$ref": "#/$defs/web.SearchResult"
+                  "$ref": "#/$defs/wire.SearchResult"
                 },
                 "type": "array"
               }
@@ -815,15 +834,14 @@
             ],
             "type": "object"
           },
-          "web.SearchResult": {
+          "wire.SearchResult": {
             "additionalProperties": false,
             "properties": {
               "favicon_url": {
                 "type": "string"
               },
               "published_time": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "snippet": {
                 "type": "string"
@@ -854,7 +872,7 @@
           },
           "results": {
             "items": {
-              "$ref": "#/$defs/web.SearchResult"
+              "$ref": "#/$defs/wire.SearchResult"
             },
             "type": "array"
           }

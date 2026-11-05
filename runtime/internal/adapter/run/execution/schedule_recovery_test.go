@@ -8,6 +8,8 @@ import (
 	"testing/synctest"
 	"time"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -16,7 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/integrity"
+
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -27,9 +29,11 @@ type scheduleReceiptTool struct {
 	remote        string
 }
 
-func (s scheduleReceiptTool) Unwrap() toolcontract.Tool      { return s.Tool }
 func (s scheduleReceiptTool) SourceConfig() mcp.ServerConfig { return s.configuration }
-func (s scheduleReceiptTool) SourceFingerprint() integrity.Digest {
+func (s scheduleReceiptTool) MCPSource() (mcp.CapturedSource, bool) {
+	return mcp.CapturedSource{Config: s.configuration, RemoteName: s.remote}, true
+}
+func (s scheduleReceiptTool) SourceFingerprint() framevalue.Digest {
 	return s.configuration.AuthorityFingerprint()
 }
 func (s scheduleReceiptTool) InstallationActivation() (plugin.Activation, error) {
@@ -44,18 +48,18 @@ func (s scheduleReceiptTool) MCPToolIdentity() (string, string) {
 
 type scheduleReceiptProbe struct {
 	owned   bool
-	query   func(context.Context) (*chat.ToolOutput, error)
+	query   func(context.Context) (*toolcontract.Output, error)
 	calls   atomic.Int32
 	context atomic.Pointer[context.Context]
 }
 
-func (*scheduleReceiptProbe) AwaitOriginalToolSource(context.Context, domaintool.Ref, integrity.Digest, integrity.Digest, plugin.Activation) (bool, error) {
+func (*scheduleReceiptProbe) AwaitOriginalToolSource(context.Context, domaintool.Ref, framevalue.Digest, framevalue.Digest, plugin.Activation) (bool, error) {
 	return true, nil
 }
-func (s *scheduleReceiptProbe) OwnsToolSource(context.Context, domaintool.Ref, integrity.Digest, plugin.Activation) (bool, error) {
+func (s *scheduleReceiptProbe) OwnsToolSource(context.Context, domaintool.Ref, framevalue.Digest, plugin.Activation) (bool, error) {
 	return s.owned, nil
 }
-func (s *scheduleReceiptProbe) OriginalToolResult(ctx context.Context, _ domaintool.Ref, _, _ integrity.Digest, _ plugin.Activation, _, _ string) (*chat.ToolOutput, error) {
+func (s *scheduleReceiptProbe) OriginalToolResult(ctx context.Context, _ domaintool.Ref, _, _ framevalue.Digest, _ plugin.Activation, _, _ string) (*toolcontract.Output, error) {
 	s.calls.Add(1)
 	s.context.Store(new(ctx))
 	return s.query(ctx)
@@ -103,7 +107,7 @@ func TestScheduleInvestigationRespectsCancellationTimeoutAndLaterUnknown(t *test
 					t.Fatal(err)
 				}
 				entered, release := make(chan struct{}), make(chan struct{})
-				probe := &scheduleReceiptProbe{owned: mode != "other service", query: func(ctx context.Context) (*chat.ToolOutput, error) {
+				probe := &scheduleReceiptProbe{owned: mode != "other service", query: func(ctx context.Context) (*toolcontract.Output, error) {
 					close(entered)
 					if mode == "timeout" {
 						<-ctx.Done()
@@ -116,7 +120,7 @@ func TestScheduleInvestigationRespectsCancellationTimeoutAndLaterUnknown(t *test
 						<-release
 					}
 					if mode == "known refusal" || mode == "ambiguous receipt" {
-						output := chat.NewTextToolOutput("original refused")
+						output := toolcontract.NewTextOutput("original refused")
 						failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindFailed, Cause: errors.New("original refused"), Output: output})
 						if err != nil {
 							return nil, err
@@ -126,7 +130,7 @@ func TestScheduleInvestigationRespectsCancellationTimeoutAndLaterUnknown(t *test
 						}
 						return &output, failure
 					}
-					output, err := chat.NewJSONToolOutput([]byte(`{"schedule":{"schedule_id":"original","title":"original"}}`))
+					output, err := toolcontract.NewJSONOutput([]byte(`{"schedule":{"schedule_id":"original","title":"original"}}`))
 					return &output, err
 				}}
 				model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
@@ -175,8 +179,22 @@ func TestScheduleInvestigationRespectsCancellationTimeoutAndLaterUnknown(t *test
 				} else if mode == "timeout" {
 					time.Sleep(auxiliaryOperationTimeout)
 				}
-				<-reported
-				observed := <-events
+				stopped := <-reported
+				synctest.Wait()
+				if mode == "later model" {
+					if stopped {
+						t.Fatal("resolved Tool receipt stopped the resumed model")
+					}
+					stopped = session.reportUnknownEffects()
+					synctest.Wait()
+				}
+				var observed []runs.ExecutorEvent
+				select {
+				case observed = <-events:
+				default:
+					unknown, err := session.unknownEffectIDs(t.Context())
+					t.Fatalf("receipt investigation stopped=%t but execution remains active: unresolved=%v, %v", stopped, unknown, err)
+				}
 				starts := payloadsOf[runs.ToolCallStarted](observed)
 				for _, prepared := range payloadsOf[runs.ToolCallPrepared](observed) {
 					starts = append(starts, prepared.Start)
@@ -228,7 +246,7 @@ func TestScheduleInvestigationRespectsCancellationTimeoutAndLaterUnknown(t *test
 					session.state.mu.Unlock()
 				}
 				uncertain := 1
-				if mode == "publication" || mode == "non-schedule tool" || mode == "known refusal" {
+				if mode == "cancel" || mode == "publication" || mode == "non-schedule tool" || mode == "known refusal" {
 					uncertain = 0
 					if mode == "publication" && !trees.observed.Load() {
 						t.Fatal("no publication outlived its query context")

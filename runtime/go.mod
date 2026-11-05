@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/bluekeyes/go-gitdiff v0.9.0 // indirect
-	github.com/bmatcuk/doublestar/v4 v4.10.3 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.10.4 // indirect
 	github.com/buger/jsonparser v1.6.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
@@ -30,31 +30,30 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.yaml.in/yaml/v4 v4.0.0-rc.7 // indirect
+	go.yaml.in/yaml/v4 v4.0.0-rc.9 // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
-	modernc.org/libc v1.79.0 // indirect
+	modernc.org/libc v1.80.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.3-dev.20261102.tfbeddf4044bf
-	github.com/Tangerg/flame/packages/local-runtime v0.1.1-dev.20261101.t373cde3df814
-	github.com/Tangerg/frame v0.0.1
+	github.com/Tangerg/flame/packages/go-sdk v0.1.5-dev.20261105.t4e2015415530
+	github.com/Tangerg/flame/packages/local-runtime v0.1.2-dev.20261104.t47cf6bbc2f11
+	github.com/Tangerg/frame v0.1.1
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
-	github.com/Tangerg/qimu v0.1.2-dev.20261102.td29bdddba4f8
-	github.com/Tangerg/scope/agent v0.58.0
-	github.com/Tangerg/scope/core v0.58.0
-	github.com/Tangerg/scope/mcp v0.58.0
-	github.com/Tangerg/scope/models/catalog v0.58.0
-	github.com/Tangerg/scope/otel v0.58.0
-	github.com/Tangerg/scope/otel/agent v0.58.0
-	github.com/Tangerg/scope/skills v0.59.0
-	github.com/Tangerg/scope/tools v0.58.0
-	github.com/Tangerg/scope/tools/skills v0.58.0
+	github.com/Tangerg/scope/agent v0.60.0
+	github.com/Tangerg/scope/core v0.60.0
+	github.com/Tangerg/scope/mcp v0.60.0
+	github.com/Tangerg/scope/models/catalog v0.60.0
+	github.com/Tangerg/scope/otel v0.60.0
+	github.com/Tangerg/scope/otel/agent v0.60.0
+	github.com/Tangerg/scope/skills v0.60.0
+	github.com/Tangerg/scope/tools v0.60.0
+	github.com/Tangerg/scope/tools/skills v0.60.0
 	github.com/Tangerg/sse v0.0.6
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-chi/chi/v5 v5.5.0
@@ -71,10 +70,10 @@ require (
 	go.opentelemetry.io/otel/sdk/log v1.47.0
 	go.opentelemetry.io/otel/sdk/metric v1.47.0
 	go.opentelemetry.io/otel/trace v1.47.0
-	go.yaml.in/yaml/v3 v3.0.5
+	go.yaml.in/yaml/v3 v3.0.6
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sys v0.49.0
 	golang.org/x/text v0.43.0
 	golang.org/x/tools v0.52.0
-	modernc.org/sqlite v1.61.0
+	modernc.org/sqlite v1.61.1
 )

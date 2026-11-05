@@ -17,8 +17,8 @@ func TestMCPServerStoreFencesOAuthCallbacksByGrant(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	owner := testsupport.InstallationID(t)
-	store := newMCPServerStore(db)
-	authorization := newMCPAuthorizationStore(db)
+	store := newMCPServerStore(databaseFor(db))
+	authorization := newMCPAuthorizationStore(databaseFor(db))
 	server := mcpserver.Server{
 		Source:     mcpserver.UserSource(),
 		Name:       testsupport.ServerName("remote"),
@@ -119,8 +119,8 @@ func TestMCPCredentialsStopMatchingAChangedTarget(t *testing.T) {
 				t.Fatalf("credential invalidation triggers = %d, %v", triggers, err)
 			}
 			owner := testsupport.InstallationID(t)
-			store := newMCPServerStore(db)
-			authorization := newMCPAuthorizationStore(db)
+			store := newMCPServerStore(databaseFor(db))
+			authorization := newMCPAuthorizationStore(databaseFor(db))
 			initial := mcpserver.Server{
 				Source:     mcpserver.UserSource(),
 				Name:       testsupport.ServerName("remote"),

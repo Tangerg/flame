@@ -34,7 +34,7 @@ it("switches an exclusive effect without retaining the other installation's subs
   try {
     await contributeForTest((ctx) => {
       for (const id of ["second", "first"])
-        ctx.contribute(SHARED_CLIENT_EFFECT, candidate(id), { key: id });
+        ctx.contributions.add(SHARED_CLIENT_EFFECT, candidate(id), { key: id });
     });
     const view = client.render(<SharedEffects />);
     expect(screen.getByText("first")).toBeTruthy();

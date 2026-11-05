@@ -168,7 +168,7 @@ export async function buildPlugin({
     const { default: protocol } = await import("@flame/backend-sdk/protocol", {
       with: { type: "json" },
     });
-    const { buildBackend } = await import("@qimu/node/build");
+    const { buildBackend } = await import("@flame/backend-sdk/build");
     const { rolldown } = await import("rolldown");
     for (const backend of plan.managed)
       await buildBackend({

@@ -10,14 +10,15 @@ import (
 	"path/filepath"
 	"unicode/utf8"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/frame/sqlite"
-	"github.com/Tangerg/qimu/portable"
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
 
 	_ "modernc.org/sqlite"
@@ -41,24 +42,11 @@ func openStore(ctx context.Context, directory string) (_ *store, err error) {
 	if !filepath.IsAbs(directory) {
 		return nil, errors.New("reviews: data directory must be absolute")
 	}
-	inputSchema, err := portable.SchemaFor[reviews.Update]()
+	inputSchema, err := jsonschema.For[reviews.Update]()
 	if err != nil {
 		return nil, fmt.Errorf("reviews: input schema: %w", err)
 	}
 	if err := os.MkdirAll(directory, 0700); err != nil {
-		return nil, err
-	}
-	db, err := sql.Open("sqlite", filepath.Join(directory, "reviews.sqlite"))
-	if err != nil {
-		return nil, err
-	}
-	db.SetMaxOpenConns(1)
-	defer func() {
-		if err != nil {
-			err = errors.Join(err, db.Close())
-		}
-	}()
-	if _, err = db.ExecContext(ctx, `PRAGMA busy_timeout = 5000; PRAGMA synchronous = FULL;`); err != nil {
 		return nil, err
 	}
 	statements := []string{fmt.Sprintf(`CREATE TABLE IF NOT EXISTS reviews (
@@ -71,8 +59,12 @@ func openStore(ctx context.Context, directory string) (_ *store, err error) {
  input_json TEXT NOT NULL CHECK(json_valid(input_json)),
  result BLOB NOT NULL
 )`, fmt.Sprintf(`INSERT INTO reviews VALUES ('%s', 'Inspect the plugin ownership boundary', '%s', 1)`, reviews.ExampleReviewID, reviews.Open)}
-	if err = sqlite.InstallSchema(ctx, db, statements); err != nil {
+	db, err := sqlite.OpenSchema(ctx, filepath.Join(directory, "reviews.sqlite"), statements)
+	if err != nil {
 		return nil, fmt.Errorf("reviews: open private database: %w", err)
+	}
+	if _, err = db.ExecContext(ctx, `PRAGMA synchronous = FULL`); err != nil {
+		return nil, errors.Join(err, db.Close())
 	}
 	return &store{db: db, inputSchema: inputSchema}, nil
 }
@@ -93,50 +85,50 @@ func (s *store) list(ctx context.Context) ([]reviews.Snapshot, error) {
 
 // receipt reads the original owner result without entering Update. Method and
 // input binding remain required even after the review has advanced again.
-func (s *store) receipt(ctx context.Context, request qimumcp.ReceiptRequest, updateMethod string) (qimumcp.Receipt, error) {
+func (s *store) receipt(ctx context.Context, request pluginmcp.ReceiptRequest, updateMethod string) (pluginmcp.Receipt, error) {
 	if err := validateInvocationID(string(request.ID)); err != nil {
-		return qimumcp.Receipt{}, err
+		return pluginmcp.Receipt{}, err
 	}
 	if request.Method != updateMethod {
-		return qimumcp.Receipt{}, errors.New("reviews: receipt method conflicts")
+		return pluginmcp.Receipt{}, errors.New("reviews: receipt method conflicts")
 	}
 	var arguments, encoded []byte
 	err := s.db.QueryRowContext(ctx, `SELECT input_json, result FROM invocations WHERE id = ?`, request.ID).Scan(&arguments, &encoded)
 	if errors.Is(err, sql.ErrNoRows) {
-		return qimumcp.Receipt{}, nil
+		return pluginmcp.Receipt{}, nil
 	}
 	if err != nil {
-		return qimumcp.Receipt{}, err
+		return pluginmcp.Receipt{}, err
 	}
 	var input reviews.Update
 	if err := json.Unmarshal(arguments, &input, json.RejectUnknownMembers(true)); err != nil {
-		return qimumcp.Receipt{}, err
+		return pluginmcp.Receipt{}, err
 	}
 	if err := s.inputSchema.Validate(arguments); err != nil {
-		return qimumcp.Receipt{}, err
+		return pluginmcp.Receipt{}, err
 	}
-	admitted, err := jsonvalue.Parse(arguments)
+	admitted, err := framevalue.ParseJSON(arguments)
 	if err != nil {
-		return qimumcp.Receipt{}, err
+		return pluginmcp.Receipt{}, err
 	}
 	if admitted.Digest() != request.InputDigest {
-		return qimumcp.Receipt{}, errors.New("reviews: receipt input conflicts")
+		return pluginmcp.Receipt{}, errors.New("reviews: receipt input conflicts")
 	}
 	var result reviews.UpdateResult
 	if err := json.Unmarshal(encoded, &result, json.RejectUnknownMembers(true)); err != nil {
-		return qimumcp.Receipt{}, err
+		return pluginmcp.Receipt{}, err
 	}
 	if err := result.Validate(); err != nil {
-		return qimumcp.Receipt{}, err
+		return pluginmcp.Receipt{}, err
 	}
-	reply, err := qimumcp.EncodeReply(result, nil, nil)
+	reply, err := pluginmcp.EncodeReply(result, nil, nil)
 	if err != nil {
-		return qimumcp.Receipt{}, err
+		return pluginmcp.Receipt{}, err
 	}
-	return qimumcp.Receipt{Found: true, Reply: reply.JSON()}, nil
+	return pluginmcp.Receipt{Found: true, Reply: reply.Bytes()}, nil
 }
 
-func (s *store) update(ctx context.Context, invocationID string, admitted jsonvalue.Value) (_ reviews.UpdateResult, err error) {
+func (s *store) update(ctx context.Context, invocationID string, admitted framevalue.JSON) (_ reviews.UpdateResult, err error) {
 	if err := validateInvocationID(invocationID); err != nil {
 		return reviews.UpdateResult{}, err
 	}
@@ -144,10 +136,10 @@ func (s *store) update(ctx context.Context, invocationID string, admitted jsonva
 		return reviews.UpdateResult{}, err
 	}
 	var input reviews.Update
-	if err := json.Unmarshal(admitted.JSON(), &input, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
+	if err := json.Unmarshal(admitted.Bytes(), &input, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
 		return reviews.UpdateResult{}, err
 	}
-	if err := s.inputSchema.Validate(admitted.JSON()); err != nil {
+	if err := s.inputSchema.Validate(admitted.Bytes()); err != nil {
 		return reviews.UpdateResult{}, err
 	}
 	arguments := admitted.String()
@@ -197,7 +189,7 @@ func (s *store) update(ctx context.Context, invocationID string, admitted jsonva
 }
 
 func applyUpdate(ctx context.Context, tx *sql.Tx, input reviews.Update) (reviews.UpdateResult, error) {
-	if input.Validate() != nil {
+	if input.ValidateChange() != nil {
 		return reviews.UpdateResult{Type: reviews.Invalid}, nil
 	}
 	var snapshot reviews.Snapshot

@@ -2,11 +2,12 @@ package terminal
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"math"
 	"sync"
-	"sync/atomic"
 
-	"github.com/Tangerg/oolong/core/program"
+	"github.com/Tangerg/oolong/ui/core/program"
 )
 
 type operationSlot string
@@ -95,11 +96,13 @@ type operationOwner struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	mu     sync.Mutex
-	next   operationLeaseID
-	active map[operationSlot]ownedOperation
-	closed bool
-	wg     sync.WaitGroup
+	mu        sync.Mutex
+	next      operationLeaseID
+	active    map[operationSlot]ownedOperation
+	closed    bool
+	failure   error
+	onFailure func()
+	wg        sync.WaitGroup
 }
 
 // post transfers one background result to the terminal loop. Cancellation may
@@ -107,29 +110,10 @@ type operationOwner struct {
 // waits for that callback to finish so no result can commit after its owner has
 // observed cancellation.
 func post(ctx context.Context, dispatcher program.Dispatcher, fn func()) error {
-	finished := make(chan struct{})
-	var claimed atomic.Bool
-	dispatcher.Post(func() {
-		defer close(finished)
-		if claimed.CompareAndSwap(false, true) {
-			fn()
-		}
-	})
-	abort := func(err error) error {
-		if claimed.CompareAndSwap(false, true) {
-			return err
-		}
-		<-finished
-		return err
-	}
-	select {
-	case <-finished:
+	return dispatcher.Invoke(ctx, func() error {
+		fn()
 		return nil
-	case <-ctx.Done():
-		return abort(context.Cause(ctx))
-	case <-dispatcher.Done():
-		return abort(program.ErrStopped)
-	}
+	})
 }
 
 func newOperationOwner(parent context.Context) *operationOwner {
@@ -303,6 +287,27 @@ func (o *operationOwner) Close() {
 	o.wg.Wait()
 }
 
+func (o *operationOwner) failDelivery(err error) {
+	if err == nil || errors.Is(err, program.ErrStopped) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return
+	}
+	o.mu.Lock()
+	if o.failure == nil {
+		o.failure = fmt.Errorf("terminal result delivery: %w", err)
+	}
+	notify := o.onFailure
+	o.mu.Unlock()
+	if notify != nil {
+		notify()
+	}
+}
+
+func (o *operationOwner) Failure() error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.failure
+}
+
 func (o *operationOwner) release(lease operationLease, cancel context.CancelFunc) {
 	cancel()
 	o.mu.Lock()
@@ -321,6 +326,14 @@ type taskRunner struct {
 	dispatch   program.Dispatcher
 	// settled resumes Run admission after a result that gated it has applied.
 	settled func()
+}
+
+// deliver refuses an unapplied result explicitly. Losing an accepted command's
+// acknowledgement cannot leave the UI claiming its operation is still running.
+func (r taskRunner) deliver(ctx context.Context, apply func()) error {
+	err := post(ctx, r.dispatch, apply)
+	r.operations.failDelivery(err)
+	return err
 }
 
 // session owns a user-initiated task for the lifetime of the current session
@@ -367,7 +380,7 @@ func runTask[T any](r taskRunner, policy operationPolicy, slot operationSlot, re
 		if context.Cause(ctx) != nil {
 			return
 		}
-		_ = post(ctx, r.dispatch, func() {
+		_ = r.deliver(ctx, func() {
 			if !r.operations.Current(lease) || !r.operations.Release(lease) {
 				return
 			}

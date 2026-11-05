@@ -41,12 +41,24 @@
       "$ref": "#/$defs/Agents"
     },
     "CancelV1Input": {
-      "$ref": "#/$defs/TaskRequest"
+      "$ref": "#/$defs/CancelV1InputWireTaskRequest"
+    },
+    "CancelV1InputWireTaskRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "requestId"
+      ],
+      "type": "object"
     },
     "CancelV1Output": {
-      "$ref": "#/$defs/Result"
+      "$ref": "#/$defs/CancelV1OutputWireResult"
     },
-    "Result": {
+    "CancelV1OutputWireResult": {
       "additionalProperties": false,
       "properties": {
         "agent": {
@@ -103,15 +115,49 @@
       "$ref": "#/$defs/SendRequest"
     },
     "SendV1Output": {
-      "$ref": "#/$defs/Result"
+      "$ref": "#/$defs/SendV1OutputWireResult"
+    },
+    "SendV1OutputWireResult": {
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "type": "string"
+        },
+        "contextId": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "task",
+            "message"
+          ],
+          "type": "string"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "valueJSON": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "requestId",
+        "agent",
+        "kind",
+        "valueJSON"
+      ],
+      "type": "object"
     },
     "StatusV1Input": {
-      "$ref": "#/$defs/TaskRequest"
+      "$ref": "#/$defs/StatusV1InputWireTaskRequest"
     },
-    "StatusV1Output": {
-      "$ref": "#/$defs/Result"
-    },
-    "TaskRequest": {
+    "StatusV1InputWireTaskRequest": {
       "additionalProperties": false,
       "properties": {
         "requestId": {
@@ -120,6 +166,46 @@
       },
       "required": [
         "requestId"
+      ],
+      "type": "object"
+    },
+    "StatusV1Output": {
+      "$ref": "#/$defs/StatusV1OutputWireResult"
+    },
+    "StatusV1OutputWireResult": {
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "type": "string"
+        },
+        "contextId": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "task",
+            "message"
+          ],
+          "type": "string"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "valueJSON": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "requestId",
+        "agent",
+        "kind",
+        "valueJSON"
       ],
       "type": "object"
     }

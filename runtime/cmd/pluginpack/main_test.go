@@ -7,8 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/qimu/distribution"
-	"github.com/Tangerg/qimu/integrity"
+	framevalue "github.com/Tangerg/frame/value"
+
+	"github.com/Tangerg/frame/distribution"
 )
 
 func authorSource(t *testing.T) string {
@@ -31,7 +32,7 @@ func TestCommandPublishesOneNeutralIdentityWithoutExecutingCode(t *testing.T) {
 		t.Fatal(err)
 	}
 	var identity struct {
-		Release integrity.Digest `json:"release"`
+		Release framevalue.Digest `json:"release"`
 	}
 	if err := json.Unmarshal(output.Bytes(), &identity); err != nil {
 		t.Fatal(err)
@@ -40,7 +41,7 @@ func TestCommandPublishesOneNeutralIdentityWithoutExecutingCode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	verified, err := distribution.VerifyArchive(t.Context(), archive, integrity.Hash(data), distribution.DefaultLimits())
+	verified, err := distribution.VerifyArchive(t.Context(), archive, framevalue.Hash(data), distribution.DefaultLimits())
 	if err != nil || verified.Digest != identity.Release || len(verified.Manifest.Units) != 0 {
 		t.Fatalf("neutral release projection: %+v, %v", verified, err)
 	}

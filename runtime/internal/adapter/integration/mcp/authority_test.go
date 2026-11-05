@@ -98,7 +98,7 @@ func TestPreparedToolObservesUncertainReplyOnlyAfterAdmittedDispatch(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "write", Name: binding.Contract().Definition().Name, Arguments: `{}`}, nil)
+	invocation, err := binding.Contract().Prepare((chat.ToolCall{ID: "write", Name: binding.Contract().Definition().Name, Arguments: `{}`}).Request(), toolcontract.Admission{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestRetainedToolRejectsChangedCredentialsBeforeReconciliation(t *testing.T)
 				t.Fatal(err)
 			}
 			invoke := func(binding toolcontract.Binding) error {
-				invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "read", Name: binding.Contract().Definition().Name, Arguments: `{}`}, nil)
+				invocation, err := binding.Contract().Prepare((chat.ToolCall{ID: "read", Name: binding.Contract().Definition().Name, Arguments: `{}`}).Request(), toolcontract.Admission{})
 				if err != nil {
 					return err
 				}
@@ -286,7 +286,7 @@ func TestFrozenExecutableAfterReconnectIsRejected(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "read", Name: binding.Contract().Definition().Name, Arguments: `{}`}, nil)
+		invocation, err := binding.Contract().Prepare((chat.ToolCall{ID: "read", Name: binding.Contract().Definition().Name, Arguments: `{}`}).Request(), toolcontract.Admission{})
 		if err != nil {
 			return err
 		}
@@ -360,7 +360,7 @@ func TestReconnectUsesCurrentOwnerConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "read", Name: binding.Contract().Definition().Name, Arguments: `{}`}, nil)
+	invocation, err := binding.Contract().Prepare((chat.ToolCall{ID: "read", Name: binding.Contract().Definition().Name, Arguments: `{}`}).Request(), toolcontract.Admission{})
 	if err != nil {
 		t.Fatal(err)
 	}

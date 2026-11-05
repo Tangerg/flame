@@ -15,7 +15,7 @@ func embeddingRoleStoreFixture(t *testing.T) *embeddingRoleStore {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return newEmbeddingRoleStore(db)
+	return newEmbeddingRoleStore(databaseFor(db))
 }
 
 func TestEmbeddingRoleStore_RoundTrip(t *testing.T) {

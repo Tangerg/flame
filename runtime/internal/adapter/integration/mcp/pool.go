@@ -6,6 +6,11 @@ import (
 	"errors"
 	"iter"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
@@ -14,16 +19,15 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/samber/lo"
 )
 
 // callbackPayloadLimits caps a plugin callback's request and response bodies at 4 MiB.
-var callbackPayloadLimits = qimumcp.CallbackLimits{MaxRequestBytes: 4 << 20, MaxResponseBytes: 4 << 20}
+var callbackPayloadLimits = pluginmcp.CallbackLimits{MaxRequestBytes: 4 << 20, MaxResponseBytes: 4 << 20}
 
 // Pool owns connection lifetime. Every new connection obtains its configuration
 // from the source owner; retained configurations describe only existing sessions.
@@ -33,12 +37,12 @@ type Pool struct {
 	inner     *connections
 	publish   invalidation.Publish
 	lifetime  context.Context
-	callbacks *qimumcp.Callbacks
+	callbacks *pluginmcp.Callbacks
 	installed *Installed
 }
 
 type invocationRestorer interface {
-	RestoreInvocation(context.Context, portable.Invocation) (context.Context, error)
+	RestoreInvocation(context.Context, framemcp.Invocation) (context.Context, error)
 }
 
 var _ mcpapp.Connections = (*Pool)(nil)
@@ -49,7 +53,7 @@ func Open(
 	lifetime context.Context,
 	servers []mcpserver.Server,
 	oauthSessions oauthSessionStore, registry sourceRegistry,
-	callbacks *qimumcp.Callbacks,
+	callbacks *pluginmcp.Callbacks,
 	publish invalidation.Publish,
 	commands invocationRestorer, installed *Installed,
 ) (*Pool, error) {
@@ -65,7 +69,7 @@ func Open(
 	if err != nil {
 		return nil, err
 	}
-	if err := qimumcp.RegisterClient(inner.client); err != nil {
+	if err := pluginmcp.RegisterClient(inner.client); err != nil {
 		return nil, err
 	}
 	pool.inner = inner
@@ -102,7 +106,7 @@ func (p *Pool) Probe(ctx context.Context, server mcpserver.Server) error {
 func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*launchPermit, error) {
 	if _, managed := name.Origin().Installation(); managed {
 		if p.installed == nil {
-			return nil, errors.New("mcp: installed backend requires Qimu")
+			return nil, errors.New("mcp: installed backend requires Frame")
 		}
 		value, err := p.installed.acquire(ctx, name)
 		if err != nil {
@@ -131,10 +135,10 @@ func (p *Pool) Refuse(ctx context.Context, name mcpserver.ID, failure mcpserver.
 	return p.inner.refuse(ctx, name, failure)
 }
 
-func setupContributions(connection mcpapp.Launch) ([]qimumcp.SetupContribution, error) {
-	values := make([]qimumcp.SetupContribution, 0, len(connection.Contributions))
+func setupContributions(connection mcpapp.Launch) ([]pluginmcp.SetupContribution, error) {
+	values := make([]pluginmcp.SetupContribution, 0, len(connection.Contributions))
 	for _, contribution := range connection.Contributions {
-		value := qimumcp.SetupContribution{ID: contribution.ID.String(), Export: contribution.Export, Requires: []qimumcp.SetupDependency{}}
+		value := pluginmcp.SetupContribution{ID: contribution.ID.String(), Export: contribution.Export, Requires: []pluginmcp.SetupDependency{}}
 		if contribution.Background {
 			installation, found := connection.Server.ID().Origin().Installation()
 			if !found {
@@ -146,13 +150,13 @@ func setupContributions(connection mcpapp.Launch) ([]qimumcp.SetupContribution, 
 			if required.Contribution != contribution.ID {
 				continue
 			}
-			contract, err := portable.ParseCapability(required.Contract.JSON())
+			contract, err := plugincontract.ParseCapability(required.Contract.Bytes())
 			if err != nil {
 				return nil, err
 			}
-			dependency := qimumcp.SetupDependency{ID: required.ID.String(), Contract: contract.Descriptor(), Optional: required.Optional, Bindings: []qimumcp.SetupBinding{}}
+			dependency := pluginmcp.SetupDependency{ID: required.ID.String(), Contract: contract.Descriptor(), Optional: required.Optional, Bindings: []pluginmcp.SetupBinding{}}
 			for _, binding := range required.Bindings {
-				dependency.Bindings = append(dependency.Bindings, qimumcp.SetupBinding{InstallationID: binding.Provider.InstallationID.String(), Digest: binding.Provider.Digest.String(), Contribution: binding.Contribution.String(), Contract: contract.Descriptor()})
+				dependency.Bindings = append(dependency.Bindings, pluginmcp.SetupBinding{InstallationID: binding.Provider.InstallationID.String(), Digest: binding.Provider.Digest.String(), Contribution: binding.Contribution.String(), Contract: contract.Descriptor()})
 			}
 			value.Requires = append(value.Requires, dependency)
 		}
@@ -242,7 +246,7 @@ func (p *Pool) AwaitInstallationActivation(ctx context.Context, id mcpserver.ID)
 	return p.inner.activation(session)
 }
 
-func (p *Pool) BorrowBoundSession(ctx context.Context, id mcpserver.ID, authority integrity.Digest) (_ *BorrowedSession, err error) {
+func (p *Pool) BorrowBoundSession(ctx context.Context, id mcpserver.ID, authority framevalue.Digest) (_ *BorrowedSession, err error) {
 	defer func() { err = connectionError(id, err) }()
 	descriptor, found, err := p.registry.Dispatchable(ctx, id)
 	if err != nil {
@@ -276,7 +280,7 @@ func (p *Pool) SessionActor(ctx context.Context, id mcpserver.ID, expected *sdk.
 
 // OpenRPC preserves the invoking call while applying this backend's frozen
 // dependency authority. Retirement is owned by the same session ledger.
-func (p *Pool) OpenRPC(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, callbacks ...qimumcp.Callback) (sdk.ParamsBase, func(), error) {
+func (p *Pool) OpenRPC(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, callbacks ...pluginmcp.Callback) (sdk.ParamsBase, func(), error) {
 	if p.callbacks == nil {
 		return sdk.ParamsBase{}, nil, errors.New("mcp: Runtime callbacks are unavailable")
 	}
@@ -288,7 +292,7 @@ func (p *Pool) OpenRPC(ctx context.Context, id mcpserver.ID, session *sdk.Client
 	if err != nil {
 		return sdk.ParamsBase{}, nil, err
 	}
-	metadata, err := qimumcp.CallbackMetadata(ref)
+	metadata, err := pluginmcp.CallbackMetadata(ref)
 	if err != nil {
 		release()
 		return sdk.ParamsBase{}, nil, err
@@ -312,13 +316,13 @@ func (p *Pool) toolHost(executable Executable) ToolHost {
 	}
 }
 
-func (p *Pool) Stream(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, binding *qimumcp.Binding, command string, input jsonvalue.Value, metadata sdk.ParamsBase) iter.Seq2[qimumcp.StreamValue[jsontext.Value, jsontext.Value], error] {
-	return func(yield func(qimumcp.StreamValue[jsontext.Value, jsontext.Value], error) bool) {
+func (p *Pool) Stream(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, binding *pluginmcp.Binding, command string, input framevalue.JSON, metadata sdk.ParamsBase) iter.Seq2[pluginmcp.StreamValue[jsontext.Value, jsontext.Value], error] {
+	return func(yield func(pluginmcp.StreamValue[jsontext.Value, jsontext.Value], error) bool) {
 		if _, err := p.SessionActor(ctx, id, session); err != nil {
-			yield(qimumcp.StreamValue[jsontext.Value, jsontext.Value]{}, err)
+			yield(pluginmcp.StreamValue[jsontext.Value, jsontext.Value]{}, err)
 			return
 		}
-		for value, err := range binding.StreamWithMetadata(ctx, p.callbacks, callbackPayloadLimits, qimumcp.CommandID(command), input, metadata) {
+		for value, err := range binding.StreamWithMetadata(ctx, p.callbacks, callbackPayloadLimits, pluginmcp.CommandID(command), input, metadata) {
 			if !yield(value, err) {
 				return
 			}
@@ -342,7 +346,7 @@ type ToolPreparation func(context.Context, Executable, ToolHost) (ToolCall, func
 
 // A projection receives only the named callbacks on its original borrowed
 // session. This grant never exposes the Runtime's general RPC surface.
-func (p *Pool) OpenCallbacks(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, callbacks ...qimumcp.Callback) (sdk.ParamsBase, func(), error) {
+func (p *Pool) OpenCallbacks(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, callbacks ...pluginmcp.Callback) (sdk.ParamsBase, func(), error) {
 	if p.callbacks == nil {
 		return sdk.ParamsBase{}, nil, ErrUnavailable
 	}
@@ -353,7 +357,7 @@ func (p *Pool) OpenCallbacks(ctx context.Context, id mcpserver.ID, session *sdk.
 	if err != nil {
 		return sdk.ParamsBase{}, nil, err
 	}
-	metadata, err := qimumcp.CallbackMetadata(ref)
+	metadata, err := pluginmcp.CallbackMetadata(ref)
 	if err != nil {
 		closeGrant()
 		return sdk.ParamsBase{}, nil, err

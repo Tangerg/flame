@@ -1,4 +1,4 @@
-import { cloneJSON } from "@qimu/sdk/json";
+import { cloneJSON } from "@frame/sdk/json";
 import type { RuntimeAgentDriver } from "./runtimeDriver";
 import { type FlameClient } from "@flame/runtime-client";
 import {

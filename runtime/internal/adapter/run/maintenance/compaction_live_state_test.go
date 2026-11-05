@@ -41,7 +41,7 @@ func TestCompactorPreservesUnreadCompletedShell(t *testing.T) {
 	for range total {
 		_ = store.Write(context.Background(), sessID, chat.NewUserMessage(chat.NewTextPart("msg")))
 	}
-	client, _ := chatclient.New(newTextStubModel("BULLETS"), chatclient.Config{})
+	client, _ := chatclient.New(newTextStubModel("BULLETS"))
 
 	shells, err := exec.NewShells(nil, sandbox.ErrUnavailable, false)
 	if err != nil {
@@ -104,7 +104,7 @@ func TestCompactorSkipsReminderWhenNoLiveState(t *testing.T) {
 	for range total {
 		_ = store.Write(context.Background(), sessID, chat.NewUserMessage(chat.NewTextPart("msg")))
 	}
-	client, _ := chatclient.New(newTextStubModel("BULLETS"), chatclient.Config{})
+	client, _ := chatclient.New(newTextStubModel("BULLETS"))
 
 	live := func(context.Context, string) LiveStateSnapshot { return LiveStateSnapshot{} }
 	history, _ := store.Read(context.Background(), sessID)

@@ -10,14 +10,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/google/uuid"
 )
 
@@ -159,8 +162,8 @@ func (b *background) dispatchStatus(err error) {
 	}
 }
 
-func (b *background) invocation() portable.Invocation {
-	return portable.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: b.target}
+func (b *background) invocation() framemcp.Invocation {
+	return framemcp.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: b.target}
 }
 
 func (b *background) run() {
@@ -200,7 +203,7 @@ func (b *background) run() {
 			stop(err)
 			return
 		}
-		ctx, err := qimumcp.WithInvocation(b.ctx, b.invocation())
+		ctx, err := pluginmcp.WithInvocation(b.ctx, b.invocation())
 		if err == nil {
 			stream, err = openStream(ctx, b.host, generation, trigger)
 		}
@@ -302,7 +305,7 @@ func (b *background) reconcile() {
 		}
 		if err == nil {
 			ctx, cancel := context.WithTimeout(b.ctx, 30*time.Second)
-			ctx, err = qimumcp.WithInvocation(ctx, event.Capture.Invocation)
+			ctx, err = pluginmcp.WithInvocation(ctx, event.Capture.Invocation)
 			if err == nil {
 				err = b.host.Admit(ctx, b.namespace, observation)
 			}
@@ -321,7 +324,7 @@ func (b *background) reconcile() {
 }
 
 func (b *background) notify() {
-	ctx, err := qimumcp.WithInvocation(b.ctx, b.invocation())
+	ctx, err := pluginmcp.WithInvocation(b.ctx, b.invocation())
 	if err == nil {
 		err = b.host.Notify(ctx, b.contribution)
 	}

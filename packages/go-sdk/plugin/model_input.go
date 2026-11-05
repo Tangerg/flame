@@ -1,13 +1,18 @@
 package plugin
 
 import (
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"errors"
 	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -24,19 +29,19 @@ func (r ModelInputRequest) Validate() error {
 	}
 	return r.Request.Validate()
 }
-func ModelInputMethod() (*qimumcp.Method[ModelInputRequest, chat.Request], error) {
-	return qimumcp.NewMethod[ModelInputRequest, chat.Request](qimumcp.MethodConfig{Name: "flame.model-input/transform.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Transform the model-visible request before its final capacity admission while preserving the captured route and Tool contracts."})
+func ModelInputMethod() (*pluginmcp.Method[ModelInputRequest, chat.Request], error) {
+	return pluginmcp.NewMethod[ModelInputRequest, chat.Request](portable.MethodConfig{Name: "flame.model-input/transform.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Transform the model-visible request before its final capacity admission while preserving the captured route and Tool contracts."})
 }
-func ModelInputContract() (*portable.Capability, error) { return modelInputContract() }
+func ModelInputContract() (*plugincontract.Capability, error) { return modelInputContract() }
 
 // The published contract is immutable. Checkpoint validation shares its compiled
 // schemas instead of repeating admission on every durable tree commit.
-var modelInputContract = sync.OnceValues(func() (*portable.Capability, error) {
+var modelInputContract = sync.OnceValues(func() (*plugincontract.Capability, error) {
 	method, err := ModelInputMethod()
 	if err != nil {
 		return nil, err
 	}
-	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.model-input.v1", Composition: portable.Decoration, Scope: extension.ScopeCall}, method.Descriptor())
+	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "flame.model-input.v1", Composition: plugincontract.Decoration, Scope: extension.ScopeCall}, method.Descriptor())
 })
 
 // ValidateModelInput preserves facts owned by selection, Tool preparation and
@@ -54,20 +59,20 @@ func ValidateModelInput(original, transformed *chat.Request) error {
 	if transformed.Options.Model != original.Options.Model || transformed.Options.ReasoningEffort != original.Options.ReasoningEffort {
 		return errors.New("model input: transformation cannot replace the captured model options")
 	}
-	originalTools := make([]chat.ToolDefinition, len(original.Tools))
+	originalTools := make([]toolcontract.Definition, len(original.Tools))
 	copy(originalTools, original.Tools)
-	transformedTools := make([]chat.ToolDefinition, len(transformed.Tools))
+	transformedTools := make([]toolcontract.Definition, len(transformed.Tools))
 	copy(transformedTools, transformed.Tools)
-	before, err := jsonvalue.Encode(struct {
-		Tools  []chat.ToolDefinition `json:"tools"`
-		Choice *chat.ToolChoice      `json:"choice"`
+	before, err := framevalue.EncodeJSON(struct {
+		Tools  []toolcontract.Definition `json:"tools"`
+		Choice *chat.ToolChoice          `json:"choice"`
 	}{originalTools, original.ToolChoice})
 	if err != nil {
 		return err
 	}
-	after, err := jsonvalue.Encode(struct {
-		Tools  []chat.ToolDefinition `json:"tools"`
-		Choice *chat.ToolChoice      `json:"choice"`
+	after, err := framevalue.EncodeJSON(struct {
+		Tools  []toolcontract.Definition `json:"tools"`
+		Choice *chat.ToolChoice          `json:"choice"`
 	}{transformedTools, transformed.ToolChoice})
 	if err != nil {
 		return err

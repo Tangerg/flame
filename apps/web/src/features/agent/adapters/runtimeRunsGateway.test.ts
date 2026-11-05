@@ -1,4 +1,4 @@
-import { parseJSON } from "@qimu/sdk/json";
+import { parseJSON } from "@frame/sdk/json";
 import { mutationResult } from "@/test/runtimeClient";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {

@@ -3,11 +3,15 @@ package toolset
 import (
 	"context"
 	"errors"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	wire "github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
-	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
@@ -16,7 +20,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 func TestAuthorityReadSharesOneSourceObservationAndRefreshesNextRequest(t *testing.T) {
@@ -92,8 +95,8 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 	advertise := func(server mcpserver.Server) {
 		t.Helper()
 		grant, err := vault.PrepareGrant(t.Context(), owner, server, mcpapp.GrantProposal{
-			Source:     extension.ContributionSource{InstallationID: owner.String(), Release: integrity.Hash([]byte("release")).String(), Contribution: "directory"},
-			Invocation: portable.Invocation{ID: identity.DigestStrings(server.AuthorityFingerprint().String(), server.Connection.(mcpserver.HTTPConnection).Authorization).String(), Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: owner.String()}},
+			Source:     extension.ContributionSource{InstallationID: owner.String(), Release: framevalue.Hash([]byte("release")).String(), Contribution: "directory"},
+			Invocation: framemcp.Invocation{ID: identity.DigestStrings(server.AuthorityFingerprint().String(), server.Connection.(mcpserver.HTTPConnection).Authorization).String(), Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: owner.String()}},
 			Change:     wire.Change{Name: server.Name.String(), Replacement: &wire.Entry{Name: server.Name.String()}},
 		})
 		if err != nil {
@@ -122,7 +125,7 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 		t.Fatal(err)
 	}
 	original := server.AuthorityFingerprint()
-	check := func(fingerprint integrity.Digest, wantMatch, wantStale bool) {
+	check := func(fingerprint framevalue.Digest, wantMatch, wantStale bool) {
 		t.Helper()
 		decision, matched, err := policy.Decide(t.Context(), approval.Query{Tool: ref, SourceFingerprint: fingerprint})
 		if err != nil || matched != wantMatch || (matched && decision != approval.Allow) {

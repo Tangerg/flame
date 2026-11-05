@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import type { PrimitiveSchemaDefinition } from "@modelcontextprotocol/sdk/types.js";
 import { failureText, type Translate } from "@flame/component-sdk";
-import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import {
   Button,
   Callout,

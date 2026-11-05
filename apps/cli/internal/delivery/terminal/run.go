@@ -22,10 +22,10 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	flameauthoring "github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/program"
-	"github.com/Tangerg/oolong/core/term"
+	"github.com/Tangerg/oolong/ui/core/program"
+	"github.com/Tangerg/oolong/ui/core/scene"
+	"github.com/Tangerg/oolong/ui/core/term"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 // Config describes one terminal application instance.
@@ -86,9 +86,10 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 	if err != nil {
 		return err
 	}
-	programConfig := program.Config{
-		Root: func(loop *program.Runtime) program.Component {
-			active = newApp(loop, appConfig{
+	programConfig := program.ScreenConfig{
+		Build: func(loop *program.Runtime) (scene.Element, error) {
+			var buildErr error
+			active, buildErr = newApp(loop, appConfig{
 				context: ctx, runtime: cfg.Runtime, runtimeProfile: prepared.runtimeProfile, replayPolicy: prepared.replayPolicy,
 				workspaces: cfg.Workspaces, changes: cfg.Changes, transfers: cfg.Transfers,
 				usage: cfg.Usage, modelConfig: cfg.ModelConfig, goals: cfg.Goals, skills: cfg.Skills,
@@ -104,6 +105,9 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 				recoveredSteers: prepared.recoveryIssues.steers.Accepted,
 				localDirectory:  cfg.LocalDirectory, detachOnExit: cfg.DetachOnExit,
 			})
+			if buildErr != nil {
+				return scene.Element{}, buildErr
+			}
 			var rollbackNotice string
 			if prepared.rollbackRecovery != nil {
 				rollbackNotice = rollbackRecoveryNotice(*prepared.rollbackRecovery)
@@ -115,16 +119,18 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 				pendingInstalledCommandsNotice(prepared.workbench),
 			)
 			active.reportWorkbenchIssue(workbenchSteerOutbox, prepared.recoveryIssues.steer)
-			return headless.NewRoot(active)
+			if err := loop.Dispatcher().Post(func() { active.shell.FocusPrompt() }); err != nil {
+				return scene.Element{}, err
+			}
+			return active.Element(), nil
 		},
-		Terminal: term.Features{Probe: true, Mouse: prepared.settings.UI.Mouse, Focus: true, Keyboard: term.KeyboardCompatible},
-		Host:     cfg.Host,
+		Config: program.Config{Terminal: term.Features{Probe: true, Mouse: prepared.settings.UI.Mouse, Focus: true, Keyboard: term.KeyboardCompatible}, Host: cfg.Host},
 	}
 	if err := programConfig.Validate(); err != nil {
 		return err
 	}
 	if programConfig.Host == nil {
-		host, err := term.Open(programConfig.TerminalConfig())
+		host, err := term.Open(term.Config{Features: programConfig.Terminal, AltScreen: true})
 		if errors.Is(err, term.ErrNotTerminal) {
 			return terminalUnavailableError{cause: err}
 		}
@@ -133,9 +139,13 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 		}
 		// Images must be released before the terminal drains and closes its writer.
 		defer func() { runErr = errors.Join(runErr, host.Close()) }()
-		programConfig.Host = localTerminalHost{host}
+		programConfig.Host = program.TerminalHost(host)
 	}
-	err = program.Run(ctx, programConfig)
+	screen, err := program.NewScreen(programConfig)
+	if err != nil {
+		return err
+	}
+	err = screen.Run(ctx)
 	if active != nil {
 		err = errors.Join(err, active.Close(ctx))
 	}
@@ -156,15 +166,6 @@ func pendingInstalledCommandsNotice(store *workbench.Store) string {
 	}
 	return "unconfirmed plugin commands · " + strings.Join(intents, ", ")
 }
-
-type localTerminalHost struct{ *term.Terminal }
-
-func (h localTerminalHost) Writer() program.FrameWriter { return h.Terminal.Writer() }
-func (h localTerminalHost) Input() program.EventSource  { return localTerminalInput(h) }
-
-type localTerminalInput struct{ *term.Terminal }
-
-func (i localTerminalInput) Err() error { return i.InputErr() }
 
 type terminalUnavailableError struct{ cause error }
 

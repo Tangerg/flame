@@ -8,12 +8,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 	"github.com/Tangerg/frame/sqlite"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestGitHubWriteLocalRefusalsSettleBeforeAnyHTTP(t *testing.T) {
@@ -41,16 +43,16 @@ func TestGitHubWriteLocalRefusalsSettleBeforeAnyHTTP(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			calls, token := 0, "private-write-fixture-token"
 			_, session, _ := connectGitHubWrites(t, filepath.Join(t.TempDir(), "github.db"), roundTrip(func(*http.Request) (*http.Response, error) { calls++; return upstream(201, issueJSON, nil), nil }), &token)
-			input, _ := jsonvalue.Encode(test.input)
+			input, _ := framevalue.EncodeJSON(test.input)
 			for range 2 {
 				_, err := invokeGitHub(t, session, contracts, test.method, "original", input)
-				refusal, known := errors.AsType[*portable.Refusal](err)
+				refusal, known := errors.AsType[*framemcp.Refusal](err)
 				if !known || refusal.Code != test.code || calls != 0 {
 					t.Fatalf("local refusal lost settlement or dispatched HTTP: calls=%d %v", calls, err)
 				}
 			}
 			_, found, err := githubBinding(t, session, contracts, test.method).ReadReceipt(t.Context(), "original", input)
-			if _, known := errors.AsType[*portable.Refusal](err); !found || !known || calls != 0 {
+			if _, known := errors.AsType[*framemcp.Refusal](err); !found || !known || calls != 0 {
 				t.Fatalf("local refusal has no original receipt: found=%v calls=%d %v", found, calls, err)
 			}
 		})
@@ -65,16 +67,16 @@ func TestGitHubMissingWriteCredentialIsAnOriginalRefusal(t *testing.T) {
 	path, calls := filepath.Join(t.TempDir(), "github.db"), 0
 	transport := roundTrip(func(*http.Request) (*http.Response, error) { calls++; return upstream(201, issueJSON, nil), nil })
 	_, session, close := connectGitHubWrites(t, path, transport, nil)
-	input, _ := jsonvalue.Encode(contractwire.CreateIssueInput{Repository: "owner/repo", Title: "Title"})
+	input, _ := framevalue.EncodeJSON(contractwire.CreateIssueInput{Repository: "owner/repo", Title: "Title"})
 	_, err = invokeGitHub(t, session, contracts, contracts.CreateIssue.Name(), "original", input)
-	if refusal, known := errors.AsType[*portable.Refusal](err); !known || refusal.Code != "credential_required" || calls != 0 {
+	if refusal, known := errors.AsType[*framemcp.Refusal](err); !known || refusal.Code != "credential_required" || calls != 0 {
 		t.Fatalf("anonymous write contacted upstream: calls=%d %v", calls, err)
 	}
 	close()
 	token := "private-write-fixture-token"
 	_, session, _ = connectGitHubWrites(t, path, transport, &token)
 	_, err = invokeGitHub(t, session, contracts, contracts.CreateIssue.Name(), "original", input)
-	if refusal, known := errors.AsType[*portable.Refusal](err); !known || refusal.Code != "credential_required" || calls != 0 {
+	if refusal, known := errors.AsType[*framemcp.Refusal](err); !known || refusal.Code != "credential_required" || calls != 0 {
 		t.Fatalf("new credential changed the original refusal: calls=%d %v", calls, err)
 	}
 }
@@ -89,7 +91,7 @@ func TestGitHubWriteSchemasOwnExactCommitAndTextAdmission(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, sha := range []string{"", "main", strings.Repeat("g", 40), inspectedSHA} {
-		input, _ := jsonvalue.Encode(contractwire.MergePullInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, HeadSHA: sha, MergeMethod: contractwire.Merge})
+		input, _ := framevalue.EncodeJSON(contractwire.MergePullInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, HeadSHA: contractwire.CommitSHA(sha), MergeMethod: contractwire.Merge})
 		if err := merge.ValidateInput(input); (err == nil) != (sha == inspectedSHA) {
 			t.Fatalf("merge head admission %q: %v", sha, err)
 		}
@@ -99,7 +101,7 @@ func TestGitHubWriteSchemasOwnExactCommitAndTextAdmission(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, count := range []int{contractwire.MaxBodyRunes, contractwire.MaxBodyRunes + 1} {
-		input, _ := jsonvalue.Encode(contractwire.CreateCommentInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, Body: strings.Repeat("文", count)})
+		input, _ := framevalue.EncodeJSON(contractwire.CreateCommentInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, Body: strings.Repeat("文", count)})
 		if err := comment.ValidateInput(input); (err == nil) != (count == contractwire.MaxBodyRunes) {
 			t.Fatalf("Unicode body admission %d: %v", count, err)
 		}
@@ -118,7 +120,7 @@ func TestGitHubCorruptToolReceiptCannotBecomeAnEmptySuccessfulWrite(t *testing.T
 	}
 	token, calls := "private-write-fixture-token", 0
 	c, session, _ := connectGitHubWrites(t, filepath.Join(t.TempDir(), "github.db"), roundTrip(func(*http.Request) (*http.Response, error) { calls++; return upstream(201, issueJSON, nil), nil }), &token)
-	input, _ := jsonvalue.Encode(contractwire.CreateIssueInput{Repository: "owner/repo", Title: "Title"})
+	input, _ := framevalue.EncodeJSON(contractwire.CreateIssueInput{Repository: "owner/repo", Title: "Title"})
 	for _, reply := range []string{`{"value":null}`, `{"value":{}}`} {
 		if _, err := c.store.db.ExecContext(t.Context(), `INSERT INTO commands(id,method,business_input_json,reply) VALUES('tool:corrupt',?,?,?) ON CONFLICT(id) DO UPDATE SET reply=excluded.reply`, contracts.CreateIssue.Name(), input.String(), reply); err != nil {
 			t.Fatal(err)

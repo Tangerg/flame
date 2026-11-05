@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
 )
 
@@ -92,8 +93,13 @@ func TestRuntimeReadRetainsLineFailureIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := callTextTool(t.Context(), namedDirectTool(t, dir, "read"), `{"path":"file.txt"}`)
-	if !errors.Is(err, fs.ErrLineTooLarge) || fs.LineNumber(err) != 2 {
-		t.Fatalf("read failure = %v, line %d; want the original second-line failure", err, fs.LineNumber(err))
+	failure, known := toolcontract.ClassifyFailure(err)
+	if !known {
+		t.Fatalf("read outcome = %v, want a definite failure", err)
+	}
+	cause := failure.Cause()
+	if !errors.Is(cause, fs.ErrLineTooLarge) || fs.LineNumber(cause) != 2 {
+		t.Fatalf("read diagnostic = %v, line %d; want the original second-line failure", cause, fs.LineNumber(cause))
 	}
 }
 

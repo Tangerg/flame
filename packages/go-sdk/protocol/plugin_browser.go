@@ -9,6 +9,7 @@ type OpenPluginBrowserRealmRequest struct {
 }
 
 type PluginBrowserSession struct {
+	PreparationCapacity      int                      `json:"preparationCapacity"`
 	Authority                PluginBrowserAuthority   `json:"authority"`
 	Realm                    PluginBrowserRealm       `json:"realm"`
 	Credential               string                   `json:"credential"`

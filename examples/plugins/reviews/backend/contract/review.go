@@ -6,7 +6,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-	"github.com/invopop/jsonschema"
+	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 type Status string
@@ -35,14 +35,15 @@ type Update struct {
 	Status           Status `json:"status"`
 }
 
-func (Update) JSONSchemaExtend(schema *jsonschema.Schema) {
-	id, _ := schema.Properties.Get("id")
-	// Schema lengths count characters. Admitted Unicode values that exceed the
-	// byte bound remain business refusals with their own original receipt.
-	id.MaxLength = new(uint64(maxReviewIDBytes))
+func (Update) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"id": {MaxLength: new(uint64(maxReviewIDBytes))},
+	}}
 }
 
-func (u Update) Validate() error {
+// ValidateChange runs inside the receipt owner. Structurally admitted business
+// refusals must retain the same original outcome through both command entrances.
+func (u Update) ValidateChange() error {
 	if u.ID == "" || len(u.ID) > maxReviewIDBytes || !utf8.ValidString(u.ID) || u.ExpectedRevision < 1 || u.ExpectedRevision > exactint.Maximum || !validStatus(u.Status) {
 		return errors.New("reviews: invalid update")
 	}

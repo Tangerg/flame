@@ -19,8 +19,9 @@ import (
 	"fmt"
 	"strings"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 var (
@@ -151,16 +152,16 @@ func (r Resolution) Validate() error {
 type Rule struct {
 	scope    RuleScope
 	tool     tool.Ref
-	source   integrity.Digest
+	source   framevalue.Digest
 	subject  Subject
 	decision Decision
 }
 
-func (r Rule) Scope() RuleScope                    { return r.scope }
-func (r Rule) Tool() tool.Ref                      { return r.tool }
-func (r Rule) SourceFingerprint() integrity.Digest { return r.source }
-func (r Rule) Subject() Subject                    { return r.subject }
-func (r Rule) Decision() Decision                  { return r.decision }
+func (r Rule) Scope() RuleScope                     { return r.scope }
+func (r Rule) Tool() tool.Ref                       { return r.tool }
+func (r Rule) SourceFingerprint() framevalue.Digest { return r.source }
+func (r Rule) Subject() Subject                     { return r.subject }
+func (r Rule) Decision() Decision                   { return r.decision }
 
 // Query identifies one gated tool call for [Policy.Decide]. ProjectDir is the
 // call's working directory (the project scope key); empty for sessions without
@@ -169,7 +170,7 @@ type Query struct {
 	SessionID         string
 	ProjectDir        string
 	Tool              tool.Ref
-	SourceFingerprint integrity.Digest
+	SourceFingerprint framevalue.Digest
 	Subject           string
 }
 
@@ -180,7 +181,7 @@ type RememberRequest struct {
 	SessionID         string
 	ProjectDir        string
 	Tool              tool.Ref
-	SourceFingerprint integrity.Digest
+	SourceFingerprint framevalue.Digest
 	Subject           Subject
 	Decision          Decision
 }

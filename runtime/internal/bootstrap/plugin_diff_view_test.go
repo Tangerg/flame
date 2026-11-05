@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -43,10 +44,14 @@ func TestDiffComponentUsesCanonicalWorkspaceReadsAndWithdrawalPreservesFiles(t *
 		t.Fatal(err)
 	}
 	installed := poMCPActivate(r, source)
-	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Components) != 1 || installed.Selected.Components[0].Scope != "workspace" || installed.Selected.Components[0].Material != "diff" {
+	index := slices.IndexFunc(installed.Selected.Components, func(value protocol.PluginClientComponent) bool { return value.ID == "diff" })
+	if len(installed.Selected.Diagnostics) != 0 || index < 0 {
 		t.Fatalf("diff component admission: %+v", installed.Selected)
 	}
-	component := installed.Selected.Components[0]
+	component := installed.Selected.Components[index]
+	if component.Scope != "workspace" || component.Material != "diff" {
+		t.Fatalf("workspace diff component: %+v", component)
+	}
 	resource := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID}, Path: component.Entry}
 	read := protocol.GetDiffRequest{Workspace: protocol.WorkspaceRef{Path: root}, Format: protocol.DiffFormatRows}
 	compare := func() {

@@ -3,13 +3,15 @@ package plugin
 import (
 	"errors"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/portable"
 )
 
 // ToolCaller freezes the installed source admitted for one logical model call.
@@ -17,11 +19,11 @@ import (
 type ToolCaller struct{ value ToolCallerSnapshot }
 
 type ToolCallerSnapshot struct {
-	Invocation portable.Invocation
+	Invocation framemcp.Invocation
 	Tool       tool.Ref
-	Release    integrity.Digest
+	Release    framevalue.Digest
 	// Actor authority comes from the admitted source, not its transport fingerprint.
-	Authority integrity.Digest
+	Authority framevalue.Digest
 }
 
 func NewToolCaller(value ToolCallerSnapshot) (ToolCaller, error) {
@@ -48,7 +50,7 @@ func NewToolCaller(value ToolCallerSnapshot) (ToolCaller, error) {
 func (t ToolCaller) Snapshot() ToolCallerSnapshot { return t.value }
 func (t ToolCaller) Validate() error              { _, err := NewToolCaller(t.value); return err }
 
-func (t ToolCaller) Matches(invocation portable.Invocation, installation identity.InstallationID, release, authority integrity.Digest, server mcpserver.ServerName) bool {
+func (t ToolCaller) Matches(invocation framemcp.Invocation, installation identity.InstallationID, release, authority framevalue.Digest, server mcpserver.ServerName) bool {
 	source, _, _ := t.value.Tool.MCP()
 	owner, _ := source.Origin().Installation()
 	return t.value.Invocation == invocation && owner == installation && t.value.Release == release && t.value.Authority == authority && source.Name() == server

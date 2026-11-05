@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
-	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
+	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
 )
 
 func TestRunInstructionsUseOutcomeReportingContract(t *testing.T) {

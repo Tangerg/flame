@@ -5,12 +5,13 @@ import (
 	"errors"
 	"sync"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/frame"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 // BorrowedSession holds one call in the original Use. Context propagates
@@ -18,7 +19,7 @@ import (
 type BorrowedSession struct {
 	ctx     context.Context
 	session *sdk.ClientSession
-	work    *qimu.Work
+	work    *frame.Work
 	once    sync.Once
 	managed *installedSession
 	release func() error
@@ -53,7 +54,7 @@ func (c *connections) borrowSession(ctx context.Context, session *sdk.ClientSess
 		borrowed.ctx = context.WithValue(ctx, borrowContextKey{}, borrowed)
 		return borrowed, nil
 	}
-	managed, err := observation.owner.acquireBinding(ctx, observation.id, observation.binding)
+	managed, err := observation.acquire(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -85,11 +86,27 @@ func (p *Pool) BorrowActivation(ctx context.Context, id mcpserver.ID, activation
 	if closed {
 		return nil, ErrUnavailable
 	}
-	binding, err := plugins.DecodeActivation(activation)
-	if err != nil {
+	if _, err := plugins.DecodeActivation(activation); err != nil {
 		return nil, err
 	}
-	managed, err := p.installed.acquireBinding(ctx, id, binding)
+	var observation *installedObservation
+	p.inner.mu.Lock()
+	for _, current := range p.inner.sessions {
+		if current.managed != nil && current.managed.id == id && current.close == nil {
+			original, projectErr := current.managed.activation()
+			if projectErr == nil && original.Equal(activation) {
+				observation = current.managed
+				break
+			}
+		}
+	}
+	p.inner.mu.Unlock()
+	var managed *installedSession
+	if observation != nil {
+		managed, err = observation.acquire(ctx)
+	} else {
+		managed, err = p.installed.acquireRecord(ctx, id, activation.Identity.String())
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -128,9 +145,9 @@ func (b *BorrowedSession) Activation() (plugin.Activation, error) {
 // SourceFingerprint describes the exact server realized during this Use's
 // setup. Actor authority names its installation grant; it does not include
 // the transport and executable configuration captured by a tool manifest.
-func (b *BorrowedSession) SourceFingerprint() (integrity.Digest, error) {
+func (b *BorrowedSession) SourceFingerprint() (framevalue.Digest, error) {
 	if b.managed == nil || b.ctx.Err() != nil {
-		return integrity.Digest{}, ErrUnavailable
+		return framevalue.Digest{}, ErrUnavailable
 	}
 	return b.managed.projection.fingerprint, nil
 }

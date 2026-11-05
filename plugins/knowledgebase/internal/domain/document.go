@@ -9,7 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-	"github.com/invopop/jsonschema"
+	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 const (
@@ -40,14 +40,13 @@ type Content struct {
 	Text   string `json:"text" jsonschema:"minLength=1"`
 }
 
-func (Content) JSONSchemaExtend(schema *jsonschema.Schema) {
-	for field, maximum := range map[string]uint64{
-		"id": MaxIDRunes, "title": maxTitleRunes, "source": maxSourceRunes, "text": maxContentRunes,
-	} {
-		if property, ok := schema.Properties.Get(field); ok {
-			property.MaxLength = new(maximum)
-		}
-	}
+func (Content) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"id":     {MaxLength: new(uint64(MaxIDRunes))},
+		"title":  {MaxLength: new(uint64(maxTitleRunes))},
+		"source": {MaxLength: new(uint64(maxSourceRunes))},
+		"text":   {MaxLength: new(uint64(maxContentRunes))},
+	}}
 }
 
 type Header struct {

@@ -3,10 +3,11 @@ package bootstrap
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"iter"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"

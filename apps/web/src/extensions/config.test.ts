@@ -25,8 +25,8 @@ it("publishes private snapshots and retires only the subscription being disposed
   config.set("settings", ["retained"]);
   expect(changed).toHaveBeenCalledExactlyOnceWith(["retained"]);
   expect(config.get("settings")).toEqual(["retained"]);
-  observing.dispose();
-  observing.dispose();
+  observing[Symbol.dispose]();
+  observing[Symbol.dispose]();
   config.set("settings", ["successor"]);
   expect(changed).toHaveBeenCalledOnce();
 });

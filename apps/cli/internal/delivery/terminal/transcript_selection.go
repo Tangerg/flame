@@ -1,13 +1,11 @@
 package terminal
 
 import (
-	"sort"
 	"strings"
 
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/layout"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 type transcriptSelection struct {
@@ -17,52 +15,24 @@ type transcriptSelection struct {
 	Expanded   bool
 }
 
-type transcriptBlockPlacement struct {
-	blockID     headless.BlockID
-	top, height int
-}
-
-type transcriptBlockPresentation struct {
-	lease  *transcriptContentLease
-	blocks []transcriptBlockPlacement
-}
-
-type transcriptContentLease struct {
-	retired bool
-}
-
-func newTranscriptContentLease() *transcriptContentLease {
-	return &transcriptContentLease{}
-}
-
-func (l *transcriptContentLease) retire() {
-	if l != nil {
-		l.retired = true
-	}
-}
-
-func (l *transcriptContentLease) current(candidate *transcriptContentLease) bool {
-	return l != nil && l == candidate && !l.retired
-}
-
 type transcriptPointerGesture struct {
-	target  headless.BlockID
+	target  transcriptEntryID
+	active  bool
 	header  bool
 	dragged bool
 }
 
-func (t *transcriptPointerGesture) begin(target headless.BlockID, header bool) {
-	*t = transcriptPointerGesture{target: target, header: header}
+func (t *transcriptPointerGesture) begin(target transcriptEntryID, header bool) {
+	*t = transcriptPointerGesture{target: target, active: true, header: header}
 }
 
 func (t *transcriptPointerGesture) drag() { t.dragged = true }
 
 func (t *transcriptPointerGesture) release(
-	selected headless.BlockID,
+	selected transcriptEntryID,
 	selectedPresent bool,
-	selectionCollapsed bool,
 ) (click, activate bool) {
-	click = !t.dragged && selectionCollapsed
+	click = t.active && !t.dragged
 	activate = click && selectedPresent && t.header && t.target == selected
 	t.cancel()
 	return click, activate
@@ -85,17 +55,8 @@ func (t *transcriptView) handleMouse(mouse input.Mouse) {
 	switch mouse.Action {
 	case input.MouseDown:
 		point, _ := t.selection.Range()
-		presented := t.presentedBlocks.Value()
-		if !t.contentLease.current(presented.lease) {
-			// The transcript widget has already translated the press through its last
-			// complete frame. Cancel the resulting selection when that frame belonged
-			// to content Reset has replaced; BlockIDs restart from zero and must not
-			// transfer a gesture to their new owners.
-			t.selection.Clear()
-			t.pointerGesture.cancel()
-			return
-		}
-		id, offset, ok := presentedBlockAt(presented.blocks, point.Row)
+		id, ok := t.nativeEntries[point.Content]
+		offset := point.Position.Line
 		if !ok {
 			t.pointerGesture.cancel()
 			return
@@ -108,8 +69,7 @@ func (t *transcriptView) handleMouse(mouse input.Mouse) {
 	case input.MouseDrag:
 		t.pointerGesture.drag()
 	case input.MouseUp:
-		start, end := t.selection.Range()
-		click, activate := t.pointerGesture.release(t.selected, t.hasSelected, start == end)
+		click, activate := t.pointerGesture.release(t.selected, t.hasSelected)
 		if click {
 			t.selection.Clear()
 		}
@@ -128,40 +88,8 @@ func (t *transcriptView) cancelPointerGesture(mouse input.Mouse) {
 	}
 }
 
-// projectBlockPlacements records stable block identities alongside the exact row
-// layout being drawn. Semantic transcript content may change before the next frame;
-// pointer input must still target what the last complete frame showed, not whatever
-// now happens to occupy the same row number.
-func (t *transcriptView) projectBlockPlacements(width int) []transcriptBlockPlacement {
-	placements := make([]transcriptBlockPlacement, 0, t.content.Len())
-	top := t.content.StartRow()
-	first := t.content.FirstBlock()
-	for index := range t.content.Len() {
-		id := first + blockOffset(index)
-		height := 0
-		if width == t.content.Width() {
-			_, height, _ = t.content.Extent(id)
-		} else if entry := t.entries[id]; entry != nil && width > 0 {
-			height = max(entry.HeightForWidth(width), 0)
-		}
-		placements = append(placements, transcriptBlockPlacement{blockID: id, top: top, height: height})
-		top = layout.Sum(top, height)
-	}
-	return placements
-}
-
-func presentedBlockAt(placements []transcriptBlockPlacement, row int) (headless.BlockID, int, bool) {
-	index := sort.Search(len(placements), func(index int) bool {
-		return layout.Sum(placements[index].top, placements[index].height) > row
-	})
-	if index >= len(placements) || row < placements[index].top || placements[index].height <= 0 {
-		return 0, 0, false
-	}
-	return placements[index].blockID, row - placements[index].top, true
-}
-
 func (t *transcriptView) ensureSelection() {
-	first := t.content.FirstBlock()
+	first := t.firstEntry()
 	if t.hasSelected && t.selected >= first && t.selected < first+blockOffset(t.content.Len()) {
 		return
 	}
@@ -171,7 +99,6 @@ func (t *transcriptView) ensureSelection() {
 	}
 	t.selected = first + blockOffset(t.content.Len()-1)
 	t.hasSelected = true
-	t.revealSelected()
 }
 
 func (t *transcriptView) moveSelection(delta int) bool {
@@ -179,7 +106,7 @@ func (t *transcriptView) moveSelection(delta int) bool {
 		return false
 	}
 	t.ensureSelection()
-	first := t.content.FirstBlock()
+	first := t.firstEntry()
 	last := first + blockOffset(t.content.Len()-1)
 	next := t.selected
 	switch {
@@ -198,7 +125,7 @@ func (t *transcriptView) selectEdge(last bool) bool {
 	if t.content.Len() == 0 {
 		return false
 	}
-	id := t.content.FirstBlock()
+	id := t.firstEntry()
 	if last {
 		id += blockOffset(t.content.Len() - 1)
 	}
@@ -206,11 +133,11 @@ func (t *transcriptView) selectEdge(last bool) bool {
 	return true
 }
 
-func (t *transcriptView) selectEntry(id headless.BlockID, reveal bool) {
+func (t *transcriptView) selectEntry(id transcriptEntryID, reveal bool) {
 	t.setSelectedEntry(id, reveal, true)
 }
 
-func (t *transcriptView) selectPointerEntry(id headless.BlockID) bool {
+func (t *transcriptView) selectPointerEntry(id transcriptEntryID) bool {
 	if _, ok := t.entries[id]; !ok {
 		return false
 	}
@@ -218,12 +145,13 @@ func (t *transcriptView) selectPointerEntry(id headless.BlockID) bool {
 	return true
 }
 
-func (t *transcriptView) setSelectedEntry(id headless.BlockID, reveal, clearTextSelection bool) {
+func (t *transcriptView) setSelectedEntry(id transcriptEntryID, reveal, clearTextSelection bool) {
 	if _, ok := t.entries[id]; !ok {
 		return
 	}
 	t.selected, t.hasSelected = id, true
 	if clearTextSelection {
+		t.selectionIntent = nil
 		t.selection.Clear()
 	}
 	t.syncSelectedEntry()
@@ -234,6 +162,7 @@ func (t *transcriptView) setSelectedEntry(id headless.BlockID, reveal, clearText
 }
 
 func (t *transcriptView) syncSelectedEntry() {
+	t.Element().Invalidate()
 	for id, entry := range t.entries {
 		entry.selected = t.hasSelected && id == t.selected
 		entry.focused = entry.selected && t.focused
@@ -244,13 +173,22 @@ func (t *transcriptView) revealSelected() {
 	if !t.hasSelected {
 		return
 	}
-	if top, height, ok := t.content.Extent(t.selected); ok {
-		start := t.content.StartRow()
-		t.scroll.Reveal(top-start, top-start+height-1)
+	top, width := 0, max(t.projected.Value().Width(), 1)
+	for _, id := range t.order {
+		body := t.entries[id].passive()
+		if body == nil {
+			continue
+		}
+		height := body.HeightForWidth(width)
+		if id == t.selected {
+			t.scroll.Reveal(top, top+max(height-1, 0))
+			return
+		}
+		top += height
 	}
 }
 
-func (t *transcriptView) tool(id headless.BlockID) toolDisclosure {
+func (t *transcriptView) tool(id transcriptEntryID) toolDisclosure {
 	for _, tracked := range t.toolViews {
 		if tracked.id == id {
 			return tracked.block
@@ -283,7 +221,7 @@ func (t *transcriptView) mutateSelectedDisclosure(mutate func(toolDisclosure)) b
 	before := tool.Expanded()
 	mutate(tool)
 	if tool.Expanded() != before {
-		t.content.Changed(t.selected)
+		t.projectEntry(t.selected)
 		t.revealSelected()
 		t.refreshSearch()
 	}
@@ -295,7 +233,7 @@ func (t *transcriptView) copySelected() bool {
 	if !t.hasSelected {
 		return true
 	}
-	top, height, ok := t.content.Extent(t.selected)
+	top, height, ok := t.content.Extent(t.entries[t.selected].nativeID)
 	if !ok {
 		return true
 	}
@@ -304,7 +242,11 @@ func (t *transcriptView) copySelected() bool {
 }
 
 func (t *transcriptView) copySelection() {
-	t.copy(t.selection.Text(&t.content))
+	t.restoreSelection()
+	value, err := t.selection.Text(t.content.Layout())
+	if err == nil {
+		t.copy(value)
+	}
 }
 
 func (t *transcriptView) copy(value string) {
@@ -353,7 +295,7 @@ func (t *transcriptView) readerTargetForSelected() (readerTarget, bool) {
 	case *toolGroupBlock:
 		return readerTarget{document: tool.readerDocument(), source: tool}, true
 	}
-	copyable, ok := entry.content.(headless.TextProjector)
+	copyable, ok := entry.content.(base.TextProjector)
 	if !ok {
 		return readerTarget{}, false
 	}

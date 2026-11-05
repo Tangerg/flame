@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -18,21 +19,26 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 func TestInteractionExecutorRestoresWaitingTreeWithCompletedSibling(t *testing.T) {
-	t.Run("same delegate batch", func(t *testing.T) { testWaitingTreeWithCompletedSibling(t, false) })
-	t.Run("earlier delegate batch", func(t *testing.T) { testWaitingTreeWithCompletedSibling(t, true) })
+	t.Run("same delegate batch", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) { testWaitingTreeWithCompletedSibling(t, false) })
+	})
+	t.Run("earlier delegate batch", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) { testWaitingTreeWithCompletedSibling(t, true) })
+	})
 }
 
 func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	t.Helper()
-	bStarted := make(chan agent.ProcessID, 1)
-	toolStarted := make(chan agent.ProcessID, 1)
+	bStarted := make(chan scoperun.ProcessID, 1)
+	toolStarted := make(chan struct{}, 1)
 	var writes atomic.Int32
 	offloads := &recordingToolResultOffloader{store: testTrees(t).stores.ToolResults}
 	ordinary, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "fixture_store", Description: "Write a known result."}, func(ctx context.Context, input struct {
@@ -42,20 +48,16 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 			return "", errors.New("effective arguments were lost")
 		}
 		writes.Add(1)
-		invocation, found := interaction.ToolInvocationFromContext(ctx)
-		if !found {
-			return "", errors.New("tool invocation missing")
-		}
-		toolStarted <- invocation.Relation().ProcessID()
+		toolStarted <- struct{}{}
 		return strings.Repeat("stored data 界", 100), nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	releaseA := make(chan struct{})
-	var modelCalls atomic.Int32
+	var modelCallCount atomic.Int32
 	model := chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
-		modelCalls.Add(1)
+		modelCallCount.Add(1)
 		if request.Options.Temperature == nil || *request.Options.Temperature != 0.37 || request.Options.MaxOutputTokens == nil || *request.Options.MaxOutputTokens != 731 {
 			return nil, errors.New("restored child lost generation options")
 		}
@@ -70,11 +72,15 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 				return nil, ctx.Err()
 			}
 		case userMessagesContain(request.Messages, "completed sibling B"):
-			invocation, found := interaction.ModelInvocationFromContext(ctx)
-			if !found {
-				return nil, errors.New("model invocation is missing")
+			publication, attributed := executionctx.ModelCallsFromContext(ctx).(modelCalls)
+			if !attributed {
+				return nil, errors.New("model call has no product owner")
 			}
-			bStarted <- invocation.Relation().ProcessID()
+			wrapper, err := scoperun.ParseProcessID(publication.member.MemberID)
+			if err != nil {
+				return nil, err
+			}
+			bStarted <- wrapper
 			return interactionUsageTextResponse("sibling B completed", 2, 1), nil
 		default:
 			calls := []chat.ToolCall{
@@ -138,7 +144,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	go func() { eventsReady <- slices.Collect(started.Events) }()
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
-	var processID agent.ProcessID
+	var processID scoperun.ProcessID
 	select {
 	case processID = <-bStarted:
 	case <-ctx.Done():
@@ -152,27 +158,29 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	if _, err := process.Await(ctx); err != nil {
 		t.Fatalf("finish sibling B before A asks for input: %v", err)
 	}
-	var toolProcessID agent.ProcessID
 	select {
-	case toolProcessID = <-toolStarted:
+	case <-toolStarted:
 	case <-ctx.Done():
-		t.Fatal("ordinary sibling did not start")
-	}
-	toolProcess, found := execution.engine.Process(toolProcessID)
-	if !found {
-		t.Fatal("ordinary sibling is unavailable")
-	}
-	if _, err := toolProcess.Await(ctx); err != nil {
-		t.Fatal(err)
-	}
-	items, err := projection.stores.Transcript.List(t.Context(), current.ID())
-	if err != nil {
-		t.Fatal(err)
+		t.Fatal("ordinary tool did not start")
 	}
 	var known transcript.Item
-	for _, item := range items {
-		if invocation, ok := testsupport.ToolInvocationOf(item); ok && invocation.Offload != nil {
-			known = item
+	for {
+		items, err := projection.stores.Transcript.List(ctx, current.ID())
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, item := range items {
+			if invocation, ok := testsupport.ToolInvocationOf(item); ok && invocation.Offload != nil {
+				known = item
+			}
+		}
+		if _, found := testsupport.ToolInvocationOf(known); found {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatal("ordinary tool result was not committed while its delegate sibling remained active")
+		case <-time.After(time.Millisecond):
 		}
 	}
 	knownInvocation, found := testsupport.ToolInvocationOf(known)
@@ -266,9 +274,9 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	expectedStarts := []string{"delegate_a"}
 	expectedResults := []string{"delegate_a"}
 	if !slices.Equal(parentStarts, expectedStarts) || !slices.Equal(parentResults, expectedResults) ||
-		childEnds != 1 || rootEnds != 1 || modelCalls.Load() != 5 || rootModels != 1 {
+		childEnds != 1 || rootEnds != 1 || modelCallCount.Load() != 5 || rootModels != 1 {
 		t.Fatalf("restored tree starts=%v results=%v childEnds=%d rootEnds=%d modelCalls=%d",
-			parentStarts, parentResults, childEnds, rootEnds, modelCalls.Load())
+			parentStarts, parentResults, childEnds, rootEnds, modelCallCount.Load())
 	}
 }
 

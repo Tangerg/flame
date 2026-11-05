@@ -2,11 +2,9 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 	json "encoding/json/v2"
 	"fmt"
 
-	"github.com/Tangerg/qimu/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 	history "github.com/Tangerg/scope/core/history"
 )
@@ -18,14 +16,12 @@ import (
 //
 // Append-only: one INSERT per message — O(1) writes, ordered reads, no
 // whole-file rewrite.
-type MessageStore struct {
-	db *sql.DB
-}
+type MessageStore struct{ db *database }
 
 // admitConversation is the one gate every history call passes: a caller that
 // has already given up is refused before the database is reached, and an
 // identity this store cannot address never becomes a query. Scope's history
-// contract requires both decisions to complete before any provider I/O.
+// identifiers are admitted before any provider I/O.
 func admitConversation(ctx context.Context, conversationID history.ConversationID) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -34,7 +30,7 @@ func admitConversation(ctx context.Context, conversationID history.ConversationI
 }
 
 // newMessageStore binds the chat history store to a database opened via [openDatabase].
-func newMessageStore(db *sql.DB) *MessageStore {
+func newMessageStore(db *database) *MessageStore {
 	return &MessageStore{db: db}
 }
 
@@ -46,81 +42,66 @@ func (m *MessageStore) Read(ctx context.Context, conversationID history.Conversa
 	if err := admitConversation(ctx, conversationID); err != nil {
 		return nil, err
 	}
-	rows, err := sqlite.Connection(ctx, m.db).QueryContext(ctx,
-		`SELECT seq, message FROM messages WHERE conversation_id = ? ORDER BY seq`, conversationID)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: read messages: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	out := make([]chat.Message, 0)
-	for rows.Next() {
-		var seq int64
-		var blob string
-		if err := rows.Scan(&seq, &blob); err != nil {
-			return nil, fmt.Errorf("sqlite: scan message: %w", err)
+	return scopedValue(ctx, m.db.read, func(ctx context.Context) ([]chat.Message, error) {
+		rows, err := m.db.connection(ctx).QueryContext(ctx, `SELECT seq, message FROM messages WHERE conversation_id = ? ORDER BY seq`, conversationID)
+		if err != nil {
+			return nil, fmt.Errorf("sqlite: read messages: %w", err)
 		}
-		var msg chat.Message
-		if err := json.Unmarshal([]byte(blob), &msg); err != nil {
-			return nil, fmt.Errorf("sqlite: decode message row %d: %w", seq, err)
+		defer func() {
+			_ = rows.Close()
+		}()
+		out := make([]chat.Message, 0)
+		for rows.Next() {
+			var seq int64
+			var blob string
+			if err := rows.Scan(&seq, &blob); err != nil {
+				return nil, fmt.Errorf("sqlite: scan message: %w", err)
+			}
+			var msg chat.Message
+			if err := json.Unmarshal([]byte(blob), &msg); err != nil {
+				return nil, fmt.Errorf("sqlite: decode message row %d: %w", seq, err)
+			}
+			out = append(out, msg)
 		}
-		out = append(out, msg)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("sqlite: read messages: %w", err)
-	}
-	return out, nil
+		if err := rows.Err(); err != nil {
+			return nil, fmt.Errorf("sqlite: read messages: %w", err)
+		}
+		return out, nil
+	})
 }
 
-// Write appends messages to the conversation in one transaction. No-op for
-// an empty batch. A statement that never ran leaves a definite non-write; a
-// failure after the batch was staged is the commit itself, whose effect this
-// store cannot observe, so the outcome reports it as uncertain rather than as
-// a rejected batch.
-func (m *MessageStore) Write(
-	ctx context.Context,
-	conversationID history.ConversationID,
-	messages ...chat.Message,
-) (history.WriteOutcome, error) {
+// Write appends a validated batch in the Frame transaction already owned by
+// this operation, or opens one when called alone. Frame reports commit
+// uncertainty; staging SQL is not evidence that a commit was attempted.
+func (m *MessageStore) Write(ctx context.Context, conversationID history.ConversationID, messages ...chat.Message) error {
 	if err := admitConversation(ctx, conversationID); err != nil {
-		return history.WriteOutcome{}, err
+		return err
 	}
 	if len(messages) == 0 {
-		return history.WriteOutcome{}, nil
+		return nil
 	}
-	// A row that cannot be decoded fails the complete read, so a message that
-	// is not a message is refused here rather than stored as one: the store
-	// would otherwise hold a conversation nothing can read back.
 	for index := range messages {
 		if err := messages[index].Validate(); err != nil {
-			return history.WriteOutcome{}, fmt.Errorf("sqlite: write message %d: %w", index+1, err)
+			return fmt.Errorf("sqlite: write message %d: %w", index+1, err)
 		}
 	}
-	staged := false
-	// RunInTx so the batch is atomic standalone, and folds into a caller's
-	// cross-store transaction (portable restore seeds history inside one) instead
-	// of opening its own — which would deadlock under MaxOpenConns(1).
-	err := sqlite.RunInTx(ctx, m.db, func(ctx context.Context) error {
-		q := sqlite.Connection(ctx, m.db)
+	err := m.db.write(ctx, func(ctx context.Context) error {
+		q := m.db.connection(ctx)
 		for _, msg := range messages {
 			data, err := encodeStoredJSON(msg)
 			if err != nil {
 				return fmt.Errorf("sqlite: marshal message: %w", err)
 			}
-			if _, err := q.ExecContext(ctx,
-				`INSERT INTO messages(conversation_id, message) VALUES (?, ?)`,
-				string(conversationID), string(data),
-			); err != nil {
+			if _, err := q.ExecContext(ctx, `INSERT INTO messages(conversation_id, message) VALUES (?, ?)`, string(conversationID), string(data)); err != nil {
 				return fmt.Errorf("sqlite: append message: %w", err)
 			}
 		}
-		staged = true
 		return nil
 	})
 	if err != nil {
-		return history.WriteOutcome{Uncertain: staged}, err
+		return err
 	}
-	return history.WriteOutcome{Accepted: len(messages)}, nil
+	return nil
 }
 
 // Replace atomically sets conversationID's history to exactly messages — a
@@ -130,23 +111,18 @@ func (m *MessageStore) Write(
 // conversation.
 // Retention (truncate / compaction) uses this instead of Clear+Write, which
 // would lose the conversation if the Write failed after the Clear committed.
-func (m *MessageStore) Replace(
-	ctx context.Context,
-	conversationID history.ConversationID,
-	messages ...chat.Message,
-) error {
+// Clear and Write fold into this transaction rather than committing on
+// their own, so the rewrite is the single atomic step the contract above
+// describes.
+func (m *MessageStore) Replace(ctx context.Context, conversationID history.ConversationID, messages ...chat.Message) error {
 	if err := admitConversation(ctx, conversationID); err != nil {
 		return err
 	}
-	// Clear and Write fold into this transaction rather than committing on
-	// their own, so the rewrite is the single atomic step the contract above
-	// describes.
-	return sqlite.RunInTx(ctx, m.db, func(ctx context.Context) error {
+	return m.db.write(ctx, func(ctx context.Context) error {
 		if err := m.Clear(ctx, conversationID); err != nil {
 			return err
 		}
-		_, err := m.Write(ctx, conversationID, messages...)
-		return err
+		return m.Write(ctx, conversationID, messages...)
 	})
 }
 
@@ -159,20 +135,19 @@ func (m *MessageStore) Truncate(ctx context.Context, conversationID history.Conv
 	if err := admitConversation(ctx, conversationID); err != nil {
 		return err
 	}
-	if keepN < 0 {
-		return fmt.Errorf("sqlite: truncate messages: keep count %d is negative", keepN)
-	}
-	if _, err := sqlite.Connection(ctx, m.db).ExecContext(ctx,
-		`DELETE FROM messages
+	return m.db.write(ctx, func(ctx context.Context) error {
+		if keepN < 0 {
+			return fmt.Errorf("sqlite: truncate messages: keep count %d is negative", keepN)
+		}
+		if _, err := m.db.connection(ctx).ExecContext(ctx, `DELETE FROM messages
 		  WHERE conversation_id = ?
 		    AND seq IN (
 		      SELECT seq FROM messages WHERE conversation_id = ? ORDER BY seq LIMIT -1 OFFSET ?
-		    )`,
-		conversationID, conversationID, keepN,
-	); err != nil {
-		return fmt.Errorf("sqlite: truncate messages: %w", err)
-	}
-	return nil
+		    )`, conversationID, conversationID, keepN); err != nil {
+			return fmt.Errorf("sqlite: truncate messages: %w", err)
+		}
+		return nil
+	})
 }
 
 // Count returns conversationID's message count via a COUNT(*) query — the
@@ -185,13 +160,13 @@ func (m *MessageStore) Count(ctx context.Context, conversationID history.Convers
 	if err := admitConversation(ctx, conversationID); err != nil {
 		return 0, err
 	}
-	var n int
-	if err := sqlite.Connection(ctx, m.db).QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM messages WHERE conversation_id = ?`, conversationID,
-	).Scan(&n); err != nil {
-		return 0, fmt.Errorf("sqlite: count messages: %w", err)
-	}
-	return n, nil
+	return scopedValue(ctx, m.db.read, func(ctx context.Context) (int, error) {
+		var n int
+		if err := m.db.connection(ctx).QueryRowContext(ctx, `SELECT COUNT(*) FROM messages WHERE conversation_id = ?`, conversationID).Scan(&n); err != nil {
+			return 0, fmt.Errorf("sqlite: count messages: %w", err)
+		}
+		return n, nil
+	})
 }
 
 // Clear drops every message for conversationID. Idempotent — unknown id is
@@ -200,10 +175,10 @@ func (m *MessageStore) Clear(ctx context.Context, conversationID history.Convers
 	if err := admitConversation(ctx, conversationID); err != nil {
 		return err
 	}
-	if _, err := sqlite.Connection(ctx, m.db).ExecContext(ctx,
-		`DELETE FROM messages WHERE conversation_id = ?`, conversationID,
-	); err != nil {
-		return fmt.Errorf("sqlite: clear messages: %w", err)
-	}
-	return nil
+	return m.db.write(ctx, func(ctx context.Context) error {
+		if _, err := m.db.connection(ctx).ExecContext(ctx, `DELETE FROM messages WHERE conversation_id = ?`, conversationID); err != nil {
+			return fmt.Errorf("sqlite: clear messages: %w", err)
+		}
+		return nil
+	})
 }

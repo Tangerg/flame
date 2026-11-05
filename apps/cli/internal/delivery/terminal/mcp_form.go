@@ -9,10 +9,11 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/keymap"
-	"github.com/Tangerg/oolong/core/layout"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/keymap"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/scene"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 type mcpFormMode uint8
@@ -180,37 +181,38 @@ func (m *mcpScreens) showMCPFormStep(flow *mcpFormFlow) {
 	}
 	m.form = flow
 	if flow.dialog != nil {
-		flow.dialog.Controller().Dismiss()
+		flow.dialog.Dismiss()
 	}
-	fields, secretFields := m.mcpFormFields(flow)
+	fields, secretFields, capture := m.mcpFormFields(flow)
 	flow.secretFields = append(flow.secretFields, secretFields...)
-	form := headless.NewForm(fields...)
-	form.Keys = headless.DefaultFormKeys()
-	var dialog *kit.Dialog
-	form.Done = func() {
+	form := kit.FormConfig{Fields: fields, Theme: m.theme, Glyphs: m.glyphs,
+		Hints: []keymap.Action{base.Submit, base.Cancel}}
+	form.Keys = base.DefaultFormKeys()
+	var dialog *presentationDialog
+	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
 		if m.form != flow || flow.dialog != dialog || flow.state != mcpFormEditing {
-			return
+			return scene.Unchanged, nil
 		}
+		capture()
 		if flow.advance() {
 			m.showMCPFormStep(flow)
-			return
+			return scene.Unchanged, nil
 		}
 		m.submitMCPForm(flow)
+		return scene.Applied, nil
 	}
-	form.GaveUp = func() {
+	leave := func() {
 		if m.form != flow || flow.dialog != dialog || flow.state != mcpFormEditing {
 			return
 		}
+		capture()
 		if flow.back() {
 			m.showMCPFormStep(flow)
 			return
 		}
 		m.closeMCPForm(flow)
 	}
-	body := kit.NewForm(kit.FormConfig{
-		Theme: m.theme, Glyphs: m.glyphs, Controller: form,
-		Hints: []keymap.Action{headless.Submit, headless.Cancel},
-	})
+	body := kit.NewForm(form)
 	title := "Create MCP server"
 	switch flow.mode {
 	case mcpFormProbe:
@@ -220,15 +222,14 @@ func (m *mcpScreens) showMCPFormStep(flow *mcpFormFlow) {
 	}
 	step, total, label := flow.progress()
 	title += fmt.Sprintf(" · %d/%d", step, total)
-	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: m.stack, Theme: m.theme, Glyphs: m.glyphs,
-		Title: title, Body: body,
+	dialog = newPresentationDialog(m.stack, kit.DialogConfig{Theme: m.theme, Glyphs: m.glyphs,
+		Title: title, Body: formNavigation(body.Element(), leave),
 		Where: layout.Placement{Width: 92, Height: formDialogHeight(body.HeightForWidth(88), len(fields), 24)},
 	})
 	dialog.Controller().SetDescription(label)
 	flow.dialog = dialog
 	flow.view = body
-	dialog.Controller().Show()
+	dialog.Show()
 }
 
 func (m *mcpScreens) submitMCPForm(flow *mcpFormFlow) {
@@ -301,39 +302,41 @@ func (m *mcpScreens) submitMCPForm(flow *mcpFormFlow) {
 }
 
 func (m *mcpScreens) showMCPFormSubmission(flow *mcpFormFlow, message string) {
-	flow.dialog.Controller().Dismiss()
-	form := headless.NewForm()
-	form.Keys = headless.DefaultFormKeys()
-	var dialog *kit.Dialog
-	form.Done = func() {
+	flow.dialog.Dismiss()
+	form := kit.FormConfig{Theme: m.theme, Glyphs: m.glyphs}
+	form.Keys = base.DefaultFormKeys()
+	var dialog *presentationDialog
+	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
 		if m.form == flow && flow.dialog == dialog {
 			m.submitMCPForm(flow)
 		}
+		return scene.Applied, nil
 	}
-	form.GaveUp = func() {
+	leave := func() {
 		if m.form == flow && flow.dialog == dialog {
 			m.closeMCPForm(flow)
 		}
 	}
 	title := "Submitting MCP form"
-	hints := []keymap.Action{headless.Cancel}
+	hints := []keymap.Action{base.Cancel}
 	if flow.state == mcpFormUncertain {
 		title = "Outcome unknown · Enter retries the original request"
-		hints = append([]keymap.Action{headless.Submit}, hints...)
+		hints = append([]keymap.Action{base.Submit}, hints...)
 	} else if flow.state == mcpFormBlocked {
 		title = "Outcome unknown · replay is unavailable"
 	}
-	body := kit.NewForm(kit.FormConfig{
-		Theme: m.theme, Glyphs: m.glyphs, Controller: form, Title: title + "\n" + message, Hints: hints,
-	})
-	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: m.stack, Theme: m.theme, Glyphs: m.glyphs,
-		Title: "MCP submission", Description: message, Body: body,
+	form.Title, form.Hints = title+"\n"+message, hints
+	body := kit.NewForm(form)
+	if err := body.Controller().Element().SetFocusable(func() bool { return true }); err != nil {
+		panic(err)
+	}
+	dialog = newPresentationDialog(m.stack, kit.DialogConfig{Theme: m.theme, Glyphs: m.glyphs,
+		Title: "MCP submission", Description: message, Body: formNavigation(body.Element(), leave),
 		Where: layout.Placement{Width: 92, Height: formDialogHeight(body.HeightForWidth(88), 0, 24)},
 	})
 	flow.dialog = dialog
 	flow.view = body
-	dialog.Controller().Show()
+	dialog.Show()
 }
 
 func (m *mcpScreens) closeMCPForm(flow *mcpFormFlow) {
@@ -343,13 +346,15 @@ func (m *mcpScreens) closeMCPForm(flow *mcpFormFlow) {
 	}
 }
 
-func (m *mcpScreens) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Text) {
+func (m *mcpScreens) mcpFormFields(flow *mcpFormFlow) ([]base.Field, []*base.Text, func()) {
 	draft := &flow.draft
-	fields := make([]headless.Field, 0, 5)
-	secretFields := make([]*headless.Text, 0, 3)
-	textField := func(label, placeholder string, value *string, check func(string) error) *headless.Text {
-		field := headless.NewText(headless.TextConfig{Label: label, Placeholder: placeholder, Value: headless.Bind(value), Check: check})
+	var capture []func()
+	fields := make([]base.Field, 0, 5)
+	secretFields := make([]*base.Text, 0, 3)
+	textField := func(label, placeholder string, value *string, check func(string) error) *base.Text {
+		field := base.NewText(base.TextConfig{Label: label, Placeholder: placeholder, Initial: *value, Check: check})
 		field.Clipboard = m.clipboard
+		capture = append(capture, func() { *value = field.Text() })
 		fields = append(fields, field)
 		return field
 	}
@@ -358,40 +363,70 @@ func (m *mcpScreens) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*head
 		if flow.mode != mcpFormUpdate {
 			textField("Server name", "docs", &draft.name, requiredText)
 		}
-		enabled := headless.NewSelect(headless.SelectConfig[bool]{Same: headless.Equal[bool], Label: "Enabled", Value: headless.Bind(&draft.enabled), Rows: 2})
-		enabled.SetOptions([]headless.Option[bool]{{Label: "Enabled", Value: true}, {Label: "Disabled", Value: false}})
+		enabled := base.NewSelect(base.SelectConfig[bool]{Same: base.Equal[bool], Label: "Enabled", Initial: draft.enabled, Rows: 2})
+		enabled.SetOptions([]base.Option[bool]{{Label: "Enabled", Value: true}, {Label: "Disabled", Value: false}})
+		enabled.Choose(draft.enabled)
+		capture = append(capture, func() {
+			if selected, ok := enabled.Chosen(); ok {
+				draft.enabled = selected.Value
+			}
+		})
 		fields = append(fields, enabled)
 		textField("Description", "Optional description", &draft.description, nil)
 		if flow.mode == mcpFormUpdate {
-			connection := headless.NewSelect(headless.SelectConfig[bool]{Same: headless.Equal[bool], Label: "Connection change", Value: headless.Bind(&draft.replaceConnection), Rows: 2})
-			connection.SetOptions([]headless.Option[bool]{{Label: "Keep current connection", Value: false}, {Label: "Replace connection", Value: true}})
+			connection := base.NewSelect(base.SelectConfig[bool]{Same: base.Equal[bool], Label: "Connection change", Initial: draft.replaceConnection, Rows: 2})
+			connection.SetOptions([]base.Option[bool]{{Label: "Keep current connection", Value: false}, {Label: "Replace connection", Value: true}})
+			connection.Choose(draft.replaceConnection)
+			capture = append(capture, func() {
+				if selected, ok := connection.Chosen(); ok {
+					draft.replaceConnection = selected.Value
+				}
+			})
 			fields = append(fields, connection)
 		}
 		transportLabel := "Transport"
 		if flow.mode == mcpFormUpdate {
 			transportLabel = "Replacement transport"
 		}
-		transport := headless.NewSelect(headless.SelectConfig[protocol.MCPTransport]{Same: headless.Equal[protocol.MCPTransport], Label: transportLabel, Value: headless.Bind(&draft.transport), Rows: 2})
-		transport.SetOptions([]headless.Option[protocol.MCPTransport]{{Label: "Streamable HTTP", Value: protocol.MCPTransportStreamableHTTP}, {Label: "stdio process", Value: protocol.MCPTransportStdio}})
+		transport := base.NewSelect(base.SelectConfig[protocol.MCPTransport]{Same: base.Equal[protocol.MCPTransport], Label: transportLabel, Initial: draft.transport, Rows: 2})
+		transport.SetOptions([]base.Option[protocol.MCPTransport]{{Label: "Streamable HTTP", Value: protocol.MCPTransportStreamableHTTP}, {Label: "stdio process", Value: protocol.MCPTransportStdio}})
+		transport.Choose(draft.transport)
+		capture = append(capture, func() {
+			if selected, ok := transport.Chosen(); ok {
+				draft.transport = selected.Value
+			}
+		})
 		fields = append(fields, transport)
 	case mcpFormHTTP:
 		textField("HTTP URL", "https://mcp.example/tools", &draft.url, requiredText)
 		secretOptions := mcpSecretOptions(flow.mode)
-		authorizationMode := headless.NewSelect(headless.SelectConfig[formChange]{Same: headless.Equal[formChange], Label: "Authorization change", Value: headless.Bind(&draft.authorizationMode), Rows: len(secretOptions)})
+		authorizationMode := base.NewSelect(base.SelectConfig[formChange]{Same: base.Equal[formChange], Label: "Authorization change", Initial: draft.authorizationMode, Rows: len(secretOptions)})
 		authorizationMode.SetOptions(secretOptions)
+		authorizationMode.Choose(draft.authorizationMode)
+		capture = append(capture, func() {
+			if selected, ok := authorizationMode.Chosen(); ok {
+				draft.authorizationMode = selected.Value
+			}
+		})
 		fields = append(fields, authorizationMode)
 		authorization := textField("Authorization value", "Bearer …", &draft.authorization, func(value string) error {
-			if draft.authorizationMode.SetsValue() {
+			if selected, ok := authorizationMode.Chosen(); ok && selected.Value.SetsValue() {
 				return requiredText(value)
 			}
 			return nil
 		})
 		authorization.SetMask("•")
-		headersMode := headless.NewSelect(headless.SelectConfig[formChange]{Same: headless.Equal[formChange], Label: "Headers change", Value: headless.Bind(&draft.headersMode), Rows: len(secretOptions)})
+		headersMode := base.NewSelect(base.SelectConfig[formChange]{Same: base.Equal[formChange], Label: "Headers change", Initial: draft.headersMode, Rows: len(secretOptions)})
 		headersMode.SetOptions(secretOptions)
+		headersMode.Choose(draft.headersMode)
+		capture = append(capture, func() {
+			if selected, ok := headersMode.Chosen(); ok {
+				draft.headersMode = selected.Value
+			}
+		})
 		fields = append(fields, headersMode)
 		headers := textField("Headers JSON", `{"X-Key":"secret"}`, &draft.headers, func(value string) error {
-			_, err := mcpHeadersChange(draft.headersMode, value)
+			_, err := mcpHeadersChange(func() formChange { selected, _ := headersMode.Chosen(); return selected.Value }(), value)
 			return err
 		})
 		headers.SetMask("•")
@@ -405,11 +440,17 @@ func (m *mcpScreens) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*head
 			return err
 		})
 		secretOptions := mcpSecretOptions(flow.mode)
-		environmentMode := headless.NewSelect(headless.SelectConfig[formChange]{Same: headless.Equal[formChange], Label: "Environment change", Value: headless.Bind(&draft.environmentMode), Rows: len(secretOptions)})
+		environmentMode := base.NewSelect(base.SelectConfig[formChange]{Same: base.Equal[formChange], Label: "Environment change", Initial: draft.environmentMode, Rows: len(secretOptions)})
 		environmentMode.SetOptions(secretOptions)
+		environmentMode.Choose(draft.environmentMode)
+		capture = append(capture, func() {
+			if selected, ok := environmentMode.Chosen(); ok {
+				draft.environmentMode = selected.Value
+			}
+		})
 		fields = append(fields, environmentMode)
 		environment := textField("Environment JSON", `{"TOKEN":"secret"}`, &draft.environment, func(value string) error {
-			_, err := mcpEnvironmentChange(draft.environmentMode, value)
+			_, err := mcpEnvironmentChange(func() formChange { selected, _ := environmentMode.Chosen(); return selected.Value }(), value)
 			return err
 		})
 		environment.SetMask("•")
@@ -421,18 +462,22 @@ func (m *mcpScreens) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*head
 			return err
 		})
 	}
-	return fields, secretFields
+	return fields, secretFields, func() {
+		for _, collect := range capture {
+			collect()
+		}
+	}
 }
 
-func mcpSecretOptions(mode mcpFormMode) []headless.Option[formChange] {
+func mcpSecretOptions(mode mcpFormMode) []base.Option[formChange] {
 	if mode == mcpFormUpdate {
-		return []headless.Option[formChange]{
+		return []base.Option[formChange]{
 			{Label: "Keep current secret", Value: formChangeKeep},
 			{Label: "Set replacement", Value: formChangeSet},
 			{Label: "Clear secret", Value: formChangeClear},
 		}
 	}
-	return []headless.Option[formChange]{{Label: "No secret", Value: formChangeKeep}, {Label: "Set secret", Value: formChangeSet}}
+	return []base.Option[formChange]{{Label: "No secret", Value: formChangeKeep}, {Label: "Set secret", Value: formChangeSet}}
 }
 
 func mcpAuthorizationChange(mode formChange, value string) (*mcp.AuthorizationChange, error) {

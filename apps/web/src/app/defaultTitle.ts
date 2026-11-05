@@ -5,6 +5,6 @@ export const defaultTitle = definePlugin({
   name: "flame.builtin.default-title",
   requires: { window: WINDOW },
   setup(ctx) {
-    ctx.window.setTitle(PRODUCT_NAME);
+    ctx.dependencies.window.setTitle(PRODUCT_NAME);
   },
 });

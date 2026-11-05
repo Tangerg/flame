@@ -81,10 +81,10 @@ async function compileDescriptor(source, temporary) {
   await writeFile(
     entry,
     `import descriptor from ${JSON.stringify(specifier)};\n` +
-      'import { stringifyJSON } from "@qimu/sdk/json";\n' +
+      'import { canonicalJSON } from "@frame/sdk/json";\n' +
       'if (!descriptor || typeof descriptor !== "object" || Array.isArray(descriptor))\n' +
       '  throw new Error("contract source must export its descriptor as default");\n' +
-      "export default stringifyJSON(descriptor, true);\n",
+      "export default canonicalJSON(descriptor);\n",
   );
   const bundle = await rolldown({
     input: entry,
@@ -120,7 +120,7 @@ export async function generateContracts(project, tool) {
         tool.command,
         [
           ...(tool.args ?? []),
-          "contract",
+          "feature",
           "--feature",
           feature,
           "--out",

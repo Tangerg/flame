@@ -2,7 +2,6 @@ package execution
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"maps"
 	"math"
@@ -14,7 +13,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+	"github.com/Tangerg/scope/agent/interaction"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -74,20 +74,37 @@ func fixedInteractionPricing(usd float64) accounting.Pricing {
 }
 
 func TestAccountModelCallRejectsOutOfSequenceWithoutMutatingUsage(t *testing.T) {
-	var invocation interaction.ModelInvocation
-	model := chat.ModelFunc(func(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
-		var present bool
-		invocation, present = interaction.ModelInvocationFromContext(ctx)
-		if !present {
-			return nil, errors.New("model call has no invocation attribution")
-		}
+	var invocation modelCallSource
+	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		return interactionUsageTextResponse("captured", 2, 1), nil
 	})
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{})
 	runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
+	live := executor.sessions.snapshot()[0]
+	history, err := live.committedTree(t.Context(), live.processRootID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range history.Entries {
+		intent, ok := entry.Record.(scoperun.EffectIntent)
+		if !ok {
+			continue
+		}
+		request, model, err := interaction.ModelRequestFromEffect(intent.Effect)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if model {
+			reference, _, err := modelPreparationReference(request.Messages)
+			if err != nil {
+				t.Fatal(err)
+			}
+			invocation = modelCallSource{process: intent.ID.Process, effect: intent.ID, sequence: reference.Sequence, program: live.deployment.ProgramRef()}
+		}
+	}
 
 	ledger := newInteractionAccounting(testDefaultSelection())
-	processID := invocation.Relation().ProcessID()
+	processID := invocation.process
 	ledger.usageByProcess[processID] = map[string]accounting.ModelUsage{
 		"test-model": {Model: "test-model", Calls: 1},
 	}
@@ -96,7 +113,7 @@ func TestAccountModelCallRejectsOutOfSequenceWithoutMutatingUsage(t *testing.T) 
 	}
 	before := maps.Clone(ledger.usageByProcess[processID])
 
-	_, err := ledger.accountModelCall(invocation, runs.ModelCallCompleted{CallID: "duplicate", Model: "test-model", ReportedUsage: &chat.Usage{InputTokens: 3, OutputTokens: 1}})
+	_, err = ledger.accountModelCall(invocation, runs.ModelCallCompleted{CallID: "duplicate", Model: "test-model", ReportedUsage: &chat.Usage{InputTokens: 3, OutputTokens: 1}})
 	if err == nil || !strings.Contains(err.Error(), "differs from accounted calls") {
 		t.Fatalf("account duplicate call error = %v", err)
 	}

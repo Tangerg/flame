@@ -126,6 +126,16 @@ test("module artifacts use pinned dependency graphs and frozen tool source", asy
     ]);
     assert.equal(artifacts.modules["example.com/b@v1.0.0"].revision, first);
     assert.equal(artifacts.modules["example.com/b@v1.1.0"].revision, tree);
+    for (const version of ["v1.0.0", "v1.1.0"]) {
+      const artifact = artifacts.modules[`example.com/b@${version}`];
+      const manifest = artifact.directory
+        ? `${artifact.directory}/go.mod`
+        : "go.mod";
+      assert.match(
+        git("show", `${artifact.revision}:${manifest}`),
+        /module example.com\/b/,
+      );
+    }
     assert.match(
       await readFile(
         join(repository, "proxy/example.com/a/@v/v1.0.0.mod"),

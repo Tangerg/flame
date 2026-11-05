@@ -5,11 +5,11 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
-	"github.com/Tangerg/oolong/components/headless"
+	"github.com/Tangerg/oolong/ui/base"
 )
 
 type commandPaletteItem struct {
-	command      headless.Command
+	command      base.Command
 	category     string
 	availability extensions.CommandAvailability
 }
@@ -21,8 +21,8 @@ func (a *app) chooseCommand(item commandPaletteItem) {
 		return
 	}
 	if a.commands.arguments(command.Name).TakesInput() {
-		a.composer.Editor().SetText("/" + command.Name + " ")
-		a.composer.Editor().Focus(true)
+		a.composer.Controller().SetText("/" + command.Name + " ")
+		a.shell.FocusPrompt()
 		a.composer.scheduleDraftPersistence()
 		return
 	}

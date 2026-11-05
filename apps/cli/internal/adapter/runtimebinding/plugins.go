@@ -4,9 +4,11 @@ import (
 	"context"
 	"slices"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type pluginBinding interface {
@@ -72,7 +74,7 @@ func (r *Connection) SetPluginComposition(ctx context.Context, request protocol.
 	if err != nil {
 		return nil, err
 	}
-	expected, err := portable.ParseCapability([]byte(request.Contract))
+	expected, err := plugincontract.ParseCapability([]byte(request.Contract))
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +85,7 @@ func (r *Connection) SetPluginComposition(ctx context.Context, request protocol.
 	if value == nil || !slices.Equal(value.Members, request.Members) {
 		return nil, runtimeContractViolation("set plugin composition returned another member order")
 	}
-	actual, err := portable.ParseCapability([]byte(value.Contract))
+	actual, err := plugincontract.ParseCapability([]byte(value.Contract))
 	if err != nil || actual.Identity() != expected.Identity() {
 		return nil, runtimeContractViolation("set plugin composition returned another contract")
 	}
@@ -135,9 +137,9 @@ func (r *Connection) CallPlugin(ctx context.Context, request protocol.CallPlugin
 		return nil, runtimeContractViolation("plugin call returned invalid response: %v", err)
 	}
 	if result.Failure != nil {
-		return nil, &portable.Refusal{Code: result.Failure.Code, Message: result.Failure.Message}
+		return nil, &framemcp.Refusal{Code: result.Failure.Code, Message: result.Failure.Message}
 	}
-	contract, err := portable.ParseCapability([]byte(request.Contract))
+	contract, err := plugincontract.ParseCapability([]byte(request.Contract))
 	if err != nil {
 		return nil, err
 	}

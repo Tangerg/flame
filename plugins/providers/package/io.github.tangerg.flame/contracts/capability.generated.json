@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.qimu/portable/1",
+  "protocol": "io.github.tangerg.flame/plugin/1",
   "reference": "flame.model-provider.v1",
   "composition": "selection",
   "scope": "installation",
@@ -11,40 +11,6 @@
       "description": "Execute one original provider exchange using the captured client and preserve its complete outcome.",
       "input": {
         "$defs": {
-          "chat.Citation": {
-            "additionalProperties": false,
-            "properties": {
-              "quote": {
-                "type": "string"
-              },
-              "source": {
-                "$ref": "#/$defs/chat.CitationSource"
-              },
-              "title": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "source"
-            ],
-            "type": "object"
-          },
-          "chat.CitationSource": {
-            "additionalProperties": false,
-            "properties": {
-              "kind": {
-                "type": "string"
-              },
-              "value": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind",
-              "value"
-            ],
-            "type": "object"
-          },
           "chat.Message": {
             "$ref": "#/$defs/chat.wireMessage"
           },
@@ -97,15 +63,6 @@
             ],
             "type": "object"
           },
-          "chat.ToolContent": {
-            "$ref": "#/$defs/chat.wireToolContent"
-          },
-          "chat.ToolDefinition": {
-            "$ref": "#/$defs/chat.wireToolDefinition"
-          },
-          "chat.ToolOutput": {
-            "$ref": "#/$defs/chat.wireToolOutput"
-          },
           "chat.ToolResult": {
             "additionalProperties": false,
             "properties": {
@@ -119,7 +76,7 @@
                 "type": "string"
               },
               "output": {
-                "$ref": "#/$defs/chat.ToolOutput"
+                "$ref": "#/$defs/tool.Output"
               }
             },
             "required": [
@@ -229,7 +186,7 @@
             "properties": {
               "citations": {
                 "items": {
-                  "$ref": "#/$defs/chat.Citation"
+                  "$ref": "#/$defs/content.Citation"
                 },
                 "type": "array"
               },
@@ -285,7 +242,7 @@
               },
               "tools": {
                 "items": {
-                  "$ref": "#/$defs/chat.ToolDefinition"
+                  "$ref": "#/$defs/tool.Definition"
                 },
                 "type": "array"
               }
@@ -295,12 +252,49 @@
             ],
             "type": "object"
           },
-          "chat.wireToolContent": {
+          "content.Block": {
+            "$ref": "#/$defs/content.wireBlock"
+          },
+          "content.Citation": {
+            "additionalProperties": false,
+            "properties": {
+              "quote": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/content.CitationSource"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source"
+            ],
+            "type": "object"
+          },
+          "content.CitationSource": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "value"
+            ],
+            "type": "object"
+          },
+          "content.wireBlock": {
             "additionalProperties": false,
             "properties": {
               "citations": {
                 "items": {
-                  "$ref": "#/$defs/chat.Citation"
+                  "$ref": "#/$defs/content.Citation"
                 },
                 "type": "array"
               },
@@ -320,36 +314,6 @@
             "required": [
               "kind"
             ],
-            "type": "object"
-          },
-          "chat.wireToolDefinition": {
-            "additionalProperties": false,
-            "properties": {
-              "description": {
-                "type": "string"
-              },
-              "input_schema": true,
-              "name": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "name",
-              "input_schema"
-            ],
-            "type": "object"
-          },
-          "chat.wireToolOutput": {
-            "additionalProperties": false,
-            "properties": {
-              "content": {
-                "items": {
-                  "$ref": "#/$defs/chat.ToolContent"
-                },
-                "type": "array"
-              },
-              "details": true
-            },
             "type": "object"
           },
           "media.Media": {
@@ -404,7 +368,6 @@
               }
             },
             "required": [
-              "mime",
               "source"
             ],
             "type": "object"
@@ -458,6 +421,46 @@
               "id"
             ],
             "type": "object"
+          },
+          "tool.Definition": {
+            "$ref": "#/$defs/tool.wireDefinition"
+          },
+          "tool.Output": {
+            "$ref": "#/$defs/tool.wireOutput"
+          },
+          "tool.wireDefinition": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "effect": {
+                "type": "string"
+              },
+              "input_schema": true,
+              "name": {
+                "type": "string"
+              },
+              "output_schema": true
+            },
+            "required": [
+              "name",
+              "input_schema"
+            ],
+            "type": "object"
+          },
+          "tool.wireOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "items": {
+                  "$ref": "#/$defs/content.Block"
+                },
+                "type": "array"
+              },
+              "details": true
+            },
+            "type": "object"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -478,40 +481,6 @@
       },
       "output": {
         "$defs": {
-          "chat.Citation": {
-            "additionalProperties": false,
-            "properties": {
-              "quote": {
-                "type": "string"
-              },
-              "source": {
-                "$ref": "#/$defs/chat.CitationSource"
-              },
-              "title": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "source"
-            ],
-            "type": "object"
-          },
-          "chat.CitationSource": {
-            "additionalProperties": false,
-            "properties": {
-              "kind": {
-                "type": "string"
-              },
-              "value": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind",
-              "value"
-            ],
-            "type": "object"
-          },
           "chat.Message": {
             "$ref": "#/$defs/chat.wireMessage"
           },
@@ -549,12 +518,6 @@
             ],
             "type": "object"
           },
-          "chat.ToolContent": {
-            "$ref": "#/$defs/chat.wireToolContent"
-          },
-          "chat.ToolOutput": {
-            "$ref": "#/$defs/chat.wireToolOutput"
-          },
           "chat.ToolResult": {
             "additionalProperties": false,
             "properties": {
@@ -568,7 +531,7 @@
                 "type": "string"
               },
               "output": {
-                "$ref": "#/$defs/chat.ToolOutput"
+                "$ref": "#/$defs/tool.Output"
               }
             },
             "required": [
@@ -632,7 +595,7 @@
             "properties": {
               "citations": {
                 "items": {
-                  "$ref": "#/$defs/chat.Citation"
+                  "$ref": "#/$defs/content.Citation"
                 },
                 "type": "array"
               },
@@ -705,46 +668,6 @@
             },
             "type": "object"
           },
-          "chat.wireToolContent": {
-            "additionalProperties": false,
-            "properties": {
-              "citations": {
-                "items": {
-                  "$ref": "#/$defs/chat.Citation"
-                },
-                "type": "array"
-              },
-              "kind": {
-                "type": "string"
-              },
-              "media": {
-                "$ref": "#/$defs/media.Media"
-              },
-              "metadata": {
-                "$ref": "#/$defs/metadata.Map"
-              },
-              "text": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind"
-            ],
-            "type": "object"
-          },
-          "chat.wireToolOutput": {
-            "additionalProperties": false,
-            "properties": {
-              "content": {
-                "items": {
-                  "$ref": "#/$defs/chat.ToolContent"
-                },
-                "type": "array"
-              },
-              "details": true
-            },
-            "type": "object"
-          },
           "chat.wireUsage": {
             "additionalProperties": false,
             "properties": {
@@ -794,6 +717,70 @@
                 "type": "integer"
               }
             },
+            "type": "object"
+          },
+          "content.Block": {
+            "$ref": "#/$defs/content.wireBlock"
+          },
+          "content.Citation": {
+            "additionalProperties": false,
+            "properties": {
+              "quote": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/content.CitationSource"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source"
+            ],
+            "type": "object"
+          },
+          "content.CitationSource": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "value"
+            ],
+            "type": "object"
+          },
+          "content.wireBlock": {
+            "additionalProperties": false,
+            "properties": {
+              "citations": {
+                "items": {
+                  "$ref": "#/$defs/content.Citation"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "media": {
+                "$ref": "#/$defs/media.Media"
+              },
+              "metadata": {
+                "$ref": "#/$defs/metadata.Map"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
             "type": "object"
           },
           "media.Media": {
@@ -848,7 +835,6 @@
               }
             },
             "required": [
-              "mime",
               "source"
             ],
             "type": "object"
@@ -916,6 +902,22 @@
               "kind",
               "execution"
             ],
+            "type": "object"
+          },
+          "tool.Output": {
+            "$ref": "#/$defs/tool.wireOutput"
+          },
+          "tool.wireOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "items": {
+                  "$ref": "#/$defs/content.Block"
+                },
+                "type": "array"
+              },
+              "details": true
+            },
             "type": "object"
           }
         },
@@ -988,40 +990,6 @@
       "description": "Count the complete request using the same captured provider instance, only when that capability was advertised.",
       "input": {
         "$defs": {
-          "chat.Citation": {
-            "additionalProperties": false,
-            "properties": {
-              "quote": {
-                "type": "string"
-              },
-              "source": {
-                "$ref": "#/$defs/chat.CitationSource"
-              },
-              "title": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "source"
-            ],
-            "type": "object"
-          },
-          "chat.CitationSource": {
-            "additionalProperties": false,
-            "properties": {
-              "kind": {
-                "type": "string"
-              },
-              "value": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind",
-              "value"
-            ],
-            "type": "object"
-          },
           "chat.Message": {
             "$ref": "#/$defs/chat.wireMessage"
           },
@@ -1074,15 +1042,6 @@
             ],
             "type": "object"
           },
-          "chat.ToolContent": {
-            "$ref": "#/$defs/chat.wireToolContent"
-          },
-          "chat.ToolDefinition": {
-            "$ref": "#/$defs/chat.wireToolDefinition"
-          },
-          "chat.ToolOutput": {
-            "$ref": "#/$defs/chat.wireToolOutput"
-          },
           "chat.ToolResult": {
             "additionalProperties": false,
             "properties": {
@@ -1096,7 +1055,7 @@
                 "type": "string"
               },
               "output": {
-                "$ref": "#/$defs/chat.ToolOutput"
+                "$ref": "#/$defs/tool.Output"
               }
             },
             "required": [
@@ -1206,7 +1165,7 @@
             "properties": {
               "citations": {
                 "items": {
-                  "$ref": "#/$defs/chat.Citation"
+                  "$ref": "#/$defs/content.Citation"
                 },
                 "type": "array"
               },
@@ -1262,7 +1221,7 @@
               },
               "tools": {
                 "items": {
-                  "$ref": "#/$defs/chat.ToolDefinition"
+                  "$ref": "#/$defs/tool.Definition"
                 },
                 "type": "array"
               }
@@ -1272,12 +1231,49 @@
             ],
             "type": "object"
           },
-          "chat.wireToolContent": {
+          "content.Block": {
+            "$ref": "#/$defs/content.wireBlock"
+          },
+          "content.Citation": {
+            "additionalProperties": false,
+            "properties": {
+              "quote": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/content.CitationSource"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source"
+            ],
+            "type": "object"
+          },
+          "content.CitationSource": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "value"
+            ],
+            "type": "object"
+          },
+          "content.wireBlock": {
             "additionalProperties": false,
             "properties": {
               "citations": {
                 "items": {
-                  "$ref": "#/$defs/chat.Citation"
+                  "$ref": "#/$defs/content.Citation"
                 },
                 "type": "array"
               },
@@ -1297,36 +1293,6 @@
             "required": [
               "kind"
             ],
-            "type": "object"
-          },
-          "chat.wireToolDefinition": {
-            "additionalProperties": false,
-            "properties": {
-              "description": {
-                "type": "string"
-              },
-              "input_schema": true,
-              "name": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "name",
-              "input_schema"
-            ],
-            "type": "object"
-          },
-          "chat.wireToolOutput": {
-            "additionalProperties": false,
-            "properties": {
-              "content": {
-                "items": {
-                  "$ref": "#/$defs/chat.ToolContent"
-                },
-                "type": "array"
-              },
-              "details": true
-            },
             "type": "object"
           },
           "media.Media": {
@@ -1381,7 +1347,6 @@
               }
             },
             "required": [
-              "mime",
               "source"
             ],
             "type": "object"
@@ -1434,6 +1399,46 @@
             "required": [
               "id"
             ],
+            "type": "object"
+          },
+          "tool.Definition": {
+            "$ref": "#/$defs/tool.wireDefinition"
+          },
+          "tool.Output": {
+            "$ref": "#/$defs/tool.wireOutput"
+          },
+          "tool.wireDefinition": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "effect": {
+                "type": "string"
+              },
+              "input_schema": true,
+              "name": {
+                "type": "string"
+              },
+              "output_schema": true
+            },
+            "required": [
+              "name",
+              "input_schema"
+            ],
+            "type": "object"
+          },
+          "tool.wireOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "items": {
+                  "$ref": "#/$defs/content.Block"
+                },
+                "type": "array"
+              },
+              "details": true
+            },
             "type": "object"
           }
         },
@@ -1710,158 +1715,10 @@
       },
       "output": {
         "$defs": {
-          "catalog.Limits": {
-            "additionalProperties": false,
-            "properties": {
-              "context_window": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              },
-              "max_input_tokens": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              },
-              "max_output_tokens": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              }
-            },
-            "type": "object"
-          },
-          "catalog.Modalities": {
-            "additionalProperties": false,
-            "properties": {
-              "input": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "output": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              }
-            },
-            "type": "object"
-          },
-          "catalog.Model": {
-            "additionalProperties": false,
-            "properties": {
-              "deprecated": {
-                "type": "boolean"
-              },
-              "display_name": {
-                "type": "string"
-              },
-              "id": {
-                "type": "string"
-              },
-              "knowledge_cutoff": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "last_updated": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "limits": {
-                "$ref": "#/$defs/catalog.Limits"
-              },
-              "modalities": {
-                "$ref": "#/$defs/catalog.Modalities"
-              },
-              "pricing": {
-                "$ref": "#/$defs/catalog.PricingSchedule"
-              },
-              "reasoning": {
-                "$ref": "#/$defs/catalog.Reasoning"
-              },
-              "release_date": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "structured_output": {
-                "type": "boolean"
-              },
-              "tool_call": {
-                "type": "boolean"
-              }
-            },
-            "type": "object"
-          },
-          "catalog.Pricing": {
-            "additionalProperties": false,
-            "properties": {
-              "cache_read_per_1m": {
-                "type": "number"
-              },
-              "cache_write_per_1m": {
-                "type": "number"
-              },
-              "input_per_1m": {
-                "type": "number"
-              },
-              "output_per_1m": {
-                "type": "number"
-              },
-              "threshold": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              }
-            },
-            "required": [
-              "input_per_1m",
-              "output_per_1m"
-            ],
-            "type": "object"
-          },
-          "catalog.PricingSchedule": {
-            "items": {
-              "$ref": "#/$defs/catalog.Pricing"
-            },
-            "type": "array"
-          },
-          "catalog.Reasoning": {
-            "additionalProperties": false,
-            "properties": {
-              "default_level": {
-                "type": "string"
-              },
-              "levels": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "supported": {
-                "type": "boolean"
-              }
-            },
-            "type": "object"
-          },
           "modelprovider.Chat": {
+            "$ref": "#/$defs/modelprovider.chatProjection"
+          },
+          "modelprovider.chatProjection": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -1872,9 +1729,7 @@
                 ],
                 "type": "string"
               },
-              "metadata": {
-                "$ref": "#/$defs/catalog.Model"
-              },
+              "metadata": true,
               "model": {
                 "type": "string"
               },
@@ -1908,51 +1763,8 @@
             "type": "object"
           }
         },
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "id": {
-            "allOf": [
-              {
-                "pattern": "^[a-f0-9]{64}$"
-              }
-            ],
-            "type": "string"
-          },
-          "metadata": {
-            "$ref": "#/$defs/catalog.Model"
-          },
-          "model": {
-            "type": "string"
-          },
-          "original": {
-            "allOf": [
-              {
-                "maxLength": 256,
-                "minLength": 1
-              }
-            ],
-            "type": "string"
-          },
-          "provider": {
-            "type": "string"
-          },
-          "streaming": {
-            "type": "boolean"
-          },
-          "tokenCounting": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "id",
-          "original",
-          "provider",
-          "model",
-          "streaming",
-          "tokenCounting"
-        ],
-        "type": "object"
+        "$ref": "#/$defs/modelprovider.chatProjection",
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
       }
     },
     {
@@ -2090,157 +1902,6 @@
       },
       "output": {
         "$defs": {
-          "catalog.Limits": {
-            "additionalProperties": false,
-            "properties": {
-              "context_window": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              },
-              "max_input_tokens": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              },
-              "max_output_tokens": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              }
-            },
-            "type": "object"
-          },
-          "catalog.Modalities": {
-            "additionalProperties": false,
-            "properties": {
-              "input": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "output": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              }
-            },
-            "type": "object"
-          },
-          "catalog.Model": {
-            "additionalProperties": false,
-            "properties": {
-              "deprecated": {
-                "type": "boolean"
-              },
-              "display_name": {
-                "type": "string"
-              },
-              "id": {
-                "type": "string"
-              },
-              "knowledge_cutoff": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "last_updated": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "limits": {
-                "$ref": "#/$defs/catalog.Limits"
-              },
-              "modalities": {
-                "$ref": "#/$defs/catalog.Modalities"
-              },
-              "pricing": {
-                "$ref": "#/$defs/catalog.PricingSchedule"
-              },
-              "reasoning": {
-                "$ref": "#/$defs/catalog.Reasoning"
-              },
-              "release_date": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "structured_output": {
-                "type": "boolean"
-              },
-              "tool_call": {
-                "type": "boolean"
-              }
-            },
-            "type": "object"
-          },
-          "catalog.Pricing": {
-            "additionalProperties": false,
-            "properties": {
-              "cache_read_per_1m": {
-                "type": "number"
-              },
-              "cache_write_per_1m": {
-                "type": "number"
-              },
-              "input_per_1m": {
-                "type": "number"
-              },
-              "output_per_1m": {
-                "type": "number"
-              },
-              "threshold": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              }
-            },
-            "required": [
-              "input_per_1m",
-              "output_per_1m"
-            ],
-            "type": "object"
-          },
-          "catalog.PricingSchedule": {
-            "items": {
-              "$ref": "#/$defs/catalog.Pricing"
-            },
-            "type": "array"
-          },
-          "catalog.Reasoning": {
-            "additionalProperties": false,
-            "properties": {
-              "default_level": {
-                "type": "string"
-              },
-              "levels": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "supported": {
-                "type": "boolean"
-              }
-            },
-            "type": "object"
-          },
           "model.EndpointPolicy": {
             "additionalProperties": false,
             "properties": {
@@ -2269,6 +1930,9 @@
             "type": "object"
           },
           "modelprovider.Profile": {
+            "$ref": "#/$defs/modelprovider.profileProjection"
+          },
+          "modelprovider.profileProjection": {
             "additionalProperties": false,
             "properties": {
               "authentication": {
@@ -2309,9 +1973,7 @@
                 "type": "string"
               },
               "models": {
-                "items": {
-                  "$ref": "#/$defs/catalog.Model"
-                },
+                "items": true,
                 "type": "array"
               }
             },
@@ -2430,158 +2092,10 @@
       },
       "output": {
         "$defs": {
-          "catalog.Limits": {
-            "additionalProperties": false,
-            "properties": {
-              "context_window": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              },
-              "max_input_tokens": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              },
-              "max_output_tokens": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              }
-            },
-            "type": "object"
-          },
-          "catalog.Modalities": {
-            "additionalProperties": false,
-            "properties": {
-              "input": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "output": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              }
-            },
-            "type": "object"
-          },
-          "catalog.Model": {
-            "additionalProperties": false,
-            "properties": {
-              "deprecated": {
-                "type": "boolean"
-              },
-              "display_name": {
-                "type": "string"
-              },
-              "id": {
-                "type": "string"
-              },
-              "knowledge_cutoff": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "last_updated": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "limits": {
-                "$ref": "#/$defs/catalog.Limits"
-              },
-              "modalities": {
-                "$ref": "#/$defs/catalog.Modalities"
-              },
-              "pricing": {
-                "$ref": "#/$defs/catalog.PricingSchedule"
-              },
-              "reasoning": {
-                "$ref": "#/$defs/catalog.Reasoning"
-              },
-              "release_date": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "structured_output": {
-                "type": "boolean"
-              },
-              "tool_call": {
-                "type": "boolean"
-              }
-            },
-            "type": "object"
-          },
-          "catalog.Pricing": {
-            "additionalProperties": false,
-            "properties": {
-              "cache_read_per_1m": {
-                "type": "number"
-              },
-              "cache_write_per_1m": {
-                "type": "number"
-              },
-              "input_per_1m": {
-                "type": "number"
-              },
-              "output_per_1m": {
-                "type": "number"
-              },
-              "threshold": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              }
-            },
-            "required": [
-              "input_per_1m",
-              "output_per_1m"
-            ],
-            "type": "object"
-          },
-          "catalog.PricingSchedule": {
-            "items": {
-              "$ref": "#/$defs/catalog.Pricing"
-            },
-            "type": "array"
-          },
-          "catalog.Reasoning": {
-            "additionalProperties": false,
-            "properties": {
-              "default_level": {
-                "type": "string"
-              },
-              "levels": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "supported": {
-                "type": "boolean"
-              }
-            },
-            "type": "object"
-          },
           "modelprovider.Chat": {
+            "$ref": "#/$defs/modelprovider.chatProjection"
+          },
+          "modelprovider.chatProjection": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -2592,9 +2106,7 @@
                 ],
                 "type": "string"
               },
-              "metadata": {
-                "$ref": "#/$defs/catalog.Model"
-              },
+              "metadata": true,
               "model": {
                 "type": "string"
               },
@@ -2628,51 +2140,8 @@
             "type": "object"
           }
         },
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "id": {
-            "allOf": [
-              {
-                "pattern": "^[a-f0-9]{64}$"
-              }
-            ],
-            "type": "string"
-          },
-          "metadata": {
-            "$ref": "#/$defs/catalog.Model"
-          },
-          "model": {
-            "type": "string"
-          },
-          "original": {
-            "allOf": [
-              {
-                "maxLength": 256,
-                "minLength": 1
-              }
-            ],
-            "type": "string"
-          },
-          "provider": {
-            "type": "string"
-          },
-          "streaming": {
-            "type": "boolean"
-          },
-          "tokenCounting": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "id",
-          "original",
-          "provider",
-          "model",
-          "streaming",
-          "tokenCounting"
-        ],
-        "type": "object"
+        "$ref": "#/$defs/modelprovider.chatProjection",
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
       }
     },
     {
@@ -2682,40 +2151,6 @@
       "description": "Stream the original provider deltas and retain the final outcome without replaying an unconfirmed exchange.",
       "input": {
         "$defs": {
-          "chat.Citation": {
-            "additionalProperties": false,
-            "properties": {
-              "quote": {
-                "type": "string"
-              },
-              "source": {
-                "$ref": "#/$defs/chat.CitationSource"
-              },
-              "title": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "source"
-            ],
-            "type": "object"
-          },
-          "chat.CitationSource": {
-            "additionalProperties": false,
-            "properties": {
-              "kind": {
-                "type": "string"
-              },
-              "value": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind",
-              "value"
-            ],
-            "type": "object"
-          },
           "chat.Message": {
             "$ref": "#/$defs/chat.wireMessage"
           },
@@ -2768,15 +2203,6 @@
             ],
             "type": "object"
           },
-          "chat.ToolContent": {
-            "$ref": "#/$defs/chat.wireToolContent"
-          },
-          "chat.ToolDefinition": {
-            "$ref": "#/$defs/chat.wireToolDefinition"
-          },
-          "chat.ToolOutput": {
-            "$ref": "#/$defs/chat.wireToolOutput"
-          },
           "chat.ToolResult": {
             "additionalProperties": false,
             "properties": {
@@ -2790,7 +2216,7 @@
                 "type": "string"
               },
               "output": {
-                "$ref": "#/$defs/chat.ToolOutput"
+                "$ref": "#/$defs/tool.Output"
               }
             },
             "required": [
@@ -2900,7 +2326,7 @@
             "properties": {
               "citations": {
                 "items": {
-                  "$ref": "#/$defs/chat.Citation"
+                  "$ref": "#/$defs/content.Citation"
                 },
                 "type": "array"
               },
@@ -2956,7 +2382,7 @@
               },
               "tools": {
                 "items": {
-                  "$ref": "#/$defs/chat.ToolDefinition"
+                  "$ref": "#/$defs/tool.Definition"
                 },
                 "type": "array"
               }
@@ -2966,12 +2392,49 @@
             ],
             "type": "object"
           },
-          "chat.wireToolContent": {
+          "content.Block": {
+            "$ref": "#/$defs/content.wireBlock"
+          },
+          "content.Citation": {
+            "additionalProperties": false,
+            "properties": {
+              "quote": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/content.CitationSource"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source"
+            ],
+            "type": "object"
+          },
+          "content.CitationSource": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "value"
+            ],
+            "type": "object"
+          },
+          "content.wireBlock": {
             "additionalProperties": false,
             "properties": {
               "citations": {
                 "items": {
-                  "$ref": "#/$defs/chat.Citation"
+                  "$ref": "#/$defs/content.Citation"
                 },
                 "type": "array"
               },
@@ -2991,36 +2454,6 @@
             "required": [
               "kind"
             ],
-            "type": "object"
-          },
-          "chat.wireToolDefinition": {
-            "additionalProperties": false,
-            "properties": {
-              "description": {
-                "type": "string"
-              },
-              "input_schema": true,
-              "name": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "name",
-              "input_schema"
-            ],
-            "type": "object"
-          },
-          "chat.wireToolOutput": {
-            "additionalProperties": false,
-            "properties": {
-              "content": {
-                "items": {
-                  "$ref": "#/$defs/chat.ToolContent"
-                },
-                "type": "array"
-              },
-              "details": true
-            },
             "type": "object"
           },
           "media.Media": {
@@ -3075,7 +2508,6 @@
               }
             },
             "required": [
-              "mime",
               "source"
             ],
             "type": "object"
@@ -3129,6 +2561,46 @@
               "id"
             ],
             "type": "object"
+          },
+          "tool.Definition": {
+            "$ref": "#/$defs/tool.wireDefinition"
+          },
+          "tool.Output": {
+            "$ref": "#/$defs/tool.wireOutput"
+          },
+          "tool.wireDefinition": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "effect": {
+                "type": "string"
+              },
+              "input_schema": true,
+              "name": {
+                "type": "string"
+              },
+              "output_schema": true
+            },
+            "required": [
+              "name",
+              "input_schema"
+            ],
+            "type": "object"
+          },
+          "tool.wireOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "items": {
+                  "$ref": "#/$defs/content.Block"
+                },
+                "type": "array"
+              },
+              "details": true
+            },
+            "type": "object"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -3149,40 +2621,6 @@
       },
       "output": {
         "$defs": {
-          "chat.Citation": {
-            "additionalProperties": false,
-            "properties": {
-              "quote": {
-                "type": "string"
-              },
-              "source": {
-                "$ref": "#/$defs/chat.CitationSource"
-              },
-              "title": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "source"
-            ],
-            "type": "object"
-          },
-          "chat.CitationSource": {
-            "additionalProperties": false,
-            "properties": {
-              "kind": {
-                "type": "string"
-              },
-              "value": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind",
-              "value"
-            ],
-            "type": "object"
-          },
           "chat.Message": {
             "$ref": "#/$defs/chat.wireMessage"
           },
@@ -3220,12 +2658,6 @@
             ],
             "type": "object"
           },
-          "chat.ToolContent": {
-            "$ref": "#/$defs/chat.wireToolContent"
-          },
-          "chat.ToolOutput": {
-            "$ref": "#/$defs/chat.wireToolOutput"
-          },
           "chat.ToolResult": {
             "additionalProperties": false,
             "properties": {
@@ -3239,7 +2671,7 @@
                 "type": "string"
               },
               "output": {
-                "$ref": "#/$defs/chat.ToolOutput"
+                "$ref": "#/$defs/tool.Output"
               }
             },
             "required": [
@@ -3303,7 +2735,7 @@
             "properties": {
               "citations": {
                 "items": {
-                  "$ref": "#/$defs/chat.Citation"
+                  "$ref": "#/$defs/content.Citation"
                 },
                 "type": "array"
               },
@@ -3376,46 +2808,6 @@
             },
             "type": "object"
           },
-          "chat.wireToolContent": {
-            "additionalProperties": false,
-            "properties": {
-              "citations": {
-                "items": {
-                  "$ref": "#/$defs/chat.Citation"
-                },
-                "type": "array"
-              },
-              "kind": {
-                "type": "string"
-              },
-              "media": {
-                "$ref": "#/$defs/media.Media"
-              },
-              "metadata": {
-                "$ref": "#/$defs/metadata.Map"
-              },
-              "text": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind"
-            ],
-            "type": "object"
-          },
-          "chat.wireToolOutput": {
-            "additionalProperties": false,
-            "properties": {
-              "content": {
-                "items": {
-                  "$ref": "#/$defs/chat.ToolContent"
-                },
-                "type": "array"
-              },
-              "details": true
-            },
-            "type": "object"
-          },
           "chat.wireUsage": {
             "additionalProperties": false,
             "properties": {
@@ -3465,6 +2857,70 @@
                 "type": "integer"
               }
             },
+            "type": "object"
+          },
+          "content.Block": {
+            "$ref": "#/$defs/content.wireBlock"
+          },
+          "content.Citation": {
+            "additionalProperties": false,
+            "properties": {
+              "quote": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/content.CitationSource"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source"
+            ],
+            "type": "object"
+          },
+          "content.CitationSource": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "value"
+            ],
+            "type": "object"
+          },
+          "content.wireBlock": {
+            "additionalProperties": false,
+            "properties": {
+              "citations": {
+                "items": {
+                  "$ref": "#/$defs/content.Citation"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "media": {
+                "$ref": "#/$defs/media.Media"
+              },
+              "metadata": {
+                "$ref": "#/$defs/metadata.Map"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
             "type": "object"
           },
           "media.Media": {
@@ -3519,7 +2975,6 @@
               }
             },
             "required": [
-              "mime",
               "source"
             ],
             "type": "object"
@@ -3588,6 +3043,22 @@
               "execution"
             ],
             "type": "object"
+          },
+          "tool.Output": {
+            "$ref": "#/$defs/tool.wireOutput"
+          },
+          "tool.wireOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "items": {
+                  "$ref": "#/$defs/content.Block"
+                },
+                "type": "array"
+              },
+              "details": true
+            },
+            "type": "object"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -3604,40 +3075,6 @@
       },
       "stream": {
         "$defs": {
-          "chat.Citation": {
-            "additionalProperties": false,
-            "properties": {
-              "quote": {
-                "type": "string"
-              },
-              "source": {
-                "$ref": "#/$defs/chat.CitationSource"
-              },
-              "title": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "source"
-            ],
-            "type": "object"
-          },
-          "chat.CitationSource": {
-            "additionalProperties": false,
-            "properties": {
-              "kind": {
-                "type": "string"
-              },
-              "value": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind",
-              "value"
-            ],
-            "type": "object"
-          },
           "chat.OutputMetadata": {
             "$ref": "#/$defs/chat.wireOutputMetadata"
           },
@@ -3685,7 +3122,7 @@
             "additionalProperties": false,
             "properties": {
               "citation": {
-                "$ref": "#/$defs/chat.Citation"
+                "$ref": "#/$defs/content.Citation"
               },
               "kind": {
                 "type": "string"
@@ -3816,6 +3253,40 @@
             },
             "type": "object"
           },
+          "content.Citation": {
+            "additionalProperties": false,
+            "properties": {
+              "quote": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/content.CitationSource"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source"
+            ],
+            "type": "object"
+          },
+          "content.CitationSource": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "value"
+            ],
+            "type": "object"
+          },
           "media.Media": {
             "$ref": "#/$defs/media.wireMedia"
           },
@@ -3868,7 +3339,6 @@
               }
             },
             "required": [
-              "mime",
               "source"
             ],
             "type": "object"

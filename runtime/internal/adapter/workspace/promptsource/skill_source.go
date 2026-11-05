@@ -12,11 +12,12 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capture"
+
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
-	"github.com/Tangerg/frame/cancellation"
 	sdk "github.com/Tangerg/scope/skills"
 )
 
@@ -106,12 +107,12 @@ func (r *SkillSource) openRepository(ctx context.Context, name string) (*sdk.Rep
 	if err := sdk.ValidateName(name); err != nil {
 		return nil, nil, err
 	}
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return nil, nil, err
 	}
 	root, err := r.openRoot()
 	if err != nil {
-		if cancelErr := cancellation.Err(ctx); cancelErr != nil {
+		if cancelErr := errors.Join(ctx.Err(), context.Cause(ctx)); cancelErr != nil {
 			return nil, nil, errors.Join(err, cancelErr)
 		}
 		if errors.Is(err, fs.ErrNotExist) {
@@ -190,7 +191,7 @@ func (r *SkillSource) Lookup(ctx context.Context, name string) (sdk.Summary, err
 		return sdk.Summary{}, err
 	}
 	summary, lookupErr := repository.Lookup(ctx, name)
-	if err := errors.Join(lookupErr, root.Close(), cancellation.Err(ctx)); err != nil {
+	if err := errors.Join(lookupErr, root.Close(), errors.Join(ctx.Err(), context.Cause(ctx))); err != nil {
 		return sdk.Summary{}, err
 	}
 	return summary, nil
@@ -275,8 +276,12 @@ func (r *SkillSource) openSkillDocument(name string) (*openedSkillDocument, erro
 }
 
 func readSkillDocument(ctx context.Context, name string, source *openedSkillDocument) ([]byte, error) {
+	contextReader, err := capture.NewReader(ctx, source.file)
+	if err != nil {
+		return nil, errors.Join(err, source.close())
+	}
 	content, readErr := io.ReadAll(io.LimitReader(
-		cancellation.Reader(ctx, source.file),
+		contextReader,
 		domainskills.MaxAuthoredSkillDocumentBytes+1,
 	))
 	verifyErr := filesystem.VerifyAtVersion(source.file, source.info, source.root, source.path)
@@ -308,7 +313,7 @@ func (r *SkillSource) OpenResource(ctx context.Context, name, resource string) (
 		return nil, err
 	}
 	file, openErr := repository.OpenResource(ctx, name, resource)
-	if err := errors.Join(openErr, root.Close(), cancellation.Err(ctx)); err != nil {
+	if err := errors.Join(openErr, root.Close(), errors.Join(ctx.Err(), context.Cause(ctx))); err != nil {
 		if file != nil {
 			err = errors.Join(err, file.Close())
 		}
@@ -379,7 +384,7 @@ func validRuntimeSkillName(name string) bool {
 }
 
 func skillSourceContextError(ctx context.Context, operation string) error {
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return fmt.Errorf("runtime skill source: %s: %w", operation, err)
 	}
 	return nil

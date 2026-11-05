@@ -6,9 +6,10 @@ import (
 	"slices"
 	"strings"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 type ruleSet []Rule
@@ -119,7 +120,7 @@ func (s RuleScope) visibleFrom(sessionID, projectDir string) bool {
 }
 
 // NewRule constructs one durable rule; its identity is derived, never chosen.
-func NewRule(scope RuleScope, ref tool.Ref, source integrity.Digest, subject Subject, decision Decision) (Rule, error) {
+func NewRule(scope RuleScope, ref tool.Ref, source framevalue.Digest, subject Subject, decision Decision) (Rule, error) {
 	if !scope.kind.Valid() {
 		return Rule{}, fmt.Errorf("%w: scope is required", ErrInvalidRule)
 	}

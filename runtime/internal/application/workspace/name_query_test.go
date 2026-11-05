@@ -1,9 +1,10 @@
 package workspace
 
 import (
-	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	"slices"
 	"testing"
+
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 )
 
 func TestFileNameSuggestionsRankAllMatchesBeforePaging(t *testing.T) {

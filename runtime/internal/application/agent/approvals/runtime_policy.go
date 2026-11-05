@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/qimu/integrity"
+
 	"github.com/samber/lo"
 )
 
@@ -193,8 +195,8 @@ func (r *RuntimePolicy) put(ctx context.Context, rule approval.Rule) error {
 }
 
 type sourceAuthorities interface {
-	Fingerprint(context.Context, tool.Ref) (integrity.Digest, bool, error)
-	Fingerprints(context.Context, []tool.Ref) (map[tool.Ref]integrity.Digest, error)
+	Fingerprint(context.Context, tool.Ref) (framevalue.Digest, bool, error)
+	Fingerprints(context.Context, []tool.Ref) (map[tool.Ref]framevalue.Digest, error)
 }
 type RuleView struct {
 	ID         string

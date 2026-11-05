@@ -13,10 +13,11 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/packages/go-sdk/timezone"
 
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/keymap"
-	"github.com/Tangerg/oolong/core/layout"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/keymap"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/scene"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 // maxPluginViewPages bounds one list read; a view is a management surface, not
@@ -35,7 +36,7 @@ type pluginScreens struct {
 	views        []pluginview.View
 	open         string
 	form         map[string]string
-	dialog       *kit.Dialog
+	dialog       *presentationDialog
 }
 
 func (p *pluginScreens) loadPluginViews() {
@@ -358,68 +359,73 @@ func (p *pluginScreens) runPluginViewAction(view pluginview.View, action protoco
 
 func (p *pluginScreens) openPluginViewForm(view pluginview.View, action protocol.PluginTerminalAction, key string, fields []pluginview.FormField, submit func(map[string]string)) {
 	if p.dialog != nil {
-		p.dialog.Controller().Dismiss()
+		p.dialog.Dismiss()
 		p.dialog = nil
 	}
 	generation := p.session.context
-	values := make(map[string]*string, len(fields))
-	controls := make([]headless.Field, 0, len(fields))
+	values := make(map[string]func() string, len(fields))
+	controls := make([]base.Field, 0, len(fields))
 	for _, field := range fields {
-		value := field.Initial
-		values[field.Path] = &value
 		switch field.Kind {
 		case extension.TerminalFormChoice, extension.TerminalFormBoolean:
 			options := field.Options
 			if field.Kind == extension.TerminalFormBoolean {
 				options = []string{"true", "false"}
 			}
-			choice := headless.NewSelect(headless.SelectConfig[string]{Same: headless.Equal[string], Label: field.Title, Value: headless.Bind(values[field.Path]), Rows: min(len(options), 6)})
-			entries := make([]headless.Option[string], 0, len(options))
+			choice := base.NewSelect(base.SelectConfig[string]{Same: base.Equal[string], Label: field.Title, Initial: field.Initial, Rows: min(len(options), 6)})
+			entries := make([]base.Option[string], 0, len(options))
 			for _, option := range options {
-				entries = append(entries, headless.Option[string]{Label: option, Value: option})
+				entries = append(entries, base.Option[string]{Label: option, Value: option})
 			}
 			choice.SetOptions(entries)
+			choice.Choose(field.Initial)
+			values[field.Path] = func() string {
+				option, ok := choice.Chosen()
+				if !ok {
+					return ""
+				}
+				return option.Value
+			}
 			controls = append(controls, choice)
 		default:
-			text := headless.NewText(headless.TextConfig{Label: field.Title, Value: headless.Bind(values[field.Path])})
+			text := base.NewText(base.TextConfig{Label: field.Title, Initial: field.Initial})
 			text.Clipboard = p.clipboard
+			values[field.Path] = text.Text
 			controls = append(controls, text)
 		}
 	}
-	form := headless.NewForm(controls...)
-	form.Keys = headless.DefaultFormKeys()
-	var dialog *kit.Dialog
+	form := kit.FormConfig{Fields: controls, Theme: p.theme, Glyphs: p.glyphs,
+		Hints: []keymap.Action{base.Submit, base.Cancel}}
+	form.Keys = base.DefaultFormKeys()
+	var dialog *presentationDialog
 	dismiss := func() {
 		if p.dialog == dialog {
-			dialog.Controller().Dismiss()
+			dialog.Dismiss()
 			p.dialog = nil
 		}
 	}
-	form.Done = func() {
+	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
 		if p.dialog != dialog || !p.session.context.current(generation) {
-			return
+			return scene.Unchanged, nil
 		}
 		entered := make(map[string]string, len(values))
 		for path, value := range values {
-			entered[path] = *value
+			entered[path] = value()
 		}
 		dismiss()
 		submit(entered)
+		return scene.Applied, nil
 	}
-	form.GaveUp = dismiss
-	body := kit.NewForm(kit.FormConfig{
-		Theme: p.theme, Glyphs: p.glyphs, Controller: form,
-		Hints: []keymap.Action{headless.Submit, headless.Cancel},
-	})
+
+	body := kit.NewForm(form)
 	title := action.Title + " · " + view.Title
 	if key != "" {
 		title += " · " + key
 	}
-	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: p.stack, Theme: p.theme, Glyphs: p.glyphs,
-		Title: title, Body: body,
+	dialog = newPresentationDialog(p.stack, kit.DialogConfig{Theme: p.theme, Glyphs: p.glyphs,
+		Title: title, Body: formNavigation(body.Element(), dismiss),
 		Where: layout.Placement{Width: 88, Height: formDialogHeight(body.HeightForWidth(84), len(controls), 24)},
 	})
 	p.dialog = dialog
-	dialog.Controller().Show()
+	dialog.Show()
 }

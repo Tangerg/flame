@@ -3,8 +3,11 @@ package pluginservices
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/qimu"
 	"testing"
+
+	"github.com/Tangerg/frame"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
@@ -12,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type emptyCallerCommands struct{}
@@ -34,13 +36,13 @@ func (r retainedToolCaller) ToolCaller(_ context.Context, id string) (plugin.Too
 }
 
 func TestInstalledCallerRestorationCannotBorrowAnotherActorOrInvocation(t *testing.T) {
-	commands, err := plugins.NewCommands(emptyCallerCommands{}, qimu.NewAdmission())
+	commands, err := plugins.NewCommands(emptyCallerCommands{}, frame.NewAdmission())
 	if err != nil {
 		t.Fatal(err)
 	}
 	id := testsupport.InstallationID(t)
 	server := testsupport.InstallationMCPServer(id, "schedules")
-	value := plugin.ToolCallerSnapshot{Invocation: portable.Invocation{ID: "original-model-call", Parent: "process:original", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: id.String()}}, Tool: testsupport.MCPTool(server, "run_schedule"), Release: testsupport.Digest("release"), Authority: testsupport.Digest("authority")}
+	value := plugin.ToolCallerSnapshot{Invocation: framemcp.Invocation{ID: "original-model-call", Parent: "process:original", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: id.String()}}, Tool: testsupport.MCPTool(server, "run_schedule"), Release: testsupport.Digest("release"), Authority: testsupport.Digest("authority")}
 	caller, err := plugin.NewToolCaller(value)
 	if err != nil {
 		t.Fatal(err)
@@ -61,11 +63,11 @@ func TestInstalledCallerRestorationCannotBorrowAnotherActorOrInvocation(t *testi
 	if _, err := restorer.RestoreInvocation(t.Context(), value.Invocation); !errors.Is(err, plugin.ErrCommandConflict) {
 		t.Fatalf("missing installed Actor gained authority: %v", err)
 	}
-	for _, edit := range []func(*portable.Invocation){
-		func(i *portable.Invocation) { i.ID = "unrecorded-model-call" },
-		func(i *portable.Invocation) { i.Parent = "process:other" },
-		func(i *portable.Invocation) { i.Origin = extension.Human },
-		func(i *portable.Invocation) { i.Target.Reference = testsupport.InstallationID(t).String() },
+	for _, edit := range []func(*framemcp.Invocation){
+		func(i *framemcp.Invocation) { i.ID = "unrecorded-model-call" },
+		func(i *framemcp.Invocation) { i.Parent = "process:other" },
+		func(i *framemcp.Invocation) { i.Origin = extension.Human },
+		func(i *framemcp.Invocation) { i.Target.Reference = testsupport.InstallationID(t).String() },
 	} {
 		changed := value.Invocation
 		edit(&changed)

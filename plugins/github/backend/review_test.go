@@ -9,8 +9,9 @@ import (
 	"strings"
 	"testing"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
-	"github.com/Tangerg/qimu/portable"
 )
 
 const pullJSON = `{"number":42,"title":"Review this change","body":null,"state":"open","html_url":"https://github.com/owner/repo/pull/42","user":{"login":"author"},"draft":true,"head":{"label":"contributor:topic","ref":"topic","sha":"head-sha","repo":null},"base":{"label":"owner:main","ref":"main","sha":"base-sha","repo":{"full_name":"owner/repo"}},"updated_at":"2026-10-20T00:00:00Z","merged_at":null,"mergeable":null,"mergeable_state":"unknown","additions":2,"deletions":1,"changed_files":2}`
@@ -92,7 +93,7 @@ func TestPullFileCeilingCannotLookLikeAnUnboundedContinuation(t *testing.T) {
 	}
 	input.Page++
 	_, err = c.listPullFiles(t.Context(), input)
-	if refusal, ok := errors.AsType[*portable.Refusal](err); !ok || refusal.Code != "invalid_query" || calls != 1 {
+	if refusal, ok := errors.AsType[*framemcp.Refusal](err); !ok || refusal.Code != "invalid_query" || calls != 1 {
 		t.Fatalf("unsupported continuation = %v, calls=%d", err, calls)
 	}
 }
@@ -136,7 +137,7 @@ func TestReviewQueriesRejectMalformedPayloadsBeforeConditionalCaching(t *testing
 			for range 2 {
 				if err := test.call(c); err == nil {
 					t.Fatal("malformed upstream data became a successful query")
-				} else if _, known := errors.AsType[*portable.Refusal](err); known {
+				} else if _, known := errors.AsType[*framemcp.Refusal](err); known {
 					t.Fatalf("upstream protocol error became a caller refusal: %v", err)
 				}
 			}

@@ -26,13 +26,13 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/program"
-	"github.com/Tangerg/oolong/core/programtest"
-	"github.com/Tangerg/oolong/core/term"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/program"
+	"github.com/Tangerg/oolong/ui/core/term"
+	"github.com/Tangerg/oolong/ui/uitest"
 )
 
-func runUI(t *testing.T, plugins ...extensions.Plugin) (*programtest.Host, func()) {
+func runUI(t *testing.T, plugins ...extensions.Plugin) (*uitest.Host, func()) {
 	t.Helper()
 	backend := runtimefixture.New()
 	backend.Instant = true
@@ -42,7 +42,7 @@ func runUI(t *testing.T, plugins ...extensions.Plugin) (*programtest.Host, func(
 var terminalControlSequence = regexp.MustCompile(`\x1b\[[0-?]*[ -/]*[@-~]`)
 
 type handoverTestHost struct {
-	*programtest.Host
+	*uitest.Host
 	handing atomic.Bool
 }
 
@@ -80,41 +80,41 @@ func awaitState(t *testing.T, description string, ready func() bool) {
 	}
 }
 
-func showsPlain(t *testing.T, host *programtest.Host, expected string) {
+func showsPlain(t *testing.T, host *uitest.Host, expected string) {
 	t.Helper()
 	host.Until(t, "the interface to show "+expected, func() bool {
-		if !host.Repaint() {
+		if !repaint(t, host) {
 			return false
 		}
 		return strings.Contains(terminalControlSequence.ReplaceAllString(host.Frame(), ""), expected)
 	})
 }
 
-func runUIWith(t *testing.T, backend Runtime, plugins ...extensions.Plugin) (*programtest.Host, func()) {
+func runUIWith(t *testing.T, backend Runtime, plugins ...extensions.Plugin) (*uitest.Host, func()) {
 	t.Helper()
 	return runUIWithWorkspace(t, backend, "/tmp/flame-cli-test", plugins...)
 }
 
-func runUIWithWorkspace(t *testing.T, backend Runtime, workspace string, plugins ...extensions.Plugin) (*programtest.Host, func()) {
+func runUIWithWorkspace(t *testing.T, backend Runtime, workspace string, plugins ...extensions.Plugin) (*uitest.Host, func()) {
 	return runUIConfigured(t, backend, workspace, nil, plugins...)
 }
 
-func runUIWithSettings(t *testing.T, backend Runtime, configured settings.Config) (*programtest.Host, func()) {
+func runUIWithSettings(t *testing.T, backend Runtime, configured settings.Config) (*uitest.Host, func()) {
 	t.Helper()
 	return runUIConfigured(t, backend, "/tmp/flame-cli-test", &configured)
 }
 
-func runUIConfigured(t *testing.T, backend Runtime, workspace string, configured *settings.Config, plugins ...extensions.Plugin) (*programtest.Host, func()) {
+func runUIConfigured(t *testing.T, backend Runtime, workspace string, configured *settings.Config, plugins ...extensions.Plugin) (*uitest.Host, func()) {
 	t.Helper()
 	host, stop, _ := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: backend, Workspace: workspace, PluginSources: []extensions.Source{testPluginSource{Plugins: plugins}}, Settings: configured})
 	return host, stop
 }
 
-func runUIFromConfig(t *testing.T, config Config) (*programtest.Host, func(), func() *workbench.Store) {
+func runUIFromConfig(t *testing.T, config Config) (*uitest.Host, func(), func() *workbench.Store) {
 	t.Helper()
 	openWorkbench, currentWorkbench := observeTestWorkbench(config.OpenWorkbench)
 	config.OpenWorkbench = openWorkbench
-	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
+	host := uitest.New(t, uitest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	config.Host = &handoverTestHost{Host: host}
@@ -135,9 +135,9 @@ func runUIFromConfig(t *testing.T, config Config) (*programtest.Host, func(), fu
 	return host, stop, currentWorkbench
 }
 
-func runUIForSession(t *testing.T, backend Runtime, sessionID string) (*programtest.Host, func()) {
+func runUIForSession(t *testing.T, backend Runtime, sessionID string) (*uitest.Host, func()) {
 	t.Helper()
-	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
+	host := uitest.New(t, uitest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
@@ -157,14 +157,14 @@ func runUIForSession(t *testing.T, backend Runtime, sessionID string) (*programt
 	return host, stop
 }
 
-func runUIWithState(t *testing.T, backend Runtime, workspace, sessionID, stateDirectory string) (*programtest.Host, func(), func() *workbench.Store) {
+func runUIWithState(t *testing.T, backend Runtime, workspace, sessionID, stateDirectory string) (*uitest.Host, func(), func() *workbench.Store) {
 	t.Helper()
 	openWorkbench := memoryTestWorkbench
 	if stateDirectory != "" {
 		openWorkbench = persistentTestWorkbench(t, stateDirectory)
 	}
 	openWorkbench, currentWorkbench := observeTestWorkbench(openWorkbench)
-	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
+	host := uitest.New(t, uitest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
@@ -189,7 +189,7 @@ func runUIWithState(t *testing.T, backend Runtime, workspace, sessionID, stateDi
 
 const terminalTestReplayNamespace = "idp_cccccccccccccccccccccccccccccccc"
 
-func runUIWithReplay(t *testing.T, backend Runtime) (*programtest.Host, func()) {
+func runUIWithReplay(t *testing.T, backend Runtime) (*uitest.Host, func()) {
 	t.Helper()
 	host, stop, _ := runUIWithReplayState(t, backend, "/tmp/flame-cli-test", "ses_demo_1", "")
 	return host, stop
@@ -201,7 +201,7 @@ func runUIWithReplayState(
 	workspace string,
 	sessionID string,
 	stateDirectory string,
-) (*programtest.Host, func(), func() *workbench.Store) {
+) (*uitest.Host, func(), func() *workbench.Store) {
 	t.Helper()
 	openWorkbench := memoryTestWorkbench
 	if stateDirectory != "" {
@@ -928,7 +928,7 @@ func TestRejectedResumeRetirementFailurePreservesTheDurableDecision(t *testing.T
 	first.Shows(t, "release refused interrupt decisions")
 	first.Hides(t, "Tool approval")
 	first.Press(input.Enter)
-	first.Repaint()
+	repaint(t, first)
 	if calls := runtime.calls.Load(); calls != 1 {
 		t.Fatalf("failed retirement submitted %d resume commands, want one", calls)
 	}
@@ -1265,7 +1265,7 @@ func TestPendingMixedInterruptResumeSurvivesRestartWithoutLosingAnswers(t *testi
 		t.Fatal(err)
 	}
 	host, stop, workbenchForHost := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
-	if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
+	if !host.Resize(1, 1) || !repaint(t, host) || !host.Resize(96, 28) {
 		t.Fatal("resize during restored resume delivery failed")
 	}
 	host.Shows(t, "complete")
@@ -1722,7 +1722,7 @@ func TestTranscriptReaderSearchesBeyondInlineToolSummary(t *testing.T) {
 	host.Send(input.Key{Code: input.Character, Rune: 'v'})
 	host.Shows(t, "Reader")
 	host.Shows(t, "long output")
-	if !host.Resize(1, 1) || !host.Repaint() {
+	if !host.Resize(1, 1) || !repaint(t, host) {
 		t.Fatal("reader did not survive a temporarily minimal viewport")
 	}
 	if !host.Resize(96, 28) {
@@ -1732,7 +1732,7 @@ func TestTranscriptReaderSearchesBeyondInlineToolSummary(t *testing.T) {
 	host.Send(input.Key{Code: input.Character, Rune: 'f', Mods: input.Ctrl})
 	host.Shows(t, "Search reader")
 	host.Type(lines[len(lines)-1])
-	if !host.Resize(1, 1) || !host.Repaint() {
+	if !host.Resize(1, 1) || !repaint(t, host) {
 		t.Fatal("reader search did not survive a temporarily minimal viewport")
 	}
 	if !host.Resize(96, 28) {
@@ -2042,7 +2042,7 @@ func TestDoubleEscapeClearsAnIdleDraftAndKeepsItInHistory(t *testing.T) {
 func TestQuitRequiresAConfirmingSecondPress(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
-	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
+	host := uitest.New(t, uitest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	done := make(chan error, 1)
@@ -2105,7 +2105,7 @@ func TestInteractiveRunColdRecoversWhenTheDroppedSegmentAlreadyFinished(t *testi
 	stop()
 }
 
-func assertStableCompletedTranscript(t *testing.T, host *programtest.Host) {
+func assertStableCompletedTranscript(t *testing.T, host *uitest.Host) {
 	t.Helper()
 	host.Shows(t, "complete")
 	host.Hides(t, "failed:")
@@ -2223,7 +2223,7 @@ func TestClosingDuringCancellationReusesThePendingCommandIdentity(t *testing.T) 
 			runtime := &blockingCloseCancellationRuntime{
 				Runtime: base, started: make(chan struct{}, 1), release: make(chan struct{}),
 			}
-			host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
+			host := uitest.New(t, uitest.Config{Width: 96, Height: 28})
 			ctx, cancel := context.WithCancel(t.Context())
 			done := make(chan error, 1)
 			go func() {
@@ -2275,7 +2275,7 @@ func TestClosingTheTerminalPropagatesRuntimeCancellationFailure(t *testing.T) {
 	runtime := &refusingCloseCancellationRuntime{
 		Runtime: base, canceled: make(chan conversation.CancelRun, 1), err: want,
 	}
-	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
+	host := uitest.New(t, uitest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
@@ -2313,7 +2313,7 @@ func TestClosingTheTerminalRejectsAnInvalidCancellationReceipt(t *testing.T) {
 		}}
 	}
 	runtime := &invalidCloseCancellationRuntime{Runtime: base}
-	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
+	host := uitest.New(t, uitest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
@@ -2347,7 +2347,7 @@ func TestClosingTheTerminalPropagatesFinalDraftPersistenceFailure(t *testing.T) 
 	}
 	base := runtimefixture.New()
 	base.Instant = true
-	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
+	host := uitest.New(t, uitest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
@@ -2842,7 +2842,7 @@ func TestCurrentSessionTimelineJumpsAndForksFromARootRun(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "Current session timeline")
 	host.Shows(t, "Run 1 of 1")
-	if !host.Resize(1, 1) || !host.Repaint() {
+	if !host.Resize(1, 1) || !repaint(t, host) {
 		t.Fatal("timeline did not survive a temporarily minimal viewport")
 	}
 	if !host.Resize(96, 28) {
@@ -3188,7 +3188,7 @@ func TestRunRejectsAnUnresolvableAttachmentWorkspace(t *testing.T) {
 	}
 	err := Run(t.Context(), Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench,
 		Runtime: runtimefixture.New(), Workspace: workspace,
-		Host:     programtest.New(t, programtest.Config{Width: 80, Height: 24}),
+		Host:     uitest.New(t, uitest.Config{Width: 80, Height: 24}),
 		Settings: new(settings.Default()),
 	})
 	if err == nil || !strings.Contains(err.Error(), "session attachments") {
@@ -3301,7 +3301,7 @@ func TestQuestionnaireSurvivesResizeBetweenFields(t *testing.T) {
 	}
 	host.Shows(t, "Goal — What should change?")
 	host.Type("release safely")
-	if !host.Resize(1, 1) || !host.Repaint() {
+	if !host.Resize(1, 1) || !repaint(t, host) {
 		t.Fatal("question field did not survive a temporarily minimal viewport")
 	}
 	if !host.Resize(36, 10) {
@@ -3429,7 +3429,7 @@ func TestCustomSingleQuestionPreservesOptionsAndSurvivesResize(t *testing.T) {
 	host.Shows(t, "choice values must not be empty")
 	host.Press(input.Tab)
 	host.Type("freebsd")
-	if !host.Resize(1, 1) || !host.Repaint() {
+	if !host.Resize(1, 1) || !repaint(t, host) {
 		t.Fatal("custom single-choice question did not survive a minimal viewport")
 	}
 	if !host.Resize(96, 28) {
@@ -3947,7 +3947,7 @@ func TestApprovalFormSubmitsEveryDecisionAndRememberScope(t *testing.T) {
 				host.Press(input.Tab)
 				host.Type("matrix feedback")
 			}
-			if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
+			if !host.Resize(1, 1) || !repaint(t, host) || !host.Resize(96, 28) {
 				t.Fatal("approval decision did not survive a minimal viewport")
 			}
 			host.Press(input.Enter)
@@ -4046,7 +4046,7 @@ func TestApprovalCanEditToolArgumentsOnceAcrossValidationAndResize(t *testing.T)
 
 			host.Send(input.Key{Code: input.Character, Rune: 'a', Mods: input.Alt})
 			host.Type(edited)
-			if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
+			if !host.Resize(1, 1) || !repaint(t, host) || !host.Resize(96, 28) {
 				t.Fatal("argument editor did not survive a minimal viewport")
 			}
 			host.Shows(t, edited)
@@ -4141,7 +4141,7 @@ func TestApprovalStateSurvivesMinimalViewportAndRestores(t *testing.T) {
 	host.Press(input.Down)
 	host.Press(input.Tab)
 	host.Type("KEEP_RESIZE_FEEDBACK")
-	if !host.Resize(1, 1) || !host.Repaint() {
+	if !host.Resize(1, 1) || !repaint(t, host) {
 		t.Fatal("approval did not survive a temporarily minimal viewport")
 	}
 	if !host.Resize(96, 28) {
@@ -4217,7 +4217,7 @@ func TestMultiInterruptReviewSupportsBackEditAndOneFinalResume(t *testing.T) {
 	showsPlain(t, host, "● Linux")
 	host.Press(input.Enter)
 	host.Shows(t, "Review interrupts")
-	if !host.Resize(1, 1) || !host.Repaint() {
+	if !host.Resize(1, 1) || !repaint(t, host) {
 		t.Fatal("interrupt review did not survive a temporarily minimal viewport")
 	}
 	if !host.Resize(96, 28) {
@@ -4817,7 +4817,7 @@ func TestTerminalSurvivesExtremeResizeAndRemainsInteractive(t *testing.T) {
 		if !host.Resize(size.width, size.height) {
 			t.Fatalf("resize to %dx%d was refused", size.width, size.height)
 		}
-		if !host.Repaint() {
+		if !repaint(t, host) {
 			t.Fatalf("repaint at %dx%d was refused", size.width, size.height)
 		}
 	}
@@ -4849,7 +4849,7 @@ func TestCatalogDialogsRestoreAfterMinimalViewport(t *testing.T) {
 			host.Type(test.command)
 			host.Press(input.Enter)
 			host.Shows(t, test.title)
-			if !host.Resize(1, 1) || !host.Repaint() {
+			if !host.Resize(1, 1) || !repaint(t, host) {
 				t.Fatalf("%s did not survive a temporarily minimal viewport", test.title)
 			}
 			if !host.Resize(96, 28) {
@@ -4894,7 +4894,7 @@ func TestStreamingRemainsResponsiveThroughAResizeStorm(t *testing.T) {
 	}
 	for iteration := range 8 {
 		for _, size := range sizes {
-			if !host.Resize(size.width, size.height) || !host.Repaint() {
+			if !host.Resize(size.width, size.height) || !repaint(t, host) {
 				t.Fatalf("resize storm stopped at iteration %d size %dx%d", iteration, size.width, size.height)
 			}
 		}

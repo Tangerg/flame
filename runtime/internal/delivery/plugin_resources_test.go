@@ -6,11 +6,12 @@ import (
 	"errors"
 	"testing"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 type resourceCallerKey struct{}
@@ -21,7 +22,7 @@ type localePluginOwner struct {
 	failure error
 }
 
-func (p *localePluginOwner) Locale(_ context.Context, id identity.InstallationID, digest integrity.Digest, tag string) (map[string]string, error) {
+func (p *localePluginOwner) Locale(_ context.Context, id identity.InstallationID, digest framevalue.Digest, tag string) (map[string]string, error) {
 	p.request = protocol.ReadPluginLocaleRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: id.String(), Digest: digest.String()}, Tag: tag}
 	return map[string]string{"common.loading": "読込中"}, p.failure
 }
@@ -58,10 +59,10 @@ type resourcePluginOwner struct {
 	reads    int
 }
 
-func (*resourcePluginOwner) Component(context.Context, identity.InstallationID, integrity.Digest, plugin.ContributionID) (plugin.ClientComponent, error) {
+func (*resourcePluginOwner) Component(context.Context, identity.InstallationID, framevalue.Digest, plugin.ContributionID) (plugin.ClientComponent, error) {
 	return plugin.ClientComponent{Entry: "io.github.tangerg.flame/components/component.js"}, nil
 }
-func (p *resourcePluginOwner) Resource(ctx context.Context, _ identity.InstallationID, _ integrity.Digest, _ plugin.ContributionID, path string) ([]byte, error) {
+func (p *resourcePluginOwner) Resource(ctx context.Context, _ identity.InstallationID, _ framevalue.Digest, _ plugin.ContributionID, path string) ([]byte, error) {
 	p.reads++
 	if p.disabled {
 		return nil, plugin.ErrDisabled

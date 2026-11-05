@@ -9,11 +9,12 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capture"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
-	"github.com/Tangerg/frame/cancellation"
-	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 // hooksRelPath is the cascade filename. Global lives at ~/.flame/hooks.json; a
@@ -25,14 +26,14 @@ func discover(ctx context.Context, input hookprovider.Discovery) ([]hook.Hook, e
 	if err := input.Validate(); err != nil {
 		return nil, err
 	}
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return nil, err
 	}
 	cwd, root, home := filepath.Clean(input.CWD), filepath.Clean(input.ProjectRoot), input.Home
 	var out []hook.Hook
 	seen := make(map[string]struct{})
 	add := func(path string, scope hook.Scope) error {
-		if err := cancellation.Err(ctx); err != nil {
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			return err
 		}
 		abs := filepath.Clean(path)
@@ -77,7 +78,7 @@ func discover(ctx context.Context, input hookprovider.Discovery) ([]hook.Hook, e
 			}
 		}
 	}
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -104,18 +105,18 @@ func (h hookWire) rule() hook.Hook {
 }
 
 func readHooksFile(ctx context.Context, path string) (file hooksFile, loaded bool, err error) {
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return hooksFile{}, false, err
 	}
 	handle, opened, err := filesystem.OpenFile(path, hook.MaxConfigurationFileBytes)
 	if errors.Is(err, os.ErrNotExist) {
-		return hooksFile{}, false, cancellation.Err(ctx)
+		return hooksFile{}, false, errors.Join(ctx.Err(), context.Cause(ctx))
 	}
 	if errors.Is(err, filesystem.ErrFileTooLarge) {
-		return hooksFile{}, false, fmt.Errorf("%w: %w", hook.ErrConfigurationTooLarge, errors.Join(err, cancellation.Err(ctx)))
+		return hooksFile{}, false, fmt.Errorf("%w: %w", hook.ErrConfigurationTooLarge, errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx))))
 	}
 	if err != nil {
-		return hooksFile{}, false, errors.Join(err, cancellation.Err(ctx))
+		return hooksFile{}, false, errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx)))
 	}
 	defer func() {
 		err = errors.Join(err, handle.Close())
@@ -124,19 +125,23 @@ func readHooksFile(ctx context.Context, path string) (file hooksFile, loaded boo
 			loaded = false
 		}
 	}()
+	contextReader, err := capture.NewReader(ctx, handle)
+	if err != nil {
+		return hooksFile{}, false, err
+	}
 	data, readErr := io.ReadAll(io.LimitReader(
-		cancellation.Reader(ctx, handle),
+		contextReader,
 		hook.MaxConfigurationFileBytes+1,
 	))
 	capacityErr := hook.ValidateConfigurationFileSize(int64(len(data)))
 	verifyErr := filesystem.VerifyPathVersion(handle, opened, path)
-	if err := errors.Join(readErr, capacityErr, verifyErr, cancellation.Err(ctx)); err != nil {
+	if err := errors.Join(readErr, capacityErr, verifyErr, errors.Join(ctx.Err(), context.Cause(ctx))); err != nil {
 		return hooksFile{}, false, fmt.Errorf("inspect configuration after reading: %w", err)
 	}
 	if len(data) == 0 {
 		return hooksFile{}, false, nil
 	}
-	if err := jsonvalue.UnmarshalNonNull(data, &file); err != nil {
+	if err := framevalue.DecodeValue(data, &file, "hook configuration"); err != nil {
 		return hooksFile{}, false, err
 	}
 	if file.Hooks == nil {

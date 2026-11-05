@@ -7,10 +7,11 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/wiregen"
+
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/contractgen"
 )
 
 func newClientValues(set *schemaSet) (string, error) {
@@ -40,37 +41,37 @@ func newClientValues(set *schemaSet) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		fmt.Fprintf(&out, "export type %s = %s;\n\n", defName(scalar), strings.Join(contractgen.QuoteAll(values), " | "))
+		fmt.Fprintf(&out, "export type %s = %s;\n\n", defName(scalar), strings.Join(wiregen.QuoteAll(values), " | "))
 	}
 	toolNames := make([]string, 0, len(builtin.Names()))
 	for _, name := range builtin.Names() {
 		toolNames = append(toolNames, string(name))
 	}
-	fmt.Fprintf(&out, "export const BUILTIN_TOOL_NAMES = [%s] as const;\n\n", strings.Join(contractgen.QuoteAll(toolNames), ", "))
+	fmt.Fprintf(&out, "export const BUILTIN_TOOL_NAMES = [%s] as const;\n\n", strings.Join(wiregen.QuoteAll(toolNames), ", "))
 	out.WriteString("export type BuiltinToolName = (typeof BUILTIN_TOOL_NAMES)[number];\n\n")
 	recovery := reflect.TypeFor[protocol.RecoveryAction]()
 	actions, ok := enumValues(recovery)
 	if !ok {
 		return "", fmt.Errorf("client scalar %s has no declared closed values", recovery)
 	}
-	fmt.Fprintf(&out, "export type %s = %s;\n\n", defName(recovery), strings.Join(contractgen.QuoteAll(actions), " | "))
+	fmt.Fprintf(&out, "export type %s = %s;\n\n", defName(recovery), strings.Join(wiregen.QuoteAll(actions), " | "))
 	changes, err := clientScalarValues(set, reflect.TypeFor[builtin.ChangeStatus]())
 	if err != nil {
 		return "", err
 	}
-	fmt.Fprintf(&out, "export const CHANGE_STATUSES = [%s] as const;\n\n", strings.Join(contractgen.QuoteAll(changes), ", "))
+	fmt.Fprintf(&out, "export const CHANGE_STATUSES = [%s] as const;\n\n", strings.Join(wiregen.QuoteAll(changes), ", "))
 	selector := defName(reflect.TypeFor[protocol.PluginRendererSelector]())
 	if set.defs[selector] == nil {
 		return "", fmt.Errorf("client selector has no schema")
 	}
-	out.WriteString(contractgen.NewTypeScript(set.defs).Definition(selector, set.defs[selector]))
+	out.WriteString(wiregen.NewTypeScript(set.defs).Definition(selector, set.defs[selector]))
 	return out.String(), nil
 }
 
 func clientScalarValues(set *schemaSet, scalar reflect.Type) ([]string, error) {
 	name := defName(scalar)
 	node := set.defs[name]
-	if set.origin[name] != scalar || node == nil || node.Type != contractgen.SchemaTypeString || len(node.Enum) == 0 {
+	if set.origin[name] != scalar || node == nil || node.Type != wiregen.SchemaTypeString || len(node.Enum) == 0 {
 		return nil, fmt.Errorf("client scalar %s has no closed string schema", scalar)
 	}
 	return node.Enum, nil
@@ -84,7 +85,7 @@ import type { ToolCategory } from "@/foundation/protocolValues.generated";
 const categories = new Map<string, ToolCategory>([
 `)
 	for _, name := range builtin.Names() {
-		fmt.Fprintf(&out, "  [%s, %s],\n", contractgen.TypeScriptStringLiteral(string(name)), contractgen.TypeScriptStringLiteral(string(name.Category())))
+		fmt.Fprintf(&out, "  [%s, %s],\n", wiregen.StringLiteral(string(name)), wiregen.StringLiteral(string(name.Category())))
 	}
 	out.WriteString(`]);
 

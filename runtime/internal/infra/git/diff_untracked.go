@@ -9,8 +9,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capture"
+
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/frame/cancellation"
 )
 
 const readBufferBytes = 64 << 10
@@ -62,7 +63,11 @@ func untrackedFileStat(ctx context.Context, dir, rel string) (lines int, binary 
 		return 0, false, fmt.Errorf("git: open untracked file %q: %w", rel, err)
 	}
 	defer func() { err = errors.Join(err, file.Close()) }()
-	source := cancellation.Reader(ctx, file)
+	contextReader, err := capture.NewReader(ctx, file)
+	if err != nil {
+		return 0, false, err
+	}
+	source := contextReader
 	buffer := make([]byte, readBufferBytes)
 	var last byte
 	nonempty := false

@@ -37,7 +37,7 @@ func openStore(ctx context.Context, path string) (*store, error) {
 
 func (s *store) read(ctx context.Context) (routing.Policy, error) {
 	var encoded string
-	if err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT snapshot FROM policy WHERE id=1`).Scan(&encoded); err != nil {
+	if err := pluginstorage.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT snapshot FROM policy WHERE id=1`).Scan(&encoded); err != nil {
 		return routing.Policy{}, errors.Join(errStoredPolicy, err)
 	}
 	var snapshot routing.Snapshot
@@ -64,6 +64,6 @@ func (s *store) replace(ctx context.Context, expected int64, rules []routing.Rul
 	if err != nil {
 		return routing.Snapshot{}, err
 	}
-	_, err = sqlite.Connection(ctx, s.db).ExecContext(ctx, `UPDATE policy SET snapshot=? WHERE id=1`, string(encoded))
+	_, err = pluginstorage.Connection(ctx, s.db).ExecContext(ctx, `UPDATE policy SET snapshot=? WHERE id=1`, string(encoded))
 	return next.Snapshot(), err
 }

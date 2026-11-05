@@ -8,9 +8,11 @@ export const windowTitle = (agentAccess: AgentAccess) =>
     name: "flame.builtin.window-title",
     requires: { window: WINDOW },
     setup(ctx) {
-      ctx.contribute(READY_HANDLER, () => {
-        ctx.cleanup(
-          agentAccess.subscribeAnySessionRunning((working) => ctx.window.setWorking(working)),
+      ctx.contributions.add(READY_HANDLER, () => {
+        ctx.lifetime.defer(
+          agentAccess.subscribeAnySessionRunning((working) =>
+            ctx.dependencies.window.setWorking(working),
+          ),
         );
       });
     },

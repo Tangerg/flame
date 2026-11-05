@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -24,11 +24,11 @@ func newCompactionFixture(t *testing.T) (*sql.DB, *ConversationStore, *RunStore,
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	messages, err := NewConversationStore(newMessageStore(db))
+	messages, err := NewConversationStore(newMessageStore(databaseFor(db)))
 	if err != nil {
 		t.Fatal(err)
 	}
-	runs := newRunStore(db)
+	runs := newRunStore(databaseFor(db))
 	compactions, err := NewConversationCompactions(
 		messages,
 		runs,
@@ -40,7 +40,7 @@ func newCompactionFixture(t *testing.T) (*sql.DB, *ConversationStore, *RunStore,
 		t.Fatal(err)
 	}
 	ses := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_long", Title: "long", Workspace: testsupport.MustWorkspace("/work")})
-	if err := newSessionStore(db).Insert(t.Context(), ses); err != nil {
+	if err := newSessionStore(databaseFor(db)).Insert(t.Context(), ses); err != nil {
 		t.Fatal(err)
 	}
 	return db, messages, runs, compactions

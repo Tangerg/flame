@@ -2698,6 +2698,7 @@ func (p PluginBrowserSession) validateWire() error {
 		requiredText("controlEndpoint", p.ControlEndpoint),
 		positiveNumber("maximumMessageBytes", p.MaximumMessageBytes),
 		positiveNumber("proofCapacity", p.ProofCapacity),
+		positiveNumber("preparationCapacity", p.PreparationCapacity),
 		positiveNumber("pollIntervalMilliseconds", p.PollIntervalMilliseconds),
 	)
 }

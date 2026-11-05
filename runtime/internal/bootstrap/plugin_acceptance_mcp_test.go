@@ -5,7 +5,6 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -19,12 +18,15 @@ import (
 	"testing"
 	"time"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+
 	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -129,7 +131,7 @@ func poMCPRemote(t *testing.T, names ...string) string {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := scopemcp.Register(remote, executable); err != nil {
+		if err := scopemcp.Register(remote, bindRegisteredTool(t, executable)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -180,11 +182,11 @@ func poMCPActivate(r *poMCPRuntime, source string) *protocol.PluginInstallation 
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
 	installed = r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable").(*protocol.PluginInstallation)
 	for _, contribution := range installed.Selected.Contributions {
-		contract, err := portable.ParseCapability([]byte(contribution.Contract))
+		contract, err := plugincontract.ParseCapability([]byte(contribution.Contract))
 		if err != nil {
 			r.t.Fatal(err)
 		}
-		if contract.Descriptor().Composition != portable.Selection {
+		if contract.Descriptor().Composition != plugincontract.Selection {
 			continue
 		}
 		role := contract.Descriptor().Reference
@@ -253,7 +255,7 @@ func TestPluginAcceptanceMCPSameNameAcrossOriginsPublishesDistinctToolAliases(t 
 		}
 		return completedTextResponse("done"), nil
 	})}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -350,12 +352,12 @@ func TestMCPInstallationAndExternalServerWithdrawIndependently(t *testing.T) {
 			}
 		}
 		call := chat.ToolCall{ID: "find-independent-tool", Name: "search_tools", Arguments: `{"query":"select:` + name + `"}`}
-		if slices.ContainsFunc(req.Tools, func(d chat.ToolDefinition) bool { return d.Name == name }) {
+		if slices.ContainsFunc(req.Tools, func(d toolcontract.Definition) bool { return d.Name == name }) {
 			call = chat.ToolCall{ID: "invoke-independent-tool", Name: name, Arguments: `{"value":"` + proof + `"}`}
 		}
 		msg := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 		return chat.NewResponse(&chat.Output{Message: &msg, FinishReason: chat.FinishReasonToolCalls}, nil)
-	})}, chatclient.Config{})
+	})})
 	if err != nil {
 		t.Fatal(err)
 	}

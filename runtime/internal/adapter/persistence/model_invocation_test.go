@@ -18,10 +18,10 @@ func TestFailedModelKnownResponseSurvivesReopenWithoutPromotingOutcome(t *testin
 	}
 	defer func() { _ = db.Close() }()
 	draft := runDraft("run_known", "ses_known")
-	if err := newRunStore(db).Admit(t.Context(), draft); err != nil {
+	if err := newRunStore(databaseFor(db)).Admit(t.Context(), draft); err != nil {
 		t.Fatal(err)
 	}
-	store := newModelInvocationStore(db)
+	store := newModelInvocationStore(databaseFor(db))
 	message := chat.NewAssistantMessage(chat.NewTextPart("known answer"), chat.NewReasoningPart("basis", nil))
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served-model", Usage: &chat.Usage{InputTokens: 12, OutputTokens: 3, CacheReadInputTokens: new(int64(0))}}}
 	if err := store.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_known", draft.CreatedAt, run.ModelConversation); err != nil {
@@ -37,7 +37,7 @@ func TestFailedModelKnownResponseSurvivesReopenWithoutPromotingOutcome(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	rows, err := newModelInvocationStore(db).PageModelInvocations(t.Context(), draft.RunID, 0, "", 10)
+	rows, err := newModelInvocationStore(databaseFor(db)).PageModelInvocations(t.Context(), draft.RunID, 0, "", 10)
 	if err != nil || len(rows) != 1 || rows[0].State != "failed" || !reflect.DeepEqual(rows[0].KnownResponse, response) || !reflect.DeepEqual(rows[0].Usage, response.Metadata.Usage) {
 		t.Fatalf("retained inner evidence=%+v %v", rows, err)
 	}
@@ -51,12 +51,12 @@ func TestModelInvocationHistorySurvivesRestartAndPagesByStableIdentity(t *testin
 		t.Fatal(err)
 	}
 	defer func() { _ = db.Close() }()
-	runs := newRunStore(db)
+	runs := newRunStore(databaseFor(db))
 	draft := runDraft("run_trajectory", "ses_trajectory")
 	if err := runs.Admit(ctx, draft); err != nil {
 		t.Fatal(err)
 	}
-	calls := newModelInvocationStore(db)
+	calls := newModelInvocationStore(databaseFor(db))
 	startedAt := draft.CreatedAt.Add(time.Second)
 	latencies := []*int64{nil, new(int64(0)), new(int64(124))}
 	usages := []*chat.Usage{nil, {}, {InputTokens: 17, OutputTokens: 9, CacheReadInputTokens: new(int64(4)), CacheWriteInputTokens: new(int64(2)), ReasoningTokens: new(int64(3))}}
@@ -78,7 +78,7 @@ func TestModelInvocationHistorySurvivesRestartAndPagesByStableIdentity(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	calls = newModelInvocationStore(db)
+	calls = newModelInvocationStore(databaseFor(db))
 	page, err := calls.PageModelInvocations(ctx, draft.RunID, 0, "", 2)
 	if err != nil || len(page) != 2 || page[0].CallID != "call_c" || page[1].CallID != "call_b" {
 		t.Fatalf("first page = %+v, %v", page, err)
@@ -99,7 +99,7 @@ func TestModelInvocationHistorySurvivesRestartAndPagesByStableIdentity(t *testin
 	if err != nil || len(other) != 0 {
 		t.Fatalf("other Run page = %+v, %v", other, err)
 	}
-	if err := newRunStore(db).Delete(ctx, draft.SessionID, draft.RunID); err != nil {
+	if err := newRunStore(databaseFor(db)).Delete(ctx, draft.SessionID, draft.RunID); err != nil {
 		t.Fatal(err)
 	}
 	page, err = calls.PageModelInvocations(ctx, draft.RunID, 0, "", 2)
@@ -114,12 +114,12 @@ func TestRunCannotEraseAnUnsettledModelAttempt(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = db.Close() }()
-	runs := newRunStore(db)
+	runs := newRunStore(databaseFor(db))
 	draft := runDraft("run_pending", "ses_pending")
 	if err := runs.Admit(t.Context(), draft); err != nil {
 		t.Fatal(err)
 	}
-	calls := newModelInvocationStore(db)
+	calls := newModelInvocationStore(databaseFor(db))
 	if err := calls.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_pending", draft.CreatedAt, run.ModelConversation); err != nil {
 		t.Fatal(err)
 	}
@@ -139,10 +139,10 @@ func TestFailedModelInvocationRetainsMeasuredLatencyWithoutUsage(t *testing.T) {
 	}
 	defer func() { _ = db.Close() }()
 	draft := runDraft("run_latency", "ses_latency")
-	if err := newRunStore(db).Admit(t.Context(), draft); err != nil {
+	if err := newRunStore(databaseFor(db)).Admit(t.Context(), draft); err != nil {
 		t.Fatal(err)
 	}
-	calls := newModelInvocationStore(db)
+	calls := newModelInvocationStore(databaseFor(db))
 	if err := calls.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_latency", draft.CreatedAt, run.ModelConversation); err != nil {
 		t.Fatal(err)
 	}

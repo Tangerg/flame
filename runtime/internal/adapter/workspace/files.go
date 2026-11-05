@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
-	"github.com/Tangerg/frame/cancellation"
 )
 
 // File browsing returns workspace entries for tree and completion consumers.
@@ -81,7 +80,7 @@ func SearchFiles(ctx context.Context, root, selected, glob string) ([]workspacea
 }
 
 func (scope fileSelection) list(ctx context.Context, opts workspaceapp.FileListOptions) (_ []workspaceapp.FileEntry, err error) {
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return nil, err
 	}
 	rootHandle, err := os.OpenRoot(scope.root)
@@ -261,7 +260,7 @@ func (scope fileSelection) inspect(logical string) (workspaceapp.FileEntry, bool
 }
 
 func levelFilesystemEntries(ctx context.Context, scope fileSelection, includeIgnored bool) ([]workspaceapp.FileEntry, error) {
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return nil, err
 	}
 	children, err := readDirectoryEntries(scope.handle, scope.physical, maxListEntries)
@@ -270,7 +269,7 @@ func levelFilesystemEntries(ctx context.Context, scope fileSelection, includeIgn
 	}
 	entries := make([]workspaceapp.FileEntry, 0, len(children))
 	for _, child := range children {
-		if err := cancellation.Err(ctx); err != nil {
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			return nil, err
 		}
 		if child.Name() == ".git" || (child.IsDir() && !includeIgnored && backstopExclude[child.Name()]) {
@@ -330,7 +329,7 @@ func walkFiles(ctx context.Context, scope fileSelection, includeIgnored bool, ma
 	pendingDirectories := []string{scope.physical}
 	visitedEntries := 0
 	for len(pendingDirectories) > 0 {
-		if err := cancellation.Err(ctx); err != nil {
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			return nil, err
 		}
 		directory := pendingDirectories[0]
@@ -342,7 +341,7 @@ func walkFiles(ctx context.Context, scope fileSelection, includeIgnored bool, ma
 		}
 		visitedEntries += len(children)
 		for _, child := range children {
-			if err := cancellation.Err(ctx); err != nil {
+			if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 				return nil, err
 			}
 			if child.Name() == ".git" {

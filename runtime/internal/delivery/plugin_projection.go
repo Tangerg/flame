@@ -82,17 +82,17 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 	}
 	result.Points = make([]protocol.PluginPoint, 0, len(v.Points))
 	for _, value := range v.Points {
-		result.Points = append(result.Points, protocol.PluginPoint{ID: value.ID.String(), Contract: string(value.Contract.JSON())})
+		result.Points = append(result.Points, protocol.PluginPoint{ID: value.ID.String(), Contract: string(value.Contract.Bytes())})
 	}
 	result.PointValues = make([]protocol.PluginPointValue, 0, len(v.PointValues))
 	for _, value := range v.PointValues {
-		result.PointValues = append(result.PointValues, protocol.PluginPointValue{ID: value.ID.String(), Contract: string(value.Contract.JSON()), Value: string(value.Value.JSON())})
+		result.PointValues = append(result.PointValues, protocol.PluginPointValue{ID: value.ID.String(), Contract: string(value.Contract.Bytes()), Value: string(value.Value.Bytes())})
 	}
 	result.Contributions = make([]protocol.PluginContribution, 0, len(v.Contributions))
 	for _, value := range v.Contributions {
-		presented := protocol.PluginContribution{SelectionRoles: value.SelectionRoles(), Background: value.Background, ID: value.ID.String(), Server: value.Server.String(), Export: value.Export, Contract: string(value.Contract.JSON()), Requires: []protocol.PluginRequirement{}}
+		presented := protocol.PluginContribution{SelectionRoles: value.SelectionRoles(), Background: value.Background, ID: value.ID.String(), Server: value.Server.String(), Export: value.Export, Contract: string(value.Contract.Bytes()), Requires: []protocol.PluginRequirement{}}
 		for _, requirement := range value.Requires {
-			presented.Requires = append(presented.Requires, protocol.PluginRequirement{ID: requirement.ID.String(), Contract: string(requirement.Contract.JSON()), Optional: requirement.Optional})
+			presented.Requires = append(presented.Requires, protocol.PluginRequirement{ID: requirement.ID.String(), Contract: string(requirement.Contract.Bytes()), Optional: requirement.Optional})
 		}
 		result.Contributions = append(result.Contributions, presented)
 	}
@@ -247,7 +247,7 @@ func presentTerminalInputs(inputs []plugin.InputBinding) []protocol.PluginTermin
 func presentTerminalBinding(binding plugin.Binding) protocol.PluginTerminalBinding {
 	presented := protocol.PluginTerminalBinding{Source: binding.Source, Field: binding.Field, Context: binding.Context}
 	if binding.Source == extension.TerminalBindingValue {
-		presented.Value = string(binding.Literal.JSON())
+		presented.Value = string(binding.Literal.Bytes())
 	}
 	if binding.Form != nil {
 		form := &protocol.PluginTerminalFormField{Title: binding.Form.Title, Kind: binding.Form.Kind, Options: slices.Clone(binding.Form.Options)}

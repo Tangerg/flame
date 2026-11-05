@@ -1,6 +1,8 @@
 package delivery
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"errors"
 	"reflect"
@@ -12,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestMCPAuthorizationAttemptWire(t *testing.T) {
@@ -46,7 +47,7 @@ func TestListMCPServers(t *testing.T) {
 			{Server: testsupport.UserMCPServer("down"), State: mcpserver.ConnectionFailed, Failure: mcpserver.FailureConnection},
 		},
 		tools: []mcpserver.AdvertisedTool{
-			{Server: testsupport.UserMCPServer("fs"), Name: testsupport.RemoteToolName("read")}, {Server: testsupport.UserMCPServer("fs"), Name: testsupport.RemoteToolName("write"), Definition: chat.ToolDefinition{Name: "fs_write", InputSchema: []byte(`{"type":"object"}`)}},
+			{Server: testsupport.UserMCPServer("fs"), Name: testsupport.RemoteToolName("read")}, {Server: testsupport.UserMCPServer("fs"), Name: testsupport.RemoteToolName("write"), Definition: toolcontract.Definition{Name: "fs_write", InputSchema: []byte(`{"type":"object"}`)}},
 		},
 	}))
 	page, err := s.ListMCPServers(context.Background())
@@ -170,9 +171,9 @@ func TestReconnectMCPServer(t *testing.T) {
 
 func TestListMCPTools(t *testing.T) {
 	s := handlerWithMCP(t, fakeMCPPortsConfig(&fakeMCPPorts{tools: []mcpserver.AdvertisedTool{
-		{Server: testsupport.UserMCPServer("fs"), Name: testsupport.RemoteToolName("read"), Definition: chat.ToolDefinition{Name: "fs_read", Description: "read a file", InputSchema: []byte(`{"type":"object"}`)}},
-		{Server: testsupport.UserMCPServer("fs"), Name: testsupport.RemoteToolName("write"), Definition: chat.ToolDefinition{Name: "fs_write", InputSchema: []byte(`{"type":"object"}`)}},
-		{Server: testsupport.UserMCPServer("git"), Name: testsupport.RemoteToolName("log"), Definition: chat.ToolDefinition{Name: "git_log", InputSchema: []byte(`{"type":"object"}`)}},
+		{Server: testsupport.UserMCPServer("fs"), Name: testsupport.RemoteToolName("read"), Definition: toolcontract.Definition{Name: "fs_read", Description: "read a file", InputSchema: []byte(`{"type":"object"}`)}},
+		{Server: testsupport.UserMCPServer("fs"), Name: testsupport.RemoteToolName("write"), Definition: toolcontract.Definition{Name: "fs_write", InputSchema: []byte(`{"type":"object"}`)}},
+		{Server: testsupport.UserMCPServer("git"), Name: testsupport.RemoteToolName("log"), Definition: toolcontract.Definition{Name: "git_log", InputSchema: []byte(`{"type":"object"}`)}},
 	}}))
 
 	all, err := s.ListMCPTools(context.Background(), protocol.MCPListToolsRequest{})
@@ -231,7 +232,7 @@ func TestMCPToolListIncludesNameConflictDiagnostics(t *testing.T) {
 		t.Fatal(err)
 	}
 	ports := &fakeMCPPorts{
-		tools:     []mcpserver.AdvertisedTool{{Server: testsupport.UserMCPServer("a_b"), Name: testsupport.RemoteToolName("c"), Definition: chat.ToolDefinition{Name: "a_b_c", InputSchema: []byte(`{"type":"object"}`)}}},
+		tools:     []mcpserver.AdvertisedTool{{Server: testsupport.UserMCPServer("a_b"), Name: testsupport.RemoteToolName("c"), Definition: toolcontract.Definition{Name: "a_b_c", InputSchema: []byte(`{"type":"object"}`)}}},
 		conflicts: map[tool.Ref][]tool.Ref{ref: {other}},
 	}
 	handler := handlerWithMCP(t, fakeMCPPortsConfig(ports))

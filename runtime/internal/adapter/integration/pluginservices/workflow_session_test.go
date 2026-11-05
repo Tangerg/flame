@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame/cancellation"
 )
 
 type workflowDefinitionRegistry struct {
@@ -50,7 +49,7 @@ func TestWorkflowSessionPreservesActivationReadOutcomes(t *testing.T) {
 				if test.cancel {
 					cancel(withdrawal)
 				}
-				return errors.Join(test.failure, cancellation.Err(ctx))
+				return errors.Join(test.failure, errors.Join(ctx.Err(), context.Cause(ctx)))
 			}}
 			pool, err := mcp.Open(t.Context(), t.Context(), nil, nil, registry, nil, nil, nil, nil)
 			if err != nil {

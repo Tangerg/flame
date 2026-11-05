@@ -3,7 +3,7 @@ import { type ThemeAccess } from "@/features/theme/public/theme";
 import { asyncDisposeSymbol } from "dougong";
 import { type FlameClient } from "@flame/runtime-client";
 import { type ComponentContext } from "@flame/component-sdk";
-import { type ContributionLifetime, type PluginContext } from "@/extensions/definePlugin";
+import { type ContributionScope, type PluginContext } from "@/extensions/definePlugin";
 import { type RuntimeStream, followRuntimeGeneration } from "@/features/connection/public/services";
 import { registerPackageContributions } from "@/features/plugins/contributions";
 import { ComponentModules } from "@/features/plugins/adapters/componentModules";
@@ -19,7 +19,7 @@ export function createInstalledPlugins(
 ) {
   const access = createInstalledPackageState(runtimeEndpoint);
   const modules = new ComponentModules(wrap);
-  let current: ContributionLifetime | undefined;
+  let current: ContributionScope | undefined;
   let retiring = Promise.resolve();
   let latest: object = {};
   let stop: (() => void) | null = null;
@@ -28,7 +28,10 @@ export function createInstalledPlugins(
   return {
     access,
     reload: () => modules.reload(),
-    start(ctx: Pick<PluginContext<{}>, "lifetime" | "signal" | "log">, runtime: RuntimeStream) {
+    start(
+      ctx: Pick<PluginContext<{}>, "contributions" | "lifetime" | "logger">,
+      runtime: RuntimeStream,
+    ) {
       if (disposed) throw new Error("Installed plugins are disposed");
       if (stop) throw new Error("Installed plugins are already started");
       const replace = () => {
@@ -43,12 +46,12 @@ export function createInstalledPlugins(
             await release;
             if (
               disposed ||
-              ctx.signal.aborted ||
+              ctx.lifetime.signal.aborted ||
               latest !== intent ||
               runtime.connectionGeneration() === null
             )
               return;
-            const owned = ctx.lifetime("runtime-packages");
+            const owned = ctx.contributions.child("runtime-packages");
             try {
               registerPackageContributions(
                 access,
@@ -68,7 +71,7 @@ export function createInstalledPlugins(
             }
           })
           .catch((error: unknown) => {
-            if (!disposed && !ctx.signal.aborted) ctx.log.error(error);
+            if (!disposed && !ctx.lifetime.signal.aborted) ctx.logger.error(error);
           });
       };
       stop = followRuntimeGeneration(runtime, replace);

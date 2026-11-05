@@ -1,6 +1,6 @@
 import { isAbsolute } from "node:path";
 import { z } from "zod";
-import { parseJSON } from "@qimu/node";
+import { parseJSON } from "@flame/backend-sdk/mcp";
 const desktopVariables = [
   "DISPLAY",
   "XAUTHORITY",

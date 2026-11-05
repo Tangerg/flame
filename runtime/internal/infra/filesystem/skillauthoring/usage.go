@@ -11,10 +11,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capture"
+
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
-	"github.com/Tangerg/frame/cancellation"
 	skillspec "github.com/Tangerg/scope/skills"
 )
 
@@ -181,8 +182,12 @@ func readUsage(ctx context.Context, root *os.Root) (map[string]usageRecord, erro
 	if err != nil {
 		return nil, fmt.Errorf("skillauthoring: open usage: %w", err)
 	}
+	contextReader, err := capture.NewReader(ctx, file)
+	if err != nil {
+		return nil, errors.Join(err, file.Close())
+	}
 	data, readErr := io.ReadAll(io.LimitReader(
-		cancellation.Reader(ctx, file),
+		contextReader,
 		maxUsageMetadataBytes+1,
 	))
 	verifyErr := filesystem.VerifyAtVersion(file, opened, root, usageFile)

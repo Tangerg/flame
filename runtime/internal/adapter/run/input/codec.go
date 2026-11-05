@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/qimu/integrity"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
 // EncodePrompt converts one validated product interrupt to its strict executor
@@ -19,11 +21,11 @@ func EncodePrompt(prompt runs.Interrupt) (jsontext.Value, error) {
 	if err := prompt.Validate(); err != nil {
 		return nil, err
 	}
-	encoded, err := agent.EncodePayload(promptWireFrom(prompt))
+	encoded, err := scoperun.EncodePayload(promptWireFrom(prompt))
 	if err != nil {
 		return nil, fmt.Errorf("run input codec: encode prompt: %w", err)
 	}
-	return encoded.JSON(), nil
+	return jsontext.Value(encoded.JSON()), nil
 }
 
 // DecodePrompt restores an application interrupt from persisted executor input
@@ -68,15 +70,15 @@ func EncodeResolution(resolution run.InterruptResolution) (jsontext.Value, error
 	default:
 		return nil, errors.New("run input codec: answer is required")
 	}
-	encoded, err := agent.EncodePayload(wire)
+	encoded, err := scoperun.EncodePayload(wire)
 	if err != nil {
 		return nil, fmt.Errorf("run input codec: encode resolution: %w", err)
 	}
-	return encoded.JSON(), nil
+	return jsontext.Value(encoded.JSON()), nil
 }
 
 func decode[T any](raw []byte) (T, error) {
-	payload, err := agent.ParsePayload(raw)
+	payload, err := scoperun.ParsePayload(raw)
 	if err != nil {
 		var zero T
 		return zero, err
@@ -91,15 +93,15 @@ type interruptWire struct {
 }
 
 type approvalPromptWire struct {
-	Tool              tool.Ref         `json:"tool"`
-	QualifiedName     bool             `json:"qualifiedName,omitzero"`
-	SourceFingerprint integrity.Digest `json:"sourceFingerprint,omitzero"`
-	CallID            string           `json:"callId"`
-	Arguments         string           `json:"arguments"`
-	SafetyClass       tool.SafetyClass `json:"safetyClass"`
-	Risk              tool.RiskLevel   `json:"risk"`
-	Reason            string           `json:"reason,omitempty"`
-	Rememberable      bool             `json:"rememberable,omitzero"`
+	Tool              tool.Ref          `json:"tool"`
+	QualifiedName     bool              `json:"qualifiedName,omitzero"`
+	SourceFingerprint framevalue.Digest `json:"sourceFingerprint,omitzero"`
+	CallID            string            `json:"callId"`
+	Arguments         string            `json:"arguments"`
+	SafetyClass       tool.SafetyClass  `json:"safetyClass"`
+	Risk              tool.RiskLevel    `json:"risk"`
+	Reason            string            `json:"reason,omitempty"`
+	Rememberable      bool              `json:"rememberable,omitzero"`
 }
 
 type questionPromptWire struct {

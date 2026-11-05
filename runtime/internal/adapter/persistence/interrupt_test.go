@@ -35,7 +35,7 @@ func interruptStoreFixture(t *testing.T) seededInterruptStore {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return seededInterruptStore{InterruptStore: newInterruptStore(db), db: db, t: t}
+	return seededInterruptStore{InterruptStore: newInterruptStore(databaseFor(db)), db: db, t: t}
 }
 
 func TestInterruptStore_OpenGetListDelete(t *testing.T) {
@@ -218,7 +218,7 @@ func TestInterruptStoreRejectsUnknownExecutorTopologyFields(t *testing.T) {
 		t.Fatalf("Open database: %v", err)
 	}
 	t.Cleanup(func() { _ = database.Close() })
-	store := newInterruptStore(database)
+	store := newInterruptStore(databaseFor(database))
 	pending := runs.Pending{
 		RootRunID: "run_root", ExecutorID: "turn_1",
 		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{

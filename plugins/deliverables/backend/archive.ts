@@ -9,8 +9,8 @@ import {
   parseJSON,
   type ReceiptRequest,
   type Invocation,
-} from "@qimu/node";
-import { validCommand } from "@qimu/node/contract";
+} from "@flame/backend-sdk/mcp";
+import { validCommand } from "@flame/backend-sdk/mcp/contract";
 import { LIMITS } from "../contracts/limits";
 import {
   schemas,

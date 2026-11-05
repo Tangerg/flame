@@ -5,9 +5,9 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/text"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/text"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 const brandMarkMinWidth = 40

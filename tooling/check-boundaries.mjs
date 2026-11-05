@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { join, relative } from "node:path";
 import { run, root, workspaces, goWorkspaceMembers } from "./workspace.mjs";
-import { assertSourceClosure, readSourceGraph } from "./source-graph.mjs";
+import { readSourceGraph } from "./source-graph.mjs";
 
 const members = goWorkspaceMembers();
 if (existsSync(join(root, "go.mod")) || existsSync(join(root, "go.sum")))
@@ -39,7 +39,9 @@ for (const { directory, manifest } of members) {
   if (manifest.Module.Path === "github.com/Tangerg/flame")
     throw new Error("the retired root module is still a member");
   for (const dependency of manifest.Require ?? [])
-    if (dependency.Path === "github.com/Tangerg/flame")
+    if (dependency.Path === "github.com/Tangerg/qimu")
+      throw new Error(`${directory} requires the retired Qimu module`);
+    else if (dependency.Path === "github.com/Tangerg/flame")
       throw new Error(`${directory} requires the retired root module`);
     else if (
       manifest.Module.Path !== "github.com/Tangerg/flame/tooling" &&
@@ -70,20 +72,10 @@ const dependencies = (member, tests = false) =>
       return { path, module };
     });
 const sdk = "github.com/Tangerg/flame/packages/go-sdk";
-const qimu = "github.com/Tangerg/qimu";
 for (const { path, module } of dependencies("packages/go-sdk", true))
-  if (
-    module.startsWith("github.com/Tangerg/flame/") &&
-    module !== sdk &&
-    module !== qimu
-  )
+  if (module.startsWith("github.com/Tangerg/flame/") && module !== sdk)
     throw new Error(
       `SDK source, tests or tools compile a host module: ${path}`,
-    );
-for (const { path, module } of dependencies("qimu", true))
-  if (module.startsWith("github.com/Tangerg/flame/") && module !== qimu)
-    throw new Error(
-      `Qimu source, tests or tools compile a consumer module: ${path}`,
     );
 for (const { path: dependency } of dependencies("runtime"))
   if (dependency.startsWith("github.com/Tangerg/flame/plugins/"))
@@ -96,32 +88,6 @@ for (const member of ["runtime", "apps/cli", "plugins"])
       throw new Error(`${member} imports repository tooling: ${dependency}`);
 
 const packages = await workspaces();
-const runtimeClient = packages.find(
-  (pkg) => pkg.name === "@flame/runtime-client",
-);
-const qimuSDK = packages.find((pkg) => pkg.name === "@qimu/sdk");
-const jsonEntry = resolve(qimuSDK.directory, qimuSDK.exports["./json"]);
-const runtimeEntries = new Set(
-  Object.entries(runtimeClient.exports)
-    .filter(([name, path]) => name !== "./json" && !path.includes("*"))
-    .map(([, path]) => resolve(runtimeClient.directory, path)),
-);
-assertSourceClosure(qimuSDK.directory, jsonEntry, runtimeEntries);
-const byName = new Map(packages.map((pkg) => [pkg.name, pkg]));
-for (const pkg of packages.filter((pkg) => pkg.name.startsWith("@qimu/"))) {
-  const visited = new Set();
-  const inspect = (current) => {
-    if (visited.has(current.name)) return;
-    visited.add(current.name);
-    for (const field of ["dependencies", "devDependencies", "peerDependencies"])
-      for (const name of Object.keys(current[field] ?? {})) {
-        if (name.startsWith("@flame/"))
-          throw new Error(`${pkg.name} compiles a consumer package: ${name}`);
-        if (byName.has(name)) inspect(byName.get(name));
-      }
-  };
-  inspect(pkg);
-}
 const { graph } = readSourceGraph(join(root, "apps/web"));
 for (const [file, edges] of Object.entries(graph))
   if (file.startsWith("extensions/"))
@@ -133,7 +99,10 @@ for (const [file, edges] of Object.entries(graph))
 for (const pkg of packages)
   for (const field of ["dependencies", "devDependencies", "peerDependencies"])
     for (const name of Object.keys(pkg[field] ?? {}))
-      if (["@flame/runtime-contract", "@flame/plugin-sdk"].includes(name))
+      if (
+        name.startsWith("@qimu/") ||
+        ["@flame/runtime-contract", "@flame/plugin-sdk"].includes(name)
+      )
         throw new Error(`${pkg.name} retains obsolete package ${name}`);
 console.log(
   "Workspace manifests, SDK source/test/tool closures, Runtime direction and Web mechanisms passed.",

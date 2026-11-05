@@ -44,9 +44,8 @@ func TestResolverOffersSearchToolsOverDeferredCatalog(t *testing.T) {
 	names := make(map[string]bool, len(resolved))
 	for _, tool := range resolved {
 		names[tool.Definition().Name] = true
-		// Telemetry and policy decorators keep an optional capability reachable
-		// only through the wrapping chain, which is where Scope resolves it.
-		if d, found, err := toolcontract.Capability[deferredNamer](tool); err == nil && found {
+		// Telemetry and policy decorators preserve the explicit declaration.
+		if d, found := tool.(deferredNamer); found {
 			search = d
 		}
 	}
@@ -132,10 +131,7 @@ func TestResolverRetainsCapturedMCPAuthorityBeforeDiscovery(t *testing.T) {
 			}
 			var discovery deferredNamer
 			for _, executable := range manifest.Visible {
-				candidate, found, err := toolcontract.Capability[deferredNamer](executable)
-				if err != nil {
-					t.Fatal(err)
-				}
+				candidate, found := executable.(deferredNamer)
 				if found {
 					discovery = candidate
 				}

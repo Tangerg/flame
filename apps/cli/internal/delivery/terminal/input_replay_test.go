@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/ui/core/input"
 )
 
 func TestStartConflictAndLocalPreparationFailuresKeepOriginalDispatchIdentity(t *testing.T) {
@@ -164,7 +164,7 @@ func TestInputPreparationLeavesTheUIResponsiveAndUnsentInputEditable(t *testing.
 						t.Fatal(err)
 					}
 				}
-				if !host.Resize(32, 10) || !host.Repaint() || !host.Resize(96, 28) {
+				if !host.Resize(32, 10) || !repaint(t, host) || !host.Resize(96, 28) {
 					t.Fatal("attachment preparation blocked the terminal loop")
 				}
 				if stopPreparation == "cancel" {

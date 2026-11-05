@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -16,7 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/integrity"
+
 	"github.com/Tangerg/scope/core/chat"
 	chathistory "github.com/Tangerg/scope/core/history"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -28,7 +30,7 @@ func TestProtocolCompletesDirectToolResults(t *testing.T) {
 			home := t.TempDir()
 			t.Setenv("FLAME_HOME", home)
 			var calls, executions atomic.Int32
-			want := []chat.ToolResult{{ID: "answer_once", Name: "fixture_answer", Output: chat.NewTextToolOutput("exact answer")}}
+			want := []chat.ToolResult{{ID: "answer_once", Name: "fixture_answer", Output: toolcontract.NewTextOutput("exact answer")}}
 			model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
 				if len(request.Tools) == 0 {
 					return completedTextResponse("title"), nil
@@ -164,7 +166,11 @@ type directAnswerTool struct{ toolcontract.Tool }
 func (directAnswerTool) ReturnsDirectResult() bool         { return true }
 func (directAnswerTool) MCPToolIdentity() (string, string) { return "fixture", "answer" }
 
-func (directAnswerTool) SourceFingerprint() integrity.Digest {
+func (t directAnswerTool) MCPSource() (mcp.CapturedSource, bool) {
+	return mcp.CapturedSource{Config: t.SourceConfig(), RemoteName: "answer"}, true
+}
+
+func (directAnswerTool) SourceFingerprint() framevalue.Digest {
 	return testsupport.Digest("fixture authority")
 }
 

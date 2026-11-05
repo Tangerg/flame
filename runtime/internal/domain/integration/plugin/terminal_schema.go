@@ -4,6 +4,7 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -48,7 +49,16 @@ func (n schemaNode) resolved() schemaNode {
 		if raw, ok := n.fields["$ref"]; !ok || json.Unmarshal(raw, &ref) != nil {
 			break
 		}
-		target, ok := n.defs[strings.TrimPrefix(ref, "#/$defs/")]
+		fragment, local := strings.CutPrefix(ref, "#")
+		if !local {
+			break
+		}
+		fragment, err := url.PathUnescape(fragment)
+		pointer := jsontext.Pointer(fragment)
+		if err != nil || !pointer.IsValid() || pointer.Parent() != "/$defs" {
+			break
+		}
+		target, ok := n.defs[pointer.LastToken()]
 		if !ok {
 			break
 		}

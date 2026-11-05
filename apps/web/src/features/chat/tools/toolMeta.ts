@@ -7,7 +7,7 @@ import { t } from "@/lib/i18n/index";
 export const toolActions = definePlugin({
   name: "flame.builtin.tool-actions",
   setup(ctx) {
-    ctx.contribute(
+    ctx.contributions.add(
       TOOL_ACTION,
       copyToolArgsAction({
         title: "toolAction.copyArguments",
@@ -25,7 +25,7 @@ export const toolIcons = definePlugin({
   name: "flame.builtin.tool-icons",
   setup(ctx) {
     for (const { key, icon } of defaultToolIconContributions()) {
-      ctx.contribute(TOOL_ICON, icon, { key });
+      ctx.contributions.add(TOOL_ICON, icon, { key });
     }
   },
 });

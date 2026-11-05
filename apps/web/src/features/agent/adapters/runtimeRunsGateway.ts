@@ -1,4 +1,4 @@
-import { stringifyJSON } from "@qimu/sdk/json";
+import { stringifyJSON } from "@frame/sdk/json";
 import { type FlameClient } from "@flame/runtime-client";
 import {
   asItemId,

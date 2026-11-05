@@ -64,7 +64,7 @@ func TestSanitizeTitleCapsRunes(t *testing.T) {
 
 func TestGenerateReturnsOpeningMessageFallbackWhenProviderFails(t *testing.T) {
 	providerErr := errors.New("provider unavailable")
-	client, err := chatclient.New(failingTitleModel{err: providerErr}, chatclient.Config{})
+	client, err := chatclient.New(failingTitleModel{err: providerErr})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestGenerateReturnsOpeningMessageFallbackWhenProviderFails(t *testing.T) {
 func TestGenerateUsesOpeningMessageFallbackWhenTheModelSaysNothingUsable(t *testing.T) {
 	// The provider succeeded, so no error reaches the caller; a reply that
 	// sanitizes to nothing still has to leave the Session with a title.
-	client, err := chatclient.New(replyingTitleModel{text: "  \"\" \n"}, chatclient.Config{})
+	client, err := chatclient.New(replyingTitleModel{text: "  \"\" \n"})
 	if err != nil {
 		t.Fatal(err)
 	}

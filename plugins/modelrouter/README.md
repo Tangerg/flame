@@ -66,7 +66,7 @@ affect only future selection queries.
 The maintainer-only `contractgen` command owns the capability descriptor. It
 derives schemas from the domain and pure wire declarations. `make generate`
 updates `contracts/contract.generated.go` from that owner before refreshing package
-projections. Backend bindings consume the exact published descriptor through Qimu.
+projections. Backend bindings consume the exact published descriptor through Frame.
 An independent author module's `go generate` refreshes package projections from
 that descriptor; it does not derive another contract from relocated implementation
 types.

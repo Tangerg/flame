@@ -1,6 +1,8 @@
 package runs
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"errors"
 	"fmt"
@@ -53,8 +55,8 @@ func (c *concurrentToolExecutor) Observe(
 		}
 
 		batch := testToolPublication(starts,
-			ToolCallFinished{CallID: "tool_first", ModelResult: &corechat.ToolResult{ID: "provider_first", Name: "first", Output: corechat.NewTextToolOutput("first-result")}, Result: toolStringResult("first-result")},
-			ToolCallFinished{CallID: "tool_second", ModelResult: &corechat.ToolResult{ID: "provider_second", Name: "second", Output: corechat.NewTextToolOutput("second-result")}, Result: toolStringResult("second-result")},
+			ToolCallFinished{CallID: "tool_first", ModelResult: &corechat.ToolResult{ID: "provider_first", Name: "first", Output: toolcontract.NewTextOutput("first-result")}, Result: toolStringResult("first-result")},
+			ToolCallFinished{CallID: "tool_second", ModelResult: &corechat.ToolResult{ID: "provider_second", Name: "second", Output: toolcontract.NewTextOutput("second-result")}, Result: toolStringResult("second-result")},
 		)
 		commit, receipt, err := NewExecutionFactCommit(batch)
 		if err != nil || !yield(ExecutorEvent{Member: member, Payload: commit}) {
@@ -503,7 +505,7 @@ func testDelegatePublication(sourceID string, result ToolCallFinished) Execution
 	if result.Result != nil {
 		text = result.Result.Canonical()
 	}
-	result.ModelResult = &corechat.ToolResult{ID: sourceID, Name: "delegate_task", Output: corechat.NewTextToolOutput(text), IsError: result.Failure != nil}
+	result.ModelResult = &corechat.ToolResult{ID: sourceID, Name: "delegate_task", Output: toolcontract.NewTextOutput(text), IsError: result.Failure != nil}
 	return testPublicationPayload(testToolPublication([]ToolCallStarted{{CallID: result.CallID, SourceCallID: sourceID, ToolName: "delegate_task", ModelCallSequence: 1, Arguments: `{}`}}, result))
 }
 
@@ -511,8 +513,8 @@ func TestSparseSettlementPersistsBeforeCanonicalModelRound(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	first := ToolCallStarted{CallID: "tool_first", SourceCallID: "provider_first", ModelCallSequence: 1, ToolCallIndex: 0, ToolName: "first", Arguments: `{}`}
 	second := ToolCallStarted{CallID: "tool_second", SourceCallID: "provider_second", ModelCallSequence: 1, ToolCallIndex: 1, ToolName: "second", Arguments: `{}`}
-	firstResult := corechat.ToolResult{ID: first.SourceCallID, Name: first.ToolName, Output: corechat.NewTextToolOutput("exact first\n")}
-	secondResult := corechat.ToolResult{ID: second.SourceCallID, Name: second.ToolName, Output: corechat.NewTextToolOutput("exact second\n")}
+	firstResult := corechat.ToolResult{ID: first.SourceCallID, Name: first.ToolName, Output: toolcontract.NewTextOutput("exact first\n")}
+	secondResult := corechat.ToolResult{ID: second.SourceCallID, Name: second.ToolName, Output: toolcontract.NewTextOutput("exact second\n")}
 	sparse := testToolPublication([]ToolCallStarted{second}, ToolCallFinished{CallID: second.CallID, ModelResult: &secondResult, Result: toolStringResult("second preview")})
 	sparse.ModelResults = nil
 	settled, err := reducer.finishToolResults(sparse)
@@ -544,7 +546,7 @@ func TestSparseToolResultSurvivesSiblingCancellation(t *testing.T) {
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
 	model := mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_call_1",
 		Message: new(corechat.NewAssistantMessage(corechat.NewToolCallPart(first), corechat.NewToolCallPart(second)))})
-	result := corechat.ToolResult{ID: second.ID, Name: second.Name, Output: corechat.NewTextToolOutput("external write acknowledged")}
+	result := corechat.ToolResult{ID: second.ID, Name: second.Name, Output: toolcontract.NewTextOutput("external write acknowledged")}
 	settlement := testToolPublication([]ToolCallStarted{{
 		CallID: "tool_second", SourceCallID: second.ID, ModelCallSequence: 1,
 		ToolCallIndex: 1, ToolName: second.Name, Arguments: second.Arguments,

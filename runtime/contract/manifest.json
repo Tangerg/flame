@@ -1732,7 +1732,7 @@
       "name": "pluginControl",
       "kind": "pluginControl",
       "method": "POST",
-      "path": "/v2/qimu",
+      "path": "/v2/frame",
       "authentication": "pluginRealm",
       "responseStatuses": [
         200,
@@ -9486,6 +9486,10 @@
         },
         {
           "field": "proofCapacity",
+          "constraint": "positive"
+        },
+        {
+          "field": "preparationCapacity",
           "constraint": "positive"
         },
         {

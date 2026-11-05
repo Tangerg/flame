@@ -6,6 +6,7 @@ import (
 	"iter"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -72,7 +73,7 @@ func TestInstalledSkillLearningUsesAdmittedSkillDocuments(t *testing.T) {
 				t.Fatal(err)
 			}
 			model := &skillRevisionModel{}
-			client, err := chatclient.New(model, chatclient.Config{})
+			client, err := chatclient.New(model)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -96,8 +97,8 @@ func TestInstalledSkillLearningUsesAdmittedSkillDocuments(t *testing.T) {
 			installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "skills"))
 			waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
 			var failure error
-			for range 3 {
-				failure = learning.MaintainSkills(t.Context(), executionadapter.RunMaintenanceInput{SessionID: sessionID, WorkspaceCWD: cfg.defaultWorkspacePath, ToolCalls: 8})
+			for index := range 3 {
+				failure = learning.MaintainSkills(t.Context(), executionadapter.RunMaintenanceInput{SessionID: sessionID, RootMemberID: "member_mining_" + strconv.Itoa(index), WorkspaceCWD: cfg.defaultWorkspacePath, ToolCalls: 8})
 			}
 			if test.category != nil {
 				if !errors.Is(failure, test.category) || !errors.Is(failure, filesystem.ErrFileTooLarge) {
@@ -134,8 +135,8 @@ func TestInstalledSkillLearningUsesAdmittedSkillDocuments(t *testing.T) {
 				t.Fatalf("approved revision = %+v", current)
 			}
 			r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-learning")
-			for range 3 {
-				_ = learning.MaintainSkills(t.Context(), executionadapter.RunMaintenanceInput{SessionID: sessionID, WorkspaceCWD: cfg.defaultWorkspacePath, ToolCalls: 8})
+			for index := range 3 {
+				_ = learning.MaintainSkills(t.Context(), executionadapter.RunMaintenanceInput{SessionID: sessionID, RootMemberID: "member_disabled_" + strconv.Itoa(index), WorkspaceCWD: cfg.defaultWorkspacePath, ToolCalls: 8})
 			}
 			if model.calls != 2 {
 				t.Fatalf("disabled plugin made new model calls: %d", model.calls)

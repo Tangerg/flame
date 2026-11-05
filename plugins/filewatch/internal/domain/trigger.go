@@ -9,7 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/invopop/jsonschema"
+	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 // Each limit owns its value for both the generated schema and the NewTrigger
@@ -39,17 +39,13 @@ type Draft struct {
 	ReasoningEffort string   `json:"reasoningEffort,omitempty"`
 }
 
-func (Draft) JSONSchemaExtend(schema *jsonschema.Schema) {
-	for field, maximum := range map[string]uint64{
-		"title": maxTitleLength, "workspace": maxWorkspaceLength, "instructions": maxInstructionsLength,
-	} {
-		if property, ok := schema.Properties.Get(field); ok {
-			property.MaxLength = new(maximum)
-		}
-	}
-	if paths, ok := schema.Properties.Get("paths"); ok {
-		paths.MaxItems = new(uint64(maxPaths))
-	}
+func (Draft) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"title":        {MaxLength: new(uint64(maxTitleLength))},
+		"workspace":    {MaxLength: new(uint64(maxWorkspaceLength))},
+		"instructions": {MaxLength: new(uint64(maxInstructionsLength))},
+		"paths":        {MaxItems: new(uint64(maxPaths))},
+	}}
 }
 
 type Trigger struct{ draft Draft }

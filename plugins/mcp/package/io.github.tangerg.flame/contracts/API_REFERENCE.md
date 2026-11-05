@@ -11,6 +11,6 @@ Generated from the feature's Go-owned method contracts.
 | `flame.external-mcp/recover.v1` | command | installation | Cancel uncompleted attempts admitted by a previous Runtime incarnation. |
 | `flame.external-mcp/settle.v1` | command | installation | Record the original authorization attempt's terminal result. |
 
-Capability `flame.external-mcp.v1` uses `selection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.qimu/portable/1`.
+Capability `flame.external-mcp.v1` exposes the declared methods. Required backend protocol: `io.github.tangerg.frame/portable/1`.
 
 `capability.generated.json` preserves the canonical callable contract; `schema.json` and the method references are presentation projections.

@@ -1,6 +1,9 @@
 package pluginservices
 
 import (
+	framevalue "github.com/Tangerg/frame/value"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"errors"
 
@@ -10,10 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/frame/cancellation"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/scope/core/chat"
+
 	"github.com/samber/lo"
 )
 
@@ -22,12 +22,12 @@ type ToolResults struct {
 	pool          *mcp.Pool
 }
 
-func (s *ToolResults) OwnsToolSource(ctx context.Context, ref tool.Ref, release integrity.Digest, activation plugin.Activation) (bool, error) {
+func (s *ToolResults) OwnsToolSource(ctx context.Context, ref tool.Ref, release framevalue.Digest, activation plugin.Activation) (bool, error) {
 	_, found, err := s.toolSource(ctx, ref, release, activation)
 	return found, err
 }
 
-func (s *ToolResults) toolSource(ctx context.Context, ref tool.Ref, release integrity.Digest, activation plugin.Activation) (mcpserver.ID, bool, error) {
+func (s *ToolResults) toolSource(ctx context.Context, ref tool.Ref, release framevalue.Digest, activation plugin.Activation) (mcpserver.ID, bool, error) {
 	var zero mcpserver.ID
 	server, _, found := ref.MCP()
 	if !found {
@@ -62,7 +62,7 @@ func (s *ToolResults) toolSource(ctx context.Context, ref tool.Ref, release inte
 	return zero, false, nil
 }
 
-func (s *ToolResults) OriginalToolResult(ctx context.Context, ref tool.Ref, release, authority integrity.Digest, activation plugin.Activation, callID, arguments string) (_ *chat.ToolOutput, err error) {
+func (s *ToolResults) OriginalToolResult(ctx context.Context, ref tool.Ref, release, authority framevalue.Digest, activation plugin.Activation, callID, arguments string) (_ *toolcontract.Output, err error) {
 	borrowed, err := s.originalToolSession(ctx, ref, release, authority, activation)
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func (s *ToolResults) OriginalToolResult(ctx context.Context, ref tool.Ref, rele
 	defer func() { err = errors.Join(err, borrowed.Close()) }()
 	ctx = borrowed.Context()
 	session := borrowed.Session()
-	admitted, err := jsonvalue.Parse([]byte(arguments))
+	admitted, err := framevalue.ParseJSON([]byte(arguments))
 	if err != nil {
 		return nil, err
 	}
@@ -78,8 +78,8 @@ func (s *ToolResults) OriginalToolResult(ctx context.Context, ref tool.Ref, rele
 	return pluginsdk.ReadToolReceipt(ctx, session, callID, remote.String(), admitted)
 }
 
-func (s *ToolResults) AwaitOriginalToolSource(ctx context.Context, ref tool.Ref, release, authority integrity.Digest, activation plugin.Activation) (bool, error) {
-	if err := cancellation.Err(ctx); err != nil {
+func (s *ToolResults) AwaitOriginalToolSource(ctx context.Context, ref tool.Ref, release, authority framevalue.Digest, activation plugin.Activation) (bool, error) {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return false, err
 	}
 	borrowed, err := s.originalToolSession(ctx, ref, release, authority, activation)
@@ -92,7 +92,7 @@ func (s *ToolResults) AwaitOriginalToolSource(ctx context.Context, ref tool.Ref,
 	return err == nil, err
 }
 
-func (s *ToolResults) originalToolSession(ctx context.Context, ref tool.Ref, release, authority integrity.Digest, activation plugin.Activation) (*mcp.BorrowedSession, error) {
+func (s *ToolResults) originalToolSession(ctx context.Context, ref tool.Ref, release, authority framevalue.Digest, activation plugin.Activation) (*mcp.BorrowedSession, error) {
 	source, found, err := s.toolSource(ctx, ref, release, activation)
 	if err != nil {
 		return nil, err

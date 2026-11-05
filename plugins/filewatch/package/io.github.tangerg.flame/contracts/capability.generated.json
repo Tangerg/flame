@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.qimu/portable/1",
+  "protocol": "io.github.tangerg.flame/plugin/1",
   "reference": "flame.filewatch.v1",
   "composition": "collection",
   "scope": "installation",
@@ -13,9 +13,26 @@
         "$defs": {
           "domain.Draft": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "instructions": {
+                    "maxLength": 16384
+                  },
+                  "paths": {
+                    "maxItems": 32
+                  },
+                  "title": {
+                    "maxLength": 200
+                  },
+                  "workspace": {
+                    "maxLength": 4096
+                  }
+                }
+              }
+            ],
             "properties": {
               "instructions": {
-                "maxLength": 16384,
                 "minLength": 1,
                 "type": "string"
               },
@@ -27,7 +44,6 @@
                 "items": {
                   "type": "string"
                 },
-                "maxItems": 32,
                 "minItems": 1,
                 "type": "array",
                 "uniqueItems": true
@@ -40,12 +56,10 @@
                 "type": "string"
               },
               "title": {
-                "maxLength": 200,
                 "minLength": 1,
                 "type": "string"
               },
               "workspace": {
-                "maxLength": 4096,
                 "minLength": 1,
                 "type": "string"
               }
@@ -109,9 +123,26 @@
         "$defs": {
           "domain.Draft": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "instructions": {
+                    "maxLength": 16384
+                  },
+                  "paths": {
+                    "maxItems": 32
+                  },
+                  "title": {
+                    "maxLength": 200
+                  },
+                  "workspace": {
+                    "maxLength": 4096
+                  }
+                }
+              }
+            ],
             "properties": {
               "instructions": {
-                "maxLength": 16384,
                 "minLength": 1,
                 "type": "string"
               },
@@ -123,7 +154,6 @@
                 "items": {
                   "type": "string"
                 },
-                "maxItems": 32,
                 "minItems": 1,
                 "type": "array",
                 "uniqueItems": true
@@ -136,12 +166,10 @@
                 "type": "string"
               },
               "title": {
-                "maxLength": 200,
                 "minLength": 1,
                 "type": "string"
               },
               "workspace": {
-                "maxLength": 4096,
                 "minLength": 1,
                 "type": "string"
               }
@@ -241,13 +269,95 @@
       "output": {
         "$defs": {
           "domain.Capture": {
+            "$ref": "#/$defs/domain.captureProjection"
+          },
+          "domain.Draft": {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "instructions": {
+                    "maxLength": 16384
+                  },
+                  "paths": {
+                    "maxItems": 32
+                  },
+                  "title": {
+                    "maxLength": 200
+                  },
+                  "workspace": {
+                    "maxLength": 4096
+                  }
+                }
+              }
+            ],
+            "properties": {
+              "instructions": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "model": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "paths": {
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "provider": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "reasoningEffort": {
+                "type": "string"
+              },
+              "title": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "workspace": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "workspace",
+              "paths",
+              "instructions",
+              "provider",
+              "model"
+            ],
+            "type": "object"
+          },
+          "domain.Event": {
+            "additionalProperties": false,
+            "properties": {
+              "accepted": {
+                "type": "boolean"
+              },
+              "capture": {
+                "$ref": "#/$defs/domain.Capture"
+              }
+            },
+            "required": [
+              "capture",
+              "accepted"
+            ],
+            "type": "object"
+          },
+          "domain.captureProjection": {
             "additionalProperties": false,
             "properties": {
               "generation": {
                 "type": "string"
               },
               "invocation": {
-                "$ref": "#/$defs/portable.Invocation"
+                "$ref": "#/$defs/mcp.Invocation"
               },
               "kind": {
                 "allOf": [
@@ -261,8 +371,7 @@
                 "type": "string"
               },
               "observedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "paths": {
                 "items": {
@@ -312,72 +421,10 @@
             ],
             "type": "object"
           },
-          "domain.Draft": {
-            "additionalProperties": false,
-            "properties": {
-              "instructions": {
-                "maxLength": 16384,
-                "minLength": 1,
-                "type": "string"
-              },
-              "model": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "paths": {
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 32,
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
-              },
-              "provider": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "reasoningEffort": {
-                "type": "string"
-              },
-              "title": {
-                "maxLength": 200,
-                "minLength": 1,
-                "type": "string"
-              },
-              "workspace": {
-                "maxLength": 4096,
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "title",
-              "workspace",
-              "paths",
-              "instructions",
-              "provider",
-              "model"
-            ],
-            "type": "object"
+          "instant.Timestamp": {
+            "type": "string"
           },
-          "domain.Event": {
-            "additionalProperties": false,
-            "properties": {
-              "accepted": {
-                "type": "boolean"
-              },
-              "capture": {
-                "$ref": "#/$defs/domain.Capture"
-              }
-            },
-            "required": [
-              "capture",
-              "accepted"
-            ],
-            "type": "object"
-          },
-          "portable.Invocation": {
+          "mcp.Invocation": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -448,6 +495,9 @@
       "output": {
         "$defs": {
           "domain.Header": {
+            "$ref": "#/$defs/domain.headerProjection"
+          },
+          "domain.headerProjection": {
             "additionalProperties": false,
             "properties": {
               "accepted": {
@@ -468,8 +518,7 @@
                 "type": "string"
               },
               "observedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "pathCount": {
                 "allOf": [
@@ -507,6 +556,9 @@
               "accepted"
             ],
             "type": "object"
+          },
+          "instant.Timestamp": {
+            "type": "string"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -531,9 +583,26 @@
         "$defs": {
           "domain.Draft": {
             "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "instructions": {
+                    "maxLength": 16384
+                  },
+                  "paths": {
+                    "maxItems": 32
+                  },
+                  "title": {
+                    "maxLength": 200
+                  },
+                  "workspace": {
+                    "maxLength": 4096
+                  }
+                }
+              }
+            ],
             "properties": {
               "instructions": {
-                "maxLength": 16384,
                 "minLength": 1,
                 "type": "string"
               },
@@ -545,7 +614,6 @@
                 "items": {
                   "type": "string"
                 },
-                "maxItems": 32,
                 "minItems": 1,
                 "type": "array",
                 "uniqueItems": true
@@ -558,12 +626,10 @@
                 "type": "string"
               },
               "title": {
-                "maxLength": 200,
                 "minLength": 1,
                 "type": "string"
               },
               "workspace": {
-                "maxLength": 4096,
                 "minLength": 1,
                 "type": "string"
               }

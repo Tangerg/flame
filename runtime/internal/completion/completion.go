@@ -5,8 +5,6 @@ package completion
 import (
 	"context"
 	"errors"
-
-	"github.com/Tangerg/frame/cancellation"
 )
 
 // Wait joins done or retains the caller's cancellation category and cause.
@@ -32,7 +30,7 @@ func Wait(ctx context.Context, done <-chan struct{}) error {
 		case <-done:
 			return nil
 		default:
-			return cancellation.Err(ctx)
+			return errors.Join(ctx.Err(), context.Cause(ctx))
 		}
 	}
 }

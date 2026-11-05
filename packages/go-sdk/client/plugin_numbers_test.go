@@ -7,12 +7,15 @@ import (
 	"iter"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
@@ -48,8 +51,8 @@ func (numericPlugin) ResolvePluginPoint(context.Context, protocol.ResolvePluginP
 
 func numericBinding(t *testing.T, descriptor portable.MethodDescriptor) client.PluginBinding {
 	t.Helper()
-	contract, err := portable.NewCapability(portable.CapabilityConfig{
-		Reference: "numbers", Composition: portable.Selection, Scope: extension.ScopeInstallation,
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{
+		Reference: "numbers", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation,
 	}, descriptor)
 	if err != nil {
 		t.Fatal(err)
@@ -73,7 +76,7 @@ func assertOriginalNumbers(t *testing.T, value map[string]any) {
 }
 
 func TestBoundPluginCallPreservesUnstructuredNumbers(t *testing.T) {
-	method, err := qimumcp.NewMethod[struct{}, map[string]any](qimumcp.MethodConfig{
+	method, err := pluginmcp.NewMethod[struct{}, map[string]any](portable.MethodConfig{
 		Name: "numbers.read", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read original numbers.",
 	})
 	if err != nil {
@@ -91,7 +94,7 @@ func TestBoundPluginCallPreservesUnstructuredNumbers(t *testing.T) {
 }
 
 func TestBoundPluginStreamPreservesUnstructuredNumbers(t *testing.T) {
-	method, err := qimumcp.NewStreamingMethod[struct{}, map[string]any, map[string]any](qimumcp.MethodConfig{
+	method, err := pluginmcp.NewStreamingMethod[struct{}, map[string]any, map[string]any](portable.MethodConfig{
 		Name: "numbers.stream", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Stream original numbers.",
 	})
 	if err != nil {
@@ -125,9 +128,9 @@ func TestPointValuesPreserveUnstructuredNumbers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := portable.AdmitPoint(portable.PointDescriptor{
-		Protocol: portable.Protocol, Reference: "numbers", Composition: portable.Collection,
-		Scope: extension.ScopeInstallation, Ordering: portable.CanonicalKeys,
+	contract, err := plugincontract.AdmitPoint(plugincontract.PointDescriptor{
+		Protocol: plugincontract.Protocol, Reference: "numbers", Composition: plugincontract.Collection,
+		Scope: extension.ScopeInstallation, Ordering: plugincontract.CanonicalKeys,
 		Value: schema.JSON(), Applicability: jsontext.Value(`{}`),
 	})
 	if err != nil {
@@ -145,7 +148,7 @@ func TestPointValuesPreserveUnstructuredNumbers(t *testing.T) {
 }
 
 func TestBoundPluginQueryStreamRefusesCommandIdentityBeforeDispatch(t *testing.T) {
-	method, err := qimumcp.NewStreamingMethod[struct{}, map[string]any, map[string]any](qimumcp.MethodConfig{
+	method, err := pluginmcp.NewStreamingMethod[struct{}, map[string]any, map[string]any](portable.MethodConfig{
 		Name: "numbers.stream", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Stream original numbers.",
 	})
 	if err != nil {

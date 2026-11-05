@@ -8,7 +8,7 @@ export function createComposerBootstrap(composer: ComposerOwner) {
     requires: { sessions: AGENT_SESSIONS, scope: RUNTIME_SERVER_SCOPE },
     setup(ctx) {
       composer.start();
-      ctx.cleanup(composer.dispose);
+      ctx.lifetime.defer(composer.dispose);
     },
   });
 }

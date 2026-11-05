@@ -7,16 +7,15 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/qimu/sqlite"
 )
 
 // ModeStore records the Runtime's permission modes: the default a user chose
 // and which Sessions are in Plan mode. A Session without a row follows the
 // Runtime default, so leaving Plan mode removes the row instead of pinning a
 // copy of that default to the Session.
-type ModeStore struct{ db *sql.DB }
+type ModeStore struct{ db *database }
 
-func newModeStore(db *sql.DB) *ModeStore {
+func newModeStore(db *database) *ModeStore {
 	return &ModeStore{db: db}
 }
 
@@ -32,79 +31,77 @@ func approvalDefaultModeSchema() string {
 // DefaultMode returns the chosen Runtime default; found is false until one is
 // chosen.
 func (p *ModeStore) DefaultMode(ctx context.Context) (approval.Mode, bool, error) {
-	var stored string
-	err := sqlite.Connection(ctx, p.db).QueryRowContext(ctx,
-		`SELECT mode FROM approval_default_mode WHERE id = 1`,
-	).Scan(&stored)
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", false, nil
-	}
-	if err != nil {
-		return "", false, fmt.Errorf("sqlite: read default approval mode: %w", err)
-	}
-	mode := approval.Mode(stored)
-	if !mode.ValidDefault() {
-		return "", false, fmt.Errorf("sqlite: decode default approval mode: %w: %q", approval.ErrInvalidMode, stored)
-	}
-	return mode, true, nil
+	return scopedPair(ctx, p.db.read, func(ctx context.Context) (approval.Mode, bool, error) {
+		var stored string
+		err := p.db.connection(ctx).QueryRowContext(ctx, `SELECT mode FROM approval_default_mode WHERE id = 1`).Scan(&stored)
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", false, nil
+		}
+		if err != nil {
+			return "", false, fmt.Errorf("sqlite: read default approval mode: %w", err)
+		}
+		mode := approval.Mode(stored)
+		if !mode.ValidDefault() {
+			return "", false, fmt.Errorf("sqlite: decode default approval mode: %w: %q", approval.ErrInvalidMode, stored)
+		}
+		return mode, true, nil
+	})
 }
 
 // SetDefaultMode records the Runtime default a user chose.
 func (p *ModeStore) SetDefaultMode(ctx context.Context, mode approval.Mode) error {
-	if _, err := sqlite.Connection(ctx, p.db).ExecContext(ctx,
-		`INSERT INTO approval_default_mode(id, mode) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET mode = excluded.mode`,
-		string(mode),
-	); err != nil {
-		return fmt.Errorf("sqlite: save default approval mode: %w", err)
-	}
-	return nil
+	return p.db.write(ctx, func(ctx context.Context) error {
+		if _, err := p.db.connection(ctx).ExecContext(ctx, `INSERT INTO approval_default_mode(id, mode) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET mode = excluded.mode`, string(mode)); err != nil {
+			return fmt.Errorf("sqlite: save default approval mode: %w", err)
+		}
+		return nil
+	})
 }
-
 func (p *ModeStore) PlanModeActive(ctx context.Context, sessionID string) (bool, error) {
-	if err := validateSessionResource("read Session Plan mode", sessionID); err != nil {
-		return false, err
-	}
-	var present int
-	err := sqlite.Connection(ctx, p.db).QueryRowContext(ctx,
-		`SELECT 1 FROM session_plan_modes WHERE session_id = ?`, sessionID,
-	).Scan(&present)
-	if errors.Is(err, sql.ErrNoRows) {
-		return false, nil
-	}
-	if err != nil {
-		return false, fmt.Errorf("sqlite: read session Plan mode: %w", err)
-	}
-	return true, nil
+	return scopedValue(ctx, p.db.read, func(ctx context.Context) (bool, error) {
+		if err := validateSessionResource("read Session Plan mode", sessionID); err != nil {
+			return false, err
+		}
+		var present int
+		err := p.db.connection(ctx).QueryRowContext(ctx, `SELECT 1 FROM session_plan_modes WHERE session_id = ?`, sessionID).Scan(&present)
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		if err != nil {
+			return false, fmt.Errorf("sqlite: read session Plan mode: %w", err)
+		}
+		return true, nil
+	})
 }
 
 // StartPlanMode reports whether the Session entered Plan mode now.
 func (p *ModeStore) StartPlanMode(ctx context.Context, sessionID string) (bool, error) {
-	if err := validateSessionResource("enter Session Plan mode", sessionID); err != nil {
-		return false, err
-	}
-	result, err := sqlite.Connection(ctx, p.db).ExecContext(ctx,
-		`INSERT INTO session_plan_modes(session_id) VALUES (?) ON CONFLICT(session_id) DO NOTHING`, sessionID,
-	)
-	if err != nil {
-		return false, fmt.Errorf("sqlite: enter session Plan mode: %w", err)
-	}
-	return rowChanged(result, "enter session Plan mode")
+	return scopedValue(ctx, p.db.write, func(ctx context.Context) (bool, error) {
+		if err := validateSessionResource("enter Session Plan mode", sessionID); err != nil {
+			return false, err
+		}
+		result, err := p.db.connection(ctx).ExecContext(ctx, `INSERT INTO session_plan_modes(session_id) VALUES (?) ON CONFLICT(session_id) DO NOTHING`, sessionID)
+		if err != nil {
+			return false, fmt.Errorf("sqlite: enter session Plan mode: %w", err)
+		}
+		return rowChanged(result, "enter session Plan mode")
+	})
 }
 
 // EndPlanMode reports whether the Session left Plan mode now.
 func (p *ModeStore) EndPlanMode(ctx context.Context, sessionID string, revision uint64) (bool, error) {
-	if err := validateSessionResource("leave Session Plan mode", sessionID); err != nil {
-		return false, err
-	}
-	result, err := sqlite.Connection(ctx, p.db).ExecContext(ctx,
-		`DELETE FROM session_plan_modes WHERE session_id = ? AND EXISTS (
+	return scopedValue(ctx, p.db.write, func(ctx context.Context) (bool, error) {
+		if err := validateSessionResource("leave Session Plan mode", sessionID); err != nil {
+			return false, err
+		}
+		result, err := p.db.connection(ctx).ExecContext(ctx, `DELETE FROM session_plan_modes WHERE session_id = ? AND EXISTS (
 			SELECT 1 FROM session_plans p WHERE p.session_id = session_plan_modes.session_id AND p.revision = ?
-		)`, sessionID, revision,
-	)
-	if err != nil {
-		return false, fmt.Errorf("sqlite: leave session Plan mode: %w", err)
-	}
-	return rowChanged(result, "leave session Plan mode")
+		)`, sessionID, revision)
+		if err != nil {
+			return false, fmt.Errorf("sqlite: leave session Plan mode: %w", err)
+		}
+		return rowChanged(result, "leave session Plan mode")
+	})
 }
 
 // DeleteSession removes the Plan mode owned by one Session. Session restore
@@ -112,13 +109,14 @@ func (p *ModeStore) EndPlanMode(ctx context.Context, sessionID string, revision 
 // Runtime state and is deliberately not inherited from the Session that an
 // imported archive replaces.
 func (p *ModeStore) DeleteSession(ctx context.Context, sessionID string) error {
-	if err := validateSessionResource("delete Session Plan mode", sessionID); err != nil {
+	return p.db.write(ctx, func(ctx context.Context) error {
+		if err := validateSessionResource("delete Session Plan mode", sessionID); err != nil {
+			return err
+		}
+		_, err := p.db.connection(ctx).ExecContext(ctx, `DELETE FROM session_plan_modes WHERE session_id = ?`, sessionID)
 		return err
-	}
-	_, err := sqlite.Connection(ctx, p.db).ExecContext(ctx, `DELETE FROM session_plan_modes WHERE session_id = ?`, sessionID)
-	return err
+	})
 }
-
 func rowChanged(result sql.Result, operation string) (bool, error) {
 	changed, err := result.RowsAffected()
 	if err != nil {

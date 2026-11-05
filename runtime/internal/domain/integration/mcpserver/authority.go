@@ -2,14 +2,14 @@ package mcpserver
 
 import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu/integrity"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // AuthorityFingerprint excludes credentials and connection lifecycle settings:
 // a token rotation does not grant authority to a different endpoint. Every slot
 // is always present and the variable-length Args come last behind their count,
 // so two different descriptors cannot frame to the same field sequence.
-func (s Server) AuthorityFingerprint() integrity.Digest {
+func (s Server) AuthorityFingerprint() framevalue.Digest {
 	authority := s.Source.connector.String()
 	if _, release, found := s.Source.Release(); found {
 		authority = release.String()

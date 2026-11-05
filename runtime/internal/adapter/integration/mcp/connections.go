@@ -7,12 +7,11 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame/cancellation"
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 // server is the live state of one configured MCP server. Access is guarded by
@@ -84,7 +83,7 @@ type sessionEnd struct {
 // status whose tools the sink has not received, or the reverse.
 type connections struct {
 	lifetime  context.Context
-	callbacks *qimumcp.Callbacks
+	callbacks *pluginmcp.Callbacks
 	mu        sync.Mutex
 	servers   []*server
 	client    *sdkmcp.Client
@@ -111,7 +110,7 @@ type connections struct {
 }
 
 func (c *connections) cancellationErr(ctx context.Context) error {
-	return errors.Join(cancellation.Err(ctx), cancellation.Err(c.lifetime))
+	return errors.Join(errors.Join(ctx.Err(), context.Cause(ctx)), errors.Join(c.lifetime.Err(), context.Cause(c.lifetime)))
 }
 
 // setToolSink publishes the current catalog and every subsequent connection

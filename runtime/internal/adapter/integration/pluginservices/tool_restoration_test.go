@@ -12,6 +12,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -21,7 +22,6 @@ import (
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -41,7 +41,7 @@ func TestColdToolRestorationUsesTheOriginalGraphWithoutCurrentCatalog(t *testing
 		t.Fatal(err)
 	}
 	remote := sdk.NewServer(&sdk.Implementation{Name: "original-tool-owner"}, nil)
-	backend, err := qimumcp.NewBackend(remote)
+	backend, err := pluginmcp.NewBackend(remote)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestColdToolRestorationUsesTheOriginalGraphWithoutCurrentCatalog(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := query.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
+	if err := query.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginmcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
 		if command.Input.ID != pluginsdk.ToolCommandPrefix+"original-logical-call" || command.Input.Method != "append" || command.Input.InputDigest != input.Digest() {
 			return pluginsdk.ToolReceipt{}, errors.New("receipt request changed its original attribution")
 		}
@@ -75,7 +75,7 @@ func TestColdToolRestorationUsesTheOriginalGraphWithoutCurrentCatalog(t *testing
 			return nil, errors.Join(errors.New("original logical identity changed"), err)
 		}
 		calls.Add(1)
-		value, err := pluginsdk.NewToolReceipt(chat.NewTextToolOutput("original committed result"), false)
+		value, err := pluginsdk.NewToolReceipt(toolcontract.NewTextOutput("original committed result"), false)
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +86,7 @@ func TestColdToolRestorationUsesTheOriginalGraphWithoutCurrentCatalog(t *testing
 	})
 	endpoint := httptest.NewServer(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil))
 	t.Cleanup(endpoint.Close)
-	callbacks := qimumcp.NewCallbacks()
+	callbacks := pluginmcp.NewCallbacks()
 	t.Cleanup(func() { _ = callbacks.Close() })
 	store := &toolInstallationStore{snapshot: plugin.Snapshot{Installation: installation, Selected: release}}
 	managed := newManagedFixture(t, store, mcpserver.Server{Source: source, Name: name, Enabled: true, Connection: mcpserver.HTTPConnection{URL: endpoint.URL}}, callbacks, nil)
@@ -111,7 +111,7 @@ func TestColdToolRestorationUsesTheOriginalGraphWithoutCurrentCatalog(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation, err := bound.Contract().Prepare(chat.ToolCall{ID: "physical-call", Name: bound.Contract().Definition().Name, Arguments: input.String()}, nil)
+	invocation, err := bound.Contract().Prepare((chat.ToolCall{ID: "physical-call", Name: bound.Contract().Definition().Name, Arguments: input.String()}).Request(), toolcontract.Admission{})
 	if err != nil {
 		t.Fatal(err)
 	}

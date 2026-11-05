@@ -72,6 +72,17 @@ const compactionRecoveryMarker = "E2E_COMPACTION_RECOVERY";
 
 const unavailableProviderStatus = 503;
 
+const unconfirmedModelOutcome = {
+  type: "lost",
+  loss: expect.objectContaining({ reason: "unresolvedEffects", detail: expect.any(String) }),
+  unresolvedEffects: [
+    expect.objectContaining({
+      cause: "runtime_failure",
+      detail: expect.stringContaining("model provider: exchange is unconfirmed"),
+    }),
+  ],
+};
+
 const compactionContextPressure = "context ".repeat(4_200);
 
 const defaultTestDeadlineMilliseconds = 5_000;
@@ -863,7 +874,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     const directory = join(runtimeStore, "runner");
     const socketPath = join(directory, "control.sock");
     const child = spawn(
-      join(environmentRoot, "qimu-runner"),
+      join(environmentRoot, "frame-runner"),
       ["--directory", directory, "--socket", socketPath],
       { cwd: root, stdio: ["ignore", "pipe", "pipe"] },
     );
@@ -1186,8 +1197,13 @@ for await (const line of lines) {
       }),
       execFileAsync(
         "go",
-        ["build", "-o", join(environmentRoot, "qimu-runner"), "./runner/cmd/qimu-runner"],
-        { cwd: resolve(runtimeDirectory, "../qimu") },
+        [
+          "build",
+          "-o",
+          join(environmentRoot, "frame-runner"),
+          "github.com/Tangerg/frame/cmd/frame-runner",
+        ],
+        { cwd: runtimeDirectory },
       ),
       execFileAsync("go", ["build", "-o", cliExecutable, "."], {
         cwd: resolve(runtimeDirectory, "../apps/cli"),
@@ -1492,7 +1508,7 @@ for await (const line of lines) {
     }
   }, 30_000);
 
-  it("cancels the one-shot CLI Run on interruption while the shared Runtime stays available", async () => {
+  it("interrupts the one-shot CLI while preserving its unconfirmed Run and shared Runtime", async () => {
     const observer = createSharedClient();
     const gate = createProviderGate("E2E_SHARED_CANCEL");
     providerGate = gate;
@@ -1520,7 +1536,7 @@ for await (const line of lines) {
       await expect(
         observer.runs.list({ sessionId: asSessionId(session.id) }),
       ).resolves.toMatchObject({
-        data: [{ status: "finished", outcome: { type: "canceled" } }],
+        data: [{ status: "finished", outcome: unconfirmedModelOutcome }],
       });
       const next = await observer.sessions.create({
         workspace: { path: root },
@@ -2072,7 +2088,7 @@ for await (const line of lines) {
         data: [
           expect.objectContaining({
             status: "finished",
-            outcome: expect.objectContaining({ type: "canceled" }),
+            outcome: expect.objectContaining(unconfirmedModelOutcome),
           }),
         ],
       });
@@ -2094,7 +2110,7 @@ for await (const line of lines) {
       const resumedRuns = await client.runs.list({ sessionId });
       expect(resumedRuns.data).toHaveLength(2);
       expect(resumedRuns.data.filter((run) => run.status === "running")).toHaveLength(1);
-      expect(resumedRuns.data.filter((run) => run.outcome?.type === "canceled")).toHaveLength(1);
+      expect(resumedRuns.data.filter((run) => run.outcome?.type === "lost")).toHaveLength(1);
 
       await expect(client.goals.stop(sessionId)).resolves.toMatchObject({
         status: "paused",
@@ -2822,7 +2838,7 @@ for await (const line of lines) {
     }
   }, 30_000);
 
-  it("cancels an in-flight model request and durably closes its stream", async () => {
+  it("preserves an unconfirmed model outcome when cancellation closes its stream", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
     const gate = createProviderGate("E2E_CANCEL");
@@ -2839,14 +2855,8 @@ for await (const line of lines) {
       const runId = asRunId(started.result.runId);
       await within(gate.arrived.promise, "the cancel model request");
 
-      const canceled = await client.runs.cancel(runId, "HTTP cancellation E2E");
-      expect(canceled).toMatchObject({
-        type: "root",
-        run: {
-          id: runId,
-          status: "finished",
-          outcome: { type: "canceled", detail: "HTTP cancellation E2E" },
-        },
+      await expect(client.runs.cancel(runId, "HTTP cancellation E2E")).rejects.toMatchObject({
+        data: { type: "run_finished" },
       });
       await within(gate.closed.promise, "the canceled provider connection to close");
 
@@ -2856,12 +2866,12 @@ for await (const line of lines) {
       );
       expect(events.at(-1)?.event).toMatchObject({
         type: "segment.finished",
-        run: { status: "finished", outcome: { type: "canceled", detail: "HTTP cancellation E2E" } },
+        run: { status: "finished", outcome: unconfirmedModelOutcome },
       });
       await expect(client.runs.get(runId)).resolves.toMatchObject({
         id: runId,
         status: "finished",
-        outcome: { type: "canceled", detail: "HTTP cancellation E2E" },
+        outcome: unconfirmedModelOutcome,
       });
     } finally {
       gate.release.resolve();
@@ -3681,7 +3691,7 @@ for await (const line of lines) {
     expect(current).toBeNull();
   }, 30_000);
 
-  it("stops an active goal, cancels its owned run and resumes from durable usage", async () => {
+  it("stops an active goal, preserves its unconfirmed run and resumes from durable usage", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
     const gate = createProviderGate("E2E_GOAL_STOP");
@@ -3712,7 +3722,7 @@ for await (const line of lines) {
       await expect(client.runs.list({ sessionId })).resolves.toMatchObject({
         data: [
           expect.objectContaining({
-            outcome: expect.objectContaining({ type: "canceled" }),
+            outcome: expect.objectContaining(unconfirmedModelOutcome),
             status: "finished",
           }),
         ],
@@ -3731,7 +3741,7 @@ for await (const line of lines) {
       expect(current).toBeNull();
       const runs = await client.runs.list({ sessionId });
       expect(runs.data).toHaveLength(2);
-      expect(runs.data.filter((run) => run.outcome?.type === "canceled")).toHaveLength(1);
+      expect(runs.data.filter((run) => run.outcome?.type === "lost")).toHaveLength(1);
       expect(runs.data.filter((run) => run.outcome?.type === "completed")).toHaveLength(1);
     } finally {
       gate.release.resolve();

@@ -26,7 +26,7 @@ if (
   const root = fileURLToPath(new URL("../../", import.meta.url));
   await generateWorkspaceContracts(root, {
     command: "go",
-    args: ["run", "./cmd/qimu"],
-    cwd: join(root, "qimu"),
+    args: ["run", "./cmd/flame-sdk"],
+    cwd: join(root, "packages/go-sdk"),
   });
 }

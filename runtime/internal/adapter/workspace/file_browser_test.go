@@ -260,30 +260,43 @@ func TestGrepFilePreservesReadFailureBeforeTextExclusion(t *testing.T) {
 	}
 }
 
-func TestGrepFilePreservesCancellationDuringInvalidText(t *testing.T) {
+func TestGrepFileStopsOnCancellationBeforeTextAdmission(t *testing.T) {
 	cause := errors.New("workspace search retired during read")
 	ctx, cancel := context.WithCancelCause(t.Context())
 	defer cancel(nil)
 	readFailure := errors.New("search source failed")
 	reader := grepFailureReader{content: "needle\n\x00broken\n", err: readFailure, onRead: func() { cancel(cause) }}
-	_, err := grepFile(ctx, reader, "file.txt", workspaceapp.GrepPlan{Pattern: regexp.MustCompile("needle"), Limit: 10}, 100, 10, 100)
-	for _, want := range []error{readFailure, textread.ErrInvalidText, context.Canceled, cause} {
+	result, err := grepFile(ctx, reader, "file.txt", workspaceapp.GrepPlan{Pattern: regexp.MustCompile("needle"), Limit: 10}, 100, 10, 100)
+	for _, want := range []error{readFailure, context.Canceled, cause} {
 		if !errors.Is(err, want) {
 			t.Errorf("grep scan error = %v, want retained cause %v", err, want)
 		}
 	}
+	if len(result.matches) != 0 || result.total != 0 {
+		t.Fatalf("canceled input reached text admission: %+v", result)
+	}
 }
 
-func TestGrepFilePreservesCapacityAndCancellationCauses(t *testing.T) {
-	cause := errors.New("workspace search retired at its source limit")
-	ctx, cancel := context.WithCancelCause(t.Context())
-	defer cancel(nil)
-	reader := grepFailureReader{content: "needle", err: io.EOF, onRead: func() { cancel(cause) }}
-	_, err := grepFile(ctx, reader, "file.txt", workspaceapp.GrepPlan{Pattern: regexp.MustCompile("needle"), Limit: 10}, 5, 10, 100)
-	for _, want := range []error{workspaceapp.ErrGrepResultTooLarge, textread.ErrInputTooLarge, context.Canceled, cause} {
-		if !errors.Is(err, want) {
-			t.Errorf("grep scan error = %v, want retained cause %v", err, want)
+func TestGrepFilePreservesSourceLimitOrCancellationAtAdmission(t *testing.T) {
+	for _, canceled := range []bool{false, true} {
+		cause := errors.New("workspace search retired at its source limit")
+		ctx, cancel := context.WithCancelCause(t.Context())
+		reader := grepFailureReader{content: "needle", err: io.EOF}
+		want := []error{workspaceapp.ErrGrepResultTooLarge, textread.ErrInputTooLarge}
+		if canceled {
+			reader.onRead = func() { cancel(cause) }
+			want = []error{context.Canceled, cause}
 		}
+		result, err := grepFile(ctx, reader, "file.txt", workspaceapp.GrepPlan{Pattern: regexp.MustCompile("needle"), Limit: 10}, 5, 10, 100)
+		for _, retained := range want {
+			if !errors.Is(err, retained) {
+				t.Errorf("canceled=%v grep scan error = %v, want retained cause %v", canceled, err, retained)
+			}
+		}
+		if len(result.matches) != 0 || result.total != 0 || result.sourceBytes != 6 {
+			t.Fatalf("unadmitted input produced matches or lost its source size: %+v", result)
+		}
+		cancel(nil)
 	}
 }
 

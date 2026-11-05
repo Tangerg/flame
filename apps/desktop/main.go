@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/wailsapp/wails/v3/pkg/events"
 	"log"
+
+	"github.com/wailsapp/wails/v3/pkg/events"
 
 	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 

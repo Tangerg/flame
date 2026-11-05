@@ -71,7 +71,7 @@ async function registerProvider(fetcher: (params: unknown) => Promise<string>): 
     definePlugin({
       name: "test.parameterized-data-query",
       setup(ctx) {
-        ctx.contribute(DATA_PROVIDER, { key: "resource", fetcher });
+        ctx.contributions.add(DATA_PROVIDER, { key: "resource", fetcher });
       },
     }),
   );
@@ -133,7 +133,7 @@ describe("createParameterizedDataQuery", () => {
         definePlugin({
           name: "test.retired-data-provider",
           setup(ctx) {
-            ctx.contribute(DATA_PROVIDER, { key: "resource", fetcher: retiredFetcher });
+            ctx.contributions.add(DATA_PROVIDER, { key: "resource", fetcher: retiredFetcher });
           },
         }),
       ]),
@@ -149,7 +149,7 @@ describe("createParameterizedDataQuery", () => {
         definePlugin({
           name: "test.successor-data-provider",
           setup(ctx) {
-            ctx.contribute(DATA_PROVIDER, { key: "resource", fetcher: successorFetcher });
+            ctx.contributions.add(DATA_PROVIDER, { key: "resource", fetcher: successorFetcher });
           },
         }),
       ]),
@@ -171,7 +171,7 @@ describe("createParameterizedDataQuery", () => {
         definePlugin({
           name: "test.cached-retired-data-provider",
           setup(ctx) {
-            ctx.contribute(DATA_PROVIDER, {
+            ctx.contributions.add(DATA_PROVIDER, {
               key: "resource",
               fetcher: vi.fn().mockResolvedValue("cached retired value"),
             });
@@ -192,7 +192,7 @@ describe("createParameterizedDataQuery", () => {
         definePlugin({
           name: "test.cached-successor-data-provider",
           setup(ctx) {
-            ctx.contribute(DATA_PROVIDER, { key: "resource", fetcher: successorFetcher });
+            ctx.contributions.add(DATA_PROVIDER, { key: "resource", fetcher: successorFetcher });
           },
         }),
       ]),
@@ -215,7 +215,7 @@ describe("createParameterizedDataQuery", () => {
       definePlugin({
         name: "test.final-data-provider",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, { key: "resource", fetcher: retiredFetcher });
+          ctx.contributions.add(DATA_PROVIDER, { key: "resource", fetcher: retiredFetcher });
         },
       }),
     ]);
@@ -260,7 +260,7 @@ describe("createParameterizedDataQuery", () => {
       definePlugin({
         name: "test.untouched-key-provider",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, {
+          ctx.contributions.add(DATA_PROVIDER, {
             key: "resource",
             fetcher: (_params?: unknown, signal?: AbortSignal) => {
               stableSignal = signal;
@@ -282,7 +282,7 @@ describe("createParameterizedDataQuery", () => {
       definePlugin({
         name: "test.other-key-provider",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, {
+          ctx.contributions.add(DATA_PROVIDER, {
             key: "other",
             fetcher: vi.fn().mockResolvedValue("other value"),
           });
@@ -306,7 +306,7 @@ describe("createParameterizedDataQuery", () => {
       definePlugin({
         name: "test.base-data-provider",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, { key: "resource", fetcher: retiredFetcher });
+          ctx.contributions.add(DATA_PROVIDER, { key: "resource", fetcher: retiredFetcher });
         },
       }),
     ]);
@@ -322,7 +322,7 @@ describe("createParameterizedDataQuery", () => {
       definePlugin({
         name: "test.override-data-provider",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, { key: "resource", fetcher: successorFetcher });
+          ctx.contributions.add(DATA_PROVIDER, { key: "resource", fetcher: successorFetcher });
         },
       }),
     ]);
@@ -341,7 +341,7 @@ describe("createParameterizedDataQuery", () => {
       definePlugin({
         name: "test.stable-data-provider",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, { key: "resource", fetcher: resourceFetcher });
+          ctx.contributions.add(DATA_PROVIDER, { key: "resource", fetcher: resourceFetcher });
         },
       }),
     ]);
@@ -358,7 +358,7 @@ describe("createParameterizedDataQuery", () => {
       definePlugin({
         name: "test.unrelated-data-provider",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, {
+          ctx.contributions.add(DATA_PROVIDER, {
             key: "unrelated",
             fetcher: vi.fn().mockResolvedValue("unrelated value"),
           });
@@ -377,7 +377,7 @@ describe("createParameterizedDataQuery", () => {
       definePlugin({
         name: "test.handoff-base-provider",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, { key: "resource", fetcher: () => retired.promise });
+          ctx.contributions.add(DATA_PROVIDER, { key: "resource", fetcher: () => retired.promise });
         },
       }),
     ]);
@@ -405,7 +405,7 @@ describe("createParameterizedDataQuery", () => {
       definePlugin({
         name: "test.handoff-successor-provider",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, { key: "resource", fetcher: successorFetcher });
+          ctx.contributions.add(DATA_PROVIDER, { key: "resource", fetcher: successorFetcher });
         },
       }),
     ]);
@@ -413,7 +413,7 @@ describe("createParameterizedDataQuery", () => {
       definePlugin({
         name: "test.handoff-unrelated-provider",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, { key: "unrelated", fetcher: async () => "other" });
+          ctx.contributions.add(DATA_PROVIDER, { key: "unrelated", fetcher: async () => "other" });
         },
       }),
     ]);

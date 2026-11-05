@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"context"
+
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/models/deepseek"

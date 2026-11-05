@@ -7,7 +7,7 @@ import (
 )
 
 func ModelFacts(selection modelchoice.Selection) *catalog.Model {
-	entry, found := catalog.Default.Lookup(selection.Provider(), selection.Model())
+	entry, found := catalog.LookupModel(selection.Provider(), selection.Model())
 	if !found {
 		return nil
 	}

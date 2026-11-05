@@ -3,9 +3,10 @@ package sessions
 import (
 	"context"
 	"errors"
-	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"testing"
 	"time"
+
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )

@@ -4,16 +4,19 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/google/uuid"
 )
 
@@ -75,20 +78,20 @@ func (o *CallComposition) SelectModel(ctx context.Context, proposal models.Selec
 	}
 	id := uuid.NewString()
 	target := portable.Target{Scope: extension.ScopeCall, Reference: id}
-	invocation := portable.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: target}
+	invocation := framemcp.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: target}
 	if parent, err := operation.Capture(ctx, target); err == nil {
 		invocation.Origin = parent.Origin
 		invocation.Parent = parent.ID
 	}
-	if parent, err := qimumcp.InvocationFromContext(ctx); err == nil {
+	if parent, err := pluginmcp.InvocationFromContext(ctx); err == nil {
 		invocation.Origin = parent.Origin
 		invocation.Parent = parent.ID
 	}
-	ctx, err = qimumcp.WithInvocation(ctx, invocation)
+	ctx, err = pluginmcp.WithInvocation(ctx, invocation)
 	if err != nil {
 		return modelchoice.Selection{}, err
 	}
-	exported, err := qimumcp.ResolveCapability(ctx, session, binding.Export, contract)
+	exported, err := pluginmcp.ResolveCapability(ctx, session, binding.Export, contract)
 	if err != nil {
 		return modelchoice.Selection{}, err
 	}

@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.qimu/portable/1",
+  "protocol": "io.github.tangerg.flame/plugin/1",
   "reference": "flame.code-intelligence.v1",
   "composition": "selection",
   "scope": "installation",
@@ -21,7 +21,7 @@
                 "type": "string"
               },
               "version": {
-                "$ref": "#/$defs/integrity.Digest"
+                "$ref": "#/$defs/value.Digest"
               },
               "workspace": {
                 "type": "string"
@@ -35,7 +35,7 @@
             ],
             "type": "object"
           },
-          "integrity.Digest": {
+          "value.Digest": {
             "allOf": [
               {
                 "pattern": "^[0-9a-f]{64}$"
@@ -54,7 +54,7 @@
             "type": "string"
           },
           "version": {
-            "$ref": "#/$defs/integrity.Digest"
+            "$ref": "#/$defs/value.Digest"
           },
           "workspace": {
             "type": "string"
@@ -77,7 +77,7 @@
                 "type": "string"
               },
               "version": {
-                "$ref": "#/$defs/integrity.Digest"
+                "$ref": "#/$defs/value.Digest"
               }
             },
             "required": [
@@ -85,7 +85,7 @@
             ],
             "type": "object"
           },
-          "integrity.Digest": {
+          "value.Digest": {
             "allOf": [
               {
                 "pattern": "^[0-9a-f]{64}$"
@@ -101,7 +101,7 @@
             "type": "string"
           },
           "version": {
-            "$ref": "#/$defs/integrity.Digest"
+            "$ref": "#/$defs/value.Digest"
           }
         },
         "required": [
@@ -127,7 +127,7 @@
                 "type": "string"
               },
               "version": {
-                "$ref": "#/$defs/integrity.Digest"
+                "$ref": "#/$defs/value.Digest"
               },
               "workspace": {
                 "type": "string"
@@ -160,7 +160,7 @@
             ],
             "type": "object"
           },
-          "integrity.Digest": {
+          "value.Digest": {
             "allOf": [
               {
                 "pattern": "^[0-9a-f]{64}$"
@@ -203,7 +203,7 @@
                 "type": "string"
               },
               "version": {
-                "$ref": "#/$defs/integrity.Digest"
+                "$ref": "#/$defs/value.Digest"
               }
             },
             "required": [
@@ -213,7 +213,7 @@
             ],
             "type": "object"
           },
-          "integrity.Digest": {
+          "value.Digest": {
             "allOf": [
               {
                 "pattern": "^[0-9a-f]{64}$"
@@ -235,7 +235,7 @@
             "type": "string"
           },
           "version": {
-            "$ref": "#/$defs/integrity.Digest"
+            "$ref": "#/$defs/value.Digest"
           }
         },
         "required": [

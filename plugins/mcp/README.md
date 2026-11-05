@@ -68,6 +68,6 @@ redeemed for a different source. OAuth tokens, environment values, request heade
 tool authorization and execution receipts stay with Runtime.
 
 Disabling or removing the selected connector withdraws external tools. Installed package
-backends retain their own Qimu bindings. Selecting the original connector again restores
+backends retain their own Frame bindings. Selecting the original connector again restores
 its directory. Restart marks interrupted sign-ins as unconfirmed and preserves completed attempts
 for the published retention window.

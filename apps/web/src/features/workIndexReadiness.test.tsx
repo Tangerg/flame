@@ -51,7 +51,7 @@ beforeEach(async (context) => {
   actions.chooseSessionFolder.mockClear();
   actions.startSessionInFolder.mockClear();
   await contributeForTest((ctx) => {
-    ctx.contribute(DATA_PROVIDER, { key: WORKSPACE_PROJECTS_KEY, fetcher: readProjects });
+    ctx.contributions.add(DATA_PROVIDER, { key: WORKSPACE_PROJECTS_KEY, fetcher: readProjects });
   });
   const owned = createTestClient({ start: false });
   client = owned;

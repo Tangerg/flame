@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
 )
 
 type recordingModel struct {
@@ -38,7 +39,7 @@ func (r *recordingModel) Stream(ctx context.Context, request *chat.Request) iter
 
 func TestCompleteBuildsOneMiddlewareFreePrompt(t *testing.T) {
 	model := &recordingModel{}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +152,7 @@ func TestCompleteRejectsIncompleteTextGenerations(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			client, err := chatclient.New(auxiliaryResponseModel{response: tc.response}, chatclient.Config{})
+			client, err := chatclient.New(auxiliaryResponseModel{response: tc.response})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -170,6 +171,31 @@ func TestCompleteRejectsIncompleteTextGenerations(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestCompletePreservesReleaseUncertaintyAfterConfirmedIncompleteOutput(t *testing.T) {
+	releaseFailure := errors.New("original model release is unconfirmed")
+	for _, releaseErr := range []error{nil, releaseFailure} {
+		message := chat.NewAssistantMessage(chat.NewTextPart("unfinished summary"))
+		client, err := chatclient.New(auxiliaryResponseModel{response: &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonLength}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		resolver := AuxiliaryResolver(func(context.Context, AuxiliaryBudget) (SelectedChat, func() error, error) {
+			return auxiliaryFixture(&client), func() error { return releaseErr }, nil
+		})
+		text, err := resolver.Complete(t.Context(), AuxiliaryPrompt{Operation: "test", SystemPrompt: "summarize", UserPrompt: "history", MaxInputBytes: 1024, MaxOutputTokens: 128})
+		want := coreinvocation.FailureFailed
+		if releaseErr != nil {
+			want = coreinvocation.FailureUnknown
+			if !errors.Is(err, releaseErr) {
+				t.Fatalf("completion lost its original release failure: %v", err)
+			}
+		}
+		if text != "" || !errors.Is(err, chatclient.ErrInvalidOutput) || coreinvocation.ClassifyFailure(err) != want {
+			t.Fatalf("incomplete output changed its settlement: text=%q kind=%v error=%v", text, coreinvocation.ClassifyFailure(err), err)
+		}
 	}
 }
 
@@ -193,7 +219,7 @@ func TestAuxiliaryRequestLifetimeBelongsToCaller(t *testing.T) {
 						return nil, callCtx.Err()
 					}
 				})
-				client, err := chatclient.New(model, chatclient.Config{})
+				client, err := chatclient.New(model)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -232,7 +258,7 @@ func TestCompleteUsesScopeTypedTextContract(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			client, err := chatclient.New(auxiliaryResponseModel{response: response}, chatclient.Config{})
+			client, err := chatclient.New(auxiliaryResponseModel{response: response})
 			if err != nil {
 				t.Fatal(err)
 			}

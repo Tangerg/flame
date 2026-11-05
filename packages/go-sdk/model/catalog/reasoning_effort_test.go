@@ -66,7 +66,7 @@ func mustReasoningSelection(t *testing.T, provider, model, effort string) modelc
 }
 
 func referenceModel(selection modelchoice.Selection) *catalog.Model {
-	entry, found := catalog.Default.Lookup(selection.Provider(), selection.Model())
+	entry, found := catalog.LookupModel(selection.Provider(), selection.Model())
 	if !found {
 		return nil
 	}

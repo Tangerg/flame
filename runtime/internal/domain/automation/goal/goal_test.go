@@ -3,8 +3,10 @@ package goal
 import (
 	"errors"
 	"fmt"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/qimu/integrity"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"strings"
 	"testing"
 	"time"
@@ -309,7 +311,7 @@ func pausedByOutcome(reason Reason, want run.Outcome) bool {
 }
 
 func newFixture(sessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities, incarnation string, now time.Time) (Goal, error) {
-	return Restore(Snapshot{Author: extension.ContributionSource{InstallationID: "eeb329cd-c7ce-40c9-bd90-6821fef06d30", Release: integrity.Hash([]byte("unit")).String(), Contribution: "test"}, SessionID: sessionID, Objective: objective, Status: StatusActive, ModelSelection: selection, Capabilities: capabilities.Normalized(), IncarnationID: incarnation, Revision: 1, CreatedAt: now.UTC(), UpdatedAt: now.UTC()})
+	return Restore(Snapshot{Author: extension.ContributionSource{InstallationID: "eeb329cd-c7ce-40c9-bd90-6821fef06d30", Release: framevalue.Hash([]byte("unit")).String(), Contribution: "test"}, SessionID: sessionID, Objective: objective, Status: StatusActive, ModelSelection: selection, Capabilities: capabilities.Normalized(), IncarnationID: incarnation, Revision: 1, CreatedAt: now.UTC(), UpdatedAt: now.UTC()})
 }
 func publishedFixture(value Goal, now time.Time) (Goal, error) {
 	snapshot := value.Snapshot()

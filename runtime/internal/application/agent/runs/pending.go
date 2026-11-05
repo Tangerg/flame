@@ -6,11 +6,12 @@ import (
 	"slices"
 	"time"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 // Pending is one complete Run-tree barrier awaiting human decisions. The set is
@@ -59,7 +60,7 @@ type InterruptBinding struct {
 	// a remembered rule without inferring authority from a display name. Both are
 	// empty for a Question boundary.
 	ToolRef           tool.Ref
-	SourceFingerprint integrity.Digest
+	SourceFingerprint framevalue.Digest
 }
 
 type memberRequestIdentity struct {

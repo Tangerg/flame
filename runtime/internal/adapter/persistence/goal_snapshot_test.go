@@ -3,21 +3,19 @@ package persistence
 import (
 	"context"
 	"database/sql"
-	"database/sql/driver"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
-	"net/url"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 )
 
 // The separate writer commits after the Goal row is read and before usage is
@@ -31,8 +29,8 @@ func TestGoalReadsKeepLifecycleAndUsageInOneSnapshot(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = writer.Close() })
-			goals := newGoalStore(writer)
-			seedSession(t, newSessionStore(writer), "ses_goal_snapshot")
+			goals := newGoalStore(databaseFor(writer))
+			seedSession(t, newSessionStore(databaseFor(writer)), "ses_goal_snapshot")
 			now := time.Date(2026, 10, 9, 1, 0, 0, 0, time.UTC)
 			initial, err := goaltest.New("ses_goal_snapshot", "finish", testReasoningSelection(t, "provider", "model", ""), run.Capabilities{}, "goal_snapshot", now)
 			if err != nil {
@@ -53,28 +51,26 @@ func TestGoalReadsKeepLifecycleAndUsageInOneSnapshot(t *testing.T) {
 					Steps: 3, Usage: &accounting.Usage{Total: accounting.Totals{Cost: testsupport.OptionalCost(new(0.25))}},
 				}),
 			})
-			snapshotDriver := goalSnapshotDriver{
-				Driver: writer.Driver(),
-				afterGoalRead: func() error {
-					return sqlite.RunInTx(t.Context(), writer, func(ctx context.Context) error {
-						if err := newRunStore(writer).Restore(ctx, terminal); err != nil {
-							return err
-						}
-						applied, err := goals.Save(ctx, change)
-						if err == nil && !applied {
-							return fmt.Errorf("Goal change was not applied")
-						}
+			transition := func() error {
+				return sqlite.RunInTx(t.Context(), writer, func(ctx context.Context) error {
+					if err := newRunStore(databaseFor(writer)).Restore(ctx, terminal); err != nil {
 						return err
-					})
-				},
+					}
+					applied, err := goals.Save(ctx, change)
+					if err == nil && !applied {
+						return fmt.Errorf("Goal change was not applied")
+					}
+					return err
+				})
 			}
-			reader := sql.OpenDB(goalSnapshotConnector{
-				driver: snapshotDriver,
-				dsn:    "file:" + url.PathEscape(filepath.ToSlash(path)) + "?_pragma=journal_mode(WAL)&_pragma=foreign_keys(ON)&_pragma=busy_timeout(5000)",
-			})
-			reader.SetMaxOpenConns(1)
+			reader, err := openDatabase(t.Context(), path)
+			if err != nil {
+				t.Fatal(err)
+			}
 			t.Cleanup(func() { _ = reader.Close() })
-			readStore := newGoalStore(reader)
+			readStore := newGoalStore(&database{boundary: goalSnapshotBoundary{
+				databaseBoundary: independentDatabase{db: reader}, afterGoalRead: transition,
+			}})
 			var observed goal.Goal
 			if list {
 				values, err := readStore.List(t.Context())
@@ -100,60 +96,29 @@ func TestGoalReadsKeepLifecycleAndUsageInOneSnapshot(t *testing.T) {
 	}
 }
 
-type goalSnapshotDriver struct {
-	driver.Driver
+type goalSnapshotBoundary struct {
+	databaseBoundary
 	afterGoalRead func() error
 }
 
-type goalSnapshotConnector struct {
-	driver goalSnapshotDriver
-	dsn    string
-}
-
-func (c goalSnapshotConnector) Connect(context.Context) (driver.Conn, error) {
-	return c.driver.Open(c.dsn)
-}
-
-func (c goalSnapshotConnector) Driver() driver.Driver { return c.driver }
-
-func (d goalSnapshotDriver) Open(name string) (driver.Conn, error) {
-	connection, err := d.Driver.Open(name)
-	if err != nil {
-		return nil, err
-	}
-	return &goalSnapshotConnection{Conn: connection, afterGoalRead: d.afterGoalRead}, nil
-}
-
-type goalSnapshotConnection struct {
-	driver.Conn
-	afterGoalRead func() error
-}
-
-func (c *goalSnapshotConnection) BeginTx(ctx context.Context, options driver.TxOptions) (driver.Tx, error) {
-	return c.Conn.(driver.ConnBeginTx).BeginTx(ctx, options)
-}
-
-func (c *goalSnapshotConnection) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
-	rows, err := c.Conn.(driver.QueryerContext).QueryContext(ctx, query, args)
-	if err != nil || !strings.Contains(query, "FROM goals") {
-		return rows, err
-	}
-	return &goalSnapshotRows{Rows: rows, afterGoalRead: c.afterGoalRead}, nil
-}
-
-type goalSnapshotRows struct {
-	driver.Rows
-	afterGoalRead func() error
-	once          sync.Once
-	closeError    error
-}
-
-func (r *goalSnapshotRows) Close() error {
-	r.once.Do(func() {
-		r.closeError = r.Rows.Close()
-		if r.closeError == nil {
-			r.closeError = r.afterGoalRead()
-		}
+func (b goalSnapshotBoundary) read(ctx context.Context, read func(sqlite.Reader) error) error {
+	return b.databaseBoundary.read(ctx, func(reader sqlite.Reader) error {
+		return read(&goalSnapshotReader{Reader: reader, afterGoalRead: b.afterGoalRead})
 	})
-	return r.closeError
+}
+
+type goalSnapshotReader struct {
+	sqlite.Reader
+	afterGoalRead func() error
+	changed       bool
+}
+
+func (r *goalSnapshotReader) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	if !r.changed && strings.Contains(query, "FROM runs") {
+		r.changed = true
+		if err := r.afterGoalRead(); err != nil {
+			return nil, err
+		}
+	}
+	return r.Reader.QueryContext(ctx, query, args...)
 }

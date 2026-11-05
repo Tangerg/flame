@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 func (e *Endpoint) enforceCapabilities(ctx context.Context, meta MethodMeta, parameters any) *protocol.Failure {
@@ -85,7 +84,7 @@ func lookupValue(value reflect.Value, path string) (reflect.Value, bool) {
 		if !current.IsValid() || current.Kind() != reflect.Struct {
 			return reflect.Value{}, false
 		}
-		field, ok := jsonvalue.LookupField(current.Type(), segment)
+		field, ok := protocol.WireFieldNamed(current.Type(), segment)
 		if !ok {
 			return reflect.Value{}, false
 		}

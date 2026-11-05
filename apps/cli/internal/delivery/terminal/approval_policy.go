@@ -8,7 +8,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/core/layout"
+	"github.com/Tangerg/oolong/ui/core/layout"
 )
 
 // approvalScreens chooses the Runtime approval mode and manages remembered

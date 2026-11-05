@@ -132,7 +132,7 @@ export function ProjectsSection() {
 export const sidebarProjects = definePlugin({
   name: "flame.builtin.sidebar-projects",
   setup(ctx) {
-    contributeWorkIndexItem(ctx, {
+    contributeWorkIndexItem(ctx.contributions, {
       id: "projects",
       order: 0,
       component: ProjectsSection,

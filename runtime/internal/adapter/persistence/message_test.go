@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"errors"
 	"path/filepath"
@@ -8,22 +10,61 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 	history "github.com/Tangerg/scope/core/history"
-	"github.com/Tangerg/scope/core/history/storetest"
 )
 
-// TestMessageStoreSatisfiesTheHistoryStoreContract runs Scope's own conformance
-// suite against the durable store: it fixes which history capabilities this
-// store publishes, and proves that a canceled context or an invalid
-// conversation identity is refused before the database is touched. The store
-// implements the contract Scope defines, so Scope is what decides whether it
-// does.
-func TestMessageStoreSatisfiesTheHistoryStoreContract(t *testing.T) {
-	storetest.Run(t, new(MessageStore), storetest.Capabilities{
-		Reader: true, Writer: true, Clearer: true,
-	})
+func TestMessageStoreAdmitsConversationBeforeStorage(t *testing.T) {
+	store := new(MessageStore)
+	operations := map[string]func(context.Context, history.ConversationID) error{
+		"read":  func(ctx context.Context, id history.ConversationID) error { _, err := store.Read(ctx, id); return err },
+		"count": func(ctx context.Context, id history.ConversationID) error { _, err := store.Count(ctx, id); return err },
+		"write": func(ctx context.Context, id history.ConversationID) error {
+			return store.Write(ctx, id, chat.NewUserMessage(chat.NewTextPart("message")))
+		},
+		"replace":  func(ctx context.Context, id history.ConversationID) error { return store.Replace(ctx, id) },
+		"clear":    store.Clear,
+		"truncate": func(ctx context.Context, id history.ConversationID) error { return store.Truncate(ctx, id, 0) },
+	}
+	for name, operation := range operations {
+		t.Run(name, func(t *testing.T) {
+			if err := operation(t.Context(), ""); !errors.Is(err, history.ErrInvalidConversationID) {
+				t.Fatalf("invalid conversation: %v", err)
+			}
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+			if err := operation(ctx, "conversation"); !errors.Is(err, context.Canceled) {
+				t.Fatalf("canceled operation: %v", err)
+			}
+		})
+	}
+}
+
+func TestMessageStoreClearRetainsMutableConversation(t *testing.T) {
+	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store := newMessageStore(databaseFor(db))
+	first := chat.NewUserMessage(chat.NewTextPart("first"))
+	next := chat.NewUserMessage(chat.NewTextPart("next"))
+	if err := store.Write(t.Context(), "conversation", first); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Clear(t.Context(), "conversation"); err != nil {
+		t.Fatal(err)
+	}
+	if messages, err := store.Read(t.Context(), "conversation"); err != nil || len(messages) != 0 {
+		t.Fatalf("cleared history = %v, %v", messages, err)
+	}
+	if err := store.Write(t.Context(), "conversation", next); err != nil {
+		t.Fatal(err)
+	}
+	if messages, err := store.Read(t.Context(), "conversation"); err != nil || !reflect.DeepEqual(messages, []chat.Message{next}) {
+		t.Fatalf("rewritten history = %v, %v", messages, err)
+	}
 }
 
 func TestMessageStorePreservesOpaqueProviderCallIDs(t *testing.T) {
@@ -32,13 +73,13 @@ func TestMessageStorePreservesOpaqueProviderCallIDs(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newMessageStore(db)
+	store := newMessageStore(databaseFor(db))
 	id := " provider\u200b" + strings.Repeat("界", 513) + "\n"
 	want := []chat.Message{
 		chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: id, Name: "inspect", Arguments: `{}`})),
-		chat.NewToolMessage(chat.ToolResult{ID: id, Name: "inspect", Output: chat.NewTextToolOutput("contents")}),
+		chat.NewToolMessage(chat.ToolResult{ID: id, Name: "inspect", Output: toolcontract.NewTextOutput("contents")}),
 	}
-	if _, err := store.Write(t.Context(), "conv", want...); err != nil {
+	if err := store.Write(t.Context(), "conv", want...); err != nil {
 		t.Fatal(err)
 	}
 	got, err := store.Read(t.Context(), "conv")
@@ -61,10 +102,10 @@ func TestMessageStore_ReplaceIsTransactional(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newMessageStore(db)
+	store := newMessageStore(databaseFor(db))
 	ctx := context.Background()
 
-	if _, writeErr := store.Write(ctx, "conv",
+	if writeErr := store.Write(ctx, "conv",
 		chat.NewUserMessage(chat.NewTextPart("one")), chat.NewUserMessage(chat.NewTextPart("two")), chat.NewUserMessage(chat.NewTextPart("three"))); writeErr != nil {
 		t.Fatalf("Write: %v", writeErr)
 	}
@@ -100,14 +141,14 @@ func TestMessageStore_CountMatchesReadLength(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newMessageStore(db)
+	store := newMessageStore(databaseFor(db))
 	ctx := context.Background()
 
 	if n, countErr := store.Count(ctx, "conv"); countErr != nil || n != 0 {
 		t.Fatalf("Count of empty = (%d, %v), want (0, nil)", n, countErr)
 	}
 
-	if _, writeErr := store.Write(ctx, "conv",
+	if writeErr := store.Write(ctx, "conv",
 		chat.NewUserMessage(chat.NewTextPart("one")), chat.NewUserMessage(chat.NewTextPart("two")), chat.NewUserMessage(chat.NewTextPart("three"))); writeErr != nil {
 		t.Fatalf("Write: %v", writeErr)
 	}
@@ -130,8 +171,8 @@ func TestMessageStoreReadRejectsMalformedRows(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newMessageStore(db)
-	if _, err := store.Write(t.Context(), "conv", chat.NewUserMessage(chat.NewTextPart("valid"))); err != nil {
+	store := newMessageStore(databaseFor(db))
+	if err := store.Write(t.Context(), "conv", chat.NewUserMessage(chat.NewTextPart("valid"))); err != nil {
 		t.Fatal(err)
 	}
 	for conversation, row := range map[string]string{
@@ -159,8 +200,8 @@ func TestMessageStore_ReplaceRollsBackAsOneStep(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newMessageStore(db)
-	if _, err := store.Write(t.Context(), "conv",
+	store := newMessageStore(databaseFor(db))
+	if err := store.Write(t.Context(), "conv",
 		chat.NewUserMessage(chat.NewTextPart("one")), chat.NewUserMessage(chat.NewTextPart("two"))); err != nil {
 		t.Fatal(err)
 	}
@@ -195,15 +236,15 @@ func TestMessageStoreTruncateKeepsAPrefixInPlace(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newMessageStore(db)
+	store := newMessageStore(databaseFor(db))
 	ctx := t.Context()
 
 	for _, text := range []string{"one", "two", "three"} {
-		if _, err := store.Write(ctx, "conv", chat.NewUserMessage(chat.NewTextPart(text))); err != nil {
+		if err := store.Write(ctx, "conv", chat.NewUserMessage(chat.NewTextPart(text))); err != nil {
 			t.Fatalf("Write %s: %v", text, err)
 		}
 	}
-	if _, err := store.Write(ctx, "other", chat.NewUserMessage(chat.NewTextPart("keep"))); err != nil {
+	if err := store.Write(ctx, "other", chat.NewUserMessage(chat.NewTextPart("keep"))); err != nil {
 		t.Fatalf("Write other: %v", err)
 	}
 
@@ -230,7 +271,7 @@ func TestMessageStoreTruncateKeepsAPrefixInPlace(t *testing.T) {
 
 	// A later append continues after the kept prefix rather than reusing its
 	// coordinates, so a watermark taken now still means what it says.
-	if _, err := store.Write(ctx, "conv", chat.NewUserMessage(chat.NewTextPart("four"))); err != nil {
+	if err := store.Write(ctx, "conv", chat.NewUserMessage(chat.NewTextPart("four"))); err != nil {
 		t.Fatalf("Write after truncation: %v", err)
 	}
 	after, _ := store.Read(ctx, "conv")

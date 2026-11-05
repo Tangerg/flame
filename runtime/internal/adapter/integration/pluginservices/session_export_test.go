@@ -7,11 +7,11 @@ import (
 	"testing"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	qimumcp "github.com/Tangerg/qimu/mcp"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 func TestRenderedSessionDocumentRequiresCompleteOriginalOutput(t *testing.T) {
-	type event = qimumcp.StreamValue[jsontext.Value, jsontext.Value]
+	type event = pluginmcp.StreamValue[jsontext.Value, jsontext.Value]
 	chunk := jsontext.Value(`"doc"`)
 	complete, err := json.Marshal(pluginsdk.IdentifyDocument([]byte("doc")))
 	if err != nil {

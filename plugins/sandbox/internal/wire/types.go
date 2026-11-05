@@ -1,10 +1,8 @@
 package wire
 
 import (
-	json "encoding/json"
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
-	"github.com/invopop/jsonschema"
-	"strconv"
+	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 type ExecuteInput struct {
@@ -21,10 +19,9 @@ type Limits struct {
 	CPUAndMemoryQuotas     bool   `json:"cpuAndMemoryQuotas"`
 }
 
-func (ExecuteInput) JSONSchemaExtend(schema *jsonschema.Schema) {
-	script, _ := schema.Properties.Get("script")
-	// Structural character admission precedes the program owner's byte limit.
-	script.MaxLength = new(uint64(sandbox.MaxScriptBytes))
-	timeout, _ := schema.Properties.Get("timeoutMillis")
-	timeout.Maximum = json.Number(strconv.Itoa(sandbox.MaxTimeoutMillis))
+func (ExecuteInput) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"script":        {MaxLength: new(uint64(sandbox.MaxScriptBytes))},
+		"timeoutMillis": {Maximum: new(float64(sandbox.MaxTimeoutMillis))},
+	}}
 }

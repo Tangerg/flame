@@ -5,23 +5,22 @@ package testsupport
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/history"
-	"github.com/Tangerg/scope/core/history/inmemory"
 )
 
-// ConversationStore doubles the Session-keyed conversation port over Scope's
-// in-memory history store, so a fixture cannot drift from the storage semantics
-// production depends on. Only the retention capabilities Runtime adds beyond
-// Scope's contract are implemented here.
+// ConversationStore is a synchronized test double for Flame's mutable
+// Session-keyed conversation port, including atomic retention operations.
 type ConversationStore struct {
-	messages *inmemory.Store
+	mu       sync.Mutex
+	messages map[history.ConversationID][]chat.Message
 }
 
 // NewConversationStore returns an empty app-port-compatible conversation store.
 func NewConversationStore() *ConversationStore {
-	return &ConversationStore{messages: new(inmemory.Store)}
+	return &ConversationStore{messages: make(map[history.ConversationID][]chat.Message)}
 }
 
 // Read returns the messages stored for sessionID.
@@ -30,7 +29,9 @@ func (s *ConversationStore) Read(ctx context.Context, sessionID string) ([]chat.
 	if err != nil {
 		return nil, err
 	}
-	return s.messages.Read(ctx, id)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return cloneConversation(s.messages[id]), nil
 }
 
 // Write appends messages to sessionID.
@@ -39,11 +40,15 @@ func (s *ConversationStore) Write(ctx context.Context, sessionID string, message
 	if err != nil {
 		return err
 	}
-	outcome, err := s.messages.Write(ctx, id, messages...)
-	if validateErr := outcome.ValidateFor(len(messages), err); validateErr != nil {
-		return validateErr
+	for _, message := range messages {
+		if err := message.Validate(); err != nil {
+			return err
+		}
 	}
-	return err
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.messages[id] = append(s.messages[id], cloneConversation(messages)...)
+	return nil
 }
 
 // Clear removes sessionID's messages.
@@ -52,18 +57,27 @@ func (s *ConversationStore) Clear(ctx context.Context, sessionID string) error {
 	if err != nil {
 		return err
 	}
-	return s.messages.Clear(ctx, id)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.messages, id)
+	return nil
 }
 
 // Replace atomically sets sessionID's messages.
 func (s *ConversationStore) Replace(ctx context.Context, sessionID string, messages ...chat.Message) error {
-	if err := s.Clear(ctx, sessionID); err != nil {
+	id, err := conversationID(ctx, sessionID)
+	if err != nil {
 		return err
 	}
-	if len(messages) == 0 {
-		return nil
+	for _, message := range messages {
+		if err := message.Validate(); err != nil {
+			return err
+		}
 	}
-	return s.Write(ctx, sessionID, messages...)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.messages[id] = cloneConversation(messages)
+	return nil
 }
 
 // Truncate keeps sessionID's first keepN messages.
@@ -71,14 +85,17 @@ func (s *ConversationStore) Truncate(ctx context.Context, sessionID string, keep
 	if keepN < 0 {
 		return fmt.Errorf("conversation fixture: keep count %d is negative", keepN)
 	}
-	stored, err := s.Read(ctx, sessionID)
+	id, err := conversationID(ctx, sessionID)
 	if err != nil {
 		return err
 	}
-	if keepN >= len(stored) {
-		return nil
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	stored := s.messages[id]
+	if keepN < len(stored) {
+		s.messages[id] = cloneConversation(stored[:keepN])
 	}
-	return s.Replace(ctx, sessionID, stored[:keepN]...)
+	return nil
 }
 
 // Count returns sessionID's message count.
@@ -101,4 +118,12 @@ func conversationID(ctx context.Context, sessionID string) (history.Conversation
 		return "", err
 	}
 	return id, nil
+}
+
+func cloneConversation(messages []chat.Message) []chat.Message {
+	cloned := make([]chat.Message, len(messages))
+	for index, message := range messages {
+		cloned[index] = message.Clone()
+	}
+	return cloned
 }

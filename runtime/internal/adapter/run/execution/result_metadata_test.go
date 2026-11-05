@@ -8,11 +8,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
 func TestPendingToolMetadataPreservesProjectionAndRejectsForeignOwnership(t *testing.T) {
-	processID, err := agent.ParseProcessID("process:metadata")
+	processID, err := scoperun.ParseProcessID("process:metadata")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,9 +31,9 @@ func TestPendingToolMetadataPreservesProjectionAndRejectsForeignOwnership(t *tes
 		t.Fatal(err)
 	}
 	want := toolResultMetadata{
-		MemberID: processID.String(),
-		Start:    runs.ToolCallStarted{CallID: identity.String(), SourceCallID: "provider_reused", ModelCallSequence: 2, ToolCallIndex: 1, ToolName: published, Source: source, Arguments: `{"path":"edited"}`},
-		Result:   &preview, Offload: &transcript.ToolResultRef{ID: "ABCD"},
+		MemberID: processID.String(), ProcessID: processID.String(),
+		Start:  runs.ToolCallStarted{CallID: identity.String(), SourceCallID: "provider_reused", ModelCallSequence: 2, ToolCallIndex: 1, ToolName: published, Source: source, Arguments: `{"path":"edited"}`},
+		Result: &preview, Offload: &transcript.ToolResultRef{ID: "ABCD"},
 		OutputText: "UI preview", MutatedPaths: []string{"/workspace/a", "/workspace/b"},
 		Failure: &tool.Failure{Kind: tool.FailureExecution, Detail: "second write failed"},
 	}
@@ -44,7 +45,7 @@ func TestPendingToolMetadataPreservesProjectionAndRejectsForeignOwnership(t *tes
 	if err := json.Unmarshal(payload, &records); err != nil {
 		t.Fatal(err)
 	}
-	processes := map[agent.ProcessID]struct{}{processID: {}}
+	processes := map[scoperun.ProcessID]struct{}{processID: {}}
 	decoded, err := decodeToolMetadata(records, processes)
 	if err != nil || !reflect.DeepEqual(decoded[identity.String()], want) {
 		t.Fatalf("projection changed: %+v, %v", decoded, err)
@@ -58,7 +59,7 @@ func TestPendingToolMetadataPreservesProjectionAndRejectsForeignOwnership(t *tes
 		change func(*toolResultMetadata)
 	}{
 		{"foreign member", func(value *toolResultMetadata) {
-			foreign, _ := agent.ParseProcessID("process:foreign")
+			foreign, _ := scoperun.ParseProcessID("process:foreign")
 			id, _ := logicalToolCallID(foreign, 2, 1, "provider_reused", published)
 			value.MemberID, value.Start.CallID = foreign.String(), id.String()
 		}},

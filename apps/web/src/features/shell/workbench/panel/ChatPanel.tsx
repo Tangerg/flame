@@ -277,23 +277,23 @@ export function ChatPanel({ onSend, ref }: Props) {
     if (!row) return;
     const reconcile = () => setRowWidth(row.clientWidth);
     reconcile();
-    let delivered = false;
-    let queued = 0;
+    const deliveredState = { value: false };
+    const queuedState = { value: 0 };
     const observer = new ResizeObserver(() => {
-      if (!delivered) {
-        delivered = true;
+      if (!deliveredState.value) {
+        deliveredState.value = true;
         reconcile();
         return;
       }
-      if (queued) return;
-      queued = requestAnimationFrame(() => {
-        queued = 0;
+      if (queuedState.value) return;
+      queuedState.value = requestAnimationFrame(() => {
+        queuedState.value = 0;
         reconcile();
       });
     });
     observer.observe(row);
     return () => {
-      if (queued) cancelAnimationFrame(queued);
+      if (queuedState.value) cancelAnimationFrame(queuedState.value);
       observer.disconnect();
     };
   }, []);

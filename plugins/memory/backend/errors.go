@@ -3,13 +3,14 @@ package main
 import (
 	"errors"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 
 	app "github.com/Tangerg/flame/plugins/memory/internal/application"
 
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
-	"github.com/Tangerg/qimu/portable"
 )
 
 // errorCodes is ordered: an error joining several causes takes the first
@@ -41,7 +42,7 @@ func codedCause(code string) error {
 }
 
 func classify(err error) (string, bool) {
-	if failure, ok := errors.AsType[*portable.Refusal](err); ok {
+	if failure, ok := errors.AsType[*framemcp.Refusal](err); ok {
 		if codedCause(failure.Code) != nil {
 			return failure.Code, true
 		}

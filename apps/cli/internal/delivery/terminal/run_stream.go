@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/core/term"
+	"github.com/Tangerg/oolong/ui/core/term"
 )
 
 const (
@@ -249,7 +249,7 @@ func (r *runs) followOpening(
 	sessionID := r.session.current.ID
 	r.startFollowing(func(ctx context.Context, lease operationLease) {
 		follower := streamFollower{
-			runs: r, ctx: ctx, dispatcher: r.tasks.dispatch, lease: lease, sessionID: sessionID,
+			runs: r, ctx: ctx, lease: lease, sessionID: sessionID,
 			open: open, applyEvent: r.apply,
 		}
 		follower.opening = observer

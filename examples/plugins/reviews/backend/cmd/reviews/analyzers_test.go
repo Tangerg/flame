@@ -5,11 +5,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type observedAnalyzerCaller struct {
@@ -24,22 +25,22 @@ func (c *observedAnalyzerCaller) ResolvePluginPoint(_ context.Context, _ protoco
 
 func (c *observedAnalyzerCaller) CallPlugin(_ context.Context, request protocol.CallPluginRequest, _ protocol.PluginCallOptions) (*protocol.CallPluginResponse, error) {
 	c.calls = append(c.calls, request)
-	output, err := jsonvalue.Encode(reviews.Findings{Findings: []reviews.Finding{c.finding}})
+	output, err := framevalue.EncodeJSON(reviews.Findings{Findings: []reviews.Finding{c.finding}})
 	if err != nil {
 		return nil, err
 	}
-	return &protocol.CallPluginResponse{Output: string(output.JSON())}, nil
+	return &protocol.CallPluginResponse{Output: string(output.Bytes())}, nil
 }
 
 func TestAnalysisUsesTheResolvedReleaseAndRejectsUnrelatedFindingEvidence(t *testing.T) {
 	const provider = "00000000-0000-4000-8000-000000000001"
 	const consumer = "00000000-0000-4000-8000-000000000002"
 	review := reviews.Snapshot{ID: reviews.ExampleReviewID, Title: "Review evidence", Status: reviews.Open, Revision: 3}
-	value, err := jsonvalue.Encode(reviews.Analyzer{Title: "Evidence", Contribution: "analyzer"})
+	value, err := framevalue.EncodeJSON(reviews.Analyzer{Title: "Evidence", Contribution: "analyzer"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	caller := &observedAnalyzerCaller{value: protocol.PluginPointBinding{InstallationID: provider, Digest: strings.Repeat("a", 64), Contribution: "evidence", Value: string(value.JSON())}, finding: reviews.Finding{Code: "open", Message: "Inspect this evidence.", ReviewID: review.ID, Revision: review.Revision}}
+	caller := &observedAnalyzerCaller{value: protocol.PluginPointBinding{InstallationID: provider, Digest: strings.Repeat("a", 64), Contribution: "evidence", Value: string(value.Bytes())}, finding: reviews.Finding{Code: "open", Message: "Inspect this evidence.", ReviewID: review.ID, Revision: review.Revision}}
 	result, err := analyzeReview(t.Context(), caller, portable.Target{Scope: "installation", Reference: consumer}, review)
 	if err != nil || result.Review != review || len(result.Findings) != 1 || len(caller.calls) != 1 {
 		t.Fatalf("analysis: %+v, calls=%d, %v", result, len(caller.calls), err)

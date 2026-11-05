@@ -1,13 +1,16 @@
 package bootstrap
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -56,7 +59,7 @@ func TestRuntimeRejectedToolSurvivesFollowingCallsAndHistoryReads(t *testing.T) 
 					}
 					if test.planMode {
 						want := "plan mode is active (read-only): shell is not permitted. Continue investigating with read-only tools or request Plan approval before making changes."
-						if !reflect.DeepEqual(committed.Output, chat.NewTextToolOutput(want)) {
+						if !reflect.DeepEqual(committed.Output, toolcontract.NewTextOutput(want)) {
 							return nil, fmt.Errorf("Plan refusal lost its recovery instructions: %+v", committed.Output)
 						}
 					}

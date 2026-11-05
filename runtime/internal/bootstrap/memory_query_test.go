@@ -3,18 +3,23 @@ package bootstrap
 import (
 	json "encoding/json/v2"
 	"slices"
+	"testing"
+
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
+	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func memoryQuery(r *poMCPRuntime, input memorycontract.ListInput) (protocol.CallPluginRequest, error) {
 	providers := r.must(delivery.PluginsListProviders, struct{}{}, "").(*protocol.Page[protocol.PluginProviderSelection])
 	installations := r.must(delivery.PluginsList, struct{}{}, "").(*protocol.Page[protocol.PluginInstallation])
-	contracts, err := portable.ParseCapability([]byte(memorycontract.CapabilityJSON))
+	contracts, err := plugincontract.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
@@ -33,7 +38,7 @@ func memoryQuery(r *poMCPRuntime, input memorycontract.ListInput) (protocol.Call
 			if !installation.Enabled {
 				return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
 			}
-			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().JSON()), Method: memorycontract.ListV2Method, Input: string(encoded), Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installation.ID}}, nil
+			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().Bytes()), Method: memorycontract.ListV2Method, Input: string(encoded), Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installation.ID}}, nil
 		}
 	}
 	return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
@@ -45,7 +50,7 @@ func memoryQueryResult(r *poMCPRuntime, input memorycontract.ListInput) delivery
 	}
 	return r.endpoint.Invoke(r.t.Context(), delivery.PluginsCall, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 }
-func readMemoryPage(r *poMCPRuntime, input memorycontract.ListInput) *protocol.Page[memorycontract.ItemSnapshot] {
+func readMemoryPage(r *poMCPRuntime, input memorycontract.ListInput) *protocol.Page[*memorycontract.ListV2OutputDomainItemSnapshot] {
 	r.t.Helper()
 	result := memoryQueryResult(r, input)
 	if result.Failure != nil {
@@ -59,11 +64,7 @@ func readMemoryPage(r *poMCPRuntime, input memorycontract.ListInput) *protocol.P
 	if err := json.Unmarshal([]byte(reply.Output), &page); err != nil {
 		r.t.Fatal(err)
 	}
-	values := make([]memorycontract.ItemSnapshot, len(page.Rows))
-	for index, row := range page.Rows {
-		values[index] = memorycontract.ItemSnapshot(row)
-	}
-	return protocol.NewPageWithCursor(values, page.NextCursor)
+	return protocol.NewPageWithCursor(page.Rows, page.NextCursor)
 }
 
 func memoryAddRequest(r *poMCPRuntime, input memorycontract.AddInput) protocol.CallPluginRequest {
@@ -79,7 +80,7 @@ func memoryAddRequest(r *poMCPRuntime, input memorycontract.AddInput) protocol.C
 	request.Method, request.Input = memorycontract.AddV2Method, string(encoded)
 	return request
 }
-func mustMemoryAdd(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *memorycontract.ItemSnapshot {
+func mustMemoryAdd(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *memorycontract.AddV2OutputDomainItemSnapshot {
 	r.t.Helper()
 	reply := r.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse)
 	if reply.Failure != nil {
@@ -89,10 +90,39 @@ func mustMemoryAdd(r *poMCPRuntime, request protocol.CallPluginRequest, key stri
 	if err := json.Unmarshal([]byte(reply.Output), &result); err != nil {
 		r.t.Fatal(err)
 	}
-	item := memorycontract.ItemSnapshot(result.Item)
-	return &item
+	if result.Item == nil {
+		r.t.Fatal("memory add returned no created item")
+	}
+	return result.Item
 }
 
 func memoryToolsReady(tools []protocol.MCPTool) bool {
 	return slices.ContainsFunc(tools, func(value protocol.MCPTool) bool { return value.Name == memorycontract.SearchToolName })
+}
+
+func generatedJSON(t testing.TB, value any) framevalue.JSON {
+	t.Helper()
+	encoded, err := framevalue.EncodeJSON(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return encoded
+}
+
+func generatedNumber(t testing.TB, text string) framevalue.Number {
+	t.Helper()
+	number, err := framevalue.ParseNumber([]byte(text))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return number
+}
+
+func generatedInteger(t testing.TB, number framevalue.Number) uint64 {
+	t.Helper()
+	var integer uint64
+	if err := framevalue.DecodeValue([]byte(number.String()), &integer, "generated integer"); err != nil {
+		t.Fatal(err)
+	}
+	return integer
 }

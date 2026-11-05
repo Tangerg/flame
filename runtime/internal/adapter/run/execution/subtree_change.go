@@ -7,7 +7,8 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
 type interactionWaitingSubtreeChange struct {
@@ -15,9 +16,9 @@ type interactionWaitingSubtreeChange struct {
 
 	session    *interactionSession
 	checkpoint runs.ExecutorCheckpoint
-	targetID   agent.ProcessID
+	targetID   scoperun.ProcessID
 	reason     string
-	canceled   []agent.ProcessID
+	canceled   []scoperun.ProcessID
 	retired    []*managedDelegateCall
 	stopExpiry func() bool
 	state      interactionWaitingSubtreeChangeState
@@ -66,20 +67,23 @@ func (i *interactionWaitingSubtreeChange) Apply(
 			i.state,
 		)
 	}
-	i.session.childProjection.lock()
-	defer i.session.childProjection.unlock()
 	i.stopExpirationLocked()
-	if err := i.session.beginSubtreeApplication(i); err != nil {
+	i.session.childProjection.lock()
+	err := i.session.beginSubtreeApplication(i)
+	if err == nil {
+		// The product cancellation already committed. Retire its projection
+		// before Scope acknowledges control through the same Store callback.
+		i.session.commitSubtreeApplication(i)
+	}
+	i.session.childProjection.unlock()
+	if err != nil {
 		return err
 	}
 	// The Application has durably committed this cancellation, so submitting it
 	// to the executor happens here rather than during preparation: a requested
 	// cancellation is accepted immediately and cannot be revoked, and preparation
 	// must stay abandonable.
-	err := i.session.cancelPreparedSubtree(i)
-	if err == nil {
-		i.session.commitSubtreeApplication(i)
-	}
+	err = i.session.cancelPreparedSubtree(i)
 	switch {
 	case err != nil:
 		i.state = interactionWaitingSubtreeChangeApplyFailed
@@ -201,7 +205,7 @@ func (i *interactionSession) cancelPreparedSubtree(
 	if !found {
 		return fmt.Errorf("execution: waiting subtree target %s is unavailable", change.targetID)
 	}
-	if err := target.RequestCancellation(
+	if err := target.Cancel(
 		runExecutionContext(ctx, i.scope, i.start), scopeCancellationReason(change.reason),
 	); err != nil {
 		return fmt.Errorf("execution: cancel waiting Interaction subtree: %w", err)

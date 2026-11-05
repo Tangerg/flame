@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -20,9 +21,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/runner"
+	"github.com/Tangerg/frame"
+	"github.com/Tangerg/frame/process/runner"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -72,7 +72,7 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 
 	if phase == "resolution" {
 		commit := stores.CommitPluginReferences
-		stores.CommitPluginReferences = func(ctx context.Context, host *qimu.Host, identity string, checkpoint runs.ExecutorCheckpoint, apply func(context.Context) error) error {
+		stores.CommitPluginReferences = func(ctx context.Context, host *frame.Host, identity string, checkpoint runs.ExecutorCheckpoint, apply func(context.Context) error) error {
 			if err := commit(ctx, host, identity, checkpoint, apply); err != nil {
 				return err
 			}
@@ -195,7 +195,8 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 	}
 	if err != nil || value.Outcome == nil || value.Outcome.Type != want {
 		lookup, _ := os.ReadFile(os.Getenv("FLAME_TEST_SCHEDULE_EVIDENCE") + ".finish")
-		t.Fatalf("recovered Run: %+v, outcome=%+v, error=%v, lookup=%s", value, value.Outcome, err, lookup)
+		outcome, _ := json.Marshal(value.Outcome)
+		t.Fatalf("recovered Run: %+v, outcome=%s, error=%v, lookup=%s", value, outcome, err, lookup)
 	}
 }
 
@@ -214,7 +215,7 @@ func disableOriginalScheduleBinding(t *testing.T, cfg assemblyConfig) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	callbacks := qimumcp.NewCallbacks()
+	callbacks := pluginmcp.NewCallbacks()
 	defer func() {
 		if err := callbacks.Close(); err != nil {
 			t.Error(err)

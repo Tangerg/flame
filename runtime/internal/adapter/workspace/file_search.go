@@ -12,7 +12,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/frame/cancellation"
 	"github.com/Tangerg/scope/tools/textread"
 )
 
@@ -21,7 +20,7 @@ import (
 // cancellation, and exact-total semantics remain owned by this product port
 // instead of inheriting a subprocess executor's post-hoc result slicing.
 func (FileBrowser) Grep(ctx context.Context, root string, input workspaceapp.GrepPlan) (_ workspaceapp.GrepResult, err error) {
-	if cause := cancellation.Err(ctx); cause != nil {
+	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		return workspaceapp.GrepResult{}, cause
 	}
 	if input.Pattern == nil || input.Limit <= 0 || input.Limit > workspaceapp.MaxGrepLimit {
@@ -79,7 +78,7 @@ func (search *workspaceGrep) scanEntry(entry workspaceapp.FileEntry) error {
 	if entry.Kind != workspaceapp.FileEntryFile || entry.SizeBytes > workspaceapp.MaxGrepFileBytes {
 		return nil
 	}
-	if cause := cancellation.Err(search.ctx); cause != nil {
+	if cause := errors.Join(search.ctx.Err(), context.Cause(search.ctx)); cause != nil {
 		return cause
 	}
 	source, usable, err := search.openSource(entry.Path)
@@ -120,7 +119,7 @@ func (search *workspaceGrep) openSource(entryPath string) (grepSource, bool, err
 
 func (search *workspaceGrep) scanSource(source grepSource) error {
 	if search.remainingSource <= 0 {
-		return errors.Join(workspaceapp.ErrGrepResultTooLarge, source.file.Close(), cancellation.Err(search.ctx))
+		return errors.Join(workspaceapp.ErrGrepResultTooLarge, source.file.Close(), errors.Join(search.ctx.Err(), context.Cause(search.ctx)))
 	}
 	matchLimit, resultBytes := search.retentionBudget()
 	fileResult, scanErr := grepFile(
@@ -150,7 +149,7 @@ func (search *workspaceGrep) scanSource(source grepSource) error {
 	if search.remainingSource < 0 {
 		capacityErr = workspaceapp.ErrGrepResultTooLarge
 	}
-	if err := errors.Join(scanErr, capacityErr, verifyErr, closeErr, cancellation.Err(search.ctx)); err != nil {
+	if err := errors.Join(scanErr, capacityErr, verifyErr, closeErr, errors.Join(search.ctx.Err(), context.Cause(search.ctx))); err != nil {
 		return err
 	}
 	return search.merge(fileResult)
@@ -222,7 +221,7 @@ func grepFile(
 	if errors.Is(err, textread.ErrInputTooLarge) {
 		err = errors.Join(workspaceapp.ErrGrepResultTooLarge, err)
 	}
-	if inputErr := errors.Join(counter.readErr, cancellation.Err(ctx)); inputErr != nil {
+	if inputErr := errors.Join(counter.readErr, errors.Join(ctx.Err(), context.Cause(ctx))); inputErr != nil {
 		return result, fmt.Errorf("workspace: scan search file %q: %w", path, errors.Join(err, inputErr))
 	}
 	switch {

@@ -5,9 +5,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/keymap"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/keymap"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 )
@@ -20,7 +20,7 @@ type keyBindings struct {
 
 func configuredKeyBindings(configured settings.Config) (keyBindings, error) {
 	bindings := keyBindings{
-		editor:      headless.DefaultEditorKeys(),
+		editor:      base.DefaultEditorKeys(),
 		application: &keymap.Map{},
 		global:      &keymap.Map{},
 	}
@@ -59,14 +59,14 @@ type keyRouter struct {
 
 // route returns the hint for an application sequence still in progress; it is
 // empty while a modal is open.
-func (k *keyRouter) route(key input.Key, modal bool, handle func(keymap.Action) bool) (matched, handled bool, pending string) {
+func (k *keyRouter) route(key input.Key, modal bool, current func() bool, handle func(keymap.Action) bool) (matched, handled bool, pending string) {
 	if modal {
 		k.applicationPending.Clear()
-		matched, handled = k.globalPending.Handle(k.global, key, handle)
+		matched, handled = k.globalPending.Handle(k.global, key, current, handle)
 		return matched, handled, ""
 	}
 	k.globalPending.Clear()
-	matched, handled = k.applicationPending.Handle(k.application, key, handle)
+	matched, handled = k.applicationPending.Handle(k.application, key, current, handle)
 	return matched, handled, pendingKeySequenceHint(k.application, k.applicationPending.Keys())
 }
 

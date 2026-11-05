@@ -1,4 +1,4 @@
-import { type InstanceMeta, type Logger } from "dougong";
+import { type InstanceMetadata, type Logger } from "dougong";
 import { emitLog as emitOtelLog } from "@/lib/observability/logBridge";
 import { type LogLevel } from "@/lib/observability/logBridge";
 const CONSOLE_METHOD: Record<LogLevel, "log" | "info" | "warn" | "error"> = {
@@ -8,7 +8,7 @@ const CONSOLE_METHOD: Record<LogLevel, "log" | "info" | "warn" | "error"> = {
   error: "error",
 };
 
-function isMeta(value: unknown): value is InstanceMeta {
+function isMeta(value: unknown): value is InstanceMetadata {
   return typeof value === "object" && value !== null && "pluginName" in value;
 }
 

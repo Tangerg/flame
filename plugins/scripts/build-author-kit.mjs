@@ -91,7 +91,6 @@ const inputs = [
   "module-candidates.json",
   "packages/go-sdk",
   "runtime",
-  "qimu",
   "plugins/go.mod",
   "plugins/go.sum",
   "examples/plugins/reviews/backend/go.mod",
@@ -197,7 +196,7 @@ try {
           `${modulePath}/`,
         );
         text = text.replaceAll(
-          /go run (github\.com\/Tangerg\/flame\/(?:packages\/go-sdk|qimu)\/cmd\/[a-zA-Z0-9_-]+)/g,
+          /go run (github\.com\/Tangerg\/flame\/packages\/go-sdk\/cmd\/[a-zA-Z0-9_-]+)/g,
           (_, tool) => {
             tools.add(tool);
             return `go tool ${tool}`;
@@ -249,7 +248,6 @@ try {
   let testCommand = "";
   if (component || managed) {
     const packageDirectories = [
-      "qimu/sdk",
       "packages/runtime-client",
       ...(component
         ? [
@@ -259,7 +257,7 @@ try {
             "packages/component-sdk",
           ]
         : []),
-      ...(managed ? ["qimu/node", "packages/backend-sdk"] : []),
+      ...(managed ? ["packages/backend-sdk"] : []),
     ];
     const npmArtifacts = join(output, "artifacts/npm");
     await mkdir(npmArtifacts, { recursive: true });
@@ -456,7 +454,7 @@ try {
       });
       await writeFile(
         join(output, "test-sources.mjs"),
-        `import { execFileSync } from "node:child_process";\nimport { fileURLToPath } from "node:url";\nexecFileSync(fileURLToPath(new URL(${JSON.stringify(relative(output, node).split(sep).join("/"))}, import.meta.url)), [fileURLToPath(new URL("./node_modules/vitest/vitest.mjs", import.meta.url)), "run", "backend", "contracts", "component"], { cwd: fileURLToPath(new URL("./", import.meta.url)), stdio: "inherit" });\n`,
+        `import { execFileSync } from "node:child_process";\nimport { fileURLToPath } from "node:url";\nexecFileSync(fileURLToPath(new URL(${JSON.stringify(relative(author, node).split(sep).join("/"))}, import.meta.url)), [fileURLToPath(new URL("./node_modules/vitest/vitest.mjs", import.meta.url)), "run", "backend", "contracts", "component"], { cwd: fileURLToPath(new URL("./", import.meta.url)), stdio: "inherit" });\n`,
       );
       if (managed) run("npm", ["run", "generate"], output);
       run("npm", ["test"], output);

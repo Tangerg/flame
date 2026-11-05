@@ -7,9 +7,9 @@ export function createObservabilityPlugin(service: { name: string; version: stri
     name: "flame.builtin.observability",
     requires: { config: CONFIG },
     setup(ctx) {
-      ctx.cleanup(
+      ctx.lifetime.defer(
         startObservability(
-          () => initFrontendObservability(service, ctx.config),
+          () => initFrontendObservability(service, ctx.dependencies.config),
           (error) => {
             console.warn(
               "[observability] initialization failed; running without telemetry:",

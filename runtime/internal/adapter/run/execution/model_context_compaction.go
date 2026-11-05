@@ -1,6 +1,8 @@
 package execution
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"errors"
 	"fmt"
@@ -94,7 +96,7 @@ type ModelContextCompaction struct {
 	instructions  []corechat.Message
 	candidate     []corechat.Message
 	trailer       []corechat.Message
-	tools         []corechat.ToolDefinition
+	tools         []toolcontract.Definition
 	options       corechat.Options
 	calibration   ModelContextTokenCalibration
 	counter       modelContextInputTokenCounter
@@ -116,7 +118,7 @@ type ModelContextCompactionInput struct {
 	// messages of this one call. It counts toward the budget but is never
 	// folded, returned, or adopted into the Interaction context.
 	Trailer     []corechat.Message
-	Tools       []corechat.ToolDefinition
+	Tools       []toolcontract.Definition
 	Options     corechat.Options
 	Calibration ModelContextTokenCalibration
 	Counter     modelContextInputTokenCounter
@@ -248,7 +250,7 @@ func newModelContextCompaction(
 			errInvalidModelContextCompaction,
 		)
 	}
-	frozenTools := make([]corechat.ToolDefinition, len(input.Tools))
+	frozenTools := make([]toolcontract.Definition, len(input.Tools))
 	for index := range input.Tools {
 		frozenTools[index] = input.Tools[index].Clone()
 	}
@@ -371,8 +373,8 @@ func (m ModelContextCompaction) Trailer() []corechat.Message {
 }
 
 // Tools returns the exact model-visible Tool manifest for budget estimation.
-func (m ModelContextCompaction) Tools() []corechat.ToolDefinition {
-	tools := make([]corechat.ToolDefinition, len(m.tools))
+func (m ModelContextCompaction) Tools() []toolcontract.Definition {
+	tools := make([]toolcontract.Definition, len(m.tools))
 	for index := range m.tools {
 		tools[index] = m.tools[index].Clone()
 	}

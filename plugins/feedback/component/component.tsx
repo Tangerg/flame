@@ -105,7 +105,11 @@ export const RateResponse = defineComponent((source) => {
             onClick={() =>
               void ratings.submit(key, rating, () =>
                 context.runtime.feedback.create({
-                  source: {installationId:binding.installationId,release:binding.digest,contribution:binding.contribution},
+                  source: {
+                    installationId: binding.installationId,
+                    release: binding.digest,
+                    contribution: binding.contribution,
+                  },
                   sessionId: asSessionId(message.sessionId),
                   runId: message.runId ? asRunId(message.runId) : undefined,
                   itemId: asItemId(message.itemId),

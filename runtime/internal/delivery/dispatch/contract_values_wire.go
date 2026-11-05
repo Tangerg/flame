@@ -3,6 +3,8 @@ package dispatch
 import (
 	"reflect"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/model"
@@ -19,7 +21,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	skilldomain "github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 // The value constraints of wire shapes.
@@ -985,7 +986,7 @@ func registerPluginValues(s *Shapes) {
 	}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginBrowserSession](), Constraints: []FieldConstraint{
 		{Field: "credential", Kind: ConstraintNonEmpty}, {Field: "controlEndpoint", Kind: ConstraintNonEmpty},
-		{Field: "maximumMessageBytes", Kind: ConstraintPositive}, {Field: "proofCapacity", Kind: ConstraintPositive},
+		{Field: "maximumMessageBytes", Kind: ConstraintPositive}, {Field: "proofCapacity", Kind: ConstraintPositive}, {Field: "preparationCapacity", Kind: ConstraintPositive},
 		{Field: "pollIntervalMilliseconds", Kind: ConstraintPositive},
 	}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginClientComponent](), Constraints: []FieldConstraint{
@@ -1032,14 +1033,14 @@ func registerPluginValues(s *Shapes) {
 			{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 		}
 		if shape == typeOf[protocol.PluginPointBinding]() {
-			constraints = append(constraints, FieldConstraint{Field: "digest", Kind: ConstraintPattern, Value: integrity.DigestPattern()}, FieldConstraint{Field: "value", Kind: ConstraintNonEmpty})
+			constraints = append(constraints, FieldConstraint{Field: "digest", Kind: ConstraintPattern, Value: framevalue.DigestPattern()}, FieldConstraint{Field: "value", Kind: ConstraintNonEmpty})
 		}
 		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
 	}
 	for _, shape := range []reflect.Type{typeOf[protocol.ResolvePluginRequirementsRequest](), typeOf[protocol.PluginOperationBinding]()} {
 		constraints := []FieldConstraint{
 			{Field: "installationId", Kind: ConstraintPattern, Value: identity.InstallationIDPattern()},
-			{Field: "digest", Kind: ConstraintPattern, Value: integrity.DigestPattern()},
+			{Field: "digest", Kind: ConstraintPattern, Value: framevalue.DigestPattern()},
 			{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 		}
 		if shape == typeOf[protocol.PluginOperationBinding]() {
@@ -1059,7 +1060,7 @@ func registerPluginValues(s *Shapes) {
 		{Field: "contract", Kind: ConstraintNonEmpty},
 		{Field: "input", Kind: ConstraintNonEmpty},
 		{Field: "installationId", Kind: ConstraintPattern, Value: identity.InstallationIDPattern()},
-		{Field: "digest", Kind: ConstraintPattern, Value: integrity.DigestPattern()},
+		{Field: "digest", Kind: ConstraintPattern, Value: framevalue.DigestPattern()},
 		{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 		{Field: "method", Kind: ConstraintNonEmpty},
 		{Field: "method", Kind: ConstraintMaxLength, Limit: 256},
@@ -1132,7 +1133,7 @@ func registerPluginValues(s *Shapes) {
 		constraints := []FieldConstraint{{Field: "installationId", Kind: ConstraintPattern, Value: identity.InstallationIDPattern()}}
 		switch shape {
 		case typeOf[protocol.PluginReleaseRequest](), typeOf[protocol.ConfigurePluginRequest]():
-			constraints = append(constraints, FieldConstraint{Field: "digest", Kind: ConstraintPattern, Value: integrity.DigestPattern()})
+			constraints = append(constraints, FieldConstraint{Field: "digest", Kind: ConstraintPattern, Value: framevalue.DigestPattern()})
 		}
 		switch shape {
 		case typeOf[protocol.StagePluginRequest]():

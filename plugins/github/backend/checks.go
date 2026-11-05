@@ -6,20 +6,21 @@ import (
 	"errors"
 	"net/url"
 	"strconv"
-	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/instant"
 
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 )
 
 type checkWire struct {
-	ID          int64      `json:"id"`
-	Name        string     `json:"name"`
-	HeadSHA     string     `json:"head_sha"`
-	Status      string     `json:"status"`
-	Conclusion  *string    `json:"conclusion"`
-	URL         string     `json:"html_url"`
-	StartedAt   *time.Time `json:"started_at"`
-	CompletedAt *time.Time `json:"completed_at"`
+	ID          int64              `json:"id"`
+	Name        string             `json:"name"`
+	HeadSHA     string             `json:"head_sha"`
+	Status      string             `json:"status"`
+	Conclusion  *string            `json:"conclusion"`
+	URL         string             `json:"html_url"`
+	StartedAt   *instant.Timestamp `json:"started_at"`
+	CompletedAt *instant.Timestamp `json:"completed_at"`
 	Output      *struct {
 		Title            *string `json:"title"`
 		Summary          *string `json:"summary"`
@@ -106,13 +107,13 @@ func (c *connector) listAnnotations(ctx context.Context, input contractwire.Chec
 }
 
 type statusWire struct {
-	ID          int64     `json:"id"`
-	State       string    `json:"state"`
-	Context     string    `json:"context"`
-	Description *string   `json:"description"`
-	URL         *string   `json:"target_url"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          int64             `json:"id"`
+	State       string            `json:"state"`
+	Context     string            `json:"context"`
+	Description *string           `json:"description"`
+	URL         *string           `json:"target_url"`
+	CreatedAt   instant.Timestamp `json:"created_at"`
+	UpdatedAt   instant.Timestamp `json:"updated_at"`
 }
 
 func (wire statusWire) admit() (contractwire.CommitStatus, error) {

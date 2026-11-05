@@ -6,13 +6,13 @@ import (
 	"testing"
 
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/history"
 )
 
 type stubConversationMessages struct {
-	outcome history.WriteOutcome
-	err     error
+	err error
 }
 
 func (s stubConversationMessages) Read(context.Context, history.ConversationID) ([]chat.Message, error) {
@@ -23,8 +23,8 @@ func (s stubConversationMessages) Write(
 	context.Context,
 	history.ConversationID,
 	...chat.Message,
-) (history.WriteOutcome, error) {
-	return s.outcome, s.err
+) error {
+	return s.err
 }
 
 func (s stubConversationMessages) Clear(context.Context, history.ConversationID) error { return nil }
@@ -46,14 +46,14 @@ func TestConversationStoreSeparatesRejectedFromUnknownWrites(t *testing.T) {
 	message := chat.NewUserMessage(chat.NewTextPart("hi"))
 
 	for name, testCase := range map[string]struct {
-		outcome   history.WriteOutcome
+		err       error
 		uncertain bool
 	}{
-		"rejected batch": {outcome: history.WriteOutcome{}},
-		"unknown commit": {outcome: history.WriteOutcome{Uncertain: true}, uncertain: true},
+		"rejected batch": {err: cause},
+		"unknown commit": {err: errors.Join(cause, sqlite.ErrIndeterminate), uncertain: true},
 	} {
 		t.Run(name, func(t *testing.T) {
-			store, err := NewConversationStore(stubConversationMessages{outcome: testCase.outcome, err: cause})
+			store, err := NewConversationStore(stubConversationMessages{err: testCase.err})
 			if err != nil {
 				t.Fatalf("NewConversationStore: %v", err)
 			}
@@ -68,12 +68,12 @@ func TestConversationStoreSeparatesRejectedFromUnknownWrites(t *testing.T) {
 	}
 }
 
-func TestConversationStoreRejectsAnUnaccountedSuccess(t *testing.T) {
+func TestConversationStorePreservesCommittedSuccess(t *testing.T) {
 	store, err := NewConversationStore(stubConversationMessages{})
 	if err != nil {
 		t.Fatalf("NewConversationStore: %v", err)
 	}
-	if writeErr := store.Write(t.Context(), "ses_1", chat.NewUserMessage(chat.NewTextPart("hi"))); writeErr == nil {
-		t.Fatal("a success that acknowledged no message was reported as a complete write")
+	if writeErr := store.Write(t.Context(), "ses_1", chat.NewUserMessage(chat.NewTextPart("hi"))); writeErr != nil {
+		t.Fatalf("committed batch reported as failed: %v", writeErr)
 	}
 }

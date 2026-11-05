@@ -1,6 +1,11 @@
 package main
 
 import (
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
+
 	"context"
 	"database/sql"
 	json "encoding/json/v2"
@@ -19,9 +24,9 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 )
@@ -37,7 +42,7 @@ func connectProvider(t *testing.T, path string) (*store, *sdk.ClientSession, fun
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "provider-test", Version: "1"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -63,20 +68,20 @@ func connectProvider(t *testing.T, path string) (*store, *sdk.ClientSession, fun
 
 func providerContext(t *testing.T) context.Context {
 	t.Helper()
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "provider-test", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "providers"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "provider-test", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "providers"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return ctx
 }
 
-func providerMethod[P, R any](t *testing.T, session *sdk.ClientSession, method *qimumcp.Method[P, R]) *qimumcp.BoundMethod[P, R] {
+func providerMethod[P, R any](t *testing.T, session *sdk.ClientSession, method *pluginmcp.Method[P, R]) *pluginmcp.BoundMethod[P, R] {
 	t.Helper()
 	contract, err := modelprovider.Contract()
 	if err != nil {
 		t.Fatal(err)
 	}
-	capability, err := qimumcp.NewCapabilityBinding(session, "model-provider", contract)
+	capability, err := pluginmcp.NewCapabilityBinding(session, "model-provider", contract)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +187,7 @@ func TestOriginalChatOutcomesAndCredentialSnapshotSurviveRestart(t *testing.T) {
 				if result.Failure != nil || result.Response.Metadata.Usage.InputTokens != 7 || result.Response.Metadata.Model != "served-model" {
 					t.Fatalf("provider evidence lost: %+v", result)
 				}
-			} else if result.Failure == nil || result.Failure.Execution != chat.CallFailureUnknown {
+			} else if result.Failure == nil || result.Failure.Execution != coreinvocation.FailureUnknown {
 				t.Fatalf("lost exchange became confirmed: %+v", result)
 			}
 			stop()
@@ -209,7 +214,7 @@ func TestPendingExchangeNeverDispatchesAndClosedHandleCannotDispatch(t *testing.
 	opened := openChat(t, session, "openai-compatible", upstream.URL)
 	method, _ := modelprovider.CallMethod()
 	request := providerRequest(opened.Handle)
-	input, err := jsonvalue.Encode(request)
+	input, err := framevalue.EncodeJSON(request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +229,7 @@ func TestPendingExchangeNeverDispatchesAndClosedHandleCannotDispatch(t *testing.
 		t.Fatal(err)
 	}
 	result, err := providerMethod(t, session, method).CallCommand(providerContext(t), "after-close", request)
-	if err != nil || result.Failure == nil || result.Failure.Execution != chat.CallFailureNotExecuted || calls.Load() != 0 {
+	if err != nil || result.Failure == nil || result.Failure.Execution != coreinvocation.FailureNotExecuted || calls.Load() != 0 {
 		t.Fatalf("closed handle dispatched: %+v %v", result, err)
 	}
 }
@@ -325,7 +330,7 @@ func TestStreamsRetainOriginalDeltasAndSettleWithoutReplayAfterConsumptionStops(
 				t.Fatal(err)
 			}
 			contract, _ := modelprovider.Contract()
-			exported, err := qimumcp.NewCapabilityBinding(session, "model-provider", contract)
+			exported, err := pluginmcp.NewCapabilityBinding(session, "model-provider", contract)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -333,13 +338,13 @@ func TestStreamsRetainOriginalDeltasAndSettleWithoutReplayAfterConsumptionStops(
 			if err != nil {
 				t.Fatal(err)
 			}
-			callbacks := qimumcp.NewCallbacks()
+			callbacks := pluginmcp.NewCallbacks()
 			defer func() { _ = callbacks.Close() }()
 			if err := callbacks.AdmitSession(session); err != nil {
 				t.Fatal(err)
 			}
 			request := providerRequest(opened.Handle)
-			limits := qimumcp.CallbackLimits{MaxRequestBytes: 1 << 20, MaxResponseBytes: 1 << 20}
+			limits := pluginmcp.CallbackLimits{MaxRequestBytes: 1 << 20, MaxResponseBytes: 1 << 20}
 			chunks, completed := 0, false
 			for value, err := range method.StreamWithMetadata(providerContext(t), binding, callbacks, limits, "original-stream", request, sdk.ParamsBase{}) {
 				if err != nil {
@@ -357,16 +362,16 @@ func TestStreamsRetainOriginalDeltasAndSettleWithoutReplayAfterConsumptionStops(
 			if chunks == 0 || (!stopEarly && !completed) || calls.Load() != 1 {
 				t.Fatalf("stream lost its original outcome: chunks=%d completed=%v calls=%d", chunks, completed, calls.Load())
 			}
-			input, _ := jsonvalue.Encode(request)
+			input, _ := framevalue.EncodeJSON(request)
 			receipt, found, err := binding.ReadReceipt(providerContext(t), "original-stream", input)
 			if err != nil || !found {
 				t.Fatalf("stream receipt missing: %v %v", found, err)
 			}
 			var original modelprovider.ChatResult
-			if err := json.Unmarshal(receipt.JSON(), &original); err != nil {
+			if err := json.Unmarshal(receipt.Bytes(), &original); err != nil {
 				t.Fatal(err)
 			}
-			if stopEarly && (original.Failure == nil || original.Failure.Execution != chat.CallFailureUnknown) {
+			if stopEarly && (original.Failure == nil || original.Failure.Execution != coreinvocation.FailureUnknown) {
 				t.Fatalf("stopped stream manufactured completion: %+v", original)
 			}
 			for value, err := range method.StreamWithMetadata(providerContext(t), binding, callbacks, limits, "original-stream", request, sdk.ParamsBase{}) {
@@ -430,7 +435,7 @@ func TestCloseJoinsAnAcceptedExchangeAndFencesNewDispatch(t *testing.T) {
 	default:
 	}
 	refused, err := providerMethod(t, session, call).CallCommand(providerContext(t), "refused", providerRequest(opened.Handle))
-	if err != nil || refused.Failure == nil || refused.Failure.Execution != chat.CallFailureNotExecuted {
+	if err != nil || refused.Failure == nil || refused.Failure.Execution != coreinvocation.FailureNotExecuted {
 		t.Fatalf("new work crossed close fence: %+v %v", refused, err)
 	}
 	releaseProvider()
@@ -454,7 +459,7 @@ func TestRetriedOpenAfterCloseCannotRevivePublishedHandle(t *testing.T) {
 	}
 	call, _ := modelprovider.CallMethod()
 	result, err := providerMethod(t, session, call).CallCommand(providerContext(t), "after-retry", providerRequest(opened.Handle))
-	if err != nil || result.Failure == nil || result.Failure.Execution != chat.CallFailureNotExecuted || calls.Load() != 0 {
+	if err != nil || result.Failure == nil || result.Failure.Execution != coreinvocation.FailureNotExecuted || calls.Load() != 0 {
 		t.Fatalf("closed handle dispatched after a retried open: %+v %v", result, err)
 	}
 }

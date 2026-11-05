@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { canonicalJSON, parseJSON } from "@qimu/node";
+import { canonicalJSON, parseJSON } from "@flame/backend-sdk/mcp";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { admitToolResult, projectToolOutput } from "./tool-result";
 

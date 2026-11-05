@@ -11,8 +11,8 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/programtest"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/uitest"
 )
 
 func TestAttentionCenterRetainsTheMostImportantUnreadSignalUntilUserInput(t *testing.T) {
@@ -49,21 +49,21 @@ func TestTerminalOutcomeSupersedesAnObsoleteActionRequiredMarker(t *testing.T) {
 }
 
 type attentionTestHost struct {
-	*programtest.Host
+	*uitest.Host
 	titles        chan string
 	notifications chan string
 }
 
 func newAttentionTestHost(t *testing.T) *attentionTestHost {
 	return &attentionTestHost{
-		Host:          programtest.New(t, programtest.Config{Width: 96, Height: 28}),
+		Host:          uitest.New(t, uitest.Config{Width: 96, Height: 28}),
 		titles:        make(chan string, 32),
 		notifications: make(chan string, 32),
 	}
 }
 
-func (a *attentionTestHost) SetTitle(title string) { a.titles <- title }
-func (a *attentionTestHost) Notify(text string)    { a.notifications <- text }
+func (a *attentionTestHost) SetTitle(title string) error { a.titles <- title; return nil }
+func (a *attentionTestHost) Notify(text string) error    { a.notifications <- text; return nil }
 
 func runUIWithAttentionHost(t *testing.T, backend Runtime) (*attentionTestHost, func()) {
 	t.Helper()

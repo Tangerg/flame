@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/qimu/jsonvalue"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // ToolArgumentOverride is a validated, immutable replacement for one pending
@@ -102,11 +102,11 @@ func (t *ToolArgumentOverride) UnmarshalJSON(encoded []byte) error {
 
 // decodeToolArgumentJSON reads the edited text once. The decoder admits exactly
 // one RFC 7493 value, rejecting the duplicate names that would make the reviewed
-// text and the executed argument object disagree, and [jsonvalue.Numbers] keeps
+// text and the executed argument object disagree, and [framevalue.Numbers] keeps
 // each identifier as written rather than rounding it through float64.
 func decodeToolArgumentJSON(encoded []byte) (any, error) {
 	var value any
-	if err := json.Unmarshal(encoded, &value, jsonvalue.Numbers()); err != nil {
+	if err := json.Unmarshal(encoded, &value, framevalue.Numbers()); err != nil {
 		return nil, fmt.Errorf("tool argument override: %w", err)
 	}
 	return value, nil

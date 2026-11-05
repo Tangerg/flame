@@ -1,14 +1,12 @@
 package guardrail
 
 import (
-	json "encoding/json"
 	"errors"
 	"slices"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 
-	"github.com/invopop/jsonschema"
+	"github.com/Tangerg/scope/core/jsonschema"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 )
@@ -86,7 +84,8 @@ func (p Policy) Admit(text string) error {
 	return nil
 }
 
-func (Summary) JSONSchemaExtend(schema *jsonschema.Schema) {
-	count, _ := schema.Properties.Get("protectedPhraseCount")
-	count.Maximum = json.Number(strconv.Itoa(MaxPhrases))
+func (Summary) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"protectedPhraseCount": {Maximum: new(float64(MaxPhrases))},
+	}}
 }

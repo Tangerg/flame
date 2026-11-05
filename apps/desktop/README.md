@@ -33,7 +33,7 @@ Each macOS distribution targets one explicit `amd64` or `arm64` architecture.
 `ARCH` selects `TARGET_ARCH` once; binary output, bundle output, Go compilation and
 companions consume that same target, including cross-architecture builds.
 The bundle's `Contents/MacOS` contains the Desktop executable, a separately
-started `flame-runtime`, `qimu-runner`, the verified Node companion and first-party
+started `flame-runtime`, `frame-runner`, the verified Node companion and first-party
 plugin packages built for that same target. Packaging uses the existing pinned
 Node artifact cache prepared by `make setup` and signs the complete bundle after
 all companions are present. Universal packaging is rejected: joining only the
@@ -45,7 +45,7 @@ endpoint and credential handoff.
 The actual exported `DesktopHost` receiver methods own the native IPC entrance.
 `internal/bridge` owns its pure wire types, typed notification constants and value
 refinements. `cmd/bridgegen` reads those declarations without compiling Wails,
-reuses Qimu's public Schema/TypeScript renderer and emits the Web method,
+reuses the SDK's pure `wiregen` Schema/TypeScript renderer and emits the Web method,
 type and Zod projection. Unsupported types or schema keywords fail generation.
 The notification permission projection is generated in Web foundation so Browser
 does not depend on the native platform adapter.

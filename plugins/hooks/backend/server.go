@@ -7,17 +7,19 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
 	"slices"
 	"time"
+
+	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 func newServer(db *sql.DB) (*sdk.Server, error) {
@@ -37,16 +39,16 @@ func newServer(db *sql.DB) (*sdk.Server, error) {
 		return nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.hooks", Version: "1.0.0"}, nil)
-	backend, err := qimumcp.NewBackend(server)
+	backend, err := pluginmcp.NewBackend(server)
 	if err != nil {
 		return nil, err
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, db),
-		read.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[hookprovider.Discovery]) ([]hook.Hook, error) {
+		read.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[hookprovider.Discovery]) ([]hook.Hook, error) {
 			return discover(ctx, command.Input)
 		}),
-		execute.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[hookprovider.Evaluation]) (hookprovider.Advice, error) {
+		execute.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[hookprovider.Evaluation]) (hookprovider.Advice, error) {
 			return evaluateEvent(ctx, db, execute.Name(), command)
 		}),
 		backend.BindCapability("hook-provider", contract),
@@ -59,14 +61,14 @@ func newServer(db *sql.DB) (*sdk.Server, error) {
 	return server, nil
 }
 
-func evaluateEvent(ctx context.Context, db *sql.DB, method string, command qimumcp.Command[hookprovider.Evaluation]) (hookprovider.Advice, error) {
+func evaluateEvent(ctx context.Context, db *sql.DB, method string, command pluginmcp.Command[hookprovider.Evaluation]) (hookprovider.Advice, error) {
 	input, err := command.RequestInput()
 	if err != nil {
 		return hookprovider.Advice{}, err
 	}
 	receipt, reply, err := pluginstorage.AdmitCommand(ctx, db, method, string(command.ID), input, func(context.Context) error {
 		if err := command.Input.Validate(); err != nil {
-			return &portable.Refusal{Code: "invalid_input", Message: err.Error()}
+			return &framemcp.Refusal{Code: "invalid_input", Message: err.Error()}
 		}
 		return nil
 	})
@@ -74,7 +76,7 @@ func evaluateEvent(ctx context.Context, db *sql.DB, method string, command qimum
 		return hookprovider.Advice{}, err
 	}
 	if len(reply) != 0 {
-		return qimumcp.DecodeReply[hookprovider.Advice](reply)
+		return pluginmcp.DecodeReply[hookprovider.Advice](reply)
 	}
 	advice := hookprovider.Advice{Diagnostics: []hookprovider.Diagnostic{}}
 	executor := &eventCommands{db: db, eventID: command.ID, reconcileOnly: !receipt.NewlyAdmitted()}
@@ -93,11 +95,11 @@ func evaluateEvent(ctx context.Context, db *sql.DB, method string, command qimum
 	if err := advice.Validate(); err != nil {
 		return hookprovider.Advice{}, err
 	}
-	encoded, err := qimumcp.EncodeReply(advice, nil, nil)
+	encoded, err := pluginmcp.EncodeReply(advice, nil, nil)
 	if err != nil {
 		return hookprovider.Advice{}, err
 	}
-	if err := receipt.Complete(context.WithoutCancel(ctx), encoded.JSON()); err != nil {
+	if err := receipt.Complete(context.WithoutCancel(ctx), encoded.Bytes()); err != nil {
 		return hookprovider.Advice{}, err
 	}
 	return advice, nil
@@ -106,7 +108,7 @@ func evaluateEvent(ctx context.Context, db *sql.DB, method string, command qimum
 type eventCommands struct {
 	reconcileOnly bool
 	db            *sql.DB
-	eventID       qimumcp.CommandID
+	eventID       pluginmcp.CommandID
 	uncertain     error
 }
 
@@ -115,7 +117,7 @@ func (e *eventCommands) RunHookCommand(ctx context.Context, req commandRequest) 
 		return commandResult{Err: e.uncertain, ExitCode: -1}
 	}
 	request := hookprovider.Command{Command: req.Command, CWD: req.CWD, Input: req.Input, TimeoutMillis: req.Timeout.Milliseconds()}
-	input, err := jsonvalue.Encode(request)
+	input, err := framevalue.EncodeJSON(request)
 	if err != nil {
 		e.uncertain = err
 		return commandResult{Err: err, ExitCode: -1}
@@ -140,7 +142,7 @@ func (e *eventCommands) RunHookCommand(ctx context.Context, req commandRequest) 
 
 const ruleCommandReceipt = "hooks.rule-command"
 
-func (e *eventCommands) rule(ctx context.Context, id string, input jsonvalue.Value) (hookprovider.Result, error) {
+func (e *eventCommands) rule(ctx context.Context, id string, input framevalue.JSON) (hookprovider.Result, error) {
 	if e.reconcileOnly {
 		_, original, reply, err := pluginstorage.ResumeCommand(ctx, e.db, ruleCommandReceipt, id)
 		if errors.Is(err, sql.ErrNoRows) {
@@ -150,20 +152,20 @@ func (e *eventCommands) rule(ctx context.Context, id string, input jsonvalue.Val
 			return hookprovider.Result{}, err
 		}
 		if original != input {
-			return hookprovider.Result{}, portable.ErrInvocationConflict
+			return hookprovider.Result{}, framemcp.ErrInvocationConflict
 		}
 		if len(reply) == 0 {
 			return hookprovider.Result{}, pluginstorage.ErrCommandUnconfirmed
 		}
-		return qimumcp.DecodeReply[hookprovider.Result](reply)
+		return pluginmcp.DecodeReply[hookprovider.Result](reply)
 	}
 	var request hookprovider.Command
 	prepared, reply, err := pluginstorage.AdmitCommand(ctx, e.db, ruleCommandReceipt, id, input, func(context.Context) error {
-		if err := json.Unmarshal(input.JSON(), &request, json.RejectUnknownMembers(true)); err != nil {
+		if err := json.Unmarshal(input.Bytes(), &request, json.RejectUnknownMembers(true)); err != nil {
 			return err
 		}
 		if err := request.Validate(); err != nil {
-			return &portable.Refusal{Code: "invalid_input", Message: err.Error()}
+			return &framemcp.Refusal{Code: "invalid_input", Message: err.Error()}
 		}
 		return nil
 	})
@@ -171,7 +173,7 @@ func (e *eventCommands) rule(ctx context.Context, id string, input jsonvalue.Val
 		return hookprovider.Result{}, err
 	}
 	if len(reply) != 0 {
-		return qimumcp.DecodeReply[hookprovider.Result](reply)
+		return pluginmcp.DecodeReply[hookprovider.Result](reply)
 	}
 	if !prepared.NewlyAdmitted() {
 		return hookprovider.Result{}, pluginstorage.ErrCommandUnconfirmed
@@ -180,11 +182,11 @@ func (e *eventCommands) rule(ctx context.Context, id string, input jsonvalue.Val
 	if err := result.Validate(); err != nil {
 		return hookprovider.Result{}, err
 	}
-	encoded, err := qimumcp.EncodeReply(result, nil, nil)
+	encoded, err := pluginmcp.EncodeReply(result, nil, nil)
 	if err != nil {
 		return hookprovider.Result{}, err
 	}
-	if err := prepared.Complete(context.WithoutCancel(ctx), encoded.JSON()); err != nil {
+	if err := prepared.Complete(context.WithoutCancel(ctx), encoded.Bytes()); err != nil {
 		return hookprovider.Result{}, err
 	}
 	return result, nil

@@ -4,20 +4,22 @@ import (
 	"errors"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestUnaryInstalledAdmissionRefusesStreamBeforeAccessingRouteOwners(t *testing.T) {
-	method, err := qimumcp.NewStreamingMethod[struct{}, string, bool](qimumcp.MethodConfig{Name: "records.stream", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Stream installed records."})
+	method, err := pluginmcp.NewStreamingMethod[struct{}, string, bool](portable.MethodConfig{Name: "records.stream", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Stream installed records."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "records", Scope: extension.ScopeInstallation, Composition: portable.Selection}, method.Descriptor())
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "records", Scope: extension.ScopeInstallation, Composition: plugincontract.Selection}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -3,8 +3,6 @@ package bootstrap
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/runner"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +12,9 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/frame/process/runner"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -32,11 +33,18 @@ func externalAuthorizationConfig(t *testing.T, data, runnerDir string) assemblyC
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
+	cfg.processRunner = externalAuthorizationRunner(t, runnerDir)
+	cfg.stores = store
+	cfg.providerRegistry = store.Providers
+	return cfg
+}
+
+func externalAuthorizationRunner(t *testing.T, runnerDir string) *runner.Daemon {
+	t.Helper()
 	daemon, err := runner.NewDaemon(runner.DaemonConfig{Executable: testsupport.RunnerExecutable(t), Directory: runnerDir, StartTimeout: 10 * time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.processRunner = daemon
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -44,9 +52,7 @@ func externalAuthorizationConfig(t *testing.T, data, runnerDir string) assemblyC
 			t.Error(err)
 		}
 	})
-	cfg.stores = store
-	cfg.providerRegistry = store.Providers
-	return cfg
+	return daemon
 }
 
 func TestExternalAuthorizationCrashChild(t *testing.T) {
@@ -109,12 +115,15 @@ func TestExternalAuthorizationCrashChild(t *testing.T) {
 }
 
 func TestCrashDuringExternalAuthorizationRestoresUnconfirmedReceipt(t *testing.T) {
-	data := t.TempDir()
+	data := testsupport.TempDirectory(t)
 	runnerDir, err := os.MkdirTemp("", "mcp-crash-runner-")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(runnerDir) })
+	if _, err := externalAuthorizationRunner(t, runnerDir).Identity(t.Context()); err != nil {
+		t.Fatal(err)
+	}
 	var requests atomic.Int32
 	release := make(chan struct{})
 	remote := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

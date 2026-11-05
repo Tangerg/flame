@@ -2,8 +2,9 @@ package extension
 
 import (
 	"errors"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu/integrity"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // ContributionSource binds a value to the contribution that authored it, even
@@ -18,7 +19,7 @@ func (s ContributionSource) Validate() error {
 	if _, err := identity.ParseInstallation(s.InstallationID); err != nil {
 		return err
 	}
-	if _, err := integrity.ParseDigest(s.Release); err != nil {
+	if _, err := framevalue.ParseDigest(s.Release); err != nil {
 		return err
 	}
 	if !identity.ValidDeclarationID(s.Contribution) {

@@ -11,7 +11,7 @@ export function registerProviderDataProviders(
   ctx: Contributor,
   runtimeClient: () => FlameClient,
 ): void {
-  ctx.contribute(DATA_PROVIDER, {
+  ctx.add(DATA_PROVIDER, {
     key: MODELS_KEY,
     fetcher: async (_params, signal) => {
       const client = runtimeClient();
@@ -42,7 +42,7 @@ export function registerProviderDataProviders(
       );
     },
   });
-  ctx.contribute(DATA_PROVIDER, {
+  ctx.add(DATA_PROVIDER, {
     key: PROVIDERS_KEY,
     fetcher: async (_params, signal) =>
       (await pageData(runtimeClient().providers.list(signal))).map(({ configured }) => ({

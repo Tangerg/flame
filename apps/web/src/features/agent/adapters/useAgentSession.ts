@@ -67,10 +67,10 @@ export function useAgentSession(
     sessionMemory.rememberSession(sessionId);
     store().ensureSession(sessionId);
 
-    let abort: AbortController | null = null;
-    let cancelled = false;
-    let interacted = false;
-    let commandsReady = false;
+    const abortState: { value: AbortController | null } = { value: null };
+    const cancelledState = { value: false };
+    const interactedState = { value: false };
+    const commandsReadyState = { value: false };
     let projectionSynchronization: ReturnType<
       typeof createSessionProjectionSynchronization
     > | null = null;
@@ -85,7 +85,7 @@ export function useAgentSession(
       onRunFinished: () => {
         void queryClient.invalidateQueries({ queryKey: agentAccess.usage.queryKey(sessionId) });
       },
-      isCancelled: () => cancelled,
+      isCancelled: () => cancelledState.value,
       readEpoch: () => store().sessions[sessionId]?.viewEpoch ?? 0n,
       applyEvents: (events) => store().applyRunEvents(sessionId, events),
       readRunSnapshot: (runId, signal) => client().runs.get(runId, signal),
@@ -93,11 +93,11 @@ export function useAgentSession(
       reattach: createRunStreamReattach(agentAccess, {
         sessionId,
         client,
-        isCancelled: () => cancelled,
+        isCancelled: () => cancelledState.value,
         onConnectionLost: reportConnectionLoss,
         recoverProjection: (signal) =>
           refreshAgentSessionProjection(agentAccess, sessionId, {
-            canCommit: () => !cancelled && !signal.aborted,
+            canCommit: () => !cancelledState.value && !signal.aborted,
             signal,
           }).then(() => undefined),
       }),
@@ -105,27 +105,28 @@ export function useAgentSession(
       onIdle: () => projectionSynchronization?.liveStreamSettled(),
     });
 
-    let guardInitialInteraction = true;
+    const guardInitialInteractionState = { value: true };
     projectionSynchronization = createSessionProjectionSynchronization({
       isLiveStreamActive: runPump.isActive,
       synchronize: (signal) => {
-        const guardInteraction = guardInitialInteraction;
-        guardInitialInteraction = false;
+        const guardInteraction = guardInitialInteractionState.value;
+        guardInitialInteractionState.value = false;
         return startAgentSessionRecovery(agentAccess, {
           client: client(),
           sessionId,
           signal,
-          isCancelled: () => cancelled,
-          hasInteracted: () => guardInteraction && interacted,
+          isCancelled: () => cancelledState.value,
+          hasInteracted: () => guardInteraction && interactedState.value,
           isFollowing: runPump.isFollowing,
           setAbortController: (controller) => {
-            abort?.abort();
-            abort = controller;
+            abortState.value?.abort();
+            abortState.value = controller;
           },
           pump: runPump.pump,
           onSynchronizationFailed: reportSynchronizationFailure,
         }).then((authoritativeView) => {
-          if (!cancelled && !signal.aborted) commandsReady = authoritativeView !== null;
+          if (!cancelledState.value && !signal.aborted)
+            commandsReadyState.value = authoritativeView !== null;
           return authoritativeView !== null;
         });
       },
@@ -135,17 +136,17 @@ export function useAgentSession(
 
     const runOpening = createRunOpeningController({
       sessionId,
-      isCancelled: () => cancelled,
+      isCancelled: () => cancelledState.value,
       markInteracted: () => {
-        interacted = true;
+        interactedState.value = true;
       },
-      abortCurrent: () => abort?.abort(),
+      abortCurrent: () => abortState.value?.abort(),
       setAbortController: (ctrl) => {
-        abort = ctrl;
+        abortState.value = ctrl;
       },
       setStartError: (error) => store().setCommandError(sessionId, error),
       onRejected: () => {
-        commandsReady = false;
+        commandsReadyState.value = false;
         void projectionSynchronization?.request();
       },
     });
@@ -154,7 +155,7 @@ export function useAgentSession(
       opening: RunOpeningResult<{ runId: RunId; segmentId: SegmentId }>,
       signal: AbortSignal,
     ): Promise<void> => {
-      commandsReady = false;
+      commandsReadyState.value = false;
       try {
         const observation = opening.observation;
         if (observation.type !== "stream" && observation.sessionId !== sessionId) {
@@ -164,9 +165,9 @@ export function useAgentSession(
           notifyInfo(t("agent.acceptedRunRetired"), { source: "session" });
           const view = await refreshAgentSessionProjection(agentAccess, sessionId, {
             signal,
-            canCommit: () => !cancelled && !signal.aborted,
+            canCommit: () => !cancelledState.value && !signal.aborted,
           });
-          if (!cancelled && !signal.aborted) commandsReady = view !== null;
+          if (!cancelledState.value && !signal.aborted) commandsReadyState.value = view !== null;
           return;
         }
         if (observation.type === "stream") await disposeAsyncIterable(observation.events);
@@ -174,18 +175,18 @@ export function useAgentSession(
           client: client(),
           sessionId,
           signal,
-          isCancelled: () => cancelled,
+          isCancelled: () => cancelledState.value,
           hasInteracted: () => false,
           isFollowing: runPump.isFollowing,
           setAbortController: (controller) => {
-            abort = controller;
+            abortState.value = controller;
           },
           pump: runPump.pump,
           onSynchronizationFailed: reportSynchronizationFailure,
         });
-        if (!cancelled && !signal.aborted) commandsReady = view !== null;
+        if (!cancelledState.value && !signal.aborted) commandsReadyState.value = view !== null;
       } catch (error) {
-        if (!cancelled && !signal.aborted) reportSynchronizationFailure(error);
+        if (!cancelledState.value && !signal.aborted) reportSynchronizationFailure(error);
         throw error;
       }
     };
@@ -204,7 +205,7 @@ export function useAgentSession(
       options: AgentRunStartOptions = {},
     ): Promise<AgentInputSettlement> | null => {
       if (
-        !commandsReady ||
+        !commandsReadyState.value ||
         runOpening.isStarting() ||
         store().sessions[sessionId]?.openingCommands.length
       )
@@ -249,7 +250,7 @@ export function useAgentSession(
       onStartError?: () => void,
     ): boolean => {
       if (
-        !commandsReady ||
+        !commandsReadyState.value ||
         runOpening.isStarting() ||
         store().sessions[sessionId]?.openingCommands.length
       )
@@ -274,7 +275,7 @@ export function useAgentSession(
       const admittedClient = () => (generationClient ??= client());
       return createRunCancellationController({
         markInteracted: () => {
-          interacted = true;
+          interactedState.value = true;
         },
         readTarget: (runId) => {
           const entry = store().sessions[sessionId];
@@ -296,7 +297,7 @@ export function useAgentSession(
           ),
         revalidateTerminal: (runId) => revalidateRunTermination(agentAccess, sessionId, runId),
         onSettled: () => {
-          abort?.abort();
+          abortState.value?.abort();
           projectionSynchronization?.request();
           void queryClient.invalidateQueries({
             queryKey: agentAccess.usage.queryKey(sessionId),
@@ -310,9 +311,9 @@ export function useAgentSession(
         },
       });
     };
-    let runCancellation = createCancellationGeneration();
+    const runCancellationState = { value: createCancellationGeneration() };
 
-    const cancelRun = (runId: string): void => runCancellation.cancel(runId);
+    const cancelRun = (runId: string): void => runCancellationState.value.cancel(runId);
 
     const stop = (): boolean => {
       const view = store().sessions[sessionId]?.view;
@@ -326,7 +327,7 @@ export function useAgentSession(
     store().setStop(sessionId, stop);
     store().setResume(sessionId, resume);
     store().setRetryOpening(sessionId, (key) => {
-      if (!commandsReady || runOpening.isStarting()) return null;
+      if (!commandsReadyState.value || runOpening.isStarting()) return null;
       const opening = runOpening.begin((signal) => retries.retry(sessionId, key, signal), {
         onResult: () => store().projectOpeningAccepted(sessionId, key),
         observe: recoverOpeningObservation,
@@ -341,14 +342,14 @@ export function useAgentSession(
         ownership === "retire-live" ||
         ownership === "replace-server"
       ) {
-        commandsReady = false;
+        commandsReadyState.value = false;
         runOpening.retire();
-        runCancellation.retire();
+        runCancellationState.value.retire();
         if (ownership === "retire-live") {
           projectionSynchronization?.retire();
           return Promise.resolve(false);
         }
-        runCancellation = createCancellationGeneration();
+        runCancellationState.value = createCancellationGeneration();
         return projectionSynchronization?.replace() ?? Promise.resolve(false);
       }
       return projectionSynchronization?.request() ?? Promise.resolve(false);
@@ -356,12 +357,12 @@ export function useAgentSession(
     store().setCancelRun(sessionId, cancelRun);
 
     return () => {
-      cancelled = true;
+      cancelledState.value = true;
       runOpening.retire();
-      runCancellation.retire();
+      runCancellationState.value.retire();
       projectionSynchronization?.dispose();
       runPump.dispose();
-      abort?.abort();
+      abortState.value?.abort();
       store().setSend(sessionId, null);
       store().setStop(sessionId, null);
       store().setResume(sessionId, null);

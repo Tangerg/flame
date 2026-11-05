@@ -15,11 +15,14 @@ import (
 	"testing"
 	"time"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -34,7 +37,7 @@ func buildCallContributor(t *testing.T) string {
 	return binary
 }
 
-func installCallContributor(t *testing.T, r *poMCPRuntime, binary, mode, trace string, contract *portable.Capability) *protocol.PluginInstallation {
+func installCallContributor(t *testing.T, r *poMCPRuntime, binary, mode, trace string, contract *plugincontract.Capability) *protocol.PluginInstallation {
 	t.Helper()
 	declaration, err := json.Marshal(map[string]any{"protocol": pluginsdk.DeclarationProtocol, "contributions": []any{map[string]any{"id": "contributor", "server": "contributor", "export": "contributor", "contract": "io.github.tangerg.flame/contracts/contributor.json"}}})
 	if err != nil {
@@ -127,7 +130,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 				message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 				return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
 			})}
-			client, err := chatclient.New(model, chatclient.Config{})
+			client, err := chatclient.New(model)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -4,48 +4,51 @@ import (
 	"context"
 	"errors"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame"
+
+	"github.com/Tangerg/frame/sqlite"
 )
 
 // The framework authority and original Flame business owners share one file
 // and one admission. The installation tables are indexes of committed Host
 // records; only the Host's transaction can advance them.
-func openFrameworkDatabase(ctx context.Context, path string) (*sqlite.Store, *qimu.Admission, *InstallationStore, error) {
-	admission := qimu.NewAdmission()
+func openFrameworkDatabase(ctx context.Context, path string) (*sqlite.Store, *frame.Admission, *InstallationStore, error) {
+	admission := frame.NewAdmission()
 	var store *sqlite.Store
+	var db *database
 	var installations *InstallationStore
 	var err error
 	store, err = sqlite.Open(ctx, sqlite.Config{
 		Path: path, Admission: admission,
 		Owners: []sqlite.OwnerSchema{{
 			ID: "flame", Statements: currentSchema(),
-			References: func(ctx context.Context, executor sqlite.Executor, installation qimu.InstallationID) ([]qimu.Dependency, error) {
-				var dependencies []qimu.Dependency
-				err := store.WithTransaction(ctx, executor, func(ctx context.Context) error {
-					checkpoints, err := newExecutorCheckpointStore(store.Database()).PendingCheckpointDependencies(ctx)
+			References: func(ctx context.Context, executor sqlite.Reader, installation frame.InstallationID) ([]frame.Dependency, error) {
+				var dependencies []frame.Dependency
+				err := db.withReader(ctx, executor, func(ctx context.Context) error {
+					checkpoints, err := newExecutorCheckpointStore(db).PendingCheckpointDependencies(ctx)
 					if err != nil {
 						return err
 					}
-					commands, err := newPluginCommandStore(store.Database(), nil).PendingCommandDependencies(ctx)
+					commands, err := newPluginCommandStore(db, nil).PendingCommandDependencies(ctx)
 					if err != nil {
 						return err
 					}
 					for _, dependency := range append(checkpoints, commands...) {
 						if dependency.InstallationID.String() == installation.String() {
-							dependencies = append(dependencies, qimu.Dependency{InstallationID: installation, Release: dependency.Digest})
+							dependencies = append(dependencies, frame.Dependency{InstallationID: installation, Release: dependency.Digest})
 						}
 					}
 					return nil
 				})
-				return qimu.CompactDependencies(dependencies), err
+				return frame.CompactDependencies(dependencies), err
 			},
 		}},
-		ProjectInstallation: func(ctx context.Context, executor sqlite.Executor, change qimu.InstallationChange) error {
-			return store.WithTransaction(ctx, executor, func(ctx context.Context) error {
+		ProjectInstallation: func(ctx context.Context, executor sqlite.Executor, change frame.InstallationChange) error {
+			return db.withExecutor(ctx, executor, func(ctx context.Context) error {
 				if change.After == nil {
 					if change.Before == nil {
 						return plugin.ErrInvalid
@@ -63,7 +66,7 @@ func openFrameworkDatabase(ctx context.Context, path string) (*sqlite.Store, *qi
 						return err
 					}
 					if staged != nil {
-						digest, err := integrity.ParseDigest(*staged)
+						digest, err := framevalue.ParseDigest(*staged)
 						if err != nil {
 							return err
 						}
@@ -75,9 +78,16 @@ func openFrameworkDatabase(ctx context.Context, path string) (*sqlite.Store, *qi
 		},
 	})
 	if err != nil {
+		if store != nil {
+			err = errors.Join(err, store.Close())
+		}
+		return nil, nil, nil, err
+	}
+	db, err = newDatabase(store, admission)
+	if err != nil {
 		return nil, nil, nil, errors.Join(err, store.Close())
 	}
-	installations = newInstallationStore(newReleaseStore(store.Database()))
+	installations = newInstallationStore(newReleaseStore(db))
 	owner, err := store.Owner("flame")
 	if err == nil {
 		err = admission.RegisterUseOwner(owner)

@@ -1,51 +1,45 @@
 package terminal
 
 import (
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/layout"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/scene"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 // confirmationContentPane keeps the complete reviewed content scrollable while
 // the decision remains visible. Arrow keys choose; page keys and the wheel read.
 type confirmationContentPane struct {
-	viewport       *headless.Viewport
-	form           *kit.Form
-	viewportRegion headless.PointerRegion
-	formRegion     headless.PointerRegion
+	viewport *base.Viewport
+	form     *kit.Form
+	group    *scene.Group
 }
 
-func (p *confirmationContentPane) Draw(frame headless.Frame) {
-	rects := (layout.Flow{Axis: layout.Down}).Rects(frame.Bounds().Size(), []layout.Slot{
-		{Size: layout.Flex(1)},
-		{Size: layout.Fixed(min(p.form.HeightForWidth(frame.Bounds().Dx()), 7))},
-	})
-	p.viewportRegion.Stage(frame, rects[0], p.viewport)
-	p.formRegion.Stage(frame, rects[1], p.form)
-	rows := frame.Subs(rects)
-	p.viewport.Draw(rows[0])
-	p.form.Draw(rows[1])
-}
-
-func (p *confirmationContentPane) Handle(event input.Event) bool {
-	if mouse, ok := event.(input.Mouse); ok {
-		if handled, delivered := p.formRegion.Handle(mouse); delivered {
-			return handled
+func (p *confirmationContentPane) Element() scene.Element {
+	if p.group == nil {
+		// Decisions own arrow-key focus; the reviewed document remains readable
+		// through the wheel and the pane's page-key actions.
+		if err := p.viewport.Element().SetFocusable(func() bool { return false }); err != nil {
+			panic(err)
 		}
-		handled, _ := p.viewportRegion.Handle(mouse)
-		return handled
+		p.group = scene.NewGroup(scene.GroupConfig{
+			Axis:  layout.Down,
+			Items: []scene.Item{{Element: p.viewport.Element(), Size: layout.Flex(1)}, {Element: p.form.Element(), Size: layout.Measured(0, 7)}},
+			Element: scene.ElementConfig{Preview: func(event scene.Event) scene.EventResult {
+				key, ok := event.Input().(input.Key)
+				if !ok || !key.Down() {
+					return scene.EventResult{}
+				}
+				switch key.Code {
+				case input.PageUp:
+					return scene.EventResult{Consumed: p.viewport.Do(base.ScrollPageUp)}
+				case input.PageDown:
+					return scene.EventResult{Consumed: p.viewport.Do(base.ScrollPageDown)}
+				}
+				return scene.EventResult{}
+			}},
+		})
 	}
-	if key, ok := event.(input.Key); ok && key.Down() && (key.Chord().Code == input.PageUp || key.Chord().Code == input.PageDown) {
-		return p.viewport.Handle(event)
-	}
-	if p.form.Handle(event) {
-		return true
-	}
-	return p.viewport.Handle(event)
-}
-
-func (p *confirmationContentPane) Focus(has bool) {
-	p.form.Focus(has)
-	p.viewport.Focus(has)
+	return p.group.Element()
 }

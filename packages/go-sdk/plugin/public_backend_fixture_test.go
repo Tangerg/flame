@@ -3,14 +3,15 @@ package plugin
 import (
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
-func newTestCallbacks(t *testing.T) *qimumcp.Callbacks {
+func newTestCallbacks(t *testing.T) *pluginmcp.Callbacks {
 	t.Helper()
-	callbacks := qimumcp.NewCallbacks()
+	callbacks := pluginmcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := callbacks.Close(); err != nil {
 			t.Error(err)
@@ -19,7 +20,7 @@ func newTestCallbacks(t *testing.T) *qimumcp.Callbacks {
 	return callbacks
 }
 
-var callbackTestLimits = qimumcp.CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 4096}
+var callbackTestLimits = pluginmcp.CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 4096}
 
 func connectMethodSessions(t *testing.T, server *sdk.Server, client *sdk.Client) *sdk.ClientSession {
 	t.Helper()
@@ -37,7 +38,7 @@ func connectMethodSessions(t *testing.T, server *sdk.Server, client *sdk.Client)
 	return session
 }
 
-func connectPublishedBackend(t *testing.T, backend *qimumcp.Backend, server *sdk.Server, client *sdk.Client) *sdk.ClientSession {
+func connectPublishedBackend(t *testing.T, backend *pluginmcp.Backend, server *sdk.Server, client *sdk.Client) *sdk.ClientSession {
 	t.Helper()
 	if err := backend.Publish(); err != nil {
 		t.Fatal(err)
@@ -45,18 +46,18 @@ func connectPublishedBackend(t *testing.T, backend *qimumcp.Backend, server *sdk
 	return connectMethodSessions(t, server, client)
 }
 
-func testBackend(t *testing.T, server *sdk.Server) *qimumcp.Backend {
+func testBackend(t *testing.T, server *sdk.Server) *pluginmcp.Backend {
 	t.Helper()
-	backend, err := qimumcp.NewBackend(server)
+	backend, err := pluginmcp.NewBackend(server)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return backend
 }
 
-func testMethod[P, R any](t *testing.T, name string, kind portable.MethodKind) *qimumcp.Method[P, R] {
+func testMethod[P, R any](t *testing.T, name string, kind portable.MethodKind) *pluginmcp.Method[P, R] {
 	t.Helper()
-	method, err := qimumcp.NewMethod[P, R](qimumcp.MethodConfig{Name: name, Kind: kind, Target: "installation", Description: name})
+	method, err := pluginmcp.NewMethod[P, R](portable.MethodConfig{Name: name, Kind: kind, Target: "installation", Description: name})
 	if err != nil {
 		t.Fatal(err)
 	}

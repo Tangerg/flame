@@ -6,7 +6,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
+	"github.com/Tangerg/oolong/ui/base"
 )
 
 // approvalAction is the terminal's complete decision vocabulary for one tool
@@ -26,8 +26,8 @@ const (
 	approvalEditArgs     approvalAction = "edit-arguments"
 )
 
-func approvalOptions(rememberable bool) []headless.Option[approvalAction] {
-	options := []headless.Option[approvalAction]{
+func approvalOptions(rememberable bool) []base.Option[approvalAction] {
+	options := []base.Option[approvalAction]{
 		{Label: "Allow once", Value: approvalAllowOnce},
 		{Label: "Deny once", Value: approvalDenyOnce},
 		{Label: "Edit arguments before deciding", Value: approvalEditArgs},
@@ -36,14 +36,14 @@ func approvalOptions(rememberable bool) []headless.Option[approvalAction] {
 		return options
 	}
 	options = slices.Insert(options, 1,
-		headless.Option[approvalAction]{Label: "Allow for this session", Value: approvalAllowSession},
-		headless.Option[approvalAction]{Label: "Allow for this project", Value: approvalAllowProject},
-		headless.Option[approvalAction]{Label: "Always allow this rule", Value: approvalAllowGlobal},
+		base.Option[approvalAction]{Label: "Allow for this session", Value: approvalAllowSession},
+		base.Option[approvalAction]{Label: "Allow for this project", Value: approvalAllowProject},
+		base.Option[approvalAction]{Label: "Always allow this rule", Value: approvalAllowGlobal},
 	)
 	return slices.Insert(options, len(options)-1,
-		headless.Option[approvalAction]{Label: "Deny for this session", Value: approvalDenySession},
-		headless.Option[approvalAction]{Label: "Deny for this project", Value: approvalDenyProject},
-		headless.Option[approvalAction]{Label: "Always deny this rule", Value: approvalDenyGlobal},
+		base.Option[approvalAction]{Label: "Deny for this session", Value: approvalDenySession},
+		base.Option[approvalAction]{Label: "Deny for this project", Value: approvalDenyProject},
+		base.Option[approvalAction]{Label: "Always deny this rule", Value: approvalDenyGlobal},
 	)
 }
 

@@ -1,5 +1,5 @@
 import type { RpcCallOptions, RpcClient } from "./client";
-import { cloneJSON } from "@qimu/sdk/json";
+import { cloneJSON } from "@frame/sdk/json";
 import { RpcError, RpcCancellationError } from "./errors";
 import { checkRequest, requestRequiresIdempotency } from "./request";
 import { createMutationPromise, type MutationPromise } from "./mutation";

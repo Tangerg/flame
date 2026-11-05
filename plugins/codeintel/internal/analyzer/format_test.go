@@ -1,8 +1,9 @@
 package analyzer
 
 import (
-	"github.com/Tangerg/flame/plugins/codeintel/internal/lsp"
 	"testing"
+
+	"github.com/Tangerg/flame/plugins/codeintel/internal/lsp"
 )
 
 func TestProblemIdentityIgnoresPositionButRetainsMeaning(t *testing.T) {

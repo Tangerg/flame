@@ -3,11 +3,12 @@ package runs
 import (
 	"context"
 	"errors"
-	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"strings"
 	"testing"
 	"testing/synctest"
 	"time"
+
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 // TestRunTreeOwnerCancelLinearizesAfterInterruptCommit proves requestCancel

@@ -46,7 +46,7 @@ async function mount(rules: ApprovalRuleSummary[]) {
   const forgetMany = vi.fn();
   Object.assign(testClient.agent.access, { forgetRule: forget, forgetRules: forgetMany });
   await contributeForTest((ctx) =>
-    ctx.contribute(DATA_PROVIDER, { key: APPROVAL_RULES_KEY, fetcher: list }),
+    ctx.contributions.add(DATA_PROVIDER, { key: APPROVAL_RULES_KEY, fetcher: list }),
   );
   testClient.render(
     <>

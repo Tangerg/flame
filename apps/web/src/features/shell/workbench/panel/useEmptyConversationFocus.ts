@@ -8,9 +8,9 @@ export function useEmptyConversationFocus(
     const viewport = viewportRef.current;
     if (!enabled || !viewport) return;
     const document = viewport.ownerDocument;
-    let witness: Element | null = null;
-    let pressed: Element | null = null;
-    let scrollTop = viewport.scrollTop;
+    const witnessState: { value: Element | null } = { value: null };
+    const pressedState: { value: Element | null } = { value: null };
+    const scrollTopState = { value: viewport.scrollTop };
     const frame = () => {
       const bounds = viewport.getBoundingClientRect();
       const style = getComputedStyle(viewport);
@@ -21,7 +21,7 @@ export function useEmptyConversationFocus(
         contentHeight: viewport.scrollHeight,
       };
     };
-    let previous = frame();
+    const previousState = { value: frame() };
     const visible = (target: Element, bounds: ReturnType<typeof frame>) => {
       const rect = target.getBoundingClientRect();
       return (
@@ -33,51 +33,57 @@ export function useEmptyConversationFocus(
     };
     const remember = () => {
       const active = document.activeElement;
-      witness =
+      witnessState.value =
         active && active !== viewport && viewport.contains(active) && visible(active, frame())
           ? active
           : null;
     };
     const retire = () => {
-      witness = null;
+      witnessState.value = null;
     };
     const pressedTarget = (target: Element) =>
-      pressed &&
-      (target.contains(pressed) || pressed.closest("label, [data-focus-proxy]")?.contains(target));
+      pressedState.value &&
+      (target.contains(pressedState.value) ||
+        pressedState.value.closest("label, [data-focus-proxy]")?.contains(target));
     const reveal = () => {
-      previous = frame();
-      if (!witness) return;
+      previousState.value = frame();
+      if (!witnessState.value) return;
       if (
-        witness !== document.activeElement ||
-        !viewport.contains(witness) ||
-        witness.getClientRects().length === 0
+        witnessState.value !== document.activeElement ||
+        !viewport.contains(witnessState.value) ||
+        witnessState.value.getClientRects().length === 0
       ) {
         retire();
         return;
       }
-      if (pressedTarget(witness) || previous.bottom <= previous.top || visible(witness, previous))
+      if (
+        pressedTarget(witnessState.value) ||
+        previousState.value.bottom <= previousState.value.top ||
+        visible(witnessState.value, previousState.value)
+      )
         return;
-      const bounds = witness.getBoundingClientRect();
+      const bounds = witnessState.value.getBoundingClientRect();
       const alignStart =
-        bounds.top < previous.top || bounds.height > previous.bottom - previous.top;
+        bounds.top < previousState.value.top ||
+        bounds.height > previousState.value.bottom - previousState.value.top;
       const delta = alignStart
-        ? Math.floor(bounds.top - previous.top)
-        : Math.ceil(bounds.bottom - previous.bottom);
+        ? Math.floor(bounds.top - previousState.value.top)
+        : Math.ceil(bounds.bottom - previousState.value.bottom);
       // Absolute offsets preserve WebKit's fractional page-zoom geometry.
       viewport.scrollTo({ top: viewport.scrollTop + delta, behavior: "instant" });
     };
     const onScroll = (event: Event) => {
       if (event.target !== viewport) return;
-      const moved = viewport.scrollTop !== scrollTop;
-      scrollTop = viewport.scrollTop;
+      const moved = viewport.scrollTop !== scrollTopState.value;
+      scrollTopState.value = viewport.scrollTop;
       const next = frame();
       // Native reflow can notify scrolling before ResizeObserver.
       if (
         !moved ||
-        next.top !== previous.top ||
-        next.bottom !== previous.bottom ||
-        next.width !== previous.width ||
-        next.contentHeight !== previous.contentHeight
+        next.top !== previousState.value.top ||
+        next.bottom !== previousState.value.bottom ||
+        next.width !== previousState.value.width ||
+        next.contentHeight !== previousState.value.contentHeight
       )
         return;
       remember();
@@ -89,16 +95,16 @@ export function useEmptyConversationFocus(
         return;
       }
       if (!pressedTarget(active)) {
-        witness = active;
+        witnessState.value = active;
         reveal();
       }
       remember();
     };
     const onPointerDown = (event: PointerEvent) => {
-      pressed = event.target instanceof Element ? event.target : null;
+      pressedState.value = event.target instanceof Element ? event.target : null;
     };
     const clearPress = () => {
-      pressed = null;
+      pressedState.value = null;
     };
     remember();
     const observer = new ResizeObserver(reveal);

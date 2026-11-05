@@ -11,7 +11,7 @@ export function createRuntimePlugin(connection: ReturnType<typeof createRuntimeC
     provides: { serverScope: RUNTIME_SERVER_SCOPE, stream: RUNTIME_STREAM },
     setup(ctx) {
       const binding = connection.bind(ctx);
-      ctx.cleanup(binding.dispose);
+      ctx.lifetime.defer(binding.dispose);
       return {
         serverScope: {
           subscribeReplacement: (onReplace: () => void) =>

@@ -16,7 +16,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/codeintel"
 	"github.com/Tangerg/flame/packages/go-sdk/procgroup"
-	"github.com/Tangerg/frame/cancellation"
 )
 
 var errFormattedTooLarge = errors.New("code intelligence: formatted output exceeds document capacity")
@@ -25,7 +24,7 @@ func formatDocument(ctx context.Context, source codeintel.Document) (codeintel.T
 	if err := source.Validate(); err != nil {
 		return codeintel.Transformation{}, err
 	}
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return codeintel.Transformation{}, err
 	}
 	result := codeintel.Transformation{Version: source.Version}
@@ -53,7 +52,7 @@ func formatDocument(ctx context.Context, source codeintel.Document) (codeintel.T
 	default:
 		return result, nil
 	}
-	if err := errors.Join(err, cancellation.Err(ctx)); err != nil {
+	if err := errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx))); err != nil {
 		return result, err
 	}
 	result.Content = new(string(formatted))
@@ -61,7 +60,7 @@ func formatDocument(ctx context.Context, source codeintel.Document) (codeintel.T
 }
 
 func runFormatter(ctx context.Context, input []byte, name string, args ...string) ([]byte, error) {
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return nil, err
 	}
 	cmd := exec.CommandContext(ctx, name, args...)
@@ -78,7 +77,7 @@ func runFormatter(ctx context.Context, input []byte, name string, args ...string
 	if errors.Is(cleanupErr, os.ErrProcessDone) {
 		cleanupErr = nil
 	}
-	failure := errors.Join(runErr, cleanupErr, cancellation.Err(ctx))
+	failure := errors.Join(runErr, cleanupErr, errors.Join(ctx.Err(), context.Cause(ctx)))
 	target := name
 	if len(args) > 0 {
 		target = args[len(args)-1]

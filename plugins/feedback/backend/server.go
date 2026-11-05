@@ -7,10 +7,10 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 var errEmptySignal = errors.New("feedback requires a recognized rating or nonblank text")
@@ -32,7 +32,7 @@ func newServer(db *sql.DB) (*sdk.Server, error) {
 		return nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.feedback", Version: "1.0.0"}, nil)
-	backend, err := qimumcp.NewBackend(server)
+	backend, err := pluginmcp.NewBackend(server)
 	if err != nil {
 		return nil, err
 	}

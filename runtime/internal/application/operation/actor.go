@@ -3,19 +3,19 @@ package operation
 import (
 	"context"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 // Actor identifies the managed code making a nested call. It is captured by
 // the connection owner and never decoded from a plugin's business arguments.
 type Actor struct {
 	installation identity.InstallationID
-	release      integrity.Digest
-	authority    integrity.Digest
+	release      framevalue.Digest
+	authority    framevalue.Digest
 	server       mcpserver.ServerName
 	bindings     *plugin.RequiredBindings
 }
@@ -25,7 +25,7 @@ func NewActor(installation, release, authority, server string) (Actor, error) {
 	if err != nil {
 		return Actor{}, err
 	}
-	digest, err := integrity.ParseDigest(release)
+	digest, err := framevalue.ParseDigest(release)
 	if err != nil {
 		return Actor{}, err
 	}
@@ -33,7 +33,7 @@ func NewActor(installation, release, authority, server string) (Actor, error) {
 	if err != nil {
 		return Actor{}, err
 	}
-	admitted, err := integrity.ParseDigest(authority)
+	admitted, err := framevalue.ParseDigest(authority)
 	if err != nil {
 		return Actor{}, err
 	}
@@ -41,16 +41,16 @@ func NewActor(installation, release, authority, server string) (Actor, error) {
 }
 
 func (a Actor) InstallationID() identity.InstallationID { return a.installation }
-func (a Actor) Release() integrity.Digest               { return a.release }
+func (a Actor) Release() framevalue.Digest              { return a.release }
 func (a Actor) Server() mcpserver.ServerName            { return a.server }
-func (a Actor) Authority() integrity.Digest             { return a.authority }
+func (a Actor) Authority() framevalue.Digest            { return a.authority }
 
 func (a Actor) WithBindings(bindings *plugin.RequiredBindings) Actor {
 	a.bindings = bindings
 	return a
 }
 
-func (a Actor) Allows(provider plugin.Dependency, contribution plugin.ContributionID, contract jsonvalue.Value) bool {
+func (a Actor) Allows(provider plugin.Dependency, contribution plugin.ContributionID, contract framevalue.JSON) bool {
 	return a.bindings.Allows(provider, contribution, contract)
 }
 

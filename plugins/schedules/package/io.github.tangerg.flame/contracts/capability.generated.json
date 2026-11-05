@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.qimu/portable/1",
+  "protocol": "io.github.tangerg.flame/plugin/1",
   "reference": "schedules",
   "composition": "selection",
   "scope": "installation",
@@ -48,7 +48,7 @@
             "type": "object"
           },
           "model.Selection": {
-            "$ref": "#/$defs/model.selectionJSON[string]"
+            "$ref": "#/$defs/model.selectionJSON%5Bstring%5D"
           },
           "model.selectionJSON[string]": {
             "additionalProperties": false,
@@ -110,14 +110,16 @@
       "output": {
         "$defs": {
           "domain.Snapshot": {
+            "$ref": "#/$defs/domain.snapshotProjection"
+          },
+          "domain.snapshotProjection": {
             "additionalProperties": false,
             "properties": {
               "CWD": {
                 "type": "string"
               },
               "CreatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "Cron": {
                 "type": "string"
@@ -129,15 +131,13 @@
                 "type": "string"
               },
               "LastRunAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "ModelSelection": {
                 "$ref": "#/$defs/model.Selection"
               },
               "NextRunAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "Revision": {
                 "allOf": [
@@ -168,8 +168,11 @@
             ],
             "type": "object"
           },
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "model.Selection": {
-            "$ref": "#/$defs/model.selectionJSON[string]"
+            "$ref": "#/$defs/model.selectionJSON%5Bstring%5D"
           },
           "model.selectionJSON[string]": {
             "additionalProperties": false,
@@ -192,64 +195,8 @@
             "type": "object"
           }
         },
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "CWD": {
-            "type": "string"
-          },
-          "CreatedAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "Cron": {
-            "type": "string"
-          },
-          "ID": {
-            "type": "string"
-          },
-          "Instructions": {
-            "type": "string"
-          },
-          "LastRunAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "ModelSelection": {
-            "$ref": "#/$defs/model.Selection"
-          },
-          "NextRunAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "Revision": {
-            "allOf": [
-              {
-                "maximum": 18446744073709551615,
-                "minimum": 0
-              }
-            ],
-            "type": "integer"
-          },
-          "TimeZone": {
-            "type": "string"
-          },
-          "Title": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "ID",
-          "Title",
-          "Instructions",
-          "CWD",
-          "ModelSelection",
-          "Cron",
-          "TimeZone",
-          "CreatedAt",
-          "Revision"
-        ],
-        "type": "object"
+        "$ref": "#/$defs/domain.snapshotProjection",
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
       }
     },
     {
@@ -351,14 +298,16 @@
       "output": {
         "$defs": {
           "domain.Snapshot": {
+            "$ref": "#/$defs/domain.snapshotProjection"
+          },
+          "domain.snapshotProjection": {
             "additionalProperties": false,
             "properties": {
               "CWD": {
                 "type": "string"
               },
               "CreatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "Cron": {
                 "type": "string"
@@ -370,15 +319,13 @@
                 "type": "string"
               },
               "LastRunAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "ModelSelection": {
                 "$ref": "#/$defs/model.Selection"
               },
               "NextRunAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "Revision": {
                 "allOf": [
@@ -409,8 +356,11 @@
             ],
             "type": "object"
           },
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "model.Selection": {
-            "$ref": "#/$defs/model.selectionJSON[string]"
+            "$ref": "#/$defs/model.selectionJSON%5Bstring%5D"
           },
           "model.selectionJSON[string]": {
             "additionalProperties": false,
@@ -654,14 +604,16 @@
       "output": {
         "$defs": {
           "domain.Snapshot": {
+            "$ref": "#/$defs/domain.snapshotProjection"
+          },
+          "domain.snapshotProjection": {
             "additionalProperties": false,
             "properties": {
               "CWD": {
                 "type": "string"
               },
               "CreatedAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "Cron": {
                 "type": "string"
@@ -673,15 +625,13 @@
                 "type": "string"
               },
               "LastRunAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "ModelSelection": {
                 "$ref": "#/$defs/model.Selection"
               },
               "NextRunAt": {
-                "format": "date-time",
-                "type": "string"
+                "$ref": "#/$defs/instant.Timestamp"
               },
               "Revision": {
                 "allOf": [
@@ -712,8 +662,11 @@
             ],
             "type": "object"
           },
+          "instant.Timestamp": {
+            "type": "string"
+          },
           "model.Selection": {
-            "$ref": "#/$defs/model.selectionJSON[string]"
+            "$ref": "#/$defs/model.selectionJSON%5Bstring%5D"
           },
           "model.selectionJSON[string]": {
             "additionalProperties": false,
@@ -736,64 +689,8 @@
             "type": "object"
           }
         },
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "CWD": {
-            "type": "string"
-          },
-          "CreatedAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "Cron": {
-            "type": "string"
-          },
-          "ID": {
-            "type": "string"
-          },
-          "Instructions": {
-            "type": "string"
-          },
-          "LastRunAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "ModelSelection": {
-            "$ref": "#/$defs/model.Selection"
-          },
-          "NextRunAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "Revision": {
-            "allOf": [
-              {
-                "maximum": 18446744073709551615,
-                "minimum": 0
-              }
-            ],
-            "type": "integer"
-          },
-          "TimeZone": {
-            "type": "string"
-          },
-          "Title": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "ID",
-          "Title",
-          "Instructions",
-          "CWD",
-          "ModelSelection",
-          "Cron",
-          "TimeZone",
-          "CreatedAt",
-          "Revision"
-        ],
-        "type": "object"
+        "$ref": "#/$defs/domain.snapshotProjection",
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
       }
     }
   ]

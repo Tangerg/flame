@@ -1,5 +1,5 @@
 import { runtime } from "@flame/backend-sdk";
-import { Backend, Refusal } from "@qimu/node";
+import { Backend, Refusal } from "@flame/backend-sdk/mcp";
 import {
   InvalidPresentation,
   Presentation,

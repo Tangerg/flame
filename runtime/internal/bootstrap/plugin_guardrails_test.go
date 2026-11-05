@@ -9,13 +9,16 @@ import (
 	"sync/atomic"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -33,7 +36,7 @@ func TestGuardrailsInstalledInputRefusesDispatchWithoutRewritingAuthoredHistory(
 			}
 		}
 		return completedTextResponse("public response"), nil
-	})}, chatclient.Config{})
+	})})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,11 +45,11 @@ func TestGuardrailsInstalledInputRefusesDispatchWithoutRewritingAuthoredHistory(
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "guardrails"))
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
-	contracts, err := portable.ParseCapability([]byte(testsupport.GuardrailsCapabilityJSON))
+	contracts, err := plugincontract.ParseCapability([]byte(testsupport.GuardrailsCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsonvalue.Encode(testsupport.GuardrailsReplaceInput{ExpectedRevision: 1, Phrases: []string{protected}})
+	input, err := framevalue.EncodeJSON(testsupport.GuardrailsReplaceInput{ExpectedRevision: generatedNumber(t, "1"), Phrases: []string{protected}})
 	if err != nil {
 		t.Fatal(err)
 	}

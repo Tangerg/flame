@@ -11,12 +11,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type watchedFixture struct {
@@ -59,7 +60,7 @@ func (h *fixtureHost) Watch(ctx context.Context, generation string, _ filewatch.
 
 func (h *fixtureHost) Admit(ctx context.Context, _ string, observation filewatch.Observation) error {
 	capture := observation.Capture()
-	invocation, err := qimumcp.InvocationFromContext(ctx)
+	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil || invocation != capture.Invocation {
 		return errors.New("fixture: calling owner changed")
 	}

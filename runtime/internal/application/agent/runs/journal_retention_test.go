@@ -1,6 +1,10 @@
 package runs
 
 import (
+	corecontent "github.com/Tangerg/scope/core/content"
+
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"errors"
 	"fmt"
 	"reflect"
@@ -15,7 +19,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestRetentionChargeCoversAdmittedSnapshotStrings(t *testing.T) {
@@ -169,7 +172,7 @@ func TestRetentionChargeTracksEveryVariableReplayPayload(t *testing.T) {
 		t.Fatal(err)
 	}
 	canceled := run.OutcomeCanceled
-	observed := chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: largeText}}}
+	observed := toolcontract.Output{Content: []corecontent.Block{{Kind: corecontent.Text, Text: largeText}}}
 	effect, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{
 		ProcessID: "process", EffectID: "effect", Cause: "host_cancellation", Output: &observed,
 	})
@@ -247,7 +250,7 @@ func TestJournalRetentionBoundsUnresolvedEffectEvidence(t *testing.T) {
 			name: "output",
 			config: run.UnresolvedEffectConfig{
 				ProcessID: "process", EffectID: "effect", Cause: "host_cancellation",
-				Output: &chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: strings.Repeat("x", budget*2)}}},
+				Output: &toolcontract.Output{Content: []corecontent.Block{{Kind: corecontent.Text, Text: strings.Repeat("x", budget*2)}}},
 			},
 		},
 		{

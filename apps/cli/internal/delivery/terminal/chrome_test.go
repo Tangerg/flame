@@ -10,10 +10,9 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 func TestSessionHeaderUsesSpaceProgressively(t *testing.T) {
@@ -232,9 +231,8 @@ func TestPromptMovesRunOptionsIntoTheFrameAndChangesContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	composer := kit.Composer{Theme: kit.Dark(), Prompt: "> "}
-	authoredPrompt := newPromptView(kit.Dark(), kit.Unicode(), bindings.editor, &composer, defaultRunOptions(t))
-	authoredPrompt.Focus(true)
+	composer := kit.NewComposer(kit.ComposerConfig{Theme: kit.Dark(), Prompt: "> "})
+	authoredPrompt := newPromptView(kit.Dark(), kit.Unicode(), bindings.editor, composer, defaultRunOptions(t))
 
 	idle := drawRoot(t, authoredPrompt, 120, authoredPrompt.HeightForWidth(120))
 	for _, want := range []string{"runtime default", "enter", "shift+enter", "ctrl+p"} {
@@ -271,10 +269,9 @@ func TestShellRendersAtSupportedAndConstrainedTerminalSizes(t *testing.T) {
 	activity := newActivityView(theme, glyphs)
 	activity.Set([]protocol.PlanStep{{Description: "Inspect", Status: protocol.PlanStatusInProgress}})
 	status := newStatusView(theme, glyphs)
-	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
-	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
+	composer := kit.NewComposer(kit.ComposerConfig{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6})
+	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, composer, defaultRunOptions(t))
 	shell := newShellView(header, transcript, activity, newQueueView(theme, glyphs), status, authoredPrompt)
-	shell.Focus(true)
 
 	for _, size := range []struct{ width, height int }{
 		{96, 28}, {44, 18}, {20, 8}, {11, 20}, {6, 2}, {1, 1},
@@ -301,17 +298,13 @@ func TestShellUsesTwoRowChromeOnTinyTerminals(t *testing.T) {
 	}})
 	activity := newActivityView(theme, glyphs)
 	activity.Set([]protocol.PlanStep{{Description: "HIDDEN_PLAN", Status: protocol.PlanStatusInProgress}})
-	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
-	composer.Editor().Keys = bindings.editor
-	composer.Editor().SetText("TINY_DRAFT")
-	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
+	composer := kit.NewComposer(kit.ComposerConfig{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6})
+	composer.Controller().Keys = bindings.editor
+	composer.Controller().SetText("TINY_DRAFT")
+	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, composer, defaultRunOptions(t))
 	shell := newShellView(header, transcript, activity, newQueueView(theme, glyphs), newStatusView(theme, glyphs), authoredPrompt)
-	shell.Focus(true)
 
 	tiny := drawRoot(t, shell, 20, minimalShellHeight-1)
-	if !shell.density.usesMinimalPrompt() || !authoredPrompt.compact {
-		t.Fatal("tiny shell did not enter compact layout")
-	}
 	for _, want := range []string{"VISIBLE", "TINY_DRAFT", "rea"} {
 		if !strings.Contains(tiny, want) {
 			t.Errorf("tiny shell does not contain %q:\n%s", want, tiny)
@@ -324,9 +317,6 @@ func TestShellUsesTwoRowChromeOnTinyTerminals(t *testing.T) {
 	}
 
 	normal := drawRoot(t, shell, 96, 28)
-	if shell.density.usesMinimalPrompt() || authoredPrompt.compact {
-		t.Fatal("resized shell did not leave compact layout")
-	}
 	for _, want := range []string{"/hidden/workspace", "HIDDEN_PLAN", "TINY_DRAFT", "shift+enter"} {
 		if !strings.Contains(normal, want) {
 			t.Errorf("restored shell does not contain %q:\n%s", want, normal)
@@ -349,12 +339,11 @@ func TestShortShellYieldsOptionalPanesToTranscriptAndPrompt(t *testing.T) {
 	activity.Set([]protocol.PlanStep{{Description: "HIDDEN_PLAN", Status: protocol.PlanStatusInProgress}})
 	prompts := newQueueView(theme, glyphs)
 	prompts.Set(authoring.QueueSnapshot{Entries: []authoring.QueueEntry{{Message: authoring.Message{Text: "HIDDEN_QUEUE"}}}})
-	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
-	composer.Editor().Keys = bindings.editor
-	composer.Editor().SetText("VISIBLE_DRAFT")
-	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
+	composer := kit.NewComposer(kit.ComposerConfig{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6})
+	composer.Controller().Keys = bindings.editor
+	composer.Controller().SetText("VISIBLE_DRAFT")
+	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, composer, defaultRunOptions(t))
 	shell := newShellView(header, transcript, activity, prompts, newStatusView(theme, glyphs), authoredPrompt)
-	shell.Focus(true)
 
 	short := drawRoot(t, shell, 96, 16)
 	for _, want := range []string{"VISIBLE_TRANSCRIPT", "VISIBLE_DRAFT", "shift+enter"} {
@@ -377,29 +366,33 @@ func TestResponsiveShellPreservesTranscriptFocusAndDraft(t *testing.T) {
 	theme, glyphs := kit.Dark(), kit.Unicode()
 	transcript := testTranscriptView(t)
 	appendTestTool(transcript, "focus", "detail")
-	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
-	composer.Editor().Keys = bindings.editor
-	composer.Editor().SetText("PRESERVED_DRAFT")
-	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
+	composer := kit.NewComposer(kit.ComposerConfig{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6})
+	composer.Controller().Keys = bindings.editor
+	composer.Controller().SetText("PRESERVED_DRAFT")
+	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, composer, defaultRunOptions(t))
 	shell := newShellView(
 		newSessionHeader(theme, glyphs, conversation.Session{}), transcript,
 		newActivityView(theme, glyphs), newQueueView(theme, glyphs),
 		newStatusView(theme, glyphs), authoredPrompt,
 	)
-	shell.Focus(true)
-	if !shell.Handle(input.Key{Code: input.Tab}) || !shell.TranscriptFocused() {
+	root := newSceneTestRoot(t, shell.Element())
+	root.Draw(grid.NewSurface(96, 28).View())
+	if !shell.FocusPrompt() {
+		t.Fatal("cannot focus prompt")
+	}
+	if !root.Handle(input.Key{Code: input.Tab}) || !shell.TranscriptFocused() {
 		t.Fatal("test could not focus the transcript")
 	}
 
-	drawRoot(t, shell, 20, minimalShellHeight-1)
+	root.Draw(grid.NewSurface(20, minimalShellHeight-1).View())
 	if !shell.TranscriptFocused() {
 		t.Fatal("entering compact layout moved focus away from the transcript")
 	}
-	drawRoot(t, shell, 96, 28)
+	root.Draw(grid.NewSurface(96, 28).View())
 	if !shell.TranscriptFocused() {
 		t.Fatal("leaving compact layout moved focus away from the transcript")
 	}
-	if got := composer.Editor().Text(); got != "PRESERVED_DRAFT" {
+	if got := composer.Controller().Text(); got != "PRESERVED_DRAFT" {
 		t.Fatalf("resize changed draft to %q", got)
 	}
 }
@@ -412,8 +405,8 @@ func TestShellMovesFocusBetweenPromptAndTranscript(t *testing.T) {
 	theme, glyphs := kit.Dark(), kit.Unicode()
 	transcript := testTranscriptView(t)
 	appendTestTool(transcript, "focus", "detail")
-	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
-	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
+	composer := kit.NewComposer(kit.ComposerConfig{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6})
+	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, composer, defaultRunOptions(t))
 	shell := newShellView(
 		newSessionHeader(theme, glyphs, conversation.Session{}), transcript,
 		newActivityView(theme, glyphs), newQueueView(theme, glyphs),
@@ -422,39 +415,27 @@ func TestShellMovesFocusBetweenPromptAndTranscript(t *testing.T) {
 	authoredPrompt.SetTranscriptKeys(transcript.Keys())
 	transcript.OnFocusChange(authoredPrompt.SetTranscriptFocused)
 	transcript.OnSelection(authoredPrompt.SetTranscriptSelection)
-	shell.Focus(true)
 
+	root := newSceneTestRoot(t, shell.Element())
+	root.Draw(grid.NewSurface(96, 28).View())
+	if !shell.FocusPrompt() {
+		t.Fatal("cannot focus prompt")
+	}
 	if !shell.PromptFocused() {
 		t.Fatal("new shell did not start with prompt focus")
 	}
-	if !shell.Handle(input.Key{Code: input.Tab}) || !shell.TranscriptFocused() {
+	if !root.Handle(input.Key{Code: input.Tab}) || !shell.TranscriptFocused() {
 		t.Fatal("Tab did not move focus to the transcript")
 	}
-	focused := drawRoot(t, shell, 96, 20)
+	surface := grid.NewSurface(96, 20)
+	root.Draw(surface.View())
+	focused := strings.Join(surface.Rows(), "\n")
 	for _, want := range []string{"select prev", "select next", "toggle details", "prompt"} {
 		if !strings.Contains(focused, want) {
 			t.Errorf("transcript help does not contain %q:\n%s", want, focused)
 		}
 	}
-	if !shell.Handle(input.Key{Code: input.Character, Rune: ' '}) || !shell.PromptFocused() {
+	if !root.Handle(input.Key{Code: input.Character, Rune: ' '}) || !shell.PromptFocused() {
 		t.Fatal("Space did not return focus to the prompt")
 	}
-}
-
-type staticDrawer interface {
-	Draw(grid.View)
-}
-
-func drawStatic(t *testing.T, widget staticDrawer, width, height int) string {
-	t.Helper()
-	surface := grid.NewSurface(width, height)
-	widget.Draw(surface.View())
-	return strings.Join(surface.Rows(), "\n")
-}
-
-func drawRoot(t *testing.T, widget headless.Widget, width, height int) string {
-	t.Helper()
-	surface := grid.NewSurface(width, height)
-	headless.NewRoot(widget).Draw(surface.View())
-	return strings.Join(surface.Rows(), "\n")
 }

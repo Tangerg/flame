@@ -1,4 +1,6 @@
 import {
+  createContext,
+  useContext,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -6,8 +8,8 @@ import {
   type ComponentProps,
   type ReactNode,
 } from "react";
-import { mount, useCurrentUse, type Mounted } from "@qimu/react";
-import { type Use } from "@qimu/browser";
+import { bindComponent, mount, type Mounted } from "@frame/sdk/react";
+import { type Use } from "@frame/sdk/browser";
 import { type ComponentContext, type SaveFileRequest } from "@flame/component-sdk";
 import {
   type ComponentAcquisition,
@@ -17,6 +19,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useContentVisible } from "@flame/ui";
 
 const styles = stylex.create({ container: { display: "contents" } });
+const ComponentUse = createContext<Use | undefined>(undefined);
 
 type Props = ComponentProps<SourceComponent> & {
   acquire(parent?: Use): Promise<ComponentAcquisition>;
@@ -71,7 +74,7 @@ function readingHost(root: HTMLElement): HTMLElement | null {
 }
 
 export function NativeComponentMount({ acquire, wrap, report, ...input }: Props) {
-  const parent = useCurrentUse();
+  const parent = useContext(ComponentUse);
   const visible = useContentVisible();
   const container = useRef<HTMLDivElement>(null);
   const focused = useRef<Element | null>(null);
@@ -112,15 +115,15 @@ export function NativeComponentMount({ acquire, wrap, report, ...input }: Props)
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
-    let retired = false;
-    let owned: typeof current.current;
+    const retiredState = { value: false };
+    const ownedState: { value: typeof current.current } = { value: undefined };
     const fail = (error: unknown) => {
       report(error);
-      if (retired) return;
+      if (retiredState.value) return;
       const source = focused.current;
       focused.current = null;
       const root = container.current;
-      // Qimu's separate React root removes the focused node before reporting failure.
+      // Frame's separate React root removes the focused node before reporting failure.
       if (
         source &&
         !source.isConnected &&
@@ -132,13 +135,14 @@ export function NativeComponentMount({ acquire, wrap, report, ...input }: Props)
       setFailure({ error });
     };
     const release = async () => {
-      if (!owned) return;
-      await owned.mount.close();
-      await owned.acquisition.flush();
+      if (!ownedState.value) return;
+      await ownedState.value.mount.close();
+      await ownedState.value.acquisition.use.close();
+      await ownedState.value.acquisition.flush();
     };
     const setup = async () => {
       const acquisition = await acquire(parent);
-      if (retired) {
+      if (retiredState.value) {
         await acquisition.use.close();
         await acquisition.flush();
         return;
@@ -146,17 +150,21 @@ export function NativeComponentMount({ acquire, wrap, report, ...input }: Props)
       try {
         const projection: ContextProjection = {};
         const rendered = await mount(
-          acquisition.use,
-          acquisition.reference,
-          acquisition.contract,
-          container.current!,
-          ownedInput(latest.current, acquisition, projection),
-          fail,
-          wrap,
+          bindComponent(acquisition.use, acquisition.reference, acquisition.contract),
+          {
+            container: container.current!,
+            props: ownedInput(latest.current, acquisition, projection),
+            onError: fail,
+            wrap: (children) => (
+              <ComponentUse.Provider value={acquisition.use}>
+                {wrap(children)}
+              </ComponentUse.Provider>
+            ),
+          },
         );
-        owned = { acquisition, mount: rendered, projection };
-        if (retired) await release();
-        else current.current = owned;
+        ownedState.value = { acquisition, mount: rendered, projection };
+        if (retiredState.value) await release();
+        else current.current = ownedState.value;
       } catch (error) {
         await acquisition.use.close();
         await acquisition.flush();
@@ -166,9 +174,9 @@ export function NativeComponentMount({ acquire, wrap, report, ...input }: Props)
     const work = parent ? parent.lifetime.run(setup) : setup();
     void work.catch(fail);
     return () => {
-      retired = true;
+      retiredState.value = true;
       focused.current = null;
-      if (current.current === owned) current.current = undefined;
+      if (current.current === ownedState.value) current.current = undefined;
       void release().catch(report);
     };
   }, [acquire, parent, report, wrap]);

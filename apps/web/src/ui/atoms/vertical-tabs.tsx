@@ -166,9 +166,9 @@ export function VerticalTabs({
   useLayoutEffect(() => {
     const list = listRef.current;
     if (!list) return;
-    let live = true;
+    const liveState = { value: true };
     const revealSelected = () => {
-      if (!live || !list.isConnected || list.clientHeight === 0) return;
+      if (!liveState.value || !list.isConnected || list.clientHeight === 0) return;
       const tab = list.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
       if (!tab?.isConnected) return;
       const target = tab.getBoundingClientRect();
@@ -189,7 +189,7 @@ export function VerticalTabs({
       if (tab.parentElement) observer.observe(tab.parentElement);
     }
     return () => {
-      live = false;
+      liveState.value = false;
       observer.disconnect();
     };
   }, [value, railGroups]);

@@ -1,6 +1,8 @@
 package execution
 
 import (
+	corecontent "github.com/Tangerg/scope/core/content"
+
 	"context"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
@@ -10,12 +12,13 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+	"github.com/Tangerg/scope/agent/interaction"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/metadata"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -40,8 +43,11 @@ func TestDelegateConsumesAdvertisedInputContract(t *testing.T) {
 			}
 			var childCalls atomic.Int32
 			model := chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
-				invocation, _ := interaction.ModelInvocationFromContext(ctx)
-				if !invocation.Relation().IsRoot() {
+				publication, attributed := executionctx.ModelCallsFromContext(ctx).(modelCalls)
+				if !attributed {
+					return nil, errors.New("model call has no product owner")
+				}
+				if publication.member.ParentID != "" {
 					childCalls.Add(1)
 					if got := request.Messages[len(request.Messages)-1].Text(); got != test.input.Instructions {
 						t.Errorf("child instructions = %q, want %q", got, test.input.Instructions)
@@ -85,22 +91,22 @@ func TestCheckpointWireRejectsFieldAliases(t *testing.T) {
 	}
 }
 
-type scopeOutputTool struct{ output chat.ToolOutput }
+type scopeOutputTool struct{ output toolcontract.Output }
 
-func (scopeOutputTool) Definition() chat.ToolDefinition {
-	return chat.ToolDefinition{Name: "fixture_inspect", Description: "Inspect the workspace.", InputSchema: jsontext.Value(`{"type":"object","additionalProperties":false}`)}
+func (scopeOutputTool) Definition() toolcontract.Definition {
+	return toolcontract.Definition{Name: "fixture_inspect", Description: "Inspect the workspace.", InputSchema: jsontext.Value(`{"type":"object","additionalProperties":false}`)}
 }
 
 func (s scopeOutputTool) Call(context.Context, toolcontract.Invocation) (toolcontract.Result, error) {
 	return toolcontract.Result{Output: s.output.Clone()}, nil
 }
 
-type scopeDefinitionTool struct{ definition chat.ToolDefinition }
+type scopeDefinitionTool struct{ definition toolcontract.Definition }
 
-func (s *scopeDefinitionTool) Definition() chat.ToolDefinition { return s.definition.Clone() }
+func (s *scopeDefinitionTool) Definition() toolcontract.Definition { return s.definition.Clone() }
 
 func (*scopeDefinitionTool) Call(context.Context, toolcontract.Invocation) (toolcontract.Result, error) {
-	return toolcontract.Result{Output: chat.NewTextToolOutput("done")}, nil
+	return toolcontract.Result{Output: toolcontract.NewTextOutput("done")}, nil
 }
 
 func TestObservedToolPreservesBoundDefinition(t *testing.T) {
@@ -113,7 +119,7 @@ func TestObservedToolPreservesBoundDefinition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	visible, _, _, err := wrapInteractionTools(
+	visible, _, _, _, err := wrapInteractionTools(
 		t.Context(),
 		manifest, &interactionSession{},
 		InteractionExecutorConfig{ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}},
@@ -135,7 +141,7 @@ func TestObservedToolPreservesBoundDefinition(t *testing.T) {
 }
 
 func TestInteractionManifestUsesScopeAdmission(t *testing.T) {
-	valid := scopeOutputTool{output: chat.NewTextToolOutput("done")}
+	valid := scopeOutputTool{output: toolcontract.NewTextOutput("done")}
 	var absent *scopeDefinitionTool
 	for _, test := range []struct {
 		name     string
@@ -144,8 +150,8 @@ func TestInteractionManifestUsesScopeAdmission(t *testing.T) {
 	}{
 		{"nil", toolset.Manifest{Visible: []toolcontract.Tool{nil}}, toolcontract.ErrInvalidTool},
 		{"typed nil", toolset.Manifest{Deferred: []toolcontract.Tool{absent}}, toolcontract.ErrInvalidTool},
-		{"invalid name", toolset.Manifest{Visible: []toolcontract.Tool{&scopeDefinitionTool{definition: chat.ToolDefinition{Name: "invalid tool", InputSchema: jsontext.Value(`{}`)}}}}, toolcontract.ErrInvalidTool},
-		{"invalid schema", toolset.Manifest{Deferred: []toolcontract.Tool{&scopeDefinitionTool{definition: chat.ToolDefinition{Name: "invalid_schema", InputSchema: jsontext.Value(`{"type":"invalid"}`)}}}}, toolcontract.ErrInvalidTool},
+		{"invalid name", toolset.Manifest{Visible: []toolcontract.Tool{&scopeDefinitionTool{definition: toolcontract.Definition{Name: "invalid tool", InputSchema: jsontext.Value(`{}`)}}}}, toolcontract.ErrInvalidTool},
+		{"invalid schema", toolset.Manifest{Deferred: []toolcontract.Tool{&scopeDefinitionTool{definition: toolcontract.Definition{Name: "invalid_schema", InputSchema: jsontext.Value(`{"type":"invalid"}`)}}}}, toolcontract.ErrInvalidTool},
 		{"visible collision", toolset.Manifest{Visible: []toolcontract.Tool{valid, valid}}, interaction.ErrInvalidToolSet},
 		{"deferred collision", toolset.Manifest{Deferred: []toolcontract.Tool{valid, valid}}, interaction.ErrInvalidToolSet},
 		{"cross visibility collision", toolset.Manifest{Visible: []toolcontract.Tool{valid}, Deferred: []toolcontract.Tool{valid}}, interaction.ErrInvalidToolSet},
@@ -172,13 +178,13 @@ func TestToolOffloadPreservesScopeOutputContract(t *testing.T) {
 	text := strings.Repeat("workspace observation ", 50)
 	for _, test := range []struct {
 		name    string
-		output  chat.ToolOutput
+		output  toolcontract.Output
 		invalid bool
 	}{
-		{name: "invalid details", output: chat.ToolOutput{Details: jsontext.Value(`{"unterminated":"` + text)}, invalid: true},
-		{name: "structured content", output: chat.ToolOutput{Content: chat.NewTextToolOutput(text).Content, Details: jsontext.Value(`{"revision":9007199254740993}`)}},
-		{name: "cited text", output: chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: text, Citations: []chat.Citation{{Source: chat.CitationSource{Kind: chat.CitationSourceReference, Value: "source-1"}, Quote: "workspace observation"}}}}}},
-		{name: "annotated text", output: chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: text, Metadata: metadata.Map{"revision": jsontext.Value(`9007199254740993`)}}}}},
+		{name: "invalid details", output: toolcontract.Output{Details: jsontext.Value(`{"unterminated":"` + text)}, invalid: true},
+		{name: "structured content", output: toolcontract.Output{Content: toolcontract.NewTextOutput(text).Content, Details: jsontext.Value(`{"revision":9007199254740993}`)}},
+		{name: "cited text", output: toolcontract.Output{Content: []corecontent.Block{{Kind: corecontent.Text, Text: text, Citations: []corecontent.Citation{{Source: corecontent.CitationSource{Kind: corecontent.CitationSourceReference, Value: "source-1"}, Quote: "workspace observation"}}}}}},
+		{name: "annotated text", output: toolcontract.Output{Content: []corecontent.Block{{Kind: corecontent.Text, Text: text, Metadata: metadata.Map{"revision": jsontext.Value(`9007199254740993`)}}}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			store := new(fakeOffloader)

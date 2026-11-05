@@ -18,7 +18,7 @@ func openTranscriptAndBlobs(t *testing.T) (*TranscriptStore, *ToolResultStore) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return newTranscriptStore(db), newToolResultStore(db)
+	return newTranscriptStore(databaseFor(db)), newToolResultStore(databaseFor(db))
 }
 
 func toolItem(sessionID, id, result string, ref *transcript.ToolResultRef) transcript.Item {

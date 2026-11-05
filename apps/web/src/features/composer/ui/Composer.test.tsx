@@ -53,7 +53,7 @@ async function withEnterKeymap() {
     definePlugin({
       name: "test.composer-keymap",
       setup: (ctx) => {
-        ctx.contribute(COMPOSER_KEY_BINDING, {
+        ctx.contributions.add(COMPOSER_KEY_BINDING, {
           key: "Enter",
           description: "submit",
           handler: ({ submit }) => {
@@ -108,7 +108,7 @@ describe("composer", () => {
       definePlugin({
         name: "test.empty-composer-standing-surface",
         setup: (ctx) => {
-          contributeLayout(ctx, "composer.header", {
+          contributeLayout(ctx.contributions, "composer.header", {
             id: "empty",
             component: () => null,
           });
@@ -247,7 +247,7 @@ describe("composer", () => {
         definePlugin({
           name: "test.slash-keys",
           setup: (ctx) => {
-            ctx.contribute(COMPOSER_KEY_BINDING, {
+            ctx.contributions.add(COMPOSER_KEY_BINDING, {
               key: "Enter",
               description: "submit",
               handler: ({ submit }) => {
@@ -255,13 +255,21 @@ describe("composer", () => {
                 return true;
               },
             });
-            ctx.contribute(COMPOSER_KEY_BINDING, {
+            ctx.contributions.add(COMPOSER_KEY_BINDING, {
               key: "Escape",
               description: "stop",
               handler: stop,
             });
-            ctx.contribute(SLASH_COMMAND, { description: "goal", run: () => {} }, { key: "/goal" });
-            ctx.contribute(SLASH_COMMAND, { description: "grep", run: () => {} }, { key: "/grep" });
+            ctx.contributions.add(
+              SLASH_COMMAND,
+              { description: "goal", run: () => {} },
+              { key: "/goal" },
+            );
+            ctx.contributions.add(
+              SLASH_COMMAND,
+              { description: "grep", run: () => {} },
+              { key: "/grep" },
+            );
           },
         }),
       );

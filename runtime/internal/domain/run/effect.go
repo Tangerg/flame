@@ -1,12 +1,12 @@
 package run
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/Tangerg/scope/core/chat"
 )
 
 // UnresolvedEffect is evidence of an external operation, never an execution
@@ -30,7 +30,7 @@ type UnresolvedEffectConfig struct {
 	Cause     string
 	Reason    string
 	Detail    string
-	Output    *chat.ToolOutput
+	Output    *toolcontract.Output
 }
 
 func NewUnresolvedEffect(config UnresolvedEffectConfig) (UnresolvedEffect, error) {

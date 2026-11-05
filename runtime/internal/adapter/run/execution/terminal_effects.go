@@ -6,37 +6,45 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	agent "github.com/Tangerg/scope/agent"
+	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
-// Ordinary Tool processes belong to their calling Run, while a Delegate owns
-// its own evidence. No effect payload or private strategy state is interpreted.
-func (i *interactionSession) terminalEffects(ctx context.Context, owner agent.ProcessID) ([]run.UnresolvedEffect, error) {
-	inspection, err := i.engine.InspectTree(ctx, i.processRootID())
+func hasUnknownEffects(process scoperun.ProcessInspection) bool {
+	for _, pending := range process.PendingEffects {
+		if pending.Outcome.Status() == scoperun.SettlementStatusUnknown {
+			return true
+		}
+	}
+	return false
+}
+
+func unresolvedProcessEffects(process scoperun.ProcessInspection) []scoperun.EffectID {
+	var ids []scoperun.EffectID
+	for _, pending := range process.PendingEffects {
+		if !pending.Outcome.Valid() || pending.Outcome.Status() == scoperun.SettlementStatusUnknown {
+			ids = append(ids, pending.Request.ID())
+		}
+	}
+	return ids
+}
+
+// A completed Scope process has no unresolved effects. A stopped writer's
+// pending intents stay available as evidence for the owning Flame Run.
+func (i *interactionSession) terminalEffects(ctx context.Context, owner scoperun.ProcessID) ([]run.UnresolvedEffect, error) {
+	inspection, err := i.inspectCommittedTree(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("execution: inspect terminal effects: %w", err)
 	}
 	var effects []run.UnresolvedEffect
-	for _, member := range inspection.Processes {
-		snapshot := member.Snapshot
-		processID := snapshot.Relation().ProcessID()
-		parentID, _ := snapshot.Relation().ParentID()
-		if processID != owner && (parentID != owner || !i.state.deployments.toolChild(snapshot.DeploymentRef())) {
+	for _, process := range inspection.Processes {
+		member, found := i.executorMemberByProcessID(process.ID)
+		if !found || member.MemberID != owner.String() {
 			continue
 		}
-		process, found := i.engine.Process(processID)
-		if !found {
-			return nil, errors.New("execution: terminal effect process is unavailable")
-		}
-		result, err := process.Await(ctx)
-		if err != nil {
-			return nil, err
-		}
-		termination := result.Termination()
-		for _, observation := range i.effectFailures.observations(termination.UnresolvedEffectIDs()) {
+		for _, observation := range i.effectFailures.observations(unresolvedProcessEffects(process)) {
 			evidence, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{
-				ProcessID: processID.String(), EffectID: observation.ID, Cause: termination.Cause().String(),
-				Reason: run.Diagnostic(errors.New(termination.Reason())), Detail: observation.Detail, Output: observation.Output,
+				ProcessID: process.ID.String(), EffectID: observation.ID, Cause: "runtime_failure",
+				Reason: run.Diagnostic(errors.New("execution stopped with unresolved work")), Detail: observation.Detail, Output: observation.Output,
 			})
 			if err != nil {
 				return nil, err
@@ -47,25 +55,10 @@ func (i *interactionSession) terminalEffects(ctx context.Context, owner agent.Pr
 	return effects, nil
 }
 
-func subtreeDrained(inspection agent.TreeInspection, root agent.ProcessID) bool {
-	for _, member := range inspection.Processes {
-		current := member.Snapshot.Relation().ProcessID()
-		for {
-			if current == root {
-				if !member.Snapshot.Status().Terminal() || member.Work != agent.ProcessWorkIdle {
-					return false
-				}
-				break
-			}
-			ancestor, found := inspection.Process(current)
-			if !found {
-				return false
-			}
-			parent, hasParent := ancestor.Snapshot.Relation().ParentID()
-			if !hasParent {
-				break
-			}
-			current = parent
+func subtreeDrained(inspection scoperun.TreeInspection, root scoperun.ProcessID) bool {
+	for _, process := range inspection.Processes {
+		if root.Contains(process.ID) && !process.Status.Terminal() {
+			return false
 		}
 	}
 	return true

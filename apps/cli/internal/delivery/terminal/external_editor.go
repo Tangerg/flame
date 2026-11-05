@@ -14,7 +14,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/oolong/core/program"
+	"github.com/Tangerg/oolong/ui/core/program"
 	"github.com/mattn/go-shellwords"
 )
 

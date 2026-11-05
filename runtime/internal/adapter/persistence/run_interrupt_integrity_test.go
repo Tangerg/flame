@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame/sqlite"
 )
 
 // TestWaitingRunReadRejectsACorruptPendingSet covers the reason the Run read
@@ -21,7 +21,7 @@ func TestWaitingRunReadRejectsACorruptPendingSet(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	runStore, interrupts := newRunStore(db), newInterruptStore(db)
+	runStore, interrupts := newRunStore(databaseFor(db)), newInterruptStore(databaseFor(db))
 	ctx := context.Background()
 
 	if err := runStore.Admit(ctx, parkableDraft("run_1", "ses_A")); err != nil {

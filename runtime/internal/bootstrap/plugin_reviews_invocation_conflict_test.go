@@ -10,12 +10,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI(t *testing.T) {
@@ -49,12 +50,12 @@ func TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI(t *test
 		Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
 		Method: "io.github.tangerg.flame.examples/reviews.update", Input: input,
 	}
-	read := func() jsonvalue.Value {
+	read := func() framevalue.JSON {
 		t.Helper()
 		query := request
 		query.Method, query.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
 		reply := runtime.must(delivery.PluginsCall, query, "").(*protocol.CallPluginResponse)
-		value, err := jsonvalue.Parse([]byte(reply.Output))
+		value, err := framevalue.ParseJSON([]byte(reply.Output))
 		if err != nil || reply.Failure != nil {
 			t.Fatalf("read private review: %+v, %v", reply, err)
 		}
@@ -70,18 +71,18 @@ func TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI(t *test
 		t.Fatal(err)
 	}
 	arguments := []string{"plugins", "call", "--request", string(encoded), "--command-id", "cli_11111111111111111111111111111111"}
-	assertReply := func(output []byte, expected jsonvalue.Value) {
+	assertReply := func(output []byte, expected framevalue.JSON) {
 		t.Helper()
 		var reply protocol.CallPluginResponse
 		if err := json.Unmarshal(output, &reply, json.RejectUnknownMembers(true)); err != nil {
 			t.Fatalf("CLI lost the structured business result: %s, %v", output, err)
 		}
-		actual, err := jsonvalue.Parse([]byte(reply.Output))
+		actual, err := framevalue.ParseJSON([]byte(reply.Output))
 		if err != nil || reply.Failure != nil || actual != expected {
-			t.Fatalf("CLI changed the business outcome: %+v, want %s, %v", reply, expected.JSON(), err)
+			t.Fatalf("CLI changed the business outcome: %+v, want %s, %v", reply, expected.Bytes(), err)
 		}
 	}
-	want, err := jsonvalue.Parse([]byte(refusal))
+	want, err := framevalue.ParseJSON([]byte(refusal))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +92,7 @@ func TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI(t *test
 	}
 	assertReply(output, want)
 	if after := read(); after != before {
-		t.Fatalf("conflicting Tool or CLI mutated the review: %s, want %s", after.JSON(), before.JSON())
+		t.Fatalf("conflicting Tool or CLI mutated the review: %s, want %s", after.Bytes(), before.Bytes())
 	}
 	// The existing private identity owns different input. Recovery must refuse
 	// that receipt instead of overwriting it or redispatching the new request.
@@ -106,17 +107,17 @@ func TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI(t *test
 		t.Fatalf("Go accepted another input's private receipt: %+v", recovered)
 	}
 	if after := read(); after != before {
-		t.Fatalf("conflicting receipt recovery mutated the review: %s, want %s", after.JSON(), before.JSON())
+		t.Fatalf("conflicting receipt recovery mutated the review: %s, want %s", after.Bytes(), before.Bytes())
 	}
 	var initial struct {
 		Reviews []map[string]jsontext.Value `json:"reviews"`
 	}
-	if err := json.Unmarshal(before.JSON(), &initial, json.RejectUnknownMembers(true)); err != nil || len(initial.Reviews) != 1 {
+	if err := json.Unmarshal(before.Bytes(), &initial, json.RejectUnknownMembers(true)); err != nil || len(initial.Reviews) != 1 {
 		t.Fatalf("decode original review: %+v, %v", initial, err)
 	}
 	resolved := maps.Clone(initial.Reviews[0])
 	resolved["revision"], resolved["status"] = jsontext.Value(`2`), jsontext.Value(`"resolved"`)
-	updated, err := jsonvalue.Encode(map[string]any{"type": "updated", "review": resolved})
+	updated, err := framevalue.EncodeJSON(map[string]any{"type": "updated", "review": resolved})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,11 +127,11 @@ func TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI(t *test
 		t.Fatalf("private conflict prevented a fresh command: stdout=%s stderr=%s error=%v", output, stderr, err)
 	}
 	assertReply(output, updated)
-	expected, err := jsonvalue.Encode(map[string]any{"reviews": []any{resolved}})
+	expected, err := framevalue.EncodeJSON(map[string]any{"reviews": []any{resolved}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if current := read(); current != expected {
-		t.Fatalf("fresh command did not advance the original owner once: %s, want %s", current.JSON(), expected.JSON())
+		t.Fatalf("fresh command did not advance the original owner once: %s, want %s", current.Bytes(), expected.Bytes())
 	}
 }

@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/keylock"
-	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 func TestApplyPatchPublishedExamplesExecuteThroughGuards(t *testing.T) {
@@ -74,8 +73,8 @@ func TestApplyPatchNativePathsSurviveGuards(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reporter, found, err := toolcontract.Capability[FileMutationReporter](tools.applyPatch)
-	if err != nil || !found {
+	reporter, found := tools.applyPatch.(FileMutationReporter)
+	if !found {
 		t.Fatalf("native patch capability unavailable: %v, %v", found, err)
 	}
 	paths, err := reporter.MutationPaths(arguments)

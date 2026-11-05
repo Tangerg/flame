@@ -9,12 +9,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
@@ -73,7 +76,7 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "github-test"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -91,7 +94,7 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	exported, err := qimumcp.ResolveCapability(t.Context(), session, "github", contracts.Capability)
+	exported, err := pluginmcp.ResolveCapability(t.Context(), session, "github", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +115,7 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 		{contracts.Annotations.Name(), "list_check_annotations", contractwire.CheckInput{Repository: "owner/repo", CheckRunID: 44, Page: 1, Limit: 10}},
 		{contracts.Statuses.Name(), "list_commit_statuses", contractwire.CommitInput{Repository: "owner/repo", Ref: "head-sha", Page: 1, Limit: 10}},
 	} {
-		input, err := jsonvalue.Encode(test.input)
+		input, err := framevalue.EncodeJSON(test.input)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -135,13 +138,13 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		model, err := jsonvalue.Parse(encoded)
+		model, err := framevalue.ParseJSON(encoded)
 		if err != nil || model != typed {
 			t.Fatalf("typed/Tool %s diverged: %s, %s, %v", test.tool, typed.String(), model.String(), err)
 		}
 		if test.tool == "list_issues" {
 			var page contractwire.IssuePage
-			if err := json.Unmarshal(typed.JSON(), &page); err != nil || page.NextPage == nil || *page.NextPage != 2 {
+			if err := json.Unmarshal(typed.Bytes(), &page); err != nil || page.NextPage == nil || *page.NextPage != 2 {
 				t.Fatalf("GitHub's canonical repository-ID pagination was lost: %+v, %v", page, err)
 			}
 		}
@@ -152,13 +155,13 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := contractwire.IssueInput{Repository: "owner/repo", Number: 42}
-	admitted, err := jsonvalue.Encode(input)
+	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := method.Invoke(t.Context(), "", admitted); err == nil {
 		t.Fatal("typed query hid rejected authorization")
-	} else if refusal, ok := errors.AsType[*portable.Refusal](err); !ok || refusal.Code != "unauthorized" {
+	} else if refusal, ok := errors.AsType[*framemcp.Refusal](err); !ok || refusal.Code != "unauthorized" {
 		t.Fatalf("typed refusal = %v", err)
 	}
 	result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "get_issue", Arguments: input})

@@ -9,18 +9,19 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+
+	"github.com/Tangerg/scope/agent/interaction"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
 const modelProcessStopReason = "model call cannot continue"
 
-func steerSignalID(itemID string) (agent.SignalID, error) {
+func steerSignalID(itemID string) (scoperun.SignalID, error) {
 	if err := identity.ValidateItem(itemID); err != nil {
-		return agent.SignalID{}, err
+		return scoperun.SignalID{}, err
 	}
-	return agent.ParseSignalID("steer:" + itemID)
+	return scoperun.ParseSignalID("steer:" + itemID)
 }
 
 // Application retains the exact user note. Scope receives a bounded diagnostic
@@ -51,14 +52,14 @@ func (i *interactionSession) awaitDispatchSegment(ctx context.Context) error {
 // stopModelProcess ends only the member whose model call cannot continue.
 // Scope preserves unmarked model errors as unknown external outcomes; Runtime
 // owns the decision to stop and retains its provider failure separately.
-func (i *interactionSession) stopModelProcess(ctx context.Context, processID agent.ProcessID) error {
+func (i *interactionSession) stopModelProcess(ctx context.Context, processID scoperun.ProcessID) error {
 	process, found := i.engine.Process(processID)
 	if !found {
 		return fmt.Errorf("execution: model process %s is unavailable", processID)
 	}
 	controlCtx, cancel := i.lifetime.publicationContext(ctx)
 	defer cancel()
-	if err := process.RequestCancellation(controlCtx, modelProcessStopReason); err != nil && !errors.Is(err, agent.ErrProcessFinished) {
+	if err := process.Cancel(controlCtx, modelProcessStopReason); err != nil && !errors.Is(err, scoperun.ErrProcessFinished) {
 		return fmt.Errorf("execution: stop model process: %w", err)
 	}
 	return nil
@@ -97,7 +98,7 @@ func (i *interactionSession) submitSteer(
 	if err != nil {
 		return "", fmt.Errorf("execution: construct Interaction steer identity: %w", err)
 	}
-	signal, err := interaction.NewSteerSignal(signalID, message)
+	signal, err := materializeSteerSignal(signalID, message)
 	if err != nil {
 		return "", fmt.Errorf("execution: construct Interaction steer Signal: %w", err)
 	}
@@ -114,23 +115,16 @@ func (i *interactionSession) submitSteer(
 	if present && !prior.Equal(prepared) {
 		return "", runs.ErrCommandKeyConflict
 	}
-	committed, err := i.committedTree(ctx, process.Relation().RootID())
+	committed, err := i.committedTree(ctx, process.ID().Root())
 	if err != nil {
 		return "", err
 	}
-	for _, snapshot := range committed.ProcessSnapshots() {
-		if snapshot.Relation().ProcessID() != process.Relation().ProcessID() {
-			continue
-		}
-		for _, receipt := range snapshot.SignalReceipts() {
-			if receipt.ID() != signalID {
-				continue
-			}
-			if !receipt.Matches(signal) {
-				return "", runs.ErrCommandKeyConflict
-			}
-			return itemID, nil
-		}
+	matched, err := exactSignalAdmission(committed, process.ID(), signal)
+	if err != nil {
+		return "", errors.Join(runs.ErrCommandKeyConflict, err)
+	}
+	if matched {
+		return itemID, nil
 	}
 	if !present {
 		i.state.mu.Lock()
@@ -143,7 +137,7 @@ func (i *interactionSession) submitSteer(
 	if deliverErr != nil {
 		// A context error only reports that the caller stopped waiting. Engine may
 		// already have accepted the command, so retain its exact product mapping
-		// until ModelInvocation attributes it or the session is released.
+		// until a committed model request attributes it or the session is released.
 		if !present && !errors.Is(deliverErr, context.Canceled) &&
 			!errors.Is(deliverErr, context.DeadlineExceeded) {
 			i.removePendingSteer(signalID)
@@ -151,20 +145,13 @@ func (i *interactionSession) submitSteer(
 		return "", fmt.Errorf("execution: deliver Interaction steer Signal: %w", deliverErr)
 	}
 	if !accepted {
-		tree, err := i.committedTree(ctx, process.Relation().RootID())
+		tree, err := i.committedTree(ctx, process.ID().Root())
 		if err != nil {
 			return "", err
 		}
-		matched := false
-		for _, snapshot := range tree.ProcessSnapshots() {
-			if snapshot.Relation().ProcessID() != process.Relation().ProcessID() {
-				continue
-			}
-			for _, receipt := range snapshot.SignalReceipts() {
-				if receipt.ID() == signalID && receipt.Matches(signal) {
-					matched = true
-				}
-			}
+		matched, err := exactSignalAdmission(tree, process.ID(), signal)
+		if err != nil {
+			return "", err
 		}
 		if !matched {
 			return "", errors.New("execution: steer duplicate has no exact admission receipt")
@@ -173,7 +160,7 @@ func (i *interactionSession) submitSteer(
 	return itemID, nil
 }
 
-func (i *interactionSession) removePendingSteer(signalID agent.SignalID) {
+func (i *interactionSession) removePendingSteer(signalID scoperun.SignalID) {
 	i.state.mu.Lock()
 	delete(i.state.pendingSteers, signalID)
 	i.state.mu.Unlock()
@@ -182,12 +169,12 @@ func (i *interactionSession) removePendingSteer(signalID agent.SignalID) {
 func (i *interactionSession) commitAppliedInputs(
 	ctx context.Context,
 	member runs.ExecutorMember,
-	processID agent.ProcessID,
-	signalIDs []agent.SignalID,
+	processID scoperun.ProcessID,
+	signalIDs []scoperun.SignalID,
 ) error {
 	i.state.mu.Lock()
 	messages := make([]runs.AppliedSteerMessage, 0, len(signalIDs)+1)
-	seen := make(map[agent.SignalID]struct{}, len(signalIDs))
+	seen := make(map[scoperun.SignalID]struct{}, len(signalIDs))
 	for _, signalID := range signalIDs {
 		if _, duplicate := seen[signalID]; duplicate {
 			i.state.mu.Unlock()
@@ -237,7 +224,7 @@ func (i *interactionSession) commitAppliedInputs(
 }
 
 func (i *interactionSession) pendingContinuationFor(
-	processID agent.ProcessID,
+	processID scoperun.ProcessID,
 ) (pendingInteractionContinuation, bool, error) {
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
@@ -253,4 +240,12 @@ func (i *interactionSession) pendingContinuationFor(
 		itemID:    pending.itemID,
 		content:   transcript.CloneContent(pending.content),
 	}, true, nil
+}
+
+func materializeSteerSignal(id scoperun.SignalID, message corechat.Message) (scoperun.Signal, error) {
+	message = message.Clone()
+	if err := message.Metadata.Set(steerMetadataKey, id); err != nil {
+		return scoperun.Signal{}, err
+	}
+	return interaction.NewSteerSignal(id, message)
 }

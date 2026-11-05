@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/httpresponse"
-	"github.com/Tangerg/qimu/portable"
 
 	"github.com/Tangerg/scope/tools/web"
 	"github.com/Tangerg/scope/tools/web/jina"
@@ -35,7 +36,7 @@ func (e *sourceFailure) Unwrap() error { return e.cause }
 func jinaSource(ctx context.Context, key apiKey, httpClient *http.Client) (fetchPage, error) {
 	if !key.configured() {
 		return func(context.Context, *web.FetchRequest) (*web.FetchResponse, error) {
-			return nil, &portable.Refusal{Code: "fetch_not_configured", Message: "web: Jina Reader credentials are not configured"}
+			return nil, &framemcp.Refusal{Code: "fetch_not_configured", Message: "web: Jina Reader credentials are not configured"}
 		}, nil
 	}
 	client, err := jina.NewClient(ctx, jina.Config{APIKey: key.value, HTTPClient: httpClient})
@@ -54,7 +55,7 @@ func jinaSource(ctx context.Context, key apiKey, httpClient *http.Client) (fetch
 func tavilySource(ctx context.Context, key apiKey, httpClient *http.Client) (searchWeb, error) {
 	if !key.configured() {
 		return func(context.Context, *web.SearchRequest) (*web.SearchResponse, error) {
-			return nil, &portable.Refusal{Code: "search_not_configured", Message: "web: Tavily credentials are not configured"}
+			return nil, &framemcp.Refusal{Code: "search_not_configured", Message: "web: Tavily credentials are not configured"}
 		}, nil
 	}
 	client, err := tavily.NewClient(ctx, tavily.Config{APIKey: key.value, HTTPClient: httpClient})

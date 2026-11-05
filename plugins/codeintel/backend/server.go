@@ -6,9 +6,9 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/codeintel"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/plugins/codeintel/internal/analyzer"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 func newServer(analysis *analyzer.Analyzer) (*sdk.Server, error) {
@@ -28,7 +28,7 @@ func newServer(analysis *analyzer.Analyzer) (*sdk.Server, error) {
 		return nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.codeintel", Version: "1.0.0"}, nil)
-	backend, err := qimumcp.NewBackend(server)
+	backend, err := pluginmcp.NewBackend(server)
 	if err != nil {
 		return nil, err
 	}
@@ -38,10 +38,10 @@ func newServer(analysis *analyzer.Analyzer) (*sdk.Server, error) {
 	}
 	if err := errors.Join(
 		pluginsdk.RegisterTools(server, lsp),
-		format.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[codeintel.Document]) (codeintel.Transformation, error) {
+		format.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[codeintel.Document]) (codeintel.Transformation, error) {
 			return formatDocument(ctx, command.Input)
 		}),
-		inspect.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[codeintel.Inspection]) (codeintel.Report, error) {
+		inspect.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[codeintel.Inspection]) (codeintel.Report, error) {
 			return analysis.Inspect(ctx, command.Input)
 		}),
 		backend.BindCapability("code-intelligence", contract),

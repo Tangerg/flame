@@ -6,10 +6,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/skill"
 	"slices"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/Tangerg/flame/packages/go-sdk/skill"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"

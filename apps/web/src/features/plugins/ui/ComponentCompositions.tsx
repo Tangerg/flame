@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { asyncDisposeSymbol } from "dougong";
-import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import { type FlameClient } from "@flame/runtime-client";
 import {
   type PluginInstallation,
@@ -12,7 +12,7 @@ import {
   type ComponentReference,
   type ComponentValue,
 } from "@flame/component-sdk";
-import { type ContributionLifetime } from "@/extensions/definePlugin";
+import { type ContributionScope } from "@/extensions/definePlugin";
 import { trackContributionIO } from "@/extensions/contributionIO";
 import { reportPluginError } from "@/extensions/errors";
 import { ASYNC_OWNERSHIP_RETIRED, settleBeforeAbort } from "@/lib/asyncOwnership";
@@ -62,13 +62,13 @@ export class ComponentCompositions {
     private readonly modules: ComponentModules,
     private readonly endpoint: string,
     readonly generation: RuntimeConnectionGeneration,
-    private readonly moduleScope: ContributionLifetime,
+    private readonly moduleScope: ContributionScope,
   ) {}
 
   reload = () => this.modules.reload();
 
   renderer(
-    lifetime: ContributionLifetime,
+    lifetime: ContributionScope,
     ancestry: readonly ComponentReference[],
   ): ComponentContextRenderer {
     return (context, composition) => (
@@ -86,10 +86,10 @@ export class ComponentCompositions {
     request: ResolvePluginPointRequest,
     installations: readonly PluginInstallation[],
     context: CompositionContext,
-    lifetime: ContributionLifetime,
+    lifetime: ContributionScope,
     ancestry: readonly ComponentReference[],
   ): Promise<LoadedContribution[]> {
-    const signal = AbortSignal.any([context.signal, lifetime.signal]);
+    const signal = AbortSignal.any([context.signal, lifetime.lifetime.signal]);
     const page = await trackContributionIO(lifetime, () =>
       this.client.plugins.resolvePoint(request, signal),
     );
@@ -169,7 +169,7 @@ export class ComponentCompositions {
 
 interface CompositionProps {
   host: ComponentCompositions;
-  lifetime: ContributionLifetime;
+  lifetime: ContributionScope;
   ancestry: readonly ComponentReference[];
   context: ComponentContext;
   composition: ComponentComposition;
@@ -211,18 +211,18 @@ type CompositionSnapshot =
       status: "ready";
       signature: string;
       entries: ResolvedComponent[];
-      lifetime: ContributionLifetime;
+      lifetime: ContributionScope;
     };
 
 class CompositionInstance {
   private snapshot: CompositionSnapshot = { status: "loading" };
   private readonly listeners = new Set<() => void>();
-  private readonly reads = new Map<ContributionLifetime, Promise<void>>();
+  private readonly reads = new Map<ContributionScope, Promise<void>>();
   private retiring = Promise.resolve();
 
   constructor(
     private readonly host: ComponentCompositions,
-    private readonly lifetime: ContributionLifetime,
+    private readonly lifetime: ContributionScope,
     private readonly ancestry: readonly ComponentReference[],
     private readonly context: CompositionContext,
     private readonly requestKey: string,
@@ -252,9 +252,9 @@ class CompositionInstance {
   }
 
   refresh(rows: PluginInstallation[], predecessor: Promise<void>): () => void {
-    if (this.lifetime.signal.aborted || this.context.signal.aborted) return () => {};
-    const read = this.lifetime.lifetime("component-point-read");
-    const signal = AbortSignal.any([this.context.signal, read.signal]);
+    if (this.lifetime.lifetime.signal.aborted || this.context.signal.aborted) return () => {};
+    const read = this.lifetime.child("component-point-read");
+    const signal = AbortSignal.any([this.context.signal, read.lifetime.signal]);
     if (
       this.snapshot.status === "ready" &&
       this.snapshot.entries.some(
@@ -288,7 +288,7 @@ class CompositionInstance {
         if (this.snapshot.status === "ready" && this.snapshot.signature === signature) return;
         await this.retireRendering();
         signal.throwIfAborted();
-        const rendering = this.lifetime.lifetime("component-composition");
+        const rendering = this.lifetime.child("component-composition");
         const entries = contributions.map((entry) => ({
           ...entry,
           compose: this.host.renderer(rendering, [...this.ancestry, entry.reference]),

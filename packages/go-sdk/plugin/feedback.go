@@ -2,9 +2,10 @@ package plugin
 
 import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/frame/portable"
 )
 
 const FeedbackReference = "flame.feedback.v1"
@@ -14,17 +15,17 @@ type FeedbackSignal struct {
 	Text   string                  `json:"text,omitempty"`
 }
 
-func PrepareFeedbackMethod() (*qimumcp.Method[extension.FeedbackDraft, FeedbackSignal], error) {
-	return qimumcp.NewMethod[extension.FeedbackDraft, FeedbackSignal](qimumcp.MethodConfig{
-		Name: "flame.feedback/prepare.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation,
+func PrepareFeedbackMethod() (*pluginmcp.Method[extension.FeedbackDraft, FeedbackSignal], error) {
+	return pluginmcp.NewMethod[extension.FeedbackDraft, FeedbackSignal](portable.MethodConfig{
+		Name: "flame.feedback/prepare.v1", Kind: portable.Command, Target: extension.ScopeInstallation,
 		Description: "Prepare the immutable quality observation for this command and retain its original decision.",
 	})
 }
 
-func FeedbackContract() (*portable.Capability, error) {
+func FeedbackContract() (*plugincontract.Capability, error) {
 	method, err := PrepareFeedbackMethod()
 	if err != nil {
 		return nil, err
 	}
-	return portable.NewCapability(portable.CapabilityConfig{Reference: FeedbackReference, Composition: portable.Selection, Scope: extension.ScopeInstallation}, method.Descriptor())
+	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: FeedbackReference, Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, method.Descriptor())
 }

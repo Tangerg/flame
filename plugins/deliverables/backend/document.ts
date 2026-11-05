@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { Refusal, canonicalJSON } from "@qimu/node";
+import { Refusal, canonicalJSON } from "@flame/backend-sdk/mcp";
 import {
   schemas,
   type Header,

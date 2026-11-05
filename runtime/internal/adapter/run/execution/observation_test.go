@@ -404,19 +404,19 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightTool(t *testing.
 	case <-time.After(waitBudget(time.Second)):
 		t.Fatal("canceled Interaction did not reach a terminal boundary")
 	}
-	if unknown := unresolvedTerminals(events); len(unknown) != 0 {
-		t.Fatalf("canceled Tool became an unknown Effect: %#v", unknown)
+	if unknown := unresolvedTerminals(events); len(unknown) != 1 {
+		t.Fatalf("canceled Tool lost its unresolved Effect: %#v", unknown)
 	}
 	if finished := payloadsOf[runs.ToolCallFinished](events); len(finished) != 0 {
 		t.Fatalf("cancellation without a definite outcome produced a Tool result: %#v", finished)
 	}
 
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCanceled {
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeLost {
 		for _, end := range ended {
 			t.Logf("terminal reason=%s failure=%+v", end.Ending.Outcome(), segmentFailure(end))
 		}
-		t.Fatalf("segment end = %#v, want canceled", ended)
+		t.Fatalf("segment end = %#v, want loss with unresolved external work", ended)
 	}
 }
 
@@ -475,19 +475,19 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightModel(t *testing
 			case <-time.After(waitBudget(time.Second)):
 				t.Fatal("canceled Interaction did not reach a terminal boundary")
 			}
-			if unknown := unresolvedTerminals(events); len(unknown) != 0 {
-				t.Fatalf("canceled model became an unknown Effect: %#v", unknown)
+			if unknown := unresolvedTerminals(events); len(unknown) != 1 {
+				t.Fatalf("canceled model lost its unresolved Effect: %#v", unknown)
 			}
 			failed := payloadsOf[runs.ModelCallFailed](events)
 			if len(failed) != 1 {
-				t.Fatalf("model failures = %#v, want one definite failed invocation", failed)
+				t.Fatalf("model failures = %#v, want one failed invocation observation", failed)
 			}
 			if (failed[0].FirstOutputLatencyMillis != nil) != streaming {
 				t.Fatalf("canceled call latency = %v, streaming = %v", failed[0].FirstOutputLatencyMillis, streaming)
 			}
 			ended := payloadsOf[runs.SegmentEnded](events)
-			if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCanceled {
-				t.Fatalf("segment end = %#v, want canceled", ended)
+			if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeLost {
+				t.Fatalf("segment end = %#v, want loss with unresolved external work", ended)
 			}
 		})
 	}

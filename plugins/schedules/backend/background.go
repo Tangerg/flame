@@ -9,13 +9,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/google/uuid"
 )
 
@@ -86,8 +89,8 @@ func (b *background) run() {
 	}
 }
 func (b *background) scan(now time.Time) {
-	invocation := portable.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: b.target}
-	ctx, err := qimumcp.WithInvocation(b.ctx, invocation)
+	invocation := framemcp.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: b.target}
+	ctx, err := pluginmcp.WithInvocation(b.ctx, invocation)
 	if err != nil {
 		b.report("caller admission", err)
 		return
@@ -120,7 +123,7 @@ func (b *background) scan(now time.Time) {
 			b.report("captured target", errors.New("schedules: capture belongs to another installation"))
 			continue
 		}
-		calling, err := qimumcp.WithInvocation(b.ctx, request.Invocation())
+		calling, err := pluginmcp.WithInvocation(b.ctx, request.Invocation())
 		if err == nil {
 			_, err = resumeCaptured(calling, b.db, b.store, b.host, request)
 		}
@@ -139,7 +142,7 @@ func resumeCaptured(ctx context.Context, db *sql.DB, store store, host runHost, 
 	if err := request.Validate(); err != nil {
 		return app.RunReference{}, err
 	}
-	invocation, err := qimumcp.InvocationFromContext(ctx)
+	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		return app.RunReference{}, err
 	}
@@ -153,14 +156,14 @@ func resumeCaptured(ctx context.Context, db *sql.DB, store store, host runHost, 
 			return app.RunReference{}, err
 		}
 		var item wire.ItemInput
-		if err := json.Unmarshal(input.JSON(), &item, json.RejectUnknownMembers(true)); err != nil {
+		if err := json.Unmarshal(input.Bytes(), &item, json.RejectUnknownMembers(true)); err != nil {
 			return app.RunReference{}, err
 		}
 		if item.ID != request.ScheduleID() {
 			return app.RunReference{}, errors.New("schedules: original manual input differs from capture")
 		}
 		if prepared == nil {
-			reference, err := qimumcp.DecodeReply[app.RunReference](original)
+			reference, err := pluginmcp.DecodeReply[app.RunReference](original)
 			if err == nil && (reference.RunID != request.RunID() || reference.SessionID != request.SessionID()) {
 				err = errors.New("schedules: original manual receipt differs from capture")
 			}

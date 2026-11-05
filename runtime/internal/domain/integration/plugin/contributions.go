@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"slices"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 // ContributionID identifies a declaration within its package, independently of
@@ -36,7 +37,7 @@ type Contribution struct {
 	ID             ContributionID
 	Server         mcpserver.ServerName
 	Export         string
-	Contract       jsonvalue.Value
+	Contract       framevalue.JSON
 	Requires       []Requirement
 }
 
@@ -44,7 +45,7 @@ type Contribution struct {
 // collection is composition data and does not impose an activation edge.
 type Requirement struct {
 	ID       ContributionID
-	Contract jsonvalue.Value
+	Contract framevalue.JSON
 	Optional bool
 }
 
@@ -59,10 +60,10 @@ func (b *Builder) AdmitContribution(value Contribution) error {
 	if err := value.ID.Validate(); err != nil {
 		return err
 	}
-	if !portable.ValidExportName(value.Export) {
+	if !plugincontract.ValidExportName(value.Export) {
 		return refuse(DiagnosticInvalidDeclaration, "invalid contribution export %q", value.Export)
 	}
-	contract, err := portable.ParseCapability(value.Contract.JSON())
+	contract, err := plugincontract.ParseCapability(value.Contract.Bytes())
 	if err != nil {
 		return refuse(DiagnosticInvalidDeclaration, "invalid contribution contract: %v", err)
 	}
@@ -79,7 +80,7 @@ func (b *Builder) AdmitContribution(value Contribution) error {
 			return refuse(DiagnosticInvalidDependencies, "duplicate dependency %q", requirement.ID)
 		}
 		seen[requirement.ID] = true
-		required, err := portable.ParseCapability(requirement.Contract.JSON())
+		required, err := plugincontract.ParseCapability(requirement.Contract.Bytes())
 		if err != nil {
 			return refuse(DiagnosticInvalidDependencies, "invalid dependency %q contract: %v", requirement.ID, err)
 		}
@@ -110,13 +111,13 @@ func (r Release) Contribution(id ContributionID) (Contribution, bool) {
 	}
 	return r.declaration.Contributions[index].clone(), true
 }
-func (r Release) HasImplementation(server mcpserver.ServerName, required *portable.Capability) bool {
+func (r Release) HasImplementation(server mcpserver.ServerName, required *plugincontract.Capability) bool {
 	return required != nil && slices.ContainsFunc(r.declaration.Contributions, func(value Contribution) bool {
 		return value.Server == server && value.Contract == required.Identity()
 	})
 }
 
-func (c *Contribution) admitModelProviders(contract *portable.Capability) error {
+func (c *Contribution) admitModelProviders(contract *plugincontract.Capability) error {
 	descriptor := contract.Descriptor()
 	if _, reserved := extension.ProviderFromRole(descriptor.Reference); reserved {
 		return fmt.Errorf("model provider selection roles are reserved for the model adapter contract")
@@ -127,7 +128,7 @@ func (c *Contribution) admitModelProviders(contract *portable.Capability) error 
 		}
 		return nil
 	}
-	if descriptor.Composition != portable.Selection || len(c.ModelProviders) == 0 {
+	if descriptor.Composition != plugincontract.Selection || len(c.ModelProviders) == 0 {
 		return fmt.Errorf("model adapter requires explicit provider scopes")
 	}
 	slices.Sort(c.ModelProviders)
@@ -144,8 +145,8 @@ func (c *Contribution) admitModelProviders(contract *portable.Capability) error 
 
 func (c Contribution) SelectionRoles() []string {
 	if len(c.ModelProviders) == 0 {
-		contract, err := portable.ParseCapability(c.Contract.JSON())
-		if err != nil || contract.Descriptor().Composition != portable.Selection {
+		contract, err := plugincontract.ParseCapability(c.Contract.Bytes())
+		if err != nil || contract.Descriptor().Composition != plugincontract.Selection {
 			return nil
 		}
 		return []string{contract.Descriptor().Reference}

@@ -7,24 +7,26 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
 	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 type embed func(context.Context, []string) (pluginsdk.TextEmbeddings, error)
 type resolveEmbedding func(context.Context) (embed, error)
 
 func remoteEmbedding(ctx context.Context) (embed, error) {
-	ref, err := qimumcp.CallbackFromContext(ctx)
+	ref, err := pluginmcp.CallbackFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return func(ctx context.Context, texts []string) (pluginsdk.TextEmbeddings, error) {
-		return pluginsdk.CallTextEmbedding(ctx, ref, qimumcp.NewCommandID(), texts)
+		return pluginsdk.CallTextEmbedding(ctx, ref, pluginmcp.NewCommandID(), texts)
 	}, nil
 }
 
@@ -40,10 +42,10 @@ func newLibrary(store *store, resolve resolveEmbedding) (*library, error) {
 	return &library{store: store, resolve: resolve}, nil
 }
 
-func (l *library) importDocument(ctx context.Context, method, id string, admitted jsonvalue.Value) (knowledge.Header, error) {
+func (l *library) importDocument(ctx context.Context, method, id string, admitted framevalue.JSON) (knowledge.Header, error) {
 	return l.indexDocument(ctx, method, id, admitted, func(context.Context) (knowledge.Draft, int64, error) {
 		var input wire.ImportInput
-		if err := json.Unmarshal(admitted.JSON(), &input, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
+		if err := json.Unmarshal(admitted.Bytes(), &input, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
 			return knowledge.Draft{}, 0, err
 		}
 		draft, err := knowledge.NewDraft(input.Content)
@@ -51,10 +53,10 @@ func (l *library) importDocument(ctx context.Context, method, id string, admitte
 	})
 }
 
-func (l *library) reindexDocument(ctx context.Context, method, id string, admitted jsonvalue.Value) (knowledge.Header, error) {
+func (l *library) reindexDocument(ctx context.Context, method, id string, admitted framevalue.JSON) (knowledge.Header, error) {
 	return l.indexDocument(ctx, method, id, admitted, func(ctx context.Context) (knowledge.Draft, int64, error) {
 		var input wire.DocumentInput
-		if err := json.Unmarshal(admitted.JSON(), &input, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
+		if err := json.Unmarshal(admitted.Bytes(), &input, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
 			return knowledge.Draft{}, 0, err
 		}
 		document, err := l.store.read(ctx, input.ID)
@@ -66,7 +68,7 @@ func (l *library) reindexDocument(ctx context.Context, method, id string, admitt
 	})
 }
 
-func (l *library) indexDocument(ctx context.Context, method, id string, admitted jsonvalue.Value, prepare func(context.Context) (knowledge.Draft, int64, error)) (knowledge.Header, error) {
+func (l *library) indexDocument(ctx context.Context, method, id string, admitted framevalue.JSON, prepare func(context.Context) (knowledge.Draft, int64, error)) (knowledge.Header, error) {
 	var embedDocument embed
 	prepared, original, err := pluginstorage.AdmitCommand(ctx, l.store.db, method, id, admitted, func(ctx context.Context) error {
 		var err error
@@ -77,7 +79,7 @@ func (l *library) indexDocument(ctx context.Context, method, id string, admitted
 		return knowledge.Header{}, err
 	}
 	if prepared == nil {
-		return qimumcp.DecodeReply[knowledge.Header](original)
+		return pluginmcp.DecodeReply[knowledge.Header](original)
 	}
 	if !prepared.NewlyAdmitted() {
 		return knowledge.Header{}, pluginstorage.ErrCommandUnconfirmed

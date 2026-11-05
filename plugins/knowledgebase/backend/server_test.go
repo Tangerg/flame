@@ -10,15 +10,19 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
 	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -37,7 +41,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "knowledge-test"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -51,7 +55,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	host := qimumcp.NewCallbacks()
+	host := pluginmcp.NewCallbacks()
 	t.Cleanup(func() { _ = host.Close() })
 	if err := host.AdmitSession(session); err != nil {
 		t.Fatal(err)
@@ -59,8 +63,8 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	var space atomic.Value
 	space.Store("space-a")
 	var calls atomic.Int32
-	embedding, err := pluginsdk.NewTextEmbeddingCallback(func(ctx context.Context, command qimumcp.Command[[]string]) (pluginsdk.TextEmbeddings, error) {
-		owner, err := qimumcp.InvocationFromContext(ctx)
+	embedding, err := pluginsdk.NewTextEmbeddingCallback(func(ctx context.Context, command pluginmcp.Command[[]string]) (pluginsdk.TextEmbeddings, error) {
+		owner, err := pluginmcp.InvocationFromContext(ctx)
 		if err != nil || owner.ID != string(command.ID) || owner.Parent != "knowledge-entry" {
 			t.Errorf("embedding lost calling owner: %+v, %v", owner, err)
 		}
@@ -74,16 +78,16 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	owner, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "knowledge-entry", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "knowledge"}})
+	owner, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "knowledge-entry", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "knowledge"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, release, err := host.Open(owner, session, qimumcp.CallbackLimits{MaxRequestBytes: 1 << 20, MaxResponseBytes: 1 << 20}, embedding)
+	ref, release, err := host.Open(owner, session, pluginmcp.CallbackLimits{MaxRequestBytes: 1 << 20, MaxResponseBytes: 1 << 20}, embedding)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer release()
-	metadata, err := qimumcp.CallbackMetadata(ref)
+	metadata, err := pluginmcp.CallbackMetadata(ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +95,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	exported, err := qimumcp.ResolveCapability(t.Context(), session, "knowledgebase", contracts.Capability)
+	exported, err := pluginmcp.ResolveCapability(t.Context(), session, "knowledgebase", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +104,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 		t.Fatal(err)
 	}
 	input := wire.ImportInput{Content: knowledge.Content{ID: "fruit", Title: "Fruit guide", Source: "docs/fruit.md", Text: "apple apple apple"}}
-	admitted, err := jsonvalue.Encode(input)
+	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +116,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 		t.Fatal(err)
 	}
 	query := wire.SearchInput{Query: "apple", Limit: 2}
-	queryJSON, err := jsonvalue.Encode(query)
+	queryJSON, err := framevalue.EncodeJSON(query)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +125,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 		t.Fatal(err)
 	}
 	toolMeta := maps.Clone(metadata.Meta)
-	if err := toolMeta.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: "model-search", Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
+	if err := toolMeta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model-search", Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
 		t.Fatal(err)
 	}
 	result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "search_knowledge", Arguments: query, Meta: toolMeta})
@@ -132,7 +136,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	toolJSON, err := jsonvalue.Parse(encoded)
+	toolJSON, err := framevalue.ParseJSON(encoded)
 	if err != nil || toolJSON != typed {
 		t.Fatalf("typed and Tool retrieval diverged: %s, %s, %v", typed.String(), toolJSON.String(), err)
 	}
@@ -146,7 +150,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 		t.Fatalf("typed original read: %+v %v", read, err)
 	}
 	var readMeta sdk.Meta
-	if err := readMeta.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: "model-read", Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
+	if err := readMeta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model-read", Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
 		t.Fatal(err)
 	}
 	readResult, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "read_knowledge_document", Arguments: wire.ReadInput{ID: input.Content.ID}, Meta: readMeta})
@@ -165,7 +169,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	contextExport, err := qimumcp.ResolveCapability(t.Context(), session, "context", contextContract)
+	contextExport, err := pluginmcp.ResolveCapability(t.Context(), session, "context", contextContract)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,11 +184,11 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	request := pluginsdk.ModelContextRequest{Provider: "test", Model: "test", Request: chat.Request{Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("apple"))}}}
 	request.UserMessage = new(request.Request.Messages[0].Clone())
 	request.Request.Messages = append(request.Request.Messages, chat.NewUserMessage(chat.NewTextPart("host-owned catalog tail")))
-	contextInput, err := jsonvalue.Encode(request)
+	contextInput, err := framevalue.EncodeJSON(request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	contextOwner, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "context-entry", Origin: extension.Model, Target: portable.Target{Scope: "call", Reference: "context-entry"}})
+	contextOwner, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "context-entry", Origin: extension.Model, Target: portable.Target{Scope: "call", Reference: "context-entry"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +197,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 		t.Fatal(err)
 	}
 	var contextResult pluginsdk.ModelContextResult
-	if err := json.Unmarshal(contribution.JSON(), &contextResult); err != nil {
+	if err := json.Unmarshal(contribution.Bytes(), &contextResult); err != nil {
 		t.Fatal(err)
 	}
 	if err := contextResult.Validate(); err != nil || len(contextResult.Messages) != 1 || !strings.Contains(contextResult.Messages[0].Text(), "docs/fruit.md") {
@@ -205,7 +209,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	space.Store("space-b")
 	if _, err := searchMethod.InvokeWithMetadata(owner, "", queryJSON, metadata); err == nil {
 		t.Fatal("changed space became a successful retrieval")
-	} else if refusal, ok := errors.AsType[*portable.Refusal](err); !ok || refusal.Code != "embedding_space_changed" {
+	} else if refusal, ok := errors.AsType[*framemcp.Refusal](err); !ok || refusal.Code != "embedding_space_changed" {
 		t.Fatalf("changed space refusal = %v", err)
 	}
 	result, err = session.CallTool(t.Context(), &sdk.CallToolParams{Name: "search_knowledge", Arguments: query, Meta: toolMeta})
@@ -216,7 +220,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	deleteInput, err := jsonvalue.Encode(wire.DocumentInput{ID: "fruit", ExpectedRevision: 1})
+	deleteInput, err := framevalue.EncodeJSON(wire.DocumentInput{ID: "fruit", ExpectedRevision: 1})
 	if err != nil {
 		t.Fatal(err)
 	}

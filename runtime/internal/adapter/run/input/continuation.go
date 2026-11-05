@@ -13,11 +13,10 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/Tangerg/qimu/portable"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -27,7 +26,7 @@ import (
 // drift from the shape that is read back. Which remember scopes exist stays
 // with approval.Scope, which rejects an unknown one at decode.
 var resolutionSchema = sync.OnceValues(func() (jsonschema.Schema, error) {
-	schema, err := portable.SchemaFor[resolutionPayload]()
+	schema, err := jsonschema.For[resolutionPayload]()
 	if err != nil {
 		return jsonschema.Schema{}, fmt.Errorf("run input: derive resolution schema: %w", err)
 	}
@@ -167,7 +166,7 @@ func restoredResolution(
 }
 
 func encodeRequirementState(key string, promptJSON jsontext.Value) (jsontext.Value, error) {
-	stateJSON, err := agent.EncodePayload(continuationWire{
+	stateJSON, err := scoperun.EncodePayload(continuationWire{
 		Key:          key,
 		PromptDigest: promptDigest(promptJSON),
 		Prompt:       promptJSON,
@@ -175,7 +174,7 @@ func encodeRequirementState(key string, promptJSON jsontext.Value) (jsontext.Val
 	if err != nil {
 		return nil, fmt.Errorf("run input: encode continuation: %w", err)
 	}
-	return stateJSON.JSON(), nil
+	return jsontext.Value(stateJSON.JSON()), nil
 }
 
 func capabilityPolicyFrom(ctx context.Context) (capabilityPolicy, bool) {
@@ -187,5 +186,5 @@ func capabilityPolicyFrom(ctx context.Context) (capabilityPolicy, bool) {
 }
 
 func promptDigest(prompt jsontext.Value) string {
-	return agent.ComputeDigest(prompt).String()
+	return scoperun.ComputeDigest(prompt).String()
 }

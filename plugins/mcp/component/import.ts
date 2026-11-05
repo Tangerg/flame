@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { parseJSON } from "@qimu/sdk/json";
+import { parseJSON } from "@frame/sdk/json";
 import { validateWire } from "@flame/runtime-client/validation";
 import { type MCPTransport } from "./model";
 import { type MCPServerInput } from "./input";

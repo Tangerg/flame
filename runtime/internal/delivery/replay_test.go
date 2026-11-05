@@ -14,10 +14,11 @@ import (
 	"testing"
 	"time"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type countingCancelService struct {
@@ -200,7 +201,7 @@ func TestMemoryIdempotencyStoreKeepsAbandonedClaimReserved(t *testing.T) {
 	if err != nil || claimed || len(got.Payload) != 0 {
 		t.Fatalf("aged pending claim = (%+v, %v, %v), want reserved", got, claimed, err)
 	}
-	if _, _, claimErr := store.Claim(t.Context(), record.Key, "second"); !errors.Is(claimErr, portable.ErrInvocationConflict) {
+	if _, _, claimErr := store.Claim(t.Context(), record.Key, "second"); !errors.Is(claimErr, framemcp.ErrInvocationConflict) {
 		t.Fatalf("reuse aged pending claim = %v, want ErrKeyConflict", claimErr)
 	}
 	record.Payload = []byte(`{"problem":null}`)

@@ -18,10 +18,11 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/program"
-	"github.com/Tangerg/oolong/core/programtest"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/program"
+	"github.com/Tangerg/oolong/ui/uitest"
 )
 
 type postCommitSessionDeleteRuntime struct {
@@ -385,7 +386,7 @@ func TestRollbackConfirmationSurvivesExtremeResizeAndRestoresOpeningInput(t *tes
 	host.Type("/rollback all history")
 	host.Press(input.Enter)
 	host.Shows(t, "Rollback session")
-	if !host.Resize(1, 1) || !host.Repaint() {
+	if !host.Resize(1, 1) || !repaint(t, host) {
 		t.Fatal("rollback dialog could not enter a minimal viewport")
 	}
 	if !host.Resize(96, 28) {
@@ -587,7 +588,7 @@ func TestImportRequiresConfirmationAndInstallsTheAuthoritativeSession(t *testing
 		t.Fatal(err)
 	}
 	backend := runtimefixture.New()
-	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
+	host := uitest.New(t, uitest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
@@ -608,7 +609,7 @@ func TestImportRequiresConfirmationAndInstallsTheAuthoritativeSession(t *testing
 	host.Type("/import portable.json")
 	host.Press(input.Enter)
 	host.Shows(t, "Import session")
-	if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
+	if !host.Resize(1, 1) || !repaint(t, host) || !host.Resize(96, 28) {
 		t.Fatal("import confirmation did not survive a minimal viewport")
 	}
 	host.Shows(t, "Import session")
@@ -621,15 +622,16 @@ func TestImportRequiresConfirmationAndInstallsTheAuthoritativeSession(t *testing
 func TestConfirmationRejectsCallbacksFromAReplacedPresentation(t *testing.T) {
 	transcript := testTranscriptView(t)
 	application := &app{composer: testPromptComposer(t), transcript: transcript, lifecycle: &sessionLifecycle{state: sessionState{context: newSessionContextLease()}}}
-	application.stack.SetBase(transcript)
+	application.stack.setWorkbench(transcript.Element())
 	application.confirm = &confirmPrompt{stack: &application.stack, theme: transcript.theme, glyphs: transcript.glyphs, session: &application.lifecycle.state}
 	oldCalls, currentCalls := 0, 0
 	application.confirm.ask("Old confirmation", "Run the old action?", "Run old", "", func() { oldCalls++ })
-	drawRoot(t, &application.stack, 96, 28)
+	root := newSceneTestRoot(t, application.Element())
+	root.Draw(grid.NewSurface(96, 28).View())
 
 	application.confirm.ask("Current confirmation", "Run the current action?", "Run current", "", func() { currentCalls++ })
-	application.stack.Handle(input.Key{Code: input.Down})
-	application.stack.Handle(input.Key{Code: input.Enter})
+	root.Handle(input.Key{Code: input.Down})
+	root.Handle(input.Key{Code: input.Enter})
 	if oldCalls != 0 || currentCalls != 0 {
 		t.Fatalf("stale presented confirmation executed callbacks: old=%d current=%d", oldCalls, currentCalls)
 	}
@@ -637,9 +639,9 @@ func TestConfirmationRejectsCallbacksFromAReplacedPresentation(t *testing.T) {
 		t.Fatal("stale presented confirmation dismissed its replacement")
 	}
 
-	drawRoot(t, &application.stack, 96, 28)
-	application.stack.Handle(input.Key{Code: input.Down})
-	application.stack.Handle(input.Key{Code: input.Enter})
+	root.Draw(grid.NewSurface(96, 28).View())
+	root.Handle(input.Key{Code: input.Down})
+	root.Handle(input.Key{Code: input.Enter})
 	if oldCalls != 0 || currentCalls != 1 {
 		t.Fatalf("current confirmation callbacks: old=%d current=%d", oldCalls, currentCalls)
 	}
@@ -653,20 +655,21 @@ func TestProjectionRetirementRejectsAPresentedConfirmationCallback(t *testing.T)
 		transcript: transcript, operations: operations, lifecycle: &sessionLifecycle{state: sessionState{context: newSessionContextLease()}},
 		reader: testReaderSurface(t, operations), prompts: testInterruptPrompts(t),
 	}
-	application.stack.SetBase(transcript)
+	application.stack.setWorkbench(transcript.Element())
 	withModalOwners(t, application)
 	calls := 0
 	application.confirm.ask("Retired confirmation", "Run the retired action?", "Run", "", func() { calls++ })
-	drawRoot(t, application, 96, 28)
+	root := newSceneTestRoot(t, application.Element())
+	root.Draw(grid.NewSurface(96, 28).View())
 
 	application.lifecycle.root = application
 	application.lifecycle.retireSessionContext()
-	application.stack.Handle(input.Key{Code: input.Down})
-	application.stack.Handle(input.Key{Code: input.Enter})
+	root.Handle(input.Key{Code: input.Down})
+	root.Handle(input.Key{Code: input.Enter})
 	if calls != 0 {
 		t.Fatalf("retired projection confirmation executed %d callbacks", calls)
 	}
-	if application.confirm.dialog != nil || application.stack.Depth() > 0 {
+	if application.confirm.dialog != nil || application.stack.hasModal() {
 		t.Fatal("retired projection left its confirmation open")
 	}
 }
@@ -1014,6 +1017,6 @@ func withModalOwners(t *testing.T, application *app) {
 	application.screens.options.buildModelPicker(theme, glyphs)
 	application.queueEditor = newQueueEditor(queueEditorConfig{
 		session: &application.lifecycle.state, run: &runs{}, stack: &application.stack, theme: theme, glyphs: glyphs,
-		keys: headless.DefaultEditorKeys(), clip: (&program.Runtime{}).Clipboard(),
+		keys: base.DefaultEditorKeys(), clip: (&program.Runtime{}).Clipboard(),
 	})
 }

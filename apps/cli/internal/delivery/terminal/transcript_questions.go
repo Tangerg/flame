@@ -4,12 +4,11 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/oolong/components/headless"
 )
 
 type trackedQuestion struct {
 	runID string
-	id    headless.BlockID
+	id    transcriptEntryID
 	block *questionBlock
 }
 
@@ -23,8 +22,8 @@ func (t *transcriptView) revealAnsweredQuestion(block conversation.Block) bool {
 		return false
 	}
 	tracked.block.setQuestion(*block.Question)
-	t.content.Changed(tracked.id)
-	t.content.Finish(tracked.id)
+	t.projectEntry(tracked.id)
+	t.settleEntry(tracked.id)
 	delete(t.pendingQuestions, key)
 	t.refreshSearch()
 	t.announceSelection()
@@ -36,7 +35,7 @@ func (t *transcriptView) finishPendingQuestions(runID string) {
 		if runID != "" && question.runID != runID {
 			continue
 		}
-		t.content.Finish(question.id)
+		t.settleEntry(question.id)
 		delete(t.pendingQuestions, key)
 	}
 }
@@ -62,7 +61,7 @@ func (t *transcriptView) reconcilePendingQuestions(interrupts []conversation.Int
 		if _, remainsOpen := open[key]; remainsOpen {
 			continue
 		}
-		t.content.Finish(question.id)
+		t.settleEntry(question.id)
 		delete(t.pendingQuestions, key)
 	}
 	return nil

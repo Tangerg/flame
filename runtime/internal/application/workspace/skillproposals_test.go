@@ -4,9 +4,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/skill"
 	"slices"
 	"testing"
+
+	"github.com/Tangerg/flame/packages/go-sdk/skill"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"

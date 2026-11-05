@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   Backend,
-  Method,
+  declareMethod,
   parseJSON,
   type CallContext,
   type MethodDescriptor,
-} from "@qimu/node";
+} from "@flame/backend-sdk/mcp";
 import { toolCommandId, toolReceipts } from "./tools";
 import wire from "./protocol.generated.json";
 
@@ -34,7 +34,9 @@ describe("Flame Tool capabilities", () => {
   });
 
   it("uses the published receipt result shape before replying to the host", () => {
-    const method = new Method(parseJSON(wire.toolReceipt) as MethodDescriptor);
+    const method = declareMethod(
+      parseJSON(wire.toolReceipt) as MethodDescriptor,
+    );
     for (const response of [
       {},
       { result: { output: { content: [{ kind: "text", text: "done" }] } } },
@@ -60,7 +62,7 @@ describe("Flame Tool capabilities", () => {
     expect(registration).toHaveBeenCalledOnce();
     const [method, decode, implementation] = registration.mock.calls[0]!;
     expect(method.identity).toBe(
-      new Method(parseJSON(wire.toolReceipt) as MethodDescriptor).identity,
+      declareMethod(parseJSON(wire.toolReceipt) as MethodDescriptor).identity,
     );
     expect(implementation).toBe(handle);
     expect(() =>

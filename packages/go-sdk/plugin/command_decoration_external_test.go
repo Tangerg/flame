@@ -9,35 +9,39 @@ import (
 	"path/filepath"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	private "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *testing.T) {
-	method, err := qimumcp.NewMethod[string, int64](qimumcp.MethodConfig{Name: "example.records/update.v1", Kind: portable.Mutation, Target: "workspace", Description: "Update the private record."})
+	method, err := pluginmcp.NewMethod[string, int64](portable.MethodConfig{Name: "example.records/update.v1", Kind: portable.Command, Target: "workspace", Description: "Update the private record."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "example.records/decoration.v1", Composition: portable.Decoration, Scope: "workspace"}, method.Descriptor())
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "example.records/decoration.v1", Composition: plugincontract.Decoration, Scope: "workspace"}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if os.Getenv("FLAME_TEST_COMMAND_DECORATOR") == "1" {
 		server := sdk.NewServer(&sdk.Implementation{Name: "independent-command-decorator"}, nil)
-		backend, err := qimumcp.NewBackend(server)
+		backend, err := pluginmcp.NewBackend(server)
 		if err == nil {
-			err = method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[string]) (int64, error) {
-				next, err := qimumcp.CallbackFromContext(ctx)
+			err = method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[string]) (int64, error) {
+				next, err := pluginmcp.CallbackFromContext(ctx)
 				if err != nil {
 					return 0, err
 				}
-				value, err := qimumcp.CallHost(ctx, next, method, command.ID, command.Input)
+				value, err := pluginmcp.CallHost(ctx, next, method, command.ID, command.Input)
 				if err != nil || value != 1 {
 					return 0, errors.Join(err, errors.New("inner original outcome was replaced"))
 				}
@@ -66,13 +70,13 @@ func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *test
 		t.Fatal(err)
 	}
 	defer db.Close()
-	original := portable.Invocation{ID: "original-command", Origin: extension.Model, Parent: "run_original", Target: portable.Target{Scope: "workspace", Reference: "original-workspace"}}
-	calling, err := qimumcp.WithInvocation(t.Context(), original)
+	original := framemcp.Invocation{ID: "original-command", Origin: extension.Model, Parent: "run_original", Target: portable.Target{Scope: "workspace", Reference: "original-workspace"}}
+	calling, err := pluginmcp.WithInvocation(t.Context(), original)
 	if err != nil {
 		t.Fatal(err)
 	}
-	callback, err := qimumcp.NewCallback(method, nil, func(ctx context.Context, command qimumcp.Command[string]) (int64, error) {
-		owner, err := qimumcp.InvocationFromContext(ctx)
+	callback, err := pluginmcp.NewCallback(method, nil, func(ctx context.Context, command pluginmcp.Command[string]) (int64, error) {
+		owner, err := pluginmcp.InvocationFromContext(ctx)
 		if err != nil || owner != original {
 			return 0, errors.New("inner calling owner was replaced")
 		}
@@ -84,7 +88,7 @@ func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *test
 			return 0, err
 		}
 		return private.Command(ctx, db, method.Name(), string(command.ID), input, nil, func(ctx context.Context, _ string) (int64, error) {
-			connection := sqlite.Connection(ctx, db)
+			connection := private.Connection(ctx, db)
 			if _, err := connection.ExecContext(ctx, `UPDATE counter SET value=value+1`); err != nil {
 				return 0, err
 			}
@@ -97,7 +101,7 @@ func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *test
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "command-caller"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	command := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt$", "-test.count=1")
@@ -107,7 +111,7 @@ func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *test
 		t.Fatal(err)
 	}
 	defer session.Close()
-	export, err := qimumcp.ResolveCapability(t.Context(), session, "decorator", contract)
+	export, err := pluginmcp.ResolveCapability(t.Context(), session, "decorator", contract)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,33 +119,33 @@ func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	callbacks := qimumcp.NewCallbacks()
+	callbacks := pluginmcp.NewCallbacks()
 	defer callbacks.Close()
 	if err := callbacks.AdmitSession(session); err != nil {
 		t.Fatal(err)
 	}
-	ref, release, err := callbacks.Open(calling, session, qimumcp.CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 4096}, callback)
+	ref, release, err := callbacks.Open(calling, session, pluginmcp.CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 4096}, callback)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer release()
-	metadata, err := qimumcp.CallbackMetadata(ref)
+	metadata, err := pluginmcp.CallbackMetadata(ref)
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsonvalue.Encode("original-input")
+	input, err := framevalue.EncodeJSON("original-input")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for range 2 {
 		if _, err := bound.InvokeWithMetadata(calling, "original-command", input, metadata); err == nil {
 			t.Fatal("outer failure appeared successful")
-		} else if _, known := errors.AsType[*portable.Refusal](err); known {
+		} else if _, known := errors.AsType[*framemcp.Refusal](err); known {
 			t.Fatalf("outer failure claimed a known business refusal: %v", err)
 		}
 	}
 	release()
-	if _, err := qimumcp.CallHost(t.Context(), ref, method, "original-command", "original-input"); !errors.Is(err, qimumcp.ErrStaleCall) {
+	if _, err := pluginmcp.CallHost(t.Context(), ref, method, "original-command", "original-input"); !errors.Is(err, pluginmcp.ErrStaleCall) {
 		t.Fatalf("finished continuation entered a replacement lifetime: %v", err)
 	}
 	if err := session.Close(); err != nil {
@@ -155,11 +159,11 @@ func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *test
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	receipt, err := private.ReadReceipt(t.Context(), reopened, qimumcp.ReceiptRequest{ID: "original-command", Method: method.Name(), InputDigest: input.Digest()})
+	receipt, err := private.ReadReceipt(t.Context(), reopened, pluginmcp.ReceiptRequest{ID: "original-command", Method: method.Name(), InputDigest: input.Digest()})
 	if err != nil || !receipt.Found {
 		t.Fatalf("outer failure erased inner receipt after reopen: %+v, %v", receipt, err)
 	}
-	value, err := qimumcp.DecodeReply[int64](receipt.Reply)
+	value, err := pluginmcp.DecodeReply[int64](receipt.Reply)
 	if err != nil || value != 1 {
 		t.Fatalf("original inner receipt changed: %d, %v", value, err)
 	}

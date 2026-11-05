@@ -47,30 +47,32 @@ export function createWorkspaceEventsPlugin(
         handleEvent: invalidateWorkspaceEvent.bind(null, agentAccess),
         invalidateAll: invalidateWorkspaceEverything.bind(null, agentAccess),
         reportDisconnect: (connectionGeneration) => {
-          ctx.runtime.reportConnectionLoss(connectionGeneration);
+          ctx.dependencies.runtime.reportConnectionLoss(connectionGeneration);
         },
       });
 
-      ctx.cleanup(installProjectIndexRefresh());
-      ctx.cleanup(installWorkspaceFocusRefresh());
-      ctx.cleanup(
-        ctx.serverScope.subscribeReplacement(replaceWorkspaceServerScope.bind(null, agentAccess)),
+      ctx.lifetime.defer(installProjectIndexRefresh());
+      ctx.lifetime.defer(installWorkspaceFocusRefresh());
+      ctx.lifetime.defer(
+        ctx.dependencies.serverScope.subscribeReplacement(
+          replaceWorkspaceServerScope.bind(null, agentAccess),
+        ),
       );
-      ctx.cleanup(
+      ctx.lifetime.defer(
         startWorkspaceEventSubscription({
           canSubscribe: canSubscribeWorkspaceEvents.bind(null, runtimeAccess),
-          connectionGeneration: ctx.runtime.connectionGeneration,
-          subscribeConnection: ctx.runtime.subscribeConnection,
+          connectionGeneration: ctx.dependencies.runtime.connectionGeneration,
+          subscribeConnection: ctx.dependencies.runtime.subscribeConnection,
           retireReadModels: () => {
-            ctx.mutationLifecycle.replaceRuntimeGeneration();
+            ctx.dependencies.mutationLifecycle.replaceRuntimeGeneration();
             retireWorkspaceReadModels(agentAccess);
           },
           resolveWorkspaceCwd: (signal) =>
-            resolveActiveSessionWorkspaceCwd(runtimeClient, ctx.sessions, signal),
+            resolveActiveSessionWorkspaceCwd(runtimeClient, ctx.dependencies.sessions, signal),
           reportResolutionError: (error) =>
             console.warn("[workspace-events] target resolution failed:", error),
           subscribeWorkspaceCwdInputs: (onChange) =>
-            subscribeWorkspaceCwdInputs(ctx.sessions, onChange),
+            subscribeWorkspaceCwdInputs(ctx.dependencies.sessions, onChange),
           readTargets: workspaceReadTargets,
           subscribeReadTargets: subscribeWorkspaceReadTargets,
           loop,

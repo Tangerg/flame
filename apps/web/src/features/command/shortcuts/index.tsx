@@ -12,13 +12,13 @@ export default function createShortcutsPlugin(workspaceAccess: WorkspaceAccess) 
   return definePlugin({
     name: "flame.builtin.shortcuts",
     setup(ctx) {
-      contributeLayout(ctx, "app.overlay", {
+      contributeLayout(ctx.contributions, "app.overlay", {
         id: "shortcuts-provider",
         order: 50,
         component: ShortcutsProvider,
       });
 
-      ctx.contribute(SETTINGS_PANE, {
+      ctx.contributions.add(SETTINGS_PANE, {
         id: SHORTCUTS_PANE,
         label: "settings.pane.shortcuts",
         keywords: ["shortcuts.sub"],
@@ -28,7 +28,7 @@ export default function createShortcutsPlugin(workspaceAccess: WorkspaceAccess) 
         component: ShortcutsPane,
       });
 
-      ctx.contribute(COMMAND, {
+      ctx.contributions.add(COMMAND, {
         id: "shortcuts.show",
         label: "command.showShortcuts",
         combo: "Mod+/",

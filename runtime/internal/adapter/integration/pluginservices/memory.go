@@ -4,8 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
+	"time"
+
+	framevalue "github.com/Tangerg/frame/value"
+
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -13,18 +20,17 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 )
 
 type Memory struct {
-	contract      *portable.Capability
+	contract      *plugincontract.Capability
 	installations plugins.Store
 	pool          *mcp.Pool
-	callbacks     *qimumcp.Callbacks
+	callbacks     *pluginmcp.Callbacks
 	utility       models.AuxiliaryResolver
 	embedder      func(context.Context) (models.TextEmbedder, error)
 	history       conversationReader
@@ -37,7 +43,7 @@ type conversationReader interface {
 type MemoryConfig struct {
 	Installations plugins.Store
 	Connections   *mcp.Pool
-	Callbacks     *qimumcp.Callbacks
+	Callbacks     *pluginmcp.Callbacks
 	Utility       models.AuxiliaryResolver
 	Embeddings    func(context.Context) (models.TextEmbedder, error)
 	Conversation  conversationReader
@@ -56,7 +62,7 @@ func NewMemory(config MemoryConfig) (*Memory, error) {
 	if config.Commands == nil {
 		return nil, errors.New("memory: command routing is required")
 	}
-	contract, err := portable.ParseCapability([]byte(memorycontract.CapabilityJSON))
+	contract, err := plugincontract.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		return nil, err
 	}
@@ -79,12 +85,17 @@ func (m *Memory) Items(ctx context.Context, scope memorycontract.ItemsInputScope
 	if err != nil {
 		return nil, err
 	}
-	for _, item := range values {
-		if item.Status != memorycontract.ItemSnapshotStatusActive || item.Scope != memorycontract.ItemSnapshotScope(scope) || item.Project != project {
+	items := make([]execution.MemoryPromptItem, len(values))
+	for index, item := range values {
+		if item == nil || item.Status != memorycontract.ItemsV2OutputDomainItemSnapshotStatusActive || item.Scope != memorycontract.ItemsV2OutputDomainItemSnapshotScope(scope) || item.Project != project {
 			return nil, errors.New("memory: backend returned items outside the requested active target")
 		}
+		items[index], err = memoryPromptItem(string(item.ID), item.Content, item.Pinned, string(item.UpdatedAt))
+		if err != nil {
+			return nil, err
+		}
 	}
-	return memoryPromptItems(values)
+	return items, nil
 }
 func (m *Memory) Search(ctx context.Context, project, text string, topK int) (_ []execution.MemoryPromptItem, returned error) {
 	location, borrowed, err := contributionSession(ctx, m.commands.framework, m.installations, m.commands.selections, m.pool, m.contract)
@@ -117,24 +128,36 @@ func (m *Memory) Search(ctx context.Context, project, text string, topK int) (_ 
 	if embedder != nil {
 		space = embedder.ID()
 	}
-	metadata, err := qimumcp.CallbackMetadata(grant)
+	metadata, err := pluginmcp.CallbackMetadata(grant)
 	if err != nil {
 		return nil, err
 	}
-	values, err := query[memorycontract.SearchInput, memorycontract.SearchV2Output](ctx, location, session, memorycontract.SearchV2Method, memorycontract.SearchInput{Project: project, Query: text, TopK: int64(topK), EmbeddingSpace: space}, metadata)
+	limit, err := framevalue.ParseNumber([]byte(strconv.Itoa(topK)))
+	if err != nil {
+		return nil, err
+	}
+	values, err := query[memorycontract.SearchInput, memorycontract.SearchV2Output](ctx, location, session, memorycontract.SearchV2Method, memorycontract.SearchInput{Project: project, Query: text, TopK: limit, EmbeddingSpace: space}, metadata)
 	if err != nil {
 		return nil, err
 	}
 	if len(values) > max(topK, 0) {
 		return nil, errors.New("memory: backend exceeded requested search bound")
 	}
-	for _, item := range values {
-		visibleTarget := item.Scope == memorycontract.ItemSnapshotScopeUser && item.Project == "" || item.Scope == memorycontract.ItemSnapshotScopeProject && item.Project == project
-		if item.Status != memorycontract.ItemSnapshotStatusActive || !visibleTarget {
+	items := make([]execution.MemoryPromptItem, len(values))
+	for index, item := range values {
+		if item == nil {
+			return nil, errors.New("memory: backend returned an absent search item")
+		}
+		visibleTarget := item.Scope == memorycontract.SearchV2OutputDomainItemSnapshotScopeUser && item.Project == "" || item.Scope == memorycontract.SearchV2OutputDomainItemSnapshotScopeProject && item.Project == project
+		if item.Status != memorycontract.SearchV2OutputDomainItemSnapshotStatusActive || !visibleTarget {
 			return nil, errors.New("memory: backend returned search outside the active target")
 		}
+		items[index], err = memoryPromptItem(string(item.ID), item.Content, item.Pinned, string(item.UpdatedAt))
+		if err != nil {
+			return nil, err
+		}
 	}
-	return memoryPromptItems(memorycontract.ItemsV2Output(values))
+	return items, nil
 }
 func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintenanceInput) error {
 	binding, borrowed, err := contributionSession(ctx, m.commands.framework, m.installations, m.commands.selections, m.pool, m.contract)
@@ -150,9 +173,14 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 	if err != nil {
 		return fmt.Errorf("memory: capture committed conversation: %w", err)
 	}
-	request := memorycontract.MaintenanceInput{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted}
-	request.Conversation.MessageCount = int64(len(messages))
-	request.Conversation.Transcript = models.RenderTranscript(messages)
+	count, err := framevalue.ParseNumber([]byte(strconv.Itoa(len(messages))))
+	if err != nil {
+		return err
+	}
+	request := memorycontract.MaintenanceInput{
+		SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted,
+		Conversation: &memorycontract.Conversation{MessageCount: count, Transcript: models.RenderTranscript(messages)},
+	}
 	_, err = invokeResolvedCommand[memorycontract.MaintenanceInput, memorycontract.MaintenanceResult](operation.Start(ctx, extension.Automatic, "plugins.automatic", uuid.NewString()), m.commands, memorycontract.MaintainV1Method, request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {
 		model, releaseModel, err := m.utility(ctx, models.AuxiliaryBudget{MaxInputBytes: memorycontract.MaxModelInputBytes, MaxOutputTokens: memorycontract.MaxModelOutputTokens})
 		if err != nil {
@@ -165,7 +193,7 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 		if err != nil {
 			return sdk.ParamsBase{}, nil, errors.Join(err, releaseModel())
 		}
-		metadata, err := qimumcp.CallbackMetadata(grant)
+		metadata, err := pluginmcp.CallbackMetadata(grant)
 		if err != nil {
 			release()
 			return sdk.ParamsBase{}, nil, errors.Join(err, releaseModel())
@@ -177,13 +205,10 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 	})
 	return err
 }
-func memoryPromptItems(values memorycontract.ItemsV2Output) ([]execution.MemoryPromptItem, error) {
-	items := make([]execution.MemoryPromptItem, len(values))
-	for i, value := range values {
-		if value.UpdatedAt.IsZero() {
-			return nil, errors.New("memory: published prompt item has no ordering time")
-		}
-		items[i] = execution.MemoryPromptItem{ID: string(value.ID), Content: value.Content, Pinned: value.Pinned, UpdatedAt: value.UpdatedAt}
+func memoryPromptItem(id, content string, pinned bool, updated string) (execution.MemoryPromptItem, error) {
+	instant, err := time.Parse(time.RFC3339Nano, updated)
+	if err != nil || instant.IsZero() {
+		return execution.MemoryPromptItem{}, errors.New("memory: published prompt item has no valid ordering time")
 	}
-	return items, nil
+	return execution.MemoryPromptItem{ID: id, Content: content, Pinned: pinned, UpdatedAt: instant}, nil
 }

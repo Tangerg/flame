@@ -43,7 +43,7 @@ type Config struct {
 	// Required. HTTP never constructs a second policy pipeline.
 	Endpoint *delivery.Endpoint
 
-	// PluginControl authenticates Qimu Realm credentials independently of RPC.
+	// PluginControl authenticates Frame Realm credentials independently of RPC.
 	PluginControl http.Handler
 
 	// Addr is the listen address (":8080", "127.0.0.1:0", ...). Required.

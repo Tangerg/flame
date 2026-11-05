@@ -2,7 +2,7 @@ package wire
 
 import (
 	routing "github.com/Tangerg/flame/plugins/modelrouter/internal/domain"
-	"github.com/invopop/jsonschema"
+	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 type ReplaceInput struct {
@@ -10,7 +10,8 @@ type ReplaceInput struct {
 	Rules            []routing.Rule `json:"rules"`
 }
 
-func (ReplaceInput) JSONSchemaExtend(schema *jsonschema.Schema) {
-	rules, _ := schema.Properties.Get("rules")
-	rules.MaxItems = new(uint64(routing.MaxRules))
+func (ReplaceInput) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"rules": {MaxItems: new(uint64(routing.MaxRules))},
+	}}
 }

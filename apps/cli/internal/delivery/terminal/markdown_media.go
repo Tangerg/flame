@@ -7,20 +7,20 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Tangerg/oolong/core/graphics"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/program"
-	"github.com/Tangerg/oolong/core/text"
-	"github.com/Tangerg/oolong/highlight"
-	"github.com/Tangerg/oolong/markdown"
-	"github.com/Tangerg/oolong/mermaid"
+	"github.com/Tangerg/oolong/extensions/highlight"
+	"github.com/Tangerg/oolong/extensions/markdown"
+	"github.com/Tangerg/oolong/extensions/mermaid"
+	"github.com/Tangerg/oolong/ui/core/graphics"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/program"
+	"github.com/Tangerg/oolong/ui/core/text"
 )
 
 type diagramPreparation func(context.Context, string) ([]byte, error)
 
 func prepareMermaid(theme string) diagramPreparation {
 	backend := sync.OnceValues(func() (*mermaid.Renderer, error) {
-		return mermaid.New(mermaid.Config{Theme: theme})
+		return mermaid.New(mermaid.Config{Theme: mermaid.Theme(theme)})
 	})
 	return func(ctx context.Context, source string) ([]byte, error) {
 		renderer, err := backend()
@@ -64,8 +64,8 @@ func markdownFences(syntax highlight.Renderer, diagram markdown.Renderer) markdo
 }
 
 type preparedDiagram struct {
-	png []byte
-	err error
+	image *terminalImageBlock
+	err   error
 }
 
 func (m *markdownMedia) start(block *markdownBlock, changed func()) bool {
@@ -95,34 +95,50 @@ func (m *markdownMedia) start(block *markdownBlock, changed func()) bool {
 	slot := operationSlot(fmt.Sprintf("markdown-%p", block))
 	started := m.workers.Go(slot, false, func(ctx context.Context, lease operationLease) {
 		prepared := make(map[string]preparedDiagram, len(sources))
+		transferred := false
+		defer func() {
+			if !transferred {
+				for _, result := range prepared {
+					if result.image != nil {
+						m.workers.failDelivery(result.image.Close())
+					}
+				}
+			}
+		}()
 		for _, source := range sources {
 			if ctx.Err() != nil {
 				return
 			}
 			data, err := m.prepare(ctx, source)
-			prepared[source] = preparedDiagram{png: data, err: err}
+			var image *terminalImageBlock
+			if err == nil {
+				image, err = m.images.transmit(ctx, block.theme, data, "Mermaid diagram")
+			}
+			prepared[source] = preparedDiagram{image: image, err: err}
 		}
-		_ = post(ctx, m.dispatch, func() {
+		delivery := post(ctx, m.dispatch, func() {
 			if !m.workers.Current(lease) || !m.workers.Release(lease) {
 				return
 			}
 			block.cancel = nil
+			for _, result := range prepared {
+				if result.image != nil {
+					block.images = append(block.images, result.image)
+				}
+			}
 			look := block.look
 			look.SetRenderer(markdown.FencedCode, markdownFences(m.syntax, func(_ string, source string) (grid.Drawable, error) {
 				result := prepared[source]
 				if result.err != nil {
 					return nil, result.err
 				}
-				image, err := m.images.transmit(block.theme, result.png, "Mermaid diagram")
-				if err != nil {
-					return nil, err
-				}
-				block.images = append(block.images, image)
-				return image, nil
+				return result.image, nil
 			}))
 			block.setBlocks(markdown.Render(block.source, look))
+			transferred = true
 			changed()
 		})
+		m.workers.failDelivery(delivery)
 	})
 	if !started {
 		blocks, err := markdown.Render(block.source, block.look)

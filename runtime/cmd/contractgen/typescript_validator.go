@@ -7,10 +7,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/wiregen"
+
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
-	"github.com/Tangerg/qimu/contractgen"
 )
 
 // The TypeScript validator is COMPILED FROM THE SCHEMA TREE, for the same reason
@@ -74,7 +75,7 @@ func newWireChecks(registry *delivery.Registry, shapes *dispatch.Shapes, set *sc
 	}
 	out.WriteString("/** Every shape the protocol publishes. */\nexport type WireTypeName =\n")
 	for _, name := range names {
-		fmt.Fprintf(&out, "  | %s\n", contractgen.TypeScriptStringLiteral(name))
+		fmt.Fprintf(&out, "  | %s\n", wiregen.StringLiteral(name))
 	}
 	out.WriteString("  ;\n\n")
 	out.WriteString(body.String())
@@ -95,7 +96,7 @@ func (c *checkEmitter) httpResponses() string {
 		if endpoint.Kind != runtimehttp.EndpointKindSidecar || endpoint.ResponseType == nil {
 			continue
 		}
-		fmt.Fprintf(&out, "  %s: %s,\n", contractgen.TypeScriptStringLiteral(endpoint.Name), indent(c.compile(c.set.walk(endpoint.ResponseType))))
+		fmt.Fprintf(&out, "  %s: %s,\n", wiregen.StringLiteral(endpoint.Name), indent(c.compile(c.set.walk(endpoint.ResponseType))))
 	}
 	out.WriteString("};\n")
 	out.WriteString(`
@@ -154,7 +155,7 @@ func (c *checkEmitter) methodParams(registry *delivery.Registry) string {
 	var out strings.Builder
 	out.WriteString("\nconst METHOD_PARAMS: Record<WireMethodName, WireCheck> = {\n")
 	for _, meta := range registry.Metas() {
-		fmt.Fprintf(&out, "  %s: %s,\n", contractgen.TypeScriptStringLiteral(meta.Name.String()), indent(c.compile(c.set.walk(meta.Params))))
+		fmt.Fprintf(&out, "  %s: %s,\n", wiregen.StringLiteral(meta.Name.String()), indent(c.compile(c.set.walk(meta.Params))))
 	}
 	out.WriteString("};\n")
 	out.WriteString(`
@@ -182,7 +183,7 @@ func (c *checkEmitter) methodResults(registry *delivery.Registry) string {
 				check = c.call("nullable", check)
 			}
 		}
-		fmt.Fprintf(&out, "  %s: %s,\n", contractgen.TypeScriptStringLiteral(meta.Name.String()), indent(check))
+		fmt.Fprintf(&out, "  %s: %s,\n", wiregen.StringLiteral(meta.Name.String()), indent(check))
 	}
 	out.WriteString("};\n")
 	out.WriteString(`
@@ -209,7 +210,7 @@ func (c *checkEmitter) notifications(shapes *dispatch.Shapes) string {
 	var out strings.Builder
 	out.WriteString("\nexport const WIRE_NOTIFICATION_NAMES = [\n")
 	for _, notification := range notifications {
-		fmt.Fprintf(&out, "  %s,\n", contractgen.TypeScriptStringLiteral(notification.Name))
+		fmt.Fprintf(&out, "  %s,\n", wiregen.StringLiteral(notification.Name))
 	}
 	out.WriteString("] as const;\n")
 	out.WriteString("\nexport type WireNotificationName = (typeof WIRE_NOTIFICATION_NAMES)[number];\n")
@@ -217,11 +218,11 @@ func (c *checkEmitter) notifications(shapes *dispatch.Shapes) string {
 	out.WriteString("export interface WireNotificationParams {\n")
 	for _, notification := range notifications {
 		node := c.set.walk(notification.ParamsType)
-		name, ok := strings.CutPrefix(node.Ref, contractgen.RefPrefix)
+		name, ok := strings.CutPrefix(node.Ref, wiregen.RefPrefix)
 		if !ok {
 			panic(fmt.Sprintf("contractgen: notification %q params has no published shape", notification.Name))
 		}
-		fmt.Fprintf(&out, "  %s: Wire.%s;\n", contractgen.TypeScriptStringLiteral(notification.Name), name)
+		fmt.Fprintf(&out, "  %s: Wire.%s;\n", wiregen.StringLiteral(notification.Name), name)
 	}
 	out.WriteString("}\n")
 	out.WriteString("\nconst NOTIFICATION_PARAMS: Record<WireNotificationName, WireCheck> = {\n")
@@ -229,7 +230,7 @@ func (c *checkEmitter) notifications(shapes *dispatch.Shapes) string {
 		fmt.Fprintf(
 			&out,
 			"  %s: %s,\n",
-			contractgen.TypeScriptStringLiteral(notification.Name),
+			wiregen.StringLiteral(notification.Name),
 			indent(c.compile(c.set.walk(notification.ParamsType))),
 		)
 	}
@@ -260,9 +261,9 @@ export function projectNotificationParams(method: WireNotificationName, value: u
 
 // compile renders one schema node as a check expression, rendered as if it began at
 // column zero — a container re-indents what it embeds.
-func (c *checkEmitter) compile(node *contractgen.Schema) string {
+func (c *checkEmitter) compile(node *wiregen.Schema) string {
 	if node.Ref != "" {
-		name, _ := strings.CutPrefix(node.Ref, contractgen.RefPrefix)
+		name, _ := strings.CutPrefix(node.Ref, wiregen.RefPrefix)
 		return c.call("ref", "() => CHECKS."+name)
 	}
 
@@ -283,18 +284,18 @@ func (c *checkEmitter) compile(node *contractgen.Schema) string {
 	return c.conjunction(parts)
 }
 
-func (c *checkEmitter) baseCheck(node *contractgen.Schema) string {
+func (c *checkEmitter) baseCheck(node *wiregen.Schema) string {
 	switch {
 	case node.Const != "":
-		return c.call("literal", contractgen.TypeScriptStringLiteral(node.Const))
+		return c.call("literal", wiregen.StringLiteral(node.Const))
 	case len(node.Enum) > 0:
-		return c.call("enumOf", "["+strings.Join(contractgen.QuoteAll(node.Enum), ", ")+"]")
+		return c.call("enumOf", "["+strings.Join(wiregen.QuoteAll(node.Enum), ", ")+"]")
 	default:
 		return c.value(node)
 	}
 }
 
-func (c *checkEmitter) stringChecks(node *contractgen.Schema) []string {
+func (c *checkEmitter) stringChecks(node *wiregen.Schema) []string {
 	var checks []string
 	if node.MinLength != nil {
 		checks = append(checks, c.call("minLength", strconv.Itoa(*node.MinLength)))
@@ -303,26 +304,26 @@ func (c *checkEmitter) stringChecks(node *contractgen.Schema) []string {
 		checks = append(checks, c.call("maxLength", strconv.Itoa(*node.MaxLength)))
 	}
 	if node.Pattern != "" {
-		checks = append(checks, c.call("pattern", contractgen.TypeScriptStringLiteral(node.Pattern)))
+		checks = append(checks, c.call("pattern", wiregen.StringLiteral(node.Pattern)))
 	}
 	return checks
 }
 
-func (c *checkEmitter) numericChecks(node *contractgen.Schema) []string {
+func (c *checkEmitter) numericChecks(node *wiregen.Schema) []string {
 	var checks []string
 	if node.Minimum != nil {
-		checks = append(checks, c.call("minimum", contractgen.TypeScriptStringLiteral(strconv.FormatInt(*node.Minimum, 10))))
+		checks = append(checks, c.call("minimum", wiregen.StringLiteral(strconv.FormatInt(*node.Minimum, 10))))
 	}
 	if node.ExclusiveMinimum != nil {
-		checks = append(checks, c.call("exclusiveMinimum", contractgen.TypeScriptStringLiteral(strconv.FormatInt(*node.ExclusiveMinimum, 10))))
+		checks = append(checks, c.call("exclusiveMinimum", wiregen.StringLiteral(strconv.FormatInt(*node.ExclusiveMinimum, 10))))
 	}
 	if node.Maximum != nil {
-		checks = append(checks, c.call("maximum", contractgen.TypeScriptStringLiteral(strconv.FormatInt(*node.Maximum, 10))))
+		checks = append(checks, c.call("maximum", wiregen.StringLiteral(strconv.FormatInt(*node.Maximum, 10))))
 	}
 	return checks
 }
 
-func (c *checkEmitter) collectionChecks(node *contractgen.Schema) []string {
+func (c *checkEmitter) collectionChecks(node *wiregen.Schema) []string {
 	var checks []string
 	if node.MinItems != nil {
 		checks = append(checks, c.call("minItems", strconv.Itoa(*node.MinItems)))
@@ -342,7 +343,7 @@ func (c *checkEmitter) collectionChecks(node *contractgen.Schema) []string {
 	return checks
 }
 
-func (c *checkEmitter) compositionChecks(node *contractgen.Schema) []string {
+func (c *checkEmitter) compositionChecks(node *wiregen.Schema) []string {
 	var checks []string
 	if len(node.OneOf) > 0 {
 		checks = append(checks, c.call("oneOf", c.list(node.OneOf)))
@@ -373,27 +374,27 @@ func (c *checkEmitter) conjunction(parts []string) string {
 }
 
 // value renders the `type` keyword and the constraints that ride on it.
-func (c *checkEmitter) value(node *contractgen.Schema) string {
+func (c *checkEmitter) value(node *wiregen.Schema) string {
 	keyword := node.Type
 	switch keyword {
-	case contractgen.SchemaTypeObject:
+	case wiregen.SchemaTypeObject:
 		if node.AdditionalProps != nil {
-			child, ok := node.AdditionalProps.(*contractgen.Schema)
+			child, ok := node.AdditionalProps.(*wiregen.Schema)
 			if !ok {
 				panic(fmt.Sprintf("contractgen: additionalProperties is %T, which the check compiler cannot read", node.AdditionalProps))
 			}
 			return c.call("record", c.compile(child))
 		}
 		return c.call("object", c.properties(node), values(node.Required))
-	case contractgen.SchemaTypeArray:
+	case wiregen.SchemaTypeArray:
 		return c.call("array", c.compile(node.Items))
-	case contractgen.SchemaTypeString:
+	case wiregen.SchemaTypeString:
 		return c.call("text")
-	case contractgen.SchemaTypeInteger:
+	case wiregen.SchemaTypeInteger:
 		return c.call("integer")
-	case contractgen.SchemaTypeNumber:
+	case wiregen.SchemaTypeNumber:
 		return c.call("numeric")
-	case contractgen.SchemaTypeBoolean:
+	case wiregen.SchemaTypeBoolean:
 		return c.call("flag")
 	case "":
 		// A union branch and a conditional rule state fields with no type keyword: the
@@ -407,7 +408,7 @@ func (c *checkEmitter) value(node *contractgen.Schema) string {
 	}
 }
 
-func (c *checkEmitter) properties(node *contractgen.Schema) string {
+func (c *checkEmitter) properties(node *wiregen.Schema) string {
 	names := slices.Sorted(maps.Keys(node.Properties))
 	if len(names) == 0 {
 		return "{}"
@@ -415,7 +416,7 @@ func (c *checkEmitter) properties(node *contractgen.Schema) string {
 	var out strings.Builder
 	out.WriteString("{\n")
 	for _, name := range names {
-		fmt.Fprintf(&out, "  %s: %s,\n", contractgen.PropertyKey(name), indent(c.property(node.Properties[name])))
+		fmt.Fprintf(&out, "  %s: %s,\n", wiregen.PropertyKey(name), indent(c.property(node.Properties[name])))
 	}
 	out.WriteString("}")
 	return out.String()
@@ -423,7 +424,7 @@ func (c *checkEmitter) properties(node *contractgen.Schema) string {
 
 func (c *checkEmitter) property(node any) string {
 	switch typed := node.(type) {
-	case *contractgen.Schema:
+	case *wiregen.Schema:
 		return c.compile(typed)
 	case bool:
 		if typed {
@@ -437,7 +438,7 @@ func (c *checkEmitter) property(node any) string {
 
 // list renders sibling schemas one per line, which keeps a union's diff readable:
 // adding a variant touches one line.
-func (c *checkEmitter) list(nodes []*contractgen.Schema) string {
+func (c *checkEmitter) list(nodes []*wiregen.Schema) string {
 	rendered := make([]string, 0, len(nodes))
 	for _, node := range nodes {
 		rendered = append(rendered, c.compile(node))
@@ -479,7 +480,7 @@ func block(items []string) string {
 }
 
 func values(items []string) string {
-	return "[" + strings.Join(contractgen.QuoteAll(items), ", ") + "]"
+	return "[" + strings.Join(wiregen.QuoteAll(items), ", ") + "]"
 }
 
 // indent moves an already-rendered expression one level into its container.

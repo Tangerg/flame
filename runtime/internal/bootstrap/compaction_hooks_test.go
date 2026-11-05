@@ -78,8 +78,9 @@ func TestRuntimeStopsRequiredCompactionWhenHookConfigurationCannotBeRead(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if finished.Outcome == nil || finished.Outcome.Type != protocol.OutcomeFailed ||
-		finished.Outcome.Error == nil || !strings.Contains(finished.Outcome.Error.Detail, "hooks") {
+	if finished.Outcome == nil || finished.Outcome.Type != protocol.OutcomeLost ||
+		finished.Outcome.Loss == nil || finished.Outcome.Loss.Reason != protocol.LossUnresolvedEffects ||
+		len(finished.Outcome.UnresolvedEffects) != 1 || !strings.Contains(finished.Outcome.UnresolvedEffects[0].Detail, "hooks") {
 		t.Fatalf("unreadable compaction policy did not stop the Run: %+v", finished.Outcome)
 	}
 	_, summaries, _, _ := longRun.Snapshot()

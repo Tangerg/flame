@@ -10,16 +10,16 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
-type markdownEvent = qimumcp.StreamValue[string, plugin.DocumentIdentity]
+type markdownEvent = pluginmcp.StreamValue[string, plugin.DocumentIdentity]
 
-func renderMarkdown(ctx context.Context, _ *sdk.ServerSession, cmd qimumcp.Command[plugin.DocumentIdentity]) iter.Seq2[markdownEvent, error] {
+func renderMarkdown(ctx context.Context, _ *sdk.ServerSession, cmd pluginmcp.Command[plugin.DocumentIdentity]) iter.Seq2[markdownEvent, error] {
 	return func(yield func(markdownEvent, error) bool) {
-		grant, err := qimumcp.CallbackFromContext(ctx)
+		grant, err := pluginmcp.CallbackFromContext(ctx)
 		if err != nil {
 			yield(markdownEvent{}, err)
 			return
@@ -29,7 +29,7 @@ func renderMarkdown(ctx context.Context, _ *sdk.ServerSession, cmd qimumcp.Comma
 			yield(markdownEvent{}, err)
 			return
 		}
-		source, err := readSessionSnapshot(ctx, cmd.Input, func(r plugin.DocumentRange) (string, error) { return qimumcp.CallHost(ctx, grant, method, "", r) })
+		source, err := readSessionSnapshot(ctx, cmd.Input, func(r plugin.DocumentRange) (string, error) { return pluginmcp.CallHost(ctx, grant, method, "", r) })
 		if err != nil {
 			yield(markdownEvent{}, err)
 			return

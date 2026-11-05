@@ -63,7 +63,7 @@ func scheduleModelManualRun(t *testing.T, lost bool) {
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
 	})}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func scheduleModelManualRun(t *testing.T, lost bool) {
 		deadline := time.Now().Add(5 * time.Second)
 		for {
 			page := readSchedulePage(r, protocol.PageQuery{})
-			if len(page.Data) == 1 && !page.Data[0].LastRunAt.IsZero() {
+			if len(page.Data) == 1 && page.Data[0].LastRunAt != nil {
 				break
 			}
 			if time.Now().After(deadline) {
@@ -138,7 +138,7 @@ func scheduleModelManualRun(t *testing.T, lost bool) {
 		t.Fatalf("omitted schedule workspace did not use Runtime's default: %+v", createdSession)
 	}
 	page := readSchedulePage(r, protocol.PageQuery{})
-	if len(page.Data) != 1 || page.Data[0].ID != definition.ID || page.Data[0].LastRunAt.IsZero() {
+	if len(page.Data) != 1 || page.Data[0].ID != definition.ID || page.Data[0].LastRunAt == nil {
 		t.Fatalf("manual acceptance failed to settle its private definition: %+v", page)
 	}
 }

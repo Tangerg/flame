@@ -4,29 +4,32 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	"github.com/Tangerg/qimu"
 	"iter"
 	"sync"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
 type CallComposition struct {
 	calls     *CommandCalls
-	callbacks *qimumcp.Callbacks
-	admission *qimu.Admission
+	callbacks *pluginmcp.Callbacks
+	admission *frame.Admission
 	mu        sync.Mutex
 	captures  map[*modelCapture]struct{}
 }
 
-func NewCallComposition(calls *CommandCalls, callbacks *qimumcp.Callbacks, admission *qimu.Admission) (*CallComposition, error) {
+func NewCallComposition(calls *CommandCalls, callbacks *pluginmcp.Callbacks, admission *frame.Admission) (*CallComposition, error) {
 	if calls == nil || callbacks == nil || admission == nil {
 		return nil, errors.New("model composition: installed calls and callbacks are required")
 	}
@@ -86,11 +89,11 @@ type observedModel struct {
 
 type streamedObservedModel struct{ *observedModel }
 
-func (o *observedModel) prepare(ctx context.Context, request *chat.Request, streaming bool) (*mcp.BorrowedSession, *qimumcp.Binding, error) {
+func (o *observedModel) prepare(ctx context.Context, request *chat.Request, streaming bool) (*mcp.BorrowedSession, *pluginmcp.Binding, error) {
 	if err := request.Validate(); err != nil {
 		return nil, nil, err
 	}
-	_, err := qimumcp.InvocationFromContext(ctx)
+	_, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -129,7 +132,7 @@ func (o *observedModel) prepare(ctx context.Context, request *chat.Request, stre
 	if _, err := o.owner.calls.pool.SessionActor(ctx, r.ServerID, session); err != nil {
 		return nil, nil, err
 	}
-	exported, err := qimumcp.NewCapabilityBinding(session, r.Export, contract)
+	exported, err := pluginmcp.NewCapabilityBinding(session, r.Export, contract)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -155,12 +158,12 @@ type observationAdmission struct {
 	innerFailure error
 }
 
-func (a *observationAdmission) enter(command qimumcp.Command[chat.Request]) error {
+func (a *observationAdmission) enter(command pluginmcp.Command[chat.Request]) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	exact, err := sameObservationJSON(a.request, &command.Input)
 	if a.entered || string(command.ID) != a.id || err != nil || !exact {
-		a.violation = &portable.Refusal{Code: "observer_contract", Message: "transparent observer cannot repeat or change its continuation"}
+		a.violation = &framemcp.Refusal{Code: "observer_contract", Message: "transparent observer cannot repeat or change its continuation"}
 		a.violation = errors.Join(a.violation, err)
 		return a.violation
 	}
@@ -192,11 +195,11 @@ func (a *observationAdmission) outcome(response *chat.Response, err error) (*cha
 }
 
 func sameObservationJSON(left, right any) (bool, error) {
-	encodedLeft, err := jsonvalue.Encode(left)
+	encodedLeft, err := framevalue.EncodeJSON(left)
 	if err != nil {
 		return false, err
 	}
-	encodedRight, err := jsonvalue.Encode(right)
+	encodedRight, err := framevalue.EncodeJSON(right)
 	if err != nil {
 		return false, err
 	}
@@ -215,9 +218,9 @@ func (o *observedModel) Call(ctx context.Context, request *chat.Request) (*chat.
 	defer borrowed.Close()
 	ctx = borrowed.Context()
 	session := borrowed.Session()
-	invocation, _ := qimumcp.InvocationFromContext(ctx)
+	invocation, _ := pluginmcp.InvocationFromContext(ctx)
 	admission := &observationAdmission{request: request.Clone(), id: invocation.ID}
-	next, err := pluginsdk.NewModelCallback(func(requestCtx context.Context, command qimumcp.Command[chat.Request]) (*chat.Response, error) {
+	next, err := pluginsdk.NewModelCallback(func(requestCtx context.Context, command pluginmcp.Command[chat.Request]) (*chat.Response, error) {
 		if err := admission.enter(command); err != nil {
 			return nil, err
 		}
@@ -238,17 +241,17 @@ func (o *observedModel) Call(ctx context.Context, request *chat.Request) (*chat.
 		return nil, err
 	}
 	defer release()
-	input, err := jsonvalue.Encode(admission.request)
+	input, err := framevalue.EncodeJSON(admission.request)
 	if err != nil {
 		return nil, err
 	}
-	raw, err := binding.InvokeWithMetadata(ctx, qimumcp.CommandID(invocation.ID), input, metadata)
+	raw, err := binding.InvokeWithMetadata(ctx, pluginmcp.CommandID(invocation.ID), input, metadata)
 	release()
 	if err != nil {
 		return admission.outcome(nil, err)
 	}
 	var result pluginsdk.ModelResult
-	if err := json.Unmarshal(raw.JSON(), &result, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal(raw.Bytes(), &result, json.RejectUnknownMembers(true)); err != nil {
 		return admission.outcome(nil, err)
 	}
 	if result.Failure != nil {
@@ -273,9 +276,9 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 		defer borrowed.Close()
 		calling = borrowed.Context()
 		session := borrowed.Session()
-		invocation, _ := qimumcp.InvocationFromContext(ctx)
+		invocation, _ := pluginmcp.InvocationFromContext(ctx)
 		admission := &observationAdmission{request: frozen, id: invocation.ID}
-		next, err := pluginsdk.NewModelStreamCallback(func(requestCtx context.Context, command qimumcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+		next, err := pluginsdk.NewModelStreamCallback(func(requestCtx context.Context, command pluginmcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 			return func(yield func(*chat.ResponseDelta, error) bool) {
 				if err := admission.enter(command); err != nil {
 					yield(nil, err)
@@ -345,7 +348,7 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 			return
 		}
 		defer release()
-		input, err := jsonvalue.Encode(frozen)
+		input, err := framevalue.EncodeJSON(frozen)
 		if err != nil {
 			yield(nil, err)
 			return
@@ -385,7 +388,7 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 			}
 		}
 		if result == nil {
-			yield(nil, qimumcp.ErrStreamUnconfirmed)
+			yield(nil, pluginmcp.ErrStreamUnconfirmed)
 			return
 		}
 		if result.Failure != nil {

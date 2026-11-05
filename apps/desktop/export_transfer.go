@@ -3,9 +3,10 @@ package main
 import (
 	"crypto/rand"
 	"errors"
-	"github.com/Tangerg/flame/apps/desktop/internal/bridge"
 	"io"
 	"sync"
+
+	"github.com/Tangerg/flame/apps/desktop/internal/bridge"
 )
 
 type exportDestinationPicker interface{ ChooseFileDestination(string) (string, error) }

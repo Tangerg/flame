@@ -12,8 +12,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+
+	"github.com/Tangerg/scope/agent/interaction"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -25,113 +26,147 @@ func (i *interactionSession) investigateToolReceipts(ctx context.Context) (int, 
 	if root == nil {
 		return 0, runs.ErrExecutorNotLive
 	}
-	tree, err := i.engine.CaptureTree(ctx, root.Relation().RootID())
+	tree, err := i.committedTree(ctx, root.ID().Root())
+	if err != nil {
+		return 0, err
+	}
+	inspection, err := i.logCache.inspect(tree)
 	if err != nil {
 		return 0, err
 	}
 	resolved := 0
-	for _, snapshot := range tree.ProcessSnapshots() {
-		if snapshot.Status().Terminal() {
+	for _, snapshot := range inspection.Processes {
+		if snapshot.Status.Terminal() {
 			continue
 		}
-		for _, id := range snapshot.UnknownEffectIDs() {
-			request, found := tree.EffectRequest(snapshot.Relation().ProcessID(), id)
-			if !found {
-				return resolved, errors.New("execution: Unknown Effect has no retained request")
-			}
-			invocation, err := interaction.ToolInvocationFromRequest(request)
-			if err != nil {
+		if _, owned := i.state.deployments.interactions[snapshot.Program]; !owned {
+			continue
+		}
+		for _, pending := range snapshot.PendingEffects {
+			if pending.Outcome.Status() != scoperun.SettlementStatusUnknown {
 				continue
 			}
-			reference, found := invocation.Reference()
-			if !found {
-				return resolved, errors.New("execution: retained Tool request has no attribution")
-			}
-			call := invocation.ToolCall()
-			identity, err := logicalToolCallID(reference.ProcessID(), reference.ModelCallSequence(), reference.ToolCallIndex(), call.ID, call.Name)
+			confirmed, err := i.investigateToolReceipt(ctx, tree, pending.Request)
 			if err != nil {
 				return resolved, err
 			}
-			i.state.mu.Lock()
-			metadata, retained := i.state.toolMetadata[identity.String()]
-			deployments := i.state.deployments
-			i.state.mu.Unlock()
-			if !retained || metadata.Receipt == nil {
-				continue
+			if confirmed {
+				resolved++
 			}
-			proof := *metadata.Receipt
-			owner := deployments.observedTools[request.DeploymentRef()][proof.Tool]
-			if owner == nil || owner.receiptEvidence == nil || owner.receiptEvidence.Tool != proof.Tool || owner.receiptEvidence.Release != proof.Release || owner.receiptEvidence.Authority != proof.Authority || request.Relation().ProcessID().String() != proof.ProcessID || request.ID().String() != proof.EffectID {
-				return resolved, errors.New("execution: Tool receipt source differs from the captured Tool")
-			}
-			activation, err := toolset.InstallationActivation(owner.inner)
-			if err != nil {
-				return resolved, err
-			}
-			original, err := originalToolActivation(proof, []plugin.Activation{activation})
-			if err != nil {
-				return resolved, err
-			}
-			queryCtx, stop := context.WithTimeout(ctx, auxiliaryOperationTimeout)
-			output, queryErr := i.toolResults.OriginalToolResult(queryCtx, proof.Tool, proof.Release, proof.Authority, original, metadata.Start.CallID, metadata.Start.Arguments)
-			stop()
-			if err := ctx.Err(); err != nil {
-				return resolved, err
-			}
-			// An unavailable, absent, conflicting, or malformed receipt proves
-			// nothing about the original mutation. The Effect remains Unknown.
-			failure, knownFailure := toolcontract.ClassifyFailure(queryErr)
-			if queryErr != nil && !knownFailure || output == nil {
-				if queryErr != nil {
-					slog.WarnContext(ctx, "execution: original Tool result is inconclusive", "call.id", metadata.Start.CallID, "error", queryErr)
-				}
-				continue
-			}
-			if knownFailure {
-				value := failure.Output()
-				output = &value
-			}
-			arguments, err := tool.ParseArguments(metadata.Start.Arguments)
-			if err != nil {
-				return resolved, err
-			}
-			publicationCtx, stop := i.lifetime.publicationContext(ctx)
-			modelOutput, projected, err := owner.resultMetadata(publicationCtx, runs.ExecutorMember{MemberID: metadata.MemberID}, metadata.Start, arguments, *output, queryErr, nil)
-			state := interaction.ResultSucceeded
-			if knownFailure {
-				state = interaction.ResultFailed
-				projected.Failure = &tool.Failure{Kind: tool.FailureExecution, Detail: run.Diagnostic(queryErr)}
-			}
-			if err == nil {
-				err = i.rememberToolMetadata(projected)
-			}
-			var settlement agent.Settlement
-			if err == nil {
-				settlement, err = deployments.toolSets[request.DeploymentRef()].SettleToolResult(request, modelOutput, state, nil)
-			}
-			process, found := i.engine.Process(request.Relation().ProcessID())
-			if err == nil && !found {
-				err = errors.New("execution: Unknown Effect owner is unavailable")
-			}
-			if err == nil {
-				err = process.ResolveUnknownEffect(publicationCtx, id, settlement)
-			}
-			if errors.Is(err, agent.ErrProcessFinished) {
-				result, awaitErr := process.Await(publicationCtx)
-				if awaitErr == nil && result.Termination().Status().Terminal() {
-					stop()
-					continue
-				}
-				err = errors.Join(err, awaitErr)
-			}
-			stop()
-			if err != nil {
-				return resolved, fmt.Errorf("execution: publish original Tool result: %w", err)
-			}
-			resolved++
 		}
 	}
 	return resolved, nil
+}
+
+func (i *interactionSession) retainedToolReceipt(tree scoperun.Log, request scoperun.EffectRequest) (toolResultMetadata, *observedInteractionTool, error) {
+	_, toolEffect, err := interaction.ToolCallFromEffect(request.Effect())
+	if err != nil || !toolEffect {
+		return toolResultMetadata{}, nil, err
+	}
+	invocation, err := interaction.ToolInvocationFromRequest(request)
+	if err != nil {
+		return toolResultMetadata{}, nil, err
+	}
+	reference, err := toolProposalSource(tree, invocation.Reference(), invocation.ToolCall())
+	if err != nil {
+		return toolResultMetadata{}, nil, err
+	}
+	call := invocation.ToolCall()
+	identity, err := logicalToolCallID(reference.process, reference.sequence, reference.index, call.ID, call.Name)
+	if err != nil {
+		return toolResultMetadata{}, nil, err
+	}
+	i.state.mu.Lock()
+	metadata, retained := i.state.toolMetadata[identity.String()]
+	deployments := i.state.deployments
+	i.state.mu.Unlock()
+	if !retained || metadata.Receipt == nil {
+		return toolResultMetadata{}, nil, nil
+	}
+	proof := *metadata.Receipt
+	owner := deployments.observedTools[request.ProgramRef()][proof.Tool]
+	if owner == nil || owner.receiptEvidence == nil || owner.receiptEvidence.Tool != proof.Tool || owner.receiptEvidence.Release != proof.Release || owner.receiptEvidence.Authority != proof.Authority || request.ID().Process.String() != proof.ProcessID || request.ID().String() != proof.EffectID {
+		return toolResultMetadata{}, nil, errors.New("execution: Tool receipt source differs from the captured Tool")
+	}
+	return metadata, owner, nil
+}
+
+func (i *interactionSession) investigateToolReceipt(ctx context.Context, tree scoperun.Log, request scoperun.EffectRequest) (bool, error) {
+	metadata, owner, err := i.retainedToolReceipt(tree, request)
+	if err != nil || owner == nil {
+		return false, err
+	}
+	proof := *metadata.Receipt
+	activation, err := toolset.InstallationActivation(owner.inner)
+	if err != nil {
+		return false, err
+	}
+	original, err := originalToolActivation(proof, []plugin.Activation{activation})
+	if err != nil {
+		return false, err
+	}
+	queryCtx, stop := context.WithTimeout(ctx, auxiliaryOperationTimeout)
+	output, queryErr := i.toolResults.OriginalToolResult(queryCtx, proof.Tool, proof.Release, proof.Authority, original, metadata.Start.CallID, metadata.Start.Arguments)
+	stop()
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	// An unavailable, absent, conflicting, or malformed receipt proves nothing
+	// about the original mutation. The Effect remains Unknown.
+	failure, knownFailure := toolcontract.ClassifyFailure(queryErr)
+	if queryErr != nil && !knownFailure || output == nil {
+		if queryErr != nil {
+			slog.WarnContext(ctx, "execution: original Tool result is inconclusive", "call.id", metadata.Start.CallID, "error", queryErr)
+		}
+		return false, nil
+	}
+	if knownFailure {
+		value := failure.Output()
+		output = &value
+	}
+	publicationCtx, stop := i.lifetime.publicationContext(ctx)
+	defer stop()
+	return i.publishToolReceipt(publicationCtx, request, owner, metadata, *output, queryErr)
+}
+
+func (i *interactionSession) publishToolReceipt(ctx context.Context, request scoperun.EffectRequest, owner *observedInteractionTool, metadata toolResultMetadata, output toolcontract.Output, outcomeErr error) (bool, error) {
+	arguments, err := tool.ParseArguments(metadata.Start.Arguments)
+	if err != nil {
+		return false, err
+	}
+	modelOutput, projected, err := owner.resultMetadata(ctx, runs.ExecutorMember{MemberID: metadata.MemberID}, metadata.Start, arguments, output, outcomeErr, nil)
+	if err != nil {
+		return false, err
+	}
+	projected.ProcessID = request.ID().Process.String()
+	state := interaction.ResultSucceeded
+	if outcomeErr != nil {
+		state = interaction.ResultFailed
+		projected.Failure = &tool.Failure{Kind: tool.FailureExecution, Detail: run.Diagnostic(outcomeErr)}
+	}
+	if err := i.rememberToolMetadata(projected); err != nil {
+		return false, err
+	}
+	settlement, err := interaction.SettleToolResult(i.state.deployments.interactions[request.ProgramRef()], request, toolcontract.Result{Output: modelOutput}, state, nil)
+	if err != nil {
+		return false, err
+	}
+	process, found := i.engine.Process(request.ID().Process)
+	if !found {
+		return false, errors.New("execution: Unknown Effect owner is unavailable")
+	}
+	err = process.ResolveUnknownEffect(ctx, request.ID(), settlement)
+	if errors.Is(err, scoperun.ErrProcessFinished) {
+		result, awaitErr := process.Await(ctx)
+		if awaitErr == nil && result.Termination().Status().Terminal() {
+			return false, nil
+		}
+		err = errors.Join(err, awaitErr)
+	}
+	if err != nil {
+		return false, fmt.Errorf("execution: publish original Tool result: %w", err)
+	}
+	return true, nil
 }
 
 func originalToolActivation(proof toolReceiptEvidence, bindings []plugin.Activation) (plugin.Activation, error) {

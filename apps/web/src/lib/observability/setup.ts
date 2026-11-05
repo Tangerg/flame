@@ -1,5 +1,5 @@
 import { context, metrics, propagation, trace } from "@opentelemetry/api";
-import { logs } from "@opentelemetry/api-logs";
+import { logs } from "@opentelemetry/api";
 import {
   CompositePropagator,
   W3CBaggagePropagator,

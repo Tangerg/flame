@@ -11,12 +11,12 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -28,14 +28,14 @@ func TestInstalledModelSelectionPreservesProposalAndOriginalCallerWithoutFallbac
 				t.Fatal(err)
 			}
 			var calls atomic.Int32
-			composition, store := installedCallCompositionFixture(t, contract, []string{"observer"}, func(backend *qimumcp.Backend) {
+			composition, store := installedCallCompositionFixture(t, contract, []string{"observer"}, func(backend *pluginmcp.Backend) {
 				method, err := pluginsdk.ModelSelectionMethod()
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[pluginsdk.ModelSelectionRequest]) (pluginsdk.ModelSelection, error) {
+				if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginsdk.ModelSelectionRequest]) (pluginsdk.ModelSelection, error) {
 					calls.Add(1)
-					invocation, err := qimumcp.InvocationFromContext(ctx)
+					invocation, err := pluginmcp.InvocationFromContext(ctx)
 					if err != nil || invocation.Origin != extension.Human || invocation.Parent != "original-selection-parent" || invocation.ID != invocation.Target.Reference || command.ID != "" {
 						return pluginsdk.ModelSelection{}, errors.New("original selection query attribution changed")
 					}

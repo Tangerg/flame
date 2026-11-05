@@ -247,7 +247,7 @@ async function installVisualRuntimeClient(
           transport.removeSchedule(event.detail);
         };
         window.addEventListener(VISUAL_REMOVE_SCHEDULE_EVENT, removeSchedule);
-        ctx.cleanup(() => {
+        ctx.lifetime.defer(() => {
           window.removeEventListener(VISUAL_REMOVE_SCHEDULE_EVENT, removeSchedule);
           return client.close();
         });
@@ -287,7 +287,7 @@ async function fixtureNode(): Promise<ReactNode> {
         definePlugin({
           name: "flame.visual.computer",
           setup(ctx) {
-            ctx.cleanup(computer.close);
+            ctx.lifetime.defer(computer.close);
           },
         }),
       );

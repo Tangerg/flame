@@ -9,12 +9,15 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -33,7 +36,7 @@ func TestInstalledModelObserverKeepsKnownOutcomeAndSingleOriginalContinuation(t 
 			if _, advertised := bound.(chat.Streamer); advertised {
 				t.Fatal("unary provider advertised a fabricated stream capability")
 			}
-			ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-model", Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-model"}})
+			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-model", Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-model"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -69,7 +72,7 @@ func TestInstalledModelObserverStreamsCanonicalChunksThroughCapturedNext(t *test
 			observer, bindings, _ := installedPublishedObserverFixture(t, mode)
 			model := &observerStreamModel{done: make(chan struct{})}
 			_, streamer := observer.Bind(model, model, bindings)
-			ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-stream", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-stream"}})
+			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-stream", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-stream"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -127,7 +130,7 @@ func TestInstalledModelObserverConsumerStopJoinsOriginalProducer(t *testing.T) {
 	observer, bindings, _ := installedPublishedObserverFixture(t, "transparent")
 	model := &observerStreamModel{done: make(chan struct{})}
 	_, streamer := observer.Bind(model, model, bindings)
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "stopped-stream", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "stopped-stream"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "stopped-stream", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "stopped-stream"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,10 +166,10 @@ func installedObserverFixture(t *testing.T, mode string) (*CallComposition, []pl
 	if err != nil {
 		t.Fatal(err)
 	}
-	observer, store := installedCallCompositionFixture(t, contract, []string{"observer"}, func(backend *qimumcp.Backend) {
+	observer, store := installedCallCompositionFixture(t, contract, []string{"observer"}, func(backend *pluginmcp.Backend) {
 		call, _ := pluginsdk.ModelMethod()
-		if err := call.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[chat.Request]) (pluginsdk.ModelResult, error) {
-			next, err := qimumcp.CallbackFromContext(ctx)
+		if err := call.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[chat.Request]) (pluginsdk.ModelResult, error) {
+			next, err := pluginmcp.CallbackFromContext(ctx)
 			if err != nil {
 				return pluginsdk.ModelResult{}, err
 			}
@@ -189,16 +192,16 @@ func installedObserverFixture(t *testing.T, mode string) (*CallComposition, []pl
 			t.Fatal(err)
 		}
 		stream, _ := pluginsdk.ModelStreamMethod()
-		if err := stream.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[chat.Request]) iter.Seq2[qimumcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error] {
-			return func(yield func(qimumcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error) bool) {
-				next, err := qimumcp.CallbackFromContext(ctx)
+		if err := stream.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[chat.Request]) iter.Seq2[pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error] {
+			return func(yield func(pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error) bool) {
+				next, err := pluginmcp.CallbackFromContext(ctx)
 				if err != nil {
-					yield(qimumcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
+					yield(pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
 					return
 				}
 				for value, err := range pluginsdk.StreamModel(ctx, next, command.ID, command.Input.Clone()) {
 					if value.Result != nil && mode == "outer-failure" {
-						yield(qimumcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, errors.New("observer failed after next"))
+						yield(pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, errors.New("observer failed after next"))
 						return
 					}
 					if !yield(value, err) {

@@ -1,7 +1,5 @@
 package persistence
 
-import "database/sql"
-
 // SessionStore is the SQLite-backed session persistence surface — the single
 // implementation each consumer's narrow session port (the sessions coordinator's
 // lifecycle surface, the run-segment titler, the child-Run admission store) binds to.
@@ -11,11 +9,11 @@ import "database/sql"
 // All methods are safe for concurrent use; the underlying *sql.DB serializes
 // writes when MaxOpenConns is 1 (see [Open]).
 type SessionStore struct {
-	db *sql.DB
+	db *database
 }
 
 // newSessionStore wires a database opened via [openDatabase] to the session persistence
 // surface.
-func newSessionStore(db *sql.DB) *SessionStore {
+func newSessionStore(db *database) *SessionStore {
 	return &SessionStore{db: db}
 }

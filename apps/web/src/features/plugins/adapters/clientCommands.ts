@@ -3,7 +3,7 @@ import {
   type ComponentContext,
   type ComponentReference,
 } from "@flame/component-sdk";
-import { type ContributionLifetime } from "@/extensions/definePlugin";
+import { type ContributionScope } from "@/extensions/definePlugin";
 import { trackContributionIO } from "@/extensions/contributionIO";
 import { reportPluginError } from "@/extensions/errors";
 import { COMMAND } from "@/features/command/public/extensionPoints";
@@ -11,7 +11,7 @@ import { notifyFrom } from "@/features/notifications/public/notifications";
 import { failureMessage } from "@/lib/diagnostics";
 
 export function createClientCommandRegistration(
-  lifetime: ContributionLifetime,
+  lifetime: ContributionScope,
   signal: AbortSignal,
   component: ComponentReference,
   captureSessionId: () => string | undefined,
@@ -34,7 +34,7 @@ export function createClientCommandRegistration(
       const sessionId = captureSessionId() || undefined;
       await trackContributionIO(lifetime, async () => run({ sessionId, signal }));
     };
-    const contribution = lifetime.contribute(COMMAND, {
+    const contribution = lifetime.add(COMMAND, {
       id: JSON.stringify(["package", component.installationId, component.componentId, localId]),
       label,
       combo,
@@ -52,7 +52,7 @@ export function createClientCommandRegistration(
       if (registered.get(localId) !== registration) return;
       registered.delete(localId);
       signal.removeEventListener("abort", stop);
-      contribution.dispose();
+      contribution[Symbol.dispose]();
     };
     signal.addEventListener("abort", stop, { once: true });
     return stop;

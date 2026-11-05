@@ -1,10 +1,11 @@
 package analyzer
 
 import (
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/codeintel"
-	"github.com/Tangerg/flame/plugins/codeintel/internal/lsp"
 	"path/filepath"
 	"testing"
+
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/codeintel"
+	"github.com/Tangerg/flame/plugins/codeintel/internal/lsp"
 )
 
 func TestUnavailableLanguageServerDoesNotProduceACleanReport(t *testing.T) {

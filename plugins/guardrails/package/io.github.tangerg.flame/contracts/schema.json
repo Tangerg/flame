@@ -7,10 +7,58 @@
       "type": "object"
     },
     "GetPolicyV1Output": {
-      "$ref": "#/$defs/Summary"
+      "$ref": "#/$defs/GetPolicyV1OutputDomainSummary"
+    },
+    "GetPolicyV1OutputDomainSummary": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "protectedPhraseCount": {
+              "maximum": 32
+            }
+          }
+        }
+      ],
+      "properties": {
+        "protectedPhraseCount": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "revision",
+        "protectedPhraseCount"
+      ],
+      "type": "object"
     },
     "ReplaceInput": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "phrases": {
+              "maxItems": 32
+            }
+          }
+        }
+      ],
       "properties": {
         "expectedRevision": {
           "allOf": [
@@ -26,7 +74,6 @@
           "items": {
             "type": "string"
           },
-          "maxItems": 32,
           "type": "array"
         }
       },
@@ -40,10 +87,19 @@
       "$ref": "#/$defs/ReplaceInput"
     },
     "ReplacePolicyV1Output": {
-      "$ref": "#/$defs/Summary"
+      "$ref": "#/$defs/ReplacePolicyV1OutputDomainSummary"
     },
-    "Summary": {
+    "ReplacePolicyV1OutputDomainSummary": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "protectedPhraseCount": {
+              "maximum": 32
+            }
+          }
+        }
+      ],
       "properties": {
         "protectedPhraseCount": {
           "allOf": [
@@ -52,7 +108,6 @@
               "minimum": -9223372036854775808
             }
           ],
-          "maximum": 32,
           "minimum": 0,
           "type": "integer"
         },

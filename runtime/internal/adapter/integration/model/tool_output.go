@@ -1,12 +1,14 @@
 package model
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"strings"
 
-	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/content"
 )
 
-func renderToolOutput(output chat.ToolOutput) string {
+func renderToolOutput(output toolcontract.Output) string {
 	if text, textual := output.Text(); textual {
 		return text
 	}
@@ -16,9 +18,9 @@ func renderToolOutput(output chat.ToolOutput) string {
 			rendered.WriteByte(' ')
 		}
 		switch part.Kind {
-		case chat.PartText:
+		case content.Text:
 			rendered.WriteString(part.Text)
-		case chat.PartMedia:
+		case content.Media:
 			rendered.WriteString(mediaMarker)
 		}
 	}

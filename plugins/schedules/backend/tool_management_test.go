@@ -1,6 +1,11 @@
 package main
 
 import (
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"database/sql"
 	"encoding/json/jsontext"
@@ -19,23 +24,21 @@ import (
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	scheduledb "github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/scope/core/chat"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 func scheduleToolSession(t *testing.T, db *sql.DB, host *observedRunHost) (*sdk.ClientSession, func() error) {
 	t.Helper()
 	server := sdk.NewServer(&sdk.Implementation{Name: "schedules-tool-test"}, nil)
-	registered, err := registerServer(server, db, scheduledb.NewScheduleStore(db), filesystem.DirectoryResolver{}, func(context.Context, qimumcp.CallbackRef) (runHost, func() error, error) {
+	registered, err := registerServer(server, db, scheduledb.NewScheduleStore(db), filesystem.DirectoryResolver{}, func(context.Context, pluginmcp.CallbackRef) (runHost, func() error, error) {
 		return host, func() error { return nil }, nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "schedules-tool-consumer"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	left, right := sdk.NewInMemoryTransports()
@@ -54,19 +57,19 @@ func scheduleToolSession(t *testing.T, db *sql.DB, host *observedRunHost) (*sdk.
 
 func scheduleToolMetadata(t *testing.T, id string) sdk.Meta {
 	t.Helper()
-	metadata, err := qimumcp.CallbackMetadata(qimumcp.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: strings.Repeat("a", 64), Call: strings.Repeat("b", 64), MaxResponseBytes: 4096})
+	metadata, err := pluginmcp.CallbackMetadata(pluginmcp.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: strings.Repeat("a", 64), Call: strings.Repeat("b", 64), MaxResponseBytes: 4096})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := metadata.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: id, Origin: extension.Model, Parent: "parent-call", Target: portable.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
+	if err := metadata.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: id, Origin: extension.Model, Parent: "parent-call", Target: portable.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
 		t.Fatal(err)
 	}
 	return metadata.Meta
 }
 
-func assertScheduleToolReceipt(t *testing.T, session *sdk.ClientSession, id, name string, input any, normal *sdk.CallToolResult) *chat.ToolOutput {
+func assertScheduleToolReceipt(t *testing.T, session *sdk.ClientSession, id, name string, input any, normal *sdk.CallToolResult) *toolcontract.Output {
 	t.Helper()
-	admitted, err := jsonvalue.Encode(input)
+	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,8 +87,8 @@ func assertScheduleToolReceipt(t *testing.T, session *sdk.ClientSession, id, nam
 	if err != nil || output == nil {
 		t.Fatalf("receipt %s = %+v, %v", name, output, err)
 	}
-	expected, expectedErr := jsonvalue.Encode(normal.StructuredContent)
-	observed, observedErr := jsonvalue.Parse(output.Details)
+	expected, expectedErr := framevalue.EncodeJSON(normal.StructuredContent)
+	observed, observedErr := framevalue.ParseJSON(output.Details)
 	if expectedErr != nil || observedErr != nil || expected != observed {
 		t.Fatalf("receipt %s changed original output: %s, %s, %v, %v", name, expected, observed, expectedErr, observedErr)
 	}
@@ -109,11 +112,11 @@ func TestModelScheduleEditsAndDeletionHaveHistoricalReceipts(t *testing.T) {
 	var records []observed
 	call := func(id, name string, input any, refused bool) *sdk.CallToolResult {
 		t.Helper()
-		admitted, err := jsonvalue.Encode(input)
+		admitted, err := framevalue.EncodeJSON(input)
 		if err != nil {
 			t.Fatal(err)
 		}
-		arguments := jsontext.Value(admitted.JSON())
+		arguments := jsontext.Value(admitted.Bytes())
 		output, err := session.CallTool(t.Context(), &sdk.CallToolParams{Meta: scheduleToolMetadata(t, id), Name: name, Arguments: arguments})
 		if err != nil || output.IsError != refused {
 			t.Fatalf("%s: %+v, %v", name, output, err)
@@ -204,7 +207,7 @@ func TestModelScheduleEditsAndDeletionHaveHistoricalReceipts(t *testing.T) {
 	if _, err := db.ExecContext(t.Context(), `UPDATE commands SET reply='{"value":null}' WHERE id='tool:delete'`); err != nil {
 		t.Fatal(err)
 	}
-	admitted, err := jsonvalue.Encode(map[string]any{"schedule_id": first.Schedule.ScheduleID})
+	admitted, err := framevalue.EncodeJSON(map[string]any{"schedule_id": first.Schedule.ScheduleID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +247,7 @@ func TestModelManualRunRetainsItsCommandAcrossRestartAndDeletedDefinition(t *tes
 	if captured.CommandID() != "tool:manual" || captured.Invocation().ID != "manual" || captured.Invocation().Origin != extension.Model {
 		t.Fatalf("calling identity and receipt command were conflated: %+v", captured.Snapshot())
 	}
-	admitted, err := jsonvalue.Encode(input)
+	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -270,7 +273,7 @@ func TestModelManualRunRetainsItsCommandAcrossRestartAndDeletedDefinition(t *tes
 	if err != nil || len(pending) != 1 || pending[0].Snapshot() != captured.Snapshot() {
 		t.Fatalf("restart changed captured work: %+v, %v", pending, err)
 	}
-	ctx, err := qimumcp.WithInvocation(t.Context(), captured.Invocation())
+	ctx, err := pluginmcp.WithInvocation(t.Context(), captured.Invocation())
 	if err != nil {
 		t.Fatal(err)
 	}

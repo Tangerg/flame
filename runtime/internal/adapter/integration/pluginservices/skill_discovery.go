@@ -78,7 +78,7 @@ func (s *SkillGovernance) restoreCatalog(ctx context.Context, library string, ca
 		return zero, plugin.ErrStale
 	}
 	var original skilllearning.Candidates
-	if err := json.Unmarshal(record.Input.JSON(), &original, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal(record.Input.Bytes(), &original, json.RejectUnknownMembers(true)); err != nil {
 		return zero, err
 	}
 	if original.Library != library {

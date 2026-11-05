@@ -7,8 +7,10 @@ import (
 	"iter"
 	"reflect"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type callResult struct {
@@ -72,14 +74,14 @@ func invocationOperation(meta methodMeta, request any) (operation, error) {
 	if !ok {
 		return 0, protocol.ErrInvalidParams
 	}
-	kind, err := portable.MethodKindFor([]byte(call.Contract), call.Method)
+	kind, err := plugincontract.MethodKindFor([]byte(call.Contract), call.Method)
 	if err != nil {
 		// A malformed contract or an undeclared method is a caller error; project
 		// it to the public invalid_params identity the local handler also uses,
 		// before any transport, so errors.Is/As stay recognizable to callers.
 		return 0, protocol.InvalidParameters(err)
 	}
-	if kind == portable.Mutation {
+	if kind == portable.Command {
 		return commandOperation, nil
 	}
 	return queryOperation, nil

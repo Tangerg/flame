@@ -6,6 +6,7 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
@@ -21,8 +22,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
-	"github.com/Tangerg/qimu"
-	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/frame"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -31,20 +31,21 @@ import (
 // connection adapter. Bootstrap is the composition root that joins them; the
 // generic toolset does not expose application integration ports.
 type toolEnvironment struct {
-	models          modelEnvironment
-	tools           toolset.Built
-	mcp             *mcp.Pool
-	memory          *pluginservices.Memory
-	skills          *workspace.Skills
-	skillLearning   *pluginservices.SkillLearning
-	plans           *sessions.PlanCoordinator
-	toolResults     *pluginservices.ToolResults
-	pluginCalls     *pluginservices.CommandCalls
-	callComposition *pluginservices.CallComposition
-	modelCallbacks  []qimumcp.Callback
-	utilityModel    modeladapter.AuxiliaryResolver
-	closers         []*teardownStep
-	admission       *qimu.Admission
+	models                modelEnvironment
+	tools                 toolset.Built
+	mcp                   *mcp.Pool
+	memory                *pluginservices.Memory
+	skills                *workspace.Skills
+	skillLearning         *pluginservices.SkillLearning
+	plans                 *sessions.PlanCoordinator
+	toolResults           *pluginservices.ToolResults
+	pluginCalls           *pluginservices.CommandCalls
+	callComposition       *pluginservices.CallComposition
+	modelCallbacks        []pluginmcp.Callback
+	utilityModel          modeladapter.AuxiliaryResolver
+	closers               []*teardownStep
+	admission             *frame.Admission
+	validatePluginSources func(context.Context, []plugin.Activation, []plugin.Dependency) error
 }
 
 // toolEnvironmentDependencies is the complete construction contract for the
@@ -53,7 +54,7 @@ type toolEnvironment struct {
 type toolEnvironmentDependencies struct {
 	framework        frameworkComposition
 	defaultSelection modelchoice.Selection
-	callbacks        *qimumcp.Callbacks
+	callbacks        *pluginmcp.Callbacks
 	workspaceScope   *workspace.Scope
 	conversation     interface {
 		Read(context.Context, string) ([]chat.Message, error)
@@ -93,6 +94,9 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		})},
 	}
 	environment.admission = admission
+	environment.validatePluginSources = func(ctx context.Context, bindings []plugin.Activation, resources []plugin.Dependency) error {
+		return plugins.ValidateExecutionSourcesUnder(ctx, deps.framework.host, mcpPool.ValidateCapturedBindingUnder, bindings, resources)
+	}
 	commandCalls, err := pluginservices.NewCommandCalls(deps.framework.host, cfg.stores.Installations, cfg.stores.ProviderSelections, cfg.stores.PluginCompositions, mcpPool, commands, deps.publish)
 	if err != nil {
 		return environment, err

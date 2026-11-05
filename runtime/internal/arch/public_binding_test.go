@@ -35,17 +35,21 @@ import (
 
 flameruntime "github.com/Tangerg/flame/runtime"
 runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
-"github.com/Tangerg/qimu/portable"
-"github.com/Tangerg/qimu/jsonvalue"
+
+
 "github.com/Tangerg/flame/packages/local-runtime"
 modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-qimumcp "github.com/Tangerg/qimu/mcp"
+pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 sqlitebase "github.com/Tangerg/frame/sqlite"
 "github.com/Tangerg/flame/packages/go-sdk/protocol"
-"github.com/Tangerg/scope/core/chat"
+"github.com/Tangerg/frame/portable"
+framevalue "github.com/Tangerg/frame/value"
+plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+framemcp "github.com/Tangerg/frame/process/mcp"
+toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 var _ = flameruntime.Open
@@ -62,25 +66,25 @@ var _ = protocol.DecodeRequest
 var _ = pluginsdk.CallTextEmbedding
 var _ = pluginsdk.NewTextEmbeddingCallback
 var _ = pluginsdk.RegisterTools
-var _ = qimumcp.RegisterClient
-var _ = (*qimumcp.Method[string, string]).CallCommand
-var _ qimumcp.Command[string]
-var _ = qimumcp.NewMethod[struct{}, string]
-var _ = qimumcp.NewStreamingMethod[struct{}, uint64, bool]
+var _ = pluginmcp.RegisterClient
+var _ = (*pluginmcp.Method[string, string]).CallCommand
+var _ pluginmcp.Command[string]
+var _ = pluginmcp.NewMethod[struct{}, string]
+var _ = pluginmcp.NewStreamingMethod[struct{}, uint64, bool]
 var _ portable.MethodDescriptor
-var _ = qimumcp.NewBinding
-var _ = qimumcp.Resolve
-var _ *qimumcp.Binding
-var _ = jsonvalue.Encode[struct{}]
+var _ = pluginmcp.NewBinding
+var _ = pluginmcp.Resolve
+var _ *pluginmcp.Binding
+var _ = framevalue.EncodeJSON[struct{}]
 var _ = pluginsdk.ReadToolReceipt
-var _ = qimumcp.RequestInput
-var _ = qimumcp.NewCallbacks
-var _ qimumcp.CallbackRef
-var _ = portable.AdmitPoint
+var _ = pluginmcp.RequestInput
+var _ = pluginmcp.NewCallbacks
+var _ pluginmcp.CallbackRef
+var _ = plugincontract.AdmitPoint
 var _ = runtimeclient.ResolvePointValues[struct{}]
 
 func TestLocalContractAdmission(t *testing.T) {
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "example.com/records", Composition: portable.Selection, Scope: extension.ScopeInstallation}, portable.MethodDescriptor{Name: "records/read", Kind: portable.Query, Target: extension.ScopeInstallation, Input: []byte("{\"type\":\"object\"}"), Output: []byte("{\"type\":\"string\"}")})
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "example.com/records", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, portable.MethodDescriptor{Name: "records/read", Kind: portable.Query, Target: extension.ScopeInstallation, Input: []byte("{\"type\":\"object\"}"), Output: []byte("{\"type\":\"string\"}")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +92,7 @@ func TestLocalContractAdmission(t *testing.T) {
 	if !found {
 		t.Fatal("required method unavailable")
 	}
-	input, err := jsonvalue.Encode(struct{}{})
+	input, err := framevalue.EncodeJSON(struct{}{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +127,7 @@ func TestPublicToolCollaboratorsHaveNoFeatureDependency(t *testing.T) {
  actual, err := pluginsdk.ToolContextFromContext(ctx)
  if err != nil || actual != want { t.Fatalf("public Tool context = %+v, %v", actual, err) }
  method, err := pluginsdk.TextEmbeddingMethod()
- if err != nil || method.Descriptor().Kind != portable.Mutation || method.Descriptor().Target != "call" { t.Fatalf("public embedding contract = %+v, %v", method, err) }
+ if err != nil || method.Descriptor().Kind != portable.Command || method.Descriptor().Target != "call" { t.Fatalf("public embedding contract = %+v, %v", method, err) }
 }
 
 func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
@@ -131,30 +135,30 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
  db, err := sqlitebase.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "private.db"), schema)
  if err != nil { t.Fatal(err) }
  defer db.Close()
- input, err := jsonvalue.Encode(struct{}{})
+ input, err := framevalue.EncodeJSON(struct{}{})
  if err != nil { t.Fatal(err) }
  calls := 0
  for range 2 {
   value, err := pluginstorage.Command(t.Context(), db, "records.update", "original", input, nil, func(ctx context.Context, _ struct{}) (bool, error) {
    calls++
-   _, err := sqlitebase.Connection(ctx, db).ExecContext(ctx, "INSERT INTO records VALUES ('owned')")
+   _, err := pluginstorage.Connection(ctx, db).ExecContext(ctx, "INSERT INTO records VALUES ('owned')")
    return err == nil, err
   })
   if err != nil || !value { t.Fatalf("owned command = %v, %v", value, err) }
  }
- receipt, err := pluginstorage.ReadReceipt(t.Context(), db, qimumcp.ReceiptRequest{ID: "original", Method: "records.update", InputDigest: input.Digest()})
+ receipt, err := pluginstorage.ReadReceipt(t.Context(), db, pluginmcp.ReceiptRequest{ID: "original", Method: "records.update", InputDigest: input.Digest()})
  if err != nil || !receipt.Found { t.Fatalf("public owner read = %+v, %v", receipt, err) }
- value, err := qimumcp.DecodeReply[bool](receipt.Reply)
+ value, err := pluginmcp.DecodeReply[bool](receipt.Reply)
  if err != nil || !value { t.Fatalf("original owner value = %v, %v", value, err) }
- projected, err := pluginsdk.NewToolReceipt(chat.NewTextToolOutput("owned"), false)
+ projected, err := pluginsdk.NewToolReceipt(toolcontract.NewTextOutput("owned"), false)
  if err != nil || projected.Result == nil || projected.Result.IsError { t.Fatalf("public Tool projection = %+v, %v", projected, err) }
- changed, err := jsonvalue.Encode(map[string]bool{"changed": true})
+ changed, err := framevalue.EncodeJSON(map[string]bool{"changed": true})
  if err != nil { t.Fatal(err) }
  _, err = pluginstorage.Command(t.Context(), db, "records.update", "original", changed, nil, func(context.Context, map[string]bool) (bool, error) {
    calls++
    return false, nil
  })
- if !errors.Is(err, portable.ErrInvocationConflict) { t.Fatalf("changed identity lacks public conflict category: %v", err) }
+ if !errors.Is(err, framemcp.ErrInvocationConflict) { t.Fatalf("changed identity lacks public conflict category: %v", err) }
  var count int
  if err := db.QueryRowContext(t.Context(), "SELECT count(*) FROM records").Scan(&count); err != nil { t.Fatal(err) }
  if calls != 1 || count != 1 { t.Fatalf("receipt repeated business mutation: calls=%d records=%d", calls, count) }
@@ -169,11 +173,11 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
 	}
 	writeConsumerFile(t, filepath.Join(directory, "go.sum"), string(checksums))
 
-	workspace := fmt.Sprintf("go 1.27.3\n\nuse (\n%q\n%q\n%q\n%q\n%q\n)\n", filepath.ToSlash(directory), filepath.ToSlash(root), filepath.ToSlash(dependencyModuleRoot(t, sdkModulePath)), filepath.ToSlash(dependencyModuleRoot(t, localRuntimeModulePath)), filepath.ToSlash(dependencyModuleRoot(t, qimuModulePath)))
+	workspace := fmt.Sprintf("go 1.27.3\n\nuse (\n%q\n%q\n%q\n%q\n%q\n)\n", filepath.ToSlash(directory), filepath.ToSlash(root), filepath.ToSlash(dependencyModuleRoot(t, sdkModulePath)), filepath.ToSlash(dependencyModuleRoot(t, localRuntimeModulePath)), filepath.ToSlash(dependencyModuleRoot(t, frameModulePath)))
 	writeConsumerFile(t, filepath.Join(directory, "go.work"), workspace)
 	dependencies := exec.CommandContext(t.Context(), "go", "list", "-deps", runtimeModulePath)
 	dependencies.Dir = directory
-	dependencies.Env = append(os.Environ(), "GOWORK="+filepath.Join(directory, "go.work"), "GOPROXY=off", "GONOPROXY=none", "GONOSUMDB=github.com/Tangerg/flame,github.com/Tangerg/qimu", "GOTOOLCHAIN=auto")
+	dependencies.Env = append(os.Environ(), "GOWORK="+filepath.Join(directory, "go.work"), "GOPROXY=off", "GONOPROXY=none", "GONOSUMDB=github.com/Tangerg/flame,github.com/Tangerg/frame", "GOTOOLCHAIN=auto")
 	output, err := dependencies.CombinedOutput()
 	if err != nil {
 		t.Fatalf("load external Runtime build closure: %v\n%s", err, output)
@@ -185,7 +189,7 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
 	}
 	command := exec.CommandContext(t.Context(), "go", "test", "./...")
 	command.Dir = directory
-	command.Env = append(os.Environ(), "GOWORK="+filepath.Join(directory, "go.work"), "GOPROXY=off", "GONOPROXY=none", "GONOSUMDB=github.com/Tangerg/flame,github.com/Tangerg/qimu", "GOTOOLCHAIN=auto")
+	command.Env = append(os.Environ(), "GOWORK="+filepath.Join(directory, "go.work"), "GOPROXY=off", "GONOPROXY=none", "GONOSUMDB=github.com/Tangerg/flame,github.com/Tangerg/frame", "GOTOOLCHAIN=auto")
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("compile external Runtime consumer: %v\n%s", err, output)
 	}

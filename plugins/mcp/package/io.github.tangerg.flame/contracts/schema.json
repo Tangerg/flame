@@ -1,7 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Attempt": {
+    "AttemptV1Input": {
+      "$ref": "#/$defs/Request"
+    },
+    "AttemptV1Output": {
+      "$ref": "#/$defs/AttemptV1OutputMcpconnectorAttemptResult"
+    },
+    "AttemptV1OutputMcpconnectorAttempt": {
       "additionalProperties": false,
       "properties": {
         "finishedAt": {
@@ -28,26 +34,56 @@
       ],
       "type": "object"
     },
-    "AttemptResult": {
+    "AttemptV1OutputMcpconnectorAttemptResult": {
       "additionalProperties": false,
       "properties": {
         "attempt": {
-          "$ref": "#/$defs/Attempt"
+          "$ref": "#/$defs/AttemptV1OutputMcpconnectorAttempt"
         }
       },
       "type": "object"
-    },
-    "AttemptV1Input": {
-      "$ref": "#/$defs/Request"
-    },
-    "AttemptV1Output": {
-      "$ref": "#/$defs/AttemptResult"
     },
     "AuthorizeV1Input": {
       "$ref": "#/$defs/Start"
     },
     "AuthorizeV1Output": {
-      "$ref": "#/$defs/AttemptResult"
+      "$ref": "#/$defs/AuthorizeV1OutputMcpconnectorAttemptResult"
+    },
+    "AuthorizeV1OutputMcpconnectorAttempt": {
+      "additionalProperties": false,
+      "properties": {
+        "finishedAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "startedAt": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "status",
+        "startedAt"
+      ],
+      "type": "object"
+    },
+    "AuthorizeV1OutputMcpconnectorAttemptResult": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "$ref": "#/$defs/AuthorizeV1OutputMcpconnectorAttempt"
+        }
+      },
+      "type": "object"
     },
     "Change": {
       "additionalProperties": false,
@@ -59,7 +95,7 @@
           "type": "string"
         },
         "replacement": {
-          "$ref": "#/$defs/Entry"
+          "$ref": "#/$defs/ChangeV1InputMcpconnectorEntry"
         }
       },
       "required": [
@@ -70,45 +106,7 @@
     "ChangeV1Input": {
       "$ref": "#/$defs/Change"
     },
-    "ChangeV1Output": {
-      "type": "string"
-    },
-    "Completion": {
-      "additionalProperties": false,
-      "properties": {
-        "epoch": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "epoch",
-        "status"
-      ],
-      "type": "object"
-    },
-    "Directory": {
-      "additionalProperties": false,
-      "properties": {
-        "entries": {
-          "items": {
-            "$ref": "#/$defs/Entry"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "entries"
-      ],
-      "type": "object"
-    },
-    "Entry": {
+    "ChangeV1InputMcpconnectorEntry": {
       "additionalProperties": false,
       "properties": {
         "description": {
@@ -145,11 +143,86 @@
       ],
       "type": "object"
     },
+    "ChangeV1Output": {
+      "type": "string"
+    },
+    "Completion": {
+      "additionalProperties": false,
+      "properties": {
+        "epoch": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "epoch",
+        "status"
+      ],
+      "type": "object"
+    },
+    "Directory": {
+      "additionalProperties": false,
+      "properties": {
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/ListV1OutputMcpconnectorEntry"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "entries"
+      ],
+      "type": "object"
+    },
     "ListV1Input": {
       "$ref": "#/$defs/Selector"
     },
     "ListV1Output": {
       "$ref": "#/$defs/Directory"
+    },
+    "ListV1OutputMcpconnectorEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "handshakeSeconds": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "launchGrant": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "launchGrant",
+        "enabled",
+        "description",
+        "handshakeSeconds"
+      ],
+      "type": "object"
     },
     "RecoverV1Input": {
       "$ref": "#/$defs/Recovery"

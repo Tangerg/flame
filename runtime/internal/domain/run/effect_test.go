@@ -1,12 +1,14 @@
 package run
 
 import (
+	corecontent "github.com/Tangerg/scope/core/content"
+
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	json "encoding/json/v2"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestUnresolvedEffectConstructionAndTerminalOwnership(t *testing.T) {
@@ -63,9 +65,9 @@ func TestUnresolvedEffectConstructionAndTerminalOwnership(t *testing.T) {
 }
 
 func TestUnresolvedEffectOwnsObservedOutput(t *testing.T) {
-	for _, observed := range []chat.ToolOutput{
+	for _, observed := range []toolcontract.Output{
 		{},
-		{Content: []chat.ToolContent{{Kind: chat.PartText, Text: "observed"}}, Details: []byte(`{"receipt":9007199254740993}`)},
+		{Content: []corecontent.Block{{Kind: corecontent.Text, Text: "observed"}}, Details: []byte(`{"receipt":9007199254740993}`)},
 	} {
 		original := observed.Clone()
 		encoded, err := json.Marshal(original)
@@ -89,7 +91,7 @@ func TestUnresolvedEffectOwnsObservedOutput(t *testing.T) {
 			t.Fatalf("absent output lost its distinction from known output: %v", err)
 		}
 	}
-	invalid := chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartToolCall}}}
+	invalid := toolcontract.Output{Content: []corecontent.Block{{Kind: corecontent.Kind("tool_call")}}}
 	if _, err := NewUnresolvedEffect(UnresolvedEffectConfig{ProcessID: "process", EffectID: "effect", Cause: "host_cancellation", Output: &invalid}); err == nil {
 		t.Fatal("invalid Scope Tool output was accepted")
 	}

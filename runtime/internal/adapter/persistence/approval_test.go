@@ -5,10 +5,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/qimu/integrity"
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -20,7 +21,7 @@ func newApprovalStore(t *testing.T) *ApprovalRuleStore {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return newApprovalRuleStore(db)
+	return newApprovalRuleStore(databaseFor(db))
 }
 
 // TestApprovalRuleStore_VisibleScopes verifies the WHERE-clause scope predicate:
@@ -72,7 +73,7 @@ func TestApprovalRuleStoreReplacesDecisionAndAuthority(t *testing.T) {
 	ctx := t.Context()
 	store := newApprovalStore(t)
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("fixture"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: "https://remote.test/mcp"}}
-	if _, err := newMCPServerStore(store.db).fixtureGrant(ctx, testsupport.InstallationID(t), server); err != nil {
+	if _, err := newMCPServerStore(databaseFor(store.db)).fixtureGrant(ctx, testsupport.InstallationID(t), server); err != nil {
 		t.Fatal(err)
 	}
 	rule, err := approval.NewRule(approval.GlobalScope(), testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "remote"), testsupport.Digest("first authority"), approval.Subject{Type: approval.SubjectAll}, approval.Deny)
@@ -119,7 +120,7 @@ func TestApprovalSubjectTypesSurviveRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newApprovalRuleStore(db)
+	store := newApprovalRuleStore(databaseFor(db))
 	ref := testsupport.BuiltInTool(t, "shell")
 	for _, subject := range []approval.Subject{
 		{Type: approval.SubjectGlob, Value: "echo *"},
@@ -130,7 +131,7 @@ func TestApprovalSubjectTypesSurviveRestart(t *testing.T) {
 		if subject.Type == approval.SubjectExact {
 			decision = approval.Allow
 		}
-		rule, err := approval.NewRule(approval.GlobalScope(), ref, integrity.Digest{}, subject, decision)
+		rule, err := approval.NewRule(approval.GlobalScope(), ref, framevalue.Digest{}, subject, decision)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -145,7 +146,7 @@ func TestApprovalSubjectTypesSurviveRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rules, err := newApprovalRuleStore(db).Visible(t.Context(), "", "", approval.MaximumVisibleRules+1)
+	rules, err := newApprovalRuleStore(databaseFor(db)).Visible(t.Context(), "", "", approval.MaximumVisibleRules+1)
 	if err != nil || len(rules) != 3 {
 		t.Fatalf("restored rules = %+v, %v; want three distinct matchers", rules, err)
 	}
@@ -229,7 +230,7 @@ func TestApprovalRuleStoreRefusesARuleStoredUnderAnotherIdentity(t *testing.T) {
 	if err := store.Put(t.Context(), rule); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.db.ExecContext(t.Context(), `UPDATE approval_rules SET id = 'rule_other' WHERE id = ?`, rule.ID()); err != nil {
+	if _, err := rawFixtureDatabase(store.db).ExecContext(t.Context(), `UPDATE approval_rules SET id = 'rule_other' WHERE id = ?`, rule.ID()); err != nil {
 		t.Fatal(err)
 	}
 	if rules, err := store.Visible(t.Context(), "", "", approval.MaximumVisibleRules+1); err == nil {

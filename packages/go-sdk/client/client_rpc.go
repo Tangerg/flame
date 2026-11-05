@@ -14,9 +14,9 @@ import (
 	"net/http"
 	"reflect"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/go-sdk/jsonrpc"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/sse"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/transform"
@@ -95,13 +95,13 @@ func (r *Client) newRPCRequest(ctx context.Context, id jsonrpc.ID, name string, 
 	request.Header.Set("Accept", protocol.RPCDocumentMediaType+", "+protocol.RPCStreamMediaType)
 	if r.callbackCall != "" {
 		request.Header.Set("Authorization", r.token)
-		request.Header.Set(qimumcp.CallHeader, r.callbackCall)
-		if invocation, invocationErr := qimumcp.InvocationFromContext(ctx); invocationErr == nil {
+		request.Header.Set(pluginmcp.CallHeader, r.callbackCall)
+		if invocation, invocationErr := pluginmcp.InvocationFromContext(ctx); invocationErr == nil {
 			value, encodeErr := json.Marshal(invocation)
 			if encodeErr != nil {
 				return nil, encodeErr
 			}
-			request.Header.Set(qimumcp.InvocationHeader, string(value))
+			request.Header.Set(pluginmcp.InvocationHeader, string(value))
 		}
 	} else if r.token != "" {
 		request.Header.Set("Authorization", "Bearer "+r.token)
@@ -116,7 +116,7 @@ func (r *Client) readAcknowledgement(call *remoteCall, response *http.Response, 
 	mediaType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
 	if response.StatusCode != protocol.RPCCallStatus {
 		if r.callbackCall != "" && response.StatusCode == http.StatusGone {
-			return callResult{}, qimumcp.ErrStaleCall
+			return callResult{}, pluginmcp.ErrStaleCall
 		}
 		return callResult{}, call.readError(decodeTransportError(response, mediaType, r.maxMessageBytes))
 	}
@@ -267,7 +267,7 @@ func decodeTransportError(response *http.Response, mediaType string, limit int) 
 }
 
 func knownTransportRefusal(err error) bool {
-	if errors.Is(err, qimumcp.ErrStaleCall) {
+	if errors.Is(err, pluginmcp.ErrStaleCall) {
 		return true
 	}
 	problem, ok := errors.AsType[*TransportError](err)

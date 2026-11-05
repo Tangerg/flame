@@ -1,3 +1,4 @@
+import { canonicalJSON } from "@frame/sdk/json";
 import {
   createParser,
   evaluateRoot,
@@ -14,7 +15,7 @@ import {
   parseJSON,
   projectNumber,
   stringifyJSON,
-} from "@qimu/sdk/json";
+} from "@frame/sdk/json";
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
 import { z } from "zod/v4";
 import {
@@ -652,7 +653,7 @@ export class Presentation {
     return structuredClone(this.#document);
   }
   json(): string {
-    return stringifyJSON(this.#document, true);
+    return canonicalJSON(this.#document);
   }
   initialValue(id: string): JSONValue {
     const value = this.#document.state.find((value) => value.id === id);

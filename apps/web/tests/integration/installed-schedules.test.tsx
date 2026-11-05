@@ -12,7 +12,7 @@ prepareTestClient(() => {
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type CallPluginRequest, type Model, type Page } from "@flame/runtime-client/wire";
-import { stringifyJSON } from "@qimu/sdk/json";
+import { stringifyJSON } from "@frame/sdk/json";
 import { createFlameClient } from "@flame/runtime-client";
 import { createMemoryTransport } from "@flame/runtime-client/testing";
 import { respondSuccess, waitForRequest } from "@flame/runtime-client/testing";

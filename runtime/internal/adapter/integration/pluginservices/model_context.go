@@ -5,13 +5,16 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	framevalue "github.com/Tangerg/frame/value"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -31,7 +34,7 @@ func (o *CallComposition) ValidateContext(ctx context.Context, bindings []plugin
 	return o.validateCompositionBindings(ctx, contract, bindings)
 }
 
-func (o *CallComposition) validateCompositionBindings(ctx context.Context, contract *portable.Capability, bindings []plugins.ContributionBinding) error {
+func (o *CallComposition) validateCompositionBindings(ctx context.Context, contract *plugincontract.Capability, bindings []plugins.ContributionBinding) error {
 	for _, binding := range bindings {
 		captured, err := o.calls.resolveContribution(ctx, plugins.CallRequest{Installation: binding.InstallationID, Digest: binding.Digest, Contribution: binding.ContributionID, Contract: contract})
 		if err != nil {
@@ -61,7 +64,7 @@ func (o *CallComposition) PrepareContext(ctx context.Context, bindings []plugins
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
-	if _, err := qimumcp.InvocationFromContext(ctx); err != nil {
+	if _, err := pluginmcp.InvocationFromContext(ctx); err != nil {
 		return nil, err
 	}
 	if err := o.ValidateContext(ctx, bindings); err != nil {
@@ -92,7 +95,7 @@ func (o *CallComposition) PrepareContext(ctx context.Context, bindings []plugins
 		if _, err := o.calls.pool.SessionActor(calling, binding.ServerID, session); err != nil {
 			return nil, err
 		}
-		exported, err := qimumcp.NewCapabilityBinding(session, binding.Export, contract)
+		exported, err := pluginmcp.NewCapabilityBinding(session, binding.Export, contract)
 		if err != nil {
 			return nil, err
 		}
@@ -100,7 +103,7 @@ func (o *CallComposition) PrepareContext(ctx context.Context, bindings []plugins
 		if err != nil {
 			return nil, err
 		}
-		input, err := jsonvalue.Encode(pluginsdk.ModelContextRequest{Provider: selection.Provider(), Model: selection.Model(), Request: *frozen.Clone(), UserMessage: userMessage})
+		input, err := framevalue.EncodeJSON(pluginsdk.ModelContextRequest{Provider: selection.Provider(), Model: selection.Model(), Request: *frozen.Clone(), UserMessage: userMessage})
 		if err != nil {
 			return nil, err
 		}
@@ -108,7 +111,7 @@ func (o *CallComposition) PrepareContext(ctx context.Context, bindings []plugins
 		if err != nil {
 			return nil, err
 		}
-		raw, err := func() (jsonvalue.Value, error) {
+		raw, err := func() (framevalue.JSON, error) {
 			defer release()
 			return operation.InvokeWithMetadata(calling, "", input, metadata)
 		}()
@@ -116,7 +119,7 @@ func (o *CallComposition) PrepareContext(ctx context.Context, bindings []plugins
 			return nil, err
 		}
 		var result pluginsdk.ModelContextResult
-		if err := json.Unmarshal(raw.JSON(), &result, json.RejectUnknownMembers(true)); err != nil {
+		if err := json.Unmarshal(raw.Bytes(), &result, json.RejectUnknownMembers(true)); err != nil {
 			return nil, err
 		}
 		if err := result.Validate(); err != nil {

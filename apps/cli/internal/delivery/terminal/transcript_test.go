@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"context"
 	"fmt"
 	"image"
 	"strings"
@@ -10,11 +11,11 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/highlight"
+	"github.com/Tangerg/oolong/extensions/highlight"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 func TestCustomRuntimeEventsDoNotInventTranscriptBlocks(t *testing.T) {
@@ -31,7 +32,7 @@ func TestCustomRuntimeEventsDoNotInventTranscriptBlocks(t *testing.T) {
 
 func TestStreamingPreservesAReadersScrollPosition(t *testing.T) {
 	view := testTranscriptView(t)
-	root := headless.NewRoot(view)
+	root := newSceneTestRoot(t, view.Element())
 	surface := grid.NewSurface(32, 5)
 	started := conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}
 	if err := view.Apply(conversation.BlockStarted{Block: started}); err != nil {
@@ -101,7 +102,7 @@ func TestAnsweredQuestionRevealsTheRuntimeAnswerInPlace(t *testing.T) {
 	if drawn := drawRoot(t, view, 48, 6); strings.Contains(drawn, question.Title) {
 		t.Fatalf("pending question leaked an interrupt-looking transcript row:\n%s", drawn)
 	}
-	if view.content.Finished(view.content.FirstBlock()) {
+	if view.entrySettled(view.firstEntry()) {
 		t.Fatal("pending question was eligible for retention before its answer settled")
 	}
 	answered := question.Clone()
@@ -114,8 +115,8 @@ func TestAnsweredQuestionRevealsTheRuntimeAnswerInPlace(t *testing.T) {
 	if !strings.Contains(drawn, question.Title) || !strings.Contains(drawn, "answer · linux") {
 		t.Fatalf("accepted question was not revealed in place:\n%s", drawn)
 	}
-	if !view.content.Finished(view.content.FirstBlock()) || len(view.pendingQuestions) != 0 {
-		t.Fatalf("accepted question remains live: finished=%t pending=%+v", view.content.Finished(view.content.FirstBlock()), view.pendingQuestions)
+	if !view.entrySettled(view.firstEntry()) || len(view.pendingQuestions) != 0 {
+		t.Fatalf("accepted question remains live: finished=%t pending=%+v", view.entrySettled(view.firstEntry()), view.pendingQuestions)
 	}
 }
 
@@ -134,8 +135,8 @@ func TestColdCanceledQuestionDoesNotPinTranscriptRetention(t *testing.T) {
 	if err := view.reconcilePendingQuestions(nil); err != nil {
 		t.Fatal(err)
 	}
-	if !view.content.Finished(view.content.FirstBlock()) || len(view.pendingQuestions) != 0 {
-		t.Fatalf("canceled cold question pins retention: finished=%t pending=%+v", view.content.Finished(view.content.FirstBlock()), view.pendingQuestions)
+	if !view.entrySettled(view.firstEntry()) || len(view.pendingQuestions) != 0 {
+		t.Fatalf("canceled cold question pins retention: finished=%t pending=%+v", view.entrySettled(view.firstEntry()), view.pendingQuestions)
 	}
 }
 
@@ -144,7 +145,7 @@ func TestTranscriptRejectsAResultFromAnEarlierIdenticalSearch(t *testing.T) {
 	view.Append(&kit.Entry{Theme: view.theme, Label: "test", Body: "needle"})
 	drawRoot(t, view, 48, 6)
 	view.Find("needle")
-	var previous headless.Result
+	var previous readingSearchResult
 	select {
 	case previous = <-view.SearchResults():
 	case <-time.After(2 * time.Second):
@@ -172,17 +173,17 @@ func TestTranscriptNavigationUsesRetainedBlockAndSearchCoordinates(t *testing.T)
 	view.retain = 2
 	drawRoot(t, view, 48, 6)
 	view.DiscardExcess()
-	first := view.content.FirstBlock()
+	first := view.firstEntry()
 	if first == 0 {
 		t.Fatal("test did not advance the retained transcript block identity")
 	}
 
 	view.Focus(true)
-	if !view.Do(headless.SelectFirst) || view.selected != first {
+	if !view.Do(base.SelectFirst) || view.selected != first {
 		t.Fatalf("first retained selection = %d, want %d", view.selected, first)
 	}
-	last := first + headless.BlockID(view.content.Len()-1)
-	if !view.Do(headless.SelectLast) || view.selected != last {
+	last := first + transcriptEntryID(view.content.Len()-1)
+	if !view.Do(base.SelectLast) || view.selected != last {
 		t.Fatalf("last retained selection = %d, want %d", view.selected, last)
 	}
 
@@ -311,7 +312,7 @@ func TestInterleavedTextBlocksStreamIndependently(t *testing.T) {
 		t.Fatalf("completed text streams = %+v", view.textStreams)
 	}
 	surface := grid.NewSurface(48, 12)
-	headless.NewRoot(view).Draw(surface.View())
+	newSceneTestRoot(t, view.Element()).Draw(surface.View())
 	drawn := strings.Join(surface.Rows(), "\n")
 	for _, want := range []string{"assistant final", "reasoning final"} {
 		if !strings.Contains(drawn, want) {
@@ -349,7 +350,7 @@ func TestStreamedAssistantCompletionAppendsInlineImages(t *testing.T) {
 
 func TestToolStreamingPreservesAReadersScrollPosition(t *testing.T) {
 	view := testTranscriptView(t)
-	root := headless.NewRoot(view)
+	root := newSceneTestRoot(t, view.Element())
 	surface := grid.NewSurface(40, 5)
 	running := conversation.ToolCall{Kind: builtin.CategoryShell, Command: "long command", Status: conversation.ToolRunning}
 	tool := beginTestTool(view, running)
@@ -448,8 +449,8 @@ func TestObservationFailureRetainsRuntimeToolStatus(t *testing.T) {
 				t.Fatalf("observation failure rewrote Runtime tool evidence:\n%s", drawn)
 			}
 			for index := range view.content.Len() {
-				id := view.content.FirstBlock() + headless.BlockID(index)
-				if !view.content.Finished(id) {
+				id := view.firstEntry() + transcriptEntryID(index)
+				if !view.entrySettled(id) {
 					t.Fatal("observation failure left a presentation block live")
 				}
 			}
@@ -526,7 +527,7 @@ func TestCancelingASelectedEmptyToolKeepsItsHeaderVisible(t *testing.T) {
 	tool := beginTestTool(view, conversation.ToolCall{Kind: builtin.CategoryShell, Command: "pending command", Status: conversation.ToolRunning})
 	toolID := view.toolViews[0].id
 	tool.SetExpanded(true)
-	view.content.Changed(toolID)
+	view.projectEntry(toolID)
 	viewport := scrollBelowSelectedToolHeader(t, view, toolID)
 
 	canceled := conversation.ToolCall{Kind: builtin.CategoryShell, Command: "pending command", Status: conversation.ToolCanceled}
@@ -578,13 +579,13 @@ func TestCanceledRunRendersRuntimeClosedLiveBlocks(t *testing.T) {
 		t.Fatalf("settled tool status = %q", tool.call.Status)
 	}
 	for index := range view.content.Len() {
-		id := view.content.FirstBlock() + headless.BlockID(index)
-		if !view.content.Finished(id) {
+		id := view.firstEntry() + transcriptEntryID(index)
+		if !view.entrySettled(id) {
 			t.Fatalf("transcript block %d remained unfinished", id)
 		}
 	}
 	surface := grid.NewSurface(48, 12)
-	headless.NewRoot(view).Draw(surface.View())
+	newSceneTestRoot(t, view.Element()).Draw(surface.View())
 	drawn := strings.Join(surface.Rows(), "\n")
 	for _, want := range []string{"partial answer", "partial tool output", "canceled"} {
 		if !strings.Contains(drawn, want) {
@@ -639,7 +640,7 @@ func TestChildBlockCompletionLeavesTheRootsCollidingBlockLive(t *testing.T) {
 	}})
 
 	surface := grid.NewSurface(48, 12)
-	headless.NewRoot(view).Draw(surface.View())
+	newSceneTestRoot(t, view.Element()).Draw(surface.View())
 	drawn := strings.Join(surface.Rows(), "\n")
 	for _, want := range []string{"subagent · run_child", "child partial", "root final"} {
 		if !strings.Contains(drawn, want) {
@@ -652,7 +653,7 @@ func TestClickingAToolHeaderTogglesOnlyThatTool(t *testing.T) {
 	view := testTranscriptView(t)
 	first := appendTestTool(view, "first", "FIRST_DETAIL")
 	second := appendTestTool(view, "second", "SECOND_DETAIL")
-	root := headless.NewRoot(view)
+	root := newSceneTestRoot(t, view.Element())
 	surface := grid.NewSurface(48, 8)
 	root.Draw(surface.View())
 
@@ -688,30 +689,32 @@ func TestClickingAToolHeaderTogglesOnlyThatTool(t *testing.T) {
 func TestToolClickRequiresAnUninterruptedLeftButtonGesture(t *testing.T) {
 	tests := []struct {
 		name      string
-		interrupt func(*transcriptView, *headless.Root)
+		interrupt func(*transcriptView, *sceneTestRoot)
+		preserves bool
 	}{
 		{
 			name: "capture cancellation",
-			interrupt: func(view *transcriptView, _ *headless.Root) {
+			interrupt: func(view *transcriptView, _ *sceneTestRoot) {
 				view.Handle(input.Mouse{Action: input.MouseCancel})
 			},
 		},
 		{
-			name: "different button release",
-			interrupt: func(_ *transcriptView, root *headless.Root) {
+			name:      "unrelated button release preserves the owned gesture",
+			preserves: true,
+			interrupt: func(_ *transcriptView, root *sceneTestRoot) {
 				root.Handle(input.Mouse{Pos: image.Pt(0, 0), Action: input.MouseUp, Button: input.ButtonRight})
 			},
 		},
 		{
 			name: "focus loss",
-			interrupt: func(view *transcriptView, _ *headless.Root) {
+			interrupt: func(view *transcriptView, _ *sceneTestRoot) {
 				view.Focus(false)
 				view.Focus(true)
 			},
 		},
 		{
 			name: "keyboard navigation",
-			interrupt: func(_ *transcriptView, root *headless.Root) {
+			interrupt: func(_ *transcriptView, root *sceneTestRoot) {
 				root.Handle(input.Key{Code: input.Down})
 				root.Handle(input.Key{Code: input.Up})
 			},
@@ -722,7 +725,7 @@ func TestToolClickRequiresAnUninterruptedLeftButtonGesture(t *testing.T) {
 			view := testTranscriptView(t)
 			tool := appendTestTool(view, "guarded", "GUARDED_DETAIL")
 			view.Focus(true)
-			root := headless.NewRoot(view)
+			root := newSceneTestRoot(t, view.Element())
 			surface := grid.NewSurface(48, 8)
 			root.Draw(surface.View())
 
@@ -731,60 +734,59 @@ func TestToolClickRequiresAnUninterruptedLeftButtonGesture(t *testing.T) {
 			}
 			test.interrupt(view, root)
 			root.Handle(input.Mouse{Pos: image.Pt(0, 0), Action: input.MouseUp, Button: input.ButtonLeft})
-			if tool.Expanded() {
-				t.Fatal("interrupted pointer gesture expanded the tool")
+			if tool.Expanded() != test.preserves {
+				t.Fatalf("disclosure after pointer interruption = %t, want %t", tool.Expanded(), test.preserves)
 			}
 		})
 	}
 }
 
-func TestToolClickTargetsTheLastCompleteTranscriptFrame(t *testing.T) {
+func TestToolClickRequiresTheReplacementWindowToBePresented(t *testing.T) {
 	view := testTranscriptView(t)
 	first := appendTestTool(view, "first", strings.Repeat("FIRST_DETAIL\n", 8))
 	second := appendTestTool(view, "second", "SECOND_DETAIL")
-	root := headless.NewRoot(view)
+	root := newSceneTestRoot(t, view.Element())
 	surface := grid.NewSurface(48, 12)
 	root.Draw(surface.View())
-	secondTop := -1
-	for _, placement := range view.presentedBlocks.Value().blocks {
-		if placement.blockID == view.toolViews[1].id {
-			secondTop = placement.top
-			break
-		}
-	}
+	secondTop, _, visible := view.content.Extent(view.entries[view.toolViews[1].id].nativeID)
 	row := secondTop - view.content.StartRow() - view.scroll.Offset()
-	if secondTop < 0 || row < 0 || row >= 12 {
+	if !visible || row < 0 || row >= 12 {
 		t.Fatalf("second tool header is not visible: top %d row %d", secondTop, row)
 	}
 
-	// The semantic layout grows before the replacement frame is committed. The
-	// visible second header must retain its prior stable identity.
+	// Replacing immutable content revokes the old window's native attachment.
+	// Its pointer geometry cannot authorize a gesture against the new window.
 	first.SetExpanded(true)
-	view.content.Changed(view.toolViews[0].id)
-	if !root.Handle(input.Mouse{Pos: image.Pt(0, row), Action: input.MouseDown, Button: input.ButtonLeft}) ||
-		!root.Handle(input.Mouse{Pos: image.Pt(0, row), Action: input.MouseUp, Button: input.ButtonLeft}) {
-		t.Fatal("visible second tool header click was not handled")
+	view.projectEntry(view.toolViews[0].id)
+	root.Handle(input.Mouse{Pos: image.Pt(0, row), Action: input.MouseDown, Button: input.ButtonLeft})
+	root.Handle(input.Mouse{Pos: image.Pt(0, row), Action: input.MouseUp, Button: input.ButtonLeft})
+	if second.Expanded() || !first.Expanded() {
+		t.Fatal("retired window geometry changed current tool disclosure")
 	}
-	if !second.Expanded() {
-		t.Fatal("old frame click did not expand the visibly targeted second tool")
+	view.selectEntry(view.toolViews[1].id, true)
+	root.Draw(surface.View())
+	top, _, ok := view.content.Extent(view.entries[view.toolViews[1].id].nativeID)
+	row = top - view.scroll.Offset()
+	if !ok || row < 0 || row >= 12 {
+		t.Fatalf("replacement second header is not visible: top %d row %d", top, row)
 	}
-	if !first.Expanded() {
-		t.Fatal("old frame click toggled the semantically reflowed first tool")
+	root.Handle(input.Mouse{Pos: image.Pt(0, row), Action: input.MouseDown, Button: input.ButtonLeft})
+	root.Handle(input.Mouse{Pos: image.Pt(0, row), Action: input.MouseUp, Button: input.ButtonLeft})
+	if !second.Expanded() || !first.Expanded() {
+		t.Fatal("admitted replacement click did not toggle only the selected second tool")
 	}
 }
 
 func TestToolClickRejectsAFrameFromBeforeTranscriptReset(t *testing.T) {
 	view := testTranscriptView(t)
 	appendTestTool(view, "old", "OLD_DETAIL")
-	root := headless.NewRoot(view)
+	root := newSceneTestRoot(t, view.Element())
 	surface := grid.NewSurface(48, 8)
 	root.Draw(surface.View())
 
 	view.Reset()
 	replacement := appendTestTool(view, "replacement", "REPLACEMENT_DETAIL")
-	if !root.Handle(input.Mouse{Pos: image.Pt(0, 0), Action: input.MouseDown, Button: input.ButtonLeft}) {
-		t.Fatal("stale-frame press was not settled by the transcript")
-	}
+	root.Handle(input.Mouse{Pos: image.Pt(0, 0), Action: input.MouseDown, Button: input.ButtonLeft})
 	if view.selection.Active() {
 		t.Fatal("stale-frame press selected replacement content")
 	}
@@ -794,14 +796,23 @@ func TestToolClickRejectsAFrameFromBeforeTranscriptReset(t *testing.T) {
 	}
 }
 
-func TestTranscriptResetNeverReactivatesAStaleFrameAtEpochExhaustion(t *testing.T) {
+func TestTranscriptResetRetiresCapturedInputAfterTheNewWindowIsPresented(t *testing.T) {
 	view := testTranscriptView(t)
-	stale := transcriptBlockPresentation{lease: view.contentLease}
+	appendTestTool(view, "old", "OLD_DETAIL")
+	root := newSceneTestRoot(t, view.Element())
+	surface := grid.NewSurface(48, 8)
+	root.Draw(surface.View())
+	oldWindow := view.content
+	oldTarget := oldWindow.Element().Target()
+	press := root.CaptureInput(input.Mouse{Pos: image.Pt(0, 0), Action: input.MouseDown, Button: input.ButtonLeft})
 
 	view.Reset()
-
-	if view.contentLease.current(stale.lease) || stale.lease.current(stale.lease) {
-		t.Fatal("resetting the last transcript epoch reactivated a stale frame")
+	replacement := appendTestTool(view, "replacement", "REPLACEMENT_DETAIL")
+	root.Draw(surface.View())
+	root.HandleInput(press)
+	root.Handle(input.Mouse{Pos: image.Pt(0, 0), Action: input.MouseUp, Button: input.ButtonLeft})
+	if oldTarget.Valid() || oldWindow.Len() != 0 || replacement.Expanded() || view.selection.Active() {
+		t.Fatal("reset retained native ownership or transferred an old pointer gesture")
 	}
 }
 
@@ -810,7 +821,7 @@ func TestDraggingFromAToolHeaderCopiesWithoutToggling(t *testing.T) {
 	view := newTranscriptView(kit.Dark(), kit.Unicode(), "", input.Wheel{}, highlight.New("github-dark"), 24, false, clipboard)
 	t.Cleanup(view.Close)
 	tool := appendTestTool(view, "drag", "DRAG_DETAIL")
-	root := headless.NewRoot(view)
+	root := newSceneTestRoot(t, view.Element())
 	surface := grid.NewSurface(48, 8)
 	root.Draw(surface.View())
 
@@ -837,7 +848,7 @@ func TestTranscriptIgnoresAnUnownedPointerRelease(t *testing.T) {
 	view := newTranscriptView(kit.Dark(), kit.Unicode(), "", input.Wheel{}, highlight.New("github-dark"), 24, false, clipboard)
 	t.Cleanup(view.Close)
 	appendTestTool(view, "drag", "DRAG_DETAIL")
-	root := headless.NewRoot(view)
+	root := newSceneTestRoot(t, view.Element())
 	root.Draw(grid.NewSurface(48, 8).View())
 
 	root.Handle(input.Mouse{Pos: image.Pt(4, 0), Action: input.MouseDown, Button: input.ButtonLeft})
@@ -858,7 +869,7 @@ func TestEscapeClearsATranscriptTextSelectionBeforeOtherActions(t *testing.T) {
 	view := testTranscriptView(t)
 	appendTestTool(view, "selection", "SELECTION_DETAIL")
 	view.Focus(true)
-	root := headless.NewRoot(view)
+	root := newSceneTestRoot(t, view.Element())
 	surface := grid.NewSurface(48, 8)
 	root.Draw(surface.View())
 	root.Handle(input.Mouse{Pos: image.Pt(4, 0), Action: input.MouseDown, Button: input.ButtonLeft})
@@ -892,7 +903,7 @@ func TestCompletingALiveToolPreservesItsExpandedState(t *testing.T) {
 	view := testTranscriptView(t)
 	tool := appendTestTool(view, "tool", "running")
 	tracked := trackedTool{id: view.toolViews[0].id, block: tool}
-	view.tools[conversation.BlockKey("", "tool")] = liveTool{ids: []headless.BlockID{tracked.id}, blocks: []trackedTool{tracked}}
+	view.tools[conversation.BlockKey("", "tool")] = liveTool{ids: []transcriptEntryID{tracked.id}, blocks: []trackedTool{tracked}}
 	tool.ToggleExpanded()
 
 	completed := conversation.ToolCall{Kind: builtin.CategoryShell, Command: "echo tool", Output: "complete", Status: conversation.ToolOK}
@@ -940,7 +951,7 @@ func TestCollapsingASelectedToolKeepsItsHeaderVisible(t *testing.T) {
 		name     string
 		collapse func(*transcriptView) bool
 	}{
-		{name: "selected disclosure", collapse: func(view *transcriptView) bool { return view.Do(headless.Collapse) }},
+		{name: "selected disclosure", collapse: func(view *transcriptView) bool { return view.Do(base.Collapse) }},
 		{name: "global disclosures", collapse: func(view *transcriptView) bool { view.ToggleDetails(); return true }},
 	}
 	for _, test := range tests {
@@ -949,7 +960,7 @@ func TestCollapsingASelectedToolKeepsItsHeaderVisible(t *testing.T) {
 			tool := appendTestTool(view, "selected", strings.Repeat("detail line\n", 16))
 			toolID := view.toolViews[0].id
 			tool.SetExpanded(true)
-			view.content.Changed(toolID)
+			view.projectEntry(toolID)
 			viewport := scrollBelowSelectedToolHeader(t, view, toolID)
 
 			if !test.collapse(view) {
@@ -967,7 +978,7 @@ func TestFocusedTranscriptCopiesTheSelectedBlock(t *testing.T) {
 	t.Cleanup(view.Close)
 	appendTestTool(view, "copy", "COPY_DETAIL")
 	view.Focus(true)
-	headless.NewRoot(view).Draw(grid.NewSurface(48, 8).View())
+	newSceneTestRoot(t, view.Element()).Draw(grid.NewSurface(48, 8).View())
 
 	if !view.Handle(input.Key{Code: input.Character, Rune: 'c', Mods: input.Alt}) {
 		t.Fatal("Alt+C was not handled by the focused transcript")
@@ -984,21 +995,22 @@ func TestDiscardExcessRetainsABoundedInteractiveWindow(t *testing.T) {
 	for _, body := range []string{"second", "third", "fourth", "fifth"} {
 		view.Append(&kit.Entry{Theme: view.theme, Label: "flame", Body: body})
 	}
-	root := headless.NewRoot(view)
+	firstRetained, lastRetained := view.order[3], view.order[4]
+	root := newSceneTestRoot(t, view.Element())
 	root.Draw(grid.NewSurface(48, 10).View())
 	view.Focus(true)
-	view.selectEntry(view.content.FirstBlock(), false)
+	view.selectEntry(view.firstEntry(), false)
 
 	view.DiscardExcess()
 
-	if view.content.Len() != 2 || view.content.FirstBlock() != 3 {
-		t.Fatalf("retained transcript has %d blocks starting at %d, want 2 starting at 3", view.content.Len(), view.content.FirstBlock())
+	if view.content.Len() != 2 || view.firstEntry() != firstRetained {
+		t.Fatalf("retained transcript has %d blocks starting at %d, want 2 starting at %d", view.content.Len(), view.firstEntry(), firstRetained)
 	}
 	if len(view.entries) != 2 || len(view.toolViews) != 0 {
 		t.Fatalf("discarded metadata survived: entries=%d tools=%d", len(view.entries), len(view.toolViews))
 	}
-	if !view.hasSelected || view.selected != 4 {
-		t.Fatalf("selection after discard = present %t, id %d; want newest id 4", view.hasSelected, view.selected)
+	if !view.hasSelected || view.selected != lastRetained {
+		t.Fatalf("selection after discard = present %t, id %d; want newest id %d", view.hasSelected, view.selected, lastRetained)
 	}
 	surface := grid.NewSurface(48, 10)
 	root.Draw(surface.View())
@@ -1015,7 +1027,13 @@ func (r *recordingClipboard) Copy(value string) bool {
 	return true
 }
 
-func (*recordingClipboard) Paste() bool { return false }
+func (r *recordingClipboard) Read(ctx context.Context, receive func(string, error)) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	receive(r.text, nil)
+	return nil
+}
 
 func testTranscriptView(t *testing.T) *transcriptView {
 	t.Helper()
@@ -1041,17 +1059,17 @@ const testTranscriptWindowRows = 6
 
 type selectedToolViewport struct {
 	view    *transcriptView
-	root    *headless.Root
+	root    *sceneTestRoot
 	surface *grid.Surface
 	header  int
 }
 
-func scrollBelowSelectedToolHeader(t *testing.T, view *transcriptView, toolID headless.BlockID) selectedToolViewport {
+func scrollBelowSelectedToolHeader(t *testing.T, view *transcriptView, toolID transcriptEntryID) selectedToolViewport {
 	t.Helper()
 	for index := range 16 {
 		view.Append(&kit.Entry{Theme: view.theme, Label: "flame", Body: fmt.Sprintf("later block %d", index)})
 	}
-	root := headless.NewRoot(view)
+	root := newSceneTestRoot(t, view.Element())
 	surface := grid.NewSurface(48, testTranscriptWindowRows)
 	root.Draw(surface.View())
 	view.Focus(true)
@@ -1059,7 +1077,7 @@ func scrollBelowSelectedToolHeader(t *testing.T, view *transcriptView, toolID he
 	root.Draw(surface.View())
 	view.Scroll(scrollPageDown)
 	root.Draw(surface.View())
-	header, _, ok := view.content.Extent(toolID)
+	header, _, ok := view.content.Extent(view.entries[toolID].nativeID)
 	if !ok || header >= view.content.StartRow()+view.scroll.Offset() {
 		t.Fatal("test did not scroll below the selected tool header")
 	}
@@ -1092,7 +1110,7 @@ func beginTestTool(view *transcriptView, call conversation.ToolCall) *toolBlock 
 	blockID := view.place(block, false)
 	tracked := trackedTool{id: blockID, block: block}
 	view.toolViews = append(view.toolViews, trackedToolView{id: blockID, block: block})
-	view.tools[conversation.BlockKey("", "tool")] = liveTool{ids: []headless.BlockID{blockID}, blocks: []trackedTool{tracked}}
+	view.tools[conversation.BlockKey("", "tool")] = liveTool{ids: []transcriptEntryID{blockID}, blocks: []trackedTool{tracked}}
 	return block
 }
 
@@ -1111,7 +1129,7 @@ func TestReaderTargetTitlesAUserBlockByItsOwnSpeaker(t *testing.T) {
 			)
 			t.Cleanup(view.Close)
 			view.Append(newUserMessageBlock(view.theme, test.speaker, "inspect this repository"))
-			headless.NewRoot(view).Draw(grid.NewSurface(48, 8).View())
+			newSceneTestRoot(t, view.Element()).Draw(grid.NewSurface(48, 8).View())
 
 			target, ok := view.selectedReaderTarget()
 			if !ok {

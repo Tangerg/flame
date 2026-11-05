@@ -2,11 +2,12 @@ package runs
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-// MaximumIdentityBytes matches the executor port's durable URI-safe identity envelope.
+// MaximumIdentityBytes bounds a flat identity or one member path component.
 const MaximumIdentityBytes = 256
 
 type executorIdentityValue struct {
@@ -43,7 +44,12 @@ func requireConstructedExecutionIdentity(kind, text string) error {
 func ValidateExecutor(text string) error { return validateExecutionIdentity("executor identity", text) }
 
 func ValidateMember(text string) error {
-	return validateExecutionIdentity("executor member identity", text)
+	for component := range strings.SplitSeq(text, "/") {
+		if err := validateExecutionIdentity("executor member identity component", component); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func validateRequest(text string) error {
@@ -64,17 +70,23 @@ func validateOptionalMember(text string) error {
 	return ValidateMember(text)
 }
 
-// MemberID identifies one executor-owned process in a root/child tree.
+// MemberID carries an executor-owned process path. The executor owns its ancestry;
+// the port preserves every component instead of imposing a flat identity limit.
 type MemberID struct{ executorIdentityValue }
 
 func ParseMember(text string) (MemberID, error) {
-	parsed, err := parseExecutionIdentity("executor member identity", text)
-	return MemberID{executorIdentityValue: parsed}, err
+	if err := ValidateMember(text); err != nil {
+		return MemberID{}, err
+	}
+	return MemberID{executorIdentityValue: executorIdentityValue{text: text}}, nil
 }
 
 func (i MemberID) String() string { return i.text }
 func (i MemberID) Validate() error {
-	return requireConstructedExecutionIdentity("executor member identity", i.text)
+	if i.text == "" {
+		return ValidateMember(i.text)
+	}
+	return nil
 }
 
 // InvocationID identifies a logical model or Tool call within a Runtime execution.

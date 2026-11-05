@@ -1,12 +1,15 @@
 package delivery
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"bytes"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -206,9 +209,9 @@ func portableRunFromArtifact(path string, artifact protocol.ArtifactRun) (sessio
 func portableUnresolvedEffectsFromArtifact(path string, values []protocol.UnresolvedEffect) ([]run.UnresolvedEffect, error) {
 	effects := make([]run.UnresolvedEffect, 0, len(values))
 	for index, value := range values {
-		var output *chat.ToolOutput
+		var output *toolcontract.Output
 		if len(value.Output) > 0 {
-			output = new(chat.ToolOutput)
+			output = new(toolcontract.Output)
 			if err := json.Unmarshal([]byte(value.Output), output); err != nil {
 				return nil, invalidArtifact(fmt.Sprintf("%s[%d].output", path, index), "%v", err)
 			}

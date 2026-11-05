@@ -1,20 +1,23 @@
 package terminal
 
 import (
+	"image"
+
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/keymap"
-	"github.com/Tangerg/oolong/core/layout"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/keymap"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/scene"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 type promptView struct {
 	theme             kit.Theme
-	panel             *kit.Panel
+	box               kit.Box
 	composer          *kit.Composer
 	help              kit.Help
-	rows              *headless.Container
+	rows              *scene.Group
 	keys              *keymap.Map
 	busyKeys          *keymap.Map
 	busyQueuedKeys    *keymap.Map
@@ -23,7 +26,6 @@ type promptView struct {
 	transcriptFocused bool
 	selection         transcriptSelection
 	transcriptKeys    *keymap.Map
-	focused           bool
 	compact           bool
 }
 
@@ -34,86 +36,70 @@ func newPromptView(
 	composer *kit.Composer,
 	options authoring.RunOptions,
 ) *promptView {
-	panel := kit.NewPanel(kit.PanelConfig{
-		Box:     kit.Box{Theme: theme, Glyphs: glyphs},
-		Content: composer,
-	})
-	panel.Box.Padding = layout.Symmetric(0, 1)
-	panel.Box.FooterAlign = layout.End
 	p := &promptView{
-		theme:          theme,
-		panel:          panel,
-		composer:       composer,
-		help:           kit.Help{Theme: theme, Keys: keys, Separator: "  " + glyphs.Vertical + "  "},
-		keys:           keys,
-		busyKeys:       remapHelpAction(keys, sendPrompt, queueFollowUp),
+		theme: theme, composer: composer,
+		box:  kit.Box{Theme: theme, Glyphs: glyphs, Padding: layout.Symmetric(0, 1), FooterAlign: layout.End},
+		help: kit.Help{Theme: theme, Keys: keys, Separator: "  " + glyphs.Vertical + "  "},
+		keys: keys, busyKeys: remapHelpAction(keys, sendPrompt, queueFollowUp),
 		busyQueuedKeys: remapHelpAction(keys, sendPrompt, queueOrSendNext),
 	}
-	p.rows = headless.NewContainer(layout.Down,
-		headless.Item{Key: "field", Size: layout.Measured(3, 8), Of: panel},
-		headless.Item{Key: "help", Size: layout.Fixed(1), Of: headless.Static{Of: &p.help}},
-	)
-	p.rows.Focus(false)
+	help := scene.NewElement(scene.ElementConfig{Paint: func(frame scene.Frame) { p.help.Draw(frame.View) }})
+	p.rows = scene.NewGroup(scene.GroupConfig{
+		Items: []scene.Item{{Element: composer.Element()}, {Element: help}},
+		Element: scene.ElementConfig{
+			Measure: func(axis layout.Axis, width int) int {
+				if axis == layout.Down {
+					return p.HeightForWidth(width)
+				}
+				return 0
+			},
+			Paint: func(frame scene.Frame) {
+				if p.isCompact(frame.Bounds().Size()) {
+					return
+				}
+				box := p.box
+				if p.Element().FocusedWithin() {
+					box.Theme.Border = p.theme.Accent
+				}
+				box.Draw(frame.Sub(grid.Area(0, 0, frame.Bounds().Dx(), max(frame.Bounds().Dy()-1, 0))).View)
+			},
+		},
+		Layout: func(space image.Point, _ []scene.Item) []image.Rectangle {
+			if p.isCompact(space) {
+				return []image.Rectangle{{Max: space}, {}}
+			}
+			panelSize := image.Pt(space.X, max(space.Y-1, 0))
+			return []image.Rectangle{p.box.InnerRect(panelSize), grid.Area(0, panelSize.Y, space.X, 1)}
+		},
+	})
 	p.SetOptions(options)
 	p.SetBusy(false)
 	return p
 }
 
-func (p *promptView) Draw(frame headless.Frame) {
-	if p.compact {
-		p.composer.Draw(frame)
-		return
-	}
-	p.rows.Draw(frame)
-}
+func (p *promptView) Element() scene.Element { return p.rows.Element() }
 
-func (p *promptView) Handle(event input.Event) bool {
-	if p.compact {
-		return p.composer.Handle(event)
-	}
-	return p.rows.Handle(event)
-}
-
-func (p *promptView) Focus(has bool) {
-	p.focused = has
-	p.panel.Box.Theme = p.theme
-	if has {
-		p.panel.Box.Theme.Border = p.theme.Accent
-	}
-	p.syncFocus()
-}
+func (p *promptView) isCompact(size image.Point) bool { return p.compact || size.Y <= 1 }
 
 func (p *promptView) HeightForWidth(width int) int {
 	if p.compact {
 		return 1
 	}
-	return p.rows.HeightForWidth(width)
+	overhead := p.box.Overhead()
+	return layout.Sum(p.composer.HeightForWidth(max(width-overhead.X, 0)), overhead.Y, 1)
 }
 
 func (p *promptView) SetCompact(compact bool) {
-	if p.compact == compact {
-		return
-	}
 	p.compact = compact
-	p.syncFocus()
-}
-
-func (p *promptView) syncFocus() {
-	if p.compact {
-		p.rows.Focus(false)
-		p.composer.Focus(p.focused)
-		return
-	}
-	p.composer.Focus(false)
-	p.rows.Focus(p.focused)
+	p.Element().Invalidate()
 }
 
 func (p *promptView) SetOptions(options authoring.RunOptions) {
-	p.panel.Box.Footer = modelLabel(options)
+	p.box.Footer = modelLabel(options)
 }
 
 func (p *promptView) SetPendingKeySequence(hint string) {
-	p.panel.Box.Title = hint
+	p.box.Title = hint
 }
 
 func (p *promptView) SetBusy(busy bool) {
@@ -163,18 +149,18 @@ func (p *promptView) showTranscriptHelp() {
 		p.help.Show = []keymap.Action{transcriptPrompt}
 		return
 	}
-	p.help.Show = []keymap.Action{headless.SelectPrev, headless.SelectNext, transcriptPrompt}
+	p.help.Show = []keymap.Action{base.SelectPrev, base.SelectNext, transcriptPrompt}
 	if p.selection.Expandable {
-		action := headless.Expand
+		action := base.Expand
 		if p.selection.Expanded {
-			action = headless.Collapse
+			action = base.Collapse
 		}
 		p.help.Show = append(p.help.Show, action, toggleDetails)
 	}
 	if p.selection.Readable {
 		p.help.Show = append(p.help.Show, openReader)
 	}
-	p.help.Show = append(p.help.Show, headless.Copy)
+	p.help.Show = append(p.help.Show, base.Copy)
 }
 
 func (p *promptView) showBusyHelp() {

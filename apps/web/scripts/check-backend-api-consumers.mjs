@@ -2,6 +2,7 @@
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { dirname, resolve, relative, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { API, SignatureKind, SymbolFlags, TypeFlags } from "typescript/unstable/sync";
 import * as ts from "typescript/unstable/ast";
 
@@ -9,7 +10,10 @@ const ROOT = process.cwd();
 const METHODS_PATH = resolve(ROOT, "../../packages/runtime-client/src/methods.ts");
 const SIDECAR_PATH = resolve(ROOT, "../../packages/runtime-client/src/sidecar.ts");
 const WIRE_PATH = resolve(ROOT, "../../packages/runtime-client/src/generated/wire.generated.ts");
-const MODULES_PATH = resolve(ROOT, "../../qimu/browser/src/modules.ts");
+const MODULES_PATH = resolve(
+  dirname(fileURLToPath(import.meta.resolve("@frame/sdk/browser"))),
+  "modules.d.ts",
+);
 const MANIFEST_PATH = resolve(ROOT, "../../runtime/contract/manifest.json");
 const EVENT_POLICY_PATH = resolve(ROOT, "src/features/workspace/domain/eventInvalidation.ts");
 const EVENT_ADAPTER_PATH = resolve(

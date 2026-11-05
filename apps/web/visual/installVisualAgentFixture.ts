@@ -141,7 +141,7 @@ function visualAgentRuntimeGateway(
 const fileListProvider = definePlugin({
   name: "flame.visual.file-list",
   setup(ctx) {
-    ctx.contribute(DATA_PROVIDER, {
+    ctx.contributions.add(DATA_PROVIDER, {
       key: WORKSPACE_LIST_FILES_KEY,
       fetcher: async () =>
         [
@@ -175,7 +175,7 @@ const visualAgentSessions = (visual: VisualClient, runtimeClient: () => FlameCli
     name: "flame.visual.agent-session-ports",
     provides: { sessions: AGENT_SESSIONS },
     setup(ctx) {
-      registerApprovalPolicyDataProviders(ctx, runtimeClient);
+      registerApprovalPolicyDataProviders(ctx.contributions, runtimeClient);
       return {
         sessions: {
           getActiveSessionId: () => visual.agent.access.getActiveSessionId(),

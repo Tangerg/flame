@@ -7,9 +7,11 @@ import (
 	"testing"
 	"time"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
-	"github.com/Tangerg/qimu/portable"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 )
@@ -103,7 +105,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	checkUsageReportsList(t, current, reports)
-	contract, err := portable.ParseCapability([]byte(SchedulesCapabilityJSON))
+	contract, err := plugincontract.ParseCapability([]byte(SchedulesCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +113,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: scheduling.ID, Digest: scheduling.Selected.Digest, Contribution: "schedules-provider", Contract: string(contract.Identity().JSON()), Method: SchedulesListV1Method, Input: string(input), Target: portable.Target{Scope: "installation", Reference: scheduling.ID}}, protocol.PluginCallOptions{})
+	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: scheduling.ID, Digest: scheduling.Selected.Digest, Contribution: "schedules-provider", Contract: string(contract.Identity().Bytes()), Method: SchedulesListV1Method, Input: string(input), Target: portable.Target{Scope: "installation", Reference: scheduling.ID}}, protocol.PluginCallOptions{})
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("default schedule backend: %+v, %v", reply, err)
 	}
@@ -201,7 +203,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 
 func checkUsageReportsList(t *testing.T, current *flameruntime.Runtime, reports protocol.PluginInstallation) {
 	t.Helper()
-	contract, err := portable.ParseCapability([]byte(UsageReportsCapabilityJSON))
+	contract, err := plugincontract.ParseCapability([]byte(UsageReportsCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}

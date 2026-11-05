@@ -1,6 +1,6 @@
-import { isJSONNumber, projectNumber } from "@qimu/sdk/json";
+import { isJSONNumber, projectNumber } from "@frame/sdk/json";
 
-// These authoring DTOs promise finite JavaScript numbers. Qimu owns whether
+// These authoring DTOs promise finite JavaScript numbers. Frame owns whether
 // an exact source number is representable; this walk only projects containers.
 export function projectNumbers(value: unknown): unknown {
   if (isJSONNumber(value)) return projectNumber(value);

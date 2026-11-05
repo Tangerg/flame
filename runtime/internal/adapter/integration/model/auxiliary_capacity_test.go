@@ -21,7 +21,7 @@ func (f auxiliaryCountFunc) CountInputTokens(ctx context.Context, request *chat.
 
 func capacityFixture(t *testing.T, selection modelchoice.Selection, counter InputTokenCounter) SelectedChat {
 	t.Helper()
-	entry, found := catalog.Default.Lookup(selection.Provider(), selection.Model())
+	entry, found := catalog.LookupModel(selection.Provider(), selection.Model())
 	var metadata *catalog.Model
 	if found {
 		if effort := selection.ReasoningEffort(); effort != "" {

@@ -4,7 +4,7 @@ import { ProviderSetupPrompt } from "@/features/providers/setup/ui/ProviderSetup
 export default definePlugin({
   name: "flame.builtin.provider-setup",
   setup(ctx) {
-    contributeLayout(ctx, "chat.empty", {
+    contributeLayout(ctx.contributions, "chat.empty", {
       id: "provider-setup",
       order: 0,
       component: ProviderSetupPrompt,

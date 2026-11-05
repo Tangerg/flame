@@ -5,15 +5,15 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/Tangerg/qimu/integrity"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // Length framing preserves field boundaries, including empty fields and UTF-8 bytes.
 // Callers own field selection and order; this package owns only their encoding.
-func DigestStrings(fields ...string) integrity.Digest {
+func DigestStrings(fields ...string) framevalue.Digest {
 	h := sha256.New()
 	for _, field := range fields {
 		_, _ = io.WriteString(h, strconv.Itoa(len(field))+":"+field)
 	}
-	return integrity.DigestOf([sha256.Size]byte(h.Sum(nil)))
+	return framevalue.DigestOf([sha256.Size]byte(h.Sum(nil)))
 }

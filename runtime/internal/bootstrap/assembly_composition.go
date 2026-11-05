@@ -7,6 +7,7 @@ import (
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
@@ -18,7 +19,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
@@ -38,7 +38,7 @@ type policyComposition struct {
 	mcp           mcpEnvironment
 }
 
-func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime, callbacks *qimumcp.Callbacks) (policyComposition, error) {
+func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime, callbacks *pluginmcp.Callbacks) (policyComposition, error) {
 	invalidations := newNotificationRelay[invalidation.Notice]()
 	packages, err := buildPluginPackages(cfg, lifetime)
 	if err != nil {
@@ -157,7 +157,7 @@ func buildExecutionComposition(
 	ctx context.Context,
 	cfg assemblyConfig,
 	defaultSelection modelchoice.Selection,
-	callbacks *qimumcp.Callbacks,
+	callbacks *pluginmcp.Callbacks,
 	lifetime *runtimeLifetime,
 	buildTools toolEnvironmentBuilder,
 	policy policyComposition,
@@ -264,6 +264,7 @@ func buildExecutionComposition(
 		ExecutionTrees:         cfg.stores.ExecutorCheckpoints,
 		OriginalToolResults:    toolRuntime.toolResults,
 		Admission:              toolRuntime.admission,
+		ValidatePluginSources:  toolRuntime.validatePluginSources,
 		BuildID:                cfg.buildID,
 		ChatResolver:           modelServices.chatResolver,
 		ModelEvidence:          cfg.stores.ModelInvocations,

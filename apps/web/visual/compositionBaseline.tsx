@@ -11,7 +11,7 @@ import {
 import { queryClient } from "@/lib/queryClient";
 import { definePlugin } from "@/extensions/definePlugin";
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
-import { type ContributionLifetime } from "@/extensions/definePlugin";
+import { type ContributionScope } from "@/extensions/definePlugin";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { RuntimeConnectionGeneration } from "@/features/connection/public/services";
 import { ComponentModules } from "@/features/plugins/adapters/componentModules";
@@ -87,13 +87,16 @@ async function setup() {
       }),
     },
   } as unknown as FlameClient;
-  let lifetime!: ContributionLifetime;
+  let lifetime!: ContributionScope;
   const host = await startKernel([
     definePlugin({
       name: "benchmark.composition",
       setup(ctx) {
-        lifetime = ctx.lifetime("browser-modules");
-        ctx.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => [installation] });
+        lifetime = ctx.contributions.child("browser-modules");
+        ctx.contributions.add(DATA_PROVIDER, {
+          key: PACKAGES_KEY,
+          fetcher: async () => [installation],
+        });
       },
     }),
   ]);
@@ -114,7 +117,7 @@ async function setup() {
   };
   const element = document.getElementById("root")!;
   const root = createRoot(element);
-  let rendering: ContributionLifetime | undefined;
+  let rendering: ContributionScope | undefined;
   let sequence = 0;
   function Board({ context, input }: { context: ComponentContext; input?: unknown }) {
     const count = input as number;
@@ -133,7 +136,7 @@ async function setup() {
     async measure(count) {
       if (![1, 8, 32].includes(count)) throw new Error("baseline supports 1, 8 or 32 frames");
       if (rendering) await rendering[asyncDisposeSymbol]();
-      const scope = lifetime.lifetime(`render-${++sequence}`);
+      const scope = lifetime.child(`render-${++sequence}`);
       rendering = scope;
       const began = performance.now();
       await modules.component(lifetime, runtime, location.origin, generation, installation, entry);
@@ -152,7 +155,7 @@ async function setup() {
             runtime={runtime}
             binding={undefined}
             lifetime={scope}
-            resources={lifetime.signal}
+            resources={lifetime.lifetime.signal}
           />
         </QueryClientProvider>,
       );

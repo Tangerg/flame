@@ -9,7 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
-	"github.com/Tangerg/oolong/components/headless"
+	"github.com/Tangerg/oolong/ui/base"
 )
 
 type registeredCommand struct {
@@ -32,7 +32,7 @@ func (r registeredCommand) availability(host *app) (availability extensions.Comm
 }
 
 type commandCatalog struct {
-	index headless.Commands[registeredCommand]
+	index base.Commands[registeredCommand]
 }
 
 func newCommandCatalog() commandCatalog { return commandCatalog{} }
@@ -49,7 +49,7 @@ func (c *commandCatalog) add(owner string, descriptor extensions.CommandDescript
 			return fmt.Errorf("plugin %s command /%s conflicts with /%s", owner, descriptor.Name, existing.Name)
 		}
 	}
-	c.index.Add(headless.Command{
+	c.index.Add(base.Command{
 		Name: descriptor.Name, Title: descriptor.Title, Aliases: descriptor.Aliases,
 	}, registeredCommand{
 		category: descriptor.CategoryLabel(), arguments: descriptor.Arguments, run: run, evaluate: evaluate,
@@ -57,7 +57,7 @@ func (c *commandCatalog) add(owner string, descriptor extensions.CommandDescript
 	return nil
 }
 
-func (c *commandCatalog) find(query string) []headless.Found {
+func (c *commandCatalog) find(query string) []base.Found {
 	found := c.index.Find(query)
 	exact, _, ok := c.index.Lookup(query)
 	if !ok {
@@ -74,10 +74,10 @@ func (c *commandCatalog) find(query string) []headless.Found {
 		}
 		return found
 	}
-	return append([]headless.Found{{Command: exact}}, found...)
+	return append([]base.Found{{Command: exact}}, found...)
 }
 
-func (c *commandCatalog) lookup(identity string) (headless.Command, bool) {
+func (c *commandCatalog) lookup(identity string) (base.Command, bool) {
 	command, _, found := c.index.Lookup(identity)
 	return command, found
 }
@@ -218,7 +218,6 @@ func (e *localExtensions) executeCommand(pluginID string, command extensions.Sla
 		Argument: argument, Workspace: e.session.current.Workspace.Path, SessionID: e.session.current.ID,
 		LocalDirectory: authoringDirectory(e.localDirectory, e.session.current.Workspace.Path),
 	}
-	dispatcher := e.tasks.dispatch
 	operation, err := e.running.reserve(pluginID)
 	if err != nil {
 		e.notify("could not start /" + name + ": " + err.Error())
@@ -227,7 +226,7 @@ func (e *localExtensions) executeCommand(pluginID string, command extensions.Sla
 	slot := operation.slot()
 	started := e.tasks.operations.GoSession(slot, false, func(ctx context.Context, lease operationLease) {
 		result, err := executeCommandSafely(ctx, command, request)
-		_ = post(ctx, dispatcher, func() {
+		_ = e.tasks.deliver(ctx, func() {
 			if !e.tasks.operations.Current(lease) || e.closed() {
 				return
 			}

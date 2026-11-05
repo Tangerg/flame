@@ -8,10 +8,10 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/highlight"
+	"github.com/Tangerg/oolong/extensions/highlight"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 func TestToolObserverUnsubscribeIsIdempotentAndPreservesOtherSubscriptions(t *testing.T) {
@@ -30,7 +30,7 @@ func TestToolObserverUnsubscribeIsIdempotentAndPreservesOtherSubscriptions(t *te
 }
 
 func TestTranscriptPresenterPanicBecomesAnError(t *testing.T) {
-	_, err := presentSafely(func(blockPresentation, conversation.Block) []headless.Block { panic("present boom") }, blockPresentation{}, conversation.Block{Kind: conversation.BlockAssistant})
+	_, err := presentSafely(func(blockPresentation, conversation.Block) []base.Block { panic("present boom") }, blockPresentation{}, conversation.Block{Kind: conversation.BlockAssistant})
 	if err == nil || !strings.Contains(err.Error(), "present boom") {
 		t.Fatalf("presenter panic error = %v", err)
 	}
@@ -81,7 +81,7 @@ func TestRawToolPatchPreservesFileHeadersAndMarkers(t *testing.T) {
 	blocks := renderToolSections(blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}, presentation.Sections, false)
 	var copied []string
 	for _, block := range blocks {
-		projector, ok := block.(headless.TextProjector)
+		projector, ok := block.(base.TextProjector)
 		if !ok {
 			t.Fatalf("raw patch cannot be copied: %T", block)
 		}
@@ -325,7 +325,7 @@ func TestToolStatusVocabularyDoesNotCollideWithRunOutcomes(t *testing.T) {
 	}
 }
 
-func requireToolBody(t *testing.T, body headless.Block, want string) {
+func requireToolBody(t *testing.T, body base.Block, want string) {
 	t.Helper()
 	switch want {
 	case "code":
@@ -339,7 +339,7 @@ func requireToolBody(t *testing.T, body headless.Block, want string) {
 	}
 }
 
-func requireCodeBody(t *testing.T, body headless.Block, numbered bool) {
+func requireCodeBody(t *testing.T, body base.Block, numbered bool) {
 	t.Helper()
 	code, ok := body.(*kit.Code)
 	if !ok {
@@ -350,14 +350,14 @@ func requireCodeBody(t *testing.T, body headless.Block, numbered bool) {
 	}
 }
 
-func requireBodyType[T any](t *testing.T, body headless.Block, name string) {
+func requireBodyType[T any](t *testing.T, body base.Block, name string) {
 	t.Helper()
 	if _, ok := body.(T); !ok {
 		t.Fatalf("body = %T, want %s", body, name)
 	}
 }
 
-func requireLinkedParagraph(t *testing.T, body headless.Block) {
+func requireLinkedParagraph(t *testing.T, body base.Block) {
 	t.Helper()
 	paragraph, ok := body.(*kit.Paragraph)
 	if !ok {

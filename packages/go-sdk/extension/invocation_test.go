@@ -3,12 +3,14 @@ package extension_test
 import (
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestOriginVocabularyBelongsToTheConsumer(t *testing.T) {
-	invocation := portable.Invocation{
+	invocation := framemcp.Invocation{
 		ID: "document-convert", Origin: "document-workbench",
 		Target: portable.Target{Scope: "document", Reference: "document-1"},
 	}
@@ -18,7 +20,7 @@ func TestOriginVocabularyBelongsToTheConsumer(t *testing.T) {
 	if err := extension.ValidateInvocation(invocation); err == nil {
 		t.Fatal("another consumer's origin was accepted as Flame evidence")
 	}
-	for _, origin := range []portable.Origin{extension.Human, extension.Model, extension.Automatic} {
+	for _, origin := range []framemcp.Origin{extension.Human, extension.Model, extension.Automatic} {
 		invocation.Origin = origin
 		if err := extension.ValidateInvocation(invocation); err != nil {
 			t.Fatalf("Flame origin %s: %v", origin, err)

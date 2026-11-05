@@ -3,22 +3,23 @@ package feedback
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/annotation"
-	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 type prepared struct {
 	source  extension.AnnotationSource
-	content jsonvalue.Value
+	content framevalue.JSON
 	err     error
 }
 
-func (p prepared) PrepareFeedback(context.Context, extension.FeedbackDraft) (extension.AnnotationSource, jsonvalue.Value, error) {
+func (p prepared) PrepareFeedback(context.Context, extension.FeedbackDraft) (extension.AnnotationSource, framevalue.JSON, error) {
 	return p.source, p.content, p.err
 }
 
@@ -31,7 +32,7 @@ func (o *observed) Append(_ context.Context, e annotation.Entry) error {
 
 func TestOnlyOriginalProviderCanSupplyObservation(t *testing.T) {
 	src := extension.AnnotationSource{ContributionSource: extension.ContributionSource{InstallationID: "installed", Release: "original", Contribution: "observer"}, ContractReference: "contract"}
-	content, _ := jsonvalue.Parse([]byte(`{"future":"meaning"}`))
+	content, _ := framevalue.ParseJSON([]byte(`{"future":"meaning"}`))
 	var ledger observed
 	at := time.Now().UTC()
 	ctx := operation.Bind(t.Context(), "feedback.create", "retry")

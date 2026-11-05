@@ -2,10 +2,11 @@ package delivery
 
 import (
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"

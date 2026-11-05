@@ -90,9 +90,9 @@ func skillListSample(source skillSampleSource, budget int64, cursor *skillstool.
 		if binding.Contract().Definition().Name != "list_skills" {
 			continue
 		}
-		invocation, err := binding.Contract().Prepare(chat.ToolCall{
+		invocation, err := binding.Contract().Prepare((chat.ToolCall{
 			ID: "skill_page_sample", Name: "list_skills", Arguments: string(arguments),
-		}, nil)
+		}).Request(), toolcontract.Admission{})
 		if err != nil {
 			return "", err
 		}

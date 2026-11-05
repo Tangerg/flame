@@ -10,7 +10,6 @@ import (
 	"sync"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/frame/cancellation"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
 )
@@ -151,7 +150,7 @@ func verifyWorkspacePath(root *filesystemRoot) error {
 
 func withWorkspacePath(inner toolcontract.Tool, root *filesystemRoot) toolcontract.Tool {
 	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
-		if cause := cancellation.Err(ctx); cause != nil {
+		if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 			return toolcontract.Result{}, cause
 		}
 		if err := verifyWorkspacePath(root); err != nil {
@@ -159,7 +158,7 @@ func withWorkspacePath(inner toolcontract.Tool, root *filesystemRoot) toolcontra
 		}
 		out, err := inner.Call(ctx, invocation)
 		if err != nil {
-			return out, errors.Join(err, cancellation.Err(ctx))
+			return out, errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx)))
 		}
 		if err := verifyWorkspacePath(root); err != nil {
 			return toolcontract.Result{}, pluginsdk.DefiniteToolFailure(err)

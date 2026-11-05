@@ -5,14 +5,16 @@ import (
 	"errors"
 	"iter"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type pluginCallUseCases interface {
@@ -22,8 +24,8 @@ type pluginCallUseCases interface {
 	NotifyChange(context.Context, plugin.ContributionID) error
 	Prepare(context.Context, plugins.CallRequest) (plugins.Call, error)
 	PrepareStream(context.Context, plugins.CallRequest) (plugins.StreamCall, error)
-	Resolve(context.Context, flameidentity.InstallationID, integrity.Digest, plugin.ContributionID) ([]plugins.Collaborator, error)
-	ResolvePoint(context.Context, *portable.Point, portable.PointContext, []plugins.PointReference) ([]plugins.PointBinding, error)
+	Resolve(context.Context, flameidentity.InstallationID, framevalue.Digest, plugin.ContributionID) ([]plugins.Collaborator, error)
+	ResolvePoint(context.Context, *plugincontract.Point, plugincontract.PointContext, []plugins.PointReference) ([]plugins.PointBinding, error)
 }
 
 func (s *Handler) GetPluginCommand(ctx context.Context, in protocol.PluginCommandRequest) (*protocol.CallPluginRequest, error) {
@@ -41,8 +43,8 @@ func (s *Handler) GetPluginCommand(ctx context.Context, in protocol.PluginComman
 	record := command.Snapshot()
 	return &protocol.CallPluginRequest{
 		InstallationID: record.Provider.InstallationID.String(), Digest: record.Provider.Digest.String(),
-		Contribution: record.Contribution.String(), Contract: string(record.Contract.JSON()),
-		Method: record.Method, Input: string(record.Input.JSON()), Target: record.Invocation.Target,
+		Contribution: record.Contribution.String(), Contract: string(record.Contract.Bytes()),
+		Method: record.Method, Input: string(record.Input.Bytes()), Target: record.Invocation.Target,
 	}, nil
 }
 
@@ -61,7 +63,7 @@ func (s *Handler) ResolvePluginPoint(ctx context.Context, in protocol.ResolvePlu
 	if s.pluginCalls == nil {
 		return nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin points are unavailable")
 	}
-	contract, err := portable.ParsePoint([]byte(in.Contract))
+	contract, err := plugincontract.ParsePoint([]byte(in.Contract))
 	if err != nil {
 		return nil, protocol.InvalidParameters(err)
 	}
@@ -77,13 +79,13 @@ func (s *Handler) ResolvePluginPoint(ctx context.Context, in protocol.ResolvePlu
 		}
 		order = append(order, plugins.PointReference{Installation: installation, Contribution: contribution})
 	}
-	values, err := s.pluginCalls.ResolvePoint(ctx, contract, portable.PointContext{Target: in.Target, Attributes: []byte(in.Attributes)}, order)
+	values, err := s.pluginCalls.ResolvePoint(ctx, contract, plugincontract.PointContext{Target: in.Target, Attributes: []byte(in.Attributes)}, order)
 	if err != nil {
 		return nil, wirePluginError(err)
 	}
 	result := make([]protocol.PluginPointBinding, 0, len(values))
 	for _, value := range values {
-		result = append(result, protocol.PluginPointBinding{InstallationID: value.Reference.Installation.String(), Digest: value.Digest.String(), Contribution: value.Reference.Contribution.String(), Value: string(value.Value.JSON())})
+		result = append(result, protocol.PluginPointBinding{InstallationID: value.Reference.Installation.String(), Digest: value.Digest.String(), Contribution: value.Reference.Contribution.String(), Value: string(value.Value.Bytes())})
 	}
 	return protocol.NewPage(result), nil
 }
@@ -108,7 +110,7 @@ func (s *Handler) ResolvePluginRequirements(ctx context.Context, in protocol.Res
 	for _, collaborator := range resolved {
 		value := protocol.PluginCollaborator{ID: collaborator.ID.String(), Bindings: []protocol.PluginOperationBinding{}}
 		for _, binding := range collaborator.Bindings {
-			value.Bindings = append(value.Bindings, protocol.PluginOperationBinding{InstallationID: binding.InstallationID.String(), Digest: binding.Digest.String(), Contribution: binding.ContributionID.String(), Contract: string(binding.Contract.JSON())})
+			value.Bindings = append(value.Bindings, protocol.PluginOperationBinding{InstallationID: binding.InstallationID.String(), Digest: binding.Digest.String(), Contribution: binding.ContributionID.String(), Contract: string(binding.Contract.Bytes())})
 		}
 		values = append(values, value)
 	}
@@ -116,11 +118,11 @@ func (s *Handler) ResolvePluginRequirements(ctx context.Context, in protocol.Res
 }
 
 func pluginCallOperation(in protocol.CallPluginRequest) (OperationKind, error) {
-	kind, err := portable.MethodKindFor([]byte(in.Contract), in.Method)
+	kind, err := plugincontract.MethodKindFor([]byte(in.Contract), in.Method)
 	if err != nil {
 		return "", protocol.InvalidParameters(err)
 	}
-	if kind == portable.Mutation {
+	if kind == portable.Command {
 		return OperationCommand, nil
 	}
 	return OperationQuery, nil
@@ -139,18 +141,18 @@ func (s *Handler) PreparePluginCall(ctx context.Context, in protocol.CallPluginR
 		return "", nil, wirePluginError(err)
 	}
 	kind := OperationQuery
-	if call.Kind() == portable.Mutation {
+	if call.Kind() == portable.Command {
 		kind = OperationCommand
 	}
 	return kind, func(ctx context.Context) (*protocol.CallPluginResponse, error) {
 		output, err := call.Invoke(ctx)
-		if failure, known := errors.AsType[*portable.Refusal](err); known && !errors.Is(err, plugin.ErrCommandUnconfirmed) {
+		if failure, known := errors.AsType[*framemcp.Refusal](err); known && !errors.Is(err, plugin.ErrCommandUnconfirmed) {
 			return &protocol.CallPluginResponse{Failure: &protocol.PluginCallFailure{Code: failure.Code, Message: failure.Message}}, nil
 		}
 		if err != nil {
 			return nil, wirePluginError(err)
 		}
-		return &protocol.CallPluginResponse{Output: string(output.JSON())}, nil
+		return &protocol.CallPluginResponse{Output: string(output.Bytes())}, nil
 	}, nil
 }
 
@@ -163,11 +165,11 @@ func parsePluginCall(in protocol.CallPluginRequest) (plugins.CallRequest, error)
 	if err != nil {
 		return plugins.CallRequest{}, protocol.InvalidParameters(err)
 	}
-	contract, err := portable.ParseCapability([]byte(in.Contract))
+	contract, err := plugincontract.ParseCapability([]byte(in.Contract))
 	if err != nil {
 		return plugins.CallRequest{}, protocol.InvalidParameters(err)
 	}
-	input, err := jsonvalue.Parse([]byte(in.Input))
+	input, err := framevalue.ParseJSON([]byte(in.Input))
 	if err != nil {
 		return plugins.CallRequest{}, protocol.InvalidParameters(err)
 	}
@@ -187,17 +189,17 @@ func (s *Handler) PreparePluginStream(ctx context.Context, in protocol.CallPlugi
 		return "", nil, wirePluginError(err)
 	}
 	kind := OperationQuery
-	if call.Kind() == portable.Mutation {
+	if call.Kind() == portable.Command {
 		kind = OperationCommand
 	}
 	unconfirmed := errors.New("plugin stream final outcome is unconfirmed")
-	if call.Kind() == portable.Mutation {
+	if call.Kind() == portable.Command {
 		unconfirmed = errors.Join(plugin.ErrCommandUnconfirmed, unconfirmed)
 	}
 	return kind, func(ctx context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
 		return struct{}{}, func(yield func(protocol.PluginStreamEvent, error) bool) {
 			for value, err := range call.Stream(ctx) {
-				if refusal, known := errors.AsType[*portable.Refusal](err); known && !errors.Is(err, plugin.ErrCommandUnconfirmed) {
+				if refusal, known := errors.AsType[*framemcp.Refusal](err); known && !errors.Is(err, plugin.ErrCommandUnconfirmed) {
 					yield(protocol.PluginStreamEvent{Kind: protocol.PluginStreamFailure, Failure: &protocol.PluginCallFailure{Code: refusal.Code, Message: refusal.Message}}, nil)
 					return
 				}
@@ -215,7 +217,7 @@ func (s *Handler) PreparePluginStream(ctx context.Context, in protocol.CallPlugi
 					yield(protocol.PluginStreamEvent{}, wirePluginError(unconfirmed))
 					return
 				}
-				if !yield(protocol.PluginStreamEvent{Kind: kind, Value: string(value.Value.JSON())}, nil) {
+				if !yield(protocol.PluginStreamEvent{Kind: kind, Value: string(value.Value.Bytes())}, nil) {
 					return
 				}
 				if kind == protocol.PluginStreamResult {

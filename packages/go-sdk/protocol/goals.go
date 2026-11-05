@@ -1,9 +1,10 @@
 package protocol
 
 import (
+	"time"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
-	"time"
 )
 
 // Goal is one Session's autonomous objective and loop state.

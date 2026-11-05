@@ -94,11 +94,15 @@ The workspace VCS adapter translates Git results and failures directly from
 eligibility, unavailable/conflict outcomes, and Session-scoped restore policy.
 `adapter/persistence` owns Runtime product schema, SQL, strict storage codecs and
 Application port translation in one database lifecycle. Public
-`frame/sqlite` owns generic schema admission and ordinary transactions. Qimu
-owns framework settlement, borrowed executors and execution protection. Runtime supplies its own
-business schemas; Qimu records and Runtime business references commit in one
-`flame-qimu.db` database under the Host's original Admission. Plugin backends keep
-their private business databases and receipts.
+`frame/sqlite` owns schema admission, connection access, transaction settlement,
+borrowed executors and execution protection. Runtime supplies its own business
+schema. Frame records and Runtime references commit in one `flame-frame.db`
+database under the Host's original Admission. The adapter passes only Frame-issued
+Reader/Executor capabilities through lexical operation contexts; all row scanning
+and cursor closure finish before their owner's callback returns. Nested business
+writes join that exact executor, reads cannot promote their context, and a retained
+context cannot open another transaction. Host installation projection joins its
+original executor. Plugin backends own their separate business databases and receipts.
 Workspace mutation intents commit independently before filesystem changes and
 retire independently after their effects; they never join an ambient business
 transaction.
@@ -200,8 +204,8 @@ MCP catalog validation, disabled-tool policy, discovery grouping, and automatic 
 MCP management reads, connected Tool counts, and execution publication derive from the same admitted Scope Tool snapshot. Listing never performs another remote discovery; reconnect replaces the snapshot for all three consumers. Scope Binding compiles each schema before a connection or probe succeeds, and Scope Registry admits the prospective catalog across connected servers. Runtime retains remote identity, description, and catalog-capacity policy. Diagnostic and MCP metadata carry Scope ToolDefinition directly; Delivery alone projects schemas to protocol objects while preserving exact numeric literals. Runtime has no parallel schema value type or parser.
 
 An admitted MCP Tool call receives Runtime's existing logical call identity in
-request metadata under the compiled `qimumcp.InvocationMetadataKey`, beside
-origin, parent and concrete target. `qimu/mcp` owns this generic transport;
+request metadata under the compiled `pluginmcp.InvocationMetadataKey`, beside
+origin, parent and concrete target. `packages/go-sdk/plugin/mcp` owns this Flame business transport;
 Flame's `extension` package validates its product origin vocabulary. It is the same bounded
 identity committed with the Tool attempt, derived from Scope attribution and
 retained across approval and continuation; a provider's correlation ID is not a
@@ -217,7 +221,7 @@ The product executor admits Interaction roots. Installed MCP Tools use the
 existing Session-owned Run and Interrupt path. Ordinary React components consume
 captured public context and invoke canonical Runtime or installed operations;
 Session actions use the same component boundary and Session update owner.
-Qimu owns their admitted Browser executions and Uses. No HTML bridge or closed
+Frame owns their admitted Browser executions and Uses. No HTML bridge or closed
 action enum supplies a parallel dispatch path. Diagnostic `tools.invoke` keeps
 its diagnostic contract and is not a plugin action entrance.
 
@@ -252,7 +256,7 @@ Runtime decodes and encodes with `encoding/json/v2`. Duplicate members, trailing
 
 Scope's `chat.Usage` is the provider's own per-call report, kept whole through the execution facts, the durable model-invocation journal, and the protocol: a breakdown the provider does not support stays absent rather than becoming a reported zero. Runtime folds it once into `accounting.Tokens`, its cumulative token counter, which keeps that one spelling and has no absent state. Cost rides beside the counts as an explicit optional, so an unavailable price stays distinct from a reported zero, and per-model calls are tracked in `accounting.ModelUsage`. Runtime keeps no second usage value and no second spelling of these counts.
 
-Durable conversation history implements Scope's `history.Store`, keyed by `history.ConversationID`, with Runtime's retention capabilities beside it. `adapter/persistence` owns the single translation: a Session names exactly one conversation, and a batch whose commit the store could not observe reaches the use cases as an uncertain write rather than a definite rejection. The use-case port stays Session-keyed, so Application holds no external storage contract.
+Durable conversation history is a mutable, per-session Flame store keyed by `history.ConversationID`. Frame owns its transactions and commit uncertainty; Runtime owns compaction, retention, and rollback. Scope's append-only execution log is a separate store. `adapter/persistence` owns the single translation: a Session names exactly one conversation, and a batch whose commit the store could not observe reaches the use cases as an uncertain write rather than a definite rejection. The use-case port stays Session-keyed, so Application holds no external storage contract.
 
 Telemetry for model calls, Tool calls, and execution trees is Scope's. The provider instance is wrapped closest to the provider, so a span records the provider's own timing and failure before Runtime translates either; Tools are instrumented as the Run's manifest freezes, where the capability chain stays reachable through `Unwrap`; the execution tree's observer is an Engine event listener that also wraps the TreeCommitter, and it closes only after a successful Engine drain. A client-driven diagnostic Tool call is still a Tool call and is instrumented by the same middleware. Runtime configures the OpenTelemetry providers and adds no parallel span vocabulary: its own spans carry what Scope cannot see — which product operation asked, and what it spent — and never a second copy of a request, usage, or finish-reason fact.
 

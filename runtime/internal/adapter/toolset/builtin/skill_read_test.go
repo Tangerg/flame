@@ -5,7 +5,6 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -14,6 +13,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"

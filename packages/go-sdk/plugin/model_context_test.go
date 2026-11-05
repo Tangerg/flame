@@ -3,7 +3,9 @@ package plugin
 import (
 	"testing"
 
-	"github.com/Tangerg/qimu/portable"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -16,7 +18,7 @@ func TestModelContextContractAdmitsOnlyAttributedRequestsAndSystemMaterial(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if contract.Descriptor().Composition != portable.Decoration || method.Descriptor().Kind != portable.Query {
+	if contract.Descriptor().Composition != plugincontract.Decoration || method.Descriptor().Kind != portable.Query {
 		t.Fatal("context contribution grants execution")
 	}
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("question")))

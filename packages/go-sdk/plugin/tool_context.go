@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	scopemcp "github.com/Tangerg/scope/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 const ToolContextMetadataKey = "io.github.tangerg.flame/tool-context.v1"
@@ -30,15 +30,23 @@ func WithToolContext(ctx context.Context, captured ToolContext) (context.Context
 	if err := captured.Validate(); err != nil {
 		return nil, err
 	}
-	metadata := scopemcp.RequestMetaFromContext(ctx)
-	if err := metadata.Set(ToolContextMetadataKey, captured); err != nil {
-		return nil, err
-	}
-	return scopemcp.WithRequestMeta(ctx, metadata), nil
+	return context.WithValue(ctx, toolContextKey{}, captured), nil
 }
 
 func ToolContextFromContext(ctx context.Context) (ToolContext, error) {
-	encoded := scopemcp.RequestMetaFromContext(ctx)[ToolContextMetadataKey]
+	captured, ok := ctx.Value(toolContextKey{}).(ToolContext)
+	if !ok {
+		return ToolContext{}, errors.New("plugin: captured Tool context is required")
+	}
+	return captured, captured.Validate()
+}
+
+type toolContextKey struct{}
+
+// ToolContextFromMetadata admits the closed workspace projection at the MCP
+// boundary. Other request metadata cannot become workspace or callback authority.
+func ToolContextFromMetadata(metadata sdk.Meta) (ToolContext, error) {
+	encoded := metadata[ToolContextMetadataKey]
 	var captured ToolContext
 	if err := json.Unmarshal(encoded, &captured, json.RejectUnknownMembers(true)); err != nil {
 		return ToolContext{}, err

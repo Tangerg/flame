@@ -2,9 +2,10 @@ package main
 
 import (
 	json "encoding/json/v2"
-	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
 	"log"
 	"os"
+
+	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
 )
 
 func main() {

@@ -3,6 +3,8 @@
 package conversation
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"errors"
 	"fmt"
 
@@ -214,7 +216,7 @@ func (results completedToolResults) resolve(
 	}
 	return chat.ToolResult{
 		ID: call.ID, Name: call.Name,
-		Output: chat.NewTextToolOutput(fallback), IsError: true,
+		Output: toolcontract.NewTextOutput(fallback), IsError: true,
 	}, nil
 }
 

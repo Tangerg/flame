@@ -3,8 +3,10 @@ package schedule
 import (
 	"errors"
 	"fmt"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/qimu/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
@@ -19,7 +21,7 @@ type OccurrenceSnapshot struct {
 	NextRunAt  time.Time
 	SessionID  string
 	RunID      string
-	Invocation portable.Invocation
+	Invocation framemcp.Invocation
 }
 
 type Occurrence struct {
@@ -29,7 +31,7 @@ type Occurrence struct {
 	nextRunAt  time.Time
 	sessionID  string
 	runID      string
-	invocation portable.Invocation
+	invocation framemcp.Invocation
 }
 
 // The consumed revision is a claim precondition; pending work retains only the captured execution.
@@ -46,7 +48,7 @@ type Acceptance struct {
 }
 
 // Stable Session/Run identities are chosen before persistence so retry cannot open a second Run.
-func (s Schedule) Claim(sessionID, runID string, firedAt time.Time, invocation portable.Invocation) (Claim, error) {
+func (s Schedule) Claim(sessionID, runID string, firedAt time.Time, invocation framemcp.Invocation) (Claim, error) {
 	if !s.Enabled() {
 		return Claim{}, errors.New("schedule: only an enabled due schedule can form an occurrence")
 	}

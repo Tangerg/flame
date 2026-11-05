@@ -1,6 +1,10 @@
 package model
 
 import (
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
+
 	"context"
 	"errors"
 	"iter"
@@ -8,11 +12,11 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
@@ -98,7 +102,7 @@ func (m *observedEndpoint) start(ctx context.Context, request *chat.Request) (mo
 	if request.Options.Model != "" && request.Options.Model != m.selection.Model() {
 		return modelref.EndpointInvocation{}, errors.New("model: request cannot replace the captured endpoint selection")
 	}
-	caller, err := qimumcp.InvocationFromContext(ctx)
+	caller, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		return modelref.EndpointInvocation{}, err
 	}
@@ -136,14 +140,14 @@ func (m *observedEndpoint) finish(ctx context.Context, invocation modelref.Endpo
 func (m *observedEndpoint) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
 	invocation, err := m.start(ctx, request)
 	if err != nil {
-		return nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err}
+		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
 	}
 	calling, err := endpointContext(ctx, invocation)
 	var response *chat.Response
 	if err == nil {
 		response, err = m.inner.Call(calling, request.Clone())
 	} else {
-		err = &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err}
+		err = &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
 	}
 	var admitted *chat.Response
 	if response != nil {
@@ -169,7 +173,7 @@ func (m *streamedEndpoint) Stream(ctx context.Context, request *chat.Request) it
 	return func(yield func(*chat.ResponseDelta, error) bool) {
 		invocation, err := m.start(ctx, frozen)
 		if err != nil {
-			yield(nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			yield(nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
 			return
 		}
 		var accumulated chat.ResponseAccumulator
@@ -186,7 +190,7 @@ func (m *streamedEndpoint) Stream(ctx context.Context, request *chat.Request) it
 		}()
 		calling, err := endpointContext(ctx, invocation)
 		if err != nil {
-			yield(nil, errors.Join(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err}, m.finish(ctx, invocation, nil, err)))
+			yield(nil, errors.Join(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}, m.finish(ctx, invocation, nil, err)))
 			settled = true
 			return
 		}
@@ -224,5 +228,5 @@ func (m *streamedEndpoint) Stream(ctx context.Context, request *chat.Request) it
 }
 
 func endpointContext(ctx context.Context, invocation modelref.EndpointInvocation) (context.Context, error) {
-	return qimumcp.WithInvocation(ctx, portable.Invocation{ID: invocation.ID, Origin: invocation.Caller.Origin, Parent: invocation.Caller.ID, Target: portable.Target{Scope: extension.ScopeCall, Reference: invocation.ID}})
+	return pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: invocation.ID, Origin: invocation.Caller.Origin, Parent: invocation.Caller.ID, Target: portable.Target{Scope: extension.ScopeCall, Reference: invocation.ID}})
 }

@@ -3,7 +3,8 @@ import { toolCommandId } from "@flame/backend-sdk";
 import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
 import {
-  Method,
+  declareMethod,
+  type Method,
   Refusal,
   canonicalJSON,
   decodeReply,
@@ -11,8 +12,8 @@ import {
   parseJSON,
   type CallContext,
   type Invocation,
-} from "@qimu/node";
-import { isJSONNumber, projectNumber } from "@qimu/sdk/json";
+} from "@flame/backend-sdk/mcp";
+import { isJSONNumber, projectNumber } from "@frame/sdk/json";
 import type {
   CallToolResult,
   ElicitRequestParams,
@@ -368,7 +369,7 @@ export class Control {
         resource.inputs = new Map(
           surface.tools.map((tool) => [
             tool.name,
-            new Method({
+            declareMethod({
               name: `flame.computer/upstream.${tool.name}`,
               kind: "command",
               target: "installation",

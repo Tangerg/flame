@@ -6,12 +6,15 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/plugins/web/internal/wire"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/httpreq"
@@ -46,16 +49,16 @@ func newRequests(db *sql.DB, config httpreq.ClientConfig) (*requests, error) {
 	return r, nil
 }
 
-func (r *requests) execute(ctx context.Context, method, id string, input jsonvalue.Value) (wire.HTTPResponse, error) {
+func (r *requests) execute(ctx context.Context, method, id string, input framevalue.JSON) (wire.HTTPResponse, error) {
 	var invocation tool.Invocation
 	prepared, reply, err := pluginstorage.AdmitCommand(ctx, r.db, method, id, input, func(context.Context) error {
 		if r.binding == nil {
-			return &portable.Refusal{Code: "http_unconfigured", Message: "web: configure http-allowed-hosts before making HTTP requests"}
+			return &framemcp.Refusal{Code: "http_unconfigured", Message: "web: configure http-allowed-hosts before making HTTP requests"}
 		}
 		var err error
-		invocation, err = r.binding.Contract().Prepare(chat.ToolCall{ID: id, Name: "http_request", Arguments: input.String()}, nil)
+		invocation, err = r.binding.Contract().Prepare((chat.ToolCall{ID: id, Name: "http_request", Arguments: input.String()}).Request(), tool.Admission{})
 		if err != nil {
-			return &portable.Refusal{Code: "invalid_request", Message: "web: invalid HTTP request"}
+			return &framemcp.Refusal{Code: "invalid_request", Message: "web: invalid HTTP request"}
 		}
 		return nil
 	})
@@ -63,7 +66,7 @@ func (r *requests) execute(ctx context.Context, method, id string, input jsonval
 		return wire.HTTPResponse{}, err
 	}
 	if prepared == nil {
-		return qimumcp.DecodeReply[wire.HTTPResponse](reply)
+		return pluginmcp.DecodeReply[wire.HTTPResponse](reply)
 	}
 	if !prepared.NewlyAdmitted() {
 		return wire.HTTPResponse{}, pluginstorage.ErrCommandUnconfirmed
@@ -85,33 +88,33 @@ func (r *requests) execute(ctx context.Context, method, id string, input jsonval
 		if !text {
 			return wire.HTTPResponse{}, callErr
 		}
-		callErr = &portable.Refusal{Code: "request_rejected", Message: message}
+		callErr = &framemcp.Refusal{Code: "request_rejected", Message: message}
 	}
-	encoded, err := qimumcp.EncodeReply(response, callErr, nil)
+	encoded, err := pluginmcp.EncodeReply(response, callErr, nil)
 	if err != nil {
 		return wire.HTTPResponse{}, err
 	}
-	if err := prepared.SettleExternal(ctx, encoded.JSON(), nil); err != nil {
+	if err := prepared.SettleExternal(ctx, encoded.Bytes(), nil); err != nil {
 		return wire.HTTPResponse{}, err
 	}
-	return qimumcp.DecodeReply[wire.HTTPResponse](encoded.JSON())
+	return pluginmcp.DecodeReply[wire.HTTPResponse](encoded.Bytes())
 }
 
 func requestToolFailure(err error) error {
-	refusal, known := errors.AsType[*portable.Refusal](err)
+	refusal, known := errors.AsType[*framemcp.Refusal](err)
 	if !known {
 		return err
 	}
-	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: chat.NewTextToolOutput(refusal.Message), Cause: err})
+	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: tool.NewTextOutput(refusal.Message), Cause: err})
 	return errors.Join(failure, failureErr)
 }
 
-func (r *requests) receipt(ctx context.Context, input qimumcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
+func (r *requests) receipt(ctx context.Context, input pluginmcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
 	receipt, err := pluginstorage.ReadReceipt(ctx, r.db, input)
 	if err != nil || !receipt.Found {
 		return pluginsdk.ToolReceipt{}, err
 	}
-	result, err := qimumcp.DecodeReply[wire.HTTPResponse](receipt.Reply)
+	result, err := pluginmcp.DecodeReply[wire.HTTPResponse](receipt.Reply)
 	if err != nil {
 		failure, known := tool.ClassifyFailure(requestToolFailure(err))
 		if !known {
@@ -123,7 +126,7 @@ func (r *requests) receipt(ctx context.Context, input qimumcp.ReceiptRequest) (p
 	if err != nil {
 		return pluginsdk.ToolReceipt{}, err
 	}
-	output, err := chat.NewJSONToolOutput(encoded)
+	output, err := tool.NewJSONOutput(encoded)
 	if err != nil {
 		return pluginsdk.ToolReceipt{}, err
 	}

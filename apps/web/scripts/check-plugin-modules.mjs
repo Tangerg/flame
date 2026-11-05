@@ -82,7 +82,7 @@ assert.deepEqual(
 );
 console.log("[check-plugin-modules] production React and JSX named imports link successfully");
 
-const runtimeModules = ["@flame/runtime-client", "@qimu/sdk/json", "@flame/component-sdk"];
+const runtimeModules = ["@flame/runtime-client", "@frame/sdk/json", "@flame/component-sdk"];
 for (const module of runtimeModules)
   assert.equal(typeof imports[module], "string", `the public module ${module} must be mapped`);
 
@@ -109,7 +109,7 @@ const runtimeResult = await build({
         if (id !== `\0${runtimeEntry}`) return;
         return `
           import { MutationLookupError, OperationFailure } from "@flame/runtime-client";
-          import { ExactNumber, isJSONNumber, parseJSON, stringifyJSON } from "@qimu/sdk/json";
+          import { ExactNumber, isJSONNumber, parseJSON, stringifyJSON } from "@frame/sdk/json";
           import { defineComponent, isComponentDefinition, mutationSettlementIsUnknown, OperationFailure as SharedFailure } from "@flame/component-sdk";
           export function inspectHostValues() {
             const value = new ExactNumber("1.00");

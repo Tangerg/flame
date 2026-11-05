@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -15,9 +18,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	skillspec "github.com/Tangerg/scope/skills"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
@@ -33,7 +36,7 @@ type learningArchives interface {
 
 type SkillLearningConfig struct {
 	Commands     *CommandCalls
-	Callbacks    *qimumcp.Callbacks
+	Callbacks    *pluginmcp.Callbacks
 	Utility      models.AuxiliaryResolver
 	Conversation conversationReader
 	Source       learningSkillSource
@@ -42,9 +45,9 @@ type SkillLearningConfig struct {
 }
 
 type SkillLearning struct {
-	contract  *portable.Capability
+	contract  *plugincontract.Capability
 	commands  *CommandCalls
-	callbacks *qimumcp.Callbacks
+	callbacks *pluginmcp.Callbacks
 	utility   models.AuxiliaryResolver
 	history   conversationReader
 	source    learningSkillSource
@@ -113,13 +116,13 @@ func (s *SkillLearning) mine(ctx context.Context, binding plugins.ContributionBi
 	if err := request.Validate(); err != nil {
 		return err
 	}
-	state := &learningAdmission{modelCalls: make(map[string]jsonvalue.Value)}
+	state := &learningAdmission{modelCalls: make(map[string]framevalue.JSON)}
 	reply, err := invokeResolvedCommand[skilllearning.Run, skilllearning.MineResult](mining, s.commands, method.Name(), request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, session *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {
 		grant, release, err := s.grant(ctx, session, input.SessionID, state)
 		if err != nil {
 			return sdk.ParamsBase{}, nil, err
 		}
-		metadata, err := qimumcp.CallbackMetadata(grant)
+		metadata, err := pluginmcp.CallbackMetadata(grant)
 		if err != nil {
 			release()
 			return sdk.ParamsBase{}, nil, err

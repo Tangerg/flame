@@ -9,13 +9,16 @@ import (
 	"sync/atomic"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -43,7 +46,7 @@ func TestSandboxInstalledNativeToolAndTypedCommandsKeepCoreRunOwnership(t *testi
 					if err := json.Unmarshal(part.ToolResult.Output.Details, &result); err != nil {
 						t.Error(err)
 					}
-					if !part.ToolResult.IsError && result.Status == "completed" && result.ExitCode == 0 && result.Stdout.Content == "native-model-result" {
+					if !part.ToolResult.IsError && result.Status == "completed" && generatedInteger(t, result.ExitCode) == 0 && result.Stdout.Content == "native-model-result" {
 						observed.Store(true)
 					}
 					return completedTextResponse("sandbox completed"), nil
@@ -58,7 +61,7 @@ func TestSandboxInstalledNativeToolAndTypedCommandsKeepCoreRunOwnership(t *testi
 		}
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
-	})}, chatclient.Config{})
+	})})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,18 +73,18 @@ func TestSandboxInstalledNativeToolAndTypedCommandsKeepCoreRunOwnership(t *testi
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "sandbox"}
 	tools := r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	name.Store(tools[0].ModelName)
-	contracts, err := portable.ParseCapability([]byte(testsupport.SandboxCapabilityJSON))
+	contracts, err := plugincontract.ParseCapability([]byte(testsupport.SandboxCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsonvalue.Encode(testsupport.SandboxExecuteInput{Script: "printf native-typed-result; exit 5", TimeoutMillis: 3000})
+	input, err := framevalue.EncodeJSON(testsupport.SandboxExecuteInput{Script: "printf native-typed-result; exit 5", TimeoutMillis: generatedNumber(t, "3000")})
 	if err != nil {
 		t.Fatal(err)
 	}
 	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "sandbox-operations", Contract: contracts.Identity().String(), Method: testsupport.SandboxExecuteV1Method, Input: input.String(), Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
 	typed := r.must(delivery.PluginsCall, request, "native-typed").(*protocol.CallPluginResponse)
 	var result testsupport.SandboxResult
-	if err := json.Unmarshal([]byte(typed.Output), &result); err != nil || typed.Failure != nil || result.ExitCode != 5 || result.Stdout.Content != "native-typed-result" {
+	if err := json.Unmarshal([]byte(typed.Output), &result); err != nil || typed.Failure != nil || generatedInteger(t, result.ExitCode) != 5 || result.Stdout.Content != "native-typed-result" {
 		t.Fatalf("installed native callback failed: %+v %+v %v", typed, result, err)
 	}
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Native scratch work"}, "sandbox-session").(*protocol.Session)

@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"regexp"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 const (
@@ -53,6 +54,8 @@ func ParseServerName(raw string) (ServerName, error) {
 }
 
 func (n ServerName) String() string { return n.text }
+
+func (ServerName) JSONSchemaModel() any { return "" }
 
 // MarshalText and UnmarshalText let a stored declaration carry the canonical
 // spelling; decoding parses it again, so no unparsed name is ever admitted.
@@ -178,9 +181,9 @@ func (i ID) String() string {
 type Source struct {
 	connector identity.InstallationID
 	origin    Origin
-	release   integrity.Digest
-	authority integrity.Digest
-	recipient integrity.Digest
+	release   framevalue.Digest
+	authority framevalue.Digest
+	recipient framevalue.Digest
 }
 
 func UserSource() Source { return Source{origin: UserOrigin()} }
@@ -191,7 +194,7 @@ func ConnectorSource(id identity.InstallationID) (Source, error) {
 	}
 	return Source{origin: UserOrigin(), connector: id}, nil
 }
-func InstallationSource(installation identity.InstallationID, release, authority, recipient integrity.Digest) (Source, error) {
+func InstallationSource(installation identity.InstallationID, release, authority, recipient framevalue.Digest) (Source, error) {
 	origin, err := InstallationOrigin(installation)
 	if err != nil {
 		return Source{}, fmt.Errorf("mcpserver: installation source: %w", err)
@@ -216,7 +219,7 @@ func (s Source) ID(name ServerName) ID { return ID{origin: s.origin, name: name}
 
 // Release reports the admitted release and tool authority of an installation
 // source.
-func (s Source) Release() (release, authority integrity.Digest, found bool) {
+func (s Source) Release() (release, authority framevalue.Digest, found bool) {
 	return s.release, s.authority, s.origin.kind == OriginInstallation
 }
 

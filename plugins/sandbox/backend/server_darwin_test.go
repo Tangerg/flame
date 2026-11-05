@@ -8,15 +8,18 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
 	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T) {
@@ -33,7 +36,7 @@ func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "sandbox-test", Version: "1"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -48,7 +51,7 @@ func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T
 	}
 	defer session.Close()
 	contracts, _ := rpc.NewContracts()
-	exported, err := qimumcp.ResolveCapability(t.Context(), session, "sandbox", contracts.Capability)
+	exported, err := pluginmcp.ResolveCapability(t.Context(), session, "sandbox", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,8 +60,8 @@ func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T
 		t.Fatal(err)
 	}
 	input := wire.ExecuteInput{Script: "printf sandbox-result; exit 3", TimeoutMillis: 3000}
-	encoded, _ := jsonvalue.Encode(input)
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "typed", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "sandbox"}})
+	encoded, _ := framevalue.EncodeJSON(input)
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "typed", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "sandbox"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +70,7 @@ func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T
 		t.Fatal(err)
 	}
 	meta := make(sdk.Meta)
-	if err := meta.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: "model", Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "sandbox"}}); err != nil {
+	if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model", Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "sandbox"}}); err != nil {
 		t.Fatal(err)
 	}
 	model, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: executeTool, Arguments: input, Meta: meta})
@@ -75,7 +78,7 @@ func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T
 		t.Fatalf("model entry lost original result: %+v %v", model, err)
 	}
 	raw, err := json.Marshal(model.StructuredContent)
-	projected, parseErr := jsonvalue.Parse(raw)
+	projected, parseErr := framevalue.ParseJSON(raw)
 	if err != nil || parseErr != nil || projected != typed || calls != 1 {
 		t.Fatalf("model entry did not project the typed owner result: %s %s %v %v calls=%d", typed.String(), projected.String(), err, parseErr, calls)
 	}
@@ -83,7 +86,7 @@ func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T
 	if err != nil || receipt == nil || calls != 1 {
 		t.Fatalf("Tool receipt replayed execution or lost evidence: %+v %v calls=%d", receipt, err, calls)
 	}
-	stored, err := jsonvalue.Parse(receipt.Details)
+	stored, err := framevalue.ParseJSON(receipt.Details)
 	if err != nil || stored != typed {
 		t.Fatalf("Tool recovery changed completed output: %s %v", stored.String(), err)
 	}

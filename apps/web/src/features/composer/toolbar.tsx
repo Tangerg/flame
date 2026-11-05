@@ -190,22 +190,22 @@ function ApprovalModePill() {
 export const composerToolbar = definePlugin({
   name: "flame.builtin.composer-toolbar",
   setup(ctx) {
-    contributeLayout(ctx, "composer.toolbar.start", {
+    contributeLayout(ctx.contributions, "composer.toolbar.start", {
       id: "add",
       order: 0,
       component: ContextMenuButton,
     });
-    contributeLayout(ctx, "composer.toolbar.start", {
+    contributeLayout(ctx.contributions, "composer.toolbar.start", {
       id: "approval",
       order: 3,
       component: ApprovalModePill,
     });
-    contributeLayout(ctx, "composer.toolbar.start", {
+    contributeLayout(ctx.contributions, "composer.toolbar.start", {
       id: "model",
       order: 1,
       component: ModelPicker,
     });
-    contributeLayout(ctx, "composer.toolbar.start", {
+    contributeLayout(ctx.contributions, "composer.toolbar.start", {
       id: "reasoning-effort",
       order: 2,
       component: ReasoningEffortPill,

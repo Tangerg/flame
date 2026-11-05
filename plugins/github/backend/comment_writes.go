@@ -101,7 +101,7 @@ func (c *connector) createReviewComment(ctx context.Context, input contractwire.
 	if err != nil {
 		return contractwire.ReviewComment{}, err
 	}
-	if !commitSHA.MatchString(input.CommitID) {
+	if !commitSHA.MatchString(string(input.CommitID)) {
 		return contractwire.ReviewComment{}, refused("invalid_input", "an exact inspected commit SHA is required")
 	}
 	location, err := inlineComment(input.InlineComment)
@@ -111,9 +111,9 @@ func (c *connector) createReviewComment(ctx context.Context, input contractwire.
 	payload := struct {
 		CommitID string `json:"commit_id"`
 		inlineCommentWire
-	}{strings.ToLower(input.CommitID), location}
+	}{strings.ToLower(string(input.CommitID)), location}
 	return writeValue(ctx, c, http.MethodPost, fmt.Sprintf("%s/pulls/%d/comments", repository.apiPath(), input.Number), payload, http.StatusCreated, func(wire reviewCommentWire) (contractwire.ReviewComment, error) {
-		if !strings.EqualFold(wire.CommitID, input.CommitID) || wire.Path != input.Path {
+		if !strings.EqualFold(wire.CommitID, string(input.CommitID)) || wire.Path != input.Path {
 			return contractwire.ReviewComment{}, errors.New("github: created review comment differs from inspected commit or path")
 		}
 		return wire.admit()

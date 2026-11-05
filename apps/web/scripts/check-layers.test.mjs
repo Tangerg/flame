@@ -54,7 +54,7 @@ test("features publish contracts while keeping their implementations private", (
 });
 
 test("keeps pure JSON external without weakening layer guards", () => {
-  const jsonEntry = fileURLToPath(import.meta.resolve("@qimu/sdk/json"));
+  const jsonEntry = fileURLToPath(import.meta.resolve("@frame/sdk/json"));
   const jsonSource = 'export { parseJSON } from "@runtime-json";';
   fixture(
     {
@@ -68,7 +68,7 @@ test("keeps pure JSON external without weakening layer guards", () => {
         include: ["src"],
       }),
       "src/foundation/data.ts": jsonSource,
-      "src/foundation/direct.ts": 'export { parseJSON } from "@qimu/sdk/json";',
+      "src/foundation/direct.ts": 'export { parseJSON } from "@frame/sdk/json";',
     },
     (root) => {
       const check = () =>

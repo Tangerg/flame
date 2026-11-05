@@ -1,14 +1,17 @@
 package terminal
 
 import (
+	"github.com/Tangerg/oolong/ui/core/content"
 	"strings"
 
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/layout"
-	"github.com/Tangerg/oolong/core/text"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/text"
+	"github.com/Tangerg/oolong/ui/kit"
 )
+
+type transcriptEntryID uint64
 
 const transcriptEntryInset = 2
 
@@ -16,19 +19,23 @@ const transcriptEntryInset = 2
 // wrapped block remains responsible for its content; this wrapper owns only the
 // stable selection rail used by transcript-focused keyboard navigation.
 type transcriptEntry struct {
-	theme    kit.Theme
-	glyphs   kit.Glyphs
-	content  headless.Block
-	selected bool
-	focused  bool
+	theme      kit.Theme
+	glyphs     kit.Glyphs
+	content    base.Block
+	selected   bool
+	focused    bool
+	settled    bool
+	projection *transcriptEntry
+	document   *content.StreamDocument
+	nativeID   base.BlockID
 }
 
 var (
-	_ headless.Block         = (*transcriptEntry)(nil)
-	_ headless.TextProjector = (*transcriptEntry)(nil)
+	_ base.Block         = (*transcriptEntry)(nil)
+	_ base.TextProjector = (*transcriptEntry)(nil)
 )
 
-func newTranscriptEntry(theme kit.Theme, glyphs kit.Glyphs, content headless.Block) *transcriptEntry {
+func newTranscriptEntry(theme kit.Theme, glyphs kit.Glyphs, content base.Block) *transcriptEntry {
 	return &transcriptEntry{theme: theme, glyphs: glyphs, content: content}
 }
 
@@ -63,7 +70,7 @@ func (t *transcriptEntry) Draw(view grid.View) {
 func (t *transcriptEntry) Rows(width int) []text.Row {
 	height := t.HeightForWidth(width)
 	rows := make([]text.Row, height)
-	copyable, ok := t.content.(headless.TextProjector)
+	copyable, ok := t.content.(base.TextProjector)
 	if !ok {
 		return rows
 	}

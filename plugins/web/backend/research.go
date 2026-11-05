@@ -6,9 +6,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/instant"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
 	"github.com/Tangerg/flame/plugins/web/internal/wire"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/tools/web"
 )
 
@@ -33,35 +36,42 @@ func newResearch(store *store, fetch fetchPage, search searchWeb) (*research, er
 	return &research{store: store, fetch: fetch, search: search}, nil
 }
 
-func (r *research) searchWeb(ctx context.Context, input web.SearchRequest) (web.SearchResponse, error) {
+func (r *research) searchWeb(ctx context.Context, input web.SearchRequest) (wire.SearchResponse, error) {
 	if len(input.Query) > maxQueryBytes {
-		return web.SearchResponse{}, &portable.Refusal{Code: "invalid_request", Message: fmt.Sprintf("web: search query exceeds %d bytes", maxQueryBytes)}
+		return wire.SearchResponse{}, &framemcp.Refusal{Code: "invalid_request", Message: fmt.Sprintf("web: search query exceeds %d bytes", maxQueryBytes)}
 	}
 	prepared, err := input.Prepare()
 	if err != nil {
-		return web.SearchResponse{}, errors.Join(&portable.Refusal{Code: "invalid_request", Message: "web: invalid search request"}, err)
+		return wire.SearchResponse{}, errors.Join(&framemcp.Refusal{Code: "invalid_request", Message: "web: invalid search request"}, err)
 	}
 	response, err := r.search(ctx, prepared)
 	if err != nil {
-		return web.SearchResponse{}, err
+		return wire.SearchResponse{}, err
 	}
 	if err := response.ValidateFor(prepared); err != nil {
-		return web.SearchResponse{}, err
+		return wire.SearchResponse{}, err
 	}
 	encoded, err := json.Marshal(response)
 	if err != nil {
-		return web.SearchResponse{}, err
+		return wire.SearchResponse{}, err
 	}
 	if len(encoded) > maxSearchResponseBytes {
-		return web.SearchResponse{}, &portable.Refusal{Code: "response_too_large", Message: fmt.Sprintf("web: search result exceeds %d KiB", maxSearchResponseBytes>>10)}
+		return wire.SearchResponse{}, &framemcp.Refusal{Code: "response_too_large", Message: fmt.Sprintf("web: search result exceeds %d KiB", maxSearchResponseBytes>>10)}
 	}
-	return *response, nil
+	result := wire.SearchResponse{Query: response.Query, Results: make([]wire.SearchResult, len(response.Results))}
+	for index, source := range response.Results {
+		result.Results[index] = wire.SearchResult{
+			Title: source.Title, URL: source.URL, Snippet: source.Snippet,
+			FaviconURL: source.FaviconURL, PublishedTime: instant.Timestamp{Time: source.PublishedTime}, Source: source.Source,
+		}
+	}
+	return result, nil
 }
 
 func (r *research) fetchPage(ctx context.Context, input web.FetchRequest) (capture.Page, error) {
 	prepared, err := input.Prepare()
 	if err != nil {
-		return capture.Page{}, errors.Join(&portable.Refusal{Code: "invalid_request", Message: "web: invalid fetch request"}, err)
+		return capture.Page{}, errors.Join(&framemcp.Refusal{Code: "invalid_request", Message: "web: invalid fetch request"}, err)
 	}
 	if err := capture.ValidateURL(prepared.URL); err != nil {
 		return capture.Page{}, err

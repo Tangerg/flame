@@ -23,6 +23,6 @@ Generated from the feature's Go-owned method contracts.
 | `flame.deliverables/upload.v1` | command | installation | Reserve a bounded native-file upload for the exact size and SHA-256. No host path or URL is read. |
 | `flame.deliverables/uploads.v1` | query | installation | Read admitted staging uploads and their current acknowledged offsets. Reselect only bytes matching the declared SHA-256 to resume. |
 
-Capability `flame.deliverables.v1` uses `collection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.qimu/portable/1`.
+Capability `flame.deliverables.v1` exposes the declared methods. Required backend protocol: `io.github.tangerg.frame/portable/1`.
 
 `capability.generated.json` preserves the canonical callable contract; `schema.json` and the method references are presentation projections.

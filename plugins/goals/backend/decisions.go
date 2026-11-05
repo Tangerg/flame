@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
 	"strings"
+
+	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
 
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 )

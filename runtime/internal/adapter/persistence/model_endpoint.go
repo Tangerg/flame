@@ -16,9 +16,8 @@ import (
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/qimu/sqlite"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 )
@@ -28,7 +27,7 @@ const endpointObservationColumns = `call_id,started_at,endpoint_json,state,finis
 type storedEndpointInvocation struct {
 	ID        string                `json:"id"`
 	Kind      modelref.EndpointKind `json:"kind"`
-	Caller    portable.Invocation   `json:"caller"`
+	Caller    framemcp.Invocation   `json:"caller"`
 	Provider  string                `json:"provider"`
 	Model     string                `json:"model"`
 	SessionID string                `json:"sessionId,omitzero"`
@@ -47,7 +46,6 @@ func storeEndpointInvocation(value modelref.EndpointInvocation) storedEndpointIn
 	}
 	return stored
 }
-
 func (s storedEndpointInvocation) invocation() (modelref.EndpointInvocation, error) {
 	value := modelref.EndpointInvocation{ID: s.ID, Caller: s.Caller, Provider: s.Provider, Model: s.Model, SessionID: s.SessionID, StartedAt: s.StartedAt}
 	switch {
@@ -60,19 +58,17 @@ func (s storedEndpointInvocation) invocation() (modelref.EndpointInvocation, err
 	}
 	return value, nil
 }
-
 func encodeEndpointInvocation(value modelref.EndpointInvocation) ([]byte, error) {
 	data, err := encodeStoredJSON(storeEndpointInvocation(value))
 	if err != nil {
 		return nil, err
 	}
-	input, err := jsonvalue.Parse(data)
+	input, err := framevalue.ParseJSON(data)
 	if err != nil {
 		return nil, err
 	}
 	return []byte(input.String()), nil
 }
-
 func encodeEndpointOutcome(outcome modelref.EndpointOutcome) (*string, error) {
 	var response any
 	switch known := outcome.Response.(type) {
@@ -87,7 +83,7 @@ func encodeEndpointOutcome(outcome modelref.EndpointOutcome) (*string, error) {
 	if err != nil {
 		return nil, err
 	}
-	value, err := jsonvalue.Parse(data)
+	value, err := framevalue.ParseJSON(data)
 	if err != nil {
 		return nil, err
 	}
@@ -97,122 +93,122 @@ func encodeEndpointOutcome(outcome modelref.EndpointOutcome) (*string, error) {
 // Caller IDs and wire parents describe ancestry, not execution authority. The
 // explicit logical owner supplies a frozen association; absence means no Run.
 func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invocation modelref.EndpointInvocation, ownerCallID string) error {
-	if err := invocation.Validate(); err != nil {
-		return err
-	}
-	if err := instant.Validate(invocation.StartedAt); err != nil {
-		return err
-	}
-	encoded, err := encodeEndpointInvocation(invocation)
-	if err != nil {
-		return err
-	}
-	var session any
-	if invocation.SessionID != "" {
-		session = invocation.SessionID
-	}
-
-	scope := `SELECT ? session_id, NULL run_id, NULL segment_id`
-	args := []any{session}
-	if ownerCallID != "" {
-		if err := runs.ValidateInvocation(ownerCallID); err != nil {
+	return m.db.write(ctx, func(ctx context.Context) error {
+		if err := invocation.Validate(); err != nil {
 			return err
 		}
-		if invocation.SessionID == "" {
-			return errors.New("sqlite: endpoint execution owner requires its captured Session")
+		if err := instant.Validate(invocation.StartedAt); err != nil {
+			return err
 		}
-		scope = `SELECT owner.session_id, owner.run_id, owner.segment_id FROM (
+		encoded, err := encodeEndpointInvocation(invocation)
+		if err != nil {
+			return err
+		}
+		var session any
+		if invocation.SessionID != "" {
+			session = invocation.SessionID
+		}
+		scope := `SELECT ? session_id, NULL run_id, NULL segment_id`
+		args := []any{session}
+		if ownerCallID != "" {
+			if err := runs.ValidateInvocation(ownerCallID); err != nil {
+				return err
+			}
+			if invocation.SessionID == "" {
+				return errors.New("sqlite: endpoint execution owner requires its captured Session")
+			}
+			scope = `SELECT owner.session_id, owner.run_id, owner.segment_id FROM (
 			SELECT session_id,run_id,segment_id,started_at FROM model_invocations
 			WHERE call_id=? AND endpoint_json IS NULL AND state=?
 			UNION ALL SELECT session_id,run_id,segment_id,started_at FROM tool_invocations
 			WHERE call_id=? AND state=?
 		) owner JOIN runs ON runs.run_id=owner.run_id AND runs.session_id=owner.session_id
 		WHERE runs.state=? AND runs.active_segment_id=owner.segment_id AND owner.started_at<=?`
-		args = []any{ownerCallID, string(modelref.InvocationStarted), ownerCallID, string(runs.ToolInvocationStarted), string(rundomain.Running), invocation.StartedAt.UTC().UnixNano()}
-	}
-	query := `INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,endpoint_json,endpoint_kind)
+			args = []any{ownerCallID, string(modelref.InvocationStarted), ownerCallID, string(runs.ToolInvocationStarted), string(rundomain.Running), invocation.StartedAt.UTC().UnixNano()}
+		}
+		query := `INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,endpoint_json,endpoint_kind)
  SELECT ?,scope.session_id,scope.run_id,scope.segment_id,?,?,?,? FROM (` + scope + `) scope
  WHERE (scope.session_id IS NULL OR EXISTS(SELECT 1 FROM sessions WHERE id=scope.session_id))
  AND (? IS NULL OR scope.session_id=?)
  AND NOT EXISTS(SELECT 1 FROM model_invocations WHERE endpoint_json IS NULL AND call_id=? AND call_id!=?)
  AND NOT EXISTS(SELECT 1 FROM tool_invocations WHERE call_id=?)`
-	parameters := []any{invocation.ID, modelref.InvocationStarted, invocation.StartedAt.UTC().UnixNano(), string(encoded), string(invocation.Kind())}
-	parameters = append(parameters, args...)
-	parameters = append(parameters, session, session, invocation.Caller.ID, ownerCallID, invocation.Caller.ID)
-	result, err := sqlite.Connection(ctx, m.db).ExecContext(ctx, query, parameters...)
-	if err != nil {
-		return err
-	}
-	changed, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if changed != 1 {
-		return errors.New("sqlite: endpoint has no matching active execution owner or Session")
-	}
-	return nil
+		parameters := []any{invocation.ID, modelref.InvocationStarted, invocation.StartedAt.UTC().UnixNano(), string(encoded), string(invocation.Kind())}
+		parameters = append(parameters, args...)
+		parameters = append(parameters, session, session, invocation.Caller.ID, ownerCallID, invocation.Caller.ID)
+		result, err := m.db.connection(ctx).ExecContext(ctx, query, parameters...)
+		if err != nil {
+			return err
+		}
+		changed, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if changed != 1 {
+			return errors.New("sqlite: endpoint has no matching active execution owner or Session")
+		}
+		return nil
+	})
 }
-
 func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, invocation modelref.EndpointInvocation, outcome modelref.EndpointOutcome) error {
-	state, err := outcome.State(invocation)
-	if err != nil {
-		return err
-	}
-	response, err := encodeEndpointOutcome(outcome)
-	if err != nil {
-		return err
-	}
-	usage := outcome.ReportedUsage()
-	encodedUsage, err := encodeModelInvocationUsage(usage)
-	if err != nil {
-		return err
-	}
-	encoded, err := encodeEndpointInvocation(invocation)
-	if err != nil {
-		return err
-	}
-	result, err := sqlite.Connection(ctx, m.db).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=?,known_response=?,usage=?,endpoint_failure=?,endpoint_cost_nano_usd=?
-		WHERE call_id=? AND state=? AND started_at=? AND endpoint_json=?`, state, outcome.FinishedAt.UTC().UnixNano(), response, encodedUsage, outcome.Failure, outcome.Cost.OptionalNanoUSD(),
-		invocation.ID, modelref.InvocationStarted, invocation.StartedAt.UTC().UnixNano(), string(encoded))
-	if err != nil {
-		return err
-	}
-	changed, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if changed != 1 {
-		return errors.New("sqlite: endpoint observation is no longer open")
-	}
-	return nil
+	return m.db.write(ctx, func(ctx context.Context) error {
+		state, err := outcome.State(invocation)
+		if err != nil {
+			return err
+		}
+		response, err := encodeEndpointOutcome(outcome)
+		if err != nil {
+			return err
+		}
+		usage := outcome.ReportedUsage()
+		encodedUsage, err := encodeModelInvocationUsage(usage)
+		if err != nil {
+			return err
+		}
+		encoded, err := encodeEndpointInvocation(invocation)
+		if err != nil {
+			return err
+		}
+		result, err := m.db.connection(ctx).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=?,known_response=?,usage=?,endpoint_failure=?,endpoint_cost_nano_usd=?
+		WHERE call_id=? AND state=? AND started_at=? AND endpoint_json=?`, state, outcome.FinishedAt.UTC().UnixNano(), response, encodedUsage, outcome.Failure, outcome.Cost.OptionalNanoUSD(), invocation.ID, modelref.InvocationStarted, invocation.StartedAt.UTC().UnixNano(), string(encoded))
+		if err != nil {
+			return err
+		}
+		changed, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if changed != 1 {
+			return errors.New("sqlite: endpoint observation is no longer open")
+		}
+		return nil
+	})
 }
-
 func (m *ModelInvocationStore) PageEndpointInvocations(ctx context.Context, parent string, before *modelref.InvocationPageAnchor, limit int) ([]modelref.EndpointObservation, error) {
-	query := `SELECT ` + endpointObservationColumns + ` FROM model_invocations WHERE endpoint_json IS NOT NULL AND (json_extract(endpoint_json,'$.caller.id')=? OR json_extract(endpoint_json,'$.caller.parent')=?)`
-	args := []any{parent, parent}
-	if before != nil {
-		query += ` AND (started_at,call_id)<(?,?)`
-		args = append(args, before.StartedAt().UnixNano(), before.ID())
-	}
-	query += ` ORDER BY started_at DESC,call_id DESC LIMIT ?`
-	args = append(args, limit)
-	rows, err := sqlite.Connection(ctx, m.db).QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	values := []modelref.EndpointObservation{}
-	for rows.Next() {
-		value, err := scanEndpointObservation(rows, parent)
+	return scopedValue(ctx, m.db.read, func(ctx context.Context) ([]modelref.EndpointObservation, error) {
+		query := `SELECT ` + endpointObservationColumns + ` FROM model_invocations WHERE endpoint_json IS NOT NULL AND (json_extract(endpoint_json,'$.caller.id')=? OR json_extract(endpoint_json,'$.caller.parent')=?)`
+		args := []any{parent, parent}
+		if before != nil {
+			query += ` AND (started_at,call_id)<(?,?)`
+			args = append(args, before.StartedAt().UnixNano(), before.ID())
+		}
+		query += ` ORDER BY started_at DESC,call_id DESC LIMIT ?`
+		args = append(args, limit)
+		rows, err := m.db.connection(ctx).QueryContext(ctx, query, args...)
 		if err != nil {
 			return nil, err
 		}
-
-		values = append(values, value)
-	}
-	return values, rows.Err()
+		defer rows.Close()
+		values := []modelref.EndpointObservation{}
+		for rows.Next() {
+			value, err := scanEndpointObservation(rows, parent)
+			if err != nil {
+				return nil, err
+			}
+			values = append(values, value)
+		}
+		return values, rows.Err()
+	})
 }
-
 func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObservation, error) {
 	var err error
 	var value modelref.EndpointRecord
@@ -230,7 +226,7 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 	if value.Cost, err = accounting.CostFromOptionalNanoUSD(costNanoUSD); err != nil {
 		return modelref.EndpointObservation{}, fmt.Errorf("sqlite: decode model invocation cost: %w", err)
 	}
-	value.InvocationJSON, err = jsonvalue.Parse([]byte(encoded))
+	value.InvocationJSON, err = framevalue.ParseJSON([]byte(encoded))
 	if err != nil {
 		return modelref.EndpointObservation{}, err
 	}
@@ -253,7 +249,7 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 	if admission.Kind == modelref.EndpointEmbedding {
 		requestField = "embedding"
 	}
-	value.RequestJSON, err = jsonvalue.Parse(fields[requestField])
+	value.RequestJSON, err = framevalue.ParseJSON(fields[requestField])
 	if err != nil {
 		return modelref.EndpointObservation{}, err
 	}
@@ -261,7 +257,7 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 		return modelref.EndpointObservation{}, errors.New("sqlite: endpoint observation identity differs from its row")
 	}
 	if response != nil {
-		value.ResponseJSON, err = jsonvalue.Parse([]byte(*response))
+		value.ResponseJSON, err = framevalue.ParseJSON([]byte(*response))
 		if err != nil {
 			return modelref.EndpointObservation{}, err
 		}
@@ -277,112 +273,117 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 	}
 	return modelref.RestoreEndpointObservation(value)
 }
-
 func (m *ModelInvocationStore) ReconcileEndpointInvocations(ctx context.Context, settledAt time.Time) error {
-	if err := instant.Validate(settledAt); err != nil {
+	return m.db.write(ctx, func(ctx context.Context) error {
+		if err := instant.Validate(settledAt); err != nil {
+			return err
+		}
+		_, err := m.db.connection(ctx).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=MAX(started_at,?),endpoint_failure='process stopped before endpoint completion was recorded' WHERE endpoint_json IS NOT NULL AND state=?`, modelref.InvocationUnknown, settledAt.UTC().UnixNano(), modelref.InvocationStarted)
 		return err
-	}
-	_, err := sqlite.Connection(ctx, m.db).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=MAX(started_at,?),endpoint_failure='process stopped before endpoint completion was recorded' WHERE endpoint_json IS NOT NULL AND state=?`, modelref.InvocationUnknown, settledAt.UTC().UnixNano(), modelref.InvocationStarted)
-	return err
+	})
 }
-
 func (m *ModelInvocationStore) EndpointForCaller(ctx context.Context, caller string) (modelref.EndpointObservation, bool, error) {
-	row := sqlite.Connection(ctx, m.db).QueryRowContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND json_extract(endpoint_json,'$.caller.id')=?`, caller)
-	value, err := scanEndpointObservation(row, caller)
-	if errors.Is(err, sql.ErrNoRows) {
-		return modelref.EndpointObservation{}, false, nil
-	}
-	return value, err == nil, err
+	return scopedPair(ctx, m.db.read, func(ctx context.Context) (modelref.EndpointObservation, bool, error) {
+		row := m.db.connection(ctx).QueryRowContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND json_extract(endpoint_json,'$.caller.id')=?`, caller)
+		value, err := scanEndpointObservation(row, caller)
+		if errors.Is(err, sql.ErrNoRows) {
+			return modelref.EndpointObservation{}, false, nil
+		}
+		return value, err == nil, err
+	})
 }
 
 // ListSessionEndpoints materializes evidence after the export caller checks
 // source limits in the same transaction. Ordinary inspection uses bounded pages.
 func (m *ModelInvocationStore) ListSessionEndpoints(ctx context.Context, sessionID string) ([]modelref.EndpointObservation, error) {
-	if err := identity.ValidateSession(sessionID); err != nil {
-		return nil, err
-	}
-	rows, err := sqlite.Connection(ctx, m.db).QueryContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND session_id=? ORDER BY started_at,call_id`, sessionID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	values := []modelref.EndpointObservation{}
-	for rows.Next() {
-		value, err := scanEndpointObservation(rows, "")
+	return scopedValue(ctx, m.db.read, func(ctx context.Context) ([]modelref.EndpointObservation, error) {
+		if err := identity.ValidateSession(sessionID); err != nil {
+			return nil, err
+		}
+		rows, err := m.db.connection(ctx).QueryContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND session_id=? ORDER BY started_at,call_id`, sessionID)
 		if err != nil {
 			return nil, err
 		}
-		values = append(values, value)
-	}
-	return values, rows.Err()
+		defer rows.Close()
+		values := []modelref.EndpointObservation{}
+		for rows.Next() {
+			value, err := scanEndpointObservation(rows, "")
+			if err != nil {
+				return nil, err
+			}
+			values = append(values, value)
+		}
+		return values, rows.Err()
+	})
 }
-
 func (m *ModelInvocationStore) trajectoryEndpoint(ctx context.Context, sessionID, id string) (modelref.EndpointObservation, error) {
-	row := sqlite.Connection(ctx, m.db).QueryRowContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND session_id=? AND call_id=?`, sessionID, id)
-	return scanEndpointObservation(row, "")
+	return scopedValue(ctx, m.db.read, func(ctx context.Context) (modelref.EndpointObservation, error) {
+		row := m.db.connection(ctx).QueryRowContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND session_id=? AND call_id=?`, sessionID, id)
+		return scanEndpointObservation(row, "")
+	})
 }
 
 // RecoverModelInvocation projects known physical evidence into a failed logical
 // attempt, or closes an unobserved attempt as unknown. The source CAS joins the
 // existing Run recovery transaction and never permits replay or continuation.
 func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessionID, runID, segmentID, callID string, startedAt, finishedAt time.Time, source *modelref.EndpointObservation, purpose rundomain.ModelCallPurpose) error {
-	if err := purpose.Validate(); err != nil {
-		return err
-	}
-	var actualPurpose string
-	if err := sqlite.Connection(ctx, m.db).QueryRowContext(ctx, `SELECT logical_purpose FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL`, callID).Scan(&actualPurpose); err != nil {
-		return err
-	}
-	if actualPurpose != purpose.String() {
-		return errors.New("sqlite: recovered model purpose changed")
-	}
-	if source != nil {
-		record := source.Snapshot()
-		if record.RunID != runID || record.SessionID != sessionID || record.SegmentID != segmentID || record.Invocation.Caller.ID != callID || record.Invocation.StartedAt.Before(startedAt) || record.FinishedAt.After(finishedAt) {
-			return errors.New("sqlite: recovered endpoint differs from original call")
-		}
-		if err := m.validateEndpointProjection(ctx, *source); err != nil {
+	return m.db.write(ctx, func(ctx context.Context) error {
+		if err := purpose.Validate(); err != nil {
 			return err
 		}
-	}
-	if source == nil || !source.HasResponse() {
-		return m.MarkModelInvocationUnknown(ctx, sessionID, runID, segmentID, callID, startedAt, finishedAt)
-	}
-	if err := validateModelInvocationIdentity(sessionID, runID, segmentID, callID); err != nil {
-		return err
-	}
-	if err := instant.Validate(startedAt, finishedAt); err != nil {
-		return err
-	}
-	record := source.Snapshot()
-	if err := record.ResponseJSON.Validate(); err != nil {
-		return err
-	}
-	if err := record.InvocationJSON.Validate(); err != nil {
-		return err
-	}
-	usage, err := encodeModelInvocationUsage(record.Usage)
-	if err != nil {
-		return err
-	}
-	result, err := sqlite.Connection(ctx, m.db).ExecContext(ctx, `WITH evidence AS (
+		var actualPurpose string
+		if err := m.db.connection(ctx).QueryRowContext(ctx, `SELECT logical_purpose FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL`, callID).Scan(&actualPurpose); err != nil {
+			return err
+		}
+		if actualPurpose != purpose.String() {
+			return errors.New("sqlite: recovered model purpose changed")
+		}
+		if source != nil {
+			record := source.Snapshot()
+			if record.RunID != runID || record.SessionID != sessionID || record.SegmentID != segmentID || record.Invocation.Caller.ID != callID || record.Invocation.StartedAt.Before(startedAt) || record.FinishedAt.After(finishedAt) {
+				return errors.New("sqlite: recovered endpoint differs from original call")
+			}
+			if err := m.validateEndpointProjection(ctx, *source); err != nil {
+				return err
+			}
+		}
+		if source == nil || !source.HasResponse() {
+			return m.MarkModelInvocationUnknown(ctx, sessionID, runID, segmentID, callID, startedAt, finishedAt)
+		}
+		if err := validateModelInvocationIdentity(sessionID, runID, segmentID, callID); err != nil {
+			return err
+		}
+		if err := instant.Validate(startedAt, finishedAt); err != nil {
+			return err
+		}
+		record := source.Snapshot()
+		if err := record.ResponseJSON.Validate(); err != nil {
+			return err
+		}
+		if err := record.InvocationJSON.Validate(); err != nil {
+			return err
+		}
+		usage, err := encodeModelInvocationUsage(record.Usage)
+		if err != nil {
+			return err
+		}
+		result, err := m.db.connection(ctx).ExecContext(ctx, `WITH evidence AS (
 	 SELECT usage,known_response FROM model_invocations WHERE call_id=? AND endpoint_json=? AND session_id=? AND run_id=? AND segment_id=?
 	 AND state=? AND finished_at=? AND known_response=? AND endpoint_cost_nano_usd IS ? AND endpoint_failure=? AND usage IS ?)
 	 UPDATE model_invocations SET state=?,finished_at=?,usage=(SELECT usage FROM evidence),known_response=(SELECT known_response FROM evidence)
-	 WHERE call_id=? AND session_id=? AND run_id=? AND segment_id=? AND state=? AND started_at=? AND endpoint_json IS NULL AND EXISTS(SELECT 1 FROM evidence)`,
-		record.Invocation.ID, record.InvocationJSON.String(), sessionID, runID, segmentID, record.State, record.FinishedAt.UTC().UnixNano(), record.ResponseJSON.String(), record.Cost.OptionalNanoUSD(), record.Failure, usage,
-		string(modelref.InvocationFailed), finishedAt.UTC().UnixNano(), callID, sessionID, runID, segmentID, string(modelref.InvocationStarted), startedAt.UTC().UnixNano())
-	if err != nil {
-		return err
-	}
-	changed, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if changed != 1 {
-		return errors.New("sqlite: recovered endpoint or logical call changed before settlement")
-	}
-	return nil
+	 WHERE call_id=? AND session_id=? AND run_id=? AND segment_id=? AND state=? AND started_at=? AND endpoint_json IS NULL AND EXISTS(SELECT 1 FROM evidence)`, record.Invocation.ID, record.InvocationJSON.String(), sessionID, runID, segmentID, record.State, record.FinishedAt.UTC().UnixNano(), record.ResponseJSON.String(), record.Cost.OptionalNanoUSD(), record.Failure, usage, string(modelref.InvocationFailed), finishedAt.UTC().UnixNano(), callID, sessionID, runID, segmentID, string(modelref.InvocationStarted), startedAt.UTC().UnixNano())
+		if err != nil {
+			return err
+		}
+		changed, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if changed != 1 {
+			return errors.New("sqlite: recovered endpoint or logical call changed before settlement")
+		}
+		return nil
+	})
 }
 
 // VisitEndpointInvocations reads one coherent retained source snapshot with one
@@ -402,10 +403,10 @@ func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, ses
 			return err
 		}
 	}
-	return sqlite.RunReadSnapshot(ctx, m.db, func(ctx context.Context) error {
+	return m.db.read(ctx, func(ctx context.Context) error {
 		if sessionID != "" {
 			var exists bool
-			if err := sqlite.Connection(ctx, m.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sessions WHERE id=?)`, sessionID).Scan(&exists); err != nil {
+			if err := m.db.connection(ctx).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sessions WHERE id=?)`, sessionID).Scan(&exists); err != nil {
 				return err
 			}
 			if !exists {
@@ -424,7 +425,7 @@ func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, ses
 		}
 		ownership += `)`
 		var invalid bool
-		if err := sqlite.Connection(ctx, m.db).QueryRowContext(ctx, ownership, ownershipArgs...).Scan(&invalid); err != nil {
+		if err := m.db.connection(ctx).QueryRowContext(ctx, ownership, ownershipArgs...).Scan(&invalid); err != nil {
 			return err
 		}
 		if invalid {
@@ -441,7 +442,7 @@ func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, ses
 			args = append(args, since.UTC().UnixNano())
 		}
 		query += ` ORDER BY started_at,call_id`
-		rows, err := sqlite.Connection(ctx, m.db).QueryContext(ctx, query, args...)
+		rows, err := m.db.connection(ctx).QueryContext(ctx, query, args...)
 		if err != nil {
 			return err
 		}
@@ -462,23 +463,25 @@ func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, ses
 // ListIndependentEndpoints returns retained descendant attempts not projected
 // through a logical Model receipt. Active Run recovery owns its one accrual.
 func (m *ModelInvocationStore) ListIndependentEndpoints(ctx context.Context) ([]modelref.EndpointObservation, error) {
-	rows, err := sqlite.Connection(ctx, m.db).QueryContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations
+	return scopedValue(ctx, m.db.read, func(ctx context.Context) ([]modelref.EndpointObservation, error) {
+		rows, err := m.db.connection(ctx).QueryContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations
  WHERE endpoint_json IS NOT NULL AND run_id IN (SELECT run_id FROM runs WHERE state!=?)
  AND NOT EXISTS(SELECT 1 FROM model_invocations logical WHERE logical.endpoint_json IS NULL AND logical.call_id=json_extract(model_invocations.endpoint_json,'$.caller.id'))
  ORDER BY session_id,run_id,call_id`, string(rundomain.Finished))
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	values := []modelref.EndpointObservation{}
-	for rows.Next() {
-		value, err := scanEndpointObservation(rows, "")
 		if err != nil {
 			return nil, err
 		}
-		values = append(values, value)
-	}
-	return values, rows.Err()
+		defer rows.Close()
+		values := []modelref.EndpointObservation{}
+		for rows.Next() {
+			value, err := scanEndpointObservation(rows, "")
+			if err != nil {
+				return nil, err
+			}
+			values = append(values, value)
+		}
+		return values, rows.Err()
+	})
 }
 
 // ValidateIndependentEndpoint fences the recovery projection to the immutable
@@ -494,18 +497,18 @@ func (m *ModelInvocationStore) validateEndpointProjection(ctx context.Context, e
 	}
 	return nil
 }
-
 func (m *ModelInvocationStore) ValidateIndependentEndpoint(ctx context.Context, expected modelref.EndpointObservation) error {
-	if err := m.validateEndpointProjection(ctx, expected); err != nil {
-		return err
-	}
-
-	var logical int
-	if err := sqlite.Connection(ctx, m.db).QueryRowContext(ctx, `SELECT count(*) FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL`, expected.Snapshot().Invocation.Caller.ID).Scan(&logical); err != nil {
-		return err
-	}
-	if logical != 0 {
-		return errors.New("sqlite: independent endpoint has a logical accounting owner")
-	}
-	return nil
+	return m.db.read(ctx, func(ctx context.Context) error {
+		if err := m.validateEndpointProjection(ctx, expected); err != nil {
+			return err
+		}
+		var logical int
+		if err := m.db.connection(ctx).QueryRowContext(ctx, `SELECT count(*) FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL`, expected.Snapshot().Invocation.Caller.ID).Scan(&logical); err != nil {
+			return err
+		}
+		if logical != 0 {
+			return errors.New("sqlite: independent endpoint has a logical accounting owner")
+		}
+		return nil
+	})
 }

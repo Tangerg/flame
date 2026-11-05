@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	planmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/planworkflow/mcp"
 	"strings"
+
+	planmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/planworkflow/mcp"
 
 	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/backend"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 func author(proposal planworkflow.Proposal) (planworkflow.Decision, error) {
@@ -53,7 +54,7 @@ func review(document planworkflow.Document) (string, error) {
 
 func run(ctx context.Context, _ string) (err error) {
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.plans", Version: "1.0.0"}, nil)
-	host, err := qimumcp.NewBackend(server)
+	host, err := pluginmcp.NewBackend(server)
 	if err != nil {
 		return err
 	}
@@ -62,7 +63,7 @@ func run(ctx context.Context, _ string) (err error) {
 	if err != nil {
 		return err
 	}
-	if err := method.RegisterServer(host, nil, func(_ context.Context, _ *sdk.ServerSession, call qimumcp.Command[planworkflow.Proposal]) (planworkflow.Decision, error) {
+	if err := method.RegisterServer(host, nil, func(_ context.Context, _ *sdk.ServerSession, call pluginmcp.Command[planworkflow.Proposal]) (planworkflow.Decision, error) {
 		return author(call.Input)
 	}); err != nil {
 		return err
@@ -71,7 +72,7 @@ func run(ctx context.Context, _ string) (err error) {
 	if err != nil {
 		return err
 	}
-	if err := reviewer.RegisterServer(host, nil, func(_ context.Context, _ *sdk.ServerSession, call qimumcp.Command[planworkflow.Document]) (string, error) {
+	if err := reviewer.RegisterServer(host, nil, func(_ context.Context, _ *sdk.ServerSession, call pluginmcp.Command[planworkflow.Document]) (string, error) {
 		return review(call.Input)
 	}); err != nil {
 		return err

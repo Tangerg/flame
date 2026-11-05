@@ -8,29 +8,29 @@ import (
 	"testing"
 	"time"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu"
-	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/frame"
 )
 
 type Fixture struct {
-	Host  *qimu.Host
+	Host  *frame.Host
 	store *persistence.Bundle
 }
 
 func New(t testing.TB, store *persistence.Bundle) *Fixture {
 	t.Helper()
-	if store == nil || store.Qimu == nil || store.Admission == nil {
+	if store == nil || store.Frame == nil || store.Admission == nil {
 		t.Fatal("pluginhost: original framework store is required")
 	}
-	host, err := qimu.NewHost(context.Background(), qimu.HostConfig{
+	host, err := frame.NewHost(context.Background(), frame.HostConfig{
 		Admission:           store.Admission,
-		Epoch:               store.Qimu.Epoch(),
-		Installations:       store.Qimu,
-		ExecutionProtection: store.Qimu,
-		Drivers:             []qimu.Driver{refusalDriver{qimumcp.ProcessProfile}, refusalDriver{qimu.BrowserJS}, refusalDriver{qimu.StaticResource}},
+		Epoch:               store.Frame.Epoch(),
+		Installations:       store.Frame,
+		ExecutionProtection: store.Frame,
+		Drivers:             []frame.Driver{refusalDriver{pluginmcp.ProcessProfile}, refusalDriver{frame.BrowserJS}, refusalDriver{frame.StaticResource}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -42,11 +42,11 @@ func New(t testing.TB, store *persistence.Bundle) *Fixture {
 			t.Error(err)
 		}
 	})
-	records, err := store.Qimu.Installations(context.Background())
+	records, err := store.Frame.Installations(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	var definitions []*qimu.Plugin
+	var definitions []*frame.Plugin
 	for _, record := range records {
 		flame, err := plugins.DecodeFrameworkConfiguration(record)
 		if err != nil {
@@ -56,7 +56,7 @@ func New(t testing.TB, store *persistence.Bundle) *Fixture {
 		if err != nil {
 			t.Fatal(err)
 		}
-		projection, err := plugins.ProjectFrameworkRelease(release, qimumcp.ProcessProfile)
+		projection, err := plugins.ProjectFrameworkRelease(release, pluginmcp.ProcessProfile)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -79,7 +79,7 @@ func (f *Fixture) Apply(ctx context.Context, installation plugin.Installation) e
 	if err != nil {
 		return err
 	}
-	projection, err := plugins.ProjectFrameworkRelease(release, qimumcp.ProcessProfile)
+	projection, err := plugins.ProjectFrameworkRelease(release, pluginmcp.ProcessProfile)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (f *Fixture) Apply(ctx context.Context, installation plugin.Installation) e
 	if err != nil {
 		return err
 	}
-	config := qimu.InstallationConfig{ID: record.ID.Host(), Plugin: projection.Plugin, Configuration: configuration, Enabled: record.Enabled}
+	config := frame.InstallationConfig{ID: record.ID.Host(), Plugin: projection.Plugin, Configuration: configuration, Enabled: record.Enabled}
 	previous, exists := f.Host.Installation(config.ID)
 	if exists {
 		err = f.Host.Update(ctx, previous, config)
@@ -108,10 +108,10 @@ func (f *Fixture) Apply(ctx context.Context, installation plugin.Installation) e
 	return nil
 }
 
-type refusalDriver struct{ profile qimu.Profile }
+type refusalDriver struct{ profile frame.Profile }
 
-func (d refusalDriver) Profile() qimu.Profile { return d.profile }
-func (d refusalDriver) RealmBound() bool      { return d.profile == qimu.BrowserJS }
-func (refusalDriver) Prepare(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
+func (d refusalDriver) Profile() frame.Profile { return d.profile }
+func (d refusalDriver) RealmBound() bool       { return d.profile == frame.BrowserJS }
+func (refusalDriver) Prepare(context.Context, *frame.Setup) ([]frame.ExportValue, error) {
 	return nil, errors.New("pluginhost: fixture does not execute plugins")
 }

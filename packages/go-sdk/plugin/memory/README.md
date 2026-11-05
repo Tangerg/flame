@@ -12,8 +12,8 @@ The workspace coordinator runs this before generating backend package resources.
 Generated files are projections, never independently edited definitions.
 
 Implementations parse `CapabilityJSON` through `portable.ParseCapability` from
-`github.com/Tangerg/qimu/portable` and bind their own codecs with
-`qimumcp.ImplementMethod` from `github.com/Tangerg/qimu/mcp`.
+`github.com/Tangerg/frame/portable` and bind their own codecs with
+`pluginmcp.ImplementMethod` from `github.com/Tangerg/flame/packages/go-sdk/plugin/mcp`.
 The first-party backend uses this same
 path. Changing an implementation's module namespace cannot change the contract's
 identity. Invalid input is refused before business execution; invalid output
@@ -28,7 +28,7 @@ Author exports carry the implementation, component and package resources. This
 public contract comes from their pinned, vendored Go SDK module. Running their
 `go generate` only reprojects that contract; it cannot republish a different role
 under the host's existing identity. To define different callable behavior, author
-and publish a distinct contract with `qimumcp.NewMethod` and
+and publish a distinct contract with `pluginmcp.NewMethod` and
 `portable.NewCapability`.
 
 Item operations use `v2`. Snapshots project the backend-owned positive exact

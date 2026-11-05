@@ -11,10 +11,12 @@ import (
 	"testing"
 	"time"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	flameruntime "github.com/Tangerg/flame/runtime"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestStandalonePluginArchiveRetainsItsContractAndPrivateCommandOwner(t *testing.T) {
@@ -122,13 +124,12 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 	}
 	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "guardrails-policy", Contract: contract, Method: GuardrailsReplacePolicyV1Method, Input: `{"expectedRevision":1,"phrases":["private phrase"]}`, Target: portable.Target{Scope: "installation", Reference: installed.ID}}
 	if name == "memory" {
-		published, err := portable.ParseCapability([]byte(memorycontract.CapabilityJSON))
+		published, err := plugincontract.ParseCapability([]byte(memorycontract.CapabilityJSON))
 		if err != nil {
 			t.Fatal(err)
 		}
-		exported, err := portable.ParseCapability([]byte(contract))
-		if err != nil || exported.Identity() != published.Identity() {
-			t.Fatalf("module relocation changed the host's Memory contract: %v", err)
+		if contract != published.Identity().String() {
+			t.Fatal("module relocation changed the host's Memory contract")
 		}
 		if len(installed.Selected.Components) == 0 {
 			t.Fatal("author release lost its component")
@@ -137,13 +138,12 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 		if err != nil || selected.InstallationID != installed.ID {
 			t.Fatalf("select independent Memory: %+v, %v", selected, err)
 		}
-		request.Contract = memorycontract.CapabilityJSON
 		request.Contribution = "memory-provider"
 		request.Method = memorycontract.AddV2Method
 		request.Input = `{"Scope":"user","CWD":"","Content":"independent author fact"}`
 	}
 	if name == "usagereports" {
-		published, err := portable.ParseCapability([]byte(UsageReportsCapabilityJSON))
+		published, err := plugincontract.ParseCapability([]byte(UsageReportsCapabilityJSON))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -200,7 +200,7 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 		if err := json.Unmarshal([]byte(original.Output), &added, json.RejectUnknownMembers(true)); err != nil {
 			t.Fatal(err)
 		}
-		if page.Rows[0].ID != added.Item.ID {
+		if added.Item == nil || string(page.Rows[0].ID) != string(added.Item.ID) {
 			t.Fatal("original command created another item")
 		}
 	}

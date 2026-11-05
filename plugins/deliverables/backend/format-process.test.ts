@@ -2,7 +2,7 @@ import { access, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { Refusal } from "@qimu/node";
+import { Refusal } from "@flame/backend-sdk/mcp";
 import { Formats } from "./format-process";
 import { runProcess, UnconfirmedProcessExit } from "./process";
 import type { ProcessPlan } from "./confinement";

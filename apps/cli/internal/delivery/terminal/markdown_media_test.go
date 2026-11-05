@@ -9,18 +9,20 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/graphics"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/program"
-	"github.com/Tangerg/oolong/core/programtest"
-	"github.com/Tangerg/oolong/highlight"
+	"github.com/Tangerg/oolong/extensions/highlight"
+	"github.com/Tangerg/oolong/ui/core/graphics"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/program"
+	"github.com/Tangerg/oolong/ui/core/scene"
+	"github.com/Tangerg/oolong/ui/kit"
+	"github.com/Tangerg/oolong/ui/uitest"
 )
 
 const diagramMarkdown = "Before diagram\n\n```mermaid\nflowchart TD\n A --> B\n```\n\nAfter diagram"
 
 type markdownImageTransport struct {
+	owner       graphics.ImageOwner
 	protocol    graphics.Protocol
 	transmitted atomic.Int32
 	released    atomic.Int32
@@ -28,17 +30,37 @@ type markdownImageTransport struct {
 
 func (m *markdownImageTransport) Protocol() graphics.Protocol { return m.protocol }
 func (*markdownImageTransport) CellSize() (image.Point, bool) { return image.Pt(10, 20), true }
-func (m *markdownImageTransport) Transmit([]byte) (graphics.Image, error) {
-	return graphics.Image{ID: uint32(m.transmitted.Add(1)), Size: image.Pt(320, 160)}, nil
+func (m *markdownImageTransport) Transmit(ctx context.Context, _ []byte) (<-chan graphics.UploadResult, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	out := make(chan graphics.UploadResult, 1)
+	out <- graphics.UploadResult{Resource: m.owner.Bind(graphics.Image{ID: uint32(m.transmitted.Add(1)), Size: image.Pt(320, 160)})}
+	close(out)
+	return out, nil
 }
-func (m *markdownImageTransport) Release(graphics.Image) error {
-	m.released.Add(1)
-	return nil
+func (m *markdownImageTransport) Release(resource graphics.Resource) error {
+	return m.owner.Release(resource, func(graphics.Image) error { m.released.Add(1); return nil })
 }
 
-func markdownSession(t *testing.T, transport terminalImageTransport, prepare diagramPreparation) (*programtest.Host, func(func(*transcriptView))) {
+type markdownImageHost struct {
+	*uitest.Host
+	transport *markdownImageTransport
+}
+
+func (h *markdownImageHost) NativeTarget() grid.NativeTarget { return h.transport.owner.NativeTarget() }
+func (h *markdownImageHost) Graphics() graphics.Protocol     { return h.transport.Protocol() }
+func (h *markdownImageHost) CellSize() (image.Point, bool)   { return h.transport.CellSize() }
+func (h *markdownImageHost) Transmit(ctx context.Context, data []byte) (<-chan graphics.UploadResult, error) {
+	return h.transport.Transmit(ctx, data)
+}
+func (h *markdownImageHost) ReleaseImage(resource graphics.Resource) error {
+	return h.transport.Release(resource)
+}
+
+func markdownSession(t *testing.T, transport *markdownImageTransport, prepare diagramPreparation) (*uitest.Host, func(func(*transcriptView))) {
 	t.Helper()
-	host := programtest.New(t, programtest.Config{Width: 80, Height: 24})
+	host := uitest.New(t, uitest.Config{Width: 80, Height: 24})
 	ctx, cancel := context.WithCancel(t.Context())
 	type owner struct {
 		view     *transcriptView
@@ -46,13 +68,18 @@ func markdownSession(t *testing.T, transport terminalImageTransport, prepare dia
 	}
 	ready, done := make(chan owner, 1), make(chan error, 1)
 	go func() {
-		done <- program.Run(ctx, program.Config{Host: host, Root: func(loop *program.Runtime) program.Component {
+		session, err := program.NewScreen(program.ScreenConfig{Config: program.Config{Host: &markdownImageHost{Host: host, transport: transport}}, Build: func(loop *program.Runtime) (scene.Element, error) {
 			view := newTranscriptView(kit.Dark(), kit.Unicode(), "", input.Wheel{}, highlight.New("github-dark"), 4, false, nil)
-			view.images = newTerminalImagePresenter(transport)
+			view.images = newTerminalImagePresenter(loop.Images())
 			view.media = &markdownMedia{workers: newOperationOwner(ctx), dispatch: loop.Dispatcher(), images: view.images, syntax: view.syntax, prepare: prepare}
 			ready <- owner{view, loop.Dispatcher()}
-			return headless.NewRoot(view)
+			return view.Element(), nil
 		}})
+		if err != nil {
+			done <- err
+			return
+		}
+		done <- session.Run(ctx)
 	}()
 	owned := awaitValue(t, ready, "markdown owner")
 	t.Cleanup(func() {
@@ -70,7 +97,7 @@ func markdownSession(t *testing.T, transport terminalImageTransport, prepare dia
 	}
 }
 
-func TestMermaidWaitsForCompleteSourceAndReleasesEveryPlacement(t *testing.T) {
+func TestMermaidWaitsForCompleteSourceAndReleasesItsSharedResource(t *testing.T) {
 	transport := &markdownImageTransport{protocol: graphics.Kitty}
 	requested := make(chan string, 1)
 	proceed := make(chan struct{})
@@ -103,7 +130,7 @@ func TestMermaidWaitsForCompleteSourceAndReleasesEveryPlacement(t *testing.T) {
 		if err := view.Apply(conversation.BlockCompleted{Block: block}); err != nil {
 			t.Error(err)
 		}
-		if view.content.Finished(view.content.FirstBlock()) {
+		if view.entrySettled(view.firstEntry()) {
 			t.Error("pending diagram was finished")
 		}
 	})
@@ -114,15 +141,15 @@ func TestMermaidWaitsForCompleteSourceAndReleasesEveryPlacement(t *testing.T) {
 	close(proceed)
 	host.Hides(t, "Preparing Mermaid")
 	onOwner(func(view *transcriptView) {
-		if !view.content.Finished(view.content.FirstBlock()) {
+		if !view.entrySettled(view.firstEntry()) {
 			t.Error("accepted diagram is not finished")
 		}
-		if transport.transmitted.Load() != 2 {
-			t.Error("repeated diagrams did not get independent image handles")
+		if transport.transmitted.Load() != 1 {
+			t.Error("identical diagrams did not share their transmitted image resource")
 		}
 		view.Reset()
-		if transport.released.Load() != 2 {
-			t.Error("reset did not release every diagram")
+		if transport.released.Load() != 1 {
+			t.Error("reset did not release the shared diagram resource exactly once")
 		}
 	})
 	select {
@@ -146,7 +173,7 @@ func TestMermaidFailureKeepsSourceAndDiagnostic(t *testing.T) {
 	host.Shows(t, "A --> B")
 	host.Shows(t, "After diagram")
 	onOwner(func(view *transcriptView) {
-		if !view.content.Finished(view.content.FirstBlock()) || transport.transmitted.Load() != 0 {
+		if !view.entrySettled(view.firstEntry()) || transport.transmitted.Load() != 0 {
 			t.Error("failed diagram did not settle without transmission")
 		}
 	})
@@ -248,14 +275,18 @@ func TestStreamingMathReplacesProvisionalDiagnostics(t *testing.T) {
 	if err := view.Apply(conversation.BlockDelta{BlockID: block.ID, Text: "$$\n\\fra"}); err != nil {
 		t.Fatal(err)
 	}
-	message := view.entries[view.content.FirstBlock()].content.(*markdownBlock)
+	message := view.entries[view.firstEntry()].content.(*markdownBlock)
 	if message.diagnostic == nil {
 		t.Fatal("invalid provisional formula has no diagnostic")
 	}
 	if err := view.Apply(conversation.BlockDelta{BlockID: block.ID, Text: "c{a}{b}\n$$"}); err != nil {
 		t.Fatal(err)
 	}
-	if message.diagnostic != nil {
+	current := view.entries[view.firstEntry()].content.(*markdownBlock)
+	if current == message || message.diagnostic == nil {
+		t.Fatal("stream update mutated the previously published passive body")
+	}
+	if current.diagnostic != nil {
 		t.Fatal("valid streamed formula retained an obsolete diagnostic")
 	}
 }
@@ -266,7 +297,7 @@ func TestTranscriptDiscardAndCloseReleaseInlineImages(t *testing.T) {
 	transport := &markdownImageTransport{protocol: graphics.Kitty}
 	images := newTerminalImagePresenter(transport)
 	for range 6 {
-		block, err := images.transmit(view.theme, []byte("prepared PNG"), "image")
+		block, err := images.transmit(t.Context(), view.theme, []byte("prepared PNG"), "image")
 		if err != nil {
 			t.Fatal(err)
 		}

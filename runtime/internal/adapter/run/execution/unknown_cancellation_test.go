@@ -15,7 +15,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -116,24 +117,20 @@ func TestUnknownEffectsRespectScopeCancellationOrderAndDrainSiblings(t *testing.
 				store.armed.Store(true)
 				releaseSettle()
 				<-store.entered
-				cancel := func() {
-					if err := executor.RequestRootCancellation(t.Context(), ref, "operator canceled"); err != nil {
-						t.Fatal(err)
-					}
-				}
+				canceled := make(chan error, 1)
+				cancel := func() { canceled <- executor.RequestRootCancellation(t.Context(), ref, "operator canceled") }
 				if !unknownFirst {
-					cancel()
+					go cancel()
+					synctest.Wait()
 				}
 				reported := make(chan bool, 1)
 				go func() { reported <- session.reportUnknownEffects() }()
 				synctest.Wait()
 				if unknownFirst {
-					cancel()
+					go cancel()
+					synctest.Wait()
 				}
 				releaseCommit()
-				if !<-reported {
-					t.Fatal("reconciler did not observe the acknowledged unknown Effect")
-				}
 				<-workCanceled
 				synctest.Wait()
 				select {
@@ -142,25 +139,43 @@ func TestUnknownEffectsRespectScopeCancellationOrderAndDrainSiblings(t *testing.
 				default:
 				}
 				releaseWork()
+				if !<-reported {
+					t.Fatal("reconciler did not observe the acknowledged unknown Effect")
+				}
+				cancelErr := <-canceled
+				if cancelErr != nil && (!unknownFirst || !errors.Is(cancelErr, scoperun.ErrClosed)) {
+					t.Fatal(cancelErr)
+				}
 				events := <-eventsReady
 				ends := payloadsOf[runs.SegmentEnded](events)
-				wantOutcome, wantReason := run.OutcomeCanceled, "run cancellation: operator canceled"
+				wantReason := "run cancellation: operator canceled"
 				if unknownFirst {
-					wantOutcome, wantReason = run.OutcomeLost, unresolvedEffectsStopReason
+					wantReason = unresolvedEffectsStopReason
 				}
-				if len(ends) != 1 || ends[0].Ending.Outcome() != wantOutcome {
-					t.Fatalf("terminal = %+v, want exactly one %s", ends, wantOutcome)
+				if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeLost {
+					t.Fatalf("terminal = %+v, want exactly one loss with unresolved work", ends)
 				}
-				result, err := session.state.processHandle().Await(t.Context())
-				if err != nil || result.Termination().Cause() != agent.TerminationCauseHostCancellation ||
-					result.Termination().Reason() != wantReason {
-					t.Fatalf("authoritative Scope termination = %+v, %v", result.Termination(), err)
+				if _, err := session.state.processHandle().Await(t.Context()); err == nil {
+					t.Fatal("unknown effects manufactured a Scope Exit")
+				}
+				history, err := session.committedTree(t.Context(), session.processRootID())
+				if err != nil {
+					t.Fatal(err)
+				}
+				var controls []scoperun.ControlRequested
+				for _, entry := range history.Entries {
+					if control, ok := entry.Record.(scoperun.ControlRequested); ok && control.Process == history.Root && control.Kind == scoperun.ControlCancel {
+						controls = append(controls, control)
+					}
+				}
+				if len(controls) == 0 || controls[0].Reason != wantReason {
+					t.Fatalf("committed cancellation order = %+v, first=%q", controls, wantReason)
 				}
 				found := false
 				for _, effect := range ends[0].UnresolvedEffects() {
 					if effect.EffectID() == ids[0].String() {
 						found = true
-						if effect.Cause() != agent.TerminationCauseParentCancellation.String() ||
+						if effect.Cause() != "runtime_failure" ||
 							effect.Detail() != "connection closed after the external write" {
 							t.Fatalf("unknown write evidence changed: %+v", effect)
 						}
@@ -199,7 +214,7 @@ func TestUserCancellationCannotImpersonateInternalStops(t *testing.T) {
 				}
 			})
 			ends := payloadsOf[runs.SegmentEnded](events)
-			if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeCanceled || segmentFailure(ends[0]) != nil {
+			if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeLost || len(ends[0].UnresolvedEffects()) != 1 || segmentFailure(ends[0]) != nil {
 				t.Fatalf("user note changed cancellation semantics: %+v", ends)
 			}
 		})

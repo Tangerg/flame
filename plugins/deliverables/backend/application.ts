@@ -1,4 +1,8 @@
-import { Refusal, canonicalJSON, type CallContext } from "@qimu/node";
+import {
+  Refusal,
+  canonicalJSON,
+  type CallContext,
+} from "@flame/backend-sdk/mcp";
 import { toolCommandId } from "@flame/backend-sdk";
 import { z } from "zod";
 import {

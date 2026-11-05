@@ -8,10 +8,11 @@ import (
 	"strconv"
 	"strings"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 // ErrCommandKeyConflict reports that a command's idempotency key is already
@@ -24,7 +25,7 @@ func ReservedCommandKey(key string) bool { return strings.HasPrefix(key, goalRou
 
 func GoalRoundIdentity(sessionID, incarnation string, ordinal uint64, instructions string) *CommandIdentity {
 	scope := sessionID + "\x00" + incarnation + "\x00" + strconv.FormatUint(ordinal, 10)
-	return &CommandIdentity{Key: goalRoundKeyPrefix + integrity.Hash([]byte(scope)).String(), Fingerprint: integrity.Hash([]byte(scope + "\x00" + instructions)).String()}
+	return &CommandIdentity{Key: goalRoundKeyPrefix + framevalue.Hash([]byte(scope)).String(), Fingerprint: framevalue.Hash([]byte(scope + "\x00" + instructions)).String()}
 }
 
 func startOperation(key, goalIncarnation string) CommandOperation {
@@ -74,7 +75,7 @@ func (a CommandAcceptance) Validate() error {
 	if a.Key == "" {
 		return errors.New("runs: command acceptance has no idempotency key")
 	}
-	if _, err := integrity.ParseDigest(a.Fingerprint); err != nil {
+	if _, err := framevalue.ParseDigest(a.Fingerprint); err != nil {
 		return fmt.Errorf("runs: command acceptance fingerprint: %w", err)
 	}
 	if ReservedCommandKey(a.Key) != (a.Operation == CommandGoalRoundOpening) {
@@ -133,7 +134,7 @@ func (c CommandIdentity) Validate() error {
 	if c.Key == "" {
 		return errors.New("runs: command identity has no idempotency key")
 	}
-	if _, err := integrity.ParseDigest(c.Fingerprint); err != nil {
+	if _, err := framevalue.ParseDigest(c.Fingerprint); err != nil {
 		return fmt.Errorf("runs: command identity fingerprint: %w", err)
 	}
 	return nil

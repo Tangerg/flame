@@ -11,7 +11,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
 	"github.com/Tangerg/flame/packages/go-sdk/procgroup"
-	"github.com/Tangerg/frame/cancellation"
 )
 
 const (
@@ -35,7 +34,7 @@ type Result struct {
 // Run executes Git with bounded stdout and a bounded-drain stderr. overrides
 // are command-owned environment entries such as a stable parsing locale.
 func Run(ctx context.Context, overrides []string, args ...string) (Result, error) {
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return Result{}, err
 	}
 	command := exec.CommandContext(ctx, "git", args...)
@@ -58,7 +57,7 @@ func Run(ctx context.Context, overrides []string, args ...string) (Result, error
 	command.Stdout = stdoutWriter
 	command.Stderr = stderrWriter
 	if err := command.Start(); err != nil {
-		return Result{}, fmt.Errorf("process: start: %w", errors.Join(err, cancellation.Err(ctx)))
+		return Result{}, fmt.Errorf("process: start: %w", errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx))))
 	}
 	_ = stdoutWriter.Close()
 	_ = stderrWriter.Close()
@@ -103,7 +102,7 @@ func Run(ctx context.Context, overrides []string, args ...string) (Result, error
 	if !drain.Stop() {
 		<-drainDone
 	}
-	cancelErr := cancellation.Err(ctx)
+	cancelErr := errors.Join(ctx.Err(), context.Cause(ctx))
 	if readErr != nil || cleanupErr != nil || cancelErr != nil {
 		return Result{}, errors.Join(readErr, waitErr, cleanupErr, cancelErr)
 	}
@@ -123,7 +122,11 @@ func Run(ctx context.Context, overrides []string, args ...string) (Result, error
 }
 
 func readOutput(ctx context.Context, source io.Reader) ([]byte, error) {
-	output, err := io.ReadAll(io.LimitReader(cancellation.Reader(ctx, source), maxOutputBytes+1))
+	contextReader, err := capture.NewReader(ctx, source)
+	if err != nil {
+		return nil, err
+	}
+	output, err := io.ReadAll(io.LimitReader(contextReader, maxOutputBytes+1))
 	if err != nil {
 		err = fmt.Errorf("process: read stdout: %w", err)
 	}

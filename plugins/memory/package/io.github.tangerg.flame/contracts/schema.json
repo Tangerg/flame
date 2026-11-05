@@ -1,11 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Ack": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
     "AddInput": {
       "additionalProperties": false,
       "properties": {
@@ -41,7 +36,7 @@
           "type": "boolean"
         },
         "Item": {
-          "$ref": "#/$defs/ItemSnapshot"
+          "$ref": "#/$defs/AddV2OutputDomainItemSnapshot"
         }
       },
       "required": [
@@ -56,35 +51,7 @@
     "AddV2Output": {
       "$ref": "#/$defs/AddResult"
     },
-    "Conversation": {
-      "additionalProperties": false,
-      "properties": {
-        "MessageCount": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "Transcript": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "MessageCount",
-        "Transcript"
-      ],
-      "type": "object"
-    },
-    "DeleteV2Input": {
-      "$ref": "#/$defs/ItemInput"
-    },
-    "DeleteV2Output": {
-      "$ref": "#/$defs/Ack"
-    },
-    "ItemID": {
+    "AddV2OutputDomainItemID": {
       "allOf": [
         {
           "pattern": "^mem_[0-9a-f]{32}$"
@@ -92,48 +59,34 @@
       ],
       "type": "string"
     },
-    "ItemInput": {
+    "AddV2OutputDomainItemSnapshot": {
       "additionalProperties": false,
-      "properties": {
-        "ExpectedRevision": {
-          "allOf": [
-            {
-              "maximum": 18446744073709551615,
-              "minimum": 0
+      "allOf": [
+        {
+          "properties": {
+            "Content": {
+              "maxLength": 4096
+            },
+            "Revision": {
+              "maximum": 9.007199254740991e+15
             }
-          ],
-          "maximum": 9007199254740991,
-          "minimum": 1,
-          "type": "integer"
-        },
-        "ID": {
-          "type": "string"
+          }
         }
-      },
-      "required": [
-        "ID",
-        "ExpectedRevision"
       ],
-      "type": "object"
-    },
-    "ItemSnapshot": {
-      "additionalProperties": false,
       "properties": {
         "Content": {
-          "maxLength": 4096,
           "pattern": "\\S",
           "type": "string"
         },
         "CreatedAt": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/$defs/AddV2OutputInstantTimestamp"
         },
         "Day": {
           "type": "string"
         },
         "Embedding": {
           "items": {
-            "type": "number"
+            "$ref": "#/$defs/AddV2OutputValueNumber"
           },
           "type": "array"
         },
@@ -141,7 +94,7 @@
           "type": "string"
         },
         "ID": {
-          "$ref": "#/$defs/ItemID"
+          "$ref": "#/$defs/AddV2OutputDomainItemID"
         },
         "Origin": {
           "allOf": [
@@ -167,7 +120,6 @@
               "minimum": 0
             }
           ],
-          "maximum": 9007199254740991,
           "minimum": 1,
           "type": "integer"
         },
@@ -198,8 +150,7 @@
           "type": "string"
         },
         "UpdatedAt": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/$defs/AddV2OutputInstantTimestamp"
         }
       },
       "required": [
@@ -217,6 +168,77 @@
         "UpdatedAt",
         "EmbeddingSpace",
         "Embedding"
+      ],
+      "type": "object"
+    },
+    "AddV2OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "AddV2OutputValueNumber": {
+      "type": "number"
+    },
+    "Conversation": {
+      "additionalProperties": false,
+      "properties": {
+        "MessageCount": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "Transcript": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "MessageCount",
+        "Transcript"
+      ],
+      "type": "object"
+    },
+    "DeleteV2Input": {
+      "$ref": "#/$defs/ItemInput"
+    },
+    "DeleteV2Output": {
+      "$ref": "#/$defs/DeleteV2OutputContractAck"
+    },
+    "DeleteV2OutputContractAck": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "ItemInput": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "ExpectedRevision": {
+              "maximum": 9.007199254740991e+15
+            }
+          }
+        }
+      ],
+      "properties": {
+        "ExpectedRevision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "ID": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ID",
+        "ExpectedRevision"
       ],
       "type": "object"
     },
@@ -249,12 +271,148 @@
     },
     "ItemsV2Output": {
       "items": {
-        "$ref": "#/$defs/ItemSnapshot"
+        "$ref": "#/$defs/ItemsV2OutputDomainItemSnapshot"
       },
       "type": "array"
     },
+    "ItemsV2OutputDomainItemID": {
+      "allOf": [
+        {
+          "pattern": "^mem_[0-9a-f]{32}$"
+        }
+      ],
+      "type": "string"
+    },
+    "ItemsV2OutputDomainItemSnapshot": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "Content": {
+              "maxLength": 4096
+            },
+            "Revision": {
+              "maximum": 9.007199254740991e+15
+            }
+          }
+        }
+      ],
+      "properties": {
+        "Content": {
+          "pattern": "\\S",
+          "type": "string"
+        },
+        "CreatedAt": {
+          "$ref": "#/$defs/ItemsV2OutputInstantTimestamp"
+        },
+        "Day": {
+          "type": "string"
+        },
+        "Embedding": {
+          "items": {
+            "$ref": "#/$defs/ItemsV2OutputValueNumber"
+          },
+          "type": "array"
+        },
+        "EmbeddingSpace": {
+          "type": "string"
+        },
+        "ID": {
+          "$ref": "#/$defs/ItemsV2OutputDomainItemID"
+        },
+        "Origin": {
+          "allOf": [
+            {
+              "enum": [
+                "auto",
+                "user"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "Pinned": {
+          "type": "boolean"
+        },
+        "Project": {
+          "type": "string"
+        },
+        "Revision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "Scope": {
+          "allOf": [
+            {
+              "enum": [
+                "project",
+                "user"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "SessionID": {
+          "type": "string"
+        },
+        "Status": {
+          "allOf": [
+            {
+              "enum": [
+                "active",
+                "pending",
+                "rejected"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "UpdatedAt": {
+          "$ref": "#/$defs/ItemsV2OutputInstantTimestamp"
+        }
+      },
+      "required": [
+        "ID",
+        "Revision",
+        "Scope",
+        "Project",
+        "Content",
+        "Origin",
+        "Status",
+        "Pinned",
+        "SessionID",
+        "Day",
+        "CreatedAt",
+        "UpdatedAt",
+        "EmbeddingSpace",
+        "Embedding"
+      ],
+      "type": "object"
+    },
+    "ItemsV2OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "ItemsV2OutputValueNumber": {
+      "type": "number"
+    },
     "ListInput": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "Limit": {
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        }
+      ],
       "properties": {
         "CWD": {
           "type": "string"
@@ -269,8 +427,6 @@
               "minimum": -9223372036854775808
             }
           ],
-          "maximum": 100,
-          "minimum": 1,
           "type": "integer"
         },
         "Scope": {
@@ -297,6 +453,132 @@
     },
     "ListV2Output": {
       "$ref": "#/$defs/Page"
+    },
+    "ListV2OutputDomainItemID": {
+      "allOf": [
+        {
+          "pattern": "^mem_[0-9a-f]{32}$"
+        }
+      ],
+      "type": "string"
+    },
+    "ListV2OutputDomainItemSnapshot": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "Content": {
+              "maxLength": 4096
+            },
+            "Revision": {
+              "maximum": 9.007199254740991e+15
+            }
+          }
+        }
+      ],
+      "properties": {
+        "Content": {
+          "pattern": "\\S",
+          "type": "string"
+        },
+        "CreatedAt": {
+          "$ref": "#/$defs/ListV2OutputInstantTimestamp"
+        },
+        "Day": {
+          "type": "string"
+        },
+        "Embedding": {
+          "items": {
+            "$ref": "#/$defs/ListV2OutputValueNumber"
+          },
+          "type": "array"
+        },
+        "EmbeddingSpace": {
+          "type": "string"
+        },
+        "ID": {
+          "$ref": "#/$defs/ListV2OutputDomainItemID"
+        },
+        "Origin": {
+          "allOf": [
+            {
+              "enum": [
+                "auto",
+                "user"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "Pinned": {
+          "type": "boolean"
+        },
+        "Project": {
+          "type": "string"
+        },
+        "Revision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "Scope": {
+          "allOf": [
+            {
+              "enum": [
+                "project",
+                "user"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "SessionID": {
+          "type": "string"
+        },
+        "Status": {
+          "allOf": [
+            {
+              "enum": [
+                "active",
+                "pending",
+                "rejected"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "UpdatedAt": {
+          "$ref": "#/$defs/ListV2OutputInstantTimestamp"
+        }
+      },
+      "required": [
+        "ID",
+        "Revision",
+        "Scope",
+        "Project",
+        "Content",
+        "Origin",
+        "Status",
+        "Pinned",
+        "SessionID",
+        "Day",
+        "CreatedAt",
+        "UpdatedAt",
+        "EmbeddingSpace",
+        "Embedding"
+      ],
+      "type": "object"
+    },
+    "ListV2OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "ListV2OutputValueNumber": {
+      "type": "number"
     },
     "MaintainV1Input": {
       "$ref": "#/$defs/MaintenanceInput"
@@ -342,6 +624,19 @@
     },
     "Page": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "Capacity": {
+              "maximum": 512,
+              "minimum": 512
+            },
+            "Rows": {
+              "maxItems": 100
+            }
+          }
+        }
+      ],
       "properties": {
         "Capacity": {
           "allOf": [
@@ -350,7 +645,6 @@
               "minimum": -9223372036854775808
             }
           ],
-          "const": 512,
           "type": "integer"
         },
         "NextCursor": {
@@ -358,9 +652,8 @@
         },
         "Rows": {
           "items": {
-            "$ref": "#/$defs/ItemSnapshot"
+            "$ref": "#/$defs/ListV2OutputDomainItemSnapshot"
           },
-          "maxItems": 100,
           "type": "array"
         }
       },
@@ -373,6 +666,15 @@
     },
     "ReviewInput": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "ExpectedRevision": {
+              "maximum": 9.007199254740991e+15
+            }
+          }
+        }
+      ],
       "properties": {
         "Decision": {
           "allOf": [
@@ -392,7 +694,6 @@
               "minimum": 0
             }
           ],
-          "maximum": 9007199254740991,
           "minimum": 1,
           "type": "integer"
         },
@@ -411,7 +712,12 @@
       "$ref": "#/$defs/ReviewInput"
     },
     "ReviewV2Output": {
-      "$ref": "#/$defs/Ack"
+      "$ref": "#/$defs/ReviewV2OutputContractAck"
+    },
+    "ReviewV2OutputContractAck": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
     },
     "SearchInput": {
       "additionalProperties": false,
@@ -448,12 +754,147 @@
     },
     "SearchV2Output": {
       "items": {
-        "$ref": "#/$defs/ItemSnapshot"
+        "$ref": "#/$defs/SearchV2OutputDomainItemSnapshot"
       },
       "type": "array"
     },
+    "SearchV2OutputDomainItemID": {
+      "allOf": [
+        {
+          "pattern": "^mem_[0-9a-f]{32}$"
+        }
+      ],
+      "type": "string"
+    },
+    "SearchV2OutputDomainItemSnapshot": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "Content": {
+              "maxLength": 4096
+            },
+            "Revision": {
+              "maximum": 9.007199254740991e+15
+            }
+          }
+        }
+      ],
+      "properties": {
+        "Content": {
+          "pattern": "\\S",
+          "type": "string"
+        },
+        "CreatedAt": {
+          "$ref": "#/$defs/SearchV2OutputInstantTimestamp"
+        },
+        "Day": {
+          "type": "string"
+        },
+        "Embedding": {
+          "items": {
+            "$ref": "#/$defs/SearchV2OutputValueNumber"
+          },
+          "type": "array"
+        },
+        "EmbeddingSpace": {
+          "type": "string"
+        },
+        "ID": {
+          "$ref": "#/$defs/SearchV2OutputDomainItemID"
+        },
+        "Origin": {
+          "allOf": [
+            {
+              "enum": [
+                "auto",
+                "user"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "Pinned": {
+          "type": "boolean"
+        },
+        "Project": {
+          "type": "string"
+        },
+        "Revision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "Scope": {
+          "allOf": [
+            {
+              "enum": [
+                "project",
+                "user"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "SessionID": {
+          "type": "string"
+        },
+        "Status": {
+          "allOf": [
+            {
+              "enum": [
+                "active",
+                "pending",
+                "rejected"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "UpdatedAt": {
+          "$ref": "#/$defs/SearchV2OutputInstantTimestamp"
+        }
+      },
+      "required": [
+        "ID",
+        "Revision",
+        "Scope",
+        "Project",
+        "Content",
+        "Origin",
+        "Status",
+        "Pinned",
+        "SessionID",
+        "Day",
+        "CreatedAt",
+        "UpdatedAt",
+        "EmbeddingSpace",
+        "Embedding"
+      ],
+      "type": "object"
+    },
+    "SearchV2OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "SearchV2OutputValueNumber": {
+      "type": "number"
+    },
     "UpdateInput": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "ExpectedRevision": {
+              "maximum": 9.007199254740991e+15
+            }
+          }
+        }
+      ],
       "properties": {
         "Content": {
           "type": "string"
@@ -465,7 +906,6 @@
               "minimum": 0
             }
           ],
-          "maximum": 9007199254740991,
           "minimum": 1,
           "type": "integer"
         },
@@ -486,7 +926,133 @@
       "$ref": "#/$defs/UpdateInput"
     },
     "UpdateV2Output": {
-      "$ref": "#/$defs/ItemSnapshot"
+      "$ref": "#/$defs/UpdateV2OutputDomainItemSnapshot"
+    },
+    "UpdateV2OutputDomainItemID": {
+      "allOf": [
+        {
+          "pattern": "^mem_[0-9a-f]{32}$"
+        }
+      ],
+      "type": "string"
+    },
+    "UpdateV2OutputDomainItemSnapshot": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "Content": {
+              "maxLength": 4096
+            },
+            "Revision": {
+              "maximum": 9.007199254740991e+15
+            }
+          }
+        }
+      ],
+      "properties": {
+        "Content": {
+          "pattern": "\\S",
+          "type": "string"
+        },
+        "CreatedAt": {
+          "$ref": "#/$defs/UpdateV2OutputInstantTimestamp"
+        },
+        "Day": {
+          "type": "string"
+        },
+        "Embedding": {
+          "items": {
+            "$ref": "#/$defs/UpdateV2OutputValueNumber"
+          },
+          "type": "array"
+        },
+        "EmbeddingSpace": {
+          "type": "string"
+        },
+        "ID": {
+          "$ref": "#/$defs/UpdateV2OutputDomainItemID"
+        },
+        "Origin": {
+          "allOf": [
+            {
+              "enum": [
+                "auto",
+                "user"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "Pinned": {
+          "type": "boolean"
+        },
+        "Project": {
+          "type": "string"
+        },
+        "Revision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "Scope": {
+          "allOf": [
+            {
+              "enum": [
+                "project",
+                "user"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "SessionID": {
+          "type": "string"
+        },
+        "Status": {
+          "allOf": [
+            {
+              "enum": [
+                "active",
+                "pending",
+                "rejected"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "UpdatedAt": {
+          "$ref": "#/$defs/UpdateV2OutputInstantTimestamp"
+        }
+      },
+      "required": [
+        "ID",
+        "Revision",
+        "Scope",
+        "Project",
+        "Content",
+        "Origin",
+        "Status",
+        "Pinned",
+        "SessionID",
+        "Day",
+        "CreatedAt",
+        "UpdatedAt",
+        "EmbeddingSpace",
+        "Embedding"
+      ],
+      "type": "object"
+    },
+    "UpdateV2OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "UpdateV2OutputValueNumber": {
+      "type": "number"
     }
   }
 }

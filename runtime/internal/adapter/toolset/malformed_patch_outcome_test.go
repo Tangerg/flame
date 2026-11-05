@@ -2,7 +2,6 @@ package toolset
 
 import (
 	json "encoding/json/v2"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,7 +17,7 @@ import (
 // durable outcome it cannot prove, which settles the whole Run tree — the root
 // and every delegated child — as lost. Nothing ran here, so the model has to be
 // told instead.
-func TestMalformedPatchFailsTheCallNotTheRun(t *testing.T) {
+func TestMalformedPatchIsRejectedBeforeExecution(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "notes.txt"), []byte("one\ntwo\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -48,22 +47,12 @@ func TestMalformedPatchFailsTheCallNotTheRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = callTextTool(t.Context(), tools.applyPatch, string(arguments))
-	if err == nil {
-		t.Fatal("an unparseable patch was accepted")
+	_, _, err = prepareTestInvocation(tools.applyPatch, string(arguments))
+	rejection, rejected := toolcontract.ClassifyInputRejection(err)
+	if !rejected {
+		t.Fatalf("unparseable patch admission = %v, want model-correctable input rejection", err)
 	}
-
-	var failure *toolcontract.Failure
-	if !errors.As(err, &failure) {
-		t.Fatalf("unparseable patch returned an unclassified error (%v); "+
-			"the Host settles an unclassified Tool error as an operation of unknown outcome and loses the Run tree", err)
-	}
-	if failure.Kind() != toolcontract.FailureKindFailed {
-		t.Fatalf("failure kind = %q, want %q: nothing was refused permission, the call definitely did not happen",
-			failure.Kind(), toolcontract.FailureKindFailed)
-	}
-	told, _ := failure.Output().Text()
-	if !strings.Contains(told, "oldCount") {
+	if told := rejection.Message(); !strings.Contains(told, "oldCount") {
 		t.Fatalf("the model was told %q, which does not name the counts it has to recount", told)
 	}
 	if body, readErr := os.ReadFile(filepath.Join(root, "notes.txt")); readErr != nil || string(body) != "one\ntwo\n" {

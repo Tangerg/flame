@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -16,16 +18,16 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/mcpfixture"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+	"github.com/Tangerg/frame"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/integrity"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/process"
-	"github.com/Tangerg/qimu/runner"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/frame/process"
+	"github.com/Tangerg/frame/process/runner"
 )
 
 // The child forwards transport messages only. Test callbacks and their business
-// receipts stay with the original server while Qimu owns a real local process.
+// receipts stay with the original server while Frame owns a real local process.
 func TestManagedTransportHelper(t *testing.T) {
 	endpoint := os.Getenv("FLAME_TEST_MCP_PROXY")
 	if endpoint == "" {
@@ -41,7 +43,7 @@ func TestManagedTransportHelper(t *testing.T) {
 
 type managedPackages struct {
 	server mcpserver.Server
-	digest integrity.Digest
+	digest framevalue.Digest
 }
 
 func (p managedPackages) Server(_ context.Context, installation plugin.Installation, release plugin.Release, name mcpserver.ServerName, _ plugins.Reach) (mcpserver.Server, bool, error) {
@@ -81,18 +83,18 @@ func (p managedPackages) Connection(ctx context.Context, installation plugin.Ins
 
 type managedFixture struct {
 	Stores    *persistencefixture.Stores
-	Host      *qimu.Host
+	Host      *frame.Host
 	Pool      *mcp.Pool
 	Routing   *plugins.Commands
 	directory string
 	store     *toolInstallationStore
 	packages  managedPackages
-	callbacks *qimumcp.Callbacks
+	callbacks *pluginmcp.Callbacks
 	prepare   mcp.ToolPreparation
 	runner    *runner.Client
 }
 
-func newManagedFixture(t *testing.T, store *toolInstallationStore, server mcpserver.Server, callbacks *qimumcp.Callbacks, prepare mcp.ToolPreparation) *managedFixture {
+func newManagedFixture(t *testing.T, store *toolInstallationStore, server mcpserver.Server, callbacks *pluginmcp.Callbacks, prepare mcp.ToolPreparation) *managedFixture {
 	t.Helper()
 	directory, err := os.MkdirTemp("", "flame-managed-")
 	if err != nil {
@@ -113,7 +115,7 @@ func newManagedFixture(t *testing.T, store *toolInstallationStore, server mcpser
 	if err != nil {
 		t.Fatal(err)
 	}
-	digest := integrity.Hash(data)
+	digest := framevalue.Hash(data)
 	runnerOwner, err := runner.Open(runner.Config{Directory: filepath.Join(directory, "runner")})
 	if err != nil {
 		t.Fatal(err)
@@ -160,12 +162,16 @@ func (f *managedFixture) open(t *testing.T, connect bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	driver, err := qimumcp.NewProcessDriver(process.Config{Runner: f.runner, Store: stores.Qimu, Source: source, CloseTimeout: 5 * time.Second}, qimumcp.ProcessOptions{Configure: source.Configure, MaxFrameBytes: sdk.DefaultMaxLineLength})
+	driver, err := process.New(process.Config{Runner: f.runner, Store: stores.Frame, Source: source, CloseTimeout: 5 * time.Second, Protocol: source, MaxFrameBytes: sdk.DefaultMaxLineLength})
 	if err != nil {
 		t.Fatal(err)
 	}
-	owner := qimu.NewLifetime(context.Background())
-	f.Host, err = qimu.NewHost(context.Background(), qimu.HostConfig{Admission: stores.Admission, Epoch: stores.Qimu.Epoch(), Lifetime: owner, Drivers: []qimu.Driver{driver}, Installations: stores.Qimu, ExecutionProtection: stores.Qimu})
+	permission, err := mcp.NewCatalogPermission(stores.Admission, stores.PendingPluginBindings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner := frame.NewLifetime(context.Background())
+	f.Host, err = frame.NewHost(context.Background(), frame.HostConfig{ReadAcceptedBinding: permission.Read, Admission: stores.Admission, Epoch: stores.Frame.Epoch(), Lifetime: owner, Drivers: []frame.Driver{driver}, Installations: stores.Frame, ExecutionProtection: stores.Frame})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,14 +180,14 @@ func (f *managedFixture) open(t *testing.T, connect bool) {
 	if err := stores.PluginReleases.Admit(t.Context(), release); err != nil {
 		t.Fatal(err)
 	}
-	definition, err := plugins.ProjectFrameworkRelease(release, qimumcp.ProcessProfile)
+	definition, err := plugins.ProjectFrameworkRelease(release, pluginmcp.ProcessProfile)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := plugins.RegisterFrameworkRelease(f.Host, definition); err != nil {
 		t.Fatal(err)
 	}
-	records, err := stores.Qimu.Installations(t.Context())
+	records, err := stores.Frame.Installations(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,11 +196,11 @@ func (f *managedFixture) open(t *testing.T, connect bool) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = f.Host.Install(t.Context(), qimu.InstallationConfig{ID: f.store.snapshot.Installation.ID().Host(), Plugin: definition.Plugin, Configuration: configuration, Enabled: f.store.snapshot.Installation.Enabled()})
+		_, err = f.Host.Install(t.Context(), frame.InstallationConfig{ID: f.store.snapshot.Installation.ID().Host(), Plugin: definition.Plugin, Configuration: configuration, Enabled: f.store.snapshot.Installation.Enabled()})
 		if err != nil {
 			t.Fatal(err)
 		}
-	} else if err := f.Host.Restore(t.Context(), records, []*qimu.Plugin{definition.Plugin}); err != nil {
+	} else if err := f.Host.Restore(t.Context(), records, []*frame.Plugin{definition.Plugin}); err != nil {
 		t.Fatal(err)
 	}
 	if err := stores.RecoverPluginBindings(t.Context()); err != nil {
@@ -206,7 +212,7 @@ func (f *managedFixture) open(t *testing.T, connect bool) {
 	}
 	ready := make(chan struct{})
 	close(ready)
-	installed, err := mcp.NewInstalled(mcp.InstalledConfig{Host: f.Host, Driver: driver, Source: source, Registry: registry, Lifetime: owner, Bindings: stores.PendingPluginBindings, Ready: ready})
+	installed, err := mcp.NewInstalled(mcp.InstalledConfig{Host: f.Host, Source: source, Registry: registry, Lifetime: owner, Permission: permission, Ready: ready})
 	if err != nil {
 		t.Fatal(err)
 	}

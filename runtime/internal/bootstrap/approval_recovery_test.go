@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	json "encoding/json/v2"
 	"errors"
@@ -56,7 +58,7 @@ func TestProtocolPreservesUnsuccessfulApprovalResultsAcrossRestart(t *testing.T)
 						for _, part := range message.Parts {
 							if part.ToolResult != nil && part.ToolResult.ID == "shell_approval" && part.ToolResult.IsError {
 								matches++
-								if test.reason != "" && !reflect.DeepEqual(part.ToolResult.Output, chat.NewTextToolOutput(test.reason)) {
+								if test.reason != "" && !reflect.DeepEqual(part.ToolResult.Output, toolcontract.NewTextOutput(test.reason)) {
 									return nil, fmt.Errorf("approval refusal lost its reason: %+v", part.ToolResult.Output)
 								}
 							}

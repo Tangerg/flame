@@ -12,10 +12,10 @@
     "./testing/skill-pages.json": "./testing/generated/skill-pages.json"
   },
   "dependencies": {
-    "@opentelemetry/api": "^1.9.1",
-    "eventsource-parser": "^4.1.2",
+    "@opentelemetry/api": "^1.10.0",
+    "eventsource-parser": "^4.1.3",
     "zod": "^4.6.7",
-    "@qimu/sdk": "0.1.0"
+    "@frame/sdk": "https://github.com/Tangerg/frame/releases/download/v0.1.1/frame-sdk-0.1.1.tgz"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -26,12 +26,12 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run knip"
   },
   "devDependencies": {
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.5",
-    "oxlint": "^1.89.0",
+    "vitest": "^5.1.0",
+    "oxlint": "^1.91.0",
     "prettier": "^3.9.10",
-    "knip": "^6.42.1"
+    "knip": "^6.44.1"
   },
   "files": [
     "src",

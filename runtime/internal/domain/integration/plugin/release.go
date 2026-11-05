@@ -8,13 +8,15 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/process"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/qimu/integrity"
+
 	skillspec "github.com/Tangerg/scope/skills"
 )
 
@@ -196,7 +198,7 @@ func (s Server) clone() Server {
 // validated once on construction; persistence, installations and projections
 // trust it afterwards and read it only through copies.
 type Release struct {
-	digest      integrity.Digest
+	digest      framevalue.Digest
 	declaration Declaration
 }
 
@@ -210,7 +212,7 @@ func admitEach[T any](values []T, admit func(T) error) error {
 	return nil
 }
 
-func NewRelease(digest integrity.Digest, declaration Declaration) (Release, error) {
+func NewRelease(digest framevalue.Digest, declaration Declaration) (Release, error) {
 	builder, err := NewBuilder(declaration.Name, declaration.Version, declaration.Description)
 	if err != nil {
 		return Release{}, err
@@ -239,8 +241,8 @@ func NewRelease(digest integrity.Digest, declaration Declaration) (Release, erro
 	return builder.Release(digest)
 }
 
-func (r Release) Digest() integrity.Digest { return r.digest }
-func (r Release) Name() string             { return r.declaration.Name }
+func (r Release) Digest() framevalue.Digest { return r.digest }
+func (r Release) Name() string              { return r.declaration.Name }
 
 // Declaration returns an owned copy; no reader can advance the release.
 func (r Release) Declaration() Declaration { return r.declaration.clone() }
@@ -267,10 +269,10 @@ func (r Release) input(id string) (Input, bool) {
 // release changes. For a process it is the executable itself, which only the
 // exact release bytes and the server's name within them identify. Static
 // secret inputs and OAuth grants both follow this one rule.
-func (r Release) recipient(name mcpserver.ServerName) (integrity.Digest, bool) {
+func (r Release) recipient(name mcpserver.ServerName) (framevalue.Digest, bool) {
 	server, found := r.server(name)
 	if !found {
-		return integrity.Digest{}, false
+		return framevalue.Digest{}, false
 	}
 	fields := []string{string(server.Transport())}
 	if managed, ok := server.Startup.(ManagedBackend); ok {
@@ -386,7 +388,7 @@ func (b *Builder) AdmitSkill(skill Skill) error {
 }
 
 // Release binds the admitted declaration to the digest of its exact bytes.
-func (b *Builder) Release(digest integrity.Digest) (Release, error) {
+func (b *Builder) Release(digest framevalue.Digest) (Release, error) {
 	if err := digest.Validate(); err != nil {
 		return Release{}, fmt.Errorf("%w: release digest: %w", ErrInvalid, err)
 	}
@@ -398,7 +400,7 @@ func (b *Builder) Release(digest integrity.Digest) (Release, error) {
 }
 
 // Declaration finishes metadata admission without inventing a release identity.
-// Author tooling binds the result only after Qimu has computed the manifest.
+// Author tooling binds the result only after Frame has computed the manifest.
 func (b *Builder) Declaration() (Declaration, error) {
 	if len(b.declaration.Diagnostics) > maxDiagnostics {
 		return Declaration{}, fmt.Errorf("%w: diagnostic capacity", ErrInvalid)

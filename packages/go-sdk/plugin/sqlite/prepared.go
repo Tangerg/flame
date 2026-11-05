@@ -7,10 +7,12 @@ import (
 	"errors"
 	"time"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/frame/sqlite"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 // PreparedCommand is a projection of a durable private command admission.
@@ -19,13 +21,13 @@ import (
 type PreparedCommand struct {
 	db         *sql.DB
 	id, method string
-	input      jsonvalue.Value
+	input      framevalue.JSON
 	fresh      bool
 }
 
 // validateNew checks only local preconditions before the first durable admission.
 // Existing pending work and receipts must reconcile without acquiring new collaborators.
-func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input jsonvalue.Value, validateNew func(context.Context) error) (*PreparedCommand, []byte, error) {
+func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input framevalue.JSON, validateNew func(context.Context) error) (*PreparedCommand, []byte, error) {
 	if err := validateCommandIdentity(db, method, id); err != nil {
 		return nil, nil, err
 	}
@@ -34,12 +36,12 @@ func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input json
 	}
 	var reply []byte
 	started := false
-	err := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
+	err := WithinTransaction(ctx, db, func(ctx context.Context) error {
 		var previousMethod, previousInput string
-		err := sqlite.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
+		err := Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
 		if err == nil {
 			if previousMethod != method || previousInput != input.String() {
-				return portable.ErrInvocationConflict
+				return framemcp.ErrInvocationConflict
 			}
 			return nil
 		}
@@ -51,7 +53,7 @@ func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input json
 				return err
 			}
 		}
-		if _, err := sqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO commands(id,method,business_input_json,reply) VALUES(?,?,?,NULL)`, id, method, input.String()); err != nil {
+		if _, err := Connection(ctx, db).ExecContext(ctx, `INSERT INTO commands(id,method,business_input_json,reply) VALUES(?,?,?,NULL)`, id, method, input.String()); err != nil {
 			return err
 		}
 		started = true
@@ -67,24 +69,24 @@ func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input json
 }
 
 // ResumeCommand reads original private input and admission without creating work.
-func ResumeCommand(ctx context.Context, db *sql.DB, method, id string) (*PreparedCommand, jsonvalue.Value, []byte, error) {
+func ResumeCommand(ctx context.Context, db *sql.DB, method, id string) (*PreparedCommand, framevalue.JSON, []byte, error) {
 	if err := validateCommandIdentity(db, method, id); err != nil {
-		return nil, jsonvalue.Value{}, nil, err
+		return nil, framevalue.JSON{}, nil, err
 	}
 	var storedMethod, raw string
 	var reply []byte
-	if err := sqlite.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&storedMethod, &raw, &reply); err != nil {
-		return nil, jsonvalue.Value{}, nil, err
+	if err := Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&storedMethod, &raw, &reply); err != nil {
+		return nil, framevalue.JSON{}, nil, err
 	}
 	if storedMethod != method {
-		return nil, jsonvalue.Value{}, nil, portable.ErrInvocationConflict
+		return nil, framevalue.JSON{}, nil, framemcp.ErrInvocationConflict
 	}
-	input, err := jsonvalue.Parse([]byte(raw))
+	input, err := framevalue.ParseJSON([]byte(raw))
 	if err != nil {
-		return nil, jsonvalue.Value{}, nil, err
+		return nil, framevalue.JSON{}, nil, err
 	}
 	if input.String() != raw {
-		return nil, jsonvalue.Value{}, nil, errors.New("managed plugin: retained input is not canonical")
+		return nil, framevalue.JSON{}, nil, errors.New("managed plugin: retained input is not canonical")
 	}
 	if len(reply) != 0 {
 		return nil, input, reply, nil
@@ -101,13 +103,18 @@ func (c *PreparedCommand) NewlyAdmitted() bool { return c != nil && c.fresh }
 const externalSettlementTimeout = 10 * time.Second
 
 func (c *PreparedCommand) SettleExternal(ctx context.Context, reply []byte, record func(context.Context) error) error {
+	if c != nil {
+		if _, active := ctx.Value(commandTransactionKey{}).(*commandTransaction); active {
+			return errors.New("managed plugin: external settlement cannot enter a command transaction")
+		}
+	}
 	settlement, cancel := context.WithTimeout(context.WithoutCancel(ctx), externalSettlementTimeout)
 	defer cancel()
 	return c.complete(settlement, reply, record, sqlite.RunIndependentTx)
 }
 
 func (c *PreparedCommand) Complete(ctx context.Context, reply []byte) error {
-	return c.complete(ctx, reply, nil, sqlite.RunInTx)
+	return c.complete(ctx, reply, nil, WithinTransaction)
 }
 
 type replyTransaction func(context.Context, *sql.DB, func(context.Context) error) error
@@ -119,23 +126,23 @@ func (c *PreparedCommand) complete(ctx context.Context, reply []byte, record fun
 	if err := validateCommandIdentity(c.db, c.method, c.id); err != nil {
 		return err
 	}
-	if _, err := qimumcp.DecodeReply[jsonvalue.Value](reply); err != nil {
-		if _, known := errors.AsType[*portable.Refusal](err); !known {
+	if _, err := pluginmcp.DecodeReply[framevalue.JSON](reply); err != nil {
+		if _, known := errors.AsType[*framemcp.Refusal](err); !known {
 			return err
 		}
 	}
 	return transact(ctx, c.db, func(ctx context.Context) error {
 		var method, input string
 		var original []byte
-		if err := sqlite.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, c.id).Scan(&method, &input, &original); err != nil {
+		if err := Connection(ctx, c.db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, c.id).Scan(&method, &input, &original); err != nil {
 			return err
 		}
 		if method != c.method || input != c.input.String() {
-			return portable.ErrInvocationConflict
+			return framemcp.ErrInvocationConflict
 		}
 		if len(original) != 0 {
 			if !bytes.Equal(original, reply) {
-				return portable.ErrInvocationConflict
+				return framemcp.ErrInvocationConflict
 			}
 			return nil
 		}
@@ -144,7 +151,7 @@ func (c *PreparedCommand) complete(ctx context.Context, reply []byte, record fun
 				return err
 			}
 		}
-		_, err := sqlite.Connection(ctx, c.db).ExecContext(ctx, `UPDATE commands SET reply=? WHERE id=? AND reply IS NULL`, string(reply), c.id)
+		_, err := Connection(ctx, c.db).ExecContext(ctx, `UPDATE commands SET reply=? WHERE id=? AND reply IS NULL`, string(reply), c.id)
 		return err
 	})
 }

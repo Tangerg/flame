@@ -15,7 +15,7 @@ import {
 } from "@/features/plugins/ui/InstalledComponent";
 import { type ComponentContext } from "@flame/component-sdk";
 import { type FlameClient } from "@flame/runtime-client";
-import { definePlugin, type ContributionLifetime } from "@/extensions/definePlugin";
+import { definePlugin, type ContributionScope } from "@/extensions/definePlugin";
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { RuntimeConnectionGeneration } from "@/features/connection/public/services";
 import { useEffect } from "react";
@@ -29,12 +29,12 @@ afterEach(() => {
 });
 
 it("refuses global command registration from an ordinary mounted view", async () => {
-  let lifetime!: ContributionLifetime;
+  let lifetime!: ContributionScope;
   const host = await startKernel([
     definePlugin({
       name: "test.view-command-admission",
       setup(scope) {
-        lifetime = scope.lifetime("view");
+        lifetime = scope.contributions.child("view");
       },
     }),
   ]);
@@ -71,12 +71,12 @@ it("refuses global command registration from an ordinary mounted view", async ()
 it("updates language without retiring the component's accepted file transfer", async () => {
   const originalLocale = activeLocale();
   finishTestClient(() => setLocale(originalLocale));
-  let lifetime!: ContributionLifetime;
+  let lifetime!: ContributionScope;
   const host = await startKernel([
     definePlugin({
       name: "test.locale-transfer",
       setup(context) {
-        lifetime = context.lifetime("files");
+        lifetime = context.contributions.child("files");
       },
     }),
   ]);
@@ -124,12 +124,12 @@ it("updates language without retiring the component's accepted file transfer", a
 });
 
 it("injects the captured interaction into an installed result without querying during render", async () => {
-  let lifetime!: ContributionLifetime;
+  let lifetime!: ContributionScope;
   const host = await startKernel([
     definePlugin({
       name: "test.captured-interaction",
       setup(context) {
-        lifetime = context.lifetime("result");
+        lifetime = context.contributions.child("result");
       },
     }),
   ]);
@@ -194,12 +194,12 @@ it("injects the captured interaction into an installed result without querying d
 it.each(["unmount", "resources", "lifetime"] as const)(
   "joins the original file save and refuses new saves after %s retirement",
   async (retirement) => {
-    let lifetime!: ContributionLifetime;
+    let lifetime!: ContributionScope;
     const host = await startKernel([
       definePlugin({
         name: "test.file-transfer",
         setup(context) {
-          lifetime = context.lifetime("files");
+          lifetime = context.contributions.child("files");
         },
       }),
     ]);
@@ -245,8 +245,7 @@ it.each(["unmount", "resources", "lifetime"] as const)(
     const closing = stopKernel(host).then(() => {
       closed = true;
     });
-    await Promise.resolve();
-    expect(captured.signal.aborted).toBe(true);
+    await vi.waitFor(() => expect(captured.signal.aborted).toBe(true));
     expect(closed).toBe(false);
     expect(() => captured.saveFile(file)).toThrow(captured.signal.reason);
     expect(saveFile).toHaveBeenCalledOnce();
@@ -324,12 +323,12 @@ it("does not reclaim later input focus when an installed component reload is ref
 });
 
 it("keeps unavailable component recovery focusable through the same cleanup gate", async () => {
-  let lifetime!: ContributionLifetime;
+  let lifetime!: ContributionScope;
   const host = await startKernel([
     definePlugin({
       name: "test.unavailable-component",
       setup(context) {
-        lifetime = context.lifetime("recovery");
+        lifetime = context.contributions.child("recovery");
       },
     }),
   ]);
@@ -420,12 +419,12 @@ it("captures component identity, generation, time and React stack at the failure
 it.each(["unmount", "resources", "contribution"] as const)(
   "opens the accepted Session through Host navigation and retires that action on %s",
   async (retirement) => {
-    let lifetime!: ContributionLifetime;
+    let lifetime!: ContributionScope;
     const host = await startKernel([
       definePlugin({
         name: "test.session-navigation",
         setup(context) {
-          lifetime = context.lifetime("navigation");
+          lifetime = context.contributions.child("navigation");
         },
       }),
     ]);

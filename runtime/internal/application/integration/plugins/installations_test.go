@@ -9,8 +9,9 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/integrity"
+	framevalue "github.com/Tangerg/frame/value"
+
+	"github.com/Tangerg/frame"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -78,9 +79,9 @@ func (s *installationMemory) Remove(context.Context, identity.InstallationID) er
 	return nil
 }
 
-type releaseMemory map[integrity.Digest]plugin.Release
+type releaseMemory map[framevalue.Digest]plugin.Release
 
-func (m releaseMemory) Get(_ context.Context, digest integrity.Digest) (plugin.Release, error) {
+func (m releaseMemory) Get(_ context.Context, digest framevalue.Digest) (plugin.Release, error) {
 	release, found := m[digest]
 	if !found {
 		return plugin.Release{}, plugin.ErrNotFound
@@ -136,7 +137,7 @@ func (p installationPackages) Realize(ctx context.Context, i plugin.Installation
 }
 
 type installationDependencies struct {
-	admission        *qimu.Admission
+	admission        *frame.Admission
 	inUse            bool
 	executionChanged bool
 }
@@ -191,7 +192,7 @@ func TestCommittedInstallationLeavesConnectionOutcomeToItsSupervisor(t *testing.
 		}
 		return errors.New("supervisor is closing")
 	}}
-	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, connections, nil)
+	c, err := newTestCoordinator(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, connections, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,7 +236,7 @@ func TestExecutionChangeEvidenceFollowsTheDurableWrite(t *testing.T) {
 				}
 				notices = append(notices, notice.Resource)
 			}
-			coordinator, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, connections, publish)
+			coordinator, err := newTestCoordinator(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, connections, publish)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -287,7 +288,7 @@ func TestInstallationRemovalPublishesOnlyTheDurableChange(t *testing.T) {
 				withdraw:  func([]mcpserver.ID) error { return test.withdraw },
 				reconcile: func(context.Context, []mcpserver.ID) error { return nil },
 			}
-			coordinator, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, connections, publish)
+			coordinator, err := newTestCoordinator(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, connections, publish)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -322,7 +323,7 @@ func TestListingPreservesCancellationInsteadOfProjectingUnavailability(t *testin
 		cancel(cause)
 		return Realization{}, context.Cause(ctx)
 	}}
-	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, installationConnections{}, nil)
+	c, err := newTestCoordinator(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, installationConnections{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,7 +338,7 @@ func TestListingReportsUnavailableReleaseWithoutLosingTheInstallation(t *testing
 	packages := installationPackages{realize: func(context.Context, plugin.Installation) (Realization, error) {
 		return Realization{Release: ReleaseUnavailable}, nil
 	}}
-	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, installationConnections{}, nil)
+	c, err := newTestCoordinator(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, installationConnections{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -360,7 +361,7 @@ func TestPresentationIsAdmittedOnlyForAnActiveAvailableRelease(t *testing.T) {
 		return Realization{Release: ReleaseAvailable}, nil
 	}}
 	connections := installationConnections{reconcile: func(context.Context, []mcpserver.ID) error { return nil }}
-	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, connections, nil)
+	c, err := newTestCoordinator(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, connections, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -398,7 +399,7 @@ func TestStaleConfigurationNeverReachesPersistenceOrRealization(t *testing.T) {
 	if err != nil || !found {
 		t.Fatal(err)
 	}
-	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{prepare: func(context.Context, plugin.Installation) error {
+	c, err := newTestCoordinator(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{prepare: func(context.Context, plugin.Installation) error {
 		t.Fatal("stale configuration reached preparation")
 		return nil
 	}}, installationConnections{reconcile: func(context.Context, []mcpserver.ID) error {
@@ -445,7 +446,7 @@ func TestFailedPreparationIsObservedByTheChangeAndEveryLaterListing(t *testing.T
 		reconciled = true
 		return nil
 	}}
-	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, connections, nil)
+	c, err := newTestCoordinator(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, connections, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -470,7 +471,7 @@ func TestUninstallWithdrawsDurablyBeforeFailedCleanup(t *testing.T) {
 		}
 		return errors.New("retirement failed")
 	}}
-	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, connections, nil)
+	c, err := newTestCoordinator(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, connections, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -479,7 +480,7 @@ func TestUninstallWithdrawsDurablyBeforeFailedCleanup(t *testing.T) {
 	}
 }
 
-// Qimu withdraws authoritative sources at the commit; consumer presentation
+// Frame withdraws authoritative sources at the commit; consumer presentation
 // updates run afterward and may reenter the application owner.
 func TestFrameworkAuthorityIsWithdrawnBeforeConsumerProjection(t *testing.T) {
 	for _, operation := range []string{"disable", "uninstall"} {
@@ -515,7 +516,7 @@ func TestFrameworkAuthorityIsWithdrawnBeforeConsumerProjection(t *testing.T) {
 					return nil
 				},
 			}
-			c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, connections, nil)
+			c, err := newTestCoordinator(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, connections, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -552,7 +553,7 @@ func TestInstallationReconcileCanReenterTheOwner(t *testing.T) {
 		return nil
 	}}
 	var err error
-	c, err = New(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, connections, nil)
+	c, err = newTestCoordinator(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, connections, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -605,7 +606,7 @@ func TestCommittedInstallationRealizationFollowsRuntimeLifetime(t *testing.T) {
 						return selected, nil
 					}
 				}
-				c, err := New(lifetime, testFramework(t, store, dependencies), store, catalog, packages, connections, nil)
+				c, err := newTestCoordinator(lifetime, testFramework(t, store, dependencies), store, catalog, packages, connections, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -690,7 +691,7 @@ func TestCommittedInstallReturnsItsProjectionAfterRequestCancellation(t *testing
 			return Realization{Release: ReleaseAvailable}, nil
 		},
 	}
-	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, installationConnections{}, nil)
+	c, err := newTestCoordinator(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, installationConnections{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -712,7 +713,7 @@ func TestInstallDecidesCapacityAtTheAdmissionSerializationPoint(t *testing.T) {
 		dependencies.requireReleased(t)
 		return release, nil
 	}}
-	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, installationConnections{}, nil)
+	c, err := newTestCoordinator(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, installationConnections{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -725,7 +726,7 @@ func TestInstallDecidesCapacityAtTheAdmissionSerializationPoint(t *testing.T) {
 func TestReplacementRequiresQuiescenceButSameReleaseEnablementDoesNot(t *testing.T) {
 	store, dependencies, id, catalog := installationFixture(t)
 	dependencies.inUse = true
-	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, installationConnections{reconcile: func(context.Context, []mcpserver.ID) error { return nil }}, nil)
+	c, err := newTestCoordinator(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, installationConnections{reconcile: func(context.Context, []mcpserver.ID) error { return nil }}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

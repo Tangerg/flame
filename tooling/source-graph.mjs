@@ -7,10 +7,18 @@ import typescriptPreset from "@babel/preset-typescript";
 import * as ts from "typescript/unstable/ast";
 
 export const RUNTIME_CLIENT_EDGE = "@flame/runtime-client";
-export const QIMU_JSON_EDGE = "@qimu/sdk/json";
-const qimuJSON = realpathSync(
-  fileURLToPath(import.meta.resolve(QIMU_JSON_EDGE)),
+export const FRAME_JSON_EDGE = "@frame/sdk/json";
+const frameJSON = realpathSync(
+  fileURLToPath(import.meta.resolve(FRAME_JSON_EDGE)),
 );
+const frameSDKRoot = dirname(dirname(frameJSON));
+const frameManifest = JSON.parse(
+  readFileSync(join(frameSDKRoot, "package.json"), "utf8"),
+);
+const frameJSONEntries = new Set([
+  frameJSON,
+  realpathSync(resolve(frameSDKRoot, frameManifest.exports["./json"].types)),
+]);
 const runtimeClientRoot = dirname(
   dirname(
     realpathSync(fileURLToPath(import.meta.resolve(RUNTIME_CLIENT_EDGE))),
@@ -193,8 +201,8 @@ export function readSourceGraph(root = process.cwd()) {
         if (!specifier || !ts.isStringLiteralLikeNode(specifier)) continue;
         const name = specifier.text;
         let target;
-        if (name === QIMU_JSON_EDGE) {
-          target = QIMU_JSON_EDGE;
+        if (name === FRAME_JSON_EDGE) {
+          target = FRAME_JSON_EDGE;
         } else if (
           name === RUNTIME_CLIENT_EDGE ||
           name.startsWith(`${RUNTIME_CLIENT_EDGE}/`)
@@ -212,8 +220,8 @@ export function readSourceGraph(root = process.cwd()) {
             const resolved = resolve(declaration.fileName);
             // Relative paths and aliases must retain the SDK's ownership even
             // though its implementation lives outside the frontend source tree.
-            if (realpathSync(resolved) === qimuJSON) {
-              target = QIMU_JSON_EDGE;
+            if (frameJSONEntries.has(realpathSync(resolved))) {
+              target = FRAME_JSON_EDGE;
             } else if (
               realpathSync(resolved).startsWith(`${runtimeClientRoot}${sep}`)
             ) {

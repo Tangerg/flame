@@ -1,6 +1,9 @@
 package pluginbrowser
 
 import (
+	framebrowser "github.com/Tangerg/frame/browser"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"context"
 	json "encoding/json/v2"
 	"errors"
@@ -8,11 +11,10 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/control"
-	"github.com/Tangerg/qimu/distribution"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
+	"github.com/Tangerg/frame"
+
+	"github.com/Tangerg/frame/distribution"
+
 	"github.com/samber/lo"
 )
 
@@ -35,7 +37,7 @@ func NewSource(installations plugins.Store, resources resources) (*Source, error
 	return &Source{installations: installations, resources: resources}, nil
 }
 
-func (s *Source) component(ctx context.Context, binding qimu.UnitBinding) (plugin.Snapshot, plugin.ClientComponent, error) {
+func (s *Source) component(ctx context.Context, binding frame.UnitBinding) (plugin.Snapshot, plugin.ClientComponent, error) {
 	id, err := identity.ParseHostInstallation(binding.Source.InstallationID)
 	if err != nil {
 		return plugin.Snapshot{}, plugin.ClientComponent{}, err
@@ -60,25 +62,25 @@ func (s *Source) component(ctx context.Context, binding qimu.UnitBinding) (plugi
 		return plugin.Snapshot{}, plugin.ClientComponent{}, err
 	}
 	configuration, err := plugins.EncodeFrameworkConfiguration(snapshot.Installation.Snapshot())
-	if err != nil || integrity.Hash(configuration) != binding.Configuration {
-		return plugin.Snapshot{}, plugin.ClientComponent{}, errors.Join(qimu.ErrStaleBinding, err)
+	if err != nil || framevalue.Hash(configuration) != binding.Configuration {
+		return plugin.Snapshot{}, plugin.ClientComponent{}, errors.Join(frame.ErrStaleBinding, err)
 	}
 	return snapshot, component, nil
 }
 
-func (s *Source) Module(ctx context.Context, binding qimu.UnitBinding) (control.Artifact, error) {
+func (s *Source) Module(ctx context.Context, binding frame.UnitBinding) (framebrowser.Artifact, error) {
 	snapshot, component, err := s.component(ctx, binding)
 	if err != nil {
-		return control.Artifact{}, err
+		return framebrowser.Artifact{}, err
 	}
 	content, err := s.resources.ReadResource(ctx, snapshot.Installation, component.Entry)
 	if err != nil {
-		return control.Artifact{}, err
+		return framebrowser.Artifact{}, err
 	}
-	return control.Artifact{Path: component.Entry, Digest: integrity.Hash(content)}, nil
+	return framebrowser.Artifact{Path: component.Entry, Digest: framevalue.Hash(content)}, nil
 }
 
-func (s *Source) Configuration(ctx context.Context, setup *qimu.Setup) ([]byte, error) {
+func (s *Source) Configuration(ctx context.Context, setup *frame.Setup) ([]byte, error) {
 	if setup == nil {
 		return nil, plugin.ErrInvalid
 	}
@@ -99,7 +101,7 @@ func (s *Source) Configuration(ctx context.Context, setup *qimu.Setup) ([]byte, 
 		return nil, err
 	}
 	if module == nil || module.Entry != component.Entry {
-		return nil, qimu.ErrContractMismatch
+		return nil, frame.ErrContractMismatch
 	}
 	value.SharedModules = []string{}
 	for _, imported := range module.Imports {
@@ -107,14 +109,14 @@ func (s *Source) Configuration(ctx context.Context, setup *qimu.Setup) ([]byte, 
 			continue
 		}
 		if value.ModuleProfile != "" && value.ModuleProfile != imported.Shared.Profile {
-			return nil, qimu.ErrContractMismatch
+			return nil, frame.ErrContractMismatch
 		}
 		value.ModuleProfile = imported.Shared.Profile
 		value.SharedModules = append(value.SharedModules, imported.Specifier)
 	}
-	encoded, err := jsonvalue.Encode(value)
+	encoded, err := framevalue.EncodeJSON(value)
 	if err != nil {
 		return nil, err
 	}
-	return encoded.JSON(), nil
+	return encoded.Bytes(), nil
 }

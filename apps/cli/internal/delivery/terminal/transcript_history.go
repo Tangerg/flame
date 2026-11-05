@@ -4,20 +4,19 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/oolong/components/headless"
 )
 
 // transcriptHistory owns the retained transcript projection for each run and
 // the lineage needed to label that run. Keeping both facts together prevents
 // navigation and presentation from advancing independent run views.
 type transcriptHistory struct {
-	entries  map[string][]headless.BlockID
+	entries  map[string][]transcriptEntryID
 	lineages map[string]conversation.RunLineage
 }
 
 func newTranscriptHistory() transcriptHistory {
 	return transcriptHistory{
-		entries:  make(map[string][]headless.BlockID),
+		entries:  make(map[string][]transcriptEntryID),
 		lineages: make(map[string]conversation.RunLineage),
 	}
 }
@@ -38,16 +37,16 @@ func (h *transcriptHistory) Observe(run conversation.Run) {
 	h.lineages[run.ID] = run.Lineage
 }
 
-func (h *transcriptHistory) Append(runID string, id headless.BlockID) {
+func (h *transcriptHistory) Append(runID string, id transcriptEntryID) {
 	if runID == "" {
 		return
 	}
 	h.entries[runID] = append(h.entries[runID], id)
 }
 
-func (h *transcriptHistory) DiscardBefore(first headless.BlockID) {
+func (h *transcriptHistory) DiscardBefore(first transcriptEntryID) {
 	for runID, ids := range h.entries {
-		ids = slices.DeleteFunc(ids, func(id headless.BlockID) bool { return id < first })
+		ids = slices.DeleteFunc(ids, func(id transcriptEntryID) bool { return id < first })
 		if len(ids) == 0 {
 			delete(h.entries, runID)
 			continue
@@ -58,8 +57,8 @@ func (h *transcriptHistory) DiscardBefore(first headless.BlockID) {
 
 func (h *transcriptHistory) FirstRetained(
 	runID string,
-	first, last headless.BlockID,
-) (headless.BlockID, bool) {
+	first, last transcriptEntryID,
+) (transcriptEntryID, bool) {
 	for _, id := range h.entries[runID] {
 		if id >= first && id < last {
 			return id, true

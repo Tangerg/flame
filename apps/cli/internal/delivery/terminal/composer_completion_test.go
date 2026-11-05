@@ -3,8 +3,8 @@ package terminal
 import (
 	"testing"
 
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/input"
 
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/attachment"
 )
@@ -29,21 +29,21 @@ func TestFileCompletionCannotAcceptAnOfferForEarlierInput(t *testing.T) {
 		composer   *promptComposer
 		completion *promptCompletion
 	}{composer, completion}
-	a.composer.Editor().SetText("@c")
+	a.composer.Controller().SetText("@c")
 	query, ok := a.completion.currentCompletionQuery()
 	if !ok {
 		t.Fatal("file input did not open a completion query")
 	}
-	a.completion.popup.Accept = func(_ headless.Candidate, token headless.Token) {
+	a.completion.popup.Accept = func(_ base.Candidate, token base.Token) {
 		t.Errorf("accepted obsolete replacement range %+v for @cache", token)
 	}
-	a.completion.popup.Offer(query.token, []headless.Candidate{{Text: "cache_test.go"}})
-	a.composer.Editor().SetText("@cache")
+	a.completion.popup.Offer(query.token, []base.Candidate{{Text: "cache_test.go"}})
+	a.composer.Controller().SetText("@cache")
 	a.completion.refreshCompletion()
 	if a.completion.handleCompletion(input.Key{Code: input.Tab}) {
 		t.Fatal("earlier file candidates consumed completion acceptance while the new lookup was pending")
 	}
-	if got := a.composer.Editor().Text(); got != "@cache" {
+	if got := a.composer.Controller().Text(); got != "@cache" {
 		t.Fatalf("pending completion changed the draft to %q", got)
 	}
 }
@@ -53,7 +53,7 @@ func TestCompletionGateKeepsARejectedTokenClosedUntilItChanges(t *testing.T) {
 
 	query := completionQuery{
 		line:  2,
-		token: headless.Token{Start: 9, End: 16, Query: "archive", Trigger: headless.Trigger{Prefix: "@"}},
+		token: base.Token{Start: 9, End: 16, Query: "archive", Trigger: base.Trigger{Prefix: "@"}},
 	}
 	var gate completionGate
 	if !gate.Allow(query) {

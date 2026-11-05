@@ -13,23 +13,23 @@ import (
 	"slices"
 	"strings"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	sdkplugin "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
-	"github.com/Tangerg/frame/cancellation"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
+
 	sdk "github.com/Tangerg/scope/skills"
 )
 
 const manifestSchema = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
 const MCPSchema = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json"
 
-func parse(ctx context.Context, root *os.Root, digest integrity.Digest) (plugin.Release, error) {
+func parse(ctx context.Context, root *os.Root, digest framevalue.Digest) (plugin.Release, error) {
 	builder, err := parseMetadata(ctx, root)
 	if err != nil {
 		return plugin.Release{}, err
@@ -65,7 +65,7 @@ func parseMetadata(ctx context.Context, root *os.Root) (*plugin.Builder, error) 
 		}
 		if key == "keywords" {
 			var v []string
-			if err = jsonvalue.UnmarshalNonNull(raw, &v); err != nil {
+			if err = framevalue.DecodeValue(raw, &v, "plugin declaration"); err != nil {
 				return nil, fmt.Errorf("%w: manifest keywords: %w", plugin.ErrInvalid, err)
 			}
 			if v == nil {
@@ -123,14 +123,14 @@ func parseMetadata(ctx context.Context, root *os.Root) (*plugin.Builder, error) 
 		if err := parseExtensions(raw, release, ctx, root, nativeServers); err != nil {
 			return nil, err
 		}
-		if err := cancellation.Err(ctx); err != nil {
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			return nil, err
 		}
 	}
 	if err = parseSkills(ctx, root, release); err != nil {
 		return nil, err
 	}
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return nil, err
 	}
 	return release, nil
@@ -138,7 +138,7 @@ func parseMetadata(ctx context.Context, root *os.Root) (*plugin.Builder, error) 
 
 func admitManagedBackends(raw jsontext.Value, release *plugin.Builder, root *os.Root, nativeServers []string) error {
 	var values []wireManagedBackend
-	if err := jsonvalue.UnmarshalNonNull(raw, &values); err != nil {
+	if err := framevalue.DecodeValue(raw, &values, "plugin declaration"); err != nil {
 		return fmt.Errorf("%w: managed backend declarations: %w", plugin.ErrInvalid, err)
 	}
 	for _, value := range values {
@@ -228,7 +228,7 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		if err != nil {
 			return err
 		}
-		value, err := jsonvalue.Parse(w.Value)
+		value, err := framevalue.ParseJSON(w.Value)
 		if err != nil {
 			return err
 		}
@@ -317,20 +317,20 @@ func (r declarationResources) read(ctx context.Context, resource string) ([]byte
 	return read(ctx, r.root, resource, maxManifestBytes)
 }
 
-func (r declarationResources) point(ctx context.Context, resource string) (*portable.Point, error) {
+func (r declarationResources) point(ctx context.Context, resource string) (*plugincontract.Point, error) {
 	body, err := r.read(ctx, resource)
 	if err != nil {
 		return nil, err
 	}
-	return portable.ParsePoint(body)
+	return plugincontract.ParsePoint(body)
 }
 
-func (r declarationResources) capability(ctx context.Context, resource string) (*portable.Capability, error) {
+func (r declarationResources) capability(ctx context.Context, resource string) (*plugincontract.Capability, error) {
 	body, err := r.read(ctx, resource)
 	if err != nil {
 		return nil, err
 	}
-	return portable.ParseCapability(body)
+	return plugincontract.ParseCapability(body)
 }
 
 func (r declarationResources) contribution(ctx context.Context, w wireContribution) (plugin.Contribution, error) {
@@ -375,7 +375,7 @@ func admitContributions[T any](raw jsontext.Value, release *plugin.Builder, comp
 	}
 	for _, raw := range values {
 		var wire T
-		if err := jsonvalue.UnmarshalNonNull(raw, &wire); err != nil {
+		if err := framevalue.DecodeValue(raw, &wire, "plugin declaration"); err != nil {
 			report(release, component, plugin.DiagnosticInvalidDeclaration)
 			continue
 		}
@@ -409,7 +409,7 @@ func parseMCP(ctx context.Context, root *os.Root, release *plugin.Builder) ([]st
 		return nil, nil
 	}
 	if err != nil {
-		if cause := cancellation.Err(ctx); cause != nil {
+		if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 			return nil, errors.Join(err, cause)
 		}
 		report(release, plugin.Component{Kind: plugin.ComponentMCP}, plugin.DiagnosticUnavailableComponent)
@@ -468,7 +468,7 @@ func portableServer(name string, raw jsontext.Value) (plugin.Server, error) {
 		URL     string              `json:"url,omitempty"`
 		Headers map[string]string   `json:"headers,omitempty"`
 	}
-	if err := jsonvalue.UnmarshalNonNull(raw, &wire); err != nil {
+	if err := framevalue.DecodeValue(raw, &wire, "plugin declaration"); err != nil {
 		return plugin.Server{}, fmt.Errorf("%w: server declaration: %w", plugin.ErrInvalid, err)
 	}
 	var members map[string]jsontext.Value
@@ -536,7 +536,7 @@ func inspectServerFiles(root *os.Root, s plugin.Server) error {
 }
 
 func parseSkills(ctx context.Context, root *os.Root, release *plugin.Builder) error {
-	if err := cancellation.Err(ctx); err != nil {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return err
 	}
 	dir, err := fs.ReadDir(root.FS(), "skills")
@@ -545,7 +545,7 @@ func parseSkills(ctx context.Context, root *os.Root, release *plugin.Builder) er
 	}
 	if err != nil {
 		report(release, plugin.Component{Kind: plugin.ComponentSkills}, plugin.DiagnosticUnavailableComponent)
-		if cause := cancellation.Err(ctx); cause != nil {
+		if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 			return errors.Join(err, cause)
 		}
 		return nil
@@ -559,7 +559,7 @@ func parseSkills(ctx context.Context, root *os.Root, release *plugin.Builder) er
 			continue
 		}
 		if err != nil {
-			if cause := cancellation.Err(ctx); cause != nil {
+			if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 				return errors.Join(err, cause)
 			}
 			report(release, plugin.Component{Kind: plugin.ComponentSkill, Name: entry.Name()}, plugin.DiagnosticUnavailableComponent)
@@ -567,7 +567,7 @@ func parseSkills(ctx context.Context, root *os.Root, release *plugin.Builder) er
 		}
 		skill, err := skilldocument.Load(ctx, entry.Name(), content)
 		if err != nil {
-			if cause := cancellation.Err(ctx); cause != nil {
+			if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 				return errors.Join(err, cause)
 			}
 			report(release, plugin.Component{Kind: plugin.ComponentSkill, Name: entry.Name()}, plugin.DiagnosticInvalidDeclaration)

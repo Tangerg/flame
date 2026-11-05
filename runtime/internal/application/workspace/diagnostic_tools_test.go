@@ -1,13 +1,14 @@
 package workspace
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"errors"
 	"slices"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/scope/core/chat"
 )
 
 type toolRegistryFixture struct {
@@ -76,8 +77,8 @@ func newDiagnosticTools(t *testing.T, registry diagnosticToolRegistry, roots dia
 
 func TestListOwnsSafeUniqueNameOrder(t *testing.T) {
 	registry := toolRegistryFixture{tools: []tool.Tool{
-		{ToolDefinition: chat.ToolDefinition{Name: "read", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassSafe},
-		{ToolDefinition: chat.ToolDefinition{Name: "glob", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassSafe},
+		{Definition: toolcontract.Definition{Name: "read", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassSafe},
+		{Definition: toolcontract.Definition{Name: "glob", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassSafe},
 	}}
 	c := newDiagnosticTools(t, registry, &rootRecorder{})
 
@@ -104,13 +105,13 @@ func TestListOwnsSafeUniqueNameOrder(t *testing.T) {
 func TestListRejectsInvalidCatalogs(t *testing.T) {
 	for name, tools := range map[string][]tool.Tool{
 		"empty name":          {{SafetyClass: tool.SafetyClassSafe}},
-		"padded name":         {{ToolDefinition: chat.ToolDefinition{Name: " read ", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassSafe}},
-		"invalid description": {{ToolDefinition: chat.ToolDefinition{Name: "read", Description: string([]byte{0xff}), InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassSafe}},
-		"unknown safety":      {{ToolDefinition: chat.ToolDefinition{Name: "read", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClass("future")}},
-		"unsafe":              {{ToolDefinition: chat.ToolDefinition{Name: "write", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassWrite}},
+		"padded name":         {{Definition: toolcontract.Definition{Name: " read ", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassSafe}},
+		"invalid description": {{Definition: toolcontract.Definition{Name: "read", Description: string([]byte{0xff}), InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassSafe}},
+		"unknown safety":      {{Definition: toolcontract.Definition{Name: "read", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClass("future")}},
+		"unsafe":              {{Definition: toolcontract.Definition{Name: "write", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassWrite}},
 		"duplicate name": {
-			{ToolDefinition: chat.ToolDefinition{Name: "read", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassSafe},
-			{ToolDefinition: chat.ToolDefinition{Name: "read", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassSafe},
+			{Definition: toolcontract.Definition{Name: "read", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassSafe},
+			{Definition: toolcontract.Definition{Name: "read", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassSafe},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

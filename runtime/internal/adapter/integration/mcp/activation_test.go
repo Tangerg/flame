@@ -8,7 +8,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/frame/cancellation"
 )
 
 type failedDefinitionRegistry struct {
@@ -33,7 +32,7 @@ func TestInstallationActivationPreservesDefinitionFailures(t *testing.T) {
 	canceled, cancel := context.WithCancelCause(t.Context())
 	cause := errors.New("activation request withdrawn")
 	cancel(cause)
-	cancellations := cancellation.Err(canceled)
+	cancellations := errors.Join(canceled.Err(), context.Cause(canceled))
 	for _, operation := range []struct {
 		name string
 		call func(*Pool, context.Context, mcpserver.ID) (plugin.Activation, error)

@@ -1,5 +1,5 @@
 import { asyncDisposeSymbol } from "dougong";
-import { type ContributionLifetime } from "@/extensions/definePlugin";
+import { type ContributionScope } from "@/extensions/definePlugin";
 import { LOCALE } from "@/features/i18n/public/extensionPoints";
 import { type LocaleSpec } from "@/features/i18n/public/types";
 import { activeLocale, mountLocaleBundle } from "@/lib/i18n/index";
@@ -12,20 +12,22 @@ export interface LocaleSource {
 }
 
 export function contributeLocale(
-  scope: Pick<ContributionLifetime, "signal" | "spawn" | "cleanup" | "contribute">,
+  scope: Pick<ContributionScope, "lifetime" | "add">,
   spec: Omit<LocaleSpec, "activate"> & {
     load(signal: AbortSignal): Promise<Record<string, string>>;
   },
 ): void {
   let activation: Promise<void> | undefined;
   const activate = (): Promise<void> => {
-    scope.signal.throwIfAborted();
+    scope.lifetime.signal.throwIfAborted();
     if (!activation) {
-      const attempt = scope.spawn(async (signal) => {
-        const dictionary = await spec.load(signal);
-        signal.throwIfAborted();
-        scope.cleanup(mountLocaleBundle(spec.id, dictionary));
-      }).result;
+      const attempt = scope.lifetime
+        .spawn(async (signal) => {
+          const dictionary = await spec.load(signal);
+          signal.throwIfAborted();
+          scope.lifetime.defer(mountLocaleBundle(spec.id, dictionary));
+        })
+        .result.then(() => undefined);
       activation = attempt;
       void attempt.catch(() => {
         if (activation === attempt) activation = undefined;
@@ -33,15 +35,15 @@ export function contributeLocale(
     }
     return activation;
   };
-  scope.contribute(LOCALE, { id: spec.id, label: spec.label, order: spec.order, activate });
+  scope.add(LOCALE, { id: spec.id, label: spec.label, order: spec.order, activate });
   if (spec.id === activeLocale()) void activate();
 }
 
 export function createLocaleReconciler(
-  scope: ContributionLifetime,
+  scope: ContributionScope,
   report: (error: Error) => void,
 ): (sources: readonly LocaleSource[]) => Promise<void> {
-  const current = new Map<string, { signature: string; lifetime: ContributionLifetime }>();
+  const current = new Map<string, { signature: string; lifetime: ContributionScope }>();
   return async (sources) => {
     const byTag = new Map<string, LocaleSource[]>();
     for (const source of sources) {
@@ -56,9 +58,9 @@ export function createLocaleReconciler(
       await resource.lifetime[asyncDisposeSymbol]();
     }
     for (const [tag, group] of byTag) {
-      if (scope.signal.aborted) return;
+      if (scope.lifetime.signal.aborted) return;
       if (current.has(tag)) continue;
-      const lifetime = scope.lifetime(`locale:${tag}`);
+      const lifetime = scope.child(`locale:${tag}`);
       current.set(tag, {
         signature: JSON.stringify(group.map((source) => source.key).sort()),
         lifetime,

@@ -12,11 +12,13 @@ import (
 	"sync/atomic"
 	"testing"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 func TestReceiptHistoryRuntimeFixture(t *testing.T) {
@@ -30,7 +32,7 @@ func TestReceiptHistoryRuntimeFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := reviews.Update{ID: "history-missing", ExpectedRevision: 1, Status: reviews.Open}
-	admitted, err := jsonvalue.Encode(input)
+	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +79,7 @@ func TestReceiptHistoryRuntimeFixture(t *testing.T) {
 				} else {
 					updates.Add(1)
 				}
-			case qimumcp.ReceiptMethod:
+			case pluginmcp.ReceiptMethod:
 				receiptReads.Add(1)
 			}
 			return next(ctx, method, request)

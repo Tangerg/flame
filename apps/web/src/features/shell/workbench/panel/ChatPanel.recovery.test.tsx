@@ -75,7 +75,7 @@ beforeEach(async () => {
       { id: "file", title: "Files" },
       { id: "diagnostics", title: "Diagnostics", material: "diagnostics" as const },
     ]) {
-      ctx.contribute(WORKSPACE_VIEW, {
+      ctx.contributions.add(WORKSPACE_VIEW, {
         ...view,
         dock: "workspace",
         component: () => <input aria-label="Material note" defaultValue="Retained material note" />,

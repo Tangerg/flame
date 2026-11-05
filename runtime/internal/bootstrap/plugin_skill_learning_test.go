@@ -48,7 +48,7 @@ func TestCompletedRunsUseSelectedSkillLearningAndHumanPublication(t *testing.T) 
 		}
 		message := chat.NewAssistantMessage(parts...)
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
-	})}, chatclient.Config{})
+	})})
 	if err != nil {
 		t.Fatal(err)
 	}

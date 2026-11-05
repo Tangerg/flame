@@ -1,6 +1,8 @@
 package sessions
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"errors"
 	"reflect"
@@ -171,7 +173,7 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 	createdAt := finishedAt.Add(-time.Minute)
 	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Favorite color?", Kind: questioncontract.Text}}}
 	selection := testsupport.DefaultModelSelection()
-	known := chat.ToolResult{ID: "provider_written", Name: "write", Output: chat.NewTextToolOutput("acknowledged before the question parked")}
+	known := chat.ToolResult{ID: "provider_written", Name: "write", Output: toolcontract.NewTextOutput("acknowledged before the question parked")}
 	var applied TerminalPlan
 	stores := coordinatorStores{
 		results: []chat.ToolResult{known},

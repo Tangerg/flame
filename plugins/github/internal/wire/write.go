@@ -1,7 +1,8 @@
 package wire
 
 import (
-	"github.com/invopop/jsonschema"
+	"github.com/Tangerg/scope/core/jsonschema"
+	reflection "github.com/invopop/jsonschema"
 )
 
 const (
@@ -10,6 +11,10 @@ const (
 	MaxWriteBytes = 1 << 20
 	CommitPattern = `^[0-9a-fA-F]{40}$`
 )
+
+type CommitSHA string
+
+func (CommitSHA) JSONSchemaPattern() string { return CommitPattern }
 
 type CreateIssueInput struct {
 	Repository string   `json:"repository" jsonschema:"minLength=3,maxLength=256"`
@@ -106,7 +111,7 @@ type InlineComment struct {
 
 type SubmitReviewInput struct {
 	IssueInput
-	CommitID string          `json:"commitId" jsonschema:"minLength=1" jsonschema_description:"Exact inspected commit SHA to review; never defaults to a newer head."`
+	CommitID CommitSHA       `json:"commitId" jsonschema:"minLength=1" jsonschema_description:"Exact inspected commit SHA to review; never defaults to a newer head."`
 	Event    ReviewEvent     `json:"event"`
 	Body     *string         `json:"body,omitzero"`
 	Comments []InlineComment `json:"comments,omitzero"`
@@ -114,7 +119,7 @@ type SubmitReviewInput struct {
 
 type CreateReviewCommentInput struct {
 	IssueInput
-	CommitID string `json:"commitId" jsonschema:"minLength=1"`
+	CommitID CommitSHA `json:"commitId" jsonschema:"minLength=1"`
 	InlineComment
 }
 
@@ -138,7 +143,7 @@ func (MergeMethod) JSONSchemaEnum() []string {
 
 type MergePullInput struct {
 	IssueInput
-	HeadSHA       string      `json:"headSha" jsonschema:"minLength=1" jsonschema_description:"Exact inspected head SHA. GitHub atomically refuses a different current head."`
+	HeadSHA       CommitSHA   `json:"headSha" jsonschema:"minLength=1" jsonschema_description:"Exact inspected head SHA. GitHub atomically refuses a different current head."`
 	MergeMethod   MergeMethod `json:"mergeMethod"`
 	CommitTitle   *string     `json:"commitTitle,omitzero"`
 	CommitMessage *string     `json:"commitMessage,omitzero"`
@@ -150,72 +155,77 @@ type MergeResult struct {
 	Message string `json:"message"`
 }
 
-func boundString(schema *jsonschema.Schema, field string, maximum int) {
-	if property, ok := schema.Properties.Get(field); ok {
-		property.MaxLength = new(uint64(maximum))
-	}
+func (CreateIssueInput) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"title": {MaxLength: new(uint64(MaxTitleRunes))},
+		"body":  {MaxLength: new(uint64(MaxBodyRunes))},
+	}}
 }
 
-func boundCommit(schema *jsonschema.Schema, field string) {
-	if property, ok := schema.Properties.Get(field); ok {
-		property.Pattern = CommitPattern
-	}
+func (UpdateIssueInput) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"title": {MaxLength: new(uint64(MaxTitleRunes))},
+		"body":  {MaxLength: new(uint64(MaxBodyRunes))},
+	}}
 }
 
-func (CreateIssueInput) JSONSchemaExtend(schema *jsonschema.Schema) {
-	boundString(schema, "title", MaxTitleRunes)
-	boundString(schema, "body", MaxBodyRunes)
+func (CreateCommentInput) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"body": {MaxLength: new(uint64(MaxBodyRunes))},
+	}}
 }
 
-func (UpdateIssueInput) JSONSchemaExtend(schema *jsonschema.Schema) {
-	boundString(schema, "title", MaxTitleRunes)
-	boundString(schema, "body", MaxBodyRunes)
+func (UpdateCommentInput) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"body": {MaxLength: new(uint64(MaxBodyRunes))},
+	}}
 }
 
-func (CreateCommentInput) JSONSchemaExtend(schema *jsonschema.Schema) {
-	boundString(schema, "body", MaxBodyRunes)
+func (CreatePullInput) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"title": {MaxLength: new(uint64(MaxTitleRunes))},
+		"body":  {MaxLength: new(uint64(MaxBodyRunes))},
+	}}
 }
 
-func (UpdateCommentInput) JSONSchemaExtend(schema *jsonschema.Schema) {
-	boundString(schema, "body", MaxBodyRunes)
+func (InlineComment) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"body": {MaxLength: new(uint64(MaxBodyRunes))},
+	}}
 }
 
-func (CreatePullInput) JSONSchemaExtend(schema *jsonschema.Schema) {
-	boundString(schema, "title", MaxTitleRunes)
-	boundString(schema, "body", MaxBodyRunes)
+func (SubmitReviewInput) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"body": {MaxLength: new(uint64(MaxBodyRunes))},
+	}}
 }
 
-func (InlineComment) JSONSchemaExtend(schema *jsonschema.Schema) {
-	boundString(schema, "body", MaxBodyRunes)
+func (CreateReviewCommentInput) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"body": {MaxLength: new(uint64(MaxBodyRunes))},
+	}}
 }
 
-func (SubmitReviewInput) JSONSchemaExtend(schema *jsonschema.Schema) {
-	boundString(schema, "body", MaxBodyRunes)
-	boundCommit(schema, "commitId")
+func (ReplyReviewCommentInput) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"body": {MaxLength: new(uint64(MaxBodyRunes))},
+	}}
 }
 
-func (CreateReviewCommentInput) JSONSchemaExtend(schema *jsonschema.Schema) {
-	boundString(schema, "body", MaxBodyRunes)
-	boundCommit(schema, "commitId")
+func (MergePullInput) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"commitTitle":   {MaxLength: new(uint64(MaxTitleRunes))},
+		"commitMessage": {MaxLength: new(uint64(MaxBodyRunes))},
+	}}
 }
 
-func (ReplyReviewCommentInput) JSONSchemaExtend(schema *jsonschema.Schema) {
-	boundString(schema, "body", MaxBodyRunes)
-}
-
-func (MergePullInput) JSONSchemaExtend(schema *jsonschema.Schema) {
-	boundString(schema, "commitTitle", MaxTitleRunes)
-	boundString(schema, "commitMessage", MaxBodyRunes)
-	boundCommit(schema, "headSha")
-}
-
-func (DeletedComment) JSONSchemaExtend(schema *jsonschema.Schema) {
+func (DeletedComment) JSONSchemaExtend(schema *reflection.Schema) {
 	if property, ok := schema.Properties.Get("deleted"); ok {
 		property.Const = true
 	}
 }
 
-func (MergeResult) JSONSchemaExtend(schema *jsonschema.Schema) {
+func (MergeResult) JSONSchemaExtend(schema *reflection.Schema) {
 	if property, ok := schema.Properties.Get("merged"); ok {
 		property.Const = true
 	}

@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/ui/core/input"
 )
 
 type diagnosticToolServiceStub struct {
@@ -48,7 +48,7 @@ func TestDiagnosticToolsRenderSchemaAndConfinedResultAcrossResize(t *testing.T) 
 		t.Fatalf("invocation = %+v", invocation)
 	}
 	host.Shows(t, "Diagnostic · inspect.cache")
-	if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
+	if !host.Resize(1, 1) || !repaint(t, host) || !host.Resize(96, 28) {
 		t.Fatal("diagnostic result did not survive a minimal viewport")
 	}
 	showsPlain(t, host, `"healthy": true`)
@@ -126,7 +126,7 @@ func TestHookAuditAndTrustRequireResizeSafeConfirmation(t *testing.T) {
 	host.Type("/hooks-trust")
 	host.Press(input.Enter)
 	host.Shows(t, "Trust project hooks")
-	if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
+	if !host.Resize(1, 1) || !repaint(t, host) || !host.Resize(96, 28) {
 		t.Fatal("hook trust confirmation did not survive a minimal viewport")
 	}
 	host.Press(input.Down)

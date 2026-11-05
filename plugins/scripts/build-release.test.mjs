@@ -15,7 +15,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { buildPlugin } from "./build.mjs";
-import { buildBackend } from "@qimu/node/build";
+import { buildBackend } from "@flame/backend-sdk/build";
 import { rolldown } from "rolldown";
 
 test("exported native author plans load without a Node backend SDK", async () => {

@@ -8,11 +8,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt(t *testing.T) {
@@ -28,12 +29,12 @@ func TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt(t *testing.
 		Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
 		Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`,
 	}
-	read := func() jsonvalue.Value {
+	read := func() framevalue.JSON {
 		t.Helper()
 		query := request
 		query.Method, query.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
 		reply := runtime.must(delivery.PluginsCall, query, "").(*protocol.CallPluginResponse)
-		value, err := jsonvalue.Parse([]byte(reply.Output))
+		value, err := framevalue.ParseJSON([]byte(reply.Output))
 		if err != nil || reply.Failure != nil {
 			t.Fatalf("read private review: %+v, %v", reply, err)
 		}
@@ -42,12 +43,12 @@ func TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt(t *testing.
 	var initial struct {
 		Reviews []map[string]jsontext.Value `json:"reviews"`
 	}
-	if err := json.Unmarshal(read().JSON(), &initial, json.RejectUnknownMembers(true)); err != nil || len(initial.Reviews) != 1 {
+	if err := json.Unmarshal(read().Bytes(), &initial, json.RejectUnknownMembers(true)); err != nil || len(initial.Reviews) != 1 {
 		t.Fatalf("read the owned review: %+v, %v", initial, err)
 	}
-	encode := func(value any) jsonvalue.Value {
+	encode := func(value any) framevalue.JSON {
 		t.Helper()
-		encoded, err := jsonvalue.Encode(value)
+		encoded, err := framevalue.EncodeJSON(value)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -71,18 +72,18 @@ func TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt(t *testing.
 		}
 		return invoke("plugins", "call", "--request", string(encoded), "--command-id", key)
 	}
-	assertReply := func(output []byte, want jsonvalue.Value) {
+	assertReply := func(output []byte, want framevalue.JSON) {
 		t.Helper()
 		var reply protocol.CallPluginResponse
 		if err := json.Unmarshal(output, &reply, json.RejectUnknownMembers(true)); err != nil {
 			t.Fatalf("CLI lost the structured business result: %s, %v", output, err)
 		}
-		actual, err := jsonvalue.Parse([]byte(reply.Output))
+		actual, err := framevalue.ParseJSON([]byte(reply.Output))
 		if err != nil || reply.Failure != nil || actual != want {
-			t.Fatalf("original outcome was replaced: %+v, want %s, %v", reply, want.JSON(), err)
+			t.Fatalf("original outcome was replaced: %+v, want %s, %v", reply, want.Bytes(), err)
 		}
 	}
-	success := func(key, input string, want jsonvalue.Value) {
+	success := func(key, input string, want framevalue.JSON) {
 		t.Helper()
 		output, stderr, err := call(key, input)
 		if err != nil {
@@ -107,7 +108,7 @@ func TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt(t *testing.
 		t.Fatalf("Go and CLI entrances disagree about the original binding: %+v", refused)
 	}
 	if current, want := read(), encode(map[string]any{"reviews": []any{resolved}}); current != want {
-		t.Fatalf("identity conflict changed the private review: %s, want %s", current.JSON(), want.JSON())
+		t.Fatalf("identity conflict changed the private review: %s, want %s", current.Bytes(), want.Bytes())
 	}
 	success("cli_00000000000000000000000000000000", next, advanced)
 	for range 2 {
@@ -115,8 +116,8 @@ func TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt(t *testing.
 	}
 	request.Input = first
 	recovered := runtime.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse)
-	assertReply(encode(recovered).JSON(), original)
+	assertReply(encode(recovered).Bytes(), original)
 	if current, want := read(), encode(map[string]any{"reviews": []any{opened}}); current != want {
-		t.Fatalf("original receipt recovery changed current private state: %s, want %s", current.JSON(), want.JSON())
+		t.Fatalf("original receipt recovery changed current private state: %s, want %s", current.Bytes(), want.Bytes())
 	}
 }

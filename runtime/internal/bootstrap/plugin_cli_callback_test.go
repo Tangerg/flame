@@ -63,7 +63,7 @@ func TestExecutableCLIPluginCommandCallsTheHostWithoutAPage(t *testing.T) {
 		return reply.Output
 	}
 	creation := call(scheduleCreateRequest(r, testsupport.SchedulesDraft{Title: "CLI callback", Instructions: "Complete the original captured work.", CWD: cfg.defaultWorkspacePath, Cron: "0 0 1 1 *", TimeZone: "UTC"}), "cli_"+strings.Repeat("8", 32))
-	var saved testsupport.SchedulesSnapshot
+	var saved testsupport.SchedulesCreateV1OutputDomainSnapshot
 	if err := json.Unmarshal([]byte(creation), &saved); err != nil || saved.ID == "" {
 		t.Fatalf("CLI did not create the private Schedule: %s, %v", creation, err)
 	}

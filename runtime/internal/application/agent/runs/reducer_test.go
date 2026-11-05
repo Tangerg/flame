@@ -1,6 +1,8 @@
 package runs
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	jsonv1 "encoding/json"
 	"errors"
 	"fmt"
@@ -211,7 +213,7 @@ func TestReducerClassifiesToolPreambleAndTerminalAnswerAtTheModelBoundary(t *tes
 		ToolName: call.Name, Arguments: call.Arguments,
 	})
 	mustFinishTool(t, reducer, ToolCallFinished{
-		CallID: "runtime_call_1", Result: testToolResult(t, "contents"), ModelResult: &corechat.ToolResult{ID: call.ID, Name: call.Name, Output: corechat.NewTextToolOutput("contents")},
+		CallID: "runtime_call_1", Result: testToolResult(t, "contents"), ModelResult: &corechat.ToolResult{ID: call.ID, Name: call.Name, Output: toolcontract.NewTextOutput("contents")},
 	})
 
 	answer := corechat.NewAssistantMessage(corechat.NewTextPart("The file is ready."))
@@ -369,7 +371,7 @@ func TestReducerProjectsModelToolContextWithProviderCallIdentity(t *testing.T) {
 	}
 	mustReduce(t, reducer, start)
 	toolBatch := mustReduce(t, reducer, testToolPublication([]ToolCallStarted{start}, ToolCallFinished{
-		CallID: "runtime_call_1", Result: testToolResult(t, "contents"), ModelResult: &corechat.ToolResult{ID: call.ID, Name: call.Name, Output: corechat.NewTextToolOutput("contents")},
+		CallID: "runtime_call_1", Result: testToolResult(t, "contents"), ModelResult: &corechat.ToolResult{ID: call.ID, Name: call.Name, Output: toolcontract.NewTextOutput("contents")},
 	}))
 	toolMessages := committedConversationMessages(toolBatch)
 	if len(toolMessages) != 1 || toolMessages[0].Role != corechat.RoleTool || len(toolMessages[0].Parts) != 1 {
@@ -415,7 +417,7 @@ func TestTerminalConversationClosesProviderToolCallCanceledBeforeRuntimeStart(t 
 	}
 	mustReduce(t, reducer, start)
 	settlement := testToolPublication([]ToolCallStarted{start}, ToolCallFinished{
-		CallID: "runtime_first", Result: testToolResult(t, "first result"), ModelResult: &corechat.ToolResult{ID: first.ID, Name: first.Name, Output: corechat.NewTextToolOutput("first result")},
+		CallID: "runtime_first", Result: testToolResult(t, "first result"), ModelResult: &corechat.ToolResult{ID: first.ID, Name: first.Name, Output: toolcontract.NewTextOutput("first result")},
 	})
 	settlement.ModelResults = nil
 	toolBatch := mustReduce(t, reducer, settlement)
@@ -802,7 +804,7 @@ func TestReducerSeparatesModelAndPresentedToolResults(t *testing.T) {
 	mustReduce(t, reducer, start)
 	exact := corechat.ToolResult{
 		ID: call.ID, Name: call.Name,
-		Output: corechat.NewTextToolOutput(`{"stdout":"hello","stderr":"","exit_code":0}`),
+		Output: toolcontract.NewTextOutput(`{"stdout":"hello","stderr":"","exit_code":0}`),
 	}
 	reduced := mustReduce(t, reducer, testToolPublication([]ToolCallStarted{start}, ToolCallFinished{
 		CallID:      "runtime_shell",
@@ -1247,7 +1249,7 @@ func TestReducerKeepsQuestionToolLifecycleOpenAcrossHITLResume(t *testing.T) {
 	}
 	resumeNow = resumeNow.Add(2 * time.Second)
 	completed := completedItem(t, mustFinishTool(t, resumed, ToolCallFinished{
-		CallID: "call_question", Result: testToolResult(t, "Blue"), ModelResult: &corechat.ToolResult{ID: "provider_question", Name: "ask_user", Output: corechat.NewTextToolOutput("Blue")},
+		CallID: "call_question", Result: testToolResult(t, "Blue"), ModelResult: &corechat.ToolResult{ID: "provider_question", Name: "ask_user", Output: toolcontract.NewTextOutput("Blue")},
 	}))
 	if completed.ID() != toolItemID || completed.Status() != transcript.ItemCompleted {
 		t.Fatalf("resumed question Tool = %+v, want one completion of %q", completed, toolItemID)

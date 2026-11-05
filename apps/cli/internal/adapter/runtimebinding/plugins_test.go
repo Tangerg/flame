@@ -8,9 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/portable"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
@@ -33,7 +34,7 @@ func TestPluginCompositionRefusesAnotherContractOrMemberOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := protocol.SetPluginCompositionRequest{Contract: string(contract.Identity().JSON()), Members: []protocol.PluginCompositionMember{{InstallationID: "first", Contribution: "outer"}, {InstallationID: "second", Contribution: "inner"}}}
+	request := protocol.SetPluginCompositionRequest{Contract: string(contract.Identity().Bytes()), Members: []protocol.PluginCompositionMember{{InstallationID: "first", Contribution: "outer"}, {InstallationID: "second", Contribution: "inner"}}}
 	reversed := slices.Clone(request.Members)
 	slices.Reverse(reversed)
 	for name, value := range map[string]*protocol.PluginComposition{

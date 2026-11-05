@@ -3,7 +3,6 @@ package bootstrap
 import (
 	json "encoding/json/v2"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
@@ -30,18 +29,18 @@ func TestMemoryEditSurvivesBackendAndRuntimeRestart(t *testing.T) {
 	}
 	request.Method, request.Input = memorycontract.UpdateV2Method, string(input)
 	reply := r.must(delivery.PluginsCall, request, "edit-memory").(*protocol.CallPluginResponse)
-	var edited memorycontract.ItemSnapshot
+	var edited memorycontract.UpdateV2OutputDomainItemSnapshot
 	if err := json.Unmarshal([]byte(reply.Output), &edited); err != nil {
 		t.Fatal(err)
 	}
-	if edited.ID != item.ID || edited.Content != content || !edited.Pinned || edited.Origin != memorycontract.ItemSnapshotOriginUser || edited.Status != memorycontract.ItemSnapshotStatusActive || !edited.CreatedAt.Equal(item.CreatedAt) {
+	if string(edited.ID) != string(item.ID) || edited.Content != content || !edited.Pinned || edited.Origin != memorycontract.UpdateV2OutputDomainItemSnapshotOriginUser || edited.Status != memorycontract.UpdateV2OutputDomainItemSnapshotStatusActive || string(edited.CreatedAt) != string(item.CreatedAt) {
 		t.Fatalf("edited memory=%+v", edited)
 	}
 	r = reopenPluginRuntime(t, r, &cfg)
 	r.poMCPTools(&source, memoryToolsReady)
 	page := readMemoryPage(r, memorycontract.ListInput{Scope: memorycontract.ListInputScopeProject, CWD: cfg.defaultWorkspacePath})
 
-	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], edited) {
+	if len(page.Data) != 1 || generatedJSON(t, page.Data[0]) != generatedJSON(t, edited) {
 		t.Fatalf("restart lost user correction=%+v", page.Data)
 	}
 	replay := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddInput{Scope: memorycontract.AddInputScopeProject, CWD: cfg.defaultWorkspacePath, Content: "original fact"}), "add-memory")

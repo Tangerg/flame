@@ -6,7 +6,7 @@ export default function createConversationImportPlugin(workspaceAccess: Workspac
   return definePlugin({
     name: "flame.builtin.conversation-import",
     setup(ctx) {
-      ctx.contribute(COMMAND, {
+      ctx.contributions.add(COMMAND, {
         id: "chat.import.json",
         label: "convExport.import",
         run: workspaceAccess.conversationImport.importConversationJson,

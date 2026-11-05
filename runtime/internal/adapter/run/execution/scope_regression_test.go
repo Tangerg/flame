@@ -1,6 +1,8 @@
 package execution
 
 import (
+	corecontent "github.com/Tangerg/scope/core/content"
+
 	"context"
 	json "encoding/json/v2"
 	"errors"
@@ -22,8 +24,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+
+	"github.com/Tangerg/scope/agent/interaction"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -68,7 +71,7 @@ func (u usageOnlyModel) Stream(ctx context.Context, request *chat.Request) iter.
 
 func TestCanceledToolRetainsEvidenceAfterRootAwait(t *testing.T) {
 	entered, release := make(chan struct{}), make(chan struct{})
-	observed := chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: "observed before cancellation"}}, Details: []byte(`{"receipt":9007199254740993,"confirmed":false}`)}
+	observed := toolcontract.Output{Content: []corecontent.Block{{Kind: corecontent.Text, Text: "observed before cancellation"}}, Details: []byte(`{"receipt":9007199254740993,"confirmed":false}`)}
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "fixture_block", Description: "Await an external operation."}, func(ctx context.Context, _ struct{}) (string, error) {
 		close(entered)
 		<-release
@@ -89,14 +92,18 @@ func TestCanceledToolRetainsEvidenceAfterRootAwait(t *testing.T) {
 		if err := executor.RequestRootCancellation(t.Context(), session.ref, "operator canceled"); err != nil {
 			t.Error(err)
 		}
-		result, err := session.state.process.Await(t.Context())
-		if err != nil || !result.Termination().Status().Terminal() {
-			t.Errorf("root Await: %v", err)
+		inspection, err := session.engine.Inspect(t.Context(), session.processRootID())
+		if err != nil {
+			t.Fatal(err)
+		}
+		root, _ := inspection.Process(session.processRootID())
+		if root.Status != scoperun.StatusDraining || root.Termination.Valid() {
+			t.Errorf("unconfirmed Tool cancellation became a terminal: %+v", root)
 		}
 		close(release)
 	})
 	ends := payloadsOf[runs.SegmentEnded](events)
-	if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeCanceled {
+	if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeLost {
 		t.Fatalf("terminal = %+v", ends)
 	}
 	effects := ends[0].UnresolvedEffects()
@@ -106,7 +113,7 @@ func TestCanceledToolRetainsEvidenceAfterRootAwait(t *testing.T) {
 	found := false
 	for _, effect := range effects {
 		if strings.Contains(effect.Detail(), "external result") {
-			var output chat.ToolOutput
+			var output toolcontract.Output
 			if err := json.Unmarshal([]byte(effect.Output()), &output); err != nil {
 				t.Fatal(err)
 			}
@@ -162,7 +169,7 @@ func TestModelResponseBudgetPreservesExternalBoundary(t *testing.T) {
 		{name: "rejected stream observation cannot commit", limit: 512, outcome: run.OutcomeLost, commitError: errors.New("failed observation store unavailable")},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			model := streamingObservationModel{chunks: 20, streamed: make(chan struct{})}
+			model := streamingObservationModel{chunks: test.limit * 2, streamed: make(chan struct{})}
 			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{StreamModelResponses: true})
 			ref, err := executor.StageRoot(t.Context(), interactionTestStart())
 			if err != nil {
@@ -172,24 +179,30 @@ func TestModelResponseBudgetPreservesExternalBoundary(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			// Replace only the public Dispatcher resource policy; retain Runtime's
-			// model publication boundary.
-			deployment := session.deployment
-			definition := deployment.Definition().(*interaction.Definition)
-			observed, err := newObservedInteractionModel(model, model, session)
+			resolved, err := executor.resolveChat(t.Context(), session.start.ModelSelection)
 			if err != nil {
 				t.Fatal(err)
 			}
-			dispatcher, err := interaction.NewDispatcher(definition, interaction.DispatcherConfig{Streamer: observed, MaxResponseBytes: test.limit, ModelContextReducer: newInteractionModelContextReducer(nil, nil, session, session.start, nil, nil, nil)})
+			streamer, _ := resolved.Streamer()
+			observed, err := newObservedInteractionModel(resolved.Model(), streamer, session)
 			if err != nil {
 				t.Fatal(err)
 			}
-			replacement, err := agent.NewDeployment(agent.DeploymentConfig{Definition: definition, Dispatcher: &interactionDispatcher{inner: dispatcher, session: session}, ImplementationDigest: agent.ComputeDigest([]byte("stream-limit")), ConfigurationDigest: agent.ComputeDigest([]byte("stream-limit"))})
+			stream := interaction.StreamModelConfig{Streamer: observed}
+			if test.commitError != nil {
+				stream.MaxDeltaBytes = test.limit
+			}
+			replacement, err := interaction.Compile(session.engine.Compiler(), interaction.Config{
+				Name: "stream_limit", Description: "Exercise model response capacity.", Revision: "stream-limit",
+				Model: interaction.StreamModel(stream), MaxResponseBytes: test.limit,
+				ContextProcessor: newInteractionModelContextReducer(nil, nil, session, session.start, nil, nil, nil),
+			})
 			if err != nil {
 				t.Fatal(err)
 			}
-			session.deployment = replacement
-			session.state.deployments.root = replacement
+			session.deployment = replacement.Erase()
+			session.state.deployments.root = session.deployment
+			session.state.deployments.interactions = map[scoperun.ProgramRef]scoperun.Program[interaction.Input, interaction.Output]{replacement.ProgramRef(): replacement}
 			sequence, err := observeTestInteraction(t, executor, t.Context(), ref)
 			if err != nil {
 				t.Fatal(err)
@@ -278,17 +291,17 @@ func TestCapacityStopAfterCompleteResponseRetainsKnownUsage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	definition := session.deployment.Definition().(*interaction.Definition)
-	dispatcher, err := interaction.NewDispatcher(definition, interaction.DispatcherConfig{Streamer: observed, MaxResponseBytes: 512, ModelContextReducer: newInteractionModelContextReducer(nil, nil, session, session.start, nil, nil, nil)})
+	replacement, err := interaction.Compile(session.engine.Compiler(), interaction.Config{
+		Name: "known_stop", Description: "Exercise known model response capacity.", Revision: "known-stop",
+		Model:            interaction.StreamModel(interaction.StreamModelConfig{Streamer: observed, MaxDeltaBytes: 512}),
+		ContextProcessor: newInteractionModelContextReducer(nil, nil, session, session.start, nil, nil, nil),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	replacement, err := agent.NewDeployment(agent.DeploymentConfig{Definition: definition, Dispatcher: &interactionDispatcher{inner: dispatcher, session: session}, ImplementationDigest: agent.ComputeDigest([]byte("known-stop")), ConfigurationDigest: agent.ComputeDigest([]byte("known-stop"))})
-	if err != nil {
-		t.Fatal(err)
-	}
-	session.deployment = replacement
-	session.state.deployments.root = replacement
+	session.deployment = replacement.Erase()
+	session.state.deployments.root = session.deployment
+	session.state.deployments.interactions = map[scoperun.ProgramRef]scoperun.Program[interaction.Input, interaction.Output]{replacement.ProgramRef(): replacement}
 	sequence, err := observeTestInteraction(t, executor, t.Context(), ref)
 	if err != nil {
 		t.Fatal(err)
@@ -433,12 +446,12 @@ func TestFifthDelegateIsRejectedWhileFourRemainActive(t *testing.T) {
 	// children blocked until the fifth admission has been decided.
 	session := executor.sessions.snapshot()[0]
 	for {
-		inspection, err := session.engine.InspectTree(t.Context(), session.processRootID())
+		inspection, err := session.engine.Inspect(t.Context(), session.processRootID())
 		if err != nil {
 			t.Fatal(err)
 		}
 		root, _ := inspection.Process(session.processRootID())
-		if root.Snapshot.Status() == agent.StatusWaiting {
+		if root.Status == scoperun.StatusWaiting {
 			break
 		}
 		runtime.Gosched()
@@ -486,9 +499,6 @@ func TestJoinedDelegateTreePublishesEveryTerminalBeforeRoot(t *testing.T) {
 	if err := executor.RequestRootCancellation(t.Context(), session.ref, "cancel tree"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := session.state.process.Await(t.Context()); err != nil {
-		t.Fatal(err)
-	}
 	select {
 	case <-ready:
 		t.Fatal("product tree ended before child drained")
@@ -505,7 +515,7 @@ func TestJoinedDelegateTreePublishesEveryTerminalBeforeRoot(t *testing.T) {
 		t.Fatalf("terminal count=%d", len(terminals))
 	}
 	for index, terminal := range terminals {
-		if outcome, _ := terminal.Outcome(); outcome != run.OutcomeCanceled {
+		if outcome, _ := terminal.Outcome(); outcome != run.OutcomeLost {
 			t.Fatalf("terminal %d: %+v", index, terminal)
 		}
 	}
@@ -563,8 +573,6 @@ func TestCancellationPreservesSettledPrefixAndDoesNotStartTail(t *testing.T) {
 	}) (string, error) {
 		started = append(started, input.Step)
 		if input.Step == 2 {
-			invocation, _ := interaction.ToolInvocationFromContext(ctx)
-			unresolved = invocation.EffectID().String()
 			close(entered)
 			<-release
 			return "", errors.New("second operation is unresolved")
@@ -583,13 +591,30 @@ func TestCancellationPreservesSettledPrefixAndDoesNotStartTail(t *testing.T) {
 	events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), func() {
 		<-entered
 		session := executor.sessions.snapshot()[0]
+		inspection, err := session.engine.Inspect(t.Context(), session.processRootID())
+		if err != nil {
+			t.Fatal(err)
+		}
+		root, _ := inspection.Process(session.processRootID())
+		for _, pending := range root.PendingEffects {
+			intent, found, err := interaction.ToolCallFromEffect(pending.Request.Effect())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if found && intent.Call.ID == "second" {
+				unresolved = pending.Request.ID().String()
+			}
+		}
+		if unresolved == "" {
+			t.Fatal("second operation has no committed effect")
+		}
 		if err := executor.RequestRootCancellation(t.Context(), session.ref, "operator canceled"); err != nil {
 			t.Error(err)
 		}
-		if _, err := session.state.process.Await(t.Context()); err != nil {
-			t.Error(err)
-		}
 		close(release)
+		if _, err := session.state.process.Await(t.Context()); err == nil {
+			t.Error("unresolved cancellation manufactured a terminal result")
+		}
 	})
 	if !slices.Equal(started, []int{1, 2}) {
 		t.Fatalf("unstarted tail executed: %v", started)
@@ -606,7 +631,7 @@ func TestCancellationPreservesSettledPrefixAndDoesNotStartTail(t *testing.T) {
 		t.Fatalf("settled output = %q, %t", output, ok)
 	}
 	ends := payloadsOf[runs.SegmentEnded](events)
-	if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeCanceled {
+	if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeLost {
 		t.Fatalf("terminal = %+v", ends)
 	}
 	effects := ends[0].UnresolvedEffects()
@@ -647,15 +672,18 @@ func TestRootAndDelegateCompleteLongExecution(t *testing.T) {
 		}
 		if child {
 			session := executor.sessions.snapshot()[0]
-			tree, err := session.engine.InspectTree(ctx, session.processRootID())
+			history, err := session.engine.History(ctx, session.processRootID())
 			if err != nil {
 				return nil, err
 			}
-			for _, member := range tree.Processes {
-				budget := member.Snapshot.Budget()
-				for _, quota := range []agent.Quota{budget.Steps, budget.Effects, budget.Signals} {
+			for _, entry := range history.Entries {
+				started, ok := entry.Record.(scoperun.Started)
+				if !ok {
+					continue
+				}
+				for _, quota := range []scoperun.Quota{started.Budget.Steps, started.Budget.Effects, started.Budget.Messages} {
 					if _, limited := quota.Maximum(); limited {
-						return nil, fmt.Errorf("process %s retains a cumulative quota", member.Snapshot.Relation().ProcessID())
+						return nil, fmt.Errorf("process %s retains a cumulative quota", started.Process)
 					}
 				}
 			}

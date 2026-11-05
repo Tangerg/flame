@@ -1,10 +1,11 @@
 package persistence
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	json "encoding/json/v2"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/scope/core/chat"
 )
 
 type unresolvedEffectRow struct {
@@ -31,9 +32,9 @@ func decodeUnresolvedEffects(encoded string) ([]run.UnresolvedEffect, error) {
 	}
 	var effects []run.UnresolvedEffect
 	for _, row := range rows {
-		var output *chat.ToolOutput
+		var output *toolcontract.Output
 		if len(row.Output) > 0 {
-			output = new(chat.ToolOutput)
+			output = new(toolcontract.Output)
 			if err := json.Unmarshal([]byte(row.Output), output); err != nil {
 				return nil, err
 			}

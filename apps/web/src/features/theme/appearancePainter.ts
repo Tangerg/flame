@@ -4,7 +4,7 @@ export function appearancePainter(theme: Theme) {
   return definePlugin({
     name: "flame.builtin.appearance-painter",
     setup(ctx) {
-      ctx.cleanup(theme.start());
+      ctx.lifetime.defer(theme.start());
     },
   });
 }

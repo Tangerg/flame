@@ -6,13 +6,16 @@ import (
 	"reflect"
 	"sync"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/samber/lo"
 )
@@ -24,20 +27,20 @@ type memoryModelAdmission struct {
 
 type memoryModelInvocation struct {
 	method string
-	input  jsonvalue.Value
+	input  framevalue.JSON
 }
 
-func (a *memoryModelAdmission) admit(id, method string, input jsonvalue.Value) error {
+func (a *memoryModelAdmission) admit(id, method string, input framevalue.JSON) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if original, found := a.invocations[id]; found {
 		if original != (memoryModelInvocation{method: method, input: input}) {
-			return &portable.Refusal{Code: portable.InvocationConflictCode, Message: portable.ErrInvocationConflict.Error()}
+			return &framemcp.Refusal{Code: framemcp.InvocationConflictCode, Message: framemcp.ErrInvocationConflict.Error()}
 		}
-		return &portable.Refusal{Code: "model_redelivery", Message: "memory: original model invocation cannot be redelivered"}
+		return &framemcp.Refusal{Code: "model_redelivery", Message: "memory: original model invocation cannot be redelivered"}
 	}
 	if len(a.invocations) == memorycontract.MaxModelCalls {
-		return &portable.Refusal{Code: "model_budget", Message: "memory: model budget exhausted"}
+		return &framemcp.Refusal{Code: "model_budget", Message: "memory: model budget exhausted"}
 	}
 	// Providers have no owner receipt. Fence each identity before external I/O.
 	a.invocations[id] = memoryModelInvocation{method: method, input: input}
@@ -46,18 +49,18 @@ func (a *memoryModelAdmission) admit(id, method string, input jsonvalue.Value) e
 
 // Memory retains its own external-call budget; the model exchange is the public
 // Scope request/response contract, while its corpus embedding is a separate method.
-func GrantMemoryModels(ctx context.Context, callbacks *qimumcp.Callbacks, session *sdk.ClientSession, model chat.Model, embed models.TextEmbedder) (qimumcp.CallbackRef, func(), error) {
+func GrantMemoryModels(ctx context.Context, callbacks *pluginmcp.Callbacks, session *sdk.ClientSession, model chat.Model, embed models.TextEmbedder) (pluginmcp.CallbackRef, func(), error) {
 	if callbacks == nil {
-		return qimumcp.CallbackRef{}, nil, errors.New("memory: callback owner is required")
+		return pluginmcp.CallbackRef{}, nil, errors.New("memory: callback owner is required")
 	}
 	if model != nil && lo.IsNil(model) || embed != nil && lo.IsNil(embed) {
-		return qimumcp.CallbackRef{}, nil, errors.New("memory: model and embedding collaborators cannot be typed nil")
+		return pluginmcp.CallbackRef{}, nil, errors.New("memory: model and embedding collaborators cannot be typed nil")
 	}
 	admission := &memoryModelAdmission{invocations: make(map[string]memoryModelInvocation)}
-	completion, err := pluginsdk.NewModelCallback(func(ctx context.Context, command qimumcp.Command[chat.Request]) (*chat.Response, error) {
+	completion, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginmcp.Command[chat.Request]) (*chat.Response, error) {
 		request := command.Input
 		if lo.IsNil(model) || !memoryModelRequest(request) {
-			return nil, &portable.Refusal{Code: "model_envelope", Message: "memory: model envelope refused"}
+			return nil, &framemcp.Refusal{Code: "model_envelope", Message: "memory: model envelope refused"}
 		}
 		input, err := command.RequestInput()
 		if err != nil {
@@ -69,16 +72,16 @@ func GrantMemoryModels(ctx context.Context, callbacks *qimumcp.Callbacks, sessio
 		return model.Call(ctx, request.Clone())
 	})
 	if err != nil {
-		return qimumcp.CallbackRef{}, nil, err
+		return pluginmcp.CallbackRef{}, nil, err
 	}
-	embedding, err := pluginsdk.NewTextEmbeddingCallback(func(ctx context.Context, command qimumcp.Command[[]string]) (pluginsdk.TextEmbeddings, error) {
+	embedding, err := pluginsdk.NewTextEmbeddingCallback(func(ctx context.Context, command pluginmcp.Command[[]string]) (pluginsdk.TextEmbeddings, error) {
 		texts := command.Input
 		input, err := command.RequestInput()
 		if err != nil {
 			return pluginsdk.TextEmbeddings{}, err
 		}
-		if lo.IsNil(embed) || len(texts) == 0 || len(texts) > memorycontract.MaxEmbeddingTexts || int64(len(input.JSON())) > memorycontract.MaxEmbeddingInputBytes {
-			return pluginsdk.TextEmbeddings{}, &portable.Refusal{Code: "embedding_envelope", Message: "memory: embedding envelope refused"}
+		if lo.IsNil(embed) || len(texts) == 0 || len(texts) > memorycontract.MaxEmbeddingTexts || int64(len(input.Bytes())) > memorycontract.MaxEmbeddingInputBytes {
+			return pluginsdk.TextEmbeddings{}, &framemcp.Refusal{Code: "embedding_envelope", Message: "memory: embedding envelope refused"}
 		}
 		if err := admission.admit(string(command.ID), "embedding", input); err != nil {
 			return pluginsdk.TextEmbeddings{}, err
@@ -87,9 +90,9 @@ func GrantMemoryModels(ctx context.Context, callbacks *qimumcp.Callbacks, sessio
 		return pluginsdk.TextEmbeddings{Space: embed.ID(), Vectors: vectors}, err
 	})
 	if err != nil {
-		return qimumcp.CallbackRef{}, nil, err
+		return pluginmcp.CallbackRef{}, nil, err
 	}
-	return callbacks.Open(ctx, session, qimumcp.CallbackLimits{MaxRequestBytes: memorycontract.MaxCallbackInputBytes, MaxResponseBytes: memorycontract.MaxCallbackOutputBytes}, completion, embedding)
+	return callbacks.Open(ctx, session, pluginmcp.CallbackLimits{MaxRequestBytes: memorycontract.MaxCallbackInputBytes, MaxResponseBytes: memorycontract.MaxCallbackOutputBytes}, completion, embedding)
 }
 
 func memoryModelRequest(request chat.Request) bool {

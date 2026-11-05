@@ -9,14 +9,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/qimu/sqlite"
+
+	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -38,22 +41,22 @@ func trajectoryExportFixture(t *testing.T) (*trajectoryExportReader, *sql.DB, *e
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	ses := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_export"})
-	if err := newSessionStore(db).Insert(t.Context(), ses); err != nil {
+	if err := newSessionStore(databaseFor(db)).Insert(t.Context(), ses); err != nil {
 		t.Fatal(err)
 	}
 	run := testsupport.MustRestoreRun(run.Snapshot{ID: "run_export", SessionID: ses.ID(), State: run.Finished})
-	if err := newRunStore(db).Restore(t.Context(), run); err != nil {
+	if err := newRunStore(databaseFor(db)).Restore(t.Context(), run); err != nil {
 		t.Fatal(err)
 	}
-	modelReader, err := NewModelInvocationReader(newModelInvocationStore(db))
+	modelReader, err := NewModelInvocationReader(newModelInvocationStore(databaseFor(db)))
 	if err != nil {
 		t.Fatal(err)
 	}
 	snapshots := &exportSnapshotReader{value: sessions.Snapshot{Session: ses}}
 	snapshots.value.Runs = append(snapshots.value.Runs, run)
 	reader, err := NewTrajectoryExportReader(TrajectoryExportConfig{
-		Snapshots: snapshots, Sessions: newSessionStore(db), ModelInvocations: modelReader,
-		ToolInvocations: newToolInvocationStore(db), Annotations: &annotationStore{db: db},
+		Snapshots: snapshots, Sessions: newSessionStore(databaseFor(db)), ModelInvocations: modelReader,
+		ToolInvocations: newToolInvocationStore(databaseFor(db)), Annotations: &annotationStore{db: databaseFor(db)},
 		ReadSnapshot: func(ctx context.Context, fn func(context.Context) error) error {
 			return sqlite.RunReadSnapshot(ctx, db, fn)
 		},
@@ -142,13 +145,13 @@ func TestTrajectoryExportRejectsMismatchedJournalOwnershipBeforeLoading(t *testi
 
 func TestTrajectoryExportIncludesSessionOnlyKnownEndpointEvidence(t *testing.T) {
 	reader, db, _ := trajectoryExportFixture(t)
-	store := newModelInvocationStore(db)
+	store := newModelInvocationStore(databaseFor(db))
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original prompt")))
 	message := chat.NewAssistantMessage(chat.NewTextPart("known answer"))
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Usage: &chat.Usage{InputTokens: 9007199254740993, OutputTokens: 2}}}
 	for index, scope := range []string{"ses_export", ""} {
 		id := []string{"session", "global"}[index]
-		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: portable.Invocation{ID: "utility_" + id, Origin: extension.Automatic, Parent: "maintenance", Target: portable.Target{Scope: extension.ScopeCall, Reference: "utility_" + id}}, Provider: "anthropic", Model: "captured-model", SessionID: scope, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: time.Unix(100, 0).UTC()}
+		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: framemcp.Invocation{ID: "utility_" + id, Origin: extension.Automatic, Parent: "maintenance", Target: portable.Target{Scope: extension.ScopeCall, Reference: "utility_" + id}}, Provider: "anthropic", Model: "captured-model", SessionID: scope, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: time.Unix(100, 0).UTC()}
 		if err := store.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 			t.Fatal(err)
 		}

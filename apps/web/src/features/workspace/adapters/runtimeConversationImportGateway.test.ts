@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { FlameClient } from "@flame/runtime-client";
-import { stringifyJSON } from "@qimu/sdk/json";
+import { stringifyJSON } from "@frame/sdk/json";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 import { createConversationImportGateway } from "./runtimeConversationImportGateway";
 

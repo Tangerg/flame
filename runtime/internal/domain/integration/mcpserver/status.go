@@ -1,9 +1,9 @@
 package mcpserver
 
 import (
-	"errors"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/scope/core/chat"
+	"errors"
 )
 
 // ConnectionState is the lifecycle state of a configured MCP connection.
@@ -58,5 +58,5 @@ var ErrAuthorizationRequired = errors.New("mcp: authorization required")
 type AdvertisedTool struct {
 	Server     ID
 	Name       RemoteToolName
-	Definition chat.ToolDefinition
+	Definition toolcontract.Definition
 }

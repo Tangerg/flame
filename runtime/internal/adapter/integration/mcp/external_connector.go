@@ -5,22 +5,23 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	connectormcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcpconnector/mcp"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	connectormcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcpconnector/mcp"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	wire "github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	app "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type grantVault interface {
@@ -60,7 +61,7 @@ type connectorUse struct {
 	epoch      string
 	source     plugins.ContributionBinding
 	session    *installedSession
-	capability *qimumcp.CapabilityBinding
+	capability *pluginmcp.CapabilityBinding
 }
 
 func (c *ExternalConnector) acquire(ctx context.Context) (*connectorUse, error) {
@@ -92,7 +93,7 @@ func (c *ExternalConnector) acquire(ctx context.Context) (*connectorUse, error) 
 	if _, err := plugins.OriginalActivation([]plugin.Activation{activation}, b.InstallationID, b.Digest, b.ServerName); err != nil {
 		return fail(err)
 	}
-	capability, err := qimumcp.ResolveCapability(ctx, session.session, b.Export, c.methods.Contract)
+	capability, err := pluginmcp.ResolveCapability(ctx, session.session, b.Export, c.methods.Contract)
 	if err != nil {
 		return fail(err)
 	}
@@ -102,7 +103,7 @@ func (c *ExternalConnector) acquire(ctx context.Context) (*connectorUse, error) 
 	}
 	return u, nil
 }
-func connectorCall[P, R any](ctx context.Context, u *connectorUse, m *qimumcp.Method[P, R], input P) (R, error) {
+func connectorCall[P, R any](ctx context.Context, u *connectorUse, m *pluginmcp.Method[P, R], input P) (R, error) {
 	var zero R
 	method, err := m.Bind(u.capability)
 	if err != nil {
@@ -115,14 +116,14 @@ func connectorCall[P, R any](ctx context.Context, u *connectorUse, m *qimumcp.Me
 	if err != nil {
 		return zero, err
 	}
-	ctx, err = qimumcp.WithInvocation(ctx, invocation)
+	ctx, err = pluginmcp.WithInvocation(ctx, invocation)
 	if err != nil {
 		return zero, err
 	}
 	if m.Descriptor().Kind == portable.Query {
 		return method.Call(ctx, input)
 	}
-	return method.CallCommand(ctx, qimumcp.CommandID(operation.Identity(ctx)), input)
+	return method.CallCommand(ctx, pluginmcp.CommandID(operation.Identity(ctx)), input)
 }
 func (c *ExternalConnector) entries(ctx context.Context, u *connectorUse, name string) (wire.Directory, error) {
 	return connectorCall(ctx, u, c.methods.List, wire.Selector{Name: name})
@@ -283,11 +284,11 @@ func (c *ExternalConnector) reconcileGrant(ctx context.Context, u *connectorUse,
 	if err != nil {
 		return err
 	}
-	ctx, err = qimumcp.WithInvocation(ctx, proposal.Invocation)
+	ctx, err = pluginmcp.WithInvocation(ctx, proposal.Invocation)
 	if err != nil {
 		return err
 	}
-	d, found, err := method.ReadReceipt(ctx, qimumcp.CommandID(proposal.Invocation.ID), proposal.Change)
+	d, found, err := method.ReadReceipt(ctx, pluginmcp.CommandID(proposal.Invocation.ID), proposal.Change)
 	if err != nil {
 		return err
 	}

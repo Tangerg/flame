@@ -7,7 +7,7 @@ import {
   parseRpcMessage,
 } from "./types";
 import { PROBLEM_CODES } from "@flame/runtime-client/wire";
-import { stringifyJSON } from "@qimu/sdk/json";
+import { stringifyJSON } from "@frame/sdk/json";
 
 describe("rpc/types discriminators", () => {
   it("isResponse matches { jsonrpc, id, result|error } but not Request", () => {

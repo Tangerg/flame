@@ -2,7 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { isAbsolute } from "node:path";
 import { performance } from "node:perf_hooks";
 import { TextDecoder } from "node:util";
-import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import {
   JSONRPCMessageSchema,

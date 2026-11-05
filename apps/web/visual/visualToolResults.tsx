@@ -35,7 +35,7 @@ export async function visualToolResults(runtimeClient: () => FlameClient, genui 
       for (const renderer of renderers) {
         const entry = renderer.declaration;
         if (!entry.selector || entry.placement !== "toolResultRenderer") continue;
-        const lifetime = ctx.lifetime(renderer.key);
+        const lifetime = ctx.contributions.child(renderer.key);
         const sources = visualComponentProps(runtimeClient(), lifetime, entry.id);
         const Result = ({
           toolResult,
@@ -50,7 +50,7 @@ export async function visualToolResults(runtimeClient: () => FlameClient, genui 
             fallback,
             entry: renderer.component,
           });
-        lifetime.contribute(
+        lifetime.add(
           TOOL_RESULT_RENDERER,
           {
             id: `visual:${renderer.key}`,

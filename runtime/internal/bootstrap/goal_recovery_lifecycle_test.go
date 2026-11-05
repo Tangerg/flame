@@ -1,12 +1,13 @@
 package bootstrap
 
 import (
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"

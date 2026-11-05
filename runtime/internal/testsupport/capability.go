@@ -4,14 +4,16 @@ import (
 	"encoding/json/jsontext"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 )
 
-func CommandContract(t *testing.T, name, target string) jsonvalue.Value {
+func CommandContract(t *testing.T, name, target string) framevalue.JSON {
 	t.Helper()
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "consumer.role", Composition: portable.Selection, Scope: extension.ScopeInstallation}, portable.MethodDescriptor{Name: name, Kind: portable.Mutation, Target: target, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "consumer.role", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, portable.MethodDescriptor{Name: name, Kind: portable.Command, Target: target, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}

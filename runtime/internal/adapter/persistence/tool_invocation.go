@@ -5,67 +5,61 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/sqlite"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 // Arguments and results stay in the canonical Transcript Item. Each retained
 // attempt records one Segment's observation, not the Tool's external outcome.
-type ToolInvocationStore struct{ db *sql.DB }
+type ToolInvocationStore struct{ db *database }
 
-func newToolInvocationStore(db *sql.DB) *ToolInvocationStore {
+func newToolInvocationStore(db *database) *ToolInvocationStore {
 	return &ToolInvocationStore{db: db}
 }
 
 // ListStartedToolInvocations yields every Tool attempt still owned by a
 // pre-crash process without importing recovery application types into storage.
-func (t *ToolInvocationStore) ListStartedToolInvocations(
-	ctx context.Context,
-	yield func(sessionID, runID, segmentID, callID, itemID string, startedAt time.Time) error,
-) error {
-	if yield == nil {
-		return errors.New("sqlite: Tool invocation reader is required")
-	}
-	rows, err := sqlite.Connection(ctx, t.db).QueryContext(ctx, `
+func (t *ToolInvocationStore) ListStartedToolInvocations(ctx context.Context, yield func(sessionID, runID, segmentID, callID, itemID string, startedAt time.Time) error) error {
+	return t.db.read(ctx, func(ctx context.Context) error {
+		if yield == nil {
+			return errors.New("sqlite: Tool invocation reader is required")
+		}
+		rows, err := t.db.connection(ctx).QueryContext(ctx, `
 		SELECT session_id, run_id, segment_id, call_id, item_id, started_at
 		  FROM tool_invocations
 		 WHERE state = ?
 		 ORDER BY session_id, run_id, segment_id, call_id, item_id
 	`, string(runs.ToolInvocationStarted))
-	if err != nil {
-		return fmt.Errorf("sqlite: list started Tool invocations: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		var sessionID, runID, segmentID, callID, itemID string
-		var startedAt int64
-		if err := rows.Scan(&sessionID, &runID, &segmentID, &callID, &itemID, &startedAt); err != nil {
-			return fmt.Errorf("sqlite: scan started Tool invocation: %w", err)
+		if err != nil {
+			return fmt.Errorf("sqlite: list started Tool invocations: %w", err)
 		}
-		if err := validateToolInvocationIdentity(sessionID, runID, segmentID, callID, itemID); err != nil {
-			return fmt.Errorf("sqlite: restore started Tool invocation: %w", err)
+		defer func() {
+			_ = rows.Close()
+		}()
+		for rows.Next() {
+			var sessionID, runID, segmentID, callID, itemID string
+			var startedAt int64
+			if err := rows.Scan(&sessionID, &runID, &segmentID, &callID, &itemID, &startedAt); err != nil {
+				return fmt.Errorf("sqlite: scan started Tool invocation: %w", err)
+			}
+			if err := validateToolInvocationIdentity(sessionID, runID, segmentID, callID, itemID); err != nil {
+				return fmt.Errorf("sqlite: restore started Tool invocation: %w", err)
+			}
+			if err := yield(sessionID, runID, segmentID, callID, itemID, time.Unix(0, startedAt).UTC()); err != nil {
+				return err
+			}
 		}
-		if err := yield(sessionID, runID, segmentID, callID, itemID, time.Unix(0, startedAt).UTC()); err != nil {
-			return err
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("sqlite: iterate started Tool invocations: %w", err)
 		}
-	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("sqlite: iterate started Tool invocations: %w", err)
-	}
-	return nil
+		return nil
+	})
 }
-
-func (t *ToolInvocationStore) StartToolInvocation(
-	ctx context.Context,
-	sessionID, runID, segmentID, callID, itemID string,
-	startedAt time.Time,
-	caller *plugin.ToolCaller,
-) error {
+func (t *ToolInvocationStore) StartToolInvocation(ctx context.Context, sessionID, runID, segmentID, callID, itemID string, startedAt time.Time, caller *plugin.ToolCaller) error {
 	if err := validateToolInvocationIdentity(sessionID, runID, segmentID, callID, itemID); err != nil {
 		return err
 	}
@@ -75,7 +69,7 @@ func (t *ToolInvocationStore) StartToolInvocation(
 	if err := instant.Validate(startedAt); err != nil {
 		return fmt.Errorf("sqlite: Tool invocation start time: %w", err)
 	}
-	return sqlite.RunInTx(ctx, t.db, func(ctx context.Context) error {
+	return t.db.write(ctx, func(ctx context.Context) error {
 		if caller != nil {
 			if caller.Snapshot().Invocation.ID != callID {
 				return plugin.ErrCommandConflict
@@ -84,22 +78,11 @@ func (t *ToolInvocationStore) StartToolInvocation(
 				return err
 			}
 		}
-		result, err := sqlite.Connection(ctx, t.db).ExecContext(ctx,
-			`INSERT INTO tool_invocations(
+		result, err := t.db.connection(ctx).ExecContext(ctx, `INSERT INTO tool_invocations(
 		   call_id, item_id, session_id, run_id, segment_id, state, started_at, finished_at)
 		 SELECT ?, ?, session_id, run_id, ?, ?, ?, NULL
 		   FROM runs
-		  WHERE run_id = ? AND session_id = ? AND state = ? AND active_segment_id = ?`,
-			callID,
-			itemID,
-			segmentID,
-			string(runs.ToolInvocationStarted),
-			startedAt.UTC().UnixNano(),
-			runID,
-			sessionID,
-			string(rundomain.Running),
-			segmentID,
-		)
+		  WHERE run_id = ? AND session_id = ? AND state = ? AND active_segment_id = ?`, callID, itemID, segmentID, string(runs.ToolInvocationStarted), startedAt.UTC().UnixNano(), runID, sessionID, string(rundomain.Running), segmentID)
 		if err != nil {
 			return fmt.Errorf("sqlite: start Tool invocation %q: %w", callID, err)
 		}
@@ -113,101 +96,72 @@ func (t *ToolInvocationStore) StartToolInvocation(
 		return nil
 	})
 }
-
-func (t *ToolInvocationStore) CompleteToolInvocation(
-	ctx context.Context,
-	sessionID, runID, segmentID, callID, itemID string,
-	startedAt, finishedAt time.Time,
-) error {
-	if err := validateToolInvocationIdentity(sessionID, runID, segmentID, callID, itemID); err != nil {
-		return err
-	}
-	if startedAt.IsZero() || finishedAt.IsZero() || finishedAt.Before(startedAt) {
-		return errors.New("sqlite: completed Tool invocation requires ordered timestamps")
-	}
-	if err := instant.Validate(startedAt, finishedAt); err != nil {
-		return fmt.Errorf("sqlite: Tool invocation times: %w", err)
-	}
-	result, err := sqlite.Connection(ctx, t.db).ExecContext(ctx, `
+func (t *ToolInvocationStore) CompleteToolInvocation(ctx context.Context, sessionID, runID, segmentID, callID, itemID string, startedAt, finishedAt time.Time) error {
+	return t.db.write(ctx, func(ctx context.Context) error {
+		if err := validateToolInvocationIdentity(sessionID, runID, segmentID, callID, itemID); err != nil {
+			return err
+		}
+		if startedAt.IsZero() || finishedAt.IsZero() || finishedAt.Before(startedAt) {
+			return errors.New("sqlite: completed Tool invocation requires ordered timestamps")
+		}
+		if err := instant.Validate(startedAt, finishedAt); err != nil {
+			return fmt.Errorf("sqlite: Tool invocation times: %w", err)
+		}
+		result, err := t.db.connection(ctx).ExecContext(ctx, `
 		INSERT INTO tool_invocations(call_id, item_id, session_id, run_id, segment_id, state, started_at, finished_at)
 		SELECT ?, ?, session_id, run_id, ?, ?, ?, ? FROM runs
 		WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?
 		ON CONFLICT(call_id, segment_id) DO UPDATE SET state = excluded.state, finished_at = excluded.finished_at
 		WHERE tool_invocations.state = ? AND tool_invocations.item_id = excluded.item_id
 		AND tool_invocations.session_id = excluded.session_id AND tool_invocations.run_id = excluded.run_id
-		AND tool_invocations.started_at = excluded.started_at`,
-		callID, itemID, segmentID, string(runs.ToolInvocationCompleted), startedAt.UTC().UnixNano(), finishedAt.UTC().UnixNano(),
-		sessionID, runID, string(rundomain.Running), segmentID, string(runs.ToolInvocationStarted))
-	if err != nil {
-		return fmt.Errorf("sqlite: complete Tool invocation %q: %w", callID, err)
-	}
-	changed, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if changed != 1 {
-		return fmt.Errorf("sqlite: Tool invocation %q lost its completion ownership", callID)
-	}
-	return nil
+		AND tool_invocations.started_at = excluded.started_at`, callID, itemID, segmentID, string(runs.ToolInvocationCompleted), startedAt.UTC().UnixNano(), finishedAt.UTC().UnixNano(), sessionID, runID, string(rundomain.Running), segmentID, string(runs.ToolInvocationStarted))
+		if err != nil {
+			return fmt.Errorf("sqlite: complete Tool invocation %q: %w", callID, err)
+		}
+		changed, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if changed != 1 {
+			return fmt.Errorf("sqlite: Tool invocation %q lost its completion ownership", callID)
+		}
+		return nil
+	})
 }
-
-func (t *ToolInvocationStore) MarkToolInvocationIncomplete(
-	ctx context.Context,
-	sessionID, runID, segmentID, callID, itemID string,
-	startedAt, finishedAt time.Time,
-) error {
-	return t.finish(
-		ctx, sessionID, runID, segmentID, callID, itemID,
-		startedAt, finishedAt, string(runs.ToolInvocationIncomplete),
-	)
+func (t *ToolInvocationStore) MarkToolInvocationIncomplete(ctx context.Context, sessionID, runID, segmentID, callID, itemID string, startedAt, finishedAt time.Time) error {
+	return t.finish(ctx, sessionID, runID, segmentID, callID, itemID, startedAt, finishedAt, string(runs.ToolInvocationIncomplete))
 }
-
-func (t *ToolInvocationStore) finish(
-	ctx context.Context,
-	sessionID, runID, segmentID, callID, itemID string,
-	startedAt, finishedAt time.Time,
-	state string,
-) error {
-	if err := validateToolInvocationIdentity(sessionID, runID, segmentID, callID, itemID); err != nil {
-		return err
-	}
-	if startedAt.IsZero() || finishedAt.IsZero() {
-		return errors.New("sqlite: terminal Tool invocation requires start and finish times")
-	}
-	if finishedAt.Before(startedAt) {
-		return errors.New("sqlite: Tool invocation finish time precedes start time")
-	}
-	if err := instant.Validate(startedAt, finishedAt); err != nil {
-		return fmt.Errorf("sqlite: Tool invocation times: %w", err)
-	}
-	result, err := sqlite.Connection(ctx, t.db).ExecContext(ctx,
-		`UPDATE tool_invocations
+func (t *ToolInvocationStore) finish(ctx context.Context, sessionID, runID, segmentID, callID, itemID string, startedAt, finishedAt time.Time, state string) error {
+	return t.db.write(ctx, func(ctx context.Context) error {
+		if err := validateToolInvocationIdentity(sessionID, runID, segmentID, callID, itemID); err != nil {
+			return err
+		}
+		if startedAt.IsZero() || finishedAt.IsZero() {
+			return errors.New("sqlite: terminal Tool invocation requires start and finish times")
+		}
+		if finishedAt.Before(startedAt) {
+			return errors.New("sqlite: Tool invocation finish time precedes start time")
+		}
+		if err := instant.Validate(startedAt, finishedAt); err != nil {
+			return fmt.Errorf("sqlite: Tool invocation times: %w", err)
+		}
+		result, err := t.db.connection(ctx).ExecContext(ctx, `UPDATE tool_invocations
 		    SET state = ?, finished_at = ?
 		  WHERE call_id = ? AND item_id = ? AND session_id = ? AND run_id = ? AND segment_id = ?
-		    AND state = ? AND started_at = ?`,
-		state,
-		finishedAt.UTC().UnixNano(),
-		callID,
-		itemID,
-		sessionID,
-		runID,
-		segmentID,
-		string(runs.ToolInvocationStarted),
-		startedAt.UTC().UnixNano(),
-	)
-	if err != nil {
-		return fmt.Errorf("sqlite: finish Tool invocation %q as %s: %w", callID, state, err)
-	}
-	changed, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: inspect Tool invocation %q transition: %w", callID, err)
-	}
-	if changed != 1 {
-		return fmt.Errorf("sqlite: Tool invocation %q no longer owns its started transition", callID)
-	}
-	return nil
+		    AND state = ? AND started_at = ?`, state, finishedAt.UTC().UnixNano(), callID, itemID, sessionID, runID, segmentID, string(runs.ToolInvocationStarted), startedAt.UTC().UnixNano())
+		if err != nil {
+			return fmt.Errorf("sqlite: finish Tool invocation %q as %s: %w", callID, state, err)
+		}
+		changed, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("sqlite: inspect Tool invocation %q transition: %w", callID, err)
+		}
+		if changed != 1 {
+			return fmt.Errorf("sqlite: Tool invocation %q no longer owns its started transition", callID)
+		}
+		return nil
+	})
 }
-
 func validateToolInvocationIdentity(sessionID, runID, segmentID, callID, itemID string) error {
 	if err := validateRunCoordinates("Tool invocation", sessionID, runID, segmentID); err != nil {
 		return err
@@ -234,44 +188,47 @@ type toolInvocationRecord struct {
 // The export reader bounds the complete Session's stored bytes and record count
 // in its transaction before reading this untruncated evidence collection.
 func (t *ToolInvocationStore) ListSession(ctx context.Context, sessionID string) ([]toolInvocationRecord, error) {
-	if err := validateSessionResource("tool invocation", sessionID); err != nil {
-		return nil, err
-	}
-	rows, err := sqlite.Connection(ctx, t.db).QueryContext(ctx, `
+	return scopedValue(ctx, t.db.read, func(ctx context.Context) ([]toolInvocationRecord, error) {
+		if err := validateSessionResource("tool invocation", sessionID); err != nil {
+			return nil, err
+		}
+		rows, err := t.db.connection(ctx).QueryContext(ctx, `
 		SELECT attempt.call_id, attempt.item_id, attempt.run_id, attempt.segment_id,
 		       attempt.state, attempt.started_at, attempt.finished_at, owner.session_id
 		  FROM tool_invocations attempt
 		  LEFT JOIN runs owner ON owner.run_id = attempt.run_id
 		 WHERE attempt.session_id = ?
 		 ORDER BY attempt.started_at, attempt.call_id, attempt.segment_id`, sessionID)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: list session tool invocations: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var records []toolInvocationRecord
-	for rows.Next() {
-		var record toolInvocationRecord
-		var startedAt int64
-		var finishedAt sql.NullInt64
-		var ownerSessionID sql.NullString
-		if err := rows.Scan(&record.CallID, &record.ItemID, &record.RunID, &record.SegmentID,
-			&record.State, &startedAt, &finishedAt, &ownerSessionID); err != nil {
-			return nil, fmt.Errorf("sqlite: scan session tool invocation: %w", err)
+		if err != nil {
+			return nil, fmt.Errorf("sqlite: list session tool invocations: %w", err)
 		}
-		if !ownerSessionID.Valid || ownerSessionID.String != sessionID {
-			return nil, errors.New("sqlite: tool invocation run belongs to another session")
+		defer func() {
+			_ = rows.Close()
+		}()
+		var records []toolInvocationRecord
+		for rows.Next() {
+			var record toolInvocationRecord
+			var startedAt int64
+			var finishedAt sql.NullInt64
+			var ownerSessionID sql.NullString
+			if err := rows.Scan(&record.CallID, &record.ItemID, &record.RunID, &record.SegmentID, &record.State, &startedAt, &finishedAt, &ownerSessionID); err != nil {
+				return nil, fmt.Errorf("sqlite: scan session tool invocation: %w", err)
+			}
+			if !ownerSessionID.Valid || ownerSessionID.String != sessionID {
+				return nil, errors.New("sqlite: tool invocation run belongs to another session")
+			}
+			if err := validateToolInvocationIdentity(sessionID, record.RunID, record.SegmentID, record.CallID, record.ItemID); err != nil {
+				return nil, fmt.Errorf("sqlite: restore tool invocation: %w", err)
+			}
+			record.StartedAt = time.Unix(0, startedAt).UTC()
+			if finishedAt.Valid {
+				record.FinishedAt = time.Unix(0, finishedAt.Int64).UTC()
+			}
+			records = append(records, record)
 		}
-		if err := validateToolInvocationIdentity(sessionID, record.RunID, record.SegmentID, record.CallID, record.ItemID); err != nil {
-			return nil, fmt.Errorf("sqlite: restore tool invocation: %w", err)
+		if err := rows.Err(); err != nil {
+			return nil, fmt.Errorf("sqlite: iterate session tool invocations: %w", err)
 		}
-		record.StartedAt = time.Unix(0, startedAt).UTC()
-		if finishedAt.Valid {
-			record.FinishedAt = time.Unix(0, finishedAt.Int64).UTC()
-		}
-		records = append(records, record)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("sqlite: iterate session tool invocations: %w", err)
-	}
-	return records, nil
+		return records, nil
+	})
 }

@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/ui/core/input"
 )
 
 const terminalSkillRevision = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -179,7 +179,7 @@ func TestSkillCatalogLifecycleAndProposalReviewCommands(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "Approve Skill proposal")
 	host.Shows(t, "Run every release gate.")
-	if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
+	if !host.Resize(1, 1) || !repaint(t, host) || !host.Resize(96, 28) {
 		t.Fatal("skill proposal confirmation did not survive a minimal viewport")
 	}
 	host.Shows(t, "Approve Skill proposal")

@@ -19,7 +19,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/ui/core/input"
 )
 
 const terminalMCPAuthorizationAttemptID = "mcpauth_AAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -428,7 +428,7 @@ func TestMCPReadersFormsAndLifecycleCommands(t *testing.T) {
 	host.Press(input.Tab)
 	secret := "MCP_SECRET_42"
 	host.Type(secret)
-	if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
+	if !host.Resize(1, 1) || !repaint(t, host) || !host.Resize(96, 28) {
 		t.Fatal("MCP form did not survive a minimal viewport")
 	}
 	host.Shows(t, "Create MCP server")
@@ -500,7 +500,7 @@ func TestMCPProbeValidatesAnUnpersistedCandidateAcrossResize(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "Test MCP candidate · 2/3")
 	host.Type("https://probe.example/tools")
-	if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
+	if !host.Resize(1, 1) || !repaint(t, host) || !host.Resize(96, 28) {
 		t.Fatal("MCP probe form did not survive a minimal viewport")
 	}
 	host.Shows(t, "Test MCP candidate · 2/3")

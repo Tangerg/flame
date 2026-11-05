@@ -12,12 +12,11 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/program"
-	"github.com/Tangerg/oolong/highlight"
+	"github.com/Tangerg/oolong/extensions/highlight"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/program"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 func TestReaderKeepsToolContentThatTheInlineBlockSummarizes(t *testing.T) {
@@ -40,7 +39,7 @@ func TestReaderKeepsToolContentThatTheInlineBlockSummarizes(t *testing.T) {
 	reader := newReaderPane(presentation.Theme, presentation.Glyphs, presentation.Syntax, input.Wheel{}, nil)
 	t.Cleanup(reader.Shutdown)
 	reader.Open(readerTarget{source: tool})
-	root := headless.NewRoot(reader)
+	root := newSceneTestRoot(t, reader.Element())
 	root.Draw(grid.NewSurface(72, 16).View())
 	full := copyableRowsText(reader.content.Rows(reader.content.StartRow(), reader.content.Height()))
 	for _, want := range []string{lines[0], lines[179], lines[len(lines)-1]} {
@@ -63,7 +62,7 @@ func TestReaderLiveTailFollowsOnlyAfterTheReaderMovesToTheBottom(t *testing.T) {
 	reader := newReaderPane(presentation.Theme, presentation.Glyphs, presentation.Syntax, input.Wheel{}, nil)
 	t.Cleanup(reader.Shutdown)
 	reader.Open(readerTarget{source: tool})
-	root := headless.NewRoot(reader)
+	root := newSceneTestRoot(t, reader.Element())
 	surface := grid.NewSurface(60, 10)
 	root.Draw(surface.View())
 
@@ -94,7 +93,7 @@ func TestReaderSearchStepsAcrossFullContent(t *testing.T) {
 		Title:    "search contract",
 		Sections: []toolSection{{Style: toolSectionCode, Text: "needle one\nother\nneedle two"}},
 	}})
-	headless.NewRoot(reader).Draw(grid.NewSurface(60, 10).View())
+	newSceneTestRoot(t, reader.Element()).Draw(grid.NewSurface(60, 10).View())
 	reader.Find("needle")
 
 	select {
@@ -119,9 +118,9 @@ func TestReaderRejectsAResultFromAnEarlierIdenticalSearch(t *testing.T) {
 	reader.Open(readerTarget{document: readerDocument{
 		Title: "search ownership", Sections: []toolSection{{Style: toolSectionCode, Text: "needle"}},
 	}})
-	headless.NewRoot(reader).Draw(grid.NewSurface(60, 10).View())
+	newSceneTestRoot(t, reader.Element()).Draw(grid.NewSurface(60, 10).View())
 	reader.Find("needle")
-	var previous headless.Result
+	var previous readingSearchResult
 	select {
 	case previous = <-reader.SearchResults():
 	case <-time.After(2 * time.Second):
@@ -149,7 +148,7 @@ func TestReaderCopiesOnlyAnUninterruptedOwnedSelectionGesture(t *testing.T) {
 		Title:    "pointer ownership",
 		Sections: []toolSection{{Style: toolSectionParagraph, Text: "copy only from the owned gesture"}},
 	}})
-	root := headless.NewRoot(reader)
+	root := newSceneTestRoot(t, reader.Element())
 	root.Draw(grid.NewSurface(60, 10).View())
 	start, end := image.Pt(0, 1), image.Pt(3, 1)
 	root.Handle(input.Mouse{Pos: start, Action: input.MouseDown, Button: input.ButtonLeft})
@@ -163,6 +162,7 @@ func TestReaderCopiesOnlyAnUninterruptedOwnedSelectionGesture(t *testing.T) {
 		name  string
 		begin bool
 		run   func()
+		want  string
 	}{
 		{name: "unowned release", run: func() {}},
 		{name: "capture cancellation", begin: true, run: func() {
@@ -171,7 +171,7 @@ func TestReaderCopiesOnlyAnUninterruptedOwnedSelectionGesture(t *testing.T) {
 		{name: "keyboard", begin: true, run: func() {
 			root.Handle(input.Key{Code: input.F3})
 		}},
-		{name: "different button", begin: true, run: func() {
+		{name: "unrelated button release preserves the owned selection", begin: true, want: "copy", run: func() {
 			root.Handle(input.Mouse{Pos: end, Action: input.MouseUp, Button: input.ButtonRight})
 		}},
 	}
@@ -184,8 +184,8 @@ func TestReaderCopiesOnlyAnUninterruptedOwnedSelectionGesture(t *testing.T) {
 			}
 			interruption.run()
 			root.Handle(input.Mouse{Pos: end, Action: input.MouseUp, Button: input.ButtonLeft})
-			if clipboard.text != "" {
-				t.Fatalf("interrupted selection copied %q", clipboard.text)
+			if clipboard.text != interruption.want {
+				t.Fatalf("selection after interruption copied %q, want %q", clipboard.text, interruption.want)
 			}
 		})
 	}
@@ -200,7 +200,7 @@ func TestReaderCopiesExactlyTheDisplayedBodySelection(t *testing.T) {
 				reader := newReaderPane(kit.Dark(), kit.Unicode(), highlight.New("github-dark"), input.Wheel{}, clipboard)
 				t.Cleanup(reader.Shutdown)
 				reader.Open(readerTarget{document: readerDocument{Title: "Reader heading", Sections: []toolSection{{Style: toolSectionCode, Text: strings.Join(lines, "\n")}}}})
-				root := headless.NewRoot(reader)
+				root := newSceneTestRoot(t, reader.Element())
 				surface := grid.NewSurface(size.X, size.Y)
 				root.Draw(surface.View())
 				start := drawnTextOrigin(t, surface, line)
@@ -223,7 +223,7 @@ func TestReaderBodyPointerCaptureFollowsCommittedGeometry(t *testing.T) {
 			reader := newReaderPane(kit.Dark(), kit.Unicode(), highlight.New("github-dark"), input.Wheel{}, clipboard)
 			t.Cleanup(reader.Shutdown)
 			reader.Open(readerTarget{document: readerDocument{Title: "Reader heading", Sections: []toolSection{{Style: toolSectionCode, Text: "alpha first\nbeta middle\ngamma last"}}}})
-			root := headless.NewRoot(reader)
+			root := newSceneTestRoot(t, reader.Element())
 			surface := grid.NewSurface(30, 5)
 			root.Draw(surface.View())
 			start := drawnTextOrigin(t, surface, "alpha first")
@@ -318,9 +318,9 @@ func TestReaderUpdatesOnlyTheDocumentItsOwnerOpened(t *testing.T) {
 	operations := newOperationOwner(t.Context())
 	t.Cleanup(operations.Close)
 	surface := testReaderSurface(t, operations)
-	var stack headless.Stack
-	stack.SetBase(testTranscriptView(t))
-	surface.dialog = newPresentationDialog(kit.DialogConfig{Stack: &stack, Theme: kit.Dark(), Glyphs: kit.Unicode(), Title: "Reader", Body: surface.pane})
+	var stack workspaceScene
+	stack.setWorkbench(testTranscriptView(t).Element())
+	surface.dialog = newPresentationDialog(&stack, kit.DialogConfig{Theme: kit.Dark(), Glyphs: kit.Unicode(), Title: "Reader", Body: surface.pane.Element()})
 
 	authorization := &readerQuery{status: "MCP authorization"}
 	surface.open(authorization, readerDocument{Title: "authorization pending"})
@@ -355,7 +355,7 @@ func TestReaderQueriesFollowTheirTopicAndItsResync(t *testing.T) {
 
 // testScreenHost presents screens over stack; operations is nil when the test
 // starts no background work.
-func testScreenHost(t *testing.T, transcript *transcriptView, stack *headless.Stack, operations *operationOwner) screenHost {
+func testScreenHost(t *testing.T, transcript *transcriptView, stack *workspaceScene, operations *operationOwner) screenHost {
 	t.Helper()
 	status := &statusView{}
 	host := screenHost{

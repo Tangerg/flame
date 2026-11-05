@@ -33,10 +33,9 @@ describe("plugin installation failure", () => {
     const first = definePlugin({
       name: "test.pending-startup",
       async setup(ctx) {
-        ctx.cleanup(stopped);
+        ctx.lifetime.defer(stopped);
         entered.resolve();
         await release.promise;
-        return {};
       },
     });
     const next = definePlugin({ name: "test.successor", setup: started });

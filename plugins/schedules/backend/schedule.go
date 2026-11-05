@@ -6,13 +6,15 @@ import (
 	"fmt"
 	"time"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	scheduleapp "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	scheduledomain "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
-	"github.com/Tangerg/qimu/portable"
+
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/samber/lo"
 )
@@ -229,7 +231,7 @@ func commandFailure(name string, cause error) error {
 		return nil
 	}
 	err := fmt.Errorf("%s: %w", name, cause)
-	_, receipted := errors.AsType[*portable.Refusal](err)
+	_, receipted := errors.AsType[*framemcp.Refusal](err)
 	if _, refused := classify(cause); errors.Is(err, scheduleapp.ErrRefused) || receipted || refused {
 		return pluginsdk.DefiniteToolFailure(err)
 	}

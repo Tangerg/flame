@@ -3,24 +3,38 @@
   "$defs": {
     "Content": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "id": {
+              "maxLength": 128
+            },
+            "source": {
+              "maxLength": 2048
+            },
+            "text": {
+              "maxLength": 16384
+            },
+            "title": {
+              "maxLength": 256
+            }
+          }
+        }
+      ],
       "properties": {
         "id": {
-          "maxLength": 128,
           "minLength": 1,
           "type": "string"
         },
         "source": {
-          "maxLength": 2048,
           "minLength": 1,
           "type": "string"
         },
         "text": {
-          "maxLength": 16384,
           "minLength": 1,
           "type": "string"
         },
         "title": {
-          "maxLength": 256,
           "minLength": 1,
           "type": "string"
         }
@@ -34,13 +48,19 @@
       "type": "object"
     },
     "DeleteV1Input": {
-      "$ref": "#/$defs/DocumentInput"
+      "$ref": "#/$defs/DeleteV1InputWireDocumentInput"
     },
-    "DeleteV1Output": {
-      "type": "boolean"
-    },
-    "DocumentInput": {
+    "DeleteV1InputWireDocumentInput": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "id": {
+              "maxLength": 128
+            }
+          }
+        }
+      ],
       "properties": {
         "expectedRevision": {
           "allOf": [
@@ -53,7 +73,6 @@
           "type": "integer"
         },
         "id": {
-          "maxLength": 128,
           "minLength": 1,
           "type": "string"
         }
@@ -64,11 +83,14 @@
       ],
       "type": "object"
     },
+    "DeleteV1Output": {
+      "type": "boolean"
+    },
     "DocumentRead": {
       "additionalProperties": false,
       "properties": {
         "document": {
-          "$ref": "#/$defs/Header"
+          "$ref": "#/$defs/ReadV1OutputDomainHeader"
         },
         "text": {
           "type": "string"
@@ -80,7 +102,36 @@
       ],
       "type": "object"
     },
-    "Header": {
+    "ImportInput": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/Content"
+        },
+        "expectedRevision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "content",
+        "expectedRevision"
+      ],
+      "type": "object"
+    },
+    "ImportV1Input": {
+      "$ref": "#/$defs/ImportInput"
+    },
+    "ImportV1Output": {
+      "$ref": "#/$defs/ImportV1OutputDomainHeader"
+    },
+    "ImportV1OutputDomainHeader": {
       "additionalProperties": false,
       "properties": {
         "chunks": {
@@ -124,35 +175,6 @@
       ],
       "type": "object"
     },
-    "ImportInput": {
-      "additionalProperties": false,
-      "properties": {
-        "content": {
-          "$ref": "#/$defs/Content"
-        },
-        "expectedRevision": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 0,
-          "type": "integer"
-        }
-      },
-      "required": [
-        "content",
-        "expectedRevision"
-      ],
-      "type": "object"
-    },
-    "ImportV1Input": {
-      "$ref": "#/$defs/ImportInput"
-    },
-    "ImportV1Output": {
-      "$ref": "#/$defs/Header"
-    },
     "ListV1Input": {
       "additionalProperties": false,
       "properties": {},
@@ -160,9 +182,53 @@
     },
     "ListV1Output": {
       "items": {
-        "$ref": "#/$defs/Header"
+        "$ref": "#/$defs/ListV1OutputDomainHeader"
       },
       "type": "array"
+    },
+    "ListV1OutputDomainHeader": {
+      "additionalProperties": false,
+      "properties": {
+        "chunks": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "source": {
+          "type": "string"
+        },
+        "space": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "source",
+        "revision",
+        "chunks",
+        "space"
+      ],
+      "type": "object"
     },
     "Match": {
       "additionalProperties": false,
@@ -177,10 +243,10 @@
           "type": "integer"
         },
         "document": {
-          "$ref": "#/$defs/Header"
+          "$ref": "#/$defs/SearchV1OutputDomainHeader"
         },
         "score": {
-          "type": "number"
+          "$ref": "#/$defs/Number"
         },
         "text": {
           "type": "string"
@@ -194,11 +260,22 @@
       ],
       "type": "object"
     },
+    "Number": {
+      "type": "number"
+    },
     "ReadInput": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "id": {
+              "maxLength": 128
+            }
+          }
+        }
+      ],
       "properties": {
         "id": {
-          "maxLength": 128,
           "minLength": 1,
           "type": "string"
         }
@@ -214,14 +291,147 @@
     "ReadV1Output": {
       "$ref": "#/$defs/DocumentRead"
     },
+    "ReadV1OutputDomainHeader": {
+      "additionalProperties": false,
+      "properties": {
+        "chunks": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "source": {
+          "type": "string"
+        },
+        "space": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "source",
+        "revision",
+        "chunks",
+        "space"
+      ],
+      "type": "object"
+    },
     "ReindexV1Input": {
-      "$ref": "#/$defs/DocumentInput"
+      "$ref": "#/$defs/ReindexV1InputWireDocumentInput"
+    },
+    "ReindexV1InputWireDocumentInput": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "id": {
+              "maxLength": 128
+            }
+          }
+        }
+      ],
+      "properties": {
+        "expectedRevision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "id": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "expectedRevision"
+      ],
+      "type": "object"
     },
     "ReindexV1Output": {
-      "$ref": "#/$defs/Header"
+      "$ref": "#/$defs/ReindexV1OutputDomainHeader"
+    },
+    "ReindexV1OutputDomainHeader": {
+      "additionalProperties": false,
+      "properties": {
+        "chunks": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "source": {
+          "type": "string"
+        },
+        "space": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "source",
+        "revision",
+        "chunks",
+        "space"
+      ],
+      "type": "object"
     },
     "SearchInput": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "limit": {
+              "maximum": 8
+            },
+            "query": {
+              "maxLength": 4096
+            }
+          }
+        }
+      ],
       "properties": {
         "limit": {
           "allOf": [
@@ -230,12 +440,10 @@
               "minimum": -9223372036854775808
             }
           ],
-          "maximum": 8,
           "minimum": 1,
           "type": "integer"
         },
         "query": {
-          "maxLength": 4096,
           "minLength": 1,
           "type": "string"
         }
@@ -254,6 +462,50 @@
         "$ref": "#/$defs/Match"
       },
       "type": "array"
+    },
+    "SearchV1OutputDomainHeader": {
+      "additionalProperties": false,
+      "properties": {
+        "chunks": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "source": {
+          "type": "string"
+        },
+        "space": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "source",
+        "revision",
+        "chunks",
+        "space"
+      ],
+      "type": "object"
     }
   }
 }

@@ -71,62 +71,11 @@
     },
     "DiscoverV1Output": {
       "items": {
-        "$ref": "#/$defs/Hook"
+        "$ref": "#/$defs/DiscoverV1OutputHookHook"
       },
       "type": "array"
     },
-    "Discovery": {
-      "additionalProperties": false,
-      "properties": {
-        "cwd": {
-          "type": "string"
-        },
-        "home": {
-          "type": "string"
-        },
-        "includeProject": {
-          "type": "boolean"
-        },
-        "projectRoot": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "cwd",
-        "projectRoot",
-        "includeProject"
-      ],
-      "type": "object"
-    },
-    "EvaluateV1Input": {
-      "$ref": "#/$defs/Evaluation"
-    },
-    "EvaluateV1Output": {
-      "$ref": "#/$defs/Advice"
-    },
-    "Evaluation": {
-      "additionalProperties": false,
-      "properties": {
-        "declarativeOnly": {
-          "type": "boolean"
-        },
-        "input": {
-          "$ref": "#/$defs/Input"
-        },
-        "rules": {
-          "items": {
-            "$ref": "#/$defs/Hook"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "rules",
-        "input"
-      ],
-      "type": "object"
-    },
-    "Hook": {
+    "DiscoverV1OutputHookHook": {
       "additionalProperties": false,
       "properties": {
         "command": {
@@ -182,6 +131,116 @@
         "event",
         "scope",
         "source"
+      ],
+      "type": "object"
+    },
+    "Discovery": {
+      "additionalProperties": false,
+      "properties": {
+        "cwd": {
+          "type": "string"
+        },
+        "home": {
+          "type": "string"
+        },
+        "includeProject": {
+          "type": "boolean"
+        },
+        "projectRoot": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "cwd",
+        "projectRoot",
+        "includeProject"
+      ],
+      "type": "object"
+    },
+    "EvaluateV1Input": {
+      "$ref": "#/$defs/Evaluation"
+    },
+    "EvaluateV1InputHookHook": {
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string"
+        },
+        "event": {
+          "allOf": [
+            {
+              "enum": [
+                "PreToolUse",
+                "PostToolUse",
+                "UserPromptSubmit",
+                "SessionStart",
+                "PreCompact",
+                "Stop",
+                "Notification"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "inject": {
+          "type": "string"
+        },
+        "matcher": {
+          "type": "string"
+        },
+        "scope": {
+          "allOf": [
+            {
+              "enum": [
+                "global",
+                "project"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "timeoutMillis": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "event",
+        "scope",
+        "source"
+      ],
+      "type": "object"
+    },
+    "EvaluateV1Output": {
+      "$ref": "#/$defs/Advice"
+    },
+    "Evaluation": {
+      "additionalProperties": false,
+      "properties": {
+        "declarativeOnly": {
+          "type": "boolean"
+        },
+        "input": {
+          "$ref": "#/$defs/Input"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/EvaluateV1InputHookHook"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "rules",
+        "input"
       ],
       "type": "object"
     },

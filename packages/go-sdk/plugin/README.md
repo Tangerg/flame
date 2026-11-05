@@ -3,25 +3,26 @@
 The public package `github.com/Tangerg/flame/packages/go-sdk/plugin` supplies
 Flame's model roles, Tool authoring helpers, captured host collaborators and Tool
 receipt contract. Memory, Schedules and the independent Reviews example combine
-these product contracts with Qimu's generic backend authoring API.
+these product contracts with Flame's MCP bindings and Frame's portable methods.
 It lives in the independent `packages/go-sdk` module; its production closure
 contains no Runtime host or private business implementation.
 
 This guide uses the following package names:
 
-| Name        | Import                                               | Responsibility                                                            |
-| ----------- | ---------------------------------------------------- | ------------------------------------------------------------------------- |
-| `plugin`    | `github.com/Tangerg/flame/packages/go-sdk/plugin`    | Flame model, Tool and product receipt contracts                           |
-| `qimumcp`   | `github.com/Tangerg/qimu/mcp`                  | Typed methods, MCP backend/setup, callbacks, streams and generic receipts |
-| `portable`  | `github.com/Tangerg/qimu/portable`             | Immutable method, capability and value-point contracts                    |
-| `extension` | `github.com/Tangerg/flame/packages/go-sdk/extension` | Flame invocation origins and call/installation scope policy               |
+| Name             | Import                                                     | Responsibility                                                            |
+| ---------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `plugin`         | `github.com/Tangerg/flame/packages/go-sdk/plugin`          | Flame model, Tool and product receipt contracts                           |
+| `pluginmcp`      | `github.com/Tangerg/flame/packages/go-sdk/plugin/mcp`      | Typed methods, MCP backend/setup, callbacks, streams and generic receipts |
+| `portable`       | `github.com/Tangerg/frame/portable`                        | Neutral immutable method/schema contracts                                 |
+| `plugincontract` | `github.com/Tangerg/flame/packages/go-sdk/plugin/contract` | Flame capability composition, scope and value points                      |
+| `framemcp`       | `github.com/Tangerg/frame/process/mcp`                     | Managed invocation, origin and refusal values                             |
+| `extension`      | `github.com/Tangerg/flame/packages/go-sdk/extension`       | Flame invocation origins and call/installation scope policy               |
 
-Use the ordinary MCP SDK server and transport. Qimu's process driver and runner
+Use the ordinary MCP SDK server and transport. Frame's process driver and runner
 own installed process execution; the Flame author package creates no supervisor.
 React components use [`component-sdk`](../../component-sdk/README.md).
-TypeScript authors use [`@qimu/node`](../../../qimu/node/README.md) for generic
-backend behavior and [`@flame/backend-sdk`](../../backend-sdk/README.md) for Flame
-collaborators and Tool receipts. These packages do not re-export one another's APIs.
+TypeScript authors use [`@flame/backend-sdk/mcp`](../../backend-sdk/README.md) for MCP business bindings and [`@flame/backend-sdk`](../../backend-sdk/README.md) for Flame
+collaborators and Tool receipts. The MCP binding is an explicit subpath of the backend SDK; Frame is imported directly for exact JSON and lifetimes.
 
 ## MCP metadata
 
@@ -31,19 +32,19 @@ values with `Meta.Set`, check its error, and decode a consumed entry directly in
 its declared type. Do not round-trip metadata through `map[string]any`.
 
 Transport method names and callback/stream metadata keys come from
-`qimumcp.ProtocolJSON`, which projects compiled Qimu constants and descriptors
-into `@qimu/node`. `flame-sdk backend-protocol` separately projects Flame's Tool
+`pluginmcp.ProtocolJSON`, which projects the compiled Flame transport constants, Frame profile limits and portable protocol
+into `@flame/backend-sdk/mcp`. `flame-sdk backend-protocol` separately projects Flame's Tool
 command prefix, Tool receipt contract, declaration policy and managed Node build
 policy. Neither generator inspects another source tree or a changed checkout
 after the command was built.
 
-Scope owns detached request metadata snapshots. Qimu's invocation and callback
-bindings retain strict decoding, calling-owner identity, target and callback
+Scope owns detached request metadata snapshots. Frame owns invocation values;
+Flame's MCP callback binding retains strict decoding, calling-owner identity, target and callback
 authority validation. Stream creation freezes native JSON bytes before observation;
 each iteration adds only its own captured delivery callback. Opaque values retain
 numeric lexemes, null and empty containers. Rebuild backends and Go consumers
-against the pinned Go SDK and Qimu modules and regenerate their exact contracts.
-The Qimu cutover requires rebuilt backends and fresh host storage.
+against the pinned Go SDK and Frame modules and regenerate their exact contracts.
+The Frame cutover requires rebuilt backends and fresh host storage.
 
 The fixed published model observer, input, context and Tool proposal contracts are immutable
 process-wide values. Their schemas are compiled once by this package; checkpoint
@@ -51,17 +52,17 @@ validation and callers share the admitted contract. `Descriptor` still returns
 owned schema bytes, so one consumer cannot alter another consumer's validation.
 Caller-authored and received contracts retain ordinary strict admission.
 
-`qimumcp.NewMethod[P, R]` is the authoring contract for typed feature methods. Its owner
+`pluginmcp.NewMethod[P, R]` is the authoring contract for typed feature methods. Its owner
 declares semantic identity, query/command kind, target meaning and description
-once. Scope derives immutable input/output schemas from the existing Go types.
+once. Frame derives immutable input/output schemas from the existing Go types.
 The method binds both client and server using those schemas; callers cannot
 relabel commands as queries. Server admission retains and validates original input before business execution,
 so typed decoding cannot hide missing fields. Invalid output remains a protocol failure,
 preserving uncertainty about an already committed effect.
 
 An implementation of an existing consumer contract uses
-`qimumcp.ImplementMethod[P, R](contract, name)` or
-`qimumcp.ImplementStreamingMethod[P, C, R](contract, name)`. These bindings retain the
+`pluginmcp.ImplementMethod[P, R](contract, name)` or
+`pluginmcp.ImplementStreamingMethod[P, C, R](contract, name)`. These bindings retain the
 published method's exact identity and validators. Local types supply codecs;
 they do not derive another Schema or relax the consumer's constraints. Missing
 methods and mismatched unary/streaming delivery are construction errors. Typed
@@ -88,13 +89,13 @@ retains Scope's complete encoded envelopes and its strict native codec, which
 does not publish a derivable JSON schema; it is never reduced to vectors or
 reconstructed from usage projections.
 
-`qimumcp.Binding.ValidateInput(ctx, input)` checks the exact backend's complete structural
+`pluginmcp.Binding.ValidateInput(ctx, input)` checks the exact backend's complete structural
 contract without a command identity or business dispatch. Schema cannot express
 every Go decoder constraint, including integer token spelling and custom JSON
 decoding. Typed decoders must therefore be deterministic, bounded, side-effect-free
 functions of their input. The same decoder admits validation and execution;
 validation preserves the original JSON and cannot call a business handler.
-`qimumcp.ErrInvalidInput` identifies only a definite structural refusal; transport and
+`pluginmcp.ErrInvalidInput` identifies only a definite structural refusal; transport and
 backend failures retain their own errors.
 
 Runtime validates fresh unary and streaming inputs before saving a command route
@@ -107,48 +108,49 @@ protocols are refused without negotiation or a fallback. Flame's package metadat
 uses the separate `plugin.DeclarationProtocol`. Keep old data separately and
 complete old waiting work with its original binary.
 
-`github.com/Tangerg/qimu/portable` owns immutable callable contracts
+`github.com/Tangerg/frame/portable` owns immutable callable contracts
 independently of transport. `portable.AdmitMethod` admits local method metadata;
 typed methods, live bindings, callbacks and generation consume that owner. It
 provides exact schemas, validation and canonical identity. Descriptors are
-deep-copy discovery/build projections. Method, capability and portable value-point
-contracts share this owner. Flame's `extension` package supplies only its product
-origin and scope policy; it does not define another contract engine.
+detached discovery/build projections. Flame's `plugin/contract` adds only the
+product composition, scope, applicability and ordering semantics, delegating
+method and schema admission to Frame. Its product identity is the canonical
+Flame envelope; the neutral service identity remains Frame's own projection.
 Consumers import the owners directly, without forwarding aliases. Schema
 identities include the defining Go namespace, so publisher and consumer
 projections must be regenerated together when ownership changes.
-`portable.NewCapability` groups the exact required method descriptors
+`plugincontract.NewCapability` groups the exact required method descriptors
 under the consumer's semantic reference, composition rule and scope meaning.
 Pipe its capability descriptor JSON into
-`go run github.com/Tangerg/qimu/cmd/qimu contract`
+`go run github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk feature`
 with `--feature - --out <contracts-directory> --ts <typescript-directory>`.
 It emits canonical `capability.generated.json`, standard self-contained Schema,
 operation references, reference prose and TypeScript input/output maps with a
 derived `CAPABILITY` token from that same source. The canonical descriptor keeps
 the original self-contained schemas. The presentation Schema rewrites local
 references for its data maps and never supplies the callable fingerprint. The
-generator accepts a complete capability descriptor. `qimu/contractgen` owns its
-Schema-to-TypeScript emitter and consumes Scope-derived schemas; no new IDL or Go DTO copy
+generator accepts a complete capability descriptor. `frame/portable/contractgen` owns its
+Schema-to-TypeScript emitter and consumes Frame-admitted schemas; no new IDL or Go DTO copy
 is introduced. Numeric/cross-field constraints remain in Schema and the business
 owner where TypeScript cannot express them. Output filenames are fixed; method
 identities never become filesystem paths.
 
-`qimumcp.NewBackend` assembles the method exports against one ordinary MCP server.
+`pluginmcp.NewBackend` assembles the method exports against one ordinary MCP server.
 Register typed methods against that backend, then `Publish` once before connecting
 the server. Missing or duplicate exports and later registration are refused.
-`qimumcp.Describe` returns immutable method/schema projections through the current public
+`pluginmcp.Describe` returns immutable method/schema projections through the current public
 backend protocol. Semantic operation names are entries in that description;
 they are no longer separate MCP methods.
 
 Installed entry admission captures one immutable set of named dependencies,
 waits for required providers' existing owned attempts, and verifies the complete
-live export set. It then calls `qimumcp.SetUp` before the connection owner publishes the
-session or Tools. Register `qimumcp.Backend.OnSetup` before `Publish` when dependencies
-are declared. The handler receives `qimumcp.Setup`, whose `Contributions` method returns
+live export set. It then calls `pluginmcp.SetUp` before the connection owner publishes the
+session or Tools. Register `pluginmcp.Backend.OnSetup` before `Publish` when dependencies
+are declared. The handler receives `pluginmcp.Setup`, whose `Contributions` method returns
 detached contribution/dependency/binding projections, including explicit optional
 absence. Return an `io.Closer` for acquired resources. The supplied context spans
 the setup/session lifetime; cancellation and cleanup are joined on failure,
-retirement or `qimumcp.Backend.Close`. Do not perform irreversible business operations to
+retirement or `pluginmcp.Backend.Close`. Do not perform irreversible business operations to
 register an entry.
 
 Setup callback metadata supplies a canonical Runtime RPC reference for declared
@@ -165,7 +167,7 @@ and transitive release dependencies.
 
 `runtimeclient.BindPluginStreamingMethod` admits a typed query or mutation stream from the same
 immutable binding used by unary calls. Its Stream freezes input/options before lazy
-delivery and returns one consumable sequence of `qimumcp.StreamValue` chunks/final result.
+delivery and returns one consumable sequence of `pluginmcp.StreamValue` chunks/final result.
 Chunk/output schemas and strict decoding precede delivery; final publication follows
 source completion. Missing/invalid final evidence stays unconfirmed. Transport-owned
 refusal/uncertainty classification is preserved instead of reconstructed here.
@@ -176,20 +178,20 @@ its calling-owner callback cannot fall back to activation. Query streams use no
 command journal or receipt; command streams retain original-route recovery.
 Go and TypeScript bindings preserve this distinction.
 
-`qimumcp.Backend.BindCapability(export, contract)` associates a named export with those existing
+`pluginmcp.Backend.BindCapability(export, contract)` associates a named export with those existing
 handlers and checks its complete required set before publication. Several exports
 may share a handler; there is still one semantic method and business receipt
 namespace. Export identity describes routing, not another mutable business fact.
 `portable.ParseCapability` admits generated local metadata without executing code or fetching
-schemas. `qimumcp.ResolveCapability` validates a concrete export and all its methods against
+schemas. `pluginmcp.ResolveCapability` validates a concrete export and all its methods against
 the consumer's exact contract. Missing, duplicate or mismatched exports are unavailable.
-`qimumcp.Method.Bind` returns a typed `qimumcp.BoundMethod` over that concrete binding. It uses the
+`pluginmcp.Method.Bind` returns a typed `pluginmcp.BoundMethod` over that concrete binding. It uses the
 same structural admission, invocation and outcome decoding as ordinary methods.
 
 Each bound invocation checks export name, capability fingerprint, membership and
 method fingerprint before business execution. A capability member cannot omit its
 export and fall back to a bare call. Unassociated method primitives remain useful
-for ordinary backend utilities and host callbacks. `qimumcp.NewCapabilityBinding` restores
+for ordinary backend utilities and host callbacks. `pluginmcp.NewCapabilityBinding` restores
 the original export and complete contract without rediscovery; its methods also
 retain that identity during read-only receipt lookup. Lookup checks membership
 before entering the existing receipt owner and validates the original output schema.
@@ -202,18 +204,18 @@ consumer resolves collection membership, explicit selections and ordered chains;
 the backend binding validates the resulting exact export rather than inferring
 membership or precedence from an export name.
 
-`qimumcp.NewMethod` admits the contract once. Its `RegisterServer`, `Call` and
+`pluginmcp.NewMethod` admits the contract once. Its `RegisterServer`, `Call` and
 `CallCommand` operations preserve that declared kind, target and schema.
-`qimumcp.RegisterClient` installs the invocation/discovery transport without originating
-business contracts. `qimumcp.ReceiptQuery` and `plugin.ToolReceiptQuery` are the generic command
+`pluginmcp.RegisterClient` installs the invocation/discovery transport without originating
+business contracts. `pluginmcp.ReceiptQuery` and `plugin.ToolReceiptQuery` are the generic command
 and Flame Tool receipt contracts respectively; backends register handlers against those same methods.
 Missing input,
 unknown envelope/input/result members and malformed command
 identities are refused. A reply contains exactly one value or business refusal;
 an explicitly nullable value remains distinct from a missing reply.
 
-`qimumcp.Resolve` discovers a method for a new call and returns a `qimumcp.Binding` against that
-concrete session. `qimumcp.NewBinding` restores an already captured descriptor without
+`pluginmcp.Resolve` discovers a method for a new call and returns a `pluginmcp.Binding` against that
+concrete session. `pluginmcp.NewBinding` restores an already captured descriptor without
 discovering another implementation. The binding validates raw input, reply and
 original receipt before typed decoding. Its immutable `Contract` includes the
 semantic name, query/command kind, target meaning and exact input/output schemas;
@@ -235,14 +237,14 @@ return the owner's original outcome according to that operation's contract;
 different input with the same identity must be refused. Retention, capacity and
 transaction boundaries belong to the business owner.
 
-`github.com/Tangerg/qimu/jsonvalue` owns the immutable admitted JSON.
+`github.com/Tangerg/frame/value` owns the immutable admitted JSON.
 Its standard-library parser normalizes object ordering, whitespace and string
 spelling while preserving numeric lexemes and array order. Structs, maps and raw
 objects agree when they encode the same request. A raw `1.0` remains distinct
 from `1`, and integers beyond JavaScript's exact range are not rounded.
 The former DTO-hashing `InputDigest` function is removed.
 
-`qimumcp.Command.RequestInput` and `qimumcp.RequestInput(ctx)` expose the input received at the
+`pluginmcp.Command.RequestInput` and `pluginmcp.RequestInput(ctx)` expose the input received at the
 typed method or Tool boundary. Private receipt owners save this value and derive
 its digest; they never recreate it from a decoded DTO. An unbound context or
 manually constructed command cannot supply received evidence. Runtime's pending
@@ -253,13 +255,13 @@ saving the route. Recovery uses the retained contract rather than current method
 metadata. The former route schema without that contract is refused without
 conversion; retain the old directory and use a fresh Runtime data directory.
 
-`qimumcp.EncodeReply` seals a success or explicitly classified refusal into an immutable
+`pluginmcp.EncodeReply` seals a success or explicitly classified refusal into an immutable
 `jsonvalue.Value`; its `JSON()` projection supplies storage bytes without another encoder;
-`qimumcp.DecodeReply` validates the same outcome when it is read from private storage.
+`pluginmcp.DecodeReply` validates the same outcome when it is read from private storage.
 An empty acknowledgement and other zero values remain present successes.
 
-`qimumcp.ReceiptMethod`, `qimumcp.ReceiptRequest` and `qimumcp.Receipt` define a read-only lookup by
-original command identity, method and input digest. `qimumcp.ReadReceipt` never dispatches
+`pluginmcp.ReceiptMethod`, `pluginmcp.ReceiptRequest` and `pluginmcp.Receipt` define a read-only lookup by
+original command identity, method and input digest. `pluginmcp.ReadReceipt` never dispatches
 the mutation. Missing, malformed or unreachable evidence remains unconfirmed;
 only a valid original response supplies a known outcome. A private backend must
 implement this lookup against its own receipt store and commit known refusals as
@@ -272,7 +274,7 @@ owners that separate Tool and human command namespaces. These identities are not
 credentials or standing approval grants.
 
 `ToolReceiptMethod` is an optional read of an original model Tool result. Register
-it with `qimumcp.Method.RegisterServer` and accept `qimumcp.ReceiptRequest`: its `Method` field is the original
+it with `pluginmcp.Method.RegisterServer` and accept `pluginmcp.ReceiptRequest`: its `Method` field is the original
 remote Tool name, `ID` is its `ToolCommandID`, and `InputDigest` identifies the
 admitted Tool JSON before business translation. Read only the matching private
 receipt, then use the same Tool codec and `NewToolReceipt` to project its original
@@ -281,19 +283,21 @@ the exact public query contract and validates Scope output without narrowing its
 JSON. Query errors, missing methods and absent/malformed evidence remain unknown;
 a valid failed Tool receipt is distinct from a failure to read it.
 
-Qimu requires the compiled `portable.Protocol` on invocation and description. It is
-a public wire contract identity, separate from internal build or data-directory
-versions. Only this current protocol is interpreted. Installed admission validates
+The Flame MCP binding requires `plugincontract.Protocol` on invocation and
+description, and publishes Frame's `portable.Protocol` for neutral methods. These are
+public wire contract identities, separate from internal build or data-directory
+versions. Only the compiled current protocols are interpreted. Installed admission validates
 the declared contract, complete live exports and exact activation before dispatch.
 
 The [Reviews backend](../../../examples/plugins/reviews/README.md) binds Tool
 and typed method entrances to the same private owner. Its tests prove shared
 receipts, business conflicts, identity conflicts and uncertain storage failures.
 The repository workspace builds the current public module sources. Independent
-consumers select the pinned Go SDK and Qimu module artifacts; author projects do
+consumers select the pinned Go SDK and Frame module artifacts; author projects do
 not require Runtime implementation source.
 
-Qimu supplies backend wire and setup primitives. The public Runtime
+Flame supplies its MCP business wire and setup bindings. Frame supplies the
+managed process/session/lifecycle owners through its public protocol extension point. The public Runtime
 `CallPlugin` entrance and typed `BindPluginMethod` proxy retain exact installed
 routing and reuse the existing receipt owner. Canonical Core callbacks use the
 ordinary typed Runtime Client and Delivery Endpoint. A direct backend session
@@ -302,16 +306,16 @@ and component bindings use the installed owners rather than bypassing admission.
 
 ## Unary host callbacks
 
-`qimumcp.Callbacks` owns one lazily opened loopback endpoint for a headless Runtime
+`pluginmcp.Callbacks` owns one lazily opened loopback endpoint for a headless Runtime
 instance. Its owner admits each concrete MCP connection generation and revokes
 that generation before closing its transport. `Open` binds an owning call context,
-explicit request/response capacities and immutable `qimumcp.Callback` operations. It
-returns an ephemeral `qimumcp.CallbackRef` and an idempotent release function. The same
+explicit request/response capacities and immutable `pluginmcp.Callback` operations. It
+returns an ephemeral `pluginmcp.CallbackRef` and an idempotent release function. The same
 endpoint serves concurrent calls; activation credentials and call references
 cannot be exchanged between them.
 
-`qimumcp.NewCallback` binds an existing typed `qimumcp.Method` to its actual use-case handler.
-`qimumcp.CallHost` uses that method's exact structural contract and the same value/refusal
+`pluginmcp.NewCallback` binds an existing typed `pluginmcp.Method` to its actual use-case handler.
+`pluginmcp.CallHost` uses that method's exact structural contract and the same value/refusal
 envelope as backend invocation. Input admission, output validation, original JSON
 and query/command identity rules share the existing implementation. The endpoint
 does not discover undeclared operations or assign a model-call budget.
@@ -321,7 +325,7 @@ Network input cannot replace them. No callback-owner lock is held across user
 code or nested I/O. Call release, owner cancellation, connection retirement and
 Runtime closure withdraw new admission, cancel active requests and join them.
 Retirement cancels every sibling before waiting for any one sibling. Released
-references return `qimumcp.ErrStaleCall`; unknown transport or handler failures never
+references return `pluginmcp.ErrStaleCall`; unknown transport or handler failures never
 become a business refusal or authorize automatic retry.
 
 The reference contains live connection credentials. Do not log it, put it in a
@@ -329,15 +333,15 @@ package or expose its loopback address to browser components. Call `Close` from
 the Runtime's teardown owner, after operation admission has stopped; handlers
 must not synchronously join their own callback lifetime.
 
-`qimumcp.CallbackMetadata` validates and projects a reference into MCP request metadata.
-`qimumcp.Binding.InvokeWithMetadata` leaves this ephemeral collaborator outside admitted
+`pluginmcp.CallbackMetadata` validates and projects a reference into MCP request metadata.
+`pluginmcp.Binding.InvokeWithMetadata` leaves this ephemeral collaborator outside admitted
 business input and its identity. The receiving method validates it before business
-execution and exposes it through `qimumcp.CallbackFromContext`. Changing the reference
+execution and exposes it through `pluginmcp.CallbackFromContext`. Changing the reference
 for a later observation does not change the original command input or receipt.
 This projection supplies no durable authority of its own; the enclosing callback
 owner and actual managed connection retain call and installation authority.
 
-`qimumcp.Callbacks.OpenRPC` can bind call-local callbacks beside the once-published host
+`pluginmcp.Callbacks.OpenRPC` can bind call-local callbacks beside the once-published host
 methods and canonical Runtime RPC on the same endpoint. Local names cannot replace
 published methods and do not appear in another call's grant. They share the existing
 cancellation, retirement and stale-reference owner. Its variadic source signature
@@ -354,7 +358,7 @@ remote continuations retain their original frozen chain.
 ## Model preparation host collaborators
 
 Installed model selection, context and input handlers receive a call-scoped
-`qimumcp.CallbackFromContext` reference through the existing managed connection. It enters
+`pluginmcp.CallbackFromContext` reference through the existing managed connection. It enters
 canonical Runtime RPC and the host's independently selected model callbacks while
 the outer query is pending. The host retains the original invocation and supplies
 the receiver activation's exact Actor and declared dependency bindings; the
@@ -380,14 +384,14 @@ does not recreate an expired execution member, accounting publisher or next.
 
 ## Background activation and retained caller projection
 
-A contribution's background declaration supplies `qimumcp.SetupContribution.Background` with
+A contribution's background declaration supplies `pluginmcp.SetupContribution.Background` with
 its own immutable installation target. An entry declaring background work must
-register `qimumcp.Backend.OnSetup`. Return owned resources as `io.Closer`; `qimumcp.Backend.Close` cancels and
+register `pluginmcp.Backend.OnSetup`. Return owned resources as `io.Closer`; `pluginmcp.Backend.Close` cancels and
 joins setup lifetimes before private stores close. Setup establishes resources and
 checks availability; it does not advance business facts merely to register them.
 
 An activation callback keeps its authenticated Actor and declared dependency bindings.
-For a retained background request, use `qimumcp.WithInvocation` on the public callback client's
+For a retained background request, use `pluginmcp.WithInvocation` on the public callback client's
 context. The host verifies the original dispatched route for human/model callers and
 admits fresh automatic triggers only for that installation without an invented parent.
 Retained commands preserve their declared resource target, including Session and
@@ -403,12 +407,12 @@ compiled `portable.Protocol` and exact published contracts.
 
 Known business refusals use `portable.Refusal`; classifiers and `errors.AsType`
 consume that contract directly. JSON refusal fields are `code` and `message`.
-`qimumcp.SetupDependency.Bindings` uses `qimumcp.SetupBinding`, a setup transport
+`pluginmcp.SetupDependency.Bindings` uses `pluginmcp.SetupBinding`, a setup transport
 projection validated by the existing identity owners. It contains no Flame
 Protocol DTOs.
 
-A background setup handler returns `qimumcp.ActivationResource`. Setup provisions
-resources; `qimumcp.Activate` starts owned business work once per session only
+A background setup handler returns `pluginmcp.ActivationResource`. Setup provisions
+resources; `pluginmcp.Activate` starts owned business work once per session only
 after successful setup.
 The connection supervisor joins resources after failed setup/start or withdrawal.
 A lost activation acknowledgement cannot issue Start twice in the same lifetime.
@@ -459,10 +463,10 @@ descriptor never advertises streaming.
 
 ## Captured streams
 
-`qimumcp.NewStreamingMethod` describes one input, a stream chunk schema and a distinct final
+`pluginmcp.NewStreamingMethod` describes one input, a stream chunk schema and a distinct final
 output schema. Stream schema is part of immutable method identity; feature generation
 projects MethodChunks/Go chunk types and documents the final result.
-`qimumcp.NewStreamingCallback` and `qimumcp.StreamHost` use the same authenticated callback endpoint, raw input admission,
+`pluginmcp.NewStreamingCallback` and `pluginmcp.StreamHost` use the same authenticated callback endpoint, raw input admission,
 captured context and cancellation owner as unary calls. SSE framing uses the existing
 released SSE reader/writer; there is no new endpoint, event queue or JSON parser.
 
@@ -475,7 +479,7 @@ are synchronous with production, so a failed/stalled transport stops advancing t
 source rather than accumulating an unbounded event queue. No reconnection or provider
 retry occurs after partial output; missing/truncated terminal evidence remains unknown.
 
-`qimumcp.CallbackLimits.MaxResponseBytes` bounds every frame and final result. The model aggregate
+`pluginmcp.CallbackLimits.MaxResponseBytes` bounds every frame and final result. The model aggregate
 also uses it as a conservative cumulative encoded-delta byte budget, including
 metadata, before admitting deltas into Scope's accumulator. This budget can be stricter
 than the final serialized response; it is explicit buffering policy, not an arbitrary
@@ -491,9 +495,9 @@ Only implemented streaming entrances advertise stream support.
 
 ## Backend streams
 
-`qimumcp.StreamingMethod.RegisterServer` binds a real SDK backend stream under the same
-method/capability publication checks. `qimumcp.StreamingMethod.StreamWithMetadata`
-and `qimumcp.Binding.StreamWithMetadata` keep one original MCP request for input/final result.
+`pluginmcp.StreamingMethod.RegisterServer` binds a real SDK backend stream under the same
+method/capability publication checks. `pluginmcp.StreamingMethod.StreamWithMetadata`
+and `pluginmcp.Binding.StreamWithMetadata` keep one original MCP request for input/final result.
 The backend sends ordered chunks synchronously to a captured Runtime callback,
 whose acknowledgement follows actual consumer demand. That existing second
 direction supplies backpressure without another listener, standard-pipe reverse
@@ -726,7 +730,7 @@ captured context and input conversion, before exact model capacity admission.
 Use the RPC callback reference supplied to an ordinary installed invocation:
 
 ```go
-ref, err := qimumcp.CallbackFromContext(ctx)
+ref, err := pluginmcp.CallbackFromContext(ctx)
 if err != nil { return err }
 request.Options.MaxOutputTokens = new(int64(64))
 input := plugin.ModelCallRequest{
@@ -745,7 +749,7 @@ preserves canonical deltas and `ModelResult`, and joins the provider when consum
 stops. Never retry a lost exchange automatically or reuse its ID for changed input.
 
 `NewSelectedModelCallback` and `NewSelectedModelStreamCallback` bind an owner to these
-contracts. `qimumcp.Callbacks.PublishRPC` publishes them beside canonical RPC on the existing
+contracts. `pluginmcp.Callbacks.PublishRPC` publishes them beside canonical RPC on the existing
 endpoint; per-reference transport limits, captured invocation and activation lifetime
 still apply. The existing physical endpoint journal fences production dispatch and
 retains full evidence. The SDK does not invent a model receipt store or fake Run.
@@ -757,13 +761,13 @@ for composition. General durable composition still requires Scope-owned effects 
 an existing durable use case. New selected capabilities are additive exact methods;
 older hosts without that grant explicitly refuse them. No legacy method is relabeled.
 
-`PublishRPC` now has the variadic signature `func(http.Handler, ...qimumcp.Callback) error`.
+`PublishRPC` now has the variadic signature `func(http.Handler, ...pluginmcp.Callback) error`.
 In-repository publishers are migrated. External method-value assignments requiring
 the former exact Go function type must change and rebuild; there is no old-signature
 wrapper. This source break does not alter the canonical RPC wire contract.
 
-`qimumcp.CallHost` and `qimumcp.StreamHost` send the original context invocation
-under the compiled `qimumcp.InvocationHeader`. An activation-scoped background RPC grant validates it
+`pluginmcp.CallHost` and `pluginmcp.StreamHost` send the original context invocation
+under the compiled `pluginmcp.InvocationHeader`. An activation-scoped background RPC grant validates it
 against the retained calling-owner evidence before projecting the context. Forged
 origin/parent/target is refused. Ordinary call and next grants keep their captured
 owner and ignore this header; authenticated actor identity is never replaced.
@@ -779,8 +783,8 @@ Endpoint observations expose the original optional Segment in the Core protocol.
 `WithToolContext` projects a captured `ToolContext` into ordinary MCP Tool
 metadata. `ToolContextFromContext` admits that same closed current shape. Workspace
 and optional vector-space identity come from the calling owner, outside model
-arguments; callback authority remains only in `qimumcp.CallbackMetadata` and
-`qimumcp.CallbackFromContext`. Setting Tool context cannot mutate an earlier caller's
+arguments; callback authority remains only in `pluginmcp.CallbackMetadata` and
+`pluginmcp.CallbackFromContext`. Setting Tool context cannot mutate an earlier caller's
 metadata. There is no standing model grant inside the context record.
 
 An ordinary installed model Tool call receives the same canonical call-scoped host
@@ -820,9 +824,9 @@ keep their formats. The Core wire epoch is unchanged.
 Independent authors can use [`plugin/sqlite`](sqlite/README.md) for original input
 admission, nullable unknown settlement and atomic mutation/receipt handling. The
 same implementation serves the bundled backends. Strict schema admission and
-per-database transaction lifetime live in [`qimu/sqlite`](../../../qimu/sqlite/README.md).
+per-database transaction lifetime live in [`frame/sqlite`](https://github.com/Tangerg/frame/blob/v0.1.0/sqlite/README.md).
 No private Runtime store or host business schema is part of the author API.
-`portable.ErrInvocationConflict` classifies changed original method/input under
+`framemcp.ErrInvocationConflict` classifies changed original method/input under
 one invocation identity. Host replay retention and execution lifecycle remain
 inside Runtime.
 
@@ -847,7 +851,6 @@ owns project trust, event delivery, final Tool admission and approval. The selec
 provider matches rules and combines their outcomes inside a single event receipt. A command's `allow` advice cannot override those owners. Cancellation
 must stop and join the command's process group; an admitted command without a
 known original receipt cannot run again under that identity.
-
 
 A model adapter contribution declares `modelProviders` as a path beneath
 `io.github.tangerg.flame/` containing its JSON array of supported provider IDs.

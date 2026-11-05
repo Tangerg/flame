@@ -20,7 +20,7 @@ func newExecutorCheckpointStorage(t *testing.T) (*sql.DB, *ExecutorCheckpointSto
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return db, newExecutorCheckpointStore(db)
+	return db, newExecutorCheckpointStore(databaseFor(db))
 }
 
 func storedExecutorCheckpoint(rootMemberID, sessionID, payload string) runs.ExecutorCheckpoint {

@@ -1,11 +1,15 @@
 package terminal
 
 import (
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/keymap"
-	"github.com/Tangerg/oolong/core/layout"
+	"image"
+
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/keymap"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/scene"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 const (
@@ -17,7 +21,8 @@ const (
 // lives in the editor until Save succeeds, so validation or backend failures
 // never destroy the user's draft.
 type contextEditor struct {
-	composer kit.Composer
+	group    *scene.Group
+	composer *kit.Composer
 	theme    kit.Theme
 	keys     *keymap.Map
 	save     func(string)
@@ -58,7 +63,7 @@ type contextEditorRequest struct {
 }
 
 type contextEditorSession struct {
-	dialog    *kit.Dialog
+	dialog    *presentationDialog
 	editor    *contextEditor
 	dismissed func()
 	closed    bool
@@ -70,47 +75,62 @@ func (c *contextEditorSession) Dismiss() {
 	}
 	c.closed = true
 	if c.dialog != nil {
-		c.dialog.Controller().Dismiss()
+		c.dialog.Dismiss()
 	}
 	if c.dismissed != nil {
 		c.dismissed()
 	}
 }
 
-func newContextEditor(theme kit.Theme, clipboard headless.Clipboard, content, placeholder string) *contextEditor {
-	keys := headless.DefaultEditorKeys()
-	keys.Bind(headless.InsertNewline, input.Chord{Code: input.Enter})
+func newContextEditor(theme kit.Theme, clipboard base.Clipboard, content, placeholder string) *contextEditor {
+	keys := base.DefaultEditorKeys()
+	keys.Bind(base.InsertNewline, input.Chord{Code: input.Enter})
 	keys.Bind(saveContextDocument, input.Ctrl.Rune('s'))
 	keys.Bind(cancelContextDocument, input.Chord{Code: input.Esc})
 	editor := &contextEditor{
 		theme: theme, keys: keys,
-		composer: kit.Composer{
+		composer: kit.NewComposer(kit.ComposerConfig{
 			Theme: theme, MaxRows: 1_000,
-		},
+		}),
 	}
-	editor.composer.Editor().Keys = keys
-	editor.composer.Editor().Clipboard = clipboard
-	editor.composer.Editor().Placeholder = placeholder
-	editor.composer.Editor().SetText(content)
+	editor.composer.Controller().Keys = keys
+	editor.composer.Controller().Clipboard = clipboard
+	editor.composer.Controller().Placeholder = placeholder
+	editor.composer.Controller().SetText(content)
 	return editor
 }
 
-func (c *contextEditor) Draw(frame headless.Frame) {
-	_, height := frame.Size()
-	notice := c.notice()
-	if notice == "" || height < 2 {
-		c.composer.Draw(frame)
-		return
+func (c *contextEditor) Element() scene.Element {
+	if c.group == nil {
+		c.group = scene.NewGroup(scene.GroupConfig{
+			Items: []scene.Item{{Element: c.composer.Element(), Size: layout.Flex(1)}},
+			Element: scene.ElementConfig{
+				Preview: func(event scene.Event) scene.EventResult { return scene.EventResult{Consumed: c.Handle(event.Input())} },
+				Paint: func(frame scene.Frame) {
+					width, height := frame.Size()
+					if height >= 2 {
+						notice := c.notice()
+						if notice == "" {
+							notice = "ctrl+s save · esc close"
+						}
+						style := c.theme.Subtle
+						if c.phase == contextSaveFailed {
+							style = c.theme.Danger
+						}
+						frame.Sub(grid.Area(0, height-1, width, 1)).Text(0, 0, notice, style)
+					}
+				},
+			},
+			Layout: func(space image.Point, _ []scene.Item) []image.Rectangle {
+				height := space.Y
+				if height >= 2 {
+					height--
+				}
+				return []image.Rectangle{grid.Area(0, 0, space.X, height)}
+			},
+		})
 	}
-	rows := frame.Subs((layout.Flow{Axis: layout.Down}).Rects(frame.Bounds().Size(), []layout.Slot{
-		{Size: layout.Flex(1)}, {Size: layout.Fixed(1)},
-	}))
-	c.composer.Draw(rows[0])
-	style := c.theme.Subtle
-	if c.phase == contextSaveFailed {
-		style = c.theme.Danger
-	}
-	rows[1].Text(0, 0, notice, style)
+	return c.group.Element()
 }
 
 func (c *contextEditor) Handle(event input.Event) bool {
@@ -119,7 +139,7 @@ func (c *contextEditor) Handle(event input.Event) bool {
 		switch action {
 		case saveContextDocument:
 			if c.save != nil {
-				c.save(c.composer.Editor().Text())
+				c.save(c.composer.Controller().Text())
 			}
 			return true
 		case cancelContextDocument:
@@ -129,18 +149,16 @@ func (c *contextEditor) Handle(event input.Event) bool {
 			return true
 		}
 	}
-	return c.composer.Handle(event)
+	return false
 }
-
-func (c *contextEditor) Focus(has bool) { c.composer.Focus(has) }
 
 // contextEditing opens one multiline editor at a time; opening another
 // dismisses the open one.
 type contextEditing struct {
-	stack     *headless.Stack
+	stack     *workspaceScene
 	theme     kit.Theme
 	glyphs    kit.Glyphs
-	clipboard headless.Clipboard
+	clipboard base.Clipboard
 	notify    func(string)
 	active    *contextEditorSession
 }
@@ -150,7 +168,7 @@ func (e *contextEditing) open(request contextEditorRequest) *contextEditorSessio
 		e.active.Dismiss()
 	}
 	editor := newContextEditor(e.theme, e.clipboard, request.Content, request.Placeholder)
-	var dialog *kit.Dialog
+	var dialog *presentationDialog
 	session := &contextEditorSession{editor: editor}
 	session.dismissed = func() {
 		if e.active == session {
@@ -180,7 +198,7 @@ func (e *contextEditing) open(request contextEditorRequest) *contextEditorSessio
 				enter(contextSaveFailed, err.Error())
 				return false
 			}
-			if editor.composer.Editor().Text() != value {
+			if editor.composer.Controller().Text() != value {
 				enter(contextSavedWithNewEdits, "")
 				return false
 			}
@@ -192,15 +210,13 @@ func (e *contextEditing) open(request contextEditorRequest) *contextEditorSessio
 			e.notify(request.Title + ": " + err.Error())
 		}
 	}
-	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: e.stack, Theme: e.theme, Glyphs: e.glyphs,
-		Title: request.Title, Description: request.Description, Body: editor,
+	dialog = newPresentationDialog(e.stack, kit.DialogConfig{Theme: e.theme, Glyphs: e.glyphs,
+		Title: request.Title, Description: request.Description, Body: editor.Element(),
 		Where: layout.Placement{Width: 100, Height: 24}, Keys: editor.keys,
-		Hints: []keymap.Action{saveContextDocument, cancelContextDocument},
 	})
 	session.dialog = dialog
 	e.active = session
-	dialog.Controller().Show()
+	dialog.Show()
 	return session
 }
 
@@ -209,7 +225,3 @@ func (e *contextEditing) dismiss() {
 		e.active.Dismiss()
 	}
 }
-
-var _ headless.Widget = (*contextEditor)(nil)
-var _ headless.Interactive = (*contextEditor)(nil)
-var _ headless.Focusable = (*contextEditor)(nil)

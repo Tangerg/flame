@@ -1,4 +1,4 @@
-import { logs, SeverityNumber } from "@opentelemetry/api-logs";
+import { logs, SeverityNumber } from "@opentelemetry/api";
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
 const SEVERITY: Record<LogLevel, { number: SeverityNumber; text: string }> = {

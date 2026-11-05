@@ -3,7 +3,9 @@ package filewatch
 import (
 	json "encoding/json/v2"
 	"errors"
-	"github.com/Tangerg/qimu/portable"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"slices"
 	"time"
 
@@ -32,7 +34,7 @@ type Capture struct {
 	Trigger    Draft               `json:"trigger"`
 	SessionID  string              `json:"sessionId"`
 	RunID      string              `json:"runId"`
-	Invocation portable.Invocation `json:"invocation"`
+	Invocation framemcp.Invocation `json:"invocation"`
 }
 
 type Observation struct{ capture Capture }

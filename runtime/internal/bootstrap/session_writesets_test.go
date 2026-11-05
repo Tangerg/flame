@@ -3,10 +3,11 @@ package bootstrap
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
@@ -421,7 +422,7 @@ func TestApplyTerminalRecoversLostParkAtomically(t *testing.T) {
 	}
 }
 
-func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
+func TestApplyTerminalChargesGoalOwnedParkBeforeWorkflowDecision(t *testing.T) {
 	ss, runs, ints := newWriteSetFixture(t)
 	ctx := t.Context()
 	const incarnationID = "lease_terminal_park"
@@ -487,9 +488,15 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 		t.Fatalf("get Goal: found=%t err=%v", found, err)
 	}
 	if storedGoal.Used() != (goal.Usage{Runs: 1, Cost: bootstrapGoalRunCost(t, costUSD), Steps: 4}) ||
-		storedGoal.Status() != goal.StatusPaused ||
-		storedGoal.Reason().Code() != goal.ReasonRunNotCompleted {
+		storedGoal.Status() != goal.StatusActive {
 		t.Fatalf("Goal after terminal park = %+v", storedGoal)
+	}
+	if err := mustGoalRuns(t, ss.goals).Drain(ctx, ss.goals, goaltest.Workflow{}, "ses_A", nil); err != nil {
+		t.Fatal(err)
+	}
+	decided, found, err := readBootstrapGoal(ctx, ss.goals, "ses_A")
+	if err != nil || !found || decided.Status() != goal.StatusPaused || decided.Reason().Code() != goal.ReasonRunNotCompleted || decided.Used() != storedGoal.Used() {
+		t.Fatalf("workflow did not settle the original terminal receipt: %+v, %v", decided, err)
 	}
 	storedRun, found, err := runs.Run(ctx, terminal.State().ID())
 	if err != nil || !found || !testsupport.RunFailed(storedRun) {

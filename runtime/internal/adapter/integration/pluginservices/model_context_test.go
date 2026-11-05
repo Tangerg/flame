@@ -9,13 +9,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -23,7 +26,7 @@ func TestInstalledModelContextPreservesOriginalQueryAndRejectsInvalidOrWithdrawn
 	for _, mode := range []string{"valid", "invalid", "failure"} {
 		t.Run(mode, func(t *testing.T) {
 			composition, bindings, store := installedContextFixture(t, mode)
-			ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-context", Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-context"}})
+			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-context", Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-context"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -54,7 +57,7 @@ func TestInstalledModelContextPreservesOriginalQueryAndRejectsInvalidOrWithdrawn
 
 func TestInstalledModelContextComposesInCapturedOrder(t *testing.T) {
 	composition, bindings, _ := installedContextFixture(t, "ordered")
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-context", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-context"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-context", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-context"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,10 +86,10 @@ func installedContextFixture(t *testing.T, mode string) (*CallComposition, []plu
 	if mode == "ordered" {
 		members = append(members, "second")
 	}
-	observer, store := installedCallCompositionFixture(t, contract, members, func(backend *qimumcp.Backend) {
+	observer, store := installedCallCompositionFixture(t, contract, members, func(backend *pluginmcp.Backend) {
 		method, _ := pluginsdk.ModelContextMethod()
-		if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[pluginsdk.ModelContextRequest]) (pluginsdk.ModelContextResult, error) {
-			invocation, err := qimumcp.InvocationFromContext(ctx)
+		if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginsdk.ModelContextRequest]) (pluginsdk.ModelContextResult, error) {
+			invocation, err := pluginmcp.InvocationFromContext(ctx)
 			if err != nil || !strings.HasPrefix(invocation.ID, "original-context") || invocation.Target.Reference != invocation.ID || command.ID != "" {
 				return pluginsdk.ModelContextResult{}, errors.New("original query attribution lost")
 			}

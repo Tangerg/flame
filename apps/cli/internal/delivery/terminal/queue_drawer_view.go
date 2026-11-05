@@ -5,12 +5,13 @@ import (
 	"image"
 	"strings"
 
+	"github.com/Tangerg/oolong/ui/core/scene"
+
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/layout"
-	"github.com/Tangerg/oolong/core/text"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/text"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 func (q *queueDrawer) Place(space image.Point) layout.Placement {
@@ -29,12 +30,10 @@ func (q *queueDrawer) Place(space image.Point) layout.Placement {
 	return layout.Placement{Anchor: layout.Bottom, Height: min(innerRows+2, space.Y)}
 }
 
-func (q *queueDrawer) Draw(frame headless.Frame) {
-	q.lifecycle.stage(frame)
+func (q *queueDrawer) Draw(frame scene.Frame) {
 	width, height := frame.Size()
 	if width <= 0 || height <= 0 {
 		q.presentation.Stage(frame, queuePresentation{})
-		q.editorRegion.Stage(frame, image.Rectangle{}, nil)
 		return
 	}
 	box := kit.Box{
@@ -48,7 +47,6 @@ func (q *queueDrawer) Draw(frame headless.Frame) {
 		q.presentation.Stage(frame, queuePresentation{})
 		return
 	}
-	q.editorRegion.Stage(frame, image.Rectangle{}, nil)
 	hits := q.drawEntries(frame.Sub(inner))
 	for index := range hits {
 		hits[index].area = hits[index].area.Add(inner.Min)
@@ -70,9 +68,8 @@ func (q *queueDrawer) footer() string {
 	return "j/k move · enter edit · x remove · J/K reorder · s send now · esc close"
 }
 
-func (q *queueDrawer) drawEditor(frame headless.Frame, inner image.Rectangle) {
+func (q *queueDrawer) drawEditor(frame scene.Frame, inner image.Rectangle) {
 	if !q.Editing() || inner.Empty() {
-		q.editorRegion.Stage(frame, image.Rectangle{}, nil)
 		return
 	}
 	entry := *q.editingEntry
@@ -80,17 +77,15 @@ func (q *queueDrawer) drawEditor(frame headless.Frame, inner image.Rectangle) {
 		{Size: layout.Fixed(1)},
 		{Size: layout.Flex(1)},
 	})
-	header, field := rows[0].Add(inner.Min), rows[1].Add(inner.Min)
+	header := rows[0].Add(inner.Min)
 	label := "Editing queued prompt"
 	if attachments := len(entry.Message.Attachments); attachments > 0 {
 		label += " · keeps " + countedNoun(attachments, "attachment")
 	}
 	frame.Text(header.Min.X, header.Min.Y, text.Truncate(label, header.Dx(), q.glyphs.Ellipsis), q.theme.Heading)
-	q.editorRegion.Stage(frame, field, &q.editor)
-	q.editor.Draw(frame.Sub(field))
 }
 
-func (q *queueDrawer) drawEntries(frame headless.Frame) []queueHit {
+func (q *queueDrawer) drawEntries(frame scene.Frame) []queueHit {
 	width, height := frame.Size()
 	if width <= 0 || height <= 0 {
 		return nil

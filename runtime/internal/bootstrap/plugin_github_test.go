@@ -9,13 +9,16 @@ import (
 	"sync/atomic"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -51,7 +54,7 @@ func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *t
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
 	})}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +102,7 @@ func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *t
 	if name.Load().(string) == "" {
 		t.Fatal("installed GitHub Tool is missing")
 	}
-	contracts, err := portable.ParseCapability([]byte(testsupport.GitHubCapabilityJSON))
+	contracts, err := plugincontract.ParseCapability([]byte(testsupport.GitHubCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +111,7 @@ func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *t
 		name, method, key, code, prompt string
 		input                           any
 	}{
-		{"get_issue", testsupport.GitHubGetIssueV1Method, "", "invalid_resource", "Inspect the requested issue.", testsupport.GitHubIssueInput{Repository: "../private", Number: 42}},
+		{"get_issue", testsupport.GitHubGetIssueV1Method, "", "invalid_resource", "Inspect the requested issue.", testsupport.GitHubGetIssueV1InputWireIssueInput{Repository: "../private", Number: generatedNumber(t, "42")}},
 		{"create_issue", testsupport.GitHubCreateIssueV1Method, "github-create-without-token", "credential_required", "Create the requested issue.", testsupport.GitHubCreateIssueInput{Repository: "owner/repo", Title: "Requested issue"}},
 	} {
 		for _, tool := range tools {
@@ -116,7 +119,7 @@ func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *t
 				name.Store(tool.ModelName)
 			}
 		}
-		input, err := jsonvalue.Encode(test.input)
+		input, err := framevalue.EncodeJSON(test.input)
 		if err != nil {
 			t.Fatal(err)
 		}

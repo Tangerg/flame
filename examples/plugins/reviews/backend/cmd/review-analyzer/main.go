@@ -8,8 +8,8 @@ import (
 	"syscall"
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 func main() {
@@ -27,11 +27,11 @@ func run() error {
 		return err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame-review-analyzer-example", Version: "1.0.0"}, nil)
-	backend, err := qimumcp.NewBackend(server)
+	backend, err := pluginmcp.NewBackend(server)
 	if err != nil {
 		return err
 	}
-	if err := contracts.Analyze.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command qimumcp.Command[reviews.Snapshot]) (reviews.Findings, error) {
+	if err := contracts.Analyze.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command pluginmcp.Command[reviews.Snapshot]) (reviews.Findings, error) {
 		return analyze(command.Input)
 	}); err != nil {
 		return err

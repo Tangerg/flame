@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/core/chat"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -14,17 +14,17 @@ import (
 // unsettled dispatch. They describe diagnostics, never proof of an outcome.
 type interactionEffectFailures struct {
 	mu     sync.Mutex
-	causes map[agent.EffectID]effectObservation
+	causes map[scoperun.EffectID]effectObservation
 }
 
-func (i *interactionEffectFailures) record(id agent.EffectID, cause error) {
+func (i *interactionEffectFailures) record(id scoperun.EffectID, cause error) {
 	if cause == nil {
 		return
 	}
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	if i.causes == nil {
-		i.causes = make(map[agent.EffectID]effectObservation)
+		i.causes = make(map[scoperun.EffectID]effectObservation)
 	}
 	if _, exists := i.causes[id]; !exists {
 		observation := effectObservation{ID: id.String(), Detail: run.Diagnostic(cause)}
@@ -35,7 +35,7 @@ func (i *interactionEffectFailures) record(id agent.EffectID, cause error) {
 	}
 }
 
-func (i *interactionEffectFailures) observations(ids []agent.EffectID) []effectObservation {
+func (i *interactionEffectFailures) observations(ids []scoperun.EffectID) []effectObservation {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	effects := make([]effectObservation, len(ids))
@@ -53,5 +53,5 @@ func (i *interactionEffectFailures) observations(ids []agent.EffectID) []effectO
 type effectObservation struct {
 	ID     string
 	Detail string
-	Output *chat.ToolOutput
+	Output *toolcontract.Output
 }

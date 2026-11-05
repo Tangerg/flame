@@ -5,10 +5,12 @@ import (
 	"log"
 	"os"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/plugins/github/internal/wire"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func main() {
@@ -25,7 +27,7 @@ func main() {
 	}
 }
 
-func define() (*portable.Capability, error) {
+func define() (*plugincontract.Capability, error) {
 	listMethod, err := readMethod[wire.ListInput, wire.IssuePage]("list-issues", "Read one explicit page of repository issues and pull requests, exposing the next page number supplied by GitHub.")
 	if err != nil {
 		return nil, err
@@ -122,13 +124,13 @@ func define() (*portable.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.github.v1", Composition: portable.Collection, Scope: extension.ScopeInstallation}, listMethod.Descriptor(), issueMethod.Descriptor(), fileMethod.Descriptor(), pullsMethod.Descriptor(), pullMethod.Descriptor(), pullFilesMethod.Descriptor(), commentsMethod.Descriptor(), reviewsMethod.Descriptor(), reviewCommentsMethod.Descriptor(), checksMethod.Descriptor(), annotationsMethod.Descriptor(), statusesMethod.Descriptor(), createIssueMethod.Descriptor(), updateIssueMethod.Descriptor(), createCommentMethod.Descriptor(), updateCommentMethod.Descriptor(), deleteCommentMethod.Descriptor(), createPullMethod.Descriptor(), submitReviewMethod.Descriptor(), mergePullMethod.Descriptor(), createReviewCommentMethod.Descriptor(), replyReviewCommentMethod.Descriptor(), updateReviewCommentMethod.Descriptor(), deleteReviewCommentMethod.Descriptor())
+	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "flame.github.v1", Composition: plugincontract.Collection, Scope: extension.ScopeInstallation}, listMethod.Descriptor(), issueMethod.Descriptor(), fileMethod.Descriptor(), pullsMethod.Descriptor(), pullMethod.Descriptor(), pullFilesMethod.Descriptor(), commentsMethod.Descriptor(), reviewsMethod.Descriptor(), reviewCommentsMethod.Descriptor(), checksMethod.Descriptor(), annotationsMethod.Descriptor(), statusesMethod.Descriptor(), createIssueMethod.Descriptor(), updateIssueMethod.Descriptor(), createCommentMethod.Descriptor(), updateCommentMethod.Descriptor(), deleteCommentMethod.Descriptor(), createPullMethod.Descriptor(), submitReviewMethod.Descriptor(), mergePullMethod.Descriptor(), createReviewCommentMethod.Descriptor(), replyReviewCommentMethod.Descriptor(), updateReviewCommentMethod.Descriptor(), deleteReviewCommentMethod.Descriptor())
 }
 
-func readMethod[P, R any](name, description string) (*qimumcp.Method[P, R], error) {
-	return qimumcp.NewMethod[P, R](qimumcp.MethodConfig{Name: "flame.github/" + name + ".v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: description})
+func readMethod[P, R any](name, description string) (*pluginmcp.Method[P, R], error) {
+	return pluginmcp.NewMethod[P, R](portable.MethodConfig{Name: "flame.github/" + name + ".v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: description})
 }
 
-func writeMethod[P, R any](name, description string) (*qimumcp.Method[P, R], error) {
-	return qimumcp.NewMethod[P, R](qimumcp.MethodConfig{Name: "flame.github/" + name + ".v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: description + " Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission."})
+func writeMethod[P, R any](name, description string) (*pluginmcp.Method[P, R], error) {
+	return pluginmcp.NewMethod[P, R](portable.MethodConfig{Name: "flame.github/" + name + ".v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: description + " Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission."})
 }

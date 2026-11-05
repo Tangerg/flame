@@ -6,9 +6,10 @@ import (
 	"math"
 	"slices"
 
+	"github.com/Tangerg/frame/portable"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 type TextEmbeddings struct {
@@ -18,11 +19,11 @@ type TextEmbeddings struct {
 
 // TextEmbeddingMethod projects vectors from the captured embedding model. The
 // model adapter retains the complete provider response and endpoint evidence.
-func TextEmbeddingMethod() (*qimumcp.Method[[]string, TextEmbeddings], error) {
-	return qimumcp.NewMethod[[]string, TextEmbeddings](qimumcp.MethodConfig{Name: "flame.model/embed-texts.v2", Kind: portable.Mutation, Target: extension.ScopeCall, Description: "Embed texts and identify the vector space captured by this exchange."})
+func TextEmbeddingMethod() (*pluginmcp.Method[[]string, TextEmbeddings], error) {
+	return pluginmcp.NewMethod[[]string, TextEmbeddings](portable.MethodConfig{Name: "flame.model/embed-texts.v2", Kind: portable.Command, Target: extension.ScopeCall, Description: "Embed texts and identify the vector space captured by this exchange."})
 }
 
-func CallTextEmbedding(ctx context.Context, ref qimumcp.CallbackRef, id qimumcp.CommandID, texts []string) (TextEmbeddings, error) {
+func CallTextEmbedding(ctx context.Context, ref pluginmcp.CallbackRef, id pluginmcp.CommandID, texts []string) (TextEmbeddings, error) {
 	if len(texts) == 0 {
 		return TextEmbeddings{}, errors.New("embedding call: texts are required")
 	}
@@ -30,7 +31,7 @@ func CallTextEmbedding(ctx context.Context, ref qimumcp.CallbackRef, id qimumcp.
 	if err != nil {
 		return TextEmbeddings{}, err
 	}
-	vectors, err := qimumcp.CallHost(ctx, ref, method, qimumcp.CommandID(id), slices.Clone(texts))
+	vectors, err := pluginmcp.CallHost(ctx, ref, method, pluginmcp.CommandID(id), slices.Clone(texts))
 	if err != nil {
 		return TextEmbeddings{}, err
 	}
@@ -42,19 +43,19 @@ func CallTextEmbedding(ctx context.Context, ref qimumcp.CallbackRef, id qimumcp.
 
 // NewTextEmbeddingCallback leaves admission and budgets with the calling owner.
 // Physical model evidence belongs to this child exchange, retaining its parent.
-func NewTextEmbeddingCallback(call func(context.Context, qimumcp.Command[[]string]) (TextEmbeddings, error)) (qimumcp.Callback, error) {
+func NewTextEmbeddingCallback(call func(context.Context, pluginmcp.Command[[]string]) (TextEmbeddings, error)) (pluginmcp.Callback, error) {
 	if call == nil {
-		return qimumcp.Callback{}, errors.New("embedding call: model owner is required")
+		return pluginmcp.Callback{}, errors.New("embedding call: model owner is required")
 	}
 	method, err := TextEmbeddingMethod()
 	if err != nil {
-		return qimumcp.Callback{}, err
+		return pluginmcp.Callback{}, err
 	}
-	return qimumcp.NewCallback(method, nil, func(ctx context.Context, command qimumcp.Command[[]string]) (TextEmbeddings, error) {
+	return pluginmcp.NewCallback(method, nil, func(ctx context.Context, command pluginmcp.Command[[]string]) (TextEmbeddings, error) {
 		if len(command.Input) == 0 {
 			return TextEmbeddings{}, errors.New("embedding call: texts are required")
 		}
-		if parent, err := qimumcp.InvocationFromContext(ctx); err == nil && parent.ID == string(command.ID) {
+		if parent, err := pluginmcp.InvocationFromContext(ctx); err == nil && parent.ID == string(command.ID) {
 			return TextEmbeddings{}, errors.New("embedding call: independent invocation requires a distinct identity")
 		}
 		ctx, err := modelCallContext(ctx, string(command.ID))

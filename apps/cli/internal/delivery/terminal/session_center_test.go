@@ -7,10 +7,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 func TestSessionCenterRejectsActionsAfterItsControllerCloses(t *testing.T) {
@@ -20,10 +19,10 @@ func TestSessionCenterRejectsActionsAfterItsControllerCloses(t *testing.T) {
 	if err := center.SetPage(conversation.SessionPage{Items: []conversation.Session{{ID: "ses_1", Title: "One"}}}, false); err != nil {
 		t.Fatal(err)
 	}
-	center.Focus(true)
-	var stack headless.Stack
-	dialog := newPresentationDialog(kit.DialogConfig{Stack: &stack, Theme: kit.Dark(), Glyphs: kit.Unicode(), Body: center})
-	root := headless.NewRoot(&stack)
+
+	var stack workspaceScene
+	dialog := newPresentationDialog(&stack, kit.DialogConfig{Theme: kit.Dark(), Glyphs: kit.Unicode(), Body: center.Element()})
+	root := newSceneTestRoot(t, stack.Element())
 	surface := grid.NewSurface(80, 20)
 	dialog.Show()
 	root.Draw(surface.View())
@@ -65,15 +64,16 @@ func TestSessionCenterCommandInterruptsAPendingPickerClick(t *testing.T) {
 	center := newSessionCenterPane(kit.Dark(), kit.Unicode(), func(conversation.Session) { opened++ })
 	center.loadMore = func() { loaded++ }
 	if err := center.SetPage(conversation.SessionPage{
-		Items:      []conversation.Session{{ID: "one"}, {ID: "two"}},
+		Items:      []conversation.Session{{ID: "one", Title: "First"}, {ID: "two", Title: "Second"}},
 		NextCursor: "next",
 	}, false); err != nil {
 		t.Fatal(err)
 	}
-	center.Focus(true)
-	root := headless.NewRoot(center)
-	root.Draw(grid.NewSurface(80, 20).View())
-	second := pickerPoint(center.picker, 1)
+
+	root := newSceneTestRoot(t, center.Element())
+	surface := grid.NewSurface(80, 20)
+	root.Draw(surface.View())
+	second := pickerPoint(t, center.picker, surface, 1)
 
 	root.Handle(input.Mouse{Pos: second, Action: input.MouseDown, Button: input.ButtonLeft})
 	root.Handle(input.Key{Code: input.Character, Rune: 'l', Mods: input.Alt})

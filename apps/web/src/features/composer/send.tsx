@@ -94,7 +94,7 @@ function SendButton() {
 export const composerSend = definePlugin({
   name: "flame.builtin.composer-send",
   setup(ctx) {
-    contributeLayout(ctx, "composer.toolbar.end", {
+    contributeLayout(ctx.contributions, "composer.toolbar.end", {
       id: "send",
       order: 100,
       component: SendButton,

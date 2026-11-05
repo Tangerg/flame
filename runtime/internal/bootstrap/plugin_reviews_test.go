@@ -16,12 +16,14 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -162,13 +164,13 @@ func assertReviewCLIEntrances(t *testing.T, runtime *poMCPRuntime, installed *pr
 		if err := json.Unmarshal(output, &reply, json.RejectUnknownMembers(true)); err != nil || reply.Failure != nil {
 			t.Fatalf("CLI lost the structured business result: %s, %v", output, err)
 		}
-		want, err := jsonvalue.Encode(expected)
+		want, err := framevalue.EncodeJSON(expected)
 		if err != nil {
 			t.Fatal(err)
 		}
-		actual, err := jsonvalue.Parse([]byte(reply.Output))
+		actual, err := framevalue.ParseJSON([]byte(reply.Output))
 		if err != nil || actual != want {
-			t.Fatalf("CLI operation differs from the Tool owner's result: %s, want %s, %v", reply.Output, want.JSON(), err)
+			t.Fatalf("CLI operation differs from the Tool owner's result: %s, want %s, %v", reply.Output, want.Bytes(), err)
 		}
 	}
 	call("", expected)
@@ -207,7 +209,7 @@ func TestReviewBackendUsesInstallationRunApprovalAndRecoveryOwners(t *testing.T)
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
 	})}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}

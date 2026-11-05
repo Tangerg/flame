@@ -1,4 +1,4 @@
-import { cloneJSON, parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { cloneJSON, parseJSON, stringifyJSON } from "@frame/sdk/json";
 import { mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

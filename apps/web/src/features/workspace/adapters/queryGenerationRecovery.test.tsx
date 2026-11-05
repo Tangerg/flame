@@ -73,7 +73,7 @@ describe("workspace Runtime-generation query recovery", () => {
       definePlugin({
         name: "test.goal-two-phase-generation-recovery",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, { key: QUERY_GENERATION_FIXTURE_KEY, fetcher });
+          ctx.contributions.add(DATA_PROVIDER, { key: QUERY_GENERATION_FIXTURE_KEY, fetcher });
         },
       }),
     );
@@ -119,7 +119,7 @@ describe("workspace Runtime-generation query recovery", () => {
       definePlugin({
         name: "test.goal-generation-recovery",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, { key: QUERY_GENERATION_FIXTURE_KEY, fetcher });
+          ctx.contributions.add(DATA_PROVIDER, { key: QUERY_GENERATION_FIXTURE_KEY, fetcher });
         },
       }),
     );

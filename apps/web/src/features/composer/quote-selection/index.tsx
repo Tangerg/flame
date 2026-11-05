@@ -4,7 +4,7 @@ import { SelectionQuote } from "@/features/composer/quote-selection/SelectionQuo
 export default definePlugin({
   name: "flame.builtin.quote-selection",
   setup(ctx) {
-    contributeLayout(ctx, "app.overlay", {
+    contributeLayout(ctx.contributions, "app.overlay", {
       id: "selection-quote",
       order: 60,
       component: SelectionQuote,

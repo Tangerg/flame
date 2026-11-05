@@ -12,12 +12,12 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/attachment"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/program"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/program"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
-const fileElement headless.ElementKind = 1
+const fileElement base.ElementKind = 1
 
 const draftPersistenceDelay = 150 * time.Millisecond
 
@@ -30,8 +30,15 @@ const promptHistoryCapacity = 1000
 // file chips. Every chip in the editor has a backing attachment; message
 // refuses an editor whose chips lost theirs. The zero value is empty.
 type composerContent struct {
-	kit.Composer
-	chips map[uint64]authoring.Attachment
+	*kit.Composer
+	chips map[base.ElementID]authoring.Attachment
+}
+
+func (c *composerContent) Controller() *base.Editor {
+	if c.Composer == nil {
+		c.Composer = kit.NewComposer(kit.ComposerConfig{})
+	}
+	return c.Composer.Controller()
 }
 
 // promptComposer owns the prompt being written: its editor content and
@@ -40,6 +47,7 @@ type composerContent struct {
 // the collaborators it was built with.
 type promptComposer struct {
 	composerContent
+	observe     func()
 	drafts      draftAutosave
 	history     promptHistory
 	attachments *attachment.Resolver
@@ -194,14 +202,14 @@ func (c *promptComposer) addAttachment(path string) error {
 	return nil
 }
 
-func (c *promptCompletion) acceptAttachmentCompletion(path string, token headless.Token) {
+func (c *promptCompletion) acceptAttachmentCompletion(path string, token base.Token) {
 	insertion, err := c.composer.resolveAttachment(path)
 	if err != nil {
 		c.notify(err.Error())
 		return
 	}
 	c.gate.Reset()
-	c.composer.Editor().Replace(max(token.Start-1, 0), token.End, "")
+	c.composer.Controller().Replace(max(token.Start-1, 0), token.End, "")
 	c.composer.insertAttachment(insertion)
 }
 
@@ -220,9 +228,9 @@ func (c *promptComposer) removeAttachment(argument string) error {
 }
 
 func (c *composerContent) attach(item authoring.Attachment) {
-	element := c.Editor().InsertElement(fileElement, "@"+item.Name)
+	element := c.Controller().InsertElement(fileElement, "@"+item.Name)
 	if c.chips == nil {
-		c.chips = make(map[uint64]authoring.Attachment)
+		c.chips = make(map[base.ElementID]authoring.Attachment)
 	}
 	c.chips[element.ID] = item
 }
@@ -240,14 +248,14 @@ func (c *composerContent) detach(argument string) (string, error) {
 	if argument == "" {
 		return "", errors.New("/detach needs a file name, number, or all")
 	}
-	elements := c.Editor().Elements()
+	elements := c.Controller().Elements()
 	if len(elements) == 0 {
 		return "", errors.New("the composer has no attachments")
 	}
 	if strings.EqualFold(argument, "all") {
 		for _, element := range elements {
 			if element.Kind == fileElement {
-				c.Editor().RemoveElement(element.ID)
+				c.Controller().RemoveElement(element.ID)
 			}
 		}
 		return "", nil
@@ -256,16 +264,16 @@ func (c *composerContent) detach(argument string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	c.Editor().RemoveElement(element.ID)
+	c.Controller().RemoveElement(element.ID)
 	return item.Name, nil
 }
 
 type composerAttachment struct {
-	element headless.Element
+	element base.Element
 	item    authoring.Attachment
 }
 
-func (c *composerContent) find(elements []headless.Element, argument string) (headless.Element, authoring.Attachment, error) {
+func (c *composerContent) find(elements []base.Element, argument string) (base.Element, authoring.Attachment, error) {
 	attached := make([]composerAttachment, 0, len(elements))
 	for _, element := range elements {
 		item, ok := c.chips[element.ID]
@@ -279,7 +287,7 @@ func (c *composerContent) find(elements []headless.Element, argument string) (he
 			match := attached[position-1]
 			return match.element, match.item, nil
 		}
-		return headless.Element{}, authoring.Attachment{}, fmt.Errorf("attachment %q is not in the composer", argument)
+		return base.Element{}, authoring.Attachment{}, fmt.Errorf("attachment %q is not in the composer", argument)
 	}
 	if matches := matchingAttachments(attached, func(item authoring.Attachment) bool { return argument == item.Name }); len(matches) > 0 {
 		return uniqueAttachment(argument, matches)
@@ -287,7 +295,7 @@ func (c *composerContent) find(elements []headless.Element, argument string) (he
 	if matches := matchingAttachments(attached, func(item authoring.Attachment) bool { return argument == filepathBase(item.Name) }); len(matches) > 0 {
 		return uniqueAttachment(argument, matches)
 	}
-	return headless.Element{}, authoring.Attachment{}, fmt.Errorf("attachment %q is not in the composer", argument)
+	return base.Element{}, authoring.Attachment{}, fmt.Errorf("attachment %q is not in the composer", argument)
 }
 
 func matchingAttachments(attached []composerAttachment, matches func(authoring.Attachment) bool) []composerAttachment {
@@ -300,9 +308,9 @@ func matchingAttachments(attached []composerAttachment, matches func(authoring.A
 	return selected
 }
 
-func uniqueAttachment(argument string, matches []composerAttachment) (headless.Element, authoring.Attachment, error) {
+func uniqueAttachment(argument string, matches []composerAttachment) (base.Element, authoring.Attachment, error) {
 	if len(matches) != 1 {
-		return headless.Element{}, authoring.Attachment{}, fmt.Errorf("attachment %q is ambiguous; use its number or full name", argument)
+		return base.Element{}, authoring.Attachment{}, fmt.Errorf("attachment %q is ambiguous; use its number or full name", argument)
 	}
 	return matches[0].element, matches[0].item, nil
 }
@@ -332,7 +340,7 @@ func (c *promptComposer) showAttachments() {
 }
 
 func (c *composerContent) message() (authoring.Message, error) {
-	editor := c.Editor()
+	editor := c.Controller()
 	lines := strings.Split(editor.Text(), "\n")
 	elements := editor.Elements()
 	attachments, err := c.attachments(editor, elements)
@@ -345,7 +353,7 @@ func (c *composerContent) message() (authoring.Message, error) {
 	return authoring.Message{Text: strings.Join(lines, "\n"), Attachments: attachments}, nil
 }
 
-func (c *composerContent) attachments(editor *headless.Editor, elements []headless.Element) ([]authoring.Attachment, error) {
+func (c *composerContent) attachments(editor *base.Editor, elements []base.Element) ([]authoring.Attachment, error) {
 	attachments := make([]authoring.Attachment, 0, len(elements))
 	for _, element := range elements {
 		if element.Kind != fileElement {
@@ -353,14 +361,14 @@ func (c *composerContent) attachments(editor *headless.Editor, elements []headle
 		}
 		item, ok := c.chips[element.ID]
 		if !ok {
-			return nil, fmt.Errorf("attachment chip %q lost its backing value", element.Text(editor))
+			return nil, fmt.Errorf("attachment chip %q lost its backing value", element.Text())
 		}
 		attachments = append(attachments, item)
 	}
 	return attachments, nil
 }
 
-func stripAttachmentElements(lines []string, elements []headless.Element) error {
+func stripAttachmentElements(lines []string, elements []base.Element) error {
 	for _, element := range slices.Backward(elements) {
 		if element.Kind != fileElement || element.Line < 0 || element.Line >= len(lines) {
 			continue
@@ -391,14 +399,14 @@ func (c *promptComposer) clearComposer() {
 // clear empties the editor and forgets its undo history, so undo cannot bring
 // back a chip whose attachment was released.
 func (c *composerContent) clear() {
-	c.Editor().Clear()
-	c.Editor().ForgetHistory()
+	c.Controller().Clear()
+	c.Controller().ForgetHistory()
 	clear(c.chips)
 }
 
 // draft is the composer's message and whether it holds anything.
 func (c *composerContent) draft() (authoring.Message, bool, error) {
-	editor := c.Editor()
+	editor := c.Controller()
 	if editor.Empty() && len(editor.Elements()) == 0 {
 		return authoring.Message{}, false, nil
 	}
@@ -519,7 +527,7 @@ func (c *promptComposer) recoverDraft(message authoring.Message) error {
 func (c *promptComposer) restoreComposer(message authoring.Message) {
 	c.clearComposer()
 	c.insertAttachments(message.Attachments)
-	c.Editor().Insert(message.Text)
+	c.Controller().Insert(message.Text)
 	c.scheduleDraftPersistence()
 }
 

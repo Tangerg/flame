@@ -6,8 +6,8 @@ import (
 	"strconv"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
 const (
@@ -15,11 +15,11 @@ const (
 	toolInvocationNamespace  = "tool"
 )
 
-func modelInvocationID(invocation interaction.ModelInvocation) (runs.InvocationID, error) {
-	return modelInvocationIDFrom(invocation.EffectID(), invocation.ModelCallSequence())
+func modelInvocationID(invocation modelCallSource) (runs.InvocationID, error) {
+	return modelInvocationIDFrom(invocation.effect, invocation.sequence)
 }
 
-func modelInvocationIDFrom(effectID agent.EffectID, modelCallSequence uint64) (runs.InvocationID, error) {
+func modelInvocationIDFrom(effectID scoperun.EffectID, modelCallSequence uint64) (runs.InvocationID, error) {
 	digest := sha256.New()
 	_, _ = digest.Write([]byte(effectID.String()))
 	_, _ = digest.Write([]byte{0})
@@ -28,7 +28,7 @@ func modelInvocationIDFrom(effectID agent.EffectID, modelCallSequence uint64) (r
 }
 
 func logicalToolCallID(
-	caller agent.ProcessID,
+	caller scoperun.ProcessID,
 	modelCallSequence uint64,
 	toolCallIndex uint32,
 	sourceID string,
@@ -49,12 +49,4 @@ func parsedInvocationID(namespace string, digest []byte, ordinal uint64) (runs.I
 	return runs.ParseInvocation(
 		namespace + ":" + hex.EncodeToString(digest) + ":" + strconv.FormatUint(uint64(ordinal), 10),
 	)
-}
-
-func basicExecutorMember(relation agent.ProcessRelation) runs.ExecutorMember {
-	member := runs.ExecutorMember{MemberID: relation.ProcessID().String()}
-	if parentID, child := relation.ParentID(); child {
-		member.ParentID = parentID.String()
-	}
-	return member
 }

@@ -3,21 +3,21 @@ package extension
 import (
 	"errors"
 
-	"github.com/Tangerg/qimu/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
 )
 
 // Flame owns the closed product origin and target vocabulary.
 const (
-	Human             portable.Origin = "human"
-	Model             portable.Origin = "model"
-	Automatic         portable.Origin = "automatic"
+	Human             framemcp.Origin = "human"
+	Model             framemcp.Origin = "model"
+	Automatic         framemcp.Origin = "automatic"
 	ScopeCall                         = "call"
 	ScopeInstallation                 = "installation"
 )
 
-// ValidateInvocation admits Flame's product evidence. Qimu accepts other
+// ValidateInvocation admits Flame's product evidence. Frame accepts other
 // consumers' origin vocabularies without granting them Flame authority.
-func ValidateInvocation(invocation portable.Invocation) error {
+func ValidateInvocation(invocation framemcp.Invocation) error {
 	if err := invocation.Validate(); err != nil {
 		return err
 	}

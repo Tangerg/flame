@@ -1,5 +1,5 @@
 import { validateWire } from "@flame/runtime-client/validation";
-import { projectNumber } from "@qimu/sdk/json";
+import { projectNumber } from "@frame/sdk/json";
 
 import type { MCPHandshakeTimeout } from "@flame/runtime-client/wire";
 export type { MCPHandshakeTimeout };

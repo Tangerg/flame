@@ -46,14 +46,14 @@ beforeEach(async () => {
   disposables = [];
   transport = createMemoryTransport();
   client = createFlameClient(transport);
-  await contributeForTest((ctx) => registerWorkspaceDataProviders(ctx, () => client));
+  await contributeForTest((ctx) => registerWorkspaceDataProviders(ctx.contributions, () => client));
 });
 
 afterEach(async () => {
   unmountHook?.();
   unmountHook = undefined;
   queryClient.clear();
-  for (const disposable of disposables.reverse()) disposable.dispose();
+  for (const disposable of disposables.reverse()) disposable[Symbol.dispose]();
   await client.close();
   vi.restoreAllMocks();
 });

@@ -1,6 +1,6 @@
 import { HTTP_HEADERS, RPC_HTTP, type ProblemData } from "@flame/runtime-client/wire";
 import type { WireViolation } from "./validation/wireCheck";
-import { isJSONNumber, parseJSON } from "@qimu/sdk/json";
+import { isJSONNumber, parseJSON } from "@frame/sdk/json";
 
 type ProblemOf<Type extends ProblemData["type"]> = Type extends `plugin:${string}/${string}`
   ? Extract<ProblemData, { type: `plugin:${string}/${string}` }>

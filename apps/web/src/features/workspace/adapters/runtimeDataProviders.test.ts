@@ -18,7 +18,9 @@ async function runProvider<T>(
   const t = createMemoryTransport();
   const client = createFlameClient(t);
   try {
-    await contributeForTest((ctx) => registerWorkspaceDataProviders(ctx, () => client));
+    await contributeForTest((ctx) =>
+      registerWorkspaceDataProviders(ctx.contributions, () => client),
+    );
 
     const fetcher = lookupDataProvider<T>(key);
     if (!fetcher) throw new Error(`no provider for "${key}"`);
@@ -39,7 +41,9 @@ describe("workspace Runtime data providers", () => {
   it("rejects missing parameters before a parameterized provider reaches RPC", async () => {
     const client = createFlameClient(createMemoryTransport());
     try {
-      await contributeForTest((ctx) => registerWorkspaceDataProviders(ctx, () => client));
+      await contributeForTest((ctx) =>
+        registerWorkspaceDataProviders(ctx.contributions, () => client),
+      );
 
       for (const key of ["list-files", "read-file"]) {
         const fetcher = lookupDataProvider(key);

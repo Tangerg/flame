@@ -58,7 +58,7 @@ afterEach(() => {
   disposeRefresh?.();
   disposeRefresh = undefined;
   queryClient.clear();
-  for (const disposable of disposables.reverse()) disposable.dispose();
+  for (const disposable of disposables.reverse()) disposable[Symbol.dispose]();
   vi.restoreAllMocks();
 });
 
@@ -92,7 +92,7 @@ describe("workspaceProjectRevision", () => {
       return Promise.resolve([{ id: "/successor", name: "successor", sessionCount: 1 }]);
     });
     await contributeForTest((ctx) => {
-      ctx.contribute(DATA_PROVIDER, { key: WORKSPACE_PROJECTS_KEY, fetcher });
+      ctx.contributions.add(DATA_PROVIDER, { key: WORKSPACE_PROJECTS_KEY, fetcher });
     });
     disposeRefresh = installProjectIndexRefresh();
     const hook = testClient.renderHook(() => useWorkspaceProjects(), { wrapper });

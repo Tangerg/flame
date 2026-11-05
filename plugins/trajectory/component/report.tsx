@@ -3,7 +3,7 @@ import type { ReactNode, Ref } from "react";
 import type { Translate } from "@flame/component-sdk";
 import { Activity, Cpu, Terminal, FileText, Server } from "@flame/icons/react";
 import type { Page, TrajectoryEntry } from "@flame/runtime-client/wire";
-import { prettyJSON, stringifyJSON } from "@qimu/sdk/json";
+import { prettyJSON, stringifyJSON } from "@frame/sdk/json";
 import {
   Button,
   Badge,

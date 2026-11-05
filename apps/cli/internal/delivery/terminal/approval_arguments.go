@@ -27,7 +27,9 @@ func (p *interruptPrompts) openApprovalArgumentEditor() {
 				p.approvalArguments = prettyJSON(override.JSON())
 				p.setApprovalPreview(p.approvalPreviewSections())
 				p.setApprovalForm(approvalAllowOnce)
-				p.approvalPane.Focus(true)
+				if p.approvalPane.form != nil {
+					_ = p.approvalPane.form.Element().RequestFocusFirst()
+				}
 				p.approvalDialog.Controller().SetDescription("Arguments edited · choose how to proceed")
 			}
 			return nil

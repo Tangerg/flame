@@ -8,26 +8,26 @@ import (
 	"slices"
 	"strings"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/frame"
 )
 
-// ContractDocument is an immutable declaration projection. Qimu admits the
+// ContractDocument is an immutable declaration projection. Frame admits the
 // descriptor once; Flame's selection and applicability policies remain here.
 type ContractDocument struct {
-	Reference  qimu.ContractRef
+	Reference  frame.ContractRef
 	Descriptor []byte
 }
 
 type FrameworkRelease struct {
-	Plugin    *qimu.Plugin
+	Plugin    *frame.Plugin
 	Contracts []ContractDocument
 }
 
@@ -37,7 +37,7 @@ const (
 )
 
 // FrameworkConfiguration contains only Flame-owned configuration. Installation
-// identity, selected release and desired enablement belong to Qimu's record.
+// identity, selected release and desired enablement belong to Frame's record.
 // Values may contain credentials and must not be forwarded to a browser realm.
 type FrameworkConfiguration struct {
 	Source          string                 `json:"source"`
@@ -59,14 +59,14 @@ func EncodeFrameworkConfiguration(record plugin.Record) ([]byte, error) {
 	}
 	slices.SortFunc(value.DisabledServers, func(a, b mcpserver.ServerName) int { return strings.Compare(a.String(), b.String()) })
 	slices.Sort(value.DisabledSkills)
-	encoded, err := jsonvalue.Encode(value)
+	encoded, err := framevalue.EncodeJSON(value)
 	if err != nil {
 		return nil, err
 	}
-	return encoded.JSON(), nil
+	return encoded.Bytes(), nil
 }
 
-func DecodeFrameworkConfiguration(record qimu.InstallationRecord) (plugin.Record, error) {
+func DecodeFrameworkConfiguration(record frame.InstallationRecord) (plugin.Record, error) {
 	var value FrameworkConfiguration
 	if err := json.Unmarshal(record.Configuration, &value, json.RejectUnknownMembers(true)); err != nil {
 		return plugin.Record{}, err
@@ -82,11 +82,11 @@ func DecodeFrameworkConfiguration(record qimu.InstallationRecord) (plugin.Record
 	return plugin.Record{ID: id, Source: value.Source, Selected: digest, Enabled: record.Enabled, Values: value.Values, DisabledServers: value.DisabledServers, DisabledSkills: value.DisabledSkills}, nil
 }
 
-func BackendUnit(server mcpserver.ServerName) qimu.UnitID {
-	return qimu.UnitID(backendUnitPrefix + server.String())
+func BackendUnit(server mcpserver.ServerName) frame.UnitID {
+	return frame.UnitID(backendUnitPrefix + server.String())
 }
 
-func BackendServer(unit qimu.UnitID) (mcpserver.ServerName, error) {
+func BackendServer(unit frame.UnitID) (mcpserver.ServerName, error) {
 	value, found := strings.CutPrefix(string(unit), backendUnitPrefix)
 	if !found {
 		return mcpserver.ServerName{}, plugin.ErrInvalid
@@ -98,14 +98,14 @@ func RequirementSlot(contribution, requirement plugin.ContributionID) string {
 	return contribution.String() + "/" + requirement.String()
 }
 
-const PointValuesUnit qimu.UnitID = "point-values"
+const PointValuesUnit frame.UnitID = "point-values"
 
-func ComponentUnit(id plugin.ContributionID) qimu.UnitID {
-	return qimu.UnitID(componentUnitPrefix + id.String())
+func ComponentUnit(id plugin.ContributionID) frame.UnitID {
+	return frame.UnitID(componentUnitPrefix + id.String())
 }
 
-func ComponentContract() (qimu.Contract[any], error) {
-	return qimu.NewContract[any]("io.github.tangerg.flame/component", "1")
+func ComponentContract() (frame.Contract[any], error) {
+	return frame.NewContract[any]("io.github.tangerg.flame/component", "1")
 }
 
 type ComponentConfiguration struct {
@@ -146,87 +146,86 @@ func PublicComponentConfiguration(release plugin.Release, id plugin.Contribution
 		if component.Selector != nil {
 			metadata.Selector = &ComponentSelector{Kind: component.Selector.Kind, Name: component.Selector.Name}
 		}
-		value, err := jsonvalue.Encode(ComponentConfiguration{Export: component.Export, Component: metadata, SharedModules: []string{}})
+		value, err := framevalue.EncodeJSON(ComponentConfiguration{Export: component.Export, Component: metadata, SharedModules: []string{}})
 		if err != nil {
 			return nil, err
 		}
-		return value.JSON(), nil
+		return value.Bytes(), nil
 	}
 	return nil, plugin.ErrNotFound
 }
 
-func capabilityContract(contract *portable.Capability) (qimu.Contract[any], error) {
+func capabilityContract(contract *plugincontract.Capability) (frame.Contract[any], error) {
 	if contract == nil {
-		return qimu.Contract[any]{}, plugin.ErrInvalid
+		return frame.Contract[any]{}, plugin.ErrInvalid
 	}
-	ref := qimu.ContractRef{Name: contract.Descriptor().Reference, Version: "1", Digest: integrity.Hash(contract.Identity().JSON()), Kind: qimu.ServiceKind, Mode: qimu.PortableMode}
-	return qimu.BindContract[any](ref, contract.Identity().JSON())
+	return frame.NewPortableContract[any]("1", contract.Service())
 }
 
 // CapabilityPoint is Flame's collection of implementations of a portable
 // callable contract. Selection and decoration order are consumer policies;
 // membership and callable value have separate original descriptors.
-func CapabilityPoint(contract *portable.Capability) (qimu.Point[jsonvalue.Value, any], error) {
+func CapabilityPoint(contract *plugincontract.Capability) (frame.Point[framevalue.JSON, any], error) {
 	value, err := capabilityContract(contract)
 	if err != nil {
-		return qimu.Point[jsonvalue.Value, any]{}, err
+		return frame.Point[framevalue.JSON, any]{}, err
 	}
-	return qimu.NewPortablePoint[jsonvalue.Value](contract.Descriptor().Reference, "1", []byte(`{"type":"null"}`), value)
+	return frame.NewPortablePoint[framevalue.JSON](contract.Descriptor().Reference, "1", []byte(`{"type":"null"}`), value)
 }
 
-func DataPoint(contract *portable.Point) (qimu.Point[jsonvalue.Value, jsonvalue.Value], error) {
+func DataPoint(contract *plugincontract.Point) (frame.Point[framevalue.JSON, framevalue.JSON], error) {
 	if contract == nil {
-		return qimu.Point[jsonvalue.Value, jsonvalue.Value]{}, plugin.ErrInvalid
+		return frame.Point[framevalue.JSON, framevalue.JSON]{}, plugin.ErrInvalid
 	}
-	ref := qimu.ContractRef{Name: contract.Definition().Reference, Version: "1", Digest: integrity.Hash(contract.Identity().JSON()), Kind: qimu.ServiceKind, Mode: qimu.PortableMode}
-	value, err := qimu.BindContract[jsonvalue.Value](ref, contract.Identity().JSON())
+	ref := frame.ContractRef{Name: contract.Definition().Reference, Version: "1", Digest: framevalue.Hash(contract.Identity().Bytes()), Kind: frame.ServiceKind, Mode: frame.PortableMode}
+	value, err := frame.BindContract[framevalue.JSON](ref, contract.Identity().Bytes())
 	if err != nil {
-		return qimu.Point[jsonvalue.Value, jsonvalue.Value]{}, err
+		return frame.Point[framevalue.JSON, framevalue.JSON]{}, err
 	}
-	return qimu.NewPortablePoint[jsonvalue.Value](ref.Name, "1", contract.Definition().Value, value)
+	return frame.NewPortablePoint[framevalue.JSON](ref.Name, "1", contract.Definition().Value, value)
 }
 
-// FrameworkDefinition is the one Flame-to-Qimu declaration projection shared
+// FrameworkDefinition is the one Flame-to-Frame declaration projection shared
 // by author tooling and Runtime. It carries no release or installation identity.
 type FrameworkDefinition struct {
-	Units     []qimu.Unit
+	Units     []frame.Unit
 	Contracts []ContractDocument
 }
 
-func ProjectFrameworkRelease(release plugin.Release, backendProfile qimu.Profile) (FrameworkRelease, error) {
+func ProjectFrameworkRelease(release plugin.Release, backendProfile frame.Profile) (FrameworkRelease, error) {
 	projection, err := ProjectFrameworkDeclaration(release.Declaration(), backendProfile)
 	if err != nil {
 		return FrameworkRelease{}, err
 	}
-	plugin, err := qimu.Define(qimu.Definition{Revision: release.Digest(), Units: projection.Units})
+	plugin, err := frame.Define(frame.Definition{Revision: release.Digest(), Units: projection.Units})
 	if err != nil {
 		return FrameworkRelease{}, err
 	}
 	return FrameworkRelease{Plugin: plugin, Contracts: projection.Contracts}, nil
 }
 
-func ProjectFrameworkDeclaration(declaration plugin.Declaration, backendProfile qimu.Profile) (FrameworkDefinition, error) {
-	contracts := map[qimu.ContractRef][]byte{}
-	addCapability := func(encoded jsonvalue.Value) (qimu.ContractRef, error) {
-		contract, err := portable.ParseCapability(encoded.JSON())
+func ProjectFrameworkDeclaration(declaration plugin.Declaration, backendProfile frame.Profile) (FrameworkDefinition, error) {
+	contracts := map[frame.ContractRef][]byte{}
+	addCapability := func(encoded framevalue.JSON) (frame.ContractRef, error) {
+		contract, err := plugincontract.ParseCapability(encoded.Bytes())
 		if err != nil {
-			return qimu.ContractRef{}, err
+			return frame.ContractRef{}, err
 		}
 		value, err := capabilityContract(contract)
 		if err != nil {
-			return qimu.ContractRef{}, err
+			return frame.ContractRef{}, err
 		}
 		point, err := CapabilityPoint(contract)
 		if err != nil {
-			return qimu.ContractRef{}, err
+			return frame.ContractRef{}, err
 		}
 		contracts[value.Ref()] = value.Descriptor()
 		contracts[point.Ref()] = point.Descriptor()
 		return point.Ref(), nil
 	}
-	units := make([]qimu.Unit, 0, len(declaration.Servers)+1)
+	units := make([]frame.Unit, 0, len(declaration.Servers)+1)
 	for _, server := range declaration.Servers {
-		unit := qimu.UnitDeclaration{ID: BackendUnit(server.Name), Profile: backendProfile, Imports: []qimu.ImportDeclaration{}, Exports: []qimu.ExportDeclaration{}}
+		unit := frame.UnitDeclaration{ID: BackendUnit(server.Name), Profile: backendProfile, Imports: []frame.ImportDeclaration{}, Exports: []frame.ExportDeclaration{}}
 		for _, contribution := range declaration.Contributions {
 			if contribution.Server != server.Name {
 				continue
@@ -235,19 +234,19 @@ func ProjectFrameworkDeclaration(declaration plugin.Declaration, backendProfile 
 			if err != nil {
 				return FrameworkDefinition{}, err
 			}
-			unit.Exports = append(unit.Exports, qimu.ExportDeclaration{Name: contribution.ID.String(), Contract: ref})
+			unit.Exports = append(unit.Exports, frame.ExportDeclaration{Name: contribution.ID.String(), Contract: ref})
 			for _, requirement := range contribution.Requires {
 				ref, err := addCapability(requirement.Contract)
 				if err != nil {
 					return FrameworkDefinition{}, err
 				}
-				unit.Imports = append(unit.Imports, qimu.ImportDeclaration{Slot: RequirementSlot(contribution.ID, requirement.ID), Contract: ref, Optional: requirement.Optional})
+				unit.Imports = append(unit.Imports, frame.ImportDeclaration{Slot: RequirementSlot(contribution.ID, requirement.ID), Contract: ref, Optional: requirement.Optional})
 			}
 		}
-		units = append(units, qimu.Unit{Declaration: unit})
+		units = append(units, frame.Unit{Declaration: unit})
 	}
 	for _, point := range declaration.Points {
-		contract, err := portable.ParsePoint(point.Contract.JSON())
+		contract, err := plugincontract.ParsePoint(point.Contract.Bytes())
 		if err != nil {
 			return FrameworkDefinition{}, err
 		}
@@ -256,13 +255,13 @@ func ProjectFrameworkDeclaration(declaration plugin.Declaration, backendProfile 
 			return FrameworkDefinition{}, err
 		}
 		contracts[point.Ref()] = point.Descriptor()
-		contracts[point.ValueContract()] = contract.Identity().JSON()
+		contracts[point.ValueContract()] = contract.Identity().Bytes()
 	}
 	if len(declaration.PointValues) > 0 {
-		unit := qimu.UnitDeclaration{ID: PointValuesUnit, Profile: qimu.NativeGo, Imports: []qimu.ImportDeclaration{}, Exports: []qimu.ExportDeclaration{}}
-		values := make([]qimu.ExportValue, 0, len(declaration.PointValues))
+		unit := frame.UnitDeclaration{ID: PointValuesUnit, Profile: frame.NativeGo, Imports: []frame.ImportDeclaration{}, Exports: []frame.ExportDeclaration{}}
+		values := make([]frame.ExportValue, 0, len(declaration.PointValues))
 		for _, contribution := range declaration.PointValues {
-			contract, err := portable.ParsePoint(contribution.Contract.JSON())
+			contract, err := plugincontract.ParsePoint(contribution.Contract.Bytes())
 			if err != nil {
 				return FrameworkDefinition{}, err
 			}
@@ -271,11 +270,11 @@ func ProjectFrameworkDeclaration(declaration plugin.Declaration, backendProfile 
 				return FrameworkDefinition{}, err
 			}
 			contracts[point.Ref()] = point.Descriptor()
-			contracts[point.ValueContract()] = contract.Identity().JSON()
-			unit.Exports = append(unit.Exports, qimu.ExportDeclaration{Name: contribution.ID.String(), Contract: point.Ref()})
-			values = append(values, qimu.Contribute(contribution.ID.String(), point, contribution.Value, contribution.Value))
+			contracts[point.ValueContract()] = contract.Identity().Bytes()
+			unit.Exports = append(unit.Exports, frame.ExportDeclaration{Name: contribution.ID.String(), Contract: point.Ref()})
+			values = append(values, frame.Contribute(contribution.ID.String(), point, contribution.Value, contribution.Value))
 		}
-		units = append(units, qimu.Unit{Declaration: unit, Setup: func(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) { return slices.Clone(values), nil }})
+		units = append(units, frame.Unit{Declaration: unit, Setup: func(context.Context, *frame.Setup) ([]frame.ExportValue, error) { return slices.Clone(values), nil }})
 	}
 	if len(declaration.Components) > 0 {
 		contract, err := ComponentContract()
@@ -284,7 +283,7 @@ func ProjectFrameworkDeclaration(declaration plugin.Declaration, backendProfile 
 		}
 		contracts[contract.Ref()] = contract.Descriptor()
 		for _, component := range declaration.Components {
-			units = append(units, qimu.Unit{Declaration: qimu.UnitDeclaration{ID: ComponentUnit(component.ID), Profile: qimu.BrowserJS, Imports: []qimu.ImportDeclaration{}, Exports: []qimu.ExportDeclaration{{Name: extension.ComponentExport, Contract: contract.Ref()}}}})
+			units = append(units, frame.Unit{Declaration: frame.UnitDeclaration{ID: ComponentUnit(component.ID), Profile: frame.BrowserJS, Imports: []frame.ImportDeclaration{}, Exports: []frame.ExportDeclaration{{Name: extension.ComponentExport, Contract: contract.Ref()}}}})
 		}
 	}
 	result := FrameworkDefinition{Units: units}
@@ -297,36 +296,36 @@ func ProjectFrameworkDeclaration(declaration plugin.Declaration, backendProfile 
 	return result, nil
 }
 
-func ContributionSource(binding ContributionBinding) (qimu.ExportRef, error) {
-	contract, err := portable.ParseCapability(binding.Contract.JSON())
+func ContributionSource(binding ContributionBinding) (frame.ExportRef, error) {
+	contract, err := plugincontract.ParseCapability(binding.Contract.Bytes())
 	if err != nil {
-		return qimu.ExportRef{}, err
+		return frame.ExportRef{}, err
 	}
 	point, err := CapabilityPoint(contract)
 	if err != nil {
-		return qimu.ExportRef{}, err
+		return frame.ExportRef{}, err
 	}
-	return qimu.ExportRef{InstallationID: binding.InstallationID.Host(), Release: binding.Digest, UnitID: BackendUnit(binding.ServerName), Export: binding.ContributionID.String(), Contract: point.Ref()}, nil
+	return frame.ExportRef{InstallationID: binding.InstallationID.Host(), Release: binding.Digest, UnitID: BackendUnit(binding.ServerName), Export: binding.ContributionID.String(), Contract: point.Ref()}, nil
 }
 
 // FrameworkError gives Core failures one Flame category without losing their
 // original cause at installation, binding, or execution boundaries.
 func FrameworkError(err error) error {
 	switch {
-	case errors.Is(err, qimu.ErrDependencyCycle), errors.Is(err, qimu.ErrInvalid), errors.Is(err, qimu.ErrContractMismatch):
+	case errors.Is(err, frame.ErrDependencyCycle), errors.Is(err, frame.ErrInvalid), errors.Is(err, frame.ErrContractMismatch):
 		return errors.Join(plugin.ErrInvalid, err)
-	case errors.Is(err, qimu.ErrStaleBinding):
+	case errors.Is(err, frame.ErrStaleBinding):
 		return errors.Join(plugin.ErrStale, err)
-	case errors.Is(err, qimu.ErrInUse):
+	case errors.Is(err, frame.ErrInUse):
 		return errors.Join(plugin.ErrInUse, err)
-	case errors.Is(err, qimu.ErrUnavailable), errors.Is(err, qimu.ErrAmbiguous), errors.Is(err, qimu.ErrFenced):
+	case errors.Is(err, frame.ErrUnavailable), errors.Is(err, frame.ErrAmbiguous), errors.Is(err, frame.ErrFenced):
 		return errors.Join(plugin.ErrUnavailable, err)
 	default:
 		return err
 	}
 }
 
-func RegisterFrameworkRelease(host *qimu.Host, release FrameworkRelease) error {
+func RegisterFrameworkRelease(host *frame.Host, release FrameworkRelease) error {
 	if host == nil || release.Plugin == nil {
 		return fmt.Errorf("plugins: framework host and release are required")
 	}

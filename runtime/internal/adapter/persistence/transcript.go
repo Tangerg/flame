@@ -10,12 +10,13 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/qimu/sqlite"
 )
 
-type TranscriptStore struct{ db *sql.DB }
+type TranscriptStore struct{ db *database }
 
-func newTranscriptStore(db *sql.DB) *TranscriptStore { return &TranscriptStore{db: db} }
+func newTranscriptStore(db *database) *TranscriptStore {
+	return &TranscriptStore{db: db}
+}
 
 // AppendItem records a new Item. Re-appending the identical Item is a no-op;
 // any other Item under the same identity is a conflict, because only a named
@@ -41,7 +42,6 @@ func (t *TranscriptStore) SettleItem(ctx context.Context, settlement transcript.
 	expected := settlement.Expected()
 	return t.writeItem(ctx, settlement.State(), &expected, true)
 }
-
 func (t *TranscriptStore) writeItem(ctx context.Context, item transcript.Item, expected *transcript.Item, absentInserts bool) error {
 	offloadID, err := transcriptOffloadID(item)
 	if err != nil {
@@ -51,7 +51,7 @@ func (t *TranscriptStore) writeItem(ctx context.Context, item transcript.Item, e
 	if err != nil {
 		return fmt.Errorf("sqlite: encode history item: %w", err)
 	}
-	return sqlite.RunInTx(ctx, t.db, func(ctx context.Context) error {
+	return t.db.write(ctx, func(ctx context.Context) error {
 		current, found, err := t.storedItem(ctx, item.ID())
 		if err != nil {
 			return err
@@ -67,7 +67,6 @@ func (t *TranscriptStore) writeItem(ctx context.Context, item transcript.Item, e
 		return t.writeItemRecord(ctx, item, payload, offloadID)
 	})
 }
-
 func transcriptOffloadID(item transcript.Item) (transcript.ToolResultID, error) {
 	call, present := item.ToolCall()
 	invocation := call.Invocation
@@ -89,50 +88,40 @@ func transcriptOffloadID(item transcript.Item) (transcript.ToolResultID, error) 
 // storedItem reads one Item as written, with an offloaded result still its
 // preview, which is the form every writer holds.
 func (t *TranscriptStore) storedItem(ctx context.Context, itemID string) (transcript.Item, bool, error) {
-	var sessionID, runID, payload, offloadID string
-	var occurredAt int64
-	err := sqlite.Connection(ctx, t.db).QueryRowContext(ctx,
-		`SELECT session_id, run_id, occurred_at, payload, offload_id FROM history_items WHERE item_id = ?`,
-		itemID,
-	).Scan(&sessionID, &runID, &occurredAt, &payload, &offloadID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return transcript.Item{}, false, nil
-	}
-	if err != nil {
-		return transcript.Item{}, false, fmt.Errorf("sqlite: inspect history item: %w", err)
-	}
-	snapshot, err := storedTranscriptItem(sessionID, runID, itemID, occurredAt, payload, offloadID)
-	if err != nil {
-		return transcript.Item{}, false, err
-	}
-	item, err := transcript.RestoreItem(snapshot)
-	if err != nil {
-		return transcript.Item{}, false, fmt.Errorf("sqlite: decoded history item %q: %w", itemID, err)
-	}
-	return item, true, nil
+	return scopedPair(ctx, t.db.read, func(ctx context.Context) (transcript.Item, bool, error) {
+		var sessionID, runID, payload, offloadID string
+		var occurredAt int64
+		err := t.db.connection(ctx).QueryRowContext(ctx, `SELECT session_id, run_id, occurred_at, payload, offload_id FROM history_items WHERE item_id = ?`, itemID).Scan(&sessionID, &runID, &occurredAt, &payload, &offloadID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return transcript.Item{}, false, nil
+		}
+		if err != nil {
+			return transcript.Item{}, false, fmt.Errorf("sqlite: inspect history item: %w", err)
+		}
+		snapshot, err := storedTranscriptItem(sessionID, runID, itemID, occurredAt, payload, offloadID)
+		if err != nil {
+			return transcript.Item{}, false, err
+		}
+		item, err := transcript.RestoreItem(snapshot)
+		if err != nil {
+			return transcript.Item{}, false, fmt.Errorf("sqlite: decoded history item %q: %w", itemID, err)
+		}
+		return item, true, nil
+	})
 }
-
-func (t *TranscriptStore) writeItemRecord(
-	ctx context.Context,
-	item transcript.Item,
-	payload []byte,
-	offloadID transcript.ToolResultID,
-) error {
-	q := sqlite.Connection(ctx, t.db)
-	if offloadID != "" {
-		var staged bool
-		if err := q.QueryRowContext(ctx,
-			`SELECT EXISTS (SELECT 1 FROM tool_result_blobs WHERE id = ? AND session_id = ?)`,
-			offloadID, item.SessionID(),
-		).Scan(&staged); err != nil {
-			return fmt.Errorf("sqlite: inspect history item offload: %w", err)
+func (t *TranscriptStore) writeItemRecord(ctx context.Context, item transcript.Item, payload []byte, offloadID transcript.ToolResultID) error {
+	return t.db.write(ctx, func(ctx context.Context) error {
+		q := t.db.connection(ctx)
+		if offloadID != "" {
+			var staged bool
+			if err := q.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM tool_result_blobs WHERE id = ? AND session_id = ?)`, offloadID, item.SessionID()).Scan(&staged); err != nil {
+				return fmt.Errorf("sqlite: inspect history item offload: %w", err)
+			}
+			if !staged {
+				return fmt.Errorf("sqlite: history item %q offloads to %q, which session %q does not hold", item.ID(), offloadID, item.SessionID())
+			}
 		}
-		if !staged {
-			return fmt.Errorf("sqlite: history item %q offloads to %q, which session %q does not hold", item.ID(), offloadID, item.SessionID())
-		}
-	}
-	result, err := q.ExecContext(ctx,
-		`INSERT INTO history_items(session_id, run_id, item_id, occurred_at, payload, offload_id)
+		result, err := q.ExecContext(ctx, `INSERT INTO history_items(session_id, run_id, item_id, occurred_at, payload, offload_id)
 		 VALUES (?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(item_id) DO UPDATE SET
 		   payload = excluded.payload,
@@ -140,68 +129,59 @@ func (t *TranscriptStore) writeItemRecord(
 		 WHERE history_items.session_id = excluded.session_id
 		   AND history_items.run_id = excluded.run_id
 		   AND history_items.occurred_at = excluded.occurred_at
-		   AND (history_items.offload_id = '' OR history_items.offload_id = excluded.offload_id)`,
-		item.SessionID(), item.RunID(), item.ID(), item.OccurredAt().UnixNano(), string(payload), offloadID,
-	)
-	if err != nil {
-		return t.explainItemAppendError(ctx, item.SessionID(), item.ID(), offloadID, err)
-	}
-	changed, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: inspect history item write: %w", err)
-	}
-	if changed != 1 {
-		return fmt.Errorf("%w: item %q already belongs to another session, run, occurrence, or offload identity", transcript.ErrIdentityConflict, item.ID())
-	}
-	return nil
+		   AND (history_items.offload_id = '' OR history_items.offload_id = excluded.offload_id)`, item.SessionID(), item.RunID(), item.ID(), item.OccurredAt().UnixNano(), string(payload), offloadID)
+		if err != nil {
+			return t.explainItemAppendError(ctx, item.SessionID(), item.ID(), offloadID, err)
+		}
+		changed, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("sqlite: inspect history item write: %w", err)
+		}
+		if changed != 1 {
+			return fmt.Errorf("%w: item %q already belongs to another session, run, occurrence, or offload identity", transcript.ErrIdentityConflict, item.ID())
+		}
+		return nil
+	})
 }
-
-func (t *TranscriptStore) explainItemAppendError(
-	ctx context.Context,
-	sessionID, itemID string,
-	offloadID transcript.ToolResultID,
-	appendErr error,
-) error {
-	if offloadID == "" {
+func (t *TranscriptStore) explainItemAppendError(ctx context.Context, sessionID, itemID string, offloadID transcript.ToolResultID, appendErr error) error {
+	return t.db.read(ctx, func(ctx context.Context) error {
+		if offloadID == "" {
+			return fmt.Errorf("sqlite: append history item: %w", appendErr)
+		}
+		var ownerItemID string
+		ownerErr := t.db.connection(ctx).QueryRowContext(ctx, `SELECT item_id FROM history_items WHERE session_id = ? AND offload_id = ?`, sessionID, offloadID).Scan(&ownerItemID)
+		if ownerErr == nil && ownerItemID != itemID {
+			return fmt.Errorf("%w: offload %q already belongs to item %q", transcript.ErrIdentityConflict, offloadID, ownerItemID)
+		}
+		if ownerErr != nil && !errors.Is(ownerErr, sql.ErrNoRows) {
+			return fmt.Errorf("sqlite: inspect history item offload conflict: %w", errors.Join(appendErr, ownerErr))
+		}
 		return fmt.Errorf("sqlite: append history item: %w", appendErr)
-	}
-	var ownerItemID string
-	ownerErr := sqlite.Connection(ctx, t.db).QueryRowContext(ctx,
-		`SELECT item_id FROM history_items WHERE session_id = ? AND offload_id = ?`, sessionID, offloadID,
-	).Scan(&ownerItemID)
-	if ownerErr == nil && ownerItemID != itemID {
-		return fmt.Errorf("%w: offload %q already belongs to item %q", transcript.ErrIdentityConflict, offloadID, ownerItemID)
-	}
-	if ownerErr != nil && !errors.Is(ownerErr, sql.ErrNoRows) {
-		return fmt.Errorf("sqlite: inspect history item offload conflict: %w", errors.Join(appendErr, ownerErr))
-	}
-	return fmt.Errorf("sqlite: append history item: %w", appendErr)
+	})
 }
 
 // Item resolves one durable transcript Item by its globally unique identity.
 // The returned value is the same fully hydrated projection as List/Page reads.
 func (t *TranscriptStore) Item(ctx context.Context, itemID string) (transcript.Item, bool, error) {
-	if err := identity.ValidateItem(itemID); err != nil {
-		return transcript.Item{}, false, fmt.Errorf("sqlite: history item: %w", err)
-	}
-	row := sqlite.Connection(ctx, t.db).QueryRowContext(ctx,
-		`SELECT session_id, run_id, item_id, occurred_at, payload, offload_id,
+	return scopedPair(ctx, t.db.read, func(ctx context.Context) (transcript.Item, bool, error) {
+		if err := identity.ValidateItem(itemID); err != nil {
+			return transcript.Item{}, false, fmt.Errorf("sqlite: history item: %w", err)
+		}
+		row := t.db.connection(ctx).QueryRowContext(ctx, `SELECT session_id, run_id, item_id, occurred_at, payload, offload_id,
 		        (SELECT body FROM tool_result_blobs WHERE id = history_items.offload_id
 		          AND session_id = history_items.session_id)
 		   FROM history_items
-		  WHERE item_id = ?`,
-		itemID,
-	)
-	item, err := scanTranscriptItem(row)
-	if errors.Is(err, sql.ErrNoRows) {
-		return transcript.Item{}, false, nil
-	}
-	if err != nil {
-		return transcript.Item{}, false, err
-	}
-	return item, true, nil
+		  WHERE item_id = ?`, itemID)
+		item, err := scanTranscriptItem(row)
+		if errors.Is(err, sql.ErrNoRows) {
+			return transcript.Item{}, false, nil
+		}
+		if err != nil {
+			return transcript.Item{}, false, err
+		}
+		return item, true, nil
+	})
 }
-
 func scanTranscriptItem(row scanRow) (transcript.Item, error) {
 	var (
 		sessionID    string
@@ -212,26 +192,12 @@ func scanTranscriptItem(row scanRow) (transcript.Item, error) {
 		offloaded    sql.NullString
 		occurredAt   int64
 	)
-	if err := row.Scan(
-		&sessionID,
-		&runID,
-		&itemID,
-		&occurredAt,
-		&payload,
-		&rawOffloadID,
-		&offloaded,
-	); err != nil {
+	if err := row.Scan(&sessionID, &runID, &itemID, &occurredAt, &payload, &rawOffloadID, &offloaded); err != nil {
 		return transcript.Item{}, err
 	}
 	return materializeTranscriptItem(sessionID, runID, itemID, occurredAt, payload, rawOffloadID, offloaded)
 }
-
-func materializeTranscriptItem(
-	sessionID, runID, itemID string,
-	occurredAt int64,
-	payload, rawOffloadID string,
-	offloaded sql.NullString,
-) (transcript.Item, error) {
+func materializeTranscriptItem(sessionID, runID, itemID string, occurredAt int64, payload, rawOffloadID string, offloaded sql.NullString) (transcript.Item, error) {
 	snapshot, err := storedTranscriptItem(sessionID, runID, itemID, occurredAt, payload, rawOffloadID)
 	if err != nil {
 		return transcript.Item{}, err
@@ -256,19 +222,12 @@ func materializeTranscriptItem(
 
 // storedTranscriptItem decodes one row as written: an offloaded Tool result
 // keeps the preview that replaced its body.
-func storedTranscriptItem(
-	sessionID, runID, itemID string,
-	occurredAt int64,
-	payload, rawOffloadID string,
-) (transcript.ItemSnapshot, error) {
+func storedTranscriptItem(sessionID, runID, itemID string, occurredAt int64, payload, rawOffloadID string) (transcript.ItemSnapshot, error) {
 	snapshot, err := decodeTranscriptItem([]byte(payload))
 	if err != nil {
 		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: decode history item %q: %w", itemID, err)
 	}
-	snapshot.Identity = transcript.ItemIdentity{
-		SessionID: sessionID, RunID: runID, ItemID: itemID,
-		OccurredAt: time.Unix(0, occurredAt).UTC(),
-	}
+	snapshot.Identity = transcript.ItemIdentity{SessionID: sessionID, RunID: runID, ItemID: itemID, OccurredAt: time.Unix(0, occurredAt).UTC()}
 	if rawOffloadID == "" {
 		return snapshot, nil
 	}
@@ -300,31 +259,26 @@ func (t *TranscriptStore) DeleteRun(ctx context.Context, sessionID, runID string
 	if err := validateRunResource("delete history Run", runID); err != nil {
 		return err
 	}
-	return sqlite.RunInTx(ctx, t.db, func(ctx context.Context) error {
-		q := sqlite.Connection(ctx, t.db)
-		if _, err := q.ExecContext(ctx,
-			`DELETE FROM tool_result_blobs
+	return t.db.write(ctx, func(ctx context.Context) error {
+		q := t.db.connection(ctx)
+		if _, err := q.ExecContext(ctx, `DELETE FROM tool_result_blobs
 			 WHERE session_id = ? AND id IN (
 			   SELECT offload_id FROM history_items WHERE session_id = ? AND run_id = ? AND offload_id != ''
-			 )`, sessionID, sessionID, runID,
-		); err != nil {
+			 )`, sessionID, sessionID, runID); err != nil {
 			return fmt.Errorf("sqlite: delete run tool results: %w", err)
 		}
-		if _, err := q.ExecContext(ctx,
-			`DELETE FROM history_items WHERE session_id = ? AND run_id = ?`, sessionID, runID,
-		); err != nil {
+		if _, err := q.ExecContext(ctx, `DELETE FROM history_items WHERE session_id = ? AND run_id = ?`, sessionID, runID); err != nil {
 			return fmt.Errorf("sqlite: delete run items: %w", err)
 		}
 		return nil
 	})
 }
-
 func (t *TranscriptStore) DeleteSession(ctx context.Context, sessionID string) error {
 	if err := validateSessionResource("delete history Session", sessionID); err != nil {
 		return err
 	}
-	return sqlite.RunInTx(ctx, t.db, func(ctx context.Context) error {
-		q := sqlite.Connection(ctx, t.db)
+	return t.db.write(ctx, func(ctx context.Context) error {
+		q := t.db.connection(ctx)
 		if _, err := q.ExecContext(ctx, `DELETE FROM history_items WHERE session_id = ?`, sessionID); err != nil {
 			return fmt.Errorf("sqlite: delete session items: %w", err)
 		}
@@ -349,38 +303,39 @@ func (t *TranscriptStore) List(ctx context.Context, sessionID string) ([]transcr
 // an offloaded Tool result keeps its preview instead of the joined body. A
 // portable Session snapshot captures this form beside the bodies it offloads.
 func (t *TranscriptStore) ListStored(ctx context.Context, sessionID string) ([]transcript.Item, error) {
-	rows, err := sqlite.Connection(ctx, t.db).QueryContext(ctx,
-		`SELECT session_id, run_id, item_id, occurred_at, payload, offload_id
+	return scopedValue(ctx, t.db.read, func(ctx context.Context) ([]transcript.Item, error) {
+		rows, err := t.db.connection(ctx).QueryContext(ctx, `SELECT session_id, run_id, item_id, occurred_at, payload, offload_id
 		   FROM history_items
 		  WHERE session_id = ?
-		  ORDER BY seq`,
-		sessionID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: list stored history items: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var out []transcript.Item
-	for rows.Next() {
-		var session, runID, itemID, payload, rawOffloadID string
-		var occurredAt int64
-		if err := rows.Scan(&session, &runID, &itemID, &occurredAt, &payload, &rawOffloadID); err != nil {
-			return nil, fmt.Errorf("sqlite: scan stored history item: %w", err)
-		}
-		snapshot, err := storedTranscriptItem(session, runID, itemID, occurredAt, payload, rawOffloadID)
+		  ORDER BY seq`, sessionID)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("sqlite: list stored history items: %w", err)
 		}
-		item, err := transcript.RestoreItem(snapshot)
-		if err != nil {
-			return nil, fmt.Errorf("sqlite: decoded history item %q: %w", itemID, err)
+		defer func() {
+			_ = rows.Close()
+		}()
+		var out []transcript.Item
+		for rows.Next() {
+			var session, runID, itemID, payload, rawOffloadID string
+			var occurredAt int64
+			if err := rows.Scan(&session, &runID, &itemID, &occurredAt, &payload, &rawOffloadID); err != nil {
+				return nil, fmt.Errorf("sqlite: scan stored history item: %w", err)
+			}
+			snapshot, err := storedTranscriptItem(session, runID, itemID, occurredAt, payload, rawOffloadID)
+			if err != nil {
+				return nil, err
+			}
+			item, err := transcript.RestoreItem(snapshot)
+			if err != nil {
+				return nil, fmt.Errorf("sqlite: decoded history item %q: %w", itemID, err)
+			}
+			out = append(out, item)
 		}
-		out = append(out, item)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("sqlite: list stored history items: %w", err)
-	}
-	return out, nil
+		if err := rows.Err(); err != nil {
+			return nil, fmt.Errorf("sqlite: list stored history items: %w", err)
+		}
+		return out, nil
+	})
 }
 
 // PageSessionItems returns one page of a session's history along the durable
@@ -429,58 +384,60 @@ func (t *TranscriptStore) PageRunTreeItems(ctx context.Context, runID string, or
 		SELECT run_id FROM subtree
 	)`, runID, order, fromSequence, limit)
 }
-
 func (t *TranscriptStore) pageItems(ctx context.Context, scope, subject string, order transcript.SequenceOrder, fromSequence int64, limit int) ([]transcript.SequencedItem, error) {
-	if err := order.Validate(); err != nil {
-		return nil, fmt.Errorf("sqlite: page history items: %w", err)
-	}
-	if fromSequence < 0 {
-		return nil, errors.New("sqlite: history page sequence must not be negative")
-	}
-	if limit < 0 {
-		return nil, errors.New("sqlite: history page limit must not be negative")
-	}
-	query := `SELECT h.seq, h.session_id, h.run_id, h.item_id, h.occurred_at, h.payload, h.offload_id, b.body
+	return scopedValue(ctx, t.db.read, func(ctx context.Context) ([]transcript.SequencedItem, error) {
+		if err := order.Validate(); err != nil {
+			return nil, fmt.Errorf("sqlite: page history items: %w", err)
+		}
+		if fromSequence < 0 {
+			return nil, errors.New("sqlite: history page sequence must not be negative")
+		}
+		if limit < 0 {
+			return nil, errors.New("sqlite: history page limit must not be negative")
+		}
+		query := `SELECT h.seq, h.session_id, h.run_id, h.item_id, h.occurred_at, h.payload, h.offload_id, b.body
 		 FROM history_items AS h
 		 LEFT JOIN tool_result_blobs AS b
 		   ON b.id = h.offload_id AND b.session_id = h.session_id
 		 WHERE ` + scope
-	args := []any{subject}
-	bound, direction := `h.seq > ?`, ``
-	if order == transcript.NewestFirst {
-		bound, direction = `h.seq < ?`, ` DESC`
-	}
-	if fromSequence > 0 {
-		query += ` AND ` + bound
-		args = append(args, fromSequence)
-	}
-	query += ` ORDER BY h.seq` + direction
-	if limit > 0 {
-		query += ` LIMIT ?`
-		args = append(args, limit)
-	}
-	rows, err := sqlite.Connection(ctx, t.db).QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: list history items: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var out []transcript.SequencedItem
-	for rows.Next() {
-		var session, runID, itemID, payload, rawOffloadID string
-		var offloadedBody sql.NullString
-		var sequence, occurredAt int64
-		if err := rows.Scan(&sequence, &session, &runID, &itemID, &occurredAt, &payload, &rawOffloadID, &offloadedBody); err != nil {
-			return nil, fmt.Errorf("sqlite: scan history item: %w", err)
+		args := []any{subject}
+		bound, direction := `h.seq > ?`, ``
+		if order == transcript.NewestFirst {
+			bound, direction = `h.seq < ?`, ` DESC`
 		}
-		item, err := materializeTranscriptItem(session, runID, itemID, occurredAt, payload, rawOffloadID, offloadedBody)
+		if fromSequence > 0 {
+			query += ` AND ` + bound
+			args = append(args, fromSequence)
+		}
+		query += ` ORDER BY h.seq` + direction
+		if limit > 0 {
+			query += ` LIMIT ?`
+			args = append(args, limit)
+		}
+		rows, err := t.db.connection(ctx).QueryContext(ctx, query, args...)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("sqlite: list history items: %w", err)
 		}
-		out = append(out, transcript.SequencedItem{Sequence: sequence, Item: item})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("sqlite: list history items: %w", err)
-	}
-	return out, nil
+		defer func() {
+			_ = rows.Close()
+		}()
+		var out []transcript.SequencedItem
+		for rows.Next() {
+			var session, runID, itemID, payload, rawOffloadID string
+			var offloadedBody sql.NullString
+			var sequence, occurredAt int64
+			if err := rows.Scan(&sequence, &session, &runID, &itemID, &occurredAt, &payload, &rawOffloadID, &offloadedBody); err != nil {
+				return nil, fmt.Errorf("sqlite: scan history item: %w", err)
+			}
+			item, err := materializeTranscriptItem(session, runID, itemID, occurredAt, payload, rawOffloadID, offloadedBody)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, transcript.SequencedItem{Sequence: sequence, Item: item})
+		}
+		if err := rows.Err(); err != nil {
+			return nil, fmt.Errorf("sqlite: list history items: %w", err)
+		}
+		return out, nil
+	})
 }

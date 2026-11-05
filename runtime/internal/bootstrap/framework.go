@@ -1,6 +1,9 @@
 package bootstrap
 
 import (
+	framebrowser "github.com/Tangerg/frame/browser"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"context"
 	"errors"
 	"fmt"
@@ -16,18 +19,20 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+	"github.com/Tangerg/frame"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu"
-	controlhost "github.com/Tangerg/qimu/control/host"
-	"github.com/Tangerg/qimu/distribution"
-	"github.com/Tangerg/qimu/integrity"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/process"
+
+	"github.com/Tangerg/frame/distribution"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/frame/process"
 )
 
+const browserPendingCapacity = 4096
+
 type frameworkComposition struct {
-	host      *qimu.Host
-	process   *process.Driver[*sdk.ClientSession]
+	host      *frame.Host
+	process   *process.Driver
 	installed *mcpadapter.Installed
 	registry  *plugins.Registry
 	external  *mcpadapter.ExternalConnector
@@ -40,7 +45,7 @@ type frameworkComposition struct {
 
 func buildPluginPackages(cfg assemblyConfig, lifetime *runtimeLifetime) (*pluginpackage.Releases, error) {
 	content, err := distribution.Open(distribution.Config{
-		Directory: filepath.Join(cfg.stores.DataDirectory, "plugins", "qimu"),
+		Directory: filepath.Join(cfg.stores.DataDirectory, "plugins", "frame"),
 		Admission: cfg.stores.Admission,
 		Trust: func(_ context.Context, source distribution.Source, _ distribution.Manifest, _ distribution.Lock) error {
 			// Flame installs explicitly selected local packages. Remote download
@@ -50,7 +55,7 @@ func buildPluginPackages(cfg assemblyConfig, lifetime *runtimeLifetime) (*plugin
 			}
 			return nil
 		},
-		Retained: func(ctx context.Context, digest integrity.Digest) (bool, error) {
+		Retained: func(ctx context.Context, digest framevalue.Digest) (bool, error) {
 			return retainedPluginContent(ctx, cfg.stores, digest)
 		},
 	})
@@ -63,7 +68,7 @@ func buildPluginPackages(cfg assemblyConfig, lifetime *runtimeLifetime) (*plugin
 
 // Remove invokes this reader while holding the same admission as every writer
 // that can add a reference. The original business rows remain the authority.
-func retainedPluginContent(ctx context.Context, stores *persistence.Bundle, digest integrity.Digest) (bool, error) {
+func retainedPluginContent(ctx context.Context, stores *persistence.Bundle, digest framevalue.Digest) (bool, error) {
 	installations, err := stores.Installations.List(ctx)
 	if err != nil {
 		return false, err
@@ -87,7 +92,7 @@ func retainedPluginContent(ctx context.Context, stores *persistence.Bundle, dige
 			return true, nil
 		}
 	}
-	executions, err := stores.Qimu.ExecutionDependencies(ctx)
+	executions, err := stores.Frame.ExecutionDependencies(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -99,7 +104,7 @@ func retainedPluginContent(ctx context.Context, stores *persistence.Bundle, dige
 	return false, nil
 }
 
-func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime, packages *pluginpackage.Releases, callbacks *qimumcp.Callbacks) (frameworkComposition, error) {
+func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime, packages *pluginpackage.Releases, callbacks *pluginmcp.Callbacks) (frameworkComposition, error) {
 	commands, err := plugins.NewCommands(cfg.stores.PluginCommands, cfg.stores.Admission)
 	if err != nil {
 		return frameworkComposition{}, err
@@ -112,12 +117,16 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 	if err != nil {
 		return frameworkComposition{}, err
 	}
-	profile, err := qimumcp.NewProcessDriver(process.Config{Runner: cfg.processRunner, Store: cfg.stores.Qimu, Source: source, CloseTimeout: 10 * time.Second}, qimumcp.ProcessOptions{Configure: source.Configure, MaxFrameBytes: sdk.DefaultMaxLineLength})
+	profile, err := process.New(process.Config{Runner: cfg.processRunner, Store: cfg.stores.Frame, Source: source, CloseTimeout: 10 * time.Second, Protocol: source, MaxFrameBytes: sdk.DefaultMaxLineLength})
 	if err != nil {
 		return frameworkComposition{}, err
 	}
-	owner := qimu.NewLifetime(context.WithoutCancel(lifetime.context))
-	host, err := qimu.NewHost(ctx, qimu.HostConfig{Admission: cfg.stores.Admission, Lifetime: owner, Epoch: cfg.stores.Qimu.Epoch(), MaxInstallations: 128, Drivers: []qimu.Driver{profile}, Installations: cfg.stores.Qimu, ExecutionProtection: cfg.stores.Qimu})
+	permission, err := mcpadapter.NewCatalogPermission(cfg.stores.Admission, cfg.stores.PendingPluginBindings)
+	if err != nil {
+		return frameworkComposition{}, err
+	}
+	owner := frame.NewLifetime(context.WithoutCancel(lifetime.context))
+	host, err := frame.NewHost(ctx, frame.HostConfig{ReadAcceptedBinding: permission.Read, Admission: cfg.stores.Admission, Lifetime: owner, Epoch: cfg.stores.Frame.Epoch(), Limits: frame.HostLimits{MaxInstallations: 128}, Drivers: []frame.Driver{profile}, Installations: cfg.stores.Frame, ExecutionProtection: cfg.stores.Frame})
 	if err != nil {
 		return frameworkComposition{}, err
 	}
@@ -125,7 +134,7 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 		_, diagnostic := host.Close(ctx)
 		// An unconfirmed resource must keep the SQLite authority and content
 		// protected. Caller deadlines only stop their wait for this generation.
-		_, releaseErr := owner.BeginClose(qimu.ErrClosed).WaitReleased(ctx)
+		_, releaseErr := owner.BeginClose(frame.ErrClosed).WaitReleased(ctx)
 		return errors.Join(diagnostic, releaseErr)
 	}))
 	registry, err := plugins.NewRegistry(host, cfg.stores.Installations, packages, cfg.stores.ProviderSelections, cfg.stores.PluginCompositions)
@@ -136,14 +145,14 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 	if err != nil {
 		return frameworkComposition{}, err
 	}
-	bridge, err := controlhost.NewBridge(controlhost.BridgeConfig{Host: host, Store: cfg.stores.Qimu, Source: browserSource, PublicConfiguration: browserSource.Configuration, MaxRealms: 64, MaxPending: 4096, MaxRequestBytes: 4 << 20})
+	bridge, err := framebrowser.NewBridge(framebrowser.BridgeConfig{Host: host, Store: cfg.stores.Frame, Source: browserSource, PublicConfiguration: browserSource.Configuration, MaxRealms: 64, MaxPending: browserPendingCapacity, MaxMessageBytes: 4 << 20})
 	if err != nil {
 		return frameworkComposition{}, err
 	}
 	if err := host.RegisterDriver(bridge); err != nil {
 		return frameworkComposition{}, err
 	}
-	browser, err := browseradapter.New(browseradapter.Config{Bridge: bridge, Registry: registry, ControlEndpoint: flamehttp.PluginControlPath, ProofCapacity: 4096, PollInterval: 100 * time.Millisecond})
+	browser, err := browseradapter.New(browseradapter.Config{Bridge: bridge, Registry: registry, ControlEndpoint: flamehttp.PluginControlPath, ProofCapacity: 4096, PreparationCapacity: browserPendingCapacity, PollInterval: 100 * time.Millisecond})
 	if err != nil {
 		return frameworkComposition{}, err
 	}
@@ -151,7 +160,7 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 		return frameworkComposition{}, err
 	}
 	recovery := &frameworkRecovery{stores: cfg.stores, process: profile, pending: true, ready: make(chan struct{})}
-	if err := recovery.restore(ctx); err != nil && !errors.Is(err, qimu.ErrRecoveryRequired) {
+	if err := recovery.restore(ctx); err != nil && !errors.Is(err, frame.ErrRecoveryRequired) {
 		return frameworkComposition{}, err
 	}
 	if cfg.firstPartyDirectory != "" {
@@ -160,8 +169,8 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 		}
 	}
 	installed, err := mcpadapter.NewInstalled(mcpadapter.InstalledConfig{
-		Host: host, Driver: profile, Source: source, Registry: registry, Lifetime: owner,
-		Bindings: cfg.stores.PendingPluginBindings, Ready: recovery.ready,
+		Host: host, Source: source, Registry: registry, Lifetime: owner,
+		Permission: permission, Ready: recovery.ready,
 	})
 	if err != nil {
 		return frameworkComposition{}, err
@@ -179,12 +188,12 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 	return frameworkComposition{host: host, process: profile, registry: registry, external: external, installed: installed, browser: browser, control: control, commands: commands, callers: callers, ready: recovery.ready}, nil
 }
 
-func restoreFramework(ctx context.Context, stores *persistence.Bundle, host *qimu.Host, backendProfile qimu.Profile) error {
-	records, err := stores.Qimu.RecoverInstallations(ctx)
+func restoreFramework(ctx context.Context, stores *persistence.Bundle, host *frame.Host, backendProfile frame.Profile) error {
+	records, err := stores.Frame.RecoverInstallations(ctx)
 	if err != nil {
 		return err
 	}
-	definitions := make([]*qimu.Plugin, 0, len(records))
+	definitions := make([]*frame.Plugin, 0, len(records))
 	for _, record := range records {
 		digest := record.Release
 		if err := digest.Validate(); err != nil {
@@ -206,7 +215,7 @@ func restoreFramework(ctx context.Context, stores *persistence.Bundle, host *qim
 	if err := host.Restore(ctx, records, definitions); err != nil {
 		return fmt.Errorf("plugins: restore original framework records: %w", err)
 	}
-	if err := stores.Qimu.ConfirmRestoredInstallations(ctx); err != nil {
+	if err := stores.Frame.ConfirmRestoredInstallations(ctx); err != nil {
 		return err
 	}
 	return stores.RecoverPluginBindings(ctx)
@@ -215,7 +224,7 @@ func restoreFramework(ctx context.Context, stores *persistence.Bundle, host *qim
 type frameworkRecovery struct {
 	mu      sync.Mutex
 	stores  *persistence.Bundle
-	process *process.Driver[*sdk.ClientSession]
+	process *process.Driver
 	pending bool
 	ready   chan struct{}
 }
@@ -228,7 +237,7 @@ func (r *frameworkRecovery) restore(ctx context.Context) error {
 	}
 	if err := r.process.Recover(ctx); err != nil {
 		r.stores.Admission.RequireRecovery(err)
-		return errors.Join(qimu.ErrRecoveryRequired, err)
+		return errors.Join(frame.ErrRecoveryRequired, err)
 	}
 	err := r.stores.Admission.Recover(ctx, func() error {
 		pending, err := r.stores.PluginUses.Pending(ctx)
@@ -236,14 +245,14 @@ func (r *frameworkRecovery) restore(ctx context.Context) error {
 			return err
 		}
 		if len(pending) != 0 {
-			return qimu.ErrRecoveryRequired
+			return frame.ErrRecoveryRequired
 		}
-		dependencies, err := r.stores.Qimu.ExecutionDependencies(ctx)
+		dependencies, err := r.stores.Frame.ExecutionDependencies(ctx)
 		if err != nil {
 			return err
 		}
 		if len(dependencies) != 0 {
-			return qimu.ErrRecoveryRequired
+			return frame.ErrRecoveryRequired
 		}
 		return nil
 	})

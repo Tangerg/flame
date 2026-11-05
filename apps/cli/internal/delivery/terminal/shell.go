@@ -1,9 +1,11 @@
 package terminal
 
 import (
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/layout"
+	"image"
+
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/scene"
 )
 
 const (
@@ -40,93 +42,68 @@ func (d shellDensity) hidesOptionalPanes() bool {
 func (d shellDensity) usesMinimalPrompt() bool { return d == shellDensityMinimal }
 
 type shellView struct {
-	rows       *headless.Container
+	rows       *scene.Group
 	transcript *transcriptView
 	prompt     *promptView
-	header     *sessionHeader
-	activity   *activityView
-	queue      *queueView
-	status     *statusView
-	density    shellDensity
 }
 
-func newShellView(
-	header *sessionHeader,
-	transcript *transcriptView,
-	activity *activityView,
-	prompts *queueView,
-	status *statusView,
-	authoredPrompt *promptView,
-) *shellView {
-	shell := &shellView{
-		transcript: transcript, prompt: authoredPrompt, header: header,
-		activity: activity, queue: prompts, status: status, density: shellDensityNormal,
-	}
-	rows := headless.NewContainer(layout.Down, shell.items(shellDensityNormal)...)
-	keys := headless.DefaultContainerKeys()
-	keys.Bind(headless.FocusNext, input.Chord{Code: input.Character, Rune: ' '})
-	rows.Keys = keys
-	shell.rows = rows
-	shell.focus(promptPaneKey)
-	return shell
+func newShellView(header *sessionHeader, transcript *transcriptView, activity *activityView, prompts *queueView, status *statusView, authoredPrompt *promptView) *shellView {
+	s := &shellView{transcript: transcript, prompt: authoredPrompt}
+	s.rows = scene.NewGroup(scene.GroupConfig{
+		Axis: layout.Down,
+		Items: []scene.Item{
+			{Key: "header", Element: passiveElement(header)},
+			{Key: transcriptPaneKey, Element: transcript.Element()},
+			{Key: "activity", Element: passiveElement(activity)},
+			{Key: "queue", Element: passiveElement(prompts)},
+			{Key: "status", Element: passiveElement(status)},
+			{Key: promptPaneKey, Element: authoredPrompt.Element()},
+		},
+		Element: scene.ElementConfig{
+			Preview: func(event scene.Event) scene.EventResult {
+				return scene.EventResult{Consumed: s.TranscriptFocused() && s.transcript.action(event.Input()) == transcriptPrompt && s.FocusPrompt()}
+			},
+			Handle: func(event scene.Event) scene.EventResult {
+				key, ok := event.Input().(input.Key)
+				if !ok || !key.Down() || key.Code != input.Tab {
+					return scene.EventResult{}
+				}
+				return scene.EventResult{Consumed: event.FocusNext(key.Mods&input.Shift != 0)}
+			},
+		},
+		Layout: func(space image.Point, items []scene.Item) []image.Rectangle {
+			density := densityForShell(space.X, space.Y)
+			sizes := []layout.Sizing{layout.Measured(0, 2), layout.Flex(1), layout.Measured(0, activityMaxRows), layout.Measured(0, queueMaxRows), layout.Fixed(1), layout.Measured(4, 9)}
+			if density.hidesOptionalPanes() {
+				sizes[0], sizes[2], sizes[3] = layout.Fixed(0), layout.Fixed(0), layout.Fixed(0)
+			}
+			if density.usesMinimalPrompt() {
+				sizes[5] = layout.Fixed(1)
+			}
+			slots := make([]layout.Slot, len(items))
+			for i, item := range items {
+				slots[i] = layout.Slot{Size: sizes[i], Of: item.Element}
+			}
+			return (layout.Flow{Axis: layout.Down}).Rects(space, slots)
+		},
+	})
+	return s
 }
 
-func (s *shellView) Draw(frame headless.Frame) {
-	width, height := frame.Size()
-	s.setDensity(densityForShell(width, height))
-	s.rows.Draw(frame)
-}
-
-func (s *shellView) Handle(event input.Event) bool { return s.rows.Handle(event) }
-
-func (s *shellView) Focus(has bool) { s.rows.Focus(has) }
-
-func (s *shellView) PromptFocused() bool { return s.rows.Focused() == s.prompt }
-
-func (s *shellView) TranscriptFocused() bool { return s.rows.Focused() == s.transcript }
-
-func (s *shellView) FocusPrompt() bool { return s.focus(promptPaneKey) }
+func (s *shellView) Element() scene.Element  { return s.rows.Element() }
+func (s *shellView) PromptFocused() bool     { return s.prompt.Element().FocusedWithin() }
+func (s *shellView) TranscriptFocused() bool { return s.transcript.Element().FocusedWithin() }
+func (s *shellView) FocusPrompt() bool       { return s.prompt.Element().RequestFocusFirst() == nil }
 
 func (s *shellView) SetTranscript(transcript *transcriptView) {
 	s.transcript = transcript
-	s.rows.Set(s.items(s.density)...)
-}
-
-func (s *shellView) setDensity(density shellDensity) {
-	if s.density == density {
-		return
-	}
-	s.density = density
-	s.prompt.SetCompact(density.usesMinimalPrompt())
-	s.rows.Set(s.items(density)...)
-}
-
-func (s *shellView) items(density shellDensity) []headless.Item {
-	headerSize := layout.Measured(0, 2)
-	activitySize := layout.Measured(0, activityMaxRows)
-	queueSize := layout.Measured(0, queueMaxRows)
-	promptSize := layout.Measured(4, 9)
-	if density.hidesOptionalPanes() {
-		headerSize, activitySize, queueSize = layout.Fixed(0), layout.Fixed(0), layout.Fixed(0)
-	}
-	if density.usesMinimalPrompt() {
-		promptSize = layout.Fixed(1)
-	}
-	return []headless.Item{
-		{Key: "header", Size: headerSize, Of: headless.Static{Of: s.header}},
-		{Key: transcriptPaneKey, Size: layout.Flex(1), Of: s.transcript},
-		{Key: "activity", Size: activitySize, Of: headless.Static{Of: s.activity}},
-		{Key: "queue", Size: queueSize, Of: headless.Static{Of: s.queue}},
-		{Key: "status", Size: layout.Fixed(1), Of: headless.Static{Of: s.status}},
-		{Key: promptPaneKey, Size: promptSize, Of: s.prompt},
-	}
-}
-
-func (s *shellView) focus(key string) bool {
-	for index, item := range s.rows.Items() {
-		if item.Key == key {
-			return s.rows.FocusIndex(index)
+	items := s.rows.Items()
+	for i := range items {
+		if items[i].Key == transcriptPaneKey {
+			items[i].Element = transcript.Element()
 		}
 	}
-	return false
+	if err := s.rows.Set(items...); err != nil {
+		panic(err)
+	}
 }

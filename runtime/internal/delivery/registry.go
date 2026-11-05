@@ -8,7 +8,8 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/Tangerg/qimu/jsonvalue"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+
 	"github.com/samber/lo"
 )
 
@@ -359,26 +360,26 @@ func paginationOf(params, result reflect.Type) (PaginationKind, error) {
 	if params == nil {
 		return paginationNone, errors.New("params type is required")
 	}
-	if err := jsonvalue.ValidateType(params); err != nil {
+	if err := protocol.ValidateWireType(params); err != nil {
 		return paginationNone, fmt.Errorf("invalid params declaration: %w", err)
 	}
 	if result != nil {
-		if err := jsonvalue.ValidateType(result); err != nil {
+		if err := protocol.ValidateWireType(result); err != nil {
 			return paginationNone, fmt.Errorf("invalid result declaration: %w", err)
 		}
 	}
-	params = jsonvalue.Deref(params)
+	params = protocol.WireBaseType(params)
 	if params.Kind() != reflect.Struct {
 		return paginationNone, fmt.Errorf("params must declare a JSON object, got %s", params)
 	}
-	cursor, hasCursor := jsonvalue.LookupField(params, "cursor")
-	limit, hasLimit := jsonvalue.LookupField(params, "limit")
-	var data, nextCursor jsonvalue.Field
+	cursor, hasCursor := protocol.WireFieldNamed(params, "cursor")
+	limit, hasLimit := protocol.WireFieldNamed(params, "limit")
+	var data, nextCursor protocol.WireField
 	var hasData, hasNextCursor bool
 	if result != nil {
-		result = jsonvalue.Deref(result)
-		data, hasData = jsonvalue.LookupField(result, "data")
-		nextCursor, hasNextCursor = jsonvalue.LookupField(result, "nextCursor")
+		result = protocol.WireBaseType(result)
+		data, hasData = protocol.WireFieldNamed(result, "data")
+		nextCursor, hasNextCursor = protocol.WireFieldNamed(result, "nextCursor")
 	}
 
 	if !hasData && !hasNextCursor {

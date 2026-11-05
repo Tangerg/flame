@@ -1,6 +1,9 @@
 package main
 
 import (
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
+
 	"context"
 	json "encoding/json/v2"
 	"errors"
@@ -11,14 +14,14 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/httpresponse"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func execute[P, R any](ctx context.Context, s *store, method string, command qimumcp.Command[P], validate func(P) error, call func(context.Context, P) (R, func(), error)) (R, error) {
+func execute[P, R any](ctx context.Context, s *store, method string, command pluginmcp.Command[P], validate func(P) error, call func(context.Context, P) (R, func(), error)) (R, error) {
 	var zero R
 	input, err := command.RequestInput()
 	if err != nil {
@@ -26,11 +29,11 @@ func execute[P, R any](ctx context.Context, s *store, method string, command qim
 	}
 	var request P
 	prepared, reply, err := pluginstorage.AdmitCommand(ctx, s.db, method, string(command.ID), input, func(context.Context) error {
-		if err := json.Unmarshal(input.JSON(), &request, json.RejectUnknownMembers(true)); err != nil {
+		if err := json.Unmarshal(input.Bytes(), &request, json.RejectUnknownMembers(true)); err != nil {
 			return err
 		}
 		if err := validate(request); err != nil {
-			return &portable.Refusal{Code: "invalid_input", Message: "model provider: invalid request"}
+			return &framemcp.Refusal{Code: "invalid_input", Message: "model provider: invalid request"}
 		}
 		return nil
 	})
@@ -38,7 +41,7 @@ func execute[P, R any](ctx context.Context, s *store, method string, command qim
 		return zero, err
 	}
 	if len(reply) != 0 {
-		return qimumcp.DecodeReply[R](reply)
+		return pluginmcp.DecodeReply[R](reply)
 	}
 	if !prepared.NewlyAdmitted() {
 		return zero, pluginstorage.ErrCommandUnconfirmed
@@ -50,11 +53,11 @@ func execute[P, R any](ctx context.Context, s *store, method string, command qim
 	if err != nil {
 		return zero, err
 	}
-	encoded, err := qimumcp.EncodeReply(result, nil, nil)
+	encoded, err := pluginmcp.EncodeReply(result, nil, nil)
 	if err != nil {
 		return zero, err
 	}
-	if err := prepared.SettleExternal(ctx, encoded.JSON(), nil); err != nil {
+	if err := prepared.SettleExternal(ctx, encoded.Bytes(), nil); err != nil {
 		return zero, err
 	}
 	return result, nil
@@ -118,11 +121,11 @@ func (s *store) embed(ctx context.Context, request modelprovider.EmbeddingReques
 	return result, leave, nil
 }
 
-func (s *store) stream(ctx context.Context, method string, command qimumcp.Command[modelprovider.ChatRequest]) iter.Seq2[qimumcp.StreamValue[chat.ResponseDelta, modelprovider.ChatResult], error] {
-	return func(yield func(qimumcp.StreamValue[chat.ResponseDelta, modelprovider.ChatResult], error) bool) {
+func (s *store) stream(ctx context.Context, method string, command pluginmcp.Command[modelprovider.ChatRequest]) iter.Seq2[pluginmcp.StreamValue[chat.ResponseDelta, modelprovider.ChatResult], error] {
+	return func(yield func(pluginmcp.StreamValue[chat.ResponseDelta, modelprovider.ChatResult], error) bool) {
 		continuing := true
 		emit := func(delta chat.ResponseDelta) bool {
-			continuing = yield(qimumcp.StreamValue[chat.ResponseDelta, modelprovider.ChatResult]{Chunk: &delta}, nil)
+			continuing = yield(pluginmcp.StreamValue[chat.ResponseDelta, modelprovider.ChatResult]{Chunk: &delta}, nil)
 			return continuing
 		}
 		result, err := execute(ctx, s, method, command, modelprovider.ChatRequest.Validate, func(ctx context.Context, request modelprovider.ChatRequest) (modelprovider.ChatResult, func(), error) {
@@ -164,16 +167,16 @@ func (s *store) stream(ctx context.Context, method string, command qimumcp.Comma
 			return
 		}
 		if err != nil {
-			yield(qimumcp.StreamValue[chat.ResponseDelta, modelprovider.ChatResult]{}, err)
+			yield(pluginmcp.StreamValue[chat.ResponseDelta, modelprovider.ChatResult]{}, err)
 			return
 		}
-		yield(qimumcp.StreamValue[chat.ResponseDelta, modelprovider.ChatResult]{Result: &result}, nil)
+		yield(pluginmcp.StreamValue[chat.ResponseDelta, modelprovider.ChatResult]{Result: &result}, nil)
 	}
 }
 
 func notExecuted(err error) *modelprovider.Failure {
 	result := failure(err)
-	result.Execution = chat.CallFailureNotExecuted
+	result.Execution = coreinvocation.FailureNotExecuted
 	return result
 }
 
@@ -181,7 +184,7 @@ func failure(err error) *modelprovider.Failure {
 	if err == nil {
 		return nil
 	}
-	result := &modelprovider.Failure{Kind: modelprovider.Internal, Execution: chat.ClassifyFailure(err)}
+	result := &modelprovider.Failure{Kind: modelprovider.Internal, Execution: coreinvocation.ClassifyFailure(err)}
 	switch {
 	case errors.Is(err, context.Canceled):
 		result.Kind = modelprovider.Canceled

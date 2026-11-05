@@ -11,7 +11,7 @@ import {
 } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { createHash } from "node:crypto";
-import { Refusal } from "@qimu/node";
+import { Refusal } from "@flame/backend-sdk/mcp";
 import { LIMITS } from "../contracts/limits";
 import type { Format } from "../contracts/capability";
 import type {

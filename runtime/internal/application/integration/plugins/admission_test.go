@@ -6,15 +6,15 @@ import (
 	"testing"
 	"testing/synctest"
 
-	"github.com/Tangerg/qimu"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/frame"
 )
 
-// A change holds the serialization point across durable storage. Assembly
-// registration must not queue behind it, and a party waiting for the point must
-// still honor its own cancellation.
-func TestInstallationAdmissionNeverQueuesAssemblyOrIgnoresCancellation(t *testing.T) {
+// A publication waiting for a durable change keeps its own cancellation; it
+// cannot enter later using a request whose caller has already left.
+func TestInstallationAdmissionHonorsCancellationWhileAChangeOwnsTheGate(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		admission := qimu.NewAdmission()
+		admission := frame.NewAdmission()
 		entered, release := make(chan struct{}), make(chan struct{})
 		finished := make(chan error, 1)
 		go func() {
@@ -27,23 +27,6 @@ func TestInstallationAdmissionNeverQueuesAssemblyOrIgnoresCancellation(t *testin
 				t.Error(err)
 			}
 		}()
-
-		registered := make(chan struct{})
-		go func() {
-			_, finish, err := admission.Begin()
-			if err != nil {
-				t.Error(err)
-			} else {
-				finish()
-			}
-			close(registered)
-		}()
-		synctest.Wait()
-		select {
-		case <-registered:
-		default:
-			t.Fatal("assembly registration waited behind a held change")
-		}
 
 		cause := errors.New("change abandoned")
 		ctx, cancel := context.WithCancelCause(t.Context())
@@ -68,25 +51,28 @@ func TestInstallationAdmissionNeverQueuesAssemblyOrIgnoresCancellation(t *testin
 }
 
 func TestAdmissionRefusesCanceledAndInactivePublication(t *testing.T) {
-	admission := qimu.NewAdmission()
+	admission := frame.NewAdmission()
 	cause := errors.New("command abandoned")
 	ctx, cancel := context.WithCancelCause(t.Context())
 	cancel(cause)
 	if err := admission.Under(ctx, func() error { t.Fatal("canceled command entered admission"); return nil }); !errors.Is(err, cause) || !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled admission = %v", err)
 	}
-	other := qimu.NewAdmission()
-	assembly, finish, err := other.Begin()
-	if err != nil {
+	host := testFramework(t, nil)
+	validate := func(ctx context.Context) error {
+		return ValidateExecutionSourcesUnder(ctx, host, func(context.Context, plugin.Activation) error {
+			t.Fatal("empty publication resolved a binding")
+			return nil
+		}, nil, nil)
+	}
+	if err := admission.Admit(t.Context(), validate); !errors.Is(err, frame.ErrInvalid) {
+		t.Fatalf("foreign admission = %v", err)
+	}
+	var escaped context.Context
+	if err := host.Admission().Admit(t.Context(), func(ctx context.Context) error { escaped = ctx; return validate(ctx) }); err != nil {
 		t.Fatal(err)
 	}
-	defer finish()
-	publish := func() error { t.Fatal("inactive assembly published"); return nil }
-	if err := admission.Publish(t.Context(), assembly, nil, publish); !errors.Is(err, qimu.ErrInvalid) {
-		t.Fatalf("foreign assembly = %v", err)
-	}
-	finish()
-	if err := other.Publish(t.Context(), assembly, nil, publish); !errors.Is(err, qimu.ErrStaleBinding) {
-		t.Fatalf("finished assembly = %v", err)
+	if err := validate(escaped); !errors.Is(err, frame.ErrInvalid) {
+		t.Fatalf("expired admission = %v", err)
 	}
 }

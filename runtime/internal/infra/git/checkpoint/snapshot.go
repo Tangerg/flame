@@ -11,7 +11,6 @@ import (
 	"syscall"
 
 	workspacegit "github.com/Tangerg/flame/runtime/internal/infra/git"
-	"github.com/Tangerg/frame/cancellation"
 )
 
 // maxCheckpointFileSize caps a single file the checkpoint will stage (2 MiB
@@ -166,7 +165,7 @@ func checkpointCandidates(ctx context.Context, cwd string, output []byte) ([]str
 	seen := make(map[string]struct{}, min(maxCheckpointPaths, len(output)/2))
 	var admittedBytes int64
 	for p := range strings.SplitSeq(string(output), gitPathRecordSeparator) {
-		if err := cancellation.Err(ctx); err != nil {
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			return nil, err
 		}
 		if p == "" {

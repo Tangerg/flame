@@ -1,6 +1,10 @@
 package execution
 
 import (
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
+
 	"context"
 	"errors"
 	"fmt"
@@ -10,12 +14,11 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/samber/lo"
 )
@@ -31,7 +34,7 @@ type observedInteractionModel struct {
 
 // request attaches exactly the ephemeral material measured by the reducer after
 // Scope has adopted the authored conversation it will retain.
-func (o *observedInteractionModel) request(invocation interaction.ModelInvocation, request *corechat.Request) (*corechat.Request, error) {
+func (o *observedInteractionModel) request(invocation modelCallSource, request *corechat.Request) (*corechat.Request, error) {
 	material, err := o.session.material.take(invocation)
 	if err != nil {
 		return nil, err
@@ -39,27 +42,37 @@ func (o *observedInteractionModel) request(invocation interaction.ModelInvocatio
 	if request == nil || material.request == nil {
 		return nil, errors.New("execution: prepared model request is unavailable")
 	}
-	return material.request, nil
+	sent := material.request.Clone()
+	// Scope may accept steering while preparation is in flight. Those authored
+	// messages follow the preparation marker and must reach this physical call.
+	_, index, err := modelPreparationReference(request.Messages)
+	if err != nil {
+		return nil, err
+	}
+	sent.Messages = append(sent.Messages, providerMessages(request.Messages[index+1:])...)
+	if err := o.session.selectedChat.AdmitInput(sent); err != nil {
+		return nil, err
+	}
+	return sent, nil
 }
 
 func (o *observedInteractionModel) Call(
 	ctx context.Context,
 	request *corechat.Request,
 ) (*corechat.Response, error) {
-	invocation, callID, err := o.begin(ctx)
+	invocation, callID, err := o.begin(ctx, request)
 	if err != nil {
 		return nil, err
 	}
 	defer o.session.accounting.discardPreparedModelContext(invocation)
-	defer o.session.material.discard(invocation)
 	sent, err := o.request(invocation, request)
 	if err != nil {
-		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &corechat.CallFailure{Kind: corechat.CallFailureNotExecuted, Cause: err})
+		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
 	}
-	ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.Relation()), callID)
-	ctx, err = qimumcp.WithInvocation(ctx, portable.Invocation{ID: callID, Origin: extension.Automatic, Parent: invocation.EffectID().String(), Target: portable.Target{Scope: extension.ScopeCall, Reference: callID}})
+	ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.process), callID)
+	ctx, err = pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: callID, Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: portable.Target{Scope: extension.ScopeCall, Reference: callID}})
 	if err != nil {
-		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &corechat.CallFailure{Kind: corechat.CallFailureNotExecuted, Cause: err})
+		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
 	}
 	response, err := o.model.Call(ctx, sent)
 	if err != nil {
@@ -82,23 +95,22 @@ func (o *observedInteractionModel) Stream(
 	request *corechat.Request,
 ) iter.Seq2[*corechat.ResponseDelta, error] {
 	return func(yield func(*corechat.ResponseDelta, error) bool) {
-		invocation, callID, err := o.begin(ctx)
+		invocation, callID, err := o.begin(ctx, request)
 		if err != nil {
 			yield(nil, err)
 			return
 		}
 		defer o.session.accounting.discardPreparedModelContext(invocation)
-		defer o.session.material.discard(invocation)
 		sent, err := o.request(invocation, request)
 		if err != nil {
-			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &corechat.CallFailure{Kind: corechat.CallFailureNotExecuted, Cause: err}))
+			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}))
 			return
 		}
 		dispatchedAt := time.Now()
-		ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.Relation()), callID)
-		ctx, err = qimumcp.WithInvocation(ctx, portable.Invocation{ID: callID, Origin: extension.Automatic, Parent: invocation.EffectID().String(), Target: portable.Target{Scope: extension.ScopeCall, Reference: callID}})
+		ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.process), callID)
+		ctx, err = pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: callID, Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: portable.Target{Scope: extension.ScopeCall, Reference: callID}})
 		if err != nil {
-			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &corechat.CallFailure{Kind: corechat.CallFailureNotExecuted, Cause: err}))
+			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}))
 			return
 		}
 		sequence := o.streamer.Stream(ctx, sent)
@@ -150,7 +162,7 @@ func (o *observedInteractionModel) Stream(
 		if stopped {
 			if err := o.settleFailedCall(ctx, invocation, callID, observation(), firstOutputLatencyMillis); err != nil {
 				// Preserve the settlement failure locally; yielding again violates the stream.
-				o.session.effectFailures.record(invocation.EffectID(), err)
+				o.session.effectFailures.record(invocation.effect, err)
 			}
 			return
 		}
@@ -174,7 +186,7 @@ func (o *observedInteractionModel) Stream(
 
 func (o *observedInteractionModel) finishFailedCall(
 	ctx context.Context,
-	invocation interaction.ModelInvocation,
+	invocation modelCallSource,
 	callID string,
 	observation runs.ModelObservation,
 	firstOutputLatencyMillis *int64,
@@ -199,7 +211,7 @@ func (o *observedInteractionModel) endpoint(ctx context.Context, callID string) 
 	return &row, nil
 }
 
-func (o *observedInteractionModel) accountEndpoint(invocation interaction.ModelInvocation, callID string, source modelref.EndpointObservation) (runs.ModelCallCompleted, error) {
+func (o *observedInteractionModel) accountEndpoint(invocation modelCallSource, callID string, source modelref.EndpointObservation) (runs.ModelCallCompleted, error) {
 	consumption, err := accountModelEndpoint(callID, source)
 	if err != nil {
 		return runs.ModelCallCompleted{}, err
@@ -207,23 +219,25 @@ func (o *observedInteractionModel) accountEndpoint(invocation interaction.ModelI
 	return o.session.accounting.accountModelCall(invocation, consumption)
 }
 
-func (o *observedInteractionModel) stopFailedCall(ctx context.Context, invocation interaction.ModelInvocation, cause, projectionErr error) error {
+func (o *observedInteractionModel) stopFailedCall(ctx context.Context, invocation modelCallSource, cause, projectionErr error) error {
 	if projectionErr == nil {
-		if cause != nil {
-			o.session.modelFailures.record(invocation.Relation().ProcessID(), cause)
+		if cause != nil && !errors.Is(cause, context.Canceled) && !errors.Is(cause, context.DeadlineExceeded) {
+			if err := o.session.rememberModelFailure(invocation.process, cause); err != nil {
+				return errors.Join(cause, err)
+			}
 		}
-		kind := corechat.ClassifyFailure(cause)
-		if kind == corechat.CallFailureFailed || kind == corechat.CallFailureNotExecuted {
+		kind := coreinvocation.ClassifyFailure(cause)
+		if kind == coreinvocation.FailureFailed || kind == coreinvocation.FailureNotExecuted {
 			return cause
 		}
-		return errors.Join(cause, o.session.stopModelProcess(ctx, invocation.Relation().ProcessID()))
+		return errors.Join(cause, o.session.stopModelProcess(ctx, invocation.process))
 	}
 	return errors.Join(cause, projectionErr)
 }
 
 // Settlement uses dispatch evidence even when no response survived. Scope owns
 // the process outcome, including a consumer's capacity stop.
-func (o *observedInteractionModel) settleFailedCall(ctx context.Context, invocation interaction.ModelInvocation, callID string, observation runs.ModelObservation, latency *int64) error {
+func (o *observedInteractionModel) settleFailedCall(ctx context.Context, invocation modelCallSource, callID string, observation runs.ModelObservation, latency *int64) error {
 	projectionCtx, cancel := o.session.lifetime.publicationContext(ctx)
 	defer cancel()
 	if err := o.session.flushDeltas(projectionCtx); err != nil {
@@ -256,51 +270,55 @@ func (o *observedInteractionModel) settleFailedCall(ctx context.Context, invocat
 	}
 	return o.session.commitFact(
 		projectionCtx,
-		o.session.executorMember(invocation.Relation()),
+		o.session.executorMember(invocation.process),
 		failed,
 	)
 }
 
 func (o *observedInteractionModel) begin(
 	ctx context.Context,
+	request *corechat.Request,
 ) (
-	invocation interaction.ModelInvocation,
+	invocation modelCallSource,
 	callID string,
 	err error,
 ) {
-	invocation, ok := interaction.ModelInvocationFromContext(ctx)
-	if !ok {
-		return interaction.ModelInvocation{}, "", errors.New("execution: model call has no Interaction attribution")
+	if err := o.session.awaitDispatchSegment(ctx); err != nil {
+		return modelCallSource{}, "", err
+	}
+	invocation, err = o.session.modelSource(ctx, request)
+	if err != nil {
+		return modelCallSource{}, "", err
 	}
 	preparedInvocation := invocation
 	defer func() {
 		if err != nil {
 			o.session.accounting.discardPreparedModelContext(preparedInvocation)
-			o.session.modelFailures.record(preparedInvocation.Relation().ProcessID(), &run.FailureError{Kind: run.FailureInternal, Err: err})
-			err = &corechat.CallFailure{Kind: corechat.CallFailureNotExecuted, Cause: err}
+			err = errors.Join(err, o.session.rememberModelFailure(preparedInvocation.process, &run.FailureError{Kind: run.FailureInternal, Err: err}))
+			err = &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
 		}
 	}()
 	callIdentity, err := modelInvocationID(invocation)
 	if err != nil {
-		return interaction.ModelInvocation{}, "", err
+		return modelCallSource{}, "", err
 	}
 	callID = callIdentity.String()
-	member := o.session.executorMember(invocation.Relation())
+	member := o.session.executorMember(invocation.process)
 	o.session.retireToolReceiptPrefix(member.MemberID)
 	if err := o.session.commitAppliedInputs(
-		ctx, member, invocation.Relation().ProcessID(), invocation.AppliedSteerSignalIDs(),
+		ctx, member, invocation.process, invocation.steers,
 	); err != nil {
-		return interaction.ModelInvocation{}, "", err
+		return modelCallSource{}, "", err
 	}
 	if err := o.session.commitFact(ctx, member, runs.ModelCallStarted{CallID: callID}); err != nil {
-		return interaction.ModelInvocation{}, "", fmt.Errorf("execution: commit model call start: %w", err)
+		return modelCallSource{}, "", fmt.Errorf("execution: commit model call start: %w", err)
 	}
 	return invocation, callID, nil
 }
 
 func (o *observedInteractionModel) complete(
 	ctx context.Context,
-	invocation interaction.ModelInvocation,
+	invocation modelCallSource,
 	callID string,
 	response *corechat.Response,
 	firstOutputLatencyMillis *int64,
@@ -331,7 +349,7 @@ func (o *observedInteractionModel) complete(
 		fact.Message = new(response.Output.Message.Clone())
 	}
 	if err := o.session.commitFact(
-		projectionCtx, o.session.executorMember(invocation.Relation()), fact,
+		projectionCtx, o.session.executorMember(invocation.process), fact,
 	); err != nil {
 		return err
 	}

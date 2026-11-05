@@ -9,9 +9,9 @@
     "@flame/component-sdk",
     "@flame/runtime-client",
     "@flame/ui",
-    "@qimu/sdk",
-    "@qimu/sdk/json",
-    "@qimu/react"
+    "@frame/sdk",
+    "@frame/sdk/json",
+    "@frame/sdk/react"
   ],
   "packageExports": ["@flame/ui"],
   "componentExport": "component",

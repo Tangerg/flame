@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"errors"
-	"github.com/Tangerg/qimu"
 	"testing"
+
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type requirementCompositions struct {
@@ -23,7 +24,7 @@ func (s requirementCompositions) List(context.Context) ([]plugin.OrderedComposit
 
 func (s requirementCompositions) Get(_ context.Context, reference string) (plugin.OrderedComposition, bool, error) {
 	for _, value := range s.values {
-		contract, err := portable.ParseCapability(value.Snapshot().Contract.JSON())
+		contract, err := plugincontract.ParseCapability(value.Snapshot().Contract.Bytes())
 		if err != nil {
 			return plugin.OrderedComposition{}, false, err
 		}
@@ -40,12 +41,12 @@ func (s *requirementCompositions) Save(_ context.Context, value plugin.OrderedCo
 }
 
 func TestOrderedCompositionFreezesExplicitOrderAndRejectsWithdrawnMembers(t *testing.T) {
-	contract := requirementContract(t, "model-observer", portable.Decoration)
+	contract := requirementContract(t, "model-observer", plugincontract.Decoration)
 	first := requirementSnapshot(t, testsupport.InstallationID(t), "outer", contract)
 	second := requirementSnapshot(t, testsupport.InstallationID(t), "inner", contract)
 	store := requirementInstallations{snapshots: []plugin.Snapshot{first, second}}
 	choices := &requirementCompositions{}
-	owner, err := NewCompositions(choices, store, qimu.NewAdmission(), nil)
+	owner, err := NewCompositions(choices, store, frame.NewAdmission().Admit, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +73,7 @@ func TestOrderedCompositionFreezesExplicitOrderAndRejectsWithdrawnMembers(t *tes
 	}
 	descriptor := contract.Descriptor()
 	descriptor.Methods[0].Output = jsontext.Value(`{"type":"boolean"}`)
-	drifted, err := portable.AdmitCapability(descriptor)
+	drifted, err := plugincontract.AdmitCapability(descriptor)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,8 +87,8 @@ func TestOrderedCompositionFreezesExplicitOrderAndRejectsWithdrawnMembers(t *tes
 }
 
 func TestNamedDecorationRequirementsPreserveStoredOrderAndRequiredAbsence(t *testing.T) {
-	contract := requirementContract(t, "observed-model", portable.Decoration)
-	rootContract := requirementContract(t, "consumer", portable.Collection)
+	contract := requirementContract(t, "observed-model", plugincontract.Decoration)
+	rootContract := requirementContract(t, "consumer", plugincontract.Collection)
 	root := requirementSnapshot(t, testsupport.InstallationID(t), "consumer", rootContract, plugin.Requirement{ID: "observers", Contract: contract.Identity()})
 	first := requirementSnapshot(t, testsupport.InstallationID(t), "outer", contract)
 	second := requirementSnapshot(t, testsupport.InstallationID(t), "inner", contract)
@@ -121,7 +122,7 @@ func TestNamedDecorationRequirementsPreserveStoredOrderAndRequiredAbsence(t *tes
 	if value, err := resolveEntryRequirements(t.Context(), testFramework(t, store), store, requirementSelections{}, choices, optional, testsupport.ServerName("backend")); err != nil || len(value.Snapshot()[0].Bindings) != 0 {
 		t.Fatalf("optional empty composition: %+v, %v", value, err)
 	}
-	changed := requirementContract(t, "observed-model", portable.Selection)
+	changed := requirementContract(t, "observed-model", plugincontract.Selection)
 	if _, err := ResolveComposition(t.Context(), store, choices, changed); !errors.Is(err, plugin.ErrInvalid) {
 		t.Fatalf("non-decoration consumer admitted: %v", err)
 	}

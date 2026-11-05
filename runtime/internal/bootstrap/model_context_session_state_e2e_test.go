@@ -3,14 +3,15 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
-	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
 	"iter"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
+	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -176,7 +177,7 @@ func newSessionStateE2ERuntime(
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}

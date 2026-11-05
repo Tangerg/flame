@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { stringifyJSON } from "@qimu/sdk/json";
+import { stringifyJSON } from "@frame/sdk/json";
 import { OperationFailure, isErrorType, type PluginCommandRecovery } from "@flame/runtime-client";
 import {
   Button,

@@ -24,7 +24,7 @@ func callTextTool(ctx context.Context, executable toolcontract.Tool, arguments s
 	if err != nil {
 		return "", err
 	}
-	invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "test", Name: binding.Contract().Definition().Name, Arguments: arguments}, nil)
+	invocation, err := binding.Contract().Prepare((chat.ToolCall{ID: "test", Name: binding.Contract().Definition().Name, Arguments: arguments}).Request(), toolcontract.Admission{})
 	if err != nil {
 		return "", err
 	}

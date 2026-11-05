@@ -9,12 +9,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/qimu/portable"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/jsonvalue"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -95,12 +97,12 @@ func usageRecord(t *testing.T, id, provider, model string, state modelref.Invoca
 		t.Fatal(err)
 	}
 	caller := "call_" + id
-	invocation := modelref.EndpointInvocation{ID: id, Provider: provider, Model: model, StartedAt: at, Caller: portable.Invocation{ID: caller, Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: caller}}, Request: modelref.ChatEndpointRequest{Chat: request}}
-	input, err := jsonvalue.Encode(invocation)
+	invocation := modelref.EndpointInvocation{ID: id, Provider: provider, Model: model, StartedAt: at, Caller: framemcp.Invocation{ID: caller, Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: caller}}, Request: modelref.ChatEndpointRequest{Chat: request}}
+	input, err := framevalue.EncodeJSON(invocation)
 	if err != nil {
 		t.Fatal(err)
 	}
-	requestJSON, err := jsonvalue.Encode(request)
+	requestJSON, err := framevalue.EncodeJSON(request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,10 +119,10 @@ func usageRecord(t *testing.T, id, provider, model string, state modelref.Invoca
 	return value
 }
 
-func usageResponse(t *testing.T, model string, reported *chat.Usage) jsonvalue.Value {
+func usageResponse(t *testing.T, model string, reported *chat.Usage) framevalue.JSON {
 	t.Helper()
 	message := chat.NewAssistantMessage(chat.NewTextPart("known"))
-	value, err := jsonvalue.Encode(&chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: model, Usage: reported}})
+	value, err := framevalue.EncodeJSON(&chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: model, Usage: reported}})
 	if err != nil {
 		t.Fatal(err)
 	}

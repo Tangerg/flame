@@ -3,21 +3,24 @@ package plugin
 import (
 	"context"
 	"encoding/json/jsontext"
+
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/scope/core/tool"
+
 	"testing"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/scope/core/tool"
 )
 
 func TestToolBoundaryRetainsOriginalArgumentsAndOptionalEmptyObject(t *testing.T) {
 	type input struct {
 		N float64 `json:"n"`
 	}
-	var captured jsonvalue.Value
+	var captured framevalue.JSON
 	read := func(ctx context.Context) (string, error) {
 		var err error
-		captured, err = qimumcp.RequestInput(ctx)
+		captured, err = pluginmcp.RequestInput(ctx)
 		return captured.String(), err
 	}
 	number, err := tool.NewFunc(tool.FuncConfig{Name: "number", Description: "Read a number."}, func(ctx context.Context, _ input) (string, error) { return read(ctx) })

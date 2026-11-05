@@ -2,10 +2,11 @@ package builtin
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
@@ -14,6 +15,7 @@ import (
 	goalstate "github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // in-memory goals.Store for the tool tests.
@@ -274,6 +276,29 @@ func TestGetGoalReturnsNullWhenAbsent(t *testing.T) {
 	}
 	if result.Goal != nil || !strings.Contains(result.Message, "No Goal") {
 		t.Fatalf("result = %+v", result)
+	}
+}
+
+func TestGetGoalBoundResultAllowsAbsentGoal(t *testing.T) {
+	reader, err := goals.NewReader(newMemStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+	get, err := NewGet(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	binding, err := toolcontract.Bind(get)
+	if err != nil {
+		t.Fatal(err)
+	}
+	invocation, err := binding.Contract().Prepare(toolcontract.Request{Name: "get_goal", Arguments: `{}`}, toolcontract.Admission{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := binding.Call(testSessionContext(), invocation)
+	if err != nil || !strings.Contains(string(result.Output.Details), `"goal":null`) {
+		t.Fatalf("absent Goal violated the public output contract: %+v, %v", result, err)
 	}
 }
 

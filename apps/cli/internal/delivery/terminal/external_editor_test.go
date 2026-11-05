@@ -9,22 +9,28 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/program"
-	"github.com/Tangerg/oolong/core/programtest"
+	"github.com/Tangerg/oolong/ui/core/program"
+	"github.com/Tangerg/oolong/ui/core/scene"
+	"github.com/Tangerg/oolong/ui/kit"
+	"github.com/Tangerg/oolong/ui/uitest"
 )
 
 func editWithTerminal(t *testing.T, ctx context.Context, editor *draftEditor, workspace, original string) (edited string, err error) {
 	t.Helper()
-	host := &handoverTestHost{Host: programtest.New(t, programtest.Config{Width: 40, Height: 4})}
-	runErr := program.Run(t.Context(), program.Config{Host: host, Root: func(loop *program.Runtime) program.Component {
-		loop.Dispatcher().Post(func() {
+	host := &handoverTestHost{Host: uitest.New(t, uitest.Config{Width: 40, Height: 4})}
+	screen, buildErr := program.NewScreen(program.ScreenConfig{Config: program.Config{Host: host}, Build: func(loop *program.Runtime) (scene.Element, error) {
+		if err := loop.Dispatcher().Post(func() {
 			edited, err = editor.Edit(ctx, loop.Session(), workspace, original)
 			loop.Quit()
-		})
-		return headless.NewRoot(&headless.Static{Of: kit.Label{Text: "editor"}})
+		}); err != nil {
+			return scene.Element{}, err
+		}
+		return passiveElement(kit.Label{Text: "editor"}), nil
 	}})
+	if buildErr != nil {
+		return "", buildErr
+	}
+	runErr := screen.Run(t.Context())
 	return edited, errors.Join(err, runErr)
 }
 

@@ -89,29 +89,6 @@
       ],
       "type": "object"
     },
-    "Branch": {
-      "additionalProperties": false,
-      "properties": {
-        "label": {
-          "type": "string"
-        },
-        "ref": {
-          "type": "string"
-        },
-        "repository": {
-          "type": "string"
-        },
-        "sha": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "label",
-        "ref",
-        "sha"
-      ],
-      "type": "object"
-    },
     "ChangedFile": {
       "additionalProperties": false,
       "properties": {
@@ -253,8 +230,7 @@
           "type": "integer"
         },
         "completedAt": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/$defs/ListCheckRunsV1OutputInstantTimestamp"
         },
         "conclusion": {
           "type": "string"
@@ -275,8 +251,7 @@
           "type": "string"
         },
         "startedAt": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/$defs/ListCheckRunsV1OutputInstantTimestamp"
         },
         "status": {
           "type": "string"
@@ -307,77 +282,12 @@
       ],
       "type": "object"
     },
-    "Comment": {
-      "additionalProperties": false,
-      "properties": {
-        "author": {
-          "type": "string"
-        },
-        "body": {
-          "type": "string"
-        },
-        "createdAt": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "id": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "updatedAt": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "url": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "url",
-        "author",
-        "body",
-        "createdAt",
-        "updatedAt"
-      ],
-      "type": "object"
-    },
-    "CommentInput": {
-      "additionalProperties": false,
-      "properties": {
-        "commentId": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
-        },
-        "repository": {
-          "maxLength": 256,
-          "minLength": 3,
-          "type": "string"
-        }
-      },
-      "required": [
-        "repository",
-        "commentId"
-      ],
-      "type": "object"
-    },
     "CommentPage": {
       "additionalProperties": false,
       "properties": {
         "comments": {
           "items": {
-            "$ref": "#/$defs/Comment"
+            "$ref": "#/$defs/ListIssueCommentsV1OutputWireComment"
           },
           "type": "array"
         },
@@ -396,50 +306,6 @@
       ],
       "type": "object"
     },
-    "CommitInput": {
-      "additionalProperties": false,
-      "properties": {
-        "limit": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "maximum": 100,
-          "minimum": 1,
-          "type": "integer"
-        },
-        "page": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
-        },
-        "ref": {
-          "description": "Use the exact pull request head SHA to inspect checks for that revision.",
-          "maxLength": 1024,
-          "minLength": 1,
-          "type": "string"
-        },
-        "repository": {
-          "maxLength": 256,
-          "minLength": 3,
-          "type": "string"
-        }
-      },
-      "required": [
-        "repository",
-        "ref",
-        "page",
-        "limit"
-      ],
-      "type": "object"
-    },
     "CommitStatus": {
       "additionalProperties": false,
       "properties": {
@@ -447,8 +313,7 @@
           "type": "string"
         },
         "createdAt": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/$defs/ListCommitStatusesV1OutputInstantTimestamp"
         },
         "description": {
           "type": "string"
@@ -466,8 +331,7 @@
           "type": "string"
         },
         "updatedAt": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/$defs/ListCommitStatusesV1OutputInstantTimestamp"
         },
         "url": {
           "type": "string"
@@ -484,9 +348,17 @@
     },
     "CreateCommentInput": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "body": {
+              "maxLength": 65536
+            }
+          }
+        }
+      ],
       "properties": {
         "body": {
-          "maxLength": 65536,
           "minLength": 1,
           "type": "string"
         },
@@ -517,10 +389,63 @@
       "$ref": "#/$defs/CreateCommentInput"
     },
     "CreateIssueCommentV1Output": {
-      "$ref": "#/$defs/Comment"
+      "$ref": "#/$defs/CreateIssueCommentV1OutputWireComment"
+    },
+    "CreateIssueCommentV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "CreateIssueCommentV1OutputWireComment": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/CreateIssueCommentV1OutputInstantTimestamp"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/CreateIssueCommentV1OutputInstantTimestamp"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "author",
+        "body",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
     },
     "CreateIssueInput": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "body": {
+              "maxLength": 65536
+            },
+            "title": {
+              "maxLength": 256
+            }
+          }
+        }
+      ],
       "properties": {
         "assignees": {
           "items": {
@@ -529,7 +454,6 @@
           "type": "array"
         },
         "body": {
-          "maxLength": 65536,
           "type": "string"
         },
         "labels": {
@@ -544,7 +468,6 @@
           "type": "string"
         },
         "title": {
-          "maxLength": 256,
           "minLength": 1,
           "type": "string"
         }
@@ -559,10 +482,112 @@
       "$ref": "#/$defs/CreateIssueInput"
     },
     "CreateIssueV1Output": {
-      "$ref": "#/$defs/Issue"
+      "$ref": "#/$defs/CreateIssueV1OutputWireIssue"
+    },
+    "CreateIssueV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "CreateIssueV1OutputWireIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "assignees": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "author": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "labels": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "pullRequest": {
+          "type": "boolean"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "state": {
+          "allOf": [
+            {
+              "enum": [
+                "open",
+                "closed"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "stateReason": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/CreateIssueV1OutputInstantTimestamp"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "repository",
+        "number",
+        "title",
+        "body",
+        "state",
+        "url",
+        "author",
+        "pullRequest",
+        "updatedAt",
+        "labels",
+        "assignees"
+      ],
+      "type": "object"
     },
     "CreatePullInput": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "body": {
+              "maxLength": 65536
+            },
+            "title": {
+              "maxLength": 256
+            }
+          }
+        }
+      ],
       "properties": {
         "base": {
           "maxLength": 1024,
@@ -570,7 +595,6 @@
           "type": "string"
         },
         "body": {
-          "maxLength": 65536,
           "type": "string"
         },
         "draft": {
@@ -595,7 +619,6 @@
           "type": "string"
         },
         "title": {
-          "maxLength": 256,
           "minLength": 1,
           "type": "string"
         }
@@ -612,25 +635,278 @@
       "$ref": "#/$defs/CreateReviewCommentInput"
     },
     "CreatePullRequestCommentV1Output": {
-      "$ref": "#/$defs/ReviewComment"
+      "$ref": "#/$defs/CreatePullRequestCommentV1OutputWireReviewComment"
+    },
+    "CreatePullRequestCommentV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "CreatePullRequestCommentV1OutputWireReviewComment": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "commitId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/CreatePullRequestCommentV1OutputInstantTimestamp"
+        },
+        "diffHunk": {
+          "type": "string"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "inReplyTo": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "line": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "originalCommitId": {
+          "type": "string"
+        },
+        "originalLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        },
+        "reviewId": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "side": {
+          "type": "string"
+        },
+        "startLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "startSide": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/CreatePullRequestCommentV1OutputInstantTimestamp"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "author",
+        "body",
+        "createdAt",
+        "updatedAt",
+        "reviewId",
+        "path",
+        "diffHunk",
+        "commitId",
+        "originalCommitId",
+        "side"
+      ],
+      "type": "object"
     },
     "CreatePullRequestV1Input": {
       "$ref": "#/$defs/CreatePullInput"
     },
     "CreatePullRequestV1Output": {
-      "$ref": "#/$defs/PullRequest"
+      "$ref": "#/$defs/CreatePullRequestV1OutputWirePullRequest"
+    },
+    "CreatePullRequestV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "CreatePullRequestV1OutputWireBranch": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "sha": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "ref",
+        "sha"
+      ],
+      "type": "object"
+    },
+    "CreatePullRequestV1OutputWirePullRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "additions": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "author": {
+          "type": "string"
+        },
+        "base": {
+          "$ref": "#/$defs/CreatePullRequestV1OutputWireBranch"
+        },
+        "body": {
+          "type": "string"
+        },
+        "changedFiles": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "deletions": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "draft": {
+          "type": "boolean"
+        },
+        "head": {
+          "$ref": "#/$defs/CreatePullRequestV1OutputWireBranch"
+        },
+        "maintainerCanModify": {
+          "type": "boolean"
+        },
+        "mergeable": {
+          "type": "boolean"
+        },
+        "mergeableState": {
+          "type": "string"
+        },
+        "mergedAt": {
+          "$ref": "#/$defs/CreatePullRequestV1OutputInstantTimestamp"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "state": {
+          "allOf": [
+            {
+              "enum": [
+                "open",
+                "closed"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/CreatePullRequestV1OutputInstantTimestamp"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "number",
+        "title",
+        "body",
+        "state",
+        "url",
+        "author",
+        "draft",
+        "head",
+        "base",
+        "updatedAt"
+      ],
+      "type": "object"
     },
     "CreateReviewCommentInput": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "body": {
+              "maxLength": 65536
+            }
+          }
+        }
+      ],
       "properties": {
         "body": {
-          "maxLength": 65536,
           "minLength": 1,
           "type": "string"
         },
         "commitId": {
+          "allOf": [
+            {
+              "pattern": "^[0-9a-fA-F]{40}$"
+            }
+          ],
           "minLength": 1,
-          "pattern": "^[0-9a-fA-F]{40}$",
           "type": "string"
         },
         "line": {
@@ -708,18 +984,92 @@
       "type": "object"
     },
     "DeleteIssueCommentV1Input": {
-      "$ref": "#/$defs/CommentInput"
+      "$ref": "#/$defs/DeleteIssueCommentV1InputWireCommentInput"
+    },
+    "DeleteIssueCommentV1InputWireCommentInput": {
+      "additionalProperties": false,
+      "properties": {
+        "commentId": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "commentId"
+      ],
+      "type": "object"
     },
     "DeleteIssueCommentV1Output": {
-      "$ref": "#/$defs/DeletedComment"
+      "$ref": "#/$defs/DeleteIssueCommentV1OutputWireDeletedComment"
+    },
+    "DeleteIssueCommentV1OutputWireDeletedComment": {
+      "additionalProperties": false,
+      "properties": {
+        "deleted": {
+          "const": true,
+          "type": "boolean"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "deleted"
+      ],
+      "type": "object"
     },
     "DeletePullRequestCommentV1Input": {
-      "$ref": "#/$defs/CommentInput"
+      "$ref": "#/$defs/DeletePullRequestCommentV1InputWireCommentInput"
+    },
+    "DeletePullRequestCommentV1InputWireCommentInput": {
+      "additionalProperties": false,
+      "properties": {
+        "commentId": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "commentId"
+      ],
+      "type": "object"
     },
     "DeletePullRequestCommentV1Output": {
-      "$ref": "#/$defs/DeletedComment"
+      "$ref": "#/$defs/DeletePullRequestCommentV1OutputWireDeletedComment"
     },
-    "DeletedComment": {
+    "DeletePullRequestCommentV1OutputWireDeletedComment": {
       "additionalProperties": false,
       "properties": {
         "deleted": {
@@ -825,26 +1175,12 @@
       "type": "object"
     },
     "GetIssueV1Input": {
-      "$ref": "#/$defs/IssueInput"
+      "$ref": "#/$defs/GetIssueV1InputWireIssueInput"
     },
-    "GetIssueV1Output": {
-      "$ref": "#/$defs/Issue"
-    },
-    "GetPullRequestV1Input": {
-      "$ref": "#/$defs/IssueInput"
-    },
-    "GetPullRequestV1Output": {
-      "$ref": "#/$defs/PullRequest"
-    },
-    "InlineComment": {
+    "GetIssueV1InputWireIssueInput": {
       "additionalProperties": false,
       "properties": {
-        "body": {
-          "maxLength": 65536,
-          "minLength": 1,
-          "type": "string"
-        },
-        "line": {
+        "number": {
           "allOf": [
             {
               "maximum": 9223372036854775807,
@@ -854,53 +1190,25 @@
           "minimum": 1,
           "type": "integer"
         },
-        "path": {
-          "maxLength": 4096,
-          "minLength": 1,
-          "type": "string"
-        },
-        "side": {
-          "allOf": [
-            {
-              "enum": [
-                "LEFT",
-                "RIGHT"
-              ]
-            }
-          ],
-          "type": "string"
-        },
-        "startLine": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
-        },
-        "startSide": {
-          "allOf": [
-            {
-              "enum": [
-                "LEFT",
-                "RIGHT"
-              ]
-            }
-          ],
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
           "type": "string"
         }
       },
       "required": [
-        "path",
-        "body",
-        "line",
-        "side"
+        "repository",
+        "number"
       ],
       "type": "object"
     },
-    "Issue": {
+    "GetIssueV1Output": {
+      "$ref": "#/$defs/GetIssueV1OutputWireIssue"
+    },
+    "GetIssueV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "GetIssueV1OutputWireIssue": {
       "additionalProperties": false,
       "properties": {
         "assignees": {
@@ -965,8 +1273,7 @@
           "type": "string"
         },
         "updatedAt": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/$defs/GetIssueV1OutputInstantTimestamp"
         },
         "url": {
           "type": "string"
@@ -988,7 +1295,10 @@
       ],
       "type": "object"
     },
-    "IssueInput": {
+    "GetPullRequestV1Input": {
+      "$ref": "#/$defs/GetPullRequestV1InputWireIssueInput"
+    },
+    "GetPullRequestV1InputWireIssueInput": {
       "additionalProperties": false,
       "properties": {
         "number": {
@@ -1013,12 +1323,218 @@
       ],
       "type": "object"
     },
+    "GetPullRequestV1Output": {
+      "$ref": "#/$defs/GetPullRequestV1OutputWirePullRequest"
+    },
+    "GetPullRequestV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "GetPullRequestV1OutputWireBranch": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "sha": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "ref",
+        "sha"
+      ],
+      "type": "object"
+    },
+    "GetPullRequestV1OutputWirePullRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "additions": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "author": {
+          "type": "string"
+        },
+        "base": {
+          "$ref": "#/$defs/GetPullRequestV1OutputWireBranch"
+        },
+        "body": {
+          "type": "string"
+        },
+        "changedFiles": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "deletions": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "draft": {
+          "type": "boolean"
+        },
+        "head": {
+          "$ref": "#/$defs/GetPullRequestV1OutputWireBranch"
+        },
+        "maintainerCanModify": {
+          "type": "boolean"
+        },
+        "mergeable": {
+          "type": "boolean"
+        },
+        "mergeableState": {
+          "type": "string"
+        },
+        "mergedAt": {
+          "$ref": "#/$defs/GetPullRequestV1OutputInstantTimestamp"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "state": {
+          "allOf": [
+            {
+              "enum": [
+                "open",
+                "closed"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/GetPullRequestV1OutputInstantTimestamp"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "number",
+        "title",
+        "body",
+        "state",
+        "url",
+        "author",
+        "draft",
+        "head",
+        "base",
+        "updatedAt"
+      ],
+      "type": "object"
+    },
+    "InlineComment": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "body": {
+              "maxLength": 65536
+            }
+          }
+        }
+      ],
+      "properties": {
+        "body": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "line": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "path": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+        },
+        "side": {
+          "allOf": [
+            {
+              "enum": [
+                "LEFT",
+                "RIGHT"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "startLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "startSide": {
+          "allOf": [
+            {
+              "enum": [
+                "LEFT",
+                "RIGHT"
+              ]
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "body",
+        "line",
+        "side"
+      ],
+      "type": "object"
+    },
     "IssuePage": {
       "additionalProperties": false,
       "properties": {
         "issues": {
           "items": {
-            "$ref": "#/$defs/Issue"
+            "$ref": "#/$defs/ListIssuesV1OutputWireIssue"
           },
           "type": "array"
         },
@@ -1044,16 +1560,110 @@
       "$ref": "#/$defs/AnnotationPage"
     },
     "ListCheckRunsV1Input": {
-      "$ref": "#/$defs/CommitInput"
+      "$ref": "#/$defs/ListCheckRunsV1InputWireCommitInput"
+    },
+    "ListCheckRunsV1InputWireCommitInput": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "page": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "ref": {
+          "description": "Use the exact pull request head SHA to inspect checks for that revision.",
+          "maxLength": 1024,
+          "minLength": 1,
+          "type": "string"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "ref",
+        "page",
+        "limit"
+      ],
+      "type": "object"
     },
     "ListCheckRunsV1Output": {
       "$ref": "#/$defs/CheckPage"
     },
+    "ListCheckRunsV1OutputInstantTimestamp": {
+      "type": "string"
+    },
     "ListCommitStatusesV1Input": {
-      "$ref": "#/$defs/CommitInput"
+      "$ref": "#/$defs/ListCommitStatusesV1InputWireCommitInput"
+    },
+    "ListCommitStatusesV1InputWireCommitInput": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "page": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "ref": {
+          "description": "Use the exact pull request head SHA to inspect checks for that revision.",
+          "maxLength": 1024,
+          "minLength": 1,
+          "type": "string"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "ref",
+        "page",
+        "limit"
+      ],
+      "type": "object"
     },
     "ListCommitStatusesV1Output": {
       "$ref": "#/$defs/StatusPage"
+    },
+    "ListCommitStatusesV1OutputInstantTimestamp": {
+      "type": "string"
     },
     "ListInput": {
       "additionalProperties": false,
@@ -1106,10 +1716,99 @@
       "type": "object"
     },
     "ListIssueCommentsV1Input": {
-      "$ref": "#/$defs/ThreadInput"
+      "$ref": "#/$defs/ListIssueCommentsV1InputWireThreadInput"
+    },
+    "ListIssueCommentsV1InputWireThreadInput": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "page": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "number",
+        "page",
+        "limit"
+      ],
+      "type": "object"
     },
     "ListIssueCommentsV1Output": {
       "$ref": "#/$defs/CommentPage"
+    },
+    "ListIssueCommentsV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "ListIssueCommentsV1OutputWireComment": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/ListIssueCommentsV1OutputInstantTimestamp"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/ListIssueCommentsV1OutputInstantTimestamp"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "author",
+        "body",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
     },
     "ListIssuesV1Input": {
       "$ref": "#/$defs/ListInput"
@@ -1117,23 +1816,410 @@
     "ListIssuesV1Output": {
       "$ref": "#/$defs/IssuePage"
     },
+    "ListIssuesV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "ListIssuesV1OutputWireIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "assignees": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "author": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "labels": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "pullRequest": {
+          "type": "boolean"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "state": {
+          "allOf": [
+            {
+              "enum": [
+                "open",
+                "closed"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "stateReason": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/ListIssuesV1OutputInstantTimestamp"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "repository",
+        "number",
+        "title",
+        "body",
+        "state",
+        "url",
+        "author",
+        "pullRequest",
+        "updatedAt",
+        "labels",
+        "assignees"
+      ],
+      "type": "object"
+    },
     "ListPullRequestCommentsV1Input": {
-      "$ref": "#/$defs/ThreadInput"
+      "$ref": "#/$defs/ListPullRequestCommentsV1InputWireThreadInput"
+    },
+    "ListPullRequestCommentsV1InputWireThreadInput": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "page": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "number",
+        "page",
+        "limit"
+      ],
+      "type": "object"
     },
     "ListPullRequestCommentsV1Output": {
       "$ref": "#/$defs/ReviewCommentPage"
     },
+    "ListPullRequestCommentsV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "ListPullRequestCommentsV1OutputWireReviewComment": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "commitId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/ListPullRequestCommentsV1OutputInstantTimestamp"
+        },
+        "diffHunk": {
+          "type": "string"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "inReplyTo": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "line": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "originalCommitId": {
+          "type": "string"
+        },
+        "originalLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        },
+        "reviewId": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "side": {
+          "type": "string"
+        },
+        "startLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "startSide": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/ListPullRequestCommentsV1OutputInstantTimestamp"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "author",
+        "body",
+        "createdAt",
+        "updatedAt",
+        "reviewId",
+        "path",
+        "diffHunk",
+        "commitId",
+        "originalCommitId",
+        "side"
+      ],
+      "type": "object"
+    },
     "ListPullRequestFilesV1Input": {
-      "$ref": "#/$defs/ThreadInput"
+      "$ref": "#/$defs/ListPullRequestFilesV1InputWireThreadInput"
+    },
+    "ListPullRequestFilesV1InputWireThreadInput": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "page": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "number",
+        "page",
+        "limit"
+      ],
+      "type": "object"
     },
     "ListPullRequestFilesV1Output": {
       "$ref": "#/$defs/FilePage"
     },
     "ListPullRequestReviewsV1Input": {
-      "$ref": "#/$defs/ThreadInput"
+      "$ref": "#/$defs/ListPullRequestReviewsV1InputWireThreadInput"
+    },
+    "ListPullRequestReviewsV1InputWireThreadInput": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "page": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "number",
+        "page",
+        "limit"
+      ],
+      "type": "object"
     },
     "ListPullRequestReviewsV1Output": {
       "$ref": "#/$defs/ReviewPage"
+    },
+    "ListPullRequestReviewsV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "ListPullRequestReviewsV1OutputWireReview": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "commitId": {
+          "type": "string"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "submittedAt": {
+          "$ref": "#/$defs/ListPullRequestReviewsV1OutputInstantTimestamp"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "author",
+        "body",
+        "state"
+      ],
+      "type": "object"
     },
     "ListPullRequestsV1Input": {
       "$ref": "#/$defs/PullListInput"
@@ -1141,21 +2227,166 @@
     "ListPullRequestsV1Output": {
       "$ref": "#/$defs/PullPage"
     },
-    "MergePullInput": {
+    "ListPullRequestsV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "ListPullRequestsV1OutputWireBranch": {
       "additionalProperties": false,
       "properties": {
+        "label": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "sha": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "ref",
+        "sha"
+      ],
+      "type": "object"
+    },
+    "ListPullRequestsV1OutputWirePullRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "additions": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "author": {
+          "type": "string"
+        },
+        "base": {
+          "$ref": "#/$defs/ListPullRequestsV1OutputWireBranch"
+        },
+        "body": {
+          "type": "string"
+        },
+        "changedFiles": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "deletions": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "draft": {
+          "type": "boolean"
+        },
+        "head": {
+          "$ref": "#/$defs/ListPullRequestsV1OutputWireBranch"
+        },
+        "maintainerCanModify": {
+          "type": "boolean"
+        },
+        "mergeable": {
+          "type": "boolean"
+        },
+        "mergeableState": {
+          "type": "string"
+        },
+        "mergedAt": {
+          "$ref": "#/$defs/ListPullRequestsV1OutputInstantTimestamp"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "state": {
+          "allOf": [
+            {
+              "enum": [
+                "open",
+                "closed"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/ListPullRequestsV1OutputInstantTimestamp"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "number",
+        "title",
+        "body",
+        "state",
+        "url",
+        "author",
+        "draft",
+        "head",
+        "base",
+        "updatedAt"
+      ],
+      "type": "object"
+    },
+    "MergePullInput": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "commitMessage": {
+              "maxLength": 65536
+            },
+            "commitTitle": {
+              "maxLength": 256
+            }
+          }
+        }
+      ],
+      "properties": {
         "commitMessage": {
-          "maxLength": 65536,
           "type": "string"
         },
         "commitTitle": {
-          "maxLength": 256,
           "type": "string"
         },
         "headSha": {
+          "allOf": [
+            {
+              "pattern": "^[0-9a-fA-F]{40}$"
+            }
+          ],
           "description": "Exact inspected head SHA. GitHub atomically refuses a different current head.",
           "minLength": 1,
-          "pattern": "^[0-9a-fA-F]{40}$",
           "type": "string"
         },
         "mergeMethod": {
@@ -1296,120 +2527,13 @@
         },
         "pullRequests": {
           "items": {
-            "$ref": "#/$defs/PullRequest"
+            "$ref": "#/$defs/ListPullRequestsV1OutputWirePullRequest"
           },
           "type": "array"
         }
       },
       "required": [
         "pullRequests"
-      ],
-      "type": "object"
-    },
-    "PullRequest": {
-      "additionalProperties": false,
-      "properties": {
-        "additions": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "author": {
-          "type": "string"
-        },
-        "base": {
-          "$ref": "#/$defs/Branch"
-        },
-        "body": {
-          "type": "string"
-        },
-        "changedFiles": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "deletions": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "draft": {
-          "type": "boolean"
-        },
-        "head": {
-          "$ref": "#/$defs/Branch"
-        },
-        "maintainerCanModify": {
-          "type": "boolean"
-        },
-        "mergeable": {
-          "type": "boolean"
-        },
-        "mergeableState": {
-          "type": "string"
-        },
-        "mergedAt": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "number": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "repository": {
-          "type": "string"
-        },
-        "state": {
-          "allOf": [
-            {
-              "enum": [
-                "open",
-                "closed"
-              ]
-            }
-          ],
-          "type": "string"
-        },
-        "title": {
-          "type": "string"
-        },
-        "updatedAt": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "url": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "repository",
-        "number",
-        "title",
-        "body",
-        "state",
-        "url",
-        "author",
-        "draft",
-        "head",
-        "base",
-        "updatedAt"
       ],
       "type": "object"
     },
@@ -1423,92 +2547,12 @@
       "$ref": "#/$defs/ReplyReviewCommentInput"
     },
     "ReplyPullRequestCommentV1Output": {
-      "$ref": "#/$defs/ReviewComment"
+      "$ref": "#/$defs/ReplyPullRequestCommentV1OutputWireReviewComment"
     },
-    "ReplyReviewCommentInput": {
-      "additionalProperties": false,
-      "properties": {
-        "body": {
-          "maxLength": 65536,
-          "minLength": 1,
-          "type": "string"
-        },
-        "commentId": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
-        },
-        "number": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
-        },
-        "repository": {
-          "maxLength": 256,
-          "minLength": 3,
-          "type": "string"
-        }
-      },
-      "required": [
-        "repository",
-        "number",
-        "commentId",
-        "body"
-      ],
-      "type": "object"
+    "ReplyPullRequestCommentV1OutputInstantTimestamp": {
+      "type": "string"
     },
-    "Review": {
-      "additionalProperties": false,
-      "properties": {
-        "author": {
-          "type": "string"
-        },
-        "body": {
-          "type": "string"
-        },
-        "commitId": {
-          "type": "string"
-        },
-        "id": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "state": {
-          "type": "string"
-        },
-        "submittedAt": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "url": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "url",
-        "author",
-        "body",
-        "state"
-      ],
-      "type": "object"
-    },
-    "ReviewComment": {
+    "ReplyPullRequestCommentV1OutputWireReviewComment": {
       "additionalProperties": false,
       "properties": {
         "author": {
@@ -1521,8 +2565,7 @@
           "type": "string"
         },
         "createdAt": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/$defs/ReplyPullRequestCommentV1OutputInstantTimestamp"
         },
         "diffHunk": {
           "type": "string"
@@ -1594,8 +2637,7 @@
           "type": "string"
         },
         "updatedAt": {
-          "format": "date-time",
-          "type": "string"
+          "$ref": "#/$defs/ReplyPullRequestCommentV1OutputInstantTimestamp"
         },
         "url": {
           "type": "string"
@@ -1617,12 +2659,62 @@
       ],
       "type": "object"
     },
+    "ReplyReviewCommentInput": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "body": {
+              "maxLength": 65536
+            }
+          }
+        }
+      ],
+      "properties": {
+        "body": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "commentId": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "number",
+        "commentId",
+        "body"
+      ],
+      "type": "object"
+    },
     "ReviewCommentPage": {
       "additionalProperties": false,
       "properties": {
         "comments": {
           "items": {
-            "$ref": "#/$defs/ReviewComment"
+            "$ref": "#/$defs/ListPullRequestCommentsV1OutputWireReviewComment"
           },
           "type": "array"
         },
@@ -1655,7 +2747,7 @@
         },
         "reviews": {
           "items": {
-            "$ref": "#/$defs/Review"
+            "$ref": "#/$defs/ListPullRequestReviewsV1OutputWireReview"
           },
           "type": "array"
         }
@@ -1693,13 +2785,64 @@
       "$ref": "#/$defs/SubmitReviewInput"
     },
     "SubmitPullRequestReviewV1Output": {
-      "$ref": "#/$defs/Review"
+      "$ref": "#/$defs/SubmitPullRequestReviewV1OutputWireReview"
+    },
+    "SubmitPullRequestReviewV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "SubmitPullRequestReviewV1OutputWireReview": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "commitId": {
+          "type": "string"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "submittedAt": {
+          "$ref": "#/$defs/SubmitPullRequestReviewV1OutputInstantTimestamp"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "author",
+        "body",
+        "state"
+      ],
+      "type": "object"
     },
     "SubmitReviewInput": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "body": {
+              "maxLength": 65536
+            }
+          }
+        }
+      ],
       "properties": {
         "body": {
-          "maxLength": 65536,
           "type": "string"
         },
         "comments": {
@@ -1709,9 +2852,13 @@
           "type": "array"
         },
         "commitId": {
+          "allOf": [
+            {
+              "pattern": "^[0-9a-fA-F]{40}$"
+            }
+          ],
           "description": "Exact inspected commit SHA to review; never defaults to a newer head.",
           "minLength": 1,
-          "pattern": "^[0-9a-fA-F]{40}$",
           "type": "string"
         },
         "event": {
@@ -1750,59 +2897,22 @@
       ],
       "type": "object"
     },
-    "ThreadInput": {
-      "additionalProperties": false,
-      "properties": {
-        "limit": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "maximum": 100,
-          "minimum": 1,
-          "type": "integer"
-        },
-        "number": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
-        },
-        "page": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
-        },
-        "repository": {
-          "maxLength": 256,
-          "minLength": 3,
-          "type": "string"
-        }
-      },
-      "required": [
-        "repository",
-        "number",
-        "page",
-        "limit"
-      ],
-      "type": "object"
+    "UpdateIssueCommentV1Input": {
+      "$ref": "#/$defs/UpdateIssueCommentV1InputWireUpdateCommentInput"
     },
-    "UpdateCommentInput": {
+    "UpdateIssueCommentV1InputWireUpdateCommentInput": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "body": {
+              "maxLength": 65536
+            }
+          }
+        }
+      ],
       "properties": {
         "body": {
-          "maxLength": 65536,
           "minLength": 1,
           "type": "string"
         },
@@ -1829,14 +2939,64 @@
       ],
       "type": "object"
     },
-    "UpdateIssueCommentV1Input": {
-      "$ref": "#/$defs/UpdateCommentInput"
-    },
     "UpdateIssueCommentV1Output": {
-      "$ref": "#/$defs/Comment"
+      "$ref": "#/$defs/UpdateIssueCommentV1OutputWireComment"
+    },
+    "UpdateIssueCommentV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "UpdateIssueCommentV1OutputWireComment": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/UpdateIssueCommentV1OutputInstantTimestamp"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/UpdateIssueCommentV1OutputInstantTimestamp"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "author",
+        "body",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
     },
     "UpdateIssueInput": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "body": {
+              "maxLength": 65536
+            },
+            "title": {
+              "maxLength": 256
+            }
+          }
+        }
+      ],
       "properties": {
         "assignees": {
           "description": "Replaces the assignee set; [] clears it. Omit to preserve it.",
@@ -1846,7 +3006,6 @@
           "type": "array"
         },
         "body": {
-          "maxLength": 65536,
           "type": "string"
         },
         "duplicateIssueId": {
@@ -1907,7 +3066,6 @@
           "type": "string"
         },
         "title": {
-          "maxLength": 256,
           "minLength": 1,
           "type": "string"
         }
@@ -1922,13 +3080,252 @@
       "$ref": "#/$defs/UpdateIssueInput"
     },
     "UpdateIssueV1Output": {
-      "$ref": "#/$defs/Issue"
+      "$ref": "#/$defs/UpdateIssueV1OutputWireIssue"
+    },
+    "UpdateIssueV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "UpdateIssueV1OutputWireIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "assignees": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "author": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "labels": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "pullRequest": {
+          "type": "boolean"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "state": {
+          "allOf": [
+            {
+              "enum": [
+                "open",
+                "closed"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "stateReason": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/UpdateIssueV1OutputInstantTimestamp"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "repository",
+        "number",
+        "title",
+        "body",
+        "state",
+        "url",
+        "author",
+        "pullRequest",
+        "updatedAt",
+        "labels",
+        "assignees"
+      ],
+      "type": "object"
     },
     "UpdatePullRequestCommentV1Input": {
-      "$ref": "#/$defs/UpdateCommentInput"
+      "$ref": "#/$defs/UpdatePullRequestCommentV1InputWireUpdateCommentInput"
+    },
+    "UpdatePullRequestCommentV1InputWireUpdateCommentInput": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "body": {
+              "maxLength": 65536
+            }
+          }
+        }
+      ],
+      "properties": {
+        "body": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "commentId": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "commentId",
+        "body"
+      ],
+      "type": "object"
     },
     "UpdatePullRequestCommentV1Output": {
-      "$ref": "#/$defs/ReviewComment"
+      "$ref": "#/$defs/UpdatePullRequestCommentV1OutputWireReviewComment"
+    },
+    "UpdatePullRequestCommentV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "UpdatePullRequestCommentV1OutputWireReviewComment": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "commitId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/UpdatePullRequestCommentV1OutputInstantTimestamp"
+        },
+        "diffHunk": {
+          "type": "string"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "inReplyTo": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "line": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "originalCommitId": {
+          "type": "string"
+        },
+        "originalLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        },
+        "reviewId": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "side": {
+          "type": "string"
+        },
+        "startLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "startSide": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/UpdatePullRequestCommentV1OutputInstantTimestamp"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "author",
+        "body",
+        "createdAt",
+        "updatedAt",
+        "reviewId",
+        "path",
+        "diffHunk",
+        "commitId",
+        "originalCommitId",
+        "side"
+      ],
+      "type": "object"
     }
   }
 }

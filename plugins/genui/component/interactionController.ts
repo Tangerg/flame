@@ -9,7 +9,7 @@ import {
   pluginMethod,
   type PluginCommandRecovery,
 } from "@flame/runtime-client";
-import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
 import { Presentation, type Action } from "../contracts/document";
 

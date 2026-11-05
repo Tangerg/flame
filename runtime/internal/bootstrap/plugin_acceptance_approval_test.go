@@ -37,7 +37,7 @@ func TestPluginAcceptanceApprovalStaleAfterReleaseChange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = scopemcp.Register(remote, executable); err != nil {
+	if err = scopemcp.Register(remote, bindRegisteredTool(t, executable)); err != nil {
 		t.Fatal(err)
 	}
 	var sessions atomic.Int32
@@ -77,7 +77,7 @@ func TestPluginAcceptanceApprovalStaleAfterReleaseChange(t *testing.T) {
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
 	})}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}

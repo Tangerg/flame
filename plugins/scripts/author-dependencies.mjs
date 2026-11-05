@@ -248,6 +248,9 @@ export async function authorDependencies({
     const candidate = candidates.get(name);
     if (!candidate) {
       (development ? devDependencies : dependencies)[name] = version(name);
+      const types = `@types/${name.startsWith("@") ? name.slice(1).replace("/", "__") : name}`;
+      if (Object.hasOwn(manifest.devDependencies ?? {}, types))
+        devDependencies[types] = version(types);
       visited.add(name);
       return;
     }

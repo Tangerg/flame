@@ -1,6 +1,6 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseJSON } from "@qimu/node";
+import { parseJSON } from "@flame/backend-sdk/mcp";
 
 const marker = join(process.env.PLUGIN_DATA!, "response-lost");
 const write = process.stdout.write.bind(process.stdout);

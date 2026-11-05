@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type userMemory map[mcpserver.ServerName]mcpserver.Server
@@ -47,8 +48,8 @@ type serverRead struct {
 }
 
 func TestRegistryRefusesMissingRequiredBindingBeforeAcquiringLaunchResources(t *testing.T) {
-	contract := requirementContract(t, "consumer", portable.Collection)
-	dependency := requirementContract(t, "model", portable.Selection)
+	contract := requirementContract(t, "consumer", plugincontract.Collection)
+	dependency := requirementContract(t, "model", plugincontract.Selection)
 	root := requirementSnapshot(t, testsupport.InstallationID(t), "consumer", contract, plugin.Requirement{ID: "model", Contract: dependency.Identity()})
 	store := requirementInstallations{snapshots: []plugin.Snapshot{root}}
 	packages := &singleServerPackages{}
@@ -282,7 +283,7 @@ func TestRegistryResolvesOneServerPerOrigin(t *testing.T) {
 					t.Fatal("pure binding capture acquired launch resources")
 				}
 				if _, err := registry.Connection(t.Context(), tt.id); !errors.Is(err, plugin.ErrInvalid) {
-					t.Fatalf("installed source escaped Qimu: %v", err)
+					t.Fatalf("installed source escaped Frame: %v", err)
 				}
 			} else {
 				server, err := registry.Connection(t.Context(), tt.id)

@@ -7,13 +7,15 @@ import (
 	"fmt"
 	"slices"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame"
+
+	"github.com/Tangerg/frame/sqlite"
 )
 
 type referenceWriteKey struct{}
@@ -23,12 +25,12 @@ type referenceWrite struct {
 }
 
 // PluginReferenceTransactor is the stable checkpoint commit port bound by Open.
-// It joins the original product write-set to Qimu's one
+// It joins the original product write-set to Frame's one
 // admission and stable storage settlement. Product receipts remain in fn's
 // original tables; the framework receipt identifies only this storage attempt.
-type PluginReferenceTransactor func(ctx context.Context, host *qimu.Host, identity string, checkpoint runs.ExecutorCheckpoint, fn func(context.Context) error) error
+type PluginReferenceTransactor func(ctx context.Context, host *frame.Host, identity string, checkpoint runs.ExecutorCheckpoint, fn func(context.Context) error) error
 
-func (b *Bundle) commitPluginReferences(ctx context.Context, host *qimu.Host, identity string, checkpoint runs.ExecutorCheckpoint, fn func(context.Context) error) error {
+func (b *Bundle) commitPluginReferences(ctx context.Context, host *frame.Host, identity string, checkpoint runs.ExecutorCheckpoint, fn func(context.Context) error) error {
 	if host == nil || host.Admission() != b.Admission || identity == "" || fn == nil {
 		return errors.New("persistence: original host, checkpoint identity and write-set are required")
 	}
@@ -41,10 +43,10 @@ func (b *Bundle) commitPluginReferences(ctx context.Context, host *qimu.Host, id
 		return err
 	}
 	request, err := json.Marshal(struct {
-		Kind       string           `json:"kind"`
-		Identity   string           `json:"identity"`
-		Checkpoint integrity.Digest `json:"checkpoint"`
-	}{"execution.checkpoint", identity, integrity.Hash(encoded)})
+		Kind       string            `json:"kind"`
+		Identity   string            `json:"identity"`
+		Checkpoint framevalue.Digest `json:"checkpoint"`
+	}{"execution.checkpoint", identity, framevalue.Hash(encoded)})
 	if err != nil {
 		return err
 	}
@@ -72,7 +74,7 @@ func (b *Bundle) commitPluginReferences(ctx context.Context, host *qimu.Host, id
 				}
 				installation, exists := host.Installation(resource.InstallationID.Host())
 				if !exists || !installation.Enabled || installation.Release.String() != resource.Digest.String() {
-					return fmt.Errorf("%w: retained content source changed", qimu.ErrStaleBinding)
+					return fmt.Errorf("%w: retained content source changed", frame.ErrStaleBinding)
 				}
 			}
 			return fn(context.WithValue(txCtx, referenceWriteKey{}, referenceWrite{checkpoint: checkpoint}))
@@ -118,14 +120,14 @@ func (b *Bundle) commitPluginWrite(ctx context.Context, request []byte, fn func(
 		return err
 	}
 	settlement, err := b.PluginUses.CommitUnder(ctx, id, request, func(admitted context.Context, executor sqlite.Executor) ([]byte, error) {
-		if err := b.Qimu.WithTransaction(admitted, executor, fn); err != nil {
+		if err := b.db.withExecutor(admitted, executor, fn); err != nil {
 			return nil, err
 		}
 		return request, nil
 	}, nil)
-	if settlement.State == sqlite.Indeterminate || !settlement.Synchronized {
+	if settlement.State == frame.CommitIndeterminate || !settlement.Synchronized {
 		b.Admission.RequireRecovery(errors.Join(sqlite.ErrUnsettled, err))
-		return errors.Join(qimu.ErrRecoveryRequired, err)
+		return errors.Join(frame.ErrRecoveryRequired, err)
 	}
 	return errors.Join(err, b.PluginUses.CompactSettledUnder(ctx))
 }
@@ -142,7 +144,7 @@ func (b *Bundle) RecoverPluginBindings(ctx context.Context) error {
 		return err
 	}
 	for _, settlement := range pending {
-		if settlement.State != sqlite.Committed && settlement.State != sqlite.NotCommitted {
+		if settlement.State != frame.CommitSucceeded && settlement.State != frame.CommitRejected {
 			return sqlite.ErrUnsettled
 		}
 		if err := b.PluginUses.Confirm(ctx, settlement.ID); err != nil {
@@ -157,7 +159,7 @@ func (b *Bundle) RecoverPluginBindings(ctx context.Context) error {
 // no copied registry can outlive their decision.
 func (b *Bundle) PendingPluginBindings(ctx context.Context) ([]plugin.Activation, error) {
 	var result []plugin.Activation
-	err := sqlite.RunReadSnapshot(ctx, b.db, func(ctx context.Context) error {
+	err := b.db.read(ctx, func(ctx context.Context) error {
 		commands, err := newPluginCommandStore(b.db, nil).pendingBindings(ctx)
 		if err != nil {
 			return err

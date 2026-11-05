@@ -6,13 +6,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -99,18 +102,18 @@ func TestTrajectoryEndpointPreservesOriginalJSONAndSessionOnlyIdentity(t *testin
 		t.Fatal(err)
 	}
 	requestValue.Options.TopK = new(int64(9007199254740993))
-	request, err := jsonvalue.Encode(requestValue)
+	request, err := framevalue.EncodeJSON(requestValue)
 	if err != nil {
 		t.Fatal(err)
 	}
 	usage := &chat.Usage{InputTokens: 9007199254740993}
 	message := chat.NewAssistantMessage(chat.NewTextPart("original response"))
-	response, err := jsonvalue.Encode(&chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Usage: usage}})
+	response, err := framevalue.EncodeJSON(&chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Usage: usage}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation := modelref.EndpointInvocation{ID: "endpoint_original", Caller: portable.Invocation{ID: "logical_original", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "logical_original"}}, Provider: "anthropic", Model: "captured-model", StartedAt: time.Unix(100, 0).UTC(), Request: modelref.ChatEndpointRequest{Chat: requestValue}}
-	input, err := jsonvalue.Encode(invocation)
+	invocation := modelref.EndpointInvocation{ID: "endpoint_original", Caller: framemcp.Invocation{ID: "logical_original", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "logical_original"}}, Provider: "anthropic", Model: "captured-model", StartedAt: time.Unix(100, 0).UTC(), Request: modelref.ChatEndpointRequest{Chat: requestValue}}
+	input, err := framevalue.EncodeJSON(invocation)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,7 +10,7 @@ import {
   digestJSON,
   parseJSON,
   type CapabilityDescriptor,
-} from "@qimu/node";
+} from "@flame/backend-sdk/mcp";
 import sample from "@flame/runtime-client/testing/samples/usageSummary.json";
 import { Archive } from "./archive";
 import { LIMITS } from "../contracts/limits";
@@ -23,8 +23,8 @@ const contract = new Capability(
     ),
   ) as CapabilityDescriptor,
 );
-const capture = contract.method("flame.usage-reports/capture.v1").descriptor
-  .name;
+const capture = contract.portable.method("flame.usage-reports/capture.v1")
+  .descriptor.name;
 const resources: Array<() => void> = [];
 afterEach(() => {
   for (const close of resources.splice(0).reverse()) close();
@@ -249,8 +249,8 @@ it("exposes corrupted snapshots and outcomes instead of reporting an empty archi
     expect(
       archive.receipt({
         id: "remove",
-        method: contract.method("flame.usage-reports/delete.v1").descriptor
-          .name,
+        method: contract.portable.method("flame.usage-reports/delete.v1")
+          .descriptor.name,
         inputDigest: digestJSON({ id: saved.id }),
       }),
     ).toEqual({ found: false });

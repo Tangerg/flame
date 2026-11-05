@@ -8,12 +8,12 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/grid"
-	"github.com/Tangerg/oolong/core/layout"
-	"github.com/Tangerg/oolong/core/text"
-	"github.com/Tangerg/oolong/highlight"
+	"github.com/Tangerg/oolong/extensions/highlight"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/text"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 const (
@@ -24,7 +24,7 @@ const (
 // toolDisclosure is the shared interrupt contract for an individual tool or
 // a semantic group of adjacent tools.
 type toolDisclosure interface {
-	headless.Block
+	base.Block
 	SetExpanded(bool)
 	Expandable() bool
 	Expanded() bool
@@ -48,14 +48,14 @@ type toolBlock struct {
 	call         conversation.ToolCall
 	presentation toolPresentation
 	expanded     bool
-	body         []headless.Block
+	body         []base.Block
 	observers    readerDocumentObservers
 }
 
 var (
-	_ headless.Block         = (*toolBlock)(nil)
-	_ headless.TextProjector = (*toolBlock)(nil)
-	_ mutableToolBlock       = (*toolBlock)(nil)
+	_ base.Block         = (*toolBlock)(nil)
+	_ base.TextProjector = (*toolBlock)(nil)
+	_ mutableToolBlock   = (*toolBlock)(nil)
 )
 
 func newToolBlock(p blockPresentation, block conversation.Block) *toolBlock {
@@ -161,7 +161,7 @@ func (t *toolBlock) Rows(width int) []text.Row {
 		bodyWidth := max(width-toolContentInset, 1)
 		for _, block := range t.body {
 			height := block.HeightForWidth(bodyWidth)
-			if copyable, ok := block.(headless.TextProjector); ok {
+			if copyable, ok := block.(base.TextProjector); ok {
 				copied := copyable.Rows(bodyWidth)
 				for i := range min(len(copied), height) {
 					copied[i].Offset += toolContentInset
@@ -241,8 +241,8 @@ func (t *toolBlock) readerDocument() readerDocument {
 	return readerDocument{Title: t.presentation.Label, Detail: status, Sections: slices.Clone(t.presentation.Sections)}
 }
 
-func renderToolSections(p blockPresentation, sections []toolSection, truncate bool) []headless.Block {
-	blocks := make([]headless.Block, 0, len(sections))
+func renderToolSections(p blockPresentation, sections []toolSection, truncate bool) []base.Block {
+	blocks := make([]base.Block, 0, len(sections))
 	for _, section := range sections {
 		if section.Style == toolSectionDiffRows {
 			blocks = append(blocks, renderDiffRows(p.Theme, section.Rows))

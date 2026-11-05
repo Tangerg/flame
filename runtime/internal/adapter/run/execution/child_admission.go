@@ -7,46 +7,45 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
 func (i *interactionSession) admitProcess(
 	ctx context.Context,
-	admission agent.ProcessAdmission,
+	admission scoperun.ProcessAdmission,
 ) error {
 	if !admission.Valid() {
 		return errors.New("execution: Interaction received an invalid Process admission")
 	}
-	relation := admission.Relation()
+	relation := admission.ProcessID()
 	i.state.mu.Lock()
 	deployments := i.state.deployments
 	i.state.mu.Unlock()
 	if deployments == nil {
 		return errors.New("execution: Interaction deployments are unavailable")
 	}
-	if relation.IsRoot() {
-		if admission.DeploymentRef() != deployments.root.DeploymentRef() {
+	if relation.Depth() == 0 {
+		if admission.ProgramRef() != deployments.root.ProgramRef() {
 			return errors.New("execution: Interaction root admission changed Deployment")
 		}
 		i.state.mu.Lock()
 		defer i.state.mu.Unlock()
-		if i.state.admittedProcessID.Valid() && i.state.admittedProcessID != relation.ProcessID() {
+		if i.state.admittedProcessID.Valid() && i.state.admittedProcessID != relation {
 			return errors.New("execution: Interaction root admission identity changed")
 		}
-		i.state.admittedProcessID = relation.ProcessID()
+		i.state.admittedProcessID = relation
 		return nil
 	}
-	if !deployments.managedChild(admission.DeploymentRef()) {
+	if !deployments.managedChild(admission.ProgramRef()) {
 		return errors.New("execution: unmanaged child Process is outside the Runtime projection contract")
 	}
-	// An ordinary Tool call runs as a child Process of the Interaction it belongs
-	// to. It is projected as a Tool Item of its parent Run by the Tool boundary,
-	// so admission has no separate product fact to commit.
-	if deployments.toolChild(admission.DeploymentRef()) {
+	// The workflow's inner Interaction belongs to its already admitted task Run.
+	if deployments.interactionChild(admission.ProgramRef()) {
 		return nil
 	}
-	parentID, _ := relation.ParentID()
-	childKey, _ := relation.ChildKey()
+	parentID, _ := relation.Parent()
+	childKey, _ := relation.Key()
 	identity := delegateCallIdentity{parentID: parentID, childKey: childKey}
 	i.state.mu.Lock()
 	managed := i.state.delegateCalls[identity]
@@ -56,7 +55,7 @@ func (i *interactionSession) admitProcess(
 	}
 	managed.mu.Lock()
 	defer managed.mu.Unlock()
-	if managed.target != admission.DeploymentRef() || managed.parentRelation.ProcessID() != parentID {
+	if managed.target != admission.ProgramRef() || managed.parentRelation != parentID {
 		return errors.New("execution: child admission differs from its Delegate binding")
 	}
 	if managed.admission.Valid() {
@@ -71,12 +70,12 @@ func (i *interactionSession) admitProcess(
 		return fmt.Errorf("execution: commit Delegate call start: %w", err)
 	}
 	if err := i.rememberToolMetadata(toolResultMetadata{
-		MemberID: parent.MemberID, Start: managed.toolStart(),
+		MemberID: parent.MemberID, ProcessID: managed.parentRelation.String(), Start: managed.toolStart(),
 	}); err != nil {
 		return err
 	}
 	member := runs.ExecutorMember{
-		MemberID: relation.ProcessID().String(), ParentID: parentID.String(),
+		MemberID: relation.String(), ParentID: parent.MemberID,
 		SpawnCallID: managed.call.ID,
 	}
 	request, receipt := runs.NewChildRunReservationRequest()
@@ -95,9 +94,9 @@ func (i *interactionSession) admitProcess(
 	return nil
 }
 
-func sameManagedAdmission(left, right agent.ProcessAdmission) bool {
-	return left.Valid() && right.Valid() && left.Relation() == right.Relation() &&
-		left.DeploymentRef() == right.DeploymentRef() &&
+func sameManagedAdmission(left, right scoperun.ProcessAdmission) bool {
+	return left.Valid() && right.Valid() && left.ProcessID() == right.ProcessID() &&
+		left.ProgramRef() == right.ProgramRef() &&
 		left.Descriptor().Digest() == right.Descriptor().Digest() &&
 		left.Budget() == right.Budget() &&
 		slices.Equal(left.Capabilities().Values(), right.Capabilities().Values())

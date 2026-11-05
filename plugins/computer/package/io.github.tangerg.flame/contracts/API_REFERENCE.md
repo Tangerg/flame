@@ -15,6 +15,6 @@ Generated from the feature's Go-owned method contracts.
 | `flame.computer/stop.v1` | command | installation | Human-only: interrupt the exact current operation and retire its engine before any later operation can run. A missing original result remains unknown. |
 | `flame.computer/watch.v1` | query | installation | Observe bounded complete snapshots of the computer-control owner. Disconnecting this observation does not close the session. Stream chunks: schema.json#/$defs/WatchV1Chunk; final result: schema.json#/$defs/WatchV1Output. |
 
-Capability `flame.computer.v1` uses `collection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.qimu/portable/1`.
+Capability `flame.computer.v1` exposes the declared methods. Required backend protocol: `io.github.tangerg.frame/portable/1`.
 
 `capability.generated.json` preserves the canonical callable contract; `schema.json` and the method references are presentation projections.

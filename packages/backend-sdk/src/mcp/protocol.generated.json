@@ -1,0 +1,59 @@
+{
+  "constants": {
+    "protocol": "io.github.tangerg.flame/plugin/1",
+    "portableProtocol": "io.github.tangerg.frame/portable/1",
+    "invokeMethod": "io.github.tangerg.flame/operations.invoke",
+    "describeMethod": "io.github.tangerg.flame/operations.describe",
+    "validateMethod": "io.github.tangerg.flame/operations.validate",
+    "setupMethod": "io.github.tangerg.flame/operations.setup",
+    "activateMethod": "io.github.tangerg.flame/operations.activate",
+    "callbackMetadataKey": "io.github.tangerg.flame/callback.v1",
+    "streamMetadataKey": "io.github.tangerg.flame/stream.v1",
+    "CallHeader": "Flame-Call",
+    "InvocationHeader": "Flame-Invocation",
+    "InvocationMetadataKey": "io.github.tangerg.flame/invocation",
+    "ReceiptMethod": "io.github.tangerg.flame/commands.get",
+    "maxCommandIDCharacters": 256
+  },
+  "limits": {
+    "maxDescriptorBytes": 1048576,
+    "maxJSONDepth": 64,
+    "maxDescriptorNodes": 16384,
+    "maxValueNodes": 33554432,
+    "maxMethods": 256,
+    "maxTokenBytes": 256,
+    "maxCommandIDCharacters": 256,
+    "maxReferences": 1024,
+    "maxReferenceDepth": 64,
+    "maxReferenceWork": 16384,
+    "maxValidationWork": 268435456,
+    "maxEqualityWork": 1048576,
+    "maxNumberBytes": 1024,
+    "maxAbsExponent": 4096,
+    "maxPatternBytes": 512,
+    "maxPatternRepeat": 256,
+    "maxSizeConstraint": 9007199254740991
+  },
+  "receipt": "{\"description\":\"io.github.tangerg.flame/commands.get\",\"input\":{\"$defs\":{\"mcp.ReceiptRequest\":{\"$ref\":\"#/$defs/mcp.receiptRequestWire\"},\"mcp.receiptRequestWire\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"maxLength\":256,\"minLength\":1}],\"type\":\"string\"},\"inputDigest\":{\"$ref\":\"#/$defs/value.Digest\"},\"method\":{\"type\":\"string\"}},\"required\":[\"id\",\"method\",\"inputDigest\"],\"type\":\"object\"},\"value.Digest\":{\"allOf\":[{\"pattern\":\"^[0-9a-f]{64}$\"}],\"type\":\"string\"}},\"$ref\":\"#/$defs/mcp.receiptRequestWire\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\"},\"kind\":\"query\",\"name\":\"io.github.tangerg.flame/commands.get\",\"output\":{\"$defs\":{\"mcp.Receipt\":{\"additionalProperties\":false,\"properties\":{\"found\":{\"type\":\"boolean\"},\"reply\":true},\"required\":[\"found\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"found\":{\"type\":\"boolean\"},\"reply\":true},\"required\":[\"found\"],\"type\":\"object\"},\"target\":\"installation\"}",
+  "receiptIdentity": "55011e47e32b1bed6fca5579eb1076ab1916fdcfdd93a11dc043453818a1d673",
+  "streamDelivery": "{\"description\":\"Deliver one ordered chunk to its captured stream consumer.\",\"input\":{\"$defs\":{\"mcp.deliveredChunk\":{\"additionalProperties\":false,\"properties\":{\"sequence\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"value\":true},\"required\":[\"sequence\",\"value\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"sequence\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"value\":true},\"required\":[\"sequence\",\"value\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.stream/deliver.v1\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"boolean\"},\"target\":\"call\"}",
+  "inputs": [
+    {
+      "source": "{\"z\":1.0,\"a\":9007199254740993}",
+      "canonical": "{\"a\":9007199254740993,\"z\":1.0}",
+      "digest": "617ca0a3e3ea33d0f066dc317d2e8fe8813e26743dd231873b0ae981b44bbe4d"
+    },
+    {
+      "source": "{\"a\":1e+20,\"n\":-0,\"s\":\"\\u0061\"}",
+      "canonical": "{\"a\":1e+20,\"n\":-0,\"s\":\"a\"}",
+      "digest": "80448163483a5752502b16637d2f93a382ac42b32419c8ea172288cc5d66fdf0"
+    },
+    {
+      "source": "{\"\\ud83d\\ude00\":1,\"\\uffff\":2,\"a\":[false,null]}",
+      "canonical": "{\"a\":[false,null],\"😀\":1,\"￿\":2}",
+      "digest": "48248aed92c5a6c4097e612d4a63fd82f4b21e952c605ab5979d593d2655f765"
+    }
+  ],
+  "capability": "{\"composition\":\"collection\",\"methods\":[{\"description\":\"io.github.tangerg.flame/commands.get\",\"input\":{\"$defs\":{\"mcp.ReceiptRequest\":{\"$ref\":\"#/$defs/mcp.receiptRequestWire\"},\"mcp.receiptRequestWire\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"maxLength\":256,\"minLength\":1}],\"type\":\"string\"},\"inputDigest\":{\"$ref\":\"#/$defs/value.Digest\"},\"method\":{\"type\":\"string\"}},\"required\":[\"id\",\"method\",\"inputDigest\"],\"type\":\"object\"},\"value.Digest\":{\"allOf\":[{\"pattern\":\"^[0-9a-f]{64}$\"}],\"type\":\"string\"}},\"$ref\":\"#/$defs/mcp.receiptRequestWire\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\"},\"kind\":\"query\",\"name\":\"￿\",\"output\":{\"$defs\":{\"mcp.Receipt\":{\"additionalProperties\":false,\"properties\":{\"found\":{\"type\":\"boolean\"},\"reply\":true},\"required\":[\"found\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"found\":{\"type\":\"boolean\"},\"reply\":true},\"required\":[\"found\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"io.github.tangerg.flame/commands.get\",\"input\":{\"$defs\":{\"mcp.ReceiptRequest\":{\"$ref\":\"#/$defs/mcp.receiptRequestWire\"},\"mcp.receiptRequestWire\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"maxLength\":256,\"minLength\":1}],\"type\":\"string\"},\"inputDigest\":{\"$ref\":\"#/$defs/value.Digest\"},\"method\":{\"type\":\"string\"}},\"required\":[\"id\",\"method\",\"inputDigest\"],\"type\":\"object\"},\"value.Digest\":{\"allOf\":[{\"pattern\":\"^[0-9a-f]{64}$\"}],\"type\":\"string\"}},\"$ref\":\"#/$defs/mcp.receiptRequestWire\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\"},\"kind\":\"query\",\"name\":\"😀\",\"output\":{\"$defs\":{\"mcp.Receipt\":{\"additionalProperties\":false,\"properties\":{\"found\":{\"type\":\"boolean\"},\"reply\":true},\"required\":[\"found\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"found\":{\"type\":\"boolean\"},\"reply\":true},\"required\":[\"found\"],\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.flame/plugin/1\",\"reference\":\"﻿contract\",\"scope\":\"installation\"}",
+  "capabilityIdentity": "30c3065df3ad149addb08340c9583d939b02dc846dfa906e043e997fdbc3c6a5"
+}

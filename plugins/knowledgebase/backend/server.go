@@ -7,12 +7,12 @@ import (
 	"strings"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
 	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
 )
@@ -34,7 +34,7 @@ func newServer(library *library) (*sdk.Server, error) {
 		return nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.knowledgebase", Version: "1.0.0"}, nil)
-	backend, err := qimumcp.NewBackend(server)
+	backend, err := pluginmcp.NewBackend(server)
 	if err != nil {
 		return nil, err
 	}
@@ -59,14 +59,14 @@ func newServer(library *library) (*sdk.Server, error) {
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, library.store.db),
-		contracts.Import.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.ImportInput]) (knowledge.Header, error) {
+		contracts.Import.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ImportInput]) (knowledge.Header, error) {
 			input, err := command.RequestInput()
 			if err != nil {
 				return knowledge.Header{}, err
 			}
 			return library.importDocument(ctx, contracts.Import.Name(), string(command.ID), input)
 		}),
-		contracts.Reindex.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.DocumentInput]) (knowledge.Header, error) {
+		contracts.Reindex.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.DocumentInput]) (knowledge.Header, error) {
 			input, err := command.RequestInput()
 			if err != nil {
 				return knowledge.Header{}, err
@@ -76,16 +76,16 @@ func newServer(library *library) (*sdk.Server, error) {
 		pluginstorage.RegisterCommand(backend, library.store.db, contracts.Delete, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.DocumentInput) (bool, error) {
 			return library.store.delete(ctx, input.ID, input.ExpectedRevision)
 		}),
-		contracts.List.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ qimumcp.Command[struct{}]) ([]knowledge.Header, error) {
+		contracts.List.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ pluginmcp.Command[struct{}]) ([]knowledge.Header, error) {
 			return library.list(ctx)
 		}),
-		contracts.Read.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.ReadInput]) (wire.DocumentRead, error) {
+		contracts.Read.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ReadInput]) (wire.DocumentRead, error) {
 			return library.read(ctx, command.Input)
 		}),
-		contracts.Search.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.SearchInput]) ([]knowledge.Match, error) {
+		contracts.Search.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.SearchInput]) ([]knowledge.Match, error) {
 			return library.search(ctx, command.Input)
 		}),
-		contextMethod.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[pluginsdk.ModelContextRequest]) (pluginsdk.ModelContextResult, error) {
+		contextMethod.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginsdk.ModelContextRequest]) (pluginsdk.ModelContextResult, error) {
 			return library.contribute(ctx, command.Input)
 		}),
 		backend.BindCapability("knowledgebase", contracts.Capability),
@@ -103,7 +103,7 @@ func modelResult[T any](value T, err error) (T, error) {
 	if _, refused := classify(err); err == nil || !refused {
 		return value, err
 	}
-	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: chat.NewTextToolOutput(err.Error()), Cause: err})
+	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: tool.NewTextOutput(err.Error()), Cause: err})
 	if failureErr != nil {
 		return value, errors.Join(failureErr, err)
 	}

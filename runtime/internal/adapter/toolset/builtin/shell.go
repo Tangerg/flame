@@ -13,7 +13,6 @@ import (
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/content"
 )
@@ -250,7 +249,7 @@ func shellResult(result string, cause error) (string, error) {
 		return result, cause
 	}
 	callErr, err := toolcontract.NewCallError(toolcontract.CallErrorConfig{
-		Cause: cause, Evidence: chat.NewTextToolOutput(result),
+		Cause: cause, Evidence: toolcontract.NewTextOutput(result),
 	})
 	if err != nil {
 		return "", errors.Join(cause, err)

@@ -1,79 +1,174 @@
 package execution
 
 import (
+	"bytes"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 	"sync"
 
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+	"github.com/Tangerg/scope/agent/interaction"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// requestMaterial transfers one complete admitted provider request from reduction
-// to Call/Stream. Its contributed/transformed projection never enters Scope's
-// retained conversation or Options.
+// Prepared provider input is a Flame fact: contributed instructions and the
+// Session tail are deliberately absent from Scope's retained conversation. It
+// is persisted beside the log before the preparation Effect is acknowledged.
 type requestMaterial struct {
 	mu        sync.Mutex
-	byProcess map[agent.ProcessID]preparedRequestMaterial
+	byProcess map[scoperun.ProcessID]preparedRequestMaterial
 }
 
 type preparedRequestMaterial struct {
-	effectID agent.EffectID
+	effectID scoperun.EffectID
 	sequence uint64
 	request  *corechat.Request
 }
 
-func newRequestMaterial() requestMaterial {
-	return requestMaterial{byProcess: make(map[agent.ProcessID]preparedRequestMaterial)}
+type preparedRequestWire struct {
+	Reference       preparedModelReference `json:"reference"`
+	Request         *corechat.Request      `json:"request"`
+	EstimatedTokens int                    `json:"estimatedTokens"`
 }
 
-func (t *requestMaterial) prepare(invocation interaction.ModelInvocation, request *corechat.Request) error {
-	if !invocation.Valid() || request == nil {
+func newRequestMaterial() requestMaterial {
+	return requestMaterial{byProcess: make(map[scoperun.ProcessID]preparedRequestMaterial)}
+}
+
+func (t *requestMaterial) prepare(source modelCallSource, request *corechat.Request) error {
+	if !source.valid() || request == nil {
 		return errors.New("execution: prepare request material requires valid attribution")
 	}
-	processID := invocation.Relation().ProcessID()
+	request = request.Clone()
+	request.Messages = providerMessages(request.Messages)
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if _, exists := t.byProcess[processID]; exists {
-		return fmt.Errorf("execution: Process %s already has a prepared request material", processID)
+	if prior, exists := t.byProcess[source.process]; exists {
+		left, leftErr := json.Marshal(prior.request, json.Deterministic(true))
+		right, rightErr := json.Marshal(request, json.Deterministic(true))
+		if prior.effectID != source.effect || prior.sequence != source.sequence || leftErr != nil || rightErr != nil || !bytes.Equal(left, right) {
+			return fmt.Errorf("execution: Process %s already has different prepared request material", source.process)
+		}
+		return nil
 	}
-	t.byProcess[processID] = preparedRequestMaterial{
-		effectID: invocation.EffectID(), sequence: invocation.ModelCallSequence(),
-		request: request.Clone(),
+	t.byProcess[source.process] = preparedRequestMaterial{effectID: source.effect, sequence: source.sequence, request: request}
+	return nil
+}
+
+// Reading never retires a request. A crash after dispatch can leave the model
+// effect Unknown, and explicit replay still needs the original prepared input.
+func (t *requestMaterial) take(source modelCallSource) (preparedRequestMaterial, error) {
+	if !source.valid() {
+		return preparedRequestMaterial{}, errors.New("execution: model request requires valid attribution")
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	prepared, found := t.byProcess[source.process]
+	if !found || prepared.sequence != source.sequence {
+		return preparedRequestMaterial{}, fmt.Errorf("execution: model call %d of Process %s has no prepared input", source.sequence, source.process)
+	}
+	prepared.request = prepared.request.Clone()
+	return prepared, nil
+}
+
+func (t *requestMaterial) snapshot(history scoperun.Log, accounting *interactionAccounting) ([]preparedRequestWire, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	retired, err := settledPreparations(history, t.byProcess)
+	if err != nil {
+		return nil, err
+	}
+	var result []preparedRequestWire
+	for process, prepared := range t.byProcess {
+		if _, complete := retired[prepared.effectID]; complete {
+			continue
+		}
+		accounting.mu.Lock()
+		calibration := accounting.preparedContextByProcess[process]
+		accounting.mu.Unlock()
+		result = append(result, preparedRequestWire{
+			Reference: preparedModelReference{Process: process, Effect: prepared.effectID, Sequence: prepared.sequence},
+			Request:   prepared.request.Clone(), EstimatedTokens: calibration.estimated,
+		})
+	}
+	slices.SortFunc(result, func(left, right preparedRequestWire) int {
+		return strings.Compare(left.Reference.Process.String(), right.Reference.Process.String())
+	})
+	return result, nil
+}
+
+func (t *requestMaterial) acknowledge(history scoperun.Log) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	retired, err := settledPreparations(history, t.byProcess)
+	if err != nil {
+		return err
+	}
+	for process, prepared := range t.byProcess {
+		if _, complete := retired[prepared.effectID]; complete {
+			delete(t.byProcess, process)
+		}
 	}
 	return nil
 }
 
-// take releases the material prepared for exactly this invocation. Every model
-// call is reduced first, so a call without one is a broken invariant rather
-// than a request to send nothing.
-func (t *requestMaterial) take(invocation interaction.ModelInvocation) (preparedRequestMaterial, error) {
-	if !invocation.Valid() {
-		return preparedRequestMaterial{}, errors.New("execution: take request material requires valid attribution")
+func (t *requestMaterial) restore(records []preparedRequestWire, accounting *interactionAccounting) error {
+	prepared := make(map[scoperun.ProcessID]preparedRequestMaterial, len(records))
+	calibration := make(map[scoperun.ProcessID]preparedModelContext, len(records))
+	for _, record := range records {
+		ref := record.Reference
+		if !ref.valid() || record.Request == nil || record.Request.Validate() != nil || record.EstimatedTokens < 0 {
+			return errors.New("execution: invalid persisted provider request")
+		}
+		if _, exists := prepared[ref.Process]; exists {
+			return errors.New("execution: persisted provider request repeats one Process")
+		}
+		prepared[ref.Process] = preparedRequestMaterial{effectID: ref.Effect, sequence: ref.Sequence, request: record.Request.Clone()}
+		if record.EstimatedTokens > 0 {
+			calibration[ref.Process] = preparedModelContext{effectID: ref.Effect, sequence: ref.Sequence, estimated: record.EstimatedTokens}
+		}
 	}
-	processID := invocation.Relation().ProcessID()
 	t.mu.Lock()
-	defer t.mu.Unlock()
-	prepared, found := t.byProcess[processID]
-	if !found || prepared.effectID != invocation.EffectID() || prepared.sequence != invocation.ModelCallSequence() {
-		return preparedRequestMaterial{}, fmt.Errorf("execution: model call %d of Process %s has no prepared request material", invocation.ModelCallSequence(), processID)
-	}
-	delete(t.byProcess, processID)
-	return prepared, nil
+	t.byProcess = prepared
+	t.mu.Unlock()
+	accounting.mu.Lock()
+	accounting.preparedContextByProcess = calibration
+	accounting.mu.Unlock()
+	return nil
 }
 
-// discard releases material whose call exits before taking it. Identity is
-// matched under the lock so a stale exit cannot discard a later call's material.
-func (t *requestMaterial) discard(invocation interaction.ModelInvocation) {
-	if !invocation.Valid() {
-		return
+func settledPreparations(history scoperun.Log, prepared map[scoperun.ProcessID]preparedRequestMaterial) (map[scoperun.EffectID]struct{}, error) {
+	if len(prepared) == 0 {
+		return nil, nil
 	}
-	processID := invocation.Relation().ProcessID()
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	prepared, found := t.byProcess[processID]
-	if found && prepared.effectID == invocation.EffectID() && prepared.sequence == invocation.ModelCallSequence() {
-		delete(t.byProcess, processID)
+	models := make(map[scoperun.EffectID]preparedModelReference)
+	settled := make(map[scoperun.EffectID]struct{})
+	for _, entry := range history.Entries {
+		switch record := entry.Record.(type) {
+		case scoperun.EffectIntent:
+			preparation, owned := prepared[record.ID.Process]
+			if !owned || !preparation.effectID.Precedes(record.ID) {
+				continue
+			}
+			request, model, err := interaction.ModelRequestFromEffect(record.Effect)
+			if err != nil {
+				return nil, err
+			}
+			if model {
+				reference, _, err := modelPreparationReference(request.Messages)
+				if err != nil {
+					return nil, err
+				}
+				models[record.ID] = reference
+			}
+		case scoperun.EffectSettled:
+			if ref, model := models[record.ID]; model && record.Outcome.Status() != scoperun.SettlementStatusUnknown {
+				settled[ref.Effect] = struct{}{}
+			}
+		}
 	}
+	return settled, nil
 }

@@ -2,12 +2,13 @@ package goal
 
 import (
 	"errors"
+	"time"
+
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"time"
 )
 
 func (state Snapshot) WorkflowValue() goalworkflow.Value {

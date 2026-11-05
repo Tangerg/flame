@@ -5,7 +5,7 @@ import {
   type MCPServerInput,
   type MCPServerUpdateInput,
 } from "./input";
-import { parseJSON } from "@qimu/sdk/json";
+import { parseJSON } from "@frame/sdk/json";
 import { validateWire } from "@flame/runtime-client/validation";
 import {
   boundedMCPHandshakeTimeout,

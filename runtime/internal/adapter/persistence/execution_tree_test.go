@@ -15,8 +15,8 @@ func TestExecutionTreeWriterFencingSurvivesRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	store := newExecutorCheckpointStore(db)
-	first := executionTreeRecord{Sequence: 1, CommitID: "start", CommitDigest: "start", SessionID: "ses_tree", RootID: "root", Writer: "first", Digest: "cut1", Payload: []byte("first cut")}
+	store := newExecutorCheckpointStore(databaseFor(db))
+	first := executionTreeRecord{Sequence: 2, CommitID: "start", CommitDigest: "start", SessionID: "ses_tree", RootID: "root", Writer: "first", Digest: "cut1", Payload: []byte("first cut")}
 	if err := store.saveExecutionTreeRecord(ctx, "", "", first); err != nil {
 		t.Fatal(err)
 	}
@@ -24,7 +24,7 @@ func TestExecutionTreeWriterFencingSurvivesRestart(t *testing.T) {
 		t.Fatalf("repeat acknowledged head: %v", err)
 	}
 	next := first
-	next.Sequence, next.CommitID, next.CommitDigest = 0, "activate", "activate"
+	next.Sequence, next.CommitID, next.CommitDigest = 3, "activate", "activate"
 	next.Writer, next.Digest, next.Payload = "second", "cut2", []byte("activated cut")
 	if err := store.saveExecutionTreeRecord(ctx, "first", "cut1", next); err != nil {
 		t.Fatal(err)
@@ -37,7 +37,7 @@ func TestExecutionTreeWriterFencingSurvivesRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	store = newExecutorCheckpointStore(db)
+	store = newExecutorCheckpointStore(databaseFor(db))
 	head, found, err := store.loadExecutionTreeRecord(ctx, first.SessionID, first.RootID)
 	if err != nil || !found || head.Writer != next.Writer || string(head.Payload) != string(next.Payload) {
 		t.Fatalf("reopened head = %+v, %t, %v", head, found, err)
@@ -75,7 +75,7 @@ func TestExecutionTreeCommitIdentityRejectsContentCycles(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	store := newExecutorCheckpointStore(db)
+	store := newExecutorCheckpointStore(databaseFor(db))
 	first := executionTreeRecord{SessionID: "session", RootID: "root", Writer: "writer", Sequence: 1, CommitID: "checkpoint:1", CommitDigest: "commit:1", Digest: "waiting", Payload: []byte("waiting")}
 	if err := store.saveExecutionTreeRecord(ctx, "", "", first); err != nil {
 		t.Fatal(err)
@@ -96,12 +96,17 @@ func TestExecutionTreeCommitIdentityRejectsContentCycles(t *testing.T) {
 	if err := store.saveExecutionTreeRecord(ctx, paused.Writer, paused.Digest, resumed); err != nil {
 		t.Fatalf("current retry rejected: %v", err)
 	}
-	for _, sequence := range []uint64{2, 3, 5} {
+	for _, sequence := range []uint64{0, 2, 3} {
 		invalid := resumed
 		invalid.Sequence, invalid.CommitID = sequence, "new-checkpoint"
 		if err := store.saveExecutionTreeRecord(ctx, resumed.Writer, resumed.Digest, invalid); !errors.Is(err, errExecutionTreeConflict) {
 			t.Fatalf("sequence %d accepted: %v", sequence, err)
 		}
+	}
+	batched := resumed
+	batched.Sequence, batched.CommitID, batched.CommitDigest = 7, "batch:next", "batch:next"
+	if err := store.saveExecutionTreeRecord(ctx, resumed.Writer, resumed.Digest, batched); err != nil {
+		t.Fatalf("multi-record append rejected: %v", err)
 	}
 }
 
@@ -112,7 +117,7 @@ func TestExecutionTreeEffectIdentitySurvivesActivation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	store := newExecutorCheckpointStore(db)
+	store := newExecutorCheckpointStore(databaseFor(db))
 	head := executionTreeRecord{SessionID: "session", RootID: "root", Writer: "writer", Sequence: 1, CommitID: "start", CommitDigest: "start", Digest: "start", Payload: []byte("start")}
 	if err := store.saveExecutionTreeRecord(ctx, "", "", head); err != nil {
 		t.Fatal(err)
@@ -123,7 +128,7 @@ func TestExecutionTreeEffectIdentitySurvivesActivation(t *testing.T) {
 		t.Fatal(err)
 	}
 	activated := effect
-	activated.Writer, activated.Sequence, activated.CommitID, activated.CommitDigest, activated.Digest = "new-writer", 0, "activation:new-writer", "activation", "activated"
+	activated.Writer, activated.Sequence, activated.CommitID, activated.CommitDigest, activated.Digest = "new-writer", 3, "activation:new-writer", "activation", "activated"
 	if err := store.saveExecutionTreeRecord(ctx, effect.Writer, effect.Digest, activated); err != nil {
 		t.Fatal(err)
 	}
@@ -135,9 +140,9 @@ func TestExecutionTreeEffectIdentitySurvivesActivation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	store = newExecutorCheckpointStore(db)
+	store = newExecutorCheckpointStore(databaseFor(db))
 	replay := effect
-	replay.Writer, replay.Sequence = activated.Writer, 1
+	replay.Writer, replay.Sequence = activated.Writer, 4
 	if err := store.saveExecutionTreeRecord(ctx, activated.Writer, activated.Digest, replay); !errors.Is(err, errExecutionTreeConflict) {
 		t.Fatalf("effect re-admitted by new writer: %v", err)
 	}

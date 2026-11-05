@@ -7,13 +7,13 @@ import (
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 type remoteRuns struct{ client *runtimeclient.Client }
 
-func connectRunHost(ctx context.Context, ref qimumcp.CallbackRef) (runHost, func() error, error) {
+func connectRunHost(ctx context.Context, ref pluginmcp.CallbackRef) (runHost, func() error, error) {
 	client, err := runtimeclient.ConnectCallback(ctx, ref)
 	if err != nil {
 		return nil, nil, err

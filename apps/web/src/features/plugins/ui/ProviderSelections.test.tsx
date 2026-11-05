@@ -72,7 +72,7 @@ async function mountSelections(
     definePlugin({
       name: "test.provider-selection-read",
       setup(ctx) {
-        ctx.contribute(DATA_PROVIDER, {
+        ctx.contributions.add(DATA_PROVIDER, {
           key: PROVIDERS_KEY,
           fetcher: (_params, signal) => read(signal),
         });

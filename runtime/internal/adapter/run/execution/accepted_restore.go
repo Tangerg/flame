@@ -6,7 +6,8 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
 func (i *InteractionExecutor) StageAcceptedContinuation(ctx context.Context, continuation runs.ExecutionContinuation) (runs.ExecutorRef, error) {
@@ -32,37 +33,41 @@ func (i *InteractionExecutor) StageAcceptedContinuation(ctx context.Context, con
 	return ref, nil
 }
 
-func validateAcceptedPausedTree(cut interactionHandoff, head agent.TreeSnapshot, retired map[agent.ProcessID]bool) error {
+func validateAcceptedPausedTree(cut interactionHandoff, head scoperun.Log, retired map[scoperun.ProcessID]bool) error {
 	expected := 0
 	for id := range cut.progress {
 		if !retired[id] {
 			expected++
 		}
 	}
+	inspection, err := head.Inspect()
+	if err != nil {
+		return err
+	}
 	current := 0
-	for _, snapshot := range head.ProcessSnapshots() {
-		if !retired[snapshot.Relation().ProcessID()] {
+	for _, snapshot := range inspection.Processes {
+		if !retired[snapshot.ID] {
 			current++
 		}
 	}
-	if cut.rootID != head.RootID() || expected != current {
+	if cut.rootID != head.Root || expected != current {
 		return fmt.Errorf("%w: accepted tree membership changed", runs.ErrExecutorStateLost)
 	}
-	for _, snapshot := range head.ProcessSnapshots() {
-		if retired[snapshot.Relation().ProcessID()] {
+	for _, snapshot := range inspection.Processes {
+		if retired[snapshot.ID] {
 			continue
 		}
-		prior, found := cut.progress[snapshot.Relation().ProcessID()]
-		if !found || snapshot.Usage().CommittedSteps != prior.CommittedSteps || snapshot.Usage().PreparedEffects != prior.PreparedEffects {
+		prior, found := cut.progress[snapshot.ID]
+		if !found || snapshot.Usage.CommittedSteps != prior.CommittedSteps || snapshot.Usage.PreparedEffects != prior.PreparedEffects {
 			return fmt.Errorf("%w: accepted tree advanced beyond its handoff", runs.ErrExecutorStateLost)
 		}
 		if prior.Status.Terminal() {
-			if snapshot.Status() != prior.Status {
+			if snapshot.Status != prior.Status {
 				return fmt.Errorf("%w: terminal accepted member changed", runs.ErrExecutorStateLost)
 			}
 			continue
 		}
-		if prior.Status != agent.StatusPaused || snapshot.Status() != agent.StatusPaused || len(snapshot.UnknownEffectIDs()) != 0 {
+		if prior.Status != scoperun.StatusPaused || snapshot.Status != scoperun.StatusPaused || hasUnknownEffects(snapshot) {
 			return fmt.Errorf("%w: accepted member is outside its paused handoff", runs.ErrExecutorStateLost)
 		}
 	}
@@ -72,8 +77,8 @@ func validateAcceptedPausedTree(cut interactionHandoff, head agent.TreeSnapshot,
 // A committed child cancellation retires its product member before Scope drains
 // the subtree. Its old waits and subsequent cancellation progress cannot constrain
 // delivery or restoration of the surviving accepted handoff.
-func acceptedRetiredProcesses(cut interactionHandoff, head agent.TreeSnapshot, children map[agent.ProcessID]*managedDelegateCall) map[agent.ProcessID]bool {
-	retiredRoots := make(map[agent.ProcessID]bool)
+func acceptedRetiredProcesses(cut interactionHandoff, head scoperun.Log, children map[scoperun.ProcessID]*managedDelegateCall) map[scoperun.ProcessID]bool {
+	retiredRoots := make(map[scoperun.ProcessID]bool)
 	for id, child := range children {
 		child.mu.Lock()
 		retiredRoots[id] = child.segmentProjected
@@ -82,15 +87,15 @@ func acceptedRetiredProcesses(cut interactionHandoff, head agent.TreeSnapshot, c
 	return retiredHandoffProcesses(cut, head, retiredRoots)
 }
 
-func retiredHandoffProcesses(cut interactionHandoff, head agent.TreeSnapshot, retiredRoots map[agent.ProcessID]bool) map[agent.ProcessID]bool {
+func retiredHandoffProcesses(cut interactionHandoff, head scoperun.Log, retiredRoots map[scoperun.ProcessID]bool) map[scoperun.ProcessID]bool {
 	parents := capturedParents(head)
 	for id, progress := range cut.progress {
 		if progress.ParentID != "" {
-			parent, _ := agent.ParseProcessID(progress.ParentID)
+			parent, _ := scoperun.ParseProcessID(progress.ParentID)
 			parents[id] = parent
 		}
 	}
-	retired := make(map[agent.ProcessID]bool)
+	retired := make(map[scoperun.ProcessID]bool)
 	for id := range parents {
 		for ancestor, depth := id, 0; ancestor.Valid() && depth <= len(parents); ancestor, depth = parents[ancestor], depth+1 {
 			if retiredRoots[ancestor] {
@@ -102,7 +107,7 @@ func retiredHandoffProcesses(cut interactionHandoff, head agent.TreeSnapshot, re
 	return retired
 }
 
-func (i *interactionSession) acceptedRetiredProcesses(cut interactionHandoff, head agent.TreeSnapshot) map[agent.ProcessID]bool {
+func (i *interactionSession) acceptedRetiredProcesses(cut interactionHandoff, head scoperun.Log) map[scoperun.ProcessID]bool {
 	i.state.mu.Lock()
 	children := i.state.delegateChildren
 	i.state.mu.Unlock()

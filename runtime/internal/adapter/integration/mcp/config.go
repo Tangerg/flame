@@ -16,7 +16,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/httpresponse"
 	"github.com/Tangerg/flame/packages/go-sdk/procgroup"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/frame/cancellation"
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"golang.org/x/oauth2"
@@ -197,13 +196,13 @@ func connectSession(
 	defer cancelHandshake()
 	stopHandshake := context.AfterFunc(handshakeCtx, cancelLifetime)
 	defer stopHandshake()
-	if err := errors.Join(cancellation.Err(handshakeCtx), cancellation.Err(lifetime)); err != nil {
+	if err := errors.Join(errors.Join(handshakeCtx.Err(), context.Cause(handshakeCtx)), errors.Join(lifetime.Err(), context.Cause(lifetime))); err != nil {
 		return nil, nil, err
 	}
 
 	session, err := connect(lifetimeCtx)
 	stopHandshake()
-	lifetimeErr := errors.Join(cancellation.Err(handshakeCtx), cancellation.Err(lifetime))
+	lifetimeErr := errors.Join(errors.Join(handshakeCtx.Err(), context.Cause(handshakeCtx)), errors.Join(lifetime.Err(), context.Cause(lifetime)))
 	if err != nil {
 		return nil, nil, errors.Join(err, lifetimeErr)
 	}

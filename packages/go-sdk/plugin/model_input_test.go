@@ -1,10 +1,13 @@
 package plugin
 
 import (
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"encoding/json/jsontext"
 	"testing"
 
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -17,12 +20,12 @@ func TestModelInputTransformationPreservesRouteToolsAndOutputEnvelope(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if contract.Descriptor().Composition != portable.Decoration || method.Descriptor().Kind != portable.Query {
+	if contract.Descriptor().Composition != plugincontract.Decoration || method.Descriptor().Kind != portable.Query {
 		t.Fatal("input transformation grants model execution")
 	}
 	original, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original")))
 	original.Options.MaxOutputTokens = new(int64(64))
-	original.Tools = []chat.ToolDefinition{{Name: "echo", Description: "Echo.", InputSchema: jsontext.Value(`{"type":"object"}`)}}
+	original.Tools = []toolcontract.Definition{{Name: "echo", Description: "Echo.", InputSchema: jsontext.Value(`{"type":"object"}`)}}
 	for _, tc := range []struct {
 		name   string
 		change func(*chat.Request)

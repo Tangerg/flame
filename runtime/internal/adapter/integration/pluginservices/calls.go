@@ -5,6 +5,11 @@ import (
 	"errors"
 	"fmt"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
@@ -15,10 +20,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 type installedCall struct {
@@ -43,11 +46,11 @@ func (c *CommandCalls) Prepare(_ context.Context, request plugins.CallRequest) (
 	return &installedCall{calls: c, request: request, method: method}, nil
 }
 
-func (c *CommandCalls) Resolve(ctx context.Context, installation identity.InstallationID, digest integrity.Digest, contribution plugin.ContributionID) ([]plugins.Collaborator, error) {
+func (c *CommandCalls) Resolve(ctx context.Context, installation identity.InstallationID, digest framevalue.Digest, contribution plugin.ContributionID) ([]plugins.Collaborator, error) {
 	return plugins.ResolveRequirements(ctx, c.framework, c.installations, c.selections, c.compositions, installation, digest, contribution)
 }
 
-func (c *CommandCalls) ResolvePoint(ctx context.Context, contract *portable.Point, target portable.PointContext, order []plugins.PointReference) ([]plugins.PointBinding, error) {
+func (c *CommandCalls) ResolvePoint(ctx context.Context, contract *plugincontract.Point, target plugincontract.PointContext, order []plugins.PointReference) ([]plugins.PointBinding, error) {
 	return plugins.ResolvePoint(ctx, c.framework, c.installations, contract, target, order)
 }
 
@@ -93,13 +96,13 @@ func (c *CommandCalls) resolveContribution(ctx context.Context, r plugins.CallRe
 func (c *installedCall) accepts(record plugin.CommandBinding) error {
 	r := c.request
 	if record.Provider.InstallationID != r.Installation || record.Provider.Digest != r.Digest || record.Contribution != r.Contribution || record.Contract != r.Contract.Identity() {
-		return errors.Join(portable.ErrInvocationConflict, plugin.ErrCommandConflict)
+		return errors.Join(framemcp.ErrInvocationConflict, plugin.ErrCommandConflict)
 	}
 	return nil
 }
 
-func (c *installedCall) Invoke(ctx context.Context) (jsonvalue.Value, error) {
-	if c.Kind() == portable.Mutation {
+func (c *installedCall) Invoke(ctx context.Context) (framevalue.JSON, error) {
+	if c.Kind() == portable.Command {
 		reply, err := invokeRawCommand(ctx, c.calls, c.request.Method, c.request.Input, nil, c.accepts, c.resolve, func(ctx context.Context, binding plugins.ContributionBinding, session *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {
 			metadata, release, err := c.calls.pool.OpenRPC(ctx, binding.ServerID, session)
 			if err != nil {
@@ -111,45 +114,45 @@ func (c *installedCall) Invoke(ctx context.Context) (jsonvalue.Value, error) {
 	}
 	location, err := c.resolve(ctx)
 	if err != nil {
-		return jsonvalue.Value{}, err
+		return framevalue.JSON{}, err
 	}
 	borrowed, err := c.calls.pool.BorrowSession(ctx, location.ServerID)
 	if err != nil {
-		return jsonvalue.Value{}, err
+		return framevalue.JSON{}, err
 	}
 	defer borrowed.Close()
 	ctx = borrowed.Context()
 	session := borrowed.Session()
-	exported, err := qimumcp.ResolveCapability(ctx, session, location.Export, c.request.Contract)
+	exported, err := pluginmcp.ResolveCapability(ctx, session, location.Export, c.request.Contract)
 	if err != nil {
-		return jsonvalue.Value{}, err
+		return framevalue.JSON{}, err
 	}
 	bound, err := exported.Method(c.request.Method)
 	if err != nil {
-		return jsonvalue.Value{}, err
+		return framevalue.JSON{}, err
 	}
 	if err := validateInput(ctx, bound, c.request.Input); err != nil {
-		return jsonvalue.Value{}, err
+		return framevalue.JSON{}, err
 	}
 	invocation, err := operation.Capture(ctx, c.request.Target)
 	if err != nil {
-		return jsonvalue.Value{}, err
+		return framevalue.JSON{}, err
 	}
-	ctx, err = qimumcp.WithInvocation(ctx, invocation)
+	ctx, err = pluginmcp.WithInvocation(ctx, invocation)
 	if err != nil {
-		return jsonvalue.Value{}, err
+		return framevalue.JSON{}, err
 	}
 	metadata, release, err := c.calls.pool.OpenRPC(ctx, location.ServerID, session)
 	if err != nil {
-		return jsonvalue.Value{}, err
+		return framevalue.JSON{}, err
 	}
 	defer release()
 	return bound.InvokeWithMetadata(ctx, "", c.request.Input, metadata)
 }
 
-func validateInput(ctx context.Context, binding *qimumcp.Binding, input jsonvalue.Value) error {
+func validateInput(ctx context.Context, binding *pluginmcp.Binding, input framevalue.JSON) error {
 	err := binding.ValidateInput(ctx, input)
-	if errors.Is(err, qimumcp.ErrInvalidInput) {
+	if errors.Is(err, pluginmcp.ErrInvalidInput) {
 		return errors.Join(plugin.ErrInvalid, err)
 	}
 	return err

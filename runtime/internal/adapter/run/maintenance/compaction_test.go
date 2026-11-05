@@ -1,6 +1,8 @@
 package maintenance
 
 import (
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"context"
 	"encoding/json/jsontext"
 	"errors"
@@ -27,7 +29,7 @@ func unexpectedClient(context.Context, modeladapter.AuxiliaryBudget) (modeladapt
 	return modeladapter.SelectedChat{}, nil, errors.New("unexpected utility model call")
 }
 
-func textToolOutput(t *testing.T, output chat.ToolOutput) string {
+func textToolOutput(t *testing.T, output toolcontract.Output) string {
 	t.Helper()
 	text, ok := output.Text()
 	if !ok {
@@ -103,7 +105,7 @@ func TestCompactionPolicyPreservesOptionalPresence(t *testing.T) {
 }
 
 func TestCompactorTokenTriggerDoesNotExceedCatalogInputLimit(t *testing.T) {
-	model, found := catalog.Default.Lookup("openai", "gpt-5.4-mini")
+	model, found := catalog.LookupModel("openai", "gpt-5.4-mini")
 	if !found {
 		t.Fatal("catalog omitted openai/gpt-5.4-mini")
 	}
@@ -125,7 +127,7 @@ func TestCompactorTokenTriggerDoesNotExceedCatalogInputLimit(t *testing.T) {
 }
 
 func TestCompactorTokenTriggerReservesExplicitOutputWindow(t *testing.T) {
-	model, found := catalog.Default.Lookup("alibaba", "qwen-mt-plus")
+	model, found := catalog.LookupModel("alibaba", "qwen-mt-plus")
 	if !found {
 		t.Fatal("catalog omitted alibaba/qwen-mt-plus")
 	}
@@ -201,8 +203,8 @@ func TestTrimForBudgetPreviewsOldNotRecentAndDoesNotMutate(t *testing.T) {
 	bigResult := strings.Repeat("b", 5_000)
 	msgs := []chat.Message{
 		chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: "c1", Name: "write", Arguments: bigArgs})),
-		chat.NewToolMessage(chat.ToolResult{ID: "c1", Name: "write", Output: chat.NewTextToolOutput(bigResult)}),
-		chat.NewToolMessage(chat.ToolResult{ID: "c2", Name: "read", Output: chat.NewTextToolOutput(bigResult)}),
+		chat.NewToolMessage(chat.ToolResult{ID: "c1", Name: "write", Output: toolcontract.NewTextOutput(bigResult)}),
+		chat.NewToolMessage(chat.ToolResult{ID: "c2", Name: "read", Output: toolcontract.NewTextOutput(bigResult)}),
 		chat.NewAssistantMessage(chat.NewTextPart("x")),
 	}
 	trimmed, changed := trimForBudgetBefore(msgs, 2)
@@ -233,7 +235,7 @@ func TestTrimForBudgetPreviewsOldNotRecentAndDoesNotMutate(t *testing.T) {
 func TestTrimForBudgetPreservesTextAtBodyLimit(t *testing.T) {
 	body := strings.Repeat(`"`, ladderResultCap)
 	message := chat.NewToolMessage(chat.ToolResult{
-		ID: "quoted", Name: "shell", Output: chat.NewTextToolOutput(body),
+		ID: "quoted", Name: "shell", Output: toolcontract.NewTextOutput(body),
 	})
 	trimmed, changed := trimForBudgetBefore([]chat.Message{message}, 1)
 	if changed || textToolOutput(t, trimmed[0].Parts[0].ToolResult.Output) != body {

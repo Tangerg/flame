@@ -1,41 +1,43 @@
 // Package pluginbrowser defines Flame's trusted browser composition boundary.
-// Qimu owns admission and execution; Flame supplies component authoring policy.
+// Frame owns admission and execution; Flame supplies component authoring policy.
 package pluginbrowser
 
 import (
+	framebrowser "github.com/Tangerg/frame/browser"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"context"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/control"
-	"github.com/Tangerg/qimu/integrity"
+	"github.com/Tangerg/frame"
 )
 
 type Session struct {
-	Authority           control.Authority
-	Realm               control.Realm
+	Authority           framebrowser.Authority
+	Realm               framebrowser.Realm
 	Credential          string
 	ControlEndpoint     string
 	MaximumMessageBytes int
 	ProofCapacity       int
+	PreparationCapacity int
 	PollInterval        time.Duration
-	ComponentContract   qimu.ContractRef
+	ComponentContract   frame.ContractRef
 }
 
 type OpenRequest struct {
 	OperationID string
 	ResumeToken string
-	Resume      *control.Realm
+	Resume      *framebrowser.Realm
 }
 
 type ComponentRequest struct {
 	OperationID  string
 	ParentUseID  string
-	Realm        control.Realm
+	Realm        framebrowser.Realm
 	Installation identity.InstallationID
-	Digest       integrity.Digest
+	Digest       framevalue.Digest
 	Component    plugin.ContributionID
 }
 
@@ -43,6 +45,6 @@ type ComponentRequest struct {
 // does not expose browser bootstrap or permission expansion through this port.
 type Service interface {
 	Open(context.Context, OpenRequest) (Session, error)
-	Acquire(context.Context, ComponentRequest) (control.UseGrant, error)
-	Close(context.Context, control.Realm) error
+	Acquire(context.Context, ComponentRequest) (framebrowser.UseGrant, error)
+	Close(context.Context, framebrowser.Realm) error
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
 )
@@ -136,7 +135,7 @@ func directPath(root, path string) (string, error) {
 // directResult preserves a tool's structured JSON output when present and
 // otherwise exposes its raw textual result as a JSON string, matching the
 // protocol's best-effort JSON contract.
-func directResult(output chat.ToolOutput) (tool.Result, error) {
+func directResult(output toolcontract.Output) (tool.Result, error) {
 	if err := output.Validate(); err != nil {
 		return tool.Result{}, fmt.Errorf("toolset: invalid direct tool output: %w", err)
 	}

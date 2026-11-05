@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	sdkplugin "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -22,26 +24,26 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/distribution"
-	"github.com/Tangerg/qimu/integrity"
-	qimumcp "github.com/Tangerg/qimu/mcp"
+	"github.com/Tangerg/frame"
+	"github.com/Tangerg/frame/distribution"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 const portableManifest = `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"test.content","version":"1.0.0"}`
 
 // The profile is registered to validate declarations. Metadata tests must never
 // execute code; real process and browser drivers have their own integration tests.
-type unopenedProfile qimu.Profile
+type unopenedProfile frame.Profile
 
-func (p unopenedProfile) Profile() qimu.Profile { return qimu.Profile(p) }
-func (p unopenedProfile) Prepare(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
+func (p unopenedProfile) Profile() frame.Profile { return frame.Profile(p) }
+func (p unopenedProfile) Prepare(context.Context, *frame.Setup) ([]frame.ExportValue, error) {
 	return nil, errors.New("metadata fixture attempted execution")
 }
 
 type installationFixture struct {
 	*persistence.InstallationStore
-	host    *qimu.Host
+	host    *frame.Host
 	catalog releaseCatalog
 }
 
@@ -50,7 +52,7 @@ func (s *installationFixture) Save(ctx context.Context, installation plugin.Inst
 	if err != nil {
 		return err
 	}
-	projected, err := plugins.ProjectFrameworkRelease(release, qimumcp.ProcessProfile)
+	projected, err := plugins.ProjectFrameworkRelease(release, pluginmcp.ProcessProfile)
 	if err != nil {
 		return err
 	}
@@ -65,11 +67,11 @@ func (s *installationFixture) Save(ctx context.Context, installation plugin.Inst
 	if err != nil {
 		return err
 	}
-	config := qimu.InstallationConfig{ID: installation.ID().Host(), Plugin: projected.Plugin, Configuration: encoded, Enabled: installation.Enabled()}
+	config := frame.InstallationConfig{ID: installation.ID().Host(), Plugin: projected.Plugin, Configuration: encoded, Enabled: installation.Enabled()}
 	if found {
 		original, ok := s.host.Installation(config.ID)
 		if !ok {
-			return qimu.ErrUnavailable
+			return frame.ErrUnavailable
 		}
 		return s.host.Update(ctx, original, config)
 	}
@@ -85,7 +87,7 @@ func testReleaseStore(t *testing.T) (*Releases, *installationFixture, *persisten
 	if err != nil {
 		t.Fatal(err)
 	}
-	host, err := qimu.NewHost(t.Context(), qimu.HostConfig{Admission: db.Admission, Epoch: db.Qimu.Epoch(), Installations: db.Qimu, ExecutionProtection: db.Qimu, Drivers: []qimu.Driver{unopenedProfile(qimumcp.ProcessProfile), unopenedProfile(qimu.BrowserJS)}})
+	host, err := frame.NewHost(t.Context(), frame.HostConfig{Admission: db.Admission, Epoch: db.Frame.Epoch(), Installations: db.Frame, ExecutionProtection: db.Frame, Drivers: []frame.Driver{unopenedProfile(pluginmcp.ProcessProfile), unopenedProfile(frame.BrowserJS)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +96,7 @@ func testReleaseStore(t *testing.T) (*Releases, *installationFixture, *persisten
 			return distribution.ErrUntrusted
 		}
 		return nil
-	}, Retained: func(ctx context.Context, digest integrity.Digest) (bool, error) {
+	}, Retained: func(ctx context.Context, digest framevalue.Digest) (bool, error) {
 		states, err := db.Installations.List(ctx)
 		if err != nil {
 			return false, err
@@ -361,7 +363,7 @@ func TestNativeConnectionRetainsOriginalContentAndDigest(t *testing.T) {
 		t.Fatalf("connection: %v, %v", found, err)
 	}
 	defer launch.Retire.Close()
-	if launch.Stdio.ExpectedExecutable.String() != integrity.Hash([]byte("native fixture")).String() {
+	if launch.Stdio.ExpectedExecutable.String() != framevalue.Hash([]byte("native fixture")).String() {
 		t.Fatal("launch re-hashed mutable executable as new authority")
 	}
 	if err := releases.Reclaim(t.Context()); err != nil {
@@ -389,7 +391,7 @@ func TestNeutralProjectionCannotAddAnExecutableUnit(t *testing.T) {
 		t.Fatal(err)
 	}
 	manifest := built.Manifest
-	manifest.Units = append(manifest.Units, distribution.Unit{ID: "invented", Profile: qimu.NativeGo})
+	manifest.Units = append(manifest.Units, distribution.Unit{ID: "invented", Profile: frame.NativeGo})
 	var output bytes.Buffer
 	lock, err := distribution.Build(t.Context(), source, manifest, &output)
 	if err != nil {

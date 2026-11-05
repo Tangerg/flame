@@ -8,13 +8,13 @@ import (
 	"strings"
 	"testing"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
 	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
-	"github.com/Tangerg/frame/sqlite"
-	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 func TestStoredTextRemainsReadableAndReindexUsesOneDurablePublication(t *testing.T) {
@@ -48,7 +48,7 @@ func TestStoredTextRemainsReadableAndReindexUsesOneDurablePublication(t *testing
 	})
 	content := knowledge.Content{ID: "guide", Title: "Guide", Source: "docs/guide", Text: strings.Repeat("正文🙂", 400)}
 	input := wire.ImportInput{Content: content}
-	admitted, _ := jsonvalue.Encode(input)
+	admitted, _ := framevalue.EncodeJSON(input)
 	original, err := library.importDocument(t.Context(), contracts.Import.Name(), "import", admitted)
 	if err != nil {
 		t.Fatal(err)
@@ -62,7 +62,7 @@ func TestStoredTextRemainsReadableAndReindexUsesOneDurablePublication(t *testing
 		t.Fatalf("changed space was searched as if compatible: %v", err)
 	}
 	reindex := wire.DocumentInput{ID: content.ID, ExpectedRevision: original.Revision}
-	reindexJSON, _ := jsonvalue.Encode(reindex)
+	reindexJSON, _ := framevalue.EncodeJSON(reindex)
 	rebuilt, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "reindex", reindexJSON)
 	if err != nil || rebuilt.Revision != original.Revision+1 || rebuilt.Space != space || strings.Join(captured, "") != content.Text {
 		t.Fatalf("reindex did not use the captured stored text: %+v %v", rebuilt, err)
@@ -91,14 +91,14 @@ func TestStoredTextRemainsReadableAndReindexUsesOneDurablePublication(t *testing
 		t.Fatalf("restart repeated reindex: %+v calls=%d %v", replay, calls, err)
 	}
 	current := wire.DocumentInput{ID: content.ID, ExpectedRevision: rebuilt.Revision}
-	currentJSON, _ := jsonvalue.Encode(current)
+	currentJSON, _ := framevalue.EncodeJSON(current)
 	duringEmbedding = func() {
 		duringEmbedding = nil
 		changed := content
 		changed.Text = "a concurrent human edit"
 		draft, _ := knowledge.NewDraft(changed)
 		indexed, _ := draft.Index(space, [][]float32{{1, 0}})
-		if err := sqlite.RunInTx(t.Context(), reopened.db, func(ctx context.Context) error {
+		if err := pluginstorage.WithinTransaction(t.Context(), reopened.db, func(ctx context.Context) error {
 			_, err := reopened.replace(ctx, content.ID, rebuilt.Revision, indexed)
 			return err
 		}); err != nil {
@@ -113,7 +113,7 @@ func TestStoredTextRemainsReadableAndReindexUsesOneDurablePublication(t *testing
 		t.Fatalf("publication lost the human edit: %+v %v", read, err)
 	}
 	current.ExpectedRevision = read.Document.Revision
-	currentJSON, _ = jsonvalue.Encode(current)
+	currentJSON, _ = framevalue.EncodeJSON(current)
 	embeddingErr = errors.New("embedding response lost")
 	if _, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "unknown", currentJSON); !errors.Is(err, embeddingErr) {
 		t.Fatal(err)

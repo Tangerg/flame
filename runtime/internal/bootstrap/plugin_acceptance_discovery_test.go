@@ -43,7 +43,7 @@ func TestPluginAcceptanceDiscoveryMidSessionActivationKeepsPrefix(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = scopemcp.Register(remote, executable); err != nil {
+	if err = scopemcp.Register(remote, bindRegisteredTool(t, executable)); err != nil {
 		t.Fatal(err)
 	}
 	server := httptest.NewServer(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil))
@@ -92,13 +92,13 @@ func TestPluginAcceptanceDiscoveryMidSessionActivationKeepsPrefix(t *testing.T) 
 			return completedTextResponse("done"), nil
 		}
 		call := chat.ToolCall{ID: "discover", Name: "search_tools", Arguments: `{"query":"select:` + target + `"}`}
-		if slices.ContainsFunc(request.Tools, func(definition chat.ToolDefinition) bool { return definition.Name == target }) {
+		if slices.ContainsFunc(request.Tools, func(definition toolcontract.Definition) bool { return definition.Name == target }) {
 			call = chat.ToolCall{ID: "record_once", Name: target, Arguments: `{"value":"ok"}`}
 		}
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
 	})}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func TestPluginAcceptanceDiscoveryMidSessionActivationKeepsPrefix(t *testing.T) 
 		t.Fatalf("recorded requests per Run = %d, want one Run before and a discovery Run after activation", len(requests))
 	}
 	before, after := requests[0][0], requests[1][0]
-	if slices.ContainsFunc(after.Tools, func(definition chat.ToolDefinition) bool { return definition.Name == target }) {
+	if slices.ContainsFunc(after.Tools, func(definition toolcontract.Definition) bool { return definition.Name == target }) {
 		t.Fatalf("activation added %s to the base declarations instead of deferring it", target)
 	}
 	poDiscoveryCompare(t, before, after, target)
@@ -246,7 +246,7 @@ func poDeferredCatalog(t *testing.T, request *chat.Request) (string, bool) {
 // the provider prompt-cache prefix, to be byte-identical.
 func poSameDeclarations(t *testing.T, before, after *chat.Request) {
 	t.Helper()
-	encode := func(definition chat.ToolDefinition) string {
+	encode := func(definition toolcontract.Definition) string {
 		encoded, err := json.Marshal(definition)
 		if err != nil {
 			t.Fatal(err)
@@ -308,7 +308,7 @@ func TestPluginAcceptanceDiscoveryMCPReconnectKeepsDeclarations(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := scopemcp.Register(remote, executable); err != nil {
+		if err := scopemcp.Register(remote, bindRegisteredTool(t, executable)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -332,7 +332,7 @@ func TestPluginAcceptanceDiscoveryMCPReconnectKeepsDeclarations(t *testing.T) {
 		}
 		return completedTextResponse("done"), nil
 	})}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}

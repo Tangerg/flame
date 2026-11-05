@@ -19,15 +19,22 @@ export async function addPluginsForTest(
 ): Promise<void> {
   if (!plugins.length) return;
   const change = host.change();
-  for (const plugin of plugins) change.install(plugin);
-  await change.commit();
+  for (const plugin of plugins) change.install(plugin, { id: crypto.randomUUID() });
+  await host.apply(await host.plan(change));
 }
 
 export async function contributeForTest(
   setup: (ctx: PluginContext) => void,
   name = "test.contributor",
 ): Promise<Host> {
-  return loadPluginsForTest(definePlugin({ name, setup }));
+  return loadPluginsForTest(
+    definePlugin({
+      name,
+      setup(ctx) {
+        setup(ctx);
+      },
+    }),
+  );
 }
 
 export async function resetKernelForTest(): Promise<void> {

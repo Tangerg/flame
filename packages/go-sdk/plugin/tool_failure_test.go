@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -14,7 +13,7 @@ func TestDefiniteToolFailurePreservesCompleteOutcome(t *testing.T) {
 	for _, kind := range []toolcontract.FailureKind{toolcontract.FailureKindFailed, toolcontract.FailureKindRejected} {
 		t.Run(string(kind), func(t *testing.T) {
 			failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{
-				Kind: kind, Cause: context.DeadlineExceeded, Output: chat.NewTextToolOutput("original public result"),
+				Kind: kind, Cause: context.DeadlineExceeded, Output: toolcontract.NewTextOutput("original public result"),
 			})
 			if err != nil {
 				t.Fatal(err)

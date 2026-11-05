@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"fmt"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"

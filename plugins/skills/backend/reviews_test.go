@@ -5,22 +5,25 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
-func reviewCall[P, R any](t *testing.T, session *sdk.ClientSession, method *qimumcp.Method[P, R], id string, origin portable.Origin, p P) (R, error) {
+func reviewCall[P, R any](t *testing.T, session *sdk.ClientSession, method *pluginmcp.Method[P, R], id string, origin framemcp.Origin, p P) (R, error) {
 	t.Helper()
 	var zero R
 	capability, err := skilllearning.Contract()
 	if err != nil {
 		t.Fatal(err)
 	}
-	export, err := qimumcp.ResolveCapability(t.Context(), session, "skill-learning", capability)
+	export, err := pluginmcp.ResolveCapability(t.Context(), session, "skill-learning", capability)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,15 +31,15 @@ func reviewCall[P, R any](t *testing.T, session *sdk.ClientSession, method *qimu
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsonvalue.Encode(p)
+	input, err := framevalue.EncodeJSON(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: id, Origin: origin, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "skills"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: id, Origin: origin, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "skills"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := qimumcp.CommandID(id)
+	command := pluginmcp.CommandID(id)
 	if method.Descriptor().Kind == portable.Query {
 		command = ""
 	}
@@ -44,7 +47,7 @@ func reviewCall[P, R any](t *testing.T, session *sdk.ClientSession, method *qimu
 	if err != nil {
 		return zero, err
 	}
-	err = json.Unmarshal(value.JSON(), &zero)
+	err = json.Unmarshal(value.Bytes(), &zero)
 	return zero, err
 }
 

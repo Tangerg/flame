@@ -15,7 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/qimu/process"
+	"github.com/Tangerg/frame/process"
 	"github.com/samber/lo"
 )
 

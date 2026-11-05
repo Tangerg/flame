@@ -7,8 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/sqlite"
+	"github.com/Tangerg/frame"
 )
 
 // ExecutorCheckpointStore persists one opaque checkpoint aggregate per
@@ -16,11 +15,11 @@ import (
 // Payload interpretation and all executor-member topology belong exclusively to
 // the execution adapter.
 type ExecutorCheckpointStore struct {
-	db        *sql.DB
-	admission *qimu.Admission
+	db        *database
+	admission *frame.Admission
 }
 
-func newExecutorCheckpointStore(db *sql.DB) *ExecutorCheckpointStore {
+func newExecutorCheckpointStore(db *database) *ExecutorCheckpointStore {
 	return &ExecutorCheckpointStore{db: db}
 }
 
@@ -39,24 +38,15 @@ func (s *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 			return err
 		}
 	}
-	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	return s.db.write(ctx, func(ctx context.Context) error {
 		var owner, buildID string
-		err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx,
-			`SELECT session_id, build_id
+		err := s.db.connection(ctx).QueryRowContext(ctx, `SELECT session_id, build_id
 			   FROM executor_checkpoints
-			  WHERE root_member_id = ?`,
-			checkpoint.RootMemberID,
-		).Scan(&owner, &buildID)
+			  WHERE root_member_id = ?`, checkpoint.RootMemberID).Scan(&owner, &buildID)
 		if errors.Is(err, sql.ErrNoRows) {
-			_, err = sqlite.Connection(ctx, s.db).ExecContext(ctx,
-				`INSERT INTO executor_checkpoints(
+			_, err = s.db.connection(ctx).ExecContext(ctx, `INSERT INTO executor_checkpoints(
 					root_member_id, session_id, build_id, payload
-				 ) VALUES (?, ?, ?, ?)`,
-				checkpoint.RootMemberID,
-				checkpoint.SessionID,
-				checkpoint.BuildID,
-				checkpoint.Payload,
-			)
+				 ) VALUES (?, ?, ?, ?)`, checkpoint.RootMemberID, checkpoint.SessionID, checkpoint.BuildID, checkpoint.Payload)
 			if err != nil {
 				return fmt.Errorf("sqlite: insert executor checkpoint %q: %w", checkpoint.RootMemberID, err)
 			}
@@ -67,29 +57,13 @@ func (s *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 		}
 		switch {
 		case owner != checkpoint.SessionID:
-			return fmt.Errorf(
-				"sqlite: executor checkpoint %q belongs to Session %q, not %q: %w",
-				checkpoint.RootMemberID,
-				owner,
-				checkpoint.SessionID,
-				runs.ErrInvalidExecutorCheckpoint,
-			)
+			return fmt.Errorf("sqlite: executor checkpoint %q belongs to Session %q, not %q: %w", checkpoint.RootMemberID, owner, checkpoint.SessionID, runs.ErrInvalidExecutorCheckpoint)
 		case buildID != checkpoint.BuildID:
-			return fmt.Errorf(
-				"sqlite: executor checkpoint %q build is immutable: stored %q, replacement %q: %w",
-				checkpoint.RootMemberID,
-				buildID,
-				checkpoint.BuildID,
-				runs.ErrInvalidExecutorCheckpoint,
-			)
+			return fmt.Errorf("sqlite: executor checkpoint %q build is immutable: stored %q, replacement %q: %w", checkpoint.RootMemberID, buildID, checkpoint.BuildID, runs.ErrInvalidExecutorCheckpoint)
 		}
-		result, err := sqlite.Connection(ctx, s.db).ExecContext(ctx,
-			`UPDATE executor_checkpoints
+		result, err := s.db.connection(ctx).ExecContext(ctx, `UPDATE executor_checkpoints
 			    SET payload = ?
-			  WHERE root_member_id = ?`,
-			checkpoint.Payload,
-			checkpoint.RootMemberID,
-		)
+			  WHERE root_member_id = ?`, checkpoint.Payload, checkpoint.RootMemberID)
 		if err != nil {
 			return fmt.Errorf("sqlite: advance executor checkpoint %q: %w", checkpoint.RootMemberID, err)
 		}
@@ -103,10 +77,9 @@ func (s *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 		return s.replaceReferences(ctx, checkpoint)
 	})
 }
-
 func (s *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error) {
 	var checkpoint runs.ExecutorCheckpoint
-	err := sqlite.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
+	err := s.db.read(ctx, func(ctx context.Context) error {
 		var err error
 		checkpoint, err = s.loadCheckpoint(ctx, rootMemberID)
 		return err
@@ -116,15 +89,14 @@ func (s *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMember
 	}
 	return checkpoint, nil
 }
-
 func (s *ExecutorCheckpointStore) LoadSessionCheckpoint(ctx context.Context, sessionID string) (runs.ExecutorCheckpoint, bool, error) {
 	if err := validateSessionResource("load execution context", sessionID); err != nil {
 		return runs.ExecutorCheckpoint{}, false, err
 	}
 	var checkpoint runs.ExecutorCheckpoint
 	found := false
-	err := sqlite.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
-		rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT root_member_id FROM executor_checkpoints WHERE session_id=? LIMIT 2`, sessionID)
+	err := s.db.read(ctx, func(ctx context.Context) error {
+		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT root_member_id FROM executor_checkpoints WHERE session_id=? LIMIT 2`, sessionID)
 		if err != nil {
 			return err
 		}
@@ -156,45 +128,35 @@ func (s *ExecutorCheckpointStore) LoadSessionCheckpoint(ctx context.Context, ses
 
 // The payload and its body references must be read from the same snapshot.
 func (s *ExecutorCheckpointStore) loadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error) {
-	if err := runs.ValidateMember(rootMemberID); err != nil {
-		return runs.ExecutorCheckpoint{}, fmt.Errorf("sqlite: load executor checkpoint: %w", err)
-	}
-	var sessionID, buildID string
-	var payload []byte
-	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx,
-		`SELECT session_id, build_id, payload
+	return scopedValue(ctx, s.db.read, func(ctx context.Context) (runs.ExecutorCheckpoint, error) {
+		if err := runs.ValidateMember(rootMemberID); err != nil {
+			return runs.ExecutorCheckpoint{}, fmt.Errorf("sqlite: load executor checkpoint: %w", err)
+		}
+		var sessionID, buildID string
+		var payload []byte
+		err := s.db.connection(ctx).QueryRowContext(ctx, `SELECT session_id, build_id, payload
 		   FROM executor_checkpoints
-		  WHERE root_member_id = ?`,
-		rootMemberID,
-	).Scan(&sessionID, &buildID, &payload)
-	if errors.Is(err, sql.ErrNoRows) {
-		return runs.ExecutorCheckpoint{}, fmt.Errorf(
-			"sqlite: load executor checkpoint %q: %w",
-			rootMemberID,
-			runs.ErrExecutorCheckpointNotFound,
-		)
-	}
-	if err != nil {
-		return runs.ExecutorCheckpoint{}, fmt.Errorf("sqlite: load executor checkpoint %q: %w", rootMemberID, err)
-	}
-	checkpoint := runs.ExecutorCheckpoint{
-		RootMemberID: rootMemberID,
-		SessionID:    sessionID,
-		Payload:      append([]byte(nil), payload...),
-		BuildID:      buildID,
-	}
-	checkpoint.ToolResultIDs, err = s.toolResultReferences(ctx, rootMemberID)
-	if err != nil {
-		return runs.ExecutorCheckpoint{}, err
-	}
-	checkpoint.Bindings, checkpoint.Resources, err = s.checkpointReferences(ctx, rootMemberID)
-	if err != nil {
-		return runs.ExecutorCheckpoint{}, err
-	}
-	if err := checkpoint.Validate(); err != nil {
-		return runs.ExecutorCheckpoint{}, fmt.Errorf("sqlite: load executor checkpoint %q: %w", rootMemberID, err)
-	}
-	return checkpoint, nil
+		  WHERE root_member_id = ?`, rootMemberID).Scan(&sessionID, &buildID, &payload)
+		if errors.Is(err, sql.ErrNoRows) {
+			return runs.ExecutorCheckpoint{}, fmt.Errorf("sqlite: load executor checkpoint %q: %w", rootMemberID, runs.ErrExecutorCheckpointNotFound)
+		}
+		if err != nil {
+			return runs.ExecutorCheckpoint{}, fmt.Errorf("sqlite: load executor checkpoint %q: %w", rootMemberID, err)
+		}
+		checkpoint := runs.ExecutorCheckpoint{RootMemberID: rootMemberID, SessionID: sessionID, Payload: append([]byte(nil), payload...), BuildID: buildID}
+		checkpoint.ToolResultIDs, err = s.toolResultReferences(ctx, rootMemberID)
+		if err != nil {
+			return runs.ExecutorCheckpoint{}, err
+		}
+		checkpoint.Bindings, checkpoint.Resources, err = s.checkpointReferences(ctx, rootMemberID)
+		if err != nil {
+			return runs.ExecutorCheckpoint{}, err
+		}
+		if err := checkpoint.Validate(); err != nil {
+			return runs.ExecutorCheckpoint{}, fmt.Errorf("sqlite: load executor checkpoint %q: %w", rootMemberID, err)
+		}
+		return checkpoint, nil
+	})
 }
 
 // DeleteCheckpoints removes complete root-owned checkpoint aggregates in one
@@ -218,7 +180,7 @@ func (s *ExecutorCheckpointStore) DeleteCheckpoints(ctx context.Context, session
 		}
 		seen[rootID] = struct{}{}
 	}
-	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	return s.db.write(ctx, func(ctx context.Context) error {
 		for _, rootID := range rootIDs {
 			if err := s.deleteOwnedCheckpoint(ctx, sessionID, rootID); err != nil {
 				return err
@@ -234,7 +196,7 @@ func (s *ExecutorCheckpointStore) DeleteSessionCheckpoints(ctx context.Context, 
 	if err := validateSessionResource("delete session executor checkpoints", sessionID); err != nil {
 		return err
 	}
-	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	return s.db.write(ctx, func(ctx context.Context) error {
 		rootIDs, err := s.sessionCheckpointRootIDs(ctx, sessionID)
 		if err != nil {
 			return fmt.Errorf("sqlite: list executor checkpoints for Session %q: %w", sessionID, err)
@@ -244,77 +206,56 @@ func (s *ExecutorCheckpointStore) DeleteSessionCheckpoints(ctx context.Context, 
 				return err
 			}
 		}
-		_, err = sqlite.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM execution_trees WHERE session_id = ?`, sessionID)
+		_, err = s.db.connection(ctx).ExecContext(ctx, `DELETE FROM execution_trees WHERE session_id = ?`, sessionID)
 		return err
 	})
 }
-
-func (s *ExecutorCheckpointStore) sessionCheckpointRootIDs(
-	ctx context.Context,
-	sessionID string,
-) ([]string, error) {
-	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx,
-		`SELECT root_member_id FROM executor_checkpoints WHERE session_id = ? ORDER BY root_member_id`,
-		sessionID,
-	)
-	if err != nil {
-		return nil, err
-	}
-	var rootIDs []string
-	for rows.Next() {
-		var rootID string
-		if err := rows.Scan(&rootID); err != nil {
-			_ = rows.Close()
-			return nil, fmt.Errorf("scan executor checkpoint root: %w", err)
+func (s *ExecutorCheckpointStore) sessionCheckpointRootIDs(ctx context.Context, sessionID string) ([]string, error) {
+	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]string, error) {
+		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT root_member_id FROM executor_checkpoints WHERE session_id = ? ORDER BY root_member_id`, sessionID)
+		if err != nil {
+			return nil, err
 		}
-		rootIDs = append(rootIDs, rootID)
-	}
-	if err := rows.Err(); err != nil {
-		_ = rows.Close()
-		return nil, err
-	}
-	if err := rows.Close(); err != nil {
-		return nil, fmt.Errorf("close executor checkpoint roots: %w", err)
-	}
-	return rootIDs, nil
+		var rootIDs []string
+		for rows.Next() {
+			var rootID string
+			if err := rows.Scan(&rootID); err != nil {
+				_ = rows.Close()
+				return nil, fmt.Errorf("scan executor checkpoint root: %w", err)
+			}
+			rootIDs = append(rootIDs, rootID)
+		}
+		if err := rows.Err(); err != nil {
+			_ = rows.Close()
+			return nil, err
+		}
+		if err := rows.Close(); err != nil {
+			return nil, fmt.Errorf("close executor checkpoint roots: %w", err)
+		}
+		return rootIDs, nil
+	})
 }
-
-func (s *ExecutorCheckpointStore) deleteOwnedCheckpoint(
-	ctx context.Context,
-	sessionID string,
-	rootMemberID string,
-) error {
-	result, err := sqlite.Connection(ctx, s.db).ExecContext(ctx,
-		`DELETE FROM executor_checkpoints WHERE root_member_id = ? AND session_id = ?`,
-		rootMemberID,
-		sessionID,
-	)
-	if err != nil {
-		return fmt.Errorf("sqlite: delete executor checkpoint %q for Session %q: %w", rootMemberID, sessionID, err)
-	}
-	deleted, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: inspect deleted executor checkpoint %q: %w", rootMemberID, err)
-	}
-	if deleted == 1 {
-		return nil
-	}
-	var owner string
-	err = sqlite.Connection(ctx, s.db).QueryRowContext(ctx,
-		`SELECT session_id FROM executor_checkpoints WHERE root_member_id = ?`,
-		rootMemberID,
-	).Scan(&owner)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("sqlite: inspect executor checkpoint %q owner: %w", rootMemberID, err)
-	}
-	return fmt.Errorf(
-		"sqlite: executor checkpoint %q belongs to Session %q, not %q: %w",
-		rootMemberID,
-		owner,
-		sessionID,
-		runs.ErrInvalidExecutorCheckpoint,
-	)
+func (s *ExecutorCheckpointStore) deleteOwnedCheckpoint(ctx context.Context, sessionID string, rootMemberID string) error {
+	return s.db.write(ctx, func(ctx context.Context) error {
+		result, err := s.db.connection(ctx).ExecContext(ctx, `DELETE FROM executor_checkpoints WHERE root_member_id = ? AND session_id = ?`, rootMemberID, sessionID)
+		if err != nil {
+			return fmt.Errorf("sqlite: delete executor checkpoint %q for Session %q: %w", rootMemberID, sessionID, err)
+		}
+		deleted, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("sqlite: inspect deleted executor checkpoint %q: %w", rootMemberID, err)
+		}
+		if deleted == 1 {
+			return nil
+		}
+		var owner string
+		err = s.db.connection(ctx).QueryRowContext(ctx, `SELECT session_id FROM executor_checkpoints WHERE root_member_id = ?`, rootMemberID).Scan(&owner)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("sqlite: inspect executor checkpoint %q owner: %w", rootMemberID, err)
+		}
+		return fmt.Errorf("sqlite: executor checkpoint %q belongs to Session %q, not %q: %w", rootMemberID, owner, sessionID, runs.ErrInvalidExecutorCheckpoint)
+	})
 }

@@ -3,8 +3,10 @@ package schedules
 import (
 	"context"
 	"fmt"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/qimu/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"sync"
 	"time"
 
@@ -45,7 +47,7 @@ func NewScanner(store WorkerStore, manual ManualQueue, sessionID, runID func() s
 	}
 	return &Scanner{store: store, manual: manual, newSessionID: sessionID, newRunID: runID}, nil
 }
-func (s *Scanner) Scan(ctx context.Context, now time.Time, invocation portable.Invocation) ([]schedule.RunRequest, error) {
+func (s *Scanner) Scan(ctx context.Context, now time.Time, invocation framemcp.Invocation) ([]schedule.RunRequest, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := ctx.Err(); err != nil {

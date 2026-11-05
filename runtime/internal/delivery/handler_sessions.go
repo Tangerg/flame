@@ -37,7 +37,7 @@ func wireSessionErr(err error) error {
 	if errors.Is(err, modelchoice.ErrUnsupported) {
 		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
-	return err
+	return wirePluginError(err)
 }
 
 // ListSessions returns one page of the session list (sessions.list). A non-empty

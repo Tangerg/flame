@@ -32,10 +32,10 @@ func TestModelInvocationReaderValidatesStoredEvidence(t *testing.T) {
 				RunID: "run_evidence", SessionID: "session_evidence", SegmentID: "segment_evidence",
 				ModelSelection: testsupport.MustModelSelection("test", "test-model"), CreatedAt: at,
 			}
-			if err := newRunStore(db).Admit(t.Context(), draft); err != nil {
+			if err := newRunStore(databaseFor(db)).Admit(t.Context(), draft); err != nil {
 				t.Fatal(err)
 			}
-			store := newModelInvocationStore(db)
+			store := newModelInvocationStore(databaseFor(db))
 			if err := store.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_evidence", at, run.ModelConversation); err != nil {
 				t.Fatal(err)
 			}

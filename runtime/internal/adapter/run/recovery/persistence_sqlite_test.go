@@ -3,10 +3,11 @@ package recovery
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport/goaltest"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
@@ -258,7 +259,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("SaveCheckpoint: %v", saveCheckpointErr)
 	}
-	if _, writeErr := messageStore.Write(
+	if writeErr := messageStore.Write(
 		ctx,
 		"session",
 		corechat.NewUserMessage(corechat.NewTextPart("recover this")),

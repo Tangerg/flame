@@ -102,43 +102,43 @@ export function useReadingFocusVisibility(
       );
       return next;
     };
-    let frame = measure();
-    let observedScrollTop = viewport.scrollTop;
-    let witness: Element | null = null;
-    let pressedTarget: Element | null = null;
+    const frameState = { value: measure() };
+    const observedScrollTopState = { value: viewport.scrollTop };
+    const witnessState: { value: Element | null } = { value: null };
+    const pressedTargetState: { value: Element | null } = { value: null };
     const remember = () => {
-      frame = measure();
-      observedScrollTop = viewport.scrollTop;
+      frameState.value = measure();
+      observedScrollTopState.value = viewport.scrollTop;
       const active = content.ownerDocument.activeElement;
-      witness = null;
+      witnessState.value = null;
       if (active && active !== content && content.contains(active)) {
         const { unit, bounds } = readingFocusContext(active, viewport);
         if (withinSafeReading(active, viewport) && withinSafeReading(unit, viewport, bounds))
-          witness = active;
+          witnessState.value = active;
       }
     };
     const retire = () => {
-      witness = null;
+      witnessState.value = null;
     };
     const onScroll = (event: Event) => {
       const next = safeReadingBounds(viewport);
       // Native zoom can notify before its frame or content reflow is observed, without moving.
       if (event.target === viewport) {
-        const moved = viewport.scrollTop !== observedScrollTop;
-        observedScrollTop = viewport.scrollTop;
+        const moved = viewport.scrollTop !== observedScrollTopState.value;
+        observedScrollTopState.value = viewport.scrollTop;
         if (
           !moved ||
-          next.top !== frame.top ||
-          next.bottom !== frame.bottom ||
-          next.width !== frame.width
+          next.top !== frameState.value.top ||
+          next.bottom !== frameState.value.bottom ||
+          next.width !== frameState.value.width
         )
           return;
       }
       remember();
     };
     const reveal = () => {
-      frame = measure();
-      const target = witness;
+      frameState.value = measure();
+      const target = witnessState.value;
       if (!target) return;
       if (
         scrollRef.current !== viewport ||
@@ -152,7 +152,7 @@ export function useReadingFocusVisibility(
       }
       const { unit, bounds } = readingFocusContext(target, viewport);
       if (withinSafeReading(target, viewport) && withinSafeReading(unit, viewport, bounds)) return;
-      const { top, bottom } = frame;
+      const { top, bottom } = frameState.value;
       if (bottom <= top) return;
       const alignStart = bounds.height > bottom - top || bounds.top < top;
       const delta = alignStart ? bounds.top - top : Math.max(0, bounds.bottom - bottom);
@@ -165,14 +165,14 @@ export function useReadingFocusVisibility(
       });
     };
     const onPointerDown = (event: PointerEvent) => {
-      pressedTarget = event.target instanceof Element ? event.target : null;
+      pressedTargetState.value = event.target instanceof Element ? event.target : null;
     };
     const clearPress = () => {
-      pressedTarget = null;
+      pressedTargetState.value = null;
     };
     const onFocus = () => {
       const active = content.ownerDocument.activeElement;
-      const pressed = pressedTarget;
+      const pressed = pressedTargetState.value;
       clearPress();
       if (!active || active === content || !content.contains(active)) {
         retire();
@@ -185,7 +185,7 @@ export function useReadingFocusVisibility(
       // Modal return focus suppresses native scrolling. The reader owns its reserved clearance,
       // but must not move a pointer target before the activating press completes.
       if (!pointerFocus) {
-        witness = active;
+        witnessState.value = active;
         reveal();
       }
       remember();

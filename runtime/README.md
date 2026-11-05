@@ -51,13 +51,26 @@ Session, Goal or physical-model invocation for detached title generation.
 
 Runtime is not another agent framework. Scope owns process execution, strategies, tools, and provider libraries; Runtime adapts those capabilities to Flame's Session, Run, Goal, Plan, persistence, recovery, and protocol model.
 
-Scope v0.58.0 owns complete Tool failure classification. Runtime uses
+Scope v0.60.0 owns complete Tool failure classification. Runtime uses
 `tool.ClassifyFailure` for dispatch and original-result recovery: independent
 joined errors cannot establish a definite result. A plugin's classified Failure
 retains its diagnostic cause inside that outcome instead of joining it as a
-second outcome. Accepted human answers use the Engine's public Signal constructor
+second outcome. Accepted human answers use Scope's public Signal constructor
 for exact receipt reconciliation and the current wait's `ResponseSignal` for
 fresh admission.
+
+Canceling a dispatched model stream does not prove its remote outcome. If its
+original final response is unavailable, the Run finishes as lost with its
+unresolved Effect evidence. After clean terminal settlement, cancellation reports
+`run_finished` instead of claiming a confirmed canceled Run. Goal stop still
+pauses its own drive and preserves that Run's unknown consumption for an explicit
+resume.
+
+MCP catalog restoration rechecks each original binding through its current
+business owner under Frame admission. If that owner has already settled, its
+earlier catalog snapshot requires no restoration and cannot authorize original
+execution. Current catalog acquisition proceeds through its ordinary plan;
+storage failures and unavailable original sources remain explicit failures.
 
 Unknown catalog pricing preserves unknown cost, including an empty rate schedule
 with reported zero usage. Model listings expose effective base-band cache rates:
@@ -65,17 +78,20 @@ an omitted catalog cache rate uses the input rate, while an explicit zero is fre
 Scope owns cost calculation and threshold selection; historical settled costs
 are not repriced. Pricing validation failures return through the endpoint boundary
 while retaining the original generation, usage and unknown cost in the journal.
-Core wire shapes and storage formats are unchanged by this
-dependency upgrade. Retain waiting work with its captured executable; the existing
-BuildID boundary continues to reject incompatible checkpoints.
+Scope's execution storage now retains its canonical append-only log and Flame's
+prepared provider requests in one acknowledged head. The earlier snapshot shape
+is incompatible. The existing BuildID boundary rejects incompatible checkpoints;
+finish waiting work with its captured executable or use a fresh data directory.
 
 Scope's public contracts own framework behavior. Tool discovery implements
-`interaction.AdvertisingTool`, Tool child dispatch uses
-`ToolSetConfig.DecorateDispatcher`, and restoration reads
-`interaction.DelegateAttributions` alongside the captured tree's statuses.
-Definite model failures settle through Scope without synthetic cancellation;
-an unacknowledged initial commit retains Scope's `StartError` evidence.
-Model failures use `chat.CallFailure` and `chat.ClassifyFailure` for the complete
+`interaction.AdvertisingTool`; Tool wrappers explicitly preserve concurrency,
+direct-result, input-validation and advertisement capabilities. Ordinary Tools
+execute as Effects in their owning Interaction. Delegated tasks use
+`workflow.Adapt` around an Interaction, with one product Run for the task and its
+inner model loop. Restoration reads `interaction.DelegateAttributions` from the
+complete log and uses the acknowledged tree's statuses.
+Definite model failures settle through Scope without synthetic cancellation.
+Model failures use `invocation.Failure` and `invocation.ClassifyFailure` for the complete
 invocation. Nested failures cannot replace that classification, and known
 generation remains available when later publication fails. Custom JSON codecs
 describe their wire model with `JSONSchemaModel`.
@@ -107,13 +123,13 @@ gets its own existing process, immutable release lease, frozen requirements and
 call-scoped callbacks. There is no shared JavaScript supervisor or result store.
 
 Build Runtime/CLI distributions with `make build-runtime` / `make build-cli` after
-`make setup`. Ship the hosting executable, sibling `qimu-runner`, and companion
+`make setup`. Ship the hosting executable, sibling `frame-runner`, and companion
 `runtimes` and `plugins` directories together.
 Replace the complete distribution only while quiescent. Desktop attaches to a
 Runtime and does not host backends; it does not ship an unused interpreter.
 Core `2026-10-24.1` projects managed server declarations explicitly. Rebuild its
 Go/TypeScript/CLI/Desktop consumers together. Backend protocol identity remains
-owned by the compiled `portable.Protocol` in `qimu/portable`. Usage Reports has a new private SQLite owner and
+owned by the compiled `portable.Protocol` in `frame/portable`. Usage Reports has a new private SQLite owner and
 requires fresh installation data; retain the former installation/data separately.
 
 Run accounting facts report every physically dispatched model call, including
@@ -303,14 +319,14 @@ the new lifetime lease. Opening does not migrate or discard unknown commands.
 ## First-party initialization
 
 Root `make build-runtime` produces `out/runtime/<platform>/flame-runtime`, its
-sibling `qimu-runner`, the `plugins/` distribution and the pinned
+sibling `frame-runner`, the `plugins/` distribution and the pinned
 `runtimes/node/<os>-<arch>/` companion. Run that executable in the foreground.
 The embedded Go binding requires the same companions beside its actual hosting
 executable. `localruntime` owns this layout, with no PATH, working-directory or
 checkout fallback.
 
-On a fresh `flame-qimu.db`, Runtime admits and enables the distributed catalog
-through Qimu Host installation admission, prepares the private backend directories
+On a fresh `flame-frame.db`, Runtime admits and enables the distributed catalog
+through Frame Host installation admission, prepares the private backend directories
 and records the configured default providers before marking initialization
 complete. Delivery is exposed only after initialization succeeds. Each original
 installation is durable; interrupted initialization resumes those same identities
@@ -331,9 +347,11 @@ migration. Use a fresh data directory when upgrading.
 - `protocol` owns binding-neutral requests, responses, events and validation.
   [`contract/API_REFERENCE.md`](contract/API_REFERENCE.md) and the generated
   manifest, OpenRPC and schema are projections of the operation catalog.
-- [`Qimu MCP`](../qimu/README.md#processes-browser-execution-and-distribution) owns generic typed backend methods, streams,
-  setup, callbacks and receipt transport. `qimu/portable` owns exact method,
-  capability and portable value-point contracts.
+- [Frame](https://github.com/Tangerg/frame) owns the Host, process driver and runner,
+  Browser executions, Uses, lifetimes and release storage. `frame/portable` owns
+  neutral method/schema identity. Flame's `plugin/contract` owns product capability
+  and value-point composition; `plugin/mcp` owns the MCP business binding and its
+  generated Go/TypeScript wire vocabulary.
 - [`plugin`](../packages/go-sdk/plugin/README.md) owns Flame model roles, Tool
   helpers, captured product collaborators and the Tool receipt contract.
   `packages/go-sdk/extension` owns only Flame invocation origin and scope policy.
@@ -390,7 +408,7 @@ call-bound `next` and preserve canonical response/chunk evidence. Tool proposals
 may transform arguments while execution retains Tool identity, schema and approval.
 See the [public authoring contracts](../packages/go-sdk/plugin/README.md).
 
-`qimumcp.Callbacks` from `github.com/Tangerg/qimu/mcp` owns one lifecycle-bound loopback link. Bootstrap publishes
+`pluginmcp.Callbacks` from `github.com/Tangerg/flame/packages/go-sdk/plugin/mcp` owns one lifecycle-bound loopback link. Bootstrap publishes
 canonical RPC once before backends can receive its reference. Nested operations
 inherit captured caller/actor authority and cancellation; each HTTP request owns
 its own transport metadata. Closing or replacing a session revokes its references,
@@ -410,7 +428,7 @@ Packages publish ordinary prebuilt ESM exports using the public
 may be content-only or bind a same-release callable contribution. Workspace,
 Session, action, file and Tool-result placements use one component/resource path.
 The first-party catalog and independent Reviews author use this same entrance.
-The Go Qimu Host approves exact Browser plans and Uses; the Browser executor owns
+The Go Frame Host approves exact Browser plans and Uses; the Browser executor owns
 the actual JavaScript objects and cleanup within that approved realm. Components
 borrow their original Use, including exact parent/child bindings. Release evidence
 returns to the Go Host before execution protection is removed. Private workbench
@@ -483,7 +501,7 @@ Original command routes retain that ID, named export and complete capability
 contract alongside immutable provider/server/input evidence. Former host tables
 without these bindings are refused by exact-schema admission without conversion.
 
-Runtime composes Qimu Host for installation admission, exact bindings, execution
+Runtime composes Frame Host for installation admission, exact bindings, execution
 protection and lifetime management. Flame owns the interpretation of its plugin
 metadata, user configuration, provider choices and product contribution policy.
 The complete operation schemas and error categories are generated in
@@ -491,7 +509,7 @@ The complete operation schemas and error categories are generated in
 Runtime capability.
 
 Install from an absolute directory or ZIP path on the Runtime machine. Each
-release must contain Qimu's `manifest.json`, `plugin.lock.json` and exactly its
+release must contain Frame's `manifest.json`, `plugin.lock.json` and exactly its
 listed artifacts. The neutral manifest supplies the sole immutable release
 identity. `plugin.json` remains Flame product metadata using Agent Plugins 1.0.
 Its `io.github.tangerg.flame` namespace names one local declaration document with
@@ -499,7 +517,7 @@ Its `io.github.tangerg.flame` namespace names one local declaration document wit
 callable contracts. Raw legacy source trees without the neutral release files
 are refused.
 
-`qimu/distribution` owns deterministic archive creation, path and entry safety,
+`frame/distribution` owns deterministic archive creation, path and entry safety,
 byte quotas, artifact digests, immutable content and read leases. The composition
 root creates one content Store with the Host's shared Admission. Its held physical
 directory identity and exclusive ownership protect all operations; closing the
@@ -539,8 +557,8 @@ Independently configured ordinary MCP connections retain their own transports.
 The package adapter reserves `PLUGIN_ROOT` and `PLUGIN_DATA`, validates declared
 inputs and projects launch paths onto the original leased content.
 
-`qimu/process` persists the original start attempt and binding before asking
-`qimu-runner` to create a process. The original runner owns process creation,
+`frame/process` persists the original start attempt and binding before asking
+`frame-runner` to create a process. The original runner owns process creation,
 fencing and wait evidence. The content lease survives handshake failure,
 retirement and lost communication until that original execution is proved to
 have ended. A new runner's empty ledger is not exit evidence. Installed native
@@ -565,7 +583,7 @@ The registry resolves each server by its origin, realizing an installation
 server only as far as the read requires (desired definition, dispatch authority, or launch)
 and never its siblings. Ordinary tool dispatch reads admitted declarations and
 current installation authority for the called server alone. Resource and Skill reads use the exact release
-lease and verify the selected artifact through Qimu's held directory authority.
+lease and verify the selected artifact through Frame's held directory authority.
 `${PLUGIN_DATA}` is a private per-installation directory retained through updates
 and uninstall; it is never collected automatically. Content remains retained
 while an installation selects or stages it, a content lease is live, or business
@@ -635,7 +653,7 @@ Installation changes, including the capacity check of a new install, and the
 publication of an assembled execution and command binding/dispatch share one short serialization point. Run
 assembly, model resolution and package reads happen outside it, so a pending change
 never waits for, or holds back, an assembling Run. The MCP catalog is a source observation, not a
-Use grant. Qimu seals superseded admission when the installation change commits;
+Use grant. Frame seals superseded admission when the installation change commits;
 every subsequent execution must borrow an exact approved Use, so a stale catalog
 observation cannot authorize superseded code. Original admitted Uses retain
 their own dependency protection. Process retirement, launch and handshake happen
@@ -658,11 +676,12 @@ resending the mutation. Missing, malformed or unavailable evidence remains unkno
 and holds the release. A valid original success or business refusal releases the
 hold; immutable routing remains retained so the same identity cannot adopt a new
 provider after update or uninstall. History is not evicted or capped by an arbitrary
-lifetime command count. The public `jsonvalue.Value` normalizes object order
+lifetime command count. The public `frame/value.JSON` normalizes object order
 without rounding numbers or replacing original request evidence with decoded DTOs.
 The host and private stores persist this input; fingerprints are derived projections.
-The public `qimu/portable` package admits consumer-defined value schema, scope,
-applicability, optional absence and composition ordering. Namespace declarations
+The public `plugin/contract` package admits Flame value-point scope,
+applicability, optional absence and composition ordering, using Frame to validate
+the supplied schemas. Namespace declarations
 publish `points` and `pointValues` using local contract files. Installation admits
 these without starting code. `ResolvePluginPoint` and `plugins point` return
 immutable installation/release/value bindings through the ordinary Delivery
@@ -682,13 +701,14 @@ refused. This change does not convert storage or pending command identities.
 The Reviews analyzer example interprets a value as a same-release callable
 contribution and invokes it through its declared optional capability dependency.
 
-The same `qimu/portable` owner admits callable metadata, schemas and canonical
-identity without importing MCP or Runtime internals. `qimu/mcp`, Flame's product
-contracts and `qimu/contractgen` consume those admitted values. Installation domain
+The same `frame/portable` owner admits callable metadata, schemas and canonical
+identity without importing MCP or Runtime internals. `packages/go-sdk/plugin/mcp`, Flame's product
+contracts and `frame/portable/contractgen` consume those admitted values. Installation domain
 code can validate a contract without activating a backend. Flame's `extension`
 package retains only its product origin and scope vocabulary.
-The Qimu integration requires rebuilt contracts and a fresh host database; it
-provides no compatibility wire reader or state conversion. Private backend owners
+The Frame integration requires rebuilt contracts and a fresh host database.
+Startup explicitly refuses earlier `flame-qimu.db` or `flame.db` roots before
+creating the new authority. It provides no compatibility wire reader or state conversion. Private backend owners
 continue to admit their own exact schema and receipt contract. Preserve earlier
 deployments and their data together to finish unresolved work.
 
@@ -733,7 +753,7 @@ present admitted themes only and never rebuild that decision from `state` or
 the same quiescence as a release switch and returns `plugin_in_use` while an active or
 waiting execution or unresolved command depends on the installation; disablement remains available to withdraw its
 authority while in use. Uninstall is an acknowledgement without a result: it durably removes
-admission before asynchronous retirement. Qimu retains the installed execution
+admission before asynchronous retirement. Frame retains the installed execution
 resources and their original proofs until retirement completes; the MCP Pool
 withdraws its session observation without claiming process exit.
 Post-commit package preparation, reconciliation, and projection, including a new
@@ -765,7 +785,7 @@ credentials or status; a superseded launch cannot withdraw its replacement conne
 Supersession cancels obsolete work; shutdown cancels and joins every admitted attempt.
 For an ordinary user-configured stdio server, the original process wait determines
 exit even when the status is nonzero. An installed backend instead requires the
-original Qimu runner's execution proof; closing its MCP session alone proves no
+original Frame runner's execution proof; closing its MCP session alone proves no
 process exit. Unconfirmed retirement retains its resources and remains visible
 to the shutdown owner.
 Canceling a wait for session retirement leaves unreported close failures with Connections
@@ -779,7 +799,7 @@ shared framed hash, independently of JSON serialization. Credentials recorded wi
 former JSON hash require a new OAuth authorization; no dual fingerprint reader is retained.
 
 Installed `mcp.json` declares packaged stdio executables; managed Node entries
-use the Flame declaration. The current Qimu process profile refuses installed
+use the Flame declaration. The current Frame process profile refuses installed
 HTTP entries. Ordinary user-configured MCP sources continue to support stdio and
 Streamable HTTP through their existing connection, exposure, approval and OAuth
 owners.
@@ -1071,9 +1091,9 @@ Flame Runtime is the product backend and sole owner of durable agent semantics. 
 
 Read [`../AGENTS.md`](../AGENTS.md), [`../DEVELOPMENT.md`](../DEVELOPMENT.md), and the ordered Runtime baseline in [`doc/README.md`](docs/README.md) before changing this module.
 
-- Runtime is a product backend, not another Agent Framework. Scope owns Process, strategy, tree, provider, and effect execution contracts; Runtime adapts them to Flame product semantics.
+- Runtime is a product backend. Scope owns Process, program, tree, provider, and effect execution contracts; Runtime adapts them to Flame product semantics.
 - The module root owns the public in-process `Runtime` lifecycle and typed operation methods. `protocol` owns public request, response, event, error, version, and validation values. Do not define synonymous public models or a forwarding binding package.
-- [`Qimu MCP`](../qimu/README.md#processes-browser-execution-and-distribution) owns typed backend transport and setup; `qimu/portable` owns immutable callable contracts. [`plugin`](../packages/go-sdk/plugin/README.md) supplies Flame model roles, logical Tool metadata and product receipt contracts. Memory, Schedules and independent Reviews consume those same public owners. Each backend retains its private business mutations and durable receipts; transport never turns an unrecognized failure into a definite business refusal.
+- [`Frame MCP`](https://github.com/Tangerg/frame/blob/v0.1.0/README.md#processes-browser-execution-and-distribution) owns typed backend transport and setup; `frame/portable` owns immutable callable contracts. [`plugin`](../packages/go-sdk/plugin/README.md) supplies Flame model roles, logical Tool metadata and product receipt contracts. Memory, Schedules and independent Reviews consume those same public owners. Each backend retains its private business mutations and durable receipts; transport never turns an unrecognized failure into a definite business refusal.
 - The Go binding and HTTP/JSON-RPC binding must enter the same delivery endpoint before capability admission, idempotency, invocation lifetime, Application use cases, and event or error projection.
 - Domain packages own behavior-rich aggregates, value objects, invariants, and pure transitions. Aggregates validate construction, hide mutation, and expose legal domain operations; protocol, storage, configuration, provider, and projection values remain strict data. Application packages own cohesive use-case families and cross-aggregate ordering. Neither depends on protocol, storage, provider SDKs, or delivery types.
 - Keep a Domain or Application package only when it protects a real aggregate vocabulary, invariant, or workflow lifecycle. Merge helper, identity, reference, and one-concept packages into their proven owner; do not replace them with one god package.
@@ -1257,13 +1277,19 @@ Session/Run identities; the launcher cannot author parallel overrides. An omitte
 uses the Runtime default, and an omitted model uses the prepared Session's default. Both
 scheduled and ordinary starts share the same admission, staging and opening transaction.
 
-Root and delegated Interactions, ordinary Tools, and lifetime child/process counts use Scope's unlimited cumulative quotas. Usage remains metered; completion, cancellation, model-reported blocking, and actual failures control lifecycle. Delegation depth, active-child and Tool concurrency, pending mailbox capacity, and operation-specific waits bound resource use. Execution follows its owner's lifetime.
+Root and delegated Interactions use unlimited cumulative Scope step, Effect and
+message quotas; lifetime child and process counts are also unlimited. Usage
+remains metered. Completion, cancellation, model-reported blocking and actual
+failures control lifecycle. Delegation depth, active-child and Tool concurrency,
+pending mailbox capacity and operation-specific waits bound resource use.
+Execution follows its owner's lifetime.
 
 ## Scope execution settlement
 
-Runtime uses the released Scope modules pinned in `go.mod`. Static Tool and Delegate
-bindings belong to Scope Deployments through `Definition.ChildDeployments`;
-Scope owns their identity, start, and restoration. Provider construction uses
+Runtime uses the released Scope modules pinned in `go.mod`. `interaction.Compile`
+captures Tool and Delegate bindings in typed Programs; `workflow.Adapt` binds the
+delegated task's inner Interaction to the same product Run. Scope owns Program
+identity, process admission and restoration. Provider construction uses
 Scope's `Chat`, `Messages`, `ChatCompletions`, or `Responses` entrypoint for the
 selected API.
 
@@ -1272,7 +1298,11 @@ Complete or cancel waiting executions with their owning build before upgrading.
 Older checkpoints are rejected under the existing build-identity and strict
 snapshot rules. Completed product history requires no migration.
 
-Scope alone propagates root, subtree, and owner cancellation to execution contexts. Runtime submits cancellation intent and projects Scope’s immutable termination; a late cancellation or owner deadline cannot replace an already settled failure. Provider diagnostics enrich only the model-failure stop acknowledged by Scope.
+Scope propagates submitted root and subtree cancellation through its execution
+tree. Flame binds its owner lifetime explicitly and joins `Runtime.Close` before
+releasing provider and Tool resources. A late cancellation or owner deadline
+cannot replace an already settled failure. Provider diagnostics enrich only the
+model failure acknowledged by Scope.
 
 A validated complete model response and its reported usage publish under the release-owned lifetime, including the Delta barrier. Execution cancellation cannot discard that observed response or rewrite Scope's terminal outcome. Failed streams cross the same barrier and commit their validated text and visible reasoning as `incomplete` transcript Items tied to the failed model invocation. Preview loss cannot truncate this retained prefix. Partial Tool calls, opaque reasoning state, and incomplete responses never enter canonical model continuation. Both completion and failure close the preview boundary before terminal publication.
 
@@ -1289,13 +1319,43 @@ emit a separate per-Run interrupt event.
 
 Repeated identical Tool results are allowed, including polling. Tool authorization and lifecycle-hook approvals remain enforced.
 
-Canceling a delegated Run still cancels that child. If its in-flight model attempt returns no definite result, Scope retains the unknown Effect and fails the parent instead of delivering a normal delegate result. Runtime projects the actual Scope outcome and preserves unresolved Effect IDs separately; it does not manufacture a settlement or retry the attempt. This intentionally replaces the earlier behavior that allowed the parent to continue despite the child's unresolved Effect. Cancellation before external dispatch and terminal children with definite results remain distinct cases.
+Canceling a delegated Run submits cancellation to that child. If its in-flight
+attempt has no definite result, Scope retains the unknown Effect and keeps the
+affected subtree draining without an Exit. Flame projects loss for unfinished
+product members and preserves the original Effect evidence; it cannot supply a
+normal delegate result or retry the attempt. Cancellation before dispatch and a
+known result that arrives during draining remain distinct cases.
 
-Known Tool and Delegate results, including rejected calls, are extracted through Scope's `interaction.SettledResults` at its `TreeCommitter` boundaries. Runtime atomically commits the authoritative execution-tree head, product Items, invocation journal, and content-bound result receipts. Each receipt retains its exact model-visible Tool results, including ordered content, metadata, and structured details. Settled calls retain their original round indexes even when other calls remain unresolved. The model conversation receives one ordered Tool message when the round completes. Live termination, cancellation of a parked Run, and boot recovery share the same conversation closure: already acknowledged results retain their exact output, and only unresolved calls receive an unavailable-result marker. The reducer keeps no separate conversation ledger.
+Known Tool and Delegate results are extracted through Scope's
+`interaction.SettledResults` at the Store's `Append` boundary. Locally rejected
+proposals that emitted no Effect are published from the exact feedback in Scope's
+next context-preparation request. Runtime atomically commits the authoritative
+execution log, product Items, invocation journal and content-bound result
+receipts. Each receipt retains its exact model-visible Tool results, including
+ordered content, metadata and structured details. Settled calls retain their
+original round indexes while other calls remain unresolved. The conversation
+receives one ordered Tool message when the round completes. Live termination,
+cancellation of a parked Run and boot recovery share the same conversation
+closure: acknowledged results retain their exact output, and only unresolved
+calls receive an unavailable-result marker. The reducer keeps no separate
+conversation ledger.
 
 Result receipts bind to the durable source message's unique sequence identity before the complete Tool message is appended. Reused provider call IDs in another round cannot adopt prior results. Compaction, rollback, and history replacement invalidate removed message references while retaining immutable publication identities for deduplication. A Run whose unresolved Tool calls lack exact receipt evidence fails terminal reconstruction explicitly; its acknowledged work is never silently rewritten as failure feedback.
 
-Tree updates compare the previous writer and digest and require the next incarnation-local commit sequence. Checkpoint identities include the writer and sequence; Effect identities include the Effect ID and boundary kind across writers. SQLite commits the head and deduplication facts atomically. Restoration activates a new writer at sequence zero. A historical commit cannot succeed merely because tree content repeats. Repeated known results are checked against durable receipts before retired presentation metadata is accessed. Ambiguous COMMIT responses are reconciled by reading the tree and product receipts, without rerunning tools. Cancellation stops new execution and model continuation while observed settlement writes remain owned by the executor's release lifetime. Storage latency has no separate elapsed-time failure threshold: release cancels pending publication, then joins the execution workers and Scope Engine before revoking Tool resources.
+Scope's `Batch.Admit` owns writer-epoch fencing, monotonically increasing log
+positions and exact append retries. SQLite compares the previous writer and head
+digest and commits the new log with its product receipts. Recovery advances the
+writer epoch through `Activated` without resetting log positions. Effect identity
+retains the original process, step and index across writer changes. A historical
+commit cannot succeed merely because tree content repeats. Known results are
+checked against durable receipts before retired presentation metadata is read.
+Command acceptance commits with its original `SignalAdmitted` batch; later
+activation does not republish it. Ambiguous COMMIT responses are reconciled by
+reading the tree and product receipts, without rerunning Tools. Observed
+settlement writes remain owned by the executor's release lifetime. Storage
+latency has no separate elapsed-time failure threshold: release cancels pending
+publication and joins execution workers and the Scope Runtime before revoking
+resources.
 
 Process-local fact and child-start receipts retain the pump's decision; observing a
 receipt never consumes or changes that decision. Withdrawal of a queued child-start
@@ -1315,17 +1375,38 @@ A direct Tool completion ends the Run after its ordered results commit. It adds 
 
 Tool concurrency declarations describe the effective executable boundary. Wrappers that can change arguments through hooks, authorization, or approval continuation declare exclusive execution, because an inner resource key computed from the original arguments is no longer safe. Immutable invocation paths preserve the inner declaration; Scope remains the scheduler.
 
-Scope owns the model-visible payload. Delegate results use `interaction.Output` directly; the former `{"reply": "..."}` envelope is removed. Runtime adapts the task input, while Scope owns the complete execution and output, including after restoration. Runtime commits assistant content and accounting at the model boundary before returning the response to Scope. Process termination closes the product Segment without another message event, reply cache, or confirmation handshake. Runtime never reconstructs Delegate output from UI text or independently formats Delegate diagnostics. Pending product metadata, including effective arguments, mutation paths, and offload references, accompanies the Scope checkpoint until its complete model round is published. Delegate admission retains its invocation metadata independently of the currently active child batch, so an earlier Delegate result survives when a later batch waits for input. Resuming that tree preserves the completed work.
+Scope owns model-visible output through `interaction.Output`, including direct
+Tool results. Runtime adapts task input and commits assistant content and
+accounting before returning the observed response to Scope. Process termination
+closes the product Segment without another message event, reply cache or
+confirmation handshake. Runtime never reconstructs Delegate output from UI text
+or independently formats Delegate diagnostics. Pending product metadata,
+including effective arguments, mutation paths and offload references, remains in
+the product checkpoint until its result publication is acknowledged. Durable
+receipts retain already published results after this metadata is retired.
+Completed Delegate siblings keep their original receipts and accounting while
+surviving members wait and resume.
 
 Rejected calls retain their original input as `argumentsText`; parsed `arguments` remains an empty object. Transcript storage, history artifacts, CLI, and Desktop preserve this distinction, including malformed JSON. Existing records need no schema migration; previously omitted results cannot be reconstructed from the database alone. Run aborts persist the first causal diagnostic instead of replacing it with a generic internal error.
 
-The Interaction snapshot shape changes with this contract. Waiting checkpoints from an older build must be completed before upgrade or discarded under the existing build-identity rule; no dual-schema reader is provided. Runtime uses a Scope engine backed by its SQLite TreeCommitter and restores only committed waiting checkpoints. It has no mid-run crash recovery: a restart with unfinished execution retains the existing `RunLost` policy. A lost Run's ending carries a closed loss reason: a restart outside a waiting boundary, an isolated workspace, an unavailable workspace, waiting state written by another build, waiting state that cannot be restored, a configuration change while it waited, or unresolved effects or model calls. The probe's finer reason and cause stay in the trace. All Scope commits fence publication by Tree incarnation, commit sequence, and retained commit identity.
+The persisted execution format changes with this contract. Waiting executions
+from an older build must be completed before upgrade or rejected under the
+existing build identity rule; no dual-schema reader is provided. SQLite stores
+Scope's public Log beside Flame's captured provider inputs and product bindings.
+Waiting and accepted continuations restore their original acknowledged boundary.
+Running executions qualify for receipt recovery only when every unresolved Tool
+has its original captured source and invocation evidence; recovery queries the
+original receipt without repeating the uncertain call. Other unfinished work
+retains `RunLost`.
+A lost Run carries its closed loss reason, including an unavailable workspace,
+another build, unrestorable state, changed configuration or unresolved external
+effects. The probe's finer reason and cause stay in the trace.
 
 Waiting checkpoints declare the offloaded result IDs required by their continuation. SQLite saves these references atomically with the checkpoint, verifies Session ownership, and releases them when the checkpoint is replaced or consumed. Startup and failed-write cleanup delete only bodies held by neither a checkpoint nor an Item. Restoring an executor verifies that the declared references exactly match its pending result metadata; old checkpoints missing this ownership information are rejected under the existing recovery policy, without a compatibility reader.
 
 Unknown-effect observations retain the Effect IDs and the first available local failure diagnostic. The RunLost record preserves these details while keeping the outcome unknown; diagnostic text is never evidence that an external operation succeeded or failed.
 
-Portable Session artifacts preserve unresolved effects on every terminal outcome, including canceled and timed-out Runs. The artifact retains the exact source process and Effect identities, cause, reason, detail, and any observed Scope ToolOutput through export and import. These are read-only historical evidence: imported Runs have no active Segment, open interrupt, or execution checkpoint, and the identities do not authorize resume or retry. Import accepts only the current artifact version; earlier development artifacts are rejected rather than treated as complete evidence.
+Portable Session artifacts preserve unresolved effects on every terminal outcome, including canceled and timed-out Runs. The artifact retains the exact source process and Effect identities, cause, reason, detail, and any observed Tool result details through export and import. These are read-only historical evidence: imported Runs have no active Segment, open interrupt, or execution checkpoint, and the identities do not authorize resume or retry. Import accepts only the current artifact version; earlier development artifacts are rejected rather than treated as complete evidence.
 
 Unknown-effect termination closes every unfinished member in Run-tree postorder, retaining the same evidence on each lost Run. Completed members keep their outcomes. Each terminal commit settles open model attempts as unknown and abandons unfinished Tool Items without inventing model-visible results; the executor is released only after the terminal publication sequence.
 
@@ -1635,8 +1716,8 @@ and plugin authors. `packages/go-sdk/plugin/sqlite` owns Flame private command a
 and atomic receipts. Their former private implementations and entrances are
 removed; Core stores and both bundled backends use the same public mechanisms.
 Host business tables remain in Runtime, and private business tables stay with their
-plugins. Qimu framework records and Runtime's original business references share
-one `flame-qimu.db` database, with WAL and FULL synchronous durability. This is a
+plugins. Frame framework records and Runtime's original business references share
+one `flame-frame.db` database, with WAL and FULL synchronous durability. This is a
 breaking storage and plugin protocol cutover: use a fresh product root and rebuild
 plugin releases. Historical state is retained separately, never converted on open.
 
@@ -1644,7 +1725,7 @@ Transaction context binds the exact `*sql.DB`, so work for another database cann
 accidentally enter the first owner's write-set. Nested work for one database joins
 its transaction; an independent transaction for that same active database is
 refused before connection acquisition. Separate owners do not become a distributed
-transaction. See [SQLite ownership](../qimu/sqlite/README.md) and
+transaction. See [SQLite ownership](https://github.com/Tangerg/frame/blob/v0.1.0/sqlite/README.md) and
 [private receipt ownership](../packages/go-sdk/plugin/sqlite/README.md).
 
 The SQLite transaction boundary owns connection admission, commit and joined
@@ -1719,9 +1800,35 @@ directory under the same retention policy; opening them never converts data.
 
 ## Scope integration
 
-Runtime uses static `ChildDeployments`, the released provider constructors and
-transport, and Scope error categories. The Dispatcher owns each Effect's replay
-and capability policy; Runtime's Segment gate forwards that complete policy.
+Runtime compiles typed `agent/run.Program` values with `interaction.Compile` and
+`workflow.Adapt`. Scope owns each Effect's replay and capability policy; Runtime's
+Segment gate delays dispatch without replacing that policy. Tool invocation
+identity comes from Scope's explicit idempotency key and canonical Effect request,
+and model attribution comes from the committed context-preparation reference.
+Nested Scope paths remain exact in execution storage and product member identities;
+Frame's bounded caller identities receive stable digests of their Effect parents.
+
+The execution Store implements atomic `Batch.Admit`, fenced writer epochs,
+monotonic log positions, exact append retries, complete history reads and
+checkpoint-tail loads. Product results, child admissions and accepted input
+receipts commit with the same log head. Scope's conformance suite exercises the
+SQLite implementation. Prepared provider input is retained beside the log until
+the corresponding model Effect settles; recovery does not repeat transformations,
+retrieval or compaction to reconstruct an already prepared request.
+
+Scope's `SettledResults` describes executed operations. Locally rejected Tool
+proposals have no Effect identity; Runtime records the exact feedback supplied to
+the next `ContextProcessor` before dispatching that provider request. Runtime never
+promotes unconfirmed external output into a completed Tool result.
+
+An admitted Runtime detaches work from its Start caller. Flame explicitly binds
+its lifetime to the process owner and joins `Runtime.Close` before releasing Tool
+and provider resources. Cancel and Kill do not settle unknown external outcomes:
+Scope remains draining without an Exit, and Flame retains the original Effect
+evidence when projecting loss. Completed physical model responses retain their
+usage even if Scope later rejects an oversized settlement. Stream delta limits
+and final response limits are separate Scope contracts.
+
 An Interaction's final Output carries either a model response or direct Tool
 results, without a second completion-source field. Workspace and waiting-tree
 validation errors mark a
@@ -1765,7 +1872,7 @@ committed waiting or terminal boundary retires it atomically. New waiting contex
 and accepted-continuation storage require a fresh pre-release data directory.
 
 Installed MCP Tools have one captured cold recovery class: a single product
-root and its ordinary Tool processes. Before external dispatch, the
+root and its ordinary Tool Effects. Before external dispatch, the
 effective arguments, exact installation release and source authority, original
 Process/Effect attribution, and complete execution context commit with the
 canonical Tool Item. Active and waiting executions use the same context payload;
@@ -1847,11 +1954,11 @@ connects independently under the Runtime lifetime. Plugin management stays avail
 while a source is connecting; disable cancels its attempt and shutdown joins it.
 A construction caller's cancellation after admission cannot retire accepted attempts.
 Managed MCP catalogs retain only the original instance, session and binding
-observation. Discovery holds a short Qimu Use and releases it before publication.
+observation. Discovery holds a short Frame Use and releases it before publication.
 Every Tool, callback and installed command borrows its exact approved Use;
 callback preparation and transport work finish before that borrow closes. An idle
 catalog cannot prevent release replacement or uninstall. Withdrawal requests
-retirement from Qimu, which retains and joins the actual process resource; Pool
+retirement from Frame, which retains and joins the actual process resource; Pool
 shutdown does not claim process exit. Waiting Run restoration obtains original
 executable schemas and bindings independently of the current catalog and never
 publishes restored providers as a new selection.
@@ -1874,9 +1981,13 @@ these reads cannot overwrite the state of an admitted connection.
 Unmapped connection or authorization states fail their read or projection with
 an internal error; they never fabricate a server failure or panic during delivery.
 
-Provider-reported token usage, durable conversation history, and model/Tool/execution telemetry are Scope contracts rather than Runtime restatements: `chat.Usage` survives whole to the protocol, the message store implements `history.Store`, and Scope's OpenTelemetry middleware instruments the provider, Tool, and execution-tree boundaries.
+Provider-reported token usage, durable conversation history, and model/Tool/execution telemetry are Scope contracts rather than Runtime restatements: `chat.Usage` survives whole to the protocol, Frame commits the per-session message store, and Scope's OpenTelemetry middleware instruments the provider, Tool, and execution-tree boundaries.
 
-MCP identity follows Scope's capability chain through Tool decorators for discovery, exposure, and approval queries. Invalid MCP identity declarations reject the catalog instead of silently hiding entries or grouping them as built-ins.
+Tool decorators preserve the source's explicit admission, concurrency, mutation,
+advertising and MCP identity declarations. Discovery, exposure and approval read
+those public consumer contracts directly; no wrapper traversal discovers new
+authority. Invalid MCP identity declarations reject the catalog instead of
+silently hiding entries or grouping them as built-ins.
 
 `mcp.tools.list` reads the resolver's live MCP snapshot, the one each Run manifest freezes, and derives tool name conflicts from that same snapshot. Connections publish their current catalog when the resolver subscribes, then hand every changed tool set to that same sink inside the critical section that settles the connection. There is no separate startup catalog seed; connected Tool counts and the listing describe one state. Remote tool-change notifications invalidate the admitting catalog revision and schedule one coalescing discovery worker per ordinary session. Discovery and validation run outside the connection lock; only the same session and notification version can publish the complete replacement. A failed refresh withdraws that source and reports tool discovery failure without removing siblings. Listing never queries a separate live catalog. Invalid JSON Schemas, including unresolved references and oversized documents, now fail connection or probe admission through Scope rather than failing the next Run. Diagnostic and MCP schema projections preserve exact numeric literals and retain their existing protocol shape.
 

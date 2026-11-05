@@ -11,7 +11,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
 // A refused probe recovers the whole waiting tree as lost for loss, which the
@@ -71,7 +72,7 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	if err != nil {
 		return unresumable(ctx, continuation, run.LossWaitingStateUnavailable, "checkpoint payload cannot be decoded", err)
 	}
-	rootID, err := agent.ParseProcessID(checkpoint.RootMemberID)
+	rootID, err := scoperun.ParseProcessID(checkpoint.RootMemberID)
 	if err != nil || state.handoff.rootID != rootID {
 		return unresumable(ctx, continuation, run.LossWaitingStateUnavailable, "checkpoint root member does not own its tree", err)
 	}
@@ -86,41 +87,19 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	if err != nil {
 		return runs.WaitingResumption{}, err
 	}
-	snapshots := state.tree.ProcessSnapshots()
-	if len(snapshots) == 0 || snapshots[0].Relation().ProcessID() != rootID ||
-		!isInteractionWaitingBoundary(snapshots[0].Status()) {
+	inspection, err := state.tree.Inspect()
+	if err != nil {
+		return runs.WaitingResumption{}, err
+	}
+	snapshots := inspection.Processes
+	if len(snapshots) == 0 || snapshots[0].ID != rootID ||
+		!isInteractionWaitingBoundary(snapshots[0].Status) {
 		return unresumable(ctx, continuation, run.LossWaitingStateUnavailable, "checkpoint tree is not at a waiting boundary", nil)
 	}
 	start := state.restoredStart(continuation)
-	if i.config.CallComposition != nil {
-		bindings := slices.Clone(state.modelObservers)
-		bindings = append(bindings, state.modelContexts...)
-		bindings = append(bindings, state.modelInputs...)
-		bindings = append(bindings, state.toolProposals...)
-		if state.modelProvider != nil {
-			bindings = append(bindings, state.modelProvider.Binding)
-		}
-		if i.config.CallComposition.Pending(bindings) {
-			return runs.DeferredWaiting(), nil
-		}
-		bindings, err = plugins.BindActivations(bindings, state.bindings)
-		if err != nil {
-			return runs.WaitingResumption{}, fmt.Errorf("execution: restore captured contribution bindings: %w", err)
-		}
-		// Probe source eligibility before allocating an Engine. A definite
-		// withdrawal loses the captured tree; an inconclusive read changes no facts.
-		if _, err := i.config.CallComposition.Activations(ctx, bindings); err != nil {
-			if errors.Is(err, plugin.ErrUnavailable) || errors.Is(err, plugin.ErrStale) {
-				return unresumable(ctx, continuation, run.LossConfigurationChanged, "captured contribution is unavailable", err)
-			}
-			return runs.WaitingResumption{}, err
-		}
-		if definite, err := i.config.CallComposition.RestorationFailure(bindings); err != nil {
-			if definite {
-				return unresumable(ctx, continuation, run.LossConfigurationChanged, "captured contribution restoration failed", err)
-			}
-			return runs.WaitingResumption{}, err
-		}
+	eligibility, err := i.probeCapturedContributions(ctx, continuation, state)
+	if err != nil || !eligibility.Resumable() {
+		return eligibility, err
 	}
 	ref := runs.ExecutorRef{SessionID: start.SessionID, ExecutorID: continuation.ExecutorID}
 	assembled, err := i.assembleInteraction(ctx, ref, start, &state)
@@ -143,6 +122,41 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 		return runs.WaitingResumption{}, err
 	}
 
+	return runs.ResumableWaiting(), nil
+}
+
+func (i *InteractionExecutor) probeCapturedContributions(ctx context.Context, continuation runs.ExecutionContinuation, state interactionCheckpointState) (runs.WaitingResumption, error) {
+	if i.config.CallComposition == nil {
+		return runs.ResumableWaiting(), nil
+	}
+	bindings := slices.Clone(state.modelObservers)
+	bindings = append(bindings, state.modelContexts...)
+	bindings = append(bindings, state.modelInputs...)
+	bindings = append(bindings, state.toolProposals...)
+	if state.modelProvider != nil {
+		bindings = append(bindings, state.modelProvider.Binding)
+	}
+	if i.config.CallComposition.Pending(bindings) {
+		return runs.DeferredWaiting(), nil
+	}
+	bindings, err := plugins.BindActivations(bindings, state.bindings)
+	if err != nil {
+		return runs.WaitingResumption{}, fmt.Errorf("execution: restore captured contribution bindings: %w", err)
+	}
+	// Probe source eligibility before allocating an Engine. A definite
+	// withdrawal loses the captured tree; an inconclusive read changes no facts.
+	if _, err := i.config.CallComposition.Activations(ctx, bindings); err != nil {
+		if errors.Is(err, plugin.ErrUnavailable) || errors.Is(err, plugin.ErrStale) {
+			return unresumable(ctx, continuation, run.LossConfigurationChanged, "captured contribution is unavailable", err)
+		}
+		return runs.WaitingResumption{}, err
+	}
+	if definite, err := i.config.CallComposition.RestorationFailure(bindings); err != nil {
+		if definite {
+			return unresumable(ctx, continuation, run.LossConfigurationChanged, "captured contribution restoration failed", err)
+		}
+		return runs.WaitingResumption{}, err
+	}
 	return runs.ResumableWaiting(), nil
 }
 

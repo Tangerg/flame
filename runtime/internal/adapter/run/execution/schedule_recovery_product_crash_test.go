@@ -13,9 +13,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	goruntime "runtime"
+	"slices"
 	"syscall"
 	"testing"
 	"time"
+
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
@@ -25,12 +30,13 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
-	"github.com/Tangerg/qimu/runner"
-	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
+	"github.com/Tangerg/frame/process/runner"
+
+	"github.com/Tangerg/scope/agent/interaction"
+	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
 const scheduleCrashKey = "schedule-crash-start"
@@ -61,7 +67,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 		t.Run(cut, func(t *testing.T) {
 			home := testsupport.TempDirectory(t)
 			processRunner, err := runner.NewDaemon(runner.DaemonConfig{
-				Executable: filepath.Join(distribution, "qimu-runner"),
+				Executable: filepath.Join(distribution, "frame-runner"),
 				Directory:  filepath.Join(home, "runner"), StartTimeout: 10 * time.Second,
 			})
 			if err != nil {
@@ -189,18 +195,31 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			if err != nil || !found {
 				t.Fatalf("original head: %t,%v", found, err)
 			}
-			originalTree, err := agent.ParseTreeSnapshot(originalHead.Payload)
+			originalTree, err := storedScopeLog(originalHead.Payload)
 			if err != nil {
 				t.Fatal(err)
 			}
-			var originalChild agent.ProcessSnapshot
-			for _, child := range originalTree.ProcessSnapshots() {
-				if !child.Relation().IsRoot() && !child.Status().Terminal() {
-					originalChild = child
+			var originalEffect scoperun.EffectID
+			var originalEffects []scoperun.EffectID
+			for _, entry := range originalTree.Entries {
+				intent, ok := entry.Record.(scoperun.EffectIntent)
+				if !ok || intent.ID.Process != originalTree.Root {
+					continue
+				}
+				call, tool, err := interaction.ToolCallFromEffect(intent.Effect)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if tool && call.Call.Name == "schedules_create_schedule" {
+					if call.ContinuationOf != originalEffect {
+						t.Fatal("original create call has multiple independent effect intents")
+					}
+					originalEffect = intent.ID
+					originalEffects = append(originalEffects, intent.ID)
 				}
 			}
-			if !originalChild.Valid() {
-				t.Fatal("original create Process is unavailable")
+			if !originalEffect.Valid() {
+				t.Fatal("original create effect is unavailable")
 			}
 			if err := stores.Close(); err != nil {
 				t.Fatal(err)
@@ -213,7 +232,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				invoke(cut, true)
 			}
 			if cut == "resolution" {
-				assertScheduleResolutionCommitted(t, home, checkpoint.SessionID, checkpoint.RootMemberID, originalChild.Relation().ProcessID())
+				assertScheduleResolutionCommitted(t, home, checkpoint.SessionID, checkpoint.RootMemberID, originalEffect)
 			}
 			phase := "finish"
 			if negative {
@@ -249,21 +268,29 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				if !found {
 					t.Fatal("recovered execution lost its original head")
 				}
-				finalTree, err := agent.ParseTreeSnapshot(finalHead.Payload)
+				finalTree, err := storedScopeLog(finalHead.Payload)
 				if err != nil {
 					t.Fatal(err)
 				}
-				retained := false
-				for _, child := range finalTree.ProcessSnapshots() {
-					if child.Relation().ProcessID() == originalChild.Relation().ProcessID() {
-						retained = true
-						if child.Usage().PreparedEffects != originalChild.Usage().PreparedEffects {
-							t.Fatal("recovery prepared another create Effect")
+				var retained []scoperun.EffectID
+				for _, entry := range finalTree.Entries {
+					intent, ok := entry.Record.(scoperun.EffectIntent)
+					if !ok || intent.ID.Process != originalTree.Root {
+						continue
+					}
+					call, tool, err := interaction.ToolCallFromEffect(intent.Effect)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if tool && call.Call.Name == "schedules_create_schedule" {
+						if !slices.Contains(originalEffects, intent.ID) {
+							t.Fatal("recovery prepared another create effect")
 						}
+						retained = append(retained, intent.ID)
 					}
 				}
-				if !retained || finalTree.RootID() != originalTree.RootID() {
-					t.Fatal("recovery replaced the original Process tree")
+				if !slices.Equal(retained, originalEffects) || finalTree.Root != originalTree.Root {
+					t.Fatal("recovery replaced the original effect or process tree")
 				}
 			}
 			items, err = stores.Transcript.List(t.Context(), receipt.Acceptance.SessionID)
@@ -353,7 +380,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 	}
 }
 
-func assertScheduleResolutionCommitted(t *testing.T, home, sessionID, rootID string, original agent.ProcessID) {
+func assertScheduleResolutionCommitted(t *testing.T, home, sessionID, rootID string, original scoperun.EffectID) {
 	t.Helper()
 	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
 	if err != nil {
@@ -368,26 +395,14 @@ func assertScheduleResolutionCommitted(t *testing.T, home, sessionID, rootID str
 	if err != nil || !found {
 		t.Fatalf("resolution cut: found=%t error=%v", found, err)
 	}
-	tree, err := agent.ParseTreeSnapshot(head.Payload)
+	tree, err := storedScopeLog(head.Payload)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, process := range tree.ProcessSnapshots() {
-		if process.Relation().ProcessID() != original {
-			continue
-		}
-		for id, settlement := range process.Settlements() {
-			if settlement.Status() != agent.SettlementStatusSucceeded {
-				continue
-			}
-			request, found := tree.EffectRequest(original, id)
-			if !found {
-				continue
-			}
-			invocation, err := interaction.ToolInvocationFromRequest(request)
-			if err == nil && invocation.ToolCall().Name == "schedules_create_schedule" {
-				return
-			}
+	for _, entry := range tree.Entries {
+		settled, ok := entry.Record.(scoperun.EffectSettled)
+		if ok && settled.ID == original && settled.Outcome.Status() == scoperun.SettlementStatusSucceeded {
+			return
 		}
 	}
 	t.Fatal("SIGKILL preceded the original create Effect's committed resolution")
@@ -427,7 +442,7 @@ func readScheduleOwner(t *testing.T, packages, dataDirectory string, original sd
 	var stderr bytes.Buffer
 	command.Stderr = &stderr
 	client := sdk.NewClient(&sdk.Implementation{Name: "schedule-owner-check"}, nil)
-	if err := qimumcp.RegisterClient(client); err != nil {
+	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	session, err := client.Connect(t.Context(), &sdk.CommandTransport{Command: command}, nil)
@@ -439,7 +454,7 @@ func readScheduleOwner(t *testing.T, packages, dataDirectory string, original sd
 			t.Error(err)
 		}
 	}()
-	contract, err := portable.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
+	contract, err := plugincontract.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -447,15 +462,15 @@ func readScheduleOwner(t *testing.T, packages, dataDirectory string, original sd
 	if err != nil || len(page.Rows) != 1 || page.NextCursor != "" {
 		t.Fatalf("original backend creation: %+v, %v", page, err)
 	}
-	var invocation portable.Invocation
-	if err := json.Unmarshal(original.Meta[qimumcp.InvocationMetadataKey], &invocation, json.RejectUnknownMembers(true)); err != nil {
+	var invocation framemcp.Invocation
+	if err := json.Unmarshal(original.Meta[pluginmcp.InvocationMetadataKey], &invocation, json.RejectUnknownMembers(true)); err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := qimumcp.WithInvocation(t.Context(), invocation)
+	ctx, err := pluginmcp.WithInvocation(t.Context(), invocation)
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsonvalue.Parse(original.Arguments)
+	input, err := framevalue.ParseJSON(original.Arguments)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -476,4 +491,14 @@ func readScheduleOwner(t *testing.T, packages, dataDirectory string, original sd
 		t.Fatalf("receipt differs from original creation: %s, %v", encoded, err)
 	}
 	return page.Rows[0].ID
+}
+
+func storedScopeLog(payload []byte) (scoperun.Log, error) {
+	var envelope struct {
+		Log scoperun.Log `json:"log"`
+	}
+	if err := json.Unmarshal(payload, &envelope); err != nil {
+		return scoperun.Log{}, err
+	}
+	return envelope.Log, envelope.Log.Validate()
 }

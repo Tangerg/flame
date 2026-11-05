@@ -4,26 +4,26 @@ import (
 	"fmt"
 	"slices"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/jsonvalue"
+	"github.com/Tangerg/frame"
 )
 
 // ProjectActivation keeps the complete original graph with its business owner.
 // Identity and dependency lists are read projections of that one frozen value.
-func ProjectActivation(binding qimu.BindingSnapshot) (plugin.Activation, error) {
+func ProjectActivation(binding frame.BindingSnapshot) (plugin.Activation, error) {
 	data, err := binding.CanonicalJSON()
 	if err != nil {
 		return plugin.Activation{}, err
 	}
-	value, err := jsonvalue.Parse(data)
+	value, err := framevalue.ParseJSON(data)
 	if err != nil {
 		return plugin.Activation{}, err
 	}
-	digest := integrity.Hash(data)
+	digest := framevalue.Hash(data)
 	activation := plugin.Activation{Binding: value, Identity: digest}
 	for _, dependency := range binding.Dependencies() {
 		installation, err := identity.ParseHostInstallation(dependency.InstallationID)
@@ -41,20 +41,20 @@ func ProjectActivation(binding qimu.BindingSnapshot) (plugin.Activation, error) 
 
 // DecodeActivation verifies every projection against the original graph. A
 // caller cannot authorize a retained route by changing its digest or references.
-func DecodeActivation(activation plugin.Activation) (qimu.BindingSnapshot, error) {
+func DecodeActivation(activation plugin.Activation) (frame.BindingSnapshot, error) {
 	if err := activation.Validate(); err != nil {
-		return qimu.BindingSnapshot{}, err
+		return frame.BindingSnapshot{}, err
 	}
-	binding, err := qimu.ParseBinding(activation.Binding.JSON())
+	binding, err := frame.ParseBinding(activation.Binding.Bytes())
 	if err != nil {
-		return qimu.BindingSnapshot{}, err
+		return frame.BindingSnapshot{}, err
 	}
 	original, err := ProjectActivation(binding)
 	if err != nil {
-		return qimu.BindingSnapshot{}, err
+		return frame.BindingSnapshot{}, err
 	}
 	if original.Binding != activation.Binding || original.Identity != activation.Identity || !slices.Equal(original.Dependencies, activation.Dependencies) {
-		return qimu.BindingSnapshot{}, fmt.Errorf("%w: activation projection differs from its original binding", plugin.ErrInvalid)
+		return frame.BindingSnapshot{}, fmt.Errorf("%w: activation projection differs from its original binding", plugin.ErrInvalid)
 	}
 	return binding, nil
 }
@@ -62,7 +62,7 @@ func DecodeActivation(activation plugin.Activation) (qimu.BindingSnapshot, error
 // ReadActivation is the storage boundary for an original retained graph. No
 // dependency or identity column can supply an alternative routing fact.
 func ReadActivation(data []byte) (plugin.Activation, error) {
-	binding, err := qimu.ParseBinding(data)
+	binding, err := frame.ParseBinding(data)
 	if err != nil {
 		return plugin.Activation{}, err
 	}
@@ -71,15 +71,15 @@ func ReadActivation(data []byte) (plugin.Activation, error) {
 
 // OriginalActivation locates a retained entry without selecting collaborators.
 // Transitive membership does not grant a new root entry into another Unit.
-func OriginalActivation(activations []plugin.Activation, installation identity.InstallationID, release integrity.Digest, server mcpserver.ServerName) (plugin.Activation, error) {
-	source := qimu.UnitRef{InstallationID: installation.Host(), Release: release, UnitID: BackendUnit(server)}
+func OriginalActivation(activations []plugin.Activation, installation identity.InstallationID, release framevalue.Digest, server mcpserver.ServerName) (plugin.Activation, error) {
+	source := frame.UnitRef{InstallationID: installation.Host(), Release: release, UnitID: BackendUnit(server)}
 	var selected *plugin.Activation
 	for _, activation := range activations {
 		binding, err := DecodeActivation(activation)
 		if err != nil {
 			return plugin.Activation{}, err
 		}
-		root := slices.Contains(binding.UnitRoots, source) || slices.ContainsFunc(binding.Roots, func(root qimu.ExportRef) bool { return root.Unit() == source })
+		root := slices.Contains(binding.UnitRoots, source) || slices.ContainsFunc(binding.Roots, func(root frame.ExportRef) bool { return root.Unit() == source })
 		if !root {
 			continue
 		}

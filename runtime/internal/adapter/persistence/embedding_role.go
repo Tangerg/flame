@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
@@ -17,7 +16,7 @@ type embeddingRoleStore struct {
 }
 
 // newEmbeddingRoleStore wires the given *sql.DB to the embedding-role surface.
-func newEmbeddingRoleStore(db *sql.DB) *embeddingRoleStore {
+func newEmbeddingRoleStore(db *database) *embeddingRoleStore {
 	return &embeddingRoleStore{store: newRoleStore(db, "embedding_role", "embedding role")}
 }
 

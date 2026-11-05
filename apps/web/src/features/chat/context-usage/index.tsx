@@ -4,7 +4,7 @@ import { ContextUsageGauge } from "@/features/chat/context-usage/ContextUsageGau
 export default definePlugin({
   name: "flame.builtin.context-usage",
   setup(ctx) {
-    contributeLayout(ctx, "composer.toolbar.start", {
+    contributeLayout(ctx.contributions, "composer.toolbar.start", {
       id: "context-usage",
       order: 4,
       component: ContextUsageGauge,

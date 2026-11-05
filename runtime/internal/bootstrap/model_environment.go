@@ -4,8 +4,8 @@ import (
 	"context"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 )
@@ -21,11 +21,11 @@ type modelEnvironment struct {
 	embeddingRoleState *models.RoleState
 	embeddingResolver  *modeladapter.EmbeddingResolver
 	liveEmbedder       *modeladapter.RoleEmbedder
-	callbacks          *qimumcp.Callbacks
+	callbacks          *pluginmcp.Callbacks
 	capabilities       *modeladapter.Capabilities
 }
 
-func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, defaultSelection modelchoice.Selection, callbacks *qimumcp.Callbacks, providers modelProviderAdapters) (modelEnvironment, error) {
+func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, defaultSelection modelchoice.Selection, callbacks *pluginmcp.Callbacks, providers modelProviderAdapters) (modelEnvironment, error) {
 	resolver, err := modeladapter.NewChatResolver(cfg.providerRegistry, providers)
 	if err != nil {
 		return modelEnvironment{}, err

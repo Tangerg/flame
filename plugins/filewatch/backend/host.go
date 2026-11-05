@@ -8,13 +8,13 @@ import (
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
-	qimumcp "github.com/Tangerg/qimu/mcp"
 )
 
 type runHost struct{ client *runtimeclient.Client }
 
-func connectHost(ctx context.Context, ref qimumcp.CallbackRef) (*runHost, error) {
+func connectHost(ctx context.Context, ref pluginmcp.CallbackRef) (*runHost, error) {
 	client, err := runtimeclient.ConnectCallback(ctx, ref)
 	if err != nil {
 		return nil, err

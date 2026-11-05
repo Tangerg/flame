@@ -2,375 +2,17 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "CallV1Input": {
-      "$ref": "#/$defs/ChatRequest"
+      "$ref": "#/$defs/CallV1InputModelproviderChatRequest"
     },
-    "CallV1Output": {
-      "$ref": "#/$defs/ChatResult"
-    },
-    "Chat": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "allOf": [
-            {
-              "pattern": "^[a-f0-9]{64}$"
-            }
-          ],
-          "type": "string"
-        },
-        "metadata": {
-          "$ref": "#/$defs/Model"
-        },
-        "model": {
-          "type": "string"
-        },
-        "original": {
-          "allOf": [
-            {
-              "maxLength": 256,
-              "minLength": 1
-            }
-          ],
-          "type": "string"
-        },
-        "provider": {
-          "type": "string"
-        },
-        "streaming": {
-          "type": "boolean"
-        },
-        "tokenCounting": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "id",
-        "original",
-        "provider",
-        "model",
-        "streaming",
-        "tokenCounting"
-      ],
-      "type": "object"
-    },
-    "ChatRequest": {
-      "additionalProperties": false,
-      "properties": {
-        "handle": {
-          "$ref": "#/$defs/Handle"
-        },
-        "request": {
-          "$ref": "#/$defs/Request"
-        }
-      },
-      "required": [
-        "handle",
-        "request"
-      ],
-      "type": "object"
-    },
-    "ChatResult": {
-      "additionalProperties": false,
-      "properties": {
-        "failure": {
-          "$ref": "#/$defs/Failure"
-        },
-        "response": {
-          "$ref": "#/$defs/Response"
-        }
-      },
-      "type": "object"
-    },
-    "Citation": {
-      "additionalProperties": false,
-      "properties": {
-        "quote": {
-          "type": "string"
-        },
-        "source": {
-          "$ref": "#/$defs/CitationSource"
-        },
-        "title": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "source"
-      ],
-      "type": "object"
-    },
-    "CitationSource": {
-      "additionalProperties": false,
-      "properties": {
-        "kind": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind",
-        "value"
-      ],
-      "type": "object"
-    },
-    "CloseV1Input": {
-      "$ref": "#/$defs/Handle"
-    },
-    "CloseV1Output": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
-    "Connection": {
-      "additionalProperties": false,
-      "properties": {
-        "apiKey": {
-          "type": "string"
-        },
-        "baseURL": {
-          "type": "string"
-        },
-        "provider": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "provider"
-      ],
-      "type": "object"
-    },
-    "CountV1Input": {
-      "$ref": "#/$defs/ChatRequest"
-    },
-    "CountV1Output": {
-      "$ref": "#/$defs/TokenCount"
-    },
-    "EmbedV1Input": {
-      "$ref": "#/$defs/EmbeddingRequest"
-    },
-    "EmbedV1Output": {
-      "$ref": "#/$defs/EmbeddingResult"
-    },
-    "Embedder": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "allOf": [
-            {
-              "pattern": "^[a-f0-9]{64}$"
-            }
-          ],
-          "type": "string"
-        },
-        "model": {
-          "type": "string"
-        },
-        "provider": {
-          "type": "string"
-        },
-        "space": {
-          "pattern": "\\S",
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "provider",
-        "model",
-        "space"
-      ],
-      "type": "object"
-    },
-    "EmbeddingProfile": {
-      "additionalProperties": false,
-      "properties": {
-        "defaultModel": {
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
-    "EmbeddingRequest": {
-      "additionalProperties": false,
-      "properties": {
-        "handle": {
-          "$ref": "#/$defs/Handle"
-        },
-        "request": true
-      },
-      "required": [
-        "handle",
-        "request"
-      ],
-      "type": "object"
-    },
-    "EmbeddingResult": {
-      "additionalProperties": false,
-      "properties": {
-        "failure": {
-          "$ref": "#/$defs/Failure"
-        },
-        "response": true
-      },
-      "type": "object"
-    },
-    "EndpointPolicy": {
-      "additionalProperties": false,
-      "properties": {
-        "appendsPath": {
-          "type": "string"
-        },
-        "example": {
-          "type": "string"
-        },
-        "requiredSuffix": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "example"
-      ],
-      "type": "object"
-    },
-    "Extensions": {
-      "$ref": "#/$defs/Map"
-    },
-    "Failure": {
-      "additionalProperties": false,
-      "properties": {
-        "execution": {
-          "type": "string"
-        },
-        "kind": {
-          "allOf": [
-            {
-              "enum": [
-                "internal",
-                "canceled",
-                "timeout",
-                "invalid_credentials",
-                "rate_limited",
-                "provider_rejected",
-                "provider_unavailable"
-              ]
-            }
-          ],
-          "type": "string"
-        },
-        "retryAfterMillis": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 0,
-          "type": "integer"
-        }
-      },
-      "required": [
-        "kind",
-        "execution"
-      ],
-      "type": "object"
-    },
-    "Handle": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "allOf": [
-            {
-              "pattern": "^[a-f0-9]{64}$"
-            }
-          ],
-          "type": "string"
-        }
-      },
-      "required": [
-        "id"
-      ],
-      "type": "object"
-    },
-    "Limits": {
-      "additionalProperties": false,
-      "properties": {
-        "context_window": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "max_input_tokens": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "max_output_tokens": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        }
-      },
-      "type": "object"
-    },
-    "Map": {
-      "oneOf": [
-        {
-          "type": "null"
-        },
-        {
-          "additionalProperties": true,
-          "type": "object"
-        }
-      ]
-    },
-    "Media": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "metadata": {
-          "$ref": "#/$defs/Map"
-        },
-        "mime": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "source": {
-          "$ref": "#/$defs/Source"
-        }
-      },
-      "required": [
-        "mime",
-        "source"
-      ],
-      "type": "object"
-    },
-    "Message": {
+    "CallV1InputChatMessage": {
       "additionalProperties": false,
       "properties": {
         "metadata": {
-          "$ref": "#/$defs/Map"
+          "$ref": "#/$defs/CallV1InputMetadataMap"
         },
         "parts": {
           "items": {
-            "$ref": "#/$defs/Part"
+            "$ref": "#/$defs/CallV1InputChatPart"
           },
           "type": "array"
         },
@@ -384,102 +26,11 @@
       ],
       "type": "object"
     },
-    "Modalities": {
-      "additionalProperties": false,
-      "properties": {
-        "input": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "output": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        }
-      },
-      "type": "object"
-    },
-    "Model": {
-      "additionalProperties": false,
-      "properties": {
-        "deprecated": {
-          "type": "boolean"
-        },
-        "display_name": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "knowledge_cutoff": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "last_updated": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "limits": {
-          "$ref": "#/$defs/Limits"
-        },
-        "modalities": {
-          "$ref": "#/$defs/Modalities"
-        },
-        "pricing": {
-          "$ref": "#/$defs/PricingSchedule"
-        },
-        "reasoning": {
-          "$ref": "#/$defs/Reasoning"
-        },
-        "release_date": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "structured_output": {
-          "type": "boolean"
-        },
-        "tool_call": {
-          "type": "boolean"
-        }
-      },
-      "type": "object"
-    },
-    "Open": {
-      "additionalProperties": false,
-      "properties": {
-        "connection": {
-          "$ref": "#/$defs/Connection"
-        },
-        "model": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "connection",
-        "model"
-      ],
-      "type": "object"
-    },
-    "OpenChatV1Input": {
-      "$ref": "#/$defs/Open"
-    },
-    "OpenChatV1Output": {
-      "$ref": "#/$defs/Chat"
-    },
-    "OpenEmbeddingV1Input": {
-      "$ref": "#/$defs/Open"
-    },
-    "OpenEmbeddingV1Output": {
-      "$ref": "#/$defs/Embedder"
-    },
-    "Options": {
+    "CallV1InputChatOptions": {
       "additionalProperties": false,
       "properties": {
         "extensions": {
-          "$ref": "#/$defs/Extensions"
+          "$ref": "#/$defs/CallV1InputMetadataExtensions"
         },
         "frequency_penalty": {
           "type": "number"
@@ -497,7 +48,7 @@
           "type": "string"
         },
         "output_format": {
-          "$ref": "#/$defs/OutputFormat"
+          "$ref": "#/$defs/CallV1InputChatOutputFormat"
         },
         "presence_penalty": {
           "type": "number"
@@ -529,22 +80,7 @@
       },
       "type": "object"
     },
-    "Output": {
-      "additionalProperties": false,
-      "properties": {
-        "finish_reason": {
-          "type": "string"
-        },
-        "message": {
-          "$ref": "#/$defs/Message"
-        },
-        "metadata": {
-          "$ref": "#/$defs/OutputMetadata"
-        }
-      },
-      "type": "object"
-    },
-    "OutputFormat": {
+    "CallV1InputChatOutputFormat": {
       "additionalProperties": false,
       "properties": {
         "description": {
@@ -563,21 +99,12 @@
       ],
       "type": "object"
     },
-    "OutputMetadata": {
-      "additionalProperties": false,
-      "properties": {
-        "extra": {
-          "$ref": "#/$defs/Map"
-        }
-      },
-      "type": "object"
-    },
-    "Part": {
+    "CallV1InputChatPart": {
       "additionalProperties": false,
       "properties": {
         "citations": {
           "items": {
-            "$ref": "#/$defs/Citation"
+            "$ref": "#/$defs/CallV1InputContentCitation"
           },
           "type": "array"
         },
@@ -585,10 +112,10 @@
           "type": "string"
         },
         "media": {
-          "$ref": "#/$defs/Media"
+          "$ref": "#/$defs/CallV1InputMediaMedia"
         },
         "metadata": {
-          "$ref": "#/$defs/Map"
+          "$ref": "#/$defs/CallV1InputMetadataMap"
         },
         "reasoning_state": {
           "oneOf": [
@@ -605,10 +132,10 @@
           "type": "string"
         },
         "tool_call": {
-          "$ref": "#/$defs/ToolCall"
+          "$ref": "#/$defs/CallV1InputChatToolCall"
         },
         "tool_result": {
-          "$ref": "#/$defs/ToolResult"
+          "$ref": "#/$defs/CallV1InputChatToolResult"
         }
       },
       "required": [
@@ -616,217 +143,24 @@
       ],
       "type": "object"
     },
-    "PartDelta": {
-      "additionalProperties": false,
-      "properties": {
-        "citation": {
-          "$ref": "#/$defs/Citation"
-        },
-        "kind": {
-          "type": "string"
-        },
-        "media": {
-          "$ref": "#/$defs/Media"
-        },
-        "metadata": {
-          "$ref": "#/$defs/Map"
-        },
-        "reasoning_state": {
-          "oneOf": [
-            {
-              "type": "null"
-            },
-            {
-              "contentEncoding": "base64",
-              "type": "string"
-            }
-          ]
-        },
-        "text": {
-          "type": "string"
-        },
-        "tool_call": {
-          "$ref": "#/$defs/ToolCallDelta"
-        }
-      },
-      "required": [
-        "kind"
-      ],
-      "type": "object"
-    },
-    "Pricing": {
-      "additionalProperties": false,
-      "properties": {
-        "cache_read_per_1m": {
-          "type": "number"
-        },
-        "cache_write_per_1m": {
-          "type": "number"
-        },
-        "input_per_1m": {
-          "type": "number"
-        },
-        "output_per_1m": {
-          "type": "number"
-        },
-        "threshold": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        }
-      },
-      "required": [
-        "input_per_1m",
-        "output_per_1m"
-      ],
-      "type": "object"
-    },
-    "PricingSchedule": {
-      "items": {
-        "$ref": "#/$defs/Pricing"
-      },
-      "type": "array"
-    },
-    "Profile": {
-      "additionalProperties": false,
-      "properties": {
-        "authentication": {
-          "allOf": [
-            {
-              "enum": [
-                "keyRequired",
-                "keyOptional"
-              ]
-            }
-          ],
-          "type": "string"
-        },
-        "defaultModel": {
-          "type": "string"
-        },
-        "embedding": {
-          "$ref": "#/$defs/EmbeddingProfile"
-        },
-        "endpoint": {
-          "$ref": "#/$defs/EndpointPolicy"
-        },
-        "endpointRequired": {
-          "type": "boolean"
-        },
-        "id": {
-          "type": "string"
-        },
-        "modelSource": {
-          "allOf": [
-            {
-              "enum": [
-                "bundled",
-                "endpoint"
-              ]
-            }
-          ],
-          "type": "string"
-        },
-        "models": {
-          "items": {
-            "$ref": "#/$defs/Model"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "id",
-        "authentication",
-        "endpointRequired",
-        "modelSource",
-        "models"
-      ],
-      "type": "object"
-    },
-    "ProfilesV1Input": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
-    "ProfilesV1Output": {
-      "items": {
-        "$ref": "#/$defs/Profile"
-      },
-      "type": "array"
-    },
-    "Reasoning": {
-      "additionalProperties": false,
-      "properties": {
-        "default_level": {
-          "type": "string"
-        },
-        "levels": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "supported": {
-          "type": "boolean"
-        }
-      },
-      "type": "object"
-    },
-    "RemoteModelsV1Input": {
-      "$ref": "#/$defs/Connection"
-    },
-    "RemoteModelsV1Output": {
-      "items": {
-        "type": "string"
-      },
-      "type": "array"
-    },
-    "Reopen": {
-      "additionalProperties": false,
-      "properties": {
-        "original": {
-          "allOf": [
-            {
-              "maxLength": 256,
-              "minLength": 1
-            }
-          ],
-          "type": "string"
-        }
-      },
-      "required": [
-        "original"
-      ],
-      "type": "object"
-    },
-    "ReopenChatV1Input": {
-      "$ref": "#/$defs/Reopen"
-    },
-    "ReopenChatV1Output": {
-      "$ref": "#/$defs/Chat"
-    },
-    "Request": {
+    "CallV1InputChatRequest": {
       "additionalProperties": false,
       "properties": {
         "messages": {
           "items": {
-            "$ref": "#/$defs/Message"
+            "$ref": "#/$defs/CallV1InputChatMessage"
           },
           "type": "array"
         },
         "options": {
-          "$ref": "#/$defs/Options"
+          "$ref": "#/$defs/CallV1InputChatOptions"
         },
         "tool_choice": {
-          "$ref": "#/$defs/ToolChoice"
+          "$ref": "#/$defs/CallV1InputChatToolChoice"
         },
         "tools": {
           "items": {
-            "$ref": "#/$defs/ToolDefinition"
+            "$ref": "#/$defs/CallV1InputToolDefinition"
           },
           "type": "array"
         }
@@ -836,65 +170,152 @@
       ],
       "type": "object"
     },
-    "Response": {
+    "CallV1InputChatToolCall": {
       "additionalProperties": false,
       "properties": {
-        "metadata": {
-          "$ref": "#/$defs/ResponseMetadata"
-        },
-        "output": {
-          "$ref": "#/$defs/Output"
-        }
-      },
-      "type": "object"
-    },
-    "ResponseDelta": {
-      "additionalProperties": false,
-      "properties": {
-        "finish_reason": {
+        "arguments": {
           "type": "string"
-        },
-        "message_metadata": {
-          "$ref": "#/$defs/Map"
-        },
-        "metadata": {
-          "$ref": "#/$defs/ResponseMetadata"
-        },
-        "output_metadata": {
-          "$ref": "#/$defs/OutputMetadata"
-        },
-        "parts": {
-          "items": {
-            "$ref": "#/$defs/PartDelta"
-          },
-          "type": "array"
-        }
-      },
-      "type": "object"
-    },
-    "ResponseMetadata": {
-      "additionalProperties": false,
-      "properties": {
-        "created_at": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "extra": {
-          "$ref": "#/$defs/Map"
         },
         "id": {
           "type": "string"
         },
-        "model": {
+        "name": {
           "type": "string"
-        },
-        "usage": {
-          "$ref": "#/$defs/Usage"
         }
       },
+      "required": [
+        "id",
+        "name"
+      ],
       "type": "object"
     },
-    "Source": {
+    "CallV1InputChatToolChoice": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parallelism": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "type": "object"
+    },
+    "CallV1InputChatToolResult": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "is_error": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "output": {
+          "$ref": "#/$defs/CallV1InputToolOutput"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "output"
+      ],
+      "type": "object"
+    },
+    "CallV1InputContentBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/CallV1InputContentCitation"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "media": {
+          "$ref": "#/$defs/CallV1InputMediaMedia"
+        },
+        "metadata": {
+          "$ref": "#/$defs/CallV1InputMetadataMap"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "CallV1InputContentCitation": {
+      "additionalProperties": false,
+      "properties": {
+        "quote": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/CallV1InputContentCitationSource"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    },
+    "CallV1InputContentCitationSource": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    "CallV1InputMediaMedia": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/CallV1InputMetadataMap"
+        },
+        "mime": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/CallV1InputMediaSource"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    },
+    "CallV1InputMediaSource": {
       "additionalProperties": false,
       "properties": {
         "bytes": {
@@ -923,127 +344,67 @@
       ],
       "type": "object"
     },
-    "StreamV1Chunk": {
-      "$ref": "#/$defs/ResponseDelta"
+    "CallV1InputMetadataExtensions": {
+      "$ref": "#/$defs/CallV1InputMetadataMap"
     },
-    "StreamV1Input": {
-      "$ref": "#/$defs/ChatRequest"
+    "CallV1InputMetadataMap": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "additionalProperties": true,
+          "type": "object"
+        }
+      ]
     },
-    "StreamV1Output": {
-      "$ref": "#/$defs/ChatResult"
-    },
-    "TokenCount": {
+    "CallV1InputModelproviderChatRequest": {
       "additionalProperties": false,
       "properties": {
-        "count": {
+        "handle": {
+          "$ref": "#/$defs/CallV1InputModelproviderHandle"
+        },
+        "request": {
+          "$ref": "#/$defs/CallV1InputChatRequest"
+        }
+      },
+      "required": [
+        "handle",
+        "request"
+      ],
+      "type": "object"
+    },
+    "CallV1InputModelproviderHandle": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
           "allOf": [
             {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
+              "pattern": "^[a-f0-9]{64}$"
             }
           ],
-          "minimum": 0,
-          "type": "integer"
-        },
-        "failure": {
-          "$ref": "#/$defs/Failure"
-        }
-      },
-      "type": "object"
-    },
-    "ToolCall": {
-      "additionalProperties": false,
-      "properties": {
-        "arguments": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "name": {
           "type": "string"
         }
       },
       "required": [
-        "id",
-        "name"
+        "id"
       ],
       "type": "object"
     },
-    "ToolCallDelta": {
-      "additionalProperties": false,
-      "properties": {
-        "arguments": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "name"
-      ],
-      "type": "object"
-    },
-    "ToolChoice": {
-      "additionalProperties": false,
-      "properties": {
-        "mode": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "parallelism": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "mode"
-      ],
-      "type": "object"
-    },
-    "ToolContent": {
-      "additionalProperties": false,
-      "properties": {
-        "citations": {
-          "items": {
-            "$ref": "#/$defs/Citation"
-          },
-          "type": "array"
-        },
-        "kind": {
-          "type": "string"
-        },
-        "media": {
-          "$ref": "#/$defs/Media"
-        },
-        "metadata": {
-          "$ref": "#/$defs/Map"
-        },
-        "text": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind"
-      ],
-      "type": "object"
-    },
-    "ToolDefinition": {
+    "CallV1InputToolDefinition": {
       "additionalProperties": false,
       "properties": {
         "description": {
           "type": "string"
         },
+        "effect": {
+          "type": "string"
+        },
         "input_schema": true,
         "name": {
           "type": "string"
-        }
+        },
+        "output_schema": true
       },
       "required": [
         "name",
@@ -1051,12 +412,12 @@
       ],
       "type": "object"
     },
-    "ToolOutput": {
+    "CallV1InputToolOutput": {
       "additionalProperties": false,
       "properties": {
         "content": {
           "items": {
-            "$ref": "#/$defs/ToolContent"
+            "$ref": "#/$defs/CallV1InputContentBlock"
           },
           "type": "array"
         },
@@ -1064,7 +425,153 @@
       },
       "type": "object"
     },
-    "ToolResult": {
+    "CallV1Output": {
+      "$ref": "#/$defs/CallV1OutputModelproviderChatResult"
+    },
+    "CallV1OutputChatMessage": {
+      "additionalProperties": false,
+      "properties": {
+        "metadata": {
+          "$ref": "#/$defs/CallV1OutputMetadataMap"
+        },
+        "parts": {
+          "items": {
+            "$ref": "#/$defs/CallV1OutputChatPart"
+          },
+          "type": "array"
+        },
+        "role": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "parts"
+      ],
+      "type": "object"
+    },
+    "CallV1OutputChatOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "finish_reason": {
+          "type": "string"
+        },
+        "message": {
+          "$ref": "#/$defs/CallV1OutputChatMessage"
+        },
+        "metadata": {
+          "$ref": "#/$defs/CallV1OutputChatOutputMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "CallV1OutputChatOutputMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "extra": {
+          "$ref": "#/$defs/CallV1OutputMetadataMap"
+        }
+      },
+      "type": "object"
+    },
+    "CallV1OutputChatPart": {
+      "additionalProperties": false,
+      "properties": {
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/CallV1OutputContentCitation"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "media": {
+          "$ref": "#/$defs/CallV1OutputMediaMedia"
+        },
+        "metadata": {
+          "$ref": "#/$defs/CallV1OutputMetadataMap"
+        },
+        "reasoning_state": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "contentEncoding": "base64",
+              "type": "string"
+            }
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "tool_call": {
+          "$ref": "#/$defs/CallV1OutputChatToolCall"
+        },
+        "tool_result": {
+          "$ref": "#/$defs/CallV1OutputChatToolResult"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "CallV1OutputChatResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "metadata": {
+          "$ref": "#/$defs/CallV1OutputChatResponseMetadata"
+        },
+        "output": {
+          "$ref": "#/$defs/CallV1OutputChatOutput"
+        }
+      },
+      "type": "object"
+    },
+    "CallV1OutputChatResponseMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "extra": {
+          "$ref": "#/$defs/CallV1OutputMetadataMap"
+        },
+        "id": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "usage": {
+          "$ref": "#/$defs/CallV1OutputChatUsage"
+        }
+      },
+      "type": "object"
+    },
+    "CallV1OutputChatToolCall": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "type": "object"
+    },
+    "CallV1OutputChatToolResult": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -1077,7 +584,7 @@
           "type": "string"
         },
         "output": {
-          "$ref": "#/$defs/ToolOutput"
+          "$ref": "#/$defs/CallV1OutputToolOutput"
         }
       },
       "required": [
@@ -1087,7 +594,7 @@
       ],
       "type": "object"
     },
-    "Usage": {
+    "CallV1OutputChatUsage": {
       "additionalProperties": false,
       "properties": {
         "cache_read_input_tokens": {
@@ -1138,8 +645,2249 @@
       },
       "type": "object"
     },
+    "CallV1OutputContentBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/CallV1OutputContentCitation"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "media": {
+          "$ref": "#/$defs/CallV1OutputMediaMedia"
+        },
+        "metadata": {
+          "$ref": "#/$defs/CallV1OutputMetadataMap"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "CallV1OutputContentCitation": {
+      "additionalProperties": false,
+      "properties": {
+        "quote": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/CallV1OutputContentCitationSource"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    },
+    "CallV1OutputContentCitationSource": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    "CallV1OutputMediaMedia": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/CallV1OutputMetadataMap"
+        },
+        "mime": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/CallV1OutputMediaSource"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    },
+    "CallV1OutputMediaSource": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "contentEncoding": "base64",
+              "type": "string"
+            }
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "CallV1OutputMetadataMap": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "additionalProperties": true,
+          "type": "object"
+        }
+      ]
+    },
+    "CallV1OutputModelproviderChatResult": {
+      "additionalProperties": false,
+      "properties": {
+        "failure": {
+          "$ref": "#/$defs/CallV1OutputModelproviderFailure"
+        },
+        "response": {
+          "$ref": "#/$defs/CallV1OutputChatResponse"
+        }
+      },
+      "type": "object"
+    },
+    "CallV1OutputModelproviderFailure": {
+      "additionalProperties": false,
+      "properties": {
+        "execution": {
+          "type": "string"
+        },
+        "kind": {
+          "allOf": [
+            {
+              "enum": [
+                "internal",
+                "canceled",
+                "timeout",
+                "invalid_credentials",
+                "rate_limited",
+                "provider_rejected",
+                "provider_unavailable"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "retryAfterMillis": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "execution"
+      ],
+      "type": "object"
+    },
+    "CallV1OutputToolOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "items": {
+            "$ref": "#/$defs/CallV1OutputContentBlock"
+          },
+          "type": "array"
+        },
+        "details": true
+      },
+      "type": "object"
+    },
+    "CloseV1Input": {
+      "$ref": "#/$defs/CloseV1InputModelproviderHandle"
+    },
+    "CloseV1InputModelproviderHandle": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "allOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "CloseV1Output": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "CountV1Input": {
+      "$ref": "#/$defs/CountV1InputModelproviderChatRequest"
+    },
+    "CountV1InputChatMessage": {
+      "additionalProperties": false,
+      "properties": {
+        "metadata": {
+          "$ref": "#/$defs/CountV1InputMetadataMap"
+        },
+        "parts": {
+          "items": {
+            "$ref": "#/$defs/CountV1InputChatPart"
+          },
+          "type": "array"
+        },
+        "role": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "parts"
+      ],
+      "type": "object"
+    },
+    "CountV1InputChatOptions": {
+      "additionalProperties": false,
+      "properties": {
+        "extensions": {
+          "$ref": "#/$defs/CountV1InputMetadataExtensions"
+        },
+        "frequency_penalty": {
+          "type": "number"
+        },
+        "max_output_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "model": {
+          "type": "string"
+        },
+        "output_format": {
+          "$ref": "#/$defs/CountV1InputChatOutputFormat"
+        },
+        "presence_penalty": {
+          "type": "number"
+        },
+        "reasoning_effort": {
+          "type": "string"
+        },
+        "stop": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "temperature": {
+          "type": "number"
+        },
+        "top_k": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "top_p": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "CountV1InputChatOutputFormat": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "schema": true,
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "CountV1InputChatPart": {
+      "additionalProperties": false,
+      "properties": {
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/CountV1InputContentCitation"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "media": {
+          "$ref": "#/$defs/CountV1InputMediaMedia"
+        },
+        "metadata": {
+          "$ref": "#/$defs/CountV1InputMetadataMap"
+        },
+        "reasoning_state": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "contentEncoding": "base64",
+              "type": "string"
+            }
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "tool_call": {
+          "$ref": "#/$defs/CountV1InputChatToolCall"
+        },
+        "tool_result": {
+          "$ref": "#/$defs/CountV1InputChatToolResult"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "CountV1InputChatRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "messages": {
+          "items": {
+            "$ref": "#/$defs/CountV1InputChatMessage"
+          },
+          "type": "array"
+        },
+        "options": {
+          "$ref": "#/$defs/CountV1InputChatOptions"
+        },
+        "tool_choice": {
+          "$ref": "#/$defs/CountV1InputChatToolChoice"
+        },
+        "tools": {
+          "items": {
+            "$ref": "#/$defs/CountV1InputToolDefinition"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "messages"
+      ],
+      "type": "object"
+    },
+    "CountV1InputChatToolCall": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "type": "object"
+    },
+    "CountV1InputChatToolChoice": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parallelism": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "type": "object"
+    },
+    "CountV1InputChatToolResult": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "is_error": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "output": {
+          "$ref": "#/$defs/CountV1InputToolOutput"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "output"
+      ],
+      "type": "object"
+    },
+    "CountV1InputContentBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/CountV1InputContentCitation"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "media": {
+          "$ref": "#/$defs/CountV1InputMediaMedia"
+        },
+        "metadata": {
+          "$ref": "#/$defs/CountV1InputMetadataMap"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "CountV1InputContentCitation": {
+      "additionalProperties": false,
+      "properties": {
+        "quote": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/CountV1InputContentCitationSource"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    },
+    "CountV1InputContentCitationSource": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    "CountV1InputMediaMedia": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/CountV1InputMetadataMap"
+        },
+        "mime": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/CountV1InputMediaSource"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    },
+    "CountV1InputMediaSource": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "contentEncoding": "base64",
+              "type": "string"
+            }
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "CountV1InputMetadataExtensions": {
+      "$ref": "#/$defs/CountV1InputMetadataMap"
+    },
+    "CountV1InputMetadataMap": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "additionalProperties": true,
+          "type": "object"
+        }
+      ]
+    },
+    "CountV1InputModelproviderChatRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "handle": {
+          "$ref": "#/$defs/CountV1InputModelproviderHandle"
+        },
+        "request": {
+          "$ref": "#/$defs/CountV1InputChatRequest"
+        }
+      },
+      "required": [
+        "handle",
+        "request"
+      ],
+      "type": "object"
+    },
+    "CountV1InputModelproviderHandle": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "allOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "CountV1InputToolDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "effect": {
+          "type": "string"
+        },
+        "input_schema": true,
+        "name": {
+          "type": "string"
+        },
+        "output_schema": true
+      },
+      "required": [
+        "name",
+        "input_schema"
+      ],
+      "type": "object"
+    },
+    "CountV1InputToolOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "items": {
+            "$ref": "#/$defs/CountV1InputContentBlock"
+          },
+          "type": "array"
+        },
+        "details": true
+      },
+      "type": "object"
+    },
+    "CountV1Output": {
+      "$ref": "#/$defs/TokenCount"
+    },
+    "CountV1OutputModelproviderFailure": {
+      "additionalProperties": false,
+      "properties": {
+        "execution": {
+          "type": "string"
+        },
+        "kind": {
+          "allOf": [
+            {
+              "enum": [
+                "internal",
+                "canceled",
+                "timeout",
+                "invalid_credentials",
+                "rate_limited",
+                "provider_rejected",
+                "provider_unavailable"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "retryAfterMillis": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "execution"
+      ],
+      "type": "object"
+    },
+    "EmbedV1Input": {
+      "$ref": "#/$defs/EmbeddingRequest"
+    },
+    "EmbedV1InputModelproviderHandle": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "allOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "EmbedV1Output": {
+      "$ref": "#/$defs/EmbeddingResult"
+    },
+    "EmbedV1OutputModelproviderFailure": {
+      "additionalProperties": false,
+      "properties": {
+        "execution": {
+          "type": "string"
+        },
+        "kind": {
+          "allOf": [
+            {
+              "enum": [
+                "internal",
+                "canceled",
+                "timeout",
+                "invalid_credentials",
+                "rate_limited",
+                "provider_rejected",
+                "provider_unavailable"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "retryAfterMillis": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "execution"
+      ],
+      "type": "object"
+    },
+    "Embedder": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "allOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          ],
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "space": {
+          "pattern": "\\S",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "provider",
+        "model",
+        "space"
+      ],
+      "type": "object"
+    },
+    "EmbeddingProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "defaultModel": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "EmbeddingRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "handle": {
+          "$ref": "#/$defs/EmbedV1InputModelproviderHandle"
+        },
+        "request": true
+      },
+      "required": [
+        "handle",
+        "request"
+      ],
+      "type": "object"
+    },
+    "EmbeddingResult": {
+      "additionalProperties": false,
+      "properties": {
+        "failure": {
+          "$ref": "#/$defs/EmbedV1OutputModelproviderFailure"
+        },
+        "response": true
+      },
+      "type": "object"
+    },
+    "EndpointPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "appendsPath": {
+          "type": "string"
+        },
+        "example": {
+          "type": "string"
+        },
+        "requiredSuffix": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "example"
+      ],
+      "type": "object"
+    },
+    "OpenChatV1Input": {
+      "$ref": "#/$defs/OpenChatV1InputModelproviderOpen"
+    },
+    "OpenChatV1InputModelproviderConnection": {
+      "additionalProperties": false,
+      "properties": {
+        "apiKey": {
+          "type": "string"
+        },
+        "baseURL": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider"
+      ],
+      "type": "object"
+    },
+    "OpenChatV1InputModelproviderOpen": {
+      "additionalProperties": false,
+      "properties": {
+        "connection": {
+          "$ref": "#/$defs/OpenChatV1InputModelproviderConnection"
+        },
+        "model": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "connection",
+        "model"
+      ],
+      "type": "object"
+    },
+    "OpenChatV1Output": {
+      "$ref": "#/$defs/OpenChatV1OutputModelproviderChat"
+    },
+    "OpenChatV1OutputModelproviderChat": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "allOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          ],
+          "type": "string"
+        },
+        "metadata": true,
+        "model": {
+          "type": "string"
+        },
+        "original": {
+          "allOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1
+            }
+          ],
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "streaming": {
+          "type": "boolean"
+        },
+        "tokenCounting": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "original",
+        "provider",
+        "model",
+        "streaming",
+        "tokenCounting"
+      ],
+      "type": "object"
+    },
+    "OpenEmbeddingV1Input": {
+      "$ref": "#/$defs/OpenEmbeddingV1InputModelproviderOpen"
+    },
+    "OpenEmbeddingV1InputModelproviderConnection": {
+      "additionalProperties": false,
+      "properties": {
+        "apiKey": {
+          "type": "string"
+        },
+        "baseURL": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider"
+      ],
+      "type": "object"
+    },
+    "OpenEmbeddingV1InputModelproviderOpen": {
+      "additionalProperties": false,
+      "properties": {
+        "connection": {
+          "$ref": "#/$defs/OpenEmbeddingV1InputModelproviderConnection"
+        },
+        "model": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "connection",
+        "model"
+      ],
+      "type": "object"
+    },
+    "OpenEmbeddingV1Output": {
+      "$ref": "#/$defs/Embedder"
+    },
+    "PartDelta": {
+      "additionalProperties": false,
+      "properties": {
+        "citation": {
+          "$ref": "#/$defs/StreamV1ChunkContentCitation"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "media": {
+          "$ref": "#/$defs/StreamV1ChunkMediaMedia"
+        },
+        "metadata": {
+          "$ref": "#/$defs/StreamV1ChunkMetadataMap"
+        },
+        "reasoning_state": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "contentEncoding": "base64",
+              "type": "string"
+            }
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "tool_call": {
+          "$ref": "#/$defs/ToolCallDelta"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "Profile": {
+      "additionalProperties": false,
+      "properties": {
+        "authentication": {
+          "allOf": [
+            {
+              "enum": [
+                "keyRequired",
+                "keyOptional"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "defaultModel": {
+          "type": "string"
+        },
+        "embedding": {
+          "$ref": "#/$defs/EmbeddingProfile"
+        },
+        "endpoint": {
+          "$ref": "#/$defs/EndpointPolicy"
+        },
+        "endpointRequired": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "modelSource": {
+          "allOf": [
+            {
+              "enum": [
+                "bundled",
+                "endpoint"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "models": {
+          "items": true,
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "authentication",
+        "endpointRequired",
+        "modelSource",
+        "models"
+      ],
+      "type": "object"
+    },
+    "ProfilesV1Input": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "ProfilesV1Output": {
+      "items": {
+        "$ref": "#/$defs/Profile"
+      },
+      "type": "array"
+    },
+    "RemoteModelsV1Input": {
+      "$ref": "#/$defs/RemoteModelsV1InputModelproviderConnection"
+    },
+    "RemoteModelsV1InputModelproviderConnection": {
+      "additionalProperties": false,
+      "properties": {
+        "apiKey": {
+          "type": "string"
+        },
+        "baseURL": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider"
+      ],
+      "type": "object"
+    },
+    "RemoteModelsV1Output": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "Reopen": {
+      "additionalProperties": false,
+      "properties": {
+        "original": {
+          "allOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "original"
+      ],
+      "type": "object"
+    },
+    "ReopenChatV1Input": {
+      "$ref": "#/$defs/Reopen"
+    },
+    "ReopenChatV1Output": {
+      "$ref": "#/$defs/ReopenChatV1OutputModelproviderChat"
+    },
+    "ReopenChatV1OutputModelproviderChat": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "allOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          ],
+          "type": "string"
+        },
+        "metadata": true,
+        "model": {
+          "type": "string"
+        },
+        "original": {
+          "allOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1
+            }
+          ],
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "streaming": {
+          "type": "boolean"
+        },
+        "tokenCounting": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "original",
+        "provider",
+        "model",
+        "streaming",
+        "tokenCounting"
+      ],
+      "type": "object"
+    },
+    "ResponseDelta": {
+      "additionalProperties": false,
+      "properties": {
+        "finish_reason": {
+          "type": "string"
+        },
+        "message_metadata": {
+          "$ref": "#/$defs/StreamV1ChunkMetadataMap"
+        },
+        "metadata": {
+          "$ref": "#/$defs/StreamV1ChunkChatResponseMetadata"
+        },
+        "output_metadata": {
+          "$ref": "#/$defs/StreamV1ChunkChatOutputMetadata"
+        },
+        "parts": {
+          "items": {
+            "$ref": "#/$defs/PartDelta"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "StreamV1Chunk": {
+      "$ref": "#/$defs/ResponseDelta"
+    },
+    "StreamV1ChunkChatOutputMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "extra": {
+          "$ref": "#/$defs/StreamV1ChunkMetadataMap"
+        }
+      },
+      "type": "object"
+    },
+    "StreamV1ChunkChatResponseMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "extra": {
+          "$ref": "#/$defs/StreamV1ChunkMetadataMap"
+        },
+        "id": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "usage": {
+          "$ref": "#/$defs/StreamV1ChunkChatUsage"
+        }
+      },
+      "type": "object"
+    },
+    "StreamV1ChunkChatUsage": {
+      "additionalProperties": false,
+      "properties": {
+        "cache_read_input_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "cache_write_input_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "input_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "output_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "reasoning_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "StreamV1ChunkContentCitation": {
+      "additionalProperties": false,
+      "properties": {
+        "quote": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/StreamV1ChunkContentCitationSource"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    },
+    "StreamV1ChunkContentCitationSource": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    "StreamV1ChunkMediaMedia": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/StreamV1ChunkMetadataMap"
+        },
+        "mime": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/StreamV1ChunkMediaSource"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    },
+    "StreamV1ChunkMediaSource": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "contentEncoding": "base64",
+              "type": "string"
+            }
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "StreamV1ChunkMetadataMap": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "additionalProperties": true,
+          "type": "object"
+        }
+      ]
+    },
+    "StreamV1Input": {
+      "$ref": "#/$defs/StreamV1InputModelproviderChatRequest"
+    },
+    "StreamV1InputChatMessage": {
+      "additionalProperties": false,
+      "properties": {
+        "metadata": {
+          "$ref": "#/$defs/StreamV1InputMetadataMap"
+        },
+        "parts": {
+          "items": {
+            "$ref": "#/$defs/StreamV1InputChatPart"
+          },
+          "type": "array"
+        },
+        "role": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "parts"
+      ],
+      "type": "object"
+    },
+    "StreamV1InputChatOptions": {
+      "additionalProperties": false,
+      "properties": {
+        "extensions": {
+          "$ref": "#/$defs/StreamV1InputMetadataExtensions"
+        },
+        "frequency_penalty": {
+          "type": "number"
+        },
+        "max_output_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "model": {
+          "type": "string"
+        },
+        "output_format": {
+          "$ref": "#/$defs/StreamV1InputChatOutputFormat"
+        },
+        "presence_penalty": {
+          "type": "number"
+        },
+        "reasoning_effort": {
+          "type": "string"
+        },
+        "stop": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "temperature": {
+          "type": "number"
+        },
+        "top_k": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "top_p": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "StreamV1InputChatOutputFormat": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "schema": true,
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "StreamV1InputChatPart": {
+      "additionalProperties": false,
+      "properties": {
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/StreamV1InputContentCitation"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "media": {
+          "$ref": "#/$defs/StreamV1InputMediaMedia"
+        },
+        "metadata": {
+          "$ref": "#/$defs/StreamV1InputMetadataMap"
+        },
+        "reasoning_state": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "contentEncoding": "base64",
+              "type": "string"
+            }
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "tool_call": {
+          "$ref": "#/$defs/StreamV1InputChatToolCall"
+        },
+        "tool_result": {
+          "$ref": "#/$defs/StreamV1InputChatToolResult"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "StreamV1InputChatRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "messages": {
+          "items": {
+            "$ref": "#/$defs/StreamV1InputChatMessage"
+          },
+          "type": "array"
+        },
+        "options": {
+          "$ref": "#/$defs/StreamV1InputChatOptions"
+        },
+        "tool_choice": {
+          "$ref": "#/$defs/StreamV1InputChatToolChoice"
+        },
+        "tools": {
+          "items": {
+            "$ref": "#/$defs/StreamV1InputToolDefinition"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "messages"
+      ],
+      "type": "object"
+    },
+    "StreamV1InputChatToolCall": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "type": "object"
+    },
+    "StreamV1InputChatToolChoice": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parallelism": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "type": "object"
+    },
+    "StreamV1InputChatToolResult": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "is_error": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "output": {
+          "$ref": "#/$defs/StreamV1InputToolOutput"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "output"
+      ],
+      "type": "object"
+    },
+    "StreamV1InputContentBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/StreamV1InputContentCitation"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "media": {
+          "$ref": "#/$defs/StreamV1InputMediaMedia"
+        },
+        "metadata": {
+          "$ref": "#/$defs/StreamV1InputMetadataMap"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "StreamV1InputContentCitation": {
+      "additionalProperties": false,
+      "properties": {
+        "quote": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/StreamV1InputContentCitationSource"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    },
+    "StreamV1InputContentCitationSource": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    "StreamV1InputMediaMedia": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/StreamV1InputMetadataMap"
+        },
+        "mime": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/StreamV1InputMediaSource"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    },
+    "StreamV1InputMediaSource": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "contentEncoding": "base64",
+              "type": "string"
+            }
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "StreamV1InputMetadataExtensions": {
+      "$ref": "#/$defs/StreamV1InputMetadataMap"
+    },
+    "StreamV1InputMetadataMap": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "additionalProperties": true,
+          "type": "object"
+        }
+      ]
+    },
+    "StreamV1InputModelproviderChatRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "handle": {
+          "$ref": "#/$defs/StreamV1InputModelproviderHandle"
+        },
+        "request": {
+          "$ref": "#/$defs/StreamV1InputChatRequest"
+        }
+      },
+      "required": [
+        "handle",
+        "request"
+      ],
+      "type": "object"
+    },
+    "StreamV1InputModelproviderHandle": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "allOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "StreamV1InputToolDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "effect": {
+          "type": "string"
+        },
+        "input_schema": true,
+        "name": {
+          "type": "string"
+        },
+        "output_schema": true
+      },
+      "required": [
+        "name",
+        "input_schema"
+      ],
+      "type": "object"
+    },
+    "StreamV1InputToolOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "items": {
+            "$ref": "#/$defs/StreamV1InputContentBlock"
+          },
+          "type": "array"
+        },
+        "details": true
+      },
+      "type": "object"
+    },
+    "StreamV1Output": {
+      "$ref": "#/$defs/StreamV1OutputModelproviderChatResult"
+    },
+    "StreamV1OutputChatMessage": {
+      "additionalProperties": false,
+      "properties": {
+        "metadata": {
+          "$ref": "#/$defs/StreamV1OutputMetadataMap"
+        },
+        "parts": {
+          "items": {
+            "$ref": "#/$defs/StreamV1OutputChatPart"
+          },
+          "type": "array"
+        },
+        "role": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "parts"
+      ],
+      "type": "object"
+    },
+    "StreamV1OutputChatOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "finish_reason": {
+          "type": "string"
+        },
+        "message": {
+          "$ref": "#/$defs/StreamV1OutputChatMessage"
+        },
+        "metadata": {
+          "$ref": "#/$defs/StreamV1OutputChatOutputMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "StreamV1OutputChatOutputMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "extra": {
+          "$ref": "#/$defs/StreamV1OutputMetadataMap"
+        }
+      },
+      "type": "object"
+    },
+    "StreamV1OutputChatPart": {
+      "additionalProperties": false,
+      "properties": {
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/StreamV1OutputContentCitation"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "media": {
+          "$ref": "#/$defs/StreamV1OutputMediaMedia"
+        },
+        "metadata": {
+          "$ref": "#/$defs/StreamV1OutputMetadataMap"
+        },
+        "reasoning_state": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "contentEncoding": "base64",
+              "type": "string"
+            }
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "tool_call": {
+          "$ref": "#/$defs/StreamV1OutputChatToolCall"
+        },
+        "tool_result": {
+          "$ref": "#/$defs/StreamV1OutputChatToolResult"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "StreamV1OutputChatResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "metadata": {
+          "$ref": "#/$defs/StreamV1OutputChatResponseMetadata"
+        },
+        "output": {
+          "$ref": "#/$defs/StreamV1OutputChatOutput"
+        }
+      },
+      "type": "object"
+    },
+    "StreamV1OutputChatResponseMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "extra": {
+          "$ref": "#/$defs/StreamV1OutputMetadataMap"
+        },
+        "id": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "usage": {
+          "$ref": "#/$defs/StreamV1OutputChatUsage"
+        }
+      },
+      "type": "object"
+    },
+    "StreamV1OutputChatToolCall": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "type": "object"
+    },
+    "StreamV1OutputChatToolResult": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "is_error": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "output": {
+          "$ref": "#/$defs/StreamV1OutputToolOutput"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "output"
+      ],
+      "type": "object"
+    },
+    "StreamV1OutputChatUsage": {
+      "additionalProperties": false,
+      "properties": {
+        "cache_read_input_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "cache_write_input_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "input_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "output_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "reasoning_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "StreamV1OutputContentBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/StreamV1OutputContentCitation"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "media": {
+          "$ref": "#/$defs/StreamV1OutputMediaMedia"
+        },
+        "metadata": {
+          "$ref": "#/$defs/StreamV1OutputMetadataMap"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "StreamV1OutputContentCitation": {
+      "additionalProperties": false,
+      "properties": {
+        "quote": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/StreamV1OutputContentCitationSource"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    },
+    "StreamV1OutputContentCitationSource": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    "StreamV1OutputMediaMedia": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/StreamV1OutputMetadataMap"
+        },
+        "mime": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/StreamV1OutputMediaSource"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    },
+    "StreamV1OutputMediaSource": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "contentEncoding": "base64",
+              "type": "string"
+            }
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "StreamV1OutputMetadataMap": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "additionalProperties": true,
+          "type": "object"
+        }
+      ]
+    },
+    "StreamV1OutputModelproviderChatResult": {
+      "additionalProperties": false,
+      "properties": {
+        "failure": {
+          "$ref": "#/$defs/StreamV1OutputModelproviderFailure"
+        },
+        "response": {
+          "$ref": "#/$defs/StreamV1OutputChatResponse"
+        }
+      },
+      "type": "object"
+    },
+    "StreamV1OutputModelproviderFailure": {
+      "additionalProperties": false,
+      "properties": {
+        "execution": {
+          "type": "string"
+        },
+        "kind": {
+          "allOf": [
+            {
+              "enum": [
+                "internal",
+                "canceled",
+                "timeout",
+                "invalid_credentials",
+                "rate_limited",
+                "provider_rejected",
+                "provider_unavailable"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "retryAfterMillis": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "execution"
+      ],
+      "type": "object"
+    },
+    "StreamV1OutputToolOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "items": {
+            "$ref": "#/$defs/StreamV1OutputContentBlock"
+          },
+          "type": "array"
+        },
+        "details": true
+      },
+      "type": "object"
+    },
+    "TokenCount": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failure": {
+          "$ref": "#/$defs/CountV1OutputModelproviderFailure"
+        }
+      },
+      "type": "object"
+    },
+    "ToolCallDelta": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "type": "object"
+    },
     "VerifyV1Input": {
-      "$ref": "#/$defs/Connection"
+      "$ref": "#/$defs/VerifyV1InputModelproviderConnection"
+    },
+    "VerifyV1InputModelproviderConnection": {
+      "additionalProperties": false,
+      "properties": {
+        "apiKey": {
+          "type": "string"
+        },
+        "baseURL": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider"
+      ],
+      "type": "object"
     },
     "VerifyV1Output": {
       "additionalProperties": false,

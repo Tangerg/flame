@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 // Name is the binding-neutral identity of one Runtime operation. Concrete
@@ -452,7 +451,7 @@ func (m MethodMeta) validateShapes() error {
 		)
 	}
 	if m.Event != nil {
-		if err := jsonvalue.ValidateType(m.Event); err != nil {
+		if err := protocol.ValidateWireType(m.Event); err != nil {
 			return fmt.Errorf("%s: invalid event declaration: %w", m.Name, err)
 		}
 	}
@@ -546,10 +545,10 @@ func ValidateFieldCondition(owner string, shape reflect.Type, condition FieldCon
 	if condition.Field == "" {
 		return fmt.Errorf("%s: condition must name a field", owner)
 	}
-	if err := jsonvalue.HasPath(shape, condition.Field); err != nil {
+	if err := protocol.ValidateWirePath(shape, condition.Field); err != nil {
 		return fmt.Errorf("%s condition field %q: %w", owner, condition.Field, err)
 	}
-	_, leaf, _ := jsonvalue.GoPath(shape, condition.Field)
+	_, leaf, _ := protocol.WireGoPath(shape, condition.Field)
 	switch condition.Operator {
 	case OperatorPresent:
 		if condition.Value != "" {

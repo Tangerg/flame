@@ -1,21 +1,22 @@
 package delivery
 
 import (
+	framebrowser "github.com/Tangerg/frame/browser"
+
 	"context"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/pluginbrowser"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu"
-	"github.com/Tangerg/qimu/control"
+	"github.com/Tangerg/frame"
 )
 
 func (s *Handler) OpenPluginBrowserRealm(ctx context.Context, in protocol.OpenPluginBrowserRealmRequest) (*protocol.PluginBrowserSession, error) {
 	if s.pluginBrowser == nil {
 		return nil, protocol.ErrPluginUnavailable
 	}
-	var resume *control.Realm
+	var resume *framebrowser.Realm
 	if in.Resume != nil {
 		resume = new(browserRealm(*in.Resume))
 	}
@@ -26,7 +27,7 @@ func (s *Handler) OpenPluginBrowserRealm(ctx context.Context, in protocol.OpenPl
 	return &protocol.PluginBrowserSession{
 		Authority: wireBrowserAuthority(value.Authority), Realm: wireBrowserRealm(value.Realm), Credential: value.Credential,
 		ControlEndpoint: value.ControlEndpoint, MaximumMessageBytes: value.MaximumMessageBytes,
-		ProofCapacity: value.ProofCapacity, PollIntervalMilliseconds: int(value.PollInterval / time.Millisecond),
+		ProofCapacity: value.ProofCapacity, PreparationCapacity: value.PreparationCapacity, PollIntervalMilliseconds: int(value.PollInterval / time.Millisecond),
 		ComponentContract: wireBrowserContract(value.ComponentContract),
 	}, nil
 }
@@ -57,19 +58,19 @@ func (s *Handler) ClosePluginBrowserRealm(ctx context.Context, in protocol.Close
 	return wirePluginError(s.pluginBrowser.Close(ctx, browserRealm(in.Realm)))
 }
 
-func browserRealm(value protocol.PluginBrowserRealm) control.Realm {
-	return control.Realm{ID: value.ID, Epoch: value.Epoch}
+func browserRealm(value protocol.PluginBrowserRealm) framebrowser.Realm {
+	return framebrowser.Realm{ID: value.ID, Epoch: value.Epoch}
 }
 
-func wireBrowserRealm(value control.Realm) protocol.PluginBrowserRealm {
+func wireBrowserRealm(value framebrowser.Realm) protocol.PluginBrowserRealm {
 	return protocol.PluginBrowserRealm{ID: value.ID, Epoch: value.Epoch}
 }
 
-func wireBrowserAuthority(value control.Authority) protocol.PluginBrowserAuthority {
+func wireBrowserAuthority(value framebrowser.Authority) protocol.PluginBrowserAuthority {
 	return protocol.PluginBrowserAuthority{ID: value.ID, Epoch: value.Epoch}
 }
 
-func wireBrowserContract(value qimu.ContractRef) protocol.PluginBrowserContractRef {
+func wireBrowserContract(value frame.ContractRef) protocol.PluginBrowserContractRef {
 	return protocol.PluginBrowserContractRef{
 		Name: value.Name, Version: value.Version,
 		Digest: protocol.PluginBrowserDigest(value.Digest.String()),
@@ -78,7 +79,7 @@ func wireBrowserContract(value qimu.ContractRef) protocol.PluginBrowserContractR
 	}
 }
 
-func wireBrowserUse(value control.UseGrant) protocol.PluginBrowserUseGrant {
+func wireBrowserUse(value framebrowser.UseGrant) protocol.PluginBrowserUseGrant {
 	objects := make([]protocol.PluginBrowserObjectRef, 0, len(value.Objects))
 	for _, object := range value.Objects {
 		objects = append(objects, protocol.PluginBrowserObjectRef{
@@ -90,7 +91,7 @@ func wireBrowserUse(value control.UseGrant) protocol.PluginBrowserUseGrant {
 		})
 	}
 	return protocol.PluginBrowserUseGrant{
-		ID: value.ID, ApprovalToken: value.ApprovalToken,
+		OperationID: value.OperationID, ParentUseID: value.ParentUseID, ID: value.ID, ApprovalToken: value.ApprovalToken,
 		Authority: wireBrowserAuthority(value.Authority), Realm: wireBrowserRealm(value.Realm),
 		Execution: protocol.PluginBrowserExecution{ID: value.Execution.ID, Generation: value.Execution.Generation},
 		ScopeID:   value.ScopeID, ScopeGeneration: value.ScopeGeneration, Objects: objects,

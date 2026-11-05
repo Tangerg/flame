@@ -8,8 +8,8 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/programtest"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/uitest"
 )
 
 func TestHandledNoOpEditsCannotStarveDraftAutosave(t *testing.T) {
@@ -65,12 +65,12 @@ func TestResolvedKeyTextSchedulesDraftAutosave(t *testing.T) {
 func TestProgrammaticComposerEditsScheduleDraftAutosave(t *testing.T) {
 	tests := []struct {
 		name string
-		edit func(*testing.T, *programtest.Host)
+		edit func(*testing.T, *uitest.Host)
 		want string
 	}{
 		{
 			name: "command palette",
-			edit: func(t *testing.T, host *programtest.Host) {
+			edit: func(t *testing.T, host *uitest.Host) {
 				host.Send(input.Key{Code: input.Character, Rune: 'p', Mods: input.Ctrl})
 				host.Shows(t, "Commands")
 				host.Type("rename")
@@ -80,7 +80,7 @@ func TestProgrammaticComposerEditsScheduleDraftAutosave(t *testing.T) {
 		},
 		{
 			name: "completion",
-			edit: func(_ *testing.T, host *programtest.Host) {
+			edit: func(_ *testing.T, host *uitest.Host) {
 				host.Type("/sho")
 				host.Press(input.Enter)
 			},

@@ -6,12 +6,15 @@ import (
 	"iter"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
 )
 
 type typedStreamCaller struct {
@@ -39,11 +42,11 @@ func (c *typedStreamCaller) StreamPlugin(_ context.Context, request protocol.Cal
 
 func bindTypedStream(t *testing.T, caller runtimeclient.PluginStreamer) *runtimeclient.PluginStreamingMethod[map[string]string, uint64, bool] {
 	t.Helper()
-	method, err := qimumcp.NewStreamingMethod[map[string]string, uint64, bool](qimumcp.MethodConfig{Name: "records.stream", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Stream original records."})
+	method, err := pluginmcp.NewStreamingMethod[map[string]string, uint64, bool](portable.MethodConfig{Name: "records.stream", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Stream original records."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "records", Composition: portable.Selection, Scope: extension.ScopeInstallation}, method.Descriptor())
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "records", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +68,7 @@ func TestTypedInstalledStreamFreezesBeforeLazySingleConsumption(t *testing.T) {
 	if caller.calls != 0 {
 		t.Fatal("lazy stream performed I/O before consumption")
 	}
-	var values []qimumcp.StreamValue[uint64, bool]
+	var values []pluginmcp.StreamValue[uint64, bool]
 	for value, err := range stream {
 		if err != nil {
 			t.Fatal(err)
@@ -109,7 +112,7 @@ func TestTypedInstalledStreamDistinguishesRefusalFromInvalidOrMissingFinal(t *te
 					failure = err
 				}
 			}
-			_, known := errors.AsType[*portable.Refusal](failure)
+			_, known := errors.AsType[*framemcp.Refusal](failure)
 			if failure == nil || known != test.known || errors.Is(failure, runtimeclient.ErrAcknowledgementUnknown) == test.known || caller.calls != 1 {
 				t.Fatalf("outcome=%v known=%v calls=%d", failure, known, caller.calls)
 			}
@@ -118,11 +121,11 @@ func TestTypedInstalledStreamDistinguishesRefusalFromInvalidOrMissingFinal(t *te
 }
 
 func TestTypedInstalledQueryStreamRetainsWideValuesWithoutCommandUncertainty(t *testing.T) {
-	method, err := qimumcp.NewStreamingMethod[struct{}, uint64, bool](qimumcp.MethodConfig{Name: "records.query", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read streamed records."})
+	method, err := pluginmcp.NewStreamingMethod[struct{}, uint64, bool](portable.MethodConfig{Name: "records.query", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read streamed records."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "records", Composition: portable.Selection, Scope: extension.ScopeInstallation}, method.Descriptor())
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "records", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}

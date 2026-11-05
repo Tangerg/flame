@@ -1,14 +1,17 @@
 package modelprovider
 
 import (
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
+
 	"encoding/json/jsontext"
 	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/qimu/jsonvalue"
-	"github.com/Tangerg/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/models/catalog"
 )
@@ -26,14 +29,14 @@ func TestContractAdmitsTheCompleteNativeRequestAndRefusesMissingInput(t *testing
 		Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("question"))},
 		Options:  chat.Options{Model: "exact-model", MaxOutputTokens: new(int64(64))},
 	}}
-	encoded, err := jsonvalue.Encode(request)
+	encoded, err := framevalue.EncodeJSON(request)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := method.ValidateInput(encoded); err != nil {
 		t.Fatal(err)
 	}
-	incomplete, err := jsonvalue.Parse([]byte(`{"handle":{"id":"` + request.Handle.ID + `"}}`))
+	incomplete, err := framevalue.ParseJSON([]byte(`{"handle":{"id":"` + request.Handle.ID + `"}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +89,7 @@ func TestFailureEvidenceCannotTurnAnUnknownExchangeIntoSuccess(t *testing.T) {
 	if err := (ChatResult{}).Validate(); err == nil {
 		t.Fatal("missing outcome became success")
 	}
-	failure := &Failure{Kind: ProviderUnavailable, Execution: chat.CallFailureUnknown}
+	failure := &Failure{Kind: ProviderUnavailable, Execution: coreinvocation.FailureUnknown}
 	if err := (ChatResult{Failure: failure}).Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +97,7 @@ func TestFailureEvidenceCannotTurnAnUnknownExchangeIntoSuccess(t *testing.T) {
 	if err := (ChatResult{Failure: failure}).Validate(); err == nil {
 		t.Fatal("invented execution evidence admitted")
 	}
-	if err := (TokenCount{Count: new(int64(1)), Failure: &Failure{Kind: Internal, Execution: chat.CallFailureUnknown}}).Validate(); err == nil {
+	if err := (TokenCount{Count: new(int64(1)), Failure: &Failure{Kind: Internal, Execution: coreinvocation.FailureUnknown}}).Validate(); err == nil {
 		t.Fatal("conflicting count outcomes admitted")
 	}
 }
@@ -132,10 +135,10 @@ func TestCheckpointIdentityIsIndependentOfExecutableHandles(t *testing.T) {
 		t.Fatal("missing declared method")
 	}
 	*method = portable.Method{}
-	*c = portable.Capability{}
-	id.JSON()[0] = 0
+	*c = plugincontract.Capability{}
+	id.Bytes()[0] = 0
 	after, err := ContractIdentity()
-	if err != nil || after != id || after.JSON()[0] == 0 {
+	if err != nil || after != id || after.Bytes()[0] == 0 {
 		t.Fatal("caller changed published contract identity", err)
 	}
 }

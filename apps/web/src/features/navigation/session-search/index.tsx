@@ -7,12 +7,12 @@ import { SessionSearch } from "@/features/navigation/session-search/SessionSearc
 export default definePlugin({
   name: "flame.builtin.session-search",
   setup(ctx) {
-    contributeLayout(ctx, "app.overlay", {
+    contributeLayout(ctx.contributions, "app.overlay", {
       id: "session-search",
       order: 10,
       component: SessionSearch,
     });
-    ctx.contribute(COMMAND, {
+    ctx.contributions.add(COMMAND, {
       id: SESSION_SEARCH_COMMAND,
       label: "command.searchChats",
       combo: "Mod+K",

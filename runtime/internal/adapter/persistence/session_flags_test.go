@@ -15,7 +15,7 @@ func TestSessionStorageCannotCreateCompetingFlagValues(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newSessionStore(db)
+	store := newSessionStore(databaseFor(db))
 	value := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_flags", Workspace: testsupport.MustWorkspace("/work"), Selection: testsupport.DefaultModelSelection(),
 		CreatedAt: time.Unix(1, 0).UTC(), UpdatedAt: time.Unix(1, 0).UTC(), Revision: 1,
@@ -49,10 +49,10 @@ func TestSessionStorageRejectsInvalidDecodedFlags(t *testing.T) {
 			if err != nil || !got.Favorite() || !got.Isolated() {
 				t.Fatalf("valid flags failed to round-trip: %+v, %v", got.Snapshot(), err)
 			}
-			if _, err := store.db.ExecContext(t.Context(), "PRAGMA ignore_check_constraints=ON"); err != nil {
+			if _, err := rawFixtureDatabase(store.db).ExecContext(t.Context(), "PRAGMA ignore_check_constraints=ON"); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := store.db.ExecContext(t.Context(), "UPDATE sessions SET "+column+"=2 WHERE id=?", value.ID()); err != nil {
+			if _, err := rawFixtureDatabase(store.db).ExecContext(t.Context(), "UPDATE sessions SET "+column+"=2 WHERE id=?", value.ID()); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := store.Get(t.Context(), value.ID()); err == nil {

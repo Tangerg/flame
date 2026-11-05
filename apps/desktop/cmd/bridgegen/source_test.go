@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/apps/desktop/internal/bridge"
-	"github.com/Tangerg/qimu/contractgen"
+	"github.com/Tangerg/flame/packages/go-sdk/wiregen"
 )
 
 func fixtureGraph(t *testing.T) *schemaGraph {
@@ -79,7 +79,7 @@ func (*DesktopHost) usePrivate(value any) {}
 	if len(methods) != 3 || methods[0].fqn != "shell.DesktopHost.Bootstrap" || methods[1].result != nil {
 		t.Fatalf("actual exposed method set or void result was lost: %+v", methods)
 	}
-	if methods[2].params[0].name != "filename" || methods[2].params[1].name != "content" || methods[2].result.Type != contractgen.SchemaTypeBoolean {
+	if methods[2].params[0].name != "filename" || methods[2].params[1].name != "content" || methods[2].result.Type != wiregen.SchemaTypeBoolean {
 		t.Fatalf("parameter order or bool/error result changed: %+v", methods[2])
 	}
 	if !slices.Equal(graph.definitions["Authorization"].Enum, []string{"allowed", "denied"}) {
@@ -139,7 +139,7 @@ func TestWireRulesAndZodKeywordsMustResolve(t *testing.T) {
 	if err := graph.refine([]bridge.Rule{{Type: "Snapshot", Field: "Missing", Kind: bridge.Nonempty}}); err == nil {
 		t.Fatal("a stale refinement field was ignored")
 	}
-	if _, err := zod(&contractgen.Schema{Type: contractgen.SchemaTypeString, Pattern: "^a"}, graph.definitions); err == nil {
+	if _, err := zod(&wiregen.Schema{Type: wiregen.SchemaTypeString, Pattern: "^a"}, graph.definitions); err == nil {
 		t.Fatal("an unsupported Schema keyword was ignored")
 	}
 }

@@ -2,9 +2,10 @@ package persistence
 
 import (
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
 
 func TestChildRunStartReservationRetainsIdempotentConclusion(t *testing.T) {
@@ -13,7 +14,7 @@ func TestChildRunStartReservationRetainsIdempotentConclusion(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newChildRunStartReservationStore(db)
+	store := newChildRunStartReservationStore(databaseFor(db))
 	record := ChildRunStartReservationRecord{
 		MemberID: "member-child", SessionID: "session-1",
 		Payload: []byte(`{"run":"child"}`), CreatedAt: time.Unix(1, 2).UTC(),
@@ -66,7 +67,7 @@ func TestChildRunStartReservationRejectsMissingAndChangedIdentity(t *testing.T) 
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newChildRunStartReservationStore(db)
+	store := newChildRunStartReservationStore(databaseFor(db))
 	record := ChildRunStartReservationRecord{
 		MemberID: "member-child", SessionID: "session-1",
 		Payload: []byte(`{"run":"child"}`), CreatedAt: time.Unix(1, 2).UTC(),
@@ -103,7 +104,7 @@ func TestChildRunStartReservationCleanupIsOwnerScopedAndBootWide(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := newChildRunStartReservationStore(db)
+	store := newChildRunStartReservationStore(databaseFor(db))
 	for _, record := range []ChildRunStartReservationRecord{
 		{MemberID: "member-a", SessionID: "session-a", Payload: []byte(`{"run":"a"}`), CreatedAt: time.Unix(1, 0)},
 		{MemberID: "member-b", SessionID: "session-b", Payload: []byte(`{"run":"b"}`), CreatedAt: time.Unix(2, 0)},

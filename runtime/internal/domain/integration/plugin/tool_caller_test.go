@@ -3,18 +3,20 @@ package plugin_test
 import (
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/integrity"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestToolCallerFencesOriginalInvocationAndInstalledAuthority(t *testing.T) {
 	id := testsupport.InstallationID(t)
 	server := testsupport.InstallationMCPServer(id, "schedules")
-	value := plugin.ToolCallerSnapshot{Invocation: portable.Invocation{ID: "logical-tool", Parent: "process:original", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: id.String()}}, Tool: testsupport.MCPTool(server, "run_schedule"), Release: testsupport.Digest("release"), Authority: testsupport.Digest("authority")}
+	value := plugin.ToolCallerSnapshot{Invocation: framemcp.Invocation{ID: "logical-tool", Parent: "process:original", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: id.String()}}, Tool: testsupport.MCPTool(server, "run_schedule"), Release: testsupport.Digest("release"), Authority: testsupport.Digest("authority")}
 	caller, err := plugin.NewToolCaller(value)
 	if err != nil {
 		t.Fatal(err)
@@ -38,7 +40,7 @@ func TestToolCallerFencesOriginalInvocationAndInstalledAuthority(t *testing.T) {
 		func(v *plugin.ToolCallerSnapshot) { v.Invocation.Origin = extension.Human },
 		func(v *plugin.ToolCallerSnapshot) { v.Invocation.Parent = "" },
 		func(v *plugin.ToolCallerSnapshot) { v.Invocation.Target.Reference = "another-installation" },
-		func(v *plugin.ToolCallerSnapshot) { v.Release = integrity.Digest{} },
+		func(v *plugin.ToolCallerSnapshot) { v.Release = framevalue.Digest{} },
 		func(v *plugin.ToolCallerSnapshot) {
 			v.Tool = testsupport.MCPTool(testsupport.UserMCPServer("schedules"), "run_schedule")
 		},

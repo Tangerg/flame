@@ -4,7 +4,7 @@ import {
   type ComponentReference,
   type SystemNotificationChannel,
 } from "@flame/component-sdk";
-import { type ContributionLifetime } from "@/extensions/definePlugin";
+import { type ContributionScope } from "@/extensions/definePlugin";
 import { trackContributionIO } from "@/extensions/contributionIO";
 import { reportPluginError } from "@/extensions/errors";
 import { type AgentAccess } from "@/features/agent/public/agent";
@@ -29,7 +29,7 @@ function ownSubscription(
 }
 
 export function createComponentNotifications(
-  lifetime: ContributionLifetime,
+  lifetime: ContributionScope,
   signal: AbortSignal,
   component: ComponentReference,
   access: NotificationAccess,
@@ -72,7 +72,7 @@ export function createComponentNotifications(
 }
 
 export function createComponentSettlementSubscription(
-  lifetime: ContributionLifetime,
+  lifetime: ContributionScope,
   signal: AbortSignal,
   component: ComponentReference,
   subscribe: AgentAccess["subscribeRootRunSettlements"],

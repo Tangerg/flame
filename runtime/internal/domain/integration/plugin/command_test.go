@@ -4,10 +4,12 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/qimu/portable"
 )
 
 func TestCommandAdmissionAndRestorationRequireTheOriginalInputContract(t *testing.T) {
@@ -17,7 +19,7 @@ func TestCommandAdmissionAndRestorationRequireTheOriginalInputContract(t *testin
 		Contract: testsupport.CommandContract(t, "records.update", extension.ScopeInstallation),
 		Provider: provider, Activation: testsupport.ServerActivation("activation", "backend", provider),
 		Server: testsupport.ServerName("backend"), Contribution: "records", Export: "operations",
-		Invocation: portable.Invocation{ID: "original", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: provider.InstallationID.String()}},
+		Invocation: framemcp.Invocation{ID: "original", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: provider.InstallationID.String()}},
 	}
 	command, err := plugin.NewCommand(record)
 	if err != nil {

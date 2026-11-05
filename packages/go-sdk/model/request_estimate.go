@@ -1,6 +1,10 @@
 package model
 
 import (
+	corecontent "github.com/Tangerg/scope/core/content"
+
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	json "encoding/json/v2"
 	"errors"
 
@@ -32,7 +36,7 @@ func EstimateRequestTokens(source *chat.Request) (int, error) {
 		return 0, err
 	}
 	request.Messages = modelContextEstimateMessages(source.Messages)
-	request.Tools = make([]chat.ToolDefinition, len(source.Tools))
+	request.Tools = make([]toolcontract.Definition, len(source.Tools))
 	for index, tool := range source.Tools {
 		request.Tools[index] = tool.Clone()
 	}
@@ -97,7 +101,7 @@ func modelContextEstimateToolResult(result *chat.ToolResult) *chat.ToolResult {
 	}
 	withoutContent.Output.Content = nil
 	normalized := withoutContent.Clone()
-	normalized.Output.Content = make([]chat.ToolContent, len(result.Output.Content))
+	normalized.Output.Content = make([]corecontent.Block, len(result.Output.Content))
 	for index, content := range result.Output.Content {
 		value := content.Media
 		content.Media = nil

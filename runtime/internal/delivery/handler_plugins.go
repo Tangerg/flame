@@ -5,26 +5,27 @@ import (
 	"errors"
 	"fmt"
 
+	framevalue "github.com/Tangerg/frame/value"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/qimu/integrity"
 )
 
 type pluginUseCases interface {
 	List(context.Context) ([]plugins.Inspection, error)
 	Install(context.Context, string) (plugins.Inspection, error)
 	Stage(context.Context, identity.InstallationID, string) (plugins.Inspection, error)
-	Select(context.Context, identity.InstallationID, integrity.Digest) (plugins.Inspection, error)
+	Select(context.Context, identity.InstallationID, framevalue.Digest) (plugins.Inspection, error)
 	Enable(context.Context, identity.InstallationID) (plugins.Inspection, error)
 	Disable(context.Context, identity.InstallationID) (plugins.Inspection, error)
-	Configure(context.Context, identity.InstallationID, integrity.Digest, plugin.Configuration) (plugins.Inspection, error)
+	Configure(context.Context, identity.InstallationID, framevalue.Digest, plugin.Configuration) (plugins.Inspection, error)
 	Uninstall(context.Context, identity.InstallationID) error
-	Component(context.Context, identity.InstallationID, integrity.Digest, plugin.ContributionID) (plugin.ClientComponent, error)
-	Resource(context.Context, identity.InstallationID, integrity.Digest, plugin.ContributionID, string) ([]byte, error)
-	Locale(context.Context, identity.InstallationID, integrity.Digest, string) (map[string]string, error)
+	Component(context.Context, identity.InstallationID, framevalue.Digest, plugin.ContributionID) (plugin.ClientComponent, error)
+	Resource(context.Context, identity.InstallationID, framevalue.Digest, plugin.ContributionID, string) ([]byte, error)
+	Locale(context.Context, identity.InstallationID, framevalue.Digest, string) (map[string]string, error)
 }
 
 type selectionUseCases interface {
@@ -79,18 +80,18 @@ func parseInstallationID(text string) (identity.InstallationID, error) {
 	return id, nil
 }
 
-func parseReleaseDigest(text string) (integrity.Digest, error) {
-	digest, err := integrity.ParseDigest(text)
+func parseReleaseDigest(text string) (framevalue.Digest, error) {
+	digest, err := framevalue.ParseDigest(text)
 	if err != nil {
-		return integrity.Digest{}, protocol.InvalidParameters(err)
+		return framevalue.Digest{}, protocol.InvalidParameters(err)
 	}
 	return digest, nil
 }
 
-func parseInstallationRelease(id, digest string) (identity.InstallationID, integrity.Digest, error) {
+func parseInstallationRelease(id, digest string) (identity.InstallationID, framevalue.Digest, error) {
 	installation, err := parseInstallationID(id)
 	if err != nil {
-		return identity.InstallationID{}, integrity.Digest{}, err
+		return identity.InstallationID{}, framevalue.Digest{}, err
 	}
 	release, err := parseReleaseDigest(digest)
 	return installation, release, err

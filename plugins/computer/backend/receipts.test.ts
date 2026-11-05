@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
-import { canonicalJSON, digestJSON } from "@qimu/node";
+import { canonicalJSON, digestJSON } from "@flame/backend-sdk/mcp";
 import { Receipts, type OriginalCommand, type ReceiptLimits } from "./receipts";
 
 const limits: ReceiptLimits = {

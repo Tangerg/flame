@@ -3,12 +3,12 @@ package terminal
 import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/layout"
-	"github.com/Tangerg/oolong/core/program"
-	"github.com/Tangerg/oolong/highlight"
+	"github.com/Tangerg/oolong/extensions/highlight"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/program"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 // interruptRun is what answering a waiting Run's interrupts asks of the Run:
@@ -28,7 +28,7 @@ type interruptPrompts struct {
 	editContext func(contextEditorRequest) *contextEditorSession
 	remember    func() settings.RememberPreference
 
-	stack     *headless.Stack
+	stack     *workspaceScene
 	theme     kit.Theme
 	glyphs    kit.Glyphs
 	syntax    highlight.Renderer
@@ -43,20 +43,20 @@ type interruptPrompts struct {
 	approvalOverride  *conversation.ToolArgumentOverride
 	approvalSections  []toolSection
 	approvalEditor    *contextEditorSession
-	approvalForm      *headless.Form
+	approvalForm      *base.Form
 	approvalPane      approvalPane
 	approvalDialog    *presentationDialog
 
 	questionnaire  *questionnaire
-	questionDialog *kit.Dialog
-	reviewDialog   *kit.Dialog
+	questionDialog *presentationDialog
+	reviewDialog   *presentationDialog
 }
 
 type interruptPromptsConfig struct {
 	run         interruptRun
 	editContext func(contextEditorRequest) *contextEditorSession
 	remember    func() settings.RememberPreference
-	stack       *headless.Stack
+	stack       *workspaceScene
 	theme       kit.Theme
 	glyphs      kit.Glyphs
 	syntax      highlight.Renderer
@@ -70,14 +70,9 @@ func newInterruptPrompts(cfg interruptPromptsConfig) *interruptPrompts {
 		stack: cfg.stack, theme: cfg.theme, glyphs: cfg.glyphs, syntax: cfg.syntax, wheel: cfg.wheel, clipboard: cfg.clipboard,
 	}
 	p.approvalPane = approvalPane{theme: cfg.theme, glyphs: cfg.glyphs, detail: kit.NewParagraph("", cfg.theme.Text)}
-	p.approvalPane.scroll.Wheel(cfg.wheel)
-	p.approvalPane.view = kit.Transcript{
-		Content: &p.approvalPane.preview, Scroll: &p.approvalPane.scroll,
-		Theme: cfg.theme, Glyphs: cfg.glyphs,
-	}
+	p.approvalPane.initialize(cfg.wheel)
 	p.setApprovalForm(approvalAllowOnce)
-	p.approvalDialog = newPresentationDialog(kit.DialogConfig{
-		Stack: cfg.stack, Theme: cfg.theme, Glyphs: cfg.glyphs, Title: "Tool approval", Body: &p.approvalPane,
+	p.approvalDialog = newPresentationDialog(cfg.stack, kit.DialogConfig{Theme: cfg.theme, Glyphs: cfg.glyphs, Title: "Tool approval", Body: p.approvalPane.Element(),
 		Where: layout.Placement{Width: 88, Height: 24},
 	})
 	return p
@@ -130,7 +125,7 @@ func (p *interruptPrompts) dismiss() {
 	p.review = nil
 	p.approvalDialog.Dismiss()
 	if p.questionDialog != nil {
-		p.questionDialog.Controller().Dismiss()
+		p.questionDialog.Dismiss()
 		p.questionDialog = nil
 	}
 	p.closeReviewDialog()
@@ -138,7 +133,7 @@ func (p *interruptPrompts) dismiss() {
 
 func (p *interruptPrompts) closeReviewDialog() {
 	if p.reviewDialog != nil {
-		p.reviewDialog.Controller().Dismiss()
+		p.reviewDialog.Dismiss()
 		p.reviewDialog = nil
 	}
 }

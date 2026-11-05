@@ -2,12 +2,13 @@ package skillauthoring_test
 
 import (
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/skills"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 )
 
 func candidate(name, body string, revision bool) skills.Proposal {

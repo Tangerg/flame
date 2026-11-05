@@ -1,6 +1,6 @@
 import { type RecordedFileChange } from "@flame/component-sdk";
 import { CHANGE_STATUSES } from "@/foundation/protocolValues.generated";
-import { isJSONNumber, parseJSON, projectNumber } from "@qimu/sdk/json";
+import { isJSONNumber, parseJSON, projectNumber } from "@frame/sdk/json";
 
 export interface CommandResult {
   exitCode?: number;

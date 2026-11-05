@@ -11,11 +11,14 @@ import (
 	"sync/atomic"
 	"testing"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
-	"github.com/Tangerg/qimu/jsonvalue"
-	qimumcp "github.com/Tangerg/qimu/mcp"
-	"github.com/Tangerg/qimu/portable"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/httpreq"
 )
@@ -39,9 +42,9 @@ func httpFixture(t *testing.T, config httpreq.ClientConfig) (*requests, string, 
 	return requests, contracts.Request.Name(), path
 }
 
-func httpInput(t *testing.T, request httpreq.Request) jsonvalue.Value {
+func httpInput(t *testing.T, request httpreq.Request) framevalue.JSON {
 	t.Helper()
-	input, err := jsonvalue.Encode(request)
+	input, err := framevalue.EncodeJSON(request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,10 +85,10 @@ func TestHTTPOriginalResultSurvivesRestartWithoutAnotherRequest(t *testing.T) {
 		t.Fatalf("original body: %+v", second.Body)
 	}
 	changed := httpInput(t, httpreq.Request{URL: server.URL + "/changed"})
-	if _, err := restarted.execute(t.Context(), method, "original", changed); !errors.Is(err, portable.ErrInvocationConflict) {
+	if _, err := restarted.execute(t.Context(), method, "original", changed); !errors.Is(err, framemcp.ErrInvocationConflict) {
 		t.Fatalf("changed request reused identity: %v", err)
 	}
-	receipt, err := restarted.receipt(t.Context(), qimumcp.ReceiptRequest{ID: "original", Method: method, InputDigest: input.Digest()})
+	receipt, err := restarted.receipt(t.Context(), pluginmcp.ReceiptRequest{ID: "original", Method: method, InputDigest: input.Digest()})
 	if err != nil || receipt.Result == nil || receipt.Result.IsError {
 		t.Fatalf("original tool receipt: %+v %v", receipt, err)
 	}
@@ -108,7 +111,7 @@ func TestHTTPPolicyRefusalsNeverReachTransport(t *testing.T) {
 			})}
 			requests, method, _ := httpFixture(t, httpreq.ClientConfig{AllowedHosts: test.hosts, HTTPClient: client})
 			_, err := requests.execute(t.Context(), method, "refused", httpInput(t, test.input))
-			if _, known := errors.AsType[*portable.Refusal](err); !known {
+			if _, known := errors.AsType[*framemcp.Refusal](err); !known {
 				t.Fatalf("policy failure is unconfirmed: %v", err)
 			}
 			if _, known := tool.ClassifyFailure(requestToolFailure(err)); !known {
@@ -142,7 +145,7 @@ func TestHTTPUnconfirmedDispatchCannotReplayOrBecomeAReceipt(t *testing.T) {
 			if _, err := requests.execute(t.Context(), method, "unconfirmed", input); !errors.Is(err, pluginstorage.ErrCommandUnconfirmed) || calls != 1 {
 				t.Fatalf("unconfirmed replay: %v, calls=%d", err, calls)
 			}
-			receipt, err := requests.receipt(t.Context(), qimumcp.ReceiptRequest{ID: "unconfirmed", Method: method, InputDigest: input.Digest()})
+			receipt, err := requests.receipt(t.Context(), pluginmcp.ReceiptRequest{ID: "unconfirmed", Method: method, InputDigest: input.Digest()})
 			if err != nil || receipt.Result != nil {
 				t.Fatalf("invented original outcome: %+v %v", receipt, err)
 			}

@@ -3,29 +3,34 @@ package terminal
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/oolong/ui/core/scene"
+	"image"
 	"slices"
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/keymap"
-	"github.com/Tangerg/oolong/core/layout"
-	"github.com/Tangerg/oolong/core/text"
+	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/keymap"
+	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/text"
+	"github.com/Tangerg/oolong/ui/kit"
 )
 
 type approvalPane struct {
-	theme         kit.Theme
-	glyphs        kit.Glyphs
-	title         string
-	detail        *kit.Paragraph
-	preview       headless.Transcript
-	scroll        headless.Scroll
-	view          kit.Transcript
-	form          *kit.Form
-	presentedForm headless.Snapshot[*kit.Form]
+	theme       kit.Theme
+	glyphs      kit.Glyphs
+	title       string
+	detail      *kit.Paragraph
+	preview     *base.Transcript
+	scroll      *base.Scroll
+	view        *kit.Transcript
+	group       *scene.Group
+	heading     scene.Element
+	description scene.Element
+	form        *kit.Form
+	formBody    scene.Element
 }
 
 type approvalDecisionDraft struct {
@@ -49,86 +54,118 @@ func (a approvalDecisionDraft) answer(action approvalAction, override *conversat
 	return decision, true
 }
 
-func (a *approvalPane) Draw(frame headless.Frame) {
-	width, height := frame.Size()
-	form := a.form
-	a.presentedForm.Stage(frame, form)
-	if width <= 0 || height <= 0 || form == nil {
-		return
-	}
-	formRows := min(form.HeightForWidth(width), max(height-1, 0))
-	detailRows := min(a.detail.HeightForWidth(width), min(4, max(height-formRows-1, 0)))
-	rows := frame.Subs((layout.Flow{Axis: layout.Down}).Rects(frame.Bounds().Size(), []layout.Slot{
-		{Size: layout.Fixed(1)},
-		{Size: layout.Fixed(detailRows)},
-		{Size: layout.Flex(1)},
-		{Size: layout.Fixed(formRows)},
-	}))
-	kit.Label{Text: a.title, Style: a.theme.Strong, Ellipsis: "…"}.Draw(rows[0].View)
-	a.detail.Draw(rows[1].View)
-	a.view.Draw(rows[2])
-	form.Draw(rows[3])
+func (a *approvalPane) initialize(wheel input.Wheel) {
+	a.heading = scene.NewElement(scene.ElementConfig{Paint: func(frame scene.Frame) {
+		kit.Label{Text: a.title, Style: a.theme.Strong, Ellipsis: a.glyphs.Ellipsis}.Draw(frame.View)
+	}})
+	a.description = scene.NewElement(scene.ElementConfig{Paint: func(frame scene.Frame) { a.detail.Draw(frame.View) }})
+	a.group = scene.NewGroup(scene.GroupConfig{Axis: layout.Down, Layout: func(space image.Point, items []scene.Item) []image.Rectangle {
+		formRows := 0
+		if a.form != nil {
+			formRows = min(a.form.Element().Measure(layout.Down, space.X), max(space.Y-1, 0))
+		}
+		detailRows := min(a.detail.HeightForWidth(space.X), min(4, max(space.Y-formRows-1, 0)))
+		slots := []layout.Slot{{Size: layout.Fixed(1)}, {Size: layout.Fixed(detailRows)}, {Size: layout.Flex(1)}}
+		if a.form != nil {
+			slots = append(slots, layout.Slot{Size: layout.Fixed(formRows)})
+		}
+		return (layout.Flow{Axis: layout.Down}).Rects(space, slots)
+	}})
+	a.replacePreview(nil, wheel)
 }
 
-func (a *approvalPane) Handle(event input.Event) bool {
-	if form := a.presentedForm.Value(); form != nil && form.Handle(event) {
-		return true
+func (a *approvalPane) Element() scene.Element { return a.group.Element() }
+
+func (a *approvalPane) setForm(form *kit.Form, leave func()) {
+	a.form = form
+	a.formBody = scene.Element{}
+	if form != nil {
+		a.formBody = formNavigation(form.Element(), leave)
 	}
-	return a.view.Handle(event)
+	a.compose()
 }
 
-func (a *approvalPane) Focus(has bool) {
+func (a *approvalPane) compose() {
+	items := []scene.Item{{Element: a.heading}, {Element: a.description}, {Element: a.view.Element()}}
 	if a.form != nil {
-		a.form.Focus(has)
+		items = append(items, scene.Item{Element: a.formBody})
 	}
+	if err := a.group.Set(items...); err != nil {
+		panic(err)
+	}
+}
+
+func (a *approvalPane) replacePreview(blocks []base.Block, wheel input.Wheel) {
+	if a.preview != nil {
+		a.preview.Close()
+	}
+	view, err := kit.NewTranscript(kit.TranscriptConfig{Behavior: base.TranscriptConfig{Key: "approval-preview", MaxItems: max(len(blocks), 1)}, Theme: a.theme, Glyphs: a.glyphs})
+	if err != nil {
+		panic(err)
+	}
+	a.view, a.preview = view, view.Controller()
+	// Approval decisions own keyboard focus. The preview still accepts pointer
+	// selection and wheel input without displacing the active form field.
+	if err := view.Element().SetFocusable(func() bool { return false }); err != nil {
+		panic(err)
+	}
+	a.scroll = a.preview.Scroll()
+	a.scroll.Wheel(wheel)
+	a.scroll.ToTop()
+	for _, block := range blocks {
+		if _, err := a.preview.Add(block); err != nil {
+			panic(err)
+		}
+	}
+	a.compose()
 }
 
 func (p *interruptPrompts) setApprovalForm(initial approvalAction) {
-	review := p.review
-	approval := p.approval
+	review, approval := p.review, p.approval
 	draft := p.approvalDraft
 	if draft == nil {
 		draft = &approvalDecisionDraft{}
 		p.approvalDraft = draft
 	}
-	rememberable := p.approval == nil || p.approval.Rememberable
-	choiceValue, ok := initial.Normalize(rememberable)
+	rememberable := approval == nil || approval.Rememberable
+	value, ok := initial.Normalize(rememberable)
 	if !ok {
 		p.approvalDraft = nil
 		p.approvalForm = nil
-		p.approvalPane.form = nil
+		p.approvalPane.setForm(nil, nil)
 		p.run.message("invalid approval action")
 		return
 	}
-	draft.choice = choiceValue
-	choice := headless.NewSelect(headless.SelectConfig[approvalAction]{
-		Same:  headless.Equal[approvalAction],
-		Label: "How should flame proceed?", Value: headless.Bind(&draft.choice), Rows: 3,
-	})
-	choice.SetOptions(approvalOptions(rememberable))
-	reason := headless.NewText(headless.TextConfig{
-		Label: "Denial feedback (optional)", Placeholder: "Explain what should change before retrying",
-		Value: headless.Bind(&draft.reason),
-	})
-	reason.Clipboard = p.clipboard
-	keys := headless.DefaultFormKeys()
-	p.approvalForm = headless.NewForm(choice, reason)
-	p.approvalForm.Keys = keys
-	p.approvalForm.Done = func() {
-		if p.review == review && p.approval == approval && p.approvalDraft == draft {
-			p.answerApproval(draft.choice)
+	draft.choice = value
+	choice := base.NewSelect(base.SelectConfig[approvalAction]{Same: base.Equal[approvalAction], Label: "How should flame proceed?", Initial: value, Options: approvalOptions(rememberable), Rows: 3})
+	reason := base.NewText(base.TextConfig{Label: "Denial feedback (optional)", Placeholder: "Explain what should change before retrying", Initial: draft.reason, Clipboard: p.clipboard})
+	capture := func() bool {
+		if p.review != review || p.approval != approval || p.approvalDraft != draft {
+			return false
 		}
-	}
-	p.approvalForm.GaveUp = func() {
-		if p.review == review && p.approval == approval && p.approvalDraft == draft {
-			p.backOrCancelApproval()
+		selected, ok := choice.Chosen()
+		if !ok {
+			return false
 		}
+		draft.choice, draft.reason = selected.Value, reason.Text()
+		return true
 	}
 	dressed := kit.NewForm(kit.FormConfig{
-		Theme: p.approvalPane.theme, Glyphs: p.approvalPane.glyphs, Controller: p.approvalForm,
-		Hints: []keymap.Action{headless.Submit, headless.Cancel},
+		Theme: p.approvalPane.theme, Glyphs: p.approvalPane.glyphs, Fields: []base.Field{choice, reason}, Keys: base.DefaultFormKeys(), Hints: []keymap.Action{base.Submit, base.Cancel},
+		Submit: func(base.SubmissionID) (scene.ActionState, error) {
+			if !capture() {
+				return scene.Unchanged, nil
+			}
+			p.answerApproval(draft.choice)
+			return scene.Applied, nil
+		},
 	})
-	p.approvalPane.form = dressed
+	p.approvalForm = dressed.Controller()
+	p.approvalPane.setForm(dressed, func() {
+		if capture() {
+			p.backOrCancelApproval()
+		}
+	})
 }
 
 func (p *interruptPrompts) openApproval(approval conversation.Approval) {
@@ -174,31 +211,19 @@ func (p *interruptPrompts) openApproval(approval conversation.Approval) {
 }
 
 func (p *interruptPrompts) setApprovalPreview(sections []toolSection) {
-	p.approvalPane.preview = headless.Transcript{}
-	p.approvalPane.view.Content = &p.approvalPane.preview
-	presentation := blockPresentation{
-		Theme: p.approvalPane.theme, Glyphs: p.approvalPane.glyphs, Syntax: p.syntax,
-	}
-	blockCount := 0
+	presentation := blockPresentation{Theme: p.approvalPane.theme, Glyphs: p.approvalPane.glyphs, Syntax: p.syntax}
+	var blocks []base.Block
 	for _, section := range sections {
 		for _, block := range renderToolSections(presentation, []toolSection{section}, false) {
-			id := p.approvalPane.preview.Append(newReaderSectionBlock(p.approvalPane.theme, section.Title, block))
-			p.approvalPane.preview.Finish(id)
-			blockCount++
+			blocks = append(blocks, newReaderSectionBlock(p.approvalPane.theme, section.Title, block))
 		}
 	}
-	if blockCount == 0 {
-		id := p.approvalPane.preview.Append(&kit.Entry{Theme: p.approvalPane.theme, Body: "This request has no additional preview."})
-		p.approvalPane.preview.Finish(id)
+	if len(blocks) == 0 {
+		blocks = append(blocks, &kit.Entry{Theme: p.approvalPane.theme, Body: "This request has no additional preview."})
 	}
-	p.approvalPane.scroll = headless.Scroll{}
-	p.approvalPane.scroll.Wheel(p.wheel)
-	p.approvalPane.scroll.ToTop()
-	p.approvalPane.view.Scroll = &p.approvalPane.scroll
+	p.approvalPane.replacePreview(blocks, p.wheel)
 }
 
-// open starts reviewing the interrupts a waiting Run raised; it reports
-// whether a review opened.
 func (p *interruptPrompts) open(interrupts []conversation.Interrupt) bool {
 	if p.review != nil {
 		p.run.fail(errors.New("runtime opened interrupts while another set is active"))
@@ -296,11 +321,11 @@ func (p *interruptPrompts) backInterrupt() bool {
 	}
 	if p.questionnaire != nil {
 		p.questionnaire = nil
-		p.questionDialog.Controller().Dismiss()
+		p.questionDialog.Dismiss()
 		p.questionDialog = nil
 	}
 	if p.reviewDialog != nil {
-		p.reviewDialog.Controller().Dismiss()
+		p.reviewDialog.Dismiss()
 		p.reviewDialog = nil
 	}
 	p.openCurrentInterrupt()
@@ -338,7 +363,7 @@ func (p *interruptPrompts) clearApprovalProjection() {
 	p.approvalSections = nil
 	p.dismissApprovalEditor()
 	p.approvalForm = nil
-	p.approvalPane.form = nil
+	p.approvalPane.setForm(nil, nil)
 }
 
 func nonEmptyStrings(values []string) []string {

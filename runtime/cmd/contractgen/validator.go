@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/qimu/jsonvalue"
 )
 
 // The Go wire validator enforces registered constraints at Runtime boundaries.
@@ -147,7 +146,7 @@ func writeValidator(out *strings.Builder, target reflect.Type, checks []string) 
 // checked the outer declaration would disagree with the schema and TypeScript
 // validators for the exact same JSON frame.
 func inheritedValueConstraints(shape reflect.Type, declared map[reflect.Type][]dispatch.FieldConstraint) []dispatch.FieldConstraint {
-	owners := append([]reflect.Type{shape}, jsonvalue.Embeds(shape)...)
+	owners := append([]reflect.Type{shape}, protocol.WireEmbeds(shape)...)
 	var out []dispatch.FieldConstraint
 	for _, owner := range owners {
 		for _, constraint := range declared[owner] {
@@ -198,7 +197,7 @@ func constraintCheck(
 	constraint dispatch.FieldConstraint,
 	requiredByShape bool,
 ) string {
-	selector, leaf, found := jsonvalue.GoPath(shape, constraint.Field)
+	selector, leaf, found := protocol.WireGoPath(shape, constraint.Field)
 	if !found {
 		panic(fmt.Sprintf("contractgen: %s has no field %q", shape.Name(), constraint.Field))
 	}
@@ -225,7 +224,7 @@ func constraintCheck(
 func textConstraintCheck(
 	shape reflect.Type,
 	selector string,
-	leaf jsonvalue.Field,
+	leaf protocol.WireField,
 	constraint dispatch.FieldConstraint,
 	requiredByShape bool,
 ) string {
@@ -263,7 +262,7 @@ func textConstraintCheck(
 func nonEmptyConstraintCheck(
 	shape reflect.Type,
 	selector string,
-	leaf jsonvalue.Field,
+	leaf protocol.WireField,
 	constraint dispatch.FieldConstraint,
 	requiredByShape bool,
 ) string {
@@ -290,7 +289,7 @@ func nonEmptyConstraintCheck(
 func prefixConstraintCheck(
 	shape reflect.Type,
 	selector string,
-	leaf jsonvalue.Field,
+	leaf protocol.WireField,
 	constraint dispatch.FieldConstraint,
 ) string {
 	validatorName := "requiredTextPrefix"
@@ -309,7 +308,7 @@ func prefixConstraintCheck(
 func patternConstraintCheck(
 	shape reflect.Type,
 	selector string,
-	leaf jsonvalue.Field,
+	leaf protocol.WireField,
 	constraint dispatch.FieldConstraint,
 ) string {
 	validatorName := "requiredTextPattern"
@@ -330,7 +329,7 @@ func patternConstraintCheck(
 func numericConstraintCheck(
 	shape reflect.Type,
 	selector string,
-	leaf jsonvalue.Field,
+	leaf protocol.WireField,
 	constraint dispatch.FieldConstraint,
 ) string {
 	field := strconv.Quote(constraint.Field)
@@ -366,7 +365,7 @@ func numericConstraintCheck(
 func itemConstraintCheck(
 	shape reflect.Type,
 	selector string,
-	leaf jsonvalue.Field,
+	leaf protocol.WireField,
 	constraint dispatch.FieldConstraint,
 ) string {
 	field := strconv.Quote(constraint.Field)
@@ -457,7 +456,7 @@ func unionRequiresField(union dispatch.UnionSpec, field string) bool {
 func enumChecks(shape reflect.Type) []string {
 	recv := receiverName(shape)
 	var checks []string
-	for _, field := range jsonvalue.Fields(shape) {
+	for _, field := range protocol.WireFields(shape) {
 		if values, found := enumValues(field.Type); found {
 			checks = append(checks, fmt.Sprintf("closedEnum(%s, string(%s.%s), %s, %t)",
 				strconv.Quote(field.Name), recv, field.GoName, valueList(values), field.Optional))
@@ -492,7 +491,7 @@ func unionChecks(union dispatch.UnionSpec, recv string) []string {
 }
 
 func patternUnionTagCheck(union dispatch.UnionSpec, pattern dispatch.PatternVariantSpec, recv string) string {
-	field, ok := jsonvalue.LookupField(union.GoType, union.Discriminator)
+	field, ok := protocol.WireFieldNamed(union.GoType, union.Discriminator)
 	if !ok {
 		panic(fmt.Sprintf("contractgen: %s has no discriminator %q", union.GoType.Name(), union.Discriminator))
 	}
@@ -647,7 +646,7 @@ func valueList(values []string) string {
 // so the schema walk can state the same rule with its corresponding keyword.
 func (s *schemaSet) valueConstraintsFor(owner reflect.Type, field string) []dispatch.FieldConstraint {
 	var out []dispatch.FieldConstraint
-	owners := append([]reflect.Type{owner}, jsonvalue.Embeds(owner)...)
+	owners := append([]reflect.Type{owner}, protocol.WireEmbeds(owner)...)
 	for _, candidate := range owners {
 		for _, constraint := range s.values[candidate] {
 			if constraint.Field == field && !slices.Contains(out, constraint) {

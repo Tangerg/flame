@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"time"
@@ -12,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/qimu/sqlite"
 )
 
 type trajectoryPosition struct {
@@ -20,12 +18,10 @@ type trajectoryPosition struct {
 	Kind       string
 	ID         string
 }
-
 type trajectoryIdentity struct {
 	trajectoryPosition
 	runID string
 }
-
 type trajectoryRecord struct {
 	OccurredAt time.Time
 	RunID      string
@@ -34,18 +30,16 @@ type trajectoryRecord struct {
 	Model      *modelInvocationRecord
 	Item       *transcript.Item
 }
-
 type trajectoryStore struct {
-	db         *sql.DB
+	db         *database
 	runs       *RunStore
 	transcript *TranscriptStore
 	models     *ModelInvocationStore
 }
 
-func newTrajectoryStore(db *sql.DB) *trajectoryStore {
+func newTrajectoryStore(db *database) *trajectoryStore {
 	return &trajectoryStore{db: db, runs: newRunStore(db), transcript: newTranscriptStore(db), models: newModelInvocationStore(db)}
 }
-
 func (s *trajectoryStore) Page(ctx context.Context, sessionID string, includeDescendants bool, anchor *trajectoryPosition, limit int) ([]trajectoryRecord, error) {
 	if err := identity.ValidateSession(sessionID); err != nil {
 		return nil, err
@@ -54,9 +48,9 @@ func (s *trajectoryStore) Page(ctx context.Context, sessionID string, includeDes
 		return nil, errors.New("sqlite: trajectory page requires a positive limit")
 	}
 	var result []trajectoryRecord
-	err := sqlite.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
+	err := s.db.read(ctx, func(ctx context.Context) error {
 		var exists bool
-		if err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sessions WHERE id = ?)`, sessionID).Scan(&exists); err != nil {
+		if err := s.db.connection(ctx).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sessions WHERE id = ?)`, sessionID).Scan(&exists); err != nil {
 			return fmt.Errorf("sqlite: trajectory Session: %w", err)
 		}
 		if !exists {
@@ -81,9 +75,9 @@ func (s *trajectoryStore) Page(ctx context.Context, sessionID string, includeDes
 	}
 	return result, nil
 }
-
 func (s *trajectoryStore) positions(ctx context.Context, sessionID string, includeDescendants bool, anchor *trajectoryPosition, limit int) ([]trajectoryIdentity, error) {
-	query := `SELECT occurred_at, kind, id, run_id FROM (
+	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]trajectoryIdentity, error) {
+		query := `SELECT occurred_at, kind, id, run_id FROM (
 		SELECT created_at AS occurred_at, 'run' AS kind, run_id AS id, run_id FROM runs WHERE session_id = ?
 		UNION ALL
 		SELECT started_at, 'model', call_id, run_id FROM model_invocations WHERE session_id = ? AND endpoint_json IS NULL
@@ -92,36 +86,38 @@ func (s *trajectoryStore) positions(ctx context.Context, sessionID string, inclu
 		UNION ALL
 		SELECT occurred_at, 'item', item_id, run_id FROM history_items WHERE session_id = ?
 	) WHERE 1 = 1`
-	args := []any{sessionID, sessionID, sessionID, sessionID}
-	if !includeDescendants {
-		query += ` AND (run_id = '' OR run_id IN (SELECT run_id FROM runs WHERE session_id = ? AND root_run_id = ''))`
-		args = append(args, sessionID)
-	}
-	if anchor != nil {
-		query += ` AND (occurred_at, kind, id) < (?, ?, ?)`
-		args = append(args, anchor.OccurredAt, anchor.Kind, anchor.ID)
-	}
-	query += ` ORDER BY occurred_at DESC, kind DESC, id DESC LIMIT ?`
-	args = append(args, limit)
-	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: page trajectory: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var positions []trajectoryIdentity
-	for rows.Next() {
-		var position trajectoryIdentity
-		if err := rows.Scan(&position.OccurredAt, &position.Kind, &position.ID, &position.runID); err != nil {
-			return nil, fmt.Errorf("sqlite: scan trajectory: %w", err)
+		args := []any{sessionID, sessionID, sessionID, sessionID}
+		if !includeDescendants {
+			query += ` AND (run_id = '' OR run_id IN (SELECT run_id FROM runs WHERE session_id = ? AND root_run_id = ''))`
+			args = append(args, sessionID)
 		}
-		positions = append(positions, position)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("sqlite: iterate trajectory: %w", err)
-	}
-	return positions, nil
+		if anchor != nil {
+			query += ` AND (occurred_at, kind, id) < (?, ?, ?)`
+			args = append(args, anchor.OccurredAt, anchor.Kind, anchor.ID)
+		}
+		query += ` ORDER BY occurred_at DESC, kind DESC, id DESC LIMIT ?`
+		args = append(args, limit)
+		rows, err := s.db.connection(ctx).QueryContext(ctx, query, args...)
+		if err != nil {
+			return nil, fmt.Errorf("sqlite: page trajectory: %w", err)
+		}
+		defer func() {
+			_ = rows.Close()
+		}()
+		var positions []trajectoryIdentity
+		for rows.Next() {
+			var position trajectoryIdentity
+			if err := rows.Scan(&position.OccurredAt, &position.Kind, &position.ID, &position.runID); err != nil {
+				return nil, fmt.Errorf("sqlite: scan trajectory: %w", err)
+			}
+			positions = append(positions, position)
+		}
+		if err := rows.Err(); err != nil {
+			return nil, fmt.Errorf("sqlite: iterate trajectory: %w", err)
+		}
+		return positions, nil
+	})
 }
-
 func (s *trajectoryStore) hydrate(ctx context.Context, sessionID string, position trajectoryIdentity) (trajectoryRecord, error) {
 	entry := trajectoryRecord{OccurredAt: time.Unix(0, position.OccurredAt).UTC()}
 	switch position.Kind {
@@ -169,15 +165,16 @@ func (s *trajectoryStore) hydrate(ctx context.Context, sessionID string, positio
 	}
 	return entry, nil
 }
-
 func (m *ModelInvocationStore) trajectoryInvocation(ctx context.Context, sessionID, runID, callID string) (modelInvocationRecord, error) {
-	row := sqlite.Connection(ctx, m.db).QueryRowContext(ctx, `SELECT call_id, segment_id, state, started_at, finished_at, usage, first_output_latency_millis, known_response FROM model_invocations WHERE session_id = ? AND run_id = ? AND call_id = ?`, sessionID, runID, callID)
-	record, err := scanModelInvocation(row)
-	if err != nil {
-		return modelInvocationRecord{}, err
-	}
-	if err := validateModelInvocationIdentity(sessionID, runID, record.SegmentID, record.CallID); err != nil {
-		return modelInvocationRecord{}, err
-	}
-	return record, nil
+	return scopedValue(ctx, m.db.read, func(ctx context.Context) (modelInvocationRecord, error) {
+		row := m.db.connection(ctx).QueryRowContext(ctx, `SELECT call_id, segment_id, state, started_at, finished_at, usage, first_output_latency_millis, known_response FROM model_invocations WHERE session_id = ? AND run_id = ? AND call_id = ?`, sessionID, runID, callID)
+		record, err := scanModelInvocation(row)
+		if err != nil {
+			return modelInvocationRecord{}, err
+		}
+		if err := validateModelInvocationIdentity(sessionID, runID, record.SegmentID, record.CallID); err != nil {
+			return modelInvocationRecord{}, err
+		}
+		return record, nil
+	})
 }

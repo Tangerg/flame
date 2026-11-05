@@ -4,9 +4,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/wiregen"
+
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/qimu/contractgen"
 )
 
 type recursiveWireObject struct {
@@ -37,7 +38,7 @@ func TestWireGraphPreservesEmbeddedPaginationOwner(t *testing.T) {
 func TestWireGraphPreservesNamedObjectRecursion(t *testing.T) {
 	set := newSchemaSet(&dispatch.Shapes{})
 	node := set.walk(reflect.TypeFor[[]recursiveWireObject]())
-	want := contractgen.RefPrefix + "recursiveWireObject"
+	want := wiregen.RefPrefix + "recursiveWireObject"
 	if node.Items == nil || node.Items.Ref != want {
 		t.Fatalf("root items = %#v, want %s", node.Items, want)
 	}
@@ -45,7 +46,7 @@ func TestWireGraphPreservesNamedObjectRecursion(t *testing.T) {
 	if owner == nil {
 		t.Fatal("recursive object definition is missing")
 	}
-	children, ok := owner.Properties["children"].(*contractgen.Schema)
+	children, ok := owner.Properties["children"].(*wiregen.Schema)
 	if !ok || children.Items == nil || children.Items.Ref != want {
 		t.Fatalf("recursive children = %#v, want %s", children, want)
 	}

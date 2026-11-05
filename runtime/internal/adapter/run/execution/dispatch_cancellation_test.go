@@ -9,13 +9,14 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	agent "github.com/Tangerg/scope/agent"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func mustInteractionProcessID(t *testing.T, value string) agent.ProcessID {
+func mustInteractionProcessID(t *testing.T, value string) scoperun.ProcessID {
 	t.Helper()
-	id, err := agent.ParseProcessID(value)
+	id, err := scoperun.ParseProcessID(value)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +82,7 @@ func TestLateCancellationPreservesScopeFailure(t *testing.T) {
 			}
 			for _, session := range executor.sessions.snapshot() {
 				result, err := session.state.process.Await(t.Context())
-				if err != nil || result.Termination().Cause() != agent.TerminationCauseExternalFailure {
+				if err != nil || result.Termination().Cause() != scoperun.TerminationCauseExternalFailure {
 					t.Fatalf("Scope failure = %+v, %v", result.Termination(), err)
 				}
 				if late == "root request" {

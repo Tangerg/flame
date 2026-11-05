@@ -17,7 +17,7 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-func TestSemanticRefusalCrossesRealInterpreterAndTreeCommitter(t *testing.T) {
+func TestSemanticRefusalCrossesRealInterpreterAndScopeStore(t *testing.T) {
 	for _, source := range []string{"original", "hook", "authorization"} {
 		t.Run(source, func(t *testing.T) {
 			executions, modelCalls := 0, 0
@@ -146,7 +146,7 @@ func TestCanceledStreamPublishesIncompleteObservationBeforeTerminal(t *testing.T
 	if len(failed) != 1 || failed[0].Observation.Text != "prefix" || failed[0].Observation.Reasoning != "thinking" || len(payloadsOf[runs.ModelCallCompleted](events)) != 0 {
 		t.Fatalf("incomplete observation lost or promoted: %+v", events)
 	}
-	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCanceled {
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeLost || len(ended[0].UnresolvedEffects()) != 1 {
 		t.Fatalf("Scope terminal changed: %+v", ended)
 	}
 	seenFailure := false
