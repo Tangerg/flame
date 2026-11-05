@@ -17,6 +17,15 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+The renewed Subagents native review on `3380187b5` finds no new alignment
+or reading-return defect in the inspected English light/14 px and Chinese
+dark/18 px tasks. Both include a 320 px Dock, 200% main reading and continued
+drafts; English includes file/source return, Chinese includes a resized native
+window and nested Tool evidence. See **Subagent native result and nested reading
+after main (2026-11-05)**. Product bytes remain unchanged and owned qualification
+resources are retired. Continue with other actual task paths; whole-product
+acceptance remains open.
+
 The renewed Run/Trajectory native review on `88e1900a2` finds no new alignment
 defect in the inspected English light/14 px and Chinese dark/18 px paths. Both
 include a 320 px Dock, 200% main-area reading, recorded-evidence navigation and
@@ -33372,6 +33381,79 @@ The interrupted-draft backup retains 123 bytes and its original SHA-256.
 After guarded main fast-forward, push and direct remote equality verification,
 the owned app/home/assets/diagnostic archives/overlays/CLI material/logs/npm-cache
 root is removed. Keep the worktree and goal active for continued polish.
+
+### Subagent native result and nested reading after main (2026-11-05)
+
+This follow-up reviews the current `3380187b5` product through conversation
+draft → task overview → selected result or nested task → recorded source or
+Tool parameters → original conversation → continued draft. A fresh main fetch
+confirms identical heads. No product-source repair is selected: the current
+summary, result, nested inspection, shared transcript and return owners pass
+the inspected paths without another layout or focus mechanism.
+
+Read-only ZCode's actual `v4/ConversationAgentToolCallRow.tsx` carries the
+root/parent/child identity and the same visible title into its pane action.
+ChatGPT's actual `open-local-conversation-subagents-panel-142bf1886339.js`
+checks captured selection after hydration. These supply UI navigation evidence,
+not exporter behavior or native acceptance. Better-layout and better-ui guide
+the shared-edge, wrapping and control-clearance review; earlier reference work
+retains its documented scope. Existing typography, whitespace, status tokens,
+Orange/custom themes and full-motion preferences remain unchanged.
+
+Actual Wails **3.1.0** uses a private signed host and the unchanged production
+fixture composition, canonical delegated snapshot and installed Tool-results
+resources. All nine serial preparation/build/sign/register steps pass on the
+existing owned Node 24.22.1, npm 11.21.1 and Go 1.27.3 toolchain. All **331 Web
+files, 24 host files and four signed bundle files** retain their exact hashes.
+
+- **English / light / 14 px / Orange #FB6E30:** confirmed keyboard splitter
+  focus and Home reach **320 px** from 363 px. The six-task overview retains
+  separate titles, status and actions. The failed task retains its complete
+  error; Return restores its list entry and Tab/Return enters finished task
+  **3 of 4**. Main-area entry, sidebar collapse and twenty native Zoom In actions
+  from Actual Size reach **200%**, **2238 × 1720**. Keyboard focus reveals the
+  source reference below the standing task header. Enter opens the complete
+  canonical file path and all eight recorded lines with line 4 selected; Escape
+  returns to the same visible reference and reading context. Actual Close,
+  Actual Size, Dock collapse and explicit Composer caret placement continue
+  `Keep the subagent review draft. Continue after reading the result and source.`.
+- **Chinese / dark / 18 px / #6C9EFF:** confirmed keyboard resizing reaches
+  **320 px**. The waiting parent retains its title, status and cancel affordance.
+  Main-area entry and twenty Zoom In actions from Actual Size reach **200%**.
+  Native Window → Move & Resize → Top Left settles at **2240 × 1456**. From
+  the current overview, explicit parent re-entry and its nested opener select
+  `Verify package dependencies`. Keyboard expansion reveals the recorded search
+  parameters. Confirmed Wrap and named parameter-reader focus, then End, reveal
+  both exact values and the closing JSON brace. Escape returns to the parent
+  with visible focus on the nested opener. Actual Close, Actual Size, Dock
+  collapse and explicit Composer caret placement continue
+  `子代理核对草稿。已读完嵌套任务的工具参数，继续对话。`.
+
+A guarded Chinese nested-entry action is excluded; the fresh AX state is the
+overview and the subsequent explicit re-entry supplies the qualified task.
+The initial **1458 px** resize transition and the **1306 × 850** rescaled final
+Chinese draft capture do not support geometry claims. The final draft's AX and
+visible text establish content continuity. Tab counts alone do not establish
+focus. Static fixture sidebar labels remain readouts. File content is the canned
+eight-line fixture independent of its selected path, so this does not qualify
+live filesystem accuracy. No Send, Steer, Stop, cancellation, approval, Copy or
+external-link command is activated. Live Runtime/provider execution, installed
+package upgrades, physical IME, VoiceOver, other native locales, RTL and
+whole-product acceptance remain outside this review. No new test suite, browser
+visual suite or performance benchmark runs; prior checks retain their scope.
+
+Both native processes are reaped with exit **0**, after **190.493 s** and
+**311.869 s**. All **6,630 tracked non-Markdown files** remain byte-identical.
+Evidence retains **81 UTF-8 records / 21 capture digests** with a verified gzip
+round trip of **844,898 bytes**, SHA-256
+`e995bc69baf625ccbd19cb601202ee428feb52d49805082e356a6bc8911ac927`.
+The exact app registration, two created UID stores and private root are retired;
+all six UID locations are absent, and the exact binary and port **50968** are
+inactive. Six output trees and two UI cache files match baseline after restoring
+only two generated UI files. Five originally absent output roots stay absent;
+the 58 real nested Web dependency files remain. The primary user checkout stays
+clean on `00c172c73`. No actionable layout findings remain in these inspected
+tasks. Approve for this scope; continue with other actual pages and task paths.
 
 ### Selected subagent results and empty readers (2026-11-03)
 
