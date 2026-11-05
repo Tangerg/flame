@@ -310,6 +310,12 @@ perimeter, including during native page zoom.
 Shared Select closes when Base UI reports its trigger fully clipped; dismissal
 keeps the current value and viewport position, then returns focus to that panel.
 
+Connection's Apply, Reset to default and Clear token retain their keyboard target
+when completion makes them unavailable. They remain in Tab order, expose their
+disabled state and refuse activation through the shared Button contract. Discard
+token change keeps its explicit return to the password field. Endpoint validation
+and accepted credentials remain with the Runtime endpoint owner.
+
 Hooks and Plugins also begin with their actual settings and named sections,
 without an introductory paragraph repeating those tasks. Specific trust effects,
 source paths, installation consequences and empty-state guidance remain beside

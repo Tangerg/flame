@@ -224,6 +224,7 @@ export function ConnectionPane() {
                   variant="ghost"
                   size="md"
                   disabled={isDefault}
+                  focusableWhenDisabled
                   onClick={reset}
                   styles={vocab.hold}
                 >
@@ -233,6 +234,7 @@ export function ConnectionPane() {
                   type="button"
                   variant="ghost"
                   disabled={!token && !hasRuntimeAccessToken()}
+                  focusableWhenDisabled
                   onClick={() => {
                     setToken("");
                     setTokenEdited(true);
@@ -258,6 +260,7 @@ export function ConnectionPane() {
               variant="primary"
               size="md"
               disabled={!dirty}
+              focusableWhenDisabled
               onClick={() => void apply()}
               styles={vocab.hold}
             >

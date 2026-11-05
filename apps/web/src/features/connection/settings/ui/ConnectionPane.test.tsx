@@ -25,6 +25,12 @@ function description(field: HTMLElement): string {
     .join(" ");
 }
 
+function expectFocusablyDisabled(button: HTMLElement) {
+  expect((button as HTMLButtonElement).disabled).toBe(false);
+  expect(button.tabIndex).toBe(0);
+  expect(button.getAttribute("aria-disabled")).toBe("true");
+}
+
 function expectNoRuntimeCommand() {
   expect(runtime.applyEndpoint).not.toHaveBeenCalled();
   expect(runtime.resetEndpoint).not.toHaveBeenCalled();
@@ -72,14 +78,88 @@ describe("ConnectionPane runtime status", () => {
 
     const apply = screen.getByRole("button", { name: "Apply" });
     const reset = screen.getByRole("button", { name: "Reset to default" });
-    expect((apply as HTMLButtonElement).disabled).toBe(true);
-    expect((reset as HTMLButtonElement).disabled).toBe(true);
+    expectFocusablyDisabled(apply);
+    expectFocusablyDisabled(reset);
 
     fireEvent.change(screen.getByLabelText("URL"), {
       target: { value: "http://127.0.0.1:9999" },
     });
     expect(screen.getByRole("button", { name: "Apply" })).toBe(apply);
-    expect((apply as HTMLButtonElement).disabled).toBe(false);
+    expect(apply.getAttribute("aria-disabled")).not.toBe("true");
+  });
+
+  it("keeps focus on Apply after it accepts a token edit and cannot apply it twice", () => {
+    runtime.snapshot = { phase: "ready", observation: null, failure: null };
+    runtime.applyEndpoint.mockImplementation((endpoint: string) => {
+      runtime.hasToken = true;
+      return { kind: "applied", endpoint, changed: false };
+    });
+    testClient.render(<ConnectionPane />);
+    const token = screen.getByLabelText("Access token") as HTMLInputElement;
+    const apply = screen.getByRole("button", { name: "Apply" });
+
+    fireEvent.change(token, { target: { value: "window-token" } });
+    apply.focus();
+    fireEvent.click(apply);
+
+    expect(runtime.applyEndpoint).toHaveBeenCalledExactlyOnceWith(
+      "http://127.0.0.1:17171",
+      "window-token",
+    );
+    expect(token.value).toBe("");
+    expect(description(token)).toContain("A token is set for the current Runtime address.");
+    expect(document.activeElement).toBe(apply);
+    expectFocusablyDisabled(apply);
+
+    fireEvent.click(apply);
+    expect(runtime.applyEndpoint).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(apply);
+  });
+
+  it("keeps focus on Reset after it restores the default address and cannot reset twice", () => {
+    runtime.snapshot = { phase: "ready", observation: null, failure: null };
+    testClient.render(<ConnectionPane />);
+    const url = screen.getByLabelText("URL") as HTMLInputElement;
+    const reset = screen.getByRole("button", { name: "Reset to default" });
+
+    fireEvent.change(url, { target: { value: "http://127.0.0.1:9999" } });
+    reset.focus();
+    fireEvent.click(reset);
+
+    expect(runtime.resetEndpoint).toHaveBeenCalledOnce();
+    expect(url.value).toBe("http://127.0.0.1:17171");
+    expect(document.activeElement).toBe(reset);
+    expectFocusablyDisabled(reset);
+    expectFocusablyDisabled(screen.getByRole("button", { name: "Apply" }));
+
+    fireEvent.click(reset);
+    expect(runtime.resetEndpoint).toHaveBeenCalledOnce();
+    expect(url.value).toBe("http://127.0.0.1:17171");
+    expect(document.activeElement).toBe(reset);
+  });
+
+  it("keeps focus on Clear after it empties the only token draft and cannot clear twice", () => {
+    runtime.snapshot = { phase: "ready", observation: null, failure: null };
+    testClient.render(<ConnectionPane />);
+    const token = screen.getByLabelText("Access token") as HTMLInputElement;
+    const clear = screen.getByRole("button", { name: "Clear token" });
+
+    fireEvent.change(token, { target: { value: "draft" } });
+    clear.focus();
+    fireEvent.click(clear);
+
+    expect(token.value).toBe("");
+    expect(description(token)).toContain("Token change not applied.");
+    expect(document.activeElement).toBe(clear);
+    expectFocusablyDisabled(clear);
+
+    fireEvent.click(clear);
+    expect(token.value).toBe("");
+    expect(document.activeElement).toBe(clear);
+    expectNoRuntimeCommand();
+
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(runtime.applyEndpoint).toHaveBeenCalledExactlyOnceWith("http://127.0.0.1:17171", "");
   });
 
   it("hands an endpoint replacement to the Runtime owner without reloading the renderer", () => {

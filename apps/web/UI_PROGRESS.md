@@ -17,6 +17,13 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Connection Apply, Reset and Clear now retain keyboard focus when their own
+completion disables the action. Native English original/candidate comparison and
+Chinese dark/18 px/200%/native resize pass, including token-only discard, retained
+URL rejection and the Files/conversation return. All 88 related tests and 13 final
+gates pass. See **Connection action completion and native return (2026-11-06)**.
+Owned qualification resources are retired; whole-product acceptance remains open.
+
 Settings keyboard reading now keeps its existing focus perimeter visible at
 native 200% zoom. The shared category viewport reserves the same transparent
 boundary as workspace readers. The matched English original/candidate comparison,
@@ -29402,6 +29409,131 @@ Verification for this surface (2026-10-21):
 - Final actual Wails ZH/dark/18 px/custom-blue query → URL draft → Clear → keyboard Discard preserves the separate address, reports accepted token presence and restores password focus. Native Left-half resizing retains query/draft; pending copy, window-memory hint and the focused Discard action stay visible. The body accepts wheel input. Restoring the accepted URL and using Return retains the existing token; explicit Clear/Apply then reports no token through the same private memory owner. Close retains the original conversation draft; native typing produces exactly `连接令牌草稿 保留 继续` with Composer focus.
 - Complete Web validation passes **386 files / 3,049 tests** and all subsequent checks in **179.80 seconds** under Node 22.22.1. The first pass reached the authored-class guard, whose string-shape heuristic mistook space-separated ARIA description references for CSS classes. Primary now composes the description ID list once instead of repeating full IDREF strings; the guard is unchanged, and the complete rerun passes. `make check-native` passes Desktop test/vet/build and the supported Wails build in **25.18 seconds**; final private build passes in 5.53 seconds. All **13** final reviewed source/contract/fixture hashes remain stable through acceptance. The arm64 binary reports minimum macOS 13.0 / SDK 26.5. Recurring non-failing loopback diagnostics and the duplicate `-lobjc` warning remain separate. Independent unchanged shared UI, CLI, Runtime and SDK suites were not rerun; no protocol, persisted-data or installed-resource migration is needed.
 - Cleanup completed: all three native processes and the bounded CLI process exited. The exact app was unregistered; its bundle, disposable homes/data, captures, overlays, prompt/report, logs, scripts and pointer were removed. Ten newly created worktree output/cache paths and the unique bundle's Caches/WebKit paths were removed under preexistence, tracked-content, UID, birth-time and non-symlink guards. Pre-existing shared UI Vite/compiler/package caches, installed dependencies, read-only references and unrelated primary working/index/untracked changes remain.
+
+### Connection action completion and native return (2026-11-06)
+
+Scope: preserve a conversation draft → enter installed Connection Settings →
+apply an explicit token removal, clear a token-only draft or reset a URL draft →
+correct a rejected address or discard only the token edit → return through Files
+and continue drafting. Fresh origin/main fetch and merge are already up to date
+at `37798ca0f`. The independent primary main checkout stays clean at `00c172c73`.
+
+Actual original Wails reproduces focus falling to HTML content when keyboard
+Apply accepts a token removal and when Reset restores a draft address. Both
+actions become natively disabled and lose their visible keyboard perimeter.
+Clear has the same transition when a typed draft is the only token. The existing
+shared Button already owns focusable disabled semantics and activation guards;
+the consumers had not requested that contract.
+
+`features/connection/settings/ui/ConnectionPane.tsx:227`, `:237` and `:263` use
+`focusableWhenDisabled` for Reset, Clear and Apply. Their availability conditions,
+command arguments and visual layout are unchanged. These disabled controls now
+remain in Tab order and expose `aria-disabled`; Enter, Space and click cannot
+activate them. Discard retains its existing explicit password-field focus return.
+No new state, handler, focus effect, label, token or dependency is introduced.
+The endpoint owner retains normalization, rejection, credential binding and the
+distinction between omitted and explicit-empty token input. Successful URL-field
+Enter keeps its existing completion behavior; this repair targets the actions.
+
+The six better-interface domains guide this batch. Better-accessibility grounds
+the retained keyboard target; better-layout keeps the existing FormActions unit
+and Settings scroll owner. Read-only HeroUI's real loading-state Button and
+with-error TextField examples separate pending and field-error roles. ZCode's
+actual RemoteConnectionFields server branch associates URL errors and keeps the
+password editor distinct; it supplies no competing credential or focus policy.
+Flame retains its Base UI/StyleX owners, semantic colors and quiet filled fields.
+Bounded Read/Edit-only Claude Code CLI changes the two permitted component/test
+files in 57.021 s and ten turns, with no denial or subagent. Root reviews the
+diff, adds the keyboard-order assertion and owns all verification.
+
+| Domain        | Evidence inspected                                                                   | Result and boundary                                                                         |
+| ------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| Accessibility | Native completion focus, disabled activation, forward/reverse Tab and scoped discard | One MEDIUM finding repaired; VoiceOver speech and native IME are not newly verified.        |
+| Layout        | Complete action row at 200%, native resize, named reader and 320 px file return      | Existing axes and task containment pass; native 320 CSS px Settings is not qualified.       |
+| Writing       | EN/ZH accepted versus pending token state, address rejection and completion actions  | Existing field/action copy stays with its owner; no new labels or decorative introductions. |
+| Typography    | 14/18 px text, mixed-language address draft and wrapped full file path               | Inspected reading passes without font, tracking or type-scale changes.                      |
+| Colors        | Light Orange and dark custom-blue focus, disabled and invalid states                 | Distinct inspected states retained; no new numeric contrast qualification.                  |
+| UI            | Clear, Apply, Reset, Discard, retained category task and continued authoring         | Shared controls retain their commands; no new decoration, container or motion.              |
+
+| Severity         | Domain        | Location                                                             | Before                                                                         | After                                                                              | Why                                                       |
+| ---------------- | ------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| MEDIUM, repaired | Accessibility | `features/connection/settings/ui/ConnectionPane.tsx:227` and actions | Self-disabling completion removes the focused action's native keyboard target. | Existing focusable-disabled semantics retain the target while refusing activation. | Keep the user's visible location through task completion. |
+
+Passed verification:
+
+- The unchanged Connection/endpoint baseline passes 37 tests in two files.
+  Final tests against original production source fail four and pass 36: the
+  three new completion regressions and the updated initial disabled-target
+  contract expose native disabling. The candidate is restored byte-for-byte.
+  Final Connection/endpoint and Settings/Plugins Settings pass 60 tests in four
+  files; the existing shared Button suite passes 28 in one file: 88 total.
+  Coverage checks accepted state, retained focus, native focusability and Tab
+  order, accessible disability, refused repeat click and explicit-empty handoff.
+- All 13 final gates exit 0: those two test commands, Web typecheck, lint,
+  design-system, tokens, chrome, dead styles, exact plugin resources, production
+  bundle, installed module linkage, scoped format and `make check-native`.
+  The private candidate asset build also passes. Native check takes 20.148 s;
+  deployment-target linker warnings are non-failing. Full Web/Runtime suites,
+  browser visual suites and performance benchmarks are not run.
+- Matched EN/light/14 px/Orange original and candidate use the same Wails 3.1.0
+  host binary, 24 host files, four signed app files, public fixture configuration
+  and 331 served assets. Both Apply and Reset comparisons are 2238 × 1720.
+  Keyboard completion now keeps the action and visible perimeter. Return/Space
+  attempts do not alter accepted state; reverse Tab reaches the password field.
+  Clear's token-only draft transition also keeps its target and pending state.
+- English rejected URL retains its editable field. Discard clears only the token
+  edit and returns password focus while preserving that URL and rejection.
+  Personalization → Connection keeps the same rejected draft; Tab reaches the
+  named Connection reader with its perimeter. Closing Settings ends the local
+  draft, and reopening retains Connection with the accepted address and no error.
+- ZH/dark/18 px/custom #6C9EFF/configured motion off passes native Top Left
+  resizing and stable 2240 × 1456 captures. Actual Size plus twenty native Zoom
+  In actions gives 200%. All three completion targets retain their blue perimeter;
+  the full action row stays aligned and visible. Rejection preserves the exact
+  `本地 runtime 地址` draft, Discard preserves its URL error and returns password
+  focus, and Reset restores the accepted host address/token state. The named
+  reader keeps its perimeter through Page Up/Down. Actual Size is restored.
+- Both candidates close through the existing task action, keyboard-resize Files
+  from 363 to 320, read the eight-line file and wrapped canonical source path,
+  reopen selected Connection and return. English retains the file reader;
+  Chinese Back to files retains selected `resizer.ts`. Chinese restores its
+  previous native window size. The final native drafts are exactly
+  `Continue after checking Connection. Ready.` and `核对连接设置后继续。继续。`.
+
+The real production endpoint use case and configuration adapter operate over the
+existing fixture's in-memory commit. Only private bootstrap data adds a disposable
+dummy token at `https://visual.flame.test`; no HTTP reconnect or live authentication
+is performed. This is actual native UI qualification, not production credential,
+host bootstrap or durable Runtime recovery acceptance. No Send is submitted.
+Chinese text uses native paste with clipboard restoration, not OS IME composition.
+Motion off is an explicit fixture policy, not a new OS reduced-motion check.
+
+Three managed native processes exit 0 after 72.911, 177.762 and 279.100 s and
+are reaped. The original append probe used an unsuitable macOS End chord and is
+excluded from exact append-at-end acceptance; both candidate drafts use the
+observed end-of-document action. A post-quit AX observation reopened the private
+host without its asset environment; that blank harness window is excluded, quit
+and absent before cleanup. Only the two intended component/test inputs differ
+among 6,630 tracked non-Markdown inputs. All candidate source/Web/host/app hashes
+stay fixed through native acceptance.
+
+The exact app is unregistered; its process and endpoint are inactive. Guarded
+cleanup retires the private app/home/assets/logs/captures/overlays/cache root,
+four new output roots including 1,700 Vitest module-cache files, and the two
+UID Cache/WebKit stores containing 17 files. Five initially absent output roots
+and all six UID paths are absent. Six pre-existing output trees match baseline;
+58 real nested Web dependency files and both pre-existing UI cache files remain
+intact. Toolchains, dependencies, user data and references are preserved.
+The retained in-memory evidence has 142 UTF-8 records and 27 native capture
+digests, including original counterexamples and the excluded append probe.
+Its 1,181,664-byte gzip round trip passes with SHA-256
+`d199e49f3180fcf773fbc34ed95cce4ae5b49079f4baf4738094de87c56249ad`.
+
+No protocol, persisted-data or external-consumer migration is needed. Verdict:
+**Approve** for the inspected task and six domains. Other Settings bodies, every
+service/rejection outcome, live reconnect, VoiceOver, IME, RTL, other-platform
+GUIs and native 320 CSS px Settings are not newly qualified. Whole-product and
+award-level acceptance remain open; continue with fresh remaining task evidence.
 
 ## Remembered rule action context
 
