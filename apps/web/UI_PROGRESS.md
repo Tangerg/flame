@@ -17,6 +17,13 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Remembered approval rules now reveal their complete fitting record when a Forget
+button receives keyboard focus. The matched English 200% original/candidate
+comparison, Chinese dark large-text reading, native resize and both continued
+drafts pass, together with 109 related tests and 14 serial gates. See
+**Remembered rule context during keyboard reading (2026-11-05)** below. Owned
+qualification resources are retired; whole-product acceptance remains unproven.
+
 MCP tool descriptions and same-name source notices now share one valid
 paragraph, retaining their existing line break and literal source identities.
 All 203 related tests and 18 serial gates pass. Resumed actual Wails English
@@ -28343,6 +28350,95 @@ records and **23** capture digests; SHA-256 is
 `42a76d84a3b8d866f9505a64e1ae129b900f11512d9a320f58105bae271085ca`.
 Delivery stays local on the owned UI branch. No push, main mutation or new main
 fetch is performed for this batch.
+
+### Remembered rule context during keyboard reading (2026-11-05)
+
+The native English 14 px/light/Orange comparison reproduces a reading gap at
+200% in the same **2238 × 1720** captured frame. Tab reaches the project rule's
+Forget button while its concrete directory stays below the viewport. Manual
+body scrolling then presents the whole record, including the action, proving
+that this record fits. The outer SettingRow declares the entire four-rule
+section, which is too tall; the individual record had no reading declaration.
+
+Each existing mapped rule div in RulesRow now declares data-focus-unit. Shared
+Panel/readingUnitFor remains the sole reveal owner: choose the outermost fitting
+declared context, otherwise retain the focused control. No wrapper, handler,
+state, CSS, copy, locale, token, command or Runtime contract changes. Existing
+ARIA descriptions, exact rule IDs, pending actions and removal/reorder focus
+continuity remain. The Web README describes this composition.
+
+Read-only ZCode exact-value action context and the earlier HeroUI/Radix research
+remain relevant; neither proves Flame's zoom behavior. better-layout's visible
+group/context guidance and better-accessibility's logical focus guidance inform
+the repair; the matched native comparison supplies the observed evidence.
+
+| Severity | Location                               | Before                                                                    | After                                                      | Why                                                            |
+| -------- | -------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------- |
+| MEDIUM   | features/approvals/ui/RulesRow.tsx:165 | Keyboard reveal exposes a fitting rule's action without its project path. | The existing record declares its complete reading context. | Identify the exact saved decision while navigating its action. |
+
+Verification uses base 5790090f70f1bbbc59bc700d1d413470a9648672:
+
+- Baseline Approvals passes **5 files / 24 tests**. The bounded Claude CLI
+  supplies only the one-line source declaration and README paragraph in
+  **21.75 s / 7 turns**, with no permission denials. Its report discloses one
+  extra read-only grep despite the no-command brief; the reviewed diff has only
+  the two allowed files. No CLI report substitutes for root acceptance.
+- All **14 serial gates pass in 37.13 s**: Approvals **24**, shared Panel **49**,
+  related Settings/shortcuts/SettingRow **36** (**109 tests / 10 files**), owned
+  formatting, Web typecheck/lint/design-system/tokens/chrome, installed-resource
+  and module checks, bundle gate, make check-native (**19.24 s**) and private
+  candidate assets (**2.01 s**). Existing Panel regressions cover fitting and
+  oversized groups, pointer activation, later focus and reflow. No marker-only
+  mirror test is added; actual original/candidate Wails qualifies this wiring.
+- The private build freezes only approval.listRules through its public DTO.
+  ListApprovalRulesResult validation reports zero violations. All **6,804**
+  accepted non-Markdown inputs and **25** installed resources remain exact;
+  only RulesRow differs from baseline inputs. Both accepted languages use the
+  same **333** served files, **24** private host files and **3** signed bundle
+  files. No live Runtime or endpoint listener is used; Forget, Clear all, mode,
+  Send and policy actions are not activated.
+- English light/14 px/Orange/full motion passes normal reading and 200% Tab
+  through Balanced, Clear all and the rule actions. The project source, literal
+  exact arguments and CJK/spaced directory now fit beside the focused action.
+  Session stale status, last-rule directory, reverse Tab and manual body wheel
+  pass. Actual Size/Close retains the draft; explicit Composer refocus and plain
+  paste produce exactly **Continue after reading the approval rules. Ready.**
+  before Quit. Automatic Composer focus restoration is not claimed.
+- Chinese dark/18 px/custom blue/full motion passes the same project reading
+  at 200%, a **3024 × 1898** native Fill window and settled **2240 × 1456**
+  native quarter window. Tab/Shift+Tab keeps the project action visible, and
+  manual wheel reaches the complete captured directory. Simultaneous complete
+  project-record visibility is not qualified in that shorter frame. The shared
+  oversized fallback remains covered by Panel regressions. The final rule shows
+  its glob and complete web directory. Actual Size/Close and explicit Composer
+  refocus/paste produce exactly **核对审批规则后继续。 继续。** before Quit.
+- Excluded setup: the first Chinese launch mistakenly requested unregistered
+  zh-CN and rendered no fixture. It exited normally; the corrected registered
+  zh launch above supplies acceptance. A repeated already-selected fixture
+  Settings button likewise establishes no opening result; the actual settings
+  shortcut supplies reopening. No product workaround or assertion is weakened.
+
+Typography, whitespace, hierarchy and responsive reading retain existing type,
+row insets and literal wrapping. Both theme focus states remain distinct in the
+observed frames; fresh contrast ratios are not measured. Full motion is enabled
+for these tasks, without a complete motion or micro-interaction matrix. No new
+decorative surface or originality/award-level claim is made. VoiceOver speech,
+OS IME, RTL, other native platforms, live policy persistence and destructive
+rule actions are not newly qualified. Browser suites, performance benchmarks,
+full frontend/shared/backend/CLI suites are not rerun for this declaration.
+No protocol or persisted-data migration is required; the overall goal stays open.
+
+All **four** native processes exit **0** and the exact app registration is
+retired. The owned app, private home, build/module cache, scripts, logs and
+captures are removed. Two created UID Library stores are removed and all six
+UID paths are absent; five newly created checkout output roots are removed,
+five original output trees are byte-exact, and both original UI cache files
+are restored. The in-memory archive retains **197** UTF-8 records and **24**
+capture digests; gzip SHA-256 is
+ccd6165fff20a81945585d8334f4fa62e7372375c9d718cb6397df12c538c3ba.
+The user-owned primary independently advances on its own branch and is never
+mutated by this batch. Continue inspecting actual remaining page/return paths
+after publishing this bounded change through normal hooks and main.
 
 ## Hooks scope and source identity
 
