@@ -17,6 +17,15 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+The renewed Memory native review on `6401c5e0c` finds no new alignment or
+return defect in the inspected English light/14 px and Chinese dark/18 px tasks.
+Both cover a real 320 px Dock, 200% reading, retained drafts and Files/conversation
+return; Chinese also covers a 40-line draft, empty-filter recovery and native
+window resizing. See **Memory native editing and retained reading after main
+(2026-11-05)**. A fresh main fetch and both remote/local main merges are already
+up to date. Product inputs remain unchanged, owned resources are retired and
+whole-product acceptance remains open.
+
 The renewed Schedules native review on `58d095069` finds no new alignment or
 task-return defect in the inspected English light/14 px and Chinese dark/18 px
 paths. Both cover a real 320 px Dock, 200% editor reading, model refresh,
@@ -6035,6 +6044,78 @@ primary parallel checkout remain untouched. This documentation receipt changes
 no accepted product input; publication is followed by fresh remote, cleanliness
 and preservation checks. Continue from a fresh task observation, preserving this
 accepted hierarchy and the preceding color/focus work.
+
+### Memory native editing and retained reading after main (2026-11-05)
+
+Scope: Project memory → filter and inspect an accepted record → edit locally →
+read related material → return → cancel → continue the original conversation.
+The existing RecordForm/RecordGroup and shared TextArea remain the layout owners;
+Runtime retains mutations and revision authority. No new repair is selected.
+
+Read-only ZCode MemorySettingsViewer and SettingsResourceHeaderActions inform
+scope, search and action grouping. Existing Better layout/accessibility guidance
+supports complete fitting groups and reachable controls for oversized forms.
+Flame keeps its own shared controls, theme and focus owners.
+
+- English light/14 px/Flame Orange uses the actual 320 px Dock. Searching
+  `cutpoint`, expanding the active pinned record and editing retain its captured
+  Project scope and full ID. Refresh and Files → Memory return preserve the
+  local two-line draft, query and expansion. At native 200%, the complete short
+  form, identity, field and actions fit. Keyboard cancellation restores its
+  connected Edit opener. Delete opens only the decision form; its complete
+  context and actions fit at 200%, and Escape returns to More actions. Canonical
+  content remains unchanged. The continued conversation reads
+  `Continue after reviewing memory. Ready.`.
+- Chinese dark/18 px/custom blue uses the same actual 320 px Dock. Only pinned
+  folds into the active filter count when editing starts. At 200%, the additional
+  filter row makes this particular form oversized; focus retains the current
+  field/action units rather than guaranteeing the whole heading. Clearing that
+  secondary filter preserves the query and draft; the complete short form then
+  fits. This is the existing bounded reading contract.
+- A 40-line Chinese draft exercises the TextArea's 40dvh bound. Start/end commands
+  and actual wheel input expose its first, middle and last lines. Native Top Left
+  resizing settles at 2240 × 1456; keyboard movement exposes the complete action
+  group while retaining the draft. Whole-form fit is not claimed for this long
+  editor. An unmatched query leaves it open; keyboard Clear search and filters
+  restores both canonical records and Search focus without losing any draft line.
+- Refresh, re-expansion and Files → Memory return retain that long draft and
+  captured identity. Empty filtering legitimately retired the original row and
+  its expansion state. Final cancellation therefore returns to Search, the
+  existing fallback for a retired opener. The continued conversation reads
+  `核对项目记忆后继续。继续。`.
+
+The actual installed Memory component runs in Wails 3.1.0 over the standard,
+unchanged deterministic accepted Project page. Both native processes exit 0:
+English **489.398 s**, Chinese **1257.142 s**. All nine serial preparation steps
+pass: Icons, UI, installed resources, private-host formatting, Web assets,
+native host, signing, strict signature verification and registration. All 6,630
+tracked non-Markdown inputs and the 331 Web, 24 host and four bundle artifacts
+match their frozen hashes after acceptance.
+
+Coverage does not include User scope, pagination, accepted Save/Pin/Approve/Reject,
+confirmed deletion, pending/error reconciliation, Send or a live Runtime/provider.
+The fixed list transport has no mutation responses. Refresh qualifies retained
+presentation only. Files reads the standard deterministic source fixture.
+VoiceOver speech, OS IME and RTL are not newly qualified. No browser visual suite,
+performance benchmark, new automated tests or full backend suite runs; product
+source is unchanged.
+
+The fresh requested fetch independently resolves remote main to `6401c5e0c`;
+merges of origin/main and local main both report already up to date. The primary
+checkout remains clean at `00c172c73` and is not modified. Only this progress
+record changes. The private app is unregistered, both processes and its listener
+are absent, and all six bundle-specific Library paths are absent. Six existing
+output trees match their baselines, five absent paths remain absent, and both
+UI test-cache files remain unchanged; two rebuilt UI files are restored exactly.
+Installed dependencies, references, user data and the retained toolchain remain.
+
+The exact owned temporary root is retired after identity and preservation checks.
+A round-trip-verified in-memory gzip retains 99 UTF-8 evidence records and 33
+capture dimension/hash receipts; all captures are settled 2238 × 1720 or
+2240 × 1456. Archive SHA-256:
+`eccebbc1b5554e7081a5186a4da0e931077223f1a35661bc8ef7436a69e02ab3`.
+Continue with a fresh remaining task observation; whole-product acceptance stays
+open.
 
 ### Memory form reading and content sizing (2026-11-02)
 
