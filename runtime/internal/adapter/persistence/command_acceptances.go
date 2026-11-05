@@ -78,16 +78,7 @@ func (s *commandAcceptanceStore) Save(ctx context.Context, acceptance runs.Comma
 // generic response variant reports that the key belongs to another operation; an
 // absent key reports neither. It performs no mutation and starts no Run.
 func (s *commandAcceptanceStore) Lookup(ctx context.Context, key string) (runs.CommandAcceptanceRecord, error) {
-	var record runs.CommandAcceptanceRecord
-	err := s.db.write(ctx, func(ctx context.Context) error {
-		var err error
-		record, err = s.lookup(ctx, key)
-		return err
-	})
-	if err != nil {
-		return runs.CommandAcceptanceRecord{}, err
-	}
-	return record, nil
+	return s.lookup(ctx, key)
 }
 func (s *commandAcceptanceStore) SessionSteerInputs(ctx context.Context, sessionID string) ([]runs.CommandAcceptance, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]runs.CommandAcceptance, error) {

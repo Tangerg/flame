@@ -195,7 +195,8 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 	}
 	if err != nil || value.Outcome == nil || value.Outcome.Type != want {
 		lookup, _ := os.ReadFile(os.Getenv("FLAME_TEST_SCHEDULE_EVIDENCE") + ".finish")
-		t.Fatalf("recovered Run: %+v, outcome=%+v, error=%v, lookup=%s", value, value.Outcome, err, lookup)
+		outcome, _ := json.Marshal(value.Outcome)
+		t.Fatalf("recovered Run: %+v, outcome=%s, error=%v, lookup=%s", value, outcome, err, lookup)
 	}
 }
 

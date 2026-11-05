@@ -92,14 +92,14 @@ func TestTypedStreamInputIsRefusedBeforeBindingAndLeavesIdentityAvailable(t *tes
 			f := newStreamFixture(t, mode)
 			ctx := operation.Bind(t.Context(), "records.stream", "typed-input")
 			original := f.request.Input
-			for _, number := range []string{"0.0", "1e0"} {
+			for _, number := range []string{"0.5", "9223372036854775808"} {
 				input, err := framevalue.ParseJSON([]byte(`{"revision":` + number + `}`))
 				if err != nil {
 					t.Fatal(err)
 				}
 				method, _ := f.request.Contract.Method(f.request.Method)
-				if err := method.ValidateInput(input); err != nil {
-					t.Fatalf("probe must reach the complete typed admission owner: %v", err)
+				if err := method.ValidateInput(input); err == nil {
+					t.Fatal("the numeric contract admitted a fraction or overflowing integer")
 				}
 				f.request.Input = input
 				events, err := f.run(t, ctx)
@@ -115,6 +115,13 @@ func TestTypedStreamInputIsRefusedBeforeBindingAndLeavesIdentityAvailable(t *tes
 			events, err := f.run(t, ctx)
 			if err != nil || len(events) != 2 || events[0].Kind != plugins.StreamChunk || events[1].Kind != plugins.StreamResult || f.invocations.Load() != 1 {
 				t.Fatalf("typed-invalid stream consumed the original identity: events=%+v calls=%d, %v", events, f.invocations.Load(), err)
+			}
+			for index, number := range []string{"0.0", "1e0"} {
+				f.request.Input = testsupport.JSONInput(t, `{"revision":`+number+`}`)
+				events, err := f.run(t, operation.Bind(t.Context(), "records.stream", "exact-integer-"+number))
+				if err != nil || len(events) != 2 || events[0].Kind != plugins.StreamChunk || events[1].Kind != plugins.StreamResult || f.invocations.Load() != int32(index+2) {
+					t.Fatalf("exact integer %s was not admitted: events=%+v calls=%d, %v", number, events, f.invocations.Load(), err)
+				}
 			}
 		})
 	}

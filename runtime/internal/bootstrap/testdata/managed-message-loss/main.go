@@ -78,6 +78,7 @@ func run() (err error) {
 				semantic = request.Params.Method
 			}
 			matched := semantic == os.Args[3] && (os.Args[4] == "" || request.Params.Name == os.Args[4])
+			stage := ""
 			if os.Args[5] == "durable" {
 				phase, err := os.ReadFile(os.Args[1] + ".phase")
 				if err != nil {
@@ -85,7 +86,7 @@ func run() (err error) {
 					cancel()
 					return
 				}
-				stage := strings.TrimSpace(string(phase))
+				stage = strings.TrimSpace(string(phase))
 				matched = (stage == "commit" || stage == "edited") && request.Method == "tools/call" && request.Params.Name == "create_schedule" || stage == "query" && semantic == pluginsdk.ToolReceiptMethod
 			}
 			if matched {
@@ -100,7 +101,7 @@ func run() (err error) {
 					updates.Store(string(request.ID), jsontext.Value(line))
 				}
 			}
-			if os.Args[5] == "durable" && semantic == pluginsdk.ToolReceiptMethod {
+			if os.Args[5] == "durable" && semantic == pluginsdk.ToolReceiptMethod && stage != "commit" && stage != "edited" {
 				updates.Store(string(request.ID), jsontext.Value(line))
 			}
 			if _, err := fmt.Fprintln(input, string(line)); err != nil {

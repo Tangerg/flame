@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	goruntime "runtime"
+	"slices"
 	"syscall"
 	"testing"
 	"time"
@@ -199,6 +200,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				t.Fatal(err)
 			}
 			var originalEffect scoperun.EffectID
+			var originalEffects []scoperun.EffectID
 			for _, entry := range originalTree.Entries {
 				intent, ok := entry.Record.(scoperun.EffectIntent)
 				if !ok || intent.ID.Process != originalTree.Root {
@@ -209,10 +211,11 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 					t.Fatal(err)
 				}
 				if tool && call.Call.Name == "schedules_create_schedule" {
-					if originalEffect.Valid() {
-						t.Fatal("original create call has multiple effect intents")
+					if call.ContinuationOf != originalEffect {
+						t.Fatal("original create call has multiple independent effect intents")
 					}
 					originalEffect = intent.ID
+					originalEffects = append(originalEffects, intent.ID)
 				}
 			}
 			if !originalEffect.Valid() {
@@ -269,7 +272,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				retained := 0
+				var retained []scoperun.EffectID
 				for _, entry := range finalTree.Entries {
 					intent, ok := entry.Record.(scoperun.EffectIntent)
 					if !ok || intent.ID.Process != originalTree.Root {
@@ -280,13 +283,13 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 						t.Fatal(err)
 					}
 					if tool && call.Call.Name == "schedules_create_schedule" {
-						if intent.ID != originalEffect {
+						if !slices.Contains(originalEffects, intent.ID) {
 							t.Fatal("recovery prepared another create effect")
 						}
-						retained++
+						retained = append(retained, intent.ID)
 					}
 				}
-				if retained != 1 || finalTree.Root != originalTree.Root {
+				if !slices.Equal(retained, originalEffects) || finalTree.Root != originalTree.Root {
 					t.Fatal("recovery replaced the original effect or process tree")
 				}
 			}

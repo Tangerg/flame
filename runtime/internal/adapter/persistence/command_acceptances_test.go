@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/frame"
 )
 
 func sampleAcceptance() runs.CommandAcceptance {
@@ -18,6 +20,38 @@ func sampleAcceptance() runs.CommandAcceptance {
 		Operation:   runs.CommandStartOpening,
 		SessionID:   "session_accept", RunID: "run_accept",
 		SegmentID: "segment_accept", UserItemID: "item_accept",
+	}
+}
+
+func TestCommandAcceptanceLookupRemainsReadOnlyDuringRecovery(t *testing.T) {
+	ctx := t.Context()
+	stores, err := Open(ctx, Config{DataDirectory: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = stores.Close() })
+	acceptance := sampleAcceptance()
+	draft := run.Draft{
+		RunID: acceptance.RunID, SessionID: acceptance.SessionID, SegmentID: acceptance.SegmentID,
+		ModelSelection: testsupport.MustModelSelection("test", "test-model"), CreatedAt: time.Unix(100, 0).UTC(),
+	}
+	if err := stores.Runs.Admit(ctx, draft); err != nil {
+		t.Fatal(err)
+	}
+	if err := stores.CommandAcceptances.Save(ctx, acceptance); err != nil {
+		t.Fatal(err)
+	}
+	cause := errors.New("original submission requires recovery")
+	stores.Admission.RequireRecovery(cause)
+	record, err := stores.CommandAcceptances.Lookup(ctx, acceptance.Key)
+	if err != nil || !record.Found || record.CurrentRun == nil || !record.Acceptance.Equal(acceptance) {
+		t.Fatalf("recovery blocked the original acceptance read: %+v, %v", record, err)
+	}
+	if err := stores.Admission.RecoveryError(); !errors.Is(err, cause) {
+		t.Fatalf("lookup cleared the original recovery barrier: %v", err)
+	}
+	if err := stores.CommandAcceptances.Save(ctx, acceptance); !errors.Is(err, frame.ErrRecoveryRequired) || !errors.Is(err, cause) {
+		t.Fatalf("lookup reopened write admission: %v", err)
 	}
 }
 

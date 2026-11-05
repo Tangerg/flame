@@ -226,7 +226,10 @@ func (i interactionCheckpointState) recoverableReceipts(rootID scoperun.ProcessI
 		return nil, err
 	}
 	root, found := inspection.Process(rootID)
-	if !found || (root.Status != scoperun.StatusWaiting && root.Status != scoperun.StatusDraining && !root.Status.Terminal()) {
+	// A committed Tool settlement can leave the program running before its
+	// next step commits. Original receipts and every unresolved Effect below
+	// still bound recovery; an explicitly paused process remains excluded.
+	if !found || (root.Status != scoperun.StatusRunning && root.Status != scoperun.StatusWaiting && root.Status != scoperun.StatusDraining && !root.Status.Terminal()) {
 		return nil, nil
 	}
 	for _, process := range inspection.Processes {

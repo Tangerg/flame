@@ -26,12 +26,14 @@ func TestCapturedContributionActivationClassifiesMissingLiveSource(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
+	var calls int
 	composition, _ := installedCallCompositionFixture(t, contract, []string{"proposal"}, func(backend *pluginmcp.Backend) {
 		method, err := pluginsdk.ToolProposalMethod()
 		if err != nil {
 			t.Fatal(err)
 		}
 		if err := method.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command pluginmcp.Command[chat.ToolCall]) (chat.ToolCall, error) {
+			calls++
 			return command.Input, nil
 		}); err != nil {
 			t.Fatal(err)
@@ -64,8 +66,8 @@ func TestCapturedContributionActivationClassifiesMissingLiveSource(t *testing.T)
 	}
 	proposal := chat.ToolCall{ID: "original", Name: "write_record", Arguments: `{}`}
 	result, err := composition.PrepareToolProposal(ctx, captured, proposal)
-	if err != nil || result != proposal {
-		t.Fatalf("original contribution could not execute independently of catalog replacement: %+v, %v", result, err)
+	if !errors.Is(err, plugin.ErrUnavailable) || !errors.Is(err, frame.ErrUnavailable) || calls != 0 {
+		t.Fatalf("a captured graph without an unsettled business owner authorized execution: %+v calls=%d, %v", result, calls, err)
 	}
 }
 

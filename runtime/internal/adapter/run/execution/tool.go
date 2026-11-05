@@ -108,13 +108,22 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	ctx = o.session.modelCallContext(ctx, member, callID)
 	ctx = operation.Adopt(ctx, callID, extension.Model, member.MemberID)
 	ctx = runinput.WithCapabilities(ctx, o.start.InterruptTypes)
-	// Scope carries any re-entry answer on bound. The resumed Tool effect
-	// receives the continuation its question or approval parked on.
-	var continuation *toolcontract.Continuation
-	if restored, ok := bound.Continuation(); ok {
-		continuation = &restored
+	continued, resumed, err := runinput.Restore(bound)
+	if err != nil {
+		return toolcontract.Result{}, err
 	}
-	effectiveArguments, denied, denialReason, inputRequest, prepareErr := o.prepare(ctx, bound, callID, call.Name, arguments)
+	var preparedInput *runinput.Continuation
+	var continuation *toolcontract.Continuation
+	if resumed {
+		preparedInput = &continued
+		// Flame consumes its approval; a question's answer still belongs to
+		// the underlying Tool that requested it.
+		if _, question := continued.Interrupt.(runs.QuestionPrompt); question {
+			restored, _ := bound.Continuation()
+			continuation = &restored
+		}
+	}
+	effectiveArguments, denied, denialReason, inputRequest, prepareErr := o.prepare(ctx, bound, callID, call.Name, arguments, preparedInput)
 	if inputRequest != nil {
 		return toolcontract.Result{InputRequest: inputRequest}, nil
 	}
@@ -369,13 +378,10 @@ func (o *observedInteractionTool) prepare(
 	callID string,
 	name string,
 	arguments tool.Arguments,
+	continued *runinput.Continuation,
 ) (tool.Arguments, bool, string, *toolcontract.InputRequest, error) {
-	continued, resumed, err := runinput.Restore(bound)
-	if err != nil {
-		return tool.Arguments{}, false, "", nil, err
-	}
-	if resumed {
-		args, denied, reason, err := o.resumePreparedTool(ctx, callID, name, continued)
+	if continued != nil {
+		args, denied, reason, err := o.resumePreparedTool(ctx, callID, name, *continued)
 		return args, denied, reason, nil, err
 	}
 	if len(o.session.toolProposals) > 0 {
