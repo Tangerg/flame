@@ -549,7 +549,7 @@ export async function moduleArtifacts({
         path,
         version,
         revision: source,
-        directory: member.directory,
+        directory,
         go: manifest.Go,
       };
       visiting.delete(key);

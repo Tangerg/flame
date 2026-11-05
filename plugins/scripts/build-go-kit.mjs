@@ -35,6 +35,7 @@ function environment(repository, artifacts, offline) {
   };
 }
 async function writeModule(repository, directory, sdk, modulePath, tools = []) {
+  const checksum = sdk.directory ? `${sdk.directory}/go.sum` : "go.sum";
   await writeFile(
     join(directory, "go.mod"),
     `module ${modulePath}\n\ngo ${sdk.go}\n\nrequire ${sdk.path} ${sdk.version}\n` +
@@ -44,7 +45,7 @@ async function writeModule(repository, directory, sdk, modulePath, tools = []) {
   );
   await writeFile(
     join(directory, "go.sum"),
-    execFileSync("git", ["show", `${sdk.revision}:${sdk.directory}/go.sum`], {
+    execFileSync("git", ["show", `${sdk.revision}:${checksum}`], {
       cwd: repository,
     }),
   );
