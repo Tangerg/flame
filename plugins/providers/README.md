@@ -22,6 +22,12 @@ No plugin-owned credential registry, role state machine or module-global present
 is introduced. Role controls fill their grid track, so they share the description's
 reading axis when the row stacks.
 
+An accepted Save keeps the same unavailable action focusable through the shared
+Button contract. Completion retains its current focus without moving focus from
+a later field. Initial unedited and invalid drafts keep native disabled behavior;
+editing retires the saved feedback through the existing draft owner and enables
+the next valid Save. Repeated activation cannot submit the completed draft again.
+
 Runtime supplies an immutable credential snapshot when opening a model. One
 private handle retains the actual client and its supported capabilities. A
 restart reconstructs that same snapshot; changing current credentials cannot

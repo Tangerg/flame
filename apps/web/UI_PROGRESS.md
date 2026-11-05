@@ -17,6 +17,14 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Provider Save now retains its focused completed action through the shared Button
+contract and respects later field focus. All 44 Provider tests and 16 final serial
+gates pass, as do matched English native completion/200% reading and Chinese
+dark/18 px/native resize/200% reading, both category/draft returns and both 320 px
+Files/conversation returns. See **Provider Save completion and retained work
+(2026-11-06)**. Main merges are already up to date and owned qualification
+resources are retired; whole-product acceptance remains open.
+
 MCP import completion now retains its action focus and shows one confirmation.
 The shared dialog body provides keyboard reading at native 200% zoom; the existing
 read-only Goal reader uses that same owner. English and Chinese dark/18 px/native
@@ -32943,6 +32951,141 @@ other-platform GUIs and OS reduced-motion preference. No protocol, persisted-dat
 dependency or external-consumer migration is needed. Verdict: **Approve** for
 the inspected domains and paths. Whole-product and award-level acceptance remain
 open; continue with fresh evidence from remaining tasks.
+
+### Provider Save completion and retained work (2026-11-06)
+
+Qualified from synchronized main `b39eaa69a`. Fresh remote-main and local-main
+merges report already up to date. The clean parallel primary checkout remains
+read-only on `00c172c73`. The previous goal turn is progress: it publishes the
+MCP/shared-dialog repair, verifies main and retires its qualification resources.
+
+Scope: retain the conversation draft → enter installed Providers → edit one
+endpoint → Save → read its accepted result → continue editing → visit another
+Settings category and return → close Settings → continue the same conversation
+with a 320 px Files Dock. This extends the earlier role-layout qualification to
+a previously unqualified accepted Save path.
+
+Actual original Wails reproduces lost focus: Saving retains the focused action,
+but accepted completion retires its submitted draft and makes Save native
+disabled, leaving the HTML document focused with no action perimeter. The
+existing provider feedback owns the saved fact; editing already retires it.
+`plugins/providers/component/providerRow.tsx` now passes that fact to the shared
+Button's existing `focusableWhenDisabled` contract. It adds one prop and no
+state, focus effect, handler or wrapper. Initial unedited/invalid drafts retain
+native disabled behavior. Pending, validation, secret clearing, later edits,
+original command observation, reconciliation and accepted read ownership stay
+unchanged. The normal builder regenerates the installed Provider ESM with only that new
+prop; every other installed component resource stays unchanged.
+
+Recon reads root AGENTS/PROJECT_RULES/DEVELOPMENT, affected module READMEs and the
+six better-interface owner skills. Flame retains React 19, Base UI, StyleX,
+semantic tokens and Wails 3.1.0. Read-only ZCode's actual ModelProviderSection
+save handler preserves account identity while saving provider configuration;
+its SectionLayout supplies task grouping. HeroUI's actual pending Button example
+keeps one control through loading. These references guide scope and state
+expression; actual Flame native inspection establishes the focus defect. Existing
+Radix focus and Ace/ChatGPT reading research is reused without treating it as new
+native evidence. The bounded Read/Edit-only Claude Code CLI exits 0 in 102.494 s
+and 12 turns with no denied tools or subagents. Root reviews its diff, adds an
+explicit same-element assertion, and owns all verification and delivery.
+
+| Domain        | Evidence inspected                                                                                                              | Result and boundary                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Accessibility | ProviderRow, ButtonPrimitive, 44 Provider tests, actual pending/completed/later-field focus, native keyboard reading and return | One MEDIUM finding repaired; VoiceOver speech and full OS IME are not newly verified.             |
+| Layout        | Native EN 100%/200%, ZH 18 px/200%/Top Left, aligned field tops/actions and both 320 px Files returns                           | No additional actionable finding in exercised frames; native 320 CSS px Settings is not verified. |
+| Writing       | Existing EN/ZH Save/Saving/Saved, Test and stored-key confirmation copy in actual components                                    | Existing vocabulary and feedback retained; no new strings.                                        |
+| Typography    | Literal accepted and later-draft endpoints, 14/18 px labels and complete translated result reading                              | Existing field/paragraph treatment retained; no font or tracking change.                          |
+| Colors        | Actual Orange/light and custom-blue/dark action, pending, disabled and field focus states                                       | Existing roles retained; rendered numeric contrast is not newly measured.                         |
+| UI            | Same Button across settlement, shared confirmation Cancel, keyboard category return and continued drafting                      | Existing surfaces and motion retained; no new decoration, transition or global preference.        |
+
+| Severity         | Domain        | Location                                          | Before                                                                          | After                                                                                                                   | Why                                                                                          |
+| ---------------- | ------------- | ------------------------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| MEDIUM, repaired | Accessibility | `plugins/providers/component/providerRow.tsx:138` | Accepted Save becomes native disabled and drops keyboard focus to the document. | The same completed action remains focusable and unavailable through the shared Button contract, respecting later focus. | A successful save should preserve the person's current task position and next keyboard step. |
+
+Verification passed:
+
+- The original Provider baseline passes all **43 tests** in three files. The final
+  focused command passes **44 tests**: `vitest run --root plugins
+--no-file-parallelism providers/component/component.test.tsx
+providers/component/settings.test.ts providers/component/draft.test.ts`.
+  The added deferred regression uses the real component and the fixture's existing
+  canonical update implementation. It covers initial/pending/completed activation
+  guards, same-element focus, accepted endpoint, editing without a write, later
+  field focus and clearing only the submitted key.
+- The qualifying original-source counterfactual fails the new completion contract
+  as expected (one failed, 26 old cases filtered). It observes missing
+  `aria-disabled`; happy-dom focus alone does not establish native blur. The
+  candidate source restores byte-exactly before resource generation and native QA.
+- All **16 final serial command receipts exit 0**: scoped formatting, Provider
+  tests, plugin typecheck/lint/format/i18n/build/resource verification, Web
+  typecheck/lint/design-system/tokens/production-bundle/public-module checks,
+  `make check-native` and private candidate assets. Production bundle generation
+  precedes the module verifier that consumes its import map. All ten preparation
+  commands also exit 0. No full Web/UI/Runtime test suite is rerun for this
+  Provider-only change; the previous shared-owner qualification is reused.
+
+Actual native comparison uses the production host and installed Provider ESM,
+not a recreated form. The private transport accepts only the exact synthetic
+OpenAI endpoint update `https://provider-review.example.invalid/v1`, publishes
+it through the existing visual provider registry and returns a delayed canonical
+Provider. It changes no credential and makes no network request or provider probe.
+Provider probes, key updates and role writes remain unavailable in this fixture. All 6,630
+candidate non-Markdown files, 331 private Web files, 24 host files and four signed
+bundle files remain frozen through final native acceptance; original/candidate
+host and bundle bytes are identical.
+
+English light/14 px/Orange passes pending/completed Save focus and repeated
+Enter/Space blocking. At native 200%, Page Down reads the complete Saved result
+while the action remains focused. After restoring Actual Size, the stored-key
+confirmation names OpenAI and its consequence; keyboard Cancel returns to the
+form. A later endpoint draft enables Save, survives keyboard Appearance/Providers
+navigation, and remains unsubmitted. Files returns with the continued composer
+text `Continue after updating provider. Ready.` and a confirmed 320 px splitter.
+
+Chinese dark/18 px/custom `#6C9EFF`/motion off passes pending focus moved to the
+API-key field and completion leaving it there. Tab can then revisit completed
+Save. Native Actual Size plus twenty Zoom In actions and Window → Top Left
+qualify 200% in a 2240 × 1456 capture. Keyboard reading reaches the full 已保存
+feedback and the complete Save perimeter. The later endpoint draft survives
+keyboard category return; Files and `更新 Provider 后继续。继续。` remain intact at
+320 px. No Test, stored-key removal, later Save, role change or Send executes.
+
+Excluded attempts remain recorded: the first zoom helper referenced the retired
+MCP qualification app and failed before changing zoom; a fresh Provider-bound
+helper supplies every accepted menu action. A pointer click on offscreen
+Appearance makes no change; subsequent native keyboard navigation establishes
+the category return. The first Chinese Page Down shows the next provider;
+Shift+Tab, native Down reading and Tab back to Save establish the complete result.
+None of those preliminary attempts is used to claim a completed interaction.
+
+Scope limits: deterministic endpoint acknowledgement qualifies UI projection,
+not a live credential write, provider network test, OAuth, accepted role change
+or full Runtime lifecycle. VoiceOver, full OS IME, RTL, forced colors, arbitrary
+themes, other platforms, browser visual suites and performance benchmarks are not
+newly run. No schema or dependency migration is needed. Scoped decision:
+**Approve** for exercised Save completion and retained-work contracts. The
+whole-product/award-level goal remains open; choose further work from observed
+remaining task paths rather than repeating completed pages without new evidence.
+
+Cleanup is complete: original EN and candidate EN/ZH native runs all exit 0 and
+are reaped. The exact app is unregistered, its process/endpoint are inactive,
+17 owned Library files are removed and all six UID paths are absent. Six existing
+output trees restore to baseline hashes, including 58 real Web dependency files;
+five initially absent roots are absent again, including the 753-file owned
+Vitest cache. Both pre-existing UI cache files retain their original bytes.
+The private app/root, assets, test data, npm cache, captures and logs are retired
+under identity and content guards. Pinned tools, installed dependencies, user
+data, all three read-only references and the parallel primary checkout survive
+independent post-retirement checks.
+
+The round-trip-verified in-memory archive retains **124 UTF-8 records** and **18
+capture metadata records** without raw screenshots, compressed to **1,845,317
+bytes**, SHA-256
+`5493f95b7575399d5ac8d055a992a685f794dc3e4afbef427c2482afe8cfb114`.
+It includes source/artifact maps, native/check receipts, excluded attempts and
+cleanup/preservation evidence. This Markdown entry changes no qualified product
+input; normal hooks and a non-force main push are independently checked at
+publication.
 
 ### Provider role controls on the shared reading axis (2026-11-05)
 

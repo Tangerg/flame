@@ -135,6 +135,7 @@ export function ProviderRow({
           variant="primary"
           size="sm"
           disabled={!dirty || !valid || probing || command?.phase === "unknown"}
+          focusableWhenDisabled={feedback?.kind === "saved"}
           pending={command?.phase === "running"}
           onClick={() => void settings.save(context, p, draft)}
         >

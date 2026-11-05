@@ -122,6 +122,69 @@ it("uses the authoritative saved endpoint without losing later edits", async () 
   });
 });
 
+it("keeps a completed Save focused and blocked until the next edit", async () => {
+  const { f } = await mount();
+  const original = f.update.getMockImplementation()!;
+  const save = screen.getByRole("button", { name: "Save" });
+  const attempt = () => {
+    fireEvent.pointerDown(save, { pointerType: "mouse" });
+    fireEvent.click(save);
+    fireEvent.keyDown(save, { key: "Enter" });
+    fireEvent.keyDown(save, { key: " " });
+    fireEvent.keyUp(save, { key: " " });
+  };
+  expect(save.hasAttribute("disabled")).toBe(true);
+  attempt();
+  expect(f.update).not.toHaveBeenCalled();
+
+  const edited = "https://edited.example.test/v1";
+  fireEvent.change(endpointInput(), { target: { value: edited } });
+  const first = Promise.withResolvers<void>();
+  f.update.mockImplementationOnce((input) =>
+    mutation(first.promise.then(() => original(input))),
+  );
+  act(() => save.focus());
+  fireEvent.click(save);
+  expect(save.textContent).toBe("Saving…");
+  expect(document.activeElement).toBe(save);
+  attempt();
+  expect(f.update).toHaveBeenCalledOnce();
+
+  await act(async () => first.resolve());
+  await screen.findByText("Saved", { exact: true });
+  expect(save.textContent).toBe("Save");
+  expect(screen.getByRole("button", { name: "Save" })).toBe(save);
+  expect(document.activeElement).toBe(save);
+  expect(save.getAttribute("aria-disabled")).toBe("true");
+  expect(save.hasAttribute("disabled")).toBe(false);
+  expect(save.tabIndex).toBe(0);
+  expect(endpointInput().value).toBe(edited);
+  attempt();
+  expect(f.update).toHaveBeenCalledOnce();
+
+  fireEvent.change(keyInput(), { target: { value: "second-key" } });
+  expect(screen.queryByText("Saved", { exact: true })).toBeNull();
+  expect(save.hasAttribute("disabled")).toBe(false);
+  expect(save.getAttribute("aria-disabled")).not.toBe("true");
+  expect(f.update).toHaveBeenCalledOnce();
+
+  const second = Promise.withResolvers<void>();
+  f.update.mockImplementationOnce((input) =>
+    mutation(second.promise.then(() => original(input))),
+  );
+  fireEvent.click(save);
+  act(() => keyInput().focus());
+  await act(async () => second.resolve());
+  await screen.findByText("Saved", { exact: true });
+  expect(document.activeElement).toBe(keyInput());
+  expect(keyInput().value).toBe("");
+  expect(endpointInput().value).toBe(edited);
+  expect(f.update.mock.calls).toEqual([
+    [{ provider: provider.id, baseUrl: { type: "set", value: edited } }],
+    [{ provider: provider.id, apiKey: { type: "set", value: "second-key" } }],
+  ]);
+});
+
 it("saves the displayed draft before testing and then clears only submitted secrets", async () => {
   const { f } = await mount();
   fireEvent.change(keyInput(), { target: { value: " key-with-spaces " } });
