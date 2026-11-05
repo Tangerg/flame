@@ -454,7 +454,7 @@ try {
       });
       await writeFile(
         join(output, "test-sources.mjs"),
-        `import { execFileSync } from "node:child_process";\nimport { fileURLToPath } from "node:url";\nexecFileSync(fileURLToPath(new URL(${JSON.stringify(relative(output, node).split(sep).join("/"))}, import.meta.url)), [fileURLToPath(new URL("./node_modules/vitest/vitest.mjs", import.meta.url)), "run", "backend", "contracts", "component"], { cwd: fileURLToPath(new URL("./", import.meta.url)), stdio: "inherit" });\n`,
+        `import { execFileSync } from "node:child_process";\nimport { fileURLToPath } from "node:url";\nexecFileSync(fileURLToPath(new URL(${JSON.stringify(relative(author, node).split(sep).join("/"))}, import.meta.url)), [fileURLToPath(new URL("./node_modules/vitest/vitest.mjs", import.meta.url)), "run", "backend", "contracts", "component"], { cwd: fileURLToPath(new URL("./", import.meta.url)), stdio: "inherit" });\n`,
       );
       if (managed) run("npm", ["run", "generate"], output);
       run("npm", ["test"], output);
