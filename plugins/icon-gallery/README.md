@@ -16,7 +16,8 @@ npm run check:resources --prefix plugins
 
 Generated ESM is tracked for installation; edit the source and rebuild it. The
 component has no callable contribution or backend process. Search filters immutable
-package content through local React state. Install and enable the package explicitly
+package content through local React state. Count grammar follows the SDK
+translator's plural selection over each locale catalog. Install and enable the package explicitly
 to expose its workspace view. Runtime admits its exact release resources through
 the same subscription-owned module loading path as other installed components.
 Appearance comes from the shared UI owner. Disabling the package withdraws its

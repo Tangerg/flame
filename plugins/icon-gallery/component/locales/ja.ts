@@ -9,7 +9,7 @@ export const ja: Record<string, string> = {
   "category.label": "アイコンのカテゴリ",
   "category.all": "すべてのカテゴリ",
   counts: "{{total}} 個中 {{visible}} 個のアイコン",
-  "section.count": "{{n}} 個のアイコン",
+  "section.count_other": "{{count}} 個のアイコン",
   "section.aria": "{{category}} のアイコン描画",
   "empty.title": "一致するアイコンがありません",
   "empty.sub": "別の名前またはカテゴリをお試しください。",

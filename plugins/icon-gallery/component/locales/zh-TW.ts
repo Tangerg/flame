@@ -8,7 +8,7 @@ export const zhTW: Record<string, string> = {
   "category.label": "圖示分類",
   "category.all": "全部分類",
   counts: "{{total}} 個圖示中的 {{visible}} 個",
-  "section.count": "{{n}} 個圖示",
+  "section.count_other": "{{count}} 個圖示",
   "section.aria": "{{category}} 圖示繪製",
   "empty.title": "沒有符合的圖示",
   "empty.sub": "試試其他名稱或分類。",

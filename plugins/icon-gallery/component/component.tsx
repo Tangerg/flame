@@ -95,7 +95,7 @@ export function Gallery({ context }: { context: ComponentContext }) {
           <PanelSection
             key={category}
             title={category}
-            description={t("section.count", { n: items.length })}
+            description={t("section.count", { count: items.length })}
           >
             <TileGrid aria-label={t("section.aria", { category })}>
               {items.map(({ Drawing, ...icon }) => (

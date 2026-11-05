@@ -8,7 +8,7 @@ export const zh: Record<string, string> = {
   "category.label": "图标分类",
   "category.all": "全部分类",
   counts: "{{total}} 个图标中的 {{visible}} 个",
-  "section.count": "{{n}} 个图标",
+  "section.count_other": "{{count}} 个图标",
   "section.aria": "{{category}} 图标绘制",
   "empty.title": "没有匹配的图标",
   "empty.sub": "尝试其他名称或分类。",
