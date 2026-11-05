@@ -8,9 +8,7 @@ import (
 
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
-	"github.com/Tangerg/scope/agent/interaction"
 	"github.com/Tangerg/scope/core/chat"
-	coreinvocation "github.com/Tangerg/scope/core/invocation"
 )
 
 var (
@@ -187,9 +185,6 @@ func (c *Compactor) materializeModelContextPlan(
 	case summarizeCompaction:
 		summary, err := c.summarize(ctx, plan.older)
 		if err != nil {
-			if kind := coreinvocation.ClassifyFailure(err); kind == coreinvocation.FailureFailed || kind == coreinvocation.FailureNotExecuted {
-				err = &interaction.ContextFailure{Cause: err}
-			}
 			return nil, "", 0, 0, fmt.Errorf("maintenance: summarize model context: %w", err)
 		}
 		replacement = make([]chat.Message, 0, 2+len(plan.recent))

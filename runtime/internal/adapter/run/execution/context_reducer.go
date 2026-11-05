@@ -23,6 +23,7 @@ import (
 	"github.com/Tangerg/scope/agent/interaction"
 	scoperun "github.com/Tangerg/scope/agent/run"
 	corechat "github.com/Tangerg/scope/core/chat"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
 )
 
 const rootOpeningMessageCount = 1
@@ -255,6 +256,9 @@ func (i *interactionModelContextReducer) compactContext(calling context.Context,
 	}
 	result, err := i.compactor.CompactModelContext(calling, compaction)
 	if err != nil {
+		if kind := coreinvocation.ClassifyFailure(err); kind == coreinvocation.FailureFailed || kind == coreinvocation.FailureNotExecuted {
+			err = &interaction.ContextFailure{Cause: err}
+		}
 		return nil, err
 	}
 	effective := contextView.canonical(result.Messages())
